@@ -1,73 +1,86 @@
-# React + TypeScript + Vite
+# Lacuna
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Lacuna is a local-first spaced repetition application for serious study. It uses FSRS (Free Spaced Repetition Scheduler), not the older SM-2 algorithm, to schedule reviews based on modern recall research. Your data lives on your device in a real SQLite database. The code is MIT-licensed and self-hostable. A managed hosted tier is planned for sync and cloud backup.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Three card types: Basic (question/answer), Cloze deletion (Anki-compatible syntax), and Image occlusion (for diagrams and maps)
+- FSRS-based scheduling with four-rating review system (Again, Hard, Good, Easy)
+- Exam Mode: prioritises cards by predicted retention before a deadline
+- Nested deck organisation with tag support
+- Block-based note editor (TipTap) with document import/export (PDF, DOCX)
+- LLM integration for card generation, alternative phrasings, practice tests, and on-demand explanations
+- Local-first: SQLite via sqlite-wasm (OPFS on web) or native Tauri plugin (desktop)
+- Cross-platform: web app and desktop (Tauri)
+- Dark and light mode via system preference
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Concern    | Technology           |
+| ---------- | -------------------- |
+| Framework  | React + TypeScript   |
+| Build tool | Vite                 |
+| Desktop    | Tauri                |
+| Database   | SQLite (sqlite-wasm) |
+| ORM        | Drizzle              |
+| Scheduler  | FSRS (ts-fsrs)       |
+| Editor     | TipTap               |
+| Animations | framer-motion        |
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 20 or later
+- Rust toolchain (desktop build only) — see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
+- Platform-specific Tauri dependencies (desktop build only)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Web app (development)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The app will run at `http://localhost:5173`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Desktop app (development)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Requires Rust toolchain and platform-specific Tauri dependencies.
+
+```bash
+npm install
+npm run tauri:dev
 ```
+
+### Production build
+
+Web:
+
+```bash
+npm run build
+```
+
+Desktop installer:
+
+```bash
+npm run tauri:build
+```
+
+## LLM Configuration
+
+Lacuna supports three LLM provider options:
+
+- **Gemini** (default hosted tier, not yet available in v1)
+- Any **OpenAI-compatible API** (bring your own key)
+- **Ollama** (local inference, no API cost)
+
+All configuration is managed via the Settings page in the app. No environment variables are required for v1.
+
+## Design
+
+See `DESIGN.md` for the full design record, including architecture decisions, deferred features, and repository conventions.
+
+## Licence
+
+MIT
