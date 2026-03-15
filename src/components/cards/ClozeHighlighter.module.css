@@ -1,0 +1,56 @@
+.root {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.plain {
+  color: var(--colour-text-primary);
+}
+
+.token {
+  display: inline;
+  padding: 0.1em 0.3em;
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+  font-weight: var(--font-weight-medium);
+  cursor: default;
+}
+
+/* c1 — muted green */
+.cloze1 {
+  background-color: var(--colour-accent-subtle);
+  color: var(--colour-accent);
+  outline: 1px solid color-mix(in srgb, var(--colour-accent) 30%, transparent);
+}
+
+/* c2 — muted blue */
+.cloze2 {
+  background-color: color-mix(in srgb, #3b72b4 10%, transparent);
+  color: #3b72b4;
+  outline: 1px solid color-mix(in srgb, #3b72b4 30%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .cloze2 {
+    background-color: color-mix(in srgb, #6fa3e0 15%, transparent);
+    color: #6fa3e0;
+    outline: 1px solid color-mix(in srgb, #6fa3e0 30%, transparent);
+  }
+}
+
+/* c3 — muted amber */
+.cloze3 {
+  background-color: color-mix(in srgb, #b07d26 10%, transparent);
+  color: #8a6118;
+  outline: 1px solid color-mix(in srgb, #b07d26 30%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .cloze3 {
+    background-color: color-mix(in srgb, #d4ab5a 15%, transparent);
+    color: #d4ab5a;
+    outline: 1px solid color-mix(in srgb, #d4ab5a 30%, transparent);
+  }
+}

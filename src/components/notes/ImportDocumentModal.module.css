@@ -1,0 +1,153 @@
+.wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.modal {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: calc(100dvh - var(--space-8));
+  overflow: auto;
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.title {
+  font-size: var(--font-size-lg);
+  color: var(--colour-text-primary);
+}
+
+.closeButton {
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-base);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text-primary);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+}
+
+.optionRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.optionButton,
+.optionButtonActive {
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-base);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text-primary);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  text-align: left;
+}
+
+.optionButtonActive {
+  border-color: var(--colour-accent);
+  background: var(--colour-accent-subtle);
+  color: var(--colour-accent);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.label {
+  color: var(--colour-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-base);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text-primary);
+}
+
+.radioGroup {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.radioLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--colour-text-primary);
+}
+
+.error {
+  color: var(--colour-danger);
+  font-size: var(--font-size-sm);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.secondaryButton,
+.primaryButton {
+  border-radius: var(--radius-base);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+}
+
+.secondaryButton {
+  border: 1px solid var(--colour-border);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text-primary);
+}
+
+.primaryButton {
+  border: 1px solid var(--colour-accent);
+  background: var(--colour-accent);
+  color: var(--colour-surface);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .optionRow {
+    grid-template-columns: 1fr;
+  }
+
+  .formRow {
+    grid-template-columns: 1fr;
+  }
+}

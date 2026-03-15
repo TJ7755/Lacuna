@@ -25,13 +25,13 @@ The hosted service is the monetisation layer. The software is not. Nobody — in
 
 ### Frontend
 
-| Concern | Choice | Rationale |
-|---|---|---|
-| Framework | React + TypeScript | Mature ecosystem, strong typing, existing author familiarity |
-| Build tool | Vite | Fast, minimal config |
-| Desktop wrapper | Tauri | Rust-based, produces small binaries; explicitly not Electron |
-| Mobile wrapper | Capacitor | Shares the React codebase with web and desktop |
-| Styling | TBD (CSS Modules or Tailwind) | To be resolved before first component is written |
+| Concern         | Choice                        | Rationale                                                    |
+| --------------- | ----------------------------- | ------------------------------------------------------------ |
+| Framework       | React + TypeScript            | Mature ecosystem, strong typing, existing author familiarity |
+| Build tool      | Vite                          | Fast, minimal config                                         |
+| Desktop wrapper | Tauri                         | Rust-based, produces small binaries; explicitly not Electron |
+| Mobile wrapper  | Capacitor                     | Shares the React codebase with web and desktop               |
+| Styling         | TBD (CSS Modules or Tailwind) | To be resolved before first component is written             |
 
 One codebase targets three platforms: web, desktop, and mobile.
 
@@ -84,10 +84,10 @@ This mirrors Anki's convention and is familiar to the target audience. Tags are 
 
 Three supported card types:
 
-| Type | Description |
-|---|---|
-| Basic | Front and back. Standard question/answer. |
-| Cloze | Text with deletions marked `{{c1::answer}}`. Anki-compatible syntax. |
+| Type            | Description                                                                         |
+| --------------- | ----------------------------------------------------------------------------------- |
+| Basic           | Front and back. Standard question/answer.                                           |
+| Cloze           | Text with deletions marked `{{c1::answer}}`. Anki-compatible syntax.                |
 | Image occlusion | An image with labelled regions hidden. Essential for diagrams, maps, and Geography. |
 
 Image occlusion is a v1 feature, not a v2 deferral. It is considered essential.
@@ -100,11 +100,11 @@ Notes use a block/WYSIWYG editor (TipTap or BlockNote — to be resolved before 
 
 **Document support:**
 
-| Direction | Scope |
-|---|---|
-| Import | Upload a PDF or Office document (.docx, .pptx, .xlsx); content is converted and flows into an editable Lacuna note |
-| Embed | Display a PDF or Office document inline within a note as a readable attachment |
-| Export | Save a Lacuna note as a PDF or .docx |
+| Direction | Scope                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------ |
+| Import    | Upload a PDF or Office document (.docx, .pptx, .xlsx); content is converted and flows into an editable Lacuna note |
+| Embed     | Display a PDF or Office document inline within a note as a readable attachment                                     |
+| Export    | Save a Lacuna note as a PDF or .docx                                                                               |
 
 ---
 
@@ -120,12 +120,12 @@ SM-2 is not used. It is strictly inferior to FSRS on recall benchmarks and there
 
 Four ratings, matching FSRS's model:
 
-| Key | Rating | Meaning |
-|---|---|---|
-| `1` | Again | Complete failure to recall |
-| `2` | Hard | Recalled with significant difficulty |
-| `3` | Good | Recalled correctly with some effort |
-| `4` | Easy | Recalled instantly and effortlessly |
+| Key | Rating | Meaning                              |
+| --- | ------ | ------------------------------------ |
+| `1` | Again  | Complete failure to recall           |
+| `2` | Hard   | Recalled with significant difficulty |
+| `3` | Good   | Recalled correctly with some effort  |
+| `4` | Easy   | Recalled instantly and effortlessly  |
 
 ### Input
 
@@ -147,8 +147,8 @@ Exam Mode is a distinct scheduling layer that activates when a deck has an exam 
 
 FSRS exposes a **retrievability** value: the predicted probability of recall for a given card at any future date, based on the card's current memory stability. Exam Mode uses this to reframe scheduling:
 
-- Standard mode asks: *when should I next review this card?*
-- Exam Mode asks: *which cards most need review before this deadline?*
+- Standard mode asks: _when should I next review this card?_
+- Exam Mode asks: _which cards most need review before this deadline?_
 
 On each study session, Exam Mode:
 
@@ -176,11 +176,11 @@ The LLM layer is **provider-agnostic**. A single interface abstracts over provid
 
 ### Providers
 
-| Tier | Provider | Model | Notes |
-|---|---|---|---|
-| Hosted (default) | Google | Gemini 3.1 Flash-Lite | Cheapest capable option at time of writing; subject to change |
-| BYOK | Any OpenAI-compatible API | User-specified | For developers and power users |
-| Self-hosted | Ollama | User-specified | Local inference, no API cost |
+| Tier             | Provider                  | Model                 | Notes                                                         |
+| ---------------- | ------------------------- | --------------------- | ------------------------------------------------------------- |
+| Hosted (default) | Google                    | Gemini 3.1 Flash-Lite | Cheapest capable option at time of writing; subject to change |
+| BYOK             | Any OpenAI-compatible API | User-specified        | For developers and power users                                |
+| Self-hosted      | Ollama                    | User-specified        | Local inference, no API cost                                  |
 
 ### Capabilities
 
@@ -226,11 +226,11 @@ If you are about to add an emoji to an empty state, do not.
 
 ### Typography
 
-| Context | Typeface |
-|---|---|
+| Context      | Typeface                                                      |
+| ------------ | ------------------------------------------------------------- |
 | Card content | Lora or Source Serif 4 — readable serif for study-length text |
-| Code blocks | JetBrains Mono or Fira Code |
-| UI chrome | Inter |
+| Code blocks  | JetBrains Mono or Fira Code                                   |
+| UI chrome    | Inter                                                         |
 
 ### Layout & Density
 
@@ -264,12 +264,12 @@ Implementation via `framer-motion`.
 
 The following are intentional deferrals. They are not forgotten; they are out of scope for v1.
 
-| Feature | Notes |
-|---|---|
-| Sync backend | Auth0 + Azure stack is designed with sync in mind; implementation deferred |
-| Shared / community decks | Personal tool first; social layer second |
+| Feature                    | Notes                                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Sync backend               | Auth0 + Azure stack is designed with sync in mind; implementation deferred                                                     |
+| Shared / community decks   | Personal tool first; social layer second                                                                                       |
 | Sequence Learner card type | Ordered recall (periodic table, reactivity series, chronologies) — requires its own card type and scheduler distinct from FSRS |
-| Mobile build (Capacitor) | Web and desktop ship first |
+| Mobile build (Capacitor)   | Desktop shipped in v1. Mobile deferred.                                                                                        |
 
 ---
 

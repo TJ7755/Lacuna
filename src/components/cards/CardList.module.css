@@ -1,0 +1,14 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-base);
+  overflow: hidden;
+}
+
+.empty {
+  color: var(--colour-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}

@@ -1,0 +1,12 @@
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.children {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--colour-border);
+  margin-left: calc(var(--space-3) + 10px);
+  overflow: hidden;
+}

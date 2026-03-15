@@ -1,0 +1,11 @@
+.face {
+  font-family: var(--font-serif);
+  line-height: 1.7;
+  color: var(--colour-text-primary);
+}
+
+.empty {
+  color: var(--colour-text-muted);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+}

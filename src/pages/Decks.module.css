@@ -1,0 +1,57 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-6) var(--space-6) var(--space-4);
+  border-bottom: 1px solid var(--colour-border);
+  flex-shrink: 0;
+}
+
+.heading {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--colour-text-primary);
+}
+
+.newButton {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--colour-surface);
+  background-color: var(--colour-accent);
+  border: 1px solid var(--colour-accent);
+  border-radius: var(--radius-base);
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease-default);
+  white-space: nowrap;
+}
+
+.newButton:hover {
+  opacity: 0.88;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-6);
+}
+
+.statusMessage {
+  font-size: var(--font-size-base);
+  color: var(--colour-text-secondary);
+  padding: var(--space-4) 0;
+}
+
+.errorMessage {
+  font-size: var(--font-size-base);
+  color: var(--colour-danger);
+  padding: var(--space-4) 0;
+}

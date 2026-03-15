@@ -1,0 +1,106 @@
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--colour-border);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-default);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background-color: var(--colour-surface-raised);
+}
+
+.badge {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.badgeBasic {
+  background-color: var(--colour-accent-subtle);
+  color: var(--colour-accent);
+}
+
+.badgeCloze {
+  background-color: #e8f0f8;
+  color: #2e6a9e;
+}
+
+.badgeImage {
+  background-color: #f0ebe8;
+  color: #8b5e3c;
+}
+
+.preview {
+  font-size: var(--font-size-sm);
+  font-family: var(--font-serif);
+  color: var(--colour-text-primary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.previewCol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: 2px;
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.due {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--colour-text-secondary);
+  white-space: nowrap;
+}
+
+.actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--space-1);
+}
+
+.actionButton {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  background: none;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-sm);
+  color: var(--colour-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+
+.actionButton:hover {
+  background-color: var(--colour-surface-raised);
+  color: var(--colour-text-primary);
+}
+
+.dangerButton {
+  composes: actionButton;
+}
+
+.dangerButton:hover {
+  background-color: var(--colour-danger-subtle);
+  color: var(--colour-danger);
+  border-color: var(--colour-danger);
+}

@@ -1,28 +1,71 @@
-/**
- * Exam Mode scheduling logic.
- *
- * Exam Mode activates when a deck has an exam date attached. It re-ranks
- * cards by ascending predicted retention at the exam date — weakest cards
- * first — rather than using FSRS's standard due-date ordering.
- *
- * This module is a stub. Full implementation will follow once the FSRS
- * wrapper and database client are operational.
- */
+import { getCardsByDeckRecursive } from '../db/repositories/cards';
+import { getCardState } from '../db/repositories/fsrs';
+import { expandCards } from './cardExpansion';
+import { getRetrievability, type CardWithState } from './fsrs';
 
-// TODO: implement retrievability computation and card ranking.
+export interface ExamModeCard {
+  cardWithState: CardWithState;
+  retrievabilityAtExam: number;
+  priority: number;
+}
 
-export type ExamModeSession = {
+export interface ExamModeSession {
   deckId: string;
   examDate: Date;
-  cardIds: string[];
-};
+  cards: ExamModeCard[];
+  estimatedReviewable: number;
+}
 
-/**
- * Stub: returns an empty session. Replace with real implementation.
- */
-export function buildExamModeSession(
+// Build an exam mode session for a deck
+// Returns cards sorted by ascending retrievability at examDate
+// Cards with no FSRS state (never reviewed) come first with retrievability = 0
+export async function buildExamModeSession(
   deckId: string,
   examDate: Date,
-): ExamModeSession {
-  return { deckId, examDate, cardIds: [] };
+  dailyReviewCapacity = 50,
+): Promise<ExamModeSession> {
+  const deckCards = await getCardsByDeckRecursive(deckId);
+  const withState = await Promise.all(
+    deckCards.map(async (card) => {
+      const state = await getCardState(card.id);
+      if (!state) {
+        return null;
+      }
+      return {
+        card,
+        state,
+      } satisfies CardWithState;
+    }),
+  );
+
+  const expanded = expandCards(
+    withState.filter((item): item is CardWithState => item !== null),
+  );
+
+  const ranked = expanded
+    .map((cardWithState) => ({
+      cardWithState,
+      retrievabilityAtExam: getRetrievability(cardWithState.state, examDate),
+    }))
+    .sort((a, b) => a.retrievabilityAtExam - b.retrievabilityAtExam)
+    .map((item, index) => ({
+      ...item,
+      priority: index + 1,
+    }));
+
+  const daysUntilExam = Math.ceil(
+    (examDate.getTime() - Date.now()) / 86_400_000,
+  );
+
+  const estimatedReviewable =
+    daysUntilExam <= 0
+      ? dailyReviewCapacity
+      : Math.min(ranked.length, daysUntilExam * dailyReviewCapacity);
+
+  return {
+    deckId,
+    examDate,
+    cards: ranked,
+    estimatedReviewable,
+  };
 }

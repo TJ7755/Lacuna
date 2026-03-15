@@ -1,29 +1,25 @@
 import { createBrowserRouter } from 'react-router-dom';
+import { AppShell } from '../components/layout/AppShell';
 import { Home } from '../pages/Home';
 import { Decks } from '../pages/Decks';
+import { DeckDetail } from '../pages/DeckDetail';
 import { Review } from '../pages/Review';
 import { Notes } from '../pages/Notes';
 import { Settings } from '../pages/Settings';
+import { NotFound } from '../pages/NotFound';
 
 export const router = createBrowserRouter([
   {
-    path: '/',
-    element: <Home />,
-  },
-  {
-    path: '/decks',
-    element: <Decks />,
-  },
-  {
-    path: '/review',
-    element: <Review />,
-  },
-  {
-    path: '/notes',
-    element: <Notes />,
-  },
-  {
-    path: '/settings',
-    element: <Settings />,
+    element: <AppShell />,
+    children: [
+      { path: '/', element: <Home /> },
+      { path: '/decks', element: <Decks /> },
+      { path: '/decks/:id', element: <DeckDetail /> },
+      { path: '/review', element: <Review /> },
+      { path: '/review/:deckId', element: <Review /> },
+      { path: '/notes', element: <Notes /> },
+      { path: '/settings', element: <Settings /> },
+      { path: '*', element: <NotFound /> },
+    ],
   },
 ]);

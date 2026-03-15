@@ -1,0 +1,137 @@
+.wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+  overflow: hidden;
+}
+
+.cardSlide {
+  width: 100%;
+  max-width: 680px;
+}
+
+.card {
+  background-color: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-base);
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.face {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 320px;
+}
+
+.faceContent {
+  flex: 1;
+  padding: var(--space-8) var(--space-8) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardText {
+  font-family: var(--font-serif);
+  font-size: var(--font-size-lg);
+  line-height: 1.7;
+  color: var(--colour-text-primary);
+  text-align: center;
+  width: 100%;
+}
+
+.faceFooter {
+  padding: var(--space-4) var(--space-8) var(--space-8);
+  display: flex;
+  justify-content: center;
+}
+
+.flipButton {
+  padding: var(--space-2) var(--space-6);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--colour-surface);
+  background-color: var(--colour-accent);
+  border: 1px solid var(--colour-accent);
+  border-radius: var(--radius-base);
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+.flipButton:hover {
+  opacity: 0.88;
+}
+
+.llmRow {
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-8) var(--space-4);
+}
+
+.explainButton {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-base);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text-primary);
+  cursor: pointer;
+}
+
+.explainPanel {
+  margin: 0 var(--space-8) var(--space-8);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-base);
+  background: var(--colour-surface-raised);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.explainHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.explainTitle {
+  font-size: var(--font-size-sm);
+  color: var(--colour-text-primary);
+}
+
+.closeExplainButton {
+  border: 0;
+  background: none;
+  color: var(--colour-accent);
+  cursor: pointer;
+}
+
+.explainBody {
+  font-size: var(--font-size-sm);
+  color: var(--colour-text-primary);
+  white-space: pre-wrap;
+}
+
+.explainError {
+  font-size: var(--font-size-sm);
+  color: var(--colour-danger);
+}
+
+.cursor {
+  display: inline-block;
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}

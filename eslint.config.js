@@ -62,7 +62,12 @@ const noEmojiPlugin = {
 };
 
 export default defineConfig([
-  globalIgnores(['dist/**', 'node_modules/**', 'src/db/migrations/**']),
+  globalIgnores([
+    'dist/**',
+    'node_modules/**',
+    'src/db/migrations/**',
+    'src-tauri/target/**',
+  ]),
 
   // TypeScript + React source
   {

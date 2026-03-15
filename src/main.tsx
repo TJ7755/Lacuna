@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
+import { DbProvider } from './db/DbProvider';
+import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { router } from './router/index';
 import './styles/global.css';
 
@@ -12,6 +14,10 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <ErrorBoundary>
+      <DbProvider>
+        <RouterProvider router={router} />
+      </DbProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

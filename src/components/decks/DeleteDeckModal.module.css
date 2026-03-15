@@ -1,0 +1,27 @@
+.confirmMessage {
+  font-size: var(--font-size-base);
+  color: var(--colour-text-primary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.deleteButton {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--colour-surface);
+  background-color: var(--colour-danger);
+  border: 1px solid var(--colour-danger);
+  border-radius: var(--radius-base);
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+.deleteButton:hover {
+  opacity: 0.88;
+}
+
+.deleteButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

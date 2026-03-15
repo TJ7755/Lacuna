@@ -1,0 +1,53 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-base);
+  background-color: var(--colour-surface-raised);
+}
+
+.divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--colour-border);
+  margin: 0 var(--space-1);
+}
+
+.afterActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.button {
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--colour-surface);
+  color: var(--colour-text-primary);
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--colour-accent);
+}
+
+.buttonActive {
+  background-color: color-mix(in srgb, var(--colour-accent) 16%, transparent);
+  border-color: var(--colour-accent);
+  color: var(--colour-accent);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolbarError {
+  color: var(--colour-danger);
+  font-size: var(--font-size-xs);
+}

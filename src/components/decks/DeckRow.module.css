@@ -1,0 +1,114 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-base);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-default);
+  position: relative;
+}
+
+.row:hover {
+  background-color: var(--colour-surface-raised);
+}
+
+.rowHighlighted {
+  border-left: 3px solid var(--colour-accent);
+  padding-left: calc(var(--space-3) - 3px);
+}
+
+.expandButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: var(--colour-text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast) var(--ease-default);
+  padding: 0;
+}
+
+.expandButton:hover {
+  color: var(--colour-text-primary);
+}
+
+.expandPlaceholder {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.name {
+  flex: 1;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--colour-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.cardCount {
+  font-size: var(--font-size-sm);
+  color: var(--colour-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.examDate {
+  font-size: var(--font-size-sm);
+  color: var(--colour-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+
+.row:hover .actions,
+.row:focus-within .actions {
+  opacity: 1;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  border: none;
+  background: none;
+  color: var(--colour-text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  transition:
+    color var(--duration-fast) var(--ease-default),
+    background-color var(--duration-fast) var(--ease-default);
+  white-space: nowrap;
+}
+
+.actionButton:hover {
+  color: var(--colour-text-primary);
+  background-color: var(--colour-border);
+}
+
+.actionButton.danger:hover {
+  color: var(--colour-danger);
+  background-color: var(--colour-danger-subtle);
+}

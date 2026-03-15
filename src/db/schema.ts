@@ -63,7 +63,8 @@ export const fsrs_state = sqliteTable('fsrs_state', {
   last_review: integer('last_review', { mode: 'timestamp' }),
   rating_history: text('rating_history', { mode: 'json' })
     .notNull()
-    .$defaultFn(() => []),
+    .$defaultFn(() => '[]')
+    .$type<string[]>(),
   ...timestamps,
 });
 
@@ -117,4 +118,16 @@ export const card_tags = sqliteTable('card_tags', {
     .notNull()
     .references(() => tags.id),
   ...timestamps,
+});
+
+// ---------------------------------------------------------------------------
+// settings
+// ---------------------------------------------------------------------------
+
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updated_at: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
