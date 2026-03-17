@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDb } from '../hooks/useDb';
 import { useDeckStore } from '../store/decks';
@@ -12,7 +12,7 @@ export function Home() {
   const { isReady } = useDb();
   const navigate = useNavigate();
   const { decks, fetchDecks } = useDeckStore();
-  const { deckDueCounts, loadDueCounts } = useReviewStore();
+  const { deckDueCounts, loadDueCounts, examModeSessions } = useReviewStore();
   const { tags, tagUsageCounts, fetchAllTags } = useTagStore();
 
   useEffect(() => {
@@ -32,10 +32,40 @@ export function Home() {
 
   const totalDue = Object.values(deckDueCounts).reduce((sum, n) => sum + n, 0);
 
+  // Find the nearest upcoming exam deck that has a cached session.
+  // Use daysRemaining from cached sessions to avoid impure Date.now() in render.
+  const nearestExamDeck = useMemo(
+    () =>
+      decks
+        .filter((d) => {
+          const session = examModeSessions[d.id];
+          return session && session.daysRemaining >= 0;
+        })
+        .sort(
+          (a, b) =>
+            examModeSessions[a.id].daysRemaining -
+            examModeSessions[b.id].daysRemaining,
+        )[0],
+    [decks, examModeSessions],
+  );
+
+  const nearestSession = nearestExamDeck
+    ? examModeSessions[nearestExamDeck.id]
+    : null;
+
   return (
     <main className={styles.page}>
       <h1 className={styles.heading}>{UI.home.heading}</h1>
       <p className={styles.dueCount}>{UI.home.dueToday(totalDue)}</p>
+      {nearestSession && nearestExamDeck && (
+        <p className={styles.upcomingExam}>
+          {UI.home.upcomingExam(
+            nearestExamDeck.name,
+            nearestSession.daysRemaining,
+            Math.round(nearestSession.examReadiness * 100),
+          )}
+        </p>
+      )}
       {totalDue === 0 && <p className={styles.noDue}>{UI.home.noCardsDue}</p>}
       <div className={styles.actions}>
         <Link

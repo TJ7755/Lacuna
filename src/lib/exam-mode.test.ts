@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
     cardsByDeck,
     statesByCardId,
     getRetrievability: vi.fn<(state: FsrsState, atDate: Date) => number>(),
+    applyRating: vi.fn<(state: FsrsState, rating: string) => FsrsState>(),
   };
 });
 
@@ -31,6 +32,8 @@ vi.mock('../db/repositories/fsrs', () => ({
 vi.mock('./fsrs', () => ({
   getRetrievability: (state: FsrsState, atDate: Date) =>
     mocks.getRetrievability(state, atDate),
+  applyRating: (state: FsrsState, rating: string) =>
+    mocks.applyRating(state, rating),
 }));
 
 import { buildExamModeSession } from './exam-mode';
@@ -75,10 +78,228 @@ describe('buildExamModeSession', () => {
     mocks.cardsByDeck.clear();
     mocks.statesByCardId.clear();
     mocks.getRetrievability.mockReset();
+    mocks.applyRating.mockImplementation((state) => state);
   });
 
-  it('sorts cards by ascending retrievability with never-reviewed cards first', async () => {
-    const deckId = 'deck-rank';
+  it('examReadiness is 0 when all cards have never been reviewed', async () => {
+    const deckId = 'deck-never-reviewed';
+    const examDate = new Date('2026-03-25T00:00:00.000Z');
+
+    const cards = [
+      makeCard({ id: 'a', deck_id: deckId }),
+      makeCard({ id: 'b', deck_id: deckId }),
+    ];
+    mocks.cardsByDeck.set(deckId, cards);
+    for (const card of cards) {
+      mocks.statesByCardId.set(
+        card.id,
+        makeState({ id: `s-${card.id}`, card_id: card.id }),
+      );
+    }
+
+    // never reviewed → retrievability = 0
+    mocks.getRetrievability.mockReturnValue(0);
+
+    const session = await buildExamModeSession(deckId, examDate);
+
+    expect(session.examReadiness).toBe(0);
+  });
+
+  it('examReadiness is 1 when all cards have retrievability >= target at exam date', async () => {
+    const deckId = 'deck-all-ready';
+    const examDate = new Date('2026-03-25T00:00:00.000Z');
+
+    const cards = [
+      makeCard({ id: 'a', deck_id: deckId }),
+      makeCard({ id: 'b', deck_id: deckId }),
+    ];
+    mocks.cardsByDeck.set(deckId, cards);
+    for (const card of cards) {
+      mocks.statesByCardId.set(
+        card.id,
+        makeState({ id: `s-${card.id}`, card_id: card.id }),
+      );
+    }
+
+    // all above default target 0.90
+    mocks.getRetrievability.mockReturnValue(0.95);
+
+    const session = await buildExamModeSession(deckId, examDate);
+
+    expect(session.examReadiness).toBe(1);
+  });
+
+  it('marginalImprovement is positive for never-reviewed cards', async () => {
+    const deckId = 'deck-new-cards';
+    const examDate = new Date('2026-03-25T00:00:00.000Z');
+
+    const card = makeCard({ id: 'new', deck_id: deckId });
+    mocks.cardsByDeck.set(deckId, [card]);
+    mocks.statesByCardId.set('new', makeState({ id: 'sn', card_id: 'new' }));
+
+    // Before review: 0 (never reviewed). After review (via applyRating stub): 0.6.
+    mocks.getRetrievability
+      .mockReturnValueOnce(0) // retrievabilityAtExam
+      .mockReturnValueOnce(0.6); // retrievabilityAfterReview
+
+    const session = await buildExamModeSession(deckId, examDate);
+
+    expect(session.cards[0].marginalImprovement).toBeGreaterThan(0);
+  });
+
+  it('marginalImprovement is near 0 for a card reviewed today with stability > 1 year', async () => {
+    const deckId = 'deck-stable';
+    const examDate = new Date('2026-03-25T00:00:00.000Z');
+
+    const card = makeCard({ id: 'stable', deck_id: deckId });
+    mocks.cardsByDeck.set(deckId, [card]);
+    mocks.statesByCardId.set(
+      'stable',
+      makeState({ id: 'ss', card_id: 'stable', stability: 400 }),
+    );
+
+    // Both before and after review are nearly identical (high stability card).
+    mocks.getRetrievability
+      .mockReturnValueOnce(0.98) // retrievabilityAtExam
+      .mockReturnValueOnce(0.99); // retrievabilityAfterReview
+
+    const session = await buildExamModeSession(deckId, examDate);
+
+    expect(session.cards[0].marginalImprovement).toBeCloseTo(0.01, 2);
+  });
+
+  it('todayQueue does not exceed dailyBudgetMinutes (1.5 min per card)', async () => {
+    const deckId = 'deck-budget';
+    const examDate = new Date('2026-03-25T00:00:00.000Z');
+
+    // 20 cards all below target with good marginal improvement
+    const cards = Array.from({ length: 20 }, (_v, i) =>
+      makeCard({ id: `b-${i}`, deck_id: deckId }),
+    );
+    mocks.cardsByDeck.set(deckId, cards);
+    for (const card of cards) {
+      mocks.statesByCardId.set(
+        card.id,
+        makeState({ id: `s-${card.id}`, card_id: card.id }),
+      );
+    }
+
+    // Below target before, above target after: alternate 0.5 / 0.95 per call pair
+    let callCount = 0;
+    mocks.getRetrievability.mockImplementation(() => {
+      callCount++;
+      return callCount % 2 === 1 ? 0.5 : 0.95;
+    });
+
+    const budget = 10; // 10 minutes → max 6 cards at 1.5 min each
+    const session = await buildExamModeSession(deckId, examDate, {
+      dailyBudgetMinutes: budget,
+    });
+
+    const totalMinutes = session.todayQueue.length * 1.5;
+    expect(totalMinutes).toBeLessThanOrEqual(budget);
+  });
+
+  it('todayQueue excludes cards already above target retention', async () => {
+    const deckId = 'deck-exclude-ready';
+    const examDate = new Date('2026-03-25T00:00:00.000Z');
+
+    const cardAbove = makeCard({ id: 'above', deck_id: deckId });
+    const cardBelow = makeCard({ id: 'below', deck_id: deckId });
+    mocks.cardsByDeck.set(deckId, [cardAbove, cardBelow]);
+    mocks.statesByCardId.set(
+      'above',
+      makeState({ id: 'sa', card_id: 'above' }),
+    );
+    mocks.statesByCardId.set(
+      'below',
+      makeState({ id: 'sb', card_id: 'below' }),
+    );
+
+    mocks.getRetrievability.mockImplementation((state) => {
+      if (state.card_id === 'above') return 0.95; // above target
+      if (state.card_id === 'below') return 0.3; // below target (both calls)
+      return 0.3;
+    });
+    // afterReview for below: 0.85 (still meaningful improvement)
+    const callMap: Record<string, number> = {};
+    mocks.getRetrievability.mockImplementation((state) => {
+      const key = state.card_id;
+      callMap[key] = (callMap[key] ?? 0) + 1;
+      if (key === 'above') return 0.95;
+      // below: first call = atExam=0.3, second call = afterReview=0.85
+      return callMap[key] === 1 ? 0.3 : 0.85;
+    });
+
+    const session = await buildExamModeSession(deckId, examDate);
+
+    const queueIds = session.todayQueue.map((c) => c.cardWithState.card.id);
+    expect(queueIds).not.toContain('above');
+    expect(queueIds).toContain('below');
+  });
+
+  it('dailyBudgetMinutes is higher when fewer days remain', async () => {
+    const deckId = 'deck-urgency';
+
+    // 20 cards below target
+    const cards = Array.from({ length: 20 }, (_v, i) =>
+      makeCard({ id: `u-${i}`, deck_id: deckId }),
+    );
+    mocks.cardsByDeck.set(deckId, cards);
+    for (const card of cards) {
+      mocks.statesByCardId.set(
+        card.id,
+        makeState({ id: `s-${card.id}`, card_id: card.id }),
+      );
+    }
+    mocks.getRetrievability.mockReturnValue(0.3);
+
+    // Far exam: 20 days away
+    const farExam = new Date('2026-04-04T00:00:00.000Z');
+    const sessionFar = await buildExamModeSession(deckId, farExam);
+
+    // Near exam: 2 days away
+    const nearExam = new Date('2026-03-17T00:00:00.000Z');
+    const sessionNear = await buildExamModeSession(deckId, nearExam);
+
+    expect(sessionNear.dailyBudgetMinutes).toBeGreaterThan(
+      sessionFar.dailyBudgetMinutes,
+    );
+  });
+
+  it('computed budget includes 15% conservative multiplier over raw minimum', async () => {
+    const deckId = 'deck-multiplier';
+    const examDate = new Date('2026-03-17T00:00:00.000Z'); // 2 days away (ceil from now)
+
+    // 10 cards all below target
+    const cards = Array.from({ length: 10 }, (_v, i) =>
+      makeCard({ id: `m-${i}`, deck_id: deckId }),
+    );
+    mocks.cardsByDeck.set(deckId, cards);
+    for (const card of cards) {
+      mocks.statesByCardId.set(
+        card.id,
+        makeState({ id: `s-${card.id}`, card_id: card.id }),
+      );
+    }
+    mocks.getRetrievability.mockReturnValue(0.3);
+
+    const session = await buildExamModeSession(deckId, examDate);
+
+    // daysRemaining = ceil((2026-03-17 - 2026-03-15T10:00) / 86400000) = 2
+    // rawBudget = ceil((10 * 1.5) / 2) = ceil(7.5) = 8
+    // withMultiplier = ceil(8 * 1.15) = ceil(9.2) = 10
+    const daysRemaining = session.daysRemaining;
+    const rawMinimum = Math.ceil((10 * 1.5) / Math.max(1, daysRemaining));
+    const expectedBudget = Math.min(
+      120,
+      Math.max(5, Math.ceil(rawMinimum * 1.15)),
+    );
+    expect(session.dailyBudgetMinutes).toBe(expectedBudget);
+  });
+
+  it('sorts all cards descending by marginalImprovement', async () => {
+    const deckId = 'deck-sort';
     const examDate = new Date('2026-03-20T00:00:00.000Z');
 
     const cardA = makeCard({ id: 'a', deck_id: deckId });
@@ -86,133 +307,33 @@ describe('buildExamModeSession', () => {
     const cardC = makeCard({ id: 'c', deck_id: deckId });
 
     mocks.cardsByDeck.set(deckId, [cardA, cardB, cardC]);
+    mocks.statesByCardId.set('a', makeState({ id: 'sa', card_id: 'a' }));
+    mocks.statesByCardId.set('b', makeState({ id: 'sb', card_id: 'b' }));
+    mocks.statesByCardId.set('c', makeState({ id: 'sc', card_id: 'c' }));
 
-    const stateA = makeState({
-      id: 'sa',
-      card_id: 'a',
-      last_review: new Date('2026-03-12T00:00:00.000Z'),
-    });
-    const stateB = makeState({ id: 'sb', card_id: 'b', last_review: null });
-    const stateC = makeState({
-      id: 'sc',
-      card_id: 'c',
-      last_review: new Date('2026-03-11T00:00:00.000Z'),
-    });
-
-    mocks.statesByCardId.set('a', stateA);
-    mocks.statesByCardId.set('b', stateB);
-    mocks.statesByCardId.set('c', stateC);
-
+    // Call sequence per card: atExam, afterReview, atExam, afterReview, atExam, afterReview
+    // Card A: atExam=0.6, afterReview=0.8 → improvement=0.2
+    // Card B: atExam=0.0, afterReview=0.7 → improvement=0.7
+    // Card C: atExam=0.3, afterReview=0.6 → improvement=0.3
+    const callCounts: Record<string, number> = {};
     mocks.getRetrievability.mockImplementation((state) => {
-      if (state.card_id === 'b') return 0;
-      if (state.card_id === 'c') return 0.2;
-      if (state.card_id === 'a') return 0.6;
-      return 1;
+      const id = state.card_id;
+      callCounts[id] = (callCounts[id] ?? 0) + 1;
+      const isAfterReview = callCounts[id] % 2 === 0;
+      if (id === 'a') return isAfterReview ? 0.8 : 0.6;
+      if (id === 'b') return isAfterReview ? 0.7 : 0.0;
+      if (id === 'c') return isAfterReview ? 0.6 : 0.3;
+      return 0;
     });
 
-    const session = await buildExamModeSession(deckId, examDate, 50);
+    const session = await buildExamModeSession(deckId, examDate);
 
-    expect(session.cards).toHaveLength(3);
-    expect(session.cards.map((entry) => entry.cardWithState.card.id)).toEqual([
+    // Sorted descending by marginalImprovement: B(0.7) > C(0.3) > A(0.2)
+    expect(session.cards.map((c) => c.cardWithState.card.id)).toEqual([
       'b',
       'c',
       'a',
     ]);
-    expect(session.cards.map((entry) => entry.priority)).toEqual([1, 2, 3]);
-    expect(session.cards.map((entry) => entry.retrievabilityAtExam)).toEqual([
-      0, 0.2, 0.6,
-    ]);
-  });
-
-  it('uses dailyReviewCapacity when exam is today', async () => {
-    const deckId = 'deck-today';
-    const examDate = new Date('2026-03-15T23:59:00.000Z');
-
-    const cards = Array.from({ length: 12 }, (_v, i) =>
-      makeCard({ id: `t-${i + 1}`, deck_id: deckId }),
-    );
-    mocks.cardsByDeck.set(deckId, cards);
-
-    for (const card of cards) {
-      mocks.statesByCardId.set(
-        card.id,
-        makeState({ id: `s-${card.id}`, card_id: card.id }),
-      );
-    }
-
-    mocks.getRetrievability.mockReturnValue(0.5);
-
-    const session = await buildExamModeSession(deckId, examDate, 7);
-
-    expect(session.estimatedReviewable).toBe(7);
-  });
-
-  it('uses dailyReviewCapacity when exam date is in the past', async () => {
-    const deckId = 'deck-past';
-    const examDate = new Date('2026-03-14T00:00:00.000Z');
-
-    const cards = Array.from({ length: 5 }, (_v, i) =>
-      makeCard({ id: `p-${i + 1}`, deck_id: deckId }),
-    );
-    mocks.cardsByDeck.set(deckId, cards);
-
-    for (const card of cards) {
-      mocks.statesByCardId.set(
-        card.id,
-        makeState({ id: `s-${card.id}`, card_id: card.id }),
-      );
-    }
-
-    mocks.getRetrievability.mockReturnValue(0.4);
-
-    const session = await buildExamModeSession(deckId, examDate, 9);
-
-    expect(session.estimatedReviewable).toBe(9);
-  });
-
-  it('caps estimatedReviewable at total cards for future exam dates', async () => {
-    const deckId = 'deck-future';
-    const examDate = new Date('2026-03-18T00:00:00.000Z'); // 3 days away
-
-    const cards = Array.from({ length: 10 }, (_v, i) =>
-      makeCard({ id: `f-${i + 1}`, deck_id: deckId }),
-    );
-    mocks.cardsByDeck.set(deckId, cards);
-
-    for (const card of cards) {
-      mocks.statesByCardId.set(
-        card.id,
-        makeState({ id: `s-${card.id}`, card_id: card.id }),
-      );
-    }
-
-    mocks.getRetrievability.mockReturnValue(0.7);
-
-    const session = await buildExamModeSession(deckId, examDate, 50);
-
-    expect(session.estimatedReviewable).toBe(10);
-  });
-
-  it('computes future capacity as days * dailyReviewCapacity when below total', async () => {
-    const deckId = 'deck-future-cap';
-    const examDate = new Date('2026-03-17T12:00:00.000Z'); // ceil to 3 days
-
-    const cards = Array.from({ length: 25 }, (_v, i) =>
-      makeCard({ id: `fc-${i + 1}`, deck_id: deckId }),
-    );
-    mocks.cardsByDeck.set(deckId, cards);
-
-    for (const card of cards) {
-      mocks.statesByCardId.set(
-        card.id,
-        makeState({ id: `s-${card.id}`, card_id: card.id }),
-      );
-    }
-
-    mocks.getRetrievability.mockReturnValue(0.3);
-
-    const session = await buildExamModeSession(deckId, examDate, 4);
-
-    expect(session.estimatedReviewable).toBe(12);
+    expect(session.cards.map((c) => c.priority)).toEqual([1, 2, 3]);
   });
 });
