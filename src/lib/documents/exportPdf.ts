@@ -12,7 +12,8 @@ type TipTapNode = {
 type ExportBlock =
   | { kind: 'heading'; text: string }
   | { kind: 'paragraph'; text: string }
-  | { kind: 'code'; text: string };
+  | { kind: 'code'; text: string }
+  | { kind: 'image'; src: string };
 
 function safeFileName(name: string): string {
   const fallback = 'note';
@@ -62,6 +63,15 @@ function collectBlocks(doc: object): ExportBlock[] {
       continue;
     }
 
+    if (node.type === 'image') {
+      const src =
+        typeof node.attrs?.src === 'string' ? (node.attrs.src as string) : '';
+      if (src) {
+        blocks.push({ kind: 'image', src });
+      }
+      continue;
+    }
+
     const text = inlineText(node).trim();
     if (text) {
       blocks.push({ kind: 'paragraph', text });
@@ -69,6 +79,23 @@ function collectBlocks(doc: object): ExportBlock[] {
   }
 
   return blocks;
+}
+
+async function getImageDimensions(
+  src: string,
+): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      resolve({
+        width: image.naturalWidth || 1,
+        height: image.naturalHeight || 1,
+      });
+    };
+    image.onerror = () =>
+      reject(new Error('Could not load image for PDF export.'));
+    image.src = src;
+  });
 }
 
 // Export a Lacuna note as a PDF.
@@ -147,6 +174,38 @@ export async function exportNoteToPdf(note: Note): Promise<void> {
       );
       document.text(lines, margin + 2, cursorY + 1);
       cursorY += blockHeight + 2;
+      continue;
+    }
+
+    if (block.kind === 'image') {
+      try {
+        const { width, height } = await getImageDimensions(block.src);
+        const scaledWidth = contentWidth;
+        const scaledHeight = Math.max((height / width) * scaledWidth, 10);
+        const format = block.src.startsWith('data:image/jpeg')
+          ? 'JPEG'
+          : block.src.startsWith('data:image/webp')
+            ? 'WEBP'
+            : 'PNG';
+        ensurePageSpace(scaledHeight + 4);
+
+        document.addImage(
+          block.src,
+          format,
+          margin,
+          cursorY,
+          scaledWidth,
+          scaledHeight,
+        );
+        cursorY += scaledHeight + 4;
+      } catch {
+        document.setFont('helvetica', 'italic');
+        document.setFontSize(10);
+        ensurePageSpace(8);
+        document.text('[Image omitted: could not render]', margin, cursorY);
+        cursorY += 8;
+      }
+
       continue;
     }
 

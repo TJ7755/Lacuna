@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/react';
-import type { ReactNode } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
+import { useRef, useState } from 'react';
 import { UI } from '../../ui-strings';
 import styles from './EditorToolbar.module.css';
 
@@ -17,9 +18,59 @@ interface ToolbarButton {
 }
 
 export function EditorToolbar({ editor, afterActions }: EditorToolbarProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+
   if (!editor) {
     return null;
   }
+
+  const fileToDataUri = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        if (typeof result !== 'string') {
+          reject(new Error('Failed to read image.'));
+          return;
+        }
+        resolve(result);
+      };
+      reader.onerror = () => reject(new Error('Failed to read image.'));
+      reader.readAsDataURL(file);
+    });
+
+  const handleSelectImage = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    event.currentTarget.value = '';
+
+    if (!selectedFile) return;
+
+    const allowedTypes = new Set([
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+    ]);
+
+    if (!allowedTypes.has(selectedFile.type)) {
+      setImageError(UI.notes.imageErrorFormat);
+      return;
+    }
+
+    if (selectedFile.size > 5 * 1024 * 1024) {
+      setImageError(UI.notes.imageErrorSize);
+      return;
+    }
+
+    try {
+      const dataUri = await fileToDataUri(selectedFile);
+      setImageError(null);
+      editor.chain().focus().setImage({ src: dataUri }).run();
+    } catch {
+      setImageError(UI.common.error);
+    }
+  };
 
   const buttons: ToolbarButton[] = [
     {
@@ -115,12 +166,32 @@ export function EditorToolbar({ editor, afterActions }: EditorToolbarProps) {
         );
       })}
 
+      <button
+        type="button"
+        className={styles.button}
+        onClick={() => inputRef.current?.click()}
+      >
+        {UI.notes.insertImage}
+      </button>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className={styles.hiddenFileInput}
+        onChange={(event) => {
+          void handleSelectImage(event);
+        }}
+      />
+
       {afterActions ? (
         <span className={styles.divider} aria-hidden="true" />
       ) : null}
       {afterActions ? (
         <div className={styles.afterActions}>{afterActions}</div>
       ) : null}
+
+      {imageError ? <p className={styles.toolbarError}>{imageError}</p> : null}
     </div>
   );
 }

@@ -134,6 +134,7 @@ export const UI = {
     toolbarQuote: 'Quote',
     toolbarCode: 'Code',
     toolbarRule: '—',
+    insertImage: 'Image',
     toolbarBulletList: '• List',
     toolbarOrderedList: '1. List',
     titleInputLabel: 'Note title',
@@ -146,6 +147,8 @@ export const UI = {
     importErrorSize: 'File exceeds the size limit.',
     importErrorType: 'Unsupported file type.',
     importEmbedErrorSize: 'Embedded files must be under 5 MB.',
+    imageErrorSize: 'Image exceeds the 5 MB size limit.',
+    imageErrorFormat: 'Unsupported image format. Use JPEG, PNG, WebP, or GIF.',
     exportAsPdf: 'Export as PDF',
     exportAsDocx: 'Export as Word document',
     embedPageOf: (current: number, total: number) =>
