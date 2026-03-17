@@ -1,0 +1,686 @@
+{
+  "numTotalTestSuites": 17,
+  "numPassedTestSuites": 17,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 61,
+  "numPassedTests": 61,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1773733607570,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["expandCards"],
+          "fullName": "expandCards produces one item for a basic card",
+          "status": "passed",
+          "title": "produces one item for a basic card",
+          "duration": 2.434334000000007,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["expandCards"],
+          "fullName": "expandCards produces one item for a cloze card with one index",
+          "status": "passed",
+          "title": "produces one item for a cloze card with one index",
+          "duration": 0.509633999999977,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["expandCards"],
+          "fullName": "expandCards produces one item per index for a cloze card with three indices",
+          "status": "passed",
+          "title": "produces one item per index for a cloze card with three indices",
+          "duration": 0.8016120000000058,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["expandCards"],
+          "fullName": "expandCards produces one item per rect for image occlusion cards",
+          "status": "passed",
+          "title": "produces one item per rect for image occlusion cards",
+          "duration": 0.42609600000000114,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["expandCards"],
+          "fullName": "expandCards expands mixed arrays to the expected total count",
+          "status": "passed",
+          "title": "expands mixed arrays to the expected total count",
+          "duration": 0.4496369999999956,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1773733608319,
+      "endTime": 1773733608324.4497,
+      "status": "passed",
+      "message": "",
+      "name": "/workspaces/Lacuna/src/lib/cardExpansion.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["parseClozeTokens"],
+          "fullName": "parseClozeTokens returns an empty array for plain text",
+          "status": "passed",
+          "title": "returns an empty array for plain text",
+          "duration": 2.9379519999999957,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseClozeTokens"],
+          "fullName": "parseClozeTokens returns an empty array for an empty string",
+          "status": "passed",
+          "title": "returns an empty array for an empty string",
+          "duration": 0.49194800000003625,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseClozeTokens"],
+          "fullName": "parseClozeTokens parses a single deletion",
+          "status": "passed",
+          "title": "parses a single deletion",
+          "duration": 1.5809979999999655,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseClozeTokens"],
+          "fullName": "parseClozeTokens parses a deletion with a hint",
+          "status": "passed",
+          "title": "parses a deletion with a hint",
+          "duration": 0.43170099999997547,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseClozeTokens"],
+          "fullName": "parseClozeTokens parses multiple deletions",
+          "status": "passed",
+          "title": "parses multiple deletions",
+          "duration": 0.43964900000003126,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseClozeTokens"],
+          "fullName": "parseClozeTokens does not match invalid syntax",
+          "status": "passed",
+          "title": "does not match invalid syntax",
+          "duration": 0.3329439999999977,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseCloze"],
+          "fullName": "parseCloze returns a single text segment for plain text",
+          "status": "passed",
+          "title": "returns a single text segment for plain text",
+          "duration": 0.3306670000000054,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseCloze"],
+          "fullName": "parseCloze returns an empty array for an empty string",
+          "status": "passed",
+          "title": "returns an empty array for an empty string",
+          "duration": 0.1615650000000528,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseCloze"],
+          "fullName": "parseCloze splits text and cloze segments correctly",
+          "status": "passed",
+          "title": "splits text and cloze segments correctly",
+          "duration": 0.32041199999997616,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseCloze"],
+          "fullName": "parseCloze handles leading cloze deletion (no preceding text)",
+          "status": "passed",
+          "title": "handles leading cloze deletion (no preceding text)",
+          "duration": 0.42047600000000784,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseCloze"],
+          "fullName": "parseCloze handles trailing cloze deletion (no trailing text)",
+          "status": "passed",
+          "title": "handles trailing cloze deletion (no trailing text)",
+          "duration": 0.6353430000000344,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseCloze"],
+          "fullName": "parseCloze handles multiple cloze deletions",
+          "status": "passed",
+          "title": "handles multiple cloze deletions",
+          "duration": 0.3208139999999844,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["parseCloze"],
+          "fullName": "parseCloze includes hint in cloze segment",
+          "status": "passed",
+          "title": "includes hint in cloze segment",
+          "duration": 0.22051199999998516,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["getClozeIndices"],
+          "fullName": "getClozeIndices returns empty array for plain text",
+          "status": "passed",
+          "title": "returns empty array for plain text",
+          "duration": 0.19967300000001842,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["getClozeIndices"],
+          "fullName": "getClozeIndices returns empty array for empty string",
+          "status": "passed",
+          "title": "returns empty array for empty string",
+          "duration": 0.12265899999999874,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["getClozeIndices"],
+          "fullName": "getClozeIndices returns unique indices in ascending order",
+          "status": "passed",
+          "title": "returns unique indices in ascending order",
+          "duration": 0.13357999999999493,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["getClozeIndices"],
+          "fullName": "getClozeIndices returns a single index for a single deletion",
+          "status": "passed",
+          "title": "returns a single index for a single deletion",
+          "duration": 0.11119499999995242,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["getClozeIndices"],
+          "fullName": "getClozeIndices handles non-contiguous indices",
+          "status": "passed",
+          "title": "handles non-contiguous indices",
+          "duration": 0.12899900000002162,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["isValidCloze"],
+          "fullName": "isValidCloze returns false for an empty string",
+          "status": "passed",
+          "title": "returns false for an empty string",
+          "duration": 0.2441199999999526,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["isValidCloze"],
+          "fullName": "isValidCloze returns false for whitespace-only string",
+          "status": "passed",
+          "title": "returns false for whitespace-only string",
+          "duration": 0.10633000000001402,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["isValidCloze"],
+          "fullName": "isValidCloze returns false for plain text with no deletions",
+          "status": "passed",
+          "title": "returns false for plain text with no deletions",
+          "duration": 0.10480699999999388,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["isValidCloze"],
+          "fullName": "isValidCloze returns true for a valid single deletion",
+          "status": "passed",
+          "title": "returns true for a valid single deletion",
+          "duration": 0.09650199999998677,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["isValidCloze"],
+          "fullName": "isValidCloze returns true for valid multiple deletions",
+          "status": "passed",
+          "title": "returns true for valid multiple deletions",
+          "duration": 0.09108100000003105,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["isValidCloze"],
+          "fullName": "isValidCloze returns false for deletion with empty answer",
+          "status": "passed",
+          "title": "returns false for deletion with empty answer",
+          "duration": 0.09298499999999876,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["renderClozeFront"],
+          "fullName": "renderClozeFront hides the target deletion with [___]",
+          "status": "passed",
+          "title": "hides the target deletion with [___]",
+          "duration": 0.2904649999999833,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["renderClozeFront"],
+          "fullName": "renderClozeFront shows the hint when present and target is hidden",
+          "status": "passed",
+          "title": "shows the hint when present and target is hidden",
+          "duration": 0.1264529999999695,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["renderClozeFront"],
+          "fullName": "renderClozeFront reveals non-target deletions as plain text",
+          "status": "passed",
+          "title": "reveals non-target deletions as plain text",
+          "duration": 0.12663499999996475,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["renderClozeFront"],
+          "fullName": "renderClozeFront reveals all when active index does not match any deletion",
+          "status": "passed",
+          "title": "reveals all when active index does not match any deletion",
+          "duration": 0.10651500000000169,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["renderClozeFront"],
+          "fullName": "renderClozeFront handles multiple same-index deletions",
+          "status": "passed",
+          "title": "handles multiple same-index deletions",
+          "duration": 3.004525000000001,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["renderClozeBack"],
+          "fullName": "renderClozeBack wraps the target answer in bold markdown",
+          "status": "passed",
+          "title": "wraps the target answer in bold markdown",
+          "duration": 0.21938599999998587,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["renderClozeBack"],
+          "fullName": "renderClozeBack reveals non-target deletions as plain text",
+          "status": "passed",
+          "title": "reveals non-target deletions as plain text",
+          "duration": 0.14665600000000723,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["renderClozeBack"],
+          "fullName": "renderClozeBack preserves surrounding text",
+          "status": "passed",
+          "title": "preserves surrounding text",
+          "duration": 0.11051900000001069,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["validateCloze"],
+          "fullName": "validateCloze returns null for a valid cloze string",
+          "status": "passed",
+          "title": "returns null for a valid cloze string",
+          "duration": 0.23862200000002076,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["validateCloze"],
+          "fullName": "validateCloze returns an error message for an empty string",
+          "status": "passed",
+          "title": "returns an error message for an empty string",
+          "duration": 0.13197300000001633,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["validateCloze"],
+          "fullName": "validateCloze returns an error message when no deletions are found",
+          "status": "passed",
+          "title": "returns an error message when no deletions are found",
+          "duration": 0.10232899999999745,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["validateCloze"],
+          "fullName": "validateCloze detects mismatched braces",
+          "status": "passed",
+          "title": "detects mismatched braces",
+          "duration": 0.22702599999996664,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["renderClozeRevealed"],
+          "fullName": "renderClozeRevealed reveals all deletions",
+          "status": "passed",
+          "title": "reveals all deletions",
+          "duration": 0.20934100000005174,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["renderClozeRevealed"],
+          "fullName": "renderClozeRevealed returns plain text unchanged",
+          "status": "passed",
+          "title": "returns plain text unchanged",
+          "duration": 0.09595799999999599,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1773733607943,
+      "endTime": 1773733607959.227,
+      "status": "passed",
+      "message": "",
+      "name": "/workspaces/Lacuna/src/lib/cloze.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["buildExamModeSession"],
+          "fullName": "buildExamModeSession sorts cards by ascending retrievability with never-reviewed cards first",
+          "status": "passed",
+          "title": "sorts cards by ascending retrievability with never-reviewed cards first",
+          "duration": 4.762462999999997,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["buildExamModeSession"],
+          "fullName": "buildExamModeSession uses dailyReviewCapacity when exam is today",
+          "status": "passed",
+          "title": "uses dailyReviewCapacity when exam is today",
+          "duration": 1.394773000000015,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["buildExamModeSession"],
+          "fullName": "buildExamModeSession uses dailyReviewCapacity when exam date is in the past",
+          "status": "passed",
+          "title": "uses dailyReviewCapacity when exam date is in the past",
+          "duration": 0.8629200000000026,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["buildExamModeSession"],
+          "fullName": "buildExamModeSession caps estimatedReviewable at total cards for future exam dates",
+          "status": "passed",
+          "title": "caps estimatedReviewable at total cards for future exam dates",
+          "duration": 0.8643619999999999,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["buildExamModeSession"],
+          "fullName": "buildExamModeSession computes future capacity as days * dailyReviewCapacity when below total",
+          "status": "passed",
+          "title": "computes future capacity as days * dailyReviewCapacity when below total",
+          "duration": 1.4683849999999836,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1773733608144,
+      "endTime": 1773733608153.4685,
+      "status": "passed",
+      "message": "",
+      "name": "/workspaces/Lacuna/src/lib/exam-mode.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["normaliseTagName"],
+          "fullName": "normaliseTagName trims leading whitespace",
+          "status": "passed",
+          "title": "trims leading whitespace",
+          "duration": 1.4537499999999852,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["normaliseTagName"],
+          "fullName": "normaliseTagName trims trailing whitespace",
+          "status": "passed",
+          "title": "trims trailing whitespace",
+          "duration": 0.25023799999999596,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["normaliseTagName"],
+          "fullName": "normaliseTagName lowercases all input",
+          "status": "passed",
+          "title": "lowercases all input",
+          "duration": 0.22126099999999838,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["normaliseTagName"],
+          "fullName": "normaliseTagName trims and lowercases together",
+          "status": "passed",
+          "title": "trims and lowercases together",
+          "duration": 0.18648500000000467,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["normaliseTagName"],
+          "fullName": "normaliseTagName returns an empty string for an empty string",
+          "status": "passed",
+          "title": "returns an empty string for an empty string",
+          "duration": 0.19573700000000827,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["normaliseTagName"],
+          "fullName": "normaliseTagName leaves already-normalised input unchanged",
+          "status": "passed",
+          "title": "leaves already-normalised input unchanged",
+          "duration": 0.1659959999999785,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1773733608649,
+      "endTime": 1773733608652.1958,
+      "status": "passed",
+      "message": "",
+      "name": "/workspaces/Lacuna/src/lib/tags.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["tiptapToPlainText"],
+          "fullName": "tiptapToPlainText returns empty string for empty document",
+          "status": "passed",
+          "title": "returns empty string for empty document",
+          "duration": 1.498847000000012,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["tiptapToPlainText"],
+          "fullName": "tiptapToPlainText renders plain paragraph text",
+          "status": "passed",
+          "title": "renders plain paragraph text",
+          "duration": 0.32741199999998116,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["tiptapToPlainText"],
+          "fullName": "tiptapToPlainText preserves paragraph breaks as blank lines",
+          "status": "passed",
+          "title": "preserves paragraph breaks as blank lines",
+          "duration": 0.2277650000000051,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["tiptapToPlainText"],
+          "fullName": "tiptapToPlainText renders heading text as plain text",
+          "status": "passed",
+          "title": "renders heading text as plain text",
+          "duration": 0.19533300000000509,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["tiptapToPlainText"],
+          "fullName": "tiptapToPlainText renders code blocks with surrounding blank lines",
+          "status": "passed",
+          "title": "renders code blocks with surrounding blank lines",
+          "duration": 0.23269899999999666,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["tiptapToPlainText"],
+          "fullName": "tiptapToPlainText renders inline maths using its formula text",
+          "status": "passed",
+          "title": "renders inline maths using its formula text",
+          "duration": 0.18728300000000786,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["tiptapToPlainText"],
+          "fullName": "tiptapToPlainText handles mixed content",
+          "status": "passed",
+          "title": "handles mixed content",
+          "duration": 0.23650099999997565,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1773733608503,
+      "endTime": 1773733608506.2366,
+      "status": "passed",
+      "message": "",
+      "name": "/workspaces/Lacuna/src/lib/tiptapUtils.test.ts"
+    }
+  ]
+}

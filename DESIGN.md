@@ -292,3 +292,184 @@ It is worth being explicit about what is out of scope, permanently, not just def
 - An AI tutor. The LLM is a utility, not a personality.
 - An Electron app. Tauri exists.
 - An app with emojis in the UI.
+
+---
+
+## 11. V2 — Exam Mode (Revised)
+
+V1 Exam Mode ranks cards by ascending predicted retrievability at the exam date and reviews them in that order. This is a greedy approximation — correct in intent, but it does not distribute effort intelligently across the days remaining before the exam.
+
+V2 replaces this with a full optimisation model. The design principles are:
+
+- **Action-first.** The user is told how much to study today, not how many cards are due. "Study approximately 20 minutes" is a better primitive than "47 cards remaining."
+- **Goal-driven.** The objective is a target retention level at the exam date (default: 90%), not a schedule.
+- **Flexible.** The model adapts to inconsistent study behaviour. Skipping a day or over-studying updates the plan without requiring manual reconfiguration.
+- **Conservative.** When uncertain, the model slightly overestimates required effort. It is better for a student to feel slightly over-prepared than to arrive at an exam having been told everything was fine.
+
+### The Optimisation Model
+
+Every card has FSRS-derived memory parameters: stability, difficulty, and a current retrievability value. These are already stored in `fsrs_state` and are not changed by V2 — Exam Mode reads from FSRS state, it does not write a competing schedule.
+
+The model computes:
+
+1. **Predicted retrievability at exam date** for each card, using `getRetrievability(state, examDate)`. This is already implemented in `src/lib/fsrs.ts`.
+
+2. **Deck-level exam readiness**: the percentage of cards with predicted retrievability at or above a threshold (default: 70%). This is reported as a single number — "68% exam ready" — not as a mean, not as a weighted score. The threshold is configurable per deck. A card that the student will probably recall is counted; one they probably will not is not. Simple, honest, and resistant to gaming.
+
+3. **Minimum review effort to reach target retention**: for each card below the target, FSRS can predict how much reviewing it today (or tomorrow, or in N days) would increase its retrievability at the exam date. The model selects a review schedule across remaining days that maximises the number of cards above the target threshold at exam date, subject to a daily time budget.
+
+   The formal objective is: _maximise the count of cards with retrievability ≥ target at exam date, subject to a maximum daily review time T minutes._
+
+   This is solved greedily per day: rank cards by the marginal improvement in exam-date retrievability per minute of review effort today. Review in that order until the daily budget is exhausted.
+
+4. **Daily time recommendation**: the number of minutes needed today to stay on track. If the student studied more than recommended yesterday, today's recommendation decreases. If they skipped a day, it increases. The recommendation is recomputed fresh each day from current FSRS state — there is no stored plan to invalidate.
+
+### Time Estimation
+
+FSRS does not record how long a review takes. V2 estimates review time at a flat rate: **1.5 minutes per card** (average of easy and hard cards). This is a deliberate simplification. Per-card timing data could be collected and used in V2+, but it is not required for the model to be useful.
+
+The estimate is presented honestly: "approximately 20 minutes" not "20 minutes". Users who review quickly will find the estimates conservative; users who review slowly will find them tight. Both outcomes are acceptable — the conservative design principle applies here.
+
+### User-Facing Output
+
+When Exam Mode is active on a deck, the deck detail page shows:
+
+- **Exam readiness**: percentage of cards above the recall threshold at exam date (e.g. "68% exam ready")
+- **Daily recommendation**: approximate study time for today (e.g. "~20 min today")
+- **Days remaining**: integer count of days until exam
+- **On-track indicator**: whether the current trajectory reaches the target by exam date
+
+What is deliberately not shown:
+
+- Individual card due dates (irrelevant in Exam Mode)
+- Forgetting curves per card (useful for understanding, not for driving action — available on request, not surfaced by default)
+- "Panic mode" warnings (addressed through the conservative time estimates, not through alarming UI)
+
+### Relationship to FSRS Mode
+
+FSRS Mode and Exam Mode share all card data. Reviewing a card in either mode updates `fsrs_state` identically. The difference is only in how the next card to review is selected:
+
+- FSRS Mode: review cards where `fsrs_state.due ≤ now`, ordered by due date
+- Exam Mode: review cards in order of marginal exam-date improvement, up to the daily time budget
+
+Modes are toggled per deck. Toggling does not reset progress. A deck can switch between modes freely without data loss.
+
+When a deck has no exam date set, it operates in FSRS Mode only — Exam Mode is not available without a target date.
+
+---
+
+## 12. V2 — Sequence Learner Card Type
+
+The Sequence Learner card type supports ordered recall: the periodic table, the reactivity series, historical chronologies, taxonomic classifications, muscle origins and insertions in order. These cannot be adequately represented as independent basic or cloze cards because knowing each pair does not guarantee the ability to reproduce the sequence.
+
+### Card Format
+
+A sequence card stores an ordered list of items:
+
+```
+id          UUID
+deck_id     FK
+card_type   'sequence'
+sequence    JSON array of strings — the canonical ordered list
+title       string — prompt shown to the user (e.g. "Reactivity series, most to least reactive")
+```
+
+### Review Mechanics
+
+The card is presented as a drag-and-drop ordering interface. The user is shown all items in randomised order and must arrange them correctly. The score is a **position error** metric: the sum of absolute differences between each item's correct position and its submitted position, normalised to a 0–1 range (0 = perfect, 1 = completely reversed).
+
+```
+score = 1 - (sum of |correct_position[i] - submitted_position[i]|) / max_possible_error
+```
+
+This score is mapped to an FSRS-compatible rating:
+
+| Score  | FSRS Rating |
+| ------ | ----------- |
+| ≥ 0.95 | Easy        |
+| ≥ 0.80 | Good        |
+| ≥ 0.50 | Hard        |
+| < 0.50 | Again       |
+
+This mapping allows sequence cards to use the existing `fsrs_state` table and scheduling infrastructure without modification. The sequence card type is a new front-end and a new scoring model; the back-end is unchanged.
+
+### Partial Credit and Anchors
+
+A sequence card may designate certain items as **anchors** — items whose position is fixed and shown to the user during review (e.g. the first and last element of a series). Anchors reduce cognitive load for long sequences by providing reference points. Anchor positions are not scored.
+
+Anchors are stored as a JSON array of indices in the card's `sequence` field alongside the items:
+
+```json
+{
+  "items": ["Li", "Na", "K", "Rb", "Cs"],
+  "anchors": [0, 4]
+}
+```
+
+### Scheduler Note
+
+Sequence cards use FSRS state identically to basic and cloze cards. The `rating_history` field records which FSRS rating was submitted on each review, derived from the position error score. No new scheduler is needed — the card type is novel, the scheduling is not.
+
+---
+
+## 13. V2 — Sync Backend
+
+Sync is the hardest part of V2. The local SQLite database is the source of truth; the server is a sync target. This section specifies the conflict resolution model and the backend architecture.
+
+### Conflict Resolution
+
+Every record has `updated_at` and `deleted_at` timestamps. Conflict resolution uses **last-write-wins at the field level**: whichever device has the more recent `updated_at` for a given record wins.
+
+Soft deletes are respected: a record deleted on one device (non-null `deleted_at`) is not resurrected by a concurrent update from another device. Deletion wins over update when both happen within the same sync window.
+
+This model is not perfect — a concurrent edit to the same card's front on two devices will lose one version silently. It is however simple, auditable, and sufficient for a single-user tool. The `rating_history` JSON array on `fsrs_state` is the only field where merging is preferable to overwriting — see below.
+
+### `rating_history` Merge
+
+The `rating_history` field on `fsrs_state` is a JSON array of timestamped review records. When two devices both have reviews for the same card that the other device has not seen, last-write-wins would discard one device's reviews.
+
+Instead, `rating_history` is merged: the union of all review records from both devices, deduplicated by timestamp and sorted chronologically. After merging, FSRS state (stability, difficulty, due) is recomputed from the full merged history using `ts-fsrs`'s replay function.
+
+This is the only field in the schema that requires merge logic rather than last-write-wins.
+
+### Backend Architecture
+
+As specified in section 2:
+
+| Component    | Choice                           | Notes                                |
+| ------------ | -------------------------------- | ------------------------------------ |
+| Auth         | Auth0                            | OAuth, JWT, session management       |
+| API          | Node or Bun, containerised       | Azure Container Apps, scales to zero |
+| Database     | Azure PostgreSQL Flexible Server | Same schema as local SQLite          |
+| File storage | Azure Blob Storage               | Card images, document attachments    |
+
+The internal `user_id` is a UUID primary key in the PostgreSQL `users` table. Auth0's `sub` claim is a foreign key, not the identity — this allows auth provider migration without touching the data model.
+
+The sync API exposes a single endpoint per table: `POST /sync/:table`. The request body contains all records modified since the last sync timestamp. The server applies last-write-wins (or merge logic for `rating_history`) and returns all records modified by other devices since the same timestamp.
+
+Sync is triggered:
+
+- On app launch, if online
+- On return from background (mobile, Capacitor)
+- On explicit user action ("Sync now" button in Settings)
+- Never automatically mid-session — syncing during a review session would mutate the session queue
+
+### Identity and Multi-Device
+
+A user's data is scoped to their `user_id`. Multiple devices are first-class — the schema and sync model are designed for it. Sharing data between different user accounts (community decks) is a separate feature and is not part of the sync model.
+
+### Self-Hosting
+
+The sync backend is MIT-licenced alongside the frontend. A self-hoster can run the API and PostgreSQL instance themselves. The `.env.example` documents the required environment variables. The hosted managed service is identical code — no forks, no separate codebase.
+
+---
+
+## 14. V2 — Mobile Build (Capacitor)
+
+The Capacitor build shares the React frontend with the web and desktop builds. No new UI is required — the existing responsive layout targets mobile viewports.
+
+The primary concern is SQLite. On mobile, `@sqlite.org/sqlite-wasm` with OPFS is not appropriate — mobile browsers have inconsistent OPFS support. Instead, the Capacitor build uses `@capacitor-community/sqlite`, which wraps the device's native SQLite implementation.
+
+This requires a platform abstraction layer in `src/db/client.ts`: the database client detects the runtime environment (OPFS-capable browser, Tauri, Capacitor) and initialises the appropriate SQLite backend. The Drizzle ORM layer above it is unchanged — the abstraction is entirely in the client initialisation, not in any query code.
+
+Capacitor targets iOS and Android. The web and desktop builds are unaffected.
