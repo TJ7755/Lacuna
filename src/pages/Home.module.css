@@ -28,6 +28,12 @@
   margin: 0;
 }
 
+.upcomingExam {
+  font-size: var(--font-size-sm);
+  color: var(--colour-text-secondary);
+  margin: 0;
+}
+
 .actions {
   display: flex;
   gap: var(--space-3);

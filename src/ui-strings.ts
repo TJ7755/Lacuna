@@ -15,6 +15,8 @@ export const UI = {
     startReview: 'Start revision',
     noCardsDue: 'No cards due. Come back later, or add a new deck.',
     viewDecks: 'View decks',
+    upcomingExam: (deckName: string, days: number, readiness: number) =>
+      `Your next exam is in ${days} day${days === 1 ? '' : 's'}. ${deckName} is ${readiness}% ready.`,
   },
   decks: {
     heading: 'Decks',
@@ -47,6 +49,11 @@ export const UI = {
     nested: 'Sub-deck',
     expand: 'Expand',
     collapse: 'Collapse',
+    examReadiness: (pct: number) => `${pct}% exam ready`,
+    examDailyRecommendation: (minutes: number) => `~${minutes} min today`,
+    examOnTrack: 'On track',
+    examBehind: 'Behind schedule',
+    examPanel: 'Exam overview',
   },
   review: {
     heading: 'Review',
@@ -82,6 +89,13 @@ export const UI = {
     ratingEasy: (preview: string) => `Easy — ${preview}`,
     examModeBanner: (examDate: string, daysLabel: string) =>
       `Exam mode — ${examDate} — ${daysLabel}`,
+    examModeBannerFull: (
+      date: string,
+      days: string,
+      readiness: number,
+      minutes: number,
+    ) =>
+      `Exam mode — ${date} — ${days} — ${readiness}% ready — ~${minutes} min today`,
     examDaysToGo: (n: number) => `${n} day${n === 1 ? '' : 's'} to go`,
     examToday: 'Today',
     examPast: 'Past',

@@ -34,6 +34,8 @@ interface ReviewState {
   session: ReviewSession | null;
   examMode: boolean;
   examModeSession: ExamModeSession | null;
+  /** Cache of computed ExamModeSession per deck id — for the home page summary. */
+  examModeSessions: Record<string, ExamModeSession>;
   flipped: boolean;
   loading: boolean;
   error: string | null;
@@ -43,6 +45,8 @@ interface ReviewState {
   /** Loads due cards for a deck and creates a new session. */
   startSession: (deckId: string) => Promise<void>;
   startExamSession: (deckId: string) => Promise<void>;
+  /** Computes and caches an ExamModeSession without starting a review session. */
+  cacheExamModeSession: (deckId: string, examDate: Date) => Promise<void>;
   /** Flips the current card from front to back. */
   flipCard: () => void;
   /**
@@ -104,6 +108,7 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
   session: null,
   examMode: false,
   examModeSession: null,
+  examModeSessions: {},
   flipped: false,
   loading: false,
   error: null,
@@ -144,22 +149,40 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
       }
 
       const examModeSession = await buildExamModeSession(deckId, examDate);
-      const queuedCards = examModeSession.cards
-        .slice(0, examModeSession.estimatedReviewable)
-        .map((entry) => entry.cardWithState);
+      const queuedCards = examModeSession.todayQueue.map(
+        (entry) => entry.cardWithState,
+      );
 
       const session = createSession(deckId, queuedCards);
 
-      set({
+      set((state) => ({
         session,
         loading: false,
         examMode: true,
         examModeSession,
-      });
+        examModeSessions: {
+          ...state.examModeSessions,
+          [deckId]: examModeSession,
+        },
+      }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       set({ loading: false, error: msg });
       throw err;
+    }
+  },
+
+  cacheExamModeSession: async (deckId, examDate) => {
+    try {
+      const examModeSession = await buildExamModeSession(deckId, examDate);
+      set((state) => ({
+        examModeSessions: {
+          ...state.examModeSessions,
+          [deckId]: examModeSession,
+        },
+      }));
+    } catch {
+      // Silent failure — caching is best-effort; the home page will simply skip the summary.
     }
   },
 
