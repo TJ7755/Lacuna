@@ -15,6 +15,8 @@ export const UI = {
     startReview: 'Start revision',
     noCardsDue: 'No cards due. Come back later, or add a new deck.',
     viewDecks: 'View decks',
+    upcomingExam: (deckName: string, days: number, readiness: number) =>
+      `Your next exam is in ${days} day${days === 1 ? '' : 's'}. ${deckName} is ${readiness}% ready.`,
   },
   decks: {
     heading: 'Decks',
@@ -47,50 +49,11 @@ export const UI = {
     nested: 'Sub-deck',
     expand: 'Expand',
     collapse: 'Collapse',
-    importDeck: 'Import deck',
-    exportDeck: 'Export deck',
-    exportAsJson: 'Export as Lacuna JSON',
-    exportAsText: 'Export as plain text',
-    importTabPaste: 'Paste',
-    importTabJson: 'Lacuna JSON',
-    importTabApkg: 'Anki .apkg',
-    importDelimiterTab: 'Tab',
-    importDelimiterSemicolon: 'Semicolon',
-    importDelimiterComma: 'Comma',
-    importDelimiterLabel: 'Delimiter',
-    importTargetDeck: 'Import into deck',
-    importNewDeck: 'New deck',
-    importCardsDetected: (n: number) =>
-      `${n} card${n === 1 ? '' : 's'} detected`,
-    importCardsSkipped: (n: number) => `${n} line${n === 1 ? '' : 's'} skipped`,
-    importSuccess: (n: number) => `${n} card${n === 1 ? '' : 's'} imported`,
-    importAnkiWarning:
-      'FSRS scheduling data is not imported from Anki. Cards will be treated as new.',
-    importAnkiLog: 'Import log',
-    exportTextSkipsOcclusion:
-      'Image occlusion cards are not included in plain text export.',
-    importInvalidJson: 'Invalid Lacuna JSON file.',
-    importUpdated: (n: number) => `${n} updated`,
-    importSubDeckCount: (n: number) => `${n} sub-deck${n === 1 ? '' : 's'}`,
-    importPreviewPair: (front: string, back: string) => `${front} -> ${back}`,
-    importTabsLabel: 'Import format tabs',
-    importTabsKeyboardHint:
-      'Use Left and Right Arrow keys to move between import formats. Press Home for the first tab, End for the last tab, and Enter or Space to activate the focused tab.',
-    importPreviewParsing: 'Parsing preview…',
-    importLogImported: (n: number) => `Imported (${n})`,
-    importLogSkipped: (n: number) => `Skipped (${n})`,
-    importLogInfo: 'Info',
-    importApkgLogMissingDeck: (noteId: string, deckId: string) =>
-      `Skipped note ${noteId}: deck ${deckId} was not found.`,
-    importApkgLogMissingBasicFields: (noteId: string) =>
-      `Skipped note ${noteId}: basic card is missing front or back.`,
-    importApkgLogMissingCloze: (noteId: string) =>
-      `Skipped note ${noteId}: cloze card has no cloze text.`,
-    importApkgLogConverted: (noteId: string, model: string) =>
-      `Imported note ${noteId} as a basic card (converted from ${model}).`,
-    importApkgLogImported: (noteId: string, cardType: 'basic' | 'cloze') =>
-      `Imported note ${noteId} as a ${cardType} card.`,
-    importApkgNoMedia: 'No media files were detected in the .apkg archive.',
+    examReadiness: (pct: number) => `${pct}% exam ready`,
+    examDailyRecommendation: (minutes: number) => `~${minutes} min today`,
+    examOnTrack: 'On track',
+    examBehind: 'Behind schedule',
+    examPanel: 'Exam overview',
   },
   review: {
     heading: 'Review',
@@ -126,6 +89,13 @@ export const UI = {
     ratingEasy: (preview: string) => `Easy — ${preview}`,
     examModeBanner: (examDate: string, daysLabel: string) =>
       `Exam mode — ${examDate} — ${daysLabel}`,
+    examModeBannerFull: (
+      date: string,
+      days: string,
+      readiness: number,
+      minutes: number,
+    ) =>
+      `Exam mode — ${date} — ${days} — ${readiness}% ready — ~${minutes} min today`,
     examDaysToGo: (n: number) => `${n} day${n === 1 ? '' : 's'} to go`,
     examToday: 'Today',
     examPast: 'Past',

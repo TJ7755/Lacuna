@@ -244,6 +244,29 @@
   color: var(--colour-text-secondary);
 }
 
+.examPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-base);
+  background-color: var(--colour-surface-raised);
+  font-size: var(--font-size-sm);
+}
+
+.examPanelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  color: var(--colour-text-secondary);
+}
+
+.examOnTrack {
+  color: var(--colour-text-secondary);
+}
+
 .clearFiltersButton {
   background: none;
   border: none;

@@ -5,7 +5,6 @@ import { useDeckStore } from '../store/decks';
 import { useCardStore } from '../store/cards';
 import { useNoteStore } from '../store/notes';
 import { useReviewStore } from '../store/review';
-import { buildExamModeSession, type ExamModeSession } from '../lib/exam-mode';
 import { getTagsForCards } from '../db/repositories/tags';
 import type { Tag } from '../db/repositories/tags';
 import { UI } from '../ui-strings';
@@ -49,7 +48,8 @@ export function DeckDetail() {
   const navigate = useNavigate();
   const { isReady } = useDb();
   const { decks, updateDeck } = useDeckStore();
-  const { startExamSession } = useReviewStore();
+  const { startExamSession, cacheExamModeSession, examModeSessions } =
+    useReviewStore();
   const {
     cardsWithState,
     dueCount,
@@ -67,9 +67,6 @@ export function DeckDetail() {
   const [addingCard, setAddingCard] = useState(false);
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [startingExam, setStartingExam] = useState(false);
-  const [warningOpen, setWarningOpen] = useState(false);
-  const [pendingExamSession, setPendingExamSession] =
-    useState<ExamModeSession | null>(null);
   const [examActionError, setExamActionError] = useState<string | null>(null);
   const [cardTagsMap, setCardTagsMap] = useState<Record<string, Tag[]>>({});
   const [activeFilterTagIds, setActiveFilterTagIds] = useState<Set<string>>(
@@ -88,6 +85,14 @@ export function DeckDetail() {
     if (!isReady || !id) return;
     void fetchNotesByDeck(id);
   }, [isReady, id, fetchNotesByDeck]);
+
+  // Cache the exam mode session for the home page summary when an exam date is set.
+  useEffect(() => {
+    if (!isReady || !id || !deck?.exam_date) return;
+    void cacheExamModeSession(id, deck.exam_date);
+    // `cacheExamModeSession` is a stable Zustand action reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReady, id, deck?.exam_date]);
 
   // Fetch tags for all loaded cards in a single batch query.
   useEffect(() => {
@@ -187,13 +192,6 @@ export function DeckDetail() {
     setExamActionError(null);
     setStartingExam(true);
     try {
-      const session = await buildExamModeSession(id, deck.exam_date);
-      if (session.estimatedReviewable < session.cards.length) {
-        setPendingExamSession(session);
-        setWarningOpen(true);
-        return;
-      }
-
       await startExamSession(id);
       navigate(`/review/${id}`);
     } catch {
@@ -201,39 +199,6 @@ export function DeckDetail() {
     } finally {
       setStartingExam(false);
     }
-  };
-
-  const handleProceedWarning = async () => {
-    if (!id) return;
-    setWarningOpen(false);
-    setStartingExam(true);
-    setExamActionError(null);
-    try {
-      await startExamSession(id);
-      navigate(`/review/${id}`);
-    } catch {
-      setExamActionError(UI.common.error);
-    } finally {
-      setStartingExam(false);
-      setPendingExamSession(null);
-    }
-  };
-
-  const handleCancelWarning = () => {
-    setWarningOpen(false);
-    setPendingExamSession(null);
-  };
-
-  const handleExportJson = async () => {
-    if (!id) return;
-    setExportNotice(null);
-    await exportDeckAsJson(id);
-  };
-
-  const handleExportText = async () => {
-    if (!id) return;
-    await exportDeckAsText(id);
-    setExportNotice(UI.decks.exportTextSkipsOcclusion);
   };
 
   return (
@@ -333,7 +298,36 @@ export function DeckDetail() {
         </details>
       </div>
 
-      {exportNotice && <p className={styles.status}>{exportNotice}</p>}
+      {deck.exam_date && id && examModeSessions[id] && (
+        <section className={styles.examPanel} aria-label={UI.decks.examPanel}>
+          <div className={styles.examPanelRow}>
+            <span>
+              {UI.decks.examReadiness(
+                Math.round(examModeSessions[id].examReadiness * 100),
+              )}
+            </span>
+            <span>
+              {UI.decks.examDailyRecommendation(
+                Math.round(examModeSessions[id].dailyBudgetMinutes),
+              )}
+            </span>
+          </div>
+          <div className={styles.examPanelRow}>
+            <span>
+              {examModeSessions[id].daysRemaining === 0
+                ? UI.review.examToday
+                : examModeSessions[id].daysRemaining < 0
+                  ? UI.review.examPast
+                  : UI.review.examDaysToGo(examModeSessions[id].daysRemaining)}
+            </span>
+            <span className={styles.examOnTrack}>
+              {examModeSessions[id].onTrack
+                ? UI.decks.examOnTrack
+                : UI.decks.examBehind}
+            </span>
+          </div>
+        </section>
+      )}
 
       <section className={styles.examDateControls}>
         <label className={styles.examDateLabel} htmlFor="deck-exam-date">
@@ -447,19 +441,6 @@ export function DeckDetail() {
           cards={cardsWithState}
           notes={notes}
           onClose={() => setPracticeOpen(false)}
-        />
-      )}
-
-      {pendingExamSession && (
-        <ExamModeWarning
-          isOpen={warningOpen}
-          message={UI.review.examModeCapacityWarning(
-            pendingExamSession.estimatedReviewable,
-            pendingExamSession.cards.length,
-            formatExamDate(pendingExamSession.examDate) ?? '',
-          )}
-          onProceed={() => void handleProceedWarning()}
-          onCancel={handleCancelWarning}
         />
       )}
     </main>

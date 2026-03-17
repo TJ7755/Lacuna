@@ -142,9 +142,11 @@ export function Review() {
       <div className={styles.reviewLayout}>
         {examMode && examModeSession && (
           <div className={styles.examBanner}>
-            {UI.review.examModeBanner(
+            {UI.review.examModeBannerFull(
               formatExamDate(examModeSession.examDate),
               getExamDaysLabel(examModeSession.examDate),
+              Math.round(examModeSession.examReadiness * 100),
+              Math.round(examModeSession.dailyBudgetMinutes),
             )}
           </div>
         )}
