@@ -6,12 +6,14 @@ import { getCardsByTag } from '../db/repositories/tags';
 import { UI } from '../ui-strings';
 import { DeckTree } from '../components/decks/DeckTree';
 import { CreateDeckModal } from '../components/decks/CreateDeckModal';
+import { ImportDeckModal } from '../components/decks/ImportDeckModal';
 import styles from './Decks.module.css';
 
 export function Decks() {
   const { isReady, error: dbError } = useDb();
   const { decks, loading, error: deckError, fetchDecks } = useDeckStore();
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [searchParams] = useSearchParams();
   const tagParam = searchParams.get('tag');
   const [highlightedDeckIds, setHighlightedDeckIds] = useState<Set<string>>(
@@ -54,13 +56,22 @@ export function Decks() {
     <main className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.heading}>{UI.decks.heading}</h1>
-        <button
-          className={styles.newButton}
-          type="button"
-          onClick={() => setModalOpen(true)}
-        >
-          {UI.decks.createDeck}
-        </button>
+        <div className={styles.actions}>
+          <button
+            className={styles.secondaryButton}
+            type="button"
+            onClick={() => setImportOpen(true)}
+          >
+            {UI.decks.importDeck}
+          </button>
+          <button
+            className={styles.newButton}
+            type="button"
+            onClick={() => setModalOpen(true)}
+          >
+            {UI.decks.createDeck}
+          </button>
+        </div>
       </div>
 
       <div className={styles.content}>{renderContent()}</div>
@@ -68,6 +79,12 @@ export function Decks() {
       <CreateDeckModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
+        allDecks={decks}
+      />
+
+      <ImportDeckModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
         allDecks={decks}
       />
     </main>

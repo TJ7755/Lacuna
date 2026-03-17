@@ -1,6 +1,7 @@
 import type { EditorOptions } from '@tiptap/core';
 import { Node, mergeAttributes, nodeInputRule } from '@tiptap/core';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import Image from '@tiptap/extension-image';
 import StarterKit from '@tiptap/starter-kit';
 import { DocumentEmbedNode } from '../components/notes/DocumentEmbedNode';
 import katex from 'katex';
@@ -83,6 +84,10 @@ export function createEditorConfig(): Partial<EditorOptions> {
       }),
       CodeBlockLowlight.configure({
         lowlight,
+      }),
+      Image.configure({
+        inline: false,
+        allowBase64: true,
       }),
       InlineMath,
       DocumentEmbedNode,

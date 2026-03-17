@@ -2,6 +2,7 @@ import {
   BorderStyle,
   Document,
   HeadingLevel,
+  ImageRun,
   Packer,
   Paragraph,
   ShadingType,
@@ -192,6 +193,35 @@ function mapNodeToParagraphs(node: TipTapNode): Paragraph[] {
 
   if (node.type === 'orderedList') {
     return listParagraphs(node, true, 0);
+  }
+
+  if (node.type === 'image' && typeof node.attrs?.src === 'string') {
+    const src = node.attrs.src;
+    const base64 = src.includes(',') ? src.split(',')[1] : '';
+
+    if (!base64) {
+      return [];
+    }
+
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    return [
+      new Paragraph({
+        children: [
+          new ImageRun({
+            data: bytes,
+            transformation: {
+              width: 520,
+              height: 320,
+            },
+          }),
+        ],
+      }),
+    ];
   }
 
   const fallbackText = extractPlainText(node).trim();

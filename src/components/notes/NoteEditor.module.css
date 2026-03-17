@@ -79,3 +79,11 @@
   display: inline-flex;
   vertical-align: middle;
 }
+
+.editorContent :global(.tiptap-editor img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: var(--space-2) 0;
+  border-radius: 4px;
+}

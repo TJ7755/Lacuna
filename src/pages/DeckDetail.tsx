@@ -14,6 +14,7 @@ import { CardEditor } from '../components/cards/CardEditor';
 import { TagChip } from '../components/tags/TagChip';
 import { PracticeTestModal } from '../components/llm/PracticeTestModal';
 import { ExamModeWarning } from '../components/review/ExamModeWarning';
+import { exportDeckAsJson, exportDeckAsText } from '../lib/deckExport';
 import styles from './DeckDetail.module.css';
 
 function formatExamDate(date: Date | null): string | null {
@@ -74,6 +75,7 @@ export function DeckDetail() {
   const [activeFilterTagIds, setActiveFilterTagIds] = useState<Set<string>>(
     new Set(),
   );
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
 
   const deck = id ? decks.find((d) => d.id === id) : undefined;
 
@@ -222,6 +224,18 @@ export function DeckDetail() {
     setPendingExamSession(null);
   };
 
+  const handleExportJson = async () => {
+    if (!id) return;
+    setExportNotice(null);
+    await exportDeckAsJson(id);
+  };
+
+  const handleExportText = async () => {
+    if (!id) return;
+    await exportDeckAsText(id);
+    setExportNotice(UI.decks.exportTextSkipsOcclusion);
+  };
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -296,7 +310,30 @@ export function DeckDetail() {
         >
           {UI.cards.addCard}
         </button>
+        <details className={styles.exportMenu}>
+          <summary className={styles.secondaryButton}>
+            {UI.decks.exportDeck}
+          </summary>
+          <div className={styles.exportMenuItems}>
+            <button
+              type="button"
+              className={styles.exportMenuButton}
+              onClick={() => void handleExportJson()}
+            >
+              {UI.decks.exportAsJson}
+            </button>
+            <button
+              type="button"
+              className={styles.exportMenuButton}
+              onClick={() => void handleExportText()}
+            >
+              {UI.decks.exportAsText}
+            </button>
+          </div>
+        </details>
       </div>
+
+      {exportNotice && <p className={styles.status}>{exportNotice}</p>}
 
       <section className={styles.examDateControls}>
         <label className={styles.examDateLabel} htmlFor="deck-exam-date">
