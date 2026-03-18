@@ -35,10 +35,27 @@ export function ReviewCard() {
   const [notConfigured, setNotConfigured] = useState(false);
 
   const current = session ? currentCard(session) : null;
+  const isSequenceChain = current?.queueType === 'sequence_chain';
+
+  const sequenceTotal = useMemo(() => {
+    if (!session || !current || current.queueType !== 'sequence_chain')
+      return 0;
+    return session.queue.filter(
+      (item) =>
+        item.queueType === 'sequence_chain' && item.cardId === current.cardId,
+    ).length;
+  }, [session, current]);
 
   const answerPayload = useMemo(() => {
     if (!current) {
       return { front: '', back: '' };
+    }
+
+    if (current.queueType === 'sequence_chain') {
+      return {
+        front: current.prompt,
+        back: current.answer,
+      };
     }
 
     if (current.card.card_type === 'cloze') {
@@ -55,13 +72,25 @@ export function ReviewCard() {
     };
   }, [current]);
 
+  const currentIdentity =
+    current?.queueType === 'card' ? current.card.id : current?.itemId;
+  const currentActiveIndex =
+    current?.queueType === 'card' ? current.activeIndex : undefined;
+  const currentActiveRectId =
+    current?.queueType === 'card' ? current.activeRectId : undefined;
+
   useEffect(() => {
     setExplainVisible(false);
     setExplanation('');
     setExplainError(null);
     setNotConfigured(false);
     setExplainLoading(false);
-  }, [current?.card.id, current?.activeIndex, current?.activeRectId]);
+  }, [
+    current?.queueType,
+    currentIdentity,
+    currentActiveIndex,
+    currentActiveRectId,
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -90,13 +119,23 @@ export function ReviewCard() {
   }, [flipped, flipCard, submitRating]);
 
   if (!current) return null;
+  const cardItem = current.queueType === 'card' ? current : null;
+  if (!isSequenceChain && !cardItem) return null;
+  const card = cardItem?.card ?? null;
 
-  const { card, state, activeIndex, activeRectId } = current;
+  const state = current.state;
+  const activeIndex =
+    current.queueType === 'card' ? current.activeIndex : undefined;
+  const activeRectId =
+    current.queueType === 'card' ? current.activeRectId : undefined;
   // Key on card id, activeIndex (cloze), and activeRectId (occlusion) so the
   // slide animation fires for each distinct review item.
-  const slideKey = `${card.id}-${activeIndex ?? ''}-${activeRectId ?? ''}`;
+  const slideKey =
+    current.queueType === 'sequence_chain'
+      ? `${current.cardId}-${current.itemId}`
+      : `${cardItem?.card.id ?? ''}-${activeIndex ?? ''}-${activeRectId ?? ''}`;
 
-  const occlusionData: OcclusionData = Array.isArray(card.occlusion_data)
+  const occlusionData: OcclusionData = Array.isArray(card?.occlusion_data)
     ? (card.occlusion_data as OcclusionData)
     : [];
 
@@ -111,7 +150,8 @@ export function ReviewCard() {
       await explainAnswer({
         front: answerPayload.front,
         back: answerPayload.back,
-        noteContext: current.noteContext,
+        noteContext:
+          current.queueType === 'card' ? current.noteContext : undefined,
         onChunk: (chunk) => {
           setExplanation((prev) => `${prev}${chunk}`);
         },
@@ -153,22 +193,36 @@ export function ReviewCard() {
                   style={{ backfaceVisibility: 'hidden' }}
                 >
                   <div className={styles.faceContent}>
-                    {card.card_type === 'image_occlusion' ? (
+                    {isSequenceChain ? (
+                      <div className={styles.sequenceCardBody}>
+                        <p className={styles.sequenceLabel}>
+                          {UI.sequence.chainDrillLabel} —{' '}
+                          {current.sequenceTitle}
+                        </p>
+                        <p className={styles.sequencePosition}>
+                          {UI.sequence.itemPosition(
+                            current.position,
+                            Math.max(sequenceTotal, current.position),
+                          )}
+                        </p>
+                        <p className={styles.cardText}>{current.prompt}</p>
+                      </div>
+                    ) : cardItem?.card.card_type === 'image_occlusion' ? (
                       <OcclusionCardFront
-                        imageUrl={card.image_url ?? ''}
+                        imageUrl={cardItem.card.image_url ?? ''}
                         occlusionData={occlusionData}
                         activeRectId={activeRectId ?? ''}
                         className={styles.cardText}
                       />
-                    ) : card.card_type === 'cloze' ? (
+                    ) : cardItem?.card.card_type === 'cloze' ? (
                       <ClozeCardFront
-                        clozeText={card.cloze_text ?? ''}
+                        clozeText={cardItem.card.cloze_text ?? ''}
                         activeIndex={activeIndex}
                         className={styles.cardText}
                       />
                     ) : (
                       <BasicCardFront
-                        front={card.front}
+                        front={cardItem?.card.front ?? ''}
                         className={styles.cardText}
                       />
                     )}
@@ -194,22 +248,38 @@ export function ReviewCard() {
                   style={{ backfaceVisibility: 'hidden' }}
                 >
                   <div className={styles.faceContent}>
-                    {card.card_type === 'image_occlusion' ? (
+                    {isSequenceChain ? (
+                      <div className={styles.sequenceCardBody}>
+                        <p className={styles.sequenceLabel}>
+                          {UI.sequence.chainDrillLabel} —{' '}
+                          {current.sequenceTitle}
+                        </p>
+                        <p className={styles.sequencePosition}>
+                          {UI.sequence.itemPosition(
+                            current.position,
+                            Math.max(sequenceTotal, current.position),
+                          )}
+                        </p>
+                        <p className={styles.cardText}>{current.prompt}</p>
+                        <hr className={styles.sequenceDivider} />
+                        <p className={styles.cardText}>{current.answer}</p>
+                      </div>
+                    ) : cardItem?.card.card_type === 'image_occlusion' ? (
                       <OcclusionCardBack
-                        imageUrl={card.image_url ?? ''}
+                        imageUrl={cardItem.card.image_url ?? ''}
                         occlusionData={occlusionData}
                         activeRectId={activeRectId ?? ''}
                         className={styles.cardText}
                       />
-                    ) : card.card_type === 'cloze' ? (
+                    ) : cardItem?.card.card_type === 'cloze' ? (
                       <ClozeCardBack
-                        clozeText={card.cloze_text ?? ''}
+                        clozeText={cardItem.card.cloze_text ?? ''}
                         activeIndex={activeIndex}
                         className={styles.cardText}
                       />
                     ) : (
                       <BasicCardBack
-                        back={card.back}
+                        back={cardItem?.card.back ?? ''}
                         className={styles.cardText}
                       />
                     )}

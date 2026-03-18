@@ -3,7 +3,7 @@ import type { Card } from '../db/repositories/cards';
 import type { FsrsState } from '../db/repositories/fsrs';
 import type { CardWithState } from './fsrs';
 import { expandCards } from './cardExpansion';
-import type { OcclusionData } from '../types';
+import type { OcclusionData, SequenceCard, SequenceItem } from '../types';
 
 function makeCard(overrides: Partial<Card>): Card {
   return {
@@ -52,11 +52,15 @@ describe('expandCards', () => {
     const input = [makeCardWithState({ id: 'basic-1', card_type: 'basic' })];
 
     const expanded = expandCards(input);
+    const first = expanded[0];
+    if (first.queueType !== 'card') {
+      throw new Error('Expected card queue item');
+    }
 
     expect(expanded).toHaveLength(1);
-    expect(expanded[0].card.id).toBe('basic-1');
-    expect(expanded[0].activeIndex).toBeUndefined();
-    expect(expanded[0].activeRectId).toBeUndefined();
+    expect(first.card.id).toBe('basic-1');
+    expect(first.activeIndex).toBeUndefined();
+    expect(first.activeRectId).toBeUndefined();
   });
 
   it('produces one item for a cloze card with one index', () => {
@@ -69,10 +73,14 @@ describe('expandCards', () => {
     ];
 
     const expanded = expandCards(input);
+    const first = expanded[0];
+    if (first.queueType !== 'card') {
+      throw new Error('Expected card queue item');
+    }
 
     expect(expanded).toHaveLength(1);
-    expect(expanded[0].card.id).toBe('cloze-1');
-    expect(expanded[0].activeIndex).toBe(1);
+    expect(first.card.id).toBe('cloze-1');
+    expect(first.activeIndex).toBe(1);
   });
 
   it('produces one item per index for a cloze card with three indices', () => {
@@ -87,7 +95,11 @@ describe('expandCards', () => {
     const expanded = expandCards(input);
 
     expect(expanded).toHaveLength(3);
-    expect(expanded.map((item) => item.activeIndex)).toEqual([1, 2, 3]);
+    expect(
+      expanded
+        .filter((item) => item.queueType === 'card')
+        .map((item) => item.activeIndex),
+    ).toEqual([1, 2, 3]);
   });
 
   it('produces one item per rect for image occlusion cards', () => {
@@ -108,10 +120,11 @@ describe('expandCards', () => {
     const expanded = expandCards(input);
 
     expect(expanded).toHaveLength(2);
-    expect(expanded.map((item) => item.activeRectId)).toEqual([
-      'rect-1',
-      'rect-2',
-    ]);
+    expect(
+      expanded
+        .filter((item) => item.queueType === 'card')
+        .map((item) => item.activeRectId),
+    ).toEqual(['rect-1', 'rect-2']);
   });
 
   it('expands mixed arrays to the expected total count', () => {
@@ -150,5 +163,96 @@ describe('expandCards', () => {
     const expanded = expandCards(input);
 
     expect(expanded).toHaveLength(6);
+  });
+
+  it('expands sequence cards into due chain items with title/previous prompts', () => {
+    const sequenceCard: SequenceCard = {
+      id: 'seq-1',
+      deck_id: 'deck-1',
+      title: 'Group 1 elements',
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+      deleted_at: null,
+    };
+    const items: SequenceItem[] = [
+      {
+        id: 'item-1',
+        sequence_card_id: 'seq-1',
+        position: 1,
+        content: 'Hydrogen',
+        created_at: new Date('2026-01-01T00:00:00.000Z'),
+        updated_at: new Date('2026-01-01T00:00:00.000Z'),
+        deleted_at: null,
+      },
+      {
+        id: 'item-2',
+        sequence_card_id: 'seq-1',
+        position: 2,
+        content: 'Lithium',
+        created_at: new Date('2026-01-01T00:00:00.000Z'),
+        updated_at: new Date('2026-01-01T00:00:00.000Z'),
+        deleted_at: null,
+      },
+    ];
+    const itemStates = [
+      makeState({ id: 'state-item-1', card_id: 'item-1' }),
+      makeState({ id: 'state-item-2', card_id: 'item-2' }),
+    ];
+
+    const expanded = expandCards(
+      [],
+      [{ card: sequenceCard, items, itemStates }],
+    );
+
+    expect(expanded).toHaveLength(2);
+    expect(expanded[0]).toMatchObject({
+      cardType: 'sequence_chain',
+      cardId: 'seq-1',
+      itemId: 'item-1',
+      position: 1,
+      prompt: 'Group 1 elements',
+      answer: 'Hydrogen',
+      fsrsStateId: 'state-item-1',
+    });
+    expect(expanded[1]).toMatchObject({
+      prompt: 'Hydrogen',
+      answer: 'Lithium',
+      fsrsStateId: 'state-item-2',
+    });
+  });
+
+  it('excludes sequence items that are not yet due', () => {
+    const sequenceCard: SequenceCard = {
+      id: 'seq-2',
+      deck_id: 'deck-1',
+      title: 'Reactivity series',
+      created_at: new Date('2026-01-01T00:00:00.000Z'),
+      updated_at: new Date('2026-01-01T00:00:00.000Z'),
+      deleted_at: null,
+    };
+    const items: SequenceItem[] = [
+      {
+        id: 'item-a',
+        sequence_card_id: 'seq-2',
+        position: 1,
+        content: 'Potassium',
+        created_at: new Date('2026-01-01T00:00:00.000Z'),
+        updated_at: new Date('2026-01-01T00:00:00.000Z'),
+        deleted_at: null,
+      },
+    ];
+    const itemStates = [
+      makeState({
+        id: 'future-state',
+        card_id: 'item-a',
+        due: new Date(Date.now() + 86_400_000),
+      }),
+    ];
+
+    const expanded = expandCards(
+      [],
+      [{ card: sequenceCard, items, itemStates }],
+    );
+    expect(expanded).toHaveLength(0);
   });
 });

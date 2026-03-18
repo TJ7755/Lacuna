@@ -6,8 +6,8 @@
  * functions and persisting results.
  */
 
-import type { Card } from '../db/repositories/cards';
-import type { CardWithState, ReviewRating } from './fsrs';
+import type { ReviewRating } from './fsrs';
+import type { ReviewQueueItem } from './cardExpansion';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,7 +16,7 @@ import type { CardWithState, ReviewRating } from './fsrs';
 export interface ReviewSession {
   deckId: string;
   /** Cards remaining to be reviewed in this session (linear queue). */
-  queue: CardWithState[];
+  queue: ReviewQueueItem[];
   /** Index of the current card in queue. */
   currentIndex: number;
   /** Cards already reviewed in this session. */
@@ -25,7 +25,7 @@ export interface ReviewSession {
 }
 
 export interface ReviewedCard {
-  card: Card;
+  itemId: string;
   rating: ReviewRating;
   reviewedAt: Date;
 }
@@ -37,7 +37,7 @@ export interface ReviewedCard {
 /** Creates a new session from a list of due cards. */
 export function createSession(
   deckId: string,
-  dueCards: CardWithState[],
+  dueCards: ReviewQueueItem[],
 ): ReviewSession {
   return {
     deckId,
@@ -48,8 +48,8 @@ export function createSession(
   };
 }
 
-/** Returns the current card, or null if the session is complete. */
-export function currentCard(session: ReviewSession): CardWithState | null {
+/** Returns the current review queue item, or null if the session is complete. */
+export function currentCard(session: ReviewSession): ReviewQueueItem | null {
   if (session.currentIndex >= session.queue.length) return null;
   return session.queue[session.currentIndex] ?? null;
 }
@@ -66,7 +66,8 @@ export function advanceSession(
   if (!current) return session;
 
   const reviewedCard: ReviewedCard = {
-    card: current.card,
+    itemId:
+      current.queueType === 'sequence_chain' ? current.itemId : current.card.id,
     rating,
     reviewedAt: new Date(),
   };

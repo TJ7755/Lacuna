@@ -5,6 +5,7 @@ import { useDeckStore } from '../store/decks';
 import { useCardStore } from '../store/cards';
 import { useNoteStore } from '../store/notes';
 import { useReviewStore } from '../store/review';
+import { useSequenceStore } from '../store/sequences';
 import { getTagsForCards } from '../db/repositories/tags';
 import type { Tag } from '../db/repositories/tags';
 import { UI } from '../ui-strings';
@@ -12,7 +13,6 @@ import { CardList } from '../components/cards/CardList';
 import { CardEditor } from '../components/cards/CardEditor';
 import { TagChip } from '../components/tags/TagChip';
 import { PracticeTestModal } from '../components/llm/PracticeTestModal';
-import { ExamModeWarning } from '../components/review/ExamModeWarning';
 import { exportDeckAsJson, exportDeckAsText } from '../lib/deckExport';
 import styles from './DeckDetail.module.css';
 
@@ -48,8 +48,13 @@ export function DeckDetail() {
   const navigate = useNavigate();
   const { isReady } = useDb();
   const { decks, updateDeck } = useDeckStore();
-  const { startExamSession, cacheExamModeSession, examModeSessions } =
-    useReviewStore();
+  const {
+    startExamSession,
+    cacheExamModeSession,
+    examModeSessions,
+    positionDrillEnabled,
+    setPositionDrillEnabled,
+  } = useReviewStore();
   const {
     cardsWithState,
     dueCount,
@@ -57,6 +62,13 @@ export function DeckDetail() {
     error: cardsError,
     fetchCardsByDeck,
   } = useCardStore();
+  const {
+    sequencesWithState,
+    dueCount: sequenceDueCount,
+    loading: sequencesLoading,
+    error: sequencesError,
+    fetchSequencesByDeck,
+  } = useSequenceStore();
   const {
     notes,
     loading: notesLoading,
@@ -85,6 +97,11 @@ export function DeckDetail() {
     if (!isReady || !id) return;
     void fetchNotesByDeck(id);
   }, [isReady, id, fetchNotesByDeck]);
+
+  useEffect(() => {
+    if (!isReady || !id) return;
+    void fetchSequencesByDeck(id);
+  }, [isReady, id, fetchSequencesByDeck]);
 
   // Cache the exam mode session for the home page summary when an exam date is set.
   useEffect(() => {
@@ -201,6 +218,24 @@ export function DeckDetail() {
     }
   };
 
+  const handleExportJson = async () => {
+    try {
+      await exportDeckAsJson(id);
+      setExportNotice(UI.decks.exportSuccessJson);
+    } catch {
+      setExportNotice(UI.common.error);
+    }
+  };
+
+  const handleExportText = async () => {
+    try {
+      await exportDeckAsText(id);
+      setExportNotice(UI.decks.exportSuccessText);
+    } catch {
+      setExportNotice(UI.common.error);
+    }
+  };
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -229,9 +264,11 @@ export function DeckDetail() {
 
         <div className={styles.meta}>
           <span className={styles.cardCount}>
-            {UI.cards.cardCount(cardsWithState.length)}
+            {UI.cards.cardCount(
+              cardsWithState.length + sequencesWithState.length,
+            )}
             {' — '}
-            {UI.cards.dueCount(dueCount)}
+            {UI.cards.dueCount(dueCount + sequenceDueCount)}
           </span>
           {examDateStr && (
             <span className={styles.examDate}>
@@ -246,10 +283,36 @@ export function DeckDetail() {
           type="button"
           className={styles.secondaryButton}
           onClick={() => navigate(`/review/${id}`)}
-          disabled={dueCount === 0}
+          disabled={dueCount + sequenceDueCount === 0}
         >
           {UI.review.startRevision}
         </button>
+        <label className={styles.positionToggle}>
+          <input
+            type="checkbox"
+            checked={positionDrillEnabled}
+            onChange={(event) => setPositionDrillEnabled(event.target.checked)}
+          />
+          <span>{UI.sequence.positionDrillToggle}</span>
+        </label>
+        {sequencesWithState.length > 0 && (
+          <>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => navigate(`/review/${id}/fullrun`)}
+            >
+              {UI.sequence.fullRunButton}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => navigate(`/review/${id}/lines`)}
+            >
+              {UI.sequence.linesButton}
+            </button>
+          </>
+        )}
         {deck.exam_date && (
           <button
             type="button"
@@ -296,6 +359,9 @@ export function DeckDetail() {
             </button>
           </div>
         </details>
+        {exportNotice && (
+          <span className={styles.exportNotice}>{exportNotice}</span>
+        )}
       </div>
 
       {deck.exam_date && id && examModeSessions[id] && (
@@ -360,45 +426,54 @@ export function DeckDetail() {
       </section>
 
       <section className={styles.cardSection}>
-        {cardsLoading && <p className={styles.status}>{UI.cards.loading}</p>}
+        {(cardsLoading || sequencesLoading) && (
+          <p className={styles.status}>{UI.cards.loading}</p>
+        )}
         {cardsError && (
           <p className={styles.errorMessage}>{UI.cards.errorLoad}</p>
         )}
-        {!cardsLoading && !cardsError && (
-          <>
-            {allDeckTags.length > 0 && (
-              <div className={styles.tagFilters}>
-                {allDeckTags.map((tag) => (
-                  <TagChip
-                    key={tag.id}
-                    tag={tag}
-                    active={activeFilterTagIds.has(tag.id)}
-                    onClick={() => toggleFilter(tag.id)}
-                  />
-                ))}
-                {activeFilterTagIds.size > 0 && (
-                  <>
-                    <span className={styles.filteringByLabel}>
-                      {UI.tags.filteringBy(activeFilterTagIds.size)}
-                    </span>
-                    <button
-                      type="button"
-                      className={styles.clearFiltersButton}
-                      onClick={() => setActiveFilterTagIds(new Set())}
-                    >
-                      {UI.tags.clearFilters}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-            <CardList
-              deckId={id}
-              cardsWithState={filteredCards}
-              cardTagsMap={cardTagsMap}
-            />
-          </>
+        {sequencesError && (
+          <p className={styles.errorMessage}>{sequencesError}</p>
         )}
+        {!cardsLoading &&
+          !sequencesLoading &&
+          !cardsError &&
+          !sequencesError && (
+            <>
+              {allDeckTags.length > 0 && (
+                <div className={styles.tagFilters}>
+                  {allDeckTags.map((tag) => (
+                    <TagChip
+                      key={tag.id}
+                      tag={tag}
+                      active={activeFilterTagIds.has(tag.id)}
+                      onClick={() => toggleFilter(tag.id)}
+                    />
+                  ))}
+                  {activeFilterTagIds.size > 0 && (
+                    <>
+                      <span className={styles.filteringByLabel}>
+                        {UI.tags.filteringBy(activeFilterTagIds.size)}
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.clearFiltersButton}
+                        onClick={() => setActiveFilterTagIds(new Set())}
+                      >
+                        {UI.tags.clearFilters}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+              <CardList
+                deckId={id}
+                cardsWithState={filteredCards}
+                sequencesWithState={sequencesWithState}
+                cardTagsMap={cardTagsMap}
+              />
+            </>
+          )}
       </section>
 
       <section className={styles.notesSection}>

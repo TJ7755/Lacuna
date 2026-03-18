@@ -1,10 +1,11 @@
 import { getCardsByDeckRecursive } from '../db/repositories/cards';
 import { getCardState } from '../db/repositories/fsrs';
-import { expandCards } from './cardExpansion';
+import { getSequenceCardsWithState } from '../db/repositories/sequenceCards';
+import { expandCards, type ReviewQueueItem } from './cardExpansion';
 import { applyRating, getRetrievability, type CardWithState } from './fsrs';
 
 export interface ExamModeCard {
-  cardWithState: CardWithState;
+  cardWithState: ReviewQueueItem;
   /** Current predicted recall probability at exam date (0–1). */
   retrievabilityAtExam: number;
   /** Predicted recall at exam date if reviewed today with Good rating. */
@@ -62,8 +63,22 @@ export async function buildExamModeSession(
   );
 
   // 2. Expand cloze and image occlusion cards.
+  let sequenceRows: Awaited<ReturnType<typeof getSequenceCardsWithState>> = [];
+  if (typeof window !== 'undefined') {
+    try {
+      sequenceRows = await getSequenceCardsWithState(deckId);
+    } catch {
+      sequenceRows = [];
+    }
+  }
+
   const expanded = expandCards(
     withState.filter((item): item is CardWithState => item !== null),
+    sequenceRows.map((row) => ({
+      card: row.card,
+      items: row.items,
+      itemStates: row.itemStates,
+    })),
   );
 
   // 3. Compute per-card metrics.

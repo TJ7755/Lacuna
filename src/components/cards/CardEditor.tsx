@@ -29,9 +29,10 @@ import { MarkdownPreview } from './MarkdownPreview';
 import { ClozeHighlighter } from './ClozeHighlighter';
 import { ImageOcclusionForm } from './ImageOcclusionForm';
 import { TagInput } from '../tags/TagInput';
+import { SequenceEditor } from './SequenceEditor';
 import styles from './CardEditor.module.css';
 
-type CardType = 'basic' | 'cloze' | 'image_occlusion';
+type CardType = 'basic' | 'cloze' | 'image_occlusion' | 'sequence';
 
 interface CardEditorProps {
   deckId: string;
@@ -132,7 +133,7 @@ export function CardEditor({ deckId, card, onClose }: CardEditorProps) {
       if (!clozeText.trim()) return UI.cards.clozeRequired;
       if (clozeValidationError)
         return UI.cards.clozeInvalid(clozeValidationError);
-    } else {
+    } else if (cardType === 'image_occlusion') {
       if (!imageUrl) return UI.cards.occlusionNoRegions;
       if (occlusionData.length === 0) return UI.cards.occlusionNoRegions;
     }
@@ -236,6 +237,11 @@ export function CardEditor({ deckId, card, onClose }: CardEditorProps) {
           clozeText: cardType === 'cloze' ? clozeText.trim() : undefined,
         });
       } else {
+        if (cardType !== 'basic' && cardType !== 'cloze') {
+          throw new Error(
+            '[lacuna/cards] Unsupported card type for this editor.',
+          );
+        }
         const newCard = await createCard({
           deckId,
           cardType,
@@ -260,6 +266,54 @@ export function CardEditor({ deckId, card, onClose }: CardEditorProps) {
   };
 
   const title = isEdit ? UI.cards.editCard : UI.cards.addCard;
+
+  if (cardType === 'sequence' && !isEdit) {
+    return (
+      <AnimatePresence>
+        <>
+          <motion.div
+            className={styles.backdrop}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={handleBackdropClick}
+            aria-hidden="true"
+          />
+          <div
+            className={styles.wrapper}
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            onClick={handleBackdropClick}
+          >
+            <motion.div
+              className={styles.modal}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+            >
+              <div className={styles.header}>
+                <h2 className={styles.title}>{title}</h2>
+                <button
+                  className={styles.closeButton}
+                  type="button"
+                  onClick={onClose}
+                  aria-label={UI.common.close}
+                >
+                  x
+                </button>
+              </div>
+              <div className={styles.body}>
+                <SequenceEditor deckId={deckId} onSaved={onClose} />
+              </div>
+            </motion.div>
+          </div>
+        </>
+      </AnimatePresence>
+    );
+  }
 
   const isSubmitDisabled =
     submitting ||
@@ -341,6 +395,14 @@ export function CardEditor({ deckId, card, onClose }: CardEditorProps) {
                     disabled={isEdit}
                   >
                     {UI.cards.typeImageOcclusion}
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.typeButton} ${cardType === 'sequence' ? styles.typeActive : ''}`}
+                    onClick={() => setCardType('sequence')}
+                    disabled={isEdit}
+                  >
+                    {UI.sequence.typeLabel}
                   </button>
                 </div>
               </div>

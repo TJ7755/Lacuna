@@ -12,3 +12,20 @@
   font-size: var(--font-size-sm);
   margin: 0;
 }
+
+.sequenceEditorModal {
+  margin-top: var(--space-3);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-base);
+  padding: var(--space-3);
+  background: var(--colour-surface);
+}
+
+.sequenceEditorClose {
+  margin-top: var(--space-2);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--radius-base);
+  background: var(--colour-surface-raised);
+  color: var(--colour-text-primary);
+  padding: var(--space-2) var(--space-3);
+}

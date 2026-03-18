@@ -131,3 +131,11 @@
 .startButton:not(:disabled):hover {
   opacity: 0.88;
 }
+
+.positionDrillToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--colour-text-secondary);
+}

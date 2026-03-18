@@ -29,6 +29,10 @@ vi.mock('../db/repositories/fsrs', () => ({
   }),
 }));
 
+vi.mock('../db/repositories/sequenceCards', () => ({
+  getSequenceCardsWithState: vi.fn(async () => []),
+}));
+
 vi.mock('./fsrs', () => ({
   getRetrievability: (state: FsrsState, atDate: Date) =>
     mocks.getRetrievability(state, atDate),
@@ -37,6 +41,13 @@ vi.mock('./fsrs', () => ({
 }));
 
 import { buildExamModeSession } from './exam-mode';
+
+function queueItemId(cardWithState: { queueType: string }): string {
+  const queue = cardWithState as
+    | { queueType: 'card'; card: { id: string } }
+    | { queueType: 'sequence_chain'; itemId: string };
+  return queue.queueType === 'card' ? queue.card.id : queue.itemId;
+}
 
 function makeCard(overrides: Partial<Card>): Card {
   return {
@@ -233,7 +244,9 @@ describe('buildExamModeSession', () => {
 
     const session = await buildExamModeSession(deckId, examDate);
 
-    const queueIds = session.todayQueue.map((c) => c.cardWithState.card.id);
+    const queueIds = session.todayQueue.map((c) =>
+      queueItemId(c.cardWithState),
+    );
     expect(queueIds).not.toContain('above');
     expect(queueIds).toContain('below');
   });
@@ -329,7 +342,7 @@ describe('buildExamModeSession', () => {
     const session = await buildExamModeSession(deckId, examDate);
 
     // Sorted descending by marginalImprovement: B(0.7) > C(0.3) > A(0.2)
-    expect(session.cards.map((c) => c.cardWithState.card.id)).toEqual([
+    expect(session.cards.map((c) => queueItemId(c.cardWithState))).toEqual([
       'b',
       'c',
       'a',

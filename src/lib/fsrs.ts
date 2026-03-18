@@ -120,7 +120,7 @@ export function applyRating(state: FsrsState, rating: ReviewRating): FsrsState {
 /**
  * Filters a list of cards to those currently due for review (due <= now).
  */
-export function getDueCards(cards: CardWithState[]): CardWithState[] {
+export function getDueCards<T extends { state: FsrsState }>(cards: T[]): T[] {
   const now = new Date();
   return cards.filter((cs) => cs.state.due <= now);
 }
