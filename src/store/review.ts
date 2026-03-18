@@ -114,6 +114,8 @@ function applyPositionDrillPrompts(
     (item): item is Extract<ReviewQueueItem, { queueType: 'sequence_chain' }> =>
       item.queueType === 'sequence_chain',
   );
+  // Build a balanced prompt-mode list (approximately 50/50), then shuffle it
+  // so each sequence item gets one of the two prompt styles in random order.
   const modes = sequenceItems.map((_, index) => index % 2 === 0);
   for (let i = modes.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));

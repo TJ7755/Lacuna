@@ -525,7 +525,9 @@ export async function importDeckFromApkg(
 
     const cardType = note.cardType;
     const modelName = note.modelName.toLowerCase();
-    if (modelName.includes('sequence') && modelName.includes('cloze')) {
+    const clozeSequencePattern =
+      /\bcloze\b.*\bsequence\b|\bsequence\b.*\bcloze\b/;
+    if (clozeSequencePattern.test(modelName)) {
       skipped += 1;
       warnings.push(
         UI.decks.importApkgLogSkippedSequence(note.noteId, note.modelName),

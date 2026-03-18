@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, Reorder } from 'framer-motion';
+import { v4 as uuidv4 } from 'uuid';
 import { useSequenceStore, SequenceLockedError } from '../../store/sequences';
 import type { SequenceCard, SequenceItem } from '../../types';
 import { UI } from '../../ui-strings';
@@ -19,14 +20,20 @@ export function SequenceEditor({
   const isEdit = !!sequenceCard;
   const { createSequenceCard, updateSequenceCard } = useSequenceStore();
   const [title, setTitle] = useState(sequenceCard?.title ?? '');
-  const [items, setItems] = useState(
-    sequenceCard?.items.map((item) => item.content) ?? ['', ''],
+  const [items, setItems] = useState<Array<{ id: string; content: string }>>(
+    sequenceCard?.items.map((item) => ({
+      id: item.id,
+      content: item.content,
+    })) ?? [
+      { id: uuidv4(), content: '' },
+      { id: uuidv4(), content: '' },
+    ],
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const normalisedItems = useMemo(
-    () => items.map((item) => item.trim()),
+    () => items.map((item) => item.content.trim()),
     [items],
   );
 
@@ -39,7 +46,9 @@ export function SequenceEditor({
   };
 
   const updateItem = (index: number, value: string) => {
-    setItems((prev) => prev.map((item, i) => (i === index ? value : item)));
+    setItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, content: value } : item)),
+    );
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -99,15 +108,11 @@ export function SequenceEditor({
       >
         <AnimatePresence initial={false}>
           {items.map((item, index) => (
-            <Reorder.Item
-              key={`${index}-${item}`}
-              value={item}
-              className={styles.item}
-            >
+            <Reorder.Item key={item.id} value={item} className={styles.item}>
               <span className={styles.index}>{index + 1}.</span>
               <textarea
                 className={styles.textarea}
-                value={item}
+                value={item.content}
                 onChange={(event) => updateItem(index, event.target.value)}
                 onInput={(event) => {
                   const target = event.currentTarget;
@@ -134,7 +139,9 @@ export function SequenceEditor({
       <button
         type="button"
         className={styles.addButton}
-        onClick={() => setItems((prev) => [...prev, ''])}
+        onClick={() =>
+          setItems((prev) => [...prev, { id: uuidv4(), content: '' }])
+        }
       >
         {UI.sequence.addItem}
       </button>
