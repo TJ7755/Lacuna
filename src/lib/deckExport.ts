@@ -251,6 +251,12 @@ export async function exportDeckAsText(deckId: string): Promise<void> {
 
   const cards = await getCardsByDeckRecursive(deckId);
   const lines: string[] = [];
+  const subtreeIds = new Set(
+    findSubtreeDeckIds(
+      root.path,
+      allDecks.map((deck) => ({ id: deck.id, path: deck.path })),
+    ),
+  );
 
   for (const card of cards) {
     if (card.card_type === 'basic') {
@@ -265,13 +271,16 @@ export async function exportDeckAsText(deckId: string): Promise<void> {
     }
   }
 
-  const deckSequences = await getSequenceCardsWithState(deckId);
-  for (const sequence of deckSequences) {
-    lines.push(`[Sequence: ${sequence.card.title}]`);
-    for (const item of sequence.items) {
-      lines.push(`${item.position}. ${item.content}`);
+  for (const deck of allDecks) {
+    if (!subtreeIds.has(deck.id)) continue;
+    const deckSequences = await getSequenceCardsWithState(deck.id);
+    for (const sequence of deckSequences) {
+      lines.push(`[Sequence: ${sequence.card.title}]`);
+      for (const item of sequence.items) {
+        lines.push(`${item.position}. ${item.content}`);
+      }
+      lines.push('');
     }
-    lines.push('');
   }
 
   lines.push('# Image occlusion cards are not included in plain text export.');

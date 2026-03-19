@@ -16,6 +16,7 @@ export type ReviewQueueItem =
       cardId: string;
       itemId: string;
       position: number;
+      totalItems: number;
       sequenceTitle: string;
       prompt: string;
       answer: string;
@@ -114,6 +115,7 @@ export function expandCards(
           cardId: sequence.card.id,
           itemId: item.id,
           position: item.position,
+          totalItems: sortedItems.length,
           sequenceTitle: sequence.card.title,
           prompt: previous ? previous.content : sequence.card.title,
           answer: item.content,

@@ -82,7 +82,18 @@ export function CardRow({ row, onEdit, onDelete }: CardRowProps) {
       .sort((a, b) => a.getTime() - b.getTime())[0];
 
     return (
-      <div className={styles.row}>
+      <div
+        className={styles.row}
+        onClick={onEdit}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onEdit();
+          }
+        }}
+      >
         <span className={`${styles.badge} ${badgeClass('sequence')}`}>
           {badgeLabel('sequence')}
         </span>

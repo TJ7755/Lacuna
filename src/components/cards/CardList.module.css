@@ -13,19 +13,44 @@
   margin: 0;
 }
 
+.sequenceEditorBackdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #000 35%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 40;
+}
+
 .sequenceEditorModal {
-  margin-top: var(--space-3);
+  width: min(820px, 100%);
   border: 1px solid var(--colour-border);
   border-radius: var(--radius-base);
   padding: var(--space-3);
   background: var(--colour-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.sequenceEditorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.sequenceEditorTitle {
+  font-size: var(--font-size-lg);
+  color: var(--colour-text-primary);
 }
 
 .sequenceEditorClose {
-  margin-top: var(--space-2);
   border: 1px solid var(--colour-border);
   border-radius: var(--radius-base);
   background: var(--colour-surface-raised);
   color: var(--colour-text-primary);
   padding: var(--space-2) var(--space-3);
+  cursor: pointer;
 }

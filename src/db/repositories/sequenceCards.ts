@@ -296,6 +296,11 @@ export async function updateSequenceCard(
       });
       await initialiseCardState(itemId);
     }
+
+    await db
+      .update(sequence_cards)
+      .set({ updated_at: now })
+      .where(eq(sequence_cards.id, id));
   }
 
   const updated = await getSequenceCardById(id);

@@ -31,6 +31,11 @@ export function SequenceEditor({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const initialTitle = sequenceCard?.title ?? '';
+  const initialItems = useMemo(
+    () => sequenceCard?.items.map((item) => item.content.trim()) ?? [],
+    [sequenceCard],
+  );
 
   const normalisedItems = useMemo(
     () => items.map((item) => item.content.trim()),
@@ -63,10 +68,35 @@ export function SequenceEditor({
     setError(null);
     try {
       if (isEdit && sequenceCard) {
-        await updateSequenceCard(sequenceCard.id, {
-          title: title.trim(),
-          items: normalisedItems,
-        });
+        const titleChanged = title.trim() !== initialTitle.trim();
+        const itemsChanged =
+          normalisedItems.length !== initialItems.length ||
+          normalisedItems.some((item, index) => item !== initialItems[index]);
+
+        if (itemsChanged) {
+          try {
+            await updateSequenceCard(sequenceCard.id, {
+              title: title.trim(),
+              items: normalisedItems,
+            });
+          } catch (err) {
+            if (err instanceof SequenceLockedError && titleChanged) {
+              await updateSequenceCard(sequenceCard.id, {
+                title: title.trim(),
+              });
+              setError(UI.sequence.lockedError);
+            } else {
+              throw err;
+            }
+          }
+        } else if (titleChanged) {
+          await updateSequenceCard(sequenceCard.id, {
+            title: title.trim(),
+          });
+        } else {
+          onSaved();
+          return;
+        }
       } else {
         await createSequenceCard({
           deckId,

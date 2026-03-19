@@ -37,15 +37,6 @@ export function ReviewCard() {
   const current = session ? currentCard(session) : null;
   const isSequenceChain = current?.queueType === 'sequence_chain';
 
-  const sequenceTotal = useMemo(() => {
-    if (!session || !current || current.queueType !== 'sequence_chain')
-      return 0;
-    return session.queue.filter(
-      (item) =>
-        item.queueType === 'sequence_chain' && item.cardId === current.cardId,
-    ).length;
-  }, [session, current]);
-
   const answerPayload = useMemo(() => {
     if (!current) {
       return { front: '', back: '' };
@@ -202,7 +193,7 @@ export function ReviewCard() {
                         <p className={styles.sequencePosition}>
                           {UI.sequence.itemPosition(
                             current.position,
-                            Math.max(sequenceTotal, current.position),
+                            current.totalItems,
                           )}
                         </p>
                         <p className={styles.cardText}>{current.prompt}</p>
@@ -257,7 +248,7 @@ export function ReviewCard() {
                         <p className={styles.sequencePosition}>
                           {UI.sequence.itemPosition(
                             current.position,
-                            Math.max(sequenceTotal, current.position),
+                            current.totalItems,
                           )}
                         </p>
                         <p className={styles.cardText}>{current.prompt}</p>

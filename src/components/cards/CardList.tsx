@@ -105,19 +105,39 @@ export function CardList({
       )}
 
       {editingSequence && (
-        <div className={styles.sequenceEditorModal}>
-          <SequenceEditor
-            deckId={deckId}
-            sequenceCard={editingSequence}
-            onSaved={() => setEditingSequence(null)}
-          />
-          <button
-            type="button"
-            className={styles.sequenceEditorClose}
-            onClick={() => setEditingSequence(null)}
+        <div
+          className={styles.sequenceEditorBackdrop}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setEditingSequence(null);
+            }
+          }}
+        >
+          <div
+            className={styles.sequenceEditorModal}
+            role="dialog"
+            aria-modal="true"
+            aria-label={UI.sequence.typeLabel}
           >
-            {UI.common.close}
-          </button>
+            <div className={styles.sequenceEditorHeader}>
+              <h2 className={styles.sequenceEditorTitle}>
+                {UI.sequence.typeLabel}
+              </h2>
+              <button
+                type="button"
+                className={styles.sequenceEditorClose}
+                onClick={() => setEditingSequence(null)}
+                aria-label={UI.common.close}
+              >
+                ×
+              </button>
+            </div>
+            <SequenceEditor
+              deckId={deckId}
+              sequenceCard={editingSequence}
+              onSaved={() => setEditingSequence(null)}
+            />
+          </div>
         </div>
       )}
     </>
