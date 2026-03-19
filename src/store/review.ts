@@ -1,18 +1,20 @@
 /**
  * Review store — Zustand
- *
- * Orchestrates a review session: loads due cards, bridges the pure session
- * manager (`src/lib/reviewSession.ts`) with the database, and exposes UI
- * state for the review page and its components.
  */
 
 import { create } from 'zustand';
+import { getAllDecks } from '../db/repositories/decks';
 import { getCardsByDeckRecursive, getDueCount } from '../db/repositories/cards';
 import { getLinkedNotes } from '../db/repositories/cardNoteLinks';
 import { getCardState, updateCardState } from '../db/repositories/fsrs';
+import {
+  getSequenceCardById,
+  getSequenceCardsWithState,
+  getSequenceDueCount,
+} from '../db/repositories/sequenceCards';
 import { tiptapToPlainText } from '../lib/tiptapUtils';
 import { buildExamModeSession, type ExamModeSession } from '../lib/exam-mode';
-import { expandCards } from '../lib/cardExpansion';
+import { expandCards, type ReviewQueueItem } from '../lib/cardExpansion';
 import {
   applyRating,
   getDueCards,
@@ -25,63 +27,52 @@ import {
   type ReviewSession,
 } from '../lib/reviewSession';
 import { useDeckStore } from './decks';
-
-// ---------------------------------------------------------------------------
-// State interface
-// ---------------------------------------------------------------------------
+import type { SequenceItem } from '../types';
+import { UI } from '../ui-strings';
 
 interface ReviewState {
   session: ReviewSession | null;
   examMode: boolean;
   examModeSession: ExamModeSession | null;
-  /** Cache of computed ExamModeSession per deck id — for the home page summary. */
   examModeSessions: Record<string, ExamModeSession>;
   flipped: boolean;
   loading: boolean;
   error: string | null;
-  /** Due card counts per deck id — populated by loadDueCounts. */
   deckDueCounts: Record<string, number>;
+  positionDrillEnabled: boolean;
 
-  /** Loads due cards for a deck and creates a new session. */
-  startSession: (deckId: string) => Promise<void>;
+  linesMode: boolean;
+  linesModeSequenceId: string | null;
+  linesModeItems: SequenceItem[];
+  linesModePosition: number;
+  linesModeAutoAdvance: boolean;
+  linesModeDelaySeconds: number;
+
+  startSession: (
+    deckId: string,
+    options?: { positionDrill?: boolean },
+  ) => Promise<void>;
   startExamSession: (deckId: string) => Promise<void>;
-  /** Computes and caches an ExamModeSession without starting a review session. */
   cacheExamModeSession: (deckId: string, examDate: Date) => Promise<void>;
-  /** Flips the current card from front to back. */
   flipCard: () => void;
-  /**
-   * Submits a rating for the current card:
-   * 1. Applies FSRS scheduling via applyRating
-   * 2. Persists the updated state + appends to rating_history
-   * 3. Advances the session
-   * 4. Resets flipped to false
-   */
   submitRating: (rating: ReviewRating) => Promise<void>;
-  /** Clears session state — call on unmount or navigation away. */
   clearSession: () => void;
-  /** Loads due card counts for a set of deck ids (for the deck selection view). */
   loadDueCounts: (deckIds: string[]) => Promise<void>;
+  setPositionDrillEnabled: (enabled: boolean) => void;
+  startLinesMode: (
+    sequenceCardId: string,
+    options: { autoAdvance: boolean; delaySeconds: number },
+  ) => Promise<void>;
+  advanceLinesMode: () => void;
+  clearLinesMode: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Fetches cards with their FSRS states for a deck and all its descendants.
- * Falls back to per-card getCardState for recursive decks.
- */
 async function fetchCardsWithStates(deckId: string): Promise<CardWithState[]> {
-  // Try the efficient joined query for direct cards first, then fall back to
-  // recursive traversal for descendant decks.
   const deckCards = await getCardsByDeckRecursive(deckId);
-
   const pairs = await Promise.all(
     deckCards.map(async (card) => {
       const state = await getCardState(card.id);
-      if (!state) {
-        return null;
-      }
+      if (!state) return null;
 
       const linkedNotes = await getLinkedNotes(card.id);
       const noteContext = linkedNotes
@@ -90,19 +81,64 @@ async function fetchCardsWithStates(deckId: string): Promise<CardWithState[]> {
         .filter(Boolean)
         .join('\n\n');
 
-      const cardWithState: CardWithState = noteContext
-        ? { card, state, noteContext }
-        : { card, state };
-
-      return cardWithState;
+      return noteContext ? { card, state, noteContext } : { card, state };
     }),
   );
   return pairs.filter((cs): cs is CardWithState => cs !== null);
 }
 
-// ---------------------------------------------------------------------------
-// Store
-// ---------------------------------------------------------------------------
+async function getDescendantDeckIds(deckId: string): Promise<string[]> {
+  const allDecks = await getAllDecks();
+  const target = allDecks.find((deck) => deck.id === deckId);
+  if (!target) return [];
+  return allDecks
+    .filter(
+      (deck) =>
+        deck.path === target.path || deck.path.startsWith(`${target.path}::`),
+    )
+    .map((deck) => deck.id);
+}
+
+async function fetchSequencesWithStatesRecursive(deckId: string) {
+  const deckIds = await getDescendantDeckIds(deckId);
+  const all = await Promise.all(
+    deckIds.map((id) => getSequenceCardsWithState(id)),
+  );
+  return all.flat();
+}
+
+function applyPositionDrillPrompts(
+  items: ReviewQueueItem[],
+): ReviewQueueItem[] {
+  const sequenceItems = items.filter(
+    (item): item is Extract<ReviewQueueItem, { queueType: 'sequence_chain' }> =>
+      item.queueType === 'sequence_chain',
+  );
+  // Build a balanced prompt-mode list (approximately 50/50), then shuffle it
+  // so each sequence item gets one of the two prompt styles in random order.
+  const modes = sequenceItems.map((_, index) => index % 2 === 0);
+  for (let i = modes.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [modes[i], modes[j]] = [modes[j], modes[i]];
+  }
+
+  let modeIndex = 0;
+  return items.map((item) => {
+    if (item.queueType !== 'sequence_chain') return item;
+    const useWhatPrompt = modes[modeIndex] ?? false;
+    modeIndex += 1;
+    if (useWhatPrompt) {
+      return {
+        ...item,
+        prompt: UI.sequence.positionPromptWhat(item.position),
+      };
+    }
+    return {
+      ...item,
+      prompt: `${UI.sequence.positionPromptAfter}\n${item.prompt}`,
+    };
+  });
+}
 
 export const useReviewStore = create<ReviewState>((set, get) => ({
   session: null,
@@ -113,8 +149,18 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
   loading: false,
   error: null,
   deckDueCounts: {},
+  positionDrillEnabled: false,
+  linesMode: false,
+  linesModeSequenceId: null,
+  linesModeItems: [],
+  linesModePosition: 0,
+  linesModeAutoAdvance: false,
+  linesModeDelaySeconds: 3,
 
-  startSession: async (deckId) => {
+  setPositionDrillEnabled: (enabled) => set({ positionDrillEnabled: enabled }),
+
+  startSession: async (deckId, options) => {
+    const positionDrill = options?.positionDrill ?? get().positionDrillEnabled;
     set({
       loading: true,
       error: null,
@@ -122,10 +168,24 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
       flipped: false,
       examMode: false,
       examModeSession: null,
+      positionDrillEnabled: positionDrill,
     });
     try {
-      const raw = await fetchCardsWithStates(deckId);
-      const expanded = expandCards(raw);
+      const [rawCards, sequenceData] = await Promise.all([
+        fetchCardsWithStates(deckId),
+        fetchSequencesWithStatesRecursive(deckId),
+      ]);
+      let expanded = expandCards(
+        rawCards,
+        sequenceData.map((entry) => ({
+          card: entry.card,
+          items: entry.items,
+          itemStates: entry.itemStates,
+        })),
+      );
+      if (positionDrill) {
+        expanded = applyPositionDrillPrompts(expanded);
+      }
       const due = getDueCards(expanded);
       const session = createSession(deckId, due);
       set({ session, loading: false });
@@ -152,7 +212,6 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
       const queuedCards = examModeSession.todayQueue.map(
         (entry) => entry.cardWithState,
       );
-
       const session = createSession(deckId, queuedCards);
 
       set((state) => ({
@@ -182,7 +241,7 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
         },
       }));
     } catch {
-      // Silent failure — caching is best-effort; the home page will simply skip the summary.
+      // Best effort cache only.
     }
   },
 
@@ -199,14 +258,13 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
 
     const newState = applyRating(queue.state, rating);
     const now = new Date();
-
     const newHistory = [
       ...queue.state.rating_history,
       `${now.toISOString()}:${rating}`,
     ];
 
     try {
-      await updateCardState(queue.card.id, {
+      await updateCardState(queue.fsrsCardId, {
         stability: newState.stability,
         difficulty: newState.difficulty,
         due: newState.due,
@@ -216,7 +274,6 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       set({ error: msg });
-      // Advance anyway so the session can continue.
     }
 
     const updated = advanceSession(session, rating);
@@ -237,13 +294,55 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
     const entries = await Promise.all(
       deckIds.map(async (id) => {
         try {
-          const due = await getDueCount(id);
-          return [id, due] as const;
+          const [dueCards, dueSequences] = await Promise.all([
+            getDueCount(id),
+            getSequenceDueCount(id),
+          ]);
+          return [id, dueCards + dueSequences] as const;
         } catch {
           return [id, 0] as const;
         }
       }),
     );
     set({ deckDueCounts: Object.fromEntries(entries) });
+  },
+
+  startLinesMode: async (sequenceCardId, options) => {
+    const sequence = await getSequenceCardById(sequenceCardId);
+    if (!sequence) {
+      throw new Error('[lacuna/review] Sequence not found.');
+    }
+    set({
+      linesMode: true,
+      linesModeSequenceId: sequenceCardId,
+      linesModeItems: sequence.items,
+      linesModePosition: 0,
+      linesModeAutoAdvance: options.autoAdvance,
+      linesModeDelaySeconds: options.delaySeconds,
+    });
+  },
+
+  advanceLinesMode: () => {
+    const { linesModeItems, linesModePosition } = get();
+    const next = linesModePosition + 1;
+    if (next >= linesModeItems.length) {
+      set({
+        linesMode: false,
+        linesModePosition: linesModeItems.length,
+      });
+      return;
+    }
+    set({ linesModePosition: next });
+  },
+
+  clearLinesMode: () => {
+    set({
+      linesMode: false,
+      linesModeSequenceId: null,
+      linesModeItems: [],
+      linesModePosition: 0,
+      linesModeAutoAdvance: false,
+      linesModeDelaySeconds: 3,
+    });
   },
 }));

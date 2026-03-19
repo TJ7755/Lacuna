@@ -130,6 +130,30 @@
   animation: blink 1s step-end infinite;
 }
 
+.sequenceCardBody {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sequenceLabel {
+  font-size: var(--font-size-xs);
+  color: var(--colour-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sequencePosition {
+  font-size: var(--font-size-sm);
+  color: var(--colour-text-secondary);
+}
+
+.sequenceDivider {
+  border: 0;
+  border-top: 1px solid var(--colour-border);
+}
+
 @keyframes blink {
   50% {
     opacity: 0;

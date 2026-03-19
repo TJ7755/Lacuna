@@ -7,7 +7,13 @@ import {
   getTagsForCard,
   removeTagFromCard,
 } from '../db/repositories/tags';
-import { cards, decks, fsrs_state } from '../db/schema';
+import {
+  cards,
+  decks,
+  fsrs_state,
+  sequence_cards,
+  sequence_items,
+} from '../db/schema';
 import { parseApkg } from './apkgImport';
 import { UI } from '../ui-strings';
 
@@ -46,6 +52,17 @@ interface DeckExport {
   version: 1;
   exportedAt: string;
   deck: DeckExportNode;
+  sequenceCards?: Array<{
+    id: string;
+    title: string;
+    deckPath: string;
+    items: Array<{ position: number; content: string }>;
+    itemStates?: Array<{
+      position: number;
+      state: CardExport['fsrsState'];
+    }>;
+    sequenceState?: CardExport['fsrsState'];
+  }>;
 }
 
 function parseIsoDate(value: string | null | undefined): Date | null {
@@ -221,10 +238,161 @@ async function upsertDeckNode(
   return { imported, updated };
 }
 
+async function upsertSequenceCards(
+  sequenceCards: NonNullable<DeckExport['sequenceCards']>,
+  exportedAt: string,
+): Promise<{ imported: number; updated: number }> {
+  const db = await getDb();
+  const incomingUpdatedAt = latestDate(exportedAt);
+  const allDecks = await db
+    .select()
+    .from(decks)
+    .where(isNull(decks.deleted_at));
+  const deckByPath = new Map(allDecks.map((deck) => [deck.path, deck]));
+
+  let imported = 0;
+  let updated = 0;
+
+  for (const sequence of sequenceCards) {
+    const deck = deckByPath.get(sequence.deckPath);
+    if (!deck) {
+      continue;
+    }
+
+    const existingRows = await db
+      .select()
+      .from(sequence_cards)
+      .where(
+        and(
+          eq(sequence_cards.id, sequence.id),
+          isNull(sequence_cards.deleted_at),
+        ),
+      );
+
+    if (existingRows.length === 0) {
+      await db.insert(sequence_cards).values({
+        id: sequence.id,
+        deck_id: deck.id,
+        title: sequence.title,
+        created_at: incomingUpdatedAt,
+        updated_at: incomingUpdatedAt,
+        deleted_at: null,
+      });
+      imported += 1;
+    } else if (
+      incomingUpdatedAt.getTime() > existingRows[0].updated_at.getTime()
+    ) {
+      await db
+        .update(sequence_cards)
+        .set({
+          deck_id: deck.id,
+          title: sequence.title,
+          updated_at: incomingUpdatedAt,
+          deleted_at: null,
+        })
+        .where(eq(sequence_cards.id, sequence.id));
+      updated += 1;
+    }
+
+    const existingItems = await db
+      .select({ id: sequence_items.id })
+      .from(sequence_items)
+      .where(eq(sequence_items.sequence_card_id, sequence.id));
+    if (existingItems.length > 0) {
+      await db
+        .update(sequence_items)
+        .set({ deleted_at: incomingUpdatedAt, updated_at: incomingUpdatedAt })
+        .where(eq(sequence_items.sequence_card_id, sequence.id));
+      await db
+        .update(fsrs_state)
+        .set({ deleted_at: incomingUpdatedAt, updated_at: incomingUpdatedAt })
+        .where(
+          inArray(
+            fsrs_state.card_id,
+            existingItems.map((item) => item.id),
+          ),
+        );
+    }
+
+    const stateByPosition = new Map(
+      (sequence.itemStates ?? []).map((entry) => [entry.position, entry.state]),
+    );
+    for (const item of sequence.items.sort((a, b) => a.position - b.position)) {
+      const itemId = uuidv4();
+      await db.insert(sequence_items).values({
+        id: itemId,
+        sequence_card_id: sequence.id,
+        position: item.position,
+        content: item.content,
+        created_at: incomingUpdatedAt,
+        updated_at: incomingUpdatedAt,
+        deleted_at: null,
+      });
+
+      const importedState = stateByPosition.get(item.position);
+      const emptyFsrs = createEmptyCard();
+      await db.insert(fsrs_state).values({
+        id: uuidv4(),
+        card_id: itemId,
+        stability: importedState?.stability ?? emptyFsrs.stability,
+        difficulty: importedState?.difficulty ?? emptyFsrs.difficulty,
+        due:
+          parseIsoDate(importedState?.due ?? null) ??
+          emptyFsrs.due ??
+          incomingUpdatedAt,
+        last_review: parseIsoDate(importedState?.lastReview ?? null),
+        rating_history: importedState?.ratingHistory ?? [],
+        created_at: incomingUpdatedAt,
+        updated_at: incomingUpdatedAt,
+        deleted_at: null,
+      });
+    }
+
+    const emptyFsrs = createEmptyCard();
+    await db
+      .insert(fsrs_state)
+      .values({
+        id: uuidv4(),
+        card_id: sequence.id,
+        stability: sequence.sequenceState?.stability ?? emptyFsrs.stability,
+        difficulty: sequence.sequenceState?.difficulty ?? emptyFsrs.difficulty,
+        due:
+          parseIsoDate(sequence.sequenceState?.due ?? null) ??
+          emptyFsrs.due ??
+          incomingUpdatedAt,
+        last_review: parseIsoDate(sequence.sequenceState?.lastReview ?? null),
+        rating_history: sequence.sequenceState?.ratingHistory ?? [],
+        created_at: incomingUpdatedAt,
+        updated_at: incomingUpdatedAt,
+        deleted_at: null,
+      })
+      .onConflictDoUpdate({
+        target: fsrs_state.card_id,
+        set: {
+          stability: sequence.sequenceState?.stability ?? emptyFsrs.stability,
+          difficulty:
+            sequence.sequenceState?.difficulty ?? emptyFsrs.difficulty,
+          due:
+            parseIsoDate(sequence.sequenceState?.due ?? null) ??
+            emptyFsrs.due ??
+            incomingUpdatedAt,
+          last_review: parseIsoDate(sequence.sequenceState?.lastReview ?? null),
+          rating_history: sequence.sequenceState?.ratingHistory ?? [],
+          updated_at: incomingUpdatedAt,
+          deleted_at: null,
+        },
+      });
+  }
+
+  return { imported, updated };
+}
+
 export function parsePastedCards(
   text: string,
   delimiter: '\t' | ';' | ',',
 ): { cards: Array<{ front: string; back: string }>; skipped: number } {
+  // Sequence cards are intentionally not parsed from paste imports because
+  // plain delimited rows do not provide reliable sequence structure.
   const cards: Array<{ front: string; back: string }> = [];
   let skipped = 0;
 
@@ -268,7 +436,14 @@ export async function importDeckFromJson(
     }
 
     const result = await upsertDeckNode(parsed.deck, null, parsed.exportedAt);
-    return { imported: result.imported, updated: result.updated, errors };
+    const sequenceResult = parsed.sequenceCards
+      ? await upsertSequenceCards(parsed.sequenceCards, parsed.exportedAt)
+      : { imported: 0, updated: 0 };
+    return {
+      imported: result.imported + sequenceResult.imported,
+      updated: result.updated + sequenceResult.updated,
+      errors,
+    };
   } catch (error) {
     errors.push(error instanceof Error ? error.message : String(error));
     return { imported: 0, updated: 0, errors };
@@ -349,6 +524,17 @@ export async function importDeckFromApkg(
     }
 
     const cardType = note.cardType;
+    const modelName = note.modelName.toLowerCase();
+    const clozeSequencePattern =
+      /\bcloze\b.*\bsequence\b|\bsequence\b.*\bcloze\b/;
+    if (clozeSequencePattern.test(modelName)) {
+      skipped += 1;
+      warnings.push(
+        UI.decks.importApkgLogSkippedSequence(note.noteId, note.modelName),
+      );
+      continue;
+    }
+
     const front = note.front.trim();
     const back = note.back.trim();
     const clozeText = note.clozeText?.trim() ?? null;

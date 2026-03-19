@@ -54,6 +54,24 @@ export const UI = {
     examOnTrack: 'On track',
     examBehind: 'Behind schedule',
     examPanel: 'Exam overview',
+    exportDeck: 'Export deck',
+    exportAsJson: 'Export as JSON',
+    exportAsText: 'Export as text',
+    exportSuccessJson: 'JSON export started.',
+    exportSuccessText: 'Text export started.',
+    importApkgLogSkippedSequence: (noteId: string, modelName: string) =>
+      `Skipped note ${noteId}: model "${modelName}" has no Sequence equivalent in Lacuna.`,
+    importApkgLogMissingDeck: (noteId: string, deckId: string) =>
+      `Skipped note ${noteId}: deck ${deckId} was not found.`,
+    importApkgLogMissingBasicFields: (noteId: string) =>
+      `Skipped note ${noteId}: missing front or back text for a basic note.`,
+    importApkgLogMissingCloze: (noteId: string) =>
+      `Skipped note ${noteId}: missing cloze text.`,
+    importApkgLogConverted: (noteId: string, modelName: string) =>
+      `Imported note ${noteId} by converting model "${modelName}" to a supported card type.`,
+    importApkgLogImported: (noteId: string, cardType: string) =>
+      `Imported note ${noteId} as ${cardType}.`,
+    importApkgNoMedia: 'No media files were found in the .apkg package.',
   },
   review: {
     heading: 'Review',
@@ -256,6 +274,36 @@ export const UI = {
     chooseNote: 'Choose a note',
     noTags: '',
     tagPlaceholder: 'Add a tag\u2026',
+  },
+  sequence: {
+    typeLabel: 'Sequence',
+    itemCount: (n: number) => `${n} items`,
+    dueCount: (n: number) => `${n} due`,
+    addItem: 'Add item',
+    deleteItem: 'Remove item',
+    titleLabel: 'Title',
+    titleRequired: 'A title is required',
+    itemsRequired: 'At least two items are required',
+    emptyItem: 'Items cannot be empty',
+    lockedError:
+      'Item order cannot be changed after review has begun. You may still edit the title.',
+    chainDrillLabel: 'Sequence',
+    positionDrillToggle: 'Position drill',
+    positionPromptWhat: (n: number) => `What is item ${n}?`,
+    positionPromptAfter: 'What comes after this?',
+    fullRunButton: 'Full run',
+    fullRunBegin: 'Begin',
+    fullRunNext: 'Next',
+    fullRunComplete: 'Run complete',
+    linesButton: 'Lines',
+    linesChooseSequence: 'Choose a sequence',
+    linesAutoAdvance: 'Auto-advance',
+    linesDelay: 'Delay (seconds)',
+    linesBegin: 'Begin',
+    linesNext: 'Next',
+    linesComplete: 'Rehearsal complete',
+    linesItemCount: (n: number) => `${n} items rehearsed`,
+    itemPosition: (n: number, total: number) => `Item ${n} of ${total}`,
   },
   tags: {
     heading: 'Tags',

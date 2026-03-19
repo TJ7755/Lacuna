@@ -9,6 +9,7 @@
 
 import sql0000 from './0000_friendly_energizer.sql?raw';
 import sql0001 from './0001_hesitant_reaper.sql?raw';
+import sql0002 from './0002_wise_rocket.sql?raw';
 
 export type Migration = {
   hash: string;
@@ -18,6 +19,7 @@ export type Migration = {
 const migrations: Migration[] = [
   { hash: '0000_friendly_energizer', sql: sql0000 },
   { hash: '0001_hesitant_reaper', sql: sql0001 },
+  { hash: '0002_wise_rocket', sql: sql0002 },
 ];
 
 export default migrations;

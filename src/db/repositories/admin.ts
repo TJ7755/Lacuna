@@ -5,6 +5,8 @@ import {
   decks,
   fsrs_state,
   notes,
+  sequence_cards,
+  sequence_items,
   settings,
   tags,
 } from '../schema';
@@ -17,6 +19,8 @@ export async function softDeleteAllData(): Promise<void> {
   await db.update(card_note_links).set({ deleted_at: now, updated_at: now });
   await db.update(card_tags).set({ deleted_at: now, updated_at: now });
   await db.update(fsrs_state).set({ deleted_at: now, updated_at: now });
+  await db.update(sequence_items).set({ deleted_at: now, updated_at: now });
+  await db.update(sequence_cards).set({ deleted_at: now, updated_at: now });
   await db.update(cards).set({ deleted_at: now, updated_at: now });
   await db.update(notes).set({ deleted_at: now, updated_at: now });
   await db.update(tags).set({ deleted_at: now, updated_at: now });

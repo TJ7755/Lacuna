@@ -48,6 +48,29 @@ export const cards = sqliteTable('cards', {
 });
 
 // ---------------------------------------------------------------------------
+// sequence_cards
+// ---------------------------------------------------------------------------
+
+export const sequence_cards = sqliteTable('sequence_cards', {
+  id: text('id').primaryKey(),
+  deck_id: text('deck_id').notNull(),
+  title: text('title').notNull(),
+  ...timestamps,
+});
+
+// ---------------------------------------------------------------------------
+// sequence_items
+// ---------------------------------------------------------------------------
+
+export const sequence_items = sqliteTable('sequence_items', {
+  id: text('id').primaryKey(),
+  sequence_card_id: text('sequence_card_id').notNull(),
+  position: integer('position').notNull(),
+  content: text('content').notNull(),
+  ...timestamps,
+});
+
+// ---------------------------------------------------------------------------
 // fsrs_state
 // ---------------------------------------------------------------------------
 

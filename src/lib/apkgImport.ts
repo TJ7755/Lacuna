@@ -12,6 +12,7 @@ export interface ApkgNote {
   deckId: string;
   cardType: 'basic' | 'cloze';
   convertedFrom: string | null;
+  modelName: string;
   front: string;
   back: string;
   clozeText: string | null;
@@ -211,6 +212,7 @@ export async function parseApkg(file: File): Promise<{
           deckId,
           cardType: 'cloze',
           convertedFrom: null,
+          modelName,
           front: '',
           back: '',
           clozeText: fields[0] ?? '',
@@ -224,6 +226,7 @@ export async function parseApkg(file: File): Promise<{
         deckId,
         cardType: 'basic',
         convertedFrom: isBasic ? null : modelName || 'unknown model',
+        modelName,
         front: fields[0] ?? '',
         back: fields[1] ?? '',
         clozeText: null,

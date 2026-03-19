@@ -51,6 +51,8 @@ export function Review() {
     startSession,
     clearSession,
     loadDueCounts,
+    positionDrillEnabled,
+    setPositionDrillEnabled,
   } = useReviewStore();
 
   // ---------------------------------------------------------------------------
@@ -62,7 +64,7 @@ export function Review() {
 
     if (deckId) {
       if (!session || session.deckId !== deckId) {
-        void startSession(deckId);
+        void startSession(deckId, { positionDrill: positionDrillEnabled });
       }
     } else {
       void loadDueCounts(decks.map((d) => d.id));
@@ -77,7 +79,7 @@ export function Review() {
     // the linter cannot verify referential stability of store actions. Omitting
     // them here is safe and intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady, deckId, session]);
+  }, [isReady, deckId, session, positionDrillEnabled]);
 
   // Reload due counts when deck list changes (deck-selection view only).
   useEffect(() => {
@@ -205,6 +207,14 @@ export function Review() {
           );
         })}
       </ul>
+      <label className={styles.positionDrillToggle}>
+        <input
+          type="checkbox"
+          checked={positionDrillEnabled}
+          onChange={(event) => setPositionDrillEnabled(event.target.checked)}
+        />
+        <span>{UI.sequence.positionDrillToggle}</span>
+      </label>
     </main>
   );
 }

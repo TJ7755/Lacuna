@@ -8,7 +8,13 @@
 import { eq, isNull, and, inArray } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { getDb } from '../client';
-import { cards, decks, fsrs_state } from '../schema';
+import {
+  cards,
+  decks,
+  fsrs_state,
+  sequence_cards,
+  sequence_items,
+} from '../schema';
 
 export type Deck = typeof decks.$inferSelect;
 
@@ -159,6 +165,29 @@ export async function deleteDeck(id: string): Promise<void> {
     .where(and(inArray(cards.deck_id, idsToDelete), isNull(cards.deleted_at)));
 
   const cardIds = affectedCards.map((c) => c.id);
+  const affectedSequences = await db
+    .select({ id: sequence_cards.id })
+    .from(sequence_cards)
+    .where(
+      and(
+        inArray(sequence_cards.deck_id, idsToDelete),
+        isNull(sequence_cards.deleted_at),
+      ),
+    );
+  const sequenceIds = affectedSequences.map((row) => row.id);
+  const affectedSequenceItems =
+    sequenceIds.length > 0
+      ? await db
+          .select({ id: sequence_items.id })
+          .from(sequence_items)
+          .where(
+            and(
+              inArray(sequence_items.sequence_card_id, sequenceIds),
+              isNull(sequence_items.deleted_at),
+            ),
+          )
+      : [];
+  const sequenceItemIds = affectedSequenceItems.map((row) => row.id);
 
   // 3. Soft-delete all affected cards.
   if (cardIds.length > 0) {
@@ -166,14 +195,30 @@ export async function deleteDeck(id: string): Promise<void> {
       .update(cards)
       .set({ deleted_at: now, updated_at: now })
       .where(inArray(cards.id, cardIds));
+  }
 
-    // 4. Soft-delete all fsrs_state rows for affected cards.
+  if (sequenceIds.length > 0) {
+    await db
+      .update(sequence_cards)
+      .set({ deleted_at: now, updated_at: now })
+      .where(inArray(sequence_cards.id, sequenceIds));
+  }
+
+  if (sequenceItemIds.length > 0) {
+    await db
+      .update(sequence_items)
+      .set({ deleted_at: now, updated_at: now })
+      .where(inArray(sequence_items.id, sequenceItemIds));
+  }
+
+  const fsrsIds = [...cardIds, ...sequenceIds, ...sequenceItemIds];
+  if (fsrsIds.length > 0) {
     await db
       .update(fsrs_state)
       .set({ deleted_at: now, updated_at: now })
       .where(
         and(
-          inArray(fsrs_state.card_id, cardIds),
+          inArray(fsrs_state.card_id, fsrsIds),
           isNull(fsrs_state.deleted_at),
         ),
       );

@@ -10,7 +10,26 @@
 // Card types
 // ---------------------------------------------------------------------------
 
-export type CardType = 'basic' | 'cloze' | 'image_occlusion';
+export type CardType = 'basic' | 'cloze' | 'image_occlusion' | 'sequence';
+
+export interface SequenceCard {
+  id: string;
+  deck_id: string;
+  title: string;
+  created_at: Date;
+  updated_at: Date;
+  deleted_at: Date | null;
+}
+
+export interface SequenceItem {
+  id: string;
+  sequence_card_id: string;
+  position: number;
+  content: string;
+  created_at: Date;
+  updated_at: Date;
+  deleted_at: Date | null;
+}
 
 // ---------------------------------------------------------------------------
 // Image occlusion

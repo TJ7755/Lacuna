@@ -473,3 +473,32 @@ The primary concern is SQLite. On mobile, `@sqlite.org/sqlite-wasm` with OPFS is
 This requires a platform abstraction layer in `src/db/client.ts`: the database client detects the runtime environment (OPFS-capable browser, Tauri, Capacitor) and initialises the appropriate SQLite backend. The Drizzle ORM layer above it is unchanged — the abstraction is entirely in the client initialisation, not in any query code.
 
 Capacitor targets iOS and Android. The web and desktop builds are unaffected.
+
+---
+
+## 11. Sequence Learner Card Type
+
+Purpose: the Sequence Learner supports ordered recall where order is the skill, such as the periodic table, reactivity series, poetry stanzas, and dramatic lines.
+
+### Data model decisions
+
+- Sequence cards are stored in `sequence_cards` (title + deck linkage).
+- Sequence entries are stored in `sequence_items` (one item per ordered position).
+- Item positions are 1-indexed.
+- `fsrs_state.card_id` is polymorphic by design:
+  - item-level state rows use `sequence_items.id`
+  - sequence-level Full Run state rows use `sequence_cards.id`
+- This is Option A: a loose UUID reference with no enforced FK constraint on `fsrs_state.card_id`.
+
+### Review modes
+
+1. **Chain Drill** — prompts each item from the previous item (or sequence title for item 1), schedules per item using that item's FSRS row.
+2. **Position Drill** — alternate prompts between ordinal cue ("What is item N?") and predecessor cue ("What comes after…?"), still updating the same per-item FSRS row.
+3. **Full Run** — rehearses the entire sequence in order, then self-rating updates only the sequence-level FSRS row (`card_id = sequence_cards.id`).
+4. **Lines Mode** — cue/reveal rehearsal mode with optional auto-advance; it never updates FSRS state and is not part of scheduling.
+
+### Position immutability rule
+
+- Sequence item ordering is editable until any sequence item has a non-null `last_review`.
+- After the first recorded review on any item in the sequence, item positions are immutable.
+- Title edits remain permitted after lock.
