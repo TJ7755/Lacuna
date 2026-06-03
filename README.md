@@ -1,15 +1,17 @@
 # Lacuna
 
-A local-only, serverless flashcard application built around the **FSRS-4.5** spaced-repetition
-algorithm. Every card is scheduled to peak on your exam day, you grade yourself with a single
-**Yes / No**, and an invisible response timer infers the real FSRS grade behind the scenes.
+A local-only, serverless flashcard application built around the **FSRS-6** spaced-repetition
+algorithm (via the official `ts-fsrs` library). Every card is scheduled to peak on your exam day,
+you grade yourself with a single **Yes / No**, and an invisible response timer infers the real
+FSRS grade behind the scenes.
 
 All data lives in your browser via **IndexedDB** — nothing is sent anywhere. Use **Settings → Import &
 export** to back up or move your data as a single JSON file.
 
 ## Highlights
 
-- **FSRS-4.5 scheduler** implemented exactly (forgetting curve, stability/difficulty updates).
+- **FSRS-6 engine** via the official `ts-fsrs` library (21 trainable parameters, including the
+  decay w20). All memory-state updates are delegated to the package; no hand-rolled FSRS maths.
 - **Delta-R queue** — always serves the card with the greatest expected lift to your exam-day score.
 - **Invisible rating engine** — Yes/No plus a hidden response timer, calibrated per deck.
 - **Cooldown slotting** — failed cards are held back briefly to prevent fatigue.
@@ -38,7 +40,8 @@ Open the printed local URL. A small example deck is seeded on first run (it can 
 
 | Area | Where |
 | --- | --- |
-| FSRS maths (curve, state updates) | `src/fsrs/fsrs.ts`, `src/fsrs/params.ts` |
+| FSRS-6 engine wrapper (ts-fsrs) | `src/fsrs/fsrs.ts`, `src/fsrs/params.ts` |
+| Forward simulation (exam-day R) | `src/fsrs/forwardSim.ts` |
 | Delta-R queue ordering | `src/fsrs/deltaR.ts` |
 | Yes/No → grade + Welford stats | `src/fsrs/grading.ts` |
 | Cooldown slotting | `src/fsrs/cooldown.ts` |

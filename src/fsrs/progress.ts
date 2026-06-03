@@ -1,37 +1,53 @@
 // Deck-level retrievability metrics used by the progress bar and analytics.
+// These read exam-day retrievability from the forward-simulation layer so they
+// always agree with the scheduler (see src/fsrs/objective.ts).
 
-import { retrievability } from './fsrs';
-import { MASTERY_R, MS_PER_DAY } from './params';
+import { rAtExam } from './forwardSim';
+import { decayOf } from './fsrs';
+import { MASTERY_R } from './params';
 import type { Card, Deck } from '../db/types';
 
+/** The deck's forgetting-curve decay exponent (= -w20). */
+export function deckDecay(deck: Deck): number {
+  return decayOf(deck.fsrsParameters);
+}
+
 /**
- * Predicted retrievability of a single card on the exam day.
- * Measured from the card's last review to the exam date using its current stability.
- * A never-reviewed card has no stability, so its predicted retrievability is 0.
+ * Predicted retrievability of a single card on the exam day, with no further
+ * review. A never-reviewed card has no stability, so this is 0.
  */
 export function predictedExamRetrievability(
   card: Card,
   deck: Deck,
+  now: number = Date.now(),
 ): number {
-  if (card.stability === null || card.lastReviewed === null) return 0;
-  const days = Math.max(deck.examDate - card.lastReviewed, 0) / MS_PER_DAY;
-  return retrievability(days, card.stability);
+  return rAtExam(card, deck.examDate, now, deckDecay(deck));
 }
 
 /** Fraction (0..1) of cards predicted to be at or above the mastery threshold on exam day. */
-export function masteryFraction(cards: Card[], deck: Deck): number {
+export function masteryFraction(
+  cards: Card[],
+  deck: Deck,
+  now: number = Date.now(),
+): number {
   if (cards.length === 0) return 1;
+  const decay = deckDecay(deck);
   const mastered = cards.filter(
-    (c) => predictedExamRetrievability(c, deck) >= MASTERY_R,
+    (c) => rAtExam(c, deck.examDate, now, decay) >= MASTERY_R,
   ).length;
   return mastered / cards.length;
 }
 
 /** Average predicted exam-day retrievability across a deck (0..1). */
-export function averagePredictedRetrievability(cards: Card[], deck: Deck): number {
+export function averagePredictedRetrievability(
+  cards: Card[],
+  deck: Deck,
+  now: number = Date.now(),
+): number {
   if (cards.length === 0) return 0;
+  const decay = deckDecay(deck);
   const total = cards.reduce(
-    (sum, c) => sum + predictedExamRetrievability(c, deck),
+    (sum, c) => sum + rAtExam(c, deck.examDate, now, decay),
     0,
   );
   return total / cards.length;

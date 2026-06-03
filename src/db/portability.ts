@@ -1,6 +1,12 @@
 // Import/Export: the entire database serialises to a single JSON file and back.
 
 import { db } from './schema';
+import {
+  migrateCardRecord,
+  migrateDeckRecord,
+  type LegacyCard,
+  type LegacyDeck,
+} from './migrations';
 import type {
   BackupFile,
   Card,
@@ -9,7 +15,7 @@ import type {
   UserPerformance,
 } from './types';
 
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
 
 /** Gather the whole database into a single backup object. */
 export async function exportDatabase(): Promise<BackupFile> {
@@ -79,6 +85,11 @@ export async function importBackup(
   backup: BackupFile,
   mode: ImportMode,
 ): Promise<void> {
+  // Normalise incoming records to the current (FSRS-6) schema so backups exported
+  // by older versions of Lacuna import without losing or corrupting data.
+  const decks = backup.decks.map((d) => migrateDeckRecord(d as LegacyDeck));
+  const cards = backup.cards.map((c) => migrateCardRecord(c as LegacyCard));
+
   await db.transaction(
     'rw',
     db.decks,
@@ -93,8 +104,8 @@ export async function importBackup(
           db.sessionHistory.clear(),
           db.userPerformance.clear(),
         ]);
-        await db.decks.bulkAdd(backup.decks);
-        await db.cards.bulkAdd(backup.cards);
+        await db.decks.bulkAdd(decks);
+        await db.cards.bulkAdd(cards);
         await db.userPerformance.bulkAdd(backup.userPerformance);
         // Drop incoming auto-increment ids so they are reassigned cleanly.
         await db.sessionHistory.bulkAdd(
@@ -106,7 +117,7 @@ export async function importBackup(
       // Merge decks (newest createdAt/examDate touch wins).
       const existingDecks = new Map((await db.decks.toArray()).map((d) => [d.id, d]));
       const mergedDecks: Deck[] = [];
-      for (const incoming of backup.decks) {
+      for (const incoming of decks) {
         const existing = existingDecks.get(incoming.id);
         mergedDecks.push(existing ? newerWins(existing, incoming, 'examDate') : incoming);
       }
@@ -115,7 +126,7 @@ export async function importBackup(
       // Merge cards (most recent lastReviewed wins; new cards added as-is).
       const existingCards = new Map((await db.cards.toArray()).map((c) => [c.id, c]));
       const mergedCards: Card[] = [];
-      for (const incoming of backup.cards) {
+      for (const incoming of cards) {
         const existing = existingCards.get(incoming.id);
         if (!existing) {
           mergedCards.push(incoming);

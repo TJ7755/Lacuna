@@ -5,6 +5,12 @@ import type {
   SessionHistoryEntry,
   UserPerformance,
 } from './types';
+import {
+  migrateCardRecord,
+  migrateDeckRecord,
+  type LegacyCard,
+  type LegacyDeck,
+} from './migrations';
 
 /**
  * Lacuna's IndexedDB database. A single Dexie instance owns every store.
@@ -25,6 +31,31 @@ export class LacunaDatabase extends Dexie {
       sessionHistory: '++id, deckId, timestamp',
       userPerformance: 'deckId',
     });
+
+    // Version 2: migrate the FSRS-4.5 (17-parameter) model to FSRS-6. The indexes
+    // are unchanged; the upgrade only enriches existing records with the new
+    // FSRS-6 fields. No user data is dropped.
+    this.version(2)
+      .stores({
+        decks: 'id, createdAt, examDate',
+        cards: 'id, deckId, type, lastReviewed',
+        sessionHistory: '++id, deckId, timestamp',
+        userPerformance: 'deckId',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('decks')
+          .toCollection()
+          .modify((deck) => {
+            Object.assign(deck, migrateDeckRecord(deck as LegacyDeck));
+          });
+        await tx
+          .table('cards')
+          .toCollection()
+          .modify((card) => {
+            Object.assign(card, migrateCardRecord(card as LegacyCard));
+          });
+      });
   }
 }
 

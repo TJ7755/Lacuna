@@ -3,10 +3,11 @@
 
 import { db, makeId } from './schema';
 import type { Card, CardType, Deck, Grade, ReviewLog } from './types';
-import { applyReview, retrievability } from '../fsrs/fsrs';
+import { applyReview, makeEngine } from '../fsrs/fsrs';
+import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { emptyPerformance, updatePerformance } from '../fsrs/grading';
 import { averagePredictedRetrievability } from '../fsrs/progress';
-import { elapsedDays, defaultExamDate } from '../utils/datetime';
+import { defaultExamDate } from '../utils/datetime';
 
 // ---------------------------------------------------------------------------
 // Decks
@@ -19,6 +20,9 @@ export async function createDeck(name: string): Promise<Deck> {
     name: name.trim() || 'Untitled deck',
     examDate: defaultExamDate(createdAt),
     createdAt,
+    fsrsVersion: FSRS_VERSION,
+    fsrsParameters: defaultFsrsParameters(),
+    examObjective: 'expectedMarks',
   };
   await db.decks.add(deck);
   await db.userPerformance.add(emptyPerformance(deck.id));
@@ -96,6 +100,12 @@ export async function createCard(
     stability: null,
     difficulty: null,
     lastReviewed: null,
+    reps: 0,
+    lapses: 0,
+    state: 0,
+    due: null,
+    scheduledDays: 0,
+    learningSteps: 0,
     history: [],
     createdAt: Date.now(),
   };
@@ -142,17 +152,9 @@ export async function recordReview(args: RecordReviewArgs): Promise<Card> {
   const { card, deck, grade, responseTimeSec, distracted, correct } = args;
   const now = args.now ?? Date.now();
 
-  const elapsed =
-    card.lastReviewed === null ? 0 : elapsedDays(card.lastReviewed, now);
-  const retriev =
-    card.stability === null ? null : retrievability(elapsed, card.stability);
-
-  const nextState = applyReview({
-    stability: card.stability,
-    difficulty: card.difficulty,
-    retriev,
-    grade,
-  });
+  // All FSRS-6 maths is delegated to ts-fsrs via the engine wrapper.
+  const engine = makeEngine(deck.fsrsParameters);
+  const { memory, retrievabilityAtReview } = applyReview(engine, card, grade, now);
 
   const log: ReviewLog = {
     timestamp: now,
@@ -160,17 +162,23 @@ export async function recordReview(args: RecordReviewArgs): Promise<Card> {
     responseTimeSec,
     distracted,
     stabilityBefore: card.stability,
-    stabilityAfter: nextState.stability,
+    stabilityAfter: memory.stability,
     difficultyBefore: card.difficulty,
-    difficultyAfter: nextState.difficulty,
-    retrievabilityAtReview: retriev,
+    difficultyAfter: memory.difficulty,
+    retrievabilityAtReview,
   };
 
   const updatedCard: Card = {
     ...card,
-    stability: nextState.stability,
-    difficulty: nextState.difficulty,
-    lastReviewed: now,
+    stability: memory.stability,
+    difficulty: memory.difficulty,
+    lastReviewed: memory.lastReviewed,
+    due: memory.due,
+    scheduledDays: memory.scheduledDays,
+    learningSteps: memory.learningSteps,
+    reps: memory.reps,
+    lapses: memory.lapses,
+    state: memory.state,
     history: [...card.history, log],
   };
 

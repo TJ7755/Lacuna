@@ -19,10 +19,14 @@ Recharts. Fonts: Fraunces (display), Geist (body), JetBrains Mono (code/timer).
 - Import: **Replace all** or **Merge** (by id, newest `lastReviewed`/`createdAt` wins). Export: versioned
   JSON of the whole database.
 
-## FSRS-4.5 (`src/fsrs/`)
-17 default weights; `R(t,S)=(1+(19/81)(t/S))^-0.5`; first-review `S0=w[g-1]`,
-`D0=clamp(w4-(g-1)w5,1,10)`; subsequent `D=clamp(D-w6(g-3),1,10)`; success/failure stability per spec;
-`S>=0.1`. Elapsed time in fractional days; `d_exam_remaining` clamped at 0.
+## FSRS-6 (`src/fsrs/`)
+All memory-state maths is delegated to the official `ts-fsrs` package (FSRS-6, 21 trainable
+parameters w0..w20; w20 is the trainable decay). `src/fsrs/fsrs.ts` is a thin wrapper that maps
+between Lacuna's stored card shape and ts-fsrs's. The parameter set and an explicit `fsrsVersion`
+are persisted per deck. Forward simulation (`forwardSim.ts`) is our own pure layer on top:
+`R(t,S)=(1+factor·t/S)^decay`, `factor=0.9^(1/decay)−1`, `decay=−w20` — so R=0.90 exactly at t=S,
+and with w20=0.5 it reduces to FSRS-4.5's `factor=19/81`. Elapsed time in fractional days;
+`d_exam_remaining` clamped at 0.
 
 ## Learn mode (`src/pages/LearnMode.tsx`)
 - **Delta-R queue**, re-sorted on every serve. Brand-new cards assume `S=w[2]`.

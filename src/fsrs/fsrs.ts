@@ -1,114 +1,111 @@
-// FSRS-4.5 scheduler: forgetting curve and state-update equations.
-// Implemented exactly per the specification.
+// FSRS-6 engine wrapper.
+//
+// Every memory-state update (initial S/D, post-success and post-lapse stability,
+// difficulty update, same-day/short-term steps) is delegated to the official
+// `ts-fsrs` package. This module only translates between Lacuna's persisted Card
+// shape and ts-fsrs's Card, and exposes a couple of small, pure helpers. There is
+// deliberately no hand-rolled FSRS maths here any more.
 
-import { W, FACTOR, DECAY, D_MIN, D_MAX, S_MIN } from './params';
-import type { Grade } from '../db/types';
+import {
+  fsrs,
+  createEmptyCard,
+  State,
+  type FSRS,
+  type Card as TsCard,
+  type Grade as TsGrade,
+} from 'ts-fsrs';
+import type { Card, FsrsCardState, FsrsParameters, Grade } from '../db/types';
 
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
+export type { FSRS } from 'ts-fsrs';
+
+/** Build an FSRS-6 scheduler from a deck's persisted parameter set. */
+export function makeEngine(params: FsrsParameters): FSRS {
+  return fsrs({
+    w: params.w,
+    request_retention: params.requestRetention,
+    enable_short_term: true,
+  });
+}
+
+/** Decay exponent for the deck's forgetting curve: decay = -w20 (always negative). */
+export function decayOf(params: FsrsParameters): number {
+  return -params.w[20];
 }
 
 /**
- * Retrievability at elapsed time t (days) for stability S (days):
- *   R(t, S) = (1 + (19/81) * (t / S))^-0.5
+ * Translate a Lacuna Card into a ts-fsrs Card for a review taking place at `now`
+ * (epoch ms). A never-reviewed card becomes a fresh empty card so ts-fsrs applies
+ * the correct initial-stability/difficulty path.
  */
-export function retrievability(elapsedDays: number, stability: number): number {
-  if (stability <= 0) return 0;
-  const t = Math.max(elapsedDays, 0);
-  return Math.pow(1 + FACTOR * (t / stability), DECAY);
+export function toTsCard(card: Card, now: number): TsCard {
+  if (
+    card.lastReviewed === null ||
+    card.stability === null ||
+    card.difficulty === null
+  ) {
+    return createEmptyCard(new Date(now));
+  }
+  return {
+    due: new Date(card.due ?? card.lastReviewed),
+    stability: card.stability,
+    difficulty: card.difficulty,
+    elapsed_days: 0,
+    scheduled_days: card.scheduledDays,
+    learning_steps: card.learningSteps,
+    reps: card.reps,
+    lapses: card.lapses,
+    state: card.state as State,
+    last_review: new Date(card.lastReviewed),
+  };
 }
 
-export interface FsrsState {
+/** The memory-state fields produced by a review, mapped back to Lacuna's shape. */
+export interface MemoryUpdate {
   stability: number;
   difficulty: number;
+  lastReviewed: number;
+  due: number;
+  scheduledDays: number;
+  learningSteps: number;
+  reps: number;
+  lapses: number;
+  state: FsrsCardState;
 }
 
-/** Initial stability for a first review: S_0 = w[g - 1]. */
-export function initialStability(grade: Grade): number {
-  return W[grade - 1];
+/** Map a ts-fsrs Card back to Lacuna's persisted memory fields. */
+export function fromTsCard(ts: TsCard, now: number): MemoryUpdate {
+  return {
+    stability: ts.stability,
+    difficulty: ts.difficulty,
+    lastReviewed: ts.last_review ? ts.last_review.getTime() : now,
+    due: ts.due.getTime(),
+    scheduledDays: ts.scheduled_days,
+    learningSteps: ts.learning_steps,
+    reps: ts.reps,
+    lapses: ts.lapses,
+    state: ts.state as FsrsCardState,
+  };
 }
 
-/** Initial difficulty for a first review: D_0 = clamp(w[4] - (g - 1) * w[5], 1, 10). */
-export function initialDifficulty(grade: Grade): number {
-  return clamp(W[4] - (grade - 1) * W[5], D_MIN, D_MAX);
-}
-
-/** Difficulty update for a subsequent review: D_new = clamp(D - w[6] * (g - 3), 1, 10). */
-export function nextDifficulty(difficulty: number, grade: Grade): number {
-  return clamp(difficulty - W[6] * (grade - 3), D_MIN, D_MAX);
+export interface ReviewResult {
+  memory: MemoryUpdate;
+  /** Retrievability at the instant of review; null on a first review. */
+  retrievabilityAtReview: number | null;
 }
 
 /**
- * Stability after a successful recall (g > 1):
- *   f_g = w[15] if g == 2, 1.0 if g == 3, w[16] if g == 4
- *   S_new = S * (1 + exp(w[8]) * (11 - D) * S^-w[9] * (exp(w[10] * (1 - R)) - 1) * f_g)
+ * Apply a grade to a card and return the new memory state plus the retrievability
+ * at review time. All of the actual FSRS-6 maths happens inside `engine.next`.
  */
-export function stabilityAfterSuccess(
-  stability: number,
-  difficulty: number,
-  retriev: number,
+export function applyReview(
+  engine: FSRS,
+  card: Card,
   grade: Grade,
-): number {
-  const fg = grade === 2 ? W[15] : grade === 4 ? W[16] : 1.0;
-  return (
-    stability *
-    (1 +
-      Math.exp(W[8]) *
-        (11 - difficulty) *
-        Math.pow(stability, -W[9]) *
-        (Math.exp(W[10] * (1 - retriev)) - 1) *
-        fg)
-  );
-}
-
-/**
- * Stability after a failed recall (g == 1):
- *   S_new = min(w[11] * D^-w[12] * ((S + 1)^w[13] - 1) * exp(w[14] * (1 - R)), S)
- *   S_new = max(S_new, 0.1)
- */
-export function stabilityAfterFailure(
-  stability: number,
-  difficulty: number,
-  retriev: number,
-): number {
-  const candidate =
-    W[11] *
-    Math.pow(difficulty, -W[12]) *
-    (Math.pow(stability + 1, W[13]) - 1) *
-    Math.exp(W[14] * (1 - retriev));
-  return Math.max(Math.min(candidate, stability), S_MIN);
-}
-
-export interface ReviewInput {
-  stability: number | null;
-  difficulty: number | null;
-  /** Retrievability at review time; required for subsequent reviews, ignored on the first. */
-  retriev: number | null;
-  grade: Grade;
-}
-
-/**
- * Apply a grade and return the new FSRS state. Handles both the first review
- * (stability/difficulty null) and subsequent reviews, success and failure.
- */
-export function applyReview(input: ReviewInput): FsrsState {
-  const { stability, difficulty, retriev, grade } = input;
-
-  // First review: stability and difficulty are null.
-  if (stability === null || difficulty === null) {
-    return {
-      stability: initialStability(grade),
-      difficulty: initialDifficulty(grade),
-    };
-  }
-
-  const newDifficulty = nextDifficulty(difficulty, grade);
-  const r = retriev ?? retrievability(0, stability);
-
-  const newStability =
-    grade > 1
-      ? stabilityAfterSuccess(stability, newDifficulty, r, grade)
-      : stabilityAfterFailure(stability, newDifficulty, r);
-
-  return { stability: newStability, difficulty: newDifficulty };
+  now: number,
+): ReviewResult {
+  const before = toTsCard(card, now);
+  const retrievabilityAtReview =
+    card.lastReviewed === null ? null : engine.get_retrievability(before, now, false);
+  const item = engine.next(before, new Date(now), grade as TsGrade);
+  return { memory: fromTsCard(item.card, now), retrievabilityAtReview };
 }
