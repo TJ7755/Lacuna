@@ -71,15 +71,13 @@ export function SessionReport({
           {summary.reachedGoal ? 'Goal reached' : 'Session complete'}
         </p>
         <h1 className="mb-8 font-display text-4xl tracking-tight md:text-5xl">
-          {summary.reachedGoal
-            ? 'Every card is exam-ready'
-            : 'Nice work'}
+          {summary.reachedGoal ? 'You’ve reached your goal' : 'Nice work'}
         </h1>
 
         {/* Progress before/after */}
         <div className="mb-6 rounded-2xl border border-line bg-surface p-6">
           <div className="mb-2 flex items-center justify-between text-sm text-ink-soft">
-            <span>Predicted mastery on exam day</span>
+            <span>{summary.objectiveLabel}</span>
             <span className="tabular text-ink">
               {Math.round(summary.masteryBefore * 100)}% →{' '}
               <span className="font-medium text-accent">

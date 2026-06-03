@@ -4,7 +4,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import type { Card, Deck, SessionHistoryEntry, UserPerformance } from '../db/types';
-import { masteryFraction } from '../fsrs/progress';
+import { progressValue } from '../fsrs/objective';
 
 export function useDecks(): Deck[] | undefined {
   return useLiveQuery(() => db.decks.orderBy('createdAt').toArray(), []);
@@ -47,7 +47,7 @@ export function useSessionHistory(
 
 export interface DeckSummary {
   count: number;
-  /** Fraction of cards predicted at or above mastery on exam day (0..1). */
+  /** Objective-aware progress (0..1): mean predicted R, or fraction secured. */
   mastery: number;
   /** Number of cards that have never been reviewed. */
   unreviewed: number;
@@ -72,7 +72,7 @@ export function useDeckSummaries(): Record<string, DeckSummary> | undefined {
       const deckCards = byDeck[deck.id] ?? [];
       summaries[deck.id] = {
         count: deckCards.length,
-        mastery: masteryFraction(deckCards, deck),
+        mastery: progressValue(deckCards, deck),
         unreviewed: deckCards.filter((c) => c.lastReviewed === null).length,
       };
     }

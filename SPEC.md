@@ -8,10 +8,13 @@ Motion · react-markdown + remark-gfm + remark-math + rehype-katex + rehype-high
 Recharts. Fonts: Fraunces (display), Geist (body), JetBrains Mono (code/timer).
 
 ## Data model (Dexie, `src/db/`)
-- **Deck**: `id, name, examDate, createdAt, examDatePromptDismissed?`. `examDate` defaults to
-  creation + 7 days at 23:59 local.
+- **Deck**: `id, name, examDate, createdAt, examDatePromptDismissed?, fsrsVersion, fsrsParameters,
+  examObjective`. `examDate` defaults to creation + 7 days at 23:59 local. `fsrsParameters` holds
+  the 21 FSRS-6 weights + request retention; `examObjective` is `'expectedMarks'` (default) or
+  `'securedTopics'`.
 - **Card**: `id, deckId, type('front_back'|'cloze'), front, back, stability, difficulty, lastReviewed,
-  history[], createdAt`. Cloze source lives in `front`; `back` empty for cloze.
+  reps, lapses, state, due, scheduledDays, learningSteps, history[], createdAt`. Cloze source lives
+  in `front`; `back` empty for cloze. The reps/lapses/state/due fields mirror ts-fsrs's card.
 - **SessionHistory**: `{timestamp, deckId, averagePredictedRetrievability}` — written **per answered
   card**; analytics aggregate to the last snapshot per calendar day.
 - **UserPerformance** (**per deck**): Welford running mean/stddev + `m2` + `totalCorrectReviews`,
@@ -29,12 +32,17 @@ and with w20=0.5 it reduces to FSRS-4.5's `factor=19/81`. Elapsed time in fracti
 `d_exam_remaining` clamped at 0.
 
 ## Learn mode (`src/pages/LearnMode.tsx`)
-- **Delta-R queue**, re-sorted on every serve. Brand-new cards assume `S=w[2]`.
+- **Objective-driven queue** (`src/fsrs/objective.ts`), re-sorted on every serve. The scheduler's
+  sort metric and the progress bar are both derived from `deck.examObjective`, so they can never
+  disagree (the core invariant). Brand-new cards assume a Good initial stability `S=w[2]`.
 - **Invisible timer**: starts on reveal, stops on "Show answer"; runs continuously and never pauses.
 - **Grade mapping**: No → 1. Yes: calibration (<20 correct in deck) uses 3s/8s; otherwise μ ± 0.75σ.
 - **Cooldown** = 5 on a fail (scaled to `deckSize-1` under 6 cards), in-memory; skip-and-decrement.
-- **Progress bar** = % of cards with predicted exam-day `R ≥ 0.90`. Session **auto-ends at 100%**, or on
-  manual exit; both show the **report** (cards, accuracy, mean time, grade distribution, focus %).
+- **Progress bar** follows the objective: under `expectedMarks` it is the **mean predicted exam-day
+  R** across the deck; under `securedTopics` it is the **% of cards with predicted exam-day R ≥ 0.90**.
+  Session **auto-ends** when the objective is met (all cards secured, or no card offers a further
+  meaningful gain in Σ R), or on manual exit; both show the **report** (cards, accuracy, mean time,
+  grade distribution, focus %).
 - **Distraction** (Page Visibility + blur) is recorded for the report only — no effect on grade.
 - Keyboard: Space = show answer; Y/J = Yes; N/F = No.
 - **Exam-date prompt** appears on first Study (date + time, "don't ask again"); also editable in deck

@@ -11,8 +11,11 @@ export interface SessionEvent {
 /** Aggregated outcome of a Learn session, shown in the report. */
 export interface SessionSummary {
   events: SessionEvent[];
+  /** Objective-aware progress (0..1) before and after the session. */
   masteryBefore: number;
   masteryAfter: number;
+  /** Heading describing what the progress figures mean for this deck's objective. */
+  objectiveLabel: string;
   focusFraction: number;
   reachedGoal: boolean;
 }

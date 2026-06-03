@@ -14,6 +14,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { useToast } from '../components/ui/Toast';
 import { CheckIcon, MergeIcon, PlusIcon, TrashIcon } from '../components/ui/icons';
 import { relativeExam } from '../utils/datetime';
+import { progressNoun } from '../fsrs/objective';
 import { cn } from '../components/ui/cn';
 import type { Deck } from '../db/types';
 
@@ -298,7 +299,7 @@ function DeckCard({
         <div className="mb-2 flex items-center justify-between text-sm text-ink-soft">
           <span>{summary?.count ?? 0} cards</span>
           <span className="tabular">
-            {Math.round((summary?.mastery ?? 0) * 100)}% mastered
+            {Math.round((summary?.mastery ?? 0) * 100)}% {progressNoun(deck)}
           </span>
         </div>
         <ProgressBar value={summary?.mastery ?? 0} height={8} />

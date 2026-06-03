@@ -14,7 +14,11 @@ import { CardEditorModal } from '../components/cards/CardEditorModal';
 import { DeckSettingsModal } from '../components/cards/DeckSettingsModal';
 import { ExamDatePrompt } from '../components/cards/ExamDatePrompt';
 import { DeckAnalytics } from '../components/analytics/DeckAnalytics';
-import { masteryFraction } from '../fsrs/progress';
+import {
+  progressDescription,
+  progressHeading,
+  progressValue,
+} from '../fsrs/objective';
 import { formatDateTime, relativeExam } from '../utils/datetime';
 import {
   CardsIcon,
@@ -56,7 +60,7 @@ export function DeckView() {
     );
   }
 
-  const mastery = masteryFraction(cards, deck);
+  const progress = progressValue(cards, deck);
 
   function startStudy() {
     if (cards!.length === 0) return;
@@ -123,16 +127,13 @@ export function DeckView() {
         {/* Mastery summary */}
         <div className="mt-6 rounded-2xl border border-line bg-surface p-5">
           <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="text-ink-soft">Predicted mastery on exam day</span>
+            <span className="text-ink-soft">{progressHeading(deck)}</span>
             <span className="tabular font-medium text-ink">
-              {Math.round(mastery * 100)}%
+              {Math.round(progress * 100)}%
             </span>
           </div>
-          <ProgressBar value={mastery} />
-          <p className="mt-3 text-xs text-ink-faint">
-            Proportion of cards predicted to be recalled with 90% or higher
-            retrievability when your exam arrives.
-          </p>
+          <ProgressBar value={progress} />
+          <p className="mt-3 text-xs text-ink-faint">{progressDescription(deck)}</p>
         </div>
       </header>
 

@@ -11,7 +11,14 @@ import {
   selectNextCard,
   type CooldownMap,
 } from '../fsrs/cooldown';
-import { masteryFraction } from '../fsrs/progress';
+import {
+  isObjectiveComplete,
+  makeObjectiveContext,
+  progressHeading,
+  progressNoun,
+  progressValue,
+  type ObjectiveContext,
+} from '../fsrs/objective';
 import { CardContent } from '../components/cards/CardContent';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { Button } from '../components/ui/Button';
@@ -30,7 +37,8 @@ export function LearnMode() {
   const [phase, setPhase] = useState<Phase>('loading');
   const [deck, setDeck] = useState<Deck | null>(null);
   const [current, setCurrent] = useState<Card | null>(null);
-  const [mastery, setMastery] = useState(0);
+  // Objective-aware progress value (0..1): mean predicted R or fraction secured.
+  const [progress, setProgress] = useState(0);
   const [summary, setSummary] = useState<SessionSummary | null>(null);
 
   // Session-only mutable state held in refs so it never triggers re-renders mid-card,
@@ -40,9 +48,11 @@ export function LearnMode() {
   const timerStart = useRef(0);
   const responseTime = useRef(0);
   const events = useRef<SessionEvent[]>([]);
-  const masteryBefore = useRef(0);
+  const progressBefore = useRef(0);
   const cardsRef = useRef<Card[]>([]);
   const deckRef = useRef<Deck | null>(null);
+  // The deck's exam objective (scheduler ordering + progress bar share this).
+  const objCtx = useRef<ObjectiveContext | null>(null);
   // Guards against a double key-press / click submitting the same card twice while the
   // review is being persisted.
   const submitting = useRef(false);
@@ -62,8 +72,9 @@ export function LearnMode() {
         : Math.max(0, Math.min(1, (total - distraction.blurredMs()) / total));
     setSummary({
       events: events.current,
-      masteryBefore: masteryBefore.current,
-      masteryAfter: masteryFraction(cardsRef.current, currentDeck),
+      masteryBefore: progressBefore.current,
+      masteryAfter: progressValue(cardsRef.current, currentDeck),
+      objectiveLabel: progressHeading(currentDeck),
       focusFraction: focus,
       reachedGoal,
     });
@@ -76,8 +87,14 @@ export function LearnMode() {
   const serveNext = useCallback(
     (pool: Card[]) => {
       const currentDeck = deckRef.current;
-      if (!currentDeck) return;
-      const next = selectNextCard(pool, currentDeck, cooldowns.current);
+      const oc = objCtx.current;
+      if (!currentDeck || !oc) return;
+      // Stop as soon as the objective is met (all secured, or no marks left to gain).
+      if (isObjectiveComplete(pool, oc)) {
+        finish(true);
+        return;
+      }
+      const next = selectNextCard(pool, oc, cooldowns.current);
       if (!next) {
         finish(true);
         return;
@@ -109,16 +126,18 @@ export function LearnMode() {
       perfRef.current = perf ?? emptyPerformance(deckId);
       cardsRef.current = deckCards;
       deckRef.current = loadedDeck;
-      masteryBefore.current = masteryFraction(deckCards, loadedDeck);
+      objCtx.current = makeObjectiveContext(loadedDeck);
+      progressBefore.current = progressValue(deckCards, loadedDeck);
       setDeck(loadedDeck);
-      setMastery(masteryBefore.current);
+      setProgress(progressBefore.current);
 
-      if (masteryBefore.current >= 1) {
-        // Already exam-ready: show the report straight away.
+      if (isObjectiveComplete(deckCards, objCtx.current)) {
+        // Objective already met: show the report straight away.
         setSummary({
           events: [],
-          masteryBefore: masteryBefore.current,
-          masteryAfter: masteryBefore.current,
+          masteryBefore: progressBefore.current,
+          masteryAfter: progressBefore.current,
+          objectiveLabel: progressHeading(loadedDeck),
           focusFraction: 1,
           reachedGoal: true,
         });
@@ -171,10 +190,10 @@ export function LearnMode() {
 
       events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
 
-      const newMastery = masteryFraction(nextCards, deck);
-      setMastery(newMastery);
+      const oc = objCtx.current;
+      setProgress(progressValue(nextCards, deck));
 
-      if (newMastery >= 1) finish(true);
+      if (oc && isObjectiveComplete(nextCards, oc)) finish(true);
       else serveNext(nextCards);
       submitting.current = false;
     },
@@ -219,7 +238,7 @@ export function LearnMode() {
               ? undefined
               : () => {
                   events.current = [];
-                  masteryBefore.current = masteryFraction(cardsRef.current, deck);
+                  progressBefore.current = progressValue(cardsRef.current, deck);
                   setSummary(null);
                   serveNext(cardsRef.current);
                 }
@@ -239,9 +258,11 @@ export function LearnMode() {
               <span className="truncate font-medium uppercase tracking-[0.14em]">
                 {deck.name}
               </span>
-              <span className="tabular">{Math.round(mastery * 100)}% exam-ready</span>
+              <span className="tabular">
+                {Math.round(progress * 100)}% {progressNoun(deck)}
+              </span>
             </div>
-            <ProgressBar value={mastery} height={6} />
+            <ProgressBar value={progress} height={6} />
           </div>
           <Button variant="ghost" size="sm" onClick={() => finish(false)}>
             Exit
