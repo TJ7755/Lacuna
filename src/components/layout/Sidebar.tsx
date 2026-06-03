@@ -1,0 +1,186 @@
+import { NavLink, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'motion/react';
+import { useTheme } from '../../state/ThemeContext';
+import { useDecks } from '../../state/useData';
+import { cn } from '../ui/cn';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DashboardIcon,
+  FlaskIcon,
+  MoonIcon,
+  SettingsIcon,
+  SunIcon,
+} from '../ui/icons';
+
+interface SidebarProps {
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+}
+
+function NavItem({
+  to,
+  icon,
+  label,
+  collapsed,
+  end,
+}: {
+  to: string;
+  icon: React.ReactNode;
+  label: string;
+  collapsed: boolean;
+  end?: boolean;
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      title={collapsed ? label : undefined}
+      className={({ isActive }) =>
+        cn(
+          'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
+          collapsed && 'justify-center px-0',
+          isActive
+            ? 'bg-accent-soft text-accent'
+            : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+        )
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <motion.span
+              layoutId="nav-active"
+              className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent"
+            />
+          )}
+          <span className="shrink-0">{icon}</span>
+          {!collapsed && <span className="truncate">{label}</span>}
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
+  const { theme, toggleTheme } = useTheme();
+  const decks = useDecks();
+  const location = useLocation();
+
+  return (
+    <motion.aside
+      initial={false}
+      animate={{ width: collapsed ? 72 : 264 }}
+      transition={{ type: 'spring', stiffness: 220, damping: 28 }}
+      className="relative z-20 flex h-screen flex-col border-r border-line bg-surface/80 backdrop-blur-xl"
+    >
+      {/* Brand */}
+      <div
+        className={cn(
+          'flex items-center gap-3 px-5 py-5',
+          collapsed && 'justify-center px-0',
+        )}
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-[hsl(28_60%_14%)]">
+          <FlaskIcon width={20} height={20} />
+        </span>
+        {!collapsed && (
+          <div className="leading-tight">
+            <div className="font-display text-xl tracking-tight">Lacuna</div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-ink-faint">
+              Spaced revision
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Primary nav */}
+      <nav className="flex flex-col gap-1 px-3">
+        <NavItem
+          to="/"
+          end
+          icon={<DashboardIcon />}
+          label="Dashboard"
+          collapsed={collapsed}
+        />
+        <NavItem
+          to="/settings"
+          icon={<SettingsIcon />}
+          label="Settings"
+          collapsed={collapsed}
+        />
+      </nav>
+
+      {/* Deck list */}
+      <div className="mt-6 flex min-h-0 flex-1 flex-col px-3">
+        {!collapsed && (
+          <div className="px-3 pb-2 text-[11px] uppercase tracking-[0.16em] text-ink-faint">
+            Decks
+          </div>
+        )}
+        <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pb-2">
+          <AnimatePresence initial={false}>
+            {decks?.map((deck) => {
+              const active = location.pathname === `/deck/${deck.id}`;
+              return (
+                <NavLink
+                  key={deck.id}
+                  to={`/deck/${deck.id}`}
+                  title={collapsed ? deck.name : undefined}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    collapsed && 'justify-center px-0',
+                    active
+                      ? 'bg-accent-soft text-accent'
+                      : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'h-2 w-2 shrink-0 rounded-full',
+                      active ? 'bg-accent' : 'bg-line-strong',
+                    )}
+                  />
+                  {!collapsed && <span className="truncate">{deck.name}</span>}
+                </NavLink>
+              );
+            })}
+          </AnimatePresence>
+          {decks && decks.length === 0 && !collapsed && (
+            <p className="px-3 py-2 text-sm text-ink-faint">No decks yet.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Footer: theme + collapse */}
+      <div
+        className={cn(
+          'flex items-center gap-2 border-t border-line px-3 py-3',
+          collapsed && 'flex-col',
+        )}
+      >
+        <button
+          onClick={toggleTheme}
+          title="Toggle colour theme"
+          aria-label="Toggle colour theme"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+        >
+          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        </button>
+        {!collapsed && (
+          <span className="flex-1 text-xs text-ink-faint">
+            {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+          </span>
+        )}
+        <button
+          onClick={onToggleCollapsed}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+        >
+          {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+        </button>
+      </div>
+    </motion.aside>
+  );
+}

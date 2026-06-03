@@ -1,0 +1,219 @@
+@import 'tailwindcss';
+@import 'highlight.js/styles/github-dark.css';
+@import 'katex/dist/katex.min.css';
+
+/* Distinctive typography (Fraunces / Geist / JetBrains Mono) is loaded via <link> in index.html. */
+
+/* Class-based dark mode: utilities prefixed `dark:` apply within `.dark`. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * "Quiet laboratory" palette. Light = warm off-white paper; dark = near-black charcoal.
+ * A single warm amber accent carries every interactive and success state.
+ * Defined as raw custom properties so they can switch with the `.dark` class, then
+ * surfaced to Tailwind via `@theme inline` so utilities like `bg-surface` resolve to them.
+ */
+:root {
+  --paper: 38 33% 96%;
+  --surface: 40 30% 99%;
+  --surface-raised: 0 0% 100%;
+  --ink: 30 12% 14%;
+  --ink-soft: 30 8% 38%;
+  --ink-faint: 30 6% 58%;
+  --line: 34 14% 86%;
+  --line-strong: 34 12% 78%;
+  --accent: 32 90% 48%;
+  --accent-soft: 32 85% 92%;
+  --accent-ink: 28 60% 24%;
+  --positive: 150 45% 38%;
+  --negative: 6 62% 48%;
+  --grain-opacity: 0.025;
+}
+
+.dark {
+  --paper: 30 8% 7%;
+  --surface: 30 7% 9%;
+  --surface-raised: 30 6% 12%;
+  --ink: 36 20% 92%;
+  --ink-soft: 34 10% 66%;
+  --ink-faint: 34 8% 46%;
+  --line: 30 6% 18%;
+  --line-strong: 30 6% 26%;
+  --accent: 34 92% 56%;
+  --accent-soft: 32 40% 18%;
+  --accent-ink: 36 90% 70%;
+  --positive: 150 40% 55%;
+  --negative: 6 70% 62%;
+  --grain-opacity: 0.04;
+}
+
+@theme inline {
+  --color-paper: hsl(var(--paper));
+  --color-surface: hsl(var(--surface));
+  --color-surface-raised: hsl(var(--surface-raised));
+  --color-ink: hsl(var(--ink));
+  --color-ink-soft: hsl(var(--ink-soft));
+  --color-ink-faint: hsl(var(--ink-faint));
+  --color-line: hsl(var(--line));
+  --color-line-strong: hsl(var(--line-strong));
+  --color-accent: hsl(var(--accent));
+  --color-accent-soft: hsl(var(--accent-soft));
+  --color-accent-ink: hsl(var(--accent-ink));
+  --color-positive: hsl(var(--positive));
+  --color-negative: hsl(var(--negative));
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Geist', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--line));
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: hsl(var(--paper));
+    color: hsl(var(--ink));
+    font-family: var(--font-body);
+    font-weight: 400;
+    /* Subtle paper grain for atmosphere and depth rather than a flat fill. */
+    background-image: radial-gradient(
+      hsl(var(--ink) / var(--grain-opacity)) 0.5px,
+      transparent 0.5px
+    );
+    background-size: 4px 4px;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background-color: hsl(var(--accent) / 0.25);
+  }
+
+  /* Refined, theme-aware scrollbars. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--line-strong)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--line-strong));
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Honour reduced-motion preferences across all transitions and animations. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+/* Markdown / KaTeX rendered content sits inside `.prose-lacuna`. */
+.prose-lacuna {
+  line-height: 1.65;
+}
+.prose-lacuna > :first-child { margin-top: 0; }
+.prose-lacuna > :last-child { margin-bottom: 0; }
+.prose-lacuna p { margin: 0.6em 0; }
+.prose-lacuna h1, .prose-lacuna h2, .prose-lacuna h3 { margin: 0.8em 0 0.4em; line-height: 1.2; }
+.prose-lacuna h1 { font-size: 1.5em; }
+.prose-lacuna h2 { font-size: 1.3em; }
+.prose-lacuna h3 { font-size: 1.12em; }
+.prose-lacuna ul, .prose-lacuna ol { margin: 0.5em 0; padding-left: 1.4em; }
+.prose-lacuna ul { list-style: disc; }
+.prose-lacuna ol { list-style: decimal; }
+.prose-lacuna li { margin: 0.2em 0; }
+.prose-lacuna a { color: hsl(var(--accent)); text-decoration: underline; text-underline-offset: 2px; }
+.prose-lacuna strong { font-weight: 600; color: hsl(var(--ink)); }
+.prose-lacuna em { font-style: italic; }
+.prose-lacuna blockquote {
+  border-left: 3px solid hsl(var(--accent) / 0.5);
+  padding-left: 1em;
+  margin: 0.7em 0;
+  color: hsl(var(--ink-soft));
+}
+.prose-lacuna code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background-color: hsl(var(--ink) / 0.07);
+  padding: 0.12em 0.36em;
+  border-radius: 4px;
+}
+.prose-lacuna pre {
+  background-color: hsl(var(--ink) / 0.06);
+  border: 1px solid hsl(var(--line));
+  border-radius: 10px;
+  padding: 0.9em 1.1em;
+  overflow-x: auto;
+  margin: 0.7em 0;
+}
+.prose-lacuna pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.85em;
+}
+.prose-lacuna img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--line));
+  margin: 0.6em 0;
+}
+.prose-lacuna table {
+  border-collapse: collapse;
+  margin: 0.7em 0;
+  width: 100%;
+}
+.prose-lacuna th, .prose-lacuna td {
+  border: 1px solid hsl(var(--line));
+  padding: 0.4em 0.7em;
+  text-align: left;
+}
+.prose-lacuna hr {
+  border: none;
+  border-top: 1px solid hsl(var(--line));
+  margin: 1em 0;
+}
+
+/* Revealed cloze answer: highlighted inline within the full sentence. */
+.cloze-reveal {
+  background-color: hsl(var(--accent) / 0.22);
+  color: hsl(var(--accent-ink));
+  font-weight: 600;
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.cloze-blank {
+  color: hsl(var(--accent));
+  font-weight: 600;
+}

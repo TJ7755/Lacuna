@@ -1,0 +1,167 @@
+// Import/Export: the entire database serialises to a single JSON file and back.
+
+import { db } from './schema';
+import type {
+  BackupFile,
+  Card,
+  Deck,
+  SessionHistoryEntry,
+  UserPerformance,
+} from './types';
+
+export const BACKUP_VERSION = 1;
+
+/** Gather the whole database into a single backup object. */
+export async function exportDatabase(): Promise<BackupFile> {
+  const [decks, cards, sessionHistory, userPerformance] = await Promise.all([
+    db.decks.toArray(),
+    db.cards.toArray(),
+    db.sessionHistory.toArray(),
+    db.userPerformance.toArray(),
+  ]);
+  return {
+    app: 'lacuna',
+    version: BACKUP_VERSION,
+    exportedAt: Date.now(),
+    decks,
+    cards,
+    sessionHistory,
+    userPerformance,
+  };
+}
+
+/** Trigger a browser download of the backup as a timestamped JSON file. */
+export async function downloadBackup(): Promise<void> {
+  const data = await exportDatabase();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: 'application/json',
+  });
+  const url = URL.createObjectURL(blob);
+  const stamp = new Date().toISOString().slice(0, 10);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lacuna-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Validate that an unknown parsed object is a Lacuna backup file. */
+export function validateBackup(data: unknown): data is BackupFile {
+  if (typeof data !== 'object' || data === null) return false;
+  const b = data as Partial<BackupFile>;
+  return (
+    b.app === 'lacuna' &&
+    typeof b.version === 'number' &&
+    Array.isArray(b.decks) &&
+    Array.isArray(b.cards) &&
+    Array.isArray(b.sessionHistory) &&
+    Array.isArray(b.userPerformance)
+  );
+}
+
+export type ImportMode = 'replace' | 'merge';
+
+/** The more recent of two records wins a merge conflict, using a timestamp field. */
+function newerWins<T>(existing: T, incoming: T, key: keyof T): T {
+  const a = (existing[key] as unknown as number) ?? 0;
+  const b = (incoming[key] as unknown as number) ?? 0;
+  return b >= a ? incoming : existing;
+}
+
+/**
+ * Import a backup. In "replace" mode the database is cleared first; in "merge" mode
+ * records are matched by id and the most recently touched copy wins each conflict.
+ * SessionHistory is append-only and de-duplicated by (timestamp, deckId).
+ */
+export async function importBackup(
+  backup: BackupFile,
+  mode: ImportMode,
+): Promise<void> {
+  await db.transaction(
+    'rw',
+    db.decks,
+    db.cards,
+    db.sessionHistory,
+    db.userPerformance,
+    async () => {
+      if (mode === 'replace') {
+        await Promise.all([
+          db.decks.clear(),
+          db.cards.clear(),
+          db.sessionHistory.clear(),
+          db.userPerformance.clear(),
+        ]);
+        await db.decks.bulkAdd(backup.decks);
+        await db.cards.bulkAdd(backup.cards);
+        await db.userPerformance.bulkAdd(backup.userPerformance);
+        // Drop incoming auto-increment ids so they are reassigned cleanly.
+        await db.sessionHistory.bulkAdd(
+          backup.sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
+        );
+        return;
+      }
+
+      // Merge decks (newest createdAt/examDate touch wins).
+      const existingDecks = new Map((await db.decks.toArray()).map((d) => [d.id, d]));
+      const mergedDecks: Deck[] = [];
+      for (const incoming of backup.decks) {
+        const existing = existingDecks.get(incoming.id);
+        mergedDecks.push(existing ? newerWins(existing, incoming, 'examDate') : incoming);
+      }
+      await db.decks.bulkPut(mergedDecks);
+
+      // Merge cards (most recent lastReviewed wins; new cards added as-is).
+      const existingCards = new Map((await db.cards.toArray()).map((c) => [c.id, c]));
+      const mergedCards: Card[] = [];
+      for (const incoming of backup.cards) {
+        const existing = existingCards.get(incoming.id);
+        if (!existing) {
+          mergedCards.push(incoming);
+        } else {
+          const a = existing.lastReviewed ?? existing.createdAt;
+          const b = incoming.lastReviewed ?? incoming.createdAt;
+          mergedCards.push(b >= a ? incoming : existing);
+        }
+      }
+      await db.cards.bulkPut(mergedCards);
+
+      // Merge performance (most correct reviews wins, as a reasonable proxy for freshness).
+      const existingPerf = new Map(
+        (await db.userPerformance.toArray()).map((p) => [p.deckId, p]),
+      );
+      const mergedPerf: UserPerformance[] = [];
+      for (const incoming of backup.userPerformance) {
+        const existing = existingPerf.get(incoming.deckId);
+        mergedPerf.push(
+          existing
+            ? newerWins(existing, incoming, 'totalCorrectReviews')
+            : incoming,
+        );
+      }
+      await db.userPerformance.bulkPut(mergedPerf);
+
+      // Append session history that we do not already have.
+      const existingKeys = new Set(
+        (await db.sessionHistory.toArray()).map(
+          (s) => `${s.timestamp}:${s.deckId}`,
+        ),
+      );
+      const toAdd = backup.sessionHistory
+        .filter((s) => !existingKeys.has(`${s.timestamp}:${s.deckId}`))
+        .map(({ id: _id, ...rest }) => rest as SessionHistoryEntry);
+      if (toAdd.length) await db.sessionHistory.bulkAdd(toAdd);
+    },
+  );
+}
+
+/** Read and parse a user-selected JSON backup file. */
+export async function readBackupFile(file: File): Promise<BackupFile> {
+  const text = await file.text();
+  const data = JSON.parse(text);
+  if (!validateBackup(data)) {
+    throw new Error('This file is not a valid Lacuna backup.');
+  }
+  return data;
+}

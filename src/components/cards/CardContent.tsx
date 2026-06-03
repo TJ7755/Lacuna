@@ -1,0 +1,30 @@
+import { MarkdownView } from '../markdown/MarkdownView';
+import type { Card } from '../../db/types';
+
+type Side = 'front' | 'back';
+
+/**
+ * Render one side of a card, handling both card types:
+ *  - front_back: the front or back Markdown directly.
+ *  - cloze: the same source, shown with blanks (front) or revealed answers (back).
+ */
+export function CardContent({
+  card,
+  side,
+  className,
+}: {
+  card: Card;
+  side: Side;
+  className?: string;
+}) {
+  if (card.type === 'cloze') {
+    return (
+      <MarkdownView
+        source={card.front}
+        clozeMode={side === 'front' ? 'front' : 'back'}
+        className={className}
+      />
+    );
+  }
+  return <MarkdownView source={side === 'front' ? card.front : card.back} className={className} />;
+}
