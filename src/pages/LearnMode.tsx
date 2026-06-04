@@ -64,6 +64,7 @@ export function LearnMode() {
   const { deckId } = useParams<{ deckId: string }>();
   const [searchParams] = useSearchParams();
   const tagFilter = searchParams.get('tag');
+  const cramMode = searchParams.get('mode') === 'cram';
   const navigate = useNavigate();
   const distraction = useDistraction();
   const [gradingMode] = useGradingMode();
@@ -193,7 +194,7 @@ export function LearnMode() {
       decks.forEach((d, i) => perfMap.set(d.id, perfs[i] ?? emptyPerformance(d.id)));
       perfRef.current = perfMap;
       decksRef.current = new Map(decks.map((d) => [d.id, d]));
-      const ctx = makeSessionContext(decks);
+      const ctx = makeSessionContext(decks, cramMode ? 'cram' : 'objective');
       ctxRef.current = ctx;
       cardsRef.current = cards;
       setSingleDeck(deckId ? decks[0] : null);
@@ -237,7 +238,7 @@ export function LearnMode() {
     return () => {
       cancelled = true;
     };
-  }, [deckId, tagFilter, navigate, serveNext]);
+  }, [deckId, tagFilter, cramMode, navigate, serveNext]);
 
   const reveal = useCallback(() => {
     setPhase((p) => {

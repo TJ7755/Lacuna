@@ -20,8 +20,12 @@ import {
 import { selectNextCard, type CooldownMap } from './cooldown';
 import { studyPool } from './eligibility';
 import { schedulingHorizon } from './horizon';
+import { cramScore } from './cram';
 import { daysUntil } from '../utils/datetime';
 import type { Card, Deck } from '../db/types';
+
+/** How a session orders cards: by the deck objective, or exam-eve cram (weakest first). */
+export type SessionMode = 'objective' | 'cram';
 
 /** Per-deck scoring context held for the life of a session. */
 export interface SessionDeckContext {
@@ -32,15 +36,20 @@ export interface SessionDeckContext {
 /** A whole session's deck contexts, keyed by deck id. */
 export interface SessionContext {
   decks: Map<string, SessionDeckContext>;
+  /** Ordering mode for the session. Defaults to the deck objective. */
+  mode: SessionMode;
 }
 
 /** Build the session context once from the decks being studied. */
-export function makeSessionContext(decks: Deck[]): SessionContext {
+export function makeSessionContext(
+  decks: Deck[],
+  mode: SessionMode = 'objective',
+): SessionContext {
   const map = new Map<string, SessionDeckContext>();
   for (const deck of decks) {
     map.set(deck.id, { deck, oc: makeObjectiveContext(deck) });
   }
-  return { decks: map };
+  return { decks: map, mode };
 }
 
 /** Exam-proximity urgency: nearer exams weigh more. Smooth and always positive.
@@ -79,6 +88,24 @@ export function selectNext(
 ): Card | null {
   const pool = sessionServePool(cards, ctx, now);
   if (pool.length === 0) return null;
+
+  if (ctx.mode === 'cram') {
+    // Exam-eve cram: weakest predicted exam-day card first, across every deck in
+    // the session. Cooldown-eligible cards win; otherwise serve the soonest.
+    const cramPriority = new Map<string, number>();
+    for (const card of pool) {
+      const dc = ctx.decks.get(card.deckId);
+      if (dc) cramPriority.set(card.id, cramScore(card, dc.oc, now));
+    }
+    const ordered = pool
+      .slice()
+      .sort((a, b) => (cramPriority.get(b.id) ?? 0) - (cramPriority.get(a.id) ?? 0));
+    const ready = ordered.find((c) => (cooldowns.get(c.id) ?? 0) <= 0);
+    if (ready) return ready;
+    return ordered.reduce((best, c) =>
+      (cooldowns.get(c.id) ?? 0) < (cooldowns.get(best.id) ?? 0) ? c : best,
+    );
+  }
 
   if (ctx.decks.size === 1) {
     const only = ctx.decks.values().next().value as SessionDeckContext;

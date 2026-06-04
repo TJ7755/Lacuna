@@ -19,6 +19,7 @@ import {
   progressValue,
 } from '../fsrs/objective';
 import { examHasPassed, MAINTENANCE_HORIZON_DAYS } from '../fsrs/horizon';
+import { examEveAvailable, EXAM_EVE_WINDOW_HOURS } from '../fsrs/cram';
 import { availableCards } from '../fsrs/eligibility';
 import { useToast } from '../components/ui/Toast';
 import {
@@ -226,6 +227,28 @@ export function DeckView() {
           />
         )}
       </AnimatePresence>
+
+      {/* Exam-eve cram: an explicit mode offered only inside the final window */}
+      {!deck.archived && examEveAvailable(deck) && cards.length > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-4 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-5">
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-xl">Exam-eve cram</h2>
+            <p className="text-sm text-ink-soft">
+              Your exam is within {EXAM_EVE_WINDOW_HOURS} hours. Cram mode puts your weakest
+              cards first to get as many over the line as possible. It trades long-term
+              retention for exam-day coverage, so use it only for the final push.
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => navigate(`${studyPath}${visibleTag ? '&' : '?'}mode=cram`)}
+          >
+            <PlayIcon width={18} height={18} />
+            Start cram
+          </Button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="mb-6 flex gap-1 border-b border-line">
