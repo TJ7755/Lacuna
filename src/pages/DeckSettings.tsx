@@ -24,7 +24,11 @@ import {
   MAX_REQUEST_RETENTION,
   MIN_REQUEST_RETENTION,
 } from '../fsrs/params';
-import { countReviews, MIN_OPTIMISE_REVIEWS } from '../fsrs/optimise';
+import {
+  countReviews,
+  MIN_OPTIMISE_REVIEWS,
+  optimisationAvailable,
+} from '../fsrs/optimise';
 import { useOptimiser } from '../state/useOptimiser';
 import {
   optimiseEnabledForDeck,
@@ -298,7 +302,7 @@ function OptimisationPanel({ deck, cards }: { deck: Deck; cards: Card[] }) {
 
   const reviews = countReviews(cards);
   const enabled = optimiseEnabledForDeck(deck.autoOptimise, globalDefault);
-  const enoughData = reviews >= MIN_OPTIMISE_REVIEWS;
+  const enoughData = optimisationAvailable(reviews);
 
   async function applyWeights() {
     if (!optimiser.result) return;
@@ -343,8 +347,9 @@ function OptimisationPanel({ deck, cards }: { deck: Deck; cards: Card[] }) {
       <div className="mt-4 border-t border-line pt-4">
         {!enoughData ? (
           <p className="text-sm text-ink-faint">
-            Optimisation needs at least {MIN_OPTIMISE_REVIEWS} reviews to be reliable. This
-            deck has {reviews}. Keep revising and it will become available.
+            Optimisation needs at least {MIN_OPTIMISE_REVIEWS} reviews so Lacuna can fit on
+            older reviews and validate on a held-out recent slice. This deck has {reviews}.
+            Keep revising and it will become available.
           </p>
         ) : !enabled ? (
           <p className="text-sm text-ink-faint">
@@ -360,20 +365,32 @@ function OptimisationPanel({ deck, cards }: { deck: Deck; cards: Card[] }) {
         ) : optimiser.status === 'done' && optimiser.result ? (
           <div>
             <p className="mb-3 text-sm text-ink-soft">
-              Fit quality (log loss, lower is better):{' '}
+              Held-out fit quality (log loss, lower is better):{' '}
               <span className="tabular text-ink">
                 {optimiser.result.before.toFixed(4)} → {optimiser.result.after.toFixed(4)}
               </span>{' '}
-              over {optimiser.result.scored} scored reviews.
+              over {optimiser.result.scored} validation reviews.
             </p>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="primary" size="sm" onClick={applyWeights}>
-                Apply optimised weights
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => optimiser.reset()}>
-                Discard
-              </Button>
-            </div>
+            {optimiser.result.improved ? (
+              <div className="flex flex-wrap gap-2">
+                <Button variant="primary" size="sm" onClick={applyWeights}>
+                  Apply optimised weights
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => optimiser.reset()}>
+                  Discard
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <p className="mb-3 text-sm text-ink-faint">
+                  The fitted weights did not beat the defaults out of sample. Keep the
+                  defaults for this deck.
+                </p>
+                <Button variant="ghost" size="sm" onClick={() => optimiser.reset()}>
+                  Close
+                </Button>
+              </div>
+            )}
           </div>
         ) : optimiser.status === 'error' ? (
           <div>

@@ -24,7 +24,8 @@ import type { Card, Grade } from '../db/types';
  * is dominated by noise, so the action is gated and the threshold is stated in the
  * UI copy. FSRS's own guidance is that a few hundred reviews is the practical floor.
  */
-export const MIN_OPTIMISE_REVIEWS = 400;
+export const MIN_OPTIMISE_REVIEWS = 1000;
+export const HOLDOUT_FRACTION = 0.2;
 
 const EPS = 1e-6;
 const NUM_RELEARNING_STEPS = default_relearning_steps.length;
@@ -154,11 +155,92 @@ export interface OptimiseResult {
   before: number;
   after: number;
   scored: number;
+  improved: boolean;
+}
+
+export interface ValidationSplit {
+  trainingCards: Card[];
+  validationStart: number | null;
+}
+
+export function optimisationAvailable(reviewCount: number): boolean {
+  return reviewCount >= MIN_OPTIMISE_REVIEWS;
+}
+
+export function improvesOutOfSample(result: Pick<OptimiseResult, 'before' | 'after'>): boolean {
+  return result.after < result.before - 1e-9;
 }
 
 export function validateFittedWeights(w: number[]): number[] {
   if (w.length !== 21 || w.some((value) => !Number.isFinite(value))) {
     throw new Error('Optimiser returned an invalid parameter array.');
+  }
+
+  /**
+   * Chronological train/validation split over all review events in a deck.
+   * The most recent HOLDOUT_FRACTION is held out for out-of-sample scoring.
+   */
+  export function splitForValidation(
+    cards: Card[],
+    holdoutFraction: number = HOLDOUT_FRACTION,
+  ): ValidationSplit {
+    const timestamps = cards
+      .flatMap((card) => card.history.map((entry) => entry.timestamp))
+      .sort((a, b) => a - b);
+
+    if (timestamps.length === 0) {
+      return {
+        trainingCards: cards.map((card) => ({ ...card, history: [...card.history] })),
+        validationStart: null,
+      };
+    }
+
+    const holdoutCount = Math.max(1, Math.floor(timestamps.length * holdoutFraction));
+    const validationStart = timestamps[Math.max(0, timestamps.length - holdoutCount)];
+    return {
+      validationStart,
+      trainingCards: cards.map((card) => ({
+        ...card,
+        history: card.history.filter((entry) => entry.timestamp < validationStart),
+      })),
+    };
+  }
+
+  export function evaluateParametersOnHeldOut(
+    cards: Card[],
+    validationStart: number | null,
+    w: number[],
+    requestRetention: number = DEFAULT_REQUEST_RETENTION,
+  ): { logLoss: number; scored: number } {
+    if (validationStart === null) return { logLoss: Infinity, scored: 0 };
+
+    const engine = fsrs(
+      generatorParameters({ w, request_retention: requestRetention, enable_fuzz: false }),
+    );
+
+    let loss = 0;
+    let scored = 0;
+    for (const cardRow of cards) {
+      const history = [...cardRow.history].sort((a, b) => a.timestamp - b.timestamp);
+      if (history.length === 0) continue;
+
+      let card: TsCard = createEmptyCard(new Date(history[0].timestamp));
+      let hasPrior = false;
+      for (const review of history) {
+        const when = new Date(review.timestamp);
+        if (hasPrior && review.timestamp >= validationStart) {
+          const r = engine.get_retrievability(card, when, false);
+          const p = Math.min(1 - EPS, Math.max(EPS, r));
+          const y = review.grade > 1 ? 1 : 0;
+          loss += -(y * Math.log(p) + (1 - y) * Math.log(1 - p));
+          scored += 1;
+        }
+        card = engine.next(card, when, review.grade as TsGrade).card;
+        hasPrior = true;
+      }
+    }
+
+    return { logLoss: scored > 0 ? loss / scored : Infinity, scored };
   }
   const clipped = clipParameters(w, NUM_RELEARNING_STEPS);
   const outOfRange = clipped.some((value, i) => Math.abs(value - w[i]) > 1e-12);
@@ -182,12 +264,20 @@ export async function optimiseParameters(
   binding: FsrsOptimiserBinding,
   options: OptimiseOptions = {},
 ): Promise<OptimiseResult> {
-  const sequences = reviewSequences(cards);
+  const split = splitForValidation(cards);
   const requestRetention = options.requestRetention ?? DEFAULT_REQUEST_RETENTION;
   const baselineW = options.baselineW ? [...options.baselineW] : [...default_w];
-  const before = evaluateParameters(sequences, baselineW, requestRetention).logLoss;
+  const before = evaluateParametersOnHeldOut(
+    cards,
+    split.validationStart,
+    baselineW,
+    requestRetention,
+  ).logLoss;
 
-  const optimiserItems = historyToOptimiserItems(cards);
+  const optimiserItems = historyToOptimiserItems(split.trainingCards);
+  if (optimiserItems.length === 0) {
+    throw new Error('Optimisation needs more training reviews before fitting can run.');
+  }
   const trainSet = buildBindingItems(optimiserItems, binding);
   const fittedRaw = await binding.computeParameters(trainSet, {
     enableShortTerm: true,
@@ -199,6 +289,12 @@ export async function optimiseParameters(
   });
   const w = validateFittedWeights(fittedRaw);
 
-  const final = evaluateParameters(sequences, w, requestRetention);
-  return { w, before, after: final.logLoss, scored: final.scored };
+  const final = evaluateParametersOnHeldOut(cards, split.validationStart, w, requestRetention);
+  return {
+    w,
+    before,
+    after: final.logLoss,
+    scored: final.scored,
+    improved: improvesOutOfSample({ before, after: final.logLoss }),
+  };
 }

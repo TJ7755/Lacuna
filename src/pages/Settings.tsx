@@ -237,8 +237,9 @@ export function Settings() {
             <p className="mt-1 text-sm text-ink-soft">
               Fit each deck's FSRS weights to your own review history, which is where most of
               FSRS's efficiency comes from. On by default. Optimisation only runs once a deck
-              has at least {MIN_OPTIMISE_REVIEWS} reviews, and new weights are never applied
-              without your confirmation. You can override this per deck in its settings.
+              has at least {MIN_OPTIMISE_REVIEWS} reviews so it can validate out of sample, and
+              new weights are never applied without your confirmation. You can override this per
+              deck in its settings.
             </p>
           </div>
           <Toggle

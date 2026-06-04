@@ -4,10 +4,15 @@ import {
   buildBindingItems,
   countReviews,
   evaluateParameters,
+  evaluateParametersOnHeldOut,
   historyToOptimiserItems,
+  improvesOutOfSample,
+  optimisationAvailable,
   optimiseParameters,
   reviewSequences,
+  splitForValidation,
   validateFittedWeights,
+  HOLDOUT_FRACTION,
   MIN_OPTIMISE_REVIEWS,
 } from './optimise';
 import { MS_PER_DAY } from './params';
@@ -84,9 +89,11 @@ describe('review extraction and gating', () => {
   });
 
   it('exposes a sensible minimum-review threshold', () => {
-    expect(MIN_OPTIMISE_REVIEWS).toBeGreaterThanOrEqual(100);
+    expect(MIN_OPTIMISE_REVIEWS).toBeGreaterThanOrEqual(1000);
     // A tiny deck is below the bar (the UI gates the action on this).
-    expect(countReviews(syntheticDeck())).toBeLessThan(MIN_OPTIMISE_REVIEWS);
+    const reviews = countReviews(syntheticDeck());
+    expect(reviews).toBeLessThan(MIN_OPTIMISE_REVIEWS);
+    expect(optimisationAvailable(reviews)).toBe(false);
   });
 });
 
@@ -158,5 +165,36 @@ describe('optimiseParameters', () => {
 describe('validateFittedWeights', () => {
   it('rejects malformed parameter arrays', () => {
     expect(() => validateFittedWeights([1, 2, 3])).toThrow('invalid parameter array');
+  });
+});
+
+describe('held-out validation', () => {
+  it('splits reviews chronologically and holds out the most recent slice', () => {
+    const cards = syntheticDeck();
+    const split = splitForValidation(cards, HOLDOUT_FRACTION);
+    const trainingTimestamps = split.trainingCards.flatMap((card) =>
+      card.history.map((entry) => entry.timestamp),
+    );
+    expect(split.validationStart).not.toBeNull();
+    expect(trainingTimestamps.every((ts) => ts < (split.validationStart as number))).toBe(true);
+    expect(countReviews(split.trainingCards)).toBeLessThan(countReviews(cards));
+  });
+
+  it('evaluates metrics on held-out reviews only', () => {
+    const cards = syntheticDeck();
+    const split = splitForValidation(cards, 0.2);
+    const heldOut = evaluateParametersOnHeldOut(
+      cards,
+      split.validationStart,
+      [...default_w],
+    );
+    expect(heldOut.scored).toBeGreaterThan(0);
+    expect(heldOut.scored).toBeLessThan(countReviews(cards) - cards.length);
+  });
+
+  it('flags whether fitted parameters beat defaults out of sample', () => {
+    expect(improvesOutOfSample({ before: 0.5, after: 0.49 })).toBe(true);
+    expect(improvesOutOfSample({ before: 0.5, after: 0.5 })).toBe(false);
+    expect(improvesOutOfSample({ before: 0.5, after: 0.51 })).toBe(false);
   });
 });
