@@ -164,6 +164,12 @@ export interface BackupAsset {
 export interface BackupSnapshot {
   id?: number;
   createdAt: number;
+  /**
+   * Optional marker. 'pre-migration' snapshots are taken automatically before a
+   * schema upgrade and are exempt from the normal daily-snapshot pruning, so a
+   * botched migration always has a restore point to fall back to.
+   */
+  tag?: 'pre-migration';
   /** Denormalised counts so the restore-point list can be shown without parsing the payload. */
   deckCount: number;
   cardCount: number;

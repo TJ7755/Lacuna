@@ -83,10 +83,12 @@ export async function takeAutoBackup(): Promise<void> {
   };
   await db.backups.add(snapshot);
 
-  // Keep only the most recent restore points.
+  // Keep only the most recent restore points. Pre-migration snapshots are exempt:
+  // they are the safety net for a botched upgrade and must not be pruned away.
   const all = await db.backups.orderBy('createdAt').toArray();
-  if (all.length > MAX_RESTORE_POINTS) {
-    const excess = all.slice(0, all.length - MAX_RESTORE_POINTS);
+  const prunable = all.filter((s) => s.tag !== 'pre-migration');
+  if (prunable.length > MAX_RESTORE_POINTS) {
+    const excess = prunable.slice(0, prunable.length - MAX_RESTORE_POINTS);
     await db.backups.bulkDelete(excess.map((s) => s.id!));
   }
 

@@ -183,4 +183,82 @@ describe('Dexie upgrade from the old 17-parameter schema', () => {
     expect(card.stability).toBe(4); // preserved
     v2.close();
   });
+
+  it('takes a pre-migration restore point and extracts images on the v3 to v4 upgrade', async () => {
+    const dbName = `lacuna-v4-${Date.now()}`;
+    const pngDataUri =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC';
+
+    // Build a v3 database carrying a base64 image inside a card's Markdown.
+    const v3 = new Dexie(dbName);
+    v3.version(3).stores({
+      decks: 'id, createdAt, examDate',
+      cards: 'id, deckId, type, lastReviewed',
+      sessionHistory: '++id, deckId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+    });
+    await v3.open();
+    await v3.table('cards').add({
+      id: 'c1',
+      deckId: 'd1',
+      type: 'front_back',
+      front: `Look: ![pic](${pngDataUri})`,
+      back: 'a',
+      stability: null,
+      difficulty: null,
+      lastReviewed: null,
+      reps: 0,
+      lapses: 0,
+      state: 0,
+      due: null,
+      scheduledDays: 0,
+      learningSteps: 0,
+      history: [],
+      createdAt: 0,
+    });
+    v3.close();
+
+    // Reopen at v4 with the real snapshot helper and the asset extraction.
+    const { snapshotBeforeUpgrade } = await import('./schema');
+    const { extractMarkdownAssets } = await import('./assets');
+    const v4 = new Dexie(dbName);
+    const stores = {
+      decks: 'id, createdAt, examDate',
+      cards: 'id, deckId, type, lastReviewed',
+      sessionHistory: '++id, deckId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+    };
+    v4.version(3).stores(stores);
+    v4.version(4)
+      .stores({ ...stores, assets: 'hash, createdAt' })
+      .upgrade(async (tx) => {
+        await snapshotBeforeUpgrade(tx, 4);
+        const rows = await tx.table('cards').toArray();
+        for (const card of rows) {
+          const front = await extractMarkdownAssets(card.front ?? '', (asset) =>
+            tx.table('assets').put(asset),
+          );
+          await tx.table('cards').put({ ...card, front });
+        }
+      });
+    await v4.open();
+
+    // The card's image is now an asset reference, not base64.
+    const migrated = await v4.table('cards').get('c1');
+    expect(migrated.front).toContain('lacuna-asset://');
+    expect(migrated.front).not.toContain('base64');
+    expect(await v4.table('assets').count()).toBe(1);
+
+    // A pre-migration restore point exists and still holds the original base64 card.
+    const snapshots = await v4.table('backups').toArray();
+    const preMigration = snapshots.find((s) => s.tag === 'pre-migration');
+    expect(preMigration).toBeDefined();
+    const savedCard = preMigration.payload.cards.find((c: { id: string }) => c.id === 'c1');
+    expect(savedCard.front).toContain('base64');
+    v4.close();
+  });
 });
