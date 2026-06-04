@@ -20,8 +20,11 @@ British English throughout. No emojis anywhere in the product or its copy.
    which cards are served and the number the progress bar shows. They are derived from the
    same module (`src/fsrs/objective.ts`) so they are guaranteed consistent — the core
    invariant of the app.
-3. **Invisible grading.** The learner only ever presses "Yes" or "No". The four-point FSRS
-   grade is inferred from correctness plus response time, calibrated per deck.
+3. **Invisible grading (with an opt-out).** By default the learner only ever presses "Yes" or
+   "No"; the four-point FSRS grade is inferred from correctness plus response time, calibrated
+   per deck. The inference is measurable, not assumed — a per-deck calibration metric scores
+   predicted vs actual recall (§14). A Settings toggle switches to manual four-point grading
+   (Again/Hard/Good/Easy with keyboard shortcuts) for users who prefer to grade themselves.
 4. **Local and private.** Everything is stored on-device. Export, import, automatic restore
    points and optional folder mirroring are the backup story; nothing leaves the machine
    unless the user exports it.
@@ -266,13 +269,19 @@ All tables are keyed by string `id` unless noted. Types live in `src/db/types.ts
 
 ### Deck
 `id, name, examDate, createdAt, examDatePromptDismissed?, fsrsVersion, fsrsParameters,
-examObjective, newCardsPerDay?`
+examObjective, newCardsPerDay?, archived?, autoOptimise?`
 - `examDate` is an epoch-ms instant; **defaults to creation time + 7 days at 23:59 local**.
 - `fsrsVersion` is `6`.
 - `fsrsParameters = { w: number[21], requestRetention: number }` — the 21 FSRS-6 weights
-  (w0..w20; **w20 is the trainable decay**) plus the target retention.
+  (w0..w20; **w20 is the trainable decay**) plus the target retention. The weights may be
+  re-fitted to the deck's own history (see §8.1, optimisation).
 - `examObjective ∈ { 'expectedMarks' (default), 'securedTopics' }`.
 - `newCardsPerDay?` — cap on brand-new cards introduced per day; undefined/0 = unlimited.
+- `archived?` — when true the deck is retained in full but withdrawn from all study, the
+  global "Today" session and the dashboard study totals (one of the explicit post-exam
+  choices, see §8.2).
+- `autoOptimise?` — per-deck override for scheduling optimisation; undefined falls back to
+  the global default (on). Applying optimised weights always still needs explicit consent.
 
 ### Card
 `id, deckId, type('front_back'|'cloze'), front, back, stability|null, difficulty|null,
@@ -296,11 +305,23 @@ analytics aggregate to the last snapshot per calendar day to plot the trajectory
 a Welford running mean/variance over **correct (Yes) reviews only**, used to calibrate the
 invisible grader.
 
+### ImageAsset / BackupAsset
+- `ImageAsset { hash, blob, mimeType, width, height, createdAt }` — a card image stored as a
+  binary `Blob` in the `assets` table, keyed by the SHA-256 of its bytes so identical images
+  are stored once. Card Markdown carries only a `lacuna-asset://<hash>` reference, resolved to
+  an object URL at render time (and revoked on unmount). This keeps reactive card reads small
+  and stops base64 inflating exports and quota.
+- `BackupAsset { hash, data(base64), mimeType, width, height, createdAt }` — the JSON-safe form
+  of an `ImageAsset` carried in backup/export files.
+
 ### BackupSnapshot / BackupFile / AppStateEntry
-- `BackupSnapshot { id?, createdAt, deckCount, cardCount, payload }` — a stored automatic
+- `BackupSnapshot { id?, createdAt, tag?, deckCount, cardCount, payload }` — a stored automatic
   restore point (denormalised counts so the list renders without parsing the payload).
-- `BackupFile { app:'lacuna', version, exportedAt, decks, cards, sessionHistory,
-  userPerformance }` — the shape of both manual exports and snapshot payloads.
+  `tag = 'pre-migration'` marks a snapshot taken automatically before a schema upgrade; these
+  are **exempt from daily-snapshot pruning** so a botched migration always has a fallback (§13).
+- `BackupFile { app:'lacuna', version, exportedAt, decks, cards, assets, sessionHistory,
+  userPerformance }` — the shape of both manual exports and snapshot payloads; `assets` carries
+  the referenced images.
 - `AppStateEntry { key, value }` — small persistent app state (e.g. the backup folder handle).
 
 ---
@@ -322,6 +343,13 @@ A thin, pure translation layer over `ts-fsrs`. **No memory maths is implemented 
 Constants (`src/fsrs/params.ts`): `FSRS_VERSION = 6`; default weights and request retention
 from ts-fsrs; target retention is user-clampable to **[0.80, 0.97]** (default = ts-fsrs
 default); difficulty bounds `[1, 10]`; `MASTERY_R = 0.90`; `MS_PER_DAY = 86_400_000`.
+
+**On the algorithm version (honesty note).** Lacuna uses FSRS-6 because that is what `ts-fsrs`
+exposes — not because it is the newest FSRS in existence (FSRS-7 exists). Copy and comments are
+pinned to "the version ts-fsrs ships", not to "the newest". Also, FSRS has **no short-term
+memory model**, so repeated same-evening reviews during exam cramming are a known limitation;
+exam-eve cram mode (§10) is the product-level response, but the underlying maths still does not
+model intra-day re-review.
 
 ---
 
@@ -397,6 +425,43 @@ the progress-bar value are derived, so they can never disagree.
 Helper copy (`progressNoun`, `progressHeading`, `progressDescription`) phrases the same number
 appropriately ("predicted score" vs "secured").
 
+### The scheduling horizon (`src/fsrs/horizon.ts`)
+Every function above aims cards at a **single horizon date**, read through `schedulingHorizon(deck)`
+rather than `deck.examDate` directly, so the scheduler and progress bar stay pinned together even
+once the exam date moves into the past:
+- while `examDate ≥ now` → the horizon **is** `examDate`;
+- once `examDate < now` → the horizon falls back to a rolling `now + MAINTENANCE_HORIZON_DAYS`
+  (7 days). This is the "keep revising" fallback: it stops `daysRemaining` clamping to 0 (which
+  would make every card read R = 1 and pin the bar to a bogus 100%) and instead has the deck
+  maintain its target retention against a moving horizon.
+
+`urgency` (multi-deck blending, §10) likewise uses the horizon, so a passed exam no longer reads
+as permanently maximally urgent.
+
+### 8.1 Parameter optimisation (`src/fsrs/optimise.ts`, Web Worker)
+The default weights are a starting point; most of FSRS's efficiency comes from fitting them to a
+user's own history. ts-fsrs ships the maths but no trainer, so Lacuna includes a self-contained
+optimiser (no extra dependency):
+- it replays each card's grade sequence under candidate weights, predicts the retrievability the
+  model would have assigned just before each (non-first) review, and scores it against the actual
+  outcome with **log loss** (lower = better-calibrated);
+- it hill-climbs the 21 weights (coordinate descent, multiplicative steps), clipping every
+  candidate to the FSRS valid ranges via `clipParameters`;
+- it is **gated** on `MIN_OPTIMISE_REVIEWS` (400) so it never runs on noise;
+- it runs in a **Web Worker** (`src/workers/optimise.worker.ts`, driven by `useOptimiser`) so the
+  UI never blocks, reporting progress and a before/after log-loss summary;
+- new weights are applied only on explicit confirmation, after an automatic pre-change restore
+  point; a "Reset to defaults" path is always available. A global default (on) and a per-deck
+  `autoOptimise` override govern whether the action is offered (§15).
+
+### 8.2 Post-exam state
+A deck whose `examDate` has passed is detected (`examHasPassed`) and surfaced clearly rather than
+silently stopping. The dashboard card reads "Exam date passed" and the deck view offers three
+explicit actions: **set a new exam date**, **archive the deck** (`archived = true`; retained but
+withdrawn from study and totals), or **keep revising** against the rolling maintenance horizon
+above. Archived decks are excluded from the study pool (§9), the global "Today" session and the
+dashboard study denominators, and are shown in a separate "Archived" group.
+
 ---
 
 ## 9. Eligibility & study pool (`src/fsrs/eligibility.ts`)
@@ -408,8 +473,9 @@ cards are withheld.
   Suspended/buried cards are excluded **entirely**: from the study pool *and* from the
   progress/objective denominator while excluded.
 - `newCardsIntroducedToday` — cards whose first-ever review timestamp is today.
-- `studyPool(cards, deck)` — available cards, with brand-new (`state 0`) cards rationed by the
-  deck's `newCardsPerDay` cap:
+- `studyPool(cards, deck)` — returns **empty for an archived deck** (withdrawn from study while
+  its cards are retained in the progress denominator), otherwise available cards with brand-new
+  (`state 0`) cards rationed by the deck's `newCardsPerDay` cap:
   ```
   budget    = max(cap − newCardsIntroducedToday, 0)
   newAllowed = oldest-first new cards, sliced to budget
@@ -440,11 +506,24 @@ session). Both run through one engine so ordering and progress stay objective-de
   **min-max normalised within each deck** to 0..1 and weighted by an exam-proximity urgency,
   so figures are comparable across decks with different objectives and deadlines:
   ```
-  urgency(deck)   = 1 / (1 + daysUntil(examDate))
+  urgency(deck)   = 1 / (1 + daysUntil(schedulingHorizon(deck)))
   priority(card)  = urgency(deck) · (score − min_deck) / (max_deck − min_deck)
   ```
   The highest-priority card not on cooldown is served; if all are on cooldown, the
   soonest-eligible (then highest priority) is served so the session never stalls.
+  **Degenerate-range guard:** when a deck's scores are all equal (`max_deck − min_deck ≈ 0`,
+  e.g. a single-card or uniform deck) the normalised term is treated as `1` instead of
+  dividing by zero, so such decks are still served and never produce `NaN`.
+
+### Exam-eve cram mode (`src/fsrs/cram.ts`, `SessionMode = 'cram'`)
+An **explicit** mode (entered via `?mode=cram`, never a silent change) for the final push before
+an exam. `examEveAvailable(deck)` gates it to the last `EXAM_EVE_WINDOW_HOURS` (48 h) before the
+deadline. It reorders study **weakest-first** (lowest predicted exam-day R first), trading
+long-term retention for getting as many cards over the line as possible. It stays objective-aware:
+under `securedTopics` it drives still-unsecured cards (< 0.90) first and drops already-secured
+cards to the back; under `expectedMarks` it serves the cards with the most exam-day headroom
+first. DeckView shows a clearly-labelled "Exam-eve cram" entry inside the window, stating the
+trade-off.
 
 ### Cooldown (`src/fsrs/cooldown.ts`)
 In-memory, per session, to stop a just-failed card being shown again immediately:
@@ -454,7 +533,14 @@ maxCooldown(deckSize) = deckSize ≥ 6 ? 5 : max(deckSize − 1, 0)
 A failed card (grade 1) is given that cooldown; after every answer, all *other* cards'
 cooldowns decrement by one (skip-and-decrement).
 
-### The invisible timer & grading (`src/fsrs/grading.ts`)
+### Grading modes (`src/state/gradingMode.ts`)
+Two modes, chosen in Settings (default **silent**):
+- **Silent (default):** the learner presses only Yes/No and the four-point grade is inferred
+  (below). This is the product's core UX bet.
+- **Manual:** the four FSRS buttons (Again/Hard/Good/Easy) are shown with keyboard shortcuts and
+  the user grades directly; no inference is applied.
+
+### The invisible timer & grading (`src/fsrs/grading.ts`, silent mode)
 - The response timer **starts on reveal** ("Show answer") and **stops when the answer is
   graded**; it runs continuously and never pauses. (Opening the in-session editor rebases the
   timer so editing time is excluded.)
@@ -471,6 +557,8 @@ cooldowns decrement by one (skip-and-decrement).
   δ2    = t − mean ;  m2   += δ · δ2
   σ     = sqrt(m2 / n)      (0 while n ≤ 1)
   ```
+  Note: calibrating on **correct reviews only** is a biased sample on high-failure decks; the
+  prediction-accuracy metric (§14) exists partly to surface when that bias is hurting scheduling.
 
 ### Per-card actions & state
 - **Edit** (E): opens an in-session overlay (`CardEditOverlay`) that pauses/rebases the timer;
@@ -529,8 +617,11 @@ Front/back Markdown is rendered with GFM, maths (KaTeX), syntax highlighting, an
   heading, lists, code, link, image, cloze auto-index, inline/block maths); a cloze editor
   can preview the revealed answer.
 - **Tags** input with deck-wide suggestions.
-- **Images** are downscaled to ≤ 1280 px, re-encoded (~0.8 quality), stored as base64 and
-  embedded via Markdown (no external files).
+- **Images** are downscaled to ≤ 1280 px, re-encoded (~0.8 quality), stored as a binary `Blob`
+  in the `assets` table (deduplicated by SHA-256 hash), and referenced from the Markdown as
+  `lacuna-asset://<hash>` — **not** base64 data URIs. The render path resolves references to
+  object URLs on display and revokes them on unmount. This keeps card rows small (base64 inflates
+  payloads ~⅓ and dragged full image data through every reactive read) and keeps exports lean.
 - **Validation:** front required; back required for front/back; at least one cloze for cloze.
 - **Quick capture:** "Save & add another" keeps the page open, clears content, retains type
   and tags, refocuses the first field, tallies a per-sitting count, and flashes a "Saved"
@@ -566,14 +657,26 @@ Front/back Markdown is rendered with GFM, maths (KaTeX), syntax highlighting, an
   card; otherwise the row is skipped (and counted as skipped, since it has no answer side).
 
 ### Backup file import/export
-- **Export:** versioned JSON of the whole database (`BackupFile`: decks, cards, session
-  history, user performance).
-- **Import modes:** **Replace all** (wipe then restore exactly) or **Merge** (fold in by id;
-  on a conflict the most recently updated copy wins — newest `lastReviewed`/`createdAt`).
+- **Export:** versioned JSON of the whole database (`BackupFile`: decks, cards, **referenced
+  image assets**, session history, user performance). Backups are the route that carries images
+  between machines (share codes deliberately do not, §13).
+- **Import modes:**
+  - **Replace all** — wipe then restore exactly.
+  - **Merge** — fold in by id. Before committing, a **visible diff** summarises what will be
+    **added, changed and overwritten** (counts at minimum) and requires **explicit
+    confirmation**; only on confirm are changes applied (newest `lastReviewed`/`createdAt` wins
+    per conflicting record). This replaces the previous silent "most-recent-wins" merge, which
+    was a data-loss footgun.
 
-### Automatic restore points
+### Automatic restore points & migration safety
 - Up to the **ten most recent** snapshots are kept on-device; one is taken automatically on
   open, **at most once a day** (`autoBackupIfStale`), and never blocks the UI.
+- **Pre-migration snapshot:** before a schema upgrade rewrites data, a `pre-migration`-tagged
+  snapshot is captured **inside the upgrade transaction** (so a failure rolls the whole upgrade
+  back and a success still leaves a fallback). Tagged snapshots are **exempt from the ten-snapshot
+  pruning**. The v4 image migration is also idempotent and reads-transforms-writes explicitly
+  rather than mutating inside an async Dexie `.modify()` callback (which Dexie does not reliably
+  persist).
 - Restoring replaces all current data with the snapshot.
 - **Folder mirror** (where the File System Access API is supported): each backup can also be
   written to a chosen folder so it survives clearing browser data. Where unsupported, the UI
@@ -587,10 +690,14 @@ share code carries only the **material**, never one person's scheduling or histo
 
 - **What a code contains:** for each deck — name, exam objective, date created and **date due**
   (`examDate`), target retention and any new-card cap — and for each card its type, front,
-  back and tags. **Images ride along** because they are embedded in the Markdown as base64
-  data URIs. A `by` (creator) field is reserved for future attribution and is currently null.
-- **What it omits:** FSRS memory state, review history, suspended/buried/flag state. Imported
-  cards always start with clean scheduling for their new owner.
+  back and tags. A `by` (creator) field is reserved for future attribution and is currently null.
+- **What it omits:** FSRS memory state, review history, suspended/buried/flag state — **and
+  images**. Image references are stripped to a text placeholder. DEFLATE does almost nothing to
+  already-compressed image bytes, so embedding them produced multi-megabyte "codes" that defeated
+  the copy-and-paste premise. When a selected deck contains images the export UI says so before
+  generating and points to the full **backup export** as the route for transferring images; on
+  import, stripped images render as the placeholder and the preview notes they were not included.
+  Imported cards always start with clean scheduling for their new owner.
 - **Compression**, in order of impact:
   1. **Reverse-pair folding** — a front/back card and its exact mirror (one's front = the
      other's back and vice versa) are detected and stored **once** as a single "reversible"
@@ -638,11 +745,22 @@ Pure aggregates over stored history, in local time:
   folds into today, beyond the window is ignored) and weighted by its deck's **mean review
   seconds** (fallback 8 s) to estimate **minutes of study per day**, shown as a small bar
   sparkline with a "minutes to clear" total.
+- **Review heatmap** (`src/fsrs/heatmap.ts`, `ReviewHeatmap`): a contribution-style calendar of
+  reviews per **local** calendar day (a 26-week grid), built from review logs and theme-aware via
+  accent-opacity bands. Expected by anyone arriving from Anki.
 
 ### Deck analytics (`DeckAnalytics`)
-Three Recharts panels, theme-aware:
+Theme-aware Recharts panels:
 - **Predicted exam-day score** over time (area chart of the daily `SessionHistory`
   trajectory).
+- **Prediction accuracy** (`src/fsrs/calibration.ts`): the silent grader made measurable.
+  From `history[]` (which logs grade, response time and `retrievabilityAtReview`) it compares
+  predicted retrievability at review against the actual recall outcome (a **Brier/log-loss**
+  calibration metric, bucketed over time; lower is better), with a one-line plain-English
+  explanation. A developer-facing `gradeQualitySummary` (exposed on `window` and console-
+  exportable) reports how the inferred grades distribute and whether faster responses really
+  correlate with higher subsequent recall, so the response-time thresholds can be validated
+  rather than assumed.
 - **Card stability profile** (histogram of cards by stability range; new cards distinct).
 - **Review volume** (reviews per day over the last 30 days).
 
@@ -653,6 +771,9 @@ Three Recharts panels, theme-aware:
 - **Appearance:** theme toggle (defaults to **dark**); **accent colour** swatches (7 choices);
   **text size** steps that scale all text. All three persist to `localStorage` (via
   `ThemeContext`, `AccentContext`, `FontScaleContext`).
+- **Study & scheduling:** **Manual four-point grading** toggle (off by default → silent grader,
+  §10) and the global **Optimise scheduling** default (on → fit FSRS weights to your own history,
+  §8.1; gated at `MIN_OPTIMISE_REVIEWS`, overridable per deck, applied only on confirmation).
 - **Import & export:** export all data; import from file with the inline Merge / Replace-all
   chooser described in §13.
 - **Automatic backups:** "Back up now"; folder-mirror controls (where supported); a list of
@@ -662,8 +783,15 @@ Three Recharts panels, theme-aware:
 ### Deck settings (`src/pages/DeckSettings.tsx`)
 Rename; exam date and time; **exam objective** toggle (Expected marks ↔ Secure topics, with
 live explanatory copy); **new cards per day** cap; **target retention** slider (0.80–0.97,
-with Relaxed/Balanced/Thorough presets and adaptive guidance copy). A "Danger zone" deletes
-the deck immediately with an Undo toast (no blocking dialog). Sticky Save/Cancel bar.
+with Relaxed/Balanced/Thorough presets and adaptive guidance copy).
+- **Scheduling optimisation** (§8.1): a per-deck on/off override, a review-count gate, and an
+  **Optimise now** action that runs in a Web Worker with a progress bar, then shows the
+  before/after log loss. Applying takes a restore-point snapshot first; **Reset to defaults** is
+  always available.
+- Once the **exam date has passed** (§8.2), the deck view offers set-new-date / archive /
+  keep-revising; an archived deck shows a restore action.
+- A "Danger zone" deletes the deck immediately with an Undo toast (no blocking dialog). Sticky
+  Save/Cancel bar.
 
 ---
 
@@ -674,8 +802,13 @@ the deck immediately with an Undo toast (no blocking dialog). Sticky Save/Cancel
 - On first run a **demo deck** is seeded (`seedIfFirstRun`).
 - A daily restore point is taken in the background after seeding.
 - **Error boundaries** at the app, page and Learn-session levels keep a failure in one area
-  from blanking the whole app.
-- Migrations live in `src/db/migrations.ts`; the schema is versioned in `src/db/schema.ts`.
+  from blanking the whole app. Their fallback offers a **local-only diagnostic bundle**
+  (`src/db/diagnostics.ts`): "Copy diagnostic details" / "Download diagnostic bundle" assemble
+  the error and stack, app version (`__APP_VERSION__`), browser/UA, and deck/card/review/backup
+  counts. Card content is **excluded by default**; including a small sample is a separate, explicit
+  opt-in. Nothing is transmitted — the bundle is the user's to paste into a bug report.
+- Migrations live in `src/db/migrations.ts`; the schema is versioned in `src/db/schema.ts`, and
+  every upgrade is fronted by a pre-migration restore point (§13).
 
 ---
 
@@ -700,8 +833,9 @@ the deck immediately with an Undo toast (no blocking dialog). Sticky Save/Cancel
 | Card editor | `Ctrl/Cmd+Enter` | Save (and add another, for new cards) |
 | Card editor | `Tab` | Front → Back → Save-and-add → Save |
 | Learn | `Space` / `Up` | Show answer |
-| Learn | `Y` / `J` / `Right` | Yes (correct) |
-| Learn | `N` / `Left` | No (incorrect) |
+| Learn (silent grading) | `Y` / `J` / `Right` | Yes (correct) |
+| Learn (silent grading) | `N` / `Left` | No (incorrect) |
+| Learn (manual grading) | `1`/`A`, `2`/`H`, `3`/`G`, `4` | Again / Hard / Good / Easy |
 | Learn | `E` | Edit current card |
 | Learn | `U` | Undo last answer |
 | Learn | `F` | Toggle focus mode |
