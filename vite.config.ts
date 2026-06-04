@@ -15,6 +15,7 @@ export default defineConfig({
   // Without this, navigating to a route that imports recharts/katex/highlight.js
   // froze the page for several seconds while Vite re-ran dependency optimisation.
   optimizeDeps: {
+    exclude: ['@open-spaced-repetition/binding'],
     include: [
       'react',
       'react-dom',
@@ -32,6 +33,7 @@ export default defineConfig({
       'dexie',
       'dexie-react-hooks',
       'ts-fsrs',
+      '@open-spaced-repetition/binding/dynamic-wasi',
     ],
   },
   build: {

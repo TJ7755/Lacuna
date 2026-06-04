@@ -3,6 +3,9 @@
 // caller (see src/state/useOptimiser.ts) owns confirmation and persistence.
 
 import { optimiseParameters, type OptimiseResult } from '../fsrs/optimise';
+import { initOptimizer } from '@open-spaced-repetition/binding/dynamic-wasi';
+import wasmUrl from '@open-spaced-repetition/binding-wasm32-wasi/fsrs-binding.wasm32-wasi.wasm?url';
+import WasiWorker from '@open-spaced-repetition/binding-wasm32-wasi/wasi-worker-browser.mjs?worker';
 import type { Card } from '../db/types';
 
 export interface OptimiseRequest {
@@ -20,10 +23,21 @@ const ctx = globalThis as unknown as {
   onmessage: ((event: MessageEvent<OptimiseRequest>) => void) | null;
 };
 
-ctx.onmessage = (event: MessageEvent<OptimiseRequest>) => {
+let bindingPromise: Promise<Awaited<ReturnType<typeof initOptimizer>>> | null = null;
+
+function loadBinding() {
+  bindingPromise ??= initOptimizer({
+    wasm: wasmUrl,
+    worker: () => new WasiWorker(),
+  });
+  return bindingPromise;
+}
+
+ctx.onmessage = async (event: MessageEvent<OptimiseRequest>) => {
   try {
     const { cards, requestRetention } = event.data;
-    const result = optimiseParameters(cards, {
+    const binding = await loadBinding();
+    const result = await optimiseParameters(cards, binding, {
       requestRetention,
       onProgress: (value) => ctx.postMessage({ type: 'progress', value }),
     });

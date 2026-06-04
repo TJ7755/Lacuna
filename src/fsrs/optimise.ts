@@ -1,20 +1,14 @@
 // FSRS parameter optimisation from a deck's own review history.
 //
-// ts-fsrs ships the FSRS-6 maths but not a parameter trainer, so this is our own
-// optimiser built on ts-fsrs primitives (no new dependency). The idea is the
-// standard one: replay each card's grade sequence under a candidate weight set,
-// predict the retrievability the model would have assigned just before each
-// review, and score it against what actually happened (recalled or not) with log
-// loss. Lower loss means better-calibrated predictions. We then hill-climb the 21
-// weights to reduce that loss, clipping every candidate to the FSRS valid ranges.
-//
-// This runs off the main thread in a Web Worker (see src/workers/optimise.worker.ts)
-// because replaying long histories many times is CPU-heavy.
+// Training is delegated to the official optimiser from the FSRS authors
+// (`@open-spaced-repetition/binding`), while this module owns the app-facing
+// orchestration: review-history conversion, fit-quality scoring and safety checks.
 
 import {
+  checkParameters,
+  clipParameters,
   fsrs,
   generatorParameters,
-  clipParameters,
   createEmptyCard,
   default_w,
   default_relearning_steps,
@@ -22,6 +16,7 @@ import {
   type Grade as TsGrade,
 } from 'ts-fsrs';
 import { DEFAULT_REQUEST_RETENTION } from './params';
+import { MS_PER_DAY } from './params';
 import type { Card, Grade } from '../db/types';
 
 /**
@@ -33,6 +28,31 @@ export const MIN_OPTIMISE_REVIEWS = 400;
 
 const EPS = 1e-6;
 const NUM_RELEARNING_STEPS = default_relearning_steps.length;
+
+/** One optimiser review in the binding-compatible format. */
+export interface OptimiserReviewItem {
+  rating: number;
+  deltaT: number;
+}
+
+/** One card's optimiser payload (chronological review list). */
+export interface OptimiserCardItem {
+  reviews: OptimiserReviewItem[];
+}
+
+export interface FsrsOptimiserBinding {
+  FSRSBindingReview: new (rating: number, deltaT: number) => any;
+  FSRSBindingItem: new (reviews: any[]) => any;
+  computeParameters: (
+    trainSet: any[],
+    options: {
+      enableShortTerm: boolean;
+      numRelearningSteps?: number;
+      progress?: (current: number, total: number) => boolean | undefined | void;
+      timeout?: number;
+    },
+  ) => Promise<number[]>;
+}
 
 /** A single card's grade sequence, the only thing the optimiser needs from a card. */
 export interface ReviewSequence {
@@ -48,6 +68,36 @@ export function reviewSequences(cards: Card[]): ReviewSequence[] {
       grades: card.history.map((h) => h.grade),
     }))
     .filter((seq) => seq.grades.length > 0);
+}
+
+/** Convert persisted review history into the official optimiser item format. */
+export function historyToOptimiserItems(cards: Card[]): OptimiserCardItem[] {
+  return cards
+    .map((card) => {
+      const ordered = [...card.history].sort((a, b) => a.timestamp - b.timestamp);
+      const reviews = ordered.map((review, i) => {
+        const previous = i === 0 ? review.timestamp : ordered[i - 1].timestamp;
+        const deltaT = i === 0 ? 0 : Math.max(0, (review.timestamp - previous) / MS_PER_DAY);
+        return {
+          rating: review.grade,
+          deltaT,
+        };
+      });
+      return { reviews };
+    })
+    .filter((item) => item.reviews.length > 0);
+}
+
+export function buildBindingItems(
+  items: OptimiserCardItem[],
+  binding: FsrsOptimiserBinding,
+): unknown[] {
+  return items.map(
+    (item) =>
+      new binding.FSRSBindingItem(
+        item.reviews.map((review) => new binding.FSRSBindingReview(review.rating, review.deltaT)),
+      ),
+  );
 }
 
 /** Total reviews across the given cards. */
@@ -93,10 +143,9 @@ export function evaluateParameters(
 
 export interface OptimiseOptions {
   requestRetention?: number;
-  /** Weight set to start the climb from (defaults to the FSRS-6 defaults). */
-  initialW?: number[];
-  /** Number of refinement passes over all 21 weights. */
-  passes?: number;
+  /** Weight set to compare against (defaults to the FSRS-6 defaults). */
+  baselineW?: number[];
+  timeoutMs?: number;
   onProgress?: (fraction: number) => void;
 }
 
@@ -107,47 +156,49 @@ export interface OptimiseResult {
   scored: number;
 }
 
+export function validateFittedWeights(w: number[]): number[] {
+  if (w.length !== 21 || w.some((value) => !Number.isFinite(value))) {
+    throw new Error('Optimiser returned an invalid parameter array.');
+  }
+  const clipped = clipParameters(w, NUM_RELEARNING_STEPS);
+  const outOfRange = clipped.some((value, i) => Math.abs(value - w[i]) > 1e-12);
+  if (outOfRange) {
+    throw new Error('Optimiser returned weights outside the valid FSRS range.');
+  }
+  try {
+    checkParameters(w);
+  } catch {
+    throw new Error('Optimiser returned weights outside the valid FSRS range.');
+  }
+  return [...w];
+}
+
 /**
- * Hill-climb the 21 FSRS weights to reduce log loss over the review history.
- * Coordinate descent with multiplicative steps (so the very different scales of
- * w0..w20 are handled), every candidate clipped to the FSRS valid ranges.
+ * Fit FSRS parameters with the official optimiser, then evaluate before/after log
+ * loss by replaying the deck history under both weight sets.
  */
-export function optimiseParameters(
+export async function optimiseParameters(
   cards: Card[],
+  binding: FsrsOptimiserBinding,
   options: OptimiseOptions = {},
-): OptimiseResult {
+): Promise<OptimiseResult> {
   const sequences = reviewSequences(cards);
   const requestRetention = options.requestRetention ?? DEFAULT_REQUEST_RETENTION;
-  const passes = options.passes ?? 6;
+  const baselineW = options.baselineW ? [...options.baselineW] : [...default_w];
+  const before = evaluateParameters(sequences, baselineW, requestRetention).logLoss;
 
-  let w = clip(options.initialW ? [...options.initialW] : [...default_w]);
-  const before = evaluateParameters(sequences, w, requestRetention).logLoss;
-  let best = before;
-
-  let rate = 0.3;
-  for (let pass = 0; pass < passes; pass += 1) {
-    for (let i = 0; i < w.length; i += 1) {
-      for (const dir of [1, -1]) {
-        const candidate = [...w];
-        const delta = (Math.abs(candidate[i]) || 0.1) * rate * dir;
-        candidate[i] = candidate[i] + delta;
-        const clipped = clip(candidate);
-        const loss = evaluateParameters(sequences, clipped, requestRetention).logLoss;
-        if (loss < best - 1e-9) {
-          best = loss;
-          w = clipped;
-        }
-      }
-    }
-    rate *= 0.6; // refine the step each pass
-    options.onProgress?.((pass + 1) / passes);
-  }
+  const optimiserItems = historyToOptimiserItems(cards);
+  const trainSet = buildBindingItems(optimiserItems, binding);
+  const fittedRaw = await binding.computeParameters(trainSet, {
+    enableShortTerm: true,
+    numRelearningSteps: NUM_RELEARNING_STEPS,
+    timeout: options.timeoutMs,
+    progress: (current, total) => {
+      if (total > 0) options.onProgress?.(current / total);
+    },
+  });
+  const w = validateFittedWeights(fittedRaw);
 
   const final = evaluateParameters(sequences, w, requestRetention);
   return { w, before, after: final.logLoss, scored: final.scored };
-}
-
-/** Clip a weight set to the FSRS valid ranges (always returns a fresh 21-length array). */
-export function clip(w: number[]): number[] {
-  return clipParameters(w, NUM_RELEARNING_STEPS);
 }

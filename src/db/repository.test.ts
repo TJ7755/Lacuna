@@ -10,7 +10,9 @@ import {
   removeTagFromCards,
   setCardsSuspended,
   undoReview,
+  updateDeck,
 } from './repository';
+import { makeEngine, applyReview } from '../fsrs/fsrs';
 
 describe('undoReview', () => {
   beforeEach(async () => {
@@ -83,6 +85,29 @@ describe('createCardWithReverse', () => {
 describe('bulk card actions', () => {
   beforeEach(async () => {
     await Promise.all([db.decks.clear(), db.cards.clear()]);
+  });
+
+  describe('optimised-parameter persistence', () => {
+    beforeEach(async () => {
+      await Promise.all([db.decks.clear(), db.cards.clear()]);
+    });
+
+    it('persists fitted weights and uses them in scheduling', async () => {
+      const deck = await createDeck('Optimised');
+      const card = await createCard(deck.id, 'front_back', 'q', 'a');
+      const tunedWeights = [...deck.fsrsParameters.w];
+      tunedWeights[0] = 0.45;
+
+      await updateDeck(deck.id, {
+        fsrsParameters: { ...deck.fsrsParameters, w: tunedWeights },
+      });
+      const storedDeck = (await db.decks.get(deck.id))!;
+      expect(storedDeck.fsrsParameters.w[0]).toBe(0.45);
+
+      const engine = makeEngine(storedDeck.fsrsParameters);
+      const reviewed = applyReview(engine, card, 3, Date.now());
+      expect(reviewed.memory.due).toBeGreaterThan(0);
+    });
   });
 
   it('suspends and resumes many cards at once', async () => {

@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { checkParameters, default_w } from 'ts-fsrs';
 import {
+  buildBindingItems,
   countReviews,
   evaluateParameters,
+  historyToOptimiserItems,
   optimiseParameters,
   reviewSequences,
+  validateFittedWeights,
   MIN_OPTIMISE_REVIEWS,
 } from './optimise';
 import { MS_PER_DAY } from './params';
@@ -57,6 +60,21 @@ function syntheticDeck(): Card[] {
   return patterns.map((p, i) => cardWith(p, start + i * MS_PER_DAY));
 }
 
+function fakeBinding(result: number[]) {
+  return {
+    FSRSBindingReview: class {
+      constructor(
+        public rating: number,
+        public deltaT: number,
+      ) {}
+    },
+    FSRSBindingItem: class {
+      constructor(public reviews: unknown[]) {}
+    },
+    computeParameters: async () => result,
+  };
+}
+
 describe('review extraction and gating', () => {
   it('counts every review and extracts non-empty sequences', () => {
     const cards = syntheticDeck();
@@ -85,22 +103,60 @@ describe('evaluateParameters', () => {
 });
 
 describe('optimiseParameters', () => {
-  it('produces a valid 21-weight array within FSRS bounds and never worsens the loss', () => {
+  it('converts card history into FSRS binding review items', () => {
+    const items = historyToOptimiserItems([cardWith([3, 1, 4], Date.UTC(2026, 0, 1), 2)]);
+    expect(items).toHaveLength(1);
+    expect(items[0].reviews).toEqual([
+      { rating: 3, deltaT: 0 },
+      { rating: 1, deltaT: 2 },
+      { rating: 4, deltaT: 2 },
+    ]);
+  });
+
+  it('maps review items to binding class instances', () => {
+    const binding = fakeBinding([...default_w]);
+    const trainSet = buildBindingItems(historyToOptimiserItems(syntheticDeck()), binding);
+    expect(trainSet).toHaveLength(syntheticDeck().length);
+  });
+
+  it('produces a valid 21-weight array within FSRS bounds', async () => {
     const cards = syntheticDeck();
-    const result = optimiseParameters(cards, { passes: 3 });
+    const result = await optimiseParameters(cards, fakeBinding([...default_w]));
 
     expect(result.w).toHaveLength(21);
-    // checkParameters throws if any weight is out of range.
     expect(() => checkParameters(result.w)).not.toThrow();
-    // Hill-climb only accepts improvements, so the fit never gets worse.
-    expect(result.after).toBeLessThanOrEqual(result.before + 1e-9);
     expect(result.scored).toBeGreaterThan(0);
   });
 
-  it('reports progress from 0 to 1', () => {
+  it('reports progress from 0 to 1', async () => {
     const seen: number[] = [];
-    optimiseParameters(syntheticDeck(), { passes: 2, onProgress: (f) => seen.push(f) });
+    const binding = {
+      ...fakeBinding([...default_w]),
+      computeParameters: async (
+        _items: unknown[],
+        options?: { progress?: (current: number, total: number) => void },
+      ) => {
+        options?.progress?.(1, 2);
+        options?.progress?.(2, 2);
+        return [...default_w];
+      },
+    };
+    await optimiseParameters(syntheticDeck(), binding, { onProgress: (f) => seen.push(f) });
     expect(seen[seen.length - 1]).toBeCloseTo(1, 6);
     expect(seen.every((f) => f > 0 && f <= 1)).toBe(true);
+  });
+
+  it('rejects out-of-range optimiser weights', async () => {
+    const invalid = [...default_w];
+    invalid[0] = -1;
+    await expect(
+      optimiseParameters(syntheticDeck(), fakeBinding(invalid)),
+    ).rejects.toThrow('outside the valid FSRS range');
+  });
+});
+
+describe('validateFittedWeights', () => {
+  it('rejects malformed parameter arrays', () => {
+    expect(() => validateFittedWeights([1, 2, 3])).toThrow('invalid parameter array');
   });
 });
