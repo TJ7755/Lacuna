@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   Area,
   AreaChart,
@@ -6,6 +6,8 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,6 +20,7 @@ import {
   stabilityProfile,
   trajectorySeries,
 } from './prepare';
+import { gradeQualitySummary, predictionAccuracySeries } from '../../fsrs/calibration';
 import type { Card, SessionHistoryEntry } from '../../db/types';
 
 interface DeckAnalyticsProps {
@@ -31,10 +34,21 @@ export function DeckAnalytics({ cards, history }: DeckAnalyticsProps) {
   const trajectory = useMemo(() => trajectorySeries(history), [history]);
   const profile = useMemo(() => stabilityProfile(cards), [cards]);
   const volume = useMemo(() => reviewVolume(cards), [cards]);
+  const predictionAccuracy = useMemo(() => predictionAccuracySeries(cards), [cards]);
   const hasReviews = useMemo(
     () => cards.some((card) => card.history.length > 0),
     [cards],
   );
+
+  useEffect(() => {
+    const target = window as typeof window & {
+      lacunaGradeQualitySummary?: () => ReturnType<typeof gradeQualitySummary>;
+    };
+    target.lacunaGradeQualitySummary = () => gradeQualitySummary(cards);
+    return () => {
+      delete target.lacunaGradeQualitySummary;
+    };
+  }, [cards]);
 
   const axisProps = {
     stroke: c.inkFaint,
@@ -88,6 +102,56 @@ export function DeckAnalytics({ cards, history }: DeckAnalyticsProps) {
           </ResponsiveContainer>
         </ChartCard>
       </div>
+
+      <ChartCard
+        title="Prediction accuracy"
+        description="Brier score for predicted recall versus actual recall. Lower is better."
+        empty={predictionAccuracy.length === 0}
+        emptyMessage="Review cards with existing memory state to measure prediction accuracy."
+      >
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={predictionAccuracy}
+            margin={{ top: 8, right: 12, bottom: 0, left: -8 }}
+          >
+            <CartesianGrid stroke={c.line} vertical={false} />
+            <XAxis dataKey="label" {...axisProps} minTickGap={8} />
+            <YAxis yAxisId="score" domain={[0, 1]} {...axisProps} width={40} />
+            <YAxis yAxisId="recall" orientation="right" domain={[0, 1]} hide />
+            <Tooltip
+              contentStyle={tooltipStyle}
+              cursor={{ stroke: c.line }}
+              formatter={(v: number, name: string) => {
+                if (name === 'brier') return [v.toFixed(3), 'Brier score'];
+                return [`${Math.round(v * 100)}%`, name === 'predicted' ? 'Predicted' : 'Actual'];
+              }}
+            />
+            <Line
+              yAxisId="score"
+              type="monotone"
+              dataKey="brier"
+              stroke={c.accent}
+              strokeWidth={2}
+              dot={{ r: 2.5, fill: c.accent, strokeWidth: 0 }}
+            />
+            <Line
+              yAxisId="recall"
+              type="monotone"
+              dataKey="predicted"
+              stroke={c.inkFaint}
+              strokeDasharray="4 4"
+              dot={false}
+            />
+            <Line
+              yAxisId="recall"
+              type="monotone"
+              dataKey="actual"
+              stroke={c.positive}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartCard>
 
       <ChartCard
         title="Card stability profile"

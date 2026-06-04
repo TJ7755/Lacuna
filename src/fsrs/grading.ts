@@ -55,6 +55,8 @@ export function emptyPerformance(deckId: string): UserPerformance {
 /**
  * Update a deck's running mean and standard deviation of correct response times,
  * using Welford's online algorithm. Only correct reviews are folded in.
+ * This is a biased sample on high-failure decks because slow failures are excluded;
+ * the prediction-accuracy analytics use review outcomes to make that bias visible.
  */
 export function updatePerformance(
   perf: UserPerformance,

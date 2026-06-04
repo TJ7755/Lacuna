@@ -9,7 +9,10 @@ import {
   DashboardIcon,
   FlaskIcon,
   MoonIcon,
+  PlayIcon,
+  SearchIcon,
   SettingsIcon,
+  ShareIcon,
   SunIcon,
 } from '../ui/icons';
 
@@ -38,8 +41,8 @@ function NavItem({
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
         cn(
-          'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
-          collapsed && 'justify-center px-0',
+          'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150',
+          collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
           isActive
             ? 'bg-accent-soft text-accent'
             : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
@@ -81,7 +84,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           collapsed && 'justify-center px-0',
         )}
       >
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-[hsl(28_60%_14%)]">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-accent-fg">
           <FlaskIcon width={20} height={20} />
         </span>
         {!collapsed && (
@@ -104,6 +107,24 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           collapsed={collapsed}
         />
         <NavItem
+          to="/learn"
+          icon={<PlayIcon />}
+          label="Study today"
+          collapsed={collapsed}
+        />
+        <NavItem
+          to="/search"
+          icon={<SearchIcon />}
+          label="Search"
+          collapsed={collapsed}
+        />
+        <NavItem
+          to="/share"
+          icon={<ShareIcon />}
+          label="Share"
+          collapsed={collapsed}
+        />
+        <NavItem
           to="/settings"
           icon={<SettingsIcon />}
           label="Settings"
@@ -121,15 +142,20 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
         <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pb-2">
           <AnimatePresence initial={false}>
             {decks?.map((deck) => {
-              const active = location.pathname === `/deck/${deck.id}`;
+              // Stay highlighted for the deck itself and any of its sub-routes
+              // (cards, new card, deck settings, learn), not just the exact page.
+              const base = `/deck/${deck.id}`;
+              const active =
+                location.pathname === base ||
+                location.pathname.startsWith(`${base}/`);
               return (
                 <NavLink
                   key={deck.id}
                   to={`/deck/${deck.id}`}
                   title={collapsed ? deck.name : undefined}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-                    collapsed && 'justify-center px-0',
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150',
+                    collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
                     active
                       ? 'bg-accent-soft text-accent'
                       : 'text-ink-soft hover:bg-ink/5 hover:text-ink',

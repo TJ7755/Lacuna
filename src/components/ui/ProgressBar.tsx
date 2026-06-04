@@ -27,11 +27,28 @@ export function ProgressBar({
         aria-valuemax={100}
       >
         <motion.div
-          className="absolute inset-y-0 left-0 rounded-full bg-accent"
+          className="absolute inset-y-0 left-0 overflow-hidden rounded-full bg-accent"
           initial={false}
           animate={{ width: `${pct}%` }}
           transition={{ type: 'spring', stiffness: 120, damping: 22 }}
-        />
+        >
+          {/* A slow sheen travels along filled bars, giving the accent a sense of depth
+              and quiet life. Hidden at 0% so an empty bar stays perfectly flat. */}
+          {pct > 0 && (
+            <motion.span
+              aria-hidden
+              className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+              initial={{ x: '-120%' }}
+              animate={{ x: '420%' }}
+              transition={{
+                duration: 2.4,
+                ease: 'easeInOut',
+                repeat: Infinity,
+                repeatDelay: 2.6,
+              }}
+            />
+          )}
+        </motion.div>
       </div>
       {showLabel && (
         <span className="tabular text-sm font-medium text-ink-soft w-12 text-right">

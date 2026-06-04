@@ -1,8 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { useTheme } from '../state/ThemeContext';
+import { ACCENTS, useAccent } from '../state/AccentContext';
+import { FONT_SCALE_STEPS, useFontScale } from '../state/FontScaleContext';
+import { useBackups } from '../state/useData';
 import { Button } from '../components/ui/Button';
 import { Toggle } from '../components/ui/Toggle';
-import { Modal } from '../components/ui/Modal';
+import { cn } from '../components/ui/cn';
 import { useToast } from '../components/ui/Toast';
 import {
   downloadBackup,
@@ -10,17 +14,70 @@ import {
   readBackupFile,
   type ImportMode,
 } from '../db/portability';
+import {
+  backupFolderName,
+  chooseBackupFolder,
+  clearBackupFolder,
+  deleteBackup,
+  folderMirrorSupported,
+  restoreBackup,
+  takeAutoBackup,
+} from '../db/backups';
 import { DownloadIcon, MoonIcon, SunIcon, UploadIcon } from '../components/ui/icons';
 import type { BackupFile } from '../db/types';
-import { formatDate } from '../utils/datetime';
+import { formatDate, formatDateTime } from '../utils/datetime';
 
 export function Settings() {
   const { theme, setTheme } = useTheme();
+  const { accent, setAccent } = useAccent();
+  const { scale, setScale } = useFontScale();
   const { notify } = useToast();
+  const backups = useBackups();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [pending, setPending] = useState<BackupFile | null>(null);
-  const [importOpen, setImportOpen] = useState(false);
+  const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
+  const [folder, setFolder] = useState<string | null>(null);
+  const mirrorSupported = folderMirrorSupported();
+
+  useEffect(() => {
+    void backupFolderName().then(setFolder);
+  }, []);
+
+  async function handleBackupNow() {
+    try {
+      await takeAutoBackup();
+      notify('Restore point saved.', 'positive');
+    } catch {
+      notify('Could not save a restore point.', 'negative');
+    }
+  }
+
+  async function handleRestore(id: number) {
+    try {
+      await restoreBackup(id);
+      setConfirmRestore(null);
+      notify('Data restored from the selected point.', 'positive');
+    } catch {
+      notify('Restore failed.', 'negative');
+    }
+  }
+
+  async function handleChooseFolder() {
+    try {
+      const name = await chooseBackupFolder();
+      setFolder(name);
+      if (name) notify('Backups will now mirror to that folder.', 'positive');
+    } catch {
+      // The user cancelling the picker is not an error worth reporting.
+    }
+  }
+
+  async function handleStopMirror() {
+    await clearBackupFolder();
+    setFolder(null);
+    notify('Folder mirroring stopped.', 'neutral');
+  }
 
   async function handleExport() {
     try {
@@ -35,7 +92,6 @@ export function Settings() {
     try {
       const backup = await readBackupFile(file);
       setPending(backup);
-      setImportOpen(true);
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Invalid file.', 'negative');
     }
@@ -52,7 +108,6 @@ export function Settings() {
     } catch {
       notify('Import failed.', 'negative');
     } finally {
-      setImportOpen(false);
       setPending(null);
     }
   }
@@ -87,6 +142,65 @@ export function Settings() {
             label="Light"
           />
         </div>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <div className="mb-1 text-sm">Accent colour</div>
+          <p className="mb-3 text-sm text-ink-soft">
+            Sets the highlight colour used across the app. Remembered on this device.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {ACCENTS.map((option) => {
+              const active = accent === option.key;
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setAccent(option.key)}
+                  aria-pressed={active}
+                  title={option.label}
+                  aria-label={option.label}
+                  className={cn(
+                    'h-9 w-9 rounded-full ring-2 ring-offset-2 ring-offset-surface transition-transform hover:scale-105',
+                    active ? 'ring-ink' : 'ring-transparent',
+                  )}
+                  style={{ backgroundColor: option.swatch }}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <div className="mb-1 flex items-baseline justify-between">
+            <span className="text-sm">Text size</span>
+            <span className="tabular text-sm text-ink-faint">{Math.round(scale * 100)}%</span>
+          </div>
+          <p className="mb-3 text-sm text-ink-soft">
+            Scales all text across the app. Remembered on this device.
+          </p>
+          <div className="flex gap-2">
+            {FONT_SCALE_STEPS.map((step) => {
+              const active = Math.round(scale * 100) === Math.round(step.value * 100);
+              return (
+                <button
+                  key={step.label}
+                  type="button"
+                  onClick={() => setScale(step.value)}
+                  aria-pressed={active}
+                  className={cn(
+                    'flex-1 rounded-lg border px-3 py-2 text-sm transition-colors',
+                    active
+                      ? 'border-accent bg-accent-soft text-accent'
+                      : 'border-line text-ink-soft hover:border-line-strong',
+                  )}
+                >
+                  <span style={{ fontSize: `${step.value}em` }}>A</span>
+                  <span className="ml-1.5 align-middle text-xs">{step.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       {/* Data portability */}
@@ -117,49 +231,153 @@ export function Settings() {
             }}
           />
         </div>
+
+        {/* Inline import-mode chooser, revealed once a backup file is read */}
+        <AnimatePresence>
+          {pending && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="rounded-xl border border-line-strong bg-surface-raised p-5">
+                <h3 className="mb-3 font-display text-lg">Import data</h3>
+                <div className="text-sm text-ink-soft">
+                  <p className="mb-3">
+                    This backup contains{' '}
+                    <strong className="text-ink">{pending.decks.length}</strong> decks and{' '}
+                    <strong className="text-ink">{pending.cards.length}</strong> cards,
+                    exported on {formatDate(pending.exportedAt)}.
+                  </p>
+                  <ul className="space-y-2">
+                    <li>
+                      <strong className="text-ink">Merge</strong> keeps your current data
+                      and folds in the backup, with the most recently updated copy winning
+                      any conflict.
+                    </li>
+                    <li>
+                      <strong className="text-ink">Replace all</strong> deletes everything
+                      currently stored and restores the backup exactly.
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-5 flex flex-wrap justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setPending(null)}>
+                    Cancel
+                  </Button>
+                  <Button variant="secondary" onClick={() => runImport('merge')}>
+                    Merge
+                  </Button>
+                  <Button variant="primary" onClick={() => runImport('replace')}>
+                    Replace all
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
 
-      {/* Import mode chooser */}
-      <Modal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        title="Import data"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setImportOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="secondary" onClick={() => runImport('merge')}>
-              Merge
-            </Button>
-            <Button variant="primary" onClick={() => runImport('replace')}>
-              Replace all
-            </Button>
-          </>
-        }
-      >
-        {pending && (
-          <div className="text-sm text-ink-soft">
-            <p className="mb-3">
-              This backup contains{' '}
-              <strong className="text-ink">{pending.decks.length}</strong> decks and{' '}
-              <strong className="text-ink">{pending.cards.length}</strong> cards, exported
-              on {formatDate(pending.exportedAt)}.
-            </p>
-            <ul className="space-y-2">
-              <li>
-                <strong className="text-ink">Merge</strong> keeps your current data and
-                folds in the backup, with the most recently updated copy winning any
-                conflict.
-              </li>
-              <li>
-                <strong className="text-ink">Replace all</strong> deletes everything
-                currently stored and restores the backup exactly.
-              </li>
-            </ul>
+      {/* Automatic backups */}
+      <section className="mt-8 rounded-2xl border border-line bg-surface p-6">
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-xl">Automatic backups</h2>
+          <Button variant="secondary" size="sm" onClick={handleBackupNow}>
+            Back up now
+          </Button>
+        </div>
+        <p className="mb-5 text-sm text-ink-soft">
+          Lacuna keeps the ten most recent restore points on this device and saves one
+          automatically when you open it (at most once a day). Restoring replaces all
+          current data with that snapshot.
+        </p>
+
+        {/* Folder mirror */}
+        {mirrorSupported ? (
+          <div className="mb-5 rounded-xl border border-line bg-surface-raised/40 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm text-ink">Mirror to a folder</div>
+                <p className="text-xs text-ink-faint">
+                  {folder
+                    ? `Backups are also written to “${folder}”. This survives clearing browser data.`
+                    : 'Also write each backup to a folder on your computer, so it survives clearing browser data.'}
+                </p>
+              </div>
+              {folder ? (
+                <Button variant="ghost" size="sm" onClick={handleStopMirror}>
+                  Stop mirroring
+                </Button>
+              ) : (
+                <Button variant="secondary" size="sm" onClick={handleChooseFolder}>
+                  Choose folder
+                </Button>
+              )}
+            </div>
           </div>
+        ) : (
+          <p className="mb-5 text-xs text-ink-faint">
+            This browser cannot mirror backups to a folder; restore points are kept in the
+            browser only. Use “Export all data” above for an off-device copy.
+          </p>
         )}
-      </Modal>
+
+        {/* Restore points */}
+        {!backups || backups.length === 0 ? (
+          <p className="text-sm text-ink-faint">No restore points yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {backups.map((b) => (
+              <li
+                key={b.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm text-ink">{formatDateTime(b.createdAt)}</div>
+                  <div className="text-xs text-ink-faint">
+                    {b.deckCount} deck{b.deckCount === 1 ? '' : 's'} · {b.cardCount} card
+                    {b.cardCount === 1 ? '' : 's'}
+                  </div>
+                </div>
+                {confirmRestore === b.id ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-ink-soft">Replace all data?</span>
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmRestore(null)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => b.id != null && handleRestore(b.id)}
+                    >
+                      Restore
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => b.id != null && void deleteBackup(b.id)}
+                    >
+                      Delete
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setConfirmRestore(b.id ?? null)}
+                    >
+                      Restore
+                    </Button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

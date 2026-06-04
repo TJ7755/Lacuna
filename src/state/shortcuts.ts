@@ -1,0 +1,39 @@
+// The single source of truth for the keyboard shortcuts shown in the help overlay (?).
+// The handlers live in the relevant components (AppShell, DeckView, LearnMode); this
+// registry only describes them so the cheatsheet can never drift out of date.
+
+export interface Shortcut {
+  keys: string[];
+  description: string;
+}
+
+export interface ShortcutGroup {
+  title: string;
+  shortcuts: Shortcut[];
+}
+
+export const SHORTCUT_GROUPS: ShortcutGroup[] = [
+  {
+    title: 'Anywhere',
+    shortcuts: [
+      { keys: ['Ctrl/Cmd', 'K'], description: 'Open the command palette' },
+      { keys: ['/'], description: 'Jump to search' },
+      { keys: ['?'], description: 'Show this help' },
+    ],
+  },
+  {
+    title: 'Decks',
+    shortcuts: [{ keys: ['N'], description: 'New card (while viewing a deck)' }],
+  },
+  {
+    title: 'Studying',
+    shortcuts: [
+      { keys: ['Space'], description: 'Show the answer' },
+      { keys: ['Y'], description: 'Mark correct' },
+      { keys: ['N'], description: 'Mark incorrect' },
+      { keys: ['E'], description: 'Edit the current card' },
+      { keys: ['F'], description: 'Toggle focus mode' },
+      { keys: ['U'], description: 'Undo the last answer' },
+    ],
+  },
+];

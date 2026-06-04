@@ -17,7 +17,7 @@ export function Toggle({ checked, onChange, label, id }: ToggleProps) {
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={cn(
-          'relative h-6 w-11 rounded-full transition-colors duration-200',
+          'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200',
           checked ? 'bg-accent' : 'bg-ink/20',
         )}
       >

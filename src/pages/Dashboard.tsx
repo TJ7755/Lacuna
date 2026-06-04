@@ -1,18 +1,22 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
-import { useDecks, useDeckSummaries } from '../state/useData';
+import { AnimatePresence, motion } from 'motion/react';
+import { useDecks, useDeckSummaries, useStudyStats } from '../state/useData';
+import { StudySignals } from '../components/dashboard/StudySignals';
 import {
   createDeck,
+  createDeckWithCards,
   deleteDecks,
   mergeDecks,
+  restoreDecks,
+  snapshotDecks,
 } from '../db/repository';
 import { Button } from '../components/ui/Button';
-import { Modal } from '../components/ui/Modal';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { useToast } from '../components/ui/Toast';
-import { CheckIcon, MergeIcon, PlusIcon, TrashIcon } from '../components/ui/icons';
+import { ImportPanel } from '../components/import/ImportPanel';
+import { CheckIcon, MergeIcon, PlayIcon, PlusIcon, TrashIcon } from '../components/ui/icons';
+import type { ParsedCard } from '../db/import';
 import { relativeExam } from '../utils/datetime';
 import { progressNoun } from '../fsrs/objective';
 import { cn } from '../components/ui/cn';
@@ -21,20 +25,31 @@ import type { Deck } from '../db/types';
 export function Dashboard() {
   const decks = useDecks();
   const summaries = useDeckSummaries();
+  const stats = useStudyStats();
   const navigate = useNavigate();
   const { notify } = useToast();
 
   const [creating, setCreating] = useState(false);
+  const [createMode, setCreateMode] = useState<'blank' | 'import'>('blank');
   const [newName, setNewName] = useState('');
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [mergeOpen, setMergeOpen] = useState(false);
+  const [merging, setMerging] = useState(false);
   const [mergeTarget, setMergeTarget] = useState<string | null>(null);
 
   const selectedDecks = useMemo(
     () => (decks ?? []).filter((d) => selected.has(d.id)),
     [decks, selected],
+  );
+
+  // Archived decks are retained but hidden from active study; show them apart.
+  const activeDecks = useMemo(() => (decks ?? []).filter((d) => !d.archived), [decks]);
+  const archivedDecks = useMemo(() => (decks ?? []).filter((d) => d.archived), [decks]);
+
+  // Total cards a global session would serve today, across all decks.
+  const totalEligible = useMemo(
+    () => Object.values(summaries ?? {}).reduce((sum, s) => sum + s.eligible, 0),
+    [summaries],
   );
 
   function toggleSelected(id: string) {
@@ -48,9 +63,18 @@ export function Dashboard() {
   function exitSelectMode() {
     setSelectMode(false);
     setSelected(new Set());
+    setMerging(false);
+    setMergeTarget(null);
+  }
+
+  function startCreating() {
+    setNewName('');
+    setCreateMode('blank');
+    setCreating(true);
   }
 
   async function handleCreate() {
+    if (!newName.trim()) return;
     const deck = await createDeck(newName);
     setNewName('');
     setCreating(false);
@@ -58,19 +82,36 @@ export function Dashboard() {
     navigate(`/deck/${deck.id}`);
   }
 
+  async function handleImportNew(cards: ParsedCard[]) {
+    const deck = await createDeckWithCards(newName, cards);
+    setNewName('');
+    setCreating(false);
+    notify(`Deck created with ${cards.length} card${cards.length === 1 ? '' : 's'}.`, 'positive');
+    navigate(`/deck/${deck.id}`);
+  }
+
   async function handleDelete() {
     const ids = [...selected];
+    if (ids.length === 0) return;
+    const snapshot = await snapshotDecks(ids);
     await deleteDecks(ids);
-    setConfirmDelete(false);
     exitSelectMode();
-    notify(`${ids.length} deck${ids.length === 1 ? '' : 's'} deleted.`);
+    notify(`${ids.length} deck${ids.length === 1 ? '' : 's'} deleted.`, 'neutral', {
+      actionLabel: 'Undo',
+      onAction: () => {
+        void restoreDecks(snapshot);
+      },
+    });
+  }
+
+  function startMerge() {
+    setMergeTarget(selectedDecks[0]?.id ?? null);
+    setMerging(true);
   }
 
   async function handleMerge() {
     if (!mergeTarget) return;
     await mergeDecks([...selected], mergeTarget);
-    setMergeOpen(false);
-    setMergeTarget(null);
     exitSelectMode();
     notify('Decks merged.', 'positive');
   }
@@ -93,46 +134,202 @@ export function Dashboard() {
               {selectMode ? 'Done' : 'Select'}
             </Button>
           )}
-          <Button variant="primary" onClick={() => setCreating(true)}>
+          <Button variant="primary" onClick={startCreating}>
             <PlusIcon width={18} height={18} />
             New deck
           </Button>
         </div>
       </header>
 
+      {/* Motivation strip: streak, reviews today, seven-day time forecast */}
+      {!selectMode && stats && decks && decks.length > 0 && <StudySignals stats={stats} />}
+
+      {/* Global "study everything" entry point */}
+      {!selectMode && decks && decks.length > 0 && totalEligible > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 flex flex-wrap items-center gap-4 rounded-2xl border border-accent/40 bg-accent-soft/40 p-5"
+        >
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-xl">Study today</h2>
+            <p className="text-sm text-ink-soft">
+              {totalEligible} card{totalEligible === 1 ? '' : 's'} ready across all your
+              decks, ordered by what moves you furthest before each exam.
+            </p>
+          </div>
+          <Button variant="primary" size="lg" onClick={() => navigate('/learn')}>
+            <PlayIcon width={18} height={18} />
+            Study all decks
+          </Button>
+        </motion.div>
+      )}
+
+      {/* Inline new-deck composer */}
+      <AnimatePresence>
+        {creating && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-2xl border border-line-strong bg-surface p-5">
+              {/* Blank vs Import mode */}
+              <div className="mb-4 flex gap-2">
+                {(['blank', 'import'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setCreateMode(m)}
+                    className={cn(
+                      'flex-1 rounded-lg border px-4 py-2 text-sm transition-colors',
+                      createMode === m
+                        ? 'border-accent bg-accent-soft text-accent'
+                        : 'border-line text-ink-soft hover:border-line-strong',
+                    )}
+                  >
+                    {m === 'blank' ? 'Start blank' : 'Import cards'}
+                  </button>
+                ))}
+              </div>
+
+              <label className="block text-sm text-ink-soft">
+                Deck name
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (createMode === 'blank' && e.key === 'Enter' && newName.trim())
+                      handleCreate();
+                    if (e.key === 'Escape') setCreating(false);
+                  }}
+                  placeholder="e.g. Organic Chemistry"
+                  className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+                />
+              </label>
+
+              {createMode === 'blank' ? (
+                <>
+                  <p className="mt-3 text-xs text-ink-faint">
+                    The exam date defaults to seven days from now. You will be asked to set
+                    the real date the first time you study this deck.
+                  </p>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button variant="ghost" onClick={() => setCreating(false)}>
+                      Cancel
+                    </Button>
+                    <Button variant="primary" onClick={handleCreate} disabled={!newName.trim()}>
+                      Create
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-4">
+                  <ImportPanel
+                    onImport={handleImportNew}
+                    onCancel={() => setCreating(false)}
+                    importLabel="Create & import"
+                  />
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Selection action bar */}
       {selectMode && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-line-strong bg-surface px-4 py-3"
+          className="mb-6 rounded-xl border border-line-strong bg-surface px-4 py-3"
         >
-          <span className="text-sm text-ink-soft">
-            {selected.size} selected
-          </span>
-          <div className="ml-auto flex gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={selected.size < 2}
-              onClick={() => {
-                setMergeTarget(selectedDecks[0]?.id ?? null);
-                setMergeOpen(true);
-              }}
-            >
-              <MergeIcon width={16} height={16} />
-              Merge
-            </Button>
-            <Button
-              size="sm"
-              variant="danger"
-              disabled={selected.size === 0}
-              onClick={() => setConfirmDelete(true)}
-            >
-              <TrashIcon width={16} height={16} />
-              Delete
-            </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm text-ink-soft">{selected.size} selected</span>
+            <div className="ml-auto flex gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={selected.size < 2}
+                onClick={startMerge}
+              >
+                <MergeIcon width={16} height={16} />
+                Merge
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={selected.size === 0}
+                onClick={handleDelete}
+              >
+                <TrashIcon width={16} height={16} />
+                Delete
+              </Button>
+            </div>
           </div>
+
+          {/* Inline merge chooser */}
+          <AnimatePresence>
+            {merging && selected.size >= 2 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="border-t border-line pt-3">
+                  <p className="mb-3 text-sm text-ink-soft">
+                    Choose which deck to keep. All cards from the other selected decks move
+                    into it; the kept deck retains its name, exam date and performance
+                    history.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {selectedDecks.map((deck) => (
+                      <label
+                        key={deck.id}
+                        className={cn(
+                          'flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors',
+                          mergeTarget === deck.id
+                            ? 'border-accent bg-accent-soft'
+                            : 'border-line hover:border-line-strong',
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name="merge-target"
+                          checked={mergeTarget === deck.id}
+                          onChange={() => setMergeTarget(deck.id)}
+                          className="accent-accent"
+                        />
+                        <span className="text-sm">{deck.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setMerging(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={handleMerge}
+                      disabled={!mergeTarget}
+                    >
+                      Merge into selected
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       )}
 
@@ -140,112 +337,45 @@ export function Dashboard() {
       {!decks ? (
         <div className="text-ink-faint">Loading…</div>
       ) : decks.length === 0 ? (
-        <EmptyState onCreate={() => setCreating(true)} />
+        <EmptyState onCreate={startCreating} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {decks.map((deck, i) => (
-            <DeckCard
-              key={deck.id}
-              deck={deck}
-              index={i}
-              summary={summaries?.[deck.id]}
-              selectMode={selectMode}
-              selected={selected.has(deck.id)}
-              onToggleSelected={() => toggleSelected(deck.id)}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Create deck modal */}
-      <Modal
-        open={creating}
-        onClose={() => setCreating(false)}
-        title="New deck"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setCreating(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleCreate} disabled={!newName.trim()}>
-              Create
-            </Button>
-          </>
-        }
-      >
-        <label className="block text-sm text-ink-soft">
-          Deck name
-          <input
-            autoFocus
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && newName.trim() && handleCreate()}
-            placeholder="e.g. Organic Chemistry"
-            className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
-          />
-        </label>
-        <p className="mt-3 text-xs text-ink-faint">
-          The exam date defaults to seven days from now. You will be asked to set the
-          real date the first time you study this deck.
-        </p>
-      </Modal>
-
-      {/* Delete confirmation */}
-      <ConfirmDialog
-        open={confirmDelete}
-        title="Delete decks"
-        message={`Permanently delete ${selected.size} deck${
-          selected.size === 1 ? '' : 's'
-        } and all their cards? This cannot be undone.`}
-        confirmLabel="Delete"
-        destructive
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmDelete(false)}
-      />
-
-      {/* Merge modal */}
-      <Modal
-        open={mergeOpen}
-        onClose={() => setMergeOpen(false)}
-        title="Merge decks"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setMergeOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleMerge} disabled={!mergeTarget}>
-              Merge into selected
-            </Button>
-          </>
-        }
-      >
-        <p className="mb-4 text-sm text-ink-soft">
-          Choose which deck to keep. All cards from the other selected decks move into
-          it; the kept deck retains its name, exam date and performance history.
-        </p>
-        <div className="flex flex-col gap-2">
-          {selectedDecks.map((deck) => (
-            <label
-              key={deck.id}
-              className={cn(
-                'flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors',
-                mergeTarget === deck.id
-                  ? 'border-accent bg-accent-soft'
-                  : 'border-line hover:border-line-strong',
-              )}
-            >
-              <input
-                type="radio"
-                name="merge-target"
-                checked={mergeTarget === deck.id}
-                onChange={() => setMergeTarget(deck.id)}
-                className="accent-accent"
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {activeDecks.map((deck, i) => (
+              <DeckCard
+                key={deck.id}
+                deck={deck}
+                index={i}
+                summary={summaries?.[deck.id]}
+                selectMode={selectMode}
+                selected={selected.has(deck.id)}
+                onToggleSelected={() => toggleSelected(deck.id)}
               />
-              <span className="text-sm">{deck.name}</span>
-            </label>
-          ))}
-        </div>
-      </Modal>
+            ))}
+          </div>
+
+          {archivedDecks.length > 0 && (
+            <section className="mt-10">
+              <h2 className="mb-4 text-sm uppercase tracking-[0.18em] text-ink-faint">
+                Archived
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {archivedDecks.map((deck, i) => (
+                  <DeckCard
+                    key={deck.id}
+                    deck={deck}
+                    index={i}
+                    summary={summaries?.[deck.id]}
+                    selectMode={selectMode}
+                    selected={selected.has(deck.id)}
+                    onToggleSelected={() => toggleSelected(deck.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -269,9 +399,10 @@ function DeckCard({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -4 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3) }}
       className={cn(
-        'group relative flex h-full flex-col rounded-2xl border bg-surface p-5 transition-all',
+        'group relative flex h-full flex-col rounded-2xl border bg-surface p-5 transition-[border-color,box-shadow]',
         selected
           ? 'border-accent ring-2 ring-accent/30'
           : 'border-line hover:border-line-strong hover:shadow-lg hover:shadow-black/5',
@@ -281,15 +412,28 @@ function DeckCard({
         <span
           className={cn(
             'absolute right-4 top-4 grid h-6 w-6 place-items-center rounded-full border transition-colors',
-            selected ? 'border-accent bg-accent text-[hsl(28_60%_14%)]' : 'border-line-strong',
+            selected ? 'border-accent bg-accent text-accent-fg' : 'border-line-strong',
           )}
         >
           {selected && <CheckIcon width={14} height={14} />}
         </span>
       )}
 
-      <div className="mb-1 text-xs uppercase tracking-[0.14em] text-ink-faint">
-        Exam {relativeExam(deck.examDate)}
+      <div
+        className={cn(
+          'mb-1 text-xs uppercase tracking-[0.14em]',
+          deck.archived
+            ? 'text-ink-faint'
+            : deck.examDate < Date.now()
+              ? 'text-amber-600'
+              : 'text-ink-faint',
+        )}
+      >
+        {deck.archived
+          ? 'Archived'
+          : deck.examDate < Date.now()
+            ? 'Exam date passed'
+            : `Exam ${relativeExam(deck.examDate)}`}
       </div>
       <h3 className="mb-4 font-display text-2xl leading-tight tracking-tight">
         {deck.name}
@@ -307,14 +451,26 @@ function DeckCard({
     </motion.div>
   );
 
-  if (selectMode) {
-    return (
-      <button type="button" onClick={onToggleSelected} className="text-left">
-        {body}
-      </button>
-    );
-  }
-  return <Link to={`/deck/${deck.id}`}>{body}</Link>;
+  // Keep the same wrapper element across modes so toggling select mode doesn't
+  // remount the card (which would replay its entrance animation). In select
+  // mode we intercept the navigation and toggle the selection instead.
+  return (
+    <Link
+      to={`/deck/${deck.id}`}
+      onClick={
+        selectMode
+          ? (e) => {
+              e.preventDefault();
+              onToggleSelected();
+            }
+          : undefined
+      }
+      aria-pressed={selectMode ? selected : undefined}
+      className="text-left"
+    >
+      {body}
+    </Link>
+  );
 }
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {

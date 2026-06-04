@@ -1,10 +1,14 @@
 // FSRS-6 engine wrapper.
 //
 // Every memory-state update (initial S/D, post-success and post-lapse stability,
-// difficulty update, same-day/short-term steps) is delegated to the official
-// `ts-fsrs` package. This module only translates between Lacuna's persisted Card
-// shape and ts-fsrs's Card, and exposes a couple of small, pure helpers. There is
-// deliberately no hand-rolled FSRS maths here any more.
+// difficulty update and the short-term support exposed by the installed ts-fsrs
+// package) is delegated to `ts-fsrs`. This module only translates between Lacuna's
+// persisted Card shape and ts-fsrs's Card, and exposes a couple of small, pure
+// helpers. There is deliberately no hand-rolled FSRS maths here.
+//
+// Known limitation: FSRS is still a long-term scheduling model. It does not fully
+// model same-evening cramming behaviour, so repeated reviews under exam pressure can
+// look more certain than they really are.
 
 import {
   fsrs,

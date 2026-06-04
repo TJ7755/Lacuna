@@ -12,6 +12,7 @@ import { motion } from 'motion/react';
 import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/ProgressBar';
 import { useChartColours } from '../analytics/useChartColours';
+import { CheckIcon } from '../ui/icons';
 import type { SessionSummary } from './types';
 
 const GRADE_LABELS: Record<number, string> = {
@@ -67,6 +68,17 @@ export function SessionReport({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       >
+        {/* Reaching the goal earns a badge that springs in — the moment worth savouring. */}
+        {summary.reachedGoal && (
+          <motion.div
+            initial={{ scale: 0, rotate: -25 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 16, delay: 0.15 }}
+            className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-positive/15 text-positive"
+          >
+            <CheckIcon width={28} height={28} />
+          </motion.div>
+        )}
         <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">
           {summary.reachedGoal ? 'Goal reached' : 'Session complete'}
         </p>
@@ -88,12 +100,12 @@ export function SessionReport({
           <ProgressBar value={summary.masteryAfter} />
         </div>
 
-        {/* Stat tiles */}
+        {/* Stat tiles — revealed one after another so the numbers land in sequence. */}
         <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label="Cards reviewed" value={String(total)} />
-          <Stat label="Accuracy" value={`${accuracy}%`} />
-          <Stat label="Mean time" value={`${meanResponse.toFixed(1)}s`} />
-          <Stat label="Focus" value={`${Math.round(summary.focusFraction * 100)}%`} />
+          <Stat index={0} label="Cards reviewed" value={String(total)} />
+          <Stat index={1} label="Accuracy" value={`${accuracy}%`} />
+          <Stat index={2} label="Mean time" value={`${meanResponse.toFixed(1)}s`} />
+          <Stat index={3} label="Focus" value={`${Math.round(summary.focusFraction * 100)}%`} />
         </div>
 
         {/* Grade distribution */}
@@ -159,11 +171,16 @@ export function SessionReport({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, index }: { label: string; value: string; index: number }) {
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: 0.2 + index * 0.07, ease: [0.16, 1, 0.3, 1] }}
+      className="rounded-xl border border-line bg-surface p-4"
+    >
       <div className="font-display text-3xl tabular tracking-tight">{value}</div>
       <div className="mt-1 text-xs uppercase tracking-wide text-ink-faint">{label}</div>
-    </div>
+    </motion.div>
   );
 }

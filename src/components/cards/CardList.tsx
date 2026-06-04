@@ -1,13 +1,33 @@
 import { useMemo, useState } from 'react';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { CardContent } from './CardContent';
 import { Button } from '../ui/Button';
-import { Modal } from '../ui/Modal';
-import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useToast } from '../ui/Toast';
-import { deleteCards, moveCards } from '../../db/repository';
-import { CheckIcon, EditIcon, PlusIcon } from '../ui/icons';
+import { ImportPanel } from '../import/ImportPanel';
+import {
+  addTagToCards,
+  createCards,
+  deleteCards,
+  moveCards,
+  removeTagFromCards,
+  restoreCards,
+  setCardFlag,
+  setCardsSuspended,
+  snapshotCards,
+  unsuspendCard,
+} from '../../db/repository';
+import { isLeech } from '../../fsrs/leech';
+import {
+  CheckIcon,
+  EditIcon,
+  FlagIcon,
+  PlusIcon,
+  TagIcon,
+  TrashIcon,
+  UploadIcon,
+} from '../ui/icons';
 import { cn } from '../ui/cn';
+import type { ParsedCard } from '../../db/import';
 import type { Card, Deck } from '../../db/types';
 
 interface CardListProps {
@@ -22,14 +42,23 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
   const { notify } = useToast();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [moveOpen, setMoveOpen] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [moveTarget, setMoveTarget] = useState<string>('');
+  const [tagging, setTagging] = useState(false);
+  const [tagValue, setTagValue] = useState('');
+  const [importing, setImporting] = useState(false);
 
   const otherDecks = useMemo(
     () => allDecks.filter((d) => d.id !== deck.id),
     [allDecks, deck.id],
   );
+
+  // Existing tags across the deck, offered as suggestions in the bulk tag panel.
+  const tagSuggestions = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of cards) for (const t of c.tags ?? []) set.add(t);
+    return [...set].sort();
+  }, [cards]);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -42,24 +71,118 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
   function exitSelect() {
     setSelectMode(false);
     setSelected(new Set());
+    setMoving(false);
+    setMoveTarget('');
+    setTagging(false);
+    setTagValue('');
+  }
+
+  /** Apply a reversible bulk change to the selected cards, with an Undo toast. */
+  async function applyBulk(
+    apply: (ids: string[]) => Promise<void>,
+    message: string,
+  ) {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    const snapshot = await snapshotCards(ids);
+    await apply(ids);
+    exitSelect();
+    notify(message, 'neutral', {
+      actionLabel: 'Undo',
+      onAction: () => {
+        void restoreCards(snapshot);
+      },
+    });
+  }
+
+  function plural(n: number) {
+    return n === 1 ? '' : 's';
+  }
+
+  async function handleSuspend(suspended: boolean) {
+    const n = selected.size;
+    await applyBulk(
+      (ids) => setCardsSuspended(ids, suspended),
+      `${n} card${plural(n)} ${suspended ? 'suspended' : 'resumed'}.`,
+    );
+  }
+
+  async function handleAddTag() {
+    const tag = tagValue.trim();
+    if (!tag) return;
+    const n = selected.size;
+    await applyBulk((ids) => addTagToCards(ids, tag), `Tagged ${n} card${plural(n)} "${tag}".`);
+  }
+
+  async function handleRemoveTag() {
+    const tag = tagValue.trim();
+    if (!tag) return;
+    const n = selected.size;
+    await applyBulk(
+      (ids) => removeTagFromCards(ids, tag),
+      `Removed "${tag}" from ${n} card${plural(n)}.`,
+    );
   }
 
   async function handleDelete() {
     const ids = [...selected];
+    if (ids.length === 0) return;
+    const snapshot = await snapshotCards(ids);
     await deleteCards(ids);
-    setConfirmDelete(false);
     exitSelect();
-    notify(`${ids.length} card${ids.length === 1 ? '' : 's'} deleted.`);
+    notify(`${ids.length} card${ids.length === 1 ? '' : 's'} deleted.`, 'neutral', {
+      actionLabel: 'Undo',
+      onAction: () => {
+        void restoreCards(snapshot);
+      },
+    });
+  }
+
+  function startMove() {
+    setTagging(false);
+    setMoveTarget(otherDecks[0]?.id ?? '');
+    setMoving(true);
+  }
+
+  function startTag() {
+    setMoving(false);
+    setTagging(true);
   }
 
   async function handleMove() {
     if (!moveTarget) return;
     const ids = [...selected];
     await moveCards(ids, moveTarget);
-    setMoveOpen(false);
-    setMoveTarget('');
     exitSelect();
     notify(`${ids.length} card${ids.length === 1 ? '' : 's'} moved.`, 'positive');
+  }
+
+  async function handleImport(cards: ParsedCard[]) {
+    await createCards(deck.id, cards);
+    setImporting(false);
+    notify(`${cards.length} card${cards.length === 1 ? '' : 's'} imported.`, 'positive');
+  }
+
+  async function handleResume(id: string) {
+    await unsuspendCard(id);
+    notify('Card resumed.', 'positive');
+  }
+
+  async function handleToggleFlag(card: Card) {
+    await setCardFlag(card.id, !card.flagged);
+  }
+
+  // One-click delete from a card's hover actions, with the same snapshot/undo flow
+  // as the bulk selection delete.
+  async function handleDeleteOne(id: string) {
+    const snapshot = await snapshotCards([id]);
+    await deleteCards([id]);
+    notify('Card deleted.', 'neutral', {
+      actionLabel: 'Undo',
+      onAction: () => {
+        void restoreCards(snapshot);
+      },
+    });
   }
 
   return (
@@ -78,6 +201,16 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
               {selectMode ? 'Done' : 'Select'}
             </Button>
           )}
+          {!selectMode && (
+            <Button
+              variant={importing ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setImporting((v) => !v)}
+            >
+              <UploadIcon width={16} height={16} />
+              Import
+            </Button>
+          )}
           <Button variant="primary" size="sm" onClick={onNewCard}>
             <PlusIcon width={16} height={16} />
             New card
@@ -85,30 +218,176 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
         </div>
       </div>
 
+      {/* Inline import panel */}
+      <AnimatePresence>
+        {importing && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-2xl border border-line-strong bg-surface p-5">
+              <h3 className="mb-4 font-display text-lg">Import cards into {deck.name}</h3>
+              <ImportPanel
+                onImport={handleImport}
+                onCancel={() => setImporting(false)}
+                importLabel="Add cards"
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {selectMode && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-line-strong bg-surface px-4 py-2.5">
-          <span className="text-sm text-ink-soft">{selected.size} selected</span>
-          <div className="ml-auto flex gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={selected.size === 0 || otherDecks.length === 0}
-              onClick={() => {
-                setMoveTarget(otherDecks[0]?.id ?? '');
-                setMoveOpen(true);
-              }}
-            >
-              Move to…
-            </Button>
-            <Button
-              size="sm"
-              variant="danger"
-              disabled={selected.size === 0}
-              onClick={() => setConfirmDelete(true)}
-            >
-              Delete
-            </Button>
+        <div className="mb-4 rounded-xl border border-line-strong bg-surface px-4 py-2.5">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm text-ink-soft">{selected.size} selected</span>
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={tagging ? 'primary' : 'secondary'}
+                disabled={selected.size === 0}
+                onClick={() => (tagging ? setTagging(false) : startTag())}
+              >
+                Tag…
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={selected.size === 0}
+                onClick={() => handleSuspend(true)}
+              >
+                Suspend
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={selected.size === 0}
+                onClick={() => handleSuspend(false)}
+              >
+                Resume
+              </Button>
+              <Button
+                size="sm"
+                variant={moving ? 'primary' : 'secondary'}
+                disabled={selected.size === 0 || otherDecks.length === 0}
+                onClick={() => (moving ? setMoving(false) : startMove())}
+              >
+                Move to…
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={selected.size === 0}
+                onClick={handleDelete}
+              >
+                Delete
+              </Button>
+            </div>
           </div>
+
+          {/* Inline tag chooser */}
+          <AnimatePresence>
+            {tagging && selected.size > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="border-t border-line pt-3">
+                  <label className="block text-sm text-ink-soft">
+                    Tag for {selected.size} card{plural(selected.size)}
+                    <input
+                      list="bulk-tag-suggestions"
+                      value={tagValue}
+                      onChange={(e) => setTagValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          void handleAddTag();
+                        }
+                      }}
+                      placeholder="Type a tag…"
+                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+                    />
+                    <datalist id="bulk-tag-suggestions">
+                      {tagSuggestions.map((t) => (
+                        <option key={t} value={t} />
+                      ))}
+                    </datalist>
+                  </label>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setTagging(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={handleRemoveTag}
+                      disabled={!tagValue.trim()}
+                    >
+                      Remove
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={handleAddTag}
+                      disabled={!tagValue.trim()}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Inline move chooser */}
+          <AnimatePresence>
+            {moving && selected.size > 0 && otherDecks.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="border-t border-line pt-3">
+                  <label className="block text-sm text-ink-soft">
+                    Move {selected.size} card{selected.size === 1 ? '' : 's'} to
+                    <select
+                      value={moveTarget}
+                      onChange={(e) => setMoveTarget(e.target.value)}
+                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+                    >
+                      {otherDecks.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setMoving(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={handleMove}
+                      disabled={!moveTarget}
+                    >
+                      Move
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
@@ -131,53 +410,13 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
               selected={selected.has(card.id)}
               onToggle={() => toggle(card.id)}
               onEdit={() => onEditCard(card)}
+              onResume={() => handleResume(card.id)}
+              onDelete={() => handleDeleteOne(card.id)}
+              onToggleFlag={() => handleToggleFlag(card)}
             />
           ))}
         </div>
       )}
-
-      <ConfirmDialog
-        open={confirmDelete}
-        title="Delete cards"
-        message={`Permanently delete ${selected.size} card${
-          selected.size === 1 ? '' : 's'
-        }? This cannot be undone.`}
-        confirmLabel="Delete"
-        destructive
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmDelete(false)}
-      />
-
-      <Modal
-        open={moveOpen}
-        onClose={() => setMoveOpen(false)}
-        title="Move cards"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setMoveOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleMove} disabled={!moveTarget}>
-              Move
-            </Button>
-          </>
-        }
-      >
-        <label className="block text-sm text-ink-soft">
-          Destination deck
-          <select
-            value={moveTarget}
-            onChange={(e) => setMoveTarget(e.target.value)}
-            className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
-          >
-            {otherDecks.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </Modal>
     </div>
   );
 }
@@ -189,6 +428,9 @@ function CardRow({
   selected,
   onToggle,
   onEdit,
+  onResume,
+  onDelete,
+  onToggleFlag,
 }: {
   card: Card;
   index: number;
@@ -196,8 +438,15 @@ function CardRow({
   selected: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onResume: () => void;
+  onDelete: () => void;
+  onToggleFlag: () => void;
 }) {
   const reviewed = card.lastReviewed !== null;
+  const tags = card.tags ?? [];
+  const buried = card.buriedUntil != null && card.buriedUntil > Date.now();
+  const leech = isLeech(card);
+  const flagged = card.flagged === true;
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -216,7 +465,7 @@ function CardRow({
         <span
           className={cn(
             'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors',
-            selected ? 'border-accent bg-accent text-[hsl(28_60%_14%)]' : 'border-line-strong',
+            selected ? 'border-accent bg-accent text-accent-fg' : 'border-line-strong',
           )}
         >
           {selected && <CheckIcon width={12} height={12} />}
@@ -224,7 +473,7 @@ function CardRow({
       )}
 
       <div className="min-w-0 flex-1">
-        <div className="mb-1.5 flex items-center gap-2">
+        <div className="mb-1.5 flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-ink-faint">
             {card.type === 'cloze' ? 'Cloze' : 'Front / Back'}
           </span>
@@ -235,21 +484,90 @@ function CardRow({
           ) : (
             <span className="text-[11px] text-accent">New</span>
           )}
+          {card.suspended && (
+            <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
+              Suspended
+            </span>
+          )}
+          {!card.suspended && buried && (
+            <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
+              Buried
+            </span>
+          )}
+          {leech && (
+            <span
+              title={`Failed ${card.lapses} times — consider rewording or splitting this card.`}
+              className="rounded-full bg-negative/10 px-2 py-0.5 text-[11px] font-medium text-negative"
+            >
+              Leech
+            </span>
+          )}
+          {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
         </div>
         <div className="max-h-24 overflow-hidden text-sm text-ink-soft [mask-image:linear-gradient(to_bottom,black_60%,transparent)]">
           <CardContent card={card} side="front" />
         </div>
+        {tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <TagIcon width={13} height={13} className="text-ink-faint" />
+            {tags.map((t) => (
+              <span
+                key={t}
+                className="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-soft"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {!selectMode && (
-        <button
-          type="button"
-          onClick={onEdit}
-          title="Edit card"
-          className="shrink-0 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-ink/5 hover:text-accent group-hover:opacity-100"
-        >
-          <EditIcon width={16} height={16} />
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          {card.suspended && (
+            <button
+              type="button"
+              onClick={onResume}
+              title="Resume card"
+              className="rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent"
+            >
+              Resume
+            </button>
+          )}
+          <motion.button
+            type="button"
+            onClick={onToggleFlag}
+            title={flagged ? 'Remove flag' : 'Flag card'}
+            aria-pressed={flagged}
+            whileTap={{ scale: 0.88 }}
+            className={cn(
+              'rounded-lg p-2 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100',
+              flagged
+                ? 'text-accent opacity-100'
+                : 'text-ink-faint opacity-0 group-hover:opacity-100',
+            )}
+          >
+            <FlagIcon width={16} height={16} />
+          </motion.button>
+          <motion.button
+            type="button"
+            onClick={onEdit}
+            title="Edit card"
+            whileTap={{ scale: 0.88 }}
+            className="rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            <EditIcon width={16} height={16} />
+          </motion.button>
+          <motion.button
+            type="button"
+            onClick={onDelete}
+            title="Delete card"
+            whileTap={{ scale: 0.88 }}
+            className="rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-negative/10 hover:text-negative focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            <TrashIcon width={16} height={16} />
+          </motion.button>
+        </div>
       )}
     </motion.div>
   );

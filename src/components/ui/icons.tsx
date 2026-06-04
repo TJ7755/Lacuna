@@ -32,6 +32,19 @@ export const DashboardIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const FlameIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 2c1 3-1.5 4.5-1.5 7A2.5 2.5 0 0 0 13 11c.5-1 .3-2 0-2.5 2 1 4 3.4 4 6.5a5 5 0 0 1-10 0c0-1.6.8-3 1.7-4-.2 1 .3 2 1.3 2.2" />
+  </Icon>
+);
+
+export const FlagIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+    <line x1="4" y1="22" x2="4" y2="15" />
+  </Icon>
+);
+
 export const SettingsIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="3" />
@@ -144,5 +157,65 @@ export const FlaskIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M9 3h6M10 3v6.5L4.5 18a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 9.5V3" />
     <path d="M7.5 14h9" />
+  </Icon>
+);
+
+export const SearchIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="11" cy="11" r="7" />
+    <path d="M21 21l-4.3-4.3" />
+  </Icon>
+);
+
+export const MoreIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="5" r="1" />
+    <circle cx="12" cy="12" r="1" />
+    <circle cx="12" cy="19" r="1" />
+  </Icon>
+);
+
+export const PauseIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="6" y="4" width="4" height="16" rx="1" />
+    <rect x="14" y="4" width="4" height="16" rx="1" />
+  </Icon>
+);
+
+export const ClockIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" />
+  </Icon>
+);
+
+export const UndoIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M9 14L4 9l5-5" />
+    <path d="M4 9h11a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5H9" />
+  </Icon>
+);
+
+export const TagIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M20.59 13.41l-7.18 7.18a2 2 0 0 1-2.82 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+    <circle cx="7" cy="7" r="1.2" />
+  </Icon>
+);
+
+export const ShareIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+  </Icon>
+);
+
+export const MenuIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <line x1="3" y1="12" x2="21" y2="12" />
+    <line x1="3" y1="18" x2="21" y2="18" />
   </Icon>
 );

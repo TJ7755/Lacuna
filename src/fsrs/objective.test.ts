@@ -83,7 +83,9 @@ describe('objective consistency: the bar matches the objective', () => {
         forgettingCurve(examDays, 100, DECAY) +
         0) /
       4;
-    expect(progressValue(cards, deck)).toBeCloseTo(expectedMean, 12);
+    // now = 0 keeps the epoch-based exam date in the future (the scheduling
+    // horizon is time-aware: a past exam falls back to a rolling horizon).
+    expect(progressValue(cards, deck, 0)).toBeCloseTo(expectedMean, 12);
   });
 
   it('securedTopics: progress equals the fraction of cards at or above 0.90', () => {
@@ -97,12 +99,12 @@ describe('objective consistency: the bar matches the objective', () => {
     ];
     const fraction =
       rValues.filter((r) => r >= MASTERY_R).length / rValues.length;
-    expect(progressValue(cards, deck)).toBeCloseTo(fraction, 12);
+    expect(progressValue(cards, deck, 0)).toBeCloseTo(fraction, 12);
   });
 
   it('the two objectives generally disagree, which is exactly why they must be pinned together', () => {
-    const meanR = progressValue(cards, makeDeck('expectedMarks'));
-    const secured = progressValue(cards, makeDeck('securedTopics'));
+    const meanR = progressValue(cards, makeDeck('expectedMarks'), 0);
+    const secured = progressValue(cards, makeDeck('securedTopics'), 0);
     expect(meanR).not.toBeCloseTo(secured, 2);
   });
 });

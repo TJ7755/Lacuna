@@ -4,6 +4,9 @@ import type {
   Card,
   SessionHistoryEntry,
   UserPerformance,
+  BackupSnapshot,
+  AppStateEntry,
+  ImageAsset,
 } from './types';
 import {
   migrateCardRecord,
@@ -22,6 +25,9 @@ export class LacunaDatabase extends Dexie {
   cards!: Table<Card, string>;
   sessionHistory!: Table<SessionHistoryEntry, number>;
   userPerformance!: Table<UserPerformance, string>;
+  backups!: Table<BackupSnapshot, number>;
+  appState!: Table<AppStateEntry, string>;
+  assets!: Table<ImageAsset, string>;
 
   constructor() {
     super('lacuna');
@@ -53,6 +59,59 @@ export class LacunaDatabase extends Dexie {
           .table('cards')
           .toCollection()
           .modify((card) => {
+            Object.assign(card, migrateCardRecord(card as LegacyCard));
+          });
+      });
+
+    // Version 3: add the automatic-backup restore-point store and a small key/value
+    // store (for the optional File System Access folder handle), and backfill the
+    // card fields introduced alongside tags/suspend/bury so existing data is clean.
+    // Booleans are not valid IndexedDB keys, so `suspended` is filtered in memory,
+    // not indexed.
+    this.version(3)
+      .stores({
+        decks: 'id, createdAt, examDate',
+        cards: 'id, deckId, type, lastReviewed',
+        sessionHistory: '++id, deckId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('cards')
+          .toCollection()
+          .modify((card) => {
+            Object.assign(card, migrateCardRecord(card as LegacyCard));
+          });
+      });
+
+    // Version 4: move embedded card images into a Blob asset table. Markdown keeps
+    // only lacuna-asset://hash references, which keeps reactive card reads small.
+    this.version(4)
+      .stores({
+        decks: 'id, createdAt, examDate',
+        cards: 'id, deckId, type, lastReviewed',
+        sessionHistory: '++id, deckId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+      })
+      .upgrade(async (tx) => {
+        const { extractMarkdownAssets } = await import('./assets');
+        await tx
+          .table('cards')
+          .toCollection()
+          .modify(async (card) => {
+            const front = await extractMarkdownAssets(card.front ?? '', (asset) =>
+              tx.table('assets').put(asset),
+            );
+            const back = await extractMarkdownAssets(card.back ?? '', (asset) =>
+              tx.table('assets').put(asset),
+            );
+            card.front = front;
+            card.back = back;
             Object.assign(card, migrateCardRecord(card as LegacyCard));
           });
       });

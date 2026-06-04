@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { MarkdownView } from '../markdown/MarkdownView';
 import type { Card } from '../../db/types';
 
@@ -7,8 +8,11 @@ type Side = 'front' | 'back';
  * Render one side of a card, handling both card types:
  *  - front_back: the front or back Markdown directly.
  *  - cloze: the same source, shown with blanks (front) or revealed answers (back).
+ *
+ * Memoised so a parent re-render (e.g. toggling select mode in the card list) doesn't
+ * touch every card's markdown; it re-renders only when this card's content changes.
  */
-export function CardContent({
+export const CardContent = memo(function CardContent({
   card,
   side,
   className,
@@ -27,4 +31,4 @@ export function CardContent({
     );
   }
   return <MarkdownView source={side === 'front' ? card.front : card.back} className={className} />;
-}
+});

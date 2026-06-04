@@ -16,6 +16,16 @@ export const DEFAULT_FSRS_W: readonly number[] = default_w;
 /** Default target retention used by ts-fsrs when scheduling. */
 export const DEFAULT_REQUEST_RETENTION = default_request_retention;
 
+/** Bounds for the user-facing target-retention control. */
+export const MIN_REQUEST_RETENTION = 0.8;
+export const MAX_REQUEST_RETENTION = 0.97;
+
+/** Clamp a target-retention value to the supported range. */
+export function clampRequestRetention(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_REQUEST_RETENTION;
+  return Math.min(MAX_REQUEST_RETENTION, Math.max(MIN_REQUEST_RETENTION, value));
+}
+
 /** A fresh copy of the default FSRS-6 parameter set for a new (or migrated) deck. */
 export function defaultFsrsParameters(): FsrsParameters {
   return { w: [...default_w], requestRetention: default_request_retention };

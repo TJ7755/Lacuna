@@ -1,17 +1,27 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { motion } from 'motion/react';
 import { createHashRouter, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './state/ThemeContext';
+import { AccentProvider } from './state/AccentContext';
+import { FontScaleProvider } from './state/FontScaleContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { AppShell } from './components/layout/AppShell';
 import { Dashboard } from './pages/Dashboard';
+import { Settings } from './pages/Settings';
+import { SearchPage } from './pages/SearchPage';
+import { SharePage } from './pages/SharePage';
 import { seedIfFirstRun } from './db/seed';
+import { autoBackupIfStale } from './db/backups';
 
 // Heavier routes (Recharts, KaTeX, the markdown editor) are split into their own
-// chunks so the dashboard loads quickly.
+// chunks so the dashboard loads quickly. Settings is intentionally eager: it is tiny
+// and pulls no heavy dependencies, so lazy-loading it only added a needless chunk
+// round-trip and Suspense flash when switching tabs.
 const DeckView = lazy(() => import('./pages/DeckView').then((m) => ({ default: m.DeckView })));
 const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default: m.LearnMode })));
-const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const CardEditor = lazy(() => import('./pages/CardEditor').then((m) => ({ default: m.CardEditor })));
+const DeckSettings = lazy(() => import('./pages/DeckSettings').then((m) => ({ default: m.DeckSettings })));
 
 function RouteFallback() {
   return (
@@ -36,11 +46,30 @@ const router = createHashRouter([
           </Suspense>
         ),
       },
+      { path: 'settings', element: <Settings /> },
+      { path: 'search', element: <SearchPage /> },
+      { path: 'share', element: <SharePage /> },
       {
-        path: 'settings',
+        path: 'deck/:deckId/settings',
         element: (
           <Suspense fallback={<RouteFallback />}>
-            <Settings />
+            <DeckSettings />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'deck/:deckId/cards/new',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <CardEditor />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'deck/:deckId/cards/:cardId/edit',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <CardEditor />
           </Suspense>
         ),
       },
@@ -57,19 +86,45 @@ const router = createHashRouter([
       </ErrorBoundary>
     ),
   },
+  {
+    // The global, cross-deck "Today" session (no deckId param).
+    path: '/learn',
+    element: (
+      <ErrorBoundary label="the Learn session">
+        <Suspense fallback={<RouteFallback />}>
+          <LearnMode />
+        </Suspense>
+      </ErrorBoundary>
+    ),
+  },
 ]);
 
 export function App() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    seedIfFirstRun().finally(() => setReady(true));
+    seedIfFirstRun().finally(() => {
+      setReady(true);
+      // Take a daily restore point in the background; never blocks the UI.
+      void autoBackupIfStale();
+    });
   }, []);
 
   if (!ready) {
     return (
-      <div className="grid h-screen place-items-center text-ink-faint">
-        <span className="animate-pulse font-display text-2xl">Lacuna</span>
+      <div className="grid h-screen place-items-center text-ink">
+        <motion.span
+          className="font-display text-3xl tracking-tight"
+          initial={{ opacity: 0, y: 8, scale: 0.96 }}
+          animate={{ opacity: [0, 1, 1, 0.6, 1], y: 0, scale: 1 }}
+          transition={{
+            opacity: { duration: 1.6, repeat: Infinity, ease: 'easeInOut' },
+            y: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
+            scale: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
+          }}
+        >
+          Lacuna
+        </motion.span>
       </div>
     );
   }
@@ -77,9 +132,13 @@ export function App() {
   return (
     <ErrorBoundary label="the application">
       <ThemeProvider>
-        <ToastProvider>
-          <RouterProvider router={router} />
-        </ToastProvider>
+        <AccentProvider>
+          <FontScaleProvider>
+            <ToastProvider>
+              <RouterProvider router={router} />
+            </ToastProvider>
+          </FontScaleProvider>
+        </AccentProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

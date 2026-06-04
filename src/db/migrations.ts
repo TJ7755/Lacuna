@@ -62,5 +62,9 @@ export function migrateCardRecord(card: LegacyCard): Card {
     due: card.due ?? card.lastReviewed,
     scheduledDays: card.scheduledDays ?? 0,
     learningSteps: card.learningSteps ?? 0,
+    // Fields added after FSRS-6; default so older records and imports stay valid.
+    tags: card.tags ?? [],
+    suspended: card.suspended ?? false,
+    buriedUntil: card.buriedUntil ?? null,
   };
 }

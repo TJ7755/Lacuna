@@ -3,8 +3,16 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import type { Card, Deck, SessionHistoryEntry, UserPerformance } from '../db/types';
+import type {
+  BackupSnapshot,
+  Card,
+  Deck,
+  SessionHistoryEntry,
+  UserPerformance,
+} from '../db/types';
 import { progressValue } from '../fsrs/objective';
+import { availableCards, studyPool } from '../fsrs/eligibility';
+import { computeStudyStats, type StudyStats } from '../fsrs/stats';
 
 export function useDecks(): Deck[] | undefined {
   return useLiveQuery(() => db.decks.orderBy('createdAt').toArray(), []);
@@ -17,11 +25,28 @@ export function useDeck(deckId: string | undefined): Deck | undefined {
   );
 }
 
+export function useCard(cardId: string | undefined): Card | undefined {
+  return useLiveQuery(
+    () => (cardId ? db.cards.get(cardId) : undefined),
+    [cardId],
+  );
+}
+
 export function useCards(deckId: string | undefined): Card[] | undefined {
   return useLiveQuery(
     () => (deckId ? db.cards.where('deckId').equals(deckId).toArray() : []),
     [deckId],
   );
+}
+
+/** Every card across all decks, for global search. */
+export function useAllCards(): Card[] | undefined {
+  return useLiveQuery(() => db.cards.toArray(), []);
+}
+
+/** Automatic-backup restore points, newest first. */
+export function useBackups(): BackupSnapshot[] | undefined {
+  return useLiveQuery(() => db.backups.orderBy('createdAt').reverse().toArray(), []);
 }
 
 export function useDeckPerformance(
@@ -45,12 +70,35 @@ export function useSessionHistory(
   );
 }
 
+/**
+ * Dashboard study signals (streak, reviews today, seven-day time forecast), recomputed
+ * reactively from review history, card due dates and per-deck response-time calibration.
+ */
+export function useStudyStats(): StudyStats | undefined {
+  return useLiveQuery(async () => {
+    const [cards, perf] = await Promise.all([
+      db.cards.toArray(),
+      db.userPerformance.toArray(),
+    ]);
+    // Only trust a deck's mean once it has at least one correct review to learn from.
+    const deckSeconds = new Map<string, number>();
+    for (const p of perf) {
+      if (p.totalCorrectReviews > 0 && p.runningMeanResponseTime > 0) {
+        deckSeconds.set(p.deckId, p.runningMeanResponseTime);
+      }
+    }
+    return computeStudyStats(cards, deckSeconds);
+  }, []);
+}
+
 export interface DeckSummary {
   count: number;
   /** Objective-aware progress (0..1): mean predicted R, or fraction secured. */
   mastery: number;
   /** Number of cards that have never been reviewed. */
   unreviewed: number;
+  /** Cards a session would serve today (available, new-card cap applied). */
+  eligible: number;
 }
 
 /**
@@ -70,10 +118,13 @@ export function useDeckSummaries(): Record<string, DeckSummary> | undefined {
     const summaries: Record<string, DeckSummary> = {};
     for (const deck of decks) {
       const deckCards = byDeck[deck.id] ?? [];
+      // Suspended/buried cards are excluded entirely from the objective denominator.
+      const available = availableCards(deckCards);
       summaries[deck.id] = {
         count: deckCards.length,
-        mastery: progressValue(deckCards, deck),
-        unreviewed: deckCards.filter((c) => c.lastReviewed === null).length,
+        mastery: progressValue(available, deck),
+        unreviewed: available.filter((c) => c.lastReviewed === null).length,
+        eligible: studyPool(deckCards, deck).length,
       };
     }
     // Account for any orphaned card sets whose deck was removed mid-transaction.
@@ -83,6 +134,7 @@ export function useDeckSummaries(): Record<string, DeckSummary> | undefined {
         count: deckCards.length,
         mastery: 0,
         unreviewed: deckCards.length,
+        eligible: 0,
       };
     }
     return summaries;

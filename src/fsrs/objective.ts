@@ -22,6 +22,7 @@ import {
   type SimContext,
 } from './forwardSim';
 import { averagePredictedRetrievability, masteryFraction } from './progress';
+import { schedulingHorizon } from './horizon';
 import { MASTERY_R } from './params';
 import type { Card, Deck, ExamObjective } from '../db/types';
 
@@ -89,17 +90,18 @@ export function scoreCard(
   now: number = Date.now(),
 ): number {
   const { deck, ctx } = oc;
+  const horizon = schedulingHorizon(deck, now);
 
   if (oc.objective === 'expectedMarks') {
     // Greedy maximisation of Sigma R: serve the largest expected lift first.
-    return deltaR(card, deck.examDate, now, ctx);
+    return deltaR(card, horizon, now, ctx);
   }
 
   // securedTopics: rank cards by whether reviewing now secures them (>= 0.90),
   // cheapest to secure first.
-  const rNo = rAtExam(card, deck.examDate, now, ctx.decay);
+  const rNo = rAtExam(card, horizon, now, ctx.decay);
   if (rNo >= MASTERY_R) return -1; // already secured: nothing to gain, lowest priority
-  const rYes = rAtExamIfReviewedNow(card, ctx.expectedGrade, deck.examDate, now, ctx);
+  const rYes = rAtExamIfReviewedNow(card, ctx.expectedGrade, horizon, now, ctx);
   if (rYes >= MASTERY_R) {
     // Securable now. A higher current rNo means it is closer to the line and so
     // cheaper to secure; rank those first. The +1 keeps every securable card
@@ -140,8 +142,9 @@ export function isObjectiveComplete(
   if (oc.objective === 'securedTopics') {
     return masteryFraction(cards, oc.deck, now) >= 1;
   }
+  const horizon = schedulingHorizon(oc.deck, now);
   const bestGain = cards.reduce(
-    (best, card) => Math.max(best, deltaR(card, oc.deck.examDate, now, oc.ctx)),
+    (best, card) => Math.max(best, deltaR(card, horizon, now, oc.ctx)),
     0,
   );
   return bestGain < EXPECTED_MARKS_EPSILON;

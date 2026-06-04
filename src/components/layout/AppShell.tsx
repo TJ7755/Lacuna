@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Sidebar } from './Sidebar';
 import { ErrorBoundary } from './ErrorBoundary';
+import { CommandPalette } from '../search/CommandPalette';
+import { KeyHints } from '../ui/KeyHints';
 import { FlaskIcon } from '../ui/icons';
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
@@ -12,16 +14,52 @@ export function AppShell() {
     () => localStorage.getItem(COLLAPSE_KEY) === '1',
   );
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [hintsOpen, setHintsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const outlet = useOutlet();
+  const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
   }, [collapsed]);
 
+  // Each page change starts at the top, so the entrance animation reveals the new
+  // page from its header rather than from wherever the last one was scrolled to.
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+  }, [location.pathname]);
+
   // Close the mobile drawer whenever the route changes.
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  // Global shortcuts within the shell: Ctrl/Cmd+K (palette), / (search), ? (help).
+  // Single-key shortcuts stay inert while typing so they never hijack a text field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+        return;
+      }
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable))
+        return;
+      if (e.key === '?') {
+        e.preventDefault();
+        setHintsOpen((v) => !v);
+      } else if (e.key === '/') {
+        e.preventDefault();
+        navigate('/search');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navigate]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -79,12 +117,27 @@ export function AppShell() {
           </span>
         </div>
 
-        <main className="min-w-0 flex-1 overflow-y-auto">
+        <main ref={mainRef} className="min-w-0 flex-1 overflow-y-auto">
           <ErrorBoundary label="this page">
-            <Outlet />
+            {/* Each route fades and lifts in as the previous one settles out, giving
+                navigation a sense of place without slowing the user down. */}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {outlet}
+              </motion.div>
+            </AnimatePresence>
           </ErrorBoundary>
         </main>
       </div>
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
     </div>
   );
 }

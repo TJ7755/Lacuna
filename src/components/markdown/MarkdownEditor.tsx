@@ -1,6 +1,6 @@
-import { useRef, useState, type DragEvent } from 'react';
+import { useRef, useState, type DragEvent, type Ref } from 'react';
 import { MarkdownView } from './MarkdownView';
-import { imageFileToDataUrl, imageMarkdown } from './image';
+import { imageFileToAssetUrl, imageMarkdown } from './image';
 import { nextClozeIndex } from './cloze';
 import { cn } from '../ui/cn';
 import { ImageIcon } from '../ui/icons';
@@ -16,6 +16,14 @@ interface MarkdownEditorProps {
   /** Cloze preview mode for the live preview pane. */
   clozePreview?: 'front' | 'back' | 'none';
   onError?: (message: string) => void;
+  /** Focus the textarea on mount (used by the quick-capture flow). */
+  autoFocus?: boolean;
+  /** Forwarded handle on the textarea so parents can drive a custom tab order. */
+  inputRef?: Ref<HTMLTextAreaElement>;
+  /** Tab (no shift) inside the textarea; preventDefault is applied for you. */
+  onTabForward?: () => void;
+  /** Shift+Tab inside the textarea; preventDefault is applied for you. */
+  onTabBackward?: () => void;
 }
 
 type ToolbarAction = {
@@ -65,8 +73,19 @@ export function MarkdownEditor({
   label,
   clozePreview = 'none',
   onError,
+  autoFocus = false,
+  inputRef,
+  onTabForward,
+  onTabBackward,
 }: MarkdownEditorProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Keep the internal ref (used by the toolbar) while also forwarding to the parent.
+  function setTextareaRef(el: HTMLTextAreaElement | null) {
+    textareaRef.current = el;
+    if (typeof inputRef === 'function') inputRef(el);
+    else if (inputRef) (inputRef as { current: HTMLTextAreaElement | null }).current = el;
+  }
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [mobileTab, setMobileTab] = useState<'write' | 'preview'>('write');
@@ -132,7 +151,7 @@ export function MarkdownEditor({
     const images = Array.from(files).filter((f) => f.type.startsWith('image/'));
     for (const file of images) {
       try {
-        const dataUrl = await imageFileToDataUrl(file);
+        const dataUrl = await imageFileToAssetUrl(file);
         const sel = currentSelection();
         const md = imageMarkdown(dataUrl, file.name.replace(/\.[^.]+$/, ''));
         const needsBreak = sel.before.length > 0 && !sel.before.endsWith('\n');
@@ -222,9 +241,20 @@ export function MarkdownEditor({
       <div className="grid md:grid-cols-2">
         <div className={cn('md:block', mobileTab === 'preview' && 'hidden')}>
           <textarea
-            ref={textareaRef}
+            ref={setTextareaRef}
+            autoFocus={autoFocus}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Tab') return;
+              if (e.shiftKey && onTabBackward) {
+                e.preventDefault();
+                onTabBackward();
+              } else if (!e.shiftKey && onTabForward) {
+                e.preventDefault();
+                onTabForward();
+              }
+            }}
             onDrop={handleDrop}
             onDragOver={(e) => {
               e.preventDefault();

@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   useCards,
   useDeck,
@@ -8,18 +8,25 @@ import {
   useSessionHistory,
 } from '../state/useData';
 import { Button } from '../components/ui/Button';
+import { Toggle } from '../components/ui/Toggle';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { CardList } from '../components/cards/CardList';
-import { CardEditorModal } from '../components/cards/CardEditorModal';
-import { DeckSettingsModal } from '../components/cards/DeckSettingsModal';
-import { ExamDatePrompt } from '../components/cards/ExamDatePrompt';
 import { DeckAnalytics } from '../components/analytics/DeckAnalytics';
+import { archiveDeck, unarchiveDeck, updateDeck } from '../db/repository';
 import {
   progressDescription,
   progressHeading,
   progressValue,
 } from '../fsrs/objective';
-import { formatDateTime, relativeExam } from '../utils/datetime';
+import { examHasPassed, MAINTENANCE_HORIZON_DAYS } from '../fsrs/horizon';
+import { availableCards } from '../fsrs/eligibility';
+import { useToast } from '../components/ui/Toast';
+import {
+  formatDateTime,
+  fromDateTimeLocalValue,
+  relativeExam,
+  toDateTimeLocalValue,
+} from '../utils/datetime';
 import {
   CardsIcon,
   ChartIcon,
@@ -28,7 +35,7 @@ import {
   SettingsIcon,
 } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
-import type { Card } from '../db/types';
+import type { Card, Deck } from '../db/types';
 
 type Tab = 'cards' | 'analytics';
 
@@ -39,12 +46,36 @@ export function DeckView() {
   const cards = useCards(deckId);
   const allDecks = useDecks();
   const history = useSessionHistory(deckId);
+  const { notify } = useToast();
 
   const [tab, setTab] = useState<Tab>('cards');
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingCard, setEditingCard] = useState<Card | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [examPromptOpen, setExamPromptOpen] = useState(false);
+  const [examBannerOpen, setExamBannerOpen] = useState(false);
+  const [postExamDismissed, setPostExamDismissed] = useState(false);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  // Distinct tags across the deck, for the filter row.
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of cards ?? []) for (const t of c.tags ?? []) set.add(t);
+    return [...set].sort();
+  }, [cards]);
+
+  // Deck-scoped shortcut: N starts a new card. Ignored while typing in a field so it
+  // never hijacks the tag filter or the exam-date input.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable))
+        return;
+      if (e.key.toLowerCase() === 'n' && deckId) {
+        e.preventDefault();
+        navigate(`/deck/${deckId}/cards/new`);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [deckId, navigate]);
 
   if (deck === undefined || cards === undefined) {
     return <div className="p-10 text-ink-faint">Loading…</div>;
@@ -60,25 +91,25 @@ export function DeckView() {
     );
   }
 
-  const progress = progressValue(cards, deck);
+  // Progress reflects the cards actually in play (suspended/buried are excluded).
+  const progress = progressValue(availableCards(cards), deck);
+
+  // The active tag filter narrows both the visible list and the study session.
+  const visibleTag = activeTag && allTags.includes(activeTag) ? activeTag : null;
+  const visibleCards = visibleTag
+    ? cards.filter((c) => (c.tags ?? []).includes(visibleTag))
+    : cards;
+  const studyPath = `/deck/${deck.id}/learn${
+    visibleTag ? `?tag=${encodeURIComponent(visibleTag)}` : ''
+  }`;
 
   function startStudy() {
     if (cards!.length === 0) return;
     if (!deck!.examDatePromptDismissed) {
-      setExamPromptOpen(true);
+      setExamBannerOpen(true);
     } else {
-      navigate(`/deck/${deck!.id}/learn`);
+      navigate(studyPath);
     }
-  }
-
-  function openNewCard() {
-    setEditingCard(null);
-    setEditorOpen(true);
-  }
-
-  function openEditCard(card: Card) {
-    setEditingCard(card);
-    setEditorOpen(true);
   }
 
   return (
@@ -106,7 +137,7 @@ export function DeckView() {
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => navigate(`/deck/${deck.id}/settings`)}
               aria-label="Deck settings"
               title="Deck settings"
             >
@@ -137,6 +168,65 @@ export function DeckView() {
         </div>
       </header>
 
+      {/* Passed-exam / archived state: surfaced before study can resume */}
+      <AnimatePresence>
+        {deck.archived ? (
+          <PassedExamBanner key="archived" tone="archived">
+            <h2 className="mb-1 font-display text-xl">This deck is archived</h2>
+            <p className="mb-4 text-sm text-ink-soft">
+              It is kept in full but hidden from active study and from your totals on the
+              dashboard. Restore it to bring it back into rotation.
+            </p>
+            <Button
+              variant="primary"
+              onClick={async () => {
+                await unarchiveDeck(deck.id);
+                notify('Deck restored to active study.', 'positive');
+              }}
+            >
+              Restore to active study
+            </Button>
+          </PassedExamBanner>
+        ) : examHasPassed(deck) && !postExamDismissed ? (
+          <PassedExamBanner key="passed" tone="passed">
+            <h2 className="mb-1 font-display text-xl">This exam date has passed</h2>
+            <p className="mb-4 text-sm text-ink-soft">
+              Scheduling no longer has a deadline to aim at. Choose what to do next. If you
+              keep revising, Lacuna maintains your target retention against a rolling{' '}
+              {MAINTENANCE_HORIZON_DAYS}-day horizon instead of a fixed date.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="primary" onClick={() => navigate(`/deck/${deck.id}/settings`)}>
+                Set a new exam date
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  await archiveDeck(deck.id);
+                  notify('Deck archived.', 'neutral');
+                }}
+              >
+                Archive deck
+              </Button>
+              <Button variant="ghost" onClick={() => setPostExamDismissed(true)}>
+                Keep revising
+              </Button>
+            </div>
+          </PassedExamBanner>
+        ) : null}
+      </AnimatePresence>
+
+      {/* Inline exam-date confirmation, shown the first time a deck is studied */}
+      <AnimatePresence>
+        {examBannerOpen && (
+          <ExamDateBanner
+            deck={deck}
+            onProceed={() => navigate(studyPath)}
+            onClose={() => setExamBannerOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Tabs */}
       <div className="mb-6 flex gap-1 border-b border-line">
         <TabButton active={tab === 'cards'} onClick={() => setTab('cards')} icon={<CardsIcon width={16} height={16} />}>
@@ -158,39 +248,160 @@ export function DeckView() {
         transition={{ duration: 0.2 }}
       >
         {tab === 'cards' ? (
-          <CardList
-            cards={cards}
-            deck={deck}
-            allDecks={allDecks ?? []}
-            onNewCard={openNewCard}
-            onEditCard={openEditCard}
-          />
+          <>
+            {allTags.length > 0 && (
+              <div className="mb-4 flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveTag(null)}
+                  className={cn(
+                    'rounded-full border px-3 py-1 text-xs transition-colors',
+                    !visibleTag
+                      ? 'border-accent bg-accent-soft text-accent'
+                      : 'border-line text-ink-soft hover:border-line-strong',
+                  )}
+                >
+                  All
+                </button>
+                {allTags.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setActiveTag(t)}
+                    className={cn(
+                      'rounded-full border px-3 py-1 text-xs transition-colors',
+                      visibleTag === t
+                        ? 'border-accent bg-accent-soft text-accent'
+                        : 'border-line text-ink-soft hover:border-line-strong',
+                    )}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
+            <CardList
+              cards={visibleCards}
+              deck={deck}
+              allDecks={allDecks ?? []}
+              onNewCard={() => navigate(`/deck/${deck.id}/cards/new`)}
+              onEditCard={(card: Card) =>
+                navigate(`/deck/${deck.id}/cards/${card.id}/edit`)
+              }
+            />
+          </>
         ) : (
           <DeckAnalytics cards={cards} history={history ?? []} />
         )}
       </motion.div>
-
-      {/* Modals */}
-      <CardEditorModal
-        open={editorOpen}
-        deckId={deck.id}
-        card={editingCard}
-        onClose={() => setEditorOpen(false)}
-      />
-      <DeckSettingsModal
-        open={settingsOpen}
-        deck={deck}
-        onClose={() => setSettingsOpen(false)}
-      />
-      <ExamDatePrompt
-        open={examPromptOpen}
-        deck={deck}
-        onResolved={() => {
-          setExamPromptOpen(false);
-          navigate(`/deck/${deck.id}/learn`);
-        }}
-      />
     </div>
+  );
+}
+
+/** Shared shell for the passed-exam and archived notices. */
+function PassedExamBanner({
+  tone,
+  children,
+}: {
+  tone: 'passed' | 'archived';
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+      animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      className="overflow-hidden"
+    >
+      <div
+        className={cn(
+          'rounded-2xl border p-5',
+          tone === 'passed'
+            ? 'border-amber-500/40 bg-amber-500/5'
+            : 'border-line-strong bg-surface',
+        )}
+      >
+        {children}
+      </div>
+    </motion.section>
+  );
+}
+
+/**
+ * Inline replacement for the old exam-date modal. Slides in when the user first studies a
+ * deck, letting them confirm the real exam date (or skip) before the Learn session opens.
+ */
+function ExamDateBanner({
+  deck,
+  onProceed,
+  onClose,
+}: {
+  deck: Deck;
+  onProceed: () => void;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState(() => toDateTimeLocalValue(deck.examDate));
+  const [dontAsk, setDontAsk] = useState(false);
+
+  async function handleSet() {
+    const ms = fromDateTimeLocalValue(value);
+    await updateDeck(deck.id, {
+      examDate: Number.isNaN(ms) ? deck.examDate : ms,
+      examDatePromptDismissed: true,
+    });
+    onClose();
+    onProceed();
+  }
+
+  async function handleSkip() {
+    if (dontAsk) {
+      await updateDeck(deck.id, { examDatePromptDismissed: true });
+    }
+    onClose();
+    onProceed();
+  }
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+      animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      className="overflow-hidden"
+    >
+      <div className="rounded-2xl border border-accent/40 bg-accent-soft/40 p-5">
+        <h2 className="mb-1 font-display text-xl">When is your exam?</h2>
+        <p className="mb-4 text-sm text-ink-soft">
+          Lacuna schedules every card to peak on your exam day. Set the real date and time
+          so the queue and progress bar are accurate.
+        </p>
+        <label className="block max-w-sm text-sm text-ink-soft">
+          Exam date and time
+          <input
+            type="datetime-local"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+          />
+        </label>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button variant="primary" onClick={handleSet}>
+            Set date and study
+          </Button>
+          <Button variant="ghost" onClick={handleSkip}>
+            Not now
+          </Button>
+          <div className="ml-auto">
+            <Toggle
+              checked={dontAsk}
+              onChange={setDontAsk}
+              label="Don't ask again for this deck"
+            />
+          </div>
+        </div>
+      </div>
+    </motion.section>
   );
 }
 

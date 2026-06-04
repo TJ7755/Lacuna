@@ -1,23 +1,30 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
+import { motion } from 'motion/react';
 import { cn } from './cn';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+// Framer's motion.button defines its own gesture/animation handlers, so drop the DOM
+// versions that would otherwise clash with the typed props.
+interface ButtonProps
+  extends Omit<
+    ButtonHTMLAttributes<HTMLButtonElement>,
+    'onAnimationStart' | 'onAnimationEnd' | 'onDrag' | 'onDragStart' | 'onDragEnd'
+  > {
   variant?: Variant;
   size?: Size;
 }
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all ' +
+  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors ' +
   'duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ' +
   'focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 ' +
-  'disabled:pointer-events-none select-none active:scale-[0.98]';
+  'disabled:pointer-events-none select-none';
 
 const variants: Record<Variant, string> = {
   primary:
-    'bg-accent text-[hsl(28_60%_14%)] hover:brightness-105 shadow-sm shadow-accent/20',
+    'bg-accent text-accent-fg hover:brightness-105 shadow-sm shadow-accent/20',
   secondary:
     'bg-surface-raised text-ink border border-line-strong hover:border-accent/60 hover:text-accent',
   ghost: 'text-ink-soft hover:text-ink hover:bg-ink/5',
@@ -36,8 +43,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   ref,
 ) {
   return (
-    <button
+    <motion.button
       ref={ref}
+      whileTap={{ scale: 0.96 }}
+      whileHover={{ scale: 1.02 }}
+      transition={{ type: 'spring', stiffness: 600, damping: 28 }}
       className={cn(base, variants[variant], sizes[size], className)}
       {...rest}
     />

@@ -65,6 +65,22 @@ export interface Deck {
   fsrsParameters: FsrsParameters;
   /** The optimisation target shared by the scheduler and the progress bar. */
   examObjective: ExamObjective;
+  /**
+   * Maximum number of brand-new cards to introduce per day during study.
+   * Undefined or 0 means unlimited (the default; preserves prior behaviour).
+   */
+  newCardsPerDay?: number;
+  /**
+   * When true the deck is archived: retained in full but hidden from active study,
+   * the global "Today" session and the dashboard's study denominators. Used as one
+   * of the explicit choices once an exam date has passed.
+   */
+  archived?: boolean;
+  /**
+   * Per-deck override for automatic FSRS parameter optimisation. When undefined the
+   * global default applies; false opts this deck out even when the global default is on.
+   */
+  autoOptimise?: boolean;
 }
 
 export interface Card {
@@ -87,6 +103,14 @@ export interface Card {
   lapses: number;
   /** Current FSRS memory state (= ts-fsrs `state`). */
   state: FsrsCardState;
+  /** Free-text tags for organising and filtered study. Optional; defaults to []. */
+  tags?: string[];
+  /** When true the card is withheld from all study and from progress/objective. */
+  suspended?: boolean;
+  /** User-set marker for quick filtering and follow-up. Optional; defaults to false. */
+  flagged?: boolean;
+  /** Epoch ms until which the card is buried (skipped). null/absent when not buried. */
+  buriedUntil?: number | null;
   /** Epoch ms of the next scheduled review (= ts-fsrs `due`). Null until first review. */
   due: number | null;
   /** Days ts-fsrs last scheduled this card for (= ts-fsrs `scheduled_days`). */
@@ -116,6 +140,43 @@ export interface UserPerformance {
   totalCorrectReviews: number;
 }
 
+/** Binary image asset stored separately from card Markdown and deduplicated by hash. */
+export interface ImageAsset {
+  hash: string;
+  blob: Blob;
+  mimeType: string;
+  width: number;
+  height: number;
+  createdAt: number;
+}
+
+/** JSON-safe form of an ImageAsset for backups and exports. */
+export interface BackupAsset {
+  hash: string;
+  data: string;
+  mimeType: string;
+  width: number;
+  height: number;
+  createdAt: number;
+}
+
+/** A timestamped automatic snapshot of the whole database, kept as a restore point. */
+export interface BackupSnapshot {
+  id?: number;
+  createdAt: number;
+  /** Denormalised counts so the restore-point list can be shown without parsing the payload. */
+  deckCount: number;
+  cardCount: number;
+  /** The full backup payload, identical in shape to a manual export. */
+  payload: BackupFile;
+}
+
+/** Generic key/value store for small persistent app state (e.g. the backup folder handle). */
+export interface AppStateEntry {
+  key: string;
+  value: unknown;
+}
+
 /** Shape of an exported/imported backup file. */
 export interface BackupFile {
   app: 'lacuna';
@@ -123,6 +184,7 @@ export interface BackupFile {
   exportedAt: number;
   decks: Deck[];
   cards: Card[];
+  assets: BackupAsset[];
   sessionHistory: SessionHistoryEntry[];
   userPerformance: UserPerformance[];
 }

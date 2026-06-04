@@ -2,7 +2,15 @@
 // Components call these rather than touching Dexie tables directly.
 
 import { db, makeId } from './schema';
-import type { Card, CardType, Deck, Grade, ReviewLog } from './types';
+import type {
+  Card,
+  CardType,
+  Deck,
+  Grade,
+  ReviewLog,
+  SessionHistoryEntry,
+  UserPerformance,
+} from './types';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { emptyPerformance, updatePerformance } from '../fsrs/grading';
@@ -33,6 +41,21 @@ export async function updateDeck(id: string, changes: Partial<Deck>): Promise<vo
   await db.decks.update(id, changes);
 }
 
+/** Archive a deck: keep all data but withdraw it from active study and progress totals. */
+export async function archiveDeck(id: string): Promise<void> {
+  await db.decks.update(id, { archived: true });
+}
+
+/** Return an archived deck to active study. */
+export async function unarchiveDeck(id: string): Promise<void> {
+  await db.decks.update(id, { archived: false });
+}
+
+/** Set a deck's exam date (used to resolve the passed-exam state with a fresh date). */
+export async function setExamDate(id: string, examDate: number): Promise<void> {
+  await db.decks.update(id, { examDate });
+}
+
 export async function deleteDeck(id: string): Promise<void> {
   await db.transaction(
     'rw',
@@ -51,6 +74,57 @@ export async function deleteDeck(id: string): Promise<void> {
 
 export async function deleteDecks(ids: string[]): Promise<void> {
   for (const id of ids) await deleteDeck(id);
+}
+
+/** A complete copy of one or more decks and everything that hangs off them. */
+export interface DeckSnapshot {
+  decks: Deck[];
+  cards: Card[];
+  sessionHistory: SessionHistoryEntry[];
+  userPerformance: UserPerformance[];
+}
+
+/**
+ * Capture decks plus their cards, session history and performance before deletion,
+ * so the action can be offered with an "Undo". Call this *before* deleteDecks.
+ */
+export async function snapshotDecks(ids: string[]): Promise<DeckSnapshot> {
+  const idSet = new Set(ids);
+  const [decks, cards, sessionHistory, userPerformance] = await Promise.all([
+    db.decks.where('id').anyOf(ids).toArray(),
+    db.cards.where('deckId').anyOf(ids).toArray(),
+    db.sessionHistory.where('deckId').anyOf(ids).toArray(),
+    db.userPerformance.where('deckId').anyOf(ids).toArray(),
+  ]);
+  // Guard against any stray records the indexes might miss.
+  return {
+    decks: decks.filter((d) => idSet.has(d.id)),
+    cards,
+    sessionHistory,
+    userPerformance,
+  };
+}
+
+/** Re-insert a previously captured DeckSnapshot (the inverse of deleteDecks). */
+export async function restoreDecks(snapshot: DeckSnapshot): Promise<void> {
+  await db.transaction(
+    'rw',
+    db.decks,
+    db.cards,
+    db.sessionHistory,
+    db.userPerformance,
+    async () => {
+      await Promise.all([
+        db.decks.bulkPut(snapshot.decks),
+        db.cards.bulkPut(snapshot.cards),
+        db.userPerformance.bulkPut(snapshot.userPerformance),
+        // Drop the old auto-increment ids so Dexie reassigns them cleanly.
+        db.sessionHistory.bulkAdd(
+          snapshot.sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
+        ),
+      ]);
+    },
+  );
 }
 
 /**
@@ -90,6 +164,7 @@ export async function createCard(
   type: CardType,
   front: string,
   back: string,
+  tags: string[] = [],
 ): Promise<Card> {
   const card: Card = {
     id: makeId(),
@@ -108,9 +183,72 @@ export async function createCard(
     learningSteps: 0,
     history: [],
     createdAt: Date.now(),
+    tags,
+    suspended: false,
+    buriedUntil: null,
   };
   await db.cards.add(card);
   return card;
+}
+
+/**
+ * Bulk-create cards from import drafts (front/back/type only). Returns the created
+ * cards. createdAt is offset per row so the deck keeps the imported order.
+ */
+export async function createCards(
+  deckId: string,
+  drafts: { type: CardType; front: string; back: string; tags?: string[] }[],
+): Promise<Card[]> {
+  const now = Date.now();
+  const cards: Card[] = drafts.map((draft, i) => ({
+    id: makeId(),
+    deckId,
+    type: draft.type,
+    front: draft.front,
+    back: draft.back,
+    stability: null,
+    difficulty: null,
+    lastReviewed: null,
+    reps: 0,
+    lapses: 0,
+    state: 0,
+    due: null,
+    scheduledDays: 0,
+    learningSteps: 0,
+    history: [],
+    createdAt: now + i,
+    tags: draft.tags ?? [],
+    suspended: false,
+    buriedUntil: null,
+  }));
+  await db.cards.bulkAdd(cards);
+  return cards;
+}
+
+/**
+ * Create a front/back card together with its reverse (back becomes the prompt). The two
+ * are ordinary, fully independent cards with their own FSRS state — editing or scheduling
+ * one never touches the other. Tags are shared at creation. Returns both cards.
+ */
+export async function createCardWithReverse(
+  deckId: string,
+  front: string,
+  back: string,
+  tags: string[] = [],
+): Promise<{ card: Card; reverse: Card }> {
+  const card = await createCard(deckId, 'front_back', front, back, tags);
+  const reverse = await createCard(deckId, 'front_back', back, front, tags);
+  return { card, reverse };
+}
+
+/** Create a deck and immediately populate it with imported cards, in one go. */
+export async function createDeckWithCards(
+  name: string,
+  drafts: { type: CardType; front: string; back: string; tags?: string[] }[],
+): Promise<Deck> {
+  const deck = await createDeck(name);
+  if (drafts.length > 0) await createCards(deck.id, drafts);
+  return deck;
 }
 
 export async function updateCard(id: string, changes: Partial<Card>): Promise<void> {
@@ -121,10 +259,68 @@ export async function deleteCards(ids: string[]): Promise<void> {
   await db.cards.bulkDelete(ids);
 }
 
+/** Capture card rows before deletion so the action can be offered with an "Undo". */
+export async function snapshotCards(ids: string[]): Promise<Card[]> {
+  return db.cards.where('id').anyOf(ids).toArray();
+}
+
+/** Re-insert previously captured cards (the inverse of deleteCards). */
+export async function restoreCards(cards: Card[]): Promise<void> {
+  await db.cards.bulkPut(cards);
+}
+
 export async function moveCards(ids: string[], targetDeckId: string): Promise<void> {
   await db.transaction('rw', db.cards, async () => {
     await db.cards.where('id').anyOf(ids).modify({ deckId: targetDeckId });
   });
+}
+
+/** Withhold a card from all study and from progress/objective until un-suspended. */
+export async function suspendCard(id: string): Promise<void> {
+  await db.cards.update(id, { suspended: true });
+}
+
+/** Return a suspended card to normal scheduling. */
+export async function unsuspendCard(id: string): Promise<void> {
+  await db.cards.update(id, { suspended: false });
+}
+
+/** Suspend or un-suspend many cards at once (used by the card list's bulk actions). */
+export async function setCardsSuspended(ids: string[], suspended: boolean): Promise<void> {
+  await db.transaction('rw', db.cards, async () => {
+    await db.cards.where('id').anyOf(ids).modify({ suspended });
+  });
+}
+
+/** Add a tag to many cards at once, leaving cards that already have it untouched. */
+export async function addTagToCards(ids: string[], tag: string): Promise<void> {
+  const clean = tag.trim();
+  if (!clean) return;
+  await db.transaction('rw', db.cards, async () => {
+    await db.cards.where('id').anyOf(ids).modify((card) => {
+      const tags = card.tags ?? [];
+      if (!tags.includes(clean)) card.tags = [...tags, clean];
+    });
+  });
+}
+
+/** Remove a tag from many cards at once. */
+export async function removeTagFromCards(ids: string[], tag: string): Promise<void> {
+  await db.transaction('rw', db.cards, async () => {
+    await db.cards.where('id').anyOf(ids).modify((card) => {
+      if (card.tags?.length) card.tags = card.tags.filter((t) => t !== tag);
+    });
+  });
+}
+
+/** Skip a card until the given instant (defaults to the caller-supplied next midnight). */
+export async function buryCard(id: string, until: number): Promise<void> {
+  await db.cards.update(id, { buriedUntil: until });
+}
+
+/** Set or clear a card's flag (a user marker for quick filtering and follow-up). */
+export async function setCardFlag(id: string, flagged: boolean): Promise<void> {
+  await db.cards.update(id, { flagged });
 }
 
 // ---------------------------------------------------------------------------
@@ -142,13 +338,21 @@ export interface RecordReviewArgs {
   now?: number;
 }
 
+/** The result of recording a review: the updated card plus undo bookkeeping. */
+export interface RecordReviewResult {
+  card: Card;
+  /** Id of the SessionHistory row written for this review, so it can be undone. */
+  sessionHistoryId: number;
+}
+
 /**
  * Record a single review: apply the FSRS update to the card, append a review log,
  * update the deck's calibration profile (correct reviews only), and write a
  * SessionHistory snapshot of the deck's average predicted exam-day retrievability.
- * Returns the updated card so callers can re-score the queue immediately.
+ * Returns the updated card (for immediate re-scoring) and the SessionHistory id
+ * (so the review can be undone, see undoReview).
  */
-export async function recordReview(args: RecordReviewArgs): Promise<Card> {
+export async function recordReview(args: RecordReviewArgs): Promise<RecordReviewResult> {
   const { card, deck, grade, responseTimeSec, distracted, correct } = args;
   const now = args.now ?? Date.now();
 
@@ -182,7 +386,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<Card> {
     history: [...card.history, log],
   };
 
-  await db.transaction(
+  const sessionHistoryId = await db.transaction(
     'rw',
     db.cards,
     db.sessionHistory,
@@ -198,7 +402,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<Card> {
 
       // Snapshot the deck's average predicted exam-day retrievability after this card.
       const deckCards = await db.cards.where('deckId').equals(deck.id).toArray();
-      await db.sessionHistory.add({
+      return db.sessionHistory.add({
         timestamp: now,
         deckId: deck.id,
         averagePredictedRetrievability: averagePredictedRetrievability(
@@ -209,5 +413,38 @@ export async function recordReview(args: RecordReviewArgs): Promise<Card> {
     },
   );
 
-  return updatedCard;
+  return { card: updatedCard, sessionHistoryId };
+}
+
+/** Snapshot needed to reverse a single review (see undoReview). */
+export interface ReviewUndo {
+  /** The card exactly as it was before the review. */
+  cardBefore: Card;
+  /** The deck's calibration profile before the review (null if none existed). */
+  perfBefore: UserPerformance | null;
+  /** The SessionHistory row id written by the review. */
+  sessionHistoryId: number;
+}
+
+/**
+ * Reverse the most recent review: restore the card and the deck's calibration
+ * profile wholesale (no Welford inverse maths) and delete the SessionHistory row
+ * the review appended. Single-step, used by the in-session Undo affordance.
+ */
+export async function undoReview(undo: ReviewUndo): Promise<void> {
+  await db.transaction(
+    'rw',
+    db.cards,
+    db.sessionHistory,
+    db.userPerformance,
+    async () => {
+      await db.cards.put(undo.cardBefore);
+      if (undo.perfBefore) {
+        await db.userPerformance.put(undo.perfBefore);
+      } else {
+        await db.userPerformance.delete(undo.cardBefore.deckId);
+      }
+      await db.sessionHistory.delete(undo.sessionHistoryId);
+    },
+  );
 }

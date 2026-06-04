@@ -4,6 +4,7 @@
 
 import { rAtExam } from './forwardSim';
 import { decayOf } from './fsrs';
+import { schedulingHorizon } from './horizon';
 import { MASTERY_R } from './params';
 import type { Card, Deck } from '../db/types';
 
@@ -21,7 +22,7 @@ export function predictedExamRetrievability(
   deck: Deck,
   now: number = Date.now(),
 ): number {
-  return rAtExam(card, deck.examDate, now, deckDecay(deck));
+  return rAtExam(card, schedulingHorizon(deck, now), now, deckDecay(deck));
 }
 
 /** Fraction (0..1) of cards predicted to be at or above the mastery threshold on exam day. */
@@ -32,8 +33,9 @@ export function masteryFraction(
 ): number {
   if (cards.length === 0) return 1;
   const decay = deckDecay(deck);
+  const horizon = schedulingHorizon(deck, now);
   const mastered = cards.filter(
-    (c) => rAtExam(c, deck.examDate, now, decay) >= MASTERY_R,
+    (c) => rAtExam(c, horizon, now, decay) >= MASTERY_R,
   ).length;
   return mastered / cards.length;
 }
@@ -46,8 +48,9 @@ export function averagePredictedRetrievability(
 ): number {
   if (cards.length === 0) return 0;
   const decay = deckDecay(deck);
+  const horizon = schedulingHorizon(deck, now);
   const total = cards.reduce(
-    (sum, c) => sum + rAtExam(c, deck.examDate, now, decay),
+    (sum, c) => sum + rAtExam(c, horizon, now, decay),
     0,
   );
   return total / cards.length;
