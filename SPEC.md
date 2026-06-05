@@ -855,7 +855,7 @@ with Relaxed/Balanced/Thorough presets and adaptive guidance copy).
 | Learn | `Space` / `Up` | Show answer |
 | Learn (silent grading) | `Y` / `J` / `Right` | Yes (correct) |
 | Learn (silent grading) | `N` / `Left` | No (incorrect) |
-| Learn (manual grading) | `1`/`A`, `2`/`H`, `3`/`G`, `4` | Again / Hard / Good / Easy |
+| Learn (manual grading) | `1`, `2`, `3`, `4` | Again / Hard / Good / Easy |
 | Learn | `E` | Edit current card |
 | Learn | `U` | Undo last answer |
 | Learn | `F` | Toggle focus mode |
