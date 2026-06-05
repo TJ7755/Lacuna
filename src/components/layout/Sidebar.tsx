@@ -4,6 +4,7 @@ import { useTheme } from '../../state/ThemeContext';
 import { useDecks } from '../../state/useData';
 import { cn } from '../ui/cn';
 import {
+  ChartIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   DashboardIcon,
@@ -122,6 +123,12 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           to="/share"
           icon={<ShareIcon />}
           label="Share"
+          collapsed={collapsed}
+        />
+        <NavItem
+          to="/analytics"
+          icon={<ChartIcon />}
+          label="Analytics"
           collapsed={collapsed}
         />
         <NavItem

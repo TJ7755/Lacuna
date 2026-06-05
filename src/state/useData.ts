@@ -70,6 +70,11 @@ export function useSessionHistory(
   );
 }
 
+/** All session-history entries across every deck, sorted by timestamp. */
+export function useAllSessionHistory(): SessionHistoryEntry[] | undefined {
+  return useLiveQuery(() => db.sessionHistory.orderBy('timestamp').toArray(), []);
+}
+
 /**
  * Dashboard study signals (streak, reviews today, seven-day time forecast), recomputed
  * reactively from review history, card due dates and per-deck response-time calibration.

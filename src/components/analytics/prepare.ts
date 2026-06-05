@@ -1,6 +1,7 @@
 // Pure data-shaping helpers for the analytics charts.
 
 import { startOfDay } from '../../utils/datetime';
+import { isLeech } from '../../fsrs/leech';
 import type { Card, SessionHistoryEntry } from '../../db/types';
 
 export interface TrajectoryPoint {
@@ -89,4 +90,126 @@ export function reviewVolume(cards: Card[], days = 30, now = Date.now()): Volume
     });
   }
   return points;
+}
+
+export interface ForecastPoint {
+  day: number;
+  label: string;
+  due: number;
+  newCards: number;
+}
+
+/** Cards due per day for the next `days` days (forecast). */
+export function forecastSeries(cards: Card[], days = 30, now = Date.now()): ForecastPoint[] {
+  const today = startOfDay(now);
+  const dayMs = 86_400_000;
+  const buckets = new Map<number, { due: number; newCards: number }>();
+  for (let i = 0; i < days; i++) {
+    buckets.set(today + i * dayMs, { due: 0, newCards: 0 });
+  }
+  for (const card of cards) {
+    if (card.suspended) continue;
+    if (card.due === null) {
+      const bucket = buckets.get(today);
+      if (bucket) bucket.newCards++;
+    } else {
+      const dueDay = startOfDay(card.due);
+      const bucket = buckets.get(dueDay);
+      if (bucket) bucket.due++;
+    }
+  }
+  return [...buckets.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([day, bucket]) => ({
+      day,
+      label: new Date(day).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+      due: bucket.due,
+      newCards: bucket.newCards,
+    }));
+}
+
+export interface StudyTimePoint {
+  day: number;
+  label: string;
+  minutes: number;
+}
+
+/** Daily study time (minutes) over the past `days` days. */
+export function studyTimeSeries(cards: Card[], days = 30, now = Date.now()): StudyTimePoint[] {
+  const today = startOfDay(now);
+  const dayMs = 86_400_000;
+  const counts = new Map<number, number>();
+  for (const card of cards) {
+    for (const log of card.history) {
+      const day = startOfDay(log.timestamp);
+      counts.set(day, (counts.get(day) ?? 0) + log.responseTimeSec);
+    }
+  }
+  const points: StudyTimePoint[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const day = today - i * dayMs;
+    const seconds = counts.get(day) ?? 0;
+    points.push({
+      day,
+      label: new Date(day).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+      minutes: Math.round(seconds / 60),
+    });
+  }
+  return points;
+}
+
+export interface RetentionByAgePoint {
+  ageLabel: string;
+  retention: number;
+  count: number;
+}
+
+/** Retention rate grouped by card age (time since first review). */
+export function retentionByAge(cards: Card[], now = Date.now()): RetentionByAgePoint[] {
+  const dayMs = 86_400_000;
+  const buckets = [
+    { label: '0–7 days', min: 0, max: 7, total: 0, recalled: 0 },
+    { label: '7–30 days', min: 7, max: 30, total: 0, recalled: 0 },
+    { label: '30–90 days', min: 30, max: 90, total: 0, recalled: 0 },
+    { label: '90–180 days', min: 90, max: 180, total: 0, recalled: 0 },
+    { label: '180+ days', min: 180, max: Infinity, total: 0, recalled: 0 },
+  ];
+  for (const card of cards) {
+    if (card.history.length === 0) continue;
+    const firstReview = card.history[0].timestamp;
+    const ageDays = Math.floor((now - firstReview) / dayMs);
+    const lastLog = card.history[card.history.length - 1];
+    const wasRecalled = lastLog.grade > 1;
+    for (const bucket of buckets) {
+      if (ageDays >= bucket.min && ageDays < bucket.max) {
+        bucket.total++;
+        if (wasRecalled) bucket.recalled++;
+        break;
+      }
+    }
+  }
+  return buckets.map((b) => ({
+    ageLabel: b.label,
+    retention: b.total > 0 ? Math.round((b.recalled / b.total) * 100) : 0,
+    count: b.total,
+  }));
+}
+
+export interface LeechCount {
+  name: string;
+  count: number;
+}
+
+/** Leech counts per deck, sorted descending. */
+export function leechCountByDeck(cards: Card[], deckMap: Map<string, string>): LeechCount[] {
+  const counts = new Map<string, number>();
+  for (const card of cards) {
+    if (isLeech(card)) {
+      const deckName = deckMap.get(card.deckId) ?? 'Unknown';
+      counts.set(deckName, (counts.get(deckName) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
 }
