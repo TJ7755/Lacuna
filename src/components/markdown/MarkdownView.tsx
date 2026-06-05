@@ -6,6 +6,8 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import { defaultSchema } from 'hast-util-sanitize';
 import { renderClozeBack, renderClozeFront } from './cloze';
 import { cn } from '../ui/cn';
 import { ASSET_PROTOCOL } from '../../db/assets';
@@ -23,10 +25,23 @@ interface MarkdownViewProps {
 // Stable plugin references so the unified pipeline isn't rebuilt on every call.
 type MarkdownProps = ComponentProps<typeof ReactMarkdown>;
 const REMARK_PLUGINS: MarkdownProps['remarkPlugins'] = [remarkGfm, remarkMath];
+/** Custom sanitiser schema that preserves the class attributes KaTeX and highlight.js need. */
+const sanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    span: [...(defaultSchema.attributes?.span ?? []), 'className', 'style'],
+    code: [...(defaultSchema.attributes?.code ?? []), 'className'],
+    pre: [...(defaultSchema.attributes?.pre ?? []), 'className'],
+    div: [...(defaultSchema.attributes?.div ?? []), 'className'],
+  },
+};
+
 const REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   rehypeRaw,
   rehypeKatex,
   [rehypeHighlight, { detect: true, ignoreMissing: true }],
+  [rehypeSanitize, sanitizeSchema],
 ];
 
 /**
@@ -64,7 +79,8 @@ function renderMarkdownToHtml(prepared: string): string {
 /**
  * Renders Markdown with GitHub-flavoured extensions, KaTeX maths, syntax-highlighted
  * code, embedded base64 images, and optional cloze transformation. Raw HTML is enabled
- * so the cloze highlight spans render; this is safe for a local, single-user app.
+ * so the cloze highlight spans render, then passed through rehype-sanitize to strip any
+ * dangerous elements or attributes introduced by user content (e.g. from imported shared decks).
  *
  * Memoised, and backed by a parse cache (see `renderMarkdownToHtml`), so re-renders and
  * remounts are cheap — the heavy markdown pipeline runs at most once per unique source.
