@@ -95,34 +95,37 @@ export async function importBackup(
   backup: BackupFile,
   mode: ImportMode,
 ): Promise<void> {
-  // Normalise incoming records to the current (FSRS-6) schema so backups exported
-  // by older versions of Lacuna import without losing or corrupting data.
-  const decks = backup.decks.map((d) => migrateDeckRecord(d as LegacyDeck));
-  const assets = backup.assets ?? [];
-  const extractedAssets: ImageAsset[] = [];
-  const cards = await Promise.all(
-    backup.cards.map(async (c) => {
-      const migrated = migrateCardRecord(c as LegacyCard);
-      return {
-        ...migrated,
-        front: await extractMarkdownAssets(migrated.front, (asset) =>
-          Promise.resolve(extractedAssets.push(asset)),
-        ),
-        back: await extractMarkdownAssets(migrated.back, (asset) =>
-          Promise.resolve(extractedAssets.push(asset)),
-        ),
-      };
-    }),
-  );
-  const importedAssets = [
-    ...assets.map(backupAssetToImageAsset),
-    ...extractedAssets,
-  ];
-
   await db.transaction(
     'rw',
     [db.decks, db.cards, db.sessionHistory, db.userPerformance, db.assets],
     async () => {
+      // Normalise incoming records to the current (FSRS-6) schema so backups exported
+      // by older versions of Lacuna import without losing or corrupting data.
+      const decks = backup.decks.map((d) => migrateDeckRecord(d as LegacyDeck));
+      const assets = backup.assets ?? [];
+      const extractedAssets: ImageAsset[] = [];
+      const cards = await Promise.all(
+        backup.cards.map(async (c) => {
+          const migrated = migrateCardRecord(c as LegacyCard);
+          return {
+            ...migrated,
+            front: await extractMarkdownAssets(migrated.front, (asset) =>
+              Promise.resolve(extractedAssets.push(asset)),
+            ),
+            back: await extractMarkdownAssets(migrated.back, (asset) =>
+              Promise.resolve(extractedAssets.push(asset)),
+            ),
+          };
+        }),
+      );
+      const importedAssets = [
+        ...assets.map(backupAssetToImageAsset),
+        ...extractedAssets,
+      ];
+      // Deduplicate by hash so bulkPut never encounters a constraint conflict.
+      const dedupedAssets = Array.from(
+        new Map(importedAssets.map((a) => [a.hash, a])).values(),
+      );
       if (mode === 'replace') {
         await Promise.all([
           db.decks.clear(),
@@ -133,7 +136,7 @@ export async function importBackup(
         ]);
         await db.decks.bulkAdd(decks);
         await db.cards.bulkAdd(cards);
-        if (importedAssets.length) await db.assets.bulkPut(importedAssets);
+        if (dedupedAssets.length) await db.assets.bulkPut(dedupedAssets);
         await db.userPerformance.bulkAdd(backup.userPerformance);
         // Drop incoming auto-increment ids so they are reassigned cleanly.
         await db.sessionHistory.bulkAdd(
@@ -150,7 +153,7 @@ export async function importBackup(
         mergedDecks.push(existing ? newerWins(existing, incoming, 'examDate') : incoming);
       }
       await db.decks.bulkPut(mergedDecks);
-      if (importedAssets.length) await db.assets.bulkPut(importedAssets);
+      if (dedupedAssets.length) await db.assets.bulkPut(dedupedAssets);
 
       // Merge cards (most recent lastReviewed wins; new cards added as-is).
       const existingCards = new Map((await db.cards.toArray()).map((c) => [c.id, c]));
