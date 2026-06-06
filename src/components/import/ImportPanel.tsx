@@ -148,7 +148,7 @@ export function ImportPanel({ onImport, onCancel, importLabel = 'Import cards' }
             initial={{ opacity: 0, y: 8, height: 0 }}
             animate={{ opacity: 1, y: 0, height: 'auto' }}
             exit={{ opacity: 0, y: -6, height: 0 }}
-            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{ duration: 0.16, ease: [0.25, 0.1, 0.25, 1] }}
             className="overflow-hidden rounded-lg border border-line bg-surface-raised/40 p-3"
           >
             <div className="mb-2 text-xs text-ink-soft">
@@ -166,7 +166,7 @@ export function ImportPanel({ onImport, onCancel, importLabel = 'Import cards' }
                       initial={{ opacity: 0, x: -8 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 8 }}
-                      transition={{ duration: 0.2, delay: i * 0.04 }}
+                      transition={{ duration: 0.16, delay: i * 0.04 }}
                       className="flex items-center gap-2 text-sm"
                     >
                       <span className="rounded bg-ink/5 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-ink-faint">

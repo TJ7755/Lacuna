@@ -285,7 +285,7 @@ export function MarkdownEditor({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
+                transition={{ duration: 0.12 }}
               >
                 <MarkdownView source={value} clozeMode={clozePreview} />
               </motion.div>
@@ -295,7 +295,7 @@ export function MarkdownEditor({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
+                transition={{ duration: 0.12 }}
                 className="text-sm text-ink-faint"
               >
                 Preview appears here.

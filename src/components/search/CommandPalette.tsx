@@ -121,7 +121,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
+                    transition={{ duration: 0.12 }}
                     className="px-4 py-6 text-center text-sm text-ink-faint"
                   >
                     Type to search across every deck.
@@ -132,7 +132,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
+                    transition={{ duration: 0.12 }}
                     className="px-4 py-6 text-center text-sm text-ink-faint"
                   >
                     No cards match "{query}".
@@ -143,7 +143,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
+                    transition={{ duration: 0.12 }}
                     className="py-1"
                   >
                     {results.map((hit, i) => (
@@ -151,7 +151,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                         key={hit.card.id}
                         initial={{ opacity: 0, x: -8 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.18, delay: Math.min(i * 0.02, 0.2) }}
+                        transition={{ duration: 0.12, delay: Math.min(i * 0.015, 0.15) }}
                       >
                         <button
                           type="button"

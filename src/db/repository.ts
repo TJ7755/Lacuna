@@ -32,6 +32,7 @@ export async function createDeck(name: string, colour?: string): Promise<Deck> {
     fsrsVersion: FSRS_VERSION,
     fsrsParameters: defaultFsrsParameters(),
     examObjective: 'expectedMarks',
+    lastInteractedAt: createdAt,
     ...(colour ? { colour } : {}),
   };
   await db.decks.add(deck);
@@ -396,10 +397,12 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
   const sessionHistoryId = await db.transaction(
     'rw',
     db.cards,
+    db.decks,
     db.sessionHistory,
     db.userPerformance,
     async () => {
       await db.cards.put(updatedCard);
+      await db.decks.update(deck.id, { lastInteractedAt: now });
 
       if (correct) {
         const perf =

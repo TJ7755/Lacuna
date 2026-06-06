@@ -239,7 +239,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
             initial={{ opacity: 0, height: 0, marginBottom: 0 }}
             animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
             exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
             <div className="rounded-2xl border border-line-strong bg-surface p-5">
@@ -309,7 +309,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
                 initial={{ opacity: 0, height: 0, marginTop: 0 }}
                 animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
                 exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
                 className="overflow-hidden"
               >
                 <div className="border-t border-line pt-3">
@@ -367,7 +367,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
                 initial={{ opacity: 0, height: 0, marginTop: 0 }}
                 animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
                 exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
                 className="overflow-hidden"
               >
                 <div className="border-t border-line pt-3">
@@ -478,7 +478,7 @@ function CardRow({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: Math.min(index * 0.03, 0.25) }}
+      transition={{ duration: 0.16, delay: Math.min(index * 0.03, 0.25) }}
       onClick={handleClick}
       onMouseEnter={() => !selectMode && setHovered(true)}
       onMouseLeave={() => !selectMode && setHovered(false)}
@@ -545,7 +545,7 @@ function CardRow({
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: 0.12 }}
             >
               <CardContent card={card} side={showBack ? 'back' : 'front'} />
             </motion.div>

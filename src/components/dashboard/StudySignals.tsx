@@ -32,7 +32,7 @@ export function StudySignals({ stats }: { stats: StudyStats }) {
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.24 }}
       className="mb-6 grid gap-4 rounded-2xl border border-line bg-surface p-5 sm:grid-cols-[auto_auto_1fr] sm:items-stretch"
     >
       {/* Streak */}
@@ -47,7 +47,7 @@ export function StudySignals({ stats }: { stats: StudyStats }) {
               ? { scale: [1, 1.08, 1], rotate: [0, -3, 3, 0] }
               : { scale: 1, rotate: 0 }
           }
-          transition={lit ? { duration: 2.4, repeat: Infinity, ease: 'easeInOut' } : undefined}
+          transition={lit ? { duration: 2.0, repeat: Infinity, ease: 'easeInOut' } : undefined}
         >
           <FlameIcon width={22} height={22} />
         </motion.span>
@@ -98,7 +98,7 @@ export function StudySignals({ stats }: { stats: StudyStats }) {
                     initial={{ height: 0 }}
                     animate={{ height: `${heightPct}%` }}
                     transition={{
-                      duration: 0.5,
+                      duration: 0.4,
                       delay: 0.1 + i * 0.05,
                       ease: [0.16, 1, 0.3, 1],
                     }}

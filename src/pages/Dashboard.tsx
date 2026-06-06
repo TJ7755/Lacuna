@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { useAllCards, useDecks, useDeckSummaries, useStudyStats } from '../state/useData';
+import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { StudySignals } from '../components/dashboard/StudySignals';
 import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
 import {
@@ -32,6 +33,7 @@ export function Dashboard() {
   const allCards = useAllCards();
   const navigate = useNavigate();
   const { notify } = useToast();
+  const [dashboardSort] = useDashboardSort();
 
   const [creating, setCreating] = useState(false);
   const [createMode, setCreateMode] = useState<'blank' | 'import'>('blank');
@@ -48,7 +50,10 @@ export function Dashboard() {
   );
 
   // Archived decks are retained but hidden from active study; show them apart.
-  const activeDecks = useMemo(() => (decks ?? []).filter((d) => !d.archived), [decks]);
+  const activeDecks = useMemo(() => {
+    const list = (decks ?? []).filter((d) => !d.archived);
+    return sortDecks(list, dashboardSort, summaries);
+  }, [decks, dashboardSort, summaries]);
   const archivedDecks = useMemo(() => (decks ?? []).filter((d) => d.archived), [decks]);
 
   // Total cards a global session would serve today, across all decks.
@@ -180,7 +185,7 @@ export function Dashboard() {
             initial={{ opacity: 0, height: 0, marginBottom: 0 }}
             animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
             exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
             <div className="rounded-2xl border border-line-strong bg-surface p-5">
@@ -463,7 +468,7 @@ function DeckCard({
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
       whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3) }}
+      transition={{ duration: 0.24, delay: Math.min(index * 0.03, 0.24) }}
       className={cn(
         'group relative flex h-full flex-col rounded-2xl border bg-surface p-5 transition-all duration-200',
         selected
@@ -545,7 +550,7 @@ function DeckSkeleton() {
           key={i}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: Math.min(i * 0.05, 0.25) }}
+          transition={{ duration: 0.24, delay: Math.min(i * 0.04, 0.2) }}
           className="flex h-full flex-col rounded-2xl border border-line bg-surface p-5"
         >
           <div className="mb-1 h-3 w-20 animate-pulse rounded bg-ink/10" />
@@ -563,12 +568,41 @@ function DeckSkeleton() {
   );
 }
 
+function sortDecks(
+  decks: Deck[],
+  sort: DashboardSort,
+  summaries: Record<string, { count: number; mastery: number; unreviewed: number; eligible: number }> | undefined,
+): Deck[] {
+  const list = [...decks];
+  switch (sort) {
+    case 'recent':
+      list.sort((a, b) => (b.lastInteractedAt ?? b.createdAt) - (a.lastInteractedAt ?? a.createdAt));
+      break;
+    case 'ready':
+      list.sort((a, b) => (summaries?.[b.id]?.eligible ?? 0) - (summaries?.[a.id]?.eligible ?? 0));
+      break;
+    case 'mastery':
+      list.sort((a, b) => (summaries?.[a.id]?.mastery ?? 0) - (summaries?.[b.id]?.mastery ?? 0));
+      break;
+    case 'exam':
+      list.sort((a, b) => a.examDate - b.examDate);
+      break;
+    case 'name':
+      list.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case 'created':
+      list.sort((a, b) => b.createdAt - a.createdAt);
+      break;
+  }
+  return list;
+}
+
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-20 text-center"
     >
       <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent">

@@ -101,7 +101,7 @@ export function SearchPage() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.24 }}
           className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center"
         >
           <div className="mb-4 grid h-12 w-12 place-items-center rounded-xl bg-accent-soft text-accent">
@@ -117,7 +117,7 @@ export function SearchPage() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.24 }}
           className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center"
         >
           <div className="mb-4 grid h-12 w-12 place-items-center rounded-xl bg-accent-soft text-accent">
@@ -141,11 +141,11 @@ export function SearchPage() {
                 type="button"
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.2) }}
+                transition={{ duration: 0.16, delay: Math.min(i * 0.015, 0.15) }}
                 onClick={() =>
                   navigate(`/deck/${hit.card.deckId}/cards/${hit.card.id}/edit`)
                 }
-                whileHover={{ y: -2, transition: { duration: 0.15 } }}
+                whileHover={{ y: -2, transition: { duration: 0.12 } }}
                 className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4 text-left transition-colors duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.03]"
               >
                 <span className="text-sm text-ink">

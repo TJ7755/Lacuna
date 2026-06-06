@@ -41,7 +41,7 @@ export function ProgressBar({
               initial={{ x: '-120%' }}
               animate={{ x: '420%' }}
               transition={{
-                duration: 2.4,
+                duration: 2.0,
                 ease: 'easeInOut',
                 repeat: Infinity,
                 repeatDelay: 2.6,

@@ -39,6 +39,8 @@ import type { BackupFile } from '../db/types';
 import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
+import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
+import { useMotionSpeed, type MotionSpeed } from '../state/motionSpeed';
 import { MIN_OPTIMISE_REVIEWS } from '../fsrs/optimise';
 import {
   requestPersistentStorage,
@@ -59,6 +61,8 @@ export function Settings() {
   const { notify } = useToast();
   const [gradingMode, setGradingMode] = useGradingMode();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
+  const [dashboardSort, setDashboardSort] = useDashboardSort();
+  const [motionSpeed, setMotionSpeed] = useMotionSpeed();
   const [pomoSettings, setPomoSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
   const backups = useBackups();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -202,7 +206,7 @@ export function Settings() {
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
         className="mb-8 rounded-2xl border border-line bg-surface p-6"
       >
         <h2 className="mb-1 font-display text-xl">Appearance</h2>
@@ -310,13 +314,87 @@ export function Settings() {
             })}
           </div>
         </div>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <div className="mb-1 flex items-baseline justify-between">
+            <span className="text-sm">Animation speed</span>
+            <span className="tabular text-sm text-ink-faint">
+              {motionSpeed === 'slow' ? 'Slow' : motionSpeed === 'fast' ? 'Fast' : 'Normal'}
+            </span>
+          </div>
+          <p className="mb-3 text-sm text-ink-soft">
+            Adjust how quickly decorative animations play across the app.
+            Does not affect functional timers or progress bars.
+          </p>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-ink-faint">Slow</span>
+            <input
+              type="range"
+              min={0}
+              max={2}
+              step={1}
+              value={motionSpeed === 'slow' ? 0 : motionSpeed === 'normal' ? 1 : 2}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                const next: MotionSpeed = val === 0 ? 'slow' : val === 2 ? 'fast' : 'normal';
+                setMotionSpeed(next);
+              }}
+              className="flex-1 accent-accent"
+              aria-label="Animation speed"
+            />
+            <span className="text-xs text-ink-faint">Fast</span>
+          </div>
+        </div>
+      </motion.section>
+
+      {/* Dashboard */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.24, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      >
+        <h2 className="mb-1 font-display text-xl">Dashboard</h2>
+        <p className="mb-5 text-sm text-ink-soft">
+          Choose how decks are ordered on the dashboard. The top three active decks are shown.
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {(
+            [
+              { key: 'recent', label: 'Recently studied' },
+              { key: 'ready', label: 'Ready for review' },
+              { key: 'mastery', label: 'Lowest mastery' },
+              { key: 'exam', label: 'Soonest exam' },
+              { key: 'name', label: 'Name A–Z' },
+              { key: 'created', label: 'Created recently' },
+            ] as { key: DashboardSort; label: string }[]
+          ).map((option) => {
+            const active = dashboardSort === option.key;
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setDashboardSort(option.key)}
+                aria-pressed={active}
+                className={cn(
+                  'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
+                  active
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-line text-ink-soft hover:border-line-strong',
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
       </motion.section>
 
       {/* Study and scheduling */}
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.24, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
         className="mb-8 rounded-2xl border border-line bg-surface p-6"
       >
         <h2 className="mb-1 font-display text-xl">Study &amp; scheduling</h2>
@@ -362,7 +440,7 @@ export function Settings() {
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.24, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         className="mb-8 rounded-2xl border border-line bg-surface p-6"
       >
         <h2 className="mb-1 font-display text-xl">Keyboard shortcuts</h2>
@@ -424,7 +502,7 @@ export function Settings() {
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.24, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
         className="mb-8 rounded-2xl border border-line bg-surface p-6"
       >
         <h2 className="mb-1 font-display text-xl">Pomodoro timer</h2>
@@ -484,7 +562,7 @@ export function Settings() {
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.24, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         className="rounded-2xl border border-line bg-surface p-6"
       >
         <h2 className="mb-1 font-display text-xl">Import &amp; export</h2>
@@ -532,7 +610,7 @@ export function Settings() {
               initial={{ opacity: 0, height: 0, marginTop: 0 }}
               animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
               exit={{ opacity: 0, height: 0, marginTop: 0 }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden"
             >
               <div className="rounded-xl border border-line-strong bg-surface-raised p-5">
@@ -577,7 +655,7 @@ export function Settings() {
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.24, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
         className="mt-8 rounded-2xl border border-line bg-surface p-6"
       >
         <div className="mb-1 flex flex-wrap items-center justify-between gap-3">

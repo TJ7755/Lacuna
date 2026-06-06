@@ -76,7 +76,7 @@ function ConfettiBurst() {
       aria-hidden
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.32 }}
     >
       {particles.map((p) => (
         <motion.div
@@ -162,7 +162,7 @@ export function SessionReport({
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
       >
         {/* Reaching the goal earns a badge that springs in — the moment worth savouring. */}
         {summary.reachedGoal && (
@@ -192,7 +192,7 @@ export function SessionReport({
                 className="font-medium text-accent"
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.2, duration: 0.3 }}
+                transition={{ delay: 1.2, duration: 0.24 }}
               >
                 {Math.round(summary.masteryAfter * 100)}%
               </motion.span>
@@ -201,7 +201,7 @@ export function SessionReport({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.3 }}
+            transition={{ delay: 0.2, duration: 0.24 }}
           >
             <ProgressBar value={animatedProgress} />
           </motion.div>
@@ -291,14 +291,14 @@ function Stat({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: 0.2 + index * 0.07, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.24, delay: 0.2 + index * 0.07, ease: [0.16, 1, 0.3, 1] }}
       className="rounded-xl border border-line bg-surface p-4"
     >
       <motion.div
         className="font-display text-3xl tabular tracking-tight"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
       >
         {value}
       </motion.div>

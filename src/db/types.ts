@@ -95,6 +95,8 @@ export interface Deck {
   autoOptimise?: boolean;
   /** Optional deck colour used for visual identification in the dashboard and sidebar. */
   colour?: string;
+  /** Epoch ms of the most recent review (or deck creation), for dashboard priority. */
+  lastInteractedAt?: number;
 }
 
 export interface Card {

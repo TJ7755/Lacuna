@@ -143,7 +143,7 @@ export function PomodoroTimer() {
             initial={{ opacity: 0, y: -6, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
             className="absolute right-0 top-11 z-30 w-56 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
           >
             <div className="px-4 py-3">
@@ -174,7 +174,7 @@ export function PomodoroTimer() {
                     className={`h-full rounded-full ${phase === 'focus' ? 'bg-accent' : phase === 'shortBreak' ? 'bg-positive' : 'bg-ink'}`}
                     initial={{ width: 0 }}
                     animate={{ width: `${progress * 100}%` }}
-                    transition={{ duration: 0.5, ease: 'linear' }}
+                    transition={{ duration: 0.4, ease: 'linear' }}
                   />
                 </div>
               )}
