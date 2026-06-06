@@ -50,7 +50,6 @@ function minutesLabel(minutes: number): string {
 /** Short weekday for a day, with today and tomorrow named. */
 function dayLabel(dayStart: number, index: number): string {
   if (index === 0) return 'Today';
-  if (index === 1) return 'Tom';
   return new Date(dayStart).toLocaleDateString('en-GB', { weekday: 'short' });
 }
 
