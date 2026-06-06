@@ -199,7 +199,12 @@ export function Settings() {
       </header>
 
       {/* Appearance */}
-      <section className="mb-8 rounded-2xl border border-line bg-surface p-6">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      >
         <h2 className="mb-1 font-display text-xl">Appearance</h2>
         <p className="mb-4 text-sm text-ink-soft">
           Lacuna defaults to a dark theme. Your choice is remembered on this device.
@@ -248,19 +253,27 @@ export function Settings() {
             {ACCENTS.map((option) => {
               const active = accent === option.key;
               return (
-                <button
+                <motion.button
                   key={option.key}
                   type="button"
                   onClick={() => setAccent(option.key)}
                   aria-pressed={active}
                   title={option.label}
                   aria-label={option.label}
-                  className={cn(
-                    'h-9 w-9 rounded-full ring-2 ring-offset-2 ring-offset-surface transition-transform hover:scale-105',
-                    active ? 'ring-ink' : 'ring-transparent',
-                  )}
+                  whileTap={{ scale: 0.88 }}
+                  whileHover={{ scale: 1.08 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                  className="relative h-9 w-9 rounded-full"
                   style={{ backgroundColor: option.swatch }}
-                />
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="accent-ring"
+                      className="absolute inset-[-4px] rounded-full ring-2 ring-ink ring-offset-2 ring-offset-surface"
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                    />
+                  )}
+                </motion.button>
               );
             })}
           </div>
@@ -297,10 +310,15 @@ export function Settings() {
             })}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Study and scheduling */}
-      <section className="mb-8 rounded-2xl border border-line bg-surface p-6">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      >
         <h2 className="mb-1 font-display text-xl">Study &amp; scheduling</h2>
         <p className="mb-5 text-sm text-ink-soft">
           How grades are decided and how the FSRS schedule adapts to you.
@@ -338,10 +356,15 @@ export function Settings() {
             label="Optimise scheduling"
           />
         </div>
-      </section>
+      </motion.section>
 
       {/* Keyboard shortcuts */}
-      <section className="mb-8 rounded-2xl border border-line bg-surface p-6">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      >
         <h2 className="mb-1 font-display text-xl">Keyboard shortcuts</h2>
         <p className="mb-5 text-sm text-ink-soft">
           Customise the keys used while studying. Click any row then press the key you want
@@ -395,10 +418,15 @@ export function Settings() {
             Reset to defaults
           </Button>
         </div>
-      </section>
+      </motion.section>
 
       {/* Pomodoro timer */}
-      <section className="mb-8 rounded-2xl border border-line bg-surface p-6">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      >
         <h2 className="mb-1 font-display text-xl">Pomodoro timer</h2>
         <p className="mb-5 text-sm text-ink-soft">
           A built-in focus timer for your study sessions. Customise the durations to match
@@ -450,10 +478,15 @@ export function Settings() {
             label="Auto-start breaks"
           />
         </div>
-      </section>
+      </motion.section>
 
       {/* Data portability */}
-      <section className="rounded-2xl border border-line bg-surface p-6">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        className="rounded-2xl border border-line bg-surface p-6"
+      >
         <h2 className="mb-1 font-display text-xl">Import &amp; export</h2>
         <p className="mb-5 text-sm text-ink-soft">
           All your data lives locally in this browser. Export it to a single JSON file
@@ -538,10 +571,15 @@ export function Settings() {
             </motion.div>
           )}
         </AnimatePresence>
-      </section>
+      </motion.section>
 
       {/* Automatic backups */}
-      <section className="mt-8 rounded-2xl border border-line bg-surface p-6">
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        className="mt-8 rounded-2xl border border-line bg-surface p-6"
+      >
         <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-xl">Automatic backups</h2>
           <Button variant="secondary" size="sm" onClick={handleBackupNow}>
@@ -682,7 +720,7 @@ export function Settings() {
             ))}
           </ul>
         )}
-      </section>
+      </motion.section>
     </div>
   );
 }

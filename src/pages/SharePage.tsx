@@ -12,7 +12,7 @@ import {
   type ShareSummary,
 } from '../db/share';
 import { referencedAssetHashesInCards } from '../db/assets';
-import { CheckIcon, DownloadIcon, ShareIcon, UploadIcon } from '../components/ui/icons';
+import { CheckIcon, DownloadIcon, ShareIcon, UploadIcon, CardsIcon } from '../components/ui/icons';
 import { formatDate } from '../utils/datetime';
 
 /**
@@ -151,9 +151,22 @@ export function SharePage() {
         </p>
 
         {!decks ? (
-          <p className="text-sm text-ink-faint">Loading…</p>
+          <ShareSkeleton />
         ) : decks.length === 0 ? (
-          <p className="text-sm text-ink-faint">You have no decks to share yet.</p>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center"
+          >
+            <div className="mb-4 grid h-12 w-12 place-items-center rounded-xl bg-accent-soft text-accent">
+              <CardsIcon width={22} height={22} />
+            </div>
+            <h3 className="mb-1 font-display text-xl">No decks yet</h3>
+            <p className="max-w-sm text-sm text-ink-soft">
+              Create a deck first, then come back here to share it with others.
+            </p>
+          </motion.div>
         ) : (
           <>
             <div className="mb-3 flex items-center justify-between">
@@ -353,6 +366,23 @@ export function SharePage() {
           )}
         </AnimatePresence>
       </section>
+    </div>
+  );
+}
+
+function ShareSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3"
+        >
+          <div className="h-5 w-5 animate-pulse rounded-md bg-ink/10" />
+          <div className="h-4 flex-1 animate-pulse rounded bg-ink/10" />
+          <div className="h-4 w-16 animate-pulse rounded bg-ink/10" />
+        </div>
+      ))}
     </div>
   );
 }
