@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useTheme } from '../state/ThemeContext';
+import { useTheme, type Theme } from '../state/ThemeContext';
 import { ACCENTS, useAccent } from '../state/AccentContext';
 import { FONT_SCALE_STEPS, useFontScale } from '../state/FontScaleContext';
 import { useBackups } from '../state/useData';
@@ -47,7 +47,7 @@ import {
 } from '../db/persistence';
 
 export function Settings() {
-  const { theme, setTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
   const { scale, setScale } = useFontScale();
   const { notify } = useToast();
@@ -198,18 +198,37 @@ export function Settings() {
         </p>
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-sm">
-            {theme === 'dark' ? (
+            {resolvedTheme === 'dark' ? (
               <MoonIcon width={18} height={18} />
             ) : (
               <SunIcon width={18} height={18} />
             )}
-            {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+            {theme === 'auto'
+              ? `Auto (${resolvedTheme === 'dark' ? 'dark' : 'light'})`
+              : resolvedTheme === 'dark'
+                ? 'Dark mode'
+                : 'Light mode'}
           </span>
-          <Toggle
-            checked={theme === 'light'}
-            onChange={(checked) => setTheme(checked ? 'light' : 'dark')}
-            label="Light"
-          />
+          <div className="flex gap-1">
+            {(['dark', 'light', 'auto'] as Theme[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTheme(t)}
+                aria-pressed={theme === t}
+                className={cn(
+                  'rounded-lg border px-3 py-1.5 text-xs transition-colors',
+                  theme === t
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-line text-ink-soft hover:border-line-strong',
+                )}
+              >
+                {t === 'dark' && 'Dark'}
+                {t === 'light' && 'Light'}
+                {t === 'auto' && 'Auto'}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="mt-6 border-t border-line pt-5">

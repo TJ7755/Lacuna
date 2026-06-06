@@ -67,7 +67,7 @@ function NavItem({
 }
 
 export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
-  const { theme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme();
   const decks = useDecks();
   const location = useLocation();
 
@@ -198,11 +198,11 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           aria-label="Toggle colour theme"
           className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
         >
-          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
         {!collapsed && (
           <span className="flex-1 text-xs text-ink-faint">
-            {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+            {resolvedTheme === 'dark' ? 'Dark mode' : 'Light mode'}
           </span>
         )}
         <button
