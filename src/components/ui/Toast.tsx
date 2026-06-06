@@ -2,11 +2,14 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { cn } from './cn';
+import { CheckIcon, CloseIcon, InfoIcon } from './icons';
 
 type ToastTone = 'neutral' | 'positive' | 'negative';
 
@@ -25,6 +28,7 @@ interface ToastItem {
   tone: ToastTone;
   actionLabel?: string;
   onAction?: () => void;
+  duration: number;
 }
 
 interface ToastContextValue {
@@ -43,12 +47,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const notify = useCallback(
     (message: string, tone: ToastTone = 'neutral', options?: ToastOptions) => {
       const id = Date.now() + Math.random();
+      const duration = options?.duration ?? (options?.actionLabel ? 6000 : 3500);
       setToasts((prev) => [
         ...prev,
-        { id, message, tone, actionLabel: options?.actionLabel, onAction: options?.onAction },
+        {
+          id,
+          message,
+          tone,
+          actionLabel: options?.actionLabel,
+          onAction: options?.onAction,
+          duration,
+        },
       ]);
-      const duration =
-        options?.duration ?? (options?.actionLabel ? 6000 : 3500);
       window.setTimeout(() => dismiss(id), duration);
     },
     [dismiss],
@@ -60,37 +70,102 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2">
         <AnimatePresence>
           {toasts.map((t) => (
-            <motion.div
-              key={t.id}
-              initial={{ opacity: 0, x: 24, scale: 0.96 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 24, scale: 0.96 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className={cn(
-                'flex items-center gap-4 rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur bg-surface-raised/95 max-w-xs',
-                t.tone === 'positive' && 'border-positive/40 text-positive',
-                t.tone === 'negative' && 'border-negative/40 text-negative',
-                t.tone === 'neutral' && 'border-line-strong text-ink',
-              )}
-            >
-              <span className="min-w-0 flex-1">{t.message}</span>
-              {t.actionLabel && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    t.onAction?.();
-                    dismiss(t.id);
-                  }}
-                  className="shrink-0 font-medium text-accent underline underline-offset-2 transition-opacity hover:opacity-80"
-                >
-                  {t.actionLabel}
-                </button>
-              )}
-            </motion.div>
+            <ToastBar key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
           ))}
         </AnimatePresence>
       </div>
     </ToastContext.Provider>
+  );
+}
+
+function ToastBar({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => void }) {
+  const [progress, setProgress] = useState(1);
+  const rafRef = useRef<number>(0);
+  const startRef = useRef<number>(0);
+
+  useEffect(() => {
+    startRef.current = performance.now();
+    const duration = toast.duration;
+
+    function tick(now: number) {
+      const elapsed = now - startRef.current;
+      const remaining = Math.max(0, 1 - elapsed / duration);
+      setProgress(remaining);
+      if (remaining > 0) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [toast.duration]);
+
+  const toneClasses = {
+    positive: 'border-positive/40 text-positive',
+    negative: 'border-negative/40 text-negative',
+    neutral: 'border-line-strong text-ink',
+  } as const;
+
+  const progressColour = {
+    positive: 'bg-positive',
+    negative: 'bg-negative',
+    neutral: 'bg-accent',
+  } as const;
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, x: 24, scale: 0.96 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 24, scale: 0.96 }}
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      className={cn(
+        'relative flex items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur bg-surface-raised/95 max-w-xs overflow-hidden',
+        toneClasses[toast.tone],
+      )}
+      onMouseEnter={() => {
+        // Pause on hover by freezing progress at current value
+        cancelAnimationFrame(rafRef.current);
+      }}
+      onMouseLeave={() => {
+        // Resume from where we left off
+        const remaining = progress * toast.duration;
+        startRef.current = performance.now() - (toast.duration - remaining);
+        rafRef.current = requestAnimationFrame(function tick(now) {
+          const elapsed = now - startRef.current;
+          const p = Math.max(0, 1 - elapsed / toast.duration);
+          setProgress(p);
+          if (p > 0) {
+            rafRef.current = requestAnimationFrame(tick);
+          }
+        });
+      }}
+    >
+      {/* Dismiss timer progress bar */}
+      <motion.div
+        className={cn('absolute bottom-0 left-0 h-[2px] origin-left', progressColour[toast.tone])}
+        style={{ width: `${progress * 100}%`, opacity: 0.6 }}
+      />
+
+      <span className="shrink-0">
+        {toast.tone === 'positive' && <CheckIcon width={16} height={16} />}
+        {toast.tone === 'negative' && <CloseIcon width={16} height={16} />}
+        {toast.tone === 'neutral' && <InfoIcon width={16} height={16} />}
+      </span>
+      <span className="min-w-0 flex-1">{toast.message}</span>
+      {toast.actionLabel && (
+        <button
+          type="button"
+          onClick={() => {
+            toast.onAction?.();
+            onDismiss();
+          }}
+          className="shrink-0 font-medium text-accent underline underline-offset-2 transition-opacity hover:opacity-80"
+        >
+          {toast.actionLabel}
+        </button>
+      )}
+    </motion.div>
   );
 }
 

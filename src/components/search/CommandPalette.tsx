@@ -7,6 +7,29 @@ import { SearchIcon } from '../ui/icons';
 
 const MAX_RESULTS = 40;
 
+/** Highlight every substring in `text` that matches `query` (case-insensitive). */
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const parts = text.split(new RegExp(`(${escapeRegExp(query.trim())})`, 'gi'));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.trim().toLowerCase() ? (
+          <mark key={i} className="rounded bg-accent/15 px-0.5 text-accent">
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
+  );
+}
+
+function escapeRegExp(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** A keyboard-summoned (Ctrl/Cmd+K) overlay for searching every card. */
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const decks = useDecks();
@@ -91,41 +114,85 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             </div>
 
             <div className="max-h-[50vh] overflow-y-auto">
-              {query.trim() === '' ? (
-                <p className="px-4 py-6 text-center text-sm text-ink-faint">
-                  Type to search across every deck.
-                </p>
-              ) : results.length === 0 ? (
-                <p className="px-4 py-6 text-center text-sm text-ink-faint">
-                  No cards match “{query}”.
-                </p>
-              ) : (
-                <ul className="py-1">
-                  {results.map((hit, i) => (
-                    <li key={hit.card.id}>
-                      <button
-                        type="button"
-                        onMouseEnter={() => setActive(i)}
-                        onClick={() => go(i)}
-                        className={
-                          'flex w-full flex-col gap-0.5 px-4 py-2.5 text-left transition-colors ' +
-                          (i === active ? 'bg-accent-soft' : 'hover:bg-ink/5')
-                        }
+              <AnimatePresence mode="wait">
+                {query.trim() === '' ? (
+                  <motion.p
+                    key="empty"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="px-4 py-6 text-center text-sm text-ink-faint"
+                  >
+                    Type to search across every deck.
+                  </motion.p>
+                ) : results.length === 0 ? (
+                  <motion.p
+                    key="none"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="px-4 py-6 text-center text-sm text-ink-faint"
+                  >
+                    No cards match "{query}".
+                  </motion.p>
+                ) : (
+                  <motion.ul
+                    key="results"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="py-1"
+                  >
+                    {results.map((hit, i) => (
+                      <motion.li
+                        key={hit.card.id}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.18, delay: Math.min(i * 0.02, 0.2) }}
                       >
-                        <span className="truncate text-sm text-ink">
-                          {plainPreview(hit.card.front, 90) || '(empty front)'}
-                        </span>
-                        <span className="flex items-center gap-2 text-xs text-ink-faint">
-                          <span className="truncate">{hit.deck.name}</span>
-                          {(hit.card.tags ?? []).length > 0 && (
-                            <span className="truncate">· {hit.card.tags!.join(', ')}</span>
-                          )}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                        <button
+                          type="button"
+                          onMouseEnter={() => setActive(i)}
+                          onClick={() => go(i)}
+                          className={
+                            'flex w-full flex-col gap-0.5 px-4 py-2.5 text-left transition-all duration-150 ' +
+                            (i === active ? 'bg-accent-soft' : 'hover:bg-ink/5')
+                          }
+                        >
+                          <span className="truncate text-sm text-ink">
+                            <HighlightedText
+                              text={plainPreview(hit.card.front, 90) || '(empty front)'}
+                              query={query}
+                            />
+                          </span>
+                          <span className="flex items-center gap-2 text-xs text-ink-faint">
+                            <span className="truncate">{hit.deck.name}</span>
+                            {(hit.card.tags ?? []).length > 0 && (
+                              <span className="truncate">· {hit.card.tags!.join(', ')}</span>
+                            )}
+                          </span>
+                        </button>
+                      </motion.li>
+                    ))}
+                  </motion.ul>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Footer shortcuts */}
+            <div className="flex items-center gap-3 border-t border-line bg-surface-raised/30 px-4 py-2 text-[10px] text-ink-faint">
+              <span className="flex items-center gap-1">
+                <kbd className="rounded border border-line px-1 py-0.5">↑</kbd>
+                <kbd className="rounded border border-line px-1 py-0.5">↓</kbd>
+                Navigate
+              </span>
+              <span className="flex items-center gap-1">
+                <kbd className="rounded border border-line px-1 py-0.5">↵</kbd>
+                Open
+              </span>
             </div>
           </motion.div>
         </motion.div>
