@@ -140,6 +140,8 @@ export function App() {
         setReady(true);
         // Take a daily restore point in the background; never blocks the UI.
         void autoBackupIfStale();
+        // Warm the DeckView chunk in the background so the first deck click is instant.
+        void import('./pages/DeckView');
       }
     })();
   }, []);

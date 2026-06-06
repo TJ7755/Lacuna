@@ -72,11 +72,11 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const location = useLocation();
 
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: collapsed ? 72 : 264 }}
-      transition={{ type: 'spring', stiffness: 220, damping: 28 }}
-      className="relative z-20 flex h-screen flex-col border-r border-line bg-surface/80 backdrop-blur-xl"
+    <aside
+      className={cn(
+        'relative z-20 flex h-screen flex-col border-r border-line bg-surface/80 backdrop-blur-xl transition-[width] duration-200 ease-out',
+        collapsed ? 'w-[72px]' : 'w-[264px]',
+      )}
     >
       {/* Brand */}
       <div
@@ -215,6 +215,6 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
         </button>
       </div>
-    </motion.aside>
+    </aside>
   );
 }

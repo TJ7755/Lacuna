@@ -215,11 +215,8 @@ export function Settings() {
       </header>
 
       {/* Appearance */}
-      <motion.section
+      <section
         id="settings-appearance"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
         className="mb-8 rounded-2xl border border-line bg-surface p-6"
       >
         <h2 className="mb-1 font-display text-xl">Appearance</h2>
@@ -270,27 +267,20 @@ export function Settings() {
             {ACCENTS.map((option) => {
               const active = accent === option.key;
               return (
-                <motion.button
+                <button
                   key={option.key}
                   type="button"
                   onClick={() => setAccent(option.key)}
                   aria-pressed={active}
                   title={option.label}
                   aria-label={option.label}
-                  whileTap={{ scale: 0.88 }}
-                  whileHover={{ scale: 1.08 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                  className="relative h-9 w-9 rounded-full"
+                  className="relative h-9 w-9 rounded-full transition-transform duration-150 hover:scale-110 active:scale-[0.88]"
                   style={{ backgroundColor: option.swatch }}
                 >
                   {active && (
-                    <motion.span
-                      layoutId="accent-ring"
-                      className="absolute inset-[-4px] rounded-full ring-2 ring-ink ring-offset-2 ring-offset-surface"
-                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                    />
+                    <span className="absolute inset-[-4px] rounded-full ring-2 ring-ink ring-offset-2 ring-offset-surface" />
                   )}
-                </motion.button>
+                </button>
               );
             })}
           </div>
@@ -358,14 +348,11 @@ export function Settings() {
             <span className="text-xs text-ink-faint">Fast</span>
           </div>
         </div>
-      </motion.section>
+      </section>
 
       {/* Dashboard */}
-      <motion.section
+      <section
         id="settings-dashboard"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
         className="mb-8 rounded-2xl border border-line bg-surface p-6"
       >
         <h2 className="mb-1 font-display text-xl">Dashboard</h2>
@@ -402,14 +389,11 @@ export function Settings() {
             );
           })}
         </div>
-      </motion.section>
+      </section>
 
       {/* Study and scheduling */}
-      <motion.section
+      <section
         id="settings-study"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
         className="mb-8 rounded-2xl border border-line bg-surface p-6"
       >
         <h2 className="mb-1 font-display text-xl">Study &amp; scheduling</h2>
@@ -447,14 +431,11 @@ export function Settings() {
             onChange={setAutoOptimise}
           />
         </div>
-      </motion.section>
+      </section>
 
       {/* Keyboard shortcuts */}
-      <motion.section
+      <section
         id="settings-shortcuts"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
         className="mb-8 rounded-2xl border border-line bg-surface p-6"
       >
         <h2 className="mb-1 font-display text-xl">Keyboard shortcuts</h2>
@@ -510,14 +491,11 @@ export function Settings() {
             Reset to defaults
           </Button>
         </div>
-      </motion.section>
+      </section>
 
       {/* Pomodoro timer */}
-      <motion.section
+      <section
         id="settings-pomodoro"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
         className="mb-8 rounded-2xl border border-line bg-surface p-6"
       >
         <h2 className="mb-1 font-display text-xl">Pomodoro timer</h2>
@@ -570,14 +548,11 @@ export function Settings() {
             }}
           />
         </div>
-      </motion.section>
+      </section>
 
       {/* Data portability */}
-      <motion.section
+      <section
         id="settings-export"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         className="rounded-2xl border border-line bg-surface p-6"
       >
         <h2 className="mb-1 font-display text-xl">Import &amp; export</h2>
@@ -664,14 +639,11 @@ export function Settings() {
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.section>
+      </section>
 
       {/* Automatic backups */}
-      <motion.section
+      <section
         id="settings-backups"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
         className="mt-8 rounded-2xl border border-line bg-surface p-6"
       >
         <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
@@ -814,7 +786,7 @@ export function Settings() {
             ))}
           </ul>
         )}
-      </motion.section>
+      </section>
     </div>
   );
 }

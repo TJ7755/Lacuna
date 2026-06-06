@@ -23,7 +23,7 @@ function getScrollParent(element: HTMLElement): HTMLElement {
     if (/(auto|scroll)/.test(style.overflow + style.overflowY)) {
       return parent;
     }
-    parent = element.parentElement;
+    parent = parent.parentElement;
   }
   return document.documentElement;
 }
