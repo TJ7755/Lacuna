@@ -206,7 +206,7 @@ export function Settings() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-10 md:px-10">
+    <div className="mx-auto max-w-2xl px-6 pb-10 pt-12 md:px-10 md:py-10">
       <SettingsNav sections={SETTINGS_SECTIONS} />
       <header className="mb-10">
         <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">

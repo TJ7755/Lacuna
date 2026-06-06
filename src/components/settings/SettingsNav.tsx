@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, useMotionValue, useSpring, type MotionValue } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { cn } from '../ui/cn';
@@ -79,20 +79,23 @@ function computePullScale(
 export function SettingsNav({ sections }: SettingsNavProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
-  const multiplier = speedMultiplier(motionSpeed);
-  const baseDuration = 700;
+  const m = speedMultiplier(motionSpeed);
+  const [expanded, setExpanded] = useState(false);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleClick = useCallback(
-    (id: string) => {
-      const element = document.getElementById(id);
-      if (element) {
-        smoothScrollTo(element, baseDuration * multiplier);
-      }
-    },
-    [multiplier],
-  );
+  // Detect reduced-motion preference
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReducedMotion(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
-  // Track which section is closest to the top of the viewport.
+  // Track which section is closest to the top of the viewport
   useEffect(() => {
     const firstEl = sections.length > 0 ? document.getElementById(sections[0].id) : null;
     if (!firstEl) return;
@@ -119,110 +122,291 @@ export function SettingsNav({ sections }: SettingsNavProps) {
     return () => scrollParent.removeEventListener('scroll', onScroll);
   }, [sections]);
 
-  // Shared motion values for mouse position (updated on container mousemove).
+  const handleClick = useCallback(
+    (id: string) => {
+      const element = document.getElementById(id);
+      if (element) {
+        smoothScrollTo(element, 700 * m);
+      }
+      setMobileExpanded(false);
+      setExpanded(false);
+      setFocusedIndex(-1);
+    },
+    [m],
+  );
+
+  // Shared motion values for mouse position
   const mouseX = useMotionValue(-9999);
   const mouseY = useMotionValue(-9999);
 
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      mouseX.set(e.clientX);
+      mouseY.set(e.clientY);
+    },
+    [mouseX, mouseY],
+  );
+
+  const handleMouseEnter = useCallback(() => {
+    setExpanded(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setExpanded(false);
+    setFocusedIndex(-1);
+    mouseX.set(-9999);
+    mouseY.set(-9999);
+  }, [mouseX, mouseY]);
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const next = focusedIndex >= 0 ? (focusedIndex + 1) % sections.length : 0;
+        setFocusedIndex(next);
+        setExpanded(true);
+        const el = document.getElementById(
+          `settings-nav-${sections[next].id}`,
+        ) as HTMLButtonElement | null;
+        el?.focus();
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const next =
+          focusedIndex >= 0
+            ? (focusedIndex - 1 + sections.length) % sections.length
+            : sections.length - 1;
+        setFocusedIndex(next);
+        setExpanded(true);
+        const el = document.getElementById(
+          `settings-nav-${sections[next].id}`,
+        ) as HTMLButtonElement | null;
+        el?.focus();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (focusedIndex >= 0) {
+          handleClick(sections[focusedIndex].id);
+        }
+      } else if (e.key === 'Escape') {
+        setExpanded(false);
+        setFocusedIndex(-1);
+        containerRef.current?.blur();
+      } else if (e.key === 'Tab' && !e.shiftKey && focusedIndex === -1) {
+        // First tab into nav: focus first item and expand
+        e.preventDefault();
+        setFocusedIndex(0);
+        setExpanded(true);
+        const el = document.getElementById(
+          `settings-nav-${sections[0].id}`,
+        ) as HTMLButtonElement | null;
+        el?.focus();
+      }
+    },
+    [focusedIndex, sections, handleClick],
+  );
+
+  // Spring parameters adjusted by motion speed
+  const springConfig = useMemo(() => {
+    if (reducedMotion) {
+      return { stiffness: 10000, damping: 100 };
+    }
+    return {
+      stiffness: 380 / m,
+      damping: 32 * m,
+    };
+  }, [reducedMotion, m]);
+
   return (
-    <div
-      className="sticky top-4 z-30 mb-8 hidden xl:block"
-      onMouseMove={(e) => {
-        mouseX.set(e.clientX);
-        mouseY.set(e.clientY);
-      }}
-      onMouseLeave={() => {
-        mouseX.set(-9999);
-        mouseY.set(-9999);
-      }}
-    >
-      <div className="flex items-center justify-center gap-1 rounded-2xl border border-line bg-surface/90 p-2 shadow-lg backdrop-blur-md">
-        {sections.map((section) => (
-          <NavItem
-            key={section.id}
-            section={section}
-            isActive={activeId === section.id}
-            mouseX={mouseX}
-            mouseY={mouseY}
-            onClick={() => handleClick(section.id)}
-          />
-        ))}
+    <>
+      {/* Desktop: anchored right, vertically centred */}
+      <div
+        ref={containerRef}
+        className="fixed right-3 top-1/2 z-40 hidden -translate-y-1/2 md:block"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onMouseMove={handleMouseMove}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="navigation"
+        aria-label="Settings sections"
+      >
+        <motion.div
+          className="flex flex-col items-center gap-1.5 border border-line bg-surface/90 p-2 shadow-lg backdrop-blur-md"
+          animate={{
+            width: expanded ? 152 : 32,
+            borderRadius: expanded ? 20 : 9999,
+          }}
+          transition={
+            reducedMotion ? { duration: 0 } : { type: 'spring', ...springConfig }
+          }
+        >
+          {sections.map((section, i) => (
+            <NavItem
+              key={section.id}
+              section={section}
+              isActive={activeId === section.id}
+              isFocused={focusedIndex === i}
+              expanded={expanded}
+              mouseX={mouseX}
+              mouseY={mouseY}
+              reducedMotion={reducedMotion}
+              m={m}
+              onClick={() => handleClick(section.id)}
+            />
+          ))}
+        </motion.div>
       </div>
-    </div>
+
+      {/* Mobile: horizontal at top, touch-expandable */}
+      <div
+        className="fixed left-0 right-0 top-0 z-40 md:hidden"
+        onClick={() => setMobileExpanded((p) => !p)}
+        role="navigation"
+        aria-label="Settings sections"
+      >
+        <motion.div
+          className="flex items-center justify-center gap-2 border-b border-line bg-surface/90 px-4 py-2.5 shadow-md backdrop-blur-md"
+          animate={{
+            height: mobileExpanded ? 48 : 36,
+          }}
+          transition={
+            reducedMotion ? { duration: 0 } : { type: 'spring', ...springConfig }
+          }
+        >
+          {sections.map((section) => (
+            <motion.button
+              key={section.id}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClick(section.id);
+              }}
+              aria-current={activeId === section.id ? 'true' : undefined}
+              className={cn(
+                'relative flex items-center justify-center rounded-full outline-none transition-colors duration-200',
+                activeId === section.id
+                  ? 'bg-accent/60 text-accent'
+                  : 'bg-accent/15 text-ink-soft',
+                mobileExpanded && 'hover:bg-accent-soft hover:text-accent',
+              )}
+              animate={{
+                width: mobileExpanded ? 'auto' : 22,
+                height: mobileExpanded ? 32 : 22,
+                paddingLeft: mobileExpanded ? 14 : 0,
+                paddingRight: mobileExpanded ? 14 : 0,
+              }}
+              transition={
+                reducedMotion
+                  ? { duration: 0 }
+                  : { type: 'spring', stiffness: 380 / m, damping: 32 * m }
+              }
+            >
+              <motion.span
+                className="whitespace-nowrap text-xs font-medium"
+                aria-hidden={!mobileExpanded}
+                animate={{ opacity: mobileExpanded ? 1 : 0 }}
+                transition={{ duration: reducedMotion ? 0 : 0.12 * m }}
+              >
+                {section.label}
+              </motion.span>
+            </motion.button>
+          ))}
+        </motion.div>
+      </div>
+    </>
   );
 }
 
 function NavItem({
   section,
   isActive,
+  isFocused,
+  expanded,
   mouseX,
   mouseY,
+  reducedMotion,
+  m,
   onClick,
 }: {
   section: SettingsSection;
   isActive: boolean;
+  isFocused: boolean;
+  expanded: boolean;
   mouseX: MotionValue<number>;
   mouseY: MotionValue<number>;
+  reducedMotion: boolean;
+  m: number;
   onClick: () => void;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
-  const rectRef = useRef<DOMRect | null>(null);
   const scaleMotion = useMotionValue(1);
   const smoothScale = useSpring(scaleMotion, {
-    stiffness: 400,
-    damping: 30,
+    stiffness: reducedMotion ? 10000 : 550 / m,
+    damping: reducedMotion ? 100 : 30 * m,
   });
 
   useEffect(() => {
-    function refreshRect() {
-      if (ref.current) rectRef.current = ref.current.getBoundingClientRect();
-      update();
-    }
-
     function update() {
-      const rect = rectRef.current;
+      const rect = ref.current?.getBoundingClientRect();
       if (!rect) return;
       const x = mouseX.get();
       const y = mouseY.get();
-      scaleMotion.set(computePullScale(x, y, rect, 1.22, 110));
+      if (x === -9999 || y === -9999) {
+        scaleMotion.set(1);
+        return;
+      }
+      const s = computePullScale(x, y, rect, 1.15, 110);
+      scaleMotion.set(s);
     }
-
-    refreshRect();
-    window.addEventListener('resize', refreshRect);
-    window.addEventListener('scroll', refreshRect, { passive: true });
 
     const unsubX = mouseX.on('change', update);
     const unsubY = mouseY.on('change', update);
+    update();
 
     return () => {
       unsubX();
       unsubY();
-      window.removeEventListener('resize', refreshRect);
-      window.removeEventListener('scroll', refreshRect);
     };
   }, [mouseX, mouseY, scaleMotion]);
 
   return (
     <motion.button
       ref={ref}
+      id={`settings-nav-${section.id}`}
       type="button"
       onClick={onClick}
       style={{ scale: smoothScale }}
-      aria-current={isActive ? 'true' : undefined}
       className={cn(
-        'relative cursor-pointer overflow-hidden rounded-xl border-0 px-4 py-2 text-[11px] font-medium outline-none transition-colors duration-200',
+        'relative flex cursor-pointer items-center justify-center overflow-hidden outline-none transition-colors duration-200',
+        expanded
+          ? 'h-8 w-full rounded-full px-3 text-xs font-medium'
+          : 'h-2 w-2 rounded-full',
         isActive
-          ? 'text-accent'
-          : 'bg-transparent text-ink-soft hover:bg-accent-soft hover:text-accent',
+          ? 'bg-accent/60 text-accent'
+          : 'bg-accent/15 text-ink-soft hover:bg-accent-soft hover:text-accent',
+        isFocused && 'z-10',
       )}
+      animate={{
+        width: expanded ? '100%' : 8,
+        height: expanded ? 32 : 8,
+        borderRadius: 9999,
+      }}
+      transition={
+        reducedMotion
+          ? { duration: 0 }
+          : { type: 'spring', stiffness: 380 / m, damping: 32 * m }
+      }
+      aria-current={isActive ? 'true' : undefined}
+      tabIndex={-1}
     >
-      {section.label}
-      {isActive && (
-        <motion.div
-          layoutId="settings-nav-indicator"
-          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-          className="absolute bottom-0 left-1.5 right-1.5 h-0.5 rounded-full bg-accent"
-        />
-      )}
+      <motion.span
+        className="whitespace-nowrap"
+        aria-hidden={!expanded}
+        animate={{ opacity: expanded ? 1 : 0 }}
+        transition={{ duration: reducedMotion ? 0 : 0.14 * m }}
+      >
+        {section.label}
+      </motion.span>
     </motion.button>
   );
 }
