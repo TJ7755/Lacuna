@@ -335,7 +335,8 @@ export function SharePage() {
             <motion.div
               initial={{ opacity: 0, height: 0, marginTop: 0 }}
               animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
-              exit={{ opacity: 0, height: 0, marginTop: 0 }}                transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden"
             >
               <div className="rounded-xl border border-accent/40 bg-accent-soft/40 p-5">

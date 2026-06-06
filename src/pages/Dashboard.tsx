@@ -505,9 +505,9 @@ function DeckCard({
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4, transition: { duration: 0.12 * m } }}
       whileTap={{ scale: 0.98, transition: { duration: 0.08 * m } }}
-      transition={{ duration: 0.24 * m, delay: Math.min(index * 0.03, 0.24) * m }}
+      transition={{ duration: 0.24 * m }}
       className={cn(
-        'group relative flex h-full flex-col overflow-hidden rounded-2xl border bg-surface p-5 transition-all duration-200',
+        'group relative flex h-full flex-col overflow-hidden rounded-2xl border bg-surface p-5 transition-colors duration-200',
         selected
           ? 'border-accent ring-2 ring-accent/30'
           : 'border-line hover:border-line-strong hover:shadow-xl hover:shadow-black/[0.04]',

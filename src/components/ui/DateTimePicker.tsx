@@ -340,7 +340,7 @@ export function DateTimePicker({ value, onChange, label }: DateTimePickerProps) 
   useLayoutEffect(() => {
     if (!open || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const dropdownHeight = 420; // Approximate max height: calendar grid (~300px) + header + time selector + footer.
+    const dropdownHeight = dropdownRef.current?.getBoundingClientRect().height ?? 420;
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
     if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {

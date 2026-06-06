@@ -56,7 +56,7 @@ function useCountUp(target: number, durationMs = 1200, delayMs = 0) {
 }
 
 /** Small burst of confetti particles that celebrate a reached goal. */
-function ConfettiBurst() {
+function ConfettiBurst({ multiplier }: { multiplier: number }) {
   const particles = useMemo(() => {
     const colours = ['#34d399', '#fbbf24', '#60a5fa', '#f87171', '#a78bfa', '#f472b6'];
     return Array.from({ length: 30 }).map((_, i) => ({
@@ -77,7 +77,7 @@ function ConfettiBurst() {
       aria-hidden
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.32 * m }}
+      transition={{ duration: 0.32 * multiplier }}
     >
       {particles.map((p) => (
         <motion.div
@@ -159,7 +159,7 @@ export function SessionReport({
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
       <AnimatePresence>
-        {summary.reachedGoal && <ConfettiBurst key="confetti" />}
+        {summary.reachedGoal && <ConfettiBurst key="confetti" multiplier={m} />}
       </AnimatePresence>
 
       <motion.div
@@ -290,6 +290,8 @@ function Stat({
   value: string;
   index: number;
 }) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}

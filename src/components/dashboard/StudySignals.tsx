@@ -108,7 +108,6 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.24 * m }}
-      layout
       className="mb-6 grid gap-4 rounded-2xl border border-line bg-surface p-5 sm:grid-cols-[180px_1fr] sm:items-stretch"
     >
       {/* Left column: streak + reviewed today */}
@@ -159,7 +158,7 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
       </div>
 
       {/* Seven-day time forecast */}
-      <div className="sm:border-l sm:border-line sm:pl-5">
+      <div className="sm:border-l sm:border-line sm:pl-5" onMouseLeave={resetDetail}>
         <div className="mb-2 flex items-baseline justify-between">
           <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
             Next 7 days
@@ -187,15 +186,15 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
 
                 return (
                   <div key={day.dayStart} className="flex flex-1 flex-col items-center">
-                    <div
-                      className="group flex flex-col items-center gap-1 py-3 px-1 w-full cursor-default"
-                      onMouseEnter={() => setDetailDay(i)}
-                      onMouseLeave={resetDetail}
-                    >
+                <div
+                  className="group flex flex-col items-center gap-1 py-3 px-1 w-full cursor-default"
+                  onMouseEnter={() => setDetailDay(i)}
+                >
                       {/* Card count label */}
                     <AnimatePresence>
                       {dayTotal > 0 && (
                         <motion.span
+                          key={day.dayStart}
                           initial={{ opacity: 0, y: 4 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 4 }}
@@ -294,7 +293,6 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-                layout
               >
                 <DayDetail day={forecast[detailDay]} deckMap={deckMap} index={detailDay} />
               </motion.div>

@@ -940,6 +940,7 @@ function MenuItem({
  * Enhanced with 3D perspective, dynamic shadows, and staggered text reveals.
  */
 function FlipCard({ card, revealed, motionSpeed }: { card: Card; revealed: boolean; motionSpeed: MotionSpeed }) {
+  const m = speedMultiplier(motionSpeed);
   const isCloze = card.type === 'cloze';
   return (
     <div
@@ -953,7 +954,7 @@ function FlipCard({ card, revealed, motionSpeed }: { card: Card; revealed: boole
             initial={{ rotateX: -92, opacity: 0, scale: 0.97 }}
             animate={{ rotateX: 0, opacity: 1, scale: 1 }}
             exit={{ rotateX: 92, opacity: 0, scale: 0.97 }}
-            transition={{ duration: 0.32 * speedMultiplier(motionSpeed), ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
             style={{ transformOrigin: 'center center' }}
             className={
               'rounded-3xl border bg-surface px-8 py-12 ' +
@@ -965,7 +966,7 @@ function FlipCard({ card, revealed, motionSpeed }: { card: Card; revealed: boole
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 * speedMultiplier(motionSpeed), delay: 0.1 * speedMultiplier(motionSpeed), ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.2 * m, delay: 0.1 * m, ease: [0.16, 1, 0.3, 1] }}
               className={
                 'mb-4 text-center text-[11px] uppercase tracking-[0.2em] ' +
                 (revealed ? 'text-accent' : 'text-ink-faint')
@@ -976,7 +977,7 @@ function FlipCard({ card, revealed, motionSpeed }: { card: Card; revealed: boole
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24 * speedMultiplier(motionSpeed), delay: 0.14 * speedMultiplier(motionSpeed), ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.24 * m, delay: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
               className="mx-auto max-w-prose text-center text-lg"
             >
               <CardContent card={card} side={revealed ? 'back' : 'front'} />

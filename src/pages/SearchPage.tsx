@@ -144,7 +144,7 @@ export function SearchPage() {
                 type="button"
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.16 * m, delay: Math.min(i * 0.015, 0.15) * m }}
+                transition={{ duration: 0.16 * m }}
                 onClick={() =>
                   navigate(`/deck/${hit.card.deckId}/cards/${hit.card.id}/edit`)
                 }
