@@ -71,7 +71,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
 
   function toggleAll() {
     setSelected((prev) => {
-      if (prev.size === cards.length) return new Set();
+      if (cards.length > 0 && cards.every((c) => prev.has(c.id))) return new Set();
       return new Set(cards.map((c) => c.id));
     });
   }
@@ -267,22 +267,22 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
             <button
               type="button"
               onClick={toggleAll}
-              aria-pressed={selected.size === cards.length && cards.length > 0}
+              aria-pressed={cards.length > 0 && cards.every((c) => selected.has(c.id))}
               className="flex items-center gap-2 text-sm text-ink-soft transition-colors hover:text-ink"
             >
               <span
                 className={cn(
                   'grid h-5 w-5 place-items-center rounded-full border transition-colors',
-                  selected.size === cards.length && cards.length > 0
+                  cards.length > 0 && cards.every((c) => selected.has(c.id))
                     ? 'border-accent bg-accent text-accent-fg'
                     : 'border-line-strong',
                 )}
               >
-                {selected.size === cards.length && cards.length > 0 && (
+                {cards.length > 0 && cards.every((c) => selected.has(c.id)) && (
                   <CheckIcon width={12} height={12} />
                 )}
               </span>
-              Select all
+              {cards.length > 0 && cards.every((c) => selected.has(c.id)) ? 'Deselect all' : 'Select all'}
             </button>
             <span className="text-sm text-ink-faint">{selected.size} selected</span>
             <div className="ml-auto flex flex-wrap gap-2">

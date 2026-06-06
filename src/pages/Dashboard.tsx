@@ -73,7 +73,7 @@ export function Dashboard() {
   function toggleAll() {
     const allIds = (decks ?? []).map((d) => d.id);
     setSelected((prev) => {
-      if (prev.size === allIds.length && allIds.length > 0) return new Set();
+      if (allIds.length > 0 && allIds.every((id) => prev.has(id))) return new Set();
       return new Set(allIds);
     });
   }
@@ -298,22 +298,22 @@ export function Dashboard() {
             <button
               type="button"
               onClick={toggleAll}
-              aria-pressed={decks && decks.length > 0 && selected.size === decks.length}
+              aria-pressed={!!(decks?.length && decks.every((d) => selected.has(d.id)))}
               className="flex items-center gap-2 text-sm text-ink-soft transition-colors hover:text-ink"
             >
               <span
                 className={cn(
                   'grid h-6 w-6 place-items-center rounded-full border transition-colors',
-                  decks && decks.length > 0 && selected.size === decks.length
+                  decks?.length && decks.every((d) => selected.has(d.id))
                     ? 'border-accent bg-accent text-accent-fg'
                     : 'border-line-strong',
                 )}
               >
-                {decks && decks.length > 0 && selected.size === decks.length && (
+                {decks?.length && decks.every((d) => selected.has(d.id)) && (
                   <CheckIcon width={14} height={14} />
                 )}
               </span>
-              Select all
+              {decks?.length && decks.every((d) => selected.has(d.id)) ? 'Deselect all' : 'Select all'}
             </button>
             <span className="text-sm text-ink-faint">{selected.size} selected</span>
             <div className="ml-auto flex gap-2">
@@ -485,7 +485,7 @@ function DeckCard({
 }) {
   const colourBar = deck.colour ? (
     <span
-      className="absolute inset-x-0 top-0 h-1 rounded-t-2xl"
+      className="absolute inset-x-0 top-0 h-1"
       style={{ backgroundColor: deck.colour }}
     />
   ) : null;
@@ -498,7 +498,7 @@ function DeckCard({
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.24, delay: Math.min(index * 0.03, 0.24) }}
       className={cn(
-        'group relative flex h-full flex-col rounded-2xl border bg-surface p-5 transition-all duration-200',
+        'group relative flex h-full flex-col overflow-hidden rounded-2xl border bg-surface p-5 transition-all duration-200',
         selected
           ? 'border-accent ring-2 ring-accent/30'
           : 'border-line hover:border-line-strong hover:shadow-xl hover:shadow-black/[0.04]',

@@ -518,11 +518,11 @@ function ExamDateBanner({
 
   return (
     <motion.section
-      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-      animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
-      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-      transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-      className="overflow-hidden"
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      className="mb-6"
     >
       <div className="rounded-2xl border border-accent/40 bg-accent-soft/40 p-5">
         <h2 className="mb-1 font-display text-xl">When is your exam?</h2>
