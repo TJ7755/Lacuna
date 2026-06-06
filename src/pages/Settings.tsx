@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { SettingsNav } from '../components/settings/SettingsNav';
+import { useMotionSpeed, speedMultiplier, type MotionSpeed } from '../state/motionSpeed';
 import { useTheme, type Theme } from '../state/ThemeContext';
 import { ACCENTS, useAccent } from '../state/AccentContext';
 import { FONT_SCALE_STEPS, useFontScale } from '../state/FontScaleContext';
@@ -41,7 +42,6 @@ import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
-import { useMotionSpeed, type MotionSpeed } from '../state/motionSpeed';
 import { MIN_OPTIMISE_REVIEWS } from '../fsrs/optimise';
 import {
   requestPersistentStorage,
@@ -66,6 +66,8 @@ const SETTINGS_SECTIONS = [
 ];
 
 export function Settings() {
+  const [motionSpeed, setMotionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
   const { scale, setScale } = useFontScale();
@@ -73,7 +75,6 @@ export function Settings() {
   const [gradingMode, setGradingMode] = useGradingMode();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
-  const [motionSpeed, setMotionSpeed] = useMotionSpeed();
   const [pomoSettings, setPomoSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
   const backups = useBackups();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -600,7 +601,7 @@ export function Settings() {
               initial={{ opacity: 0, height: 0, marginTop: 0 }}
               animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
               exit={{ opacity: 0, height: 0, marginTop: 0 }}
-              transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden"
             >
               <div className="rounded-xl border border-line-strong bg-surface-raised p-5">

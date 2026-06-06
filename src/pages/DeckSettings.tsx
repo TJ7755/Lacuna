@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useCards, useDeck } from '../state/useData';
+import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Button } from '../components/ui/Button';
 import { Toggle } from '../components/ui/Toggle';
 import { ProgressBar } from '../components/ui/ProgressBar';
@@ -49,6 +50,8 @@ const RETENTION_PRESETS = [
  * rather than a blocking confirmation dialog.
  */
 export function DeckSettings() {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const { deckId } = useParams<{ deckId: string }>();
   const navigate = useNavigate();
   const { notify } = useToast();
@@ -140,7 +143,7 @@ export function DeckSettings() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
+        transition={{ duration: 0.25 * m }}
       >
         <header className="mb-8">
           <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">

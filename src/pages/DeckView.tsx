@@ -40,6 +40,7 @@ import {
 } from '../components/ui/icons';
 import { searchCards, type CardFilter } from '../db/search';
 import { cn } from '../components/ui/cn';
+import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import type { Card, Deck } from '../db/types';
 
 type Tab = 'cards' | 'analytics';
@@ -60,6 +61,8 @@ export function DeckView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'due' | 'created' | 'stability' | 'alpha'>('due');
   const [filters, setFilters] = useState<Set<CardFilter>>(new Set());
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
 
   // Distinct tags across the deck, for the filter row.
   const allTags = useMemo(() => {
@@ -138,6 +141,7 @@ export function DeckView() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
         className="p-10"
       >
         <p className="mb-4 text-ink-soft">This deck could not be found.</p>
@@ -307,7 +311,7 @@ export function DeckView() {
       )}
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-1 border-b border-line">
+      <motion.div layout className="mb-6 flex gap-1 border-b border-line">
         <TabButton active={tab === 'cards'} onClick={() => setTab('cards')} icon={<CardsIcon width={16} height={16} />}>
           Cards
         </TabButton>
@@ -318,13 +322,13 @@ export function DeckView() {
         >
           Analytics
         </TabButton>
-      </div>
+      </motion.div>
 
       <motion.div
         key={tab}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16 }}
+        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       >
         {tab === 'cards' ? (
           <>
@@ -460,12 +464,14 @@ function PassedExamBanner({
   tone: 'passed' | 'archived';
   children: React.ReactNode;
 }) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   return (
     <motion.section
       initial={{ opacity: 0, height: 0, marginBottom: 0 }}
       animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-      transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       className="overflow-hidden"
     >
       <div
@@ -495,6 +501,8 @@ function ExamDateBanner({
   onProceed: () => void;
   onClose: () => void;
 }) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const [value, setValue] = useState(() => toDateTimeLocalValue(deck.examDate));
   const [dontAsk, setDontAsk] = useState(false);
 
@@ -521,7 +529,7 @@ function ExamDateBanner({
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
       className="mb-6"
     >
       <div className="rounded-2xl border border-accent/40 bg-accent-soft/40 p-5">
@@ -609,6 +617,8 @@ function TabButton({
   icon: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   return (
     <button
       onClick={onClick}
@@ -622,6 +632,7 @@ function TabButton({
       {active && (
         <motion.span
           layoutId="deck-tab"
+          transition={{ duration: 0.25 * m, ease: [0.16, 1, 0.3, 1] }}
           className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-accent"
         />
       )}
@@ -636,11 +647,13 @@ function EmptyCardState({
   hasQuery: boolean;
   onNewCard: () => void;
 }) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center"
     >
       <div className="mb-4 grid h-12 w-12 place-items-center rounded-xl bg-accent-soft text-accent">

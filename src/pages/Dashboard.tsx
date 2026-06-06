@@ -24,6 +24,7 @@ import type { ParsedCard } from '../db/import';
 import { relativeExam } from '../utils/datetime';
 import { progressNoun } from '../fsrs/objective';
 import { cn } from '../components/ui/cn';
+import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import type { Deck } from '../db/types';
 
 export function Dashboard() {
@@ -43,6 +44,8 @@ export function Dashboard() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [merging, setMerging] = useState(false);
   const [mergeTarget, setMergeTarget] = useState<string | null>(null);
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
 
   const allSelected = decks ? decks.length > 0 && decks.every((d) => selected.has(d.id)) : false;
 
@@ -172,6 +175,7 @@ export function Dashboard() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
           className="mb-6 flex flex-wrap items-center gap-4 rounded-2xl border border-accent/40 bg-accent-soft/40 p-5"
         >
           <div className="min-w-0 flex-1">
@@ -195,7 +199,7 @@ export function Dashboard() {
             initial={{ opacity: 0, height: 0, marginBottom: 0 }}
             animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
             exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
             <div className="rounded-2xl border border-line-strong bg-surface p-5">
@@ -294,6 +298,7 @@ export function Dashboard() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
           className="mb-6 rounded-xl border border-line-strong bg-surface px-4 py-3"
         >
           <div className="flex flex-wrap items-center gap-3">
@@ -347,7 +352,7 @@ export function Dashboard() {
                 initial={{ opacity: 0, height: 0, marginTop: 0 }}
                 animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
                 exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
                 className="overflow-hidden"
               >
                 <div className="border-t border-line pt-3">
@@ -485,6 +490,8 @@ function DeckCard({
   selected: boolean;
   onToggleSelected: () => void;
 }) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const colourBar = deck.colour ? (
     <span
       className="absolute inset-x-0 top-0 h-1"
@@ -496,9 +503,9 @@ function DeckCard({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -4 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.24, delay: Math.min(index * 0.03, 0.24) }}
+      whileHover={{ y: -4, transition: { duration: 0.12 * m } }}
+      whileTap={{ scale: 0.98, transition: { duration: 0.08 * m } }}
+      transition={{ duration: 0.24 * m, delay: Math.min(index * 0.03, 0.24) * m }}
       className={cn(
         'group relative flex h-full flex-col overflow-hidden rounded-2xl border bg-surface p-5 transition-all duration-200',
         selected
@@ -573,6 +580,8 @@ function DeckCard({
 }
 
 function DeckSkeleton() {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
@@ -580,7 +589,7 @@ function DeckSkeleton() {
           key={i}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, delay: Math.min(i * 0.04, 0.2) }}
+          transition={{ duration: 0.24 * m, delay: Math.min(i * 0.04, 0.2) * m }}
           className="flex h-full flex-col rounded-2xl border border-line bg-surface p-5"
         >
           <div className="mb-1 h-3 w-20 animate-pulse rounded bg-ink/10" />
@@ -628,11 +637,13 @@ function sortDecks(
 }
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-20 text-center"
     >
       <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent">

@@ -6,6 +6,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { CommandPalette } from '../search/CommandPalette';
 import { KeyHints } from '../ui/KeyHints';
 import { FlaskIcon } from '../ui/icons';
+import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 
@@ -20,6 +21,8 @@ export function AppShell() {
   const navigate = useNavigate();
   const outlet = useOutlet();
   const mainRef = useRef<HTMLElement>(null);
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
 
   useEffect(() => {
     localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
@@ -127,7 +130,7 @@ export function AppShell() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
               >
                 {outlet}
               </motion.div>

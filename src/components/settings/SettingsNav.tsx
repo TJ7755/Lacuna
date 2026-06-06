@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { motion, useMotionValue, useSpring, type MotionValue } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { cn } from '../ui/cn';
 
@@ -58,16 +58,29 @@ function smoothScrollTo(element: HTMLElement, duration: number) {
   requestAnimationFrame(tick);
 }
 
+/** Compute a gravitational pull scale based on distance from the cursor.
+ *  Items close to the cursor grow; items far away stay at base size. */
+function computePullScale(
+  mouseX: number,
+  mouseY: number,
+  rect: DOMRect,
+  maxScale: number,
+  radius: number,
+): number {
+  const itemCx = rect.left + rect.width / 2;
+  const itemCy = rect.top + rect.height / 2;
+  const dist = Math.hypot(mouseX - itemCx, mouseY - itemCy);
+  if (dist >= radius) return 1;
+  const t = dist / radius; // 0 at cursor, 1 at edge
+  const eased = 1 - t * t; // quadratic falloff for smooth feel
+  return 1 + (maxScale - 1) * eased;
+}
+
 export function SettingsNav({ sections }: SettingsNavProps) {
-  const [hovered, setHovered] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const baseDuration = 700;
-
-  const centerIndex = (sections.length - 1) / 2;
-  const maxAngle = 12;
-  const angleStep = sections.length > 1 ? maxAngle / Math.floor(sections.length / 2) : 0;
 
   const handleClick = useCallback(
     (id: string) => {
@@ -106,73 +119,110 @@ export function SettingsNav({ sections }: SettingsNavProps) {
     return () => scrollParent.removeEventListener('scroll', onScroll);
   }, [sections]);
 
+  // Shared motion values for mouse position (updated on container mousemove).
+  const mouseX = useMotionValue(-9999);
+  const mouseY = useMotionValue(-9999);
+
   return (
     <div
-      className="fixed right-5 top-1/2 z-30 hidden -translate-y-1/2 xl:block"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className="sticky top-4 z-30 mb-8 hidden xl:block"
+      onMouseMove={(e) => {
+        mouseX.set(e.clientX);
+        mouseY.set(e.clientY);
+      }}
+      onMouseLeave={() => {
+        mouseX.set(-9999);
+        mouseY.set(-9999);
+      }}
     >
-      <motion.div
-        animate={{
-          width: hovered ? 168 : 32,
-          paddingTop: hovered ? 14 : 10,
-          paddingBottom: hovered ? 14 : 10,
-        }}
-        transition={{ duration: 0.24 * multiplier, ease: [0.16, 1, 0.3, 1] }}
-        className="flex flex-col items-center gap-3 overflow-visible rounded-2xl border border-line bg-surface/90 shadow-lg backdrop-blur-md"
-      >
-        {sections.map((section, i) => {
-          const distance = i - centerIndex;
-          const angle = distance * angleStep;
-          const isActive = activeId === section.id;
-
-          return (
-            <motion.button
-              key={section.id}
-              type="button"
-              aria-label={section.label}
-              onClick={() => handleClick(section.id)}
-              animate={{
-                width: hovered ? 144 : 8,
-                height: hovered ? 26 : 8,
-                rotate: hovered ? angle : 0,
-                borderRadius: hovered ? 7 : 4,
-              }}
-              transition={{
-                duration: 0.2 * multiplier,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              className={cn(
-                'relative shrink-0 cursor-pointer overflow-hidden border-0 outline-none transition-colors duration-200',
-                hovered
-                  ? isActive
-                    ? 'bg-accent shadow-sm'
-                    : 'bg-accent-soft shadow-sm'
-                  : isActive
-                    ? 'bg-accent'
-                    : 'bg-ink/20',
-              )}
-            >
-              <AnimatePresence>
-                {hovered && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.85 }}
-                    transition={{ duration: 0.14 * multiplier, delay: 0.02 }}
-                    className={cn(
-                      'pointer-events-none block whitespace-nowrap text-center text-[11px] font-medium leading-[26px]',
-                      isActive ? 'text-accent-fg' : 'text-accent',
-                    )}
-                  >
-                    {section.label}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </motion.button>
-          );
-        })}
-      </motion.div>
+      <div className="flex items-center justify-center gap-1 rounded-2xl border border-line bg-surface/90 p-2 shadow-lg backdrop-blur-md">
+        {sections.map((section) => (
+          <NavItem
+            key={section.id}
+            section={section}
+            isActive={activeId === section.id}
+            mouseX={mouseX}
+            mouseY={mouseY}
+            onClick={() => handleClick(section.id)}
+          />
+        ))}
+      </div>
     </div>
+  );
+}
+
+function NavItem({
+  section,
+  isActive,
+  mouseX,
+  mouseY,
+  onClick,
+}: {
+  section: SettingsSection;
+  isActive: boolean;
+  mouseX: MotionValue<number>;
+  mouseY: MotionValue<number>;
+  onClick: () => void;
+}) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const rectRef = useRef<DOMRect | null>(null);
+  const scaleMotion = useMotionValue(1);
+  const smoothScale = useSpring(scaleMotion, {
+    stiffness: 400,
+    damping: 30,
+  });
+
+  useEffect(() => {
+    function refreshRect() {
+      if (ref.current) rectRef.current = ref.current.getBoundingClientRect();
+      update();
+    }
+
+    function update() {
+      const rect = rectRef.current;
+      if (!rect) return;
+      const x = mouseX.get();
+      const y = mouseY.get();
+      scaleMotion.set(computePullScale(x, y, rect, 1.22, 110));
+    }
+
+    refreshRect();
+    window.addEventListener('resize', refreshRect);
+    window.addEventListener('scroll', refreshRect, { passive: true });
+
+    const unsubX = mouseX.on('change', update);
+    const unsubY = mouseY.on('change', update);
+
+    return () => {
+      unsubX();
+      unsubY();
+      window.removeEventListener('resize', refreshRect);
+      window.removeEventListener('scroll', refreshRect);
+    };
+  }, [mouseX, mouseY, scaleMotion]);
+
+  return (
+    <motion.button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      style={{ scale: smoothScale }}
+      aria-current={isActive ? 'true' : undefined}
+      className={cn(
+        'relative cursor-pointer overflow-hidden rounded-xl border-0 px-4 py-2 text-[11px] font-medium outline-none transition-colors duration-200',
+        isActive
+          ? 'text-accent'
+          : 'bg-transparent text-ink-soft hover:bg-accent-soft hover:text-accent',
+      )}
+    >
+      {section.label}
+      {isActive && (
+        <motion.div
+          layoutId="settings-nav-indicator"
+          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+          className="absolute bottom-0 left-1.5 right-1.5 h-0.5 rounded-full bg-accent"
+        />
+      )}
+    </motion.button>
   );
 }

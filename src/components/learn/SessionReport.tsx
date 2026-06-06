@@ -13,6 +13,7 @@ import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/ProgressBar';
 import { useChartColours } from '../analytics/useChartColours';
 import { CheckIcon } from '../ui/icons';
+import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import type { SessionSummary } from './types';
 
 const GRADE_LABELS: Record<number, string> = {
@@ -76,7 +77,7 @@ function ConfettiBurst() {
       aria-hidden
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.32 }}
+      transition={{ duration: 0.32 * m }}
     >
       {particles.map((p) => (
         <motion.div
@@ -112,6 +113,8 @@ export function SessionReport({
   /** Offered only when the user can keep studying (goal not yet reached). */
   onContinue?: () => void;
 }) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const c = useChartColours();
   const { events } = summary;
 
@@ -162,7 +165,7 @@ export function SessionReport({
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
       >
         {/* Reaching the goal earns a badge that springs in — the moment worth savouring. */}
         {summary.reachedGoal && (
@@ -192,7 +195,7 @@ export function SessionReport({
                 className="font-medium text-accent"
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.2, duration: 0.24 }}
+                transition={{ delay: 1.2 * m, duration: 0.24 * m }}
               >
                 {Math.round(summary.masteryAfter * 100)}%
               </motion.span>
@@ -201,7 +204,7 @@ export function SessionReport({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.24 }}
+            transition={{ delay: 0.2 * m, duration: 0.24 * m }}
           >
             <ProgressBar value={animatedProgress} />
           </motion.div>
@@ -291,14 +294,14 @@ function Stat({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24, delay: 0.2 + index * 0.07, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.24 * m, delay: (0.2 + index * 0.07) * m, ease: [0.16, 1, 0.3, 1] }}
       className="rounded-xl border border-line bg-surface p-4"
     >
       <motion.div
         className="font-display text-3xl tabular tracking-tight"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       >
         {value}
       </motion.div>

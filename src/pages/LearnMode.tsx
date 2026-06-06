@@ -75,6 +75,7 @@ export function LearnMode() {
   const [gradingMode] = useGradingMode();
   const { bindings } = useShortcutBindings();
   const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
 
   const isGlobal = !deckId;
 
@@ -275,7 +276,7 @@ export function LearnMode() {
       // of the next card mounting, so the reward always lands on the keypress.
       if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current);
       setFeedback(correct ? 'correct' : 'wrong');
-      feedbackTimer.current = window.setTimeout(() => setFeedback(null), Math.round(400 * speedMultiplier(motionSpeed)));
+      feedbackTimer.current = window.setTimeout(() => setFeedback(null), Math.round(400 * m));
 
       const t = responseTime.current;
       const distracted = distraction.wasDistracted();
@@ -569,7 +570,7 @@ export function LearnMode() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
+              transition={{ duration: 0.18 * m }}
               className={
                 'pointer-events-none fixed inset-x-0 bottom-0 z-30 h-56 ' +
                 (feedback === 'correct'
@@ -584,12 +585,12 @@ export function LearnMode() {
               initial={{ opacity: 0.6 }}
               animate={{ opacity: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
+              transition={{ duration: 0.5 * m, ease: 'easeOut' }}
             >
               <motion.div
                 initial={{ scale: 0.6, opacity: 0.5 }}
                 animate={{ scale: 2.5, opacity: 0 }}
-                transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.55 * m, ease: [0.16, 1, 0.3, 1] }}
                 className={
                   'h-96 w-96 rounded-full ' +
                   (feedback === 'correct'
@@ -684,7 +685,7 @@ export function LearnMode() {
                   initial={{ opacity: 0, y: -4, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                  transition={{ duration: 0.12 }}
+                  transition={{ duration: 0.12 * m }}
                   className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
                 >
                   <MenuItem
@@ -738,7 +739,7 @@ export function LearnMode() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
                 className="flex flex-col items-center gap-2"
               >
                 <Button variant="primary" size="lg" className="w-full max-w-sm" onClick={reveal}>
@@ -751,7 +752,7 @@ export function LearnMode() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
                 className="flex flex-col items-center gap-3"
               >
                 {gradingMode === 'manual' ? (
@@ -764,23 +765,23 @@ export function LearnMode() {
                       visible: { transition: { staggerChildren: 0.04 } },
                     }}
                   >
-                    <motion.div variants={buttonReveal}>
+                    <motion.div variants={buttonReveal(m)}>
                       <Button variant="danger" size="lg" className="w-full" onClick={() => answer(1)}>
                         <CloseIcon width={18} height={18} />
                         Again
                       </Button>
                     </motion.div>
-                    <motion.div variants={buttonReveal}>
+                    <motion.div variants={buttonReveal(m)}>
                       <Button variant="secondary" size="lg" className="w-full" onClick={() => answer(2)}>
                         Hard
                       </Button>
                     </motion.div>
-                    <motion.div variants={buttonReveal}>
+                    <motion.div variants={buttonReveal(m)}>
                       <Button variant="secondary" size="lg" className="w-full" onClick={() => answer(3)}>
                         Good
                       </Button>
                     </motion.div>
-                    <motion.div variants={buttonReveal}>
+                    <motion.div variants={buttonReveal(m)}>
                       <Button variant="primary" size="lg" className="w-full" onClick={() => answer(4)}>
                         <CheckIcon width={18} height={18} />
                         Easy
@@ -797,13 +798,13 @@ export function LearnMode() {
                       visible: { transition: { staggerChildren: 0.05 } },
                     }}
                   >
-                    <motion.div variants={buttonReveal} className="flex-1">
+                    <motion.div variants={buttonReveal(m)} className="flex-1">
                       <Button variant="danger" size="lg" className="w-full" onClick={() => answer(false)}>
                         <CloseIcon width={18} height={18} />
                         No
                       </Button>
                     </motion.div>
-                    <motion.div variants={buttonReveal} className="flex-1">
+                    <motion.div variants={buttonReveal(m)} className="flex-1">
                       <Button variant="primary" size="lg" className="w-full" onClick={() => answer(true)}>
                         <CheckIcon width={18} height={18} />
                         Yes
@@ -869,10 +870,12 @@ function LearnSkeleton() {
   );
 }
 
-const buttonReveal = {
-  hidden: { opacity: 0, y: 12, scale: 0.96 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] } },
-};
+function buttonReveal(m: number) {
+  return {
+    hidden: { opacity: 0, y: 12, scale: 0.96 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] } },
+  };
+}
 
 function NavSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const trapRef = useFocusTrap(open);
@@ -962,7 +965,7 @@ function FlipCard({ card, revealed, motionSpeed }: { card: Card; revealed: boole
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.2 * speedMultiplier(motionSpeed), delay: 0.1 * speedMultiplier(motionSpeed), ease: [0.16, 1, 0.3, 1] }}
               className={
                 'mb-4 text-center text-[11px] uppercase tracking-[0.2em] ' +
                 (revealed ? 'text-accent' : 'text-ink-faint')
@@ -973,7 +976,7 @@ function FlipCard({ card, revealed, motionSpeed }: { card: Card; revealed: boole
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay: 0.14, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.24 * speedMultiplier(motionSpeed), delay: 0.14 * speedMultiplier(motionSpeed), ease: [0.16, 1, 0.3, 1] }}
               className="mx-auto max-w-prose text-center text-lg"
             >
               <CardContent card={card} side={revealed ? 'back' : 'front'} />

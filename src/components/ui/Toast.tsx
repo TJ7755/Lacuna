@@ -10,6 +10,7 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import { cn } from './cn';
 import { CheckIcon, CloseIcon, InfoIcon } from './icons';
+import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 
 type ToastTone = 'neutral' | 'positive' | 'negative';
 
@@ -79,6 +80,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 function ToastBar({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => void }) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const [progress, setProgress] = useState(1);
   const rafRef = useRef<number>(0);
   const startRef = useRef<number>(0);
@@ -138,7 +141,7 @@ function ToastBar({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => voi
       initial={{ opacity: 0, x: 24, scale: 0.96 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: 24, scale: 0.96 }}
-      transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         'relative flex items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur bg-surface-raised/95 max-w-xs overflow-hidden',
         toneClasses[toast.tone],

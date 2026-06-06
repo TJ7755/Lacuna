@@ -4,6 +4,7 @@ import type { StudyStats, DayForecast } from '../../fsrs/stats';
 import type { Deck } from '../../db/types';
 import { FlameIcon, CalendarIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
+import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 
 /** A thin horizontal animated bar used for streak and reviewed-today metrics. */
 function MetricBar({
@@ -17,6 +18,8 @@ function MetricBar({
   colourClass: string;
   title: string;
 }) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const pct = Math.min((value / max) * 100, 100);
   return (
     <div
@@ -31,7 +34,7 @@ function MetricBar({
         className={cn('h-full rounded-full', colourClass)}
         initial={{ width: 0 }}
         animate={{ width: `${pct}%` }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.6 * m, ease: [0.16, 1, 0.3, 1] }}
       />
     </div>
   );
@@ -62,6 +65,8 @@ interface StudySignalsProps {
  * pace). All values are read-only aggregates over data already stored.
  */
 export function StudySignals({ stats, decks }: StudySignalsProps) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const { streak, reviewedToday, forecast } = stats;
   const totalMinutes = forecast.reduce((sum, d) => sum + d.minutes, 0);
   const totalCards = forecast.reduce((sum, d) => sum + d.dueCount + d.newCount, 0);
@@ -102,7 +107,8 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 }}
+      transition={{ duration: 0.24 * m }}
+      layout
       className="mb-6 grid gap-4 rounded-2xl border border-line bg-surface p-5 sm:grid-cols-[180px_1fr] sm:items-stretch"
     >
       {/* Left column: streak + reviewed today */}
@@ -120,7 +126,7 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
                   ? { scale: [1, 1.08, 1], rotate: [0, -3, 3, 0] }
                   : { scale: 1, rotate: 0 }
               }
-              transition={lit ? { duration: 2.0, repeat: Infinity, ease: 'easeInOut' } : undefined}
+              transition={lit ? { duration: 2.0 * m, repeat: Infinity, ease: 'easeInOut' } : undefined}
             >
               <FlameIcon width={18} height={18} />
             </motion.span>
@@ -193,7 +199,7 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
                           initial={{ opacity: 0, y: 4 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: 4 }}
-                          transition={{ duration: 0.2, delay: 0.1 + i * 0.04 }}
+                          transition={{ duration: 0.2 * m, delay: (0.1 + i * 0.04) * m }}
                           className={cn(
                             'text-[10px] tabular font-medium transition-colors',
                             isToday ? 'text-accent' : 'text-ink-soft',
@@ -215,8 +221,8 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
                           initial={{ height: 0 }}
                           animate={{ height: `${heightPct}%` }}
                           transition={{
-                            duration: 0.5,
-                            delay: 0.1 + i * 0.06,
+                            duration: 0.5 * m,
+                            delay: (0.1 + i * 0.06) * m,
                             ease: [0.16, 1, 0.3, 1],
                           }}
                           className="w-full rounded-md bg-ink/10"
@@ -237,8 +243,8 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
                                 initial={{ height: 0 }}
                                 animate={{ height: `${pct}%` }}
                                 transition={{
-                                  duration: 0.5,
-                                  delay: 0.1 + i * 0.06 + si * 0.03,
+                                  duration: 0.5 * m,
+                                  delay: (0.1 + i * 0.06 + si * 0.03) * m,
                                   ease: [0.16, 1, 0.3, 1],
                                 }}
                                 className={cn('w-full', !colour && 'bg-accent/70')}
@@ -281,13 +287,14 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
             </div>
 
             {/* Detail panel — always visible, defaults to today so touch users see it */}
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="popLayout">
               <motion.div
                 key={forecast[detailDay].dayStart}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+                layout
               >
                 <DayDetail day={forecast[detailDay]} deckMap={deckMap} index={detailDay} />
               </motion.div>
@@ -300,17 +307,19 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
 }
 
 function EmptyForecast() {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   return (
     <motion.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.3 * m, ease: [0.16, 1, 0.3, 1] }}
       className="flex h-20 items-center gap-4 rounded-xl border border-dashed border-line-strong bg-accent-soft/20 px-5"
     >
       <motion.div
         initial={{ scale: 0.8, rotate: -10 }}
         animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 * m }}
         className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"
       >
         <CalendarIcon width={20} height={20} />
@@ -334,6 +343,8 @@ function DayDetail({
   deckMap: Map<string, Deck>;
   index: number;
 }) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const label = dayLabel(day.dayStart, index);
   const total = day.dueCount + day.newCount;
 
@@ -380,8 +391,8 @@ function DayDetail({
                     initial={{ width: 0 }}
                     animate={{ width: `${barPct}%` }}
                     transition={{
-                      duration: 0.5,
-                      delay: 0.08 + si * 0.04,
+                      duration: 0.5 * m,
+                      delay: (0.08 + si * 0.04) * m,
                       ease: [0.16, 1, 0.3, 1],
                     }}
                   />

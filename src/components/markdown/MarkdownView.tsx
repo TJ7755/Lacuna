@@ -124,6 +124,7 @@ export const MarkdownView = memo(function MarkdownView({
     <div
       className={cn('prose-lacuna', className)}
       dangerouslySetInnerHTML={{ __html: html }}
+      tabIndex={-1}
     />
   );
 });

@@ -10,6 +10,7 @@ import { createCard, createCardWithReverse, updateCard } from '../db/repository'
 import { hasCloze } from '../components/markdown/cloze';
 import { ChevronLeftIcon, CheckIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
+import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import type { CardType } from '../db/types';
 
 /**
@@ -54,6 +55,8 @@ export function CardEditor() {
   // Brief "Saved" flourish shown in the action bar after each quick-capture save.
   const [showSaved, setShowSaved] = useState(false);
   const savedTimer = useRef<number>();
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   function flashSaved() {
     window.clearTimeout(savedTimer.current);
     setShowSaved(true);
@@ -188,7 +191,7 @@ export function CardEditor() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16 }}
+        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       >
         <header className="mb-8">
           <Link
