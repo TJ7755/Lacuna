@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { motion } from 'motion/react';
 import { bucketReviewsByDay, reviewTimestamps } from '../../fsrs/heatmap';
 import { formatDate, startOfDay } from '../../utils/datetime';
 import { MS_PER_DAY } from '../../fsrs/params';
@@ -55,7 +56,12 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-5">
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+      className="rounded-2xl border border-line bg-surface p-5"
+    >
       <div className="mb-3 flex items-baseline justify-between">
         <h2 className="font-display text-lg">Review activity</h2>
         <span className="text-sm text-ink-faint">
@@ -72,7 +78,17 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
         </div>
         <div className="flex gap-[3px]">
           {columns.map((col, w) => (
-            <div key={w} className="flex flex-col gap-[3px]">
+            <motion.div
+              key={w}
+              initial={{ opacity: 0, scaleY: 0.8 }}
+              animate={{ opacity: 1, scaleY: 1 }}
+              transition={{
+                duration: 0.25,
+                delay: Math.min(w * 0.015, 0.3),
+                ease: [0.25, 0.1, 0.25, 1],
+              }}
+              className="flex flex-col gap-[3px] origin-top"
+            >
               {col.map((cell) => (
                 <span
                   key={cell.day}
@@ -85,7 +101,7 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
                   }
                 />
               ))}
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -102,6 +118,6 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
         ))}
         <span>More</span>
       </div>
-    </section>
+    </motion.section>
   );
 }
