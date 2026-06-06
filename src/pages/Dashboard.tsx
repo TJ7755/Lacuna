@@ -16,7 +16,7 @@ import { Button } from '../components/ui/Button';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { useToast } from '../components/ui/Toast';
 import { ImportPanel } from '../components/import/ImportPanel';
-import { CheckIcon, MergeIcon, PlayIcon, PlusIcon, TrashIcon } from '../components/ui/icons';
+import { CheckIcon, FlaskIcon, MergeIcon, PlayIcon, PlusIcon, TrashIcon } from '../components/ui/icons';
 import type { ParsedCard } from '../db/import';
 import { relativeExam } from '../utils/datetime';
 import { progressNoun } from '../fsrs/objective';
@@ -337,7 +337,7 @@ export function Dashboard() {
 
       {/* Deck grid */}
       {!decks ? (
-        <div className="text-ink-faint">Loading…</div>
+        <DeckSkeleton />
       ) : decks.length === 0 ? (
         <EmptyState onCreate={startCreating} />
       ) : (
@@ -404,17 +404,17 @@ function DeckCard({
   selected: boolean;
   onToggleSelected: () => void;
 }) {
-  const body = (
-    <motion.div
+  const body = (      <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
+      whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3) }}
       className={cn(
-        'group relative flex h-full flex-col rounded-2xl border bg-surface p-5 transition-[border-color,box-shadow]',
+        'group relative flex h-full flex-col rounded-2xl border bg-surface p-5 transition-all duration-200',
         selected
           ? 'border-accent ring-2 ring-accent/30'
-          : 'border-line hover:border-line-strong hover:shadow-lg hover:shadow-black/5',
+          : 'border-line hover:border-line-strong hover:shadow-xl hover:shadow-black/[0.04]',
       )}
     >
       {selectMode && (
@@ -482,9 +482,43 @@ function DeckCard({
   );
 }
 
+function DeckSkeleton() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: Math.min(i * 0.05, 0.25) }}
+          className="flex h-full flex-col rounded-2xl border border-line bg-surface p-5"
+        >
+          <div className="mb-1 h-3 w-20 animate-pulse rounded bg-ink/10" />
+          <div className="mb-4 h-7 w-3/4 animate-pulse rounded bg-ink/10" />
+          <div className="mt-auto">
+            <div className="mb-2 flex justify-between">
+              <div className="h-4 w-16 animate-pulse rounded bg-ink/10" />
+              <div className="h-4 w-12 animate-pulse rounded bg-ink/10" />
+            </div>
+            <div className="h-2 w-full animate-pulse rounded-full bg-ink/10" />
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong py-20 text-center">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-20 text-center"
+    >
+      <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent">
+        <FlaskIcon width={28} height={28} />
+      </div>
       <h2 className="mb-2 font-display text-2xl">No decks yet</h2>
       <p className="mb-6 max-w-sm text-ink-soft">
         Create your first deck to begin building a revision schedule tuned to your exam.
@@ -493,6 +527,6 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
         <PlusIcon width={18} height={18} />
         Create a deck
       </Button>
-    </div>
+    </motion.div>
   );
 }
