@@ -69,6 +69,13 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
     });
   }
 
+  function toggleAll() {
+    setSelected((prev) => {
+      if (prev.size === cards.length) return new Set();
+      return new Set(cards.map((c) => c.id));
+    });
+  }
+
   function exitSelect() {
     setSelectMode(false);
     setSelected(new Set());
@@ -257,7 +264,27 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
       {selectMode && (
         <div className="mb-4 rounded-xl border border-line-strong bg-surface px-4 py-2.5">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-ink-soft">{selected.size} selected</span>
+            <button
+              type="button"
+              onClick={toggleAll}
+              aria-pressed={selected.size === cards.length && cards.length > 0}
+              className="flex items-center gap-2 text-sm text-ink-soft transition-colors hover:text-ink"
+            >
+              <span
+                className={cn(
+                  'grid h-5 w-5 place-items-center rounded-full border transition-colors',
+                  selected.size === cards.length && cards.length > 0
+                    ? 'border-accent bg-accent text-accent-fg'
+                    : 'border-line-strong',
+                )}
+              >
+                {selected.size === cards.length && cards.length > 0 && (
+                  <CheckIcon width={12} height={12} />
+                )}
+              </span>
+              Select all
+            </button>
+            <span className="text-sm text-ink-faint">{selected.size} selected</span>
             <div className="ml-auto flex flex-wrap gap-2">
               <Button
                 size="sm"

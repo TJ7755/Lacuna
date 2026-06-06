@@ -170,13 +170,24 @@ export function SharePage() {
         ) : (
           <>
             <div className="mb-3 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={toggleAll}
-                className="text-sm text-accent underline-offset-2 hover:underline"
+            <button
+              type="button"
+              onClick={toggleAll}
+              aria-pressed={allSelected}
+              className="flex items-center gap-2 text-sm text-ink-soft transition-colors hover:text-ink"
+            >
+              <span
+                className={cn(
+                  'grid h-5 w-5 place-items-center rounded-md border transition-colors',
+                  allSelected
+                    ? 'border-accent bg-accent text-accent-fg'
+                    : 'border-line-strong',
+                )}
               >
-                {allSelected ? 'Clear selection' : 'Select all'}
-              </button>
+                {allSelected && <CheckIcon width={12} height={12} />}
+              </span>
+              {allSelected ? 'Deselect all' : 'Select all'}
+            </button>
               <span className="text-sm text-ink-faint">
                 {selectedCount} deck{selectedCount === 1 ? '' : 's'} · {selectedCards} card
                 {selectedCards === 1 ? '' : 's'}

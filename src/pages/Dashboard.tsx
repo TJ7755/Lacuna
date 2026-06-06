@@ -70,6 +70,14 @@ export function Dashboard() {
     });
   }
 
+  function toggleAll() {
+    const allIds = (decks ?? []).map((d) => d.id);
+    setSelected((prev) => {
+      if (prev.size === allIds.length && allIds.length > 0) return new Set();
+      return new Set(allIds);
+    });
+  }
+
   function exitSelectMode() {
     setSelectMode(false);
     setSelected(new Set());
@@ -287,7 +295,27 @@ export function Dashboard() {
           className="mb-6 rounded-xl border border-line-strong bg-surface px-4 py-3"
         >
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-ink-soft">{selected.size} selected</span>
+            <button
+              type="button"
+              onClick={toggleAll}
+              aria-pressed={decks && decks.length > 0 && selected.size === decks.length}
+              className="flex items-center gap-2 text-sm text-ink-soft transition-colors hover:text-ink"
+            >
+              <span
+                className={cn(
+                  'grid h-6 w-6 place-items-center rounded-full border transition-colors',
+                  decks && decks.length > 0 && selected.size === decks.length
+                    ? 'border-accent bg-accent text-accent-fg'
+                    : 'border-line-strong',
+                )}
+              >
+                {decks && decks.length > 0 && selected.size === decks.length && (
+                  <CheckIcon width={14} height={14} />
+                )}
+              </span>
+              Select all
+            </button>
+            <span className="text-sm text-ink-faint">{selected.size} selected</span>
             <div className="ml-auto flex gap-2">
               <Button
                 size="sm"
