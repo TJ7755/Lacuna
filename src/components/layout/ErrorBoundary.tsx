@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { motion } from 'motion/react';
 import { Button } from '../ui/Button';
 import {
   buildDiagnostics,
@@ -123,19 +124,60 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center">
-          <h2 className="text-2xl">Something went wrong</h2>
-          <p className="max-w-md text-ink-soft">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center"
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 24, delay: 0.05 }}
+            className="mb-2 grid h-16 w-16 place-items-center rounded-2xl bg-negative/10 text-negative"
+          >
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </motion.div>
+
+          <motion.h2
+            initial={{ y: 8, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="font-display text-2xl"
+          >
+            Something went wrong
+          </motion.h2>
+          <motion.p
+            initial={{ y: 8, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+            className="max-w-md text-ink-soft"
+          >
             {this.props.label
               ? `An error occurred in ${this.props.label}.`
               : 'An unexpected error occurred.'}{' '}
             Your data is saved locally and is safe.
-          </p>
-          <pre className="max-w-md overflow-x-auto rounded-lg border border-line bg-ink/5 px-3 py-2 text-left text-xs text-ink-faint">
-            {this.state.error.message}
-          </pre>
+          </motion.p>
 
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          <motion.pre
+            initial={{ y: 8, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className="max-w-md overflow-x-auto rounded-lg border border-line bg-ink/5 px-3 py-2 text-left text-xs text-ink-faint"
+          >
+            {this.state.error.message}
+          </motion.pre>
+
+          <motion.div
+            initial={{ y: 8, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.25 }}
+            className="flex flex-wrap items-center justify-center gap-2"
+          >
             <Button variant="primary" onClick={this.handleReset}>
               Try again
             </Button>
@@ -145,9 +187,14 @@ export class ErrorBoundary extends Component<Props, State> {
             <Button variant="secondary" onClick={this.handleDownload}>
               Download diagnostic bundle
             </Button>
-          </div>
+          </motion.div>
 
-          <label className="flex items-center gap-2 text-xs text-ink-faint">
+          <motion.label
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.35 }}
+            className="flex items-center gap-2 text-xs text-ink-faint"
+          >
             <input
               type="checkbox"
               checked={this.state.includeContent}
@@ -155,12 +202,17 @@ export class ErrorBoundary extends Component<Props, State> {
               className="accent-accent"
             />
             Include a small sample of card content (only if needed to reproduce the fault)
-          </label>
-          <p className="max-w-md text-xs text-ink-faint">
+          </motion.label>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+            className="max-w-md text-xs text-ink-faint"
+          >
             Diagnostics stay on your device. Nothing is sent anywhere; the bundle is yours
             to share in a bug report.
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
       );
     }
     return this.props.children;
