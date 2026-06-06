@@ -103,13 +103,28 @@ describe('computeStudyStats — 7-day time forecast', () => {
     expect(forecast[0].minutes).toBeCloseTo(DEFAULT_REVIEW_SECONDS / 60);
   });
 
-  it('excludes suspended and never-reviewed cards, and cards beyond the window', () => {
+  it('excludes suspended and cards beyond the window, but counts never-reviewed cards as new today', () => {
     const cards = [
       card({ suspended: true, due: NOW }),
-      card({ due: null, lastReviewed: null }),
+      card({ due: null, lastReviewed: null, state: 0, reps: 0 }),
       card({ due: NOW + 30 * MS_PER_DAY }),
     ];
     const { forecast } = computeStudyStats(cards, new Map(), NOW);
+    expect(forecast[0].newCount).toBe(1);
+    expect(forecast[0].dueCount).toBe(0); // new cards are tracked separately
     expect(forecast.reduce((s, d) => s + d.dueCount, 0)).toBe(0);
+  });
+
+  it('groups forecast by deck in the byDeck breakdown', () => {
+    const cards = [
+      card({ deckId: 'd1', due: NOW }),
+      card({ deckId: 'd2', due: NOW }),
+      card({ deckId: 'd1', due: NOW + MS_PER_DAY }),
+    ];
+    const { forecast } = computeStudyStats(cards, new Map(), NOW);
+    expect(forecast[0].byDeck).toHaveLength(2);
+    expect(forecast[0].byDeck.find((d) => d.deckId === 'd1')?.dueCount).toBe(1);
+    expect(forecast[0].byDeck.find((d) => d.deckId === 'd2')?.dueCount).toBe(1);
+    expect(forecast[1].byDeck.find((d) => d.deckId === 'd1')?.dueCount).toBe(1);
   });
 });

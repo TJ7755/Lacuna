@@ -14,6 +14,13 @@ export const DEFAULT_REVIEW_SECONDS = 8;
 /** Number of days shown in the forecast, starting today. */
 export const FORECAST_DAYS = 7;
 
+export interface DeckForecastSlice {
+  deckId: string;
+  dueCount: number;
+  newCount: number;
+  minutes: number;
+}
+
 export interface DayForecast {
   /** Local midnight epoch for the day. */
   dayStart: number;
@@ -21,6 +28,10 @@ export interface DayForecast {
   dueCount: number;
   /** Estimated minutes of study, from each card's deck response-time mean. */
   minutes: number;
+  /** How many new (never-reviewed) cards are available to study today. */
+  newCount: number;
+  /** Per-deck breakdown for stacked visualisations. */
+  byDeck: DeckForecastSlice[];
 }
 
 export interface StudyStats {
@@ -85,16 +96,46 @@ export function computeStudyStats(
 
   // Seven-day forecast: bucket each card by its effective due day, folding anything
   // already due (or buried) into the correct day, and weight by the deck's mean time.
+  // New (never-reviewed) cards are folded into today so the forecast is immediately useful.
   const forecast: DayForecast[] = Array.from({ length: FORECAST_DAYS }, (_, i) => ({
     dayStart: addDays(today, i),
     dueCount: 0,
     minutes: 0,
+    newCount: 0,
+    byDeck: [],
   }));
   const lastDay = forecast[forecast.length - 1].dayStart;
 
+  // Build a Map per forecast day for O(1) deck slice lookups.
+  const deckMaps = forecast.map(() => new Map<string, DeckForecastSlice>());
+
+  function getDeckSlice(index: number, deckId: string): DeckForecastSlice {
+    const map = deckMaps[index];
+    let slice = map.get(deckId);
+    if (!slice) {
+      slice = { deckId, dueCount: 0, newCount: 0, minutes: 0 };
+      map.set(deckId, slice);
+      forecast[index].byDeck.push(slice);
+    }
+    return slice;
+  }
+
   for (const card of cards) {
     if (card.suspended) continue;
-    if (card.due == null) continue; // never-reviewed cards are not yet scheduled
+    const secondsPerReview = deckSeconds.get(card.deckId) ?? DEFAULT_REVIEW_SECONDS;
+    const minutes = secondsPerReview / 60;
+
+    if (card.due == null) {
+      // Never-reviewed card: count as new today only.
+      const slot = forecast[0];
+      slot.newCount += 1;
+      slot.minutes += minutes;
+      const slice = getDeckSlice(0, card.deckId);
+      slice.newCount += 1;
+      slice.minutes += minutes;
+      continue;
+    }
+
     const effectiveDue = Math.max(card.due, card.buriedUntil ?? 0);
     // Overdue cards count today; cards beyond the window are ignored.
     const bucketDay = Math.max(startOfDay(effectiveDue), today);
@@ -103,7 +144,10 @@ export function computeStudyStats(
     const slot = forecast[index];
     if (!slot) continue;
     slot.dueCount += 1;
-    slot.minutes += (deckSeconds.get(card.deckId) ?? DEFAULT_REVIEW_SECONDS) / 60;
+    slot.minutes += minutes;
+    const slice = getDeckSlice(index, card.deckId);
+    slice.dueCount += 1;
+    slice.minutes += minutes;
   }
 
   return { streak: streakFrom(studiedDays, today), reviewedToday, forecast };

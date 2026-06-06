@@ -1,7 +1,41 @@
-import { motion } from 'motion/react';
-import type { StudyStats } from '../../fsrs/stats';
-import { FlameIcon } from '../ui/icons';
+import { useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import type { StudyStats, DayForecast } from '../../fsrs/stats';
+import type { Deck } from '../../db/types';
+import { FlameIcon, CalendarIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
+
+/** A thin horizontal animated bar used for streak and reviewed-today metrics. */
+function MetricBar({
+  value,
+  max,
+  colourClass,
+  title,
+}: {
+  value: number;
+  max: number;
+  colourClass: string;
+  title: string;
+}) {
+  const pct = Math.min((value / max) * 100, 100);
+  return (
+    <div
+      className="mt-1.5 h-1.5 w-full rounded-full bg-ink/5 overflow-hidden"
+      role="progressbar"
+      aria-valuenow={Math.min(value, max)}
+      aria-valuemax={max}
+      aria-label={title}
+      title={title}
+    >        <motion.div
+        key={value}
+        className={cn('h-full rounded-full', colourClass)}
+        initial={{ width: 0 }}
+        animate={{ width: `${pct}%` }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      />
+    </div>
+  );
+}
 
 /** Round minutes to a friendly label: "—", "<1 min", "12 min". */
 function minutesLabel(minutes: number): string {
@@ -17,64 +51,104 @@ function dayLabel(dayStart: number, index: number): string {
   return new Date(dayStart).toLocaleDateString('en-GB', { weekday: 'short' });
 }
 
+interface StudySignalsProps {
+  stats: StudyStats;
+  decks?: Deck[];
+}
+
 /**
  * The dashboard's motivation strip: a study streak, today's review count, and a seven-day
  * forecast of how many *minutes* of study lie ahead (estimated from each deck's measured
  * pace). All values are read-only aggregates over data already stored.
  */
-export function StudySignals({ stats }: { stats: StudyStats }) {
+export function StudySignals({ stats, decks }: StudySignalsProps) {
   const { streak, reviewedToday, forecast } = stats;
   const totalMinutes = forecast.reduce((sum, d) => sum + d.minutes, 0);
+  const totalCards = forecast.reduce((sum, d) => sum + d.dueCount + d.newCount, 0);
   const maxMinutes = Math.max(1, ...forecast.map((d) => d.minutes));
   const lit = streak > 0;
+
+  // Detail panel defaults to the first day with cards so touch users always see something useful.
+  const firstBusyDay = forecast.findIndex((d) => d.dueCount + d.newCount > 0);
+  const defaultDetail = firstBusyDay >= 0 ? firstBusyDay : 0;
+  const [detailDay, setDetailDay] = useState<number>(defaultDetail);
+
+  const resetDetail = () => setDetailDay(defaultDetail);
+
+  const deckMap = useMemo(() => {
+    const map = new Map<string, Deck>();
+    for (const d of decks ?? []) map.set(d.id, d);
+    return map;
+  }, [decks]);
+
+  const allClear = totalCards === 0;
+
+  // Find the busiest day for the insight line.
+  const busiestIndex = useMemo(() => {
+    if (allClear) return -1;
+    let max = 0;
+    let idx = 0;
+    forecast.forEach((d, i) => {
+      const total = d.dueCount + d.newCount;
+      if (total > max) {
+        max = total;
+        idx = i;
+      }
+    });
+    return idx;
+  }, [forecast, allClear]);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.24 }}
-      className="mb-6 grid gap-4 rounded-2xl border border-line bg-surface p-5 sm:grid-cols-[auto_auto_1fr] sm:items-stretch"
+      className="mb-6 grid gap-4 rounded-2xl border border-line bg-surface p-5 sm:grid-cols-[180px_1fr] sm:items-stretch"
     >
-      {/* Streak */}
-      <div className="flex items-center gap-3 sm:pr-5">
-        <motion.span
-          className={cn(
-            'grid h-11 w-11 shrink-0 place-items-center rounded-full',
-            lit ? 'bg-accent-soft text-accent' : 'bg-ink/5 text-ink-faint',
-          )}
-          animate={
-            lit
-              ? { scale: [1, 1.08, 1], rotate: [0, -3, 3, 0] }
-              : { scale: 1, rotate: 0 }
-          }
-          transition={lit ? { duration: 2.0, repeat: Infinity, ease: 'easeInOut' } : undefined}
-        >
-          <FlameIcon width={22} height={22} />
-        </motion.span>
+      {/* Left column: streak + reviewed today */}
+      <div className="flex flex-col justify-center gap-5 sm:pr-5">
+        {/* Streak */}
         <div>
-          <div className="flex items-baseline gap-1">
+          <div className="flex items-center gap-2">
             <motion.span
-              key={streak}
-              initial={{ scale: 0.6, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 18 }}
-              className="font-display text-2xl tabular leading-none"
+              className={cn(
+                'grid h-9 w-9 shrink-0 place-items-center rounded-full',
+                lit ? 'bg-accent-soft text-accent' : 'bg-ink/5 text-ink-faint',
+              )}
+              animate={
+                lit
+                  ? { scale: [1, 1.08, 1], rotate: [0, -3, 3, 0] }
+                  : { scale: 1, rotate: 0 }
+              }
+              transition={lit ? { duration: 2.0, repeat: Infinity, ease: 'easeInOut' } : undefined}
             >
-              {streak}
+              <FlameIcon width={18} height={18} />
             </motion.span>
-            <span className="text-sm text-ink-soft">day{streak === 1 ? '' : 's'}</span>
+            <div className="flex items-baseline gap-1">
+              <motion.span
+                key={streak}
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 18 }}
+                className="font-display text-xl tabular leading-none"
+              >
+                {streak}
+              </motion.span>
+              <span className="text-xs text-ink-soft">day{streak === 1 ? '' : 's'}</span>
+            </div>
           </div>
-          <div className="text-xs text-ink-faint">study streak</div>
+          <MetricBar value={streak} max={14} colourClass="bg-amber-400/60" title={`${streak} day streak`} />
+          <div className="mt-1 text-[11px] text-ink-faint">study streak</div>
         </div>
-      </div>
 
-      {/* Reviewed today */}
-      <div className="flex items-center gap-3 sm:border-l sm:border-line sm:pl-5 sm:pr-5">
+        {/* Reviewed today */}
         <div>
           <div className="flex items-baseline gap-1">
-            <span className="font-display text-2xl tabular leading-none">{reviewedToday}</span>
+            <span className="font-display text-xl tabular leading-none">{reviewedToday}</span>
+            <span className="text-xs text-ink-soft">card{reviewedToday === 1 ? '' : 's'}</span>
           </div>
-          <div className="text-xs text-ink-faint">reviewed today</div>
+          <MetricBar value={reviewedToday} max={100} colourClass="bg-accent/50" title={`${reviewedToday} cards reviewed today`} />
+          <div className="mt-1 text-[11px] text-ink-faint">reviewed today</div>
         </div>
       </div>
 
@@ -85,41 +159,237 @@ export function StudySignals({ stats }: { stats: StudyStats }) {
             Next 7 days
           </span>
           <span className="text-xs text-ink-soft">
-            {totalMinutes >= 1 ? `${Math.round(totalMinutes)} min to clear` : 'all clear'}
+            {allClear
+              ? 'all clear'
+              : `${totalCards} card${totalCards === 1 ? '' : 's'} · ${Math.round(totalMinutes)} min`}
           </span>
         </div>
-        <div className="flex h-16 items-end gap-1.5">
-          {forecast.map((day, i) => {
-            const heightPct = Math.max(day.minutes > 0 ? 8 : 2, (day.minutes / maxMinutes) * 100);
+
+        {allClear ? (
+          <EmptyForecast />
+        ) : (
+          <>
+            <div className="flex h-20 items-end gap-1.5">
+              {forecast.map((day, i) => {
+                const isToday = i === 0;
+                const isActive = detailDay === i;
+                const dayTotal = day.dueCount + day.newCount;
+                const heightPct = Math.max(
+                  day.minutes > 0 ? 10 : 3,
+                  (day.minutes / maxMinutes) * 100,
+                );
+
+                return (
+                  <div key={day.dayStart} className="flex flex-1 flex-col items-center">
+                    <div
+                      className="group flex flex-col items-center gap-1 py-3 px-1 w-full cursor-default"
+                      onMouseEnter={() => setDetailDay(i)}
+                      onMouseLeave={resetDetail}
+                    >
+                      {/* Card count label */}
+                    <AnimatePresence>
+                      {dayTotal > 0 && (
+                        <motion.span
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 4 }}
+                          transition={{ duration: 0.2, delay: 0.1 + i * 0.04 }}
+                          className={cn(
+                            'text-[10px] tabular font-medium transition-colors',
+                            isToday ? 'text-accent' : 'text-ink-soft',
+                            isActive && 'text-ink',
+                          )}
+                        >
+                          {dayTotal}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Stacked bar */}
+                    <div
+                      className="flex w-full flex-1 items-end"
+                      title={`${minutesLabel(day.minutes)} · ${day.dueCount} due${day.newCount > 0 ? ` · ${day.newCount} new` : ''}`}
+                    >
+                      {day.byDeck.length === 0 ? (
+                        <motion.div
+                          initial={{ height: 0 }}
+                          animate={{ height: `${heightPct}%` }}
+                          transition={{
+                            duration: 0.5,
+                            delay: 0.1 + i * 0.06,
+                            ease: [0.16, 1, 0.3, 1],
+                          }}
+                          className="w-full rounded-md bg-ink/10"
+                        />
+                      ) : (
+                        <div className="flex w-full flex-col-reverse rounded-md overflow-hidden">
+                          {[...day.byDeck]
+                            .sort((a, b) => a.deckId.localeCompare(b.deckId))
+                            .map((slice, si) => {
+                            const deck = deckMap.get(slice.deckId);
+                            const colour = deck?.colour;
+                            const sliceHeight = (slice.minutes / maxMinutes) * 100;
+                            const pct = Math.max(sliceHeight, 1);
+
+                            return (
+                              <motion.div
+                                key={slice.deckId}
+                                initial={{ height: 0 }}
+                                animate={{ height: `${pct}%` }}
+                                transition={{
+                                  duration: 0.5,
+                                  delay: 0.1 + i * 0.06 + si * 0.03,
+                                  ease: [0.16, 1, 0.3, 1],
+                                }}
+                                className={cn('w-full', !colour && 'bg-accent/70')}
+                                style={colour ? { backgroundColor: colour, opacity: 0.7 } : undefined}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Day label */}
+                      <span
+                        className={cn(
+                          'text-[10px] transition-colors',
+                          isToday ? 'text-accent font-medium' : 'text-ink-faint',
+                          isActive && 'text-ink',
+                        )}
+                      >
+                        {dayLabel(day.dayStart, i)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Insight line */}
+            <div className="mt-2 text-[11px] text-ink-faint">
+              {busiestIndex >= 0 && (
+                <span>
+                  Busiest day:{' '}
+                  <span className="font-medium text-ink-soft">
+                    {dayLabel(forecast[busiestIndex].dayStart, busiestIndex)}
+                  </span>{' '}
+                  · {forecast[busiestIndex].dueCount + forecast[busiestIndex].newCount} card
+                  {forecast[busiestIndex].dueCount + forecast[busiestIndex].newCount === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+
+            {/* Detail panel — always visible, defaults to today so touch users see it */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={forecast[detailDay].dayStart}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <DayDetail day={forecast[detailDay]} deckMap={deckMap} index={detailDay} />
+              </motion.div>
+            </AnimatePresence>
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function EmptyForecast() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+      className="flex h-20 items-center gap-4 rounded-xl border border-dashed border-line-strong bg-accent-soft/20 px-5"
+    >
+      <motion.div
+        initial={{ scale: 0.8, rotate: -10 }}
+        animate={{ scale: 1, rotate: 0 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 }}
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"
+      >
+        <CalendarIcon width={20} height={20} />
+      </motion.div>
+      <div>
+        <p className="text-sm font-medium text-ink-soft">Nothing due this week</p>
+        <p className="text-[11px] text-ink-faint">
+          You are all caught up. Enjoy the calm before your next batch of reviews.
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
+function DayDetail({
+  day,
+  deckMap,
+  index,
+}: {
+  day: DayForecast;
+  deckMap: Map<string, Deck>;
+  index: number;
+}) {
+  const label = dayLabel(day.dayStart, index);
+  const total = day.dueCount + day.newCount;
+
+  return (
+    <div className="mt-3 rounded-xl border border-line bg-surface/80 p-3">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="text-xs font-medium text-ink">{label}</span>
+        <span className="text-[11px] text-ink-soft">
+          {total} card{total === 1 ? '' : 's'} · {minutesLabel(day.minutes)}
+        </span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {day.byDeck
+          .filter((d) => d.dueCount > 0 || d.newCount > 0)
+          .sort((a, b) => b.dueCount + b.newCount - (a.dueCount + a.newCount))
+          .map((slice, si) => {
+            const deck = deckMap.get(slice.deckId);
+            const colour = deck?.colour;
+            const sliceTotal = slice.dueCount + slice.newCount;
+            const barPct = total > 0 ? (sliceTotal / total) * 100 : 0;
             return (
-              <div key={day.dayStart} className="group flex flex-1 flex-col items-center gap-1">
-                <div className="flex w-full flex-1 items-end" title={`${minutesLabel(day.minutes)} · ${day.dueCount} due`}>
+              <div key={slice.deckId} className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn('h-2 w-2 shrink-0 rounded-full', !colour && 'bg-accent')}
+                    style={colour ? { backgroundColor: colour } : undefined}
+                  />
+                  <span className="flex-1 text-xs text-ink-soft truncate">
+                    {deck?.name ?? 'Unknown deck'}
+                  </span>
+                  <span className="text-[11px] tabular text-ink-faint">
+                    {sliceTotal}
+                    {slice.newCount > 0 && (
+                      <span className="ml-0.5 text-accent">({slice.newCount} new)</span>
+                    )}
+                  </span>
+                </div>
+                {/* Deck proportion bar */}
+                <div className="h-1 w-full rounded-full bg-ink/5 overflow-hidden">
                   <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: `${heightPct}%` }}
+                    key={`${slice.deckId}-${sliceTotal}`}
+                    className={cn('h-full rounded-full', !colour && 'bg-accent/60')}
+                    style={colour ? { backgroundColor: colour, opacity: 0.6 } : undefined}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${barPct}%` }}
                     transition={{
-                      duration: 0.4,
-                      delay: 0.1 + i * 0.05,
+                      duration: 0.5,
+                      delay: 0.08 + si * 0.04,
                       ease: [0.16, 1, 0.3, 1],
                     }}
-                    className={cn(
-                      'w-full rounded-md',
-                      day.minutes > 0
-                        ? i === 0
-                          ? 'bg-accent'
-                          : 'bg-accent/45 group-hover:bg-accent/70'
-                        : 'bg-ink/10',
-                    )}
                   />
                 </div>
-                <span className={cn('text-[10px]', i === 0 ? 'text-accent' : 'text-ink-faint')}>
-                  {dayLabel(day.dayStart, i)}
-                </span>
               </div>
             );
           })}
-        </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

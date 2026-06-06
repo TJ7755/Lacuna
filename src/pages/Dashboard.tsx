@@ -155,7 +155,7 @@ export function Dashboard() {
       </header>
 
       {/* Motivation strip: streak, reviews today, seven-day time forecast */}
-      {!selectMode && stats && decks && decks.length > 0 && <StudySignals stats={stats} />}
+      {!selectMode && stats && decks && decks.length > 0 && <StudySignals stats={stats} decks={decks} />}
 
       {/* Global "study everything" entry point */}
       {!selectMode && decks && decks.length > 0 && totalEligible > 0 && (
