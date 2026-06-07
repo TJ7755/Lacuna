@@ -457,6 +457,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
               onResume={() => handleResume(card)}
               onDelete={() => handleDeleteOne(card.id)}
               onToggleFlag={() => handleToggleFlag(card)}
+              motionMultiplier={m}
             />
           ))}
         </div>
@@ -475,6 +476,7 @@ function CardRow({
   onResume,
   onDelete,
   onToggleFlag,
+  motionMultiplier,
 }: {
   card: Card;
   index: number;
@@ -485,11 +487,11 @@ function CardRow({
   onResume: () => void;
   onDelete: () => void;
   onToggleFlag: () => void;
+  motionMultiplier?: number;
 }) {
   const [revealed, setRevealed] = useState(false);
   const [hovered, setHovered] = useState(false);
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const m = motionMultiplier ?? 1;
   const showBack = revealed || hovered;
 
   const reviewed = card.lastReviewed !== null;

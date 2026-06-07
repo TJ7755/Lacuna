@@ -232,7 +232,7 @@ export function DeckView() {
       {/* Passed-exam / archived state: surfaced before study can resume */}
       <AnimatePresence>
         {deck.archived ? (
-          <PassedExamBanner key="archived" tone="archived">
+          <PassedExamBanner key="archived" tone="archived" motionMultiplier={m}>
             <h2 className="mb-1 font-display text-xl">This deck is archived</h2>
             <p className="mb-4 text-sm text-ink-soft">
               It is kept in full but hidden from active study and from your totals on the
@@ -249,7 +249,7 @@ export function DeckView() {
             </Button>
           </PassedExamBanner>
         ) : examHasPassed(deck) && !postExamDismissed ? (
-          <PassedExamBanner key="passed" tone="passed">
+          <PassedExamBanner key="passed" tone="passed" motionMultiplier={m}>
             <h2 className="mb-1 font-display text-xl">This exam date has passed</h2>
             <p className="mb-4 text-sm text-ink-soft">
               Scheduling no longer has a deadline to aim at. Choose what to do next. If you
@@ -284,6 +284,7 @@ export function DeckView() {
             deck={deck}
             onProceed={() => navigate(studyPath)}
             onClose={() => setExamBannerOpen(false)}
+            motionMultiplier={m}
           />
         )}
       </AnimatePresence>
@@ -311,14 +312,15 @@ export function DeckView() {
       )}
 
       {/* Tabs */}
-      <motion.div layout className="mb-6 flex gap-1 border-b border-line">
-        <TabButton active={tab === 'cards'} onClick={() => setTab('cards')} icon={<CardsIcon width={16} height={16} />}>
+      <motion.div layout transition={{ layout: { duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] } }} className="mb-6 flex gap-1 border-b border-line">
+        <TabButton active={tab === 'cards'} onClick={() => setTab('cards')} icon={<CardsIcon width={16} height={16} />} motionMultiplier={m}>
           Cards
         </TabButton>
         <TabButton
           active={tab === 'analytics'}
           onClick={() => setTab('analytics')}
           icon={<ChartIcon width={16} height={16} />}
+          motionMultiplier={m}
         >
           Analytics
         </TabButton>
@@ -435,6 +437,7 @@ export function DeckView() {
               <EmptyCardState
                 hasQuery={searchQuery.trim().length > 0 || filters.size > 0}
                 onNewCard={() => navigate(`/deck/${deck.id}/cards/new`)}
+                motionMultiplier={m}
               />
             ) : (
               <CardList
@@ -460,12 +463,13 @@ export function DeckView() {
 function PassedExamBanner({
   tone,
   children,
+  motionMultiplier,
 }: {
   tone: 'passed' | 'archived';
   children: React.ReactNode;
+  motionMultiplier?: number;
 }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const m = motionMultiplier ?? 1;
   return (
     <motion.section
       initial={{ opacity: 0, height: 0, marginBottom: 0 }}
@@ -496,13 +500,14 @@ function ExamDateBanner({
   deck,
   onProceed,
   onClose,
+  motionMultiplier,
 }: {
   deck: Deck;
   onProceed: () => void;
   onClose: () => void;
+  motionMultiplier?: number;
 }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const m = motionMultiplier ?? 1;
   const [value, setValue] = useState(() => toDateTimeLocalValue(deck.examDate));
   const [dontAsk, setDontAsk] = useState(false);
 
@@ -611,14 +616,15 @@ function TabButton({
   onClick,
   icon,
   children,
+  motionMultiplier,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   children: React.ReactNode;
+  motionMultiplier?: number;
 }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const m = motionMultiplier ?? 1;
   return (
     <button
       onClick={onClick}
@@ -643,12 +649,13 @@ function TabButton({
 function EmptyCardState({
   hasQuery,
   onNewCard,
+  motionMultiplier,
 }: {
   hasQuery: boolean;
   onNewCard: () => void;
+  motionMultiplier?: number;
 }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const m = motionMultiplier ?? 1;
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}

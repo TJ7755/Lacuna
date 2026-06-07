@@ -158,6 +158,7 @@ export function App() {
   }, []);
 
   if (!ready) {
+    const m = getMotionMultiplier();
     return (
       <div className="grid h-screen place-items-center text-ink">
         <motion.span
@@ -165,9 +166,9 @@ export function App() {
           initial={{ opacity: 0, y: 8, scale: 0.96 }}
           animate={{ opacity: [0, 1, 1, 0.6, 1], y: 0, scale: 1 }}
           transition={{
-            opacity: { duration: 1.6 * getMotionMultiplier(), repeat: Infinity, ease: 'easeInOut' },
-            y: { duration: 0.4 * getMotionMultiplier(), ease: [0.16, 1, 0.3, 1] },
-            scale: { duration: 0.4 * getMotionMultiplier(), ease: [0.16, 1, 0.3, 1] },
+            opacity: { duration: 1.6 * m, repeat: Infinity, ease: 'easeInOut' },
+            y: { duration: 0.4 * m, ease: [0.16, 1, 0.3, 1] },
+            scale: { duration: 0.4 * m, ease: [0.16, 1, 0.3, 1] },
           }}
         >
           Lacuna

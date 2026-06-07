@@ -93,8 +93,8 @@ function ConfettiBurst({ multiplier }: { multiplier: number }) {
             rotate: p.rotation,
           }}
           transition={{
-            duration: p.duration,
-            delay: p.delay,
+            duration: p.duration * multiplier,
+            delay: p.delay * multiplier,
             ease: [0.16, 1, 0.3, 1],
           }}
         />

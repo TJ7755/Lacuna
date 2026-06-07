@@ -339,15 +339,25 @@ export function DateTimePicker({ value, onChange, label }: DateTimePickerProps) 
   // Measure available space and flip the dropdown if it would be clipped.
   useLayoutEffect(() => {
     if (!open || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const dropdownHeight = dropdownRef.current?.getBoundingClientRect().height ?? 420;
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
-      setPlacement('top');
-    } else {
-      setPlacement('bottom');
-    }
+    const compute = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const dropdownHeight = dropdownRef.current?.getBoundingClientRect().height ?? 420;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+        setPlacement('top');
+      } else {
+        setPlacement('bottom');
+      }
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, { passive: true });
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('scroll', compute);
+    };
   }, [open]);
 
   // Reset slide direction after animation completes

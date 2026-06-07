@@ -409,9 +409,9 @@ export function Dashboard() {
 
       {/* Deck grid */}
       {!decks ? (
-        <DeckSkeleton />
+        <DeckSkeleton motionMultiplier={m} />
       ) : decks.length === 0 ? (
-        <EmptyState onCreate={startCreating} />
+        <EmptyState onCreate={startCreating} motionMultiplier={m} />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -424,6 +424,7 @@ export function Dashboard() {
                 selectMode={selectMode}
                 selected={selected.has(deck.id)}
                 onToggleSelected={() => toggleSelected(deck.id)}
+                motionMultiplier={m}
               />
             ))}
             {activeDecks.length > 3 && (
@@ -457,6 +458,7 @@ export function Dashboard() {
                     selectMode={selectMode}
                     selected={selected.has(deck.id)}
                     onToggleSelected={() => toggleSelected(deck.id)}
+                    motionMultiplier={m}
                   />
                 ))}
               </div>
@@ -482,6 +484,7 @@ function DeckCard({
   selectMode,
   selected,
   onToggleSelected,
+  motionMultiplier,
 }: {
   deck: Deck;
   summary: { count: number; mastery: number; unreviewed: number } | undefined;
@@ -489,9 +492,9 @@ function DeckCard({
   selectMode: boolean;
   selected: boolean;
   onToggleSelected: () => void;
+  motionMultiplier?: number;
 }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const m = motionMultiplier ?? 1;
   const colourBar = deck.colour ? (
     <span
       className="absolute inset-x-0 top-0 h-1"
@@ -579,9 +582,8 @@ function DeckCard({
   );
 }
 
-function DeckSkeleton() {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+function DeckSkeleton({ motionMultiplier }: { motionMultiplier?: number }) {
+  const m = motionMultiplier ?? 1;
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
@@ -636,9 +638,8 @@ function sortDecks(
   return list;
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+function EmptyState({ onCreate, motionMultiplier }: { onCreate: () => void; motionMultiplier?: number }) {
+  const m = motionMultiplier ?? 1;
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
