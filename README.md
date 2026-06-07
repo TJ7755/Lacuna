@@ -43,6 +43,19 @@ npm run preview  # preview the production build
 
 Open the printed local URL. A small example deck is seeded on first run (it can be deleted).
 
+### Electron (desktop build)
+
+Lacuna can be packaged as a standalone Windows desktop application via Electron.
+
+```bash
+npm run electron:dev         # run Vite + Electron in parallel (dev mode)
+npm run electron:build:win  # build the Windows NSIS installer
+```
+
+The Electron layer lives in `electron/` and adds a custom titlebar, local font
+bundling, Cross-Origin Isolation headers for WASM, and auto-updates via
+`electron-updater`. The web version is completely unaffected.
+
 ## How it works
 
 | Area | Where |
