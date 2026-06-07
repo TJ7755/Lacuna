@@ -168,6 +168,10 @@ export async function decodeShare(code: string): Promise<SharePayload> {
     throw new Error('That does not look like a Lacuna share code.');
   }
 
+  if (bytes.length > 5 * 1024 * 1024) {
+    throw new Error('Share code is too large to decode safely.');
+  }
+
   let payload: SharePayload;
   try {
     payload = JSON.parse(new TextDecoder().decode(bytes)) as SharePayload;
@@ -303,24 +307,26 @@ export async function importSharePayload(
   payload: SharePayload,
 ): Promise<{ decks: number; cards: number }> {
   let cardCount = 0;
-  for (const d of payload.decks) {
-    const drafts = d.cards.flatMap(unpackCard);
-    const deck = await createDeckWithCards(d.n || 'Shared deck', drafts);
-    await updateDeck(deck.id, {
-      examObjective: d.o === 1 ? 'securedTopics' : 'expectedMarks',
-      examDate: typeof d.e === 'number' ? d.e : deck.examDate,
-      ...(d.p && d.p > 0 ? { newCardsPerDay: d.p } : {}),
-      ...(typeof d.r === 'number'
-        ? {
-            fsrsParameters: {
-              ...deck.fsrsParameters,
-              requestRetention: clampRequestRetention(d.r),
-            },
-          }
-        : {}),
-      ...(d.l ? { colour: d.l } : {}),
-    });
-    cardCount += drafts.length;
-  }
+  await db.transaction('rw', db.decks, db.cards, db.userPerformance, db.assets, async () => {
+    for (const d of payload.decks) {
+      const drafts = d.cards.flatMap(unpackCard);
+      const deck = await createDeckWithCards(d.n || 'Shared deck', drafts);
+      await updateDeck(deck.id, {
+        examObjective: d.o === 1 ? 'securedTopics' : 'expectedMarks',
+        examDate: typeof d.e === 'number' ? d.e : deck.examDate,
+        ...(d.p && d.p > 0 ? { newCardsPerDay: d.p } : {}),
+        ...(typeof d.r === 'number'
+          ? {
+              fsrsParameters: {
+                ...deck.fsrsParameters,
+                requestRetention: clampRequestRetention(d.r),
+              },
+            }
+          : {}),
+        ...(d.l ? { colour: d.l } : {}),
+      });
+      cardCount += drafts.length;
+    }
+  });
   return { decks: payload.decks.length, cards: cardCount };
 }

@@ -212,10 +212,10 @@ export function SessionReport({
 
         {/* Stat tiles — revealed one after another with count-up numbers. */}
         <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat index={0} label="Cards reviewed" value={String(countTotal)} />
-          <Stat index={1} label="Accuracy" value={`${countAccuracy}%`} />
-          <Stat index={2} label="Mean time" value={`${(countMean / 10).toFixed(1)}s`} />
-          <Stat index={3} label="Focus" value={`${countFocus}%`} />
+          <Stat index={0} label="Cards reviewed" value={String(countTotal)} motionMultiplier={m} />
+          <Stat index={1} label="Accuracy" value={`${countAccuracy}%`} motionMultiplier={m} />
+          <Stat index={2} label="Mean time" value={`${(countMean / 10).toFixed(1)}s`} motionMultiplier={m} />
+          <Stat index={3} label="Focus" value={`${countFocus}%`} motionMultiplier={m} />
         </div>
 
         {/* Grade distribution */}
@@ -285,13 +285,14 @@ function Stat({
   label,
   value,
   index,
+  motionMultiplier,
 }: {
   label: string;
   value: string;
   index: number;
+  motionMultiplier?: number;
 }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const m = motionMultiplier ?? 1;
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}

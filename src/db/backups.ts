@@ -65,7 +65,7 @@ export async function mirrorToFolder(payload: BackupFile): Promise<void> {
   const handle = await getFolderHandle();
   if (!handle) return;
   if (!(await ensurePermission(handle))) return;
-  const stamp = new Date(payload.exportedAt).toISOString().slice(0, 10);
+  const stamp = new Date(payload.exportedAt).toISOString().slice(0, 19).replace(/:/g, '-');
   const fileHandle = await handle.getFileHandle(`lacuna-backup-${stamp}.json`, {
     create: true,
   });

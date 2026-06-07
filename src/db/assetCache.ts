@@ -10,6 +10,7 @@ import { assetUrl, referencedAssetHashes } from './assets';
 const MAX_SIZE = 200;
 
 const cache = new Map<string, string>();
+const pending = new Map<string, Promise<string | null>>();
 
 function evictOldest(): void {
   const first = cache.keys().next().value as string | undefined;
@@ -32,13 +33,24 @@ export async function resolveAssetUrl(hash: string): Promise<string | null> {
     return cached;
   }
 
-  const asset = await db.assets.get(hash);
-  if (!asset) return null;
+  const existing = pending.get(hash);
+  if (existing) return existing;
 
-  const url = URL.createObjectURL(asset.blob);
-  if (cache.size >= MAX_SIZE) evictOldest();
-  cache.set(hash, url);
-  return url;
+  const promise = (async () => {
+    try {
+      const asset = await db.assets.get(hash);
+      if (!asset) return null;
+      const url = URL.createObjectURL(asset.blob);
+      if (cache.size >= MAX_SIZE) evictOldest();
+      cache.set(hash, url);
+      return url;
+    } finally {
+      pending.delete(hash);
+    }
+  })();
+
+  pending.set(hash, promise);
+  return promise;
 }
 
 /**

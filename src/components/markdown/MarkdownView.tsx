@@ -30,7 +30,7 @@ const sanitizeSchema = {
   ...defaultSchema,
   attributes: {
     ...defaultSchema.attributes,
-    span: [...(defaultSchema.attributes?.span ?? []), 'className', 'style'],
+    span: [...(defaultSchema.attributes?.span ?? []), 'className'],
     code: [...(defaultSchema.attributes?.code ?? []), 'className'],
     pre: [...(defaultSchema.attributes?.pre ?? []), 'className'],
     div: [...(defaultSchema.attributes?.div ?? []), 'className'],

@@ -356,7 +356,7 @@ export function DateTimePicker({ value, onChange, label }: DateTimePickerProps) 
     window.addEventListener('scroll', compute, { passive: true });
     return () => {
       window.removeEventListener('resize', compute);
-      window.removeEventListener('scroll', compute);
+      window.removeEventListener('scroll', compute, { passive: true });
     };
   }, [open]);
 

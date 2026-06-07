@@ -45,12 +45,13 @@ export function toTsCard(card: Card, now: number): TsCard {
   if (
     card.lastReviewed === null ||
     card.stability === null ||
-    card.difficulty === null
+    card.difficulty === null ||
+    card.due == null
   ) {
     return createEmptyCard(new Date(now));
   }
   return {
-    due: new Date(card.due ?? card.lastReviewed),
+    due: new Date(card.due),
     stability: card.stability,
     difficulty: card.difficulty,
     elapsed_days: 0,
@@ -109,7 +110,7 @@ export function applyReview(
 ): ReviewResult {
   const before = toTsCard(card, now);
   const retrievabilityAtReview =
-    card.lastReviewed === null ? null : engine.get_retrievability(before, now, false);
+    card.lastReviewed === null || card.state === 0 ? null : engine.get_retrievability(before, now, false);
   const item = engine.next(before, new Date(now), grade as TsGrade);
   return { memory: fromTsCard(item.card, now), retrievabilityAtReview };
 }

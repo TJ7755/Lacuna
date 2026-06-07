@@ -12,14 +12,15 @@ function MetricBar({
   max,
   colourClass,
   title,
+  motionMultiplier,
 }: {
   value: number;
   max: number;
   colourClass: string;
   title: string;
+  motionMultiplier?: number;
 }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const m = motionMultiplier ?? 1;
   const pct = Math.min((value / max) * 100, 100);
   return (
     <div
@@ -141,7 +142,7 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
               <span className="text-xs text-ink-soft">day{streak === 1 ? '' : 's'}</span>
             </div>
           </div>
-          <MetricBar value={streak} max={14} colourClass="bg-amber-400/60" title={`${streak} day streak`} />
+          <MetricBar value={streak} max={14} colourClass="bg-amber-400/60" title={`${streak} day streak`} motionMultiplier={m} />
           <div className="mt-1 text-[11px] text-ink-faint">study streak</div>
         </div>
 
@@ -151,7 +152,7 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
             <span className="font-display text-xl tabular leading-none">{reviewedToday}</span>
             <span className="text-xs text-ink-soft">card{reviewedToday === 1 ? '' : 's'}</span>
           </div>
-          <MetricBar value={reviewedToday} max={100} colourClass="bg-accent/50" title={`${reviewedToday} cards reviewed today`} />
+          <MetricBar value={reviewedToday} max={100} colourClass="bg-accent/50" title={`${reviewedToday} cards reviewed today`} motionMultiplier={m} />
           <div className="mt-1 text-[11px] text-ink-faint">reviewed today</div>
         </div>
       </div>
@@ -170,7 +171,7 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
         </div>
 
         {allClear ? (
-          <EmptyForecast />
+          <EmptyForecast motionMultiplier={m} />
         ) : (
           <>
             <div className="flex h-20 items-end gap-1.5">
@@ -288,12 +289,12 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
             <AnimatePresence mode="popLayout">
               <motion.div
                 key={forecast[detailDay].dayStart}
-                initial={{ opacity: 0, y: 6 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.35 * m, ease: [0.4, 0, 0.2, 1] }}
               >
-                <DayDetail day={forecast[detailDay]} deckMap={deckMap} index={detailDay} />
+                <DayDetail day={forecast[detailDay]} deckMap={deckMap} index={detailDay} motionMultiplier={m} />
               </motion.div>
             </AnimatePresence>
           </>
@@ -303,9 +304,8 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
   );
 }
 
-function EmptyForecast() {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+function EmptyForecast({ motionMultiplier }: { motionMultiplier?: number }) {
+  const m = motionMultiplier ?? 1;
   return (
     <motion.div
       initial={{ opacity: 0, y: 4 }}
@@ -335,13 +335,14 @@ function DayDetail({
   day,
   deckMap,
   index,
+  motionMultiplier,
 }: {
   day: DayForecast;
   deckMap: Map<string, Deck>;
   index: number;
+  motionMultiplier?: number;
 }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const m = motionMultiplier ?? 1;
   const label = dayLabel(day.dayStart, index);
   const total = day.dueCount + day.newCount;
 

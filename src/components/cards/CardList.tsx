@@ -163,9 +163,15 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
   async function handleMove() {
     if (!moveTarget) return;
     const ids = [...selected];
+    const snapshot = await snapshotCards(ids);
     await moveCards(ids, moveTarget);
     exitSelect();
-    notify(`${ids.length} card${ids.length === 1 ? '' : 's'} moved.`, 'positive');
+    notify(`${ids.length} card${ids.length === 1 ? '' : 's'} moved.`, 'neutral', {
+      actionLabel: 'Undo',
+      onAction: () => {
+        void restoreCards(snapshot);
+      },
+    });
   }
 
   async function handleImport(cards: ParsedCard[]) {

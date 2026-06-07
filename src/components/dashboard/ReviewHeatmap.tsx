@@ -28,8 +28,17 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
     const today = startOfDay(Date.now());
     // Monday-indexed weekday so weeks read left-to-right, Monday at the top.
     const weekday = (new Date(today).getDay() + 6) % 7;
-    const gridEnd = today + (6 - weekday) * MS_PER_DAY; // Sunday of the current week
-    const gridStart = gridEnd - (WEEKS * 7 - 1) * MS_PER_DAY;
+    // DST-safe: use date arithmetic instead of raw ms subtraction.
+    const gridEnd = (() => {
+      const d = new Date(today);
+      d.setDate(d.getDate() + (6 - weekday));
+      return startOfDay(d.getTime());
+    })();
+    const gridStart = (() => {
+      const d = new Date(gridEnd);
+      d.setDate(d.getDate() - (WEEKS * 7 - 1));
+      return startOfDay(d.getTime());
+    })();
 
     const cols: Cell[][] = [];
     let maxCount = 0;

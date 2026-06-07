@@ -71,9 +71,9 @@ export function useFocusTrap(
       }
     };
 
-    container.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
     return () => {
-      container.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keydown', onKeyDown);
       if (options.returnFocus !== false) {
         triggerRef.current?.focus();
       }

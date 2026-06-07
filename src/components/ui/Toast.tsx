@@ -40,6 +40,8 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
 
   const dismiss = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -71,7 +73,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2">
         <AnimatePresence>
           {toasts.map((t) => (
-            <ToastBar key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
+            <ToastBar key={t.id} toast={t} onDismiss={() => dismiss(t.id)} motionMultiplier={m} />
           ))}
         </AnimatePresence>
       </div>
@@ -79,9 +81,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 }
 
-function ToastBar({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => void }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+function ToastBar({ toast, onDismiss, motionMultiplier }: { toast: ToastItem; onDismiss: () => void; motionMultiplier?: number }) {
+  const m = motionMultiplier ?? 1;
   const [progress, setProgress] = useState(1);
   const rafRef = useRef<number>(0);
   const startRef = useRef<number>(0);

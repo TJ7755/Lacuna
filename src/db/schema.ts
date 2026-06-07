@@ -103,11 +103,12 @@ export class LacunaDatabase extends Dexie {
       })
       .upgrade(async (tx) => {
         const { extractMarkdownAssets } = await import('./assets');
-        // Read, transform (async, extracting images into the asset store), then write
-        // back explicitly. We avoid an async `.modify()` callback because mutating the
-        // record after an await is not reliably persisted by Dexie.
-        const cards = await tx.table('cards').toArray();
-        for (const card of cards) {
+        // Process cards with a cursor so we never load the whole table into memory
+        // at once. Async extraction happens per-card, keeping the upgrade safe.
+        const table = tx.table('cards');
+        let cursor = await table.openCursor();
+        while (cursor) {
+          const card = cursor.value;
           const front = await extractMarkdownAssets(card.front ?? '', (asset) =>
             tx.table('assets').put(asset),
           );
@@ -116,7 +117,8 @@ export class LacunaDatabase extends Dexie {
           );
           const migrated = { ...card, front, back };
           Object.assign(migrated, migrateCardRecord(migrated as LegacyCard));
-          await tx.table('cards').put(migrated);
+          await cursor.update(migrated);
+          cursor = await cursor.continue();
         }
       });
   }
@@ -212,7 +214,7 @@ export async function readAllDataFromVersion(name: string): Promise<BackupFile> 
 
   return {
     app: 'lacuna',
-    version: Math.floor(raw.version / 10),
+    version: raw.version,
     exportedAt: Date.now(),
     decks: (raw.data['decks'] ?? []) as Deck[],
     cards: (raw.data['cards'] ?? []) as Card[],
@@ -236,11 +238,15 @@ export async function ensurePreMigrationSnapshot(): Promise<void> {
   preMigrationSnapshotTaken = true;
 
   const targetVersion = CURRENT_SCHEMA_VERSION;
-  const currentVersion = Math.floor((await getCurrentDbVersion('lacuna')) / 10);
+  const currentVersion = await getCurrentDbVersion('lacuna');
 
   if (currentVersion > 0 && currentVersion < targetVersion) {
-    const payload = await readAllDataFromVersion('lacuna');
-    await savePreMigrationSnapshot(targetVersion, payload);
+    try {
+      const payload = await readAllDataFromVersion('lacuna');
+      await savePreMigrationSnapshot(targetVersion, payload);
+    } catch {
+      preMigrationSnapshotTaken = false;
+    }
   }
 }
 

@@ -63,8 +63,8 @@ export function Dashboard() {
 
   // Total cards a global session would serve today, across all decks.
   const totalEligible = useMemo(
-    () => Object.values(summaries ?? {}).reduce((sum, s) => sum + s.eligible, 0),
-    [summaries],
+    () => activeDecks.reduce((sum, d) => sum + (summaries?.[d.id]?.eligible ?? 0), 0),
+    [activeDecks, summaries],
   );
 
   function toggleSelected(id: string) {
@@ -137,9 +137,16 @@ export function Dashboard() {
 
   async function handleMerge() {
     if (!mergeTarget) return;
-    await mergeDecks([...selected], mergeTarget);
+    const ids = [...selected];
+    const snapshot = await snapshotDecks(ids);
+    await mergeDecks(ids, mergeTarget);
     exitSelectMode();
-    notify('Decks merged.', 'positive');
+    notify('Decks merged.', 'positive', {
+      actionLabel: 'Undo',
+      onAction: () => {
+        void restoreDecks(snapshot);
+      },
+    });
   }
 
   return (

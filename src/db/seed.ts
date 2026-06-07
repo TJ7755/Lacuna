@@ -35,6 +35,8 @@ function exampleCard(
     history: [],
     ...(tags ? { tags } : {}),
     createdAt: Date.now(),
+    suspended: false,
+    buriedUntil: null,
   };
 }
 
@@ -76,12 +78,9 @@ export async function seedIfFirstRun(): Promise<void> {
   if (seeding) return;
   seeding = true;
   try {
-    if (localStorage.getItem(FLAG_KEY)) return;
-    const deckCount = await db.decks.count();
-    if (deckCount > 0) {
-      localStorage.setItem(FLAG_KEY, '1');
-      return;
-    }
+    let flagged: string | null = null;
+    try { flagged = localStorage.getItem(FLAG_KEY); } catch {}
+    if (flagged) return;
 
     const createdAt = Date.now();
     const deck: Deck = {
@@ -93,6 +92,7 @@ export async function seedIfFirstRun(): Promise<void> {
       fsrsParameters: defaultFsrsParameters(),
       examObjective: 'expectedMarks',
       colour: '#0d9488',
+      lastInteractedAt: createdAt,
     };
 
     const [fcAsset, sampleAsset] = await Promise.all([
@@ -318,13 +318,15 @@ export async function seedIfFirstRun(): Promise<void> {
     ];
 
     await db.transaction('rw', db.decks, db.cards, db.userPerformance, db.assets, async () => {
+      const deckCount = await db.decks.count();
+      if (deckCount > 0) return;
       await db.decks.add(deck);
       await db.cards.bulkAdd(cards);
       await db.userPerformance.add(emptyPerformance(deck.id));
       await db.assets.bulkAdd([fcAsset.record, sampleAsset.record]);
     });
 
-    localStorage.setItem(FLAG_KEY, '1');
+    try { localStorage.setItem(FLAG_KEY, '1'); } catch {}
   } finally {
     seeding = false;
   }

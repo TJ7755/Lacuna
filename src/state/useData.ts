@@ -132,7 +132,7 @@ export function useDeckSummaries(): Record<string, DeckSummary> | undefined {
         eligible: studyPool(deckCards, deck).length,
       };
     }
-    // Account for any orphaned card sets whose deck was removed mid-transaction.
+    // Skip orphaned card sets whose deck was removed mid-transaction.
     for (const [deckId, deckCards] of Object.entries(byDeck)) {
       if (!deckById.has(deckId)) continue;
       summaries[deckId] ??= {

@@ -180,6 +180,27 @@ export function LearnMode() {
   // Initial load: read a static snapshot of the deck(s) so the session is stable.
   useEffect(() => {
     let cancelled = false;
+    // Reset all session refs so navigating deck -> deck does not leave stale state.
+    cooldowns.current = new Map();
+    events.current = [];
+    lastAnswer.current = null;
+    if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current);
+    feedbackTimer.current = null;
+    setFeedback(null);
+    submitting.current = false;
+    progressBefore.current = 0;
+    perfRef.current = new Map();
+    decksRef.current = new Map();
+    ctxRef.current = null;
+    cardsRef.current = [];
+    setCanUndo(false);
+    setSummary(null);
+    setEditing(false);
+    setMenuOpen(false);
+    setHintsOpen(false);
+    setNavOpen(false);
+    setFocusMode(false);
+    setPhase('loading');
     (async () => {
       let decks: Deck[];
       let cards: Card[];
@@ -289,6 +310,7 @@ export function LearnMode() {
       const progressSnapshot = sessionProgress(cardsRef.current, ctx);
       const perfBefore = perf ?? null;
 
+      const deckCards = cardsRef.current.filter((c) => c.deckId === deck.id);
       const { card: updated, sessionHistoryId } = await recordReview({
         card: current,
         deck,
@@ -296,6 +318,7 @@ export function LearnMode() {
         responseTimeSec: t,
         distracted,
         correct,
+        deckCards,
       });
 
       if (correct && perf) {
@@ -481,7 +504,8 @@ export function LearnMode() {
         e.preventDefault();
         setHintsOpen(true);
         return;
-      }      if (keyMatches(e, bindings.focus)) {
+      }
+      if (keyMatches(e, bindings.focus)) {
         e.preventDefault();
         setFocusMode((v) => !v);
         return;
@@ -516,7 +540,7 @@ export function LearnMode() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase, reveal, answer, canUndo, undoLast, navOpen, editing, current, openEdit, hintsOpen, gradingMode]);
+  }, [phase, reveal, answer, canUndo, undoLast, navOpen, editing, current, openEdit, hintsOpen, gradingMode, bindings]);
 
   // Clear any pending feedback timer if the session unmounts mid-flash.
   useEffect(

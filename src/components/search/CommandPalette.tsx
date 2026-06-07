@@ -57,7 +57,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     }
   }, [open]);
 
-  useEffect(() => setActive(0), [query]);
+  useEffect(() => setActive(results.length > 0 ? 0 : -1), [results.length, query]);
 
   function go(index: number) {
     const hit = results[index];
@@ -71,10 +71,10 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       onClose();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActive((a) => Math.min(a + 1, results.length - 1));
+      setActive((a) => (results.length > 0 ? Math.min(a + 1, results.length - 1) : -1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActive((a) => Math.max(a - 1, 0));
+      setActive((a) => (results.length > 0 ? Math.max(a - 1, 0) : -1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       go(active);
