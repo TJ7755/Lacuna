@@ -55,11 +55,10 @@ function createWindow(): void {
       const baseDir = isDev ? path.join(__dirname, '..') : __dirname;
       const fontsCssPath = path.join(baseDir, 'fonts.css');
       let css = fs.readFileSync(fontsCssPath, 'utf-8');
-      if (isDev) {
-        // In dev mode, rewrite relative paths to absolute file:// URLs.
-        const assetsDir = path.join(baseDir, 'assets', 'fonts').replace(/\\/g, '/');
-        css = css.replace(/url\('..\/assets\/fonts\//g, `url('file:///${assetsDir}/`);
-      }
+      // Rewrite relative url() paths to absolute file:// URLs so insertCSS
+      // can resolve them regardless of the base URL context.
+      const fontsDir = path.join(baseDir, 'assets', 'fonts').replace(/\\/g, '/');
+      css = css.replace(/url\('..\/assets\/fonts\//g, `url('file:///${fontsDir}/`);
       void mainWindow?.webContents.insertCSS(css);
     } catch {
       // fonts.css may not exist in dev mode; this is fine.
