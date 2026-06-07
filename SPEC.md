@@ -655,6 +655,8 @@ Front/back Markdown is rendered with GFM, maths (KaTeX), syntax highlighting, an
   concatenates the others' cards and session history into it).
 - **Card list** (`CardList`, in the Deck view) supports per-card edit, suspend/flag, and
   **move** between decks; a tag-filter row scopes both the list and the study session.
+  Clicking a card row expands it in-place to show a **per-card forgetting curve** and
+  **vital statistics** (see §14, Per-card analysis).
 - Deck creation can **start blank** or **import** cards immediately (see §13).
 
 ---
@@ -763,6 +765,22 @@ Pure aggregates over stored history, in local time:
 - **Review heatmap** (`src/fsrs/heatmap.ts`, `ReviewHeatmap`): a contribution-style calendar of
   reviews per **local** calendar day (a 26-week grid), built from review logs and theme-aware via
   accent-opacity bands. Expected by anyone arriving from Anki.
+
+### Per-card analysis (`CardAnalytics`)
+Each card in the deck card list can be expanded in-place to reveal a **forgetting curve**
+and **vital statistics** for that individual card:
+- **Forgetting curve** — an `AreaChart` projecting retrievability from the card's most recent
+  review forward to `examDate + 14 days`, with historical review moments overlaid as
+  grade-coloured dots. Vertical reference lines mark the current time (`Now`) and the exam
+  date (`Exam`). Never-reviewed cards show an inviting empty state.
+- **Vital statistics** — a grid of tiles showing: stability, difficulty, current retrievability,
+  predicted exam-day retrievability, total reviews, lapses, due date, days since last review,
+  mean response time and accuracy.
+- **Grade distribution** — animated mini-bars for Again / Hard / Good / Easy counts.
+- Expansion is toggled by clicking the card row; only one card may be expanded at a time.
+  Hover still reveals the card back (desktop), while the expanded panel captures click events
+  so interacting with the chart does not collapse the view. The row is keyboard-accessible
+  (`Enter`/`Space` toggles expansion).
 
 ### Deck analytics (`DeckAnalytics`)
 Theme-aware Recharts panels:

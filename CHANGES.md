@@ -8,9 +8,10 @@ British English throughout. Changes are grouped by work-order task.
 `@open-spaced-repetition/binding` (`computeParameters()` via fsrs-rs WASM in the optimisation
 Web Worker).
 
-- Added `@open-spaced-repetition/binding` and `@open-spaced-repetition/binding-wasm32-wasi`;
-  npm overrides for transitive WASM deps; `npm install --force` may be required on x64 hosts
-  because the WASM package declares `cpu: wasm32`.
+- Added `@open-spaced-repetition/binding`; npm overrides for transitive WASM deps.
+  The `binding-wasm32-wasi` WASM binary and worker are vendored into `public/` and `src/fsrs/`
+  so the package no longer needs to be installed (it incorrectly declares `cpu: wasm32` and
+  fails on x64 VMs).
 - `src/fsrs/optimise.ts` converts card histories to binding review items, calls the trainer with
   `enableShortTerm: true`, validates weights against `CLAMP_PARAMETERS` bounds, then clips.
 - `src/fsrs/bindingOptimiser.ts` lazy-loads the WASM trainer (`initOptimizer` + Vite `?url` /

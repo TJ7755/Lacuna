@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@open-spaced-repetition/binding": "^0.4.0",
-    "@open-spaced-repetition/binding-wasm32-wasi": "^0.4.0",
+    "@napi-rs/wasm-runtime": "1.1.0",
     "dexie": "^4.0.10",
     "dexie-react-hooks": "^1.1.7",
     "katex": "^0.16.11",

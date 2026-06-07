@@ -103,23 +103,26 @@ export class LacunaDatabase extends Dexie {
       })
       .upgrade(async (tx) => {
         const { extractMarkdownAssets } = await import('./assets');
-        // Process cards with a cursor so we never load the whole table into memory
-        // at once. Async extraction happens per-card, keeping the upgrade safe.
+        // Process cards in small batches so we never load the whole table into
+        // memory at once. Async extraction happens per-card, keeping the upgrade safe.
         const table = tx.table('cards');
-        let cursor = await (table as unknown as { openCursor: () => Promise<IDBCursorWithValue | null> }).openCursor();
-        while (cursor) {
-          const card = cursor.value;
-          const front = await extractMarkdownAssets(card.front ?? '', (asset) =>
-            tx.table('assets').put(asset),
-          );
-          const back = await extractMarkdownAssets(card.back ?? '', (asset) =>
-            tx.table('assets').put(asset),
-          );
-          const migrated = { ...card, front, back };
-          Object.assign(migrated, migrateCardRecord(migrated as LegacyCard));
-          await cursor.update(migrated);
-          const next = await cursor.continue();
-          cursor = next;
+        let offset = 0;
+        const batchSize = 50;
+        while (true) {
+          const batch = await table.offset(offset).limit(batchSize).toArray();
+          if (batch.length === 0) break;
+          for (const card of batch) {
+            const front = await extractMarkdownAssets(card.front ?? '', (asset) =>
+              tx.table('assets').put(asset),
+            );
+            const back = await extractMarkdownAssets(card.back ?? '', (asset) =>
+              tx.table('assets').put(asset),
+            );
+            const migrated = { ...card, front, back };
+            Object.assign(migrated, migrateCardRecord(migrated as LegacyCard));
+            await table.put(migrated);
+          }
+          offset += batchSize;
         }
       });
   }
