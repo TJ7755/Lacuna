@@ -215,6 +215,7 @@ function runShareWorker<T>(
     function cleanup() {
       w.removeEventListener('message', messageHandler);
       w.removeEventListener('error', errorHandler);
+      w.removeEventListener('messageerror', messageErrorHandler);
     }
 
     const messageHandler = (event: MessageEvent) => {
@@ -233,15 +234,22 @@ function runShareWorker<T>(
       }
     };
 
-    const errorHandler = () => {
+    const errorHandler = (e: ErrorEvent) => {
       cleanup();
       // Clear the cached worker so the next call creates a fresh one.
       shareWorker = null;
-      reject(new Error('Share worker failed to load.'));
+      reject(new Error(`Share worker failed: ${e.message || 'unknown error'}`));
+    };
+
+    const messageErrorHandler = () => {
+      cleanup();
+      shareWorker = null;
+      reject(new Error('Share worker received an invalid message.'));
     };
 
     w.addEventListener('message', messageHandler);
     w.addEventListener('error', errorHandler);
+    w.addEventListener('messageerror', messageErrorHandler);
     w.postMessage({ ...message, id });
   });
 }

@@ -87,8 +87,8 @@ export function SharePage() {
       const result = await buildShareCode([...selected]);
       setCode(result);
       setCopied(false);
-    } catch {
-      notify('Could not generate a share code.', 'negative');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not generate a share code.', 'negative');
     } finally {
       setGenerating(false);
     }
@@ -129,8 +129,8 @@ export function SharePage() {
       );
       setPending(null);
       setInput('');
-    } catch {
-      notify('Import failed — the code may be corrupted.', 'negative');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Import failed — the code may be corrupted.', 'negative');
     } finally {
       setImporting(false);
     }
