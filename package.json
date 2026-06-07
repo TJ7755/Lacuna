@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "main": "electron/dist-electron/main.js",
   "description": "Lacuna - a local-only FSRS-6 flashcard revision application.",
   "scripts": {
     "start": "vite",
