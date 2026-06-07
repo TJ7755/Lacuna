@@ -678,11 +678,11 @@ export function LearnMode() {
           </button>
 
           <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center justify-between text-xs text-ink-faint">
-              <span className="truncate font-medium uppercase tracking-[0.14em]">
+            <div className="mb-1 flex flex-col items-start gap-0.5 text-xs text-ink-faint sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+              <span className="font-medium uppercase tracking-[0.14em] sm:truncate">
                 {headerTitle}
               </span>
-              <span className="tabular">
+              <span className="whitespace-nowrap tabular">
                 {Math.round(progress * 100)}% {noun}
               </span>
             </div>

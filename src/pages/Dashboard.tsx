@@ -186,14 +186,14 @@ export function Dashboard() {
           transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
           className="mb-6 flex flex-wrap items-center gap-4 rounded-2xl border border-accent/40 bg-accent-soft/40 p-5"
         >
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 w-full flex-1 sm:w-auto">
             <h2 className="font-display text-xl">Study today</h2>
-            <p className="text-sm text-ink-soft">
+            <p className="text-sm leading-relaxed text-balance text-ink-soft">
               {totalEligible} card{totalEligible === 1 ? '' : 's'} ready across all your
               decks, ordered by what moves you furthest before each exam.
             </p>
           </div>
-          <Button variant="primary" size="lg" onClick={() => navigate('/learn')}>
+          <Button variant="primary" size="lg" className="w-full sm:w-auto" onClick={() => navigate('/learn')}>
             <PlayIcon width={18} height={18} />
             Study all decks
           </Button>
