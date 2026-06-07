@@ -52,6 +52,7 @@ import {
   PauseIcon,
 } from '../components/ui/icons';
 import { PomodoroTimer } from '../components/learn/PomodoroTimer';
+import { useToast } from '../components/ui/Toast';
 
 type Phase = 'loading' | 'question' | 'answer' | 'finished';
 
@@ -75,6 +76,7 @@ export function LearnMode() {
   const { bindings } = useShortcutBindings();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const { notify } = useToast();
 
   const isGlobal = !deckId;
 
@@ -385,10 +387,10 @@ export function LearnMode() {
       setMenuOpen(false);
       timerStart.current = performance.now();
       distraction.beginCard();
-    } catch {
-      // If undo fails, leave the session state as-is so the user can continue.
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not undo the last answer.', 'negative');
     }
-  }, [distraction]);
+  }, [distraction, notify]);
 
   /** Drop the current card from the live pool after a suspend/bury, then move on. */
   const afterRemoval = useCallback(() => {
@@ -409,10 +411,10 @@ export function LearnMode() {
         c.id === current.id ? { ...c, suspended: true } : c,
       );
       afterRemoval();
-    } catch {
-      // If suspend fails, the card remains in the pool and the user can try again.
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not suspend the card.', 'negative');
     }
-  }, [current, afterRemoval]);
+  }, [current, afterRemoval, notify]);
 
   const buryCurrent = useCallback(async () => {
     if (!current) return;
@@ -423,10 +425,10 @@ export function LearnMode() {
         c.id === current.id ? { ...c, buriedUntil: until } : c,
       );
       afterRemoval();
-    } catch {
-      // If bury fails, the card remains in the pool and the user can try again.
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not bury the card.', 'negative');
     }
-  }, [current, afterRemoval]);
+  }, [current, afterRemoval, notify]);
 
   /** Open the in-session editor, pausing the response timer while it is open. */
   const openEdit = useCallback(() => {
@@ -465,13 +467,17 @@ export function LearnMode() {
   /** Flag or unflag the current card without disturbing its review timer or place. */
   const toggleFlagCurrent = useCallback(async () => {
     if (!current) return;
-    const next = !current.flagged;
-    await setCardFlag(current.id, next);
-    const updated = { ...current, flagged: next };
-    cardsRef.current = cardsRef.current.map((c) => (c.id === current.id ? updated : c));
-    setCurrent(updated);
-    setMenuOpen(false);
-  }, [current]);
+    try {
+      const next = !current.flagged;
+      await setCardFlag(current.id, next);
+      const updated = { ...current, flagged: next };
+      cardsRef.current = cardsRef.current.map((c) => (c.id === current.id ? updated : c));
+      setCurrent(updated);
+      setMenuOpen(false);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not update the card flag.', 'negative');
+    }
+  }, [current, notify]);
 
   // Keyboard shortcuts:
   //   question - Space or ArrowUp reveals the answer.

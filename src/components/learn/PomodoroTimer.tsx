@@ -9,71 +9,53 @@ import {
   CloseIcon,
 } from '../ui/icons';
 
-const RADIUS = 14;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+/* ─── geometry ─── */
+const R = 14;
+const C = 2 * Math.PI * R;
 
-function phaseLabel(phase: string) {
-  switch (phase) {
-    case 'focus':
-      return 'Focus';
-    case 'shortBreak':
-      return 'Short break';
-    case 'longBreak':
-      return 'Long break';
-    default:
-      return 'Pomodoro';
-  }
-}
+const BIG_R = 70;
+const BIG_C = 2 * Math.PI * BIG_R;
 
-function phaseColour(phase: string) {
-  switch (phase) {
-    case 'focus':
-      return 'text-accent';
-    case 'shortBreak':
-      return 'text-positive';
-    case 'longBreak':
-      return 'text-ink';
-    default:
-      return 'text-ink-faint';
-  }
-}
+/* ─── helpers ─── */
+const label = (p: string) => {
+  if (p === 'focus') return 'Focus';
+  if (p === 'shortBreak') return 'Short break';
+  if (p === 'longBreak') return 'Long break';
+  return 'Pomodoro';
+};
 
-function phaseStroke(phase: string) {
-  switch (phase) {
-    case 'focus':
-      return 'stroke-accent';
-    case 'shortBreak':
-      return 'stroke-positive';
-    case 'longBreak':
-      return 'stroke-ink';
-    default:
-      return 'stroke-ink-faint';
-  }
-}
+const colour = (p: string) => {
+  if (p === 'focus') return 'text-accent';
+  if (p === 'shortBreak') return 'text-positive';
+  if (p === 'longBreak') return 'text-ink';
+  return 'text-ink-faint';
+};
 
+const stroke = (p: string) => {
+  if (p === 'focus') return 'stroke-accent';
+  if (p === 'shortBreak') return 'stroke-positive';
+  if (p === 'longBreak') return 'stroke-ink';
+  return 'stroke-ink-faint';
+};
+
+/* ─── component ─── */
 export function PomodoroTimer() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const pomodoro = usePomodoro();
+  const p = usePomodoro();
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
-  // Close popup on Escape or click outside.
+  /* close on Esc or outside click */
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    const onPointerDown = (e: PointerEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onPtr = (e: PointerEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
     window.addEventListener('keydown', onKey);
-    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointerdown', onPtr);
     return () => {
       window.removeEventListener('keydown', onKey);
-      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointerdown', onPtr);
     };
   }, [open]);
 
@@ -87,58 +69,81 @@ export function PomodoroTimer() {
     pause,
     resume,
     reset,
-  } = pomodoro;
+  } = p;
 
-  const strokeDashoffset = CIRCUMFERENCE * (1 - progress);
   const active = phase !== 'idle';
+  const dashOffset = C * (1 - progress);
 
   return (
-    <div ref={containerRef} className="relative">
-      {/* Compact timer button */}
+    <div ref={ref} className="relative">
+      {/* ===== Compact face ===== */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title={active ? `${phaseLabel(phase)} · ${formattedTime}` : 'Pomodoro timer'}
-        className="relative grid h-9 w-9 place-items-center overflow-hidden rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+        title={active ? `${label(phase)} · ${formattedTime}` : 'Pomodoro timer'}
+        className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
       >
         <svg width="36" height="36" viewBox="0 0 36 36" className="absolute inset-0">
+          {/* track */}
           <circle
             cx="18"
             cy="18"
-            r={RADIUS}
+            r={R}
             fill="none"
             className="stroke-ink-faint"
-            strokeWidth="2.5"
+            strokeWidth="2"
             opacity={0.15}
           />
+          {/* progress */}
           {active && (
             <motion.circle
               cx="18"
               cy="18"
-              r={RADIUS}
+              r={R}
               fill="none"
-              className={phaseStroke(phase)}
-              strokeWidth="2.5"
-              strokeDasharray={CIRCUMFERENCE}
-              initial={{ strokeDashoffset: CIRCUMFERENCE }}
-              animate={{ strokeDashoffset: strokeDashoffset }}
+              className={stroke(phase)}
+              strokeWidth="2"
+              strokeDasharray={C}
+              initial={{ strokeDashoffset: C }}
+              animate={{ strokeDashoffset: dashOffset }}
               transition={{ duration: 1, ease: 'linear' }}
               transform="rotate(-90 18 18)"
             />
           )}
-        </svg>
-        <span className="relative z-10">
-          {active ? (
-            <span className={`whitespace-nowrap text-[10px] font-medium tabular leading-none ${phaseColour(phase)}`}>
+          {/* 12 o'clock tick */}
+          <line
+            x1="18"
+            y1="3"
+            x2="18"
+            y2="5"
+            className={active ? stroke(phase) : 'stroke-ink-faint'}
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+          {/* time — rendered as SVG text for perfect centreing */}
+          {active && (
+            <text
+              x="18"
+              y="18"
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="currentColor"
+              className={`text-[10px] font-medium tabular ${colour(phase)}`}
+            >
               {formattedTime}
-            </span>
-          ) : (
-            <ClockIcon width={16} height={16} />
+            </text>
           )}
-        </span>
+        </svg>
+
+        {/* idle icon — only when timer is not running */}
+        {!active && (
+          <span className="absolute inset-0 flex items-center justify-center">
+            <ClockIcon width={16} height={16} />
+          </span>
+        )}
       </button>
 
-      {/* Expanded controls */}
+      {/* ===== Expanded popup ===== */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -148,10 +153,11 @@ export function PomodoroTimer() {
             transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
             className="absolute right-0 top-11 z-30 w-56 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
           >
-            <div className="px-4 py-3">
-              <div className="mb-3 flex items-center justify-between">
+            <div className="px-4 py-4">
+              {/* header */}
+              <div className="mb-4 flex items-center justify-between">
                 <span className="text-xs font-medium uppercase tracking-[0.12em] text-ink-faint">
-                  {phaseLabel(phase)}
+                  {label(phase)}
                 </span>
                 {sessionsCompleted > 0 && (
                   <span className="text-[10px] tabular text-ink-faint">
@@ -160,35 +166,64 @@ export function PomodoroTimer() {
                 )}
               </div>
 
-              {/* Large time display */}
-              <div className="mb-3 text-center">
-                <span
-                  className={`font-display text-3xl tabular tracking-tight ${phaseColour(phase)}`}
-                >
-                  {formattedTime}
-                </span>
+              {/* big circular timer */}
+              <div className="relative mx-auto mb-5 flex h-40 w-40 items-center justify-center">
+                <svg width="160" height="160" viewBox="0 0 160 160">
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r={BIG_R}
+                    fill="none"
+                    className="stroke-ink-faint"
+                    strokeWidth="6"
+                    opacity={0.12}
+                  />
+                  {active && (
+                    <motion.circle
+                      cx="80"
+                      cy="80"
+                      r={BIG_R}
+                      fill="none"
+                      className={stroke(phase)}
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                      strokeDasharray={BIG_C}
+                      initial={{ strokeDashoffset: BIG_C }}
+                      animate={{ strokeDashoffset: BIG_C * (1 - progress) }}
+                      transition={{ duration: 1, ease: 'linear' }}
+                      transform="rotate(-90 80 80)"
+                    />
+                  )}
+                  {/* 12 o'clock tick */}
+                  <line
+                    x1="80"
+                    y1="8"
+                    x2="80"
+                    y2="14"
+                    className={active ? stroke(phase) : 'stroke-ink-faint'}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                  {/* time — SVG text for perfect centreing */}
+                  <text
+                    x="80"
+                    y="80"
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="currentColor"
+                    className={`font-display text-4xl tabular tracking-tight ${colour(phase)}`}
+                  >
+                    {formattedTime}
+                  </text>
+                </svg>
               </div>
 
-              {/* Progress bar */}
-              {active && (
-                <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-ink/5">
-                  <motion.div
-                    className={`h-full rounded-full ${phase === 'focus' ? 'bg-accent' : phase === 'shortBreak' ? 'bg-positive' : 'bg-ink'}`}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress * 100}%` }}
-                    transition={{ duration: 0.4, ease: 'linear' }}
-                  />
-                </div>
-              )}
-
-              {/* Controls */}
+              {/* controls */}
               <div className="flex justify-center gap-2">
                 {!active && (
                   <button
                     type="button"
-                    onClick={() => {
-                      startFocus();
-                    }}
+                    onClick={startFocus}
                     className="flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90"
                   >
                     <PlayIcon width={14} height={14} />

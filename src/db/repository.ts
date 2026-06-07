@@ -18,30 +18,47 @@ import { averagePredictedRetrievability } from '../fsrs/progress';
 import { defaultExamDate } from '../utils/datetime';
 import { scheduleAssetGc } from './assets';
 
+/** Convert low-level IndexedDB errors into user-friendly messages. */
+function friendlyDbError(err: unknown): Error {
+  if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+    return new Error('Your browser storage is full. Free up space or export your data to a file.');
+  }
+  if (err instanceof Error) return err;
+  return new Error(String(err));
+}
+
 // ---------------------------------------------------------------------------
 // Decks
 // ---------------------------------------------------------------------------
 
 export async function createDeck(name: string, colour?: string): Promise<Deck> {
-  const createdAt = Date.now();
-  const deck: Deck = {
-    id: makeId(),
-    name: name.trim() || 'Untitled deck',
-    examDate: defaultExamDate(createdAt),
-    createdAt,
-    fsrsVersion: FSRS_VERSION,
-    fsrsParameters: defaultFsrsParameters(),
-    examObjective: 'expectedMarks',
-    lastInteractedAt: createdAt,
-    ...(colour ? { colour } : {}),
-  };
-  await db.decks.add(deck);
-  await db.userPerformance.add(emptyPerformance(deck.id));
-  return deck;
+  try {
+    const createdAt = Date.now();
+    const deck: Deck = {
+      id: makeId(),
+      name: name.trim() || 'Untitled deck',
+      examDate: defaultExamDate(createdAt),
+      createdAt,
+      fsrsVersion: FSRS_VERSION,
+      fsrsParameters: defaultFsrsParameters(),
+      examObjective: 'expectedMarks',
+      lastInteractedAt: createdAt,
+      ...(colour ? { colour } : {}),
+    };
+    await db.decks.add(deck);
+    await db.userPerformance.add(emptyPerformance(deck.id));
+    return deck;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
 
 export async function updateDeck(id: string, changes: Partial<Deck>): Promise<void> {
-  await db.decks.update(id, changes);
+  try {
+    await db.decks.update(id, changes);
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
 
 /** Archive a deck: keep all data but withdraw it from active study and progress totals. */
@@ -126,24 +143,28 @@ export async function snapshotDecks(ids: string[]): Promise<DeckSnapshot> {
 
 /** Re-insert a previously captured DeckSnapshot (the inverse of deleteDecks). */
 export async function restoreDecks(snapshot: DeckSnapshot): Promise<void> {
-  await db.transaction(
-    'rw',
-    db.decks,
-    db.cards,
-    db.sessionHistory,
-    db.userPerformance,
-    async () => {
-      await Promise.all([
-        db.decks.bulkPut(snapshot.decks),
-        db.cards.bulkPut(snapshot.cards),
-        db.userPerformance.bulkPut(snapshot.userPerformance),
-        // Drop the old auto-increment ids so Dexie reassigns them cleanly.
-        db.sessionHistory.bulkAdd(
-          snapshot.sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
-        ),
-      ]);
-    },
-  );
+  try {
+    await db.transaction(
+      'rw',
+      db.decks,
+      db.cards,
+      db.sessionHistory,
+      db.userPerformance,
+      async () => {
+        await Promise.all([
+          db.decks.bulkPut(snapshot.decks),
+          db.cards.bulkPut(snapshot.cards),
+          db.userPerformance.bulkPut(snapshot.userPerformance),
+          // Drop the old auto-increment ids so Dexie reassigns them cleanly.
+          db.sessionHistory.bulkAdd(
+            snapshot.sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
+          ),
+        ]);
+      },
+    );
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
 
 /**
@@ -185,29 +206,33 @@ export async function createCard(
   back: string,
   tags: string[] = [],
 ): Promise<Card> {
-  const card: Card = {
-    id: makeId(),
-    deckId,
-    type,
-    front,
-    back,
-    stability: null,
-    difficulty: null,
-    lastReviewed: null,
-    reps: 0,
-    lapses: 0,
-    state: 0,
-    due: null,
-    scheduledDays: 0,
-    learningSteps: 0,
-    history: [],
-    createdAt: Date.now(),
-    tags,
-    suspended: false,
-    buriedUntil: null,
-  };
-  await db.cards.add(card);
-  return card;
+  try {
+    const card: Card = {
+      id: makeId(),
+      deckId,
+      type,
+      front,
+      back,
+      stability: null,
+      difficulty: null,
+      lastReviewed: null,
+      reps: 0,
+      lapses: 0,
+      state: 0,
+      due: null,
+      scheduledDays: 0,
+      learningSteps: 0,
+      history: [],
+      createdAt: Date.now(),
+      tags,
+      suspended: false,
+      buriedUntil: null,
+    };
+    await db.cards.add(card);
+    return card;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
 
 /**
@@ -218,30 +243,34 @@ export async function createCards(
   deckId: string,
   drafts: { type: CardType; front: string; back: string; tags?: string[] }[],
 ): Promise<Card[]> {
-  const now = Date.now();
-  const cards: Card[] = drafts.map((draft, i) => ({
-    id: makeId(),
-    deckId,
-    type: draft.type,
-    front: draft.front,
-    back: draft.back,
-    stability: null,
-    difficulty: null,
-    lastReviewed: null,
-    reps: 0,
-    lapses: 0,
-    state: 0,
-    due: null,
-    scheduledDays: 0,
-    learningSteps: 0,
-    history: [],
-    createdAt: now + i,
-    tags: draft.tags ?? [],
-    suspended: false,
-    buriedUntil: null,
-  }));
-  await db.cards.bulkAdd(cards);
-  return cards;
+  try {
+    const now = Date.now();
+    const cards: Card[] = drafts.map((draft, i) => ({
+      id: makeId(),
+      deckId,
+      type: draft.type,
+      front: draft.front,
+      back: draft.back,
+      stability: null,
+      difficulty: null,
+      lastReviewed: null,
+      reps: 0,
+      lapses: 0,
+      state: 0,
+      due: null,
+      scheduledDays: 0,
+      learningSteps: 0,
+      history: [],
+      createdAt: now + i,
+      tags: draft.tags ?? [],
+      suspended: false,
+      buriedUntil: null,
+    }));
+    await db.cards.bulkAdd(cards);
+    return cards;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
 
 /**
@@ -265,15 +294,23 @@ export async function createDeckWithCards(
   name: string,
   drafts: { type: CardType; front: string; back: string; tags?: string[] }[],
 ): Promise<Deck> {
-  const deck = await createDeck(name);
-  if (drafts.length > 0) await createCards(deck.id, drafts);
-  return deck;
+  try {
+    const deck = await createDeck(name);
+    if (drafts.length > 0) await createCards(deck.id, drafts);
+    return deck;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
 
 export async function updateCard(id: string, changes: Partial<Card>): Promise<void> {
-  await db.cards.update(id, changes);
-  if ('front' in changes || 'back' in changes) {
-    scheduleAssetGc();
+  try {
+    await db.cards.update(id, changes);
+    if ('front' in changes || 'back' in changes) {
+      scheduleAssetGc();
+    }
+  } catch (err) {
+    throw friendlyDbError(err);
   }
 }
 
@@ -289,7 +326,11 @@ export async function snapshotCards(ids: string[]): Promise<Card[]> {
 
 /** Re-insert previously captured cards (the inverse of deleteCards). */
 export async function restoreCards(cards: Card[]): Promise<void> {
-  await db.cards.bulkPut(cards);
+  try {
+    await db.cards.bulkPut(cards);
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
 
 export async function moveCards(ids: string[], targetDeckId: string): Promise<void> {
@@ -378,8 +419,9 @@ export interface RecordReviewResult {
  * (so the review can be undone, see undoReview).
  */
 export async function recordReview(args: RecordReviewArgs): Promise<RecordReviewResult> {
-  const { card, deck, grade, responseTimeSec, distracted, correct } = args;
-  const now = args.now ?? Date.now();
+  try {
+    const { card, deck, grade, responseTimeSec, distracted, correct } = args;
+    const now = args.now ?? Date.now();
 
   // All FSRS-6 maths is delegated to ts-fsrs via the engine wrapper.
   const engine = makeEngine(deck.fsrsParameters);
@@ -440,7 +482,10 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
     },
   );
 
-  return { card: updatedCard, sessionHistoryId };
+    return { card: updatedCard, sessionHistoryId };
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
 
 /** Snapshot needed to reverse a single review (see undoReview). */
@@ -461,19 +506,23 @@ export interface ReviewUndo {
  * the review appended. Single-step, used by the in-session Undo affordance.
  */
 export async function undoReview(undo: ReviewUndo): Promise<void> {
-  await db.transaction(
-    'rw',
-    db.cards,
-    db.sessionHistory,
-    db.userPerformance,
-    async () => {
-      await db.cards.put(undo.cardBefore);
-      if (undo.perfBefore) {
-        await db.userPerformance.put(undo.perfBefore);
-      } else {
-        await db.userPerformance.delete(undo.deckId);
-      }
-      await db.sessionHistory.delete(undo.sessionHistoryId);
-    },
-  );
+  try {
+    await db.transaction(
+      'rw',
+      db.cards,
+      db.sessionHistory,
+      db.userPerformance,
+      async () => {
+        await db.cards.put(undo.cardBefore);
+        if (undo.perfBefore) {
+          await db.userPerformance.put(undo.perfBefore);
+        } else {
+          await db.userPerformance.delete(undo.deckId);
+        }
+        await db.sessionHistory.delete(undo.sessionHistoryId);
+      },
+    );
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
