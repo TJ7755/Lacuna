@@ -1,4 +1,5 @@
-import { autoUpdater } from 'electron-updater';
+import electronUpdater from 'electron-updater';
+const { autoUpdater } = electronUpdater;
 import { BrowserWindow } from 'electron';
 import log from 'electron-log';
 

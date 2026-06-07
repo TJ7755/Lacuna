@@ -1,7 +1,11 @@
-import { app, BrowserWindow, session, ipcMain, protocol, net } from 'electron';
+import { app, BrowserWindow, session, protocol, net } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { initAutoUpdater } from './updater.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const isDev = !app.isPackaged;
 const VITE_DEV_URL = 'http://localhost:5173';
@@ -34,7 +38,6 @@ function createWindow(): void {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    frame: false,
     backgroundColor: '#0a0a0b',
     show: false,
     webPreferences: {
@@ -76,20 +79,6 @@ function createWindow(): void {
   }
 }
 
-/** Window control IPC handlers. */
-function registerWindowControls(): void {
-  ipcMain.on('window:minimize', () => mainWindow?.minimize());
-  ipcMain.on('window:maximize', () => {
-    if (mainWindow?.isMaximized()) {
-      mainWindow.unmaximize();
-    } else {
-      mainWindow?.maximize();
-    }
-  });
-  ipcMain.on('window:close', () => mainWindow?.close());
-  ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
-}
-
 /** Single instance lock — prevent multiple windows. */
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -110,7 +99,6 @@ if (!gotTheLock) {
       registerAppProtocol();
     }
 
-    registerWindowControls();
     createWindow();
 
     if (!isDev) {

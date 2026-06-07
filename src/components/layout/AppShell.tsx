@@ -7,7 +7,6 @@ import { CommandPalette } from '../search/CommandPalette';
 import { KeyHints } from '../ui/KeyHints';
 import { FlaskIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import { Titlebar } from './Titlebar';
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 
@@ -82,7 +81,6 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen overflow-hidden flex-col">
-      <Titlebar />
       <div className="flex flex-1 overflow-hidden">
       {/* Desktop sidebar */}
       <div className="hidden md:block">
