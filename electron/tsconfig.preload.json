@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "lib": ["ES2022"],
     "outDir": "./dist-electron",
     "rootDir": ".",
@@ -10,10 +10,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["./main.ts", "./updater.ts"],
+  "include": ["./preload.ts"],
   "exclude": ["node_modules", "dist-electron"]
 }
