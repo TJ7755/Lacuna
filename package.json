@@ -16,9 +16,9 @@
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\" \"*.cjs\" \".prettierrc\" \".eslintignore\"",
-    "electron:dev": "tsc -p electron/tsconfig.json && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "tsc -p electron/tsconfig.json && vite build --mode production --base ./ && electron-builder --config electron/electron-builder.yml",
-    "electron:build:win": "tsc -p electron/tsconfig.json && vite build --mode production --base ./ && electron-builder --win --config electron/electron-builder.yml"
+    "electron:dev": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && node -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:build": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && node -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && vite build --mode production --base ./ && electron-builder --config electron/electron-builder.yml",
+    "electron:build:win": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && node -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && vite build --mode production --base ./ && electron-builder --win --config electron/electron-builder.yml"
   },
   "dependencies": {
     "@napi-rs/wasm-runtime": "1.1.0",
