@@ -18,7 +18,7 @@ import { CheckIcon, DownloadIcon, ShareIcon, UploadIcon, CardsIcon, FileTextIcon
 import { formatDate } from '../utils/datetime';
 
 /**
- * Share decks as a single copy-and-paste code, and rebuild decks from one. Share codes
+ * Share decks as a single copy-and-paste code, and rebuild decks from a code. Share codes
  * are text-only so they stay small; full backups are the route for transferring images.
  */
 export function SharePage() {
@@ -408,7 +408,7 @@ export function SharePage() {
               if (pending) setPending(null);
             }}
             rows={4}
-            placeholder="Paste a Lacuna share code here (it starts with LAC)…"
+            placeholder="Paste a Lacuna share code here (it starts with LAC)..."
             className="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink-faint"
           />
         </div>

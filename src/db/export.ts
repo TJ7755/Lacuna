@@ -14,6 +14,10 @@ function escapeTsvCell(value: string): string {
   return value;
 }
 
+function escapeMarkdownPipe(value: string): string {
+  return value.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+}
+
 function formatRow(values: string[], delimiter: ',' | '\t'): string {
   const escaper = delimiter === ',' ? escapeCsvCell : escapeTsvCell;
   return values.map(escaper).join(delimiter);
@@ -134,4 +138,46 @@ export function exportCardsSimple(
       return `${front}\t${back}`;
     })
     .join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Markdown table export
+// ---------------------------------------------------------------------------
+
+/**
+ * Export cards as a GFM Markdown table with front, back, and tags columns.
+ * Pipes in cell content are escaped so the table stays valid.
+ */
+export async function exportCardsMarkdownTable(): Promise<string> {
+  const { deckMap, cards } = await fetchDecksAndCards();
+  const header = '| Deck | Front | Back | Tags |';
+  const separator = '| --- | --- | --- | --- |';
+  const rows = cards.map((c) => {
+    const deck = escapeMarkdownPipe(deckMap.get(c.deckId) ?? '');
+    const front = escapeMarkdownPipe(c.front);
+    const back = c.type === 'cloze' ? '' : escapeMarkdownPipe(c.back);
+    const tags = escapeMarkdownPipe((c.tags ?? []).join(', '));
+    return `| ${deck} | ${front} | ${back} | ${tags} |`;
+  });
+  return [header, separator, ...rows].join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// JSON array export
+// ---------------------------------------------------------------------------
+
+/**
+ * Export cards as a JSON array of objects with front, back, tags, and deck
+ * keys. Suitable for re-import into Lacuna or other tools.
+ */
+export async function exportCardsJson(): Promise<string> {
+  const { deckMap, cards } = await fetchDecksAndCards();
+  const items = cards.map((c) => ({
+    front: c.front,
+    back: c.back,
+    tags: c.tags ?? [],
+    deck: deckMap.get(c.deckId) ?? '',
+    type: c.type,
+  }));
+  return JSON.stringify(items, null, 2);
 }

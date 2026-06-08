@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { CardContent } from './CardContent';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
-import { ImportPanel } from '../import/ImportPanel';
+import { UnifiedImportPanel } from '../import/UnifiedImportPanel';
 import { CardAnalytics } from './CardAnalytics';
 import {
   addTagToCards,
@@ -273,7 +273,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
           >
             <div className="rounded-2xl border border-line-strong bg-surface p-5">
               <h3 className="mb-4 font-display text-lg">Import cards into {deck.name}</h3>
-              <ImportPanel
+              <UnifiedImportPanel
                 onImport={handleImport}
                 onCancel={() => setImporting(false)}
                 importLabel="Add cards"

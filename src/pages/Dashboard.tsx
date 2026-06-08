@@ -18,7 +18,7 @@ import { DECK_COLOURS } from '../db/types';
 import { Button } from '../components/ui/Button';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { useToast } from '../components/ui/Toast';
-import { ImportPanel } from '../components/import/ImportPanel';
+import { UnifiedImportPanel } from '../components/import/UnifiedImportPanel';
 import { CheckIcon, FlaskIcon, MergeIcon, PlayIcon, PlusIcon, TrashIcon } from '../components/ui/icons';
 import type { ParsedCard } from '../db/import';
 import { relativeExam } from '../utils/datetime';
@@ -213,19 +213,19 @@ export function Dashboard() {
             <div className="rounded-2xl border border-line-strong bg-surface p-5">
               {/* Blank vs Import mode */}
               <div className="mb-4 flex gap-2">
-                {(['blank', 'import'] as const).map((m) => (
+                {(['blank', 'import'] as const).map((mode) => (
                   <button
-                    key={m}
+                    key={mode}
                     type="button"
-                    onClick={() => setCreateMode(m)}
+                    onClick={() => setCreateMode(mode)}
                     className={cn(
                       'flex-1 rounded-lg border px-4 py-2 text-sm transition-colors',
-                      createMode === m
+                      createMode === mode
                         ? 'border-accent bg-accent-soft text-accent'
                         : 'border-line text-ink-soft hover:border-line-strong',
                     )}
                   >
-                    {m === 'blank' ? 'Start blank' : 'Import cards'}
+                    {mode === 'blank' ? 'Start blank' : 'Import cards'}
                   </button>
                 ))}
               </div>
@@ -289,7 +289,7 @@ export function Dashboard() {
                 </>
               ) : (
                 <div className="mt-4">
-                  <ImportPanel
+                  <UnifiedImportPanel
                     onImport={handleImportNew}
                     onCancel={() => setCreating(false)}
                     importLabel="Create & import"
@@ -434,20 +434,6 @@ export function Dashboard() {
                 motionMultiplier={m}
               />
             ))}
-            {activeDecks.length > 3 && (
-              <button
-                type="button"
-                onClick={() => {
-                  document.querySelector('aside nav')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="group flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 p-5 text-center transition-colors hover:border-line hover:bg-surface"
-              >
-                <span className="mb-1 text-3xl text-ink-faint transition-colors group-hover:text-ink">
-                  +{activeDecks.length - 3}
-                </span>
-                <span className="text-sm text-ink-faint">more decks in sidebar</span>
-              </button>
-            )}
           </div>
 
           {archivedDecks.length > 0 && (
@@ -564,9 +550,6 @@ function DeckCard({
     </motion.div>
   );
 
-  // Keep the same wrapper element across modes so toggling select mode doesn't
-  // remount the card (which would replay its entrance animation). In select
-  // mode we intercept the navigation and toggle the selection instead.
   return (
     <Link
       to={`/deck/${deck.id}`}

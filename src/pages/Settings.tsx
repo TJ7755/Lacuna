@@ -10,7 +10,6 @@ import { Toggle } from '../components/ui/Toggle';
 import { cn } from '../components/ui/cn';
 import { useToast } from '../components/ui/Toast';
 import {
-  downloadBackup,
   importBackup,
   readBackupFile,
   type ImportMode,
@@ -20,12 +19,7 @@ import {
   savePomodoroSettings,
   type PomodoroSettings,
 } from '../hooks/usePomodoro';
-import {
-  exportCardsCsv,
-  exportCardsTsv,
-  exportCardsPlainText,
-  downloadTextFile,
-} from '../db/export';
+import { UnifiedExportPanel } from '../components/import/UnifiedExportPanel';
 import {
   backupFolderName,
   chooseBackupFolder,
@@ -35,7 +29,7 @@ import {
   restoreBackup,
   takeAutoBackup,
 } from '../db/backups';
-import { DownloadIcon, MoonIcon, SunIcon, UploadIcon } from '../components/ui/icons';
+import { MoonIcon, SunIcon, UploadIcon } from '../components/ui/icons';
 import type { BackupFile } from '../db/types';
 import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
@@ -125,48 +119,6 @@ export function Settings() {
       notify('This browser does not support persistent storage.', 'neutral');
     } else {
       notify('Persistent storage was denied.', 'negative');
-    }
-  }
-
-  async function handleExport() {
-    try {
-      await downloadBackup();
-      notify('Backup downloaded.', 'positive');
-    } catch {
-      notify('Could not create the backup.', 'negative');
-    }
-  }
-
-  async function handleExportCsv() {
-    try {
-      const csv = await exportCardsCsv();
-      const stamp = new Date().toISOString().slice(0, 10);
-      downloadTextFile(csv, `lacuna-cards-${stamp}.csv`, 'text/csv');
-      notify('CSV exported.', 'positive');
-    } catch {
-      notify('Could not export CSV.', 'negative');
-    }
-  }
-
-  async function handleExportTsv() {
-    try {
-      const tsv = await exportCardsTsv();
-      const stamp = new Date().toISOString().slice(0, 10);
-      downloadTextFile(tsv, `lacuna-cards-${stamp}.tsv`, 'text/tab-separated-values');
-      notify('TSV exported.', 'positive');
-    } catch {
-      notify('Could not export TSV.', 'negative');
-    }
-  }
-
-  async function handleExportPlainText() {
-    try {
-      const text = await exportCardsPlainText();
-      const stamp = new Date().toISOString().slice(0, 10);
-      downloadTextFile(text, `lacuna-cards-${stamp}.txt`, 'text/plain');
-      notify('Plain text exported.', 'positive');
-    } catch {
-      notify('Could not export plain text.', 'negative');
     }
   }
 
@@ -546,40 +498,38 @@ export function Settings() {
       >
         <h2 className="mb-1 font-display text-xl">Import &amp; export</h2>
         <p className="mb-5 text-sm text-ink-soft">
-          All your data lives locally in this browser. Export it to a single JSON file
+          All your data lives locally in this browser. Export it in multiple formats
           for backup or transfer, and import to restore or merge.
         </p>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={handleExport}>
-            <DownloadIcon width={18} height={18} />
-            Export all data (JSON)
-          </Button>
-          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-            <UploadIcon width={18} height={18} />
-            Import from file
-          </Button>
+
+        {/* Unified export panel */}
+        <div className="mb-6">
+          <UnifiedExportPanel heading="Export your data" />
         </div>
-        <div className="mt-3 flex flex-wrap gap-3">
-          <Button variant="ghost" size="sm" onClick={handleExportCsv}>
-            Export CSV
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleExportTsv}>
-            Export TSV
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleExportPlainText}>
-            Export plain text
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
-              e.target.value = '';
-            }}
-          />
+
+        {/* Import section */}
+        <div className="border-t border-line pt-5">
+          <h3 className="mb-3 font-display text-lg">Import</h3>
+          <p className="mb-4 text-sm text-ink-soft">
+            Import a full backup file (JSON) to restore or merge your data.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+              <UploadIcon width={18} height={18} />
+              Import from file
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+                e.target.value = '';
+              }}
+            />
+          </div>
         </div>
 
         {/* Inline import-mode chooser, revealed once a backup file is read */}

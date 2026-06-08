@@ -661,16 +661,52 @@ Front/back Markdown is rendered with GFM, maths (KaTeX), syntax highlighting, an
 
 ---
 
-## 13. Import, export & backups (`src/db/portability.ts`, `import.ts`, `backups.ts`)
+## 13. Import, export & backups (`src/db/importEngine.ts`, `src/db/portability.ts`, `src/db/import.ts`, `src/db/export.ts`, `src/db/backups.ts`)
 
-### Text/CSV/TSV import (`parseImport`)
-- A **quote-aware** delimited parser: a field opened with `"` may contain the field/row
-  separator and escaped quotes (`""`), matching spreadsheet and Anki CSV.
-- Defaults: **tab** field separator, **newline** row separator (so Anki's plain-text export
-  works as-is); both are customisable. Windows/old-Mac line endings are normalised first.
-- Per row: field 1 = front, field 2 = back, optional field 3 = space-separated tags. A row
-  with a back is a front/back card; a single column containing cloze notation becomes a cloze
-  card; otherwise the row is skipped (and counted as skipped, since it has no answer side).
+### Unified import engine (`src/db/importEngine.ts`)
+A single, format-detecting import engine that powers all import locations in the app:
+
+- **Auto-detection** (`detectFormat`): examines input text and returns a `DetectedFormat`
+  (confidence-scored) choosing from: `share-code`, `csv`, `tsv`, `markdown-table`,
+  `markdown-list`, `json`, `plain-text`, or `unknown`. Detection short-circuits at 100K
+  characters to keep large files responsive.
+- **Supported formats:**
+  - **CSV/TSV** — quote-aware delimited parser (`parseImport` from `import.ts`).
+    Defaults: tab field separator, newline row separator; both customisable.
+  - **Markdown table** — GFM tables with `|` separators. Column header mapping:
+    `front`/`question`/`term`/`q` -> front; `back`/`answer`/`definition`/`a` -> back;
+    `tags`/`tag`/`label` -> tags. Pipes in cell content are escaped on export.
+  - **Markdown list** — three patterns: (1) definition-list style (`**Term:** Definition`),
+    (2) ordered pairs (even-numbered items paired as Q/A), (3) blank-line separated blocks
+    (first non-empty line = front, rest = back).
+  - **JSON** — array of objects, or object with a `cards`/`data`/`items`/`entries`/`notes`
+    key containing an array. Each object maps `front`/`question`/`term`/`q` -> front,
+    `back`/`answer`/`definition`/`a` -> back.
+  - **Plain text Q/A** — tab, pipe, em-dash, or en-dash separated Q/A pairs. A leading
+    `Q:`/`Q.`/`Question:` prefix is stripped.
+  - **Share codes** — `LAC0`/`LAC1` prefixed base64 codes, decoded via `decodeShareCode`.
+- **`parseImportAuto(text, fieldSep?, rowSep?)`** — the main entry point. Detects the
+  format and delegates to the appropriate parser. Returns `{ cards, skipped, format }`.
+- **Legacy parser** (`parseImport` in `src/db/import.ts`): the quote-aware delimited
+  parser continues to exist for backward compatibility and is used as the CSV/TSV backend.
+  Defaults: **tab** field separator, **newline** row separator. Windows/old-Mac line endings
+  are normalised first. Per row: field 1 = front, field 2 = back, optional field 3 of
+  space-separated tags. A row with a back is a front/back card; a single column containing
+  cloze notation becomes a cloze card; otherwise the row is skipped.
+
+### Unified export panel (`src/components/import/UnifiedExportPanel.tsx`)
+A single, reusable export UI offering multiple output formats:
+- **Full backup (JSON)** — complete database snapshot including all decks, cards, review
+  history, and images (`downloadBackup`).
+- **CSV** — comma-separated values with all card fields.
+- **TSV** — tab-separated values, compatible with Anki import.
+- **Markdown table** (`exportCardsMarkdownTable`) — GFM table with Deck, Front, Back, and
+  Tags columns. Pipes in cell content are escaped.
+- **JSON array** (`exportCardsJson`) — array of objects with front, back, tags, deck, and
+  type keys. Re-importable into Lacuna.
+- **Plain text** — human-readable Q:/A: format with deck and tag metadata.
+- **Share code** (optional, requires deck selection) — compact, copy-pasteable code via
+  `buildShareCode`.
 
 ### Backup file import/export
 - **Export:** versioned JSON of the whole database (`BackupFile`: decks, cards, **referenced
