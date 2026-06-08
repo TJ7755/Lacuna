@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { CardContent } from './CardContent';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { ImportPanel } from '../import/ImportPanel';
+import { CardAnalytics } from './CardAnalytics';
 import {
   addTagToCards,
   createCards,
@@ -48,8 +49,13 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
   const [tagging, setTagging] = useState(false);
   const [tagValue, setTagValue] = useState('');
   const [importing, setImporting] = useState(false);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+
+  useEffect(() => {
+    setExpandedCardId(null);
+  }, [deck.id]);
 
 
   const otherDecks = useMemo(
@@ -226,7 +232,14 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
             <Button
               variant={selectMode ? 'primary' : 'secondary'}
               size="sm"
-              onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+              onClick={() => {
+                if (selectMode) {
+                  exitSelect();
+                } else {
+                  setSelectMode(true);
+                  setExpandedCardId(null);
+                }
+              }}
             >
               {selectMode ? 'Done' : 'Select'}
             </Button>
@@ -455,10 +468,15 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
             <CardRow
               key={card.id}
               card={card}
+              deck={deck}
               index={i}
               selectMode={selectMode}
               selected={selected.has(card.id)}
+              expanded={expandedCardId === card.id}
               onToggle={() => toggle(card.id)}
+              onToggleExpand={() =>
+                setExpandedCardId((prev) => (prev === card.id ? null : card.id))
+              }
               onEdit={() => onEditCard(card)}
               onResume={() => handleResume(card)}
               onDelete={() => handleDeleteOne(card.id)}
@@ -474,10 +492,13 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
 
 function CardRow({
   card,
+  deck,
   index,
   selectMode,
   selected,
+  expanded,
   onToggle,
+  onToggleExpand,
   onEdit,
   onResume,
   onDelete,
@@ -485,20 +506,22 @@ function CardRow({
   motionMultiplier,
 }: {
   card: Card;
+  deck: Deck;
   index: number;
   selectMode: boolean;
   selected: boolean;
+  expanded: boolean;
   onToggle: () => void;
+  onToggleExpand: () => void;
   onEdit: () => void;
   onResume: () => void;
   onDelete: () => void;
   onToggleFlag: () => void;
   motionMultiplier?: number;
 }) {
-  const [revealed, setRevealed] = useState(false);
   const [hovered, setHovered] = useState(false);
   const m = motionMultiplier ?? 1;
-  const showBack = revealed || hovered;
+  const showBack = hovered;
 
   // Lazy-render: only parse the back side when it is actually visible.
   const contentSide = useMemo(() => (showBack ? 'back' : 'front'), [showBack]);
@@ -513,7 +536,18 @@ function CardRow({
     if (selectMode) {
       onToggle();
     } else {
-      setRevealed((v) => !v);
+      onToggleExpand();
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (selectMode) {
+        onToggle();
+      } else {
+        onToggleExpand();
+      }
     }
   }
 
@@ -523,16 +557,20 @@ function CardRow({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.16 * m, delay: Math.min(index * 0.03, 0.25) * m }}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       onMouseEnter={() => !selectMode && setHovered(true)}
       onMouseLeave={() => !selectMode && setHovered(false)}
       whileHover={selectMode ? undefined : { y: -2 }}
+      tabIndex={0}
+      aria-expanded={expanded}
       className={cn(
-        'group relative flex items-start gap-4 rounded-xl border bg-surface p-4 transition-colors duration-200 cursor-pointer',
+        'group relative rounded-xl border bg-surface p-4 transition-colors duration-200 cursor-pointer',
         selected
           ? 'border-accent ring-2 ring-accent/30'
           : 'border-line hover:border-line-strong hover:shadow-md hover:shadow-black/[0.03]',
       )}
     >
+      <div className="flex items-start gap-4">
       {selectMode && (
         <span
           className={cn(
@@ -659,6 +697,23 @@ function CardRow({
           </motion.button>
         </div>
       )}
+      </div>
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+            transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-t border-line pt-4">
+              <CardAnalytics card={card} deck={deck} motionMultiplier={m} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
