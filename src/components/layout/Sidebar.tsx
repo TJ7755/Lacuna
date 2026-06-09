@@ -146,13 +146,18 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       {/* Deck list */}
       <div className="mt-6 flex min-h-0 flex-1 flex-col px-3">
         {!collapsed && (
-          <div className="px-3 pb-2 text-[11px] uppercase tracking-[0.16em] text-ink-faint">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 * m }}
+            className="px-3 pb-2 text-[11px] uppercase tracking-[0.16em] text-ink-faint"
+          >
             Decks
-          </div>
+          </motion.div>
         )}
         <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pb-2">
           <AnimatePresence initial={false}>
-            {decks?.map((deck) => {
+            {decks?.map((deck, index) => {
               // Stay highlighted for the deck itself and any of its sub-routes
               // (cards, new card, deck settings, learn), not just the exact page.
               const base = `/deck/${deck.id}`;
@@ -160,32 +165,51 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                 location.pathname === base ||
                 location.pathname.startsWith(`${base}/`);
               return (
-                <NavLink
+                <motion.div
                   key={deck.id}
-                  to={`/deck/${deck.id}`}
-                  title={collapsed ? deck.name : undefined}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150',
-                    collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-                    active
-                      ? 'bg-accent-soft text-accent'
-                      : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-                  )}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{
+                    duration: 0.18 * m,
+                    delay: Math.min(index * 0.02, 0.15) * m,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  layout
                 >
-                  <span
+                  <NavLink
+                    to={`/deck/${deck.id}`}
+                    title={collapsed ? deck.name : undefined}
                     className={cn(
-                      'h-2.5 w-2.5 shrink-0 rounded-full border',
-                      active ? 'border-accent bg-accent' : 'border-transparent bg-line-strong',
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150',
+                      collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
+                      active
+                        ? 'bg-accent-soft text-accent'
+                        : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
                     )}
-                    style={deck.colour ? { backgroundColor: deck.colour } : undefined}
-                  />
-                  {!collapsed && <span className="truncate">{deck.name}</span>}
-                </NavLink>
+                  >
+                    <span
+                      className={cn(
+                        'h-2.5 w-2.5 shrink-0 rounded-full border',
+                        active ? 'border-accent bg-accent' : 'border-transparent bg-line-strong',
+                      )}
+                      style={deck.colour ? { backgroundColor: deck.colour } : undefined}
+                    />
+                    {!collapsed && <span className="truncate">{deck.name}</span>}
+                  </NavLink>
+                </motion.div>
               );
             })}
           </AnimatePresence>
           {decks && decks.length === 0 && !collapsed && (
-            <p className="px-3 py-2 text-sm text-ink-faint">No decks yet.</p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 * m }}
+              className="px-3 py-2 text-sm text-ink-faint"
+            >
+              No decks yet.
+            </motion.p>
           )}
         </div>
       </div>

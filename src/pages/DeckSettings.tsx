@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { m as motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { useCards, useDeck } from '../state/useData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Button } from '../components/ui/Button';
@@ -159,7 +159,12 @@ export function DeckSettings() {
         </header>
 
         <div className="flex flex-col gap-6">
-          <section className="rounded-2xl border border-line bg-surface p-6">
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24 * m, delay: 0.05 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-2xl border border-line bg-surface p-6"
+          >
             <div className="flex flex-col gap-4">
               <label className="block text-sm text-ink-soft">
                 Deck name
@@ -176,13 +181,15 @@ export function DeckSettings() {
                 <div className="flex flex-wrap gap-2">
                   {DECK_COLOURS.map((c) => {
                     const active = colour === c.hex;
-                    return (
-                      <button
+                    return (                        <motion.button
                         key={c.key}
                         type="button"
                         title={c.label}
                         onClick={() => setColour(active ? undefined : c.hex)}
                         aria-pressed={active}
+                        whileHover={{ scale: 1.15 }}
+                        whileTap={{ scale: 0.9 }}
+                        transition={{ duration: 0.12 * m }}
                         className={cn(
                           'h-8 w-8 rounded-full transition-all duration-150',
                           active
@@ -262,11 +269,14 @@ export function DeckSettings() {
                   {RETENTION_PRESETS.map((p) => {
                     const active = Math.round(retention * 100) === Math.round(p.value * 100);
                     return (
-                      <button
+                      <motion.button
                         key={p.label}
                         type="button"
                         onClick={() => setRetention(p.value)}
                         aria-pressed={active}
+                        whileHover={{ y: -2 }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ duration: 0.1 * m }}
                         className={cn(
                           'flex-1 rounded-lg border px-3 py-2 text-xs transition-colors',
                           active
@@ -276,7 +286,7 @@ export function DeckSettings() {
                       >
                         <span className="block font-medium">{p.label}</span>
                         <span className="text-ink-faint">{Math.round(p.value * 100)}%</span>
-                      </button>
+                      </motion.button>
                     );
                   })}
                 </div>
@@ -292,11 +302,22 @@ export function DeckSettings() {
                 </span>
               </div>
             </div>
-          </section>
+          </motion.section>
 
-          <OptimisationPanel deck={deck} cards={cards ?? []} />
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24 * m, delay: 0.1 * m, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <OptimisationPanel deck={deck} cards={cards ?? []} />
+          </motion.div>
 
-          <section className="rounded-2xl border border-negative/30 bg-negative/5 p-6">
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24 * m, delay: 0.15 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-2xl border border-negative/30 bg-negative/5 p-6"
+          >
             <div className="mb-1 text-sm font-medium text-negative">Danger zone</div>
             <p className="mb-4 text-sm text-ink-soft">
               Deleting this deck removes all of its cards and history. You will have a
@@ -305,12 +326,17 @@ export function DeckSettings() {
             <Button variant="danger" size="sm" onClick={handleDelete}>
               Delete deck
             </Button>
-          </section>
+          </motion.section>
         </div>
       </motion.div>
 
       {/* Sticky action bar (stays within the content column, clear of the sidebar) */}
-      <div className="sticky bottom-0 z-30 -mx-6 mt-8 border-t border-line bg-paper/80 px-6 py-4 backdrop-blur-xl md:-mx-10 md:px-10">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.28 * m, delay: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
+        className="sticky bottom-0 z-30 -mx-6 mt-8 border-t border-line bg-paper/80 px-6 py-4 backdrop-blur-xl md:-mx-10 md:px-10"
+      >
         <div className="flex items-center justify-end gap-3">
           <Button variant="ghost" onClick={() => navigate(deckPath)}>
             Cancel
@@ -319,7 +345,7 @@ export function DeckSettings() {
             Save changes
           </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -335,6 +361,8 @@ function OptimisationPanel({ deck, cards }: { deck: Deck; cards: Card[] }) {
   const { notify } = useToast();
   const [globalDefault] = useAutoOptimiseDefault();
   const optimiser = useOptimiser();
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
 
   // Cancel an in-flight optimisation if the user navigates to a different deck.
   useEffect(() => {
@@ -406,79 +434,120 @@ function OptimisationPanel({ deck, cards }: { deck: Deck; cards: Card[] }) {
       </div>
 
       <div className="mt-4 border-t border-line pt-4">
-        {!enoughData ? (
-          <p className="text-sm text-ink-faint">
-            Optimisation needs at least {MIN_OPTIMISE_REVIEWS} reviews so that a
-            held-out validation portion is large enough to judge the fit honestly.
-            This deck has {reviews}. Keep revising and it will become available.
-          </p>
-        ) : !enabled ? (
-          <p className="text-sm text-ink-faint">
-            Optimisation is turned off for this deck. Enable it above to fit the weights.
-          </p>
-        ) : optimiser.status === 'running' ? (
-          <div>
-            <p className="mb-2 text-sm text-ink-soft">
-              Optimising over {reviews} reviews…
-            </p>
-            <ProgressBar value={optimiser.progress} />
-          </div>
-        ) : optimiser.status === 'done' && optimiser.result ? (
-          <div>
-            <p className="mb-2 text-sm text-ink-soft">
-              Held-out fit quality (log loss, lower is better):{' '}
-              <span className="tabular text-ink">
-                {optimiser.result.before.toFixed(4)} → {optimiser.result.after.toFixed(4)}
-              </span>{' '}
-              over {optimiser.result.scored} scored reviews.
-            </p>
-            {optimiser.result.scored === 0 ? (
-              <p className="mb-3 text-sm text-ink-faint">
-                Not enough recent reviews to validate out of sample. The default weights
-                are recommended.
-              </p>
-            ) : !optimiser.result.isOutOfSampleWin ? (
-              <p className="mb-3 text-sm text-negative">
-                The fitted weights did not beat the defaults on unseen data. Keep the
-                default weights for now.
-              </p>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              {optimiser.result.isOutOfSampleWin && optimiser.result.scored > 0 && (
-                <Button variant="primary" size="sm" onClick={applyWeights}>
-                  Apply optimised weights
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={() => optimiser.reset()}>
-                Discard
-              </Button>
-            </div>
-          </div>
-        ) : optimiser.status === 'error' ? (
-          <div>
-            <p className="mb-2 text-sm text-negative">
-              Optimisation failed: {optimiser.error}
-            </p>
-            <Button variant="secondary" size="sm" onClick={() => optimiser.reset()}>
-              Dismiss
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                optimiser.run(cards, deck.fsrsParameters.requestRetention)
-              }
+        <AnimatePresence mode="wait">
+          {!enoughData ? (
+            <motion.p
+              key="not-enough"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.16 * m }}
+              className="text-sm text-ink-faint"
             >
-              Optimise now
-            </Button>
-            <Button variant="ghost" size="sm" onClick={resetToDefaults}>
-              Reset to defaults
-            </Button>
-          </div>
-        )}
+              Optimisation needs at least {MIN_OPTIMISE_REVIEWS} reviews so that a
+              held-out validation portion is large enough to judge the fit honestly.
+              This deck has {reviews}. Keep revising and it will become available.
+            </motion.p>
+          ) : !enabled ? (
+            <motion.p
+              key="disabled"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.16 * m }}
+              className="text-sm text-ink-faint"
+            >
+              Optimisation is turned off for this deck. Enable it above to fit the weights.
+            </motion.p>
+          ) : optimiser.status === 'running' ? (
+            <motion.div
+              key="running"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.16 * m }}
+            >
+              <p className="mb-2 text-sm text-ink-soft">
+                Optimising over {reviews} reviews…
+              </p>
+              <ProgressBar value={optimiser.progress} />
+            </motion.div>
+          ) : optimiser.status === 'done' && optimiser.result ? (
+            <motion.div
+              key="done"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.16 * m }}
+            >
+              <p className="mb-2 text-sm text-ink-soft">
+                Held-out fit quality (log loss, lower is better):{' '}
+                <span className="tabular text-ink">
+                  {optimiser.result.before.toFixed(4)} → {optimiser.result.after.toFixed(4)}
+                </span>{' '}
+                over {optimiser.result.scored} scored reviews.
+              </p>
+              {optimiser.result.scored === 0 ? (
+                <p className="mb-3 text-sm text-ink-faint">
+                  Not enough recent reviews to validate out of sample. The default weights
+                  are recommended.
+                </p>
+              ) : !optimiser.result.isOutOfSampleWin ? (
+                <p className="mb-3 text-sm text-negative">
+                  The fitted weights did not beat the defaults on unseen data. Keep the
+                  default weights for now.
+                </p>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                {optimiser.result.isOutOfSampleWin && optimiser.result.scored > 0 && (
+                  <Button variant="primary" size="sm" onClick={applyWeights}>
+                    Apply optimised weights
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => optimiser.reset()}>
+                  Discard
+                </Button>
+              </div>
+            </motion.div>
+          ) : optimiser.status === 'error' ? (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.16 * m }}
+            >
+              <p className="mb-2 text-sm text-negative">
+                Optimisation failed: {optimiser.error}
+              </p>
+              <Button variant="secondary" size="sm" onClick={() => optimiser.reset()}>
+                Dismiss
+              </Button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="idle"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.16 * m }}
+              className="flex flex-wrap gap-2"
+            >
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  optimiser.run(cards, deck.fsrsParameters.requestRetention)
+                }
+              >
+                Optimise now
+              </Button>
+              <Button variant="ghost" size="sm" onClick={resetToDefaults}>
+                Reset to defaults
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </section>
   );
