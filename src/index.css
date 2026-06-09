@@ -181,6 +181,17 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+  /* GPU hints for frequently animated elements (cards, modals, toasts, lists). */
+  .will-change-transform {
+    will-change: transform;
+  }
+  .will-change-opacity {
+    will-change: opacity;
+  }
+  .will-change-transform-opacity {
+    will-change: transform, opacity;
+  }
+
   /* Honour reduced-motion preferences across all transitions and animations. */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {

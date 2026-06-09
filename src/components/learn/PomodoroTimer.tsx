@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { usePomodoro } from '../../hooks/usePomodoro';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import {
@@ -106,7 +106,7 @@ export function PomodoroTimer() {
               strokeDasharray={C}
               initial={{ strokeDashoffset: C }}
               animate={{ strokeDashoffset: dashOffset }}
-              transition={{ duration: 1, ease: 'linear' }}
+              transition={{ duration: 1 * m, ease: 'linear' }}
               transform="rotate(-90 18 18)"
             />
           )}
@@ -190,7 +190,7 @@ export function PomodoroTimer() {
                       strokeDasharray={BIG_C}
                       initial={{ strokeDashoffset: BIG_C }}
                       animate={{ strokeDashoffset: BIG_C * (1 - progress) }}
-                      transition={{ duration: 1, ease: 'linear' }}
+                      transition={{ duration: 1 * m, ease: 'linear' }}
                       transform="rotate(-90 80 80)"
                     />
                   )}

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { createHashRouter, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './state/ThemeContext';
 import { AccentProvider } from './state/AccentContext';

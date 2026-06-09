@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { useCards, useDeck } from '../state/useData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Button } from '../components/ui/Button';
@@ -68,7 +68,7 @@ export function DeckSettings() {
   const [loaded, setLoaded] = useState(false);
 
   // Re-arm the loaded latch whenever the deck changes so back/forward navigation
-  // between different deck settings routes re-seeds the form.
+  // between different deck settings routes re-seeds the formotion.
   useEffect(() => {
     setLoaded(false);
   }, [deckId]);

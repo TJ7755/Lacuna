@@ -9,7 +9,7 @@ import {
 } from 'react';
 
 let toastIdCounter = 0;
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { cn } from './cn';
 import { CheckIcon, CloseIcon, InfoIcon } from './icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -81,7 +81,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ notify }}>
       {children}
-      <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2">
+      <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2 will-change-transform">
         <AnimatePresence>
           {toasts.map((t) => (
             <ToastBar key={t.id} toast={t} onDismiss={() => dismiss(t.id)} motionMultiplier={m} />

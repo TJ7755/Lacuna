@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { m as motion, AnimatePresence } from 'motion/react';
 import type { StudyStats, DayForecast } from '../../fsrs/stats';
 import type { Deck } from '../../db/types';
 import { FlameIcon, CalendarIcon } from '../ui/icons';

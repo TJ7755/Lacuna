@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { Sidebar } from './Sidebar';
 import { ErrorBoundary } from './ErrorBoundary';
 import { CommandPalette } from '../search/CommandPalette';

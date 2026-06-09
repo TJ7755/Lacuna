@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -568,7 +568,7 @@ export function DateTimePicker({ value, onChange, label }: DateTimePickerProps) 
                                 : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
                           )}
                         >
-                          {m.slice(0, 3)}
+                          {motion.slice(0, 3)}
                         </button>
                       );
                     })}

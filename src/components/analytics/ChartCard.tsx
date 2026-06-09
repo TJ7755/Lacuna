@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 
 /** A titled container giving every chart a consistent frame and empty state. */

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, useMotionValue, useSpring, LayoutGroup } from 'motion/react';
+import { AnimatePresence, m, useMotionValue, useSpring, LayoutGroup } from 'motion/react';
 import { useMotionSpeed, speedMultiplier, type MotionSpeed } from '../state/motionSpeed';
 import { useTheme, type Theme } from '../state/ThemeContext';
 import { ACCENTS, useAccent } from '../state/AccentContext';
@@ -396,7 +396,7 @@ export function Settings() {
             <div className="text-sm">Optimise scheduling</div>
             <p className="mt-1 text-sm text-ink-soft">
               Fit each deck's FSRS weights to your own review history, which is where most of
-              FSRS's efficiency comes from. On by default. Optimisation only runs once a deck
+              FSRS's efficiency comes fromotion. On by default. Optimisation only runs once a deck
               has at least {MIN_OPTIMISE_REVIEWS} reviews, and new weights are never applied
               without your confirmation. You can override this per deck in its settings.
             </p>
@@ -476,7 +476,7 @@ export function Settings() {
         <h2 className="mb-1 font-display text-xl">Pomodoro timer</h2>
         <p className="mb-5 text-sm text-ink-soft">
           A built-in focus timer for your study sessions. Customise the durations to match
-          your own rhythm.
+          your own rhythmotion.
         </p>
         <div className="grid grid-cols-3 gap-4">
           <DurationInput

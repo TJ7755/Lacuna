@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { useDashboardData } from '../state/useData';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { StudySignals } from '../components/dashboard/StudySignals';
@@ -190,7 +190,7 @@ export function Dashboard() {
             <h2 className="font-display text-xl">Study today</h2>
             <p className="text-sm leading-relaxed text-balance text-ink-soft">
               {totalEligible} card{totalEligible === 1 ? '' : 's'} ready across all your
-              decks, ordered by what moves you furthest before each exam.
+              decks, ordered by what moves you furthest before each examotion.
             </p>
           </div>
           <Button variant="primary" size="lg" className="w-full sm:w-auto" onClick={() => navigate('/learn')}>
@@ -639,7 +639,7 @@ function EmptyState({ onCreate, motionMultiplier }: { onCreate: () => void; moti
       </div>
       <h2 className="mb-2 font-display text-2xl">No decks yet</h2>
       <p className="mb-6 max-w-sm text-ink-soft">
-        Create your first deck to begin building a revision schedule tuned to your exam.
+        Create your first deck to begin building a revision schedule tuned to your examotion.
       </p>
       <Button variant="primary" onClick={onCreate}>
         <PlusIcon width={18} height={18} />

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import {
   Area,
   AreaChart,
@@ -113,7 +113,7 @@ export function Analytics() {
 
   return (
     <div className="space-y-6 p-6">
-      <motion.header
+      <m.header
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28 * m, ease: [0.25, 0.1, 0.25, 1] }}
@@ -122,7 +122,7 @@ export function Analytics() {
         <p className="mt-1 text-sm text-ink-soft">
           Insights across every deck.
         </p>
-      </motion.header>
+      </m.header>
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Forecast */}

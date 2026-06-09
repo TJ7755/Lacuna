@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { useCard, useCards, useDeck } from '../state/useData';
 import { Button } from '../components/ui/Button';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
@@ -39,7 +39,7 @@ export function CardEditor() {
   const [loaded, setLoaded] = useState(false);
 
   // Re-arm the loaded latch whenever the card being edited changes so direct
-  // navigation between cards (same route, different param) re-seeds the form.
+  // navigation between cards (same route, different param) re-seeds the formotion.
   useEffect(() => {
     setLoaded(false);
   }, [cardId]);
@@ -315,7 +315,7 @@ export function CardEditor() {
 
       {/* Sticky action bar — fades into the page rather than sitting on a hard white slab.
           The wrapper ignores pointer events so the transparent fade never blocks the
-          content scrolling beneath it; the button row re-enables them. */}
+          content scrolling beneath it; the button row re-enables themotion. */}
       <div className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10">
         <div className="pointer-events-auto flex flex-wrap items-center gap-3">
           {!editing && !isCloze && (

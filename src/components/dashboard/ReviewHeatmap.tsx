@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { bucketReviewsByDay, reviewTimestamps } from '../../fsrs/heatmap';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { formatDate, startOfDay } from '../../utils/datetime';

@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent, type Ref } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { m as motion, AnimatePresence } from 'motion/react';
 import { MarkdownView } from './MarkdownView';
 import { imageFileToAssetUrl, imageMarkdown } from './image';
 import { nextClozeIndex } from './cloze';

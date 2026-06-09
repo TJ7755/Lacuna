@@ -3,7 +3,7 @@
 // text, share code). Used in both the Share page and the Settings page.
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { m as motion, AnimatePresence } from 'motion/react';
 import { Button } from '../ui/Button';
 import { DownloadIcon, ShareIcon, CheckIcon, FileTextIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
@@ -255,7 +255,7 @@ export function UnifiedExportPanel({
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.12 }}
+                    transition={{ duration: 0.12 * m }}
                   >
                     <Button size="sm" variant="secondary" onClick={() => void handleCopyShareCode()}>
                       {copied ? (

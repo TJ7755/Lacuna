@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { useTheme } from '../../state/ThemeContext';
 import { useDecks } from '../../state/useData';
 import { cn } from '../ui/cn';

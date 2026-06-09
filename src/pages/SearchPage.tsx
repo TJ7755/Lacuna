@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { useAllCards, useDecks } from '../state/useData';
 import { plainPreview, searchCards, type CardFilter } from '../db/search';
 import { cn } from '../components/ui/cn';
