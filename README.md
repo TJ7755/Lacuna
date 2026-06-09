@@ -1,5 +1,7 @@
 # Lacuna
 
+[![CI](https://github.com/TJ7755/lacuna/actions/workflows/ci.yml/badge.svg)](https://github.com/TJ7755/lacuna/actions/workflows/ci.yml)
+
 A local-only, serverless flashcard application built around the **FSRS-6** spaced-repetition
 algorithm (via the official `ts-fsrs` library). Every card is scheduled to peak on your exam day,
 you grade yourself with a single **Yes / No**, and an invisible response timer infers the real

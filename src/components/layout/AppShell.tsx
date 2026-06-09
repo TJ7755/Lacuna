@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { Sidebar } from './Sidebar';
+import { Titlebar } from './Titlebar';
 import { ErrorBoundary } from './ErrorBoundary';
 import { CommandPalette } from '../search/CommandPalette';
 import { KeyHints } from '../ui/KeyHints';
@@ -81,6 +82,7 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen overflow-hidden flex-col">
+      <Titlebar />
       <div className="flex flex-1 overflow-hidden">
       {/* Desktop sidebar */}
       <div className="hidden md:block">

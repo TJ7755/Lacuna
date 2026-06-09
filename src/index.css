@@ -192,6 +192,14 @@
     will-change: transform, opacity;
   }
 
+  /* Electron titlebar drag regions. */
+  .titlebar-drag {
+    -webkit-app-region: drag;
+  }
+  .titlebar-no-drag {
+    -webkit-app-region: no-drag;
+  }
+
   /* Honour reduced-motion preferences across all transitions and animations. */
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
