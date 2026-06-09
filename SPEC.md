@@ -121,9 +121,9 @@ Specific motion (current state of the app):
   the four stat tiles reveal in sequence.
 - **Tabs / chips:** the active deck-view tab underline is a shared-layout element
   (`layoutId="deck-tab"`).
-- **Toasts:** slide in from the right with a slight scale.
-- **Dashboard streak:** the flame icon gently pulses/rotates while a streak is alight; the
-  streak number springs when it changes.
+- **Toasts:** a global notification system (`ToastProvider`) slides in from the right with a slight scale. Three tones — **neutral**, **positive**, **negative** — each with a matching icon and a subtle progress bar at the bottom showing remaining lifetime. Pause on hover; auto-dismiss after 3.5 s (6 s when an action button is present). Max 5 stacked. An optional inline action button (e.g. "Undo") is supported. Used throughout the app for save confirmations, undo affordances, and error feedback.
+- **Dashboard streak:** the flame icon gently pulses/rotates while a streak is alight; the streak number springs when it changes.
+- **Motion speed:** a global `slow / normal / fast` setting multiplies all motion durations (1.4×, 1×, 0.6×) and respects `prefers-reduced-motion: reduce` by collapsing to 0.
 - **Mobile drawer:** scrim fade plus a spring slide-in of the sidebar.
 - **Splash / route fallback:** the initial "Lacuna" wordmark fades up and breathes while the
   database opens; lazy routes show a pulsing "Loading…".
@@ -160,6 +160,7 @@ outside the shell. The shell is a flex row:
 │  > Study today│                                              │
 │  > Search     │                                              │
 │  > Share      │                                              │
+│  > Analytics  │                                              │
 │  > Settings   │                                              │
 │               │                                              │
 │  DECKS        │                                              │
@@ -171,11 +172,17 @@ outside the shell. The shell is a flex row:
 ```
 
 - **Sidebar** (`Sidebar`): brand; primary nav (Dashboard, Study today, Search, Share,
-  Settings); a live deck list (each with an accent dot when active); footer with a theme toggle and a
+  Analytics, Settings); a live deck list (each with an accent dot when active); footer with a theme toggle and a
   collapse toggle. Collapsing animates the width to 72 px and hides labels. Active state is a
   sliding shared-layout marker. State (`collapsed`) is persisted to `localStorage`.
 - **Mobile:** the sidebar becomes a drawer opened from a top bar burger; the scrim closes it;
   it auto-closes on navigation.
+- **Command palette** (`CommandPalette`): a keyboard-summoned overlay (`Ctrl/Cmd+K`) that
+  searches every card in the database instantly. It shows a centred modal with a search input
+  and a live list of results (max 40). Each result shows the card front preview (with query
+  terms highlighted), the deck name, and any tags. Arrow keys navigate, Enter opens the card
+  editor, and Escape closes. The palette shares the same ranking and search core as the full
+  Search page. Results are debounced at 150 ms so typing feels responsive.
 - **Global keyboard shortcuts** (within the shell): `Ctrl/Cmd+K` toggles the command palette;
   `/` opens full search; `?` toggles the keyboard-hints overlay. Single-key shortcuts are
   inert while typing in an input/textarea.
@@ -194,6 +201,7 @@ outside the shell. The shell is a flex row:
 | `/settings` | Settings | yes | eager |
 | `/search` | Search | yes | eager |
 | `/share` | Share (export/import via codes) | yes | eager |
+| `/analytics` | Analytics | yes | eager |
 | `/deck/:deckId/learn` | Learn session (single deck) | **no** | lazy |
 | `/learn` | Learn session (all decks, "Today") | **no** | lazy |
 
@@ -203,7 +211,7 @@ outside the shell. The shell is a flex row:
 
 ```
 Your revision
-Decks                                   [ Select ]  [ + New deck ]
+Decks                          [Sort ▼]  [ Select ]  [ + New deck ]
 
 ┌ streak ──────┬ reviewed today ┬ next 7 days ▁▃▂▅▁▁▂ ─────────┐
 └──────────────┴────────────────┴────────────────────────────┘
@@ -284,6 +292,11 @@ examObjective, newCardsPerDay?, archived?, autoOptimise?`
   choices, see §8.2).
 - `autoOptimise?` — per-deck override for scheduling optimisation; undefined falls back to
   the global default (on). Applying optimised weights always still needs explicit consent.
+- `colour?` — an optional hex colour (e.g. `#059669`) for visual identification in the
+  dashboard grid and sidebar deck list. Chosen from a predefined palette of eight colours
+  (slate, rose, amber, emerald, sky, violet, coral, teal).
+- `lastInteractedAt?` — epoch ms of the most recent review or deck creation, used for
+  "recently studied" dashboard sorting.
 
 ### Card
 `id, deckId, type('front_back'|'cloze'), front, back, stability|null, difficulty|null,
@@ -603,6 +616,16 @@ Reaching the goal shows a celebratory tick badge; otherwise "Keep studying" is o
 `F` focus mode, `?` help (also accessible from the 3-dot menu as "Keyboard shortcuts"),
 `Esc` closes overlays/drawer.
 
+### Pomodoro timer (`PomodoroTimer`, `usePomodoro`)
+A built-in **focus timer** lives in the Learn session header, toggled via a compact circular
+icon that opens an expanded popup. It supports three phases — **Focus** (25 min default),
+**Short break** (5 min), and **Long break** (15 min) — with a standard Pomodoro rhythm: after
+four focus sessions the timer offers a long break instead of a short one. The circular face
+shows elapsed progress via an SVG stroke animation; the expanded popup shows a large
+circular timer with start/pause/resume/reset controls and a session counter. Settings
+(work/break durations, auto-start breaks) are editable in §15 and persist to `localStorage`.
+The timer is purely decorative — it does not gate or affect the study session in any way.
+
 ### Exam-date prompt
 The first time a deck is studied an inline banner (`ExamDateBanner`, not a modal) asks for the
 real exam date and time, with a "don't ask again for this deck" toggle. The date is also
@@ -786,6 +809,12 @@ share code carries only the **material**, never one person's scheduling or histo
   suspended**. These turn search into deck management ("show me all leeches").
 - The full-page Search and the `Ctrl/Cmd+K` command palette share the same core; results
   link straight to the card editor. `plainPreview` strips Markdown/cloze/images for previews.
+- **Command palette** (`CommandPalette`, `Ctrl/Cmd+K`): a fast, modal search overlay that
+  surfaces the same card results as the full Search page but in a compact, centred popup.
+  It supports keyboard navigation (arrow keys, Enter to open, Escape to close), debounced
+  150 ms search, and a footer with key hints (up/down navigate, Enter open). A backdrop
+  scrim with blur closes the palette on click. The palette is the primary way to jump to a
+  card from anywhere in the shell.
 - **Leech** = a card with `lapses ≥ 8` (`src/fsrs/leech.ts`); surfaced via a badge and the
   search filter, but scheduling is never changed automatically.
 
@@ -840,9 +869,26 @@ Theme-aware Recharts panels:
 - **Appearance:** theme toggle (defaults to **dark**); **accent colour** swatches (7 choices);
   **text size** steps that scale all text. All three persist to `localStorage` (via
   `ThemeContext`, `AccentContext`, `FontScaleContext`).
+- **Motion speed:** a global `slow / normal / fast` slider (1.4×, 1×, 0.6× duration
+  multipliers) that affects all decorative animations across the app. Respects
+  `prefers-reduced-motion: reduce` by collapsing to 0. Persists to `localStorage`.
+- **Sidebar:** per-device controls for whether to show **due card counts** next to each deck
+  name, whether to include **archived decks** in the list, and a **compact mode** that reduces
+  padding and font sizes. The primary navigation items (Dashboard, Study today, Search, Share,
+  Analytics, Settings) can be **reordered and shown/hidden** individually; at least one must remain
+  visible.
+- **Dashboard sort:** choose how the deck grid is ordered — **recently studied**, **ready for
+  review**, **lowest mastery**, **soonest exam**, **name A–Z**, or **created recently**. Persists
+  to `localStorage`.
 - **Study & scheduling:** **Manual four-point grading** toggle (off by default → silent grader,
   §10) and the global **Optimise scheduling** default (on → fit FSRS weights to your own history,
   §8.1; gated at `MIN_OPTIMISE_REVIEWS`, overridable per deck, applied only on confirmation).
+- **Keyboard shortcuts:** every Learn-mode action (reveal, yes/no, again/hard/good/easy, edit,
+  undo, focus, help) can be rebound to a custom key. Click a row, press the desired key, and the
+  binding is saved to `localStorage`. A **Reset to defaults** path is always available.
+- **Pomodoro timer:** customise the **focus duration** (1–120 min), **short break** (1–60 min),
+  **long break** (1–60 min), and whether breaks **auto-start** when a focus session ends.
+  Persists to `localStorage`.
 - **Import & export:** export all data; import from file with the inline Merge / Replace-all
   chooser described in §13.
 - **Persistent storage:** the app requests `navigator.storage.persist()` on first run so the
@@ -855,9 +901,21 @@ Theme-aware Recharts panels:
   confirmation.
 
 ### Deck settings (`src/pages/DeckSettings.tsx`)
-Rename; exam date and time; **exam objective** toggle (Expected marks ↔ Secure topics, with
+Rename; **exam date and time** (`DateTimePicker`); **exam objective** toggle (Expected marks ↔ Secure topics, with
 live explanatory copy); **new cards per day** cap; **target retention** slider (0.80–0.97,
 with Relaxed/Balanced/Thorough presets and adaptive guidance copy).
+
+- **DateTimePicker** (`src/components/ui/DateTimePicker.tsx`): a custom, accessible date/time
+  dropdown used for setting the exam deadline. It opens a calendar popup with a full month grid
+  (6 rows × 7 columns), keyboard navigation (arrow keys move between days, Enter/Space selects,
+  PageUp/PageDown changes month, Escape closes), and a visual "today" dot indicator. The header
+  toggles between **day**, **month**, and **year** picker modes (click the month/year label to
+  drill up; arrow buttons to step months). The selected day is highlighted with an accent fill;
+  adjacent-month days are shown faint. Below the calendar sits a **time selector** with hour
+  and minute inputs (24-hour format) and quick "Jump to today" / "Now" buttons. The popup is
+  **position-aware** — it flips to open above the trigger if there is insufficient space below.
+  All transitions are motion-speed-aware. The picker is also used in the inline exam-date prompt
+  banner shown when a deck is first studied.
 - **Scheduling optimisation** (§8.1): a per-deck on/off override, a review-count gate, and an
   **Optimise now** action that runs in a Web Worker with a progress bar, then shows the
   before/after log loss. Applying takes a restore-point snapshot first; **Reset to defaults** is
@@ -918,6 +976,15 @@ with Relaxed/Balanced/Thorough presets and adaptive guidance copy).
 
 Single-key shortcuts are inert while a text field is focused. The `?` overlay can also be
 opened from the "Keyboard shortcuts" item in the Learn mode 3-dot action menu.
+
+### Keyboard-hints overlay (`KeyHints`)
+Pressing `?` from anywhere in the shell opens a modal cheatsheet that lists every keyboard
+shortcut, grouped by context (Global, Learn, Editor, Navigation). The overlay is built
+from the live `SHORTCUT_GROUPS` registry so it always matches the real handlers. Custom
+bindings (§15) are reflected in real time — if a user has remapped "Yes" to `K`, the overlay
+shows `K` instead of `Y`. The overlay is a centred modal with a backdrop scrim, dismissible
+via Escape or the close button, and animates in with a spring. Each shortcut is shown as a
+readable description paired with one or more kbd-style key badges.
 
 ---
 
