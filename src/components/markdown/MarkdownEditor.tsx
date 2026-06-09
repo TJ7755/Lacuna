@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent, type Ref } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type Ref } from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { MarkdownView } from './MarkdownView';
 import { imageFileToAssetUrl, imageMarkdown } from './image';
@@ -94,6 +94,101 @@ export function MarkdownEditor({
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
+  /* Undo/redo history */
+  interface HistoryEntry {
+    text: string;
+    selStart: number;
+    selEnd: number;
+  }
+  const historyRef = useRef<HistoryEntry[]>([{ text: value, selStart: 0, selEnd: 0 }]);
+  const historyIndexRef = useRef(0);
+  const historyTimerRef = useRef<number | null>(null);
+  const lastPushedTextRef = useRef(value);
+  const currentValueRef = useRef(value);
+
+  useEffect(() => {
+    currentValueRef.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    // Reset history when the editor is mounted for a new card.
+    historyRef.current = [{ text: value, selStart: 0, selEnd: 0 }];
+    historyIndexRef.current = 0;
+    lastPushedTextRef.current = value;
+    currentValueRef.current = value;
+    return () => {
+      cancelHistoryTimer();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function pushHistory() {
+    const el = textareaRef.current;
+    const entry: HistoryEntry = {
+      text: currentValueRef.current,
+      selStart: el?.selectionStart ?? 0,
+      selEnd: el?.selectionEnd ?? 0,
+    };
+    // Avoid duplicate adjacent entries.
+    if (lastPushedTextRef.current === entry.text) return;
+
+    // Truncate any redo entries.
+    if (historyIndexRef.current < historyRef.current.length - 1) {
+      historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
+    }
+
+    historyRef.current.push(entry);
+    historyIndexRef.current = historyRef.current.length - 1;
+    lastPushedTextRef.current = entry.text;
+
+    // Cap at 50 entries.
+    if (historyRef.current.length > 50) {
+      historyRef.current.shift();
+      historyIndexRef.current--;
+    }
+  }
+
+  function scheduleHistoryPush() {
+    if (historyTimerRef.current) window.clearTimeout(historyTimerRef.current);
+    historyTimerRef.current = window.setTimeout(() => pushHistory(), 800);
+  }
+
+  function cancelHistoryTimer() {
+    if (historyTimerRef.current) {
+      window.clearTimeout(historyTimerRef.current);
+      historyTimerRef.current = null;
+    }
+  }
+
+  function undo() {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current--;
+    const entry = historyRef.current[historyIndexRef.current];
+    lastPushedTextRef.current = entry.text;
+    currentValueRef.current = entry.text;
+    onChange(entry.text);
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(entry.selStart, entry.selEnd);
+    });
+  }
+
+  function redo() {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current++;
+    const entry = historyRef.current[historyIndexRef.current];
+    lastPushedTextRef.current = entry.text;
+    currentValueRef.current = entry.text;
+    onChange(entry.text);
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(entry.selStart, entry.selEnd);
+    });
+  }
+
   function currentSelection(): Selection {
     const el = textareaRef.current!;
     const start = el.selectionStart;
@@ -107,12 +202,16 @@ export function MarkdownEditor({
   }
 
   function applyReplacement(rep: Replacement) {
+    cancelHistoryTimer();
+    pushHistory();
+    currentValueRef.current = rep.text;
     onChange(rep.text);
     requestAnimationFrame(() => {
       const el = textareaRef.current;
       if (!el) return;
       el.focus();
       el.setSelectionRange(rep.selStart, rep.selEnd);
+      pushHistory();
     });
   }
 
@@ -153,6 +252,9 @@ export function MarkdownEditor({
 
   async function insertImageFiles(files: FileList | File[]) {
     const images = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (images.length === 0) return;
+    cancelHistoryTimer();
+    pushHistory();
     for (const file of images) {
       try {
         const dataUrl = await imageFileToAssetUrl(file);
@@ -160,11 +262,15 @@ export function MarkdownEditor({
         const md = imageMarkdown(dataUrl, file.name.replace(/\.[^.]+$/, ''));
         const needsBreak = sel.before.length > 0 && !sel.before.endsWith('\n');
         const insertion = (needsBreak ? '\n' : '') + md + '\n';
-        onChange(sel.before + insertion + sel.after);
+        const newText = sel.before + insertion + sel.after;
+        currentValueRef.current = newText;
+        onChange(newText);
       } catch (err) {
         onError?.(err instanceof Error ? err.message : 'Could not add that image.');
       }
     }
+    // Capture the post-insertion state so redo works after undo.
+    window.setTimeout(() => pushHistory(), 0);
   }
 
   async function handleDrop(e: DragEvent<HTMLTextAreaElement>) {
@@ -250,7 +356,24 @@ export function MarkdownEditor({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key !== 'Tab') return;
+              if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                  redo();
+                } else {
+                  undo();
+                }
+                return;
+              }
+              if (e.ctrlKey && e.key.toLowerCase() === 'y') {
+                e.preventDefault();
+                redo();
+                return;
+              }
+              if (e.key !== 'Tab') {
+                scheduleHistoryPush();
+                return;
+              }
               if (e.shiftKey && onTabBackward) {
                 e.preventDefault();
                 onTabBackward();
