@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { CardContent } from './CardContent';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';

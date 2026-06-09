@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { motion } from 'motion/react';
+import { m } from 'motion/react';
 import {
   Area,
   AreaChart,
@@ -17,6 +17,7 @@ import {
 import { useDecks, useAllCards, useAllSessionHistory } from '../state/useData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { ChartCard } from '../components/analytics/ChartCard';
+import { FadeInView } from '../components/ui/FadeInView';
 import { useChartColours } from '../components/analytics/useChartColours';
 import {
   forecastSeries,
@@ -62,7 +63,7 @@ function AnalyticsSkeleton() {
 
 export function Analytics() {
   const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const motionMult = speedMultiplier(motionSpeed);
   const decks = useDecks();
   const allCards = useAllCards();
   const history = useAllSessionHistory();
@@ -113,20 +114,20 @@ export function Analytics() {
 
   return (
     <div className="space-y-6 p-6">
-      <motion.header
+      <m.header
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28 * m, ease: [0.25, 0.1, 0.25, 1] }}
+        transition={{ duration: 0.28 * motionMult, ease: [0.25, 0.1, 0.25, 1] }}
       >
         <h1 className="font-display text-3xl tracking-tight">Analytics</h1>
         <p className="mt-1 text-sm text-ink-soft">
           Insights across every deck.
         </p>
-      </motion.header>
+      </m.header>
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Forecast */}
-        <div className="lg:col-span-2">
+        <FadeInView className="lg:col-span-2" delay={0} y={0}>
           <ChartCard
             title="Forecast"
             description="Cards due and new cards scheduled per day for the next 30 days."
@@ -172,16 +173,17 @@ export function Analytics() {
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
-        </div>
+        </FadeInView>
 
         {/* Predicted exam-day score */}
-        <ChartCard
-          title="Predicted exam-day score"
-          description="Average predicted retrievability across all decks over time."
-          empty={trajectory.length < 2}
-          emptyMessage="Study cards to start plotting your trajectory."
-          delay={0.06}
-        >
+        <FadeInView delay={0.06} y={0}>
+          <ChartCard
+            title="Predicted exam-day score"
+            description="Average predicted retrievability across all decks over time."
+            empty={trajectory.length < 2}
+            emptyMessage="Study cards to start plotting your trajectory."
+            delay={0.06}
+          >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={trajectory} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
               <defs>
@@ -208,17 +210,18 @@ export function Analytics() {
                 activeDot={{ r: 4 }}
               />
             </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
+          </ResponsiveContainer>          </ChartCard>
+        </FadeInView>
 
         {/* Prediction accuracy */}
-        <ChartCard
-          title="Prediction accuracy"
-          description="Brier score for predicted recall versus actual recall. Lower is better."
-          empty={prediction.length === 0}
-          emptyMessage="Review cards with existing memory state to measure prediction accuracy."
-          delay={0.12}
-        >
+        <FadeInView delay={0.12} y={0}>
+          <ChartCard
+            title="Prediction accuracy"
+            description="Brier score for predicted recall versus actual recall. Lower is better."
+            empty={prediction.length === 0}
+            emptyMessage="Review cards with existing memory state to measure prediction accuracy."
+            delay={0.12}
+          >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={prediction} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
               <CartesianGrid stroke={c.line} vertical={false} />
@@ -257,17 +260,18 @@ export function Analytics() {
                 dot={false}
               />
             </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
+          </ResponsiveContainer>          </ChartCard>
+        </FadeInView>
 
         {/* Review volume */}
-        <ChartCard
-          title="Review volume"
-          description="Reviews completed each day over the past 30 days."
-          empty={!hasReviews}
-          emptyMessage="Your daily review counts will appear here."
-          delay={0.18}
-        >
+        <FadeInView delay={0.18} y={0}>
+          <ChartCard
+            title="Review volume"
+            description="Reviews completed each day over the past 30 days."
+            empty={!hasReviews}
+            emptyMessage="Your daily review counts will appear here."
+            delay={0.18}
+          >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={volume} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
               <CartesianGrid stroke={c.line} vertical={false} />
@@ -280,17 +284,18 @@ export function Analytics() {
               />
               <Bar dataKey="reviews" fill={c.positive} radius={[4, 4, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+          </ResponsiveContainer>          </ChartCard>
+        </FadeInView>
 
         {/* Study time */}
-        <ChartCard
-          title="Study time"
-          description="Minutes spent studying each day over the past 30 days."
-          empty={!hasReviews}
-          emptyMessage="Study time will appear after your first review sessions."
-          delay={0.24}
-        >
+        <FadeInView delay={0.24} y={0}>
+          <ChartCard
+            title="Study time"
+            description="Minutes spent studying each day over the past 30 days."
+            empty={!hasReviews}
+            emptyMessage="Study time will appear after your first review sessions."
+            delay={0.24}
+          >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={studyTime} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
               <defs>
@@ -316,17 +321,18 @@ export function Analytics() {
                 dot={false}
               />
             </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
+          </ResponsiveContainer>          </ChartCard>
+        </FadeInView>
 
         {/* Retention by age */}
-        <ChartCard
-          title="Retention by age"
-          description="Recall rate grouped by how long each card has been in review."
-          empty={!hasReviews}
-          emptyMessage="Retention data will appear after your first reviews."
-          delay={0.30}
-        >
+        <FadeInView delay={0.30} y={0}>
+          <ChartCard
+            title="Retention by age"
+            description="Recall rate grouped by how long each card has been in review."
+            empty={!hasReviews}
+            emptyMessage="Retention data will appear after your first reviews."
+            delay={0.30}
+          >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={retention} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
               <CartesianGrid stroke={c.line} vertical={false} />
@@ -346,17 +352,18 @@ export function Analytics() {
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+          </ResponsiveContainer>          </ChartCard>
+        </FadeInView>
 
         {/* Leech count by deck */}
-        <ChartCard
-          title="Leech count by deck"
-          description="Number of leech cards in each deck."
-          empty={leeches.length === 0}
-          emptyMessage="No leeches found — great job keeping up with reviews!"
-          delay={0.36}
-        >
+        <FadeInView delay={0.36} y={0}>
+          <ChartCard
+            title="Leech count by deck"
+            description="Number of leech cards in each deck."
+            empty={leeches.length === 0}
+            emptyMessage="No leeches found — great job keeping up with reviews!"
+            delay={0.36}
+          >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={leeches} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
               <CartesianGrid stroke={c.line} vertical={false} />
@@ -369,17 +376,18 @@ export function Analytics() {
               />
               <Bar dataKey="count" fill={c.accent} radius={[4, 4, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+          </ResponsiveContainer>          </ChartCard>
+        </FadeInView>
 
         {/* Stability profile */}
-        <ChartCard
-          title="Stability profile"
-          description="How many cards fall into each stability range."
-          empty={cards.length === 0}
-          emptyMessage="Add cards to see their stability profile."
-          delay={0.42}
-        >
+        <FadeInView delay={0.42} y={0}>
+          <ChartCard
+            title="Stability profile"
+            description="How many cards fall into each stability range."
+            empty={cards.length === 0}
+            emptyMessage="Add cards to see their stability profile."
+            delay={0.42}
+          >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={profile} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
               <CartesianGrid stroke={c.line} vertical={false} />
@@ -396,8 +404,8 @@ export function Analytics() {
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
+          </ResponsiveContainer>          </ChartCard>
+        </FadeInView>
       </div>
     </div>
   );

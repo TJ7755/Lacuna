@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, useMotionValue, useSpring, LayoutGroup } from 'motion/react';
+import { AnimatePresence, m as motion, useMotionValue, useSpring, LayoutGroup } from 'motion/react';
 import { useMotionSpeed, speedMultiplier, type MotionSpeed } from '../state/motionSpeed';
 import { useTheme, type Theme } from '../state/ThemeContext';
 import { ACCENTS, useAccent } from '../state/AccentContext';
@@ -35,6 +35,7 @@ import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
+import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
 import { MIN_OPTIMISE_REVIEWS } from '../fsrs/optimise';
 import {
   requestPersistentStorage,
@@ -50,6 +51,7 @@ import {
 
 const SETTINGS_SECTIONS = [
   { id: 'settings-appearance', label: 'Appearance' },
+  { id: 'settings-sidebar', label: 'Sidebar' },
   { id: 'settings-dashboard', label: 'Dashboard' },
   { id: 'settings-study', label: 'Study & scheduling' },
   { id: 'settings-shortcuts', label: 'Keyboard shortcuts' },
@@ -60,7 +62,7 @@ const SETTINGS_SECTIONS = [
 
 export function Settings() {
   const [motionSpeed, setMotionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const motionMult = speedMultiplier(motionSpeed);
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
   const { scale, setScale } = useFontScale();
@@ -73,6 +75,7 @@ export function Settings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [persistence, setPersistence] = useState<StoragePersistenceState | null>(null);
   const shortcutBindings = useShortcutBindings();
+  const [sidebarSettings, setSidebarSettings] = useSidebarSettings();
   const [capturingAction, setCapturingAction] = useState<LearnAction | null>(null);
   const [activeSection, setActiveSection] = useState<string>(SETTINGS_SECTIONS[0].id);
 
@@ -325,6 +328,135 @@ export function Settings() {
         </div>
       </section>
 
+      {/* Sidebar */}
+      <section
+        id="settings-sidebar"
+        className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      >
+        <h2 className="mb-1 font-display text-xl">Sidebar</h2>
+        <p className="mb-5 text-sm text-ink-soft">
+          Control what information appears in the sidebar navigation and how compact it is.
+        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm">Show due card counts</div>
+            <p className="mt-1 text-sm text-ink-soft">
+              Display the number of cards ready for review next to each deck name in the
+              sidebar, so you can see which decks need attention at a glance.
+            </p>
+          </div>
+          <Toggle
+            checked={sidebarSettings.showDueCounts}
+            onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
+          />
+        </div>
+        <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
+          <div className="min-w-0">
+            <div className="text-sm">Show archived decks</div>
+            <p className="mt-1 text-sm text-ink-soft">
+              Include archived decks in the sidebar deck list. Archived decks are hidden
+              from the dashboard by default but can still be accessed via the sidebar.
+            </p>
+          </div>
+          <Toggle
+            checked={sidebarSettings.showArchived}
+            onChange={(checked) => setSidebarSettings({ showArchived: checked })}
+          />
+        </div>
+        <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
+          <div className="min-w-0">
+            <div className="text-sm">Compact mode</div>
+            <p className="mt-1 text-sm text-ink-soft">
+              Reduce padding and font sizes throughout the sidebar to fit more items on
+              screen at once.
+            </p>
+          </div>
+          <Toggle
+            checked={sidebarSettings.compactMode}
+            onChange={(checked) => setSidebarSettings({ compactMode: checked })}
+          />
+        </div>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <div className="mb-1 text-sm">Primary navigation</div>
+          <p className="mb-4 text-sm text-ink-soft">
+            Reorder or hide the main nav items in the sidebar. At least one item must remain visible.
+          </p>
+          <div className="flex flex-col gap-2">
+            {(() => {
+              const visibleCount = sidebarSettings.navItems.filter((n) => n.visible).length;
+              return sidebarSettings.navItems.map((item, index) => {
+                const canMoveUp = index > 0;
+                const canMoveDown = index < sidebarSettings.navItems.length - 1;
+                const canHide = item.visible ? visibleCount > 1 : true;
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 transition-colors"
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <button
+                      type="button"
+                      disabled={!canMoveUp}
+                      onClick={() => {
+                        const next = [...sidebarSettings.navItems];
+                        const [removed] = next.splice(index, 1);
+                        next.splice(index - 1, 0, removed);
+                        setSidebarSettings({ navItems: next });
+                      }}
+                      className={cn(
+                        'flex h-5 w-5 items-center justify-center rounded text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                        canMoveUp ? 'hover:bg-ink/5 hover:text-ink' : 'opacity-30',
+                      )}
+                      aria-label={`Move ${item.label} up`}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canMoveDown}
+                      onClick={() => {
+                        const next = [...sidebarSettings.navItems];
+                        const [removed] = next.splice(index, 1);
+                        next.splice(index + 1, 0, removed);
+                        setSidebarSettings({ navItems: next });
+                      }}
+                      className={cn(
+                        'flex h-5 w-5 items-center justify-center rounded text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                        canMoveDown ? 'hover:bg-ink/5 hover:text-ink' : 'opacity-30',
+                      )}
+                      aria-label={`Move ${item.label} down`}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                  </div>
+                  <span className="flex-1 text-sm text-ink">{item.label}</span>                    <Toggle
+                    checked={item.visible}
+                    disabled={!canHide}
+                    onChange={(checked) => {
+                      const next = sidebarSettings.navItems.map((n) =>
+                        n.id === item.id ? { ...n, visible: checked } : n,
+                      );
+                      setSidebarSettings({ navItems: next });
+                    }}
+                  />
+                </div>
+              );
+              });
+            })()}
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarSettings({ navItems: DEFAULT_NAV_ITEMS })}
+            >
+              Reset to defaults
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* Dashboard */}
       <section
         id="settings-dashboard"
@@ -573,7 +705,7 @@ export function Settings() {
               initial={{ opacity: 0, height: 0, marginTop: 0 }}
               animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
               exit={{ opacity: 0, height: 0, marginTop: 0 }}
-              transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.16 * motionMult, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden"
             >
               <div className="rounded-xl border border-line-strong bg-surface-raised p-5">
@@ -768,7 +900,7 @@ export function Settings() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 * m, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.4 * motionMult, ease: [0.16, 1, 0.3, 1] }}
             className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5 backdrop-blur-sm"
           >
             {/* Ambient top glow that subtly pulses */}
@@ -807,7 +939,7 @@ export function Settings() {
                       }
                     }}
                     index={index}
-                    m={m}
+                    m={motionMult}
                   />
                 ))}
               </nav>

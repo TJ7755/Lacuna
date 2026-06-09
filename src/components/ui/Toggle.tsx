@@ -1,4 +1,4 @@
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { cn } from './cn';
 
 interface ToggleProps {
@@ -6,20 +6,23 @@ interface ToggleProps {
   onChange: (checked: boolean) => void;
   label?: string;
   id?: string;
+  disabled?: boolean;
 }
 
-export function Toggle({ checked, onChange, label, id }: ToggleProps) {
+export function Toggle({ checked, onChange, label, id, disabled }: ToggleProps) {
   return (
-    <label htmlFor={id} className="inline-flex items-center gap-3 cursor-pointer select-none">
+    <label htmlFor={id} className={cn('inline-flex items-center gap-3 select-none', disabled ? 'cursor-not-allowed' : 'cursor-pointer')}>
       <button
         id={id}
         type="button"
         role="switch"
         aria-checked={checked}
-        onClick={() => onChange(!checked)}
+        disabled={disabled}
+        onClick={() => !disabled && onChange(!checked)}
         className={cn(
           'relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200',
           checked ? 'bg-accent' : 'bg-ink/20',
+          disabled && 'cursor-not-allowed opacity-60',
         )}
       >
         <motion.span

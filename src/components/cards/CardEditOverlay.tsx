@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { TagInput } from '../ui/TagInput';
@@ -63,10 +63,9 @@ export function CardEditOverlay({
     }
   }
 
-  return (
-    <motion.div
+  return (      <motion.div
       ref={trapRef}
-      className="fixed inset-0 z-50 flex flex-col"
+      className="fixed inset-0 z-50 flex flex-col will-change-transform-opacity"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

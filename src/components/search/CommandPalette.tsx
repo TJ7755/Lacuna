@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { useAllCards, useDecks } from '../../state/useData';
 import { plainPreview, searchCards } from '../../db/search';
 import { SearchIcon } from '../ui/icons';
@@ -108,7 +108,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -12, scale: 0.98 }}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-2xl shadow-black/20"
+            className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-2xl shadow-black/20 will-change-transform-opacity"
             onKeyDown={onKeyDown}
           >
             <div className="flex items-center gap-3 border-b border-line px-4 py-3">

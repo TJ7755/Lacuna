@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { useTheme } from '../../state/ThemeContext';
-import { useDecks } from '../../state/useData';
+import { useDecks, useDeckSummaries, useStudyStats } from '../../state/useData';
+import { useSidebarSettings } from '../../state/sidebarSettings';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import {
@@ -9,6 +10,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DashboardIcon,
+  FlameIcon,
   FlaskIcon,
   MoonIcon,
   PlayIcon,
@@ -29,12 +31,16 @@ function NavItem({
   label,
   collapsed,
   end,
+  streakBadge,
+  compact,
 }: {
   to: string;
   icon: React.ReactNode;
   label: string;
   collapsed: boolean;
   end?: boolean;
+  streakBadge?: React.ReactNode;
+  compact?: boolean;
 }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -45,7 +51,8 @@ function NavItem({
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
         cn(
-          'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150',
+          'group relative flex items-center gap-3 rounded-lg transition-all duration-150',
+          compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
           collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
           isActive
             ? 'bg-accent-soft text-accent'
@@ -64,16 +71,47 @@ function NavItem({
           )}
           <span className="shrink-0">{icon}</span>
           {!collapsed && <span className="truncate">{label}</span>}
+          {!collapsed && streakBadge}
         </>
       )}
     </NavLink>
   );
 }
 
+function StudyStreakBadge({ collapsed }: { collapsed: boolean }) {
+  const stats = useStudyStats();
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
+  const streak = stats?.streak ?? 0;
+  if (streak === 0) return null;
+  return (
+    <motion.span
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 20, delay: 0.3 * m }}
+      className={cn(
+        'ml-auto flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium tabular text-accent',
+        collapsed && 'hidden',
+      )}
+      title={`${streak} day streak`}
+    >
+      <FlameIcon width={12} height={12} />
+      {streak}
+    </motion.span>
+  );
+}
+
 export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const decks = useDecks();
+  const summaries = useDeckSummaries();
   const location = useLocation();
+  const [sidebarSettings] = useSidebarSettings();
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
+
+  // Filter archived decks unless the user explicitly wants them in the sidebar.
+  const visibleDecks = decks?.filter((d) => sidebarSettings.showArchived || !d.archived) ?? [];
 
   return (
     <aside
@@ -85,16 +123,23 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       {/* Brand */}
       <div
         className={cn(
-          'flex items-center gap-3 px-5 py-5',
+          'flex items-center gap-3',
+          sidebarSettings.compactMode ? 'px-4 py-3' : 'px-5 py-5',
           collapsed && 'justify-center px-0',
         )}
       >
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent text-accent-fg">
-          <FlaskIcon width={20} height={20} />
+        <span className={cn(
+          'grid shrink-0 place-items-center rounded-xl bg-accent text-accent-fg',
+          sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
+        )}>
+          <FlaskIcon width={sidebarSettings.compactMode ? 18 : 20} height={sidebarSettings.compactMode ? 18 : 20} />
         </span>
         {!collapsed && (
           <div className="leading-tight">
-            <div className="font-display text-xl tracking-tight">Lacuna</div>
+            <div className={cn(
+              'font-display tracking-tight',
+              sidebarSettings.compactMode ? 'text-lg' : 'text-xl',
+            )}>Lacuna</div>
             <div className="text-[11px] uppercase tracking-[0.18em] text-ink-faint">
               Spaced revision
             </div>
@@ -103,89 +148,138 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       </div>
 
       {/* Primary nav */}
-      <nav className="flex flex-col gap-1 px-3">
-        <NavItem
-          to="/"
-          end
-          icon={<DashboardIcon />}
-          label="Dashboard"
-          collapsed={collapsed}
-        />
-        <NavItem
-          to="/learn"
-          icon={<PlayIcon />}
-          label="Study today"
-          collapsed={collapsed}
-        />
-        <NavItem
-          to="/search"
-          icon={<SearchIcon />}
-          label="Search"
-          collapsed={collapsed}
-        />
-        <NavItem
-          to="/share"
-          icon={<ShareIcon />}
-          label="Share"
-          collapsed={collapsed}
-        />
-        <NavItem
-          to="/analytics"
-          icon={<ChartIcon />}
-          label="Analytics"
-          collapsed={collapsed}
-        />
-        <NavItem
-          to="/settings"
-          icon={<SettingsIcon />}
-          label="Settings"
-          collapsed={collapsed}
-        />
+      <nav className={cn(
+        'flex flex-col gap-1 px-3',
+        sidebarSettings.compactMode && 'gap-0',
+      )}>
+        {sidebarSettings.navItems
+          .filter((n) => n.visible)
+          .map((n) => (
+            <NavItem
+              key={n.id}
+              to={n.id === 'dashboard' ? '/' : `/${n.id}`}
+              end={n.id === 'dashboard'}
+              icon={
+                n.id === 'dashboard' ? <DashboardIcon /> :
+                n.id === 'learn' ? <PlayIcon /> :
+                n.id === 'search' ? <SearchIcon /> :
+                n.id === 'share' ? <ShareIcon /> :
+                n.id === 'analytics' ? <ChartIcon /> :
+                n.id === 'settings' ? <SettingsIcon /> :
+                <DashboardIcon />
+              }
+              label={n.label}
+              collapsed={collapsed}
+              compact={sidebarSettings.compactMode}
+              streakBadge={n.id === 'learn' ? <StudyStreakBadge collapsed={collapsed} /> : undefined}
+            />
+          ))}
       </nav>
 
       {/* Deck list */}
-      <div className="mt-6 flex min-h-0 flex-1 flex-col px-3">
+      <div className={cn(
+        'flex min-h-0 flex-1 flex-col px-3',
+        sidebarSettings.compactMode ? 'mt-3' : 'mt-6',
+      )}>
         {!collapsed && (
-          <div className="px-3 pb-2 text-[11px] uppercase tracking-[0.16em] text-ink-faint">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 * m }}
+            className={cn(
+              'px-3 pb-2 uppercase tracking-[0.16em] text-ink-faint',
+              sidebarSettings.compactMode ? 'text-[10px]' : 'text-[11px]',
+            )}
+          >
             Decks
-          </div>
+          </motion.div>
         )}
-        <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pb-2">
+        <div className={cn(
+          'flex min-h-0 flex-1 flex-col overflow-y-auto pb-2',
+          sidebarSettings.compactMode ? 'gap-0' : 'gap-0.5',
+        )}>
           <AnimatePresence initial={false}>
-            {decks?.map((deck) => {
+            {visibleDecks.map((deck, index) => {
               // Stay highlighted for the deck itself and any of its sub-routes
               // (cards, new card, deck settings, learn), not just the exact page.
               const base = `/deck/${deck.id}`;
               const active =
                 location.pathname === base ||
                 location.pathname.startsWith(`${base}/`);
+              const eligible = summaries?.[deck.id]?.eligible ?? 0;
               return (
-                <NavLink
+                <motion.div
                   key={deck.id}
-                  to={`/deck/${deck.id}`}
-                  title={collapsed ? deck.name : undefined}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150',
-                    collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-                    active
-                      ? 'bg-accent-soft text-accent'
-                      : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-                  )}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{
+                    duration: 0.18 * m,
+                    delay: Math.min(index * 0.02, 0.15) * m,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  layout
                 >
-                  <span
+                  <NavLink
+                    to={`/deck/${deck.id}`}
+                    title={collapsed ? deck.name : undefined}
                     className={cn(
-                      'h-2.5 w-2.5 shrink-0 rounded-full border',
-                      active ? 'border-accent bg-accent' : 'border-transparent bg-line-strong',
+                      'flex items-center gap-3 rounded-lg transition-all duration-150',
+                      sidebarSettings.compactMode
+                        ? 'px-3 py-1.5 text-xs'
+                        : 'px-3 py-2 text-sm',
+                      collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
+                      active
+                        ? 'bg-accent-soft text-accent'
+                        : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
                     )}
-                    style={deck.colour ? { backgroundColor: deck.colour } : undefined}
-                  />
-                  {!collapsed && <span className="truncate">{deck.name}</span>}
-                </NavLink>
+                  >
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-full border',
+                        sidebarSettings.compactMode ? 'h-2 w-2' : 'h-2.5 w-2.5',
+                        active ? 'border-accent bg-accent' : 'border-transparent bg-line-strong',
+                      )}
+                      style={deck.colour ? { backgroundColor: deck.colour } : undefined}
+                    />
+                    {!collapsed && (
+                      <span className="flex flex-1 items-center gap-2">
+                        <span className="truncate">{deck.name}</span>
+                        {sidebarSettings.showDueCounts && eligible > 0 && (
+                          <span className={cn(
+                            'ml-auto shrink-0 rounded-full bg-accent/10 px-1.5 py-0 text-[10px] font-medium tabular text-accent',
+                            sidebarSettings.compactMode && 'text-[9px]',
+                          )}>
+                            {eligible}
+                          </span>
+                        )}
+                        {deck.archived && (
+                          <span className={cn(
+                            'ml-1 shrink-0 rounded border border-ink/10 px-1 text-[9px] text-ink-faint',
+                            sidebarSettings.compactMode && 'hidden',
+                          )}>
+                            Archived
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </NavLink>
+                </motion.div>
               );
             })}
           </AnimatePresence>
-          {decks && decks.length === 0 && !collapsed && (
-            <p className="px-3 py-2 text-sm text-ink-faint">No decks yet.</p>
+          {visibleDecks.length === 0 && !collapsed && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 * m }}
+              className={cn(
+                'px-3 py-2 text-ink-faint',
+                sidebarSettings.compactMode ? 'text-xs' : 'text-sm',
+              )}
+            >
+              {sidebarSettings.showArchived ? 'No decks yet.' : 'No active decks.'}
+            </motion.p>
           )}
         </div>
       </div>
@@ -193,7 +287,8 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       {/* Footer: theme + collapse */}
       <div
         className={cn(
-          'flex items-center gap-2 border-t border-line px-3 py-3',
+          'flex items-center gap-2 border-t border-line px-3',
+          sidebarSettings.compactMode ? 'py-2' : 'py-3',
           collapsed && 'flex-col',
         )}
       >
@@ -202,7 +297,10 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           onClick={toggleTheme}
           title="Toggle colour theme"
           aria-label="Toggle colour theme"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+          className={cn(
+            'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink',
+            sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
+          )}
         >
           {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
@@ -216,7 +314,10 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           onClick={onToggleCollapsed}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+          className={cn(
+            'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink',
+            sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
+          )}
         >
           {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
         </button>

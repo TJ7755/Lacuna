@@ -4,7 +4,7 @@
 // creation) and the Share page (importing shared content).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { m as motion, AnimatePresence } from 'motion/react';
 import { Button } from '../ui/Button';
 import { UploadIcon, DownloadIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
@@ -395,7 +395,7 @@ export function UnifiedImportPanel({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
+                  transition={{ duration: 0.15 * m }}
                   className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl border-2 border-dashed border-accent bg-accent/5 backdrop-blur-sm"
                 >
                   <motion.div

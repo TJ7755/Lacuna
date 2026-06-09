@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { useAllCards, useDecks } from '../state/useData';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -240,14 +240,17 @@ export function SharePage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              {decks.map((deck) => {
+              {decks.map((deck, index) => {
                 const on = selected.has(deck.id);
                 return (
-                  <button
+                  <motion.button
                     key={deck.id}
                     type="button"
                     onClick={() => toggle(deck.id)}
                     aria-pressed={on}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.16 * m, delay: Math.min(index * 0.03, 0.15) * m }}
                     className={cn(
                       'flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors',
                       on
@@ -279,7 +282,7 @@ export function SharePage() {
                     <span className="shrink-0 text-xs text-ink-faint">
                       {cardCounts.get(deck.id) ?? 0} cards
                     </span>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>

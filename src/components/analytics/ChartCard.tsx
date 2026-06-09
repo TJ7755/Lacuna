@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 
 /** A titled container giving every chart a consistent frame and empty state. */
@@ -22,12 +22,7 @@ export function ChartCard({
   const m = speedMultiplier(motionSpeed);
   const d = delay ?? 0;
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28 * m, delay: d * m, ease: [0.25, 0.1, 0.25, 1] }}
-      className="rounded-2xl border border-line bg-surface p-5"
-    >
+    <section className="rounded-2xl border border-line bg-surface p-5">
       <header className="mb-4">
         <h3 className="font-display text-xl tracking-tight">{title}</h3>
         {description && <p className="mt-1 text-sm text-ink-soft">{description}</p>}
@@ -51,6 +46,6 @@ export function ChartCard({
           {children}
         </motion.div>
       )}
-    </motion.section>
+    </section>
   );
 }

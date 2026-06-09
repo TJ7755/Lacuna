@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { useAllCards, useDecks } from '../state/useData';
 import { plainPreview, searchCards, type CardFilter } from '../db/search';
 import { cn } from '../components/ui/cn';
@@ -68,14 +68,19 @@ export function SearchPage() {
 
       {/* Smart-view filter chips: narrow the whole collection without a text query. */}
       <div className="mb-6 flex flex-wrap items-center gap-1.5">
-        {FILTER_CHIPS.map((chip) => {
+        {FILTER_CHIPS.map((chip, i) => {
           const on = filters.has(chip.value);
           return (
-            <button
+            <motion.button
               key={chip.value}
               type="button"
               onClick={() => toggleFilter(chip.value)}
               aria-pressed={on}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.14 * m, delay: i * 0.02 * m }}
+              whileHover={{ y: -1, transition: { duration: 0.1 * m } }}
+              whileTap={{ scale: 0.95 }}
               className={cn(
                 'rounded-full border px-3 py-1 text-xs transition-colors',
                 on
@@ -84,17 +89,20 @@ export function SearchPage() {
               )}
             >
               {chip.label}
-            </button>
+            </motion.button>
           );
         })}
         {filters.size > 0 && (
-          <button
+          <motion.button
             type="button"
             onClick={() => setFilters(new Set())}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.14 * m }}
             className="rounded-full px-2 py-1 text-xs text-ink-faint transition-colors hover:text-ink"
           >
             Clear
-          </button>
+          </motion.button>
         )}
       </div>
 

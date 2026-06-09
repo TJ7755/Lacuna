@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { useDashboardData } from '../state/useData';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { StudySignals } from '../components/dashboard/StudySignals';
@@ -190,7 +190,7 @@ export function Dashboard() {
             <h2 className="font-display text-xl">Study today</h2>
             <p className="text-sm leading-relaxed text-balance text-ink-soft">
               {totalEligible} card{totalEligible === 1 ? '' : 's'} ready across all your
-              decks, ordered by what moves you furthest before each exam.
+              decks, ordered by what moves you furthest before each examotion.
             </p>
           </div>
           <Button variant="primary" size="lg" className="w-full sm:w-auto" onClick={() => navigate('/learn')}>
@@ -423,38 +423,67 @@ export function Dashboard() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {activeDecks.slice(0, 3).map((deck) => (
-              <DeckCard
+            {activeDecks.slice(0, 3).map((deck, index) => (
+              <motion.div
                 key={deck.id}
-                deck={deck}
-                summary={summaries?.[deck.id]}
-                selectMode={selectMode}
-                selected={selected.has(deck.id)}
-                onToggleSelected={() => toggleSelected(deck.id)}
-                motionMultiplier={m}
-              />
+                layout
+                className="h-full"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.24 * m,
+                  delay: Math.min(index * 0.04, 0.2) * m,
+                  layout: { duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] },
+                }}
+              >
+                <DeckCard
+                  deck={deck}
+                  summary={summaries?.[deck.id]}
+                  selectMode={selectMode}
+                  selected={selected.has(deck.id)}
+                  onToggleSelected={() => toggleSelected(deck.id)}
+                  motionMultiplier={m}
+                />
+              </motion.div>
             ))}
           </div>
 
           {archivedDecks.length > 0 && (
-            <section className="mt-10">
+            <motion.section
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24 * m, delay: 0.1 * m, ease: [0.16, 1, 0.3, 1] }}
+              className="mt-10"
+            >
               <h2 className="mb-4 text-sm uppercase tracking-[0.18em] text-ink-faint">
                 Archived
               </h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {archivedDecks.map((deck) => (
-                  <DeckCard
+                {archivedDecks.map((deck, index) => (
+                  <motion.div
                     key={deck.id}
-                    deck={deck}
-                    summary={summaries?.[deck.id]}
-                    selectMode={selectMode}
-                    selected={selected.has(deck.id)}
-                    onToggleSelected={() => toggleSelected(deck.id)}
-                    motionMultiplier={m}
-                  />
+                    layout
+                    className="h-full"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: 0.24 * m,
+                      delay: Math.min(index * 0.04, 0.2) * m,
+                      layout: { duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] },
+                    }}
+                  >
+                    <DeckCard
+                      deck={deck}
+                      summary={summaries?.[deck.id]}
+                      selectMode={selectMode}
+                      selected={selected.has(deck.id)}
+                      onToggleSelected={() => toggleSelected(deck.id)}
+                      motionMultiplier={m}
+                    />
+                  </motion.div>
                 ))}
               </div>
-            </section>
+            </motion.section>
           )}
         </>
       )}
@@ -494,11 +523,8 @@ function DeckCard({
 
   const body = (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4, transition: { duration: 0.12 * m } }}
       whileTap={{ scale: 0.98, transition: { duration: 0.08 * m } }}
-      transition={{ duration: 0.24 * m }}
       className={cn(
         'group relative flex h-full flex-col overflow-hidden rounded-2xl border bg-surface p-5 transition-colors duration-200',
         selected
@@ -562,7 +588,7 @@ function DeckCard({
           : undefined
       }
       aria-pressed={selectMode ? selected : undefined}
-      className="text-left"
+      className="block h-full text-left"
     >
       {body}
     </Link>
@@ -639,7 +665,7 @@ function EmptyState({ onCreate, motionMultiplier }: { onCreate: () => void; moti
       </div>
       <h2 className="mb-2 font-display text-2xl">No decks yet</h2>
       <p className="mb-6 max-w-sm text-ink-soft">
-        Create your first deck to begin building a revision schedule tuned to your exam.
+        Create your first deck to begin building a revision schedule tuned to your examotion.
       </p>
       <Button variant="primary" onClick={onCreate}>
         <PlusIcon width={18} height={18} />

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { useCard, useCards, useDeck } from '../state/useData';
 import { Button } from '../components/ui/Button';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
@@ -39,7 +39,7 @@ export function CardEditor() {
   const [loaded, setLoaded] = useState(false);
 
   // Re-arm the loaded latch whenever the card being edited changes so direct
-  // navigation between cards (same route, different param) re-seeds the form.
+  // navigation between cards (same route, different param) re-seeds the formotion.
   useEffect(() => {
     setLoaded(false);
   }, [cardId]);
@@ -62,6 +62,9 @@ export function CardEditor() {
   // Brief "Saved" flourish shown in the action bar after each quick-capture save.
   const [showSaved, setShowSaved] = useState(false);
   const savedTimer = useRef<number>();
+  const [shakeField, setShakeField] = useState<string | null>(null);
+  const [shakeNonce, setShakeNonce] = useState(0);
+  const shakeTimer = useRef<number>();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   function flashSaved() {
@@ -135,7 +138,16 @@ export function CardEditor() {
   const canSave = frontValid && backValid && clozeValid;
 
   async function handleSave(andAnother = false) {
-    if (!canSave || !deckId) return;
+    if (!canSave || !deckId) {
+      // Shake the first invalid field to give the user tactile feedback on why save is blocked.
+      if (!frontValid) setShakeField('front');
+      else if (!backValid) setShakeField('back');
+      else if (!clozeValid) setShakeField('cloze');
+      setShakeNonce((n) => n + 1);
+      window.clearTimeout(shakeTimer.current);
+      shakeTimer.current = window.setTimeout(() => setShakeField(null), 500);
+      return;
+    }
     const backValue = isCloze ? '' : back;
     if (editing && card) {
       await updateCard(card.id, { type, front, back: backValue, tags });
@@ -240,20 +252,22 @@ export function CardEditor() {
 
           {isCloze ? (
             <>
-              <MarkdownEditor
-                key={`cloze-${formKey}`}
-                inputRef={frontRef}
-                autoFocus={!editing}
-                label="Text (use the Cloze button to hide answers)"
-                value={front}
-                onChange={setFront}
-                minRows={8}
-                allowCloze
-                clozePreview={showBackCloze ? 'back' : 'front'}
-                placeholder="The chemical symbol for water is {{c1::H2O}}."
-                onError={(m) => notify(m, 'negative')}
-                onTabForward={focusSaveButton}
-              />
+              <div key={`front-shake-${shakeField === 'front' || shakeField === 'cloze' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'front' || shakeField === 'cloze' ? 'shake-field' : '')}>
+                <MarkdownEditor
+                  key={`cloze-${formKey}`}
+                  inputRef={frontRef}
+                  autoFocus={!editing}
+                  label="Text (use the Cloze button to hide answers)"
+                  value={front}
+                  onChange={setFront}
+                  minRows={8}
+                  allowCloze
+                  clozePreview={showBackCloze ? 'back' : 'front'}
+                  placeholder="The chemical symbol for water is {{c1::H2O}}."
+                  onError={(m) => notify(m, 'negative')}
+                  onTabForward={focusSaveButton}
+                />
+              </div>
               <label className="flex items-center gap-2 text-sm text-ink-soft">
                 <input
                   type="checkbox"
@@ -272,29 +286,33 @@ export function CardEditor() {
             </>
           ) : (
             <>
-              <MarkdownEditor
-                key={`front-${formKey}`}
-                inputRef={frontRef}
-                autoFocus={!editing}
-                label="Front"
-                value={front}
-                onChange={setFront}
-                minRows={8}
-                placeholder="Question or prompt. Markdown, maths and images are supported."
-                onError={(m) => notify(m, 'negative')}
-                onTabForward={() => backRef.current?.focus()}
-              />
-              <MarkdownEditor
-                inputRef={backRef}
-                label="Back"
-                value={back}
-                onChange={setBack}
-                minRows={8}
-                placeholder="Answer. Markdown, maths and images are supported."
-                onError={(m) => notify(m, 'negative')}
-                onTabForward={focusSaveButton}
-                onTabBackward={() => frontRef.current?.focus()}
-              />
+              <div key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'front' ? 'shake-field' : '')}>
+                <MarkdownEditor
+                  key={`front-${formKey}`}
+                  inputRef={frontRef}
+                  autoFocus={!editing}
+                  label="Front"
+                  value={front}
+                  onChange={setFront}
+                  minRows={8}
+                  placeholder="Question or prompt. Markdown, maths and images are supported."
+                  onError={(m) => notify(m, 'negative')}
+                  onTabForward={() => backRef.current?.focus()}
+                />
+              </div>
+              <div key={`back-shake-${shakeField === 'back' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'back' ? 'shake-field' : '')}>
+                <MarkdownEditor
+                  inputRef={backRef}
+                  label="Back"
+                  value={back}
+                  onChange={setBack}
+                  minRows={8}
+                  placeholder="Answer. Markdown, maths and images are supported."
+                  onError={(m) => notify(m, 'negative')}
+                  onTabForward={focusSaveButton}
+                  onTabBackward={() => frontRef.current?.focus()}
+                />
+              </div>
             </>
           )}
 
@@ -315,7 +333,7 @@ export function CardEditor() {
 
       {/* Sticky action bar — fades into the page rather than sitting on a hard white slab.
           The wrapper ignores pointer events so the transparent fade never blocks the
-          content scrolling beneath it; the button row re-enables them. */}
+          content scrolling beneath it; the button row re-enables themotion. */}
       <div className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10">
         <div className="pointer-events-auto flex flex-wrap items-center gap-3">
           {!editing && !isCloze && (

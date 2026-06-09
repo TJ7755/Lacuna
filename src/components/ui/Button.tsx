@@ -1,5 +1,5 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
-import { motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { cn } from './cn';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';

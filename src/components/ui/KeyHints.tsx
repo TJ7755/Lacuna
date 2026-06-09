@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { SHORTCUT_GROUPS } from '../../state/shortcuts';
 import { useShortcutBindings, formatBinding } from '../../state/shortcutBindings';
 import { CloseIcon } from './icons';
@@ -78,7 +78,7 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-            className="relative z-10 w-full max-w-lg overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
+            className="relative z-10 w-full max-w-lg overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20 will-change-transform-opacity"
           >
             <header className="flex items-center justify-between border-b border-line px-6 py-4">
               <h2 className="font-display text-xl">Keyboard shortcuts</h2>
