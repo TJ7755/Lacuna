@@ -16,6 +16,8 @@ import {
   exportCardsMarkdownTable,
   exportCardsJson,
   downloadTextFile,
+  exportReviewHistoryCsv,
+  exportReviewHistoryJson,
 } from '../../db/export';
 import { downloadBackup } from '../../db/portability';
 import { buildShareCode } from '../../db/share';
@@ -31,7 +33,9 @@ type ExportFormat =
   | 'markdown-table'
   | 'json-array'
   | 'plain-text'
-  | 'share-code';
+  | 'share-code'
+  | 'review-history-csv'
+  | 'review-history-json';
 
 interface ExportFormatDef {
   id: ExportFormat;
@@ -98,6 +102,22 @@ const EXPORT_FORMATS: ExportFormatDef[] = [
     extension: 'txt',
     mimeType: 'text/plain',
     icon: <ShareIcon width={18} height={18} />,
+  },
+  {
+    id: 'review-history-csv',
+    label: 'Review history (CSV)',
+    description: 'Every review log with timestamps, grades, and response times.',
+    extension: 'csv',
+    mimeType: 'text/csv',
+    icon: <FileTextIcon width={18} height={18} />,
+  },
+  {
+    id: 'review-history-json',
+    label: 'Review history (JSON)',
+    description: 'Review history as a JSON array of objects.',
+    extension: 'json',
+    mimeType: 'application/json',
+    icon: <FileTextIcon width={18} height={18} />,
   },
 ];
 
@@ -171,6 +191,16 @@ export function UnifiedExportPanel({
           if (!deckIds || deckIds.length === 0) break;
           const code = await buildShareCode(deckIds);
           setShareCode(code);
+          break;
+        }
+        case 'review-history-csv': {
+          const csv = await exportReviewHistoryCsv();
+          downloadTextFile(csv, `lacuna-review-history-${stamp}.csv`, format.mimeType);
+          break;
+        }
+        case 'review-history-json': {
+          const json = await exportReviewHistoryJson();
+          downloadTextFile(json, `lacuna-review-history-${stamp}.json`, format.mimeType);
           break;
         }
       }

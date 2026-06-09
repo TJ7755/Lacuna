@@ -181,3 +181,83 @@ export async function exportCardsJson(): Promise<string> {
   }));
   return JSON.stringify(items, null, 2);
 }
+
+// ---------------------------------------------------------------------------
+// Review history export
+// ---------------------------------------------------------------------------
+
+const REVIEW_HISTORY_HEADERS = [
+  'timestamp',
+  'deck_name',
+  'card_front',
+  'grade',
+  'response_time_sec',
+  'distracted',
+  'stability_before',
+  'stability_after',
+  'difficulty_before',
+  'difficulty_after',
+  'retrievability_at_review',
+];
+
+function gradeLabel(grade: number): string {
+  switch (grade) {
+    case 1: return 'Again';
+    case 2: return 'Hard';
+    case 3: return 'Good';
+    case 4: return 'Easy';
+    default: return String(grade);
+  }
+}
+
+/** Export every review log across all cards as a CSV. */
+export async function exportReviewHistoryCsv(): Promise<string> {
+  const { deckMap, cards } = await fetchDecksAndCards();
+  const rows: string[] = [formatRow(REVIEW_HISTORY_HEADERS, ',')];
+  for (const card of cards) {
+    const deckName = deckMap.get(card.deckId) ?? '';
+    for (const log of card.history) {
+      const front = card.front.slice(0, 120).replace(/\n/g, ' ');
+      const row = [
+        new Date(log.timestamp).toISOString(),
+        deckName,
+        front,
+        gradeLabel(log.grade),
+        String(log.responseTimeSec),
+        log.distracted ? 'yes' : 'no',
+        log.stabilityBefore?.toString() ?? '',
+        String(log.stabilityAfter),
+        log.difficultyBefore?.toString() ?? '',
+        String(log.difficultyAfter),
+        log.retrievabilityAtReview?.toString() ?? '',
+      ];
+      rows.push(formatRow(row, ','));
+    }
+  }
+  return rows.join('\r\n');
+}
+
+/** Export review history as a JSON array of objects. */
+export async function exportReviewHistoryJson(): Promise<string> {
+  const { deckMap, cards } = await fetchDecksAndCards();
+  const items: unknown[] = [];
+  for (const card of cards) {
+    const deckName = deckMap.get(card.deckId) ?? '';
+    for (const log of card.history) {
+      items.push({
+        timestamp: log.timestamp,
+        deck: deckName,
+        cardFront: card.front.slice(0, 120),
+        grade: gradeLabel(log.grade),
+        responseTimeSec: log.responseTimeSec,
+        distracted: log.distracted,
+        stabilityBefore: log.stabilityBefore,
+        stabilityAfter: log.stabilityAfter,
+        difficultyBefore: log.difficultyBefore,
+        difficultyAfter: log.difficultyAfter,
+        retrievabilityAtReview: log.retrievabilityAtReview,
+      });
+    }
+  }
+  return JSON.stringify(items, null, 2);
+}

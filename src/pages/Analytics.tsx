@@ -29,6 +29,7 @@ import {
   trajectorySeries,
 } from '../components/analytics/prepare';
 import { predictionAccuracySeries } from '../fsrs/calibration';
+import { DeckComparison } from '../components/analytics/DeckComparison';
 
 function AnalyticsSkeleton() {
   return (
@@ -126,8 +127,13 @@ export function Analytics() {
       </m.header>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Forecast */}
+        {/* Deck comparison */}
         <FadeInView className="lg:col-span-2" delay={0} y={0}>
+          <DeckComparison decks={decks ?? []} cards={cards} />
+        </FadeInView>
+
+        {/* Forecast */}
+        <FadeInView className="lg:col-span-2" delay={0.04} y={0}>
           <ChartCard
             title="Forecast"
             description="Cards due and new cards scheduled per day for the next 30 days."

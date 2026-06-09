@@ -18,6 +18,7 @@ import { ensurePreMigrationSnapshot, openDatabase } from './db/schema';
 import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
+import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
 
 // Heavier routes (Recharts, KaTeX, the markdown editor) are split into their own
 // chunks so the dashboard loads quickly. Settings is intentionally eager: it is tiny
@@ -114,6 +115,7 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const initStarted = useRef(false);
+  useStorageQuotaWarning();
 
   useEffect(() => {
     if (initStarted.current) return;
