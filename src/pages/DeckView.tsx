@@ -11,6 +11,7 @@ import { Button } from '../components/ui/Button';
 import { Toggle } from '../components/ui/Toggle';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { CardList } from '../components/cards/CardList';
+import { DeckSearchOverlay } from '../components/cards/DeckSearchOverlay';
 import { DeckAnalytics } from '../components/analytics/DeckAnalytics';
 import { archiveDeck, unarchiveDeck, updateDeck } from '../db/repository';
 import {
@@ -63,6 +64,7 @@ export function DeckView() {
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [sortMode, setSortMode] = useState<'due' | 'created' | 'stability' | 'alpha'>('due');
   const [filters, setFilters] = useState<Set<CardFilter>>(new Set());
+  const [showFindOverlay, setShowFindOverlay] = useState(false);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
@@ -86,7 +88,14 @@ export function DeckView() {
   // never hijacks the tag filter or the exam-date input.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.repeat || e.altKey) return;
+      // Ctrl+F / Cmd+F opens the find-and-replace overlay.
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        setShowFindOverlay(true);
+        return;
+      }
+      if (e.metaKey || e.ctrlKey) return;
       const el = e.target as HTMLElement | null;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable))
         return;
@@ -345,6 +354,16 @@ export function DeckView() {
       >
         {tab === 'cards' ? (
           <>
+            {/* Find-and-replace overlay */}
+            <AnimatePresence>
+              {showFindOverlay && deck && cards && (
+                <DeckSearchOverlay
+                  cards={cards}
+                  onClose={() => setShowFindOverlay(false)}
+                />
+              )}
+            </AnimatePresence>
+
             {/* Search bar + sort + filters */}
             <div className="mb-4 flex flex-col gap-3">
               <div className="flex items-center gap-3 rounded-xl border border-line-strong bg-surface px-4 py-2.5 focus-within:border-accent">

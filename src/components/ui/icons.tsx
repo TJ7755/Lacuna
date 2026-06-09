@@ -278,3 +278,9 @@ export const ChevronDownIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const ReplaceIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M14 4h6v6M10 20H4v-6M4 14l16-10" />
+  </Icon>
+);
+
