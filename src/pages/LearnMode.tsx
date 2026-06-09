@@ -106,6 +106,7 @@ export function LearnMode() {
   // tactile reward that makes answering feel responsive. Cleared on a short timer and
   // never delays the next card.
   const [feedback, setFeedback] = useState<'left' | 'right' | null>(null);
+  const [feedbackSource, setFeedbackSource] = useState<'touch' | 'keyboard' | null>(null);
   const feedbackTimer = useRef<number | null>(null);
 
   // Session-only mutable state held in refs so it never triggers re-renders mid-card
@@ -224,10 +225,10 @@ export function LearnMode() {
     // Reset all session refs so navigating deck -> deck does not leave stale state.
     cooldowns.current = new Map();
     events.current = [];
-    lastAnswer.current = null;
-    if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current);
-    feedbackTimer.current = null;
-    setFeedback(null);
+    lastAnswer.current = null;      if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current);
+      feedbackTimer.current = null;
+      setFeedback(null);
+      setFeedbackSource(null);
     submitting.current = false;
     progressBefore.current = 0;
     perfRef.current = new Map();
@@ -337,7 +338,7 @@ export function LearnMode() {
   }, [distraction]);
 
   const answer = useCallback(
-    async (input: boolean | Grade) => {
+    async (input: boolean | Grade, source: 'touch' | 'keyboard' = 'keyboard') => {
       // Acquire the guard first so no subsequent call can slip through while we
       // validate phase / current / ctx. Clear it on every early-return path.
       if (submitting.current) return;
@@ -361,8 +362,9 @@ export function LearnMode() {
       // Fire the feedback flash immediately, independent of the (async) DB write and
       // of the next card mounting, so the reward always lands on the keypress.
       if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current);
+      setFeedbackSource(source);
       setFeedback(correct ? 'right' : 'left');
-      feedbackTimer.current = window.setTimeout(() => setFeedback(null), Math.round(400 * m));
+      feedbackTimer.current = window.setTimeout(() => { setFeedback(null); setFeedbackSource(null); }, Math.round(400 * m));
 
       const t = responseTime.current;
       const distracted = distraction.wasDistracted();
@@ -710,20 +712,37 @@ export function LearnMode() {
       <AnimatePresence>
         {feedback && (
           <>
-            <motion.div
-              key={`${feedback}-glow`}
-              aria-hidden
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 * m }}
-              className={
-                'pointer-events-none fixed inset-y-0 z-30 w-56 ' +
-                (feedback === 'right'
-                  ? 'right-0 bg-gradient-to-l from-positive/25 to-transparent'
-                  : 'left-0 bg-gradient-to-r from-negative/20 to-transparent')
-              }
-            />
+            {feedbackSource === 'touch' ? (
+              <motion.div
+                key={`${feedback}-glow`}
+                aria-hidden
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 * m }}
+                className={
+                  'pointer-events-none fixed inset-y-0 z-30 w-56 ' +
+                  (feedback === 'right'
+                    ? 'right-0 bg-gradient-to-l from-positive/25 to-transparent'
+                    : 'left-0 bg-gradient-to-r from-negative/20 to-transparent')
+                }
+              />
+            ) : (
+              <motion.div
+                key={`${feedback}-glow`}
+                aria-hidden
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 * m }}
+                className={
+                  'pointer-events-none fixed inset-x-0 bottom-0 z-30 h-40 ' +
+                  (feedback === 'right'
+                    ? 'bg-gradient-to-t from-positive/25 to-transparent'
+                    : 'bg-gradient-to-t from-negative/20 to-transparent')
+                }
+              />
+            )}
             <motion.div
               key={`${feedback}-ring`}
               aria-hidden
@@ -922,23 +941,23 @@ export function LearnMode() {
                     }}
                   >
                     <motion.div variants={buttonReveal(m)}>
-                      <Button variant="danger" size="lg" className="w-full" onClick={() => answer(1)}>
+                      <Button variant="danger" size="lg" className="w-full" onClick={() => answer(1, 'keyboard')}>
                         <CloseIcon width={18} height={18} />
                         Again
                       </Button>
                     </motion.div>
                     <motion.div variants={buttonReveal(m)}>
-                      <Button variant="secondary" size="lg" className="w-full" onClick={() => answer(2)}>
+                      <Button variant="secondary" size="lg" className="w-full" onClick={() => answer(2, 'keyboard')}>
                         Hard
                       </Button>
                     </motion.div>
                     <motion.div variants={buttonReveal(m)}>
-                      <Button variant="secondary" size="lg" className="w-full" onClick={() => answer(3)}>
+                      <Button variant="secondary" size="lg" className="w-full" onClick={() => answer(3, 'keyboard')}>
                         Good
                       </Button>
                     </motion.div>
                     <motion.div variants={buttonReveal(m)}>
-                      <Button variant="primary" size="lg" className="w-full" onClick={() => answer(4)}>
+                      <Button variant="primary" size="lg" className="w-full" onClick={() => answer(4, 'keyboard')}>
                         <CheckIcon width={18} height={18} />
                         Easy
                       </Button>
@@ -955,13 +974,13 @@ export function LearnMode() {
                     }}
                   >
                     <motion.div variants={buttonReveal(m)} className="flex-1">
-                      <Button variant="danger" size="lg" className="w-full" onClick={() => answer(false)}>
+                      <Button variant="danger" size="lg" className="w-full" onClick={() => answer(false, 'keyboard')}>
                         <CloseIcon width={18} height={18} />
                         No
                       </Button>
                     </motion.div>
                     <motion.div variants={buttonReveal(m)} className="flex-1">
-                      <Button variant="primary" size="lg" className="w-full" onClick={() => answer(true)}>
+                      <Button variant="primary" size="lg" className="w-full" onClick={() => answer(true, 'keyboard')}>
                         <CheckIcon width={18} height={18} />
                         Yes
                       </Button>
@@ -1094,12 +1113,13 @@ function FlipCard({
   phase: Phase;
   onReveal: () => void;
   onHide: () => void;
-  onAnswer: (input: boolean | Grade) => void;
+  onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
 }) {
   const m = speedMultiplier(motionSpeed);
   const isCloze = card.type === 'cloze';
   const [swipe, setSwipe] = useState({ x: 0, committed: false, hint: null as 'left' | 'right' | null });
   const swipeRef = useRef({ x: 0, startX: 0, startY: 0, dragging: false, isSwipe: false });
+  const selectionLenRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const swipeThreshold = 80;
   const maxDrag = 180;
@@ -1113,6 +1133,7 @@ function FlipCard({
       dragging: true,
       isSwipe: false,
     };
+    selectionLenRef.current = window.getSelection()?.toString().length ?? 0;
     containerRef.current?.setPointerCapture?.(e.pointerId);
     setSwipe({ x: 0, committed: false, hint: null });
   }, []);
@@ -1122,8 +1143,11 @@ function FlipCard({
     const dx = e.clientX - swipeRef.current.startX;
     const dy = e.clientY - swipeRef.current.startY;
     // Decide whether this is a horizontal swipe or a vertical scroll.
+    // Swipe-to-grade is only enabled during the answer phase, matching keyboard shortcuts.
     if (!swipeRef.current.isSwipe && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
-      swipeRef.current.isSwipe = true;
+      if (phase === 'answer') {
+        swipeRef.current.isSwipe = true;
+      }
     }
     if (!swipeRef.current.isSwipe) return;
     // Clamp the visual drag so the card never flies off-screen.
@@ -1131,7 +1155,7 @@ function FlipCard({
     swipeRef.current.x = clamped;
     const hint: 'left' | 'right' | null = clamped < -swipeThreshold / 2 ? 'left' : clamped > swipeThreshold / 2 ? 'right' : null;
     setSwipe({ x: clamped, committed: false, hint });
-  }, []);
+  }, [phase]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!swipeRef.current.dragging) return;
@@ -1145,7 +1169,7 @@ function FlipCard({
         // Swipe left = No
         if (phase === 'answer') {
           setSwipe({ x: 0, committed: true, hint: 'left' });
-          onAnswer(false);
+          onAnswer(false, 'touch');
         } else {
           // Snap back if not in answer phase.
           setSwipe({ x: 0, committed: false, hint: null });
@@ -1154,7 +1178,7 @@ function FlipCard({
         // Swipe right = Yes
         if (phase === 'answer') {
           setSwipe({ x: 0, committed: true, hint: 'right' });
-          onAnswer(true);
+          onAnswer(true, 'touch');
         } else {
           setSwipe({ x: 0, committed: false, hint: null });
         }
@@ -1163,10 +1187,16 @@ function FlipCard({
         setSwipe({ x: 0, committed: false, hint: null });
       }
     } else {
-      // It was a tap/click — flip the card.
+      // It was a tap/click — flip the card unless the user selected text.
+      const selection = window.getSelection();
+      const selectionNow = selection?.toString().length ?? 0;
+      const selectionGrew = selectionNow > selectionLenRef.current;
+      const isInsideCard = selection && containerRef.current ? containerRef.current.contains(selection.anchorNode) : false;
       setSwipe({ x: 0, committed: false, hint: null });
-      if (phase === 'question') onReveal();
-      else if (phase === 'answer') onHide();
+      if (!selectionGrew || !isInsideCard) {
+        if (phase === 'question') onReveal();
+        else if (phase === 'answer') onHide();
+      }
     }
   }, [phase, onReveal, onHide, onAnswer]);
 
@@ -1182,37 +1212,38 @@ function FlipCard({
       className="flex flex-1 items-center justify-center"
       style={{ perspective: '1600px' }}
     >
-      {/* Swipe hint glow — appears during a drag to whisper the outcome. */}
-      <AnimatePresence>
-        {swipe.hint && !swipe.committed && (
-          <motion.div
-            aria-hidden
-            key={swipe.hint}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.12 * m }}
-            className={
-              'pointer-events-none fixed inset-y-0 z-20 w-56 ' +
-              (swipe.hint === 'right'
-                ? 'right-0 bg-gradient-to-l from-positive/20 to-transparent'
-                : 'left-0 bg-gradient-to-r from-negative/15 to-transparent')
-            }
-          />
-        )}
-      </AnimatePresence>
-
       <div
         ref={containerRef}
         role="button"
         aria-label={revealed ? 'Hide answer' : 'Show answer'}
-        className="w-full cursor-pointer select-none"
+        className="relative w-full cursor-pointer"
         style={{ transformStyle: 'preserve-3d', touchAction: 'pan-y' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
       >
+        {/* Swipe hint glow — appears during a drag to whisper the outcome.
+            Positioned behind the card so the border stays crisp. */}
+        <AnimatePresence>
+          {swipe.hint && !swipe.committed && (
+            <motion.div
+              aria-hidden
+              key={swipe.hint}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, x: swipe.x }}
+              exit={{ opacity: 0 }}
+              transition={{ opacity: { duration: 0.12 * m }, x: { duration: 0 } }}
+              className={
+                'pointer-events-none absolute inset-y-0 z-0 w-56 rounded-3xl ' +
+                (swipe.hint === 'right'
+                  ? '-right-56 bg-gradient-to-r from-positive/20 to-transparent'
+                  : '-left-56 bg-gradient-to-l from-negative/15 to-transparent')
+              }
+            />
+          )}
+        </AnimatePresence>
+
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={revealed ? 'back' : 'front'}
@@ -1227,7 +1258,7 @@ function FlipCard({
             }}
             style={{ transformOrigin: 'center center' }}
             className={
-              'rounded-3xl border bg-surface px-8 py-12 ' +
+              'relative z-10 rounded-3xl border bg-surface px-8 py-12 ' +
               (revealed
                 ? 'border-accent/40 shadow-2xl shadow-accent/10'
                 : 'border-line shadow-xl shadow-black/5')

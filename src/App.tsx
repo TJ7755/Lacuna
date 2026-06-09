@@ -20,6 +20,11 @@ import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
 import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
 
+function RouterWithQuotaWarning() {
+  useStorageQuotaWarning();
+  return <RouterProvider router={router} />;
+}
+
 // Heavier routes (Recharts, KaTeX, the markdown editor) are split into their own
 // chunks so the dashboard loads quickly. Settings is intentionally eager: it is tiny
 // and pulls no heavy dependencies, so lazy-loading it only added a needless chunk
@@ -115,7 +120,6 @@ export function App() {
   const [ready, setReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const initStarted = useRef(false);
-  useStorageQuotaWarning();
 
   useEffect(() => {
     if (initStarted.current) return;
@@ -224,7 +228,7 @@ export function App() {
         <AccentProvider>
           <FontScaleProvider>
             <ToastProvider>
-              <RouterProvider router={router} />
+              <RouterWithQuotaWarning />
             </ToastProvider>
           </FontScaleProvider>
         </AccentProvider>
