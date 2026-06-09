@@ -35,7 +35,7 @@ import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
-import { useSidebarSettings } from '../state/sidebarSettings';
+import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
 import { MIN_OPTIMISE_REVIEWS } from '../fsrs/optimise';
 import {
   requestPersistentStorage,
@@ -375,6 +375,85 @@ export function Settings() {
             checked={sidebarSettings.compactMode}
             onChange={(checked) => setSidebarSettings({ compactMode: checked })}
           />
+        </div>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <div className="mb-1 text-sm">Primary navigation</div>
+          <p className="mb-4 text-sm text-ink-soft">
+            Reorder or hide the main nav items in the sidebar. At least one item must remain visible.
+          </p>
+          <div className="flex flex-col gap-2">
+            {(() => {
+              const visibleCount = sidebarSettings.navItems.filter((n) => n.visible).length;
+              return sidebarSettings.navItems.map((item, index) => {
+                const canMoveUp = index > 0;
+                const canMoveDown = index < sidebarSettings.navItems.length - 1;
+                const canHide = item.visible ? visibleCount > 1 : true;
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 transition-colors"
+                >
+                  <div className="flex flex-col gap-0.5">
+                    <button
+                      type="button"
+                      disabled={!canMoveUp}
+                      onClick={() => {
+                        const next = [...sidebarSettings.navItems];
+                        const [removed] = next.splice(index, 1);
+                        next.splice(index - 1, 0, removed);
+                        setSidebarSettings({ navItems: next });
+                      }}
+                      className={cn(
+                        'flex h-5 w-5 items-center justify-center rounded text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                        canMoveUp ? 'hover:bg-ink/5 hover:text-ink' : 'opacity-30',
+                      )}
+                      aria-label={`Move ${item.label} up`}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canMoveDown}
+                      onClick={() => {
+                        const next = [...sidebarSettings.navItems];
+                        const [removed] = next.splice(index, 1);
+                        next.splice(index + 1, 0, removed);
+                        setSidebarSettings({ navItems: next });
+                      }}
+                      className={cn(
+                        'flex h-5 w-5 items-center justify-center rounded text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+                        canMoveDown ? 'hover:bg-ink/5 hover:text-ink' : 'opacity-30',
+                      )}
+                      aria-label={`Move ${item.label} down`}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                  </div>
+                  <span className="flex-1 text-sm text-ink">{item.label}</span>                    <Toggle
+                    checked={item.visible}
+                    disabled={!canHide}
+                    onChange={(checked) => {
+                      const next = sidebarSettings.navItems.map((n) =>
+                        n.id === item.id ? { ...n, visible: checked } : n,
+                      );
+                      setSidebarSettings({ navItems: next });
+                    }}
+                  />
+                </div>
+              );
+              });
+            })()}
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarSettings({ navItems: DEFAULT_NAV_ITEMS })}
+            >
+              Reset to defaults
+            </Button>
+          </div>
         </div>
       </section>
 

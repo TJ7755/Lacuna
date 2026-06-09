@@ -152,50 +152,28 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
         'flex flex-col gap-1 px-3',
         sidebarSettings.compactMode && 'gap-0',
       )}>
-        <NavItem
-          to="/"
-          end
-          icon={<DashboardIcon />}
-          label="Dashboard"
-          collapsed={collapsed}
-          compact={sidebarSettings.compactMode}
-        />
-        <NavItem
-          to="/learn"
-          icon={<PlayIcon />}
-          label="Study today"
-          collapsed={collapsed}
-          compact={sidebarSettings.compactMode}
-          streakBadge={<StudyStreakBadge collapsed={collapsed} />}
-        />
-        <NavItem
-          to="/search"
-          icon={<SearchIcon />}
-          label="Search"
-          collapsed={collapsed}
-          compact={sidebarSettings.compactMode}
-        />
-        <NavItem
-          to="/share"
-          icon={<ShareIcon />}
-          label="Share"
-          collapsed={collapsed}
-          compact={sidebarSettings.compactMode}
-        />
-        <NavItem
-          to="/analytics"
-          icon={<ChartIcon />}
-          label="Analytics"
-          collapsed={collapsed}
-          compact={sidebarSettings.compactMode}
-        />
-        <NavItem
-          to="/settings"
-          icon={<SettingsIcon />}
-          label="Settings"
-          collapsed={collapsed}
-          compact={sidebarSettings.compactMode}
-        />
+        {sidebarSettings.navItems
+          .filter((n) => n.visible)
+          .map((n) => (
+            <NavItem
+              key={n.id}
+              to={n.id === 'dashboard' ? '/' : `/${n.id}`}
+              end={n.id === 'dashboard'}
+              icon={
+                n.id === 'dashboard' ? <DashboardIcon /> :
+                n.id === 'learn' ? <PlayIcon /> :
+                n.id === 'search' ? <SearchIcon /> :
+                n.id === 'share' ? <ShareIcon /> :
+                n.id === 'analytics' ? <ChartIcon /> :
+                n.id === 'settings' ? <SettingsIcon /> :
+                <DashboardIcon />
+              }
+              label={n.label}
+              collapsed={collapsed}
+              compact={sidebarSettings.compactMode}
+              streakBadge={n.id === 'learn' ? <StudyStreakBadge collapsed={collapsed} /> : undefined}
+            />
+          ))}
       </nav>
 
       {/* Deck list */}
