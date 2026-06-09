@@ -249,6 +249,13 @@ export const CalendarIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const SparklesIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z" />
+    <path d="M18 15l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z" />
+  </Icon>
+);
+
 export const FileTextIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />

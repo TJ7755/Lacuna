@@ -1,4 +1,3 @@
-import { useRef, useState, useEffect } from 'react';
 import { m as motion } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 
@@ -15,9 +14,9 @@ interface FadeInViewProps {
 }
 
 /**
- * Scroll-triggered reveal wrapper. Uses IntersectionObserver to detect when the
- * element enters the viewport, then animates it in with a motion.div. Respects the
- * global motion-speed setting and reduced-motion preferences.
+ * Scroll-triggered reveal wrapper. Uses motion/react's whileInView to detect when
+ * the element enters the viewport, then animates it in. Respects the global
+ * motion-speed setting and reduced-motion preferences.
  */
 export function FadeInView({
   children,
@@ -30,28 +29,8 @@ export function FadeInView({
   once = true,
   threshold = 0.1,
 }: FadeInViewProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          if (once) observer.disconnect();
-        } else if (!once) {
-          setVisible(false);
-        }
-      },
-      { threshold },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [once, threshold]);
 
   const initial: Record<string, number> = { opacity: 0 };
   if (y !== 0) initial.y = y;
@@ -65,9 +44,9 @@ export function FadeInView({
 
   return (
     <motion.div
-      ref={ref}
       initial={initial}
-      animate={animate}
+      whileInView={animate}
+      viewport={{ once, amount: threshold }}
       transition={{
         duration: duration * m,
         delay: delay * m,

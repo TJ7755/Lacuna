@@ -568,7 +568,7 @@ export function DateTimePicker({ value, onChange, label }: DateTimePickerProps) 
                                 : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
                           )}
                         >
-                          {motion.slice(0, 3)}
+                          {m.slice(0, 3)}
                         </button>
                       );
                     })}

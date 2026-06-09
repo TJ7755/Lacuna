@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { m as motion } from 'motion/react';
+import { m } from 'motion/react';
 import {
   Area,
   AreaChart,
@@ -63,7 +63,7 @@ function AnalyticsSkeleton() {
 
 export function Analytics() {
   const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const motionMult = speedMultiplier(motionSpeed);
   const decks = useDecks();
   const allCards = useAllCards();
   const history = useAllSessionHistory();
@@ -117,7 +117,7 @@ export function Analytics() {
       <m.header
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28 * m, ease: [0.25, 0.1, 0.25, 1] }}
+        transition={{ duration: 0.28 * motionMult, ease: [0.25, 0.1, 0.25, 1] }}
       >
         <h1 className="font-display text-3xl tracking-tight">Analytics</h1>
         <p className="mt-1 text-sm text-ink-soft">

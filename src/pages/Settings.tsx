@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, m, useMotionValue, useSpring, LayoutGroup } from 'motion/react';
+import { AnimatePresence, m as motion, useMotionValue, useSpring, LayoutGroup } from 'motion/react';
 import { useMotionSpeed, speedMultiplier, type MotionSpeed } from '../state/motionSpeed';
 import { useTheme, type Theme } from '../state/ThemeContext';
 import { ACCENTS, useAccent } from '../state/AccentContext';
@@ -62,7 +62,7 @@ const SETTINGS_SECTIONS = [
 
 export function Settings() {
   const [motionSpeed, setMotionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+  const motionMult = speedMultiplier(motionSpeed);
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
   const { scale, setScale } = useFontScale();
@@ -528,7 +528,7 @@ export function Settings() {
             <div className="text-sm">Optimise scheduling</div>
             <p className="mt-1 text-sm text-ink-soft">
               Fit each deck's FSRS weights to your own review history, which is where most of
-              FSRS's efficiency comes fromotion. On by default. Optimisation only runs once a deck
+              FSRS's efficiency comes from. On by default. Optimisation only runs once a deck
               has at least {MIN_OPTIMISE_REVIEWS} reviews, and new weights are never applied
               without your confirmation. You can override this per deck in its settings.
             </p>
@@ -608,7 +608,7 @@ export function Settings() {
         <h2 className="mb-1 font-display text-xl">Pomodoro timer</h2>
         <p className="mb-5 text-sm text-ink-soft">
           A built-in focus timer for your study sessions. Customise the durations to match
-          your own rhythmotion.
+          your own rhythm.
         </p>
         <div className="grid grid-cols-3 gap-4">
           <DurationInput
@@ -705,7 +705,7 @@ export function Settings() {
               initial={{ opacity: 0, height: 0, marginTop: 0 }}
               animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
               exit={{ opacity: 0, height: 0, marginTop: 0 }}
-              transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.16 * motionMult, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden"
             >
               <div className="rounded-xl border border-line-strong bg-surface-raised p-5">
@@ -900,7 +900,7 @@ export function Settings() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 * m, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.4 * motionMult, ease: [0.16, 1, 0.3, 1] }}
             className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5 backdrop-blur-sm"
           >
             {/* Ambient top glow that subtly pulses */}
@@ -939,7 +939,7 @@ export function Settings() {
                       }
                     }}
                     index={index}
-                    m={m}
+                    m={motionMult}
                   />
                 ))}
               </nav>
