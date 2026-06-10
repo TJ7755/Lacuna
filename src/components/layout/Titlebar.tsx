@@ -67,7 +67,7 @@ export function Titlebar() {
   const api = window.electronAPI!;
 
   return (
-    <div className="titlebar-drag flex h-10 shrink-0 items-center justify-between border-b border-line bg-surface px-3 select-none">
+    <div className="titlebar-drag flex h-12 shrink-0 items-center justify-between border-b border-line bg-surface px-3 select-none">
       {/* Title area — draggable */}
       <div className="titlebar-drag flex items-center gap-2 text-sm text-ink-soft">
         <FlaskIcon width={14} height={14} className="text-accent" />
@@ -81,7 +81,7 @@ export function Titlebar() {
           onClick={() => api.minimizeWindow()}
           aria-label="Minimise"
           title="Minimise"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-ink-faint transition hover:bg-ink/5 hover:text-ink"
+          className="flex h-10 w-10 items-center justify-center rounded-md text-ink-faint transition hover:bg-ink/5 hover:text-ink active:bg-ink/10"
         >
           <MinimizeIcon />
         </button>
@@ -90,7 +90,7 @@ export function Titlebar() {
           onClick={() => api.maximizeWindow()}
           aria-label={isMaximized ? 'Restore' : 'Maximise'}
           title={isMaximized ? 'Restore' : 'Maximise'}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-ink-faint transition hover:bg-ink/5 hover:text-ink"
+          className="flex h-10 w-10 items-center justify-center rounded-md text-ink-faint transition hover:bg-ink/5 hover:text-ink active:bg-ink/10"
         >
           {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
         </button>
@@ -99,7 +99,7 @@ export function Titlebar() {
           onClick={() => api.closeWindow()}
           aria-label="Close"
           title="Close"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-ink-faint transition hover:bg-negative/10 hover:text-negative"
+          className="flex h-10 w-10 items-center justify-center rounded-md text-ink-faint transition hover:bg-negative/10 hover:text-negative active:bg-negative/15"
         >
           <CloseIcon />
         </button>

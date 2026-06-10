@@ -432,8 +432,8 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           title="Toggle colour theme"
           aria-label="Toggle colour theme"
           className={cn(
-            'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink',
-            sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
+            'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
+            sidebarSettings.compactMode ? 'min-h-11 min-w-11' : 'min-h-11 min-w-11',
           )}
         >
           {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
@@ -449,8 +449,8 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           className={cn(
-            'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink',
-            sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
+            'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
+            sidebarSettings.compactMode ? 'min-h-11 min-w-11' : 'min-h-11 min-w-11',
           )}
         >
           {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
