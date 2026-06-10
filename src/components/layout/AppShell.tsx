@@ -120,11 +120,11 @@ export function AppShell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar */}
-        <div className="flex items-center gap-3 border-b border-line bg-surface/80 px-4 py-3 backdrop-blur md:hidden">
+        <div className="flex items-center gap-3 border-b border-line bg-surface/80 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
           <button
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft hover:bg-ink/5"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft hover:bg-ink/5 active:bg-ink/10"
           >
             <span className="flex flex-col gap-1">
               <span className="block h-0.5 w-5 bg-current" />
@@ -138,7 +138,7 @@ export function AppShell() {
           </span>
         </div>
 
-        <main ref={mainRef} className="min-w-0 flex-1 overflow-y-auto">
+        <main ref={mainRef} className="min-w-0 flex-1 overflow-y-auto overscroll-y-none" style={{ touchAction: 'pan-y' }}>
           <ErrorBoundary label="this page">
             {/* Each route fades, scales, and lifts in as the previous one settles out,
                 giving navigation a polished sense of place without slowing the user down. */}
