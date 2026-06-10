@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { AnimatePresence, m as motion, useMotionValue, useSpring, useTransform } from 'motion/react';
 import { useDashboardData, useFolders } from '../state/useData';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { StudySignals } from '../components/dashboard/StudySignals';
@@ -30,6 +30,7 @@ import { relativeExam } from '../utils/datetime';
 import { progressNoun } from '../fsrs/objective';
 import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { useIsTouchMode } from '../state/inputMode';
 import type { Deck } from '../db/types';
 
 export function Dashboard() {
@@ -53,6 +54,7 @@ export function Dashboard() {
   const [mergeTarget, setMergeTarget] = useState<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const isTouchMode = useIsTouchMode();
 
   // Folder management
   const [creatingFolder, setCreatingFolder] = useState(false);
@@ -825,6 +827,9 @@ function DeckCard({
   motionMultiplier?: number;
 }) {
   const m = motionMultiplier ?? 1;
+  const navigate = useNavigate();
+  const isTouchMode = useIsTouchMode();
+  const { notify } = useToast();
   const colourBar = deck.colour ? (
     <span
       className="absolute inset-x-0 top-0 h-1"
@@ -832,10 +837,114 @@ function DeckCard({
     />
   ) : null;
 
+  // Touch swipe state for quick actions
+  const cardRef = useRef<HTMLDivElement>(null);
+  const dragX = useMotionValue(0);
+  const springX = useSpring(dragX, { stiffness: 380, damping: 32 });
+  const swipeState = useRef({
+    dragging: false,
+    startX: 0,
+    startY: 0,
+    isSwipe: false,
+  });
+  const SWIPE_THRESHOLD = 50;
+  const MAX_DRAG = 100;
+
+  // UseTransform must be called unconditionally at top level (rules of hooks).
+  const rightSwipeOpacity = useTransform(springX, [0, MAX_DRAG], [0, 1]);
+  const leftSwipeOpacity = useTransform(springX, [0, -MAX_DRAG], [0, 1]);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (!isTouchMode || selectMode) return;
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, [role="button"]')) return;
+    swipeState.current = {
+      dragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      isSwipe: false,
+    };
+    cardRef.current?.setPointerCapture(e.pointerId);
+    dragX.set(0);
+  }, [isTouchMode, selectMode, dragX]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isTouchMode || !swipeState.current.dragging) return;
+    const dx = e.clientX - swipeState.current.startX;
+    const dy = e.clientY - swipeState.current.startY;
+
+    if (!swipeState.current.isSwipe && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) {
+      swipeState.current.isSwipe = true;
+    }
+    if (!swipeState.current.isSwipe) return;
+    e.preventDefault();
+
+    const clamped = Math.max(-MAX_DRAG, Math.min(MAX_DRAG, dx));
+    dragX.set(clamped);
+  }, [isTouchMode, dragX]);
+
+  const justSwiped = useRef(false);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!isTouchMode || !swipeState.current.dragging) return;
+    cardRef.current?.releasePointerCapture(e.pointerId);
+    swipeState.current.dragging = false;
+    const wasSwipe = swipeState.current.isSwipe;
+    swipeState.current.isSwipe = false;
+
+    const currentX = dragX.get();
+    if (wasSwipe) {
+      e.stopPropagation();
+      justSwiped.current = true;
+      if (currentX > SWIPE_THRESHOLD) {
+        // Swipe right = study
+        dragX.set(0);
+        navigate(`/deck/${deck.id}/learn`);
+      } else if (currentX < -SWIPE_THRESHOLD) {
+        // Swipe left = archive
+        dragX.set(0);
+        if (!deck.archived) {
+          void (async () => {
+            await updateDeck(deck.id, { archived: true });
+            notify('Deck archived.', 'neutral');
+          })();
+        }
+      } else {
+        dragX.set(0);
+      }
+    } else {
+      dragX.set(0);
+    }
+  }, [isTouchMode, dragX, deck, navigate, notify]);
+
+  const handlePointerCancel = useCallback(() => {
+    swipeState.current.dragging = false;
+    swipeState.current.isSwipe = false;
+    dragX.set(0);
+  }, [dragX]);
+
+  function handleLinkClick(e: React.MouseEvent) {
+    if (selectMode) {
+      e.preventDefault();
+      onToggleSelected();
+      return;
+    }
+    if (justSwiped.current) {
+      e.preventDefault();
+      justSwiped.current = false;
+    }
+  }
+
   const body = (
     <motion.div
-      whileHover={{ y: -4, transition: { duration: 0.12 * m } }}
-      whileTap={{ scale: 0.98, transition: { duration: 0.08 * m } }}
+      ref={cardRef}
+      style={{ x: isTouchMode ? springX : undefined, touchAction: 'pan-y' }}        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+      whileHover={!isTouchMode ? { y: -4, transition: { duration: 0.12 * m } } : undefined}
+      whileTap={!isTouchMode ? { scale: 0.98, transition: { duration: 0.08 * m } } : undefined}
       className={cn(
         'group relative flex h-full flex-col overflow-hidden rounded-2xl border bg-surface p-5 transition-colors duration-200',
         selected
@@ -854,6 +963,26 @@ function DeckCard({
       >
         {selected && <CheckIcon width={14} height={14} />}
       </span>
+      )}
+
+      {/* Touch swipe hint overlays */}
+      {isTouchMode && !selectMode && (
+        <>
+          <motion.div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-0 z-0 flex items-center rounded-r-2xl bg-accent/90 px-3 text-accent-fg"
+            style={{ opacity: rightSwipeOpacity, width: 80 }}
+          >
+            <PlayIcon width={20} height={20} />
+          </motion.div>
+          <motion.div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-0 z-0 flex items-center rounded-l-2xl bg-ink/10 px-3 text-ink"
+            style={{ opacity: leftSwipeOpacity, width: 80 }}
+          >
+            <span className="text-xs font-medium">Archive</span>
+          </motion.div>
+        </>
       )}
 
       <div
@@ -891,14 +1020,7 @@ function DeckCard({
   return (
     <Link
       to={`/deck/${deck.id}`}
-      onClick={
-        selectMode
-          ? (e) => {
-              e.preventDefault();
-              onToggleSelected();
-            }
-          : undefined
-      }
+      onClick={handleLinkClick}
       aria-pressed={selectMode ? selected : undefined}
       className="block h-full text-left"
     >

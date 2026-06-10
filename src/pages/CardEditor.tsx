@@ -11,6 +11,7 @@ import { hasCloze } from '../components/markdown/cloze';
 import { ChevronLeftIcon, CheckIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { useIsTouchMode } from '../state/inputMode';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
 import type { Card, CardType } from '../db/types';
 
@@ -74,6 +75,7 @@ export function CardEditor() {
   const duplicateTimer = useRef<number>();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const isTouchMode = useIsTouchMode();
   function flashSaved() {
     window.clearTimeout(savedTimer.current);
     setShowSaved(true);
@@ -261,7 +263,7 @@ export function CardEditor() {
 
   return (
     <div
-      className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10"
+      className={cn('mx-auto max-w-4xl px-6 pt-8 md:px-10', isTouchMode ? 'pb-24' : 'pb-10')}
       onKeyDown={(e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           e.preventDefault();
@@ -363,21 +365,24 @@ export function CardEditor() {
             <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
               Card type
             </div>
-            <div className="flex gap-2">
+            <div className={cn('flex gap-2', isTouchMode && 'gap-3')}>
               {(['front_back', 'cloze'] as const).map((t) => (
-                <button
+                <motion.button
                   key={t}
                   type="button"
                   onClick={() => setType(t)}
+                  whileTap={{ scale: 0.96 }}
                   className={cn(
-                    'flex-1 min-h-11 rounded-lg border px-4 py-2.5 text-sm transition-colors',
+                    'flex-1 rounded-lg border px-4 py-2.5 text-sm transition-colors',
                     type === t
                       ? 'border-accent bg-accent-soft text-accent'
                       : 'border-line text-ink-soft hover:border-line-strong active:bg-ink/10',
+                    isTouchMode && 'min-h-14 text-base',
+                    !isTouchMode && 'min-h-11',
                   )}
                 >
                   {t === 'front_back' ? 'Front / Back' : 'Cloze deletion'}
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
@@ -465,9 +470,22 @@ export function CardEditor() {
 
       {/* Sticky action bar — fades into the page rather than sitting on a hard white slab.
           The wrapper ignores pointer events so the transparent fade never blocks the
-          content scrolling beneath it; the button row re-enables themotion. */}
-      <div className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10">
-        <div className="pointer-events-auto flex flex-wrap items-center gap-3">
+          content scrolling beneath it; the button row re-enables themotion.
+          In touch mode, the bar becomes a floating bottom-sheet with larger controls. */}
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.25 * m, ease: [0.16, 1, 0.3, 1] }}
+        role="region"
+        aria-label="Card editor actions"
+        className={cn(
+          'pointer-events-none z-30 mt-8',
+          isTouchMode
+            ? 'fixed inset-x-0 bottom-0 rounded-t-3xl border-t border-line-strong bg-surface px-6 py-5 shadow-2xl shadow-black/15'
+            : 'sticky bottom-0 -mx-6 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10',
+        )}
+      >
+        <div className={cn('pointer-events-auto flex flex-wrap items-center gap-3', isTouchMode && 'max-w-3xl mx-auto')}>
           {!editing && !isCloze && (
             <motion.button
               type="button"
@@ -558,7 +576,7 @@ export function CardEditor() {
             </Button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

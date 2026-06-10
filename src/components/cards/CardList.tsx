@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
+import { AnimatePresence, m as motion, useMotionValue, useSpring, useTransform } from 'motion/react';
 import { CardContent } from './CardContent';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
@@ -29,6 +30,7 @@ import {
 } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { useIsTouchMode } from '../../state/inputMode';
 import type { ParsedCard } from '../../db/import';
 import type { Card, Deck } from '../../db/types';
 
@@ -52,6 +54,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const isTouchMode = useIsTouchMode();
 
   useEffect(() => {
     setExpandedCardId(null);
@@ -190,7 +193,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
     notify(`${cards.length} card${cards.length === 1 ? '' : 's'} imported.`, 'positive');
   }
 
-  async function handleResume(card: Card) {
+  const handleResume = useCallback(async (card: Card) => {
     const snapshot = await snapshotCards([card.id]);
     await unsuspendCard(card.id);
     notify('Card resumed.', 'neutral', {
@@ -199,9 +202,9 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
         void restoreCards(snapshot);
       },
     });
-  }
+  }, [notify]);
 
-  async function handleToggleFlag(card: Card) {
+  const handleToggleFlag = useCallback(async (card: Card) => {
     const snapshot = await snapshotCards([card.id]);
     await setCardFlag(card.id, !card.flagged);
     notify(card.flagged ? 'Flag removed.' : 'Card flagged.', 'neutral', {
@@ -210,11 +213,11 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
         void restoreCards(snapshot);
       },
     });
-  }
+  }, [notify]);
 
   // One-click delete from a card's hover actions, with the same snapshot/undo flow
   // as the bulk selection delete.
-  async function handleDeleteOne(id: string) {
+  const handleDeleteOne = useCallback(async (id: string) => {
     const snapshot = await snapshotCards([id]);
     await deleteCards([id]);
     notify('Card deleted.', 'neutral', {
@@ -223,7 +226,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
         void restoreCards(snapshot);
       },
     });
-  }
+  }, [notify]);
 
   return (
     <div>
@@ -485,7 +488,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
               onEdit={() => onEditCard(card)}
               onResume={() => handleResume(card)}
               onDelete={() => handleDeleteOne(card.id)}
-              onToggleFlag={() => handleToggleFlag(card)}
+              onToggleFlag={handleToggleFlag}
               motionMultiplier={m}
             />
           ))}
@@ -521,11 +524,13 @@ function CardRow({
   onEdit: () => void;
   onResume: () => void;
   onDelete: () => void;
-  onToggleFlag: () => void;
+  onToggleFlag: (card: Card) => void;
   motionMultiplier?: number;
 }) {
   const [hovered, setHovered] = useState(false);
   const m = motionMultiplier ?? 1;
+  const isTouchMode = useIsTouchMode();
+  const navigate = useNavigate();
   const showBack = hovered;
 
   // Lazy-render: only parse the back side when it is actually visible.
@@ -537,7 +542,7 @@ function CardRow({
   const leech = isLeech(card);
   const flagged = card.flagged === true;
 
-  // Swipe-to-reveal state
+  // Swipe-to-reveal state — multi-directional in touch mode.
   const [trayOpen, setTrayOpen] = useState(false);
   useEffect(() => {
     if (selectMode || expanded) {
@@ -547,7 +552,7 @@ function CardRow({
   }, [selectMode, expanded, dragX]);
   const cardRef = useRef<HTMLDivElement>(null);
   const dragX = useMotionValue(0);
-  const springX = useSpring(dragX, { stiffness: 380, damping: 32 });
+  const springX = useSpring(dragX, { stiffness: 420, damping: 30, mass: 0.8 });
   const swipeState = useRef({
     dragging: false,
     startX: 0,
@@ -557,12 +562,14 @@ function CardRow({
   });
   const trayWidth = 220;
   const swipeThreshold = 40;
+  const MAX_DRAG = 120;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (selectMode || expanded) return;
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (target.closest('button, a, [role="button"]')) return;
+    e.stopPropagation();
     swipeState.current = {
       dragging: true,
       startX: e.clientX,
@@ -586,11 +593,13 @@ function CardRow({
     e.preventDefault();
 
     // If tray was already open, dragging right closes it; dragging left keeps it open.
-    // If tray was closed, dragging left opens it; dragging right does nothing.
+    // If tray was closed, dragging left opens it; dragging right triggers quick flag.
     const base = swipeState.current.openBeforeDrag ? -trayWidth : 0;
-    const clamped = Math.max(-trayWidth, Math.min(0, base + dx));
+    const clamped = Math.max(-trayWidth, Math.min(isTouchMode ? MAX_DRAG : 0, base + dx));
     dragX.set(clamped);
-  }, [dragX]);
+  }, [dragX, isTouchMode]);
+
+  const justHandledTap = useRef(false);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!swipeState.current.dragging) return;
@@ -600,6 +609,8 @@ function CardRow({
     swipeState.current.isSwipe = false;
 
     if (wasSwipe) {
+      e.stopPropagation();
+      justHandledTap.current = true;
       const currentX = dragX.get();
       // If open before drag, drag right to close; if closed, drag left to open.
       if (swipeState.current.openBeforeDrag) {
@@ -612,25 +623,32 @@ function CardRow({
           dragX.set(-trayWidth);
         }
       } else {
-        // Tray was closed — open if dragged left past threshold
+        // Tray was closed
         if (currentX < -swipeThreshold) {
+          // Drag left — open tray
           setTrayOpen(true);
           dragX.set(-trayWidth);
+        } else if (isTouchMode && currentX > swipeThreshold) {
+          // Drag right — quick flag (touch mode only)
+          dragX.set(0);
+          onToggleFlag(card);
         } else {
           setTrayOpen(false);
           dragX.set(0);
         }
       }
     } else {
-      // It was a tap — close the tray if it is open; let handleClick toggle expand.
+      // It was a tap — close the tray if it is open; suppress the subsequent click.
       if (trayOpen) {
+        justHandledTap.current = true;
         setTrayOpen(false);
         dragX.set(0);
       }
     }
-  }, [dragX, trayOpen]);
+  }, [dragX, trayOpen, isTouchMode, onToggleFlag, card]);
 
   const handlePointerCancel = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
     cardRef.current?.releasePointerCapture(e.pointerId);
     swipeState.current.dragging = false;
     swipeState.current.isSwipe = false;
@@ -638,6 +656,10 @@ function CardRow({
   }, [dragX, trayOpen]);
 
   function handleClick() {
+    if (justHandledTap.current) {
+      justHandledTap.current = false;
+      return;
+    }
     if (selectMode) {
       onToggle();
     } else if (trayOpen) {
@@ -677,7 +699,7 @@ function CardRow({
           <button
             type="button"
             aria-pressed={flagged}
-            onClick={(e) => { e.stopPropagation(); onToggleFlag(); }}
+            onClick={(e) => { e.stopPropagation(); onToggleFlag(card); }}
             className={cn(
               'flex h-full flex-1 flex-col items-center justify-center gap-1 text-xs transition-colors',
               flagged
@@ -821,7 +843,7 @@ function CardRow({
               )}
               <motion.button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onToggleFlag(); }}
+                onClick={(e) => { e.stopPropagation(); onToggleFlag(card); }}
                 title={flagged ? 'Remove flag' : 'Flag card'}
                 aria-pressed={flagged}
                 whileTap={{ scale: 0.85 }}

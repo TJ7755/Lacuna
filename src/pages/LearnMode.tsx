@@ -40,6 +40,7 @@ import { useGradingMode } from '../state/gradingMode';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useShortcutBindings, keyMatches } from '../state/shortcutBindings';
 import { useMotionSpeed, speedMultiplier, type MotionSpeed } from '../state/motionSpeed';
+import { useIsTouchMode } from '../state/inputMode';
 import {
   CheckIcon,
   ClockIcon,
@@ -77,6 +78,7 @@ export function LearnMode() {
   const { bindings } = useShortcutBindings();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const isTouchMode = useIsTouchMode();
   const { notify } = useToast();
 
   const isGlobal = !deckId;
@@ -833,7 +835,7 @@ export function LearnMode() {
           {/* Pomodoro timer */}
           <PomodoroTimer />
 
-          {/* Per-card action menu (edit / suspend / bury) */}
+          {/* Per-card action menu — bottom sheet in touch mode, dropdown on keyboard. */}
           <div className="relative">
             <button
               type="button"
@@ -846,40 +848,53 @@ export function LearnMode() {
             </button>
             <AnimatePresence>
               {menuOpen && current && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                  transition={{ duration: 0.12 * m }}
-                  className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
-                >
-                  <MenuItem
-                    icon={<EditIcon width={16} height={16} />}
-                    label="Edit card"
-                    onClick={openEdit}
+                isTouchMode ? (
+                  <TouchMenuSheet
+                    current={current}
+                    onEdit={openEdit}
+                    onToggleFlag={toggleFlagCurrent}
+                    onBury={buryCurrent}
+                    onSuspend={suspendCurrent}
+                    onShowShortcuts={() => { setMenuOpen(false); setHintsOpen(true); }}
+                    onClose={() => setMenuOpen(false)}
+                    m={m}
                   />
-                  <MenuItem
-                    icon={<FlagIcon width={16} height={16} />}
-                    label={current.flagged ? 'Remove flag' : 'Flag card'}
-                    onClick={toggleFlagCurrent}
-                  />
-                  <MenuItem
-                    icon={<ClockIcon width={16} height={16} />}
-                    label="Bury until tomorrow"
-                    onClick={buryCurrent}
-                  />
-                  <MenuItem
-                    icon={<PauseIcon width={16} height={16} />}
-                    label="Suspend card"
-                    onClick={suspendCurrent}
-                  />
-                  <div className="border-t border-line" />
-                  <MenuItem
-                    icon={<KeyboardIcon width={16} height={16} />}
-                    label="Keyboard shortcuts"
-                    onClick={() => { setMenuOpen(false); setHintsOpen(true); }}
-                  />
-                </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                    transition={{ duration: 0.12 * m }}
+                    className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
+                  >
+                    <MenuItem
+                      icon={<EditIcon width={16} height={16} />}
+                      label="Edit card"
+                      onClick={openEdit}
+                    />
+                    <MenuItem
+                      icon={<FlagIcon width={16} height={16} />}
+                      label={current.flagged ? 'Remove flag' : 'Flag card'}
+                      onClick={toggleFlagCurrent}
+                    />
+                    <MenuItem
+                      icon={<ClockIcon width={16} height={16} />}
+                      label="Bury until tomorrow"
+                      onClick={buryCurrent}
+                    />
+                    <MenuItem
+                      icon={<PauseIcon width={16} height={16} />}
+                      label="Suspend card"
+                      onClick={suspendCurrent}
+                    />
+                    <div className="border-t border-line" />
+                    <MenuItem
+                      icon={<KeyboardIcon width={16} height={16} />}
+                      label="Keyboard shortcuts"
+                      onClick={() => { setMenuOpen(false); setHintsOpen(true); }}
+                    />
+                  </motion.div>
+                )
               )}
             </AnimatePresence>
           </div>
@@ -891,14 +906,14 @@ export function LearnMode() {
       </header>
       )}
 
-      {/* Card */}
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-8">
+      {/* Card */}      <main className={`mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-8 ${isTouchMode ? 'pb-40' : ''}`}>
         {current && (
           <FlipCard
             card={current}
             revealed={phase === 'answer'}
             motionSpeed={motionSpeed}
             phase={phase}
+            isTouchMode={isTouchMode}
             onReveal={reveal}
             onHide={hide}
             onAnswer={answer}
@@ -906,93 +921,102 @@ export function LearnMode() {
         )}
 
         {/* Controls */}
-        <div className="mt-8">
-          <AnimatePresence mode="wait">
-            {phase === 'question' ? (
-              <motion.div
-                key="show"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="flex flex-col items-center gap-2"
-              >
-                <Button variant="primary" size="lg" className="w-full max-w-sm" onClick={reveal}>
-                  Show answer
-                </Button>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="grade"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="flex flex-col items-center gap-3"
-              >
-                {gradingMode === 'manual' ? (
-                  <motion.div
-                    className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4"
-                    initial="hidden"
-                    animate="visible"
-                    variants={{
-                      hidden: {},
-                      visible: { transition: { staggerChildren: 0.04 } },
-                    }}
-                  >
-                    <motion.div variants={buttonReveal(m)}>
-                      <Button variant="danger" size="lg" className="w-full" onClick={() => answer(1, 'keyboard')}>
-                        <CloseIcon width={18} height={18} />
-                        Again
-                      </Button>
+        {isTouchMode ? (
+          <TouchBottomSheet
+            phase={phase}
+            gradingMode={gradingMode}
+            onReveal={reveal}
+            onHide={hide}
+            onAnswer={answer}
+            m={m}
+          />
+        ) : (
+          <div className="mt-8">
+            <AnimatePresence mode="wait">
+              {phase === 'question' ? (
+                <motion.div
+                  key="show"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+                  className="flex flex-col items-center gap-2"
+                >
+                  <Button variant="primary" size="lg" className="w-full max-w-sm" onClick={reveal}>
+                    Show answer
+                  </Button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="grade"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+                  className="flex flex-col items-center gap-3"
+                >
+                  {gradingMode === 'manual' ? (
+                    <motion.div
+                      className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4"
+                      initial="hidden"
+                      animate="visible"
+                      variants={{
+                        hidden: {},
+                        visible: { transition: { staggerChildren: 0.04 } },
+                      }}
+                    >
+                      <motion.div variants={buttonReveal(m)}>
+                        <Button variant="danger" size="lg" className="w-full" onClick={() => answer(1, 'keyboard')}>
+                          <CloseIcon width={18} height={18} />
+                          Again
+                        </Button>
+                      </motion.div>
+                      <motion.div variants={buttonReveal(m)}>
+                        <Button variant="secondary" size="lg" className="w-full" onClick={() => answer(2, 'keyboard')}>
+                          Hard
+                        </Button>
+                      </motion.div>
+                      <motion.div variants={buttonReveal(m)}>
+                        <Button variant="secondary" size="lg" className="w-full" onClick={() => answer(3, 'keyboard')}>
+                          Good
+                        </Button>
+                      </motion.div>
+                      <motion.div variants={buttonReveal(m)}>
+                        <Button variant="primary" size="lg" className="w-full" onClick={() => answer(4, 'keyboard')}>
+                          <CheckIcon width={18} height={18} />
+                          Easy
+                        </Button>
+                      </motion.div>
                     </motion.div>
-                    <motion.div variants={buttonReveal(m)}>
-                      <Button variant="secondary" size="lg" className="w-full" onClick={() => answer(2, 'keyboard')}>
-                        Hard
-                      </Button>
+                  ) : (
+                    <motion.div
+                      className="flex w-full max-w-md gap-3"
+                      initial="hidden"
+                      animate="visible"
+                      variants={{
+                        hidden: {},
+                        visible: { transition: { staggerChildren: 0.05 } },
+                      }}
+                    >
+                      <motion.div variants={buttonReveal(m)} className="flex-1">
+                        <Button variant="danger" size="lg" className="w-full" onClick={() => answer(false, 'keyboard')}>
+                          <CloseIcon width={18} height={18} />
+                          No
+                        </Button>
+                      </motion.div>
+                      <motion.div variants={buttonReveal(m)} className="flex-1">
+                        <Button variant="primary" size="lg" className="w-full" onClick={() => answer(true, 'keyboard')}>
+                          <CheckIcon width={18} height={18} />
+                          Yes
+                        </Button>
+                      </motion.div>
                     </motion.div>
-                    <motion.div variants={buttonReveal(m)}>
-                      <Button variant="secondary" size="lg" className="w-full" onClick={() => answer(3, 'keyboard')}>
-                        Good
-                      </Button>
-                    </motion.div>
-                    <motion.div variants={buttonReveal(m)}>
-                      <Button variant="primary" size="lg" className="w-full" onClick={() => answer(4, 'keyboard')}>
-                        <CheckIcon width={18} height={18} />
-                        Easy
-                      </Button>
-                    </motion.div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    className="flex w-full max-w-md gap-3"
-                    initial="hidden"
-                    animate="visible"
-                    variants={{
-                      hidden: {},
-                      visible: { transition: { staggerChildren: 0.05 } },
-                    }}
-                  >
-                    <motion.div variants={buttonReveal(m)} className="flex-1">
-                      <Button variant="danger" size="lg" className="w-full" onClick={() => answer(false, 'keyboard')}>
-                        <CloseIcon width={18} height={18} />
-                        No
-                      </Button>
-                    </motion.div>
-                    <motion.div variants={buttonReveal(m)} className="flex-1">
-                      <Button variant="primary" size="lg" className="w-full" onClick={() => answer(true, 'keyboard')}>
-                        <CheckIcon width={18} height={18} />
-                        Yes
-                      </Button>
-                    </motion.div>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-
-        </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </main>
           </motion.div>
         )}
@@ -1092,6 +1116,193 @@ function MenuItem({
   );
 }
 
+function TouchMenuSheet({
+  current,
+  onEdit,
+  onToggleFlag,
+  onBury,
+  onSuspend,
+  onShowShortcuts,
+  onClose,
+  m,
+}: {
+  current: Card;
+  onEdit: () => void;
+  onToggleFlag: () => void;
+  onBury: () => void;
+  onSuspend: () => void;
+  onShowShortcuts: () => void;
+  onClose: () => void;
+  m: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 * m }}
+      className="fixed inset-0 z-40"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Card actions"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <motion.div
+        initial={{ y: 120, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 120, opacity: 0 }}
+        transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
+        className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-line-strong bg-surface px-6 py-6 shadow-2xl shadow-black/20"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Drag handle */}
+        <div className="mb-5 flex justify-center">
+          <div className="h-1.5 w-12 rounded-full bg-ink/15" />
+        </div>
+        <div className="mx-auto flex max-w-3xl flex-col gap-1">
+          <TouchMenuButton
+            icon={<EditIcon width={22} height={22} />}
+            label="Edit card"
+            onClick={onEdit}
+          />
+          <TouchMenuButton
+            icon={<FlagIcon width={22} height={22} />}
+            label={current.flagged ? 'Remove flag' : 'Flag card'}
+            onClick={onToggleFlag}
+          />
+          <TouchMenuButton
+            icon={<ClockIcon width={22} height={22} />}
+            label="Bury until tomorrow"
+            onClick={onBury}
+          />
+          <TouchMenuButton
+            icon={<PauseIcon width={22} height={22} />}
+            label="Suspend card"
+            onClick={onSuspend}
+          />
+          <div className="my-2 border-t border-line" />
+          <TouchMenuButton
+            icon={<KeyboardIcon width={22} height={22} />}
+            label="Keyboard shortcuts"
+            onClick={onShowShortcuts}
+          />
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-2 flex h-14 w-full items-center justify-center rounded-xl bg-ink/5 text-sm font-medium text-ink-soft transition-colors active:bg-ink/10"
+          >
+            Cancel
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function TouchMenuButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-14 w-full items-center gap-4 rounded-xl px-4 text-left text-base text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
+    >
+      <span className="shrink-0 text-ink-faint">{icon}</span>
+      {label}
+    </button>
+  );
+}
+
+function TouchBottomSheet({
+  phase,
+  gradingMode,
+  onReveal,
+  onHide,
+  onAnswer,
+  m,
+}: {
+  phase: Phase;
+  gradingMode: 'silent' | 'manual';
+  onReveal: () => void;
+  onHide: () => void;
+  onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
+  m: number;
+}) {
+  return (
+    <AnimatePresence mode="wait">
+      {phase === 'question' ? (
+        <motion.div
+          key="touch-show"
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+          className="fixed bottom-0 left-0 right-0 z-20 rounded-t-3xl border-t border-line-strong bg-surface px-6 py-6 shadow-2xl shadow-black/15"
+        >
+          <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
+            <p className="text-sm text-ink-faint">Tap the card to reveal</p>
+            <Button variant="primary" size="lg" className="w-full" onClick={onReveal}>
+              Show answer
+            </Button>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="touch-grade"
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+          className="fixed bottom-0 left-0 right-0 z-20 rounded-t-3xl border-t border-line-strong bg-surface px-6 py-6 shadow-2xl shadow-black/15"
+        >
+          <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
+            {gradingMode === 'manual' ? (
+              <div className="grid w-full grid-cols-2 gap-3">
+                <Button variant="danger" size="lg" className="h-14 w-full" onClick={() => onAnswer(1, 'touch')}>
+                  <CloseIcon width={20} height={20} />
+                  Again
+                </Button>
+                <Button variant="secondary" size="lg" className="h-14 w-full" onClick={() => onAnswer(2, 'touch')}>
+                  Hard
+                </Button>
+                <Button variant="secondary" size="lg" className="h-14 w-full" onClick={() => onAnswer(3, 'touch')}>
+                  Good
+                </Button>
+                <Button variant="primary" size="lg" className="h-14 w-full" onClick={() => onAnswer(4, 'touch')}>
+                  <CheckIcon width={20} height={20} />
+                  Easy
+                </Button>
+              </div>
+            ) : (
+              <div className="flex w-full gap-3">
+                <Button variant="danger" size="lg" className="h-14 flex-1" onClick={() => onAnswer(false, 'touch')}>
+                  <CloseIcon width={20} height={20} />
+                  No
+                </Button>
+                <Button variant="primary" size="lg" className="h-14 flex-1" onClick={() => onAnswer(true, 'touch')}>
+                  <CheckIcon width={20} height={20} />
+                  Yes
+                </Button>
+              </div>
+            )}
+            <Button variant="ghost" size="sm" onClick={onHide}>
+              Hide answer
+            </Button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 /**
  * A card that flips vertically to reveal its answer, and responds to touch and mouse
  * gestures: tap to flip, swipe left for No, swipe right for Yes. The swipe interaction
@@ -1103,6 +1314,7 @@ function FlipCard({
   revealed,
   motionSpeed,
   phase,
+  isTouchMode,
   onReveal,
   onHide,
   onAnswer,
@@ -1111,13 +1323,14 @@ function FlipCard({
   revealed: boolean;
   motionSpeed: MotionSpeed;
   phase: Phase;
+  isTouchMode: boolean;
   onReveal: () => void;
   onHide: () => void;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
 }) {
   const m = speedMultiplier(motionSpeed);
   const isCloze = card.type === 'cloze';
-  const [swipe, setSwipe] = useState({ x: 0, committed: false, hint: null as 'left' | 'right' | null });
+  const [swipe, setSwipe] = useState({ x: 0, hint: null as 'left' | 'right' | null });
   const swipeRef = useRef({ x: 0, startX: 0, startY: 0, dragging: false, isSwipe: false });
   const selectionLenRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1126,6 +1339,8 @@ function FlipCard({
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (swipeRef.current.dragging) return;
+    // Ignore swipes when any overlay is open.
+    if (menuOpen || editing || navOpen || hintsOpen) return;
     swipeRef.current = {
       x: 0,
       startX: e.clientX,
@@ -1136,7 +1351,7 @@ function FlipCard({
     selectionLenRef.current = window.getSelection()?.toString().length ?? 0;
     containerRef.current?.setPointerCapture?.(e.pointerId);
     setSwipe({ x: 0, committed: false, hint: null });
-  }, []);
+  }, [menuOpen, editing, navOpen, hintsOpen]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!swipeRef.current.dragging) return;
@@ -1168,23 +1383,23 @@ function FlipCard({
       if (dx < -swipeThreshold) {
         // Swipe left = No
         if (phase === 'answer') {
-          setSwipe({ x: 0, committed: true, hint: 'left' });
+          setSwipe({ x: 0, hint: 'left' });
           onAnswer(false, 'touch');
         } else {
           // Snap back if not in answer phase.
-          setSwipe({ x: 0, committed: false, hint: null });
+          setSwipe({ x: 0, hint: null });
         }
       } else if (dx > swipeThreshold) {
         // Swipe right = Yes
         if (phase === 'answer') {
-          setSwipe({ x: 0, committed: true, hint: 'right' });
+          setSwipe({ x: 0, hint: 'right' });
           onAnswer(true, 'touch');
         } else {
-          setSwipe({ x: 0, committed: false, hint: null });
+          setSwipe({ x: 0, hint: null });
         }
       } else {
         // Not far enough — spring back.
-        setSwipe({ x: 0, committed: false, hint: null });
+        setSwipe({ x: 0, hint: null });
       }
     } else {
       // It was a tap/click — flip the card unless the user selected text.
@@ -1192,7 +1407,7 @@ function FlipCard({
       const selectionNow = selection?.toString().length ?? 0;
       const selectionGrew = selectionNow > selectionLenRef.current;
       const isInsideCard = selection && containerRef.current ? containerRef.current.contains(selection.anchorNode) : false;
-      setSwipe({ x: 0, committed: false, hint: null });
+      setSwipe({ x: 0, hint: null });
       if (!selectionGrew || !isInsideCard) {
         if (phase === 'question') onReveal();
         else if (phase === 'answer') onHide();
@@ -1243,6 +1458,38 @@ function FlipCard({
             />
           )}
         </AnimatePresence>
+
+        {/* Touch swipe indicators — persistent hints that show the available gestures. */}
+        {isTouchMode && phase === 'answer' && !swipe.hint && !menuOpen && !editing && !navOpen && !hintsOpen && (
+          <>
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 left-0 z-20 flex items-center"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 0.5, x: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ delay: 0.6, duration: 0.35 * m, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="flex flex-col items-center gap-1 rounded-r-lg bg-negative/10 px-2 py-3">
+                <CloseIcon width={16} height={16} className="text-negative" />
+                <span className="text-[10px] text-negative">Swipe left</span>
+              </div>
+            </motion.div>
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-center"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 0.5, x: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ delay: 0.6, duration: 0.35 * m, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="flex flex-col items-center gap-1 rounded-l-lg bg-positive/10 px-2 py-3">
+                <CheckIcon width={16} height={16} className="text-positive" />
+                <span className="text-[10px] text-positive">Swipe right</span>
+              </div>
+            </motion.div>
+          </>
+        )}
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.div

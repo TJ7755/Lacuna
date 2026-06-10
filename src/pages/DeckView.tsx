@@ -362,6 +362,7 @@ export function DeckView() {
       {/* Rightward swipe overlay */}
       {isTouchMode && (
         <motion.div
+          aria-hidden="true"
           className="pointer-events-none absolute right-0 top-1/2 z-50 flex -translate-y-1/2 items-center gap-3 rounded-l-2xl bg-accent px-5 py-4 text-accent-fg shadow-xl"
           style={{ x: -swipeOverlaySpring, opacity: swipeOverlayOpacity, scale: swipeOverlayScale }}
         >
@@ -424,12 +425,14 @@ export function DeckView() {
           {isTouchMode && (
             <>
               <motion.div
+                aria-hidden="true"
                 className="pointer-events-none absolute inset-y-0 right-0 z-0 flex items-center rounded-r-2xl bg-accent/90 px-3 text-accent-fg"
                 style={{ opacity: masteryRightOpacity, width: 80 }}
               >
                 <PlayIcon width={20} height={20} />
               </motion.div>
               <motion.div
+                aria-hidden="true"
                 className="pointer-events-none absolute inset-x-0 top-0 z-0 flex items-center justify-center gap-2 rounded-t-2xl bg-accent/90 py-3 text-accent-fg"
                 style={{ opacity: masteryUpOpacity }}
               >
@@ -437,6 +440,7 @@ export function DeckView() {
                 <span className="text-xs font-medium">Study</span>
               </motion.div>
               <motion.div
+                aria-hidden="true"
                 className="pointer-events-none absolute inset-x-0 bottom-0 z-0 flex items-center justify-center gap-2 rounded-b-2xl bg-ink/10 py-3 text-ink"
                 style={{ opacity: masteryDownOpacity }}
               >
