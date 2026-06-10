@@ -10,10 +10,17 @@
 //      "reversible" entry and expanded back into two independent cards on import — the
 //      same shape createCardWithReverse produces.
 //   2. Compact single-letter JSON keys.
-//   3. DEFLATE (via the native CompressionStream) before base64, when available.
+//   3. DEFLATE (via the native CompressionStream) before encoding, when available.
 //
-// The resulting string is a short scheme tag (LAC1 = compressed, LAC0 = plain) followed
-// by base64, so it is just letters, digits and the usual base64 punctuation.
+// Encoding uses Base45 (RFC 9285) for the new format because it maps exactly to the
+// QR code Alphanumeric mode, giving ~30% more capacity than Base64. Legacy codes
+// using Base64 are still read for backward compatibility.
+//
+// The resulting string is a short scheme tag followed by the encoded payload:
+//   LAC1 = DEFLATE + base64 (default — shortest for copy-paste text)
+//   LAC0 = plain base64 (legacy, uncompressed fallback)
+//   LAC2 = DEFLATE + Base45 (densest in QR codes, longer as raw text)
+//   LAC3 = plain Base45 (legacy, uncompressed fallback)
 
 import { z } from 'zod';
 import { db } from './schema';
@@ -22,9 +29,12 @@ import { clampRequestRetention } from '../fsrs/params';
 import type { ParsedCard } from './import';
 import type { Card } from './types';
 import { stripAssetImages } from './assets';
+import { bytesToBase45, base45ToBytes } from './base45';
 
 /** Format version. Bump only on a breaking change to the payload shape. */
 const SHARE_VERSION = 1;
+const PREFIX_BASE45_COMPRESSED = 'LAC2';
+const PREFIX_BASE45_PLAIN = 'LAC3';
 const PREFIX_COMPRESSED = 'LAC1';
 const PREFIX_PLAIN = 'LAC0';
 
@@ -165,16 +175,35 @@ export async function encodeShareDirect(payload: SharePayload): Promise<string> 
   return PREFIX_PLAIN + bytesToBase64(bytes);
 }
 
+/** Encode a share payload as a Base45 string optimised for QR code density. */
+export async function encodeShareQR(payload: SharePayload): Promise<string> {
+  if (canUseShareWorker) {
+    try {
+      return await runShareWorker<string>({ type: 'encodeQR', payload });
+    } catch {
+      // Fall through to direct path if the worker fails.
+    }
+  }
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  if (canCompress) {
+    const deflated = await pipeThrough(bytes, new CompressionStream('deflate-raw'));
+    return PREFIX_BASE45_COMPRESSED + bytesToBase45(deflated);
+  }
+  return PREFIX_BASE45_PLAIN + bytesToBase45(bytes);
+}
+
 const MAX_SHARE_BYTES = 5 * 1024 * 1024;
 
 export async function decodeShareDirect(code: string): Promise<SharePayload> {
-  const trimmed = code.trim().replace(/\s+/g, '');
+  const trimmed = code.trim();
   let bytes: Uint8Array;
-  if (trimmed.startsWith(PREFIX_COMPRESSED)) {
+
+  if (trimmed.startsWith(PREFIX_BASE45_COMPRESSED)) {
     if (!canDecompress) {
       throw new Error('This browser cannot read compressed share codes.');
     }
-    const compressed = base64ToBytes(trimmed.slice(PREFIX_COMPRESSED.length));
+    const encoded = trimmed.slice(PREFIX_BASE45_COMPRESSED.length);
+    const compressed = base45ToBytes(encoded);
     if (compressed.length > MAX_SHARE_BYTES) {
       throw new Error('Share code is too large to decode safely.');
     }
@@ -183,13 +212,37 @@ export async function decodeShareDirect(code: string): Promise<SharePayload> {
       new DecompressionStream('deflate-raw'),
       MAX_SHARE_BYTES,
     );
-  } else if (trimmed.startsWith(PREFIX_PLAIN)) {
-    bytes = base64ToBytes(trimmed.slice(PREFIX_PLAIN.length));
+  } else if (trimmed.startsWith(PREFIX_BASE45_PLAIN)) {
+    const encoded = trimmed.slice(PREFIX_BASE45_PLAIN.length);
+    bytes = base45ToBytes(encoded);
     if (bytes.length > MAX_SHARE_BYTES) {
       throw new Error('Share code is too large to decode safely.');
     }
   } else {
-    throw new Error('That does not look like a Lacuna share code.');
+    // Legacy base64 formats (LAC0 / LAC1) — strip whitespace before decoding
+    // because base64 never contains whitespace.
+    const stripped = trimmed.replace(/\s+/g, '');
+    if (stripped.startsWith(PREFIX_COMPRESSED)) {
+      if (!canDecompress) {
+        throw new Error('This browser cannot read compressed share codes.');
+      }
+      const compressed = base64ToBytes(stripped.slice(PREFIX_COMPRESSED.length));
+      if (compressed.length > MAX_SHARE_BYTES) {
+        throw new Error('Share code is too large to decode safely.');
+      }
+      bytes = await pipeThrough(
+        compressed,
+        new DecompressionStream('deflate-raw'),
+        MAX_SHARE_BYTES,
+      );
+    } else if (stripped.startsWith(PREFIX_PLAIN)) {
+      bytes = base64ToBytes(stripped.slice(PREFIX_PLAIN.length));
+      if (bytes.length > MAX_SHARE_BYTES) {
+        throw new Error('Share code is too large to decode safely.');
+      }
+    } else {
+      throw new Error('That does not look like a Lacuna share code.');
+    }
   }
 
   if (bytes.length > MAX_SHARE_BYTES) {
@@ -235,6 +288,7 @@ function getShareWorker(): Worker {
 function runShareWorker<T>(
   message:
     | { type: 'encode'; payload: SharePayload }
+    | { type: 'encodeQR'; payload: SharePayload }
     | { type: 'decode'; code: string },
 ): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -377,8 +431,8 @@ function packCards(cards: Card[]): ShareCard[] {
   return out;
 }
 
-/** Build a single share code for the given decks, in the order supplied. */
-export async function buildShareCode(deckIds: string[]): Promise<string> {
+/** Pack the given decks into a share payload, preserving order. */
+async function buildSharePayload(deckIds: string[]): Promise<SharePayload> {
   const found = await db.decks.where('id').anyOf(deckIds).toArray();
   const order = new Map(deckIds.map((id, i) => [id, i]));
   found.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
@@ -398,7 +452,17 @@ export async function buildShareCode(deckIds: string[]): Promise<string> {
     });
   }
 
-  return encodeShare({ v: SHARE_VERSION, by: null, at: Date.now(), decks });
+  return { v: SHARE_VERSION, by: null, at: Date.now(), decks };
+}
+
+/** Build a single share code for the given decks, in the order supplied. */
+export async function buildShareCode(deckIds: string[]): Promise<string> {
+  return encodeShare(await buildSharePayload(deckIds));
+}
+
+/** Build a QR-code-optimised share code using Base45 for maximum QR density. */
+export async function buildShareCodeQR(deckIds: string[]): Promise<string> {
+  return encodeShareQR(await buildSharePayload(deckIds));
 }
 
 // ---------------------------------------------------------------------------

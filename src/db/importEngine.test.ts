@@ -22,6 +22,8 @@ describe('detectFormat', () => {
   it('detects share codes', () => {
     expect(detectFormat('LAC1aGVsbG8=')).toEqual({ format: 'share-code', confidence: 1 });
     expect(detectFormat('LAC0d29ybGQ=')).toEqual({ format: 'share-code', confidence: 1 });
+    expect(detectFormat('LAC2ABC')).toEqual({ format: 'share-code', confidence: 1 });
+    expect(detectFormat('LAC3XYZ')).toEqual({ format: 'share-code', confidence: 1 });
   });
 
   it('detects JSON arrays of card objects', () => {

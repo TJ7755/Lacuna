@@ -36,6 +36,7 @@ import { useGradingMode } from '../state/gradingMode';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
+import { useInputMode, type InputMode } from '../state/inputMode';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { MIN_OPTIMISE_REVIEWS } from '../fsrs/optimise';
 import {
@@ -52,6 +53,7 @@ import {
 
 const SETTINGS_SECTIONS = [
   { id: 'settings-appearance', label: 'Appearance' },
+  { id: 'settings-input', label: 'Input mode' },
   { id: 'settings-sidebar', label: 'Sidebar' },
   { id: 'settings-dashboard', label: 'Dashboard' },
   { id: 'settings-study', label: 'Study & scheduling' },
@@ -72,6 +74,7 @@ export function Settings() {
   const [gradingMode, setGradingMode] = useGradingMode();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
+  const [inputMode, setInputMode] = useInputMode();
   const [pomoSettings, setPomoSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
   const backups = useBackups();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -327,6 +330,48 @@ export function Settings() {
             />
             <span className="text-xs text-ink-faint">Fast</span>
           </div>
+        </div>
+      </section>
+
+      {/* Input mode */}
+      <section
+        id="settings-input"
+        className="mb-8 rounded-2xl border border-line bg-surface p-6"
+      >
+        <h2 className="mb-1 font-display text-xl">Input mode</h2>
+        <p className="mb-4 text-sm text-ink-soft">
+          Choose how Lacuna presents its interface. Keyboard-first keeps the compact,
+          shortcut-driven layout. Touch-first enlarges controls, reveals gesture hints,
+          and opens a bottom-sheet menu for reviewing and editing cards. Both modes
+          stay fully functional — you can switch at any time.
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              { key: 'keyboard' as InputMode, label: 'Keyboard first', desc: 'Compact layout with shortcuts' },
+              { key: 'touch' as InputMode, label: 'Touch first', desc: 'Large controls and gestures' },
+              { key: 'auto' as InputMode, label: 'Auto', desc: 'Detect from the device' },
+            ] as { key: InputMode; label: string; desc: string }[]
+          ).map((option) => {
+            const active = inputMode === option.key;
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setInputMode(option.key)}
+                aria-pressed={active}
+                className={cn(
+                  'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
+                  active
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-line text-ink-soft hover:border-line-strong',
+                )}
+              >
+                <div className="font-medium">{option.label}</div>
+                <div className="mt-0.5 text-xs text-ink-faint">{option.desc}</div>
+              </button>
+            );
+          })}
         </div>
       </section>
 

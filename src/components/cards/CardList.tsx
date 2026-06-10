@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { CardContent } from './CardContent';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
@@ -73,7 +73,11 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }
@@ -529,13 +533,116 @@ function CardRow({
 
   const reviewed = card.lastReviewed !== null;
   const tags = card.tags ?? [];
-  const buried = card.buriedUntil != null && card.buriedUntil > Date.now();
+  const buried = card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > Date.now();
   const leech = isLeech(card);
   const flagged = card.flagged === true;
+
+  // Swipe-to-reveal state
+  const [trayOpen, setTrayOpen] = useState(false);
+  useEffect(() => {
+    if (selectMode || expanded) {
+      setTrayOpen(false);
+      dragX.set(0);
+    }
+  }, [selectMode, expanded, dragX]);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const dragX = useMotionValue(0);
+  const springX = useSpring(dragX, { stiffness: 380, damping: 32 });
+  const swipeState = useRef({
+    dragging: false,
+    startX: 0,
+    startY: 0,
+    isSwipe: false,
+    openBeforeDrag: false,
+  });
+  const trayWidth = 220;
+  const swipeThreshold = 40;
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (selectMode || expanded) return;
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, [role="button"]')) return;
+    swipeState.current = {
+      dragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      isSwipe: false,
+      openBeforeDrag: trayOpen,
+    };
+    cardRef.current?.setPointerCapture(e.pointerId);
+  }, [selectMode, expanded, trayOpen]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!swipeState.current.dragging) return;
+    const dx = e.clientX - swipeState.current.startX;
+    const dy = e.clientY - swipeState.current.startY;
+
+    if (!swipeState.current.isSwipe && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) {
+      swipeState.current.isSwipe = true;
+    }
+    if (!swipeState.current.isSwipe) return;
+
+    e.preventDefault();
+
+    // If tray was already open, dragging right closes it; dragging left keeps it open.
+    // If tray was closed, dragging left opens it; dragging right does nothing.
+    const base = swipeState.current.openBeforeDrag ? -trayWidth : 0;
+    const clamped = Math.max(-trayWidth, Math.min(0, base + dx));
+    dragX.set(clamped);
+  }, [dragX]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (!swipeState.current.dragging) return;
+    cardRef.current?.releasePointerCapture(e.pointerId);
+    swipeState.current.dragging = false;
+    const wasSwipe = swipeState.current.isSwipe;
+    swipeState.current.isSwipe = false;
+
+    if (wasSwipe) {
+      const currentX = dragX.get();
+      // If open before drag, drag right to close; if closed, drag left to open.
+      if (swipeState.current.openBeforeDrag) {
+        // Tray was open — close if dragged right past threshold
+        if (currentX > -trayWidth + swipeThreshold) {
+          setTrayOpen(false);
+          dragX.set(0);
+        } else {
+          setTrayOpen(true);
+          dragX.set(-trayWidth);
+        }
+      } else {
+        // Tray was closed — open if dragged left past threshold
+        if (currentX < -swipeThreshold) {
+          setTrayOpen(true);
+          dragX.set(-trayWidth);
+        } else {
+          setTrayOpen(false);
+          dragX.set(0);
+        }
+      }
+    } else {
+      // It was a tap — close the tray if it is open; let handleClick toggle expand.
+      if (trayOpen) {
+        setTrayOpen(false);
+        dragX.set(0);
+      }
+    }
+  }, [dragX, trayOpen]);
+
+  const handlePointerCancel = useCallback((e: React.PointerEvent) => {
+    cardRef.current?.releasePointerCapture(e.pointerId);
+    swipeState.current.dragging = false;
+    swipeState.current.isSwipe = false;
+    dragX.set(trayOpen ? -trayWidth : 0);
+  }, [dragX, trayOpen]);
 
   function handleClick() {
     if (selectMode) {
       onToggle();
+    } else if (trayOpen) {
+      setTrayOpen(false);
+      dragX.set(0);
     } else {
       onToggleExpand();
     }
@@ -553,168 +660,221 @@ function CardRow({
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.16 * m, delay: Math.min(index * 0.03, 0.25) * m }}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      onMouseEnter={() => !selectMode && setHovered(true)}
-      onMouseLeave={() => !selectMode && setHovered(false)}
-      whileHover={selectMode ? undefined : { y: -2 }}
-      tabIndex={0}
-      aria-expanded={expanded}
+    <div
       className={cn(
-        'group relative rounded-xl border bg-surface p-4 transition-colors duration-200 cursor-pointer',
+        'group relative rounded-xl border bg-surface transition-colors duration-200',
         selected
           ? 'border-accent ring-2 ring-accent/30'
-          : 'border-line hover:border-line-strong hover:shadow-md hover:shadow-black/[0.03] active:bg-ink/5',
+          : 'border-line hover:border-line-strong',
       )}
     >
-      <div className="flex items-start gap-4">
-      {selectMode && (
-        <span
-          className={cn(
-            'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors',
-            selected ? 'border-accent bg-accent text-accent-fg' : 'border-line-strong',
-          )}
-        >
-          {selected && <CheckIcon width={12} height={12} />}
-        </span>
-      )}
-
-      <div className="min-w-0 flex-1">
-        <div className="mb-1.5 flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-ink-faint">
-            {card.type === 'cloze' ? 'Cloze' : 'Front / Back'}
-          </span>
-          {showBack && (
-            <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
-              Back
-            </span>
-          )}
-          {reviewed ? (
-            <span className="text-[11px] text-ink-faint tabular">
-              Stability {card.stability!.toFixed(1)}d
-            </span>
-          ) : (
-            <span className="text-[11px] text-accent">New</span>
-          )}
-          {card.suspended && (
-            <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
-              Suspended
-            </span>
-          )}
-          {!card.suspended && buried && (
-            <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
-              Buried
-            </span>
-          )}
-          {leech && (
-            <span
-              title={`Failed ${card.lapses} times — consider rewording or splitting this card.`}
-              className="rounded-full bg-negative/10 px-2 py-0.5 text-[11px] font-medium text-negative"
-            >
-              Leech
-            </span>
-          )}
-          {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
-        </div>
-        <div className="relative max-h-24 overflow-hidden text-sm text-ink-soft [mask-image:linear-gradient(to_bottom,black_60%,transparent)]">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={showBack ? 'back' : 'front'}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.12 * m }}
-            >
-              <CardContent card={card} side={contentSide} />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-        {tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <TagIcon width={13} height={13} className="text-ink-faint" />
-            {tags.map((t) => (
-              <span
-                key={t}
-                className="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-soft"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {!selectMode && (
-        <div className="flex shrink-0 items-center gap-1">
-          {card.suspended && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onResume(); }}
-              title="Resume card"
-              className="min-h-11 rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
-            >
-              Resume
-            </button>
-          )}
-          <motion.button
+      {/* Action tray revealed behind the card on swipe-left */}
+      <div
+        className="absolute inset-y-0 right-0 z-0 flex items-center overflow-hidden rounded-r-xl"
+        style={{ width: trayWidth }}
+      >
+        <div className="flex h-full w-full items-center">
+          <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleFlag(); }}
-            title={flagged ? 'Remove flag' : 'Flag card'}
             aria-pressed={flagged}
-            whileTap={{ scale: 0.85 }}
-            whileHover={{ scale: 1.08 }}
+            onClick={(e) => { e.stopPropagation(); onToggleFlag(); }}
             className={cn(
-              'min-h-11 rounded-lg p-2 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 touch-visible',
+              'flex h-full flex-1 flex-col items-center justify-center gap-1 text-xs transition-colors',
               flagged
-                ? 'text-accent opacity-100'
-                : 'text-ink-faint opacity-0 group-hover:opacity-100',
+                ? 'bg-accent/10 text-accent hover:bg-accent/20'
+                : 'bg-ink/[0.03] text-ink-soft hover:bg-ink/5',
             )}
           >
-            <FlagIcon width={16} height={16} />
-          </motion.button>
-          <motion.button
+            <FlagIcon width={18} height={18} />
+            {flagged ? 'Unflag' : 'Flag'}
+          </button>
+          <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            title="Edit card"
-            whileTap={{ scale: 0.85 }}
-            whileHover={{ scale: 1.08 }}
-            className="min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 group-hover:opacity-100 touch-visible"
+            className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-ink/[0.03] text-xs text-ink-soft transition-colors hover:bg-accent/10 hover:text-accent"
           >
-            <EditIcon width={16} height={16} />
-          </motion.button>
-          <motion.button
+            <EditIcon width={18} height={18} />
+            Edit
+          </button>
+          <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            title="Delete card"
-            whileTap={{ scale: 0.85 }}
-            whileHover={{ scale: 1.08 }}
-            className="min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-negative/10 hover:text-negative focus-visible:opacity-100 group-hover:opacity-100 touch-visible"
+            className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-negative/10 text-xs text-negative transition-colors hover:bg-negative/20"
           >
-            <TrashIcon width={16} height={16} />
-          </motion.button>
+            <TrashIcon width={18} height={18} />
+            Delete
+          </button>
         </div>
-      )}
       </div>
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0, marginTop: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
-            exit={{ opacity: 0, height: 0, marginTop: 0 }}
-            transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="border-t border-line pt-4">
-              <CardAnalytics card={card} deck={deck} motionMultiplier={m} />
-            </div>
-          </motion.div>
+
+      <motion.div
+        ref={cardRef}
+        style={{ x: springX, touchAction: 'pan-y' }}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.16 * m, delay: Math.min(index * 0.03, 0.25) * m }}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        onMouseEnter={() => !selectMode && setHovered(true)}
+        onMouseLeave={() => !selectMode && setHovered(false)}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        tabIndex={0}
+        aria-expanded={expanded}
+        className={cn(
+          'relative z-10 cursor-pointer rounded-xl border bg-surface p-4',
+          selected
+            ? 'border-accent ring-2 ring-accent/30'
+            : 'border-line hover:border-line-strong hover:shadow-md hover:shadow-black/[0.03] active:bg-ink/5',
         )}
-      </AnimatePresence>
-    </motion.div>
+      >
+        <div className="flex items-start gap-4">
+          {selectMode && (
+            <span
+              className={cn(
+                'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors',
+                selected ? 'border-accent bg-accent text-accent-fg' : 'border-line-strong',
+              )}
+            >
+              {selected && <CheckIcon width={12} height={12} />}
+            </span>
+          )}
+
+          <div className="min-w-0 flex-1">
+            <div className="mb-1.5 flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-ink-faint">
+                {card.type === 'cloze' ? 'Cloze' : 'Front / Back'}
+              </span>
+              {showBack && (
+                <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+                  Back
+                </span>
+              )}
+              {reviewed ? (
+                <span className="text-[11px] text-ink-faint tabular">
+                  Stability {card.stability!.toFixed(1)}d
+                </span>
+              ) : (
+                <span className="text-[11px] text-accent">New</span>
+              )}
+              {card.suspended && (
+                <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
+                  Suspended
+                </span>
+              )}
+              {!card.suspended && buried && (
+                <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] text-ink-faint">
+                  Buried
+                </span>
+              )}
+              {leech && (
+                <span
+                  title={`Failed ${card.lapses} times — consider rewording or splitting this card.`}
+                  className="rounded-full bg-negative/10 px-2 py-0.5 text-[11px] font-medium text-negative"
+                >
+                  Leech
+                </span>
+              )}
+              {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
+            </div>
+            <div className="relative max-h-24 overflow-hidden text-sm text-ink-soft [mask-image:linear-gradient(to_bottom,black_60%,transparent)]">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={showBack ? 'back' : 'front'}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.12 * m }}
+                >
+                  <CardContent card={card} side={contentSide} />
+                </motion.div>
+              </AnimatePresence>
+            </div>
+            {tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <TagIcon width={13} height={13} className="text-ink-faint" />
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-soft"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {!selectMode && (
+            <div className="flex shrink-0 items-center gap-1">
+              {card.suspended && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onResume(); }}
+                  title="Resume card"
+                  className="min-h-11 rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+                >
+                  Resume
+                </button>
+              )}
+              <motion.button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onToggleFlag(); }}
+                title={flagged ? 'Remove flag' : 'Flag card'}
+                aria-pressed={flagged}
+                whileTap={{ scale: 0.85 }}
+                whileHover={{ scale: 1.08 }}
+                className={cn(
+                  'min-h-11 rounded-lg p-2 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 touch-visible',
+                  flagged
+                    ? 'text-accent opacity-100'
+                    : 'text-ink-faint opacity-0 group-hover:opacity-100',
+                )}
+              >
+                <FlagIcon width={16} height={16} />
+              </motion.button>
+              <motion.button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                title="Edit card"
+                whileTap={{ scale: 0.85 }}
+                whileHover={{ scale: 1.08 }}
+                className="min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 group-hover:opacity-100 touch-visible"
+              >
+                <EditIcon width={16} height={16} />
+              </motion.button>
+              <motion.button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                title="Delete card"
+                whileTap={{ scale: 0.85 }}
+                whileHover={{ scale: 1.08 }}
+                className="min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-negative/10 hover:text-negative focus-visible:opacity-100 group-hover:opacity-100 touch-visible"
+              >
+                <TrashIcon width={16} height={16} />
+              </motion.button>
+            </div>
+          )}
+        </div>
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="border-t border-line pt-4">
+                <CardAnalytics card={card} deck={deck} motionMultiplier={m} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </div>
   );
 }

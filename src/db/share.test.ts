@@ -9,11 +9,14 @@ import {
 } from './repository';
 import {
   buildShareCode,
+  buildShareCodeQR,
   decodeShare,
+  decodeShareDirect,
   importSharePayload,
   summariseShare,
 } from './share';
 import { assetUrl, storeImageBlob } from './assets';
+import { bytesToBase45 } from './base45';
 
 async function reset() {
   await Promise.all([
@@ -35,7 +38,7 @@ describe('share codes', () => {
     await createCard(deck.id, 'cloze', 'The capital of France is {{c1::Paris}}.', '');
 
     const code = await buildShareCode([deck.id]);
-    expect(code.startsWith('LAC')).toBe(true);
+    expect(code.startsWith('LAC1')).toBe(true);
 
     const payload = await decodeShare(code);
     const summary = summariseShare(payload);
@@ -61,6 +64,34 @@ describe('share codes', () => {
     );
     // Imported cards start with clean scheduling state.
     expect(importedCards.every((c) => c.stability === null && c.reps === 0)).toBe(true);
+  });
+
+  it('round-trips a deck using the legacy LAC0 plain base64 format', async () => {
+    const deck = await createDeck('Legacy');
+    await createCard(deck.id, 'front_back', 'Q', 'A');
+
+    const payload = await decodeShareDirect('LAC0' + btoa(JSON.stringify({ v: 1, by: null, at: Date.now(), decks: [{ n: 'Legacy', o: 0, c: 0, e: 0, cards: [{ k: 0, f: 'Q', b: 'A' }] }] })));
+    expect(payload.decks).toHaveLength(1);
+    expect(payload.decks[0].cards[0].f).toBe('Q');
+  });
+
+  it('round-trips a deck using the legacy LAC1 compressed base64 format', async () => {
+    const deck = await createDeck('LegacyCompressed');
+    await createCard(deck.id, 'front_back', 'Q', 'A');
+
+    const code = await buildShareCode([deck.id]);
+    // Manually create a LAC1 code by re-encoding the payload
+    const payload = await decodeShare(code);
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    const compressed = await new Response(
+      new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'))
+    ).arrayBuffer();
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(compressed)));
+    const legacyCode = 'LAC1' + b64;
+
+    const decoded = await decodeShare(legacyCode);
+    expect(decoded.decks).toHaveLength(1);
+    expect(decoded.decks[0].cards[0].f).toBe('Q');
   });
 
   it('compresses a reverse pair into one entry and expands it back into two cards', async () => {
@@ -104,8 +135,29 @@ describe('share codes', () => {
       at: Date.now(),
       decks: [{ n: 'Bad deck', o: 0, c: 0, e: 0 }],
     };
-    const plain = 'LAC0' + btoa(JSON.stringify(malformed));
+    const plain = 'LAC3' + bytesToBase45(new TextEncoder().encode(JSON.stringify(malformed)));
     await expect(decodeShare(plain)).rejects.toThrow(/unsupported version/);
+  });
+
+  it('produces shorter codes with Base64 (LAC1) than Base45 (LAC2) for the same payload', async () => {
+    const deck = await createDeck('Vocab');
+    await createCard(deck.id, 'front_back', 'chien', 'dog');
+    await createCard(deck.id, 'front_back', 'chat', 'cat');
+    await createCard(deck.id, 'cloze', 'The capital of France is {{c1::Paris}}.', '');
+
+    const code = await buildShareCode([deck.id]);
+    expect(code.startsWith('LAC1')).toBe(true);
+
+    // Manually build a Base45 equivalent (LAC2) to compare length.
+    const payload = await decodeShare(code);
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    const compressed = await new Response(
+      new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'))
+    ).arrayBuffer();
+    const base45Code = 'LAC2' + bytesToBase45(new Uint8Array(compressed));
+
+    // Base64 must be shorter than Base45 for the same compressed payload.
+    expect(code.length).toBeLessThan(base45Code.length);
   });
 
   it('strips images from share codes and imports placeholders gracefully', async () => {
@@ -128,5 +180,40 @@ describe('share codes', () => {
     expect(cards[0].front).toContain('Label');
     expect(cards[0].front).toContain('Image omitted from share code');
     expect(cards[0].back).toBe('Back text');
+  });
+});
+
+describe('QR share codes', () => {
+  beforeEach(reset);
+
+  it('generates a QR-ready Base45 code (LAC2) and round-trips it', async () => {
+    const deck = await createDeck('QR Vocab');
+    await createCard(deck.id, 'front_back', 'bonjour', 'hello');
+    await createCard(deck.id, 'cloze', 'The capital of Spain is {{c1::Madrid}}.', '');
+
+    const qrCode = await buildShareCodeQR([deck.id]);
+    expect(qrCode.startsWith('LAC2')).toBe(true);
+
+    const payload = await decodeShare(qrCode);
+    expect(payload.decks).toHaveLength(1);
+    expect(payload.decks[0].cards).toHaveLength(2);
+    expect(payload.decks[0].cards[0].f).toBe('bonjour');
+    expect(payload.decks[0].cards[1].f).toContain('Madrid');
+
+    await importSharePayload(payload);
+    const decks = await db.decks.toArray();
+    expect(decks).toHaveLength(2);
+  });
+
+  it('produces a Base45 code that is readable by the unified decoder', async () => {
+    const deck = await createDeck('Unified');
+    await createCard(deck.id, 'front_back', 'Q', 'A');
+
+    const qrCode = await buildShareCodeQR([deck.id]);
+    expect(qrCode.startsWith('LAC2')).toBe(true);
+
+    const decoded = await decodeShareDirect(qrCode);
+    expect(decoded.decks).toHaveLength(1);
+    expect(decoded.decks[0].cards[0].f).toBe('Q');
   });
 });

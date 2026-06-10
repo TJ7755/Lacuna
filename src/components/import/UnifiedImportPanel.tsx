@@ -69,7 +69,7 @@ const FORMAT_HELP: Record<ImportFormat, string> = {
   'markdown-table': 'A Markdown table with headers. Columns named "front"/"back" (or "question"/"answer", "q"/"a", "term"/"definition") are used automatically.',
   'markdown-list': 'A Markdown list where each item or pair of items is a card. Supports Q:/A: prefixes, ordered pairs, and blank-line separated blocks.',
   json: 'A JSON array of objects. Recognised keys (front/back, question/answer, etc.) are used automatically; otherwise the first two string values become front and back.',
-  'share-code': 'A Lacuna share code (starts with LAC0 or LAC1). Paste the full code and it will be decoded automatically.',
+  'share-code': 'A Lacuna share code (starts with LAC). Paste the full code and it will be decoded automatically.',
   'plain-text': 'Plain text with Q:/A: prefixes, separator-based pairs (using —, |, or tab), or blank-line separated blocks.',
   unknown: 'Paste or upload your cards. The format will be detected automatically.',
 };

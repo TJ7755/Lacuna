@@ -85,7 +85,11 @@ export function Dashboard() {
   function toggleSelected(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }
@@ -167,23 +171,35 @@ export function Dashboard() {
   // Folder management handlers
   async function handleCreateFolder() {
     if (!newFolderName.trim()) return;
-    await createFolder(newFolderName);
-    setNewFolderName('');
-    setCreatingFolder(false);
-    notify('Folder created.', 'positive');
+    try {
+      await createFolder(newFolderName);
+      setNewFolderName('');
+      setCreatingFolder(false);
+      notify('Folder created.', 'positive');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not create folder.', 'negative');
+    }
   }
 
   async function handleRenameFolder(id: string) {
     if (!renameFolderName.trim()) return;
-    await updateFolder(id, { name: renameFolderName.trim() });
-    setRenamingFolder(null);
-    setRenameFolderName('');
-    notify('Folder renamed.', 'positive');
+    try {
+      await updateFolder(id, { name: renameFolderName.trim() });
+      setRenamingFolder(null);
+      setRenameFolderName('');
+      notify('Folder renamed.', 'positive');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not rename folder.', 'negative');
+    }
   }
 
   async function handleDeleteFolder(id: string) {
-    await deleteFolder(id);
-    notify('Folder deleted.', 'neutral');
+    try {
+      await deleteFolder(id);
+      notify('Folder deleted.', 'neutral');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not delete folder.', 'negative');
+    }
   }
 
   async function handleMoveToFolder(folderId: string | null) {
@@ -197,7 +213,11 @@ export function Dashboard() {
   function toggleFolderExpanded(id: string) {
     setExpandedFolders((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }
@@ -320,7 +340,7 @@ export function Dashboard() {
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => {
                     if (createMode === 'blank' && e.key === 'Enter' && newName.trim())
-                      handleCreate();
+                      void handleCreate();
                     if (e.key === 'Escape') setCreating(false);
                   }}
                   placeholder="e.g. Organic Chemistry"
@@ -401,7 +421,7 @@ export function Dashboard() {
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && newFolderName.trim()) handleCreateFolder();
+                    if (e.key === 'Enter' && newFolderName.trim()) void handleCreateFolder();
                     if (e.key === 'Escape') setCreatingFolder(false);
                   }}
                   placeholder="e.g. Semester 1"
@@ -656,7 +676,7 @@ export function Dashboard() {
                         value={renameFolderName}
                         onChange={(e) => setRenameFolderName(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRenameFolder(folder.id);
+                          if (e.key === 'Enter') void handleRenameFolder(folder.id);
                           if (e.key === 'Escape') {
                             setRenamingFolder(null);
                             setRenameFolderName('');

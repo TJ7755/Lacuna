@@ -7,6 +7,7 @@ import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import {
   buildShareCode,
+  buildShareCodeQR,
   decodeShare,
   importSharePayload,
   summariseShare,
@@ -14,8 +15,22 @@ import {
 } from '../db/share';
 import { referencedAssetHashesInCards } from '../db/assets';
 import { exportCardsSimple } from '../db/export';
-import { CheckIcon, DownloadIcon, ShareIcon, UploadIcon, CardsIcon, FileTextIcon } from '../components/ui/icons';
+import {
+  CheckIcon,
+  DownloadIcon,
+  ShareIcon,
+  UploadIcon,
+  CardsIcon,
+  FileTextIcon,
+  QrCodeIcon,
+  CameraIcon,
+  CloseIcon,
+} from '../components/ui/icons';
 import { formatDate } from '../utils/datetime';
+import QRCode from 'react-qr-code';
+
+/** Maximum characters a single QR code (version 40, L error correction) can hold in Alphanumeric mode. */
+const MAX_QR_ALPHANUMERIC_CHARS = 4296;
 
 /**
  * Share decks as a single copy-and-paste code, and rebuild decks from a code. Share codes
@@ -41,6 +56,17 @@ export function SharePage() {
   const [plainText, setPlainText] = useState('');
   const [plainTextCopied, setPlainTextCopied] = useState(false);
 
+  // QR code generation state
+  const [qrCode, setQrCode] = useState('');
+  const [qrGenerating, setQrGenerating] = useState(false);
+  const [showQR, setShowQR] = useState(false);
+
+  // QR code scanning state
+  const [scanning, setScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const scannerRef = useRef<HTMLDivElement>(null);
+  const html5QrCodeRef = useRef<import('html5-qrcode').Html5Qrcode | null>(null);
+
   // Clear pending copy timeouts on unmount to avoid setState on unmounted component.
   useEffect(() => {
     return () => {
@@ -48,6 +74,22 @@ export function SharePage() {
       if (plainTextCopyTimeoutRef.current) window.clearTimeout(plainTextCopyTimeoutRef.current);
     };
   }, []);
+
+  // Clean up QR scanner on unmount
+  useEffect(() => {
+    return () => {
+      const scanner = html5QrCodeRef.current;
+      if (scanner) {
+        html5QrCodeRef.current = null;
+        void scanner.stop().then(() => {
+          void scanner.clear();
+        }).catch(() => {
+          // Ignore cleanup errors
+        });
+      }
+    };
+  }, []);
+
   const m = speedMultiplier(motionSpeed);
 
   // Card counts per deck, for the selection labels.
@@ -77,12 +119,16 @@ export function SharePage() {
     // Any change invalidates a previously generated code or plain text export.
     setCode('');
     setPlainText('');
+    setQrCode('');
+    setShowQR(false);
   }
 
   function toggleAll() {
     if (!decks) return;
     setCode('');
     setPlainText('');
+    setQrCode('');
+    setShowQR(false);
     setSelected((prev) =>
       prev.size === decks.length ? new Set() : new Set(decks.map((d) => d.id)),
     );
@@ -102,6 +148,29 @@ export function SharePage() {
     }
   }
 
+  async function handleGenerateQR() {
+    if (selectedCount === 0) return;
+    setQrGenerating(true);
+    try {
+      const result = await buildShareCodeQR([...selected]);
+      if (result.length > MAX_QR_ALPHANUMERIC_CHARS) {
+        notify(
+          'This deck is too large for a single QR code. Use the text share code instead.',
+          'negative',
+        );
+        setQrCode('');
+        setShowQR(false);
+        return;
+      }
+      setQrCode(result);
+      setShowQR(true);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not generate a QR code.', 'negative');
+    } finally {
+      setQrGenerating(false);
+    }
+  }
+
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(code);
@@ -111,6 +180,16 @@ export function SharePage() {
       copyTimeoutRef.current = window.setTimeout(() => setCopied(false), 2000);
     } catch {
       notify('Copy failed — select the code and copy it manually.', 'negative');
+    }
+  }
+
+  async function handleCopyQR() {
+    if (!qrCode) return;
+    try {
+      await navigator.clipboard.writeText(qrCode);
+      notify('QR code text copied to the clipboard.', 'positive');
+    } catch {
+      notify('Copy failed — select the text and copy it manually.', 'negative');
     }
   }
 
@@ -167,6 +246,63 @@ export function SharePage() {
     } finally {
       setImporting(false);
     }
+  }
+
+  async function handleStartScan() {
+    if (html5QrCodeRef.current) return;
+    setScanError(null);
+    setScanning(true);
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode');
+      if (!scannerRef.current) {
+        setScanError('Scanner element not found.');
+        setScanning(false);
+        return;
+      }
+      const scanner = new Html5Qrcode(scannerRef.current.id);
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        async (decodedText) => {
+          // Stop scanning immediately on success
+          try {
+            await scanner.stop();
+            await scanner.clear();
+          } catch {
+            // Ignore stop errors — scanner may already be stopped
+          }
+          html5QrCodeRef.current = null;
+          setScanning(false);
+          try {
+            const payload = await decodeShare(decodedText);
+            setPending({ summary: summariseShare(payload), raw: decodedText });
+          } catch (err) {
+            notify(err instanceof Error ? err.message : 'Invalid QR code.', 'negative');
+          }
+        },
+        () => {
+          // QR code not found in this frame — silent, keep scanning
+        },
+      );
+    } catch (err) {
+      html5QrCodeRef.current = null;
+      setScanError(err instanceof Error ? err.message : 'Could not start camera scanner.');
+      setScanning(false);
+    }
+  }
+
+  async function handleStopScan() {
+    if (html5QrCodeRef.current) {
+      try {
+        await html5QrCodeRef.current.stop();
+        await html5QrCodeRef.current.clear();
+      } catch {
+        // Ignore stop errors — scanner may already be stopped
+      }
+      html5QrCodeRef.current = null;
+    }
+    setScanning(false);
+    setScanError(null);
   }
 
   const allSelected = decks ? decks.length > 0 && selected.size === decks.length : false;
@@ -306,6 +442,14 @@ export function SharePage() {
                 </Button>
                 <Button
                   variant="secondary"
+                  onClick={handleGenerateQR}
+                  disabled={selectedCount === 0 || qrGenerating}
+                >
+                  <QrCodeIcon width={18} height={18} />
+                  {qrGenerating ? 'Generating…' : 'Generate QR code'}
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={handleExportPlainText}
                   disabled={selectedCount === 0 || selectedCards === 0}
                 >
@@ -315,6 +459,7 @@ export function SharePage() {
               </div>
             </div>
 
+            {/* Share code text area */}
             <AnimatePresence>
               {code && (
                 <motion.div
@@ -347,6 +492,50 @@ export function SharePage() {
                       rows={4}
                       className="w-full resize-none break-all rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs text-ink-soft outline-none"
                     />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* QR code display */}
+            <AnimatePresence>
+              {showQR && qrCode && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                  animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
+                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+                        QR code · {qrCode.length.toLocaleString()} characters
+                      </span>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="secondary" onClick={handleCopyQR}>
+                          Copy text
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setShowQR(false)}>
+                          <CloseIcon width={14} height={14} />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="rounded-xl border border-line bg-white p-4 dark:bg-white">
+                        <QRCode
+                          value={qrCode}
+                          size={256}
+                          level="L"
+                          bgColor="#ffffff"
+                          fgColor="#000000"
+                        />
+                      </div>
+                      <p className="text-xs text-ink-faint">
+                        This QR code uses a Base45-encoded share code for maximum density.
+                        Any camera can scan it.
+                      </p>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -400,7 +589,7 @@ export function SharePage() {
         </div>
         <p className="mb-5 text-sm text-ink-soft">
           Paste a share code below to add its decks to your own. This never overwrites your
-          existing decks.
+          existing decks. Legacy codes (LAC0, LAC1) and new codes (LAC2, LAC3) are both supported.
         </p>
 
         <div className="rounded-xl border border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
@@ -416,11 +605,56 @@ export function SharePage() {
           />
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="secondary" onClick={handleInspect} disabled={!input.trim()}>
             Read code
           </Button>
+          <Button
+            variant="secondary"
+            onClick={scanning ? handleStopScan : handleStartScan}
+            disabled={!navigator.mediaDevices?.getUserMedia}
+          >
+            <CameraIcon width={18} height={18} />
+            {scanning ? 'Stop scanning' : 'Scan QR code'}
+          </Button>
         </div>
+
+        {/* QR scanner */}
+        <AnimatePresence>
+          {scanning && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+                    QR scanner
+                  </span>
+                  <Button size="sm" variant="ghost" onClick={handleStopScan}>
+                    <CloseIcon width={14} height={14} />
+                  </Button>
+                </div>
+                <div
+                  id="qr-scanner-container"
+                  ref={scannerRef}
+                  className="relative mx-auto aspect-square max-w-sm overflow-hidden rounded-lg bg-black"
+                >
+                  {!scanError && <div className="absolute inset-0 animate-pulse bg-ink/10" />}
+                </div>
+                {scanError && (
+                  <p className="mt-2 text-sm text-negative">{scanError}</p>
+                )}
+                <p className="mt-2 text-xs text-ink-faint">
+                  Point your camera at a Lacuna QR code. The scanner will auto-detect it.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <AnimatePresence>
           {pending && (
@@ -428,7 +662,7 @@ export function SharePage() {
               initial={{ opacity: 0, height: 0, marginTop: 0 }}
               animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
               exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                  transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden"
             >
               <div className="rounded-xl border border-accent/40 bg-accent-soft/40 p-5">

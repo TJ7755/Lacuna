@@ -49,8 +49,8 @@ export function detectFormat(input: string): FormatDetection {
   const trimmed = input.trim();
   if (!trimmed) return { format: 'unknown', confidence: 0 };
 
-  // Share codes: LAC0 or LAC1 prefix followed by base64.
-  if (/^LAC[01]/.test(trimmed)) {
+  // Share codes: LAC0/LAC1 (legacy base64) or LAC2/LAC3 (Base45).
+  if (/^LAC[0-3]/.test(trimmed)) {
     return { format: 'share-code', confidence: 1 };
   }
 
