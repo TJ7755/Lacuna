@@ -199,7 +199,7 @@ export function DeckView() {
       {/* Breadcrumb */}
       <Link
         to="/"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
+        className="mb-6 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
       >
         <ChevronLeftIcon width={16} height={16} />
         All decks
@@ -662,8 +662,8 @@ function TabButton({
     <button
       onClick={onClick}
       className={cn(
-        'relative flex items-center gap-2 px-4 py-2.5 text-sm transition-colors',
-        active ? 'text-accent' : 'text-ink-soft hover:text-ink',
+        'relative flex min-h-11 items-center gap-2 px-4 py-2.5 text-sm transition-colors',
+        active ? 'text-accent' : 'text-ink-soft hover:text-ink active:text-ink',
       )}
     >
       {icon}
@@ -733,10 +733,10 @@ function FilterChip({
       aria-pressed={active}
       whileTap={{ scale: 0.92 }}
       className={cn(
-        'rounded-full border px-3 py-1 text-xs transition-all duration-150',
+        'min-h-11 rounded-full border px-3 py-1 text-xs transition-all duration-150',
         active
           ? 'border-accent bg-accent-soft text-accent'
-          : 'border-line text-ink-soft hover:border-line-strong',
+          : 'border-line text-ink-soft hover:border-line-strong active:bg-ink/5',
       )}
     >
       {label}
