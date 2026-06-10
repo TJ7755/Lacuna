@@ -798,7 +798,7 @@ export function LearnMode() {
           type="button"
           onClick={() => setFocusMode(false)}
           title="Exit focus mode (F)"
-          className="fixed right-4 top-4 z-20 rounded-lg px-3 py-1.5 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
+          className="fixed right-4 top-4 z-20 min-h-11 rounded-lg px-3 py-1.5 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
         >
           Exit focus (F)
         </button>
@@ -813,7 +813,7 @@ export function LearnMode() {
             onClick={() => setNavOpen(true)}
             aria-label="Open navigation"
             title="Open navigation"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
           >
             <MenuIcon width={18} height={18} />
           </button>
@@ -840,7 +840,7 @@ export function LearnMode() {
               onClick={() => setMenuOpen((v) => !v)}
               aria-label="Card actions"
               title="Card actions"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
             >
               <MoreIcon width={18} height={18} />
             </button>
@@ -1006,12 +1006,12 @@ function LearnSkeleton() {
     <div className="flex min-h-screen flex-col bg-paper">
       <header className="sticky top-0 z-10 border-b border-line bg-paper/85 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-4">
-          <div className="h-9 w-9 animate-pulse rounded-lg bg-ink/10" />
+          <div className="h-11 w-11 animate-pulse rounded-lg bg-ink/10" />
           <div className="min-w-0 flex-1">
             <div className="mb-1 h-3 w-32 animate-pulse rounded bg-ink/10" />
             <div className="h-1.5 w-full animate-pulse rounded-full bg-ink/10" />
           </div>
-          <div className="h-9 w-9 animate-pulse rounded-lg bg-ink/10" />
+          <div className="h-11 w-11 animate-pulse rounded-lg bg-ink/10" />
           <div className="h-9 w-16 animate-pulse rounded-lg bg-ink/10" />
         </div>
       </header>
@@ -1084,7 +1084,7 @@ function MenuItem({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+      className="flex w-full min-h-11 items-center gap-3 px-4 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
     >
       <span className="shrink-0 text-ink-faint">{icon}</span>
       {label}
@@ -1121,7 +1121,7 @@ function FlipCard({
   const swipeRef = useRef({ x: 0, startX: 0, startY: 0, dragging: false, isSwipe: false });
   const selectionLenRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const swipeThreshold = 80;
+  const swipeThreshold = 60;
   const maxDrag = 180;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
