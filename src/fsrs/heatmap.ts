@@ -31,7 +31,7 @@ export function bucketReviewsByDay(timestamps: number[]): Map<number, number> {
 }
 
 /** DST-safe helper: add/subtract days from a local-midnight epoch. */
-function addDays(dayStart: number, days: number): number {
+export function addDays(dayStart: number, days: number): number {
   const d = new Date(dayStart);
   d.setDate(d.getDate() + days);
   return startOfDay(d.getTime());

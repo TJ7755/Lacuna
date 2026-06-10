@@ -67,6 +67,7 @@ export function DeckView() {
   const [sortMode, setSortMode] = useState<'due' | 'created' | 'stability' | 'alpha'>('due');
   const [filters, setFilters] = useState<Set<CardFilter>>(new Set());
   const [showFindOverlay, setShowFindOverlay] = useState(false);
+  const [findQuery, setFindQuery] = useState('');
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const isTouchMode = useIsTouchMode();
@@ -163,6 +164,15 @@ export function DeckView() {
       pool = hits.map((h) => h.card);
     }
 
+    // Apply find-and-replace query when overlay is open.
+    const findTrimmed = findQuery.trim();
+    if (showFindOverlay && findTrimmed) {
+      const q = findTrimmed.toLowerCase();
+      pool = pool.filter((c) =>
+        c.front.toLowerCase().includes(q) || c.back.toLowerCase().includes(q),
+      );
+    }
+
     // Sort.
     switch (sortMode) {
       case 'due':
@@ -183,7 +193,7 @@ export function DeckView() {
         break;
     }
     return pool;
-  }, [cards, deck, filters, debouncedQuery, sortMode, visibleTag]);
+  }, [cards, deck, filters, debouncedQuery, sortMode, visibleTag, showFindOverlay, findQuery]);
 
   const studyPath = deck
     ? `/deck/${deck.id}/learn${visibleTag ? `?tag=${encodeURIComponent(visibleTag)}` : ''}`
@@ -576,6 +586,7 @@ export function DeckView() {
                 <DeckSearchOverlay
                   cards={cards}
                   onClose={() => setShowFindOverlay(false)}
+                  onQueryChange={setFindQuery}
                 />
               )}
             </AnimatePresence>

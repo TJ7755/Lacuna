@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { cn } from '../ui/cn';
 
 /** A titled container giving every chart a consistent frame and empty state. */
 export function ChartCard({
@@ -10,6 +11,7 @@ export function ChartCard({
   emptyMessage,
   children,
   delay = 0,
+  className,
 }: {
   title: string;
   description?: string;
@@ -17,6 +19,7 @@ export function ChartCard({
   emptyMessage?: string;
   children: ReactNode;
   delay?: number;
+  className?: string;
 }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -32,7 +35,7 @@ export function ChartCard({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.24 * m, delay: (d + 0.1) * m }}
-          className="grid h-56 place-items-center text-sm text-ink-faint"
+          className={cn('grid h-56 place-items-center text-sm text-ink-faint', className)}
         >
           {emptyMessage ?? 'Not enough data yet.'}
         </motion.div>
@@ -41,7 +44,7 @@ export function ChartCard({
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.32 * m, delay: (d + 0.05) * m, ease: 'easeOut' }}
-          className="h-56"
+          className={cn('h-56', className)}
         >
           {children}
         </motion.div>

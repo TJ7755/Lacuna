@@ -264,6 +264,7 @@ export function DeckComparison({ decks, cards }: DeckComparisonProps) {
       empty={decks.length < 2}
       emptyMessage="Create at least two decks to compare them."
       delay={0}
+      className="h-auto"
     >
       <div className="space-y-4">
         <div className="flex flex-wrap gap-3">

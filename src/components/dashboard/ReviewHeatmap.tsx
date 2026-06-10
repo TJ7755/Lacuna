@@ -1,9 +1,8 @@
 import { useMemo } from 'react';
 import { m as motion } from 'motion/react';
-import { bucketReviewsByDay, reviewTimestamps } from '../../fsrs/heatmap';
+import { bucketReviewsByDay, reviewTimestamps, addDays } from '../../fsrs/heatmap';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { formatDate, startOfDay } from '../../utils/datetime';
-import { MS_PER_DAY } from '../../fsrs/params';
 import type { Card } from '../../db/types';
 
 /** How many weeks of history the calendar shows. */
@@ -46,7 +45,7 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
     for (let w = 0; w < WEEKS; w += 1) {
       const col: Cell[] = [];
       for (let d = 0; d < 7; d += 1) {
-        const day = gridStart + (w * 7 + d) * MS_PER_DAY;
+        const day = addDays(gridStart, w * 7 + d);
         const count = buckets.get(day) ?? 0;
         maxCount = Math.max(maxCount, count);
         sum += count;
