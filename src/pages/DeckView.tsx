@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { AnimatePresence, m as motion, useMotionValue, useSpring, useTransform } from 'motion/react';
 import {
   useCards,
   useDeck,
@@ -43,6 +43,7 @@ import {
 import { searchCards, type CardFilter } from '../db/search';
 import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { useIsTouchMode } from '../state/inputMode';
 import type { Card, Deck } from '../db/types';
 
 type Tab = 'cards' | 'analytics';
@@ -68,10 +69,36 @@ export function DeckView() {
   const [showFindOverlay, setShowFindOverlay] = useState(false);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const isTouchMode = useIsTouchMode();
 
   // Swipe-to-study gesture state
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const swipeCommittedRef = useRef(false);
+
+  // Page-wide rightward swipe overlay
+  const swipeOverlayX = useMotionValue(0);
+  const swipeOverlaySpring = useSpring(swipeOverlayX, { stiffness: 420, damping: 30 });
+  const swipeOverlayOpacity = useTransform(swipeOverlaySpring, [0, 60, 120], [0, 0.5, 1]);
+  const swipeOverlayScale = useTransform(swipeOverlaySpring, [0, 60, 120], [0.85, 1, 1.05]);
+
+  // Mastery card gesture state
+  const masteryRef = useRef<HTMLDivElement>(null);
+  const masteryDragX = useMotionValue(0);
+  const masteryDragY = useMotionValue(0);
+  const masterySpringX = useSpring(masteryDragX, { stiffness: 400, damping: 30 });
+  const masterySpringY = useSpring(masteryDragY, { stiffness: 400, damping: 30 });
+  const masterySwipeRef = useRef({
+    dragging: false,
+    startX: 0,
+    startY: 0,
+    isSwipe: false,
+    direction: null as 'right' | 'up' | 'down' | null,
+  });
+  const MASTERY_THRESHOLD = 50;
+
+  const masteryRightOpacity = useTransform(masterySpringX, [0, MASTERY_THRESHOLD, MASTERY_THRESHOLD * 1.5], [0, 0.8, 1]);
+  const masteryUpOpacity = useTransform(masterySpringY, [0, -MASTERY_THRESHOLD, -MASTERY_THRESHOLD * 1.5], [0, 0.8, 1]);
+  const masteryDownOpacity = useTransform(masterySpringY, [0, MASTERY_THRESHOLD, MASTERY_THRESHOLD * 1.5], [0, 0.8, 1]);
 
   // Distinct tags across the deck, for the filter row.
   const allTags = useMemo(() => {
@@ -175,20 +202,20 @@ export function DeckView() {
         </Link>
       </motion.div>
     );
-  }
+  }  const studyPath = `/deck/${deck.id}/learn${visibleTag ? `?tag=${encodeURIComponent(visibleTag)}` : ''}`;
 
-  const studyPath = `/deck/${deck.id}/learn${
-    visibleTag ? `?tag=${encodeURIComponent(visibleTag)}` : ''
-  }`;
-
-  function startStudy() {
+  const startStudy = useCallback(() => {
     if (!cards?.length) return;
     if (!deck?.examDatePromptDismissed) {
       setExamBannerOpen(true);
     } else {
       navigate(studyPath);
     }
-  }
+  }, [cards, deck, navigate, studyPath]);
+
+  const handleRefresh = useCallback(() => {
+    notify('Refreshed.', 'positive');
+  }, [notify]);
 
   function toggleFilter(value: CardFilter) {
     setFilters((prev) => {
@@ -209,6 +236,7 @@ export function DeckView() {
   const INTERACTIVE_SELECTOR = 'button, a, input, textarea, select, [contenteditable]';
 
   function handlePointerDown(e: React.PointerEvent) {
+    if (e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (target.closest(INTERACTIVE_SELECTOR)) {
       swipeStartRef.current = null;
@@ -216,6 +244,9 @@ export function DeckView() {
     }
     swipeStartRef.current = { x: e.clientX, y: e.clientY };
     swipeCommittedRef.current = false;
+    if (isTouchMode) {
+      swipeOverlayX.set(0);
+    }
   }
 
   function handlePointerMove(e: React.PointerEvent) {
@@ -224,11 +255,16 @@ export function DeckView() {
     const dy = e.clientY - swipeStartRef.current.y;
     if (Math.abs(dy) > SWIPE_MAX_Y) {
       swipeStartRef.current = null;
+      if (isTouchMode) swipeOverlayX.set(0);
       return;
+    }
+    if (isTouchMode && dx > 0) {
+      swipeOverlayX.set(Math.min(dx, 160));
     }
     if (dx > SWIPE_THRESHOLD) {
       swipeCommittedRef.current = true;
       swipeStartRef.current = null;
+      if (isTouchMode) swipeOverlayX.set(0);
       startStudy();
     }
   }
@@ -236,17 +272,104 @@ export function DeckView() {
   function handlePointerUp() {
     swipeStartRef.current = null;
     swipeCommittedRef.current = false;
+    if (isTouchMode) swipeOverlayX.set(0);
   }
+
+  const handleMasteryPointerDown = useCallback((e: React.PointerEvent) => {
+    if (!isTouchMode) return;
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a, input, select, [role="button"], textarea, [contenteditable]')) return;
+    e.stopPropagation();
+    masterySwipeRef.current = {
+      dragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      isSwipe: false,
+      direction: null,
+    };
+    masteryRef.current?.setPointerCapture(e.pointerId);
+  }, [isTouchMode]);
+
+  const handleMasteryPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!masterySwipeRef.current.dragging) return;
+    const dx = e.clientX - masterySwipeRef.current.startX;
+    const dy = e.clientY - masterySwipeRef.current.startY;
+
+    if (!masterySwipeRef.current.isSwipe && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+      masterySwipeRef.current.isSwipe = true;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        masterySwipeRef.current.direction = 'right';
+      } else {
+        masterySwipeRef.current.direction = dy > 0 ? 'down' : 'up';
+      }
+    }
+
+    if (!masterySwipeRef.current.isSwipe) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (masterySwipeRef.current.direction === 'right') {
+      masteryDragX.set(Math.max(0, dx));
+    } else if (masterySwipeRef.current.direction === 'up') {
+      masteryDragY.set(Math.min(0, dy));
+    } else if (masterySwipeRef.current.direction === 'down') {
+      masteryDragY.set(Math.max(0, dy));
+    }
+  }, [masteryDragX, masteryDragY]);
+
+  const handleMasteryPointerUp = useCallback((e: React.PointerEvent) => {
+    if (!masterySwipeRef.current.dragging) return;
+    e.stopPropagation();
+    masteryRef.current?.releasePointerCapture(e.pointerId);
+    masterySwipeRef.current.dragging = false;
+
+    const wasSwipe = masterySwipeRef.current.isSwipe;
+    const direction = masterySwipeRef.current.direction;
+    masterySwipeRef.current.isSwipe = false;
+    masterySwipeRef.current.direction = null;
+
+    if (!wasSwipe) {
+      masteryDragX.set(0);
+      masteryDragY.set(0);
+      return;
+    }
+
+    if (direction === 'right' && masteryDragX.get() > MASTERY_THRESHOLD) {
+      masteryDragX.set(0);
+      startStudy();
+    } else if (direction === 'up' && masteryDragY.get() < -MASTERY_THRESHOLD) {
+      masteryDragY.set(0);
+      startStudy();
+    } else if (direction === 'down' && masteryDragY.get() > MASTERY_THRESHOLD) {
+      masteryDragY.set(0);
+      handleRefresh();
+    } else {
+      masteryDragX.set(0);
+      masteryDragY.set(0);
+    }
+  }, [masteryDragX, masteryDragY, startStudy, handleRefresh]);
 
   return (
     <div
-      className="mx-auto max-w-5xl px-6 py-8 md:px-10"
+      className="relative mx-auto max-w-5xl px-6 py-8 md:px-10"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
       style={{ touchAction: 'pan-y' }}
     >
+      {/* Rightward swipe overlay */}
+      {isTouchMode && (
+        <motion.div
+          className="pointer-events-none absolute right-0 top-1/2 z-50 flex -translate-y-1/2 items-center gap-3 rounded-l-2xl bg-accent px-5 py-4 text-accent-fg shadow-xl"
+          style={{ x: -swipeOverlaySpring, opacity: swipeOverlayOpacity, scale: swipeOverlayScale }}
+        >
+          <PlayIcon width={22} height={22} />
+          <span className="text-sm font-medium">Study</span>
+        </motion.div>
+      )}
+
       {/* Breadcrumb */}
       <Link
         to="/"
@@ -289,15 +412,48 @@ export function DeckView() {
         </div>
 
         {/* Mastery summary */}
-        <div className="mt-6 rounded-2xl border border-line bg-surface p-5">
-          <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="text-ink-soft">{progressHeading(deck)}</span>
-            <span className="tabular font-medium text-ink">
-              {Math.round(progress * 100)}%
-            </span>
-          </div>
-          <ProgressBar value={progress} />
-          <p className="mt-3 text-xs text-ink-faint">{progressDescription(deck)}</p>
+        <div
+          ref={masteryRef}
+          className="relative mt-6 rounded-2xl border border-line bg-surface p-5"
+          style={{ touchAction: isTouchMode ? 'none' : 'pan-y' }}
+          onPointerDown={handleMasteryPointerDown}
+          onPointerMove={handleMasteryPointerMove}
+          onPointerUp={handleMasteryPointerUp}
+          onPointerCancel={handleMasteryPointerUp}
+        >
+          {isTouchMode && (
+            <>
+              <motion.div
+                className="pointer-events-none absolute inset-y-0 right-0 z-0 flex items-center rounded-r-2xl bg-accent/90 px-3 text-accent-fg"
+                style={{ opacity: masteryRightOpacity, width: 80 }}
+              >
+                <PlayIcon width={20} height={20} />
+              </motion.div>
+              <motion.div
+                className="pointer-events-none absolute inset-x-0 top-0 z-0 flex items-center justify-center gap-2 rounded-t-2xl bg-accent/90 py-3 text-accent-fg"
+                style={{ opacity: masteryUpOpacity }}
+              >
+                <PlayIcon width={18} height={18} />
+                <span className="text-xs font-medium">Study</span>
+              </motion.div>
+              <motion.div
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-0 flex items-center justify-center gap-2 rounded-b-2xl bg-ink/10 py-3 text-ink"
+                style={{ opacity: masteryDownOpacity }}
+              >
+                <span className="text-xs font-medium">Refresh</span>
+              </motion.div>
+            </>
+          )}
+          <motion.div style={{ x: masterySpringX, y: masterySpringY }} className="relative z-10">
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <span className="text-ink-soft">{progressHeading(deck)}</span>
+              <span className="tabular font-medium text-ink">
+                {Math.round(progress * 100)}%
+              </span>
+            </div>
+            <ProgressBar value={progress} />
+            <p className="mt-3 text-xs text-ink-faint">{progressDescription(deck)}</p>
+          </motion.div>
         </div>
       </header>
 
