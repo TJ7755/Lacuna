@@ -914,6 +914,10 @@ export function LearnMode() {
             motionSpeed={motionSpeed}
             phase={phase}
             isTouchMode={isTouchMode}
+            menuOpen={menuOpen}
+            editing={editing}
+            navOpen={navOpen}
+            hintsOpen={hintsOpen}
             onReveal={reveal}
             onHide={hide}
             onAnswer={answer}
@@ -1315,6 +1319,10 @@ function FlipCard({
   motionSpeed,
   phase,
   isTouchMode,
+  menuOpen,
+  editing,
+  navOpen,
+  hintsOpen,
   onReveal,
   onHide,
   onAnswer,
@@ -1324,6 +1332,10 @@ function FlipCard({
   motionSpeed: MotionSpeed;
   phase: Phase;
   isTouchMode: boolean;
+  menuOpen: boolean;
+  editing: boolean;
+  navOpen: boolean;
+  hintsOpen: boolean;
   onReveal: () => void;
   onHide: () => void;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
@@ -1331,6 +1343,13 @@ function FlipCard({
   const m = speedMultiplier(motionSpeed);
   const isCloze = card.type === 'cloze';
   const [swipe, setSwipe] = useState({ x: 0, hint: null as 'left' | 'right' | null });
+  const [hasSwiped, setHasSwiped] = useState(() => {
+    try {
+      return localStorage.getItem('lacuna.learnHints') === '1';
+    } catch {
+      return false;
+    }
+  });
   const swipeRef = useRef({ x: 0, startX: 0, startY: 0, dragging: false, isSwipe: false });
   const selectionLenRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1350,7 +1369,7 @@ function FlipCard({
     };
     selectionLenRef.current = window.getSelection()?.toString().length ?? 0;
     containerRef.current?.setPointerCapture?.(e.pointerId);
-    setSwipe({ x: 0, committed: false, hint: null });
+    setSwipe({ x: 0, hint: null });
   }, [menuOpen, editing, navOpen, hintsOpen]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
@@ -1369,7 +1388,7 @@ function FlipCard({
     const clamped = Math.max(-maxDrag, Math.min(maxDrag, dx));
     swipeRef.current.x = clamped;
     const hint: 'left' | 'right' | null = clamped < -swipeThreshold / 2 ? 'left' : clamped > swipeThreshold / 2 ? 'right' : null;
-    setSwipe({ x: clamped, committed: false, hint });
+    setSwipe({ x: clamped, hint });
   }, [phase]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
@@ -1383,7 +1402,9 @@ function FlipCard({
       if (dx < -swipeThreshold) {
         // Swipe left = No
         if (phase === 'answer') {
-          setSwipe({ x: 0, hint: 'left' });
+          setHasSwiped(true);
+          try { localStorage.setItem('lacuna.learnHints', '1'); } catch {}
+          setSwipe({ x: 0, hint: null });
           onAnswer(false, 'touch');
         } else {
           // Snap back if not in answer phase.
@@ -1392,7 +1413,9 @@ function FlipCard({
       } else if (dx > swipeThreshold) {
         // Swipe right = Yes
         if (phase === 'answer') {
-          setSwipe({ x: 0, hint: 'right' });
+          setHasSwiped(true);
+          try { localStorage.setItem('lacuna.learnHints', '1'); } catch {}
+          setSwipe({ x: 0, hint: null });
           onAnswer(true, 'touch');
         } else {
           setSwipe({ x: 0, hint: null });
@@ -1419,8 +1442,15 @@ function FlipCard({
     containerRef.current?.releasePointerCapture?.(e.pointerId);
     swipeRef.current.dragging = false;
     swipeRef.current.isSwipe = false;
-    setSwipe({ x: 0, committed: false, hint: null });
+    setSwipe({ x: 0, hint: null });
   }, []);
+
+  // Safety net: clear any lingering swipe state when the card flips back to question.
+  useEffect(() => {
+    if (phase === 'question') {
+      setSwipe({ x: 0, hint: null });
+    }
+  }, [phase]);
 
   return (
     <div
@@ -1441,7 +1471,7 @@ function FlipCard({
         {/* Swipe hint glow — appears during a drag to whisper the outcome.
             Positioned behind the card so the border stays crisp. */}
         <AnimatePresence>
-          {swipe.hint && !swipe.committed && (
+          {swipe.hint && (
             <motion.div
               aria-hidden
               key={swipe.hint}
@@ -1460,7 +1490,7 @@ function FlipCard({
         </AnimatePresence>
 
         {/* Touch swipe indicators — persistent hints that show the available gestures. */}
-        {isTouchMode && phase === 'answer' && !swipe.hint && !menuOpen && !editing && !navOpen && !hintsOpen && (
+        {isTouchMode && phase === 'answer' && !hasSwiped && !swipe.hint && !menuOpen && !editing && !navOpen && !hintsOpen && (
           <>
             <motion.div
               aria-hidden="true"

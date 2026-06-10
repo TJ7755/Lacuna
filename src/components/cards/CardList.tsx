@@ -544,14 +544,14 @@ function CardRow({
 
   // Swipe-to-reveal state — multi-directional in touch mode.
   const [trayOpen, setTrayOpen] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const dragX = useMotionValue(0);
   useEffect(() => {
     if (selectMode || expanded) {
       setTrayOpen(false);
       dragX.set(0);
     }
   }, [selectMode, expanded, dragX]);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const dragX = useMotionValue(0);
   const springX = useSpring(dragX, { stiffness: 420, damping: 30, mass: 0.8 });
   const swipeState = useRef({
     dragging: false,

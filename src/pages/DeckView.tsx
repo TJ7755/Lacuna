@@ -185,24 +185,13 @@ export function DeckView() {
     return pool;
   }, [cards, deck, filters, debouncedQuery, sortMode, visibleTag]);
 
-  if (deck === undefined || cards === undefined) {
-    return <DeckViewSkeleton />;
-  }
-  if (deck === null) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-        className="p-10"
-      >
-        <p className="mb-4 text-ink-soft">This deck could not be found.</p>
-        <Link to="/" className="text-accent underline">
-          Back to dashboard
-        </Link>
-      </motion.div>
-    );
-  }  const studyPath = `/deck/${deck.id}/learn${visibleTag ? `?tag=${encodeURIComponent(visibleTag)}` : ''}`;
+  const studyPath = deck
+    ? `/deck/${deck.id}/learn${visibleTag ? `?tag=${encodeURIComponent(visibleTag)}` : ''}`
+    : '';
+
+  const handleRefresh = useCallback(() => {
+    notify('Refreshed.', 'positive');
+  }, [notify]);
 
   const startStudy = useCallback(() => {
     if (!cards?.length) return;
@@ -212,68 +201,6 @@ export function DeckView() {
       navigate(studyPath);
     }
   }, [cards, deck, navigate, studyPath]);
-
-  const handleRefresh = useCallback(() => {
-    notify('Refreshed.', 'positive');
-  }, [notify]);
-
-  function toggleFilter(value: CardFilter) {
-    setFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) {
-        next.delete(value);
-      } else {
-        next.add(value);
-      }
-      return next;
-    });
-  }
-
-  // Swipe-to-study: rightward swipe on the main container starts a study session.
-  const SWIPE_THRESHOLD = 80;
-  const SWIPE_MAX_Y = 60;
-
-  const INTERACTIVE_SELECTOR = 'button, a, input, textarea, select, [contenteditable]';
-
-  function handlePointerDown(e: React.PointerEvent) {
-    if (e.button !== 0) return;
-    const target = e.target as HTMLElement;
-    if (target.closest(INTERACTIVE_SELECTOR)) {
-      swipeStartRef.current = null;
-      return;
-    }
-    swipeStartRef.current = { x: e.clientX, y: e.clientY };
-    swipeCommittedRef.current = false;
-    if (isTouchMode) {
-      swipeOverlayX.set(0);
-    }
-  }
-
-  function handlePointerMove(e: React.PointerEvent) {
-    if (!swipeStartRef.current || swipeCommittedRef.current) return;
-    const dx = e.clientX - swipeStartRef.current.x;
-    const dy = e.clientY - swipeStartRef.current.y;
-    if (Math.abs(dy) > SWIPE_MAX_Y) {
-      swipeStartRef.current = null;
-      if (isTouchMode) swipeOverlayX.set(0);
-      return;
-    }
-    if (isTouchMode && dx > 0) {
-      swipeOverlayX.set(Math.min(dx, 160));
-    }
-    if (dx > SWIPE_THRESHOLD) {
-      swipeCommittedRef.current = true;
-      swipeStartRef.current = null;
-      if (isTouchMode) swipeOverlayX.set(0);
-      startStudy();
-    }
-  }
-
-  function handlePointerUp() {
-    swipeStartRef.current = null;
-    swipeCommittedRef.current = false;
-    if (isTouchMode) swipeOverlayX.set(0);
-  }
 
   const handleMasteryPointerDown = useCallback((e: React.PointerEvent) => {
     if (!isTouchMode) return;
@@ -349,6 +276,83 @@ export function DeckView() {
       masteryDragY.set(0);
     }
   }, [masteryDragX, masteryDragY, startStudy, handleRefresh]);
+
+  if (deck === undefined || cards === undefined) {
+    return <DeckViewSkeleton />;
+  }
+  if (deck === null) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+        className="p-10"
+      >
+        <p className="mb-4 text-ink-soft">This deck could not be found.</p>
+        <Link to="/" className="text-accent underline">
+          Back to dashboard
+        </Link>
+      </motion.div>
+    );
+  }
+
+  function toggleFilter(value: CardFilter) {
+    setFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) {
+        next.delete(value);
+      } else {
+        next.add(value);
+      }
+      return next;
+    });
+  }
+
+  // Swipe-to-study: rightward swipe on the main container starts a study session.
+  const SWIPE_THRESHOLD = 80;
+  const SWIPE_MAX_Y = 60;
+
+  const INTERACTIVE_SELECTOR = 'button, a, input, textarea, select, [contenteditable]';
+
+  function handlePointerDown(e: React.PointerEvent) {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest(INTERACTIVE_SELECTOR)) {
+      swipeStartRef.current = null;
+      return;
+    }
+    swipeStartRef.current = { x: e.clientX, y: e.clientY };
+    swipeCommittedRef.current = false;
+    if (isTouchMode) {
+      swipeOverlayX.set(0);
+    }
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!swipeStartRef.current || swipeCommittedRef.current) return;
+    const dx = e.clientX - swipeStartRef.current.x;
+    const dy = e.clientY - swipeStartRef.current.y;
+    if (Math.abs(dy) > SWIPE_MAX_Y) {
+      swipeStartRef.current = null;
+      if (isTouchMode) swipeOverlayX.set(0);
+      return;
+    }
+    if (isTouchMode && dx > 0) {
+      swipeOverlayX.set(Math.min(dx, 160));
+    }
+    if (dx > SWIPE_THRESHOLD) {
+      swipeCommittedRef.current = true;
+      swipeStartRef.current = null;
+      if (isTouchMode) swipeOverlayX.set(0);
+      startStudy();
+    }
+  }
+
+  function handlePointerUp() {
+    swipeStartRef.current = null;
+    swipeCommittedRef.current = false;
+    if (isTouchMode) swipeOverlayX.set(0);
+  }
 
   return (
     <div

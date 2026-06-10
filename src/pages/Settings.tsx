@@ -1012,6 +1012,7 @@ export function Settings() {
 
 function InstallPanel() {
   const { isInstallable, isInstalled, promptInstall } = useInstallPrompt();
+  const isWindows = typeof navigator !== 'undefined' && navigator.platform?.startsWith('Win');
 
   if (isInstalled) {
     return (
@@ -1023,21 +1024,53 @@ function InstallPanel() {
 
   if (!isInstallable) {
     return (
-      <p className="text-sm text-ink-soft">
-        Your browser does not support installing web apps, or Lacuna is already installed.
-      </p>
+      <div className="space-y-3">
+        <p className="text-sm text-ink-soft">
+          Your browser does not support installing web apps, or Lacuna is already installed.
+        </p>
+        {isWindows && (
+          <p className="text-sm text-ink-soft">
+            On Windows, you can download the desktop app from the{' '}
+            <a
+              href="https://github.com/TJ7755/Lacuna/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent underline"
+            >
+              GitHub releases page
+            </a>
+            .
+          </p>
+        )}
+      </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-between gap-3">
-      <p className="text-sm text-ink-soft">
-        Install Lacuna as a standalone app for offline access and a native-like experience.
-      </p>
-      <Button variant="secondary" onClick={promptInstall}>
-        <DownloadIcon width={18} height={18} />
-        Install
-      </Button>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-ink-soft">
+          Install Lacuna as a standalone app for offline access and a native-like experience.
+        </p>
+        <Button variant="secondary" onClick={promptInstall}>
+          <DownloadIcon width={18} height={18} />
+          Install
+        </Button>
+      </div>
+      {isWindows && (
+        <p className="text-sm text-ink-soft">
+          On Windows, you can also download the desktop app from the{' '}
+          <a
+            href="https://github.com/TJ7755/Lacuna/releases"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent underline"
+          >
+            GitHub releases page
+          </a>
+          .
+        </p>
+      )}
     </div>
   );
 }
