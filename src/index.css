@@ -220,6 +220,14 @@
     }
   }
 
+  /* On touch devices without hover, force hover-only affordances to be visible
+     so they are not hidden from the user. */
+  @media (hover: none) {
+    .touch-visible {
+      opacity: 1 !important;
+    }
+  }
+
   /* Form-field shake animation for inline validation feedback. */
   .shake-field {
     animation: shake-field 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;

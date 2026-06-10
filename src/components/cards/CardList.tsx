@@ -568,7 +568,7 @@ function CardRow({
         'group relative rounded-xl border bg-surface p-4 transition-colors duration-200 cursor-pointer',
         selected
           ? 'border-accent ring-2 ring-accent/30'
-          : 'border-line hover:border-line-strong hover:shadow-md hover:shadow-black/[0.03]',
+          : 'border-line hover:border-line-strong hover:shadow-md hover:shadow-black/[0.03] active:bg-ink/5',
       )}
     >
       <div className="flex items-start gap-4">
@@ -655,7 +655,7 @@ function CardRow({
               type="button"
               onClick={(e) => { e.stopPropagation(); onResume(); }}
               title="Resume card"
-              className="rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent"
+              className="min-h-11 rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
             >
               Resume
             </button>
@@ -668,7 +668,7 @@ function CardRow({
             whileTap={{ scale: 0.85 }}
             whileHover={{ scale: 1.08 }}
             className={cn(
-              'rounded-lg p-2 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100',
+              'min-h-11 rounded-lg p-2 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 touch-visible',
               flagged
                 ? 'text-accent opacity-100'
                 : 'text-ink-faint opacity-0 group-hover:opacity-100',
@@ -682,7 +682,7 @@ function CardRow({
             title="Edit card"
             whileTap={{ scale: 0.85 }}
             whileHover={{ scale: 1.08 }}
-            className="rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 group-hover:opacity-100"
+            className="min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-ink/5 hover:text-accent focus-visible:opacity-100 group-hover:opacity-100 touch-visible"
           >
             <EditIcon width={16} height={16} />
           </motion.button>
@@ -692,7 +692,7 @@ function CardRow({
             title="Delete card"
             whileTap={{ scale: 0.85 }}
             whileHover={{ scale: 1.08 }}
-            className="rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-negative/10 hover:text-negative focus-visible:opacity-100 group-hover:opacity-100"
+            className="min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-negative/10 hover:text-negative focus-visible:opacity-100 group-hover:opacity-100 touch-visible"
           >
             <TrashIcon width={16} height={16} />
           </motion.button>
