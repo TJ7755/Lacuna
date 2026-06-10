@@ -31,6 +31,7 @@ import {
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useIsTouchMode } from '../../state/inputMode';
+import { useVirtualList } from '../../hooks/useVirtualList';
 import type { ParsedCard } from '../../db/import';
 import type { Card, Deck } from '../../db/types';
 
@@ -469,29 +470,134 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
           </Button>
         </div>
       ) : (
-        <div className="grid gap-3">
-          {cards.map((card, i) => (
+        <CardListBody
+          cards={cards}
+          deck={deck}
+          selectMode={selectMode}
+          selected={selected}
+          expandedCardId={expandedCardId}
+          onToggle={toggle}
+          onToggleExpand={setExpandedCardId}
+          onEditCard={onEditCard}
+          onResume={handleResume}
+          onDelete={handleDeleteOne}
+          onToggleFlag={handleToggleFlag}
+          motionMultiplier={m}
+        />
+      )}
+    </div>
+  );
+}
+
+const VIRTUAL_THRESHOLD = 50;
+
+/** Renders the card list either as a simple grid (small decks) or a virtualised
+ *  absolute-positioned list (large decks) to keep performance constant. */
+function CardListBody({
+  cards,
+  deck,
+  selectMode,
+  selected,
+  expandedCardId,
+  onToggle,
+  onToggleExpand,
+  onEditCard,
+  onResume,
+  onDelete,
+  onToggleFlag,
+  motionMultiplier,
+}: {
+  cards: Card[];
+  deck: Deck;
+  selectMode: boolean;
+  selected: Set<string>;
+  expandedCardId: string | null;
+  onToggle: (id: string) => void;
+  onToggleExpand: React.Dispatch<React.SetStateAction<string | null>>;
+  onEditCard: (card: Card) => void;
+  onResume: (card: Card) => void;
+  onDelete: (id: string) => void;
+  onToggleFlag: (card: Card) => void;
+  motionMultiplier: number;
+}) {
+  const enabled = cards.length > VIRTUAL_THRESHOLD;
+  const { totalHeight, virtualItems, measureRef, containerRef } = useVirtualList({
+    itemCount: cards.length,
+    estimateSize: 100,
+    gap: 12,
+    overscan: 5,
+    enabled,
+  });
+
+  // Track which cards have already mounted so we only animate once.
+  const mountedRef = useRef<Set<string>>(new Set());
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    isFirstRender.current = false;
+    cards.forEach((c) => mountedRef.current.add(c.id));
+  }, [cards]);
+
+  if (!enabled) {
+    return (
+      <div className="grid gap-3">
+        {cards.map((card, i) => (
+          <CardRow
+            key={card.id}
+            card={card}
+            deck={deck}
+            index={i}
+            selectMode={selectMode}
+            selected={selected.has(card.id)}
+            expanded={expandedCardId === card.id}
+            onToggle={() => onToggle(card.id)}
+            onToggleExpand={() =>
+              onToggleExpand((prev) => (prev === card.id ? null : card.id))
+            }
+            onEdit={() => onEditCard(card)}
+            onResume={() => onResume(card)}
+            onDelete={() => onDelete(card.id)}
+            onToggleFlag={onToggleFlag}
+            motionMultiplier={motionMultiplier}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative" style={{ height: totalHeight }}>
+      {virtualItems.map(({ index, start }) => {
+        const card = cards[index];
+        const hasMounted = mountedRef.current.has(card.id);
+        if (!hasMounted) mountedRef.current.add(card.id);
+        return (
+          <div
+            key={card.id}
+            ref={measureRef(index)}
+            className="absolute left-0 top-0 w-full"
+            style={{ transform: `translateY(${start}px)` }}
+          >
             <CardRow
-              key={card.id}
               card={card}
               deck={deck}
-              index={i}
+              index={index}
               selectMode={selectMode}
               selected={selected.has(card.id)}
               expanded={expandedCardId === card.id}
-              onToggle={() => toggle(card.id)}
+              onToggle={() => onToggle(card.id)}
               onToggleExpand={() =>
-                setExpandedCardId((prev) => (prev === card.id ? null : card.id))
+                onToggleExpand((prev) => (prev === card.id ? null : card.id))
               }
               onEdit={() => onEditCard(card)}
-              onResume={() => handleResume(card)}
-              onDelete={() => handleDeleteOne(card.id)}
-              onToggleFlag={handleToggleFlag}
-              motionMultiplier={m}
+              onResume={() => onResume(card)}
+              onDelete={() => onDelete(card.id)}
+              onToggleFlag={onToggleFlag}
+              motionMultiplier={motionMultiplier}
+              skipAnimation={hasMounted && !isFirstRender.current}
             />
-          ))}
-        </div>
-      )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -510,6 +616,7 @@ function CardRow({
   onDelete,
   onToggleFlag,
   motionMultiplier,
+  skipAnimation,
 }: {
   card: Card;
   deck: Deck;
@@ -524,6 +631,7 @@ function CardRow({
   onDelete: () => void;
   onToggleFlag: (card: Card) => void;
   motionMultiplier?: number;
+  skipAnimation?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const m = motionMultiplier ?? 1;
@@ -729,9 +837,9 @@ function CardRow({
       <motion.div
         ref={cardRef}
         style={{ x: springX, touchAction: 'pan-y' }}
-        initial={{ opacity: 0, y: 8 }}
+        initial={skipAnimation ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16 * m, delay: Math.min(index * 0.03, 0.25) * m }}
+        transition={{ duration: skipAnimation ? 0 : 0.16 * m, delay: Math.min(index * 0.03, 0.25) * m }}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         onMouseEnter={() => !selectMode && setHovered(true)}

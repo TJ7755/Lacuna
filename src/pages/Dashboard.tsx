@@ -957,7 +957,7 @@ function DeckCard({
   }
 
   useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
+    function onClickOutside(e: Event) {
       if (folderMenuRef.current && !folderMenuRef.current.contains(e.target as Node)) {
         setFolderMenuOpen(false);
       }

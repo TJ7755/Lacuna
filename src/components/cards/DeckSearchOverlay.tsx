@@ -27,7 +27,7 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export function DeckSearchOverlay({ cards, onClose }: DeckSearchOverlayProps) {
+export function DeckSearchOverlay({ cards, onClose, onQueryChange }: DeckSearchOverlayProps) {
   const [query, setQuery] = useState('');
   const [replacement, setReplacement] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
@@ -35,7 +35,6 @@ export function DeckSearchOverlay({ cards, onClose }: DeckSearchOverlayProps) {
   const [replacing, setReplacing] = useState(false);
   const { notify } = useToast();
   const findInputRef = useRef<HTMLInputElement>(null);
-  const onQueryChange = props.onQueryChange;
 
   useEffect(() => {
     findInputRef.current?.focus();
