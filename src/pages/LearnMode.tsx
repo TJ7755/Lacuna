@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
+import { hapticLight, hapticMedium } from '../utils/haptic';
 import { db } from '../db/schema';
 import type { Card, Deck, Grade, UserPerformance } from '../db/types';
 import {
@@ -1140,6 +1141,42 @@ function TouchMenuSheet({
   m: number;
 }) {
   const trapRef = useFocusTrap(true);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragY = useMotionValue(0);
+  const springY = useSpring(dragY, { stiffness: 400, damping: 30 });
+  const dragStartY = useRef(0);
+  const dragStartTime = useRef(0);
+  const isDragging = useRef(false);
+
+  const handleDragHandleDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    dragStartY.current = e.clientY;
+    dragStartTime.current = performance.now();
+    sheetRef.current?.setPointerCapture(e.pointerId);
+  }, []);
+
+  const handleDragHandleMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    const dy = e.clientY - dragStartY.current;
+    if (dy > 0) dragY.set(dy);
+  }, [dragY]);
+
+  const handleDragHandleUp = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    sheetRef.current?.releasePointerCapture(e.pointerId);
+    const dy = dragY.get();
+    const elapsed = performance.now() - dragStartTime.current;
+    // Flick or drag past threshold closes the sheet.
+    if (dy > 80 || (dy > 20 && elapsed < 200)) {
+      dragY.set(0);
+      onClose();
+    } else {
+      dragY.set(0);
+    }
+  }, [dragY, onClose]);
+
   return (
     <motion.div
       ref={trapRef}
@@ -1155,47 +1192,66 @@ function TouchMenuSheet({
     >
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
       <motion.div
+        ref={sheetRef}
+        style={{ y: springY }}
         initial={{ y: 120, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 120, opacity: 0 }}
         transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
         className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-line-strong bg-surface px-6 py-6 shadow-2xl shadow-black/20"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Drag handle */}
-        <div className="mb-5 flex justify-center">
-          <div className="h-1.5 w-12 rounded-full bg-ink/15" />
-        </div>
+        onClick={(e) => e.stopPropagation()}            onPointerMove={handleDragHandleMove}
+            onPointerUp={handleDragHandleUp}
+            onPointerCancel={handleDragHandleUp}
+          >
+            {/* Drag handle — wide touch target, springy drag-to-close. */}
+            <div className="mb-5 flex justify-center">
+              <div
+                className="flex h-8 w-20 cursor-grab items-center justify-center active:cursor-grabbing"
+                onPointerDown={handleDragHandleDown}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    hapticLight();
+                    onClose();
+                  }
+                }}
+                role="button"
+                aria-label="Drag to close"
+                tabIndex={0}
+              >
+                <div className="h-1.5 w-12 rounded-full bg-ink/15 transition-colors active:bg-ink/25" />
+              </div>
+            </div>
         <div className="mx-auto flex max-w-3xl flex-col gap-1">
           <TouchMenuButton
             icon={<EditIcon width={22} height={22} />}
             label="Edit card"
-            onClick={onEdit}
+            onClick={() => { hapticLight(); onEdit(); }}
           />
           <TouchMenuButton
             icon={<FlagIcon width={22} height={22} />}
             label={current.flagged ? 'Remove flag' : 'Flag card'}
-            onClick={onToggleFlag}
+            onClick={() => { hapticLight(); onToggleFlag(); }}
           />
           <TouchMenuButton
             icon={<ClockIcon width={22} height={22} />}
             label="Bury until tomorrow"
-            onClick={onBury}
+            onClick={() => { hapticLight(); onBury(); }}
           />
           <TouchMenuButton
             icon={<PauseIcon width={22} height={22} />}
             label="Suspend card"
-            onClick={onSuspend}
+            onClick={() => { hapticLight(); onSuspend(); }}
           />
           <div className="my-2 border-t border-line" />
           <TouchMenuButton
             icon={<KeyboardIcon width={22} height={22} />}
             label="Keyboard shortcuts"
-            onClick={onShowShortcuts}
+            onClick={() => { hapticLight(); onShowShortcuts(); }}
           />
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => { hapticLight(); onClose(); }}
             className="mt-2 flex h-14 w-full items-center justify-center rounded-xl bg-ink/5 text-sm font-medium text-ink-soft transition-colors active:bg-ink/10"
           >
             Cancel
@@ -1255,7 +1311,7 @@ function TouchBottomSheet({
         >
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
             <p className="text-sm text-ink-faint">Tap the card to reveal</p>
-            <Button variant="primary" size="lg" className="w-full" onClick={onReveal}>
+            <Button variant="primary" size="lg" className="w-full" onClick={() => { hapticLight(); onReveal(); }}>
               Show answer
             </Button>
           </div>
@@ -1272,28 +1328,28 @@ function TouchBottomSheet({
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
             {gradingMode === 'manual' ? (
               <div className="grid w-full grid-cols-2 gap-3">
-                <Button variant="danger" size="lg" className="h-14 w-full" onClick={() => onAnswer(1, 'touch')}>
+                <Button variant="danger" size="lg" className="h-14 w-full" onClick={() => { hapticMedium(); onAnswer(1, 'touch'); }}>
                   <CloseIcon width={20} height={20} />
                   Again
                 </Button>
-                <Button variant="secondary" size="lg" className="h-14 w-full" onClick={() => onAnswer(2, 'touch')}>
+                <Button variant="secondary" size="lg" className="h-14 w-full" onClick={() => { hapticLight(); onAnswer(2, 'touch'); }}>
                   Hard
                 </Button>
-                <Button variant="secondary" size="lg" className="h-14 w-full" onClick={() => onAnswer(3, 'touch')}>
+                <Button variant="secondary" size="lg" className="h-14 w-full" onClick={() => { hapticLight(); onAnswer(3, 'touch'); }}>
                   Good
                 </Button>
-                <Button variant="primary" size="lg" className="h-14 w-full" onClick={() => onAnswer(4, 'touch')}>
+                <Button variant="primary" size="lg" className="h-14 w-full" onClick={() => { hapticMedium(); onAnswer(4, 'touch'); }}>
                   <CheckIcon width={20} height={20} />
                   Easy
                 </Button>
               </div>
             ) : (
               <div className="flex w-full gap-3">
-                <Button variant="danger" size="lg" className="h-14 flex-1" onClick={() => onAnswer(false, 'touch')}>
+                <Button variant="danger" size="lg" className="h-14 flex-1" onClick={() => { hapticMedium(); onAnswer(false, 'touch'); }}>
                   <CloseIcon width={20} height={20} />
                   No
                 </Button>
-                <Button variant="primary" size="lg" className="h-14 flex-1" onClick={() => onAnswer(true, 'touch')}>
+                <Button variant="primary" size="lg" className="h-14 flex-1" onClick={() => { hapticMedium(); onAnswer(true, 'touch'); }}>
                   <CheckIcon width={20} height={20} />
                   Yes
                 </Button>
@@ -1358,6 +1414,10 @@ function FlipCard({
   const swipeThreshold = 60;
   const maxDrag = 180;
 
+  // Spring-physics x position for the snap-back so the card feels tactile.
+  const swipeXMotion = useMotionValue(0);
+  const swipeXSpring = useSpring(swipeXMotion, { stiffness: 480, damping: 32, mass: 0.9 });
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (swipeRef.current.dragging) return;
     // Ignore swipes when any overlay is open.
@@ -1389,6 +1449,7 @@ function FlipCard({
     // Clamp the visual drag so the card never flies off-screen.
     const clamped = Math.max(-maxDrag, Math.min(maxDrag, dx));
     swipeRef.current.x = clamped;
+    swipeXMotion.set(clamped);
     const hint: 'left' | 'right' | null = clamped < -swipeThreshold / 2 ? 'left' : clamped > swipeThreshold / 2 ? 'right' : null;
     setSwipe({ x: clamped, hint });
   }, [phase]);
@@ -1400,30 +1461,36 @@ function FlipCard({
     const dx = swipeRef.current.x;
     const wasSwipe = swipeRef.current.isSwipe;
     swipeRef.current.isSwipe = false;
-    if (wasSwipe) {
-      if (dx < -swipeThreshold) {
+    if (wasSwipe) {        if (dx < -swipeThreshold) {
         // Swipe left = No
         if (phase === 'answer') {
+          hapticMedium();
           setHasSwiped(true);
           try { localStorage.setItem('lacuna.learnHints', '1'); } catch {}
+          swipeXMotion.set(0);
           setSwipe({ x: 0, hint: null });
           onAnswer(false, 'touch');
         } else {
           // Snap back if not in answer phase.
+          swipeXMotion.set(0);
           setSwipe({ x: 0, hint: null });
         }
       } else if (dx > swipeThreshold) {
         // Swipe right = Yes
         if (phase === 'answer') {
+          hapticMedium();
           setHasSwiped(true);
           try { localStorage.setItem('lacuna.learnHints', '1'); } catch {}
+          swipeXMotion.set(0);
           setSwipe({ x: 0, hint: null });
           onAnswer(true, 'touch');
         } else {
+          swipeXMotion.set(0);
           setSwipe({ x: 0, hint: null });
         }
       } else {
         // Not far enough — spring back.
+        swipeXMotion.set(0);
         setSwipe({ x: 0, hint: null });
       }
     } else {
@@ -1444,15 +1511,17 @@ function FlipCard({
     containerRef.current?.releasePointerCapture?.(e.pointerId);
     swipeRef.current.dragging = false;
     swipeRef.current.isSwipe = false;
+    swipeXMotion.set(0);
     setSwipe({ x: 0, hint: null });
   }, []);
 
   // Safety net: clear any lingering swipe state when the card flips back to question.
   useEffect(() => {
     if (phase === 'question') {
+      swipeXMotion.set(0);
       setSwipe({ x: 0, hint: null });
     }
-  }, [phase]);
+  }, [phase, swipeXMotion]);
 
   return (
     <div
@@ -1527,15 +1596,15 @@ function FlipCard({
           <motion.div
             key={revealed ? 'back' : 'front'}
             initial={{ rotateX: -92, opacity: 0, scale: 0.97, x: swipe.x }}
-            animate={{ rotateX: 0, opacity: 1, scale: 1, x: swipe.x }}
+            animate={{ rotateX: 0, opacity: 1, scale: 1 }}
             exit={{ rotateX: 92, opacity: 0, scale: 0.97, x: swipe.x }}
             transition={{
-              x: { duration: 0 },
+              x: { type: 'spring', stiffness: 480, damping: 32, mass: 0.9 },
               rotateX: { duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] },
               opacity: { duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] },
               scale: { duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] },
             }}
-            style={{ transformOrigin: 'center center' }}
+            style={{ transformOrigin: 'center center', x: swipeXSpring }}
             className={
               'relative z-10 rounded-3xl border bg-surface px-8 py-12 ' +
               (revealed

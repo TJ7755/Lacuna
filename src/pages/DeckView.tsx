@@ -23,6 +23,7 @@ import { examHasPassed, MAINTENANCE_HORIZON_DAYS } from '../fsrs/horizon';
 import { examEveAvailable, EXAM_EVE_WINDOW_HOURS } from '../fsrs/cram';
 import { availableCards } from '../fsrs/eligibility';
 import { useToast } from '../components/ui/Toast';
+import { hapticMedium } from '../utils/haptic';
 import {
   formatDateTime,
   fromDateTimeLocalValue,
@@ -273,12 +274,15 @@ export function DeckView() {
     }
 
     if (direction === 'right' && masteryDragX.get() > MASTERY_THRESHOLD) {
+      hapticMedium();
       masteryDragX.set(0);
       startStudy();
     } else if (direction === 'up' && masteryDragY.get() < -MASTERY_THRESHOLD) {
+      hapticMedium();
       masteryDragY.set(0);
       startStudy();
     } else if (direction === 'down' && masteryDragY.get() > MASTERY_THRESHOLD) {
+      hapticMedium();
       masteryDragY.set(0);
       handleRefresh();
     } else {
@@ -354,6 +358,7 @@ export function DeckView() {
       swipeCommittedRef.current = true;
       swipeStartRef.current = null;
       if (isTouchMode) swipeOverlayX.set(0);
+      hapticMedium();
       startStudy();
     }
   }

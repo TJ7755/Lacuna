@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { hapticStrong } from '../utils/haptic';
 
 interface LongPressOptions {
   /** Delay in milliseconds before the long press triggers. Default 600. */
@@ -24,6 +25,7 @@ export function useLongPress({ threshold = 600, maxMovement = 10, onLongPress, o
       startPosRef.current = { x: e.clientX, y: e.clientY };
       timerRef.current = window.setTimeout(() => {
         triggeredRef.current = true;
+        hapticStrong();
         onLongPress(e);
       }, threshold);
     },

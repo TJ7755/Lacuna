@@ -4,6 +4,7 @@ import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/
 import { CardContent } from './CardContent';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
+import { hapticLight, hapticMedium } from '../../utils/haptic';
 import { UnifiedImportPanel } from '../import/UnifiedImportPanel';
 import { CardAnalytics } from './CardAnalytics';
 import {
@@ -731,10 +732,12 @@ function CardRow({
         // Tray was closed
         if (currentX < -swipeThreshold) {
           // Drag left — open tray
+          hapticLight();
           setTrayOpen(true);
           dragX.set(-trayWidth);
         } else if (isTouchMode && currentX > swipeThreshold) {
           // Drag right — quick flag (touch mode only)
+          hapticLight();
           dragX.set(0);
           onToggleFlag(card);
         } else {
@@ -742,9 +745,9 @@ function CardRow({
           dragX.set(0);
         }
       }
-    } else {
-      // It was a tap — close the tray if it is open; suppress the subsequent click.
+    } else {        // It was a tap — close the tray if it is open; suppress the subsequent click.
       if (trayOpen) {
+        hapticLight();
         justHandledTap.current = true;
         setTrayOpen(false);
         dragX.set(0);
@@ -804,7 +807,7 @@ function CardRow({
           <button
             type="button"
             aria-pressed={flagged}
-            onClick={(e) => { e.stopPropagation(); onToggleFlag(card); }}
+            onClick={(e) => { e.stopPropagation(); hapticLight(); onToggleFlag(card); }}
             className={cn(
               'flex h-full flex-1 flex-col items-center justify-center gap-1 text-xs transition-colors',
               flagged
@@ -817,7 +820,7 @@ function CardRow({
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            onClick={(e) => { e.stopPropagation(); hapticLight(); onEdit(); }}
             className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-ink/[0.03] text-xs text-ink-soft transition-colors hover:bg-accent/10 hover:text-accent"
           >
             <EditIcon width={18} height={18} />
@@ -825,7 +828,7 @@ function CardRow({
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            onClick={(e) => { e.stopPropagation(); hapticMedium(); onDelete(); }}
             className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-negative/10 text-xs text-negative transition-colors hover:bg-negative/20"
           >
             <TrashIcon width={18} height={18} />
