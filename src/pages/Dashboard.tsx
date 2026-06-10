@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion, useMotionValue, useSpring, useTransform } from 'motion/react';
 import { useDashboardData, useFolders } from '../state/useData';
@@ -638,6 +638,11 @@ export function Dashboard() {
                     selected={selected.has(deck.id)}
                     onToggleSelected={() => toggleSelected(deck.id)}
                     motionMultiplier={m}
+                    folders={topFolders}
+                    onMoveToFolder={(deckId, folderId) => {
+                      void moveDecksToFolder([deckId], folderId);
+                      notify(folderId ? 'Deck moved to folder.' : 'Deck moved to top level.', 'positive');
+                    }}
                   />
                 </motion.div>
               ))}
@@ -696,25 +701,26 @@ export function Dashboard() {
                     )}
                   </button>
                   {!selectMode && renamingFolder !== folder.id && (
-                    <div className="ml-auto flex items-center gap-1">        <button
-          type="button"
-          onClick={() => {
-            setRenamingFolder(folder.id);
-            setRenameFolderName(folder.name);
-          }}
-          className="min-h-11 rounded px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-          title="Rename folder"
-        >
-          Rename
-        </button>
-        <button
-          type="button"
-          onClick={() => handleDeleteFolder(folder.id)}
-          className="min-h-11 rounded px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-rose-600 active:bg-ink/10"
-          title="Delete folder"
-        >
-          Delete
-        </button>
+                    <div className="ml-auto flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRenamingFolder(folder.id);
+                          setRenameFolderName(folder.name);
+                        }}
+                        className="min-h-11 rounded px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+                        title="Rename folder"
+                      >
+                        Rename
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFolder(folder.id)}
+                        className="min-h-11 rounded px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-rose-600 active:bg-ink/10"
+                        title="Delete folder"
+                      >
+                        Delete
+                      </button>
                     </div>
                   )}
                 </div>
@@ -748,6 +754,11 @@ export function Dashboard() {
                               selected={selected.has(deck.id)}
                               onToggleSelected={() => toggleSelected(deck.id)}
                               motionMultiplier={m}
+                              folders={topFolders}
+                              onMoveToFolder={(deckId, folderId) => {
+                                void moveDecksToFolder([deckId], folderId);
+                                notify(folderId ? 'Deck moved to folder.' : 'Deck moved to top level.', 'positive');
+                              }}
                             />
                           </motion.div>
                         ))}
@@ -790,6 +801,11 @@ export function Dashboard() {
                       selected={selected.has(deck.id)}
                       onToggleSelected={() => toggleSelected(deck.id)}
                       motionMultiplier={m}
+                      folders={topFolders}
+                      onMoveToFolder={(deckId, folderId) => {
+                        void moveDecksToFolder([deckId], folderId);
+                        notify(folderId ? 'Deck moved to folder.' : 'Deck moved to top level.', 'positive');
+                      }}
                     />
                   </motion.div>
                 ))}
@@ -816,6 +832,8 @@ function DeckCard({
   selected,
   onToggleSelected,
   motionMultiplier,
+  folders,
+  onMoveToFolder,
 }: {
   deck: Deck;
   summary: { count: number; mastery: number; unreviewed: number } | undefined;
@@ -823,11 +841,15 @@ function DeckCard({
   selected: boolean;
   onToggleSelected: () => void;
   motionMultiplier?: number;
+  folders?: { id: string; name: string }[];
+  onMoveToFolder?: (deckId: string, folderId: string | null) => void;
 }) {
   const m = motionMultiplier ?? 1;
   const navigate = useNavigate();
   const isTouchMode = useIsTouchMode();
   const { notify } = useToast();
+  const [folderMenuOpen, setFolderMenuOpen] = useState(false);
+  const folderMenuRef = useRef<HTMLDivElement>(null);
   const colourBar = deck.colour ? (
     <span
       className="absolute inset-x-0 top-0 h-1"
@@ -934,6 +956,22 @@ function DeckCard({
     }
   }
 
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (folderMenuRef.current && !folderMenuRef.current.contains(e.target as Node)) {
+        setFolderMenuOpen(false);
+      }
+    }
+    if (folderMenuOpen) {
+      document.addEventListener('mousedown', onClickOutside);
+      document.addEventListener('touchstart', onClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', onClickOutside);
+        document.removeEventListener('touchstart', onClickOutside);
+      };
+    }
+  }, [folderMenuOpen]);
+
   const body = (
     <motion.div
       ref={cardRef}
@@ -944,7 +982,8 @@ function DeckCard({
       whileHover={!isTouchMode ? { y: -4, transition: { duration: 0.12 * m } } : undefined}
       whileTap={!isTouchMode ? { scale: 0.98, transition: { duration: 0.08 * m } } : undefined}
       className={cn(
-        'group relative flex h-full flex-col overflow-hidden rounded-2xl border bg-surface p-5 transition-colors duration-200',
+        'group relative flex h-full flex-col rounded-2xl border bg-surface p-5 transition-colors duration-200',
+        folderMenuOpen ? 'overflow-visible' : 'overflow-hidden',
         selected
           ? 'border-accent ring-2 ring-accent/30'
           : 'border-line hover:border-line-strong hover:shadow-xl hover:shadow-black/[0.04]',
@@ -961,6 +1000,74 @@ function DeckCard({
       >
         {selected && <CheckIcon width={14} height={14} />}
       </span>
+      )}
+
+      {/* Folder dropdown — visible on hover (desktop) or always (touch) when not in select mode */}
+      {!selectMode && folders && folders.length > 0 && (
+        <div ref={folderMenuRef} className="absolute right-2 top-2 z-20">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setFolderMenuOpen((v) => !v);
+            }}
+            className={cn(
+              'grid h-9 w-9 place-items-center rounded-full border transition-colors',
+              folderMenuOpen
+                ? 'border-accent bg-accent text-accent-fg'
+                : cn(
+                    'border-transparent bg-surface/80 text-ink-faint hover:border-line-strong hover:text-ink',
+                    !isTouchMode && 'opacity-0 group-hover:opacity-100',
+                  ),
+            )}
+            title={deck.folderId ? 'Change folder' : 'Move to folder'}
+            aria-expanded={folderMenuOpen}
+            aria-haspopup="menu"
+          >
+            <FolderIcon width={16} height={16} />
+          </button>
+          {folderMenuOpen && (
+            <div role="menu" className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-line-strong bg-surface p-1 shadow-lg shadow-black/10">
+              {deck.folderId && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onMoveToFolder?.(deck.id, null);
+                    setFolderMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full border border-line-strong" />
+                  Top level (no folder)
+                </button>
+              )}
+              {folders.map((folder) => {
+                if (folder.id === deck.folderId) return null;
+                return (
+                  <button
+                    key={folder.id}
+                    type="button"
+                    role="menuitem"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      onMoveToFolder?.(deck.id, folder.id);
+                      setFolderMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+                  >
+                    <FolderIcon width={14} height={14} />
+                    {folder.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
 
       {/* Touch swipe hint overlays */}
