@@ -329,15 +329,29 @@
   margin: 1em 0;
 }
 
-/* Revealed cloze answer: highlighted inline within the full sentence. */
+/* Revealed cloze answer: highlighted inline within the full sentence.
+   The highlight is rendered with text-decoration (and a faint accent-ink
+   text-shadow) rather than background-color. This is deliberate: the
+   global ::selection rule paints a translucent accent fill on selected
+   text, and if the cloze element also had a background fill, the two
+   near-identical amber layers stacked into a muddy double-highlight. With
+   no element background, ::selection paints cleanly across selected cloze
+   text. The explicit ::selection override below makes the selection
+   clearly visible against the cloze mark without competing with it. */
 .cloze-reveal {
-  background-color: hsl(var(--accent) / 0.22);
   color: hsl(var(--accent-ink));
   font-weight: 600;
   padding: 0.05em 0.3em;
   border-radius: 4px;
+  text-decoration: underline 0.16em hsl(var(--accent) / 0.55);
+  text-decoration-skip-ink: auto;
+  text-underline-offset: 0.18em;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+}
+.cloze-reveal::selection {
+  background-color: hsl(var(--accent) / 0.45);
+  color: inherit;
 }
 .cloze-blank {
   color: hsl(var(--accent));

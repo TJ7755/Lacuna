@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -140,17 +140,32 @@ export const MarkdownView = memo(function MarkdownView({
 }: MarkdownViewProps) {
   const [resolved, setResolved] = useState(source);
 
+  // Track the source we have already resolved so the effect can distinguish
+  // "source prop changed" (do work) from "effect re-fired with the same source"
+  // (do nothing). This preserves the user's text selection across re-renders
+  // and avoids re-parsing the HTML when nothing actually changed.
+  const lastResolvedSource = useRef<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
+    // Same source we already resolved for — nothing to do.
+    if (lastResolvedSource.current === source) {
+      return () => {};
+    }
+
     if (!source.includes(ASSET_PROTOCOL)) {
-      setResolved(source);
+      // No assets to resolve. Sync resolved to the new source and remember it
+      // so subsequent effect re-fires (e.g. parent re-renders) become no-ops.
+      lastResolvedSource.current = source;
+      setResolved((prev) => (prev === source ? prev : source));
       return () => {};
     }
 
     void resolveAssetMarkdownCached(source).then((markdown) => {
       if (cancelled) return;
-      setResolved(markdown);
+      lastResolvedSource.current = source;
+      setResolved((prev) => (prev === markdown ? prev : markdown));
     });
 
     return () => {
