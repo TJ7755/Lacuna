@@ -107,6 +107,7 @@ export function UnifiedImportPanel({
     raw: string;
   } | null>(null);
   const [shareImporting, setShareImporting] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   // APKG state.
   const [apkgPending, setApkgPending] = useState<ApkgImportResult | null>(null);
@@ -278,27 +279,30 @@ export function UnifiedImportPanel({
   async function handleShareInspect() {
     const raw = text.trim();
     if (!raw) return;
+    setShareError(null);
     try {
       const payload = await decodeShare(raw);
       setSharePending({ summary: summariseShare(payload), raw });
-    } catch {
-      // Errors surfaced by the parent page via onShareImport not being called.
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : 'Invalid share code.');
     }
   }
 
   async function handleShareImport() {
     if (!sharePending) return;
     setShareImporting(true);
+    setShareError(null);
     try {
       const payload = await decodeShare(sharePending.raw);
       const result = await importSharePayload(payload);
       setSharePending(null);
+      setShareError(null);
       setText('');
       if (onShareImport) {
         await onShareImport(result.decks, result.cards);
       }
-    } catch {
-      // Error surfaced by the parent page.
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : 'Import failed.');
     } finally {
       setShareImporting(false);
     }
@@ -307,6 +311,7 @@ export function UnifiedImportPanel({
   function clearSharePending() {
     setText('');
     setSharePending(null);
+    setShareError(null);
   }
 
   // ---- Import handler ----
@@ -367,7 +372,7 @@ export function UnifiedImportPanel({
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => { setShareMode(false); setSharePending(null); }}
+            onClick={() => { setShareMode(false); setSharePending(null); setShareError(null); }}
             className={cn(
               'flex-1 rounded-full border px-4 py-2 text-sm font-medium transition-all',
               !shareMode
@@ -379,7 +384,7 @@ export function UnifiedImportPanel({
           </button>
           <button
             type="button"
-            onClick={() => { setShareMode(true); setSharePending(null); }}
+            onClick={() => { setShareMode(true); setSharePending(null); setShareError(null); }}
             className={cn(
               'flex-1 rounded-full border px-4 py-2 text-sm font-medium transition-all',
               shareMode
@@ -663,6 +668,22 @@ export function UnifiedImportPanel({
                 {apkgPending.media.size} image{apkgPending.media.size === 1 ? '' : 's'} will be imported.
               </p>
             )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Share code error */}
+      <AnimatePresence>
+        {shareError && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-2xl border border-negative/30 bg-negative/5 px-4 py-3 text-sm text-negative">
+              {shareError}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

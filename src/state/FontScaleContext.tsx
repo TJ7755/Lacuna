@@ -58,6 +58,15 @@ export function FontScaleProvider({ children }: { children: ReactNode }) {
     }
   }, [scale]);
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail === 'number') setScaleState(clamp(detail));
+    };
+    window.addEventListener('lacuna:font-scale', handler);
+    return () => window.removeEventListener('lacuna:font-scale', handler);
+  }, []);
+
   const setScale = useCallback((next: number) => setScaleState(clamp(next)), []);
 
   return (

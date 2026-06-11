@@ -191,7 +191,6 @@
   input:focus-visible,
   textarea:focus-visible,
   select:focus-visible {
-    box-shadow: 0 0 0 2px hsl(var(--accent) / 0.35);
     border-color: hsl(var(--accent));
   }
 }

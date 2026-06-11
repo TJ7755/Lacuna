@@ -37,6 +37,7 @@ import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
 import { useInputMode, type InputMode } from '../state/inputMode';
+import { useGestureSettings, type SwipeAction } from '../state/gestureSettings';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { MIN_OPTIMISE_REVIEWS } from '../fsrs/optimise';
 import {
@@ -75,6 +76,7 @@ export function Settings() {
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
   const [inputMode, setInputMode] = useInputMode();
+  const [gestureSettings, setGestureSettings] = useGestureSettings();
   const [pomoSettings, setPomoSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
   const backups = useBackups();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -372,6 +374,25 @@ export function Settings() {
               </button>
             );
           })}
+        </div>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <div className="mb-1 text-sm">Touch gestures</div>
+          <p className="mb-4 text-sm text-ink-soft">
+            Customise what happens when you swipe a deck card on the dashboard.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <GestureActionPicker
+              label="Swipe right"
+              value={gestureSettings.rightSwipe}
+              onChange={(action) => setGestureSettings({ ...gestureSettings, rightSwipe: action })}
+            />
+            <GestureActionPicker
+              label="Swipe left"
+              value={gestureSettings.leftSwipe}
+              onChange={(action) => setGestureSettings({ ...gestureSettings, leftSwipe: action })}
+            />
+          </div>
         </div>
       </section>
 
@@ -1236,6 +1257,38 @@ function DurationInput({
         />
         <span className="shrink-0 text-xs text-ink-faint">min</span>
       </div>
+    </label>
+  );
+}
+
+function GestureActionPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: SwipeAction;
+  onChange: (action: SwipeAction) => void;
+}) {
+  const options: { key: SwipeAction; label: string }[] = [
+    { key: 'study', label: 'Study deck' },
+    { key: 'archive', label: 'Archive deck' },
+    { key: 'none', label: 'No action' },
+  ];
+  return (
+    <label className="block text-sm text-ink-soft">
+      {label}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as SwipeAction)}
+        className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
+      >
+        {options.map((o) => (
+          <option key={o.key} value={o.key}>
+            {o.label}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }

@@ -33,6 +33,7 @@ import { progressNoun } from '../fsrs/objective';
 import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
+import { useGestureSettings } from '../state/gestureSettings';
 import type { Deck, Folder } from '../db/types';
 
 export function Dashboard() {
@@ -63,6 +64,7 @@ export function Dashboard() {
   const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
   const [renameFolderName, setRenameFolderName] = useState('');
   const [moveIntoFolder, setMoveIntoFolder] = useState<string | null>(null);
+  const [deletingFolder, setDeletingFolder] = useState<string | null>(null);
 
   const allSelected = decks ? decks.length > 0 && decks.every((d) => selected.has(d.id)) : false;
 
@@ -149,6 +151,14 @@ export function Dashboard() {
     navigate(`/deck/${deck.id}`);
   }
 
+  async function handleShareImportNew(decks: number, cards: number) {
+    setNewName('');
+    setNewColour(undefined);
+    setCreating(false);
+    notify(`Imported ${decks} deck${decks === 1 ? '' : 's'} with ${cards} card${cards === 1 ? '' : 's'} from share code.`, 'positive');
+    navigate('/');
+  }
+
   async function handleDelete() {
     const ids = [...selected];
     if (ids.length === 0) return;
@@ -210,6 +220,7 @@ export function Dashboard() {
   async function handleDeleteFolder(id: string) {
     try {
       await deleteFolder(id);
+      setDeletingFolder(null);
       notify('Folder deleted.', 'neutral');
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Could not delete folder.', 'negative');
@@ -309,7 +320,7 @@ export function Dashboard() {
               </button>
               <button
                 type="button"
-                onClick={() => handleDeleteFolder(folder.id)}
+                onClick={() => setDeletingFolder(folder.id)}
                 className="min-h-11 rounded px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-rose-600 active:bg-ink/10"
                 title="Delete folder"
               >
@@ -542,11 +553,53 @@ export function Dashboard() {
                     onImport={handleImportNew}
                     onCancel={() => setCreating(false)}
                     importLabel="Create & import"
+                    showShareImport
+                    onShareImport={handleShareImportNew}
                     onApkgImport={handleApkgImportNew}
                   />
                 </div>
               )}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Folder delete confirmation dialog */}
+      <AnimatePresence>
+        {deletingFolder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 * m }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+            onClick={() => setDeletingFolder(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.96 }}
+              transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
+              className="mx-4 w-full max-w-sm rounded-2xl border border-line-strong bg-surface p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="mb-2 font-display text-xl">Delete folder?</h3>
+              <p className="mb-6 text-sm text-ink-soft">
+                Deleting this folder will move all decks inside it to the top level. The
+                decks themselves will not be deleted.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setDeletingFolder(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() => void handleDeleteFolder(deletingFolder)}
+                >
+                  Delete folder
+                </Button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -880,6 +933,7 @@ function DeckCard({
   const m = motionMultiplier ?? 1;
   const navigate = useNavigate();
   const isTouchMode = useIsTouchMode();
+  const [gestureSettings] = useGestureSettings();
   const { notify } = useToast();
   const [folderMenuOpen, setFolderMenuOpen] = useState(false);
   const folderMenuRef = useRef<HTMLDivElement>(null);
@@ -951,17 +1005,26 @@ function DeckCard({
       e.stopPropagation();
       justSwiped.current = true;
       if (currentX > SWIPE_THRESHOLD) {
-        // Swipe right = study
+        // Swipe right
         dragX.set(0);
-        navigate(`/deck/${deck.id}/learn`);
-      } else if (currentX < -SWIPE_THRESHOLD) {
-        // Swipe left = archive
-        dragX.set(0);
-        if (!deck.archived) {
+        if (gestureSettings.rightSwipe === 'study') {
+          navigate(`/deck/${deck.id}/learn`);
+        } else if (gestureSettings.rightSwipe === 'archive' && !deck.archived) {
           void (async () => {
             await updateDeck(deck.id, { archived: true });
             notify('Deck archived.', 'neutral');
           })();
+        }
+      } else if (currentX < -SWIPE_THRESHOLD) {
+        // Swipe left
+        dragX.set(0);
+        if (gestureSettings.leftSwipe === 'archive' && !deck.archived) {
+          void (async () => {
+            await updateDeck(deck.id, { archived: true });
+            notify('Deck archived.', 'neutral');
+          })();
+        } else if (gestureSettings.leftSwipe === 'study') {
+          navigate(`/deck/${deck.id}/learn`);
         }
       } else {
         dragX.set(0);
@@ -1111,14 +1174,22 @@ function DeckCard({
             className="pointer-events-none absolute inset-y-0 right-0 z-0 flex items-center rounded-r-2xl bg-accent/90 px-3 text-accent-fg"
             style={{ opacity: rightSwipeOpacity, width: 80 }}
           >
-            <PlayIcon width={20} height={20} />
+            {gestureSettings.rightSwipe === 'study' ? (
+              <PlayIcon width={20} height={20} />
+            ) : gestureSettings.rightSwipe === 'archive' ? (
+              <span className="text-xs font-medium">Archive</span>
+            ) : null}
           </motion.div>
           <motion.div
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-0 left-0 z-0 flex items-center rounded-l-2xl bg-ink/10 px-3 text-ink"
             style={{ opacity: leftSwipeOpacity, width: 80 }}
           >
-            <span className="text-xs font-medium">Archive</span>
+            {gestureSettings.leftSwipe === 'archive' ? (
+              <span className="text-xs font-medium">Archive</span>
+            ) : gestureSettings.leftSwipe === 'study' ? (
+              <PlayIcon width={20} height={20} />
+            ) : null}
           </motion.div>
         </>
       )}
