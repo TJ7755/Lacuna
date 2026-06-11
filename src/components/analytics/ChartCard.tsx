@@ -35,7 +35,7 @@ export function ChartCard({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.24 * m, delay: (d + 0.1) * m }}
-          className={cn('grid h-56 place-items-center text-sm text-ink-faint', className)}
+          className={cn('grid h-64 min-h-[14rem] place-items-center text-sm text-ink-faint', className)}
         >
           {emptyMessage ?? 'Not enough data yet.'}
         </motion.div>
@@ -44,7 +44,11 @@ export function ChartCard({
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.32 * m, delay: (d + 0.05) * m, ease: 'easeOut' }}
-          className={cn('h-56', className)}
+          // Use min-h instead of h so charts that need more vertical space
+          // (e.g. with rotated x-axis labels) can grow without overflow,
+          // and add min-w-0 so the chart doesn't push the grid track wider
+          // than its share.
+          className={cn('h-64 min-w-0', className)}
         >
           {children}
         </motion.div>

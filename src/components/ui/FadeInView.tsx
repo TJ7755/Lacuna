@@ -10,7 +10,6 @@ interface FadeInViewProps {
   x?: number;
   scale?: number;
   once?: boolean;
-  threshold?: number;
 }
 
 /**
@@ -27,7 +26,6 @@ export function FadeInView({
   x = 0,
   scale = 1,
   once = true,
-  threshold = 0.1,
 }: FadeInViewProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -46,7 +44,7 @@ export function FadeInView({
     <motion.div
       initial={initial}
       whileInView={animate}
-      viewport={{ once, amount: threshold }}
+      viewport={{ once, amount: 0, margin: '0px 0px 100px 0px' }}
       transition={{
         duration: duration * m,
         delay: delay * m,
