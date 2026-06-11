@@ -158,6 +158,7 @@ function ComparisonBar({
       : metric.deckB < metric.deckA
         ? 'B'
         : null;
+  const winnerColour = winner === 'A' ? colourA : winner === 'B' ? colourB : null;
 
   return (
     <motion.div
@@ -168,47 +169,53 @@ function ComparisonBar({
     >
       <div className="flex items-center justify-between text-sm">
         <span className="text-ink">{metric.label}</span>
-        <div className="flex items-center gap-3">
-          <span className="text-right tabular text-sm" style={{ color: colourA }}>
+        {winnerColour && (
+          <motion.span
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 * m, delay: (delay + 0.35) * m, type: 'spring', stiffness: 500, damping: 25 }}
+            className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-sm"
+            style={{ backgroundColor: winnerColour }}
+            aria-label={winner === 'A' ? 'Deck A leads' : 'Deck B leads'}
+          >
+            {winner}
+          </motion.span>
+        )}
+      </div>
+      {/* Stacked bars: each deck gets its own row so values never overlap. */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colourA }} />
+          <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-ink/5">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${widthA}%` }}
+              transition={{ duration: 0.6 * m, delay: (delay + 0.05) * m, ease: [0.16, 1, 0.3, 1] }}
+              className="h-full rounded-full"
+              style={{ backgroundColor: colourA }}
+            />
+          </div>
+          <span className="w-14 shrink-0 text-right tabular text-sm" style={{ color: colourA }}>
             {metric.deckA}
             {unit}
           </span>
-          <span className="text-ink-faint">vs</span>
-          <span className="text-right tabular text-sm" style={{ color: colourB }}>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colourB }} />
+          <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-ink/5">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${widthB}%` }}
+              transition={{ duration: 0.6 * m, delay: (delay + 0.1) * m, ease: [0.16, 1, 0.3, 1] }}
+              className="h-full rounded-full"
+              style={{ backgroundColor: colourB }}
+            />
+          </div>
+          <span className="w-14 shrink-0 text-right tabular text-sm" style={{ color: colourB }}>
             {metric.deckB}
             {unit}
           </span>
         </div>
-      </div>
-      <div className="relative h-2 w-full overflow-hidden rounded-full bg-ink/5">
-        <div className="flex h-full w-full">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${widthA}%` }}
-            transition={{ duration: 0.6 * m, delay: (delay + 0.05) * m, ease: [0.16, 1, 0.3, 1] }}
-            className="h-full rounded-full"
-            style={{ backgroundColor: colourA }}
-          />
-          <div className="w-0.5 shrink-0 bg-surface" />
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${widthB}%` }}
-            transition={{ duration: 0.6 * m, delay: (delay + 0.1) * m, ease: [0.16, 1, 0.3, 1] }}
-            className="h-full rounded-full"
-            style={{ backgroundColor: colourB }}
-          />
-        </div>
-        {winner && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 * m, delay: (delay + 0.35) * m, type: 'spring', stiffness: 500, damping: 25 }}
-            className="absolute -top-1 right-0 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-sm"
-            style={{ backgroundColor: winner === 'A' ? colourA : colourB }}
-          >
-            {winner === 'A' ? 'A' : 'B'}
-          </motion.div>
-        )}
       </div>
     </motion.div>
   );
