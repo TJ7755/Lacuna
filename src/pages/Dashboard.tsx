@@ -5,20 +5,7 @@ import { useDashboardData, useFolders } from '../state/useData';
 import { buildFolderTree, getDeckFolderPath } from '../db/folderTree';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { StudySignals } from '../components/dashboard/StudySignals';
-import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
-import {
-  createDeck,
-  createDeckWithCards,
-  createFolder,
-  deleteDecks,
-  deleteFolder,
-  mergeDecks,
-  moveDecksToFolder,
-  restoreDecks,
-  snapshotDecks,
-  updateDeck,
-  updateFolder,
-} from '../db/repository';
+import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';import { createDeck, createDeckWithCards, createFolder, deleteDecks, mergeDecks, moveDecksToFolder, restoreDecks, snapshotDecks, updateDeck, updateFolder, } from '../db/repository';
 import { DECK_COLOURS } from '../db/types';
 import { Button } from '../components/ui/Button';
 import { ProgressBar } from '../components/ui/ProgressBar';
@@ -64,7 +51,6 @@ export function Dashboard() {
   const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
   const [renameFolderName, setRenameFolderName] = useState('');
   const [moveIntoFolder, setMoveIntoFolder] = useState<string | null>(null);
-  const [deletingFolder, setDeletingFolder] = useState<string | null>(null);
 
   const allSelected = useMemo(
     () => (decks ? decks.length > 0 && decks.every((d) => selected.has(d.id)) : false),
@@ -220,16 +206,6 @@ export function Dashboard() {
     }
   }
 
-  async function handleDeleteFolder(id: string) {
-    try {
-      await deleteFolder(id);
-      setDeletingFolder(null);
-      notify('Folder deleted.', 'neutral');
-    } catch (err) {
-      notify(err instanceof Error ? err.message : 'Could not delete folder.', 'negative');
-    }
-  }
-
   async function handleMoveToFolder(folderId: string | null) {
     const ids = [...selected];
     if (ids.length === 0) return;
@@ -321,14 +297,7 @@ export function Dashboard() {
               >
                 Rename
               </button>
-              <button
-                type="button"
-                onClick={() => setDeletingFolder(folder.id)}
-                className="min-h-11 rounded px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-rose-600 active:bg-ink/10"
-                title="Delete folder"
-              >
-                Delete
-              </button>
+
             </div>
           )}
         </div>
@@ -562,46 +531,6 @@ export function Dashboard() {
                 </div>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Folder delete confirmation dialog */}
-      <AnimatePresence>
-        {deletingFolder && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 * m }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-            onClick={() => setDeletingFolder(null)}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 12, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.96 }}
-              transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-4 w-full max-w-sm rounded-2xl border border-line-strong bg-surface p-6 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="mb-2 font-display text-xl">Delete folder?</h3>
-              <p className="mb-6 text-sm text-ink-soft">
-                Deleting this folder will move all decks inside it to the top level. The
-                decks themselves will not be deleted.
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setDeletingFolder(null)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={() => void handleDeleteFolder(deletingFolder)}
-                >
-                  Delete folder
-                </Button>
-              </div>
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -7,6 +7,7 @@ import { useSidebarSettings } from '../../state/sidebarSettings';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useToast } from '../ui/Toast';
+import { Button } from '../ui/Button';
 import {
   ChartIcon,
   ChevronDownIcon,
@@ -23,9 +24,10 @@ import {
   SettingsIcon,
   ShareIcon,
   SunIcon,
+  TrashIcon,
 } from '../ui/icons';
 import { buildFolderTree, wouldCreateCycle, type FolderNode } from '../../db/folderTree';
-import { moveFolder, moveDeckToFolder, createFolder } from '../../db/repository';
+import { moveFolder, moveDeckToFolder, createFolder, deleteFolder } from '../../db/repository';
 import type { Folder, Deck } from '../../db/types';
 
 interface SidebarProps {
@@ -153,6 +155,7 @@ interface FolderTreeNodeProps {
   onMoveFolder: (folderId: string, parentId: string | null) => void;
   onMoveDeck: (deckId: string, folderId: string | null) => void;
   onCreateSubfolder: (parentId: string) => void;
+  onDeleteFolder: (id: string) => void;
   dragOverId: string | null;
   setDragOverId: (id: string | null) => void;
 }
@@ -174,6 +177,7 @@ function FolderTreeNode({
   onMoveFolder,
   onMoveDeck,
   onCreateSubfolder,
+  onDeleteFolder,
   dragOverId,
   setDragOverId,
 }: FolderTreeNodeProps) {
@@ -280,24 +284,45 @@ function FolderTreeNode({
             </span>
           )}
           {!collapsed && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreateSubfolder(folder.id);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
+            <span className="ml-auto flex items-center opacity-0 transition-opacity group-hover:opacity-100">
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
                   e.stopPropagation();
                   onCreateSubfolder(folder.id);
-                }
-              }}
-              title="Create subfolder"
-              className="shrink-0 ml-1 rounded p-1 text-ink-faint opacity-0 transition-colors hover:text-accent hover:bg-accent-soft group-hover:opacity-100 cursor-pointer"
-              aria-label="Create subfolder"
-            >
-              <PlusIcon width={12} height={12} />
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.stopPropagation();
+                    onCreateSubfolder(folder.id);
+                  }
+                }}
+                title="Create subfolder"
+                className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-accent hover:bg-accent-soft cursor-pointer"
+                aria-label="Create subfolder"
+              >
+                <PlusIcon width={12} height={12} />
+              </span>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDeleteFolder(folder.id);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.stopPropagation();
+                    onDeleteFolder(folder.id);
+                  }
+                }}
+                title="Delete folder"
+                className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-negative hover:bg-negative/10 cursor-pointer"
+                aria-label="Delete folder"
+              >
+                <TrashIcon width={12} height={12} />
+              </span>
             </span>
           )}
         </div>
@@ -350,6 +375,7 @@ function FolderTreeNode({
                 onMoveFolder={onMoveFolder}
                 onMoveDeck={onMoveDeck}
                 onCreateSubfolder={onCreateSubfolder}
+                onDeleteFolder={onDeleteFolder}
                 dragOverId={dragOverId}
                 setDragOverId={setDragOverId}
               />
@@ -549,6 +575,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [creatingSubfolder, setCreatingSubfolder] = useState<string | null>(null);
   const [subfolderName, setSubfolderName] = useState('');
+  const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
 
   // Filter archived decks unless the user explicitly wants them in the sidebar.
   const visibleDecks = decks?.filter((d) => sidebarSettings.showArchived || !d.archived) ?? [];
@@ -612,6 +639,19 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       }
     },
     [subfolderName, notify],
+  );
+
+  const handleDeleteFolder = useCallback(
+    async (id: string) => {
+      try {
+        await deleteFolder(id);
+        setDeletingFolderId(null);
+        notify('Folder deleted.', 'neutral');
+      } catch (err) {
+        notify(err instanceof Error ? err.message : 'Could not delete folder.', 'negative');
+      }
+    },
+    [notify],
   );
 
   return (
@@ -739,6 +779,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                       setCreatingSubfolder(parentId);
                       setSubfolderName('');
                     }}
+                    onDeleteFolder={(id) => setDeletingFolderId(id)}
                     dragOverId={dragOverId}
                     setDragOverId={setDragOverId}
                   />
@@ -764,15 +805,52 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             </TopLevelDropZone>
           </AnimatePresence>
 
-          {/* Subfolder creation inline */}
-          <AnimatePresence>
-            {creatingSubfolder && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden px-3 py-2"
-              >
+      {/* Folder delete confirmation dialog */}
+      <AnimatePresence>
+        {deletingFolderId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 * m }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+            onClick={() => setDeletingFolderId(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.96 }}
+              transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
+              className="mx-4 w-full max-w-sm rounded-2xl border border-line-strong bg-surface p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="mb-2 font-display text-xl">Delete folder?</h3>
+              <p className="mb-6 text-sm text-ink-soft">
+                Deleting this folder will move all decks inside it to the top level. The
+                decks themselves will not be deleted.
+              </p>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setDeletingFolderId(null)}>
+                  Cancel
+                </Button>
+                <Button variant="danger" onClick={() => void handleDeleteFolder(deletingFolderId)}>
+                  Delete folder
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Subfolder creation inline */}
+      <AnimatePresence>
+        {creatingSubfolder && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden px-3 py-2"
+          >
                 <div className="flex items-center gap-2">
                   <FolderIcon width={14} height={14} className="text-ink-faint" />
                   <input
