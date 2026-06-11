@@ -84,7 +84,7 @@ export function parseAdvancedQuery(query: string): ParsedQuery {
 }
 
 /** Whether a single card satisfies one structured filter. */
-function matchesFilter(card: Card, filter: CardFilter, now: number): boolean {
+export function matchesFilter(card: Card, filter: CardFilter, now: number): boolean {
   switch (filter) {
     case 'due':
       return card.due !== null && card.due <= now;

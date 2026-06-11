@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { hapticLight, hapticMedium } from '../utils/haptic';
@@ -55,6 +55,7 @@ import {
 } from '../components/ui/icons';
 import { PomodoroTimer } from '../components/learn/PomodoroTimer';
 import { useToast } from '../components/ui/Toast';
+import { matchesFilter, type CardFilter } from '../db/search';
 
 type Phase = 'loading' | 'question' | 'answer' | 'finished';
 
@@ -73,6 +74,10 @@ export function LearnMode() {
   const [searchParams] = useSearchParams();
   const tagFilter = searchParams.get('tag');
   const cramMode = searchParams.get('mode') === 'cram';
+  const filterParams = useMemo(
+    () => searchParams.getAll('filter') as CardFilter[],
+    [searchParams.toString()],
+  );
   const navigate = useNavigate();
   const distraction = useDistraction();
   const [gradingMode] = useGradingMode();
@@ -260,6 +265,10 @@ export function LearnMode() {
         decks = [d];
         cards = await db.cards.where('deckId').equals(deckId).toArray();
         if (tagFilter) cards = cards.filter((c) => (c.tags ?? []).includes(tagFilter));
+        const now = Date.now();
+        if (filterParams.length > 0) {
+          cards = cards.filter((c) => filterParams.every((f) => matchesFilter(c, f, now)));
+        }
       } else {
         decks = await db.decks.toArray();
         cards = await db.cards.toArray();
@@ -323,7 +332,7 @@ export function LearnMode() {
     return () => {
       cancelled = true;
     };
-  }, [deckId, tagFilter, cramMode, navigate]);
+  }, [deckId, tagFilter, cramMode, filterParams, navigate]);
 
   const reveal = useCallback(() => {
     setPhase((p) => {
@@ -669,7 +678,22 @@ export function LearnMode() {
     return <LearnSkeleton />;
   }
 
-  const headerTitle = singleDeck ? singleDeck.name : 'Today · all decks';
+  let headerTitle = singleDeck ? singleDeck.name : 'Today · all decks';
+  if (singleDeck && cramMode) {
+    headerTitle = `${singleDeck.name} · Cram mode`;
+  } else if (singleDeck && filterParams.length > 0) {
+    const labels = filterParams.map((f) => {
+      switch (f) {
+        case 'due': return 'due cards';
+        case 'new': return 'new cards';
+        case 'leech': return 'leeches';
+        case 'flagged': return 'flagged cards';
+        case 'suspended': return 'suspended cards';
+        default: return f;
+      }
+    });
+    headerTitle = `${singleDeck.name} · ${labels.join(', ')}`;
+  }
   const noun = singleDeck ? progressNoun(singleDeck) : 'ready';
 
   return (

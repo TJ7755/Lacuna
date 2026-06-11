@@ -35,11 +35,17 @@ import { DateTimePicker } from '../components/ui/DateTimePicker';
 import {
   CardsIcon,
   ChartIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
+  ClockIcon,
+  FlameIcon,
+  FlagIcon,
+  InfoIcon,
   PlayIcon,
   PlusIcon,
   SearchIcon,
   SettingsIcon,
+  SparklesIcon,
 } from '../components/ui/icons';
 import { searchCards, type CardFilter } from '../db/search';
 import { cn } from '../components/ui/cn';
@@ -69,6 +75,8 @@ export function DeckView() {
   const [filters, setFilters] = useState<Set<CardFilter>>(new Set());
   const [showFindOverlay, setShowFindOverlay] = useState(false);
   const [findQuery, setFindQuery] = useState('');
+  const [studyMenuOpen, setStudyMenuOpen] = useState(false);
+  const studyMenuRef = useRef<HTMLDivElement>(null);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const isTouchMode = useIsTouchMode();
@@ -212,6 +220,18 @@ export function DeckView() {
       navigate(studyPath);
     }
   }, [cards, deck, navigate, studyPath]);
+
+  // Close the study menu when clicking outside.
+  useEffect(() => {
+    if (!studyMenuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (studyMenuRef.current && !studyMenuRef.current.contains(e.target as Node)) {
+        setStudyMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [studyMenuOpen]);
 
   const handleMasteryPointerDown = useCallback((e: React.PointerEvent) => {
     if (!isTouchMode) return;
@@ -419,15 +439,85 @@ export function DeckView() {
             >
               <SettingsIcon width={18} height={18} />
             </Button>
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={startStudy}
-              disabled={cards.length === 0}
-            >
-              <PlayIcon width={18} height={18} />
-              Study
-            </Button>
+            <div ref={studyMenuRef} className="relative flex items-center">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={startStudy}
+                disabled={cards.length === 0}
+                className="rounded-r-none"
+              >
+                <PlayIcon width={18} height={18} />
+                Study
+              </Button>
+              <button
+                type="button"
+                onClick={() => setStudyMenuOpen((v) => !v)}
+                aria-label="Study options"
+                title="Study options"
+                disabled={cards.length === 0}
+                className="flex h-11 items-center justify-center rounded-r-lg border-l border-accent-fg/20 bg-accent px-2 text-accent-fg transition-colors hover:bg-accent/90 active:bg-accent/80 disabled:opacity-50"
+              >
+                <ChevronDownIcon width={16} height={16} />
+              </button>
+              <AnimatePresence>
+                {studyMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                    transition={{ duration: 0.12 * m }}
+                    className="absolute right-0 top-12 z-20 w-56 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
+                  >
+                    <StudyMenuItem
+                      icon={<PlayIcon width={16} height={16} />}
+                      label="Study all cards"
+                      onClick={() => { setStudyMenuOpen(false); startStudy(); }}
+                    />
+                    <StudyMenuItem
+                      icon={<FlameIcon width={16} height={16} />}
+                      label="Cram mode"
+                      onClick={() => {
+                        setStudyMenuOpen(false);
+                        navigate(`${studyPath}${visibleTag ? '&' : '?'}mode=cram`);
+                      }}
+                    />
+                    <StudyMenuItem
+                      icon={<ClockIcon width={16} height={16} />}
+                      label="Study due cards"
+                      onClick={() => {
+                        setStudyMenuOpen(false);
+                        navigate(`/deck/${deck.id}/learn?${visibleTag ? `tag=${encodeURIComponent(visibleTag)}&` : ''}filter=due`);
+                      }}
+                    />
+                    <StudyMenuItem
+                      icon={<SparklesIcon width={16} height={16} />}
+                      label="Study new cards"
+                      onClick={() => {
+                        setStudyMenuOpen(false);
+                        navigate(`/deck/${deck.id}/learn?${visibleTag ? `tag=${encodeURIComponent(visibleTag)}&` : ''}filter=new`);
+                      }}
+                    />
+                    <StudyMenuItem
+                      icon={<InfoIcon width={16} height={16} />}
+                      label="Study leech cards"
+                      onClick={() => {
+                        setStudyMenuOpen(false);
+                        navigate(`/deck/${deck.id}/learn?${visibleTag ? `tag=${encodeURIComponent(visibleTag)}&` : ''}filter=leech`);
+                      }}
+                    />
+                    <StudyMenuItem
+                      icon={<FlagIcon width={16} height={16} />}
+                      label="Study flagged cards"
+                      onClick={() => {
+                        setStudyMenuOpen(false);
+                        navigate(`/deck/${deck.id}/learn?${visibleTag ? `tag=${encodeURIComponent(visibleTag)}&` : ''}filter=flagged`);
+                      }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
@@ -945,6 +1035,27 @@ function EmptyCardState({
         </Button>
       )}
     </motion.div>
+  );
+}
+
+function StudyMenuItem({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full min-h-11 items-center gap-3 px-4 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+    >
+      <span className="shrink-0 text-ink-faint">{icon}</span>
+      {label}
+    </button>
   );
 }
 
