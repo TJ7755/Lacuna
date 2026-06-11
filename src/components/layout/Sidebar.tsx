@@ -85,7 +85,9 @@ function StudyStreakBadge({ collapsed }: { collapsed: boolean }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const streak = stats?.streak ?? 0;
-  if (streak === 0) return null;
+  if (streak === 0) {
+    return null;
+  }
   return (
     <motion.span
       initial={{ scale: 0, opacity: 0 }}

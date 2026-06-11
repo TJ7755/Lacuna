@@ -125,9 +125,9 @@ export function computeStudyStats(
     const secondsPerReview = deckSeconds.get(card.deckId) ?? DEFAULT_REVIEW_SECONDS;
     const minutes = secondsPerReview / 60;
 
-    if (card.due == null) {
+    if (card.due === null || card.due === undefined) {
       // Never-reviewed card: count as new today only if not buried.
-      if (card.buriedUntil != null && card.buriedUntil > now) continue;
+      if (card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > now) continue;
       const slot = forecast[0];
       slot.newCount += 1;
       slot.minutes += minutes;

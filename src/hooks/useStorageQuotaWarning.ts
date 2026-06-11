@@ -39,8 +39,10 @@ export function useStorageQuotaWarning() {
       }
     }
 
-    check();
-    const id = window.setInterval(check, CHECK_INTERVAL_MS);
+    void check();
+    const id = window.setInterval(() => {
+      void check();
+    }, CHECK_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [notify]);
 }

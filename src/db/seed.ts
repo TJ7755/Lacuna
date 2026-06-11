@@ -85,7 +85,9 @@ export async function seedIfFirstRun(): Promise<void> {
     const existingDeckCount = await db.decks.count();
     if (existingDeckCount > 0) {
       // Best-effort sync of the localStorage flag so future starts are cheaper.
-      try { localStorage.setItem(FLAG_KEY, '1'); } catch {}
+      try { localStorage.setItem(FLAG_KEY, '1'); } catch {
+        // localStorage may be unavailable; next start will retry the check.
+      }
       return;
     }
 
@@ -363,7 +365,9 @@ export async function seedIfFirstRun(): Promise<void> {
     });
 
     // Only set the flag after a successful commit so a failed seed is retried.
-    try { localStorage.setItem(FLAG_KEY, '1'); } catch {}
+    try { localStorage.setItem(FLAG_KEY, '1'); } catch {
+      // localStorage may be unavailable; the next start will retry the check.
+    }
   } finally {
     seeding = false;
   }

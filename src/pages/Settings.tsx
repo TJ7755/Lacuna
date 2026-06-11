@@ -845,7 +845,7 @@ export function Settings() {
                       {persistence.persisted
                         ? 'The browser will not delete this data under storage pressure.'
                         : 'The browser may delete this data under storage pressure. Regular exports or folder mirroring are the safeguard.'}
-                      {persistence.usage != null && persistence.quota != null && (
+                      {persistence.usage !== null && persistence.usage !== undefined && persistence.quota !== null && persistence.quota !== undefined && (
                         <>
                           {' '}
                           Using {Math.round(persistence.usage / 1024 / 1024)} MB of{' '}
@@ -923,7 +923,7 @@ export function Settings() {
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => b.id != null && handleRestore(b.id)}
+                      onClick={() => b.id !== null && b.id !== undefined && handleRestore(b.id)}
                     >
                       Restore
                     </Button>
@@ -933,14 +933,14 @@ export function Settings() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => b.id != null && void deleteBackup(b.id)}
+                      onClick={() => b.id !== null && b.id !== undefined && void deleteBackup(b.id)}
                     >
                       Delete
                     </Button>
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => setConfirmRestore(b.id ?? null)}
+                      onClick={() => setConfirmRestore(b.id !== null && b.id !== undefined ? b.id : null)}
                     >
                       Restore
                     </Button>

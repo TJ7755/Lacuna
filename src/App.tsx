@@ -170,7 +170,9 @@ export function App() {
       // Take a daily restore point in the background; never blocks the UI.
       void autoBackupIfStale();
       // Warm the DeckView chunk in the background so the first deck click is instant.
-      void import('./pages/DeckView');
+      void import('./pages/DeckView').catch(() => {
+        // Pre-warm failures are non-fatal; the lazy import still works on first use.
+      });
     })();
   }, []);
 

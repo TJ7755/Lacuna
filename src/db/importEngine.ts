@@ -55,7 +55,7 @@ export function detectFormat(input: string): FormatDetection {
   }
 
   // JSON: starts with [ or { and is valid JSON.
-  if (/^[{\[]/.test(trimmed)) {
+  if (/^[[{]/.test(trimmed)) {
     try {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed) || (typeof parsed === 'object' && parsed !== null)) {

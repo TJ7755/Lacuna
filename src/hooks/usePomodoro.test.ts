@@ -73,26 +73,42 @@ describe('usePomodoro', () => {
 
   it('pauses and resumes', () => {
     const { result } = renderHook(() => usePomodoro());
-    act(() => result.current.startFocus());
-    act(() => vi.advanceTimersByTime(5000));
+    act(() => {
+      result.current.startFocus();
+    });
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
     expect(result.current.formattedTime).toBe('24:55');
 
-    act(() => result.current.pause());
+    act(() => {
+      result.current.pause();
+    });
     expect(result.current.isRunning).toBe(false);
 
-    act(() => vi.advanceTimersByTime(5000));
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
     expect(result.current.formattedTime).toBe('24:55');
 
-    act(() => result.current.resume());
+    act(() => {
+      result.current.resume();
+    });
     expect(result.current.isRunning).toBe(true);
-    act(() => vi.advanceTimersByTime(1000));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
     expect(result.current.formattedTime).toBe('24:54');
   });
 
   it('resets to idle', () => {
     const { result } = renderHook(() => usePomodoro());
-    act(() => result.current.startFocus());
-    act(() => result.current.reset());
+    act(() => {
+      result.current.startFocus();
+    });
+    act(() => {
+      result.current.reset();
+    });
     expect(result.current.phase).toBe('idle');
     expect(result.current.isRunning).toBe(false);
     expect(result.current.formattedTime).toBe('00:00');

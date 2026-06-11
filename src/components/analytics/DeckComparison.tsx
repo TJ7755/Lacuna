@@ -238,8 +238,8 @@ export function DeckComparison({ decks, cards }: DeckComparisonProps) {
 
   const deckA = decks.find((d) => d.id === deckAId);
   const deckB = decks.find((d) => d.id === deckBId);
-  const cardsA = byDeck.get(deckAId) ?? [];
-  const cardsB = byDeck.get(deckBId) ?? [];
+  const cardsA = useMemo(() => byDeck.get(deckAId) ?? [], [byDeck, deckAId]);
+  const cardsB = useMemo(() => byDeck.get(deckBId) ?? [], [byDeck, deckBId]);
 
   const metrics = useMemo(() => {
     if (!deckA || !deckB) return [];

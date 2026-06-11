@@ -180,7 +180,7 @@ export function UnifiedImportPanel({
           e.preventDefault();
           return;
         }
-        if (shareMode) {
+        if (shareMode === true) {
           setText(trimmed);
           setShareMode(false);
           showPasteNotification(`${FORMAT_LABELS[pasteDetection.format]} detected — switched to text import`);
@@ -227,7 +227,9 @@ export function UnifiedImportPanel({
       e.stopPropagation();
       setDragging(false);
       const file = e.dataTransfer.files[0];
-      if (file) void handleFile(file);
+      if (file) {
+        void handleFile(file);
+      }
     },
     [handleFile],
   );

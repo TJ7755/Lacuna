@@ -434,7 +434,7 @@ function OptimisationPanel({ deck, cards }: { deck: Deck; cards: Card[] }) {
     return () => {
       optimiser.reset();
     };
-  }, [deck?.id]);
+  }, [deck?.id, optimiser]);
 
   const reviews = countReviews(cards);
   const enabled = optimiseEnabledForDeck(deck.autoOptimise, globalDefault);

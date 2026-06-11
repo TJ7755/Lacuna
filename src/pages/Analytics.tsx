@@ -75,7 +75,7 @@ export function Analytics() {
     [decks],
   );
 
-  const cards = allCards ?? [];
+  const cards = useMemo(() => allCards ?? [], [allCards]);
 
   const forecast = useMemo(() => forecastSeries(cards), [cards]);
   const studyTime = useMemo(() => studyTimeSeries(cards), [cards]);

@@ -63,7 +63,7 @@ export function migrateCardRecord(card: LegacyCard): Card {
     // defaulting to lastReviewed (which would make it immediately due).
     due:
       card.due ??
-      (card.lastReviewed != null && card.stability != null
+      (card.lastReviewed !== null && card.lastReviewed !== undefined && card.stability !== null && card.stability !== undefined
         ? card.lastReviewed + Math.round(card.stability * 86_400_000)
         : card.lastReviewed),
     scheduledDays: card.scheduledDays ?? 0,

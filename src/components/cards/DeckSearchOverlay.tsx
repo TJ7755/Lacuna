@@ -80,7 +80,7 @@ export function DeckSearchOverlay({ cards, onClose, onQueryChange }: DeckSearchO
     setCurrentIndex(0);
   }, [query, caseSensitive]);
 
-  function navigate(delta: number) {
+  function goToMatch(delta: number) {
     setCurrentIndex((prev) => {
       const next = prev + delta;
       if (next < 0) return matches.length - 1;
@@ -98,12 +98,12 @@ export function DeckSearchOverlay({ cards, onClose, onQueryChange }: DeckSearchO
       }
       if (e.key === 'Enter' && e.shiftKey) {
         e.preventDefault();
-        navigate(-1);
+        goToMatch(-1);
         return;
       }
       if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        navigate(1);
+        goToMatch(1);
         return;
       }
     };
@@ -167,7 +167,7 @@ export function DeckSearchOverlay({ cards, onClose, onQueryChange }: DeckSearchO
             </div>
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={() => goToMatch(-1)}
               disabled={matches.length === 0}
               className="grid h-9 w-9 place-items-center rounded-lg border border-line-strong text-ink-soft transition-colors hover:bg-ink/5 disabled:opacity-40"
               title="Previous match (Shift+Enter)"
@@ -176,7 +176,7 @@ export function DeckSearchOverlay({ cards, onClose, onQueryChange }: DeckSearchO
             </button>
             <button
               type="button"
-              onClick={() => navigate(1)}
+              onClick={() => goToMatch(1)}
               disabled={matches.length === 0}
               className="grid h-9 w-9 place-items-center rounded-lg border border-line-strong text-ink-soft transition-colors hover:bg-ink/5 disabled:opacity-40"
               title="Next match (Enter)"

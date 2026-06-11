@@ -110,7 +110,7 @@ export class LacunaDatabase extends Dexie {
         const table = tx.table('cards');
         let offset = 0;
         const batchSize = 50;
-        while (true) {
+        for (;;) {
           const batch = await table.offset(offset).limit(batchSize).toArray();
           if (batch.length === 0) break;
           for (const card of batch) {

@@ -16,7 +16,7 @@ import type { Card, Deck } from '../db/types';
 /** Whether a card may be studied or counted at `now` (not suspended, not buried). */
 export function isAvailable(card: Card, now: number = Date.now()): boolean {
   if (card.suspended) return false;
-  if (card.buriedUntil != null && card.buriedUntil > now) return false;
+  if (card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > now) return false;
   return true;
 }
 

@@ -13,7 +13,7 @@
 import {
   fsrs,
   createEmptyCard,
-  State,
+  type State,
   type FSRS,
   type Card as TsCard,
   type Grade as TsGrade,

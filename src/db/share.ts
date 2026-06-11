@@ -121,7 +121,7 @@ function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   const CHUNK = 0x8000; // chunk so very large images do not overflow the call stack
   for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)) as number[]);
   }
   return btoa(binary);
 }
@@ -144,15 +144,17 @@ async function pipeThrough(
   const reader = stream.readable.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
-  while (true) {
+  for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    total += value.length;
-    if (maxBytes != null && total > maxBytes) {
-      await reader.cancel();
-      throw new Error('Share code is too large to decode safely.');
+    if (value) {
+      total += value.length;
+      if (maxBytes !== null && maxBytes !== undefined && total > maxBytes) {
+        await reader.cancel();
+        throw new Error('Share code is too large to decode safely.');
+      }
+      chunks.push(value);
     }
-    chunks.push(value);
   }
   const result = new Uint8Array(total);
   let offset = 0;

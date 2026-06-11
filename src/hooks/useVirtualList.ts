@@ -44,7 +44,7 @@ export function useVirtualList({
   }, [itemCount]);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
-  const [measureVersion, setMeasureVersion] = useState(0);
+  const [, setMeasureVersion] = useState(0);
 
   // Track scroll position via window scroll (page-flow virtualisation)
   useEffect(() => {
@@ -158,7 +158,7 @@ export function useVirtualList({
     }
 
     return { totalHeight: total, virtualItems: items };
-  }, [enabled, itemCount, estimateSize, gap, overscan, scrollOffset, containerHeight, measureVersion]);
+  }, [enabled, itemCount, estimateSize, gap, overscan, scrollOffset, containerHeight]);
 
   const scrollToIndex = useCallback(
     (index: number) => {

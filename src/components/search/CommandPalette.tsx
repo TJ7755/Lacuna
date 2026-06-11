@@ -147,7 +147,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                     transition={{ duration: 0.12 * m }}
                     className="px-4 py-6 text-center text-sm text-ink-faint"
                   >
-                    No cards match "{debouncedQuery}".
+                    No cards match &ldquo;{debouncedQuery}&rdquo;.
                   </motion.p>
                 ) : (
                   <motion.ul

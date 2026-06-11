@@ -28,6 +28,7 @@ import {
 } from '../components/ui/icons';
 import { formatDate } from '../utils/datetime';
 import QRCode from 'react-qr-code';
+import type { Html5Qrcode } from 'html5-qrcode';
 
 /** Maximum characters a single QR code (version 40, L error correction) can hold in Alphanumeric mode. */
 const MAX_QR_ALPHANUMERIC_CHARS = 4296;
@@ -65,7 +66,7 @@ export function SharePage() {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const scannerRef = useRef<HTMLDivElement>(null);
-  const html5QrCodeRef = useRef<import('html5-qrcode').Html5Qrcode | null>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
   // Clear pending copy timeouts on unmount to avoid setState on unmounted component.
   useEffect(() => {
@@ -113,7 +114,11 @@ export function SharePage() {
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
     // Any change invalidates a previously generated code or plain text export.
@@ -129,9 +134,12 @@ export function SharePage() {
     setPlainText('');
     setQrCode('');
     setShowQR(false);
-    setSelected((prev) =>
-      prev.size === decks.length ? new Set() : new Set(decks.map((d) => d.id)),
-    );
+    setSelected((prev) => {
+      if (prev.size === decks.length) {
+        return new Set();
+      }
+      return new Set(decks.map((d) => d.id));
+    });
   }
 
   async function handleGenerate() {

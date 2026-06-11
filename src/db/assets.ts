@@ -6,11 +6,10 @@ export const ASSET_PROTOCOL = 'lacuna-asset://';
 const DATA_IMAGE_RE = /data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)/gi;
 const ASSET_RE = /lacuna-asset:\/\/([a-f0-9]{64})/gi;
 
-export function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
+export function bytesToBase64(bytes: Uint8Array): string {    let binary = '';
   const chunk = 0x8000;
   for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)) as number[]);
   }
   return btoa(binary);
 }
@@ -345,14 +344,14 @@ export async function collectOrphanedAssets(): Promise<number> {
     const referenced = new Set<string>();
     const batchSize = 500;
     let offset = 0;
-    while (true) {
-      const batch = await db.cards.offset(offset).limit(batchSize).toArray();
-      if (batch.length === 0) break;
-      for (const card of batch) {
-        referencedAssetHashes(`${card.front}\n${card.back}`).forEach((h) => referenced.add(h));
-      }
-      offset += batch.length;
+  for (;;) {
+    const batch = await db.cards.offset(offset).limit(batchSize).toArray();
+    if (batch.length === 0) break;
+    for (const card of batch) {
+      referencedAssetHashes(`${card.front}\n${card.back}`).forEach((h) => referenced.add(h));
     }
+    offset += batch.length;
+  }
 
     // Stream asset keys and collect orphans without loading all keys at once.
     const orphans: string[] = [];

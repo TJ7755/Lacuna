@@ -92,7 +92,7 @@ export function sessionServePool(
     const deckCards = cardsOfDeck(cards, deck.id);
     if (ctx.mode === 'cram') {
       // Cram serves every available card, ignoring the daily new-card cap.
-      pool.push(...deckCards.filter((c) => !c.suspended && !(c.buriedUntil != null && c.buriedUntil > now)));
+      pool.push(...deckCards.filter((c) => !c.suspended && !(c.buriedUntil !== null && c.buriedUntil !== undefined && c.buriedUntil > now)));
     } else {
       pool.push(...studyPool(deckCards, deck, now));
     }

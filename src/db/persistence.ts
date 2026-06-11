@@ -45,7 +45,7 @@ export async function requestPersistentStorage(): Promise<StoragePersistenceStat
   }
 
   const persisted = await navigator.storage.persisted();
-  if (persisted) {
+  if (persisted === true) {
     const est = await runEstimate();
     return { supported: true, persisted: true, granted: true, ...est };
   }
