@@ -37,10 +37,12 @@ export function useVirtualList({
 }: UseVirtualListOptions): UseVirtualListResult {
   const containerRef = useRef<HTMLDivElement>(null);
   const itemHeights = useRef<Record<number, number>>({});
+  const measureCallbacks = useRef(new Map<number, (el: HTMLElement | null) => void>());
 
   // Clear cached heights when the item count changes to avoid stale data.
   useEffect(() => {
     itemHeights.current = {};
+    measureCallbacks.current.clear();
   }, [itemCount]);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -72,16 +74,23 @@ export function useVirtualList({
     };
   }, [enabled]);
 
-  // Measure individual item heights
+  // Measure individual item heights — callbacks are memoised per index so React
+  // does not treat them as new refs on every render, which avoids ref thrashing
+  // and repeated getBoundingClientRect calls.
   const measureRef = useCallback(
-    (index: number) => (el: HTMLElement | null) => {
-      if (!el) return;
-      const height = el.getBoundingClientRect().height;
-      const prev = itemHeights.current[index];
-      if (prev !== height) {
-        itemHeights.current[index] = height;
-        setMeasureVersion((v) => v + 1);
+    (index: number) => {
+      if (!measureCallbacks.current.has(index)) {
+        measureCallbacks.current.set(index, (el: HTMLElement | null) => {
+          if (!el) return;
+          const height = el.getBoundingClientRect().height;
+          const prev = itemHeights.current[index];
+          if (prev !== height) {
+            itemHeights.current[index] = height;
+            setMeasureVersion((v) => v + 1);
+          }
+        });
       }
+      return measureCallbacks.current.get(index)!;
     },
     [],
   );
