@@ -25,6 +25,7 @@ export const DEFAULT_NAV_ITEMS: SidebarNavItem[] = [
   { id: 'share', label: 'Share', visible: true },
   { id: 'analytics', label: 'Analytics', visible: true },
   { id: 'settings', label: 'Settings', visible: true },
+  { id: 'help', label: 'Help', visible: true },
 ];
 
 export const DEFAULTS: SidebarSettings = {

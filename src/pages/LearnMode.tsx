@@ -31,7 +31,7 @@ import { MS_PER_DAY } from '../fsrs/params';
 import { CardContent } from '../components/cards/CardContent';
 import { CardEditOverlay } from '../components/cards/CardEditOverlay';
 import { KeyHints } from '../components/ui/KeyHints';
-import { ProgressBar } from '../components/ui/ProgressBar';
+import { ProgressBar, type ProgressVariant } from '../components/ui/ProgressBar';
 import { Button } from '../components/ui/Button';
 import { Sidebar } from '../components/layout/Sidebar';
 import { SessionReport } from '../components/learn/SessionReport';
@@ -57,8 +57,12 @@ import {
 import { PomodoroTimer } from '../components/learn/PomodoroTimer';
 import { useToast } from '../components/ui/Toast';
 import { matchesFilter, type CardFilter } from '../db/search';
+import { cn } from '../components/ui/cn';
 
 type Phase = 'loading' | 'question' | 'answer' | 'finished';
+
+/** The distinct visual identity of the current learn session. */
+type LearnModeType = 'fsrs' | 'simple' | 'cram' | 'filtered' | 'filtered-due' | 'filtered-new' | 'filtered-leech' | 'filtered-flagged' | 'filtered-suspended';
 
 const FILTER_LABELS: Record<string, string> = {
   due: 'due cards',
@@ -83,6 +87,7 @@ export function LearnMode() {
   const [searchParams] = useSearchParams();
   const tagFilter = searchParams.get('tag');
   const cramMode = searchParams.get('mode') === 'cram';
+  const simpleModeParam = searchParams.get('mode') === 'simple';
   const filterParams = useMemo(
     () => searchParams.getAll('filter') as CardFilter[],
     [searchParams],
@@ -96,7 +101,24 @@ export function LearnMode() {
   const isTouchMode = useIsTouchMode();
   const { notify } = useToast();
   const [studyMode] = useStudyMode();
-  const isSimpleMode = studyMode === 'simple';
+  const isSimpleMode = studyMode === 'simple' || simpleModeParam;
+
+  const mode: LearnModeType = useMemo(() => {
+    if (isSimpleMode) return 'simple';
+    if (cramMode) return 'cram';
+    if (filterParams.length > 0) {
+      if (filterParams.length === 1) {
+        const f = filterParams[0];
+        if (f === 'due') return 'filtered-due';
+        if (f === 'new') return 'filtered-new';
+        if (f === 'leech') return 'filtered-leech';
+        if (f === 'flagged') return 'filtered-flagged';
+        if (f === 'suspended') return 'filtered-suspended';
+      }
+      return 'filtered';
+    }
+    return 'fsrs';
+  }, [isSimpleMode, cramMode, filterParams]);
 
   const isGlobal = !deckId;
 
@@ -211,13 +233,14 @@ export function LearnMode() {
         limitReached,
         timeLimitReached,
         simpleMode: isSimpleMode,
+        mode,
       });
       setCanUndo(false);
       lastAnswer.current = null;
       if (!mountedRef.current) return;
       setPhase('finished');
     },
-    [objectiveLabel, distraction, cachedSessionProgress, isSimpleMode],
+    [objectiveLabel, distraction, cachedSessionProgress, isSimpleMode, mode],
   );
 
   /** Present the next eligible card, or finish if the goal has been reached. */
@@ -363,6 +386,7 @@ export function LearnMode() {
           focusFraction: 1,
           reachedGoal: false,
           limitReached: false,
+          mode,
         });
         setPhase('finished');
         return;
@@ -375,6 +399,9 @@ export function LearnMode() {
         simpleQueue.current = [...cards];
         simpleMastered.current = new Set();
         simpleWrong.current = new Set();
+        setProgress(0);
+      } else {
+        setProgress(progressBefore.current);
       }
 
       if (!isSimpleMode && sessionComplete(cards, ctx)) {
@@ -387,6 +414,7 @@ export function LearnMode() {
           reachedGoal: true,
           limitReached: false,
           timeLimitReached: false,
+          mode,
         });
         setPhase('finished');
       } else {
@@ -397,7 +425,7 @@ export function LearnMode() {
     return () => {
       cancelled = true;
     };
-  }, [deckId, tagFilter, cramMode, filterParams, navigate, isSimpleMode]);
+  }, [deckId, tagFilter, cramMode, filterParams, navigate, isSimpleMode, mode]);
 
   const reveal = useCallback(() => {
     setPhase((p) => {
@@ -452,8 +480,8 @@ export function LearnMode() {
           }
 
           const remaining = simpleQueue.current.filter((c) => !simpleMastered.current.has(c.id)).length;
-          const total = simpleQueue.current.length;
           const mastered = simpleMastered.current.size;
+          const total = mastered + remaining;
           setProgress(total > 0 ? mastered / total : 1);
 
           if (remaining === 0) {
@@ -787,27 +815,9 @@ export function LearnMode() {
   }, [phase]);
 
   if (phase === 'loading') {
-    return <LearnSkeleton />;
+    return <LearnSkeleton mode={mode} />;
   }
 
-  let headerTitle = singleDeck ? singleDeck.name : 'Today · all decks';
-  if (singleDeck && isSimpleMode) {
-    headerTitle = `${singleDeck.name} · Simple learn`;
-  } else if (singleDeck && cramMode) {
-    headerTitle = `${singleDeck.name} · Cram mode`;
-  } else if (singleDeck && filterParams.length > 0) {
-    const labels = filterParams.map((f) => {
-      switch (f) {
-        case 'due': return 'due cards';
-        case 'new': return 'new cards';
-        case 'leech': return 'leeches';
-        case 'flagged': return 'flagged cards';
-        case 'suspended': return 'suspended cards';
-        default: return f;
-      }
-    });
-    headerTitle = `${singleDeck.name} · ${labels.join(', ')}`;
-  }
   const noun = singleDeck ? progressNoun(singleDeck) : 'ready';
 
   const isTypingCard = current?.type === 'typing';
@@ -964,119 +974,36 @@ export function LearnMode() {
         </button>
       )}
 
-      {/* Top bar: progress + actions + exit */}
+      {/* Top bar: mode-aware header, progress, and actions */}
       {!focusMode && (
-      <header className="sticky top-0 z-10 border-b border-line bg-paper/85 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-4">
-          <button
-            type="button"
-            onClick={() => setNavOpen(true)}
-            aria-label="Open navigation"
-            title="Open navigation"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-          >
-            <MenuIcon width={18} height={18} />
-          </button>
-
-          <div className="min-w-0 flex-1">
-            <div className="mb-1 flex flex-col items-start gap-0.5 text-xs text-ink-faint sm:flex-row sm:items-center sm:justify-between sm:gap-0">
-              <span className="font-medium uppercase tracking-[0.14em] sm:truncate">
-                {headerTitle}
-              </span>
-              <span className="whitespace-nowrap tabular">
-                {Math.round(progress * 100)}% {noun}
-              </span>
-            </div>
-            <ProgressBar value={progress} height={6} />
-          </div>
-
-          {/* Pomodoro timer */}
-          <PomodoroTimer />
-
-          {/* Per-card action menu — bottom sheet in touch mode, dropdown on keyboard. */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label="Card actions"
-              title="Card actions"
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-            >
-              <MoreIcon width={18} height={18} />
-            </button>
-            <AnimatePresence>
-              {menuOpen && current && (
-                isTouchMode ? (
-                  <TouchMenuSheet
-                    current={current}
-                    onEdit={openEdit}
-                    onToggleFlag={toggleFlagCurrent}
-                    onBury={buryCurrent}
-                    onSuspend={suspendCurrent}
-                    onShowShortcuts={() => { setMenuOpen(false); setHintsOpen(true); }}
-                    onClose={() => setMenuOpen(false)}
-                    m={m}
-                  />
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                    transition={{ duration: 0.12 * m }}
-                    className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
-                  >
-                    <MenuItem
-                      icon={<EditIcon width={16} height={16} />}
-                      label="Edit card"
-                      onClick={openEdit}
-                    />
-                    <MenuItem
-                      icon={<FlagIcon width={16} height={16} />}
-                      label={current.flagged ? 'Remove flag' : 'Flag card'}
-                      onClick={toggleFlagCurrent}
-                    />
-                    <MenuItem
-                      icon={<ClockIcon width={16} height={16} />}
-                      label="Bury until tomorrow"
-                      onClick={buryCurrent}
-                    />
-                    <MenuItem
-                      icon={<PauseIcon width={16} height={16} />}
-                      label="Suspend card"
-                      onClick={suspendCurrent}
-                    />
-                    <div className="border-t border-line" />
-                    <MenuItem
-                      icon={<KeyboardIcon width={16} height={16} />}
-                      label="Keyboard shortcuts"
-                      onClick={() => { setMenuOpen(false); setHintsOpen(true); }}
-                    />
-                  </motion.div>
-                )
-              )}
-            </AnimatePresence>
-          </div>
-
-          <Button variant="ghost" size="sm" onClick={() => finish(false)}>
-            Exit
-          </Button>
-        </div>
-      </header>
-      )}
-
-      {/* Pill UI for simple mode */}
-      {isSimpleMode && phase !== 'finished' && (
-        <div className="mx-auto mt-4 flex w-full max-w-3xl items-center gap-3 px-6">
-          <span className="text-xs text-ink-faint">Progress:</span>
-          <div className="flex flex-1 gap-2">
-            <Pill label="Wrong" count={simpleWrong.current.size} colour="negative" />
-            <Pill label="Remaining" count={simpleQueue.current.filter((c) => !simpleMastered.current.has(c.id)).length} colour="neutral" />
-            <Pill label="Right" count={simpleMastered.current.size} colour="positive" />
-          </div>
-        </div>
-      )}
-
-      {/* Card */}      <main className={`mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-8 ${isTouchMode ? 'pb-40' : ''}`}>
+        <LearnHeader
+          mode={mode}
+          singleDeck={singleDeck}
+          progress={progress}
+          noun={noun}
+          filterParams={filterParams}
+          tagFilter={tagFilter}
+          onOpenNav={() => setNavOpen(true)}
+          onExit={() => finish(false)}
+          menuOpen={menuOpen}
+          setMenuOpen={setMenuOpen}
+          current={current}
+          isTouchMode={isTouchMode}
+          onEdit={openEdit}
+          onToggleFlag={toggleFlagCurrent}
+          onBury={buryCurrent}
+          onSuspend={suspendCurrent}
+          onShowShortcuts={() => { setMenuOpen(false); setHintsOpen(true); }}
+          m={m}
+          simpleWrong={simpleWrong.current.size}
+          simpleRemaining={simpleQueue.current.filter((c) => !simpleMastered.current.has(c.id)).length}
+          simpleMastered={simpleMastered.current.size}
+          isSimpleMode={isSimpleMode}
+          phase={phase}
+          
+        />
+      )}      {/* Card — mode-aware border accent */}
+      <main className={`mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-8 ${isTouchMode ? 'pb-40' : ''}`}>
         {current && (
           <FlipCard
             card={current}
@@ -1092,6 +1019,7 @@ export function LearnMode() {
             onHide={hide}
             onAnswer={answer}
             typedAnswer={typedAnswer}
+            mode={mode}
           />
         )}
 
@@ -1229,10 +1157,272 @@ export function LearnMode() {
   );
 }
 
-export function LearnSkeleton() {
+/* ─── Mode-aware helpers and components ─── */
+
+function modeBorderClass(mode: LearnModeType, revealed: boolean): string {
+  if (!revealed) return 'border-line shadow-xl shadow-black/5';
+  switch (mode) {
+    case 'cram': return 'border-amber-500/40 shadow-2xl shadow-amber-500/10';
+    case 'simple': return 'border-positive/40 shadow-2xl shadow-positive/10';
+    case 'filtered-leech': return 'border-negative/40 shadow-2xl shadow-negative/10';
+    case 'filtered-flagged': return 'border-amber-500/40 shadow-2xl shadow-amber-500/10';
+    case 'filtered': return 'border-accent/40 shadow-2xl shadow-accent/10';
+    default: return 'border-accent/40 shadow-2xl shadow-accent/10';
+  }
+}
+
+function modeLabelClass(mode: LearnModeType, revealed: boolean): string {
+  if (!revealed) return 'text-ink-faint';
+  switch (mode) {
+    case 'cram': return 'text-amber-600';
+    case 'simple': return 'text-positive';
+    case 'filtered-leech': return 'text-negative';
+    case 'filtered-flagged': return 'text-amber-600';
+    case 'filtered': return 'text-accent';
+    default: return 'text-accent';
+  }
+}
+
+function modeProgressVariant(mode: LearnModeType): ProgressVariant {
+  switch (mode) {
+    case 'cram': return 'amber';
+    case 'simple': return 'simple';
+    case 'filtered-leech': return 'negative';
+    case 'filtered-flagged': return 'amber';
+    case 'filtered-suspended': return 'negative';
+    case 'filtered': return 'accent';
+    default: return 'accent';
+  }
+}
+
+function computeHeaderInfo({
+  singleDeck,
+  mode,
+  filterParams,
+  tagFilter,
+}: {
+  singleDeck: Deck | null;
+  mode: LearnModeType;
+  filterParams: CardFilter[];
+  tagFilter: string | null;
+}) {
+  const deckName = singleDeck ? singleDeck.name : 'Today · all decks';
+  const tagPart = tagFilter ? `tag "${tagFilter}"` : '';
+
+  const filterLabels = filterParams.map((f) => FILTER_LABELS[f] ?? f);
+  const filterPart = filterLabels.join(', ');
+
+  switch (mode) {
+    case 'simple':
+      return {
+        title: singleDeck ? `${deckName} · Simple learn` : 'Simple learn · all decks',
+        subtitle: 'Loop until every card is correct',
+      };
+    case 'cram':
+      return {
+        title: singleDeck ? `${deckName} · Cram mode` : 'Cram mode · all decks',
+        subtitle: 'Weakest cards first',
+      };
+    case 'filtered-due':
+      return {
+        title: `${deckName} · ${filterPart}`,
+        subtitle: tagPart || 'Only cards that are due today',
+      };
+    case 'filtered-new':
+      return {
+        title: `${deckName} · ${filterPart}`,
+        subtitle: tagPart || 'Only cards you have not seen yet',
+      };
+    case 'filtered-leech':
+      return {
+        title: `${deckName} · ${filterPart}`,
+        subtitle: tagPart || 'Only leech cards',
+      };
+    case 'filtered-flagged':
+      return {
+        title: `${deckName} · ${filterPart}`,
+        subtitle: tagPart || 'Only flagged cards',
+      };
+    case 'filtered-suspended':
+      return {
+        title: `${deckName} · ${filterPart}`,
+        subtitle: tagPart || 'Only suspended cards',
+      };
+    case 'filtered':
+      return {
+        title: `${deckName} · ${filterPart}`,
+        subtitle: tagPart || 'Filtered cards',
+      };
+    default:
+      return {
+        title: deckName,
+        subtitle: tagPart || '',
+      };
+  }
+}
+
+function LearnHeader({
+  mode,
+  singleDeck,
+  progress,
+  noun,
+  filterParams,
+  tagFilter,
+  onOpenNav,
+  onExit,
+  menuOpen,
+  setMenuOpen,
+  current,
+  isTouchMode,
+  onEdit,
+  onToggleFlag,
+  onBury,
+  onSuspend,
+  onShowShortcuts,
+  m,
+  simpleWrong,
+  simpleRemaining,
+  simpleMastered,
+  isSimpleMode,
+  phase,
+}: {
+  mode: LearnModeType;
+  singleDeck: Deck | null;
+  progress: number;
+  noun: string;
+  filterParams: CardFilter[];
+  tagFilter: string | null;
+  onOpenNav: () => void;
+  onExit: () => void;
+  menuOpen: boolean;
+  setMenuOpen: (v: boolean) => void;
+  current: Card | null;
+  isTouchMode: boolean;
+  onEdit: () => void;
+  onToggleFlag: () => void;
+  onBury: () => void;
+  onSuspend: () => void;
+  onShowShortcuts: () => void;
+  m: number;
+  simpleWrong: number;
+  simpleRemaining: number;
+  simpleMastered: number;
+  isSimpleMode: boolean;
+  phase: Phase;
+}) {
+  const info = computeHeaderInfo({ singleDeck, mode, filterParams, tagFilter });
+  const progressVariant = modeProgressVariant(mode);
+
+  return (
+    <>
+      <header
+        className={cn(
+          'sticky top-0 z-10 border-b bg-paper/85 backdrop-blur',
+          mode === 'cram' && 'border-amber-500/30',
+          mode === 'simple' && 'border-positive/30',
+          mode === 'filtered-leech' && 'border-negative/30',
+          mode === 'filtered-flagged' && 'border-amber-500/30',
+          !['cram', 'simple', 'filtered-leech', 'filtered-flagged'].includes(mode) && 'border-line',
+        )}
+      >
+        <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-4">
+          <button
+            type="button"
+            onClick={onOpenNav}
+            aria-label="Open navigation"
+            title="Open navigation"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+          >
+            <MenuIcon width={18} height={18} />
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-col items-start gap-0.5 text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+              <span className={cn('font-medium uppercase tracking-[0.14em] sm:truncate', mode === 'cram' && 'text-amber-600', mode === 'simple' && 'text-positive', mode === 'filtered-leech' && 'text-negative', mode === 'filtered-flagged' && 'text-amber-600', 'text-ink-faint')}>
+                {info.title}
+              </span>
+              <span className="whitespace-nowrap tabular text-ink-faint">
+                {mode === 'simple'
+                  ? `${simpleMastered} / ${simpleMastered + simpleRemaining} mastered`
+                  : `${Math.round(progress * 100)}% ${noun}`}
+              </span>
+            </div>
+            <ProgressBar value={progress} height={6} variant={progressVariant} />
+            {info.subtitle && (
+              <div className="mt-1 text-[10px] text-ink-faint">{info.subtitle}</div>
+            )}
+          </div>
+
+          <PomodoroTimer />
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Card actions"
+              title="Card actions"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            >
+              <MoreIcon width={18} height={18} />
+            </button>
+            <AnimatePresence>
+              {menuOpen && current && (
+                isTouchMode ? (
+                  <TouchMenuSheet
+                    current={current}
+                    onEdit={onEdit}
+                    onToggleFlag={onToggleFlag}
+                    onBury={onBury}
+                    onSuspend={onSuspend}
+                    onShowShortcuts={onShowShortcuts}
+                    onClose={() => setMenuOpen(false)}
+                    m={m}
+                  />
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                    transition={{ duration: 0.12 * m }}
+                    className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
+                  >
+                    <MenuItem icon={<EditIcon width={16} height={16} />} label="Edit card" onClick={onEdit} />
+                    <MenuItem icon={<FlagIcon width={16} height={16} />} label={current.flagged ? 'Remove flag' : 'Flag card'} onClick={onToggleFlag} />
+                    <MenuItem icon={<ClockIcon width={16} height={16} />} label="Bury until tomorrow" onClick={onBury} />
+                    <MenuItem icon={<PauseIcon width={16} height={16} />} label="Suspend card" onClick={onSuspend} />
+                    <div className="border-t border-line" />
+                    <MenuItem icon={<KeyboardIcon width={16} height={16} />} label="Keyboard shortcuts" onClick={onShowShortcuts} />
+                  </motion.div>
+                )
+              )}
+            </AnimatePresence>
+          </div>
+
+          <Button variant="ghost" size="sm" onClick={onExit}>
+            Exit
+          </Button>
+        </div>
+      </header>
+
+      {/* Simple mode: inline progress breakdown below the header */}
+      {isSimpleMode && phase !== 'finished' && (
+        <div className="mx-auto mt-3 flex w-full max-w-3xl items-center gap-4 px-6 text-xs text-ink-faint">
+          <span className="tabular">{simpleWrong} wrong</span>
+          <span className="text-line">·</span>
+          <span className="tabular">{simpleRemaining} remaining</span>
+          <span className="text-line">·</span>
+          <span className="tabular text-positive">{simpleMastered} correct</span>
+        </div>
+      )}
+    </>
+  );
+}
+
+export function LearnSkeleton({ mode }: { mode?: LearnModeType }) {
+  const borderClass = mode === 'cram' ? 'border-amber-500/30' : mode === 'simple' ? 'border-positive/30' : 'border-line';
   return (
     <div className="flex min-h-screen flex-col bg-paper">
-      <header className="sticky top-0 z-10 border-b border-line bg-paper/85 backdrop-blur">
+      <header className={cn('sticky top-0 z-10 border-b bg-paper/85 backdrop-blur', borderClass)}>
         <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-4">
           <div className="h-11 w-11 animate-pulse rounded-lg bg-ink/10" />
           <div className="min-w-0 flex-1">
@@ -1263,35 +1453,6 @@ function buttonReveal(m: number) {
     hidden: { opacity: 0, y: 12, scale: 0.96 },
     visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] } },
   };
-}
-
-function Pill({
-  label,
-  count,
-  colour,
-}: {
-  label: string;
-  count: number;
-  colour: 'negative' | 'neutral' | 'positive';
-}) {
-  const bgClass =
-    colour === 'negative'
-      ? 'bg-negative/15 text-negative'
-      : colour === 'positive'
-        ? 'bg-positive/15 text-positive'
-        : 'bg-ink/10 text-ink-soft';
-  return (
-    <motion.div
-      key={`${label}-${count}`}
-      initial={{ scale: 0.95, opacity: 0.8 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${bgClass}`}
-    >
-      <span>{label}</span>
-      <span className="tabular">{count}</span>
-    </motion.div>
-  );
 }
 
 function NavSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -1621,6 +1782,7 @@ function FlipCard({
   onHide,
   onAnswer,
   typedAnswer,
+  mode,
 }: {
   card: Card;
   revealed: boolean;
@@ -1635,6 +1797,7 @@ function FlipCard({
   onHide: () => void;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
   typedAnswer?: string;
+  mode: LearnModeType;
 }) {
   const m = speedMultiplier(motionSpeed);
   const isCloze = card.type === 'cloze';
@@ -1845,21 +2008,19 @@ function FlipCard({
               scale: { duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] },
             }}
             style={{ transformOrigin: 'center center', x: swipeXSpring }}
-            className={
-              'relative z-10 rounded-3xl border bg-surface px-8 py-12 ' +
-              (revealed
-                ? 'border-accent/40 shadow-2xl shadow-accent/10'
-                : 'border-line shadow-xl shadow-black/5')
-            }
+            className={cn(
+              'relative z-10 rounded-3xl border bg-surface px-8 py-12',
+              modeBorderClass(mode, revealed),
+            )}
           >
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 * m, delay: 0.1 * m, ease: [0.16, 1, 0.3, 1] }}
-              className={
-                'mb-4 text-center text-[11px] uppercase tracking-[0.2em] ' +
-                (revealed ? 'text-accent' : 'text-ink-faint')
-              }
+              className={cn(
+                'mb-4 text-center text-[11px] uppercase tracking-[0.2em]',
+                modeLabelClass(mode, revealed),
+              )}
             >
               {revealed
                 ? isTyping

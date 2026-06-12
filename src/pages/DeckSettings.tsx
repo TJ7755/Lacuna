@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCards, useDeck } from '../state/useData';
@@ -657,7 +657,7 @@ function OptimisationPanel({ deck, cards }: { deck: Deck; cards: Card[] }) {
     };
   }, [deck?.id, optimiser]);
 
-  const reviews = countReviews(cards);
+  const reviews = useMemo(() => countReviews(cards), [cards]);
   const enabled = optimiseEnabledForDeck(deck.autoOptimise, globalDefault);
   const enoughData = reviews >= MIN_OPTIMISE_REVIEWS;
 

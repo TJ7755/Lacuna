@@ -1,6 +1,16 @@
 import { m as motion } from 'motion/react';
 import { cn } from './cn';
 
+export type ProgressVariant = 'accent' | 'positive' | 'negative' | 'amber' | 'simple';
+
+const variantClass: Record<ProgressVariant, string> = {
+  accent: 'bg-accent',
+  positive: 'bg-positive',
+  negative: 'bg-negative',
+  amber: 'bg-amber-500',
+  simple: 'bg-positive',
+};
+
 interface ProgressBarProps {
   /** Completion fraction, 0..1. */
   value: number;
@@ -9,6 +19,8 @@ interface ProgressBarProps {
   height?: number;
   /** Accessible name for screen readers. */
   label?: string;
+  /** Visual colour variant of the filled bar. */
+  variant?: ProgressVariant;
 }
 
 export function ProgressBar({
@@ -17,6 +29,7 @@ export function ProgressBar({
   showLabel = false,
   height = 10,
   label = 'Progress',
+  variant = 'accent',
 }: ProgressBarProps) {
   const pct = Math.round(Math.min(Math.max(value, 0), 1) * 100);
   return (
@@ -31,7 +44,7 @@ export function ProgressBar({
         aria-valuemax={100}
       >
         <motion.div
-          className="absolute inset-y-0 left-0 overflow-hidden rounded-full bg-accent"
+          className={cn('absolute inset-y-0 left-0 overflow-hidden rounded-full', variantClass[variant])}
           initial={false}
           animate={{ width: `${pct}%` }}
           transition={{ type: 'spring', stiffness: 120, damping: 22 }}

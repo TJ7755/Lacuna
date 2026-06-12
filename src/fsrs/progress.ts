@@ -13,18 +13,6 @@ export function deckDecay(deck: Deck): number {
   return decayOf(deck.fsrsParameters);
 }
 
-/**
- * Predicted retrievability of a single card on the exam day, with no further
- * review. A never-reviewed card has no stability, so this is 0.
- */
-export function predictedExamRetrievability(
-  card: Card,
-  deck: Deck,
-  now: number = Date.now(),
-): number {
-  return rAtExam(card, schedulingHorizon(deck, now), now, deckDecay(deck));
-}
-
 /** Fraction (0..1) of cards predicted to be at or above the mastery threshold on exam day. */
 export function masteryFraction(
   cards: Card[],

@@ -12,6 +12,7 @@ import { Settings } from './pages/Settings';
 import { SearchPage } from './pages/SearchPage';
 import { SharePage } from './pages/SharePage';
 import { Analytics } from './pages/Analytics';
+import { HelpPage } from './pages/HelpPage';
 import { seedIfFirstRun } from './db/seed';
 import { autoBackupIfStale } from './db/backups';
 import { ensurePreMigrationSnapshot, openDatabase } from './db/schema';
@@ -66,6 +67,7 @@ const router = createHashRouter([
       { path: 'search', element: <SearchPage /> },
       { path: 'share', element: <SharePage /> },
       { path: 'analytics', element: <Analytics /> },
+      { path: 'help', element: <HelpPage /> },
       {
         path: 'deck/:deckId/settings',
         element: (

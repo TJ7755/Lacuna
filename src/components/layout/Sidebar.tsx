@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useTheme } from '../../state/ThemeContext';
@@ -17,6 +17,7 @@ import {
   FlameIcon,
   FlaskIcon,
   FolderIcon,
+  HelpIcon,
   MoonIcon,
   PlayIcon,
   PlusIcon,
@@ -142,7 +143,6 @@ interface FolderTreeNodeProps {
   folder: Folder;
   childNodes: FolderNode[];
   depth: number;
-  visibleDecks: Deck[];
   decksByFolder: Map<string | null, Deck[]>;
   summaries: Record<string, { count: number; mastery: number; unreviewed: number; eligible: number }> | undefined;
   location: ReturnType<typeof useLocation>;
@@ -160,11 +160,10 @@ interface FolderTreeNodeProps {
   setDragOverId: (id: string | null) => void;
 }
 
-function FolderTreeNode({
+const FolderTreeNode = memo(function FolderTreeNode({
   folder,
   childNodes,
   depth,
-  visibleDecks,
   decksByFolder,
   summaries,
   location,
@@ -362,7 +361,6 @@ function FolderTreeNode({
                 key={child.folder.id}
                 {...child}
                 childNodes={child.children}
-                visibleDecks={visibleDecks}
                 decksByFolder={decksByFolder}
                 summaries={summaries}
                 location={location}
@@ -385,7 +383,7 @@ function FolderTreeNode({
       </AnimatePresence>
     </div>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // Deck item (draggable, within folder tree)
@@ -578,17 +576,24 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
 
   // Filter archived decks unless the user explicitly wants them in the sidebar.
-  const visibleDecks = decks?.filter((d) => sidebarSettings.showArchived || !d.archived) ?? [];
-  const allFolders = folders ?? [];
-  const folderTree = buildFolderTree(allFolders);
+  const visibleDecks = useMemo(
+    () => decks?.filter((d) => sidebarSettings.showArchived || !d.archived) ?? [],
+    [decks, sidebarSettings.showArchived],
+  );
+  const allFolders = useMemo(() => folders ?? [], [folders]);
 
-  const decksByFolder = new Map<string | null, Deck[]>();
-  for (const deck of visibleDecks) {
-    const key = deck.folderId ?? null;
-    const list = decksByFolder.get(key) ?? [];
-    list.push(deck);
-    decksByFolder.set(key, list);
-  }
+  const folderTree = useMemo(() => buildFolderTree(allFolders), [allFolders]);
+
+  const decksByFolder = useMemo(() => {
+    const map = new Map<string | null, Deck[]>();
+    for (const deck of visibleDecks) {
+      const key = deck.folderId ?? null;
+      const list = map.get(key) ?? [];
+      list.push(deck);
+      map.set(key, list);
+    }
+    return map;
+  }, [visibleDecks]);
 
   function toggleSidebarFolder(id: string) {
     setExpandedSidebarFolders((prev) => {
@@ -707,6 +712,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                 n.id === 'share' ? <ShareIcon /> :
                 n.id === 'analytics' ? <ChartIcon /> :
                 n.id === 'settings' ? <SettingsIcon /> :
+                n.id === 'help' ? <HelpIcon /> :
                 <DashboardIcon />
               }
               label={n.label}
@@ -763,7 +769,6 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                   <FolderTreeNode
                     {...node}
                     childNodes={node.children}
-                    visibleDecks={visibleDecks}
                     decksByFolder={decksByFolder}
                     summaries={summaries}
                     location={location}

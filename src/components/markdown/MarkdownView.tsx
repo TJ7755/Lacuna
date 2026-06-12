@@ -66,16 +66,7 @@ const HTML_CACHE = new Map<string, CacheEntry>();
 const DEFAULT_CACHE_LIMIT = 600;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-/** Maximum number of parsed HTML entries to retain. Exposed so tests can tune it. */
-export let cacheLimit = DEFAULT_CACHE_LIMIT;
-
-export function setCacheLimit(limit: number): void {
-  cacheLimit = Math.max(1, limit);
-}
-
-export function getCacheLimit(): number {
-  return cacheLimit;
-}
+const cacheLimit = DEFAULT_CACHE_LIMIT;
 
 function evictStaleEntries(now: number): void {
   const cutoff = now - CACHE_TTL_MS;

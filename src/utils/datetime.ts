@@ -45,15 +45,6 @@ export function formatDateTime(ms: number, timeZone?: string): string {
   });
 }
 
-/** Format just the time portion in the given time zone. */
-export function formatTime(ms: number, timeZone?: string): string {
-  return new Date(ms).toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: timeZone ?? getLocalTimeZone(),
-  });
-}
-
 /** Convert an epoch instant to the value expected by <input type="datetime-local">. */
 export function toDateTimeLocalValue(ms: number, timeZone?: string): string {
   const d = new Date(ms);

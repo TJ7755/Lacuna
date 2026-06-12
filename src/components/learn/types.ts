@@ -24,4 +24,6 @@ export interface SessionSummary {
   timeLimitReached?: boolean;
   /** True when this session was a simple mode (no algorithms, YES/NO only). */
   simpleMode?: boolean;
+  /** Visual mode identifier for the session report UI. */
+  mode?: 'fsrs' | 'simple' | 'cram' | 'filtered' | 'filtered-due' | 'filtered-new' | 'filtered-leech' | 'filtered-flagged' | 'filtered-suspended';
 }
