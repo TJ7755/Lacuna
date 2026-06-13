@@ -66,6 +66,14 @@ export function DeckView() {
   const { notify } = useToast();
   const cramToastShown = useRef(false);
 
+  const [cramDismissed, setCramDismissed] = useState(() => {
+    try {
+      return localStorage.getItem('lacuna.cramToastDismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
+
   const [tab, setTab] = useState<Tab>('cards');
   const [examBannerOpen, setExamBannerOpen] = useState(false);
   const [postExamDismissed, setPostExamDismissed] = useState(false);
@@ -159,8 +167,9 @@ export function DeckView() {
   const visibleTag = activeTag && allTags.includes(activeTag) ? activeTag : null;
 
   // Show a persistent exam-eve cram toast once when the deck enters the window.
+  // Once dismissed, it is recorded in localStorage and never shown again.
   useEffect(() => {
-    if (!deck || !cards || deck.archived || cramToastShown.current) return;
+    if (!deck || !cards || deck.archived || cramToastShown.current || cramDismissed) return;
     if (examEveAvailable(deck) && cards.length > 0) {
       cramToastShown.current = true;
       notify(
@@ -174,10 +183,18 @@ export function DeckView() {
               `/deck/${deck.id}/learn${visibleTag ? `?tag=${encodeURIComponent(visibleTag)}&` : '?'}mode=cram`,
             );
           },
+          onDismiss: () => {
+            try {
+              localStorage.setItem('lacuna.cramToastDismissed', '1');
+              setCramDismissed(true);
+            } catch {
+              /* ignore storage errors */
+            }
+          },
         },
       );
     }
-  }, [deck, cards, navigate, notify, visibleTag]);
+  }, [deck, cards, navigate, notify, visibleTag, cramDismissed]);
 
   // Deck-scoped search: text + structured filters + sort.
   const searchedCards = useMemo(() => {
@@ -665,8 +682,9 @@ export function DeckView() {
         )}
       </AnimatePresence>
 
-      {/* Exam-eve cram inline chip — shown only inside the final window, compact and dismissible. */}
-      {!deck.archived && examEveAvailable(deck) && cards.length > 0 && (
+      {/* Exam-eve cram inline chip — shown only inside the final window, compact and dismissible.
+          Hidden permanently if the user has ever dismissed the cram toast. */}
+      {!deck.archived && examEveAvailable(deck) && cards.length > 0 && !cramDismissed && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}

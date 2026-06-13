@@ -25,6 +25,9 @@ interface ToastOptions {
   duration?: number;
   /** If true, the toast stays on screen until the user clicks it away. */
   persistent?: boolean;
+  /** Invoked when the toast is dismissed (either by the user clicking the close button,
+   *  or by the action button being pressed, or by the auto-dismiss timer firing). */
+  onDismiss?: () => void;
 }
 
 interface ToastContextValue {
@@ -39,6 +42,7 @@ interface ToastItem {
   tone: ToastTone;
   actionLabel?: string;
   onAction?: () => void;
+  onDismiss?: () => void;
   duration: number;
 }
 
@@ -68,6 +72,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             tone,
             actionLabel: options?.actionLabel,
             onAction: options?.onAction,
+            onDismiss: options?.onDismiss,
             duration,
           },
         ];
@@ -120,10 +125,12 @@ function ToastBar({ toast, onDismiss, motionMultiplier }: { toast: ToastItem; on
     onDismissRef.current = onDismiss;
   }, [onDismiss]);
 
+  const { onDismiss: onDismissProp, duration: toastDuration } = toast;
+
   const resume = useCallback(() => {
     if (isPersistent) return;
     startRef.current = performance.now();
-    const duration = toast.duration;
+    const duration = toastDuration;
 
     function tick(now: number) {
       const elapsed = now - startRef.current;
@@ -133,12 +140,13 @@ function ToastBar({ toast, onDismiss, motionMultiplier }: { toast: ToastItem; on
       if (currentRemaining > 0) {
         rafRef.current = requestAnimationFrame(tick);
       } else {
+        onDismissProp?.();
         onDismissRef.current();
       }
     }
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [toast.duration, isPersistent]);
+  }, [toastDuration, isPersistent, onDismissProp]);
 
   const pause = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
@@ -198,7 +206,10 @@ function ToastBar({ toast, onDismiss, motionMultiplier }: { toast: ToastItem; on
       {isPersistent && (
         <button
           type="button"
-          onClick={onDismiss}
+          onClick={() => {
+            toast.onDismiss?.();
+            onDismiss();
+          }}
           className="shrink-0 rounded-lg p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
           aria-label="Dismiss"
         >
@@ -210,6 +221,7 @@ function ToastBar({ toast, onDismiss, motionMultiplier }: { toast: ToastItem; on
           type="button"
           onClick={() => {
             toast.onAction?.();
+            toast.onDismiss?.();
             onDismiss();
           }}
           className="shrink-0 font-medium text-accent underline underline-offset-2 transition-opacity hover:opacity-80 active:opacity-80"
