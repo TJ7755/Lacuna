@@ -26,7 +26,18 @@ export interface DiagnosticBundle {
   /** React component stack, when the boundary provides one. */
   componentStack: string | null;
   environment: { userAgent: string; language: string; platform: string };
-  data: { decks: number; cards: number; reviews: number; backups: number };
+  data: {
+    decks: number;
+    cards: number;
+    reviews: number;
+    backups: number;
+    courses?: number;
+    lessons?: number;
+    notes?: number;
+    lessonCards?: number;
+    practiceNodes?: number;
+    courseExamDates?: number;
+  };
   /** Present only when the user explicitly opts in to including card content. */
   contentSample?: { front: string; back: string }[];
 }
@@ -35,7 +46,18 @@ export interface DiagnosticInput {
   location: string;
   error: { name?: string; message?: string; stack?: string | null };
   componentStack?: string | null;
-  counts: { decks: number; cards: number; reviews: number; backups: number };
+  counts: {
+    decks: number;
+    cards: number;
+    reviews: number;
+    backups: number;
+    courses?: number;
+    lessons?: number;
+    notes?: number;
+    lessonCards?: number;
+    practiceNodes?: number;
+    courseExamDates?: number;
+  };
   contentSample?: { front: string; back: string }[];
   userAgent?: string;
   language?: string;
@@ -88,7 +110,12 @@ export function formatDiagnostics(bundle: DiagnosticBundle): string {
     `  Platform: ${bundle.environment.platform}`,
     ``,
     `Data: ${bundle.data.decks} decks, ${bundle.data.cards} cards, ` +
-      `${bundle.data.reviews} reviews, ${bundle.data.backups} restore points`,
+      `${bundle.data.reviews} reviews, ${bundle.data.backups} restore points` +
+      (bundle.data.courses !== undefined
+        ? `, ${bundle.data.courses} courses, ${bundle.data.lessons ?? 0} lessons, ` +
+          `${bundle.data.notes ?? 0} notes, ${bundle.data.lessonCards ?? 0} lesson card links, ` +
+          `${bundle.data.practiceNodes ?? 0} practice nodes, ${bundle.data.courseExamDates ?? 0} course exam dates`
+        : ''),
   ];
   if (bundle.contentSample) {
     lines.push('', `Card content sample (opt-in): ${bundle.contentSample.length} cards`);
@@ -98,13 +125,20 @@ export function formatDiagnostics(bundle: DiagnosticBundle): string {
 
 /** Read non-sensitive record counts from the database for a bundle. */
 export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
-  const [decks, cards, backups, reviews] = await Promise.all([
-    db.decks.count(),
-    db.cards.count(),
-    db.backups.count(),
-    db.sessionHistory.count(),
-  ]);
-  return { decks, cards, reviews, backups };
+  const [decks, cards, backups, reviews, courses, lessons, notes, lessonCards, practiceNodes, courseExamDates] =
+    await Promise.all([
+      db.decks.count(),
+      db.cards.count(),
+      db.backups.count(),
+      db.sessionHistory.count(),
+      db.courses.count(),
+      db.lessons.count(),
+      db.notes.count(),
+      db.lessonCards.count(),
+      db.practiceNodes.count(),
+      db.courseExamDates.count(),
+    ]);
+  return { decks, cards, reviews, backups, courses, lessons, notes, lessonCards, practiceNodes, courseExamDates };
 }
 
 /** Read a small sample of card content. Only called when the user opts in. */

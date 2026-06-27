@@ -10,8 +10,14 @@ import {
 import type {
   BackupFile,
   Card,
+  Course,
+  CourseExamDate,
   Deck,
   Folder,
+  Lesson,
+  LessonCardLink,
+  Note,
+  PracticeNode,
   SessionHistoryEntry,
   UserPerformance,
   ImageAsset,
@@ -27,12 +33,30 @@ export const BACKUP_VERSION = 5;
 
 /** Gather the whole database into a single backup object. */
 export async function exportDatabase(): Promise<BackupFile> {
-  const [decks, cards, sessionHistory, userPerformance, folders] = await Promise.all([
+  const [
+    decks,
+    cards,
+    sessionHistory,
+    userPerformance,
+    folders,
+    courses,
+    lessons,
+    notes,
+    lessonCards,
+    practiceNodes,
+    courseExamDates,
+  ] = await Promise.all([
     db.decks.toArray(),
     db.cards.toArray(),
     db.sessionHistory.toArray(),
     db.userPerformance.toArray(),
     db.folders.toArray(),
+    db.courses.toArray(),
+    db.lessons.toArray(),
+    db.notes.toArray(),
+    db.lessonCards.toArray(),
+    db.practiceNodes.toArray(),
+    db.courseExamDates.toArray(),
   ]);
   const assets = await assetsForBackup(referencedAssetHashesInCards(cards));
   return {
@@ -45,6 +69,12 @@ export async function exportDatabase(): Promise<BackupFile> {
     sessionHistory,
     userPerformance,
     folders,
+    courses,
+    lessons,
+    notes,
+    lessonCards,
+    practiceNodes,
+    courseExamDates,
   };
 }
 
@@ -122,7 +152,20 @@ export async function importBackup(
     ...extractedAssets,
   ];      await db.transaction(
     'rw',
-    [db.decks, db.cards, db.sessionHistory, db.userPerformance, db.assets, db.folders],
+    [
+      db.decks,
+      db.cards,
+      db.sessionHistory,
+      db.userPerformance,
+      db.assets,
+      db.folders,
+      db.courses,
+      db.lessons,
+      db.notes,
+      db.lessonCards,
+      db.practiceNodes,
+      db.courseExamDates,
+    ],
     async () => {
       // Deduplicate by hash so bulkPut never encounters a constraint conflict.
       const dedupedAssets = Array.from(
@@ -136,6 +179,12 @@ export async function importBackup(
           db.userPerformance.clear(),
           db.assets.clear(),
           db.folders.clear(),
+          db.courses.clear(),
+          db.lessons.clear(),
+          db.notes.clear(),
+          db.lessonCards.clear(),
+          db.practiceNodes.clear(),
+          db.courseExamDates.clear(),
         ]);
         await db.decks.bulkAdd(decks);
         await db.cards.bulkAdd(cards);
@@ -148,6 +197,25 @@ export async function importBackup(
         // Restore folders if present in the backup.
         if (backup.folders && backup.folders.length > 0) {
           await db.folders.bulkAdd(backup.folders);
+        }
+        // Restore course-architecture tables if present in the backup.
+        if (backup.courses && backup.courses.length > 0) {
+          await db.courses.bulkAdd(backup.courses);
+        }
+        if (backup.lessons && backup.lessons.length > 0) {
+          await db.lessons.bulkAdd(backup.lessons);
+        }
+        if (backup.notes && backup.notes.length > 0) {
+          await db.notes.bulkAdd(backup.notes);
+        }
+        if (backup.lessonCards && backup.lessonCards.length > 0) {
+          await db.lessonCards.bulkAdd(backup.lessonCards);
+        }
+        if (backup.practiceNodes && backup.practiceNodes.length > 0) {
+          await db.practiceNodes.bulkAdd(backup.practiceNodes);
+        }
+        if (backup.courseExamDates && backup.courseExamDates.length > 0) {
+          await db.courseExamDates.bulkAdd(backup.courseExamDates);
         }
         return;
       }
@@ -195,6 +263,116 @@ export async function importBackup(
           }
         }
         await db.folders.bulkPut(mergedFolders);
+      }
+
+      // Merge course-architecture tables: add incoming rows that don't exist locally,
+      // preferring the newer record (by createdAt) when both sides have the same id.
+      if (backup.courses && backup.courses.length > 0) {
+        const existingCourses = new Map(
+          (await db.courses.toArray()).map((c) => [c.id, c]),
+        );
+        const mergedCourses: Course[] = [];
+        for (const incoming of backup.courses) {
+          const existing = existingCourses.get(incoming.id);
+          if (!existing) {
+            mergedCourses.push(incoming);
+          } else {
+            mergedCourses.push(
+              incoming.createdAt >= existing.createdAt ? incoming : existing,
+            );
+          }
+        }
+        await db.courses.bulkPut(mergedCourses);
+      }
+
+      if (backup.lessons && backup.lessons.length > 0) {
+        const existingLessons = new Map(
+          (await db.lessons.toArray()).map((l) => [l.id, l]),
+        );
+        const mergedLessons: Lesson[] = [];
+        for (const incoming of backup.lessons) {
+          const existing = existingLessons.get(incoming.id);
+          if (!existing) {
+            mergedLessons.push(incoming);
+          } else {
+            mergedLessons.push(
+              incoming.createdAt >= existing.createdAt ? incoming : existing,
+            );
+          }
+        }
+        await db.lessons.bulkPut(mergedLessons);
+      }
+
+      if (backup.notes && backup.notes.length > 0) {
+        const existingNotes = new Map(
+          (await db.notes.toArray()).map((n) => [n.id, n]),
+        );
+        const mergedNotes: Note[] = [];
+        for (const incoming of backup.notes) {
+          const existing = existingNotes.get(incoming.id);
+          if (!existing) {
+            mergedNotes.push(incoming);
+          } else {
+            mergedNotes.push(
+              incoming.createdAt >= existing.createdAt ? incoming : existing,
+            );
+          }
+        }
+        await db.notes.bulkPut(mergedNotes);
+      }
+
+      if (backup.lessonCards && backup.lessonCards.length > 0) {
+        const existingLessonCards = new Map(
+          (await db.lessonCards.toArray()).map((lc) => [lc.id, lc]),
+        );
+        const mergedLessonCards: LessonCardLink[] = [];
+        for (const incoming of backup.lessonCards) {
+          const existing = existingLessonCards.get(incoming.id);
+          if (!existing) {
+            mergedLessonCards.push(incoming);
+          } else {
+            mergedLessonCards.push(
+              incoming.createdAt >= existing.createdAt ? incoming : existing,
+            );
+          }
+        }
+        await db.lessonCards.bulkPut(mergedLessonCards);
+      }
+
+      if (backup.practiceNodes && backup.practiceNodes.length > 0) {
+        const existingPracticeNodes = new Map(
+          (await db.practiceNodes.toArray()).map((p) => [p.id, p]),
+        );
+        const mergedPracticeNodes: PracticeNode[] = [];
+        for (const incoming of backup.practiceNodes) {
+          const existing = existingPracticeNodes.get(incoming.id);
+          if (!existing) {
+            mergedPracticeNodes.push(incoming);
+          } else {
+            mergedPracticeNodes.push(
+              incoming.createdAt >= existing.createdAt ? incoming : existing,
+            );
+          }
+        }
+        await db.practiceNodes.bulkPut(mergedPracticeNodes);
+      }
+
+      if (backup.courseExamDates && backup.courseExamDates.length > 0) {
+        const existingCourseExamDates = new Map(
+          (await db.courseExamDates.toArray()).map((ced) => [ced.id, ced]),
+        );
+        const mergedCourseExamDates: CourseExamDate[] = [];
+        for (const incoming of backup.courseExamDates) {
+          const existing = existingCourseExamDates.get(incoming.id);
+          if (!existing) {
+            mergedCourseExamDates.push(incoming);
+          } else {
+            mergedCourseExamDates.push(
+              incoming.createdAt >= existing.createdAt ? incoming : existing,
+            );
+          }
+        }
+        await db.courseExamDates.bulkPut(mergedCourseExamDates);
       }
 
       // Merge cards (most recent lastReviewed wins, falling back to createdAt).

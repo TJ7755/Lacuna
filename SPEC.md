@@ -927,16 +927,23 @@ A single, reusable export UI offering multiple output formats:
 
 ### Backup file import/export
 - **Export:** versioned JSON of the whole database (`BackupFile`: decks, cards,
-  **referenced image assets**, session history, user performance). Backups are
-  the route that carries images between machines (share codes deliberately do
-  not, §13).
+  **referenced image assets**, session history, user performance, folders, and the six
+  course-architecture tables — courses, lessons, notes, lessonCards, practiceNodes,
+  courseExamDates). Backups are the route that carries images between machines (share
+  codes deliberately do not, §13). Older backups that pre-date the course tables still
+  import cleanly: all six arrays are optional in `BackupFile`.
 - **Import modes:**
-  - **Replace all** — wipe then restore exactly.
+  - **Replace all** — wipe then restore exactly. All twelve data tables (including the
+    six course tables) are cleared before the backup is written; each course table is
+    restored only if the backup contains it.
   - **Merge** — fold in by id. Before committing, a **visible diff** summarises
     what will be **added, changed and overwritten** (counts at minimum) and
     requires **explicit confirmation**; only on confirm are changes applied
-    (newest `lastReviewed`/`createdAt` wins per conflicting record). This
-    replaces the previous silent "most-recent-wins" merge, which was a
+    (newest `lastReviewed`/`createdAt` wins per conflicting record). The six course
+    tables follow the same per-table merge semantics as folders: incoming rows that
+    do not exist locally are added; where both sides share an id, the newer record
+    (by `createdAt`) wins. Existing local rows absent from the backup are never deleted.
+    This replaces the previous silent "most-recent-wins" merge, which was a
     data-loss footgun.
 
 ### Automatic restore points & migration safety
@@ -1170,10 +1177,11 @@ adaptive guidance copy); deck colour swatch; deck time zone.
   in one area from blanking the whole app. Their fallback offers a **local-only
   diagnostic bundle** (`src/db/diagnostics.ts`): "Copy diagnostic details" /
   "Download diagnostic bundle" assemble the error and stack, app version
-  (`__APP_VERSION__`), browser/UA, and deck/card/review/backup counts. Card
-  content is **excluded by default**; including a small sample is a separate,
-  explicit opt-in. Nothing is transmitted — the bundle is the user's to paste
-  into a bug report.
+  (`__APP_VERSION__`), browser/UA, and deck/card/review/backup counts, plus
+  course/lesson/note/lessonCard/practiceNode/courseExamDate counts when the
+  course tables contain data. Card content is **excluded by default**; including
+  a small sample is a separate, explicit opt-in. Nothing is transmitted — the
+  bundle is the user's to paste into a bug report.
 - **Storage-quota warning** (v0.0.2, `src/hooks/useStorageQuotaWarning.ts`):
   polls the Storage API on a long interval and surfaces a non-blocking toast
   when the database is approaching its quota, with a "Back up now" action that

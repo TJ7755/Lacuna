@@ -26,10 +26,38 @@ describe('buildDiagnostics', () => {
     expect(bundle.location).toBe('the Learn session');
     expect(bundle.error).toEqual({ name: 'TypeError', message: 'boom', stack: 'at x\nat y' });
     expect(bundle.componentStack).toBe('in LearnMode');
-    expect(bundle.data).toEqual({ decks: 2, cards: 30, reviews: 100, backups: 3 });
+    expect(bundle.data.decks).toBe(2);
+    expect(bundle.data.cards).toBe(30);
+    expect(bundle.data.reviews).toBe(100);
+    expect(bundle.data.backups).toBe(3);
     expect(bundle.environment.userAgent).toBe('TestAgent/1.0');
     // No content unless explicitly opted in.
     expect(bundle.contentSample).toBeUndefined();
+  });
+
+  it('includes course counts when supplied', () => {
+    const bundle = buildDiagnostics({
+      location: 'the Learn session',
+      error: { message: 'boom' },
+      counts: {
+        decks: 0,
+        cards: 0,
+        reviews: 0,
+        backups: 0,
+        courses: 2,
+        lessons: 5,
+        notes: 10,
+        lessonCards: 3,
+        practiceNodes: 1,
+        courseExamDates: 4,
+      },
+    });
+    expect(bundle.data.courses).toBe(2);
+    expect(bundle.data.lessons).toBe(5);
+    expect(bundle.data.notes).toBe(10);
+    expect(bundle.data.lessonCards).toBe(3);
+    expect(bundle.data.practiceNodes).toBe(1);
+    expect(bundle.data.courseExamDates).toBe(4);
   });
 
   it('includes a content sample only when one is supplied', () => {
@@ -56,6 +84,31 @@ describe('buildDiagnostics', () => {
     expect(text).toContain('Error: Error: kaput');
     expect(text).toContain('0 decks, 0 cards, 0 reviews, 0 restore points');
   });
+
+  it('formats course counts in the bundle text when present', () => {
+    const text = formatDiagnostics(
+      buildDiagnostics({
+        location: 'the application',
+        error: { name: 'Error', message: 'kaput', stack: null },
+        counts: {
+          decks: 1,
+          cards: 5,
+          reviews: 10,
+          backups: 2,
+          courses: 3,
+          lessons: 6,
+          notes: 9,
+          lessonCards: 2,
+          practiceNodes: 1,
+          courseExamDates: 4,
+        },
+        now: 0,
+      }),
+    );
+    expect(text).toContain('3 courses');
+    expect(text).toContain('6 lessons');
+    expect(text).toContain('9 notes');
+  });
 });
 
 describe('gatherCounts', () => {
@@ -65,6 +118,12 @@ describe('gatherCounts', () => {
       db.cards.clear(),
       db.sessionHistory.clear(),
       db.userPerformance.clear(),
+      db.courses.clear(),
+      db.lessons.clear(),
+      db.notes.clear(),
+      db.lessonCards.clear(),
+      db.practiceNodes.clear(),
+      db.courseExamDates.clear(),
     ]);
   });
 
@@ -84,6 +143,8 @@ describe('gatherCounts', () => {
     expect(counts.decks).toBe(1);
     expect(counts.cards).toBe(1);
     expect(counts.reviews).toBe(1);
+    expect(counts.courses).toBe(0);
+    expect(counts.lessons).toBe(0);
 
     const sample = await gatherContentSample(5);
     expect(sample).toEqual([{ front: 'q', back: 'a' }]);

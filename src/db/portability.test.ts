@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { exportDatabase, importBackup, validateBackup, BACKUP_VERSION } from './portability';
-import { createDeck, createCard } from './repository';
+import { createCourse, createDeck, createCard, createLesson, createNote } from './repository';
 
 async function reset() {
   await Promise.all([
@@ -11,6 +11,13 @@ async function reset() {
     db.sessionHistory.clear(),
     db.userPerformance.clear(),
     db.assets.clear(),
+    db.folders.clear(),
+    db.courses.clear(),
+    db.lessons.clear(),
+    db.notes.clear(),
+    db.lessonCards.clear(),
+    db.practiceNodes.clear(),
+    db.courseExamDates.clear(),
   ]);
 }
 
@@ -111,5 +118,45 @@ describe('importBackup', () => {
     const history = await db.sessionHistory.toArray();
     expect(history).toHaveLength(2);
     expect(history.map((h) => h.timestamp).sort()).toEqual([1000, 2000]);
+  });
+
+  it('round-trips a course, lesson and note in replace mode', async () => {
+    const course = await createCourse('Biology A-Level');
+    const lesson = await createLesson(course.id, 'Cells');
+    await createNote(lesson.id, 'Cell Structure', '## Cell wall\nRigid outer layer.');
+    const backup = await exportDatabase();
+
+    // Populate some extra data that should be wiped on restore.
+    await createCourse('Ephemeral');
+    expect(await db.courses.count()).toBe(2);
+
+    await importBackup(backup, 'replace');
+
+    const courses = await db.courses.toArray();
+    const lessons = await db.lessons.toArray();
+    const notes = await db.notes.toArray();
+    expect(courses).toHaveLength(1);
+    expect(courses[0].name).toBe('Biology A-Level');
+    expect(lessons).toHaveLength(1);
+    expect(lessons[0].name).toBe('Cells');
+    expect(notes).toHaveLength(1);
+    expect(notes[0].name).toBe('Cell Structure');
+  });
+
+  it('adds a missing course in merge mode without clobbering an existing local one', async () => {
+    const existing = await createCourse('Local Course');
+    const backup = await exportDatabase();
+
+    // Create a second course locally after the backup was taken.
+    await createCourse('New Local Course');
+    expect(await db.courses.count()).toBe(2);
+
+    // The backup contains only 'Local Course'.
+    await importBackup(backup, 'merge');
+
+    // 'Local Course' should remain; 'New Local Course' should not be wiped.
+    const courses = await db.courses.toArray();
+    expect(courses).toHaveLength(2);
+    expect(courses.map((c) => c.id)).toContain(existing.id);
   });
 });
