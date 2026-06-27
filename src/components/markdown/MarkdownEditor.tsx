@@ -13,6 +13,12 @@ interface MarkdownEditorProps {
   placeholder?: string;
   /** Show a Cloze button (only meaningful for cloze cards). */
   allowCloze?: boolean;
+  /**
+   * Opt-in to embed-aware toolbar actions and live-preview. Enables "Collapsible"
+   * and "Video" toolbar buttons, and passes `allowEmbeds` to the preview pane.
+   * Default false leaves card editors unchanged.
+   */
+  allowEmbeds?: boolean;
   minRows?: number;
   label?: string;
   /** Cloze preview mode for the live preview pane. */
@@ -71,6 +77,7 @@ export function MarkdownEditor({
   onChange,
   placeholder,
   allowCloze = false,
+  allowEmbeds = false,
   minRows = 6,
   label,
   clozePreview = 'none',
@@ -250,6 +257,35 @@ export function MarkdownEditor({
     },
   };
 
+  // Embed actions — only rendered when allowEmbeds is true.
+  const embedActions: ToolbarAction[] = [
+    {
+      label: 'Collapsible',
+      title: 'Collapsible section',
+      apply: (s) => {
+        const inner = s.selected || 'content';
+        const needsBreak = s.before.length > 0 && !s.before.endsWith('\n');
+        const lead = needsBreak ? '\n' : '';
+        const snippet = `<details><summary>Title</summary>\n\n${inner}\n\n</details>`;
+        const text = s.before + lead + snippet + s.after;
+        const selStart = s.before.length + lead.length + '<details><summary>Title</summary>\n\n'.length;
+        return { text, selStart, selEnd: selStart + inner.length };
+      },
+    },
+    {
+      label: 'Video',
+      title: 'Embed video (YouTube or Vimeo URL on its own line)',
+      apply: (s) => {
+        const placeholder = 'https://www.youtube.com/watch?v=';
+        const needsBreak = s.before.length > 0 && !s.before.endsWith('\n');
+        const lead = needsBreak ? '\n' : '';
+        const text = s.before + lead + placeholder + s.after;
+        const selStart = s.before.length + lead.length;
+        return { text, selStart, selEnd: selStart + placeholder.length };
+      },
+    },
+  ];
+
   async function insertImageFiles(files: FileList | File[]) {
     const images = Array.from(files).filter((f) => f.type.startsWith('image/'));
     if (images.length === 0) return;
@@ -312,6 +348,18 @@ export function MarkdownEditor({
             {clozeAction.label}
           </button>
         )}
+        {allowEmbeds &&
+          embedActions.map((a) => (
+            <button
+              key={a.title}
+              type="button"
+              title={a.title}
+              onClick={() => runAction(a)}
+              className="min-h-11 min-w-11 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+            >
+              {a.label}
+            </button>
+          ))}
         <button
           type="button"
           title="Insert image"
@@ -413,7 +461,7 @@ export function MarkdownEditor({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.12 * m }}
               >
-                <MarkdownView source={value} clozeMode={clozePreview} />
+                <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
               </motion.div>
             ) : (
               <motion.p

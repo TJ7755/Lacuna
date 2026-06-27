@@ -56,6 +56,31 @@ is no user-visible change yet — the UI is delivered in a later stage.
   advancing between two writes, so the merge tie-break test failed intermittently in
   the warm full-suite run.
 
+### Notes engine (course UI groundwork)
+
+- Extended `MarkdownView` with an opt-in `allowEmbeds` prop (default `false`). When
+  set, bare YouTube (`youtube.com/watch?v=ID`, `youtu.be/ID`) and Vimeo
+  (`vimeo.com/ID`) URLs on their own line become responsive 16:9 iframes on the
+  privacy-first embed hosts (`youtube-nocookie.com`, `player.vimeo.com`), and
+  `<details>`/`<summary>` collapsibles render. Card rendering stays on the default
+  path and is byte-for-byte unchanged.
+- Hardened the embed path against untrusted, imported content: the sanitise schema
+  restricts iframe `src` to the two embed hosts by regex (so a malicious `src` is
+  stripped) and limits iframe attributes; a follow-up plugin removes any sourceless
+  iframe shell left behind. The embed-wrapper's layout classes are whitelisted so
+  the responsive box survives sanitisation. Render-cache keys are namespaced by
+  `allowEmbeds` to avoid cross-mode collisions.
+- Extended `MarkdownEditor` with a matching `allowEmbeds` prop that adds
+  "Collapsible" and "Video" toolbar actions and forwards the flag to its live
+  preview; card editors are unaffected.
+- Added `src/components/notes/LessonNotes.tsx` (collapsible per-note renderer) and
+  `src/components/notes/LessonNoteEditor.tsx` (single-note editor; persistence is
+  injected via `onSave`, so it suits both the lesson-view CRUD flow and any AI
+  authoring path).
+- Added tests covering embed conversion, the responsive wrapper, the two security
+  cases (disallowed host and `javascript:` src both stripped), the `allowEmbeds`
+  guard, collapsible rendering, and note ordering/rendering.
+
 ## 0.0.3 — Simple learn mode, card types, and touch-first polish
 
 - Added `useStudyMode` hook (`src/state/studyMode.ts`) with `fsrs` and `simple` modes, persisted to `localStorage`.
