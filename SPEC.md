@@ -363,6 +363,17 @@ examObjective, newCardsPerDay?, archived?, autoOptimise?, folderId?, colour?, ti
 `id, name, parentId?, createdAt` — a flat (single-level) grouping of decks. Nested folders
 are read but the UI is single-level.
 
+### Course architecture (staged, additive)
+Schema **v9** introduces the `Course -> Lesson -> Note + Card` model **alongside** the legacy
+Deck/Folder tables; nothing is deleted and the Deck-based UI keeps running. New stores:
+`courses, lessons, notes, lessonCards, practiceNodes, courseExamDates` (shapes in
+`src/db/types.ts`). The v9 upgrade folds each standalone deck into one single-lesson course
+(scheduling fields copied verbatim) and each folder into one course whose decks become
+lessons ordered by `createdAt`; a deck whose exam date differs from the course keeps it as a
+per-lesson override. Migration mapping lives in `src/db/courseMigration.ts` (pure, with an
+injected id generator). Cards gain `courseId?`/`primaryLessonId?`, and
+`SessionHistoryEntry`/`UserPerformance` gain `courseId?`, all stamped during the upgrade.
+
 ### Card
 `id, deckId, type('front_back'|'cloze'), front, back, stability|null, difficulty|null,
 lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?, due|null,
@@ -405,8 +416,10 @@ the invisible grader.
   upgrade; these are **exempt from daily-snapshot pruning** so a botched migration always
   has a fallback (§13).
 - `BackupFile { app:'lacuna', version, exportedAt, decks, cards, assets, sessionHistory,
-  userPerformance }` — the shape of both manual exports and snapshot payloads; `assets`
-  carries the referenced images.
+  userPerformance, folders?, courses?, lessons?, notes?, lessonCards?, practiceNodes?,
+  courseExamDates? }` — the shape of both manual exports and snapshot payloads; `assets`
+  carries the referenced images. The course-architecture arrays are optional so older
+  backups still import cleanly.
 - `AppStateEntry { key, value }` — small persistent app state (e.g. the backup folder
   handle, sidebar settings, input mode, motion speed).
 

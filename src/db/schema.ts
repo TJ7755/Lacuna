@@ -9,6 +9,12 @@ import type {
   ImageAsset,
   BackupSnapshot,
   Folder,
+  Course,
+  CourseExamDate,
+  Lesson,
+  Note,
+  LessonCardLink,
+  PracticeNode,
 } from './types';
 import {
   migrateCardRecord,
@@ -16,6 +22,7 @@ import {
   type LegacyCard,
   type LegacyDeck,
 } from './migrations';
+import { buildCourseMigration } from './courseMigration';
 import { savePreMigrationSnapshot } from './preMigrationSnapshots';
 import { blobToArrayBuffer, bytesToBase64 } from './assets';
 
@@ -33,6 +40,12 @@ export class LacunaDatabase extends Dexie {
   appState!: Table<AppStateEntry, string>;
   assets!: Table<ImageAsset, string>;
   folders!: Table<Folder, string>;
+  courses!: Table<Course, string>;
+  lessons!: Table<Lesson, string>;
+  notes!: Table<Note, string>;
+  lessonCards!: Table<LessonCardLink, string>;
+  practiceNodes!: Table<PracticeNode, string>;
+  courseExamDates!: Table<CourseExamDate, string>;
 
   constructor() {
     super('lacuna');
@@ -200,10 +213,73 @@ export class LacunaDatabase extends Dexie {
         assets: 'hash, createdAt',
         folders: 'id, parentId, createdAt',
       });
+
+    // Version 9: introduce the Course -> Lesson model alongside the existing
+    // Deck/Folder model (additive; nothing is deleted). New stores are created
+    // for courses, lessons, notes, lesson-card links, practice nodes and extra
+    // course exam dates. The cards and sessionHistory indexes gain courseId (and
+    // primaryLessonId for cards) so course-scoped queries are fast. The upgrade
+    // folds every standalone deck into a single-lesson course and every folder
+    // into a course whose decks become ordered lessons, then stamps the derived
+    // courseId/primaryLessonId onto cards, session history and performance rows.
+    this.version(9)
+      .stores({
+        decks: 'id, createdAt, examDate, folderId',
+        cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed',
+        sessionHistory: '++id, deckId, courseId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        folders: 'id, parentId, createdAt',
+        courses: 'id, createdAt, examDate',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        practiceNodes: 'id, courseId, position, createdAt',
+        courseExamDates: 'id, courseId, examDate, createdAt',
+      })
+      .upgrade(async (tx) => {
+        const decks = (await tx.table('decks').toArray()) as Deck[];
+        const folders = (await tx.table('folders').toArray()) as Folder[];
+        const { courses, lessons, courseIdByDeckId, lessonIdByDeckId } =
+          buildCourseMigration(decks, folders, makeId);
+
+        await tx.table('courses').bulkPut(courses);
+        await tx.table('lessons').bulkPut(lessons);
+
+        // Stamp the derived courseId/primaryLessonId onto every card.
+        await tx
+          .table('cards')
+          .toCollection()
+          .modify((card) => {
+            const courseId = courseIdByDeckId.get(card.deckId);
+            if (courseId !== undefined) {
+              card.courseId = courseId;
+              card.primaryLessonId = lessonIdByDeckId.get(card.deckId) ?? null;
+            }
+          });
+
+        // Carry the derived courseId onto session history and performance rows.
+        await tx
+          .table('sessionHistory')
+          .toCollection()
+          .modify((entry) => {
+            const courseId = courseIdByDeckId.get(entry.deckId);
+            if (courseId !== undefined) entry.courseId = courseId;
+          });
+        await tx
+          .table('userPerformance')
+          .toCollection()
+          .modify((perf) => {
+            const courseId = courseIdByDeckId.get(perf.deckId);
+            if (courseId !== undefined) perf.courseId = courseId;
+          });
+      });
   }
 }
 
-export const CURRENT_SCHEMA_VERSION = 8;
+export const CURRENT_SCHEMA_VERSION = 9;
 
 export const db = new LacunaDatabase();
 
@@ -366,6 +442,12 @@ export async function readAllDataFromVersion(
     sessionHistory: (raw.data['sessionHistory'] ?? []) as SessionHistoryEntry[],
     userPerformance: (raw.data['userPerformance'] ?? []) as UserPerformance[],
     folders: (raw.data['folders'] ?? []) as Folder[],
+    courses: (raw.data['courses'] ?? []) as Course[],
+    lessons: (raw.data['lessons'] ?? []) as Lesson[],
+    notes: (raw.data['notes'] ?? []) as Note[],
+    lessonCards: (raw.data['lessonCards'] ?? []) as LessonCardLink[],
+    practiceNodes: (raw.data['practiceNodes'] ?? []) as PracticeNode[],
+    courseExamDates: (raw.data['courseExamDates'] ?? []) as CourseExamDate[],
   };
 }
 
