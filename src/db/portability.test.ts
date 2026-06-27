@@ -58,10 +58,14 @@ describe('importBackup', () => {
     const deck = await createDeck('Biology');
     const backup = await exportDatabase();
 
-    // Simulate local activity so lastInteractedAt is newer than the backup's.
+    // Simulate local activity so lastInteractedAt is strictly newer than the
+    // backup's. Offsetting the captured value keeps this deterministic: relying
+    // on Date.now() advancing fails when both writes land in the same
+    // millisecond (the merge tie-break favours the backup, so local must be
+    // unambiguously newer).
     await db.decks.update(deck.id, {
       examDate: deck.examDate + 1000,
-      lastInteractedAt: Date.now(),
+      lastInteractedAt: (deck.lastInteractedAt ?? deck.createdAt) + 1000,
     });
     await importBackup(backup, 'merge');
 
