@@ -77,6 +77,28 @@ export const DECK_COLOURS = [
   { key: 'teal',    label: 'Teal',    hex: '#0d9488' },
 ] as const;
 
+/**
+ * The structural subset of scheduling fields the FSRS engine reads. Both Deck
+ * and Course satisfy it, so the engine can schedule either without caring which
+ * model it is fed. This is the seam that lets the scheduler become Course-capable
+ * without renaming deckId to courseId across every call site: widen a function
+ * from `Deck` to `SchedulerConfig` and every existing Deck caller still type-checks.
+ *
+ * `examDate` here is the unit-level default; per-card exam dates (lesson overrides
+ * and course checkpoints) are resolved separately in src/fsrs/examDate.ts.
+ */
+export interface SchedulerConfig {
+  id: string;
+  examDate: number;
+  examObjective: ExamObjective;
+  fsrsParameters: FsrsParameters;
+  archived?: boolean;
+  newCardsPerDay?: number;
+  maxReviewsPerDay?: number;
+  leechThreshold?: number;
+  leechAction?: 'suspend' | 'tag' | 'none';
+}
+
 export interface Deck {
   id: string;
   name: string;

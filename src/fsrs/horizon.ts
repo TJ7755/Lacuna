@@ -14,7 +14,7 @@
 // same objective) survives the exam passing.
 
 import { MS_PER_DAY } from './params';
-import type { Deck } from '../db/types';
+import type { SchedulerConfig } from '../db/types';
 
 /**
  * How many days ahead a passed-exam deck schedules against when the user keeps
@@ -23,17 +23,19 @@ import type { Deck } from '../db/types';
  */
 export const MAINTENANCE_HORIZON_DAYS = 7;
 
-/** Whether the deck's exam date is now in the past. */
-export function examHasPassed(deck: Deck, now: number = Date.now()): boolean {
+/** Whether the deck's exam date is now in the past.
+ *  Accepts any SchedulerConfig (a Deck or a Course); only examDate is read. */
+export function examHasPassed(deck: SchedulerConfig, now: number = Date.now()): boolean {
   return deck.examDate < now;
 }
 
 /**
  * The date all scheduling and progress for this deck should target. The future
  * exam date while it is ahead of us; a rolling maintenance horizon once it has
- * passed (the "keep revising" fallback).
+ * passed (the "keep revising" fallback). Accepts any SchedulerConfig (a Deck or
+ * a Course); only examDate is read.
  */
-export function schedulingHorizon(deck: Deck, now: number = Date.now()): number {
+export function schedulingHorizon(deck: SchedulerConfig, now: number = Date.now()): number {
   if (deck.examDate >= now) return deck.examDate;
   return now + MAINTENANCE_HORIZON_DAYS * MS_PER_DAY;
 }

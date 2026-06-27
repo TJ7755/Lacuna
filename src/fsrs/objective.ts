@@ -25,7 +25,7 @@ import { averagePredictedRetrievability, masteryFraction } from './progress';
 import { schedulingHorizon } from './horizon';
 import { availableCards } from './eligibility';
 import { MASTERY_R } from './params';
-import type { Card, Deck, ExamObjective } from '../db/types';
+import type { Card, SchedulerConfig, ExamObjective } from '../db/types';
 
 /**
  * Below this Delta-R, a further review is deemed to add no meaningful marks, so
@@ -36,12 +36,14 @@ const EXPECTED_MARKS_EPSILON = 5e-3;
 /** Pre-built scoring context for a deck (engine + decay + objective). */
 export interface ObjectiveContext {
   objective: ExamObjective;
-  deck: Deck;
+  // Any SchedulerConfig (a Deck or a Course).
+  deck: SchedulerConfig;
   ctx: SimContext;
 }
 
-/** Build a scoring context once per session/render (one FSRS engine per deck). */
-export function makeObjectiveContext(deck: Deck): ObjectiveContext {
+/** Build a scoring context once per session/render (one FSRS engine per deck).
+ *  Accepts any SchedulerConfig (a Deck or a Course). */
+export function makeObjectiveContext(deck: SchedulerConfig): ObjectiveContext {
   return {
     objective: deck.examObjective,
     deck,
@@ -55,7 +57,7 @@ export function makeObjectiveContext(deck: Deck): ObjectiveContext {
  */
 export function progressValue(
   cards: Card[],
-  deck: Deck,
+  deck: SchedulerConfig,
   now: number = Date.now(),
 ): number {
   const available = availableCards(cards, now);
@@ -65,19 +67,19 @@ export function progressValue(
 }
 
 /** A short noun for compact headers, e.g. "62% predicted score" / "62% secured". */
-export function progressNoun(deck: Deck): string {
+export function progressNoun(deck: SchedulerConfig): string {
   return deck.examObjective === 'securedTopics' ? 'secured' : 'predicted score';
 }
 
 /** A heading for the deck/summary panels. */
-export function progressHeading(deck: Deck): string {
+export function progressHeading(deck: SchedulerConfig): string {
   return deck.examObjective === 'securedTopics'
     ? 'Predicted mastery on exam day'
     : 'Predicted exam score';
 }
 
 /** A one-line description of exactly what the progress value measures. */
-export function progressDescription(deck: Deck): string {
+export function progressDescription(deck: SchedulerConfig): string {
   return deck.examObjective === 'securedTopics'
     ? 'Proportion of cards predicted to be recalled with 90% or higher retrievability when your exam arrives.'
     : 'Mean predicted retrievability across the deck on your exam day.';
