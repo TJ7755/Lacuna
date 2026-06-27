@@ -5,9 +5,15 @@ import { db, makeId } from './schema';
 import type {
   Card,
   CardType,
+  Course,
+  CourseExamDate,
   Deck,
   Folder,
   Grade,
+  Lesson,
+  LessonCardLink,
+  Note,
+  PracticeNode,
   ReviewLog,
   SessionHistoryEntry,
   UserPerformance,
@@ -721,4 +727,331 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
   } catch (err) {
     throw friendlyDbError(err);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Courses
+// ---------------------------------------------------------------------------
+
+export async function createCourse(name: string, opts?: Partial<Course>): Promise<Course> {
+  try {
+    const createdAt = Date.now();
+    const course: Course = {
+      id: makeId(),
+      name: name.trim() || 'Untitled course',
+      description: '',
+      createdAt,
+      examDate: defaultExamDate(createdAt),
+      timeZone: getLocalTimeZone(),
+      fsrsVersion: FSRS_VERSION,
+      fsrsParameters: defaultFsrsParameters(),
+      examObjective: 'expectedMarks',
+      unlockMode: 'open',
+      autoPractice: true,
+      practiceThresholdMinutesFar: 60,
+      practiceThresholdMinutesNear: 30,
+      practiceUrgentWindowDays: 7,
+      practiceMaxGap: 5,
+      ...opts,
+    };
+    await db.courses.add(course);
+    return course;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function updateCourse(id: string, changes: Partial<Course>): Promise<void> {
+  try {
+    await db.courses.update(id, changes);
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/**
+ * Delete a course and cascade to all dependent rows in one transaction:
+ * notes and lessonCard links belonging to the course's lessons, the lessons
+ * themselves, practice nodes, course exam dates, and cards whose courseId
+ * matches. Cards are deleted (not unassigned) because they were created for
+ * this course; the cascade mirrors deleteDeck deleting its cards.
+ */
+export async function deleteCourse(id: string): Promise<void> {
+  await db.transaction(
+    'rw',
+    [db.courses, db.lessons, db.notes, db.lessonCards, db.practiceNodes, db.courseExamDates, db.cards],
+    async () => {
+      const lessonIds = await db.lessons.where('courseId').equals(id).primaryKeys();
+      if (lessonIds.length > 0) {
+        await db.notes.where('lessonId').anyOf(lessonIds).delete();
+        await db.lessonCards.where('lessonId').anyOf(lessonIds).delete();
+      }
+      await db.lessons.where('courseId').equals(id).delete();
+      await db.practiceNodes.where('courseId').equals(id).delete();
+      await db.courseExamDates.where('courseId').equals(id).delete();
+      await db.cards.where('courseId').equals(id).delete();
+      await db.courses.delete(id);
+    },
+  );
+  // Deleting the course's cards may orphan image assets; reclaim them, as deleteDeck does.
+  scheduleAssetGc();
+}
+
+export async function listCourses(): Promise<Course[]> {
+  return db.courses.orderBy('createdAt').toArray();
+}
+
+export async function getCourse(id: string): Promise<Course | undefined> {
+  return db.courses.get(id);
+}
+
+// ---------------------------------------------------------------------------
+// Lessons
+// ---------------------------------------------------------------------------
+
+export async function createLesson(
+  courseId: string,
+  name: string,
+  opts?: Partial<Lesson>,
+): Promise<Lesson> {
+  try {
+    const existing = await db.lessons.where('courseId').equals(courseId).toArray();
+    const maxIndex = existing.reduce((m, l) => Math.max(m, l.orderIndex), -1);
+    const lesson: Lesson = {
+      id: makeId(),
+      courseId,
+      name: name.trim() || 'Untitled lesson',
+      orderIndex: maxIndex + 1,
+      isExtension: false,
+      createdAt: Date.now(),
+      ...opts,
+    };
+    await db.lessons.add(lesson);
+    return lesson;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function updateLesson(id: string, changes: Partial<Lesson>): Promise<void> {
+  try {
+    await db.lessons.update(id, changes);
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/**
+ * Delete a lesson: remove its notes and lessonCard links in one transaction.
+ * Cards whose primaryLessonId pointed here become unassigned (primaryLessonId set
+ * to null) rather than deleted — they remain in the question bank. Sibling
+ * lessons are not renumbered.
+ */
+export async function deleteLesson(id: string): Promise<void> {
+  await db.transaction('rw', db.lessons, db.notes, db.lessonCards, db.cards, async () => {
+    await db.notes.where('lessonId').equals(id).delete();
+    await db.lessonCards.where('lessonId').equals(id).delete();
+    await db.cards.where('primaryLessonId').equals(id).modify({ primaryLessonId: null });
+    await db.lessons.delete(id);
+  });
+}
+
+/** All lessons for a course, ordered by orderIndex ascending. */
+export async function listLessons(courseId: string): Promise<Lesson[]> {
+  return db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
+}
+
+/**
+ * Assign a fresh orderIndex to each lesson based on its position in
+ * orderedLessonIds, in one transaction.
+ */
+export async function reorderLessons(_courseId: string, orderedLessonIds: string[]): Promise<void> {
+  await db.transaction('rw', db.lessons, async () => {
+    for (let i = 0; i < orderedLessonIds.length; i++) {
+      await db.lessons.update(orderedLessonIds[i], { orderIndex: i });
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Notes
+// ---------------------------------------------------------------------------
+
+export async function createNote(
+  lessonId: string,
+  name: string,
+  content?: string,
+  opts?: Partial<Note>,
+): Promise<Note> {
+  try {
+    const existing = await db.notes.where('lessonId').equals(lessonId).toArray();
+    const maxIndex = existing.reduce((m, n) => Math.max(m, n.orderIndex), -1);
+    const note: Note = {
+      id: makeId(),
+      lessonId,
+      name: name.trim() || 'Untitled note',
+      content: content ?? '',
+      orderIndex: maxIndex + 1,
+      createdAt: Date.now(),
+      ...opts,
+    };
+    await db.notes.add(note);
+    return note;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function updateNote(id: string, changes: Partial<Note>): Promise<void> {
+  try {
+    await db.notes.update(id, changes);
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  await db.notes.delete(id);
+}
+
+/** All notes for a lesson, ordered by orderIndex ascending. */
+export async function listNotes(lessonId: string): Promise<Note[]> {
+  return db.notes.where('lessonId').equals(lessonId).sortBy('orderIndex');
+}
+
+/** Assign a fresh orderIndex to each note based on its position in orderedNoteIds. */
+export async function reorderNotes(_lessonId: string, orderedNoteIds: string[]): Promise<void> {
+  await db.transaction('rw', db.notes, async () => {
+    for (let i = 0; i < orderedNoteIds.length; i++) {
+      await db.notes.update(orderedNoteIds[i], { orderIndex: i });
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Lesson-card links
+// ---------------------------------------------------------------------------
+
+/**
+ * Link a card into a lesson for display/grouping purposes. Idempotent: if a link
+ * for the (lessonId, cardId) pair already exists, it is returned unchanged.
+ */
+export async function linkCardToLesson(lessonId: string, cardId: string): Promise<LessonCardLink> {
+  try {
+    const existing = await db.lessonCards
+      .where('lessonId')
+      .equals(lessonId)
+      .filter((lc) => lc.cardId === cardId)
+      .first();
+    if (existing) return existing;
+    const link: LessonCardLink = {
+      id: makeId(),
+      lessonId,
+      cardId,
+      createdAt: Date.now(),
+    };
+    await db.lessonCards.add(link);
+    return link;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function unlinkCardFromLesson(lessonId: string, cardId: string): Promise<void> {
+  await db.lessonCards
+    .where('lessonId')
+    .equals(lessonId)
+    .filter((lc) => lc.cardId === cardId)
+    .delete();
+}
+
+export async function listLessonCardLinks(lessonId: string): Promise<LessonCardLink[]> {
+  return db.lessonCards.where('lessonId').equals(lessonId).toArray();
+}
+
+// ---------------------------------------------------------------------------
+// Practice nodes
+// ---------------------------------------------------------------------------
+
+export async function createPracticeNode(
+  courseId: string,
+  opts: Partial<PracticeNode> & Pick<PracticeNode, 'type' | 'name'>,
+): Promise<PracticeNode> {
+  try {
+    const node: PracticeNode = {
+      id: makeId(),
+      courseId,
+      createdAt: Date.now(),
+      ...opts,
+    };
+    await db.practiceNodes.add(node);
+    return node;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function updatePracticeNode(
+  id: string,
+  changes: Partial<PracticeNode>,
+): Promise<void> {
+  try {
+    await db.practiceNodes.update(id, changes);
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function deletePracticeNode(id: string): Promise<void> {
+  await db.practiceNodes.delete(id);
+}
+
+export async function listPracticeNodes(courseId: string): Promise<PracticeNode[]> {
+  return db.practiceNodes.where('courseId').equals(courseId).toArray();
+}
+
+// ---------------------------------------------------------------------------
+// Course exam dates
+// ---------------------------------------------------------------------------
+
+export async function createCourseExamDate(
+  courseId: string,
+  name: string,
+  examDate: number,
+  opts?: Partial<CourseExamDate>,
+): Promise<CourseExamDate> {
+  try {
+    const entry: CourseExamDate = {
+      id: makeId(),
+      courseId,
+      name,
+      examDate,
+      createdAt: Date.now(),
+      ...opts,
+    };
+    await db.courseExamDates.add(entry);
+    return entry;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function updateCourseExamDate(
+  id: string,
+  changes: Partial<CourseExamDate>,
+): Promise<void> {
+  try {
+    await db.courseExamDates.update(id, changes);
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function deleteCourseExamDate(id: string): Promise<void> {
+  await db.courseExamDates.delete(id);
+}
+
+/** All exam dates for a course, ordered by examDate ascending. */
+export async function listCourseExamDates(courseId: string): Promise<CourseExamDate[]> {
+  return db.courseExamDates.where('courseId').equals(courseId).sortBy('examDate');
 }

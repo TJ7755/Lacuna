@@ -374,6 +374,16 @@ per-lesson override. Migration mapping lives in `src/db/courseMigration.ts` (pur
 injected id generator). Cards gain `courseId?`/`primaryLessonId?`, and
 `SessionHistoryEntry`/`UserPerformance` gain `courseId?`, all stamped during the upgrade.
 
+`src/db/repository.ts` exposes CRUD functions for every course-architecture table —
+`createCourse`/`updateCourse`/`deleteCourse`/`listCourses`/`getCourse`,
+`createLesson`/`updateLesson`/`deleteLesson`/`listLessons`/`reorderLessons`,
+`createNote`/`updateNote`/`deleteNote`/`listNotes`/`reorderNotes`,
+`linkCardToLesson`/`unlinkCardFromLesson`/`listLessonCardLinks`,
+`createPracticeNode`/`updatePracticeNode`/`deletePracticeNode`/`listPracticeNodes`,
+and `createCourseExamDate`/`updateCourseExamDate`/`deleteCourseExamDate`/`listCourseExamDates`.
+All functions are independently callable with no UI or React dependency, so future AI
+authoring agents and button handlers can share the same layer without duplication.
+
 ### Card
 `id, deckId, type('front_back'|'cloze'), front, back, stability|null, difficulty|null,
 lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?, due|null,
