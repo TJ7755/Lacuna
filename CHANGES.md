@@ -21,6 +21,41 @@
 >
 > **Full changelog below**
 
+## Unreleased — Course architecture (data model and scheduling groundwork)
+
+First, additive stage of the migration from `Folder -> Deck -> Card` to
+`Course -> Lesson -> Note + Card`. The new model is built alongside the existing
+Deck/Folder model; nothing is removed and the Deck-based UI keeps running. There
+is no user-visible change yet — the UI is delivered in a later stage.
+
+- Added the course domain types in `src/db/types.ts`: `Course`, `CourseExamDate`,
+  `Lesson`, `Note`, `LessonCardLink`, `PracticeNode`, `UnlockMode`, plus optional
+  `courseId`/`primaryLessonId` on `Card` and `courseId` on `SessionHistoryEntry`
+  and `UserPerformance`, and the matching optional `BackupFile` arrays.
+- Added schema **v9** (`src/db/schema.ts`) with six new stores (courses, lessons,
+  notes, lessonCards, practiceNodes, courseExamDates) and an additive upgrade that
+  folds each standalone deck into a single-lesson course and each folder into a
+  course of ordered lessons, then stamps `courseId`/`primaryLessonId` onto cards,
+  session history and performance rows. Mapping lives in `src/db/courseMigration.ts`
+  (pure, with an injected id generator); decks with a missing folder reference are
+  treated as standalone so none are dropped.
+- Added UI-independent repository CRUD for courses, lessons, notes, lesson-card
+  links, practice nodes and course exam dates (`src/db/repository.ts`), reusable by
+  both the future course UI and any AI authoring path.
+- Carried the six new tables through export, import (replace and merge), automatic
+  backups and diagnostics, mirroring the existing folders handling; older backups
+  without the new arrays still import.
+- Introduced `SchedulerConfig` and widened the FSRS core (forward simulation,
+  horizon, progress, objective) plus `studyPool` and `examEveAvailable` to accept
+  any `SchedulerConfig`, so the engine can schedule a Course as well as a Deck with
+  no behaviour change for decks.
+- Added `src/fsrs/examDate.ts` (per-card exam-date resolution: lesson override, then
+  nearest applicable future checkpoint, then the course default) and
+  `src/fsrs/practice.ts` (`shouldInsertPractice`, the auto-practice insertion rule).
+- Fixed a pre-existing flaky test: `portability.test.ts` relied on the wall clock
+  advancing between two writes, so the merge tie-break test failed intermittently in
+  the warm full-suite run.
+
 ## 0.0.3 — Simple learn mode, card types, and touch-first polish
 
 - Added `useStudyMode` hook (`src/state/studyMode.ts`) with `fsrs` and `simple` modes, persisted to `localStorage`.
