@@ -11,7 +11,7 @@
 //    the deck's exam-day trajectory stays honest while a session paces new material.
 
 import { MS_PER_DAY } from './params';
-import type { Card, Deck } from '../db/types';
+import type { Card, SchedulerConfig } from '../db/types';
 
 /** Whether a card may be studied or counted at `now` (not suspended, not buried). */
 export function isAvailable(card: Card, now: number = Date.now()): boolean {
@@ -42,9 +42,9 @@ export function newCardsIntroducedRecently(cards: Card[], now: number = Date.now
  * The set of cards a study session may serve right now for a deck: available cards,
  * with brand-new (state 0) cards rationed by the deck's `newCardsPerDay` cap. An
  * undefined/zero cap means unlimited. New cards are admitted oldest-first so the
- * deck's authored order is respected.
+ * deck's authored order is respected. Accepts any SchedulerConfig (a Deck or a Course).
  */
-export function studyPool(cards: Card[], deck: Deck, now: number = Date.now()): Card[] {
+export function studyPool(cards: Card[], deck: SchedulerConfig, now: number = Date.now()): Card[] {
   // Archived decks are withdrawn from all study, but their cards are retained and
   // still counted in progress/objective denominators (which use availableCards).
   if (deck.archived) return [];

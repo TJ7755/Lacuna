@@ -20,13 +20,14 @@ import { rAtExam } from './forwardSim';
 import { schedulingHorizon } from './horizon';
 import { MASTERY_R } from './params';
 import type { ObjectiveContext } from './objective';
-import type { Card, Deck } from '../db/types';
+import type { Card, SchedulerConfig } from '../db/types';
 
 /** How close to the exam cram mode becomes available (and sensible). */
 export const EXAM_EVE_WINDOW_HOURS = 48;
 
-/** Whether the deck is inside the exam-eve window: exam ahead but within the window. */
-export function examEveAvailable(deck: Deck, now: number = Date.now()): boolean {
+/** Whether the deck is inside the exam-eve window: exam ahead but within the window.
+ *  Accepts any SchedulerConfig (a Deck or a Course). */
+export function examEveAvailable(deck: SchedulerConfig, now: number = Date.now()): boolean {
   if (deck.archived) return false;
   const msUntil = deck.examDate - now;
   return msUntil > 0 && msUntil <= EXAM_EVE_WINDOW_HOURS * 60 * 60 * 1000;
