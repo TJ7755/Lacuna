@@ -1,0 +1,433 @@
+import { describe, it, expect } from 'vitest';
+import {
+  lessonEffectiveReleaseDates,
+  isLessonUnlocked,
+  lessonStatus,
+  buildPath,
+  pathPosition,
+  KNOWN_NODE_TYPES,
+  type PathNode,
+} from './path';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
+import type { Card, Course, CourseExamDate, Lesson } from '../db/types';
+
+// ---------------------------------------------------------------------------
+// Fixture helpers (mirroring useCourseData.test.ts)
+// ---------------------------------------------------------------------------
+
+function makeCourse(overrides: Partial<Course> & Pick<Course, 'id'>): Course {
+  return {
+    name: 'Test course',
+    description: '',
+    createdAt: 0,
+    examDate: 7 * MS_PER_DAY,
+    fsrsVersion: FSRS_VERSION,
+    fsrsParameters: defaultFsrsParameters(),
+    examObjective: 'expectedMarks',
+    unlockMode: 'open',
+    autoPractice: false,
+    practiceThresholdMinutesFar: 60,
+    practiceThresholdMinutesNear: 30,
+    practiceUrgentWindowDays: 7,
+    practiceMaxGap: 5,
+    ...overrides,
+  };
+}
+
+function makeLesson(overrides: Partial<Lesson> & Pick<Lesson, 'id' | 'courseId'>): Lesson {
+  return {
+    name: 'Test lesson',
+    orderIndex: 0,
+    createdAt: 0,
+    isExtension: false,
+    ...overrides,
+  };
+}
+
+function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card {
+  return {
+    type: 'front_back',
+    front: '',
+    back: '',
+    stability: null,
+    difficulty: null,
+    lastReviewed: null,
+    reps: 0,
+    lapses: 0,
+    state: 0,
+    due: null,
+    scheduledDays: 0,
+    learningSteps: 0,
+    history: [],
+    createdAt: 0,
+    ...overrides,
+  };
+}
+
+function makeExamDate(
+  overrides: Partial<CourseExamDate> & Pick<CourseExamDate, 'id' | 'courseId'>,
+): CourseExamDate {
+  return {
+    name: 'Checkpoint',
+    examDate: 10 * MS_PER_DAY,
+    createdAt: 0,
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// lessonEffectiveReleaseDates
+// ---------------------------------------------------------------------------
+
+describe('lessonEffectiveReleaseDates', () => {
+  it('returns undefined dates when linearCadence is absent', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'linear' });
+    const lessons = [
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
+    ];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    expect(dates.get('l1')).toBeUndefined();
+    expect(dates.get('l2')).toBeUndefined();
+  });
+
+  it('cascades from the anchor date at the cadence interval', () => {
+    const anchor = 1_000_000;
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'linear',
+      linearCadence: { anchorDate: anchor, intervalDays: 7 },
+    });
+    const lessons = [
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
+      makeLesson({ id: 'l3', courseId: 'c1', orderIndex: 2 }),
+    ];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    expect(dates.get('l1')).toBe(anchor);
+    expect(dates.get('l2')).toBe(anchor + 7 * MS_PER_DAY);
+    expect(dates.get('l3')).toBe(anchor + 14 * MS_PER_DAY);
+  });
+
+  it('cascades a releaseDate override forward to later lessons', () => {
+    const anchor = 1_000_000;
+    const override = 50_000_000;
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'linear',
+      linearCadence: { anchorDate: anchor, intervalDays: 7 },
+    });
+    const lessons = [
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1, releaseDate: override }),
+      makeLesson({ id: 'l3', courseId: 'c1', orderIndex: 2 }),
+    ];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    expect(dates.get('l1')).toBe(anchor);
+    expect(dates.get('l2')).toBe(override);
+    expect(dates.get('l3')).toBe(override + 7 * MS_PER_DAY);
+  });
+
+  it('skips extension lessons in the walk and gives them no date', () => {
+    const anchor = 1_000_000;
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'linear',
+      linearCadence: { anchorDate: anchor, intervalDays: 7 },
+    });
+    const lessons = [
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'ext', courseId: 'c1', orderIndex: 1, isExtension: true }),
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 2 }),
+    ];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    expect(dates.get('l1')).toBe(anchor);
+    expect(dates.get('ext')).toBeUndefined();
+    // The extension consumed no slot: l2 is one interval after l1, not two.
+    expect(dates.get('l2')).toBe(anchor + 7 * MS_PER_DAY);
+  });
+
+  it('sorts by orderIndex regardless of array order', () => {
+    const anchor = 0;
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'linear',
+      linearCadence: { anchorDate: anchor, intervalDays: 1 },
+    });
+    const lessons = [
+      makeLesson({ id: 'l3', courseId: 'c1', orderIndex: 2 }),
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
+    ];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    expect(dates.get('l1')).toBe(0);
+    expect(dates.get('l2')).toBe(MS_PER_DAY);
+    expect(dates.get('l3')).toBe(2 * MS_PER_DAY);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isLessonUnlocked
+// ---------------------------------------------------------------------------
+
+describe('isLessonUnlocked', () => {
+  it('open mode unlocks every lesson', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open' });
+    const lessons = [
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
+    ];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    for (const l of lessons) {
+      expect(isLessonUnlocked(course, l, dates, lessons)).toBe(true);
+    }
+  });
+
+  it('extension lessons are always unlocked, even under linear mode pre-release', () => {
+    const now = 100;
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'linear',
+      linearCadence: { anchorDate: now + 1_000_000, intervalDays: 7 },
+    });
+    const ext = makeLesson({ id: 'ext', courseId: 'c1', orderIndex: 1, isExtension: true });
+    const lessons = [makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }), ext];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    expect(isLessonUnlocked(course, ext, dates, lessons, now)).toBe(true);
+  });
+
+  it('linear mode unlocks once the effective date has passed', () => {
+    const now = 10 * MS_PER_DAY;
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'linear',
+      linearCadence: { anchorDate: 0, intervalDays: 7 },
+    });
+    const lessons = [
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }), // date 0 -> unlocked
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }), // date 7d -> unlocked
+      makeLesson({ id: 'l3', courseId: 'c1', orderIndex: 2 }), // date 14d -> locked
+    ];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    expect(isLessonUnlocked(course, lessons[0], dates, lessons, now)).toBe(true);
+    expect(isLessonUnlocked(course, lessons[1], dates, lessons, now)).toBe(true);
+    expect(isLessonUnlocked(course, lessons[2], dates, lessons, now)).toBe(false);
+  });
+
+  it('linear mode without a cadence unlocks everything', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'linear' });
+    const lessons = [makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 })];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    expect(isLessonUnlocked(course, lessons[0], dates, lessons)).toBe(true);
+  });
+
+  it('semi-linear unlocks the first core lesson and anything with unlockedAt', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'semi-linear' });
+    const l1 = makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 });
+    const l2 = makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 });
+    const l3 = makeLesson({ id: 'l3', courseId: 'c1', orderIndex: 2, unlockedAt: 123 });
+    const lessons = [l1, l2, l3];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    expect(isLessonUnlocked(course, l1, dates, lessons)).toBe(true); // first core
+    expect(isLessonUnlocked(course, l2, dates, lessons)).toBe(false); // no ratchet
+    expect(isLessonUnlocked(course, l3, dates, lessons)).toBe(true); // ratcheted
+  });
+
+  it('semi-linear: the first core lesson is the lowest-orderIndex non-extension lesson', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'semi-linear' });
+    // An extension lesson has the lowest orderIndex but must not count as "first core".
+    const ext = makeLesson({ id: 'ext', courseId: 'c1', orderIndex: 0, isExtension: true });
+    const l1 = makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 1 });
+    const l2 = makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 2 });
+    const lessons = [ext, l1, l2];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    expect(isLessonUnlocked(course, l1, dates, lessons)).toBe(true);
+    expect(isLessonUnlocked(course, l2, dates, lessons)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// lessonStatus
+// ---------------------------------------------------------------------------
+
+describe('lessonStatus', () => {
+  it('returns locked when not unlocked', () => {
+    expect(lessonStatus(false, [])).toBe('locked');
+    expect(
+      lessonStatus(false, [makeCard({ id: 'a', deckId: 'd', state: 2 })]),
+    ).toBe('locked');
+  });
+
+  it('returns available for an unlocked lesson with zero cards', () => {
+    expect(lessonStatus(true, [])).toBe('available');
+  });
+
+  it('returns completed when every card has been served (state off New)', () => {
+    const cards = [
+      makeCard({ id: 'a', deckId: 'd', state: 2 }),
+      makeCard({ id: 'b', deckId: 'd', state: 1 }),
+    ];
+    expect(lessonStatus(true, cards)).toBe('completed');
+  });
+
+  it('returns available when at least one card is still New', () => {
+    const cards = [
+      makeCard({ id: 'a', deckId: 'd', state: 2 }),
+      makeCard({ id: 'b', deckId: 'd', state: 0 }),
+    ];
+    expect(lessonStatus(true, cards)).toBe('available');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildPath
+// ---------------------------------------------------------------------------
+
+describe('buildPath', () => {
+  it('builds lesson nodes in orderIndex order, including extensions', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open' });
+    const lessons = [
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'ext', courseId: 'c1', orderIndex: 2, isExtension: true }),
+    ];
+    const nodes = buildPath(course, lessons, [], new Map());
+    expect(nodes.map((n) => n.id)).toEqual(['l1', 'l2', 'ext']);
+    expect(nodes.every((n) => n.nodeType === 'lesson')).toBe(true);
+  });
+
+  it('places a checkpoint after the highest-orderIndex scoped lesson', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open' });
+    const lessons = [
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
+      makeLesson({ id: 'l3', courseId: 'c1', orderIndex: 2 }),
+    ];
+    const checkpoint = makeExamDate({ id: 'cp1', courseId: 'c1', lessonIds: ['l1', 'l2'] });
+    const nodes = buildPath(course, lessons, [checkpoint], new Map());
+    expect(nodes.map((n) => n.id)).toEqual(['l1', 'l2', 'cp1', 'l3']);
+    const cpNode = nodes.find((n) => n.id === 'cp1');
+    expect(cpNode?.nodeType).toBe('checkpoint');
+    if (cpNode?.nodeType === 'checkpoint') {
+      expect(cpNode.afterLessonId).toBe('l2');
+    }
+  });
+
+  it('places a checkpoint with no lessonIds after the last lesson', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open' });
+    const lessons = [
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
+    ];
+    const checkpoint = makeExamDate({ id: 'cp1', courseId: 'c1' });
+    const nodes = buildPath(course, lessons, [checkpoint], new Map());
+    expect(nodes.map((n) => n.id)).toEqual(['l1', 'l2', 'cp1']);
+    const cpNode = nodes.find((n) => n.id === 'cp1');
+    if (cpNode?.nodeType === 'checkpoint') {
+      expect(cpNode.afterLessonId).toBe('l2');
+    }
+  });
+
+  it('renders a checkpoint with no lessons at all (afterLessonId null)', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open' });
+    const checkpoint = makeExamDate({ id: 'cp1', courseId: 'c1' });
+    const nodes = buildPath(course, [], [checkpoint], new Map());
+    expect(nodes.map((n) => n.id)).toEqual(['cp1']);
+    const cpNode = nodes[0];
+    if (cpNode.nodeType === 'checkpoint') {
+      expect(cpNode.afterLessonId).toBeNull();
+    }
+  });
+
+  it('computes lesson status from supplied cards', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'semi-linear' });
+    const l1 = makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 });
+    const l2 = makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 });
+    const lessons = [l1, l2];
+    const cardsById = new Map<string, Card[]>([
+      ['l1', [makeCard({ id: 'a', deckId: 'd', state: 2 })]], // served -> completed
+      ['l2', [makeCard({ id: 'b', deckId: 'd', state: 0 })]], // locked anyway
+    ]);
+    const nodes = buildPath(course, lessons, [], cardsById);
+    const n1 = nodes.find((n) => n.id === 'l1');
+    const n2 = nodes.find((n) => n.id === 'l2');
+    if (n1?.nodeType === 'lesson') expect(n1.status).toBe('completed');
+    if (n2?.nodeType === 'lesson') expect(n2.status).toBe('locked');
+  });
+
+  it('orders multiple checkpoints sharing a slot deterministically', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open' });
+    const lessons = [
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
+    ];
+    const cp1 = makeExamDate({ id: 'cp1', courseId: 'c1', lessonIds: ['l1'] });
+    const cp2 = makeExamDate({ id: 'cp2', courseId: 'c1', lessonIds: ['l1'] });
+    const nodes = buildPath(course, lessons, [cp1, cp2], new Map());
+    expect(nodes.map((n) => n.id)).toEqual(['l1', 'cp1', 'cp2', 'l2']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pathPosition
+// ---------------------------------------------------------------------------
+
+describe('pathPosition', () => {
+  it('counts non-extension lessons in the total', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open' });
+    const lessons = [
+      makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+      makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
+      makeLesson({ id: 'ext', courseId: 'c1', orderIndex: 2, isExtension: true }),
+    ];
+    const nodes = buildPath(course, lessons, [], new Map());
+    const pos = pathPosition(nodes);
+    expect(pos.total).toBe(2); // extension excluded
+  });
+
+  it('counts completed and available lessons as reached, not locked ones', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'semi-linear' });
+    const l1 = makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }); // first core -> available/completed
+    const l2 = makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1, unlockedAt: 5 }); // available
+    const l3 = makeLesson({ id: 'l3', courseId: 'c1', orderIndex: 2 }); // locked
+    const lessons = [l1, l2, l3];
+    const cardsById = new Map<string, Card[]>([
+      ['l1', [makeCard({ id: 'a', deckId: 'd', state: 2 })]], // completed
+    ]);
+    const nodes = buildPath(course, lessons, [], cardsById);
+    const pos = pathPosition(nodes);
+    expect(pos.total).toBe(3);
+    expect(pos.reached).toBe(2); // l1 completed + l2 available; l3 locked
+  });
+
+  it('excludes checkpoint nodes from position counts', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open' });
+    const lessons = [makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 })];
+    const checkpoint = makeExamDate({ id: 'cp1', courseId: 'c1' });
+    const nodes = buildPath(course, lessons, [checkpoint], new Map());
+    const pos = pathPosition(nodes);
+    expect(pos.total).toBe(1);
+    expect(pos.reached).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Registry
+// ---------------------------------------------------------------------------
+
+describe('KNOWN_NODE_TYPES', () => {
+  it('contains lesson and checkpoint', () => {
+    expect(KNOWN_NODE_TYPES).toContain('lesson');
+    expect(KNOWN_NODE_TYPES).toContain('checkpoint');
+  });
+
+  it('every built path node has a known node type', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open' });
+    const lessons = [makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 })];
+    const checkpoint = makeExamDate({ id: 'cp1', courseId: 'c1' });
+    const nodes: PathNode[] = buildPath(course, lessons, [checkpoint], new Map());
+    for (const node of nodes) {
+      expect(KNOWN_NODE_TYPES).toContain(node.nodeType);
+    }
+  });
+});

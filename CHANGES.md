@@ -81,6 +81,26 @@ is no user-visible change yet — the UI is delivered in a later stage.
   cases (disallowed host and `javascript:` src both stripped), the `allowEmbeds`
   guard, collapsible rendering, and note ordering/rendering.
 
+### Course path and data layer (UI groundwork)
+
+- Added `src/state/useCourseData.ts`: reactive Dexie live-query hooks for courses,
+  lessons, notes, course/lesson cards, practice nodes and exam dates, mirroring
+  `useData.ts`. `useLessonCards` unions primary-lesson cards with
+  `LessonCardLink`-linked cards, de-duplicated by id.
+- Added `CourseSummary` and the pure `computeCourseSummaries` (lesson/card counts,
+  mastery, unreviewed, eligible), computed with the Course as the `SchedulerConfig`;
+  extension-lesson cards are excluded from all counts and orphaned card sets are
+  guarded. Plus `useCourseSummaries` and the aggregated `useCourseDashboardData`.
+- Added `src/course/path.ts`: pure course-path logic — live linear release-date
+  cascade (skipping extension lessons), lesson unlock resolution for open/linear/
+  semi-linear modes, lesson status, path assembly with derived checkpoint
+  placement, and the curriculum "Lesson X of N" position.
+- Added presentational path-node components under `src/components/course/` (lesson
+  node, checkpoint marker, connecting line) and a registry-pattern renderer that
+  falls back to an "Unrecognised step" placeholder for unknown node types, so a
+  course exported by a future build still renders.
+- Added tests for `computeCourseSummaries` and the full path module.
+
 ## 0.0.3 — Simple learn mode, card types, and touch-first polish
 
 - Added `useStudyMode` hook (`src/state/studyMode.ts`) with `fsrs` and `simple` modes, persisted to `localStorage`.
