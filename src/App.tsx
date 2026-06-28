@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
-import { createHashRouter, RouterProvider } from 'react-router-dom';
+import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './state/ThemeContext';
 import { AccentProvider } from './state/AccentContext';
 import { FontScaleProvider } from './state/FontScaleContext';
@@ -30,7 +30,6 @@ function RouterWithQuotaWarning() {
 // chunks so the dashboard loads quickly. Settings is intentionally eager: it is tiny
 // and pulls no heavy dependencies, so lazy-loading it only added a needless chunk
 // round-trip and Suspense flash when switching tabs.
-const DeckView = lazy(() => import('./pages/DeckView').then((m) => ({ default: m.DeckView })));
 const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default: m.LearnMode })));
 const CardEditor = lazy(() => import('./pages/CardEditor').then((m) => ({ default: m.CardEditor })));
 const DeckSettings = lazy(() => import('./pages/DeckSettings').then((m) => ({ default: m.DeckSettings })));
@@ -59,11 +58,7 @@ const router = createHashRouter([
       { index: true, element: <Dashboard /> },
       {
         path: 'deck/:deckId',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <DeckView />
-          </Suspense>
-        ),
+        element: <Navigate to="/" replace />,
       },
       { path: 'settings', element: <Settings /> },
       { path: 'search', element: <SearchPage /> },

@@ -72,7 +72,7 @@ export function CourseCard({ course, summary, onClick }: CourseCardProps) {
             <span>
               {lessonCount} lesson{lessonCount === 1 ? '' : 's'} · {cardCount} card{cardCount === 1 ? '' : 's'}
             </span>
-            <span className="tabular">
+            <span className="tabular-nums">
               {Math.round(mastery * 100)}% {progressNoun(course)}
             </span>
           </div>

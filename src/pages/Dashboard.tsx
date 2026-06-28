@@ -176,7 +176,7 @@ function EmptyState({ motionMultiplier }: { motionMultiplier?: number }) {
         </motion.div>
         <h2 className="mb-2 font-display text-2xl">No courses yet</h2>
         <p className="max-w-sm text-ink-soft">
-          Create your first course to begin building a revision schedule tuned to your exam.
+          Your courses will appear here.
         </p>
       </div>
     </motion.div>
