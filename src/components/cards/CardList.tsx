@@ -43,7 +43,7 @@ interface CardListProps {
   cards: Card[];
   deck: Deck;
   allDecks: Deck[];
-  onNewCard: () => void;
+  onNewCard?: () => void;
   onEditCard: (card: Card) => void;
 }
 
@@ -308,10 +308,12 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
               Import
             </Button>
           )}
-          <Button variant="primary" size="sm" onClick={onNewCard}>
-            <PlusIcon width={16} height={16} />
-            New card
-          </Button>
+          {onNewCard && (
+            <Button variant="primary" size="sm" onClick={onNewCard}>
+              <PlusIcon width={16} height={16} />
+              New card
+            </Button>
+          )}
         </div>
       </div>
 
@@ -579,11 +581,15 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
 
       {cards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
-          <p className="mb-4 text-ink-soft">This deck has no cards yet.</p>
-          <Button variant="primary" onClick={onNewCard}>
-            <PlusIcon width={18} height={18} />
-            Add your first card
-          </Button>
+          <p className={onNewCard ? 'mb-4 text-ink-soft' : 'text-ink-soft'}>
+            This deck has no cards yet.
+          </p>
+          {onNewCard && (
+            <Button variant="primary" onClick={onNewCard}>
+              <PlusIcon width={18} height={18} />
+              Add your first card
+            </Button>
+          )}
         </div>
       ) : (
         <CardListBody

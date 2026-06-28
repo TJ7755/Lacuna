@@ -101,6 +101,21 @@ is no user-visible change yet — the UI is delivered in a later stage.
   course exported by a future build still renders.
 - Added tests for `computeCourseSummaries` and the full path module.
 
+### Course and lesson pages (UI groundwork)
+
+- Add the CoursePath page (route `/course/:courseId`): renders the lesson path with
+  per-segment completion styling, the nearest upcoming exam date, and curriculum
+  position and mastery shown as distinct labelled metrics; courses with exactly one
+  lesson render the lesson inline instead of a one-item path.
+- Add the LessonView page (route `/course/:courseId/lesson/:lessonId`, also rendered
+  inline for single-lesson courses): full notes CRUD (add, edit, two-step inline
+  delete, up/down reorder) over the Phase 3 note components, plus a read-only card
+  list. A temporary Study control bridges to the existing deck-based learn flow until
+  a course/lesson-aware learn mode lands.
+- Make `CardList`'s "New card" action optional so the lesson card list can omit it
+  until lesson card creation arrives (Phase 5).
+- Wire both pages as lazy-loaded routes in `App.tsx`.
+
 ## 0.0.3 — Simple learn mode, card types, and touch-first polish
 
 - Added `useStudyMode` hook (`src/state/studyMode.ts`) with `fsrs` and `simple` modes, persisted to `localStorage`.
