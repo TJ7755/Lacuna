@@ -1,14 +1,13 @@
-import { useState, useCallback, useMemo, memo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useTheme } from '../../state/ThemeContext';
-import { useDecks, useDeckSummaries, useFolders, useStudyStats } from '../../state/useData';
+import { useStudyStats } from '../../state/useData';
 import { useSidebarSettings } from '../../state/sidebarSettings';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import { useToast } from '../ui/Toast';
-import { Button } from '../ui/Button';
 import {
+  CardsIcon,
   ChartIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -16,20 +15,16 @@ import {
   DashboardIcon,
   FlameIcon,
   FlaskIcon,
-  FolderIcon,
   HelpIcon,
   MoonIcon,
   PlayIcon,
-  PlusIcon,
   SearchIcon,
   SettingsIcon,
   ShareIcon,
   SunIcon,
-  TrashIcon,
 } from '../ui/icons';
-import { buildFolderTree, wouldCreateCycle, type FolderNode } from '../../db/folderTree';
-import { moveFolder, moveDeckToFolder, createFolder, deleteFolder } from '../../db/repository';
-import type { Folder, Deck } from '../../db/types';
+import { useCourses, useCourseSummaries, useAllLessons } from '../../state/useCourseData';
+import type { Lesson } from '../../db/types';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -115,225 +110,181 @@ function StudyStreakBadge({ collapsed }: { collapsed: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// Drag-and-drop helpers
+// Lesson item (inside an expanded course row)
 // ---------------------------------------------------------------------------
 
-type DragItem = { type: 'folder'; id: string } | { type: 'deck'; id: string };
-
-function setDragData(e: React.DragEvent, item: DragItem) {
-  e.dataTransfer.setData('application/json', JSON.stringify(item));
-  e.dataTransfer.effectAllowed = 'move';
-}
-
-function getDragData(e: React.DragEvent): DragItem | null {
-  try {
-    const raw = e.dataTransfer.getData('application/json');
-    if (!raw) return null;
-    return JSON.parse(raw) as DragItem;
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Folder tree node (recursive)
-// ---------------------------------------------------------------------------
-
-interface FolderTreeNodeProps {
-  folder: Folder;
-  childNodes: FolderNode[];
-  depth: number;
-  decksByFolder: Map<string | null, Deck[]>;
-  summaries: Record<string, { count: number; mastery: number; unreviewed: number; eligible: number }> | undefined;
-  location: ReturnType<typeof useLocation>;
-  expanded: Set<string>;
-  onToggle: (id: string) => void;
-  collapsed: boolean;
+function LessonItem({
+  lesson,
+  compact,
+}: {
+  lesson: Lesson;
   compact: boolean;
-  m: number;
-  allFolders: Folder[];
-  onMoveFolder: (folderId: string, parentId: string | null) => void;
-  onMoveDeck: (deckId: string, folderId: string | null) => void;
-  onCreateSubfolder: (parentId: string) => void;
-  onDeleteFolder: (id: string) => void;
-  dragOverId: string | null;
-  setDragOverId: (id: string | null) => void;
+}) {
+  return (
+    <NavLink
+      to={`/course/${lesson.courseId}/lesson/${lesson.id}`}
+      className={({ isActive }) =>
+        cn(
+          'flex min-h-10 items-center gap-3 rounded-lg transition-all duration-150',
+          compact ? 'py-1.5 pl-9 pr-3 text-xs' : 'py-2 pl-10 pr-3 text-sm',
+          isActive
+            ? 'bg-accent-soft text-accent'
+            : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+        )
+      }
+    >
+      <span
+        className={cn(
+          'shrink-0 rounded-full bg-current opacity-30',
+          compact ? 'h-1.5 w-1.5' : 'h-2 w-2',
+        )}
+      />
+      <span className="truncate">{lesson.name}</span>
+    </NavLink>
+  );
 }
 
-const FolderTreeNode = memo(function FolderTreeNode({
-  folder,
-  childNodes,
-  depth,
-  decksByFolder,
-  summaries,
-  location,
+// ---------------------------------------------------------------------------
+// Course row — plain link for single-lesson courses; collapsible for multi.
+// ---------------------------------------------------------------------------
+
+const CourseRow = memo(function CourseRow({
+  courseId,
+  courseName,
+  lessons,
+  eligible,
   expanded,
   onToggle,
   collapsed,
   compact,
   m,
-  allFolders,
-  onMoveFolder,
-  onMoveDeck,
-  onCreateSubfolder,
-  onDeleteFolder,
-  dragOverId,
-  setDragOverId,
-}: FolderTreeNodeProps) {
-  const isExpanded = expanded.has(folder.id);
-  const folderDecks = decksByFolder.get(folder.id) ?? [];
-  const indent = collapsed ? 0 : depth * 12;
-  const isDragOver = dragOverId === folder.id;
+}: {
+  courseId: string;
+  courseName: string;
+  lessons: Lesson[];
+  eligible: number;
+  expanded: Set<string>;
+  onToggle: (id: string) => void;
+  collapsed: boolean;
+  compact: boolean;
+  m: number;
+}) {
+  const location = useLocation();
+  const isMultiLesson = lessons.length > 1;
+  const isExpanded = expanded.has(courseId);
+  const isCourseActive =
+    location.pathname === `/course/${courseId}` ||
+    location.pathname.startsWith(`/course/${courseId}/`);
 
-  const handleDragOver = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const item = getDragData(e);
-      if (!item) return;
-      if (item.type === 'folder' && wouldCreateCycle(item.id, folder.id, allFolders)) {
-        e.dataTransfer.dropEffect = 'none';
-        return;
-      }
-      if (item.type === 'folder' && item.id === folder.id) {
-        e.dataTransfer.dropEffect = 'none';
-        return;
-      }
-      e.dataTransfer.dropEffect = 'move';
-      setDragOverId(folder.id);
-    },
-    [folder.id, allFolders, setDragOverId],
-  );
-
-  const handleDragLeave = useCallback(() => {
-    setDragOverId(null);
-  }, [setDragOverId]);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDragOverId(null);
-      const item = getDragData(e);
-      if (!item) return;
-      if (item.type === 'folder') {
-        if (wouldCreateCycle(item.id, folder.id, allFolders)) return;
-        if (item.id === folder.id) return;
-        onMoveFolder(item.id, folder.id);
-      } else if (item.type === 'deck') {
-        onMoveDeck(item.id, folder.id);
-      }
-    },
-    [folder.id, allFolders, onMoveFolder, onMoveDeck, setDragOverId],
-  );
-
-  return (
-    <div>
-      {/* Folder header row */}
-      <div
-        draggable={!collapsed}
-        onDragStart={(e) => setDragData(e, { type: 'folder', id: folder.id })}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+  const eligibleBadge =
+    eligible > 0 ? (
+      <span
         className={cn(
-          'relative rounded-lg transition-colors',
-          isDragOver && 'bg-accent/10',
+          'ml-auto shrink-0 rounded-full bg-accent/10 px-1.5 py-0 text-[10px] font-medium tabular text-accent',
+          compact && 'text-[9px]',
         )}
       >
-        <div
-          className={cn(
-            'group flex w-full min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
+        {eligible}
+      </span>
+    ) : null;
+
+  // Collapsed sidebar: icon-only link to the course page for every course.
+  if (collapsed) {
+    return (
+      <NavLink
+        to={`/course/${courseId}`}
+        title={courseName}
+        className={() =>
+          cn(
+            'flex min-h-11 items-center justify-center rounded-lg transition-all duration-150',
+            compact ? 'py-1.5' : 'py-2',
+            isCourseActive
+              ? 'bg-accent-soft text-accent'
+              : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+          )
+        }
+      >
+        <CardsIcon
+          width={compact ? 14 : 16}
+          height={compact ? 14 : 16}
+          className="shrink-0"
+        />
+      </NavLink>
+    );
+  }
+
+  // Single-lesson course: plain NavLink, no expander.
+  if (!isMultiLesson) {
+    return (
+      <NavLink
+        to={`/course/${courseId}`}
+        className={({ isActive }) =>
+          cn(
+            'flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
             compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
-            collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-            'text-ink-soft hover:bg-ink/5 hover:text-ink cursor-pointer',
-          )}
-          style={{ paddingLeft: collapsed ? undefined : `${12 + indent}px` }}
-          onClick={() => onToggle(folder.id)}
-          title={collapsed ? folder.name : undefined}
-          role="button"
-          aria-expanded={isExpanded}
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onToggle(folder.id);
-            }
-          }}
-        >
-          {!collapsed && (
-            <motion.span
-              animate={{ rotate: isExpanded ? 0 : -90 }}
-              transition={{ duration: 0.15 * m }}
-              className="shrink-0 text-ink-faint"
-            >
-              <ChevronDownIcon width={12} height={12} />
-            </motion.span>
-          )}
-          <FolderIcon width={compact ? 14 : 16} height={compact ? 14 : 16} />
-          {!collapsed && (
-            <span className="flex flex-1 items-center gap-2 min-w-0">
-              <span className="truncate">{folder.name}</span>
-              <span className={cn(
-                'ml-auto shrink-0 text-[10px] text-ink-faint',
-                compact && 'text-[9px]',
-              )}>
-                {folderDecks.length}
-              </span>
-            </span>
-          )}
-          {!collapsed && (
-            <span className="ml-auto flex items-center opacity-0 transition-opacity group-hover:opacity-100">
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCreateSubfolder(folder.id);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.stopPropagation();
-                    onCreateSubfolder(folder.id);
-                  }
-                }}
-                title="Create subfolder"
-                className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-accent hover:bg-accent-soft cursor-pointer"
-                aria-label="Create subfolder"
-              >
-                <PlusIcon width={12} height={12} />
-              </span>
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteFolder(folder.id);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.stopPropagation();
-                    onDeleteFolder(folder.id);
-                  }
-                }}
-                title="Delete folder"
-                className="shrink-0 rounded p-1 text-ink-faint transition-colors hover:text-negative hover:bg-negative/10 cursor-pointer"
-                aria-label="Delete folder"
-              >
-                <TrashIcon width={12} height={12} />
-              </span>
-            </span>
-          )}
-        </div>
-        {/* Drop indicator */}
-        {isDragOver && (
-          <div className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-accent" />
+            'hover:translate-x-0.5',
+            isActive
+              ? 'bg-accent-soft text-accent'
+              : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+          )
+        }
+      >
+        <CardsIcon
+          width={compact ? 14 : 16}
+          height={compact ? 14 : 16}
+          className="shrink-0"
+        />
+        <span className="flex flex-1 items-center gap-2 min-w-0">
+          <span className="truncate">{courseName}</span>
+          {eligibleBadge}
+        </span>
+      </NavLink>
+    );
+  }
+
+  // Multi-lesson course: collapsible header with lesson list beneath.
+  return (
+    <div>
+      <div
+        className={cn(
+          'group flex w-full min-h-11 cursor-pointer items-center gap-3 rounded-lg transition-all duration-150',
+          compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
+          'hover:translate-x-0.5',
+          isCourseActive
+            ? 'bg-accent-soft text-accent'
+            : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
         )}
+        onClick={() => onToggle(courseId)}
+        role="button"
+        aria-expanded={isExpanded}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle(courseId);
+          }
+        }}
+      >
+        <motion.span
+          animate={{ rotate: isExpanded ? 0 : -90 }}
+          transition={{ duration: 0.15 * m }}
+          className="shrink-0 text-ink-faint"
+        >
+          <ChevronDownIcon width={12} height={12} />
+        </motion.span>
+        <CardsIcon
+          width={compact ? 14 : 16}
+          height={compact ? 14 : 16}
+          className="shrink-0"
+        />
+        <span className="flex flex-1 items-center gap-2 min-w-0">
+          <span className="truncate">{courseName}</span>
+          {eligibleBadge}
+        </span>
       </div>
 
-      {/* Expanded content: decks + child folders */}
       <AnimatePresence>
-        {isExpanded && !collapsed && (
+        {isExpanded && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -341,42 +292,8 @@ const FolderTreeNode = memo(function FolderTreeNode({
             transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            {/* Decks in this folder */}
-            {folderDecks.map((deck) => (
-              <DeckItem
-                key={deck.id}
-                deck={deck}
-                depth={depth + 1}
-                summaries={summaries}
-                location={location}
-                compact={compact}
-                onMoveDeck={onMoveDeck}
-                dragOverId={dragOverId}
-                setDragOverId={setDragOverId}
-              />
-            ))}
-            {/* Child folders */}
-            {childNodes.map((child) => (
-              <FolderTreeNode
-                key={child.folder.id}
-                {...child}
-                childNodes={child.children}
-                decksByFolder={decksByFolder}
-                summaries={summaries}
-                location={location}
-                expanded={expanded}
-                onToggle={onToggle}
-                collapsed={collapsed}
-                compact={compact}
-                m={m}
-                allFolders={allFolders}
-                onMoveFolder={onMoveFolder}
-                onMoveDeck={onMoveDeck}
-                onCreateSubfolder={onCreateSubfolder}
-                onDeleteFolder={onDeleteFolder}
-                dragOverId={dragOverId}
-                setDragOverId={setDragOverId}
-              />
+            {lessons.map((lesson) => (
+              <LessonItem key={lesson.id} lesson={lesson} compact={compact} />
             ))}
           </motion.div>
         )}
@@ -386,217 +303,43 @@ const FolderTreeNode = memo(function FolderTreeNode({
 });
 
 // ---------------------------------------------------------------------------
-// Deck item (draggable, within folder tree)
-// ---------------------------------------------------------------------------
-
-function DeckItem({
-  deck,
-  depth,
-  summaries,
-  location,
-  compact,
-  onMoveDeck,
-  dragOverId,
-  setDragOverId,
-}: {
-  deck: Deck;
-  depth: number;
-  summaries: Record<string, { count: number; mastery: number; unreviewed: number; eligible: number }> | undefined;
-  location: ReturnType<typeof useLocation>;
-  compact: boolean;
-  onMoveDeck: (deckId: string, folderId: string | null) => void;
-  dragOverId: string | null;
-  setDragOverId: (id: string | null) => void;
-}) {
-  const base = `/deck/${deck.id}`;
-  const active = location.pathname === base || location.pathname.startsWith(`${base}/`);
-  const eligible = summaries?.[deck.id]?.eligible ?? 0;
-  const indent = depth * 12;
-
-  const handleDragOver = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const item = getDragData(e);
-      if (!item || item.type !== 'deck') return;
-      e.dataTransfer.dropEffect = 'move';
-      setDragOverId(`deck-${deck.id}`);
-    },
-    [deck.id, setDragOverId],
-  );
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDragOverId(null);
-      const item = getDragData(e);
-      if (!item || item.type !== 'deck') return;
-      // Dropping a deck onto another deck moves it to the same folder
-      onMoveDeck(item.id, deck.folderId ?? null);
-    },
-    [deck.folderId, onMoveDeck, setDragOverId],
-  );
-
-  return (
-    <div
-      draggable
-      onDragStart={(e) => setDragData(e, { type: 'deck', id: deck.id })}
-      onDragOver={handleDragOver}
-      onDragLeave={() => setDragOverId(null)}
-      onDrop={handleDrop}
-      className={cn(
-        'relative rounded-lg transition-colors',
-        dragOverId === `deck-${deck.id}` && 'bg-accent/10',
-      )}
-    >
-      <NavLink
-        to={`/deck/${deck.id}`}
-        className={cn(
-          'flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
-          compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
-          active
-            ? 'bg-accent-soft text-accent'
-            : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-        )}
-        style={{ paddingLeft: `${12 + indent}px` }}
-      >
-        <span
-          className={cn(
-            'shrink-0 rounded-full border',
-            compact ? 'h-2 w-2' : 'h-2.5 w-2.5',
-            active ? 'border-accent bg-accent' : 'border-transparent bg-line-strong',
-          )}
-          style={deck.colour ? { backgroundColor: deck.colour } : undefined}
-        />
-        <span className="flex flex-1 items-center gap-2 min-w-0">
-          <span className="truncate">{deck.name}</span>
-          {eligible > 0 && (
-            <span className={cn(
-              'ml-auto shrink-0 rounded-full bg-accent/10 px-1.5 py-0 text-[10px] font-medium tabular text-accent',
-              compact && 'text-[9px]',
-            )}>
-              {eligible}
-            </span>
-          )}
-          {deck.archived && (
-            <span className={cn(
-              'ml-1 shrink-0 rounded border border-ink/10 px-1 text-[9px] text-ink-faint',
-              compact && 'hidden',
-            )}>
-              Archived
-            </span>
-          )}
-        </span>
-      </NavLink>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Top-level drop zone (for dropping items to top level)
-// ---------------------------------------------------------------------------
-
-function TopLevelDropZone({
-  onMoveFolder,
-  onMoveDeck,
-  dragOverId,
-  setDragOverId,
-  children,
-}: {
-  onMoveFolder: (folderId: string, parentId: string | null) => void;
-  onMoveDeck: (deckId: string, folderId: string | null) => void;
-  dragOverId: string | null;
-  setDragOverId: (id: string | null) => void;
-  children: React.ReactNode;
-}) {
-  const handleDragOver = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const item = getDragData(e);
-      if (!item) return;
-      e.dataTransfer.dropEffect = 'move';
-      setDragOverId('top-level');
-    },
-    [setDragOverId],
-  );
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setDragOverId(null);
-      const item = getDragData(e);
-      if (!item) return;
-      if (item.type === 'folder') {
-        onMoveFolder(item.id, null);
-      } else {
-        onMoveDeck(item.id, null);
-      }
-    },
-    [onMoveFolder, onMoveDeck, setDragOverId],
-  );
-
-  return (
-    <div
-      onDragOver={handleDragOver}
-      onDragLeave={() => setDragOverId(null)}
-      onDrop={handleDrop}
-      className={cn(
-        'relative rounded-lg transition-colors',
-        dragOverId === 'top-level' && 'bg-accent/10',
-      )}
-    >
-      {children}
-      {dragOverId === 'top-level' && (
-        <div className="absolute inset-x-0 top-0 h-0.5 rounded-full bg-accent" />
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main Sidebar component
 // ---------------------------------------------------------------------------
 
 export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
-  const decks = useDecks();
-  const summaries = useDeckSummaries();
-  const location = useLocation();
+  const courses = useCourses();
+  const summaries = useCourseSummaries();
+  const allLessons = useAllLessons();
   const [sidebarSettings] = useSidebarSettings();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const { notify } = useToast();
-  const folders = useFolders();
 
-  const [expandedSidebarFolders, setExpandedSidebarFolders] = useState<Set<string>>(new Set());
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [creatingSubfolder, setCreatingSubfolder] = useState<string | null>(null);
-  const [subfolderName, setSubfolderName] = useState('');
-  const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
 
-  // Filter archived decks unless the user explicitly wants them in the sidebar.
-  const visibleDecks = useMemo(
-    () => decks?.filter((d) => sidebarSettings.showArchived || !d.archived) ?? [],
-    [decks, sidebarSettings.showArchived],
+  // Active (non-archived) courses, in creation order.
+  const activeCourses = useMemo(
+    () => courses?.filter((c) => !c.archived) ?? [],
+    [courses],
   );
-  const allFolders = useMemo(() => folders ?? [], [folders]);
 
-  const folderTree = useMemo(() => buildFolderTree(allFolders), [allFolders]);
-
-  const decksByFolder = useMemo(() => {
-    const map = new Map<string | null, Deck[]>();
-    for (const deck of visibleDecks) {
-      const key = deck.folderId ?? null;
-      const list = map.get(key) ?? [];
-      list.push(deck);
-      map.set(key, list);
+  // Group lessons by course, preserving per-course orderIndex order.
+  const lessonsByCourse = useMemo(() => {
+    const map = new Map<string, Lesson[]>();
+    for (const lesson of allLessons ?? []) {
+      const list = map.get(lesson.courseId) ?? [];
+      list.push(lesson);
+      map.set(lesson.courseId, list);
+    }
+    // Ensure per-course ordering is correct regardless of the global sort order.
+    for (const [, list] of map) {
+      list.sort((a, b) => a.orderIndex - b.orderIndex);
     }
     return map;
-  }, [visibleDecks]);
+  }, [allLessons]);
 
-  function toggleSidebarFolder(id: string) {
-    setExpandedSidebarFolders((prev) => {
+  function toggleCourse(id: string) {
+    setExpandedCourses((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
@@ -606,58 +349,6 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       return next;
     });
   }
-
-  const handleMoveFolder = useCallback(
-    async (folderId: string, parentId: string | null) => {
-      try {
-        await moveFolder(folderId, parentId);
-        notify('Folder moved.', 'positive');
-      } catch (err) {
-        notify(err instanceof Error ? err.message : 'Could not move folder.', 'negative');
-      }
-    },
-    [notify],
-  );
-
-  const handleMoveDeck = useCallback(
-    async (deckId: string, folderId: string | null) => {
-      try {
-        await moveDeckToFolder(deckId, folderId);
-        notify(folderId ? 'Deck moved to folder.' : 'Deck moved to top level.', 'positive');
-      } catch (err) {
-        notify(err instanceof Error ? err.message : 'Could not move deck.', 'negative');
-      }
-    },
-    [notify],
-  );
-
-  const handleCreateSubfolder = useCallback(
-    async (parentId: string) => {
-      if (!subfolderName.trim()) return;
-      try {
-        await createFolder(subfolderName, parentId);
-        setSubfolderName('');
-        setCreatingSubfolder(null);
-        notify('Subfolder created.', 'positive');
-      } catch (err) {
-        notify(err instanceof Error ? err.message : 'Could not create subfolder.', 'negative');
-      }
-    },
-    [subfolderName, notify],
-  );
-
-  const handleDeleteFolder = useCallback(
-    async (id: string) => {
-      try {
-        await deleteFolder(id);
-        setDeletingFolderId(null);
-        notify('Folder deleted.', 'neutral');
-      } catch (err) {
-        notify(err instanceof Error ? err.message : 'Could not delete folder.', 'negative');
-      }
-    },
-    [notify],
-  );
 
   return (
     <aside
@@ -674,18 +365,27 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           collapsed && 'justify-center px-0',
         )}
       >
-        <span className={cn(
-          'grid shrink-0 place-items-center rounded-xl bg-accent text-accent-fg',
-          sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
-        )}>
-          <FlaskIcon width={sidebarSettings.compactMode ? 18 : 20} height={sidebarSettings.compactMode ? 18 : 20} />
+        <span
+          className={cn(
+            'grid shrink-0 place-items-center rounded-xl bg-accent text-accent-fg',
+            sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
+          )}
+        >
+          <FlaskIcon
+            width={sidebarSettings.compactMode ? 18 : 20}
+            height={sidebarSettings.compactMode ? 18 : 20}
+          />
         </span>
         {!collapsed && (
           <div className="leading-tight">
-            <div className={cn(
-              'font-display tracking-tight',
-              sidebarSettings.compactMode ? 'text-lg' : 'text-xl',
-            )}>Lacuna</div>
+            <div
+              className={cn(
+                'font-display tracking-tight',
+                sidebarSettings.compactMode ? 'text-lg' : 'text-xl',
+              )}
+            >
+              Lacuna
+            </div>
             <div className="text-[11px] uppercase tracking-[0.18em] text-ink-faint">
               Spaced revision
             </div>
@@ -694,10 +394,12 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       </div>
 
       {/* Primary nav */}
-      <nav className={cn(
-        'flex flex-col gap-1 px-3',
-        sidebarSettings.compactMode && 'gap-0',
-      )}>
+      <nav
+        className={cn(
+          'flex flex-col gap-1 px-3',
+          sidebarSettings.compactMode && 'gap-0',
+        )}
+      >
         {sidebarSettings.navItems
           .filter((n) => n.visible)
           .map((n) => (
@@ -718,16 +420,22 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
               label={n.label}
               collapsed={collapsed}
               compact={sidebarSettings.compactMode}
-              streakBadge={n.id === 'learn' ? <StudyStreakBadge collapsed={collapsed} /> : undefined}
+              streakBadge={
+                n.id === 'learn' ? (
+                  <StudyStreakBadge collapsed={collapsed} />
+                ) : undefined
+              }
             />
           ))}
       </nav>
 
-      {/* Deck list — grouped by folder */}
-      <div className={cn(
-        'flex min-h-0 flex-1 flex-col px-3',
-        sidebarSettings.compactMode ? 'mt-3' : 'mt-6',
-      )}>
+      {/* Course list */}
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col px-3',
+          sidebarSettings.compactMode ? 'mt-3' : 'mt-6',
+        )}
+      >
         {!collapsed && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -738,146 +446,45 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
               sidebarSettings.compactMode ? 'text-[10px]' : 'text-[11px]',
             )}
           >
-            Decks
+            Courses
           </motion.div>
         )}
-        <div className={cn(
-          'flex min-h-0 flex-1 flex-col overflow-y-auto pb-2',
-          sidebarSettings.compactMode ? 'gap-0' : 'gap-0.5',
-        )}>
+        <div
+          className={cn(
+            'flex min-h-0 flex-1 flex-col overflow-y-auto pb-2',
+            sidebarSettings.compactMode ? 'gap-0' : 'gap-0.5',
+          )}
+        >
           <AnimatePresence initial={false}>
-            {/* Folder tree */}
-            <TopLevelDropZone
-              onMoveFolder={handleMoveFolder}
-              onMoveDeck={handleMoveDeck}
-              dragOverId={dragOverId}
-              setDragOverId={setDragOverId}
-            >
-              {folderTree.map((node, idx) => (
-                <motion.div
-                  key={node.folder.id}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  transition={{
-                    duration: 0.18 * m,
-                    delay: Math.min(idx * 0.02, 0.15) * m,
-                    ease: [0.16, 1, 0.3, 1],
-                  }}
-                  layout
-                >
-                  <FolderTreeNode
-                    {...node}
-                    childNodes={node.children}
-                    decksByFolder={decksByFolder}
-                    summaries={summaries}
-                    location={location}
-                    expanded={expandedSidebarFolders}
-                    onToggle={toggleSidebarFolder}
-                    collapsed={collapsed}
-                    compact={sidebarSettings.compactMode}
-                    m={m}
-                    allFolders={allFolders}
-                    onMoveFolder={handleMoveFolder}
-                    onMoveDeck={handleMoveDeck}
-                    onCreateSubfolder={(parentId) => {
-                      setCreatingSubfolder(parentId);
-                      setSubfolderName('');
-                    }}
-                    onDeleteFolder={(id) => setDeletingFolderId(id)}
-                    dragOverId={dragOverId}
-                    setDragOverId={setDragOverId}
-                  />
-                </motion.div>
-              ))}
-
-              {/* Ungrouped decks */}
-              {visibleDecks
-                .filter((d) => !d.folderId)
-                .map((deck) => (
-                  <DeckItem
-                    key={deck.id}
-                    deck={deck}
-                    depth={0}
-                    summaries={summaries}
-                    location={location}
-                    compact={sidebarSettings.compactMode}
-                    onMoveDeck={handleMoveDeck}
-                    dragOverId={dragOverId}
-                    setDragOverId={setDragOverId}
-                  />
-                ))}
-            </TopLevelDropZone>
-          </AnimatePresence>
-
-      {/* Folder delete confirmation dialog */}
-      <AnimatePresence>
-        {deletingFolderId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 * m }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-            onClick={() => setDeletingFolderId(null)}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 12, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.96 }}
-              transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-4 w-full max-w-sm rounded-2xl border border-line-strong bg-surface p-6 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="mb-2 font-display text-xl">Delete folder?</h3>
-              <p className="mb-6 text-sm text-ink-soft">
-                Deleting this folder will move all decks inside it to the top level. The
-                decks themselves will not be deleted.
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setDeletingFolderId(null)}>
-                  Cancel
-                </Button>
-                <Button variant="danger" onClick={() => void handleDeleteFolder(deletingFolderId)}>
-                  Delete folder
-                </Button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Subfolder creation inline */}
-      <AnimatePresence>
-        {creatingSubfolder && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden px-3 py-2"
-          >
-                <div className="flex items-center gap-2">
-                  <FolderIcon width={14} height={14} className="text-ink-faint" />
-                  <input
-                    autoFocus
-                    value={subfolderName}
-                    onChange={(e) => setSubfolderName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') void handleCreateSubfolder(creatingSubfolder);
-                      if (e.key === 'Escape') {
-                        setCreatingSubfolder(null);
-                        setSubfolderName('');
-                      }
-                    }}
-                    placeholder="Subfolder name"
-                    className="flex-1 rounded border border-line-strong bg-surface px-2 py-1 text-xs text-ink outline-none focus:border-accent"
-                  />
-                </div>
+            {activeCourses.map((course, idx) => (
+              <motion.div
+                key={course.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{
+                  duration: 0.18 * m,
+                  delay: Math.min(idx * 0.02, 0.15) * m,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                layout
+              >
+                <CourseRow
+                  courseId={course.id}
+                  courseName={course.name}
+                  lessons={lessonsByCourse.get(course.id) ?? []}
+                  eligible={summaries?.[course.id]?.eligible ?? 0}
+                  expanded={expandedCourses}
+                  onToggle={toggleCourse}
+                  collapsed={collapsed}
+                  compact={sidebarSettings.compactMode}
+                  m={m}
+                />
               </motion.div>
-            )}
+            ))}
           </AnimatePresence>
 
-          {visibleDecks.length === 0 && allFolders.length === 0 && !collapsed && (
+          {activeCourses.length === 0 && !collapsed && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -887,13 +494,13 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                 sidebarSettings.compactMode ? 'text-xs' : 'text-sm',
               )}
             >
-              {sidebarSettings.showArchived ? 'No decks yet.' : 'No active decks.'}
+              No courses yet.
             </motion.p>
           )}
         </div>
       </div>
 
-      {/* Footer: theme + collapse */}
+      {/* Footer: theme toggle + collapse button */}
       <div
         className={cn(
           'flex items-center gap-2 border-t border-line px-3',

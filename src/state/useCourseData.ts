@@ -41,6 +41,11 @@ export function useLessons(courseId: string | undefined): Lesson[] | undefined {
   );
 }
 
+/** All lessons across every course, ordered by orderIndex (for the sidebar tree). */
+export function useAllLessons(): Lesson[] | undefined {
+  return useLiveQuery(() => db.lessons.orderBy('orderIndex').toArray(), []);
+}
+
 export function useLesson(lessonId: string | undefined): Lesson | undefined {
   return useLiveQuery(
     () => (lessonId ? db.lessons.get(lessonId) : undefined),
