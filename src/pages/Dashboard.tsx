@@ -56,7 +56,7 @@ export function Dashboard() {
 
       {/* Motivation strip: streak, reviews today, seven-day time forecast */}
       {stats && activeCourses && activeCourses.length > 0 && (
-        <StudySignals stats={stats} />
+        <StudySignals stats={stats} courses={activeCourses} />
       )}
 
       {/* Global "study everything" entry point */}

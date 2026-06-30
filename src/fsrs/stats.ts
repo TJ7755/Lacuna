@@ -15,7 +15,8 @@ export const DEFAULT_REVIEW_SECONDS = 8;
 export const FORECAST_DAYS = 7;
 
 export interface DeckForecastSlice {
-  deckId: string;
+  /** The source ID used to group cards: courseId where set, otherwise deckId. */
+  sourceId: string;
   dueCount: number;
   newCount: number;
   minutes: number;
@@ -109,12 +110,12 @@ export function computeStudyStats(
   // Build a Map per forecast day for O(1) deck slice lookups.
   const deckMaps = forecast.map(() => new Map<string, DeckForecastSlice>());
 
-  function getDeckSlice(index: number, deckId: string): DeckForecastSlice {
+  function getDeckSlice(index: number, sourceId: string): DeckForecastSlice {
     const map = deckMaps[index];
-    let slice = map.get(deckId);
+    let slice = map.get(sourceId);
     if (!slice) {
-      slice = { deckId, dueCount: 0, newCount: 0, minutes: 0 };
-      map.set(deckId, slice);
+      slice = { sourceId, dueCount: 0, newCount: 0, minutes: 0 };
+      map.set(sourceId, slice);
       forecast[index].byDeck.push(slice);
     }
     return slice;
@@ -124,6 +125,8 @@ export function computeStudyStats(
     if (card.suspended) continue;
     const secondsPerReview = deckSeconds.get(card.deckId) ?? DEFAULT_REVIEW_SECONDS;
     const minutes = secondsPerReview / 60;
+    // Group by courseId where available (new model); fall back to deckId for legacy cards.
+    const sourceId = card.courseId ?? card.deckId;
 
     if (card.due === null || card.due === undefined) {
       // Never-reviewed card: count as new today only if not buried.
@@ -131,7 +134,7 @@ export function computeStudyStats(
       const slot = forecast[0];
       slot.newCount += 1;
       slot.minutes += minutes;
-      const slice = getDeckSlice(0, card.deckId);
+      const slice = getDeckSlice(0, sourceId);
       slice.newCount += 1;
       slice.minutes += minutes;
       continue;
@@ -146,7 +149,7 @@ export function computeStudyStats(
     if (!slot) continue;
     slot.dueCount += 1;
     slot.minutes += minutes;
-    const slice = getDeckSlice(index, card.deckId);
+    const slice = getDeckSlice(index, sourceId);
     slice.dueCount += 1;
     slice.minutes += minutes;
   }

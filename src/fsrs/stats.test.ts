@@ -115,7 +115,7 @@ describe('computeStudyStats — 7-day time forecast', () => {
     expect(forecast.reduce((s, d) => s + d.dueCount, 0)).toBe(0);
   });
 
-  it('groups forecast by deck in the byDeck breakdown', () => {
+  it('groups forecast by source (courseId if set, otherwise deckId) in the byDeck breakdown', () => {
     const cards = [
       card({ deckId: 'd1', due: NOW }),
       card({ deckId: 'd2', due: NOW }),
@@ -123,8 +123,9 @@ describe('computeStudyStats — 7-day time forecast', () => {
     ];
     const { forecast } = computeStudyStats(cards, new Map(), NOW);
     expect(forecast[0].byDeck).toHaveLength(2);
-    expect(forecast[0].byDeck.find((d) => d.deckId === 'd1')?.dueCount).toBe(1);
-    expect(forecast[0].byDeck.find((d) => d.deckId === 'd2')?.dueCount).toBe(1);
-    expect(forecast[1].byDeck.find((d) => d.deckId === 'd1')?.dueCount).toBe(1);
+    // No courseId set on these test cards, so sourceId falls back to deckId.
+    expect(forecast[0].byDeck.find((d) => d.sourceId === 'd1')?.dueCount).toBe(1);
+    expect(forecast[0].byDeck.find((d) => d.sourceId === 'd2')?.dueCount).toBe(1);
+    expect(forecast[1].byDeck.find((d) => d.sourceId === 'd1')?.dueCount).toBe(1);
   });
 });
