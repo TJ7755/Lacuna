@@ -324,6 +324,7 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
             cards={lessonCards}
             deck={lessonDeck}
             allDecks={[lessonDeck]}
+            hideHeader
             onEditCard={(card) =>
               navigate(`/deck/${lessonDeck.id}/cards/${card.id}/edit`)
             }

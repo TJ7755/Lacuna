@@ -45,9 +45,12 @@ interface CardListProps {
   allDecks: Deck[];
   onNewCard?: () => void;
   onEditCard: (card: Card) => void;
+  /** When true, suppresses the internal "Cards (N)" heading row. Use when the
+   *  parent already renders its own heading for the cards section. */
+  hideHeader?: boolean;
 }
 
-export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardListProps) {
+export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHeader = false }: CardListProps) {
   const { notify } = useToast();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -277,11 +280,13 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h2 className="font-display text-2xl">
-          Cards <span className="text-ink-faint">({cards.length})</span>
-        </h2>
-        <div className="ml-auto flex gap-2">
+      <div className={cn('mb-4 flex flex-wrap items-center gap-2', hideHeader && 'justify-end')}>
+        {!hideHeader && (
+          <h2 className="font-display text-2xl">
+            Cards <span className="text-ink-faint">({cards.length})</span>
+          </h2>
+        )}
+        <div className={cn('flex gap-2', !hideHeader && 'ml-auto')}>
           {cards.length > 0 && (
             <Button
               variant={selectMode ? 'primary' : 'secondary'}
