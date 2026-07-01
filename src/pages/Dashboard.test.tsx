@@ -26,6 +26,11 @@ vi.mock('../state/motionSpeed', () => ({
 vi.mock('../components/ui/icons', () => ({
   FlaskIcon: () => <svg data-testid="flask-icon" />,
   PlayIcon: () => <svg data-testid="play-icon" />,
+  PlusIcon: () => <svg data-testid="plus-icon" />,
+}));
+
+vi.mock('../components/course/NewCourseForm', () => ({
+  NewCourseForm: () => <div data-testid="new-course-form" />,
 }));
 
 vi.mock('../components/ui/Button', () => ({

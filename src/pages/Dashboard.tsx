@@ -1,12 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData } from '../state/useCourseData';
 import { StudySignals } from '../components/dashboard/StudySignals';
 import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
 import { Button } from '../components/ui/Button';
-import { FlaskIcon, PlayIcon } from '../components/ui/icons';
+import { FlaskIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
 import { CourseCard } from '../components/course/CourseCard';
+import { NewCourseForm } from '../components/course/NewCourseForm';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 
 export function Dashboard() {
@@ -18,6 +19,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const [creatingCourse, setCreatingCourse] = useState(false);
 
   // Sort by createdAt ascending so older courses appear first.
   const sortedCourses = useMemo(
@@ -46,13 +48,27 @@ export function Dashboard() {
       {/* Page header */}
       <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
         <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
-        <div className="relative">
-          <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">
-            Your revision
-          </p>
-          <h1 className="font-display text-4xl tracking-tight md:text-6xl">Courses</h1>
+        <div className="relative flex items-end justify-between gap-4">
+          <div>
+            <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">
+              Your revision
+            </p>
+            <h1 className="font-display text-4xl tracking-tight md:text-6xl">Courses</h1>
+          </div>
+          {activeCourses && activeCourses.length > 0 && (
+            <Button variant="primary" onClick={() => setCreatingCourse(true)}>
+              <PlusIcon width={16} height={16} />
+              New course
+            </Button>
+          )}
         </div>
       </header>
+
+      <AnimatePresence>
+        {creatingCourse && (
+          <NewCourseForm onClose={() => setCreatingCourse(false)} />
+        )}
+      </AnimatePresence>
 
       {/* Motivation strip: streak, reviews today, seven-day time forecast */}
       {stats && activeCourses && activeCourses.length > 0 && (
@@ -93,7 +109,7 @@ export function Dashboard() {
       {!activeCourses ? (
         <CourseSkeleton motionMultiplier={m} />
       ) : activeCourses.length === 0 ? (
-        <EmptyState motionMultiplier={m} />
+        <EmptyState motionMultiplier={m} onCreateCourse={() => setCreatingCourse(true)} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {activeCourses.map((course, i) => (
@@ -155,7 +171,13 @@ function CourseSkeleton({ motionMultiplier }: { motionMultiplier?: number }) {
   );
 }
 
-function EmptyState({ motionMultiplier }: { motionMultiplier?: number }) {
+function EmptyState({
+  motionMultiplier,
+  onCreateCourse,
+}: {
+  motionMultiplier?: number;
+  onCreateCourse: () => void;
+}) {
   const m = motionMultiplier ?? 1;
   return (
     <motion.div
@@ -175,9 +197,13 @@ function EmptyState({ motionMultiplier }: { motionMultiplier?: number }) {
           <FlaskIcon width={28} height={28} />
         </motion.div>
         <h2 className="mb-2 font-display text-2xl">No courses yet</h2>
-        <p className="max-w-sm text-ink-soft">
-          Your courses will appear here.
+        <p className="mb-6 max-w-sm text-ink-soft">
+          Start a course to organise your lessons and cards.
         </p>
+        <Button variant="primary" onClick={onCreateCourse}>
+          <PlusIcon width={16} height={16} />
+          New course
+        </Button>
       </div>
     </motion.div>
   );

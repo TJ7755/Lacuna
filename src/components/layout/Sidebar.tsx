@@ -18,12 +18,14 @@ import {
   HelpIcon,
   MoonIcon,
   PlayIcon,
+  PlusIcon,
   SearchIcon,
   SettingsIcon,
   ShareIcon,
   SunIcon,
 } from '../ui/icons';
 import { useCourses, useCourseSummaries, useAllLessons } from '../../state/useCourseData';
+import { NewCourseForm } from '../course/NewCourseForm';
 import type { Lesson } from '../../db/types';
 
 interface SidebarProps {
@@ -316,6 +318,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const m = speedMultiplier(motionSpeed);
 
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
+  const [creatingCourse, setCreatingCourse] = useState(false);
 
   // Active (non-archived) courses, in creation order.
   const activeCourses = useMemo(
@@ -441,12 +444,25 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 * m }}
-            className={cn(
-              'px-3 pb-2 uppercase tracking-[0.16em] text-ink-faint',
-              sidebarSettings.compactMode ? 'text-[10px]' : 'text-[11px]',
-            )}
+            className="flex items-center justify-between px-3 pb-2"
           >
-            Courses
+            <span
+              className={cn(
+                'uppercase tracking-[0.16em] text-ink-faint',
+                sidebarSettings.compactMode ? 'text-[10px]' : 'text-[11px]',
+              )}
+            >
+              Courses
+            </span>
+            <button
+              type="button"
+              onClick={() => setCreatingCourse(true)}
+              title="New course"
+              aria-label="New course"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
+            >
+              <PlusIcon width={13} height={13} />
+            </button>
           </motion.div>
         )}
         <div
@@ -538,6 +554,12 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
         </button>
       </div>
+
+      <AnimatePresence>
+        {creatingCourse && (
+          <NewCourseForm onClose={() => setCreatingCourse(false)} />
+        )}
+      </AnimatePresence>
     </aside>
   );
 }
