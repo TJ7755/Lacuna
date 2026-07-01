@@ -105,6 +105,22 @@ const router = createHashRouter([
           </Suspense>
         ),
       },
+      {
+        path: 'course/:courseId/lesson/:lessonId/cards/new',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <CardEditor />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/lesson/:lessonId/cards/:cardId/edit',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <CardEditor />
+          </Suspense>
+        ),
+      },
     ],
   },
   {

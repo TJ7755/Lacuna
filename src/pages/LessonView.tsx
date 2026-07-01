@@ -317,7 +317,14 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
 
         {lessonCards.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-line-strong py-12 text-center">
-            <p className="text-sm text-ink-soft">No cards in this lesson yet.</p>
+            <p className="mb-4 text-sm text-ink-soft">No cards in this lesson yet.</p>
+            <Button
+              variant="primary"
+              onClick={() => navigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
+            >
+              <PlusIcon width={18} height={18} />
+              Add your first card
+            </Button>
           </div>
         ) : lessonDeck ? (
           <CardList
@@ -325,8 +332,9 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
             deck={lessonDeck}
             allDecks={[lessonDeck]}
             hideHeader
+            onNewCard={() => navigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
             onEditCard={(card) =>
-              navigate(`/deck/${lessonDeck.id}/cards/${card.id}/edit`)
+              navigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
             }
           />
         ) : (

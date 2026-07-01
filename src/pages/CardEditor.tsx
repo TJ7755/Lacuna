@@ -2,11 +2,21 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCard, useCards, useDeck } from '../state/useData';
+import { useCourse, useLesson, useLessonCards } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
 import { TagInput } from '../components/ui/TagInput';
 import { useToast } from '../components/ui/Toast';
-import { checkDuplicate, createCard, createCardWithReverse, createBasicReversedPair, updateCard } from '../db/repository';
+import {
+  checkDuplicate,
+  createCard,
+  createCardWithReverse,
+  createBasicReversedPair,
+  createLessonCard,
+  createLessonCardWithReverse,
+  createLessonBasicReversedPair,
+  updateCard,
+} from '../db/repository';
 import { hasCloze } from '../components/markdown/cloze';
 import { ChevronLeftIcon, CheckIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
@@ -22,11 +32,25 @@ import type { Card, CardType } from '../db/types';
  * decides the mode.
  */
 export function CardEditor() {
-  const { deckId, cardId } = useParams<{ deckId: string; cardId?: string }>();
+  const { deckId, cardId, courseId, lessonId } = useParams<{
+    deckId?: string;
+    cardId?: string;
+    courseId?: string;
+    lessonId?: string;
+  }>();
+  // Lesson-scoped route (course/:courseId/lesson/:lessonId/cards/...) vs the
+  // original deck-scoped route (deck/:deckId/cards/...).
+  const lessonMode = Boolean(lessonId);
   const navigate = useNavigate();
   const { notify } = useToast();
 
   const deck = useDeck(deckId);
+  const course = useCourse(courseId);
+  const lesson = useLesson(lessonId);
+  const lessonCards = useLessonCards(lessonId);
+  // All cards in a migrated lesson share one backing deck; undefined until the
+  // lesson's first card is created.
+  const lessonDeckId = lessonCards?.[0]?.deckId;
   const editing = Boolean(cardId);
   const card = useCard(cardId);
   const deckCards = useCards(deckId);
@@ -41,7 +65,7 @@ export function CardEditor() {
   const [loaded, setLoaded] = useState(false);
   // Whether a stored draft was found and is offered for restoration.
   const [draftPrompt, setDraftPrompt] = useState(false);
-  const draftKeyRef = useRef(draftKey(deckId ?? '', cardId ?? 'new'));
+  const draftKeyRef = useRef(draftKey(lessonId ?? deckId ?? '', cardId ?? 'new'));
   const draftTimer = useRef<number>();
 
   // Re-arm the loaded latch whenever the card being edited changes so direct
@@ -83,12 +107,15 @@ export function CardEditor() {
   }
   useEffect(() => () => window.clearTimeout(savedTimer.current), []);
 
-  // Existing tags across the deck, offered as suggestions in the tag input.
+  // Existing tags across the deck (or lesson, in lesson mode), offered as
+  // suggestions in the tag input.
   const tagSuggestions = useMemo(() => {
     const set = new Set<string>();
-    for (const c of deckCards ?? []) for (const t of c.tags ?? []) set.add(t);
+    for (const c of (lessonMode ? lessonCards : deckCards) ?? []) {
+      for (const t of c.tags ?? []) set.add(t);
+    }
     return [...set].sort();
-  }, [deckCards]);
+  }, [lessonMode, lessonCards, deckCards]);
 
   // Seed the form from the card being edited once it has loaded (new cards start blank).
   // If a draft exists, offer it instead of the persisted state.
@@ -156,9 +183,11 @@ export function CardEditor() {
     return () => window.clearTimeout(draftTimer.current);
   }, [loaded, type, front, back, tags, alsoReverse]);
 
-  // Check for duplicate cards whenever front/back/type changes.
+  // Check for duplicate cards whenever front/back/type changes. In lesson mode a
+  // fresh, empty lesson has no backing deck yet, so there is nothing to check against.
+  const duplicateCheckDeckId = lessonMode ? lessonDeckId : deckId;
   useEffect(() => {
-    if (!loaded || !deckId) return;
+    if (!loaded || !duplicateCheckDeckId) return;
     if (editing && !card) return;
     window.clearTimeout(duplicateTimer.current);
     duplicateTimer.current = window.setTimeout(async () => {
@@ -167,18 +196,24 @@ export function CardEditor() {
         setDuplicateWarning(null);
         return;
       }
-      const dup = await checkDuplicate(deckId, type, front, backValue, card?.id);
+      const dup = await checkDuplicate(duplicateCheckDeckId, type, front, backValue, card?.id);
       setDuplicateWarning(dup ?? null);
     }, 600);
     return () => window.clearTimeout(duplicateTimer.current);
-  }, [loaded, deckId, type, front, back, editing, card]);
+  }, [loaded, duplicateCheckDeckId, type, front, back, editing, card]);
 
   const deckPath = `/deck/${deckId}`;
+  const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
+  // Where Cancel, post-save navigation and the breadcrumb "back" target all point.
+  const backPath = lessonMode ? lessonPath : deckPath;
 
-  if (deck === undefined || (editing && card === undefined && !loaded)) {
+  if (
+    (lessonMode ? course === undefined || lesson === undefined || lessonCards === undefined : deck === undefined) ||
+    (editing && card === undefined && !loaded)
+  ) {
     return <CardEditorSkeleton />;
   }
-  if (deck === null) {
+  if (!lessonMode && deck === null) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -192,6 +227,20 @@ export function CardEditor() {
       </motion.div>
     );
   }
+  if (lessonMode && lesson === null) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="p-10"
+      >
+        <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
+        <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
+          {courseId ? 'Back to course' : 'Back to dashboard'}
+        </Link>
+      </motion.div>
+    );
+  }
   if (editing && card === null) {
     return (
       <motion.div
@@ -200,8 +249,8 @@ export function CardEditor() {
         className="p-10"
       >
         <p className="mb-4 text-ink-soft">This card could not be found.</p>
-        <Link to={deckPath} className="text-accent underline">
-          Back to {deck.name}
+        <Link to={backPath} className="text-accent underline">
+          Back to {lessonMode ? lesson?.name : deck?.name}
         </Link>
       </motion.div>
     );
@@ -216,7 +265,8 @@ export function CardEditor() {
   const canSave = frontValid && backValid && clozeValid;
 
   async function handleSave(andAnother = false) {
-    if (!canSave || !deckId) {
+    const missingOwner = lessonMode ? !courseId || !lessonId : !deckId;
+    if (!canSave || missingOwner) {
       // Shake the first invalid field to give the user tactile feedback on why save is blocked.
       if (!frontValid) setShakeField('front');
       else if (!backValid) setShakeField('back');
@@ -238,18 +288,26 @@ export function CardEditor() {
       // Let the confirmation flourish play briefly before leaving the page.
       window.setTimeout(() => {
         notify('Card updated.', 'positive');
-        navigate(deckPath);
+        navigate(backPath);
       }, 450);
       return;
     }
 
     const reversed = !isCloze && !isTyping && !isBasicReversed && alsoReverse;
-    if (isBasicReversed) {
-      await createBasicReversedPair(deckId, front, backValue, tags);
+    if (lessonMode) {
+      if (isBasicReversed) {
+        await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags);
+      } else if (reversed) {
+        await createLessonCardWithReverse(courseId!, lessonId!, front, backValue, tags);
+      } else {
+        await createLessonCard(courseId!, lessonId!, type, front, backValue, tags);
+      }
+    } else if (isBasicReversed) {
+      await createBasicReversedPair(deckId!, front, backValue, tags);
     } else if (reversed) {
-      await createCardWithReverse(deckId, front, backValue, tags);
+      await createCardWithReverse(deckId!, front, backValue, tags);
     } else {
-      await createCard(deckId, type, front, backValue, tags);
+      await createCard(deckId!, type, front, backValue, tags);
     }
     clearDraft(draftKeyRef.current);
     if (andAnother) {
@@ -264,7 +322,7 @@ export function CardEditor() {
       flashSaved();
       window.setTimeout(() => {
         notify(reversed ? 'Card and its reverse added.' : 'Card added.', 'positive');
-        navigate(deckPath);
+        navigate(backPath);
       }, 450);
     }
   }
@@ -282,13 +340,27 @@ export function CardEditor() {
     >
       {/* Breadcrumb */}
       <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-        <Link to="/" className="transition-colors hover:text-ink">
-          All decks
-        </Link>
-        <ChevronRight />
-        <Link to={deckPath} className="transition-colors hover:text-ink">
-          {deck.name}
-        </Link>
+        {lessonMode ? (
+          <>
+            <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
+              {course?.name}
+            </Link>
+            <ChevronRight />
+            <Link to={backPath} className="transition-colors hover:text-ink">
+              {lesson?.name}
+            </Link>
+          </>
+        ) : (
+          <>
+            <Link to="/" className="transition-colors hover:text-ink">
+              All decks
+            </Link>
+            <ChevronRight />
+            <Link to={deckPath} className="transition-colors hover:text-ink">
+              {deck?.name}
+            </Link>
+          </>
+        )}
         <ChevronRight />
         <span className="text-ink-soft">{editing ? 'Edit card' : 'New card'}</span>
       </nav>
@@ -302,7 +374,7 @@ export function CardEditor() {
           <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
           <div className="relative">
             <Link
-              to={deckPath}
+              to={backPath}
               className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
             >
               <ChevronLeftIcon width={16} height={16} />
@@ -568,7 +640,7 @@ export function CardEditor() {
             )}
           </AnimatePresence>
           <div className="ml-auto flex items-center gap-3">
-            <Button variant="ghost" onClick={() => navigate(deckPath)}>
+            <Button variant="ghost" onClick={() => navigate(backPath)}>
               {!editing && addedCount > 0 ? 'Done' : 'Cancel'}
             </Button>
             {!editing && (
