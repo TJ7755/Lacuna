@@ -335,6 +335,7 @@ export async function createCard(
   front: string,
   back: string,
   tags: string[] = [],
+  opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<Card> {
   try {
     const card: Card = {
@@ -357,6 +358,7 @@ export async function createCard(
       tags,
       suspended: false,
       buriedUntil: null,
+      ...opts,
     };
     await db.cards.add(card);
     return card;
@@ -413,9 +415,10 @@ export async function createCardWithReverse(
   front: string,
   back: string,
   tags: string[] = [],
+  opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<{ card: Card; reverse: Card }> {
-  const card = await createCard(deckId, 'front_back', front, back, tags);
-  const reverse = await createCard(deckId, 'front_back', back, front, tags);
+  const card = await createCard(deckId, 'front_back', front, back, tags, opts);
+  const reverse = await createCard(deckId, 'front_back', back, front, tags, opts);
   return { card, reverse };
 }
 
@@ -428,9 +431,10 @@ export async function createBasicReversedPair(
   front: string,
   back: string,
   tags: string[] = [],
+  opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<{ card: Card; reverse: Card }> {
-  const reverse = await createCard(deckId, 'front_back', back, front, tags);
-  const card = await createCard(deckId, 'basic_reversed', front, back, tags);
+  const reverse = await createCard(deckId, 'front_back', back, front, tags, opts);
+  const card = await createCard(deckId, 'basic_reversed', front, back, tags, opts);
   await db.cards.update(card.id, { reverseCardId: reverse.id });
   await db.cards.update(reverse.id, { reverseCardId: card.id });
   return { card: { ...card, reverseCardId: reverse.id }, reverse: { ...reverse, reverseCardId: card.id } };
@@ -448,6 +452,74 @@ export async function createDeckWithCards(
   } catch (err) {
     throw friendlyDbError(err);
   }
+}
+
+/**
+ * Every course card still needs a real backing Deck (recordReview, userPerformance and
+ * the legacy `/deck/:id/learn` bridge all key off deckId). This lazily creates one hidden
+ * deck per lesson, inheriting the course's scheduling fields, and reuses it on subsequent
+ * calls for the same lesson. May run inside an outer transaction (e.g. share import), so
+ * it never opens its own `db.transaction` — only plain table operations.
+ */
+export async function ensureLessonDeck(courseId: string, lessonId: string): Promise<string> {
+  const existing = await db.cards.where('primaryLessonId').equals(lessonId).first();
+  if (existing) return existing.deckId;
+
+  const course = await db.courses.get(courseId);
+  const lesson = await db.lessons.get(lessonId);
+  const createdAt = Date.now();
+  const deck: Deck = {
+    id: makeId(),
+    name: lesson?.name ?? 'Untitled lesson',
+    examDate: course?.examDate ?? defaultExamDate(createdAt),
+    timeZone: course?.timeZone ?? getLocalTimeZone(),
+    createdAt,
+    fsrsVersion: course?.fsrsVersion ?? FSRS_VERSION,
+    fsrsParameters: course?.fsrsParameters ?? defaultFsrsParameters(),
+    examObjective: course?.examObjective ?? 'expectedMarks',
+    lastInteractedAt: createdAt,
+    ...(course?.colour ? { colour: course.colour } : {}),
+  };
+  await db.decks.add(deck);
+  await db.userPerformance.add(emptyPerformance(deck.id));
+  return deck.id;
+}
+
+/** Create a card that belongs to a lesson, lazily creating the lesson's backing deck. */
+export async function createLessonCard(
+  courseId: string,
+  lessonId: string,
+  type: CardType,
+  front: string,
+  back: string,
+  tags: string[] = [],
+): Promise<Card> {
+  const deckId = await ensureLessonDeck(courseId, lessonId);
+  return createCard(deckId, type, front, back, tags, { courseId, primaryLessonId: lessonId });
+}
+
+/** Lesson-scoped equivalent of {@link createCardWithReverse}. */
+export async function createLessonCardWithReverse(
+  courseId: string,
+  lessonId: string,
+  front: string,
+  back: string,
+  tags: string[] = [],
+): Promise<{ card: Card; reverse: Card }> {
+  const deckId = await ensureLessonDeck(courseId, lessonId);
+  return createCardWithReverse(deckId, front, back, tags, { courseId, primaryLessonId: lessonId });
+}
+
+/** Lesson-scoped equivalent of {@link createBasicReversedPair}. */
+export async function createLessonBasicReversedPair(
+  courseId: string,
+  lessonId: string,
+  front: string,
+  back: string,
+  tags: string[] = [],
+): Promise<{ card: Card; reverse: Card }> {
+  const deckId = await ensureLessonDeck(courseId, lessonId);
+  return createBasicReversedPair(deckId, front, back, tags, { courseId, primaryLessonId: lessonId });
 }
 
 export async function updateCard(id: string, changes: Partial<Card>): Promise<void> {

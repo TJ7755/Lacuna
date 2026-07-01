@@ -2,15 +2,21 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import {
+  createBasicReversedPair,
   createCard,
+  createCardWithReverse,
   createCourse,
   createCourseExamDate,
   createDeck,
   createLesson,
+  createLessonBasicReversedPair,
+  createLessonCard,
+  createLessonCardWithReverse,
   createNote,
   createPracticeNode,
   deleteCourse,
   deleteLesson,
+  ensureLessonDeck,
   linkCardToLesson,
   listCourseExamDates,
   listLessonCardLinks,
@@ -297,5 +303,135 @@ describe('listPracticeNodes', () => {
     expect(nodes1[0].name).toBe('P1');
     expect(nodes2).toHaveLength(1);
     expect(nodes2[0].name).toBe('P2');
+  });
+});
+
+describe('createCard opts', () => {
+  beforeEach(reset);
+
+  it('stamps courseId and primaryLessonId when opts are provided', async () => {
+    const deck = await createDeck('Test deck');
+    const course = await createCourse('Course');
+    const lesson = await createLesson(course.id, 'L1');
+
+    const card = await createCard(deck.id, 'front_back', 'q', 'a', [], {
+      courseId: course.id,
+      primaryLessonId: lesson.id,
+    });
+
+    expect(card.courseId).toBe(course.id);
+    expect(card.primaryLessonId).toBe(lesson.id);
+  });
+
+  it('leaves courseId and primaryLessonId undefined when opts are omitted', async () => {
+    const deck = await createDeck('Test deck');
+    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+
+    expect(card.courseId).toBeUndefined();
+    expect(card.primaryLessonId).toBeUndefined();
+  });
+});
+
+describe('ensureLessonDeck', () => {
+  beforeEach(reset);
+
+  it('creates a backing deck and userPerformance row for a new lesson', async () => {
+    const course = await createCourse('Course', { examObjective: 'securedTopics' });
+    const lesson = await createLesson(course.id, 'Lesson 1');
+
+    const deckId = await ensureLessonDeck(course.id, lesson.id);
+
+    const deck = await db.decks.get(deckId);
+    expect(deck).toBeDefined();
+    expect(deck?.name).toBe('Lesson 1');
+    expect(deck?.examDate).toBe(course.examDate);
+    expect(deck?.fsrsVersion).toBe(course.fsrsVersion);
+    expect(deck?.examObjective).toBe('securedTopics');
+    expect(await db.userPerformance.get(deckId)).toBeDefined();
+  });
+
+  it('reuses the existing backing deck on a second call for the same lesson', async () => {
+    const course = await createCourse('Course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+
+    const deckId = await ensureLessonDeck(course.id, lesson.id);
+    // Simulate a card already living in this lesson's deck, as createLessonCard would leave behind.
+    await createCard(deckId, 'front_back', 'q', 'a', [], { courseId: course.id, primaryLessonId: lesson.id });
+
+    const deckIdAgain = await ensureLessonDeck(course.id, lesson.id);
+
+    expect(deckIdAgain).toBe(deckId);
+    expect(await db.decks.count()).toBe(1);
+  });
+});
+
+describe('createLessonCard', () => {
+  beforeEach(reset);
+
+  it('creates a card visible via primaryLessonId and backed by a real deck', async () => {
+    const course = await createCourse('Course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+
+    expect(card.courseId).toBe(course.id);
+    expect(card.primaryLessonId).toBe(lesson.id);
+    expect(await db.decks.get(card.deckId)).toBeDefined();
+
+    const lessonCards = await db.cards.where('primaryLessonId').equals(lesson.id).toArray();
+    expect(lessonCards.map((c) => c.id)).toEqual([card.id]);
+  });
+
+  it('reuses the same backing deck for a second card in the same lesson', async () => {
+    const course = await createCourse('Course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+
+    const first = await createLessonCard(course.id, lesson.id, 'front_back', 'q1', 'a1');
+    const second = await createLessonCard(course.id, lesson.id, 'front_back', 'q2', 'a2');
+
+    expect(second.deckId).toBe(first.deckId);
+    expect(await db.decks.count()).toBe(1);
+  });
+
+  it('createLessonCardWithReverse stamps courseId/primaryLessonId on both cards', async () => {
+    const course = await createCourse('Course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+
+    const { card, reverse } = await createLessonCardWithReverse(course.id, lesson.id, 'q', 'a');
+
+    for (const c of [card, reverse]) {
+      expect(c.courseId).toBe(course.id);
+      expect(c.primaryLessonId).toBe(lesson.id);
+    }
+  });
+
+  it('createLessonBasicReversedPair stamps courseId/primaryLessonId on both cards', async () => {
+    const course = await createCourse('Course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+
+    const { card, reverse } = await createLessonBasicReversedPair(course.id, lesson.id, 'q', 'a');
+
+    for (const c of [card, reverse]) {
+      expect(c.courseId).toBe(course.id);
+      expect(c.primaryLessonId).toBe(lesson.id);
+    }
+    expect(card.reverseCardId).toBe(reverse.id);
+    expect(reverse.reverseCardId).toBe(card.id);
+  });
+});
+
+describe('createCardWithReverse / createBasicReversedPair without opts', () => {
+  beforeEach(reset);
+
+  it('leave courseId/primaryLessonId undefined on both cards when opts are omitted', async () => {
+    const deck = await createDeck('Test deck');
+
+    const { card, reverse } = await createCardWithReverse(deck.id, 'q', 'a');
+    expect(card.courseId).toBeUndefined();
+    expect(reverse.courseId).toBeUndefined();
+
+    const { card: card2, reverse: reverse2 } = await createBasicReversedPair(deck.id, 'q2', 'a2');
+    expect(card2.courseId).toBeUndefined();
+    expect(reverse2.courseId).toBeUndefined();
   });
 });
