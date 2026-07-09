@@ -263,8 +263,17 @@ export function lessonStatus(
  *    lesson, tracking `lessonsSinceLastPractice` since the previous practice
  *    node (manual or auto) and resetting it whenever one is inserted. This only
  *    runs when `course.autoPractice` is true. `dueCardCount` and
- *    `meanReviewSeconds` are course-wide, live figures the caller derives (see
- *    `shouldInsertPractice`'s own doc comment) — this function stays pure.
+ *    `meanReviewSeconds` are a single course-wide snapshot supplied once per
+ *    `buildPath` call, not a live per-lesson figure — the backlog is not
+ *    decremented as slots are inserted (that depends on what the learner
+ *    actually clears, which this pure function cannot know). Consequently,
+ *    once the snapshot's volume trigger (`minutesToClear >= threshold`) fires
+ *    for one lesson it would stay true for every lesson after it; the walk
+ *    guards against that by suppressing the volume trigger immediately after
+ *    an insertion, re-arming it only once `practiceMaxGap` lessons have
+ *    elapsed (see `volumeTriggerSuppressed` below), so a sustained backlog
+ *    yields periodic practice roughly every `practiceMaxGap` lessons rather
+ *    than one after every single lesson.
  */
 export function buildPath(
   course: Course,
@@ -357,23 +366,38 @@ export function buildPath(
     });
 
   // Auto practice slots (addendum 2 §H): walk the lesson list in path order,
-  // evaluating shouldInsertPractice after every lesson against the current
-  // course-wide due-card count. lessonsSinceLastPractice resets at every
-  // already-placed manual node and every auto slot this walk inserts.
+  // evaluating shouldInsertPractice after every lesson against the course-wide
+  // due-card snapshot. lessonsSinceLastPractice resets at every already-placed
+  // manual node and every auto slot this walk inserts.
+  //
+  // dueCardCount/meanReviewSeconds are a static snapshot for the whole walk, so
+  // once the volume trigger (minutesToClear >= threshold) is true it stays true
+  // for every subsequent lesson — without a guard this fires an auto slot after
+  // every single lesson for the rest of the course whenever the backlog is
+  // large. volumeTriggerSuppressed closes that gap: once a slot has been
+  // inserted, only the gap backstop (lessonsSinceLastPractice >= practiceMaxGap,
+  // already part of shouldInsertPractice) can trigger the next one, until that
+  // gap has actually elapsed and the guard re-arms. shouldInsertPractice itself
+  // is untouched — this only gates which of its two triggers this call site is
+  // allowed to act on.
   const autoPlacements: Placement[] = [];
   if (course.autoPractice) {
     const resetIndices = new Set(manualPlacements.map((p) => p.afterIndex));
     let lessonsSinceLastPractice = 0;
+    let volumeTriggerSuppressed = false;
     let autoSeq = 0;
     for (let i = 0; i < lessonNodes.length; i++) {
       lessonsSinceLastPractice++;
       if (resetIndices.has(i)) {
         lessonsSinceLastPractice = 0;
+        volumeTriggerSuppressed = false;
         continue;
       }
-      if (
-        shouldInsertPractice(course, dueCardCount, lessonsSinceLastPractice, meanReviewSeconds, now)
-      ) {
+      const gapElapsed = lessonsSinceLastPractice >= course.practiceMaxGap;
+      const insert = volumeTriggerSuppressed
+        ? gapElapsed
+        : shouldInsertPractice(course, dueCardCount, lessonsSinceLastPractice, meanReviewSeconds, now);
+      if (insert) {
         autoPlacements.push({
           afterIndex: i,
           node: {
@@ -383,6 +407,7 @@ export function buildPath(
           },
         });
         lessonsSinceLastPractice = 0;
+        volumeTriggerSuppressed = true;
       }
     }
   }

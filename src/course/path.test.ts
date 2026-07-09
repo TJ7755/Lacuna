@@ -459,6 +459,31 @@ describe('buildPath — practice nodes', () => {
     expect(autoNodes[0].afterLessonId).toBe('l3');
   });
 
+  it('yields periodic auto-practice nodes (not one per lesson) under a sustained large backlog', () => {
+    const now = 0;
+    const manyLessons = Array.from({ length: 10 }, (_, i) =>
+      makeLesson({ id: `m${i + 1}`, courseId: 'c1', orderIndex: i }),
+    );
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'open',
+      autoPractice: true,
+      practiceMaxGap: 3,
+      examDate: 100 * MS_PER_DAY, // far in the future -> far threshold applies
+    });
+    // 500 due cards x 8s = ~67 minutes, comfortably above the far threshold for
+    // every lesson in the walk — a static snapshot that never clears.
+    const nodes = buildPath(course, manyLessons, [], new Map(), [], 500, 8, now);
+    const autoNodes = nodes.filter((n): n is PracticePathNode => n.nodeType === 'practice-auto');
+    // Regression for the bug where the volume trigger, once true, fired again on
+    // every subsequent lesson: 10 lessons must NOT produce 10 auto nodes.
+    expect(autoNodes.length).toBeLessThan(manyLessons.length);
+    // The first node fires as soon as the volume trigger is evaluated (after the
+    // first lesson); after that, only the practiceMaxGap backstop can re-trip it,
+    // so nodes land roughly every practiceMaxGap lessons: after m1, m4, m7, m10.
+    expect(autoNodes.map((n) => n.afterLessonId)).toEqual(['m1', 'm4', 'm7', 'm10']);
+  });
+
   it('does not auto-insert practice nodes when course.autoPractice is false', () => {
     const course = makeCourse({
       id: 'c1',
