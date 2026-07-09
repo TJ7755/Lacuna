@@ -250,6 +250,7 @@ outside the shell. The shell is a flex row:
 | `/` | Dashboard | yes | eager |
 | `/deck/:deckId` | Deck view (Cards / Analytics) | yes | lazy |
 | `/deck/:deckId/settings` | Deck settings | yes | lazy |
+| `/course/:courseId/settings` | Course settings | yes | lazy |
 | `/deck/:deckId/cards/new` | Card editor (create) | yes | lazy |
 | `/deck/:deckId/cards/:cardId/edit` | Card editor (edit) | yes | lazy |
 | `/settings` | Settings | yes | eager |
@@ -1164,6 +1165,26 @@ adaptive guidance copy); deck colour swatch; deck time zone.
   archive / keep-revising; an archived deck shows a restore action.
 - A "Danger zone" deletes the deck immediately with an Undo toast (no blocking
   dialog). Sticky Save/Cancel bar.
+
+### Course settings (`src/pages/CourseSettings.tsx`)
+Mirrors DeckSettings for the Course/Lesson model, composed from the same
+extracted section components used elsewhere: `SchedulingFieldsSection` (rename,
+exam date and time, exam objective toggle, new cards per day, target retention,
+max reviews/interval, learning/relearning steps, leech threshold/action, daily
+review goal, session time limit), `UnlockModeSection` (semi-linear vs linear
+lesson unlocking, with linear cadence fields), `PracticeSettingsSection`
+(auto-practice toggle and the four threshold/window/gap fields feeding
+`shouldInsertPractice`, §-linked to `src/fsrs/practice.ts`), `ExamDatesSection`
+(per-course exam-date list) and `LessonManagementSection` (reorder/rename/delete
+lessons), plus the `OptimisationPanel` (§8.1) reused as-is.
+- **Danger zone:** unlike deck deletion, course deletion has no restorable
+  snapshot, so it uses a **blocking `window.confirm`** dialog rather than an
+  Undo toast — deleting a course removes all of its lessons, notes and card
+  assignments irreversibly. Sticky Save/Cancel bar.
+- **Not-found handling:** the course is resolved via a null-sentinel
+  `useLiveQuery` (missing row mapped to `null`, matching `CoursePath`) so a
+  stale or deleted `courseId` reaches a genuine not-found state instead of
+  hanging on the loading skeleton.
 
 ---
 
