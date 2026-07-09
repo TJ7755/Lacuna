@@ -20,7 +20,7 @@ import type { PathNode } from '../course/path';
 import { PathNodeView } from '../components/course/PathNodeView';
 import { PathLine } from '../components/course/PathLine';
 import { LessonView } from './LessonView';
-import { ChevronLeftIcon } from '../components/ui/icons';
+import { ChevronLeftIcon, SettingsIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { formatDate } from '../utils/datetime';
 import type { Card, Course } from '../db/types';
@@ -178,12 +178,22 @@ export function CoursePath() {
           <ChevronLeftIcon width={16} height={16} />
           All courses
         </Link>
-        <Link
-          to={`/course/${courseId}/bank`}
-          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-        >
-          Question bank
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            to={`/course/${courseId}/bank`}
+            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+          >
+            Question bank
+          </Link>
+          <Link
+            to={`/course/${courseId}/settings`}
+            aria-label="Course settings"
+            title="Course settings"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center text-ink-faint transition-colors hover:text-ink active:text-ink"
+          >
+            <SettingsIcon width={18} height={18} />
+          </Link>
+        </div>
       </div>
 
       {/* Header */}
