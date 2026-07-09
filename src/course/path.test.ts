@@ -5,6 +5,7 @@ import {
   lessonStatus,
   buildPath,
   pathPosition,
+  practiceGateAfterLesson,
   KNOWN_NODE_TYPES,
   type PathNode,
   type PracticePathNode,
@@ -532,6 +533,40 @@ describe('buildPath — practice nodes', () => {
     const autoNodes = nodes.filter((n): n is PracticePathNode => n.nodeType === 'practice-auto');
     expect(autoNodes.length).toBe(1);
     expect(autoNodes[0].afterLessonId).toBe('l3');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// practiceGateAfterLesson
+// ---------------------------------------------------------------------------
+
+describe('practiceGateAfterLesson', () => {
+  const lessons = [
+    makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
+    makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
+    makeLesson({ id: 'l3', courseId: 'c1', orderIndex: 2 }),
+  ];
+
+  it('returns false when no manual practice node exists', () => {
+    expect(practiceGateAfterLesson(lessons, [], 'l1')).toBe(false);
+  });
+
+  it('returns true when a manual node is placed immediately after the lesson', () => {
+    const manual = makePracticeNode({ id: 'pn1', courseId: 'c1', type: 'manual', position: 1 });
+    expect(practiceGateAfterLesson(lessons, [manual], 'l2')).toBe(true);
+    // Not gating the other lessons.
+    expect(practiceGateAfterLesson(lessons, [manual], 'l1')).toBe(false);
+    expect(practiceGateAfterLesson(lessons, [manual], 'l3')).toBe(false);
+  });
+
+  it('ignores auto practice nodes — only manual nodes gate the ratchet', () => {
+    const auto = makePracticeNode({ id: 'pn-auto', courseId: 'c1', type: 'auto', position: 1 });
+    expect(practiceGateAfterLesson(lessons, [auto], 'l2')).toBe(false);
+  });
+
+  it('returns false for an unknown lesson id', () => {
+    const manual = makePracticeNode({ id: 'pn1', courseId: 'c1', type: 'manual', position: 1 });
+    expect(practiceGateAfterLesson(lessons, [manual], 'not-a-lesson')).toBe(false);
   });
 });
 

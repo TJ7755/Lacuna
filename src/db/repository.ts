@@ -763,6 +763,9 @@ export interface RecordReviewResult {
   card: Card;
   /** Id of the SessionHistory row written for this review, so it can be undone. */
   sessionHistoryId: number;
+  /** The review kind this was recorded against (see {@link RecordReviewArgs.kind}), so
+   * the caller can carry it straight into {@link ReviewUndo} without re-deriving it. */
+  kind: ReviewUnitKind;
 }
 
 /**
@@ -865,7 +868,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
     },
   );
 
-    return { card: updatedCard, sessionHistoryId };
+    return { card: updatedCard, sessionHistoryId, kind };
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -884,6 +887,13 @@ export interface ReviewUndo {
    * or a courseId for course/lesson scope — see {@link RecordReviewArgs.kind}).
    */
   deckId: string;
+  /**
+   * Which table `deckId` belongs to: a legacy Deck, or a course/lesson-scoped Course.
+   * Recorded by `recordReview` (see {@link RecordReviewResult.kind}) so a future
+   * `lastInteractedAt` restore on undo (not yet implemented — `undoReview` does not
+   * currently touch `lastInteractedAt`) knows which table to look the id up in.
+   */
+  kind: ReviewUnitKind;
 }
 
 /**

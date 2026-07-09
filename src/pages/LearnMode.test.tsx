@@ -4,7 +4,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { LearnMode, LearnSkeleton } from './LearnMode';
 import { db } from '../db/schema';
-import { createCourse, createLesson, createLessonCard } from '../db/repository';
+import {
+  createCourse,
+  createLesson,
+  createLessonCard,
+  createPracticeNode,
+  linkCardToLesson,
+} from '../db/repository';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
 
@@ -44,6 +50,8 @@ describe('LearnMode course/lesson scope', () => {
       db.decks.clear(),
       db.sessionHistory.clear(),
       db.userPerformance.clear(),
+      db.lessonCards.clear(),
+      db.practiceNodes.clear(),
     ]);
     localStorage.clear();
   });
@@ -105,6 +113,174 @@ describe('LearnMode course/lesson scope', () => {
     await waitFor(async () => {
       expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeDefined();
     });
+  });
+
+  it('does not ratchet the next lesson when a manual practice node gates the slot after it', async () => {
+    const course = await createCourse('Physics', { unlockMode: 'semi-linear' });
+    const lesson1 = await createLesson(course.id, 'Kinematics');
+    const lesson2 = await createLesson(course.id, 'Dynamics');
+    await createLessonCard(course.id, lesson1.id, 'front_back', 'Q1', 'A1');
+    // A manual practice node placed right after lesson1 (orderIndex 0) gates the slot.
+    await createPracticeNode(course.id, { type: 'manual', name: 'Checkpoint practice', position: 0 });
+
+    render(
+      <ThemeProvider>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
+          <Routes>
+            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await screen.findByText(/Kinematics/);
+    await answerYes();
+
+    await waitFor(async () => {
+      const updatedCourse = await db.courses.get(course.id);
+      expect(updatedCourse?.lastInteractedAt).toBeDefined();
+    });
+    // Give any (incorrect) ratchet write a chance to land before asserting it didn't.
+    await new Promise((r) => setTimeout(r, 50));
+    expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
+  });
+
+  it('serves a card linked into the studied lesson even when its primary lesson is another one', async () => {
+    const course = await createCourse('Maths');
+    const lessonA = await createLesson(course.id, 'Algebra');
+    const lessonB = await createLesson(course.id, 'Geometry');
+    const card = await createLessonCard(course.id, lessonA.id, 'front_back', 'Shared Q', 'Shared A');
+    await linkCardToLesson(lessonB.id, card.id);
+
+    render(
+      <ThemeProvider>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[`/lesson/${lessonB.id}/learn`]}>
+          <Routes>
+            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText(/Shared Q/)).toBeInTheDocument();
+  });
+
+  it('excludes already-reviewed (non-new) cards from a lesson session', async () => {
+    const course = await createCourse('English');
+    const lesson = await createLesson(course.id, 'Poetry');
+    const reviewedCard = await createLessonCard(course.id, lesson.id, 'front_back', 'Reviewed Q', 'A');
+    await db.cards.update(reviewedCard.id, { state: 1 });
+    await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
+
+    render(
+      <ThemeProvider>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+          <Routes>
+            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText(/New Q/)).toBeInTheDocument();
+    expect(screen.queryByText(/Reviewed Q/)).not.toBeInTheDocument();
+  });
+
+  it('sweeps every taught-but-unratcheted lesson pair from one course-scoped completion', async () => {
+    const course = await createCourse('Chemistry II', { unlockMode: 'semi-linear' });
+    const lesson1 = await createLesson(course.id, 'A');
+    const lesson2 = await createLesson(course.id, 'B');
+    const lesson3 = await createLesson(course.id, 'C');
+    const lesson4 = await createLesson(course.id, 'D');
+    // Both (1,2) and (3,4) are taught-but-unratcheted pairs. lesson1 and lesson3's
+    // cards are marked served with a future due date directly (bypassing a
+    // per-lesson LearnMode session, which would ratchet its own pair immediately)
+    // so both pairs remain unratcheted until the course-scoped sweep below.
+    const farFuture = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    const c1 = await createLessonCard(course.id, lesson1.id, 'front_back', 'Q1', 'A1');
+    await db.cards.update(c1.id, {
+      state: 2,
+      stability: 5,
+      difficulty: 5,
+      lastReviewed: Date.now(),
+      due: farFuture,
+    });
+    const c3 = await createLessonCard(course.id, lesson3.id, 'front_back', 'Q3', 'A3');
+    await db.cards.update(c3.id, {
+      state: 2,
+      stability: 5,
+      difficulty: 5,
+      lastReviewed: Date.now(),
+      due: farFuture,
+    });
+    // The course-scoped practice session itself needs a due new card to serve.
+    await createLessonCard(course.id, lesson2.id, 'front_back', 'Q2', 'A2');
+
+    expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
+    expect((await db.lessons.get(lesson4.id))?.unlockedAt).toBeUndefined();
+
+    render(
+      <ThemeProvider>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
+          <Routes>
+            <Route path="/course/:courseId/learn" element={<LearnMode />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await screen.findByText(/Chemistry II/);
+    await answerYes();
+
+    await waitFor(async () => {
+      expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeDefined();
+      expect((await db.lessons.get(lesson4.id))?.unlockedAt).toBeDefined();
+    });
+  });
+
+  it('never writes unlockedAt under open or linear unlock modes', async () => {
+    for (const unlockMode of ['open', 'linear'] as const) {
+      await Promise.all([
+        db.courses.clear(),
+        db.lessons.clear(),
+        db.cards.clear(),
+      ]);
+      const course = await createCourse(`Mode ${unlockMode}`, { unlockMode });
+      const lesson1 = await createLesson(course.id, 'First');
+      const lesson2 = await createLesson(course.id, 'Second');
+      await createLessonCard(course.id, lesson1.id, 'front_back', 'Q1', 'A1');
+
+      const { unmount } = render(
+        <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+        </ThemeProvider>,
+      );
+
+      await screen.findByText(/First/);
+      await answerYes();
+
+      await waitFor(async () => {
+        const updatedCourse = await db.courses.get(course.id);
+        expect(updatedCourse?.lastInteractedAt).toBeDefined();
+      });
+      await new Promise((r) => setTimeout(r, 50));
+      expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
+      unmount();
+    }
   });
 
   it('studies a course-wide practice session over all due course cards', async () => {

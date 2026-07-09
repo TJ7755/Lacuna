@@ -14,6 +14,7 @@ import {
 } from '../db/repository';
 import type { ReviewUndo } from '../db/repository';
 import { nextLessonUnlockCondition } from '../course/unlock';
+import { practiceGateAfterLesson } from '../course/path';
 import { emptyPerformance, gradeFromResponse, updatePerformance } from '../fsrs/grading';
 import {
   applyCooldown,
@@ -250,10 +251,14 @@ export function LearnMode() {
    * is not under `semi-linear` unlock mode.
    *
    *  - Lesson-scoped completion: evaluates only the pair (this lesson, its
-   *    successor), with `practiceGoalReached: undefined` — this component has no
-   *    visibility into path-level practice-node placement, so it defers to
-   *    condition 1 alone (lessonTaught), matching nextLessonUnlockCondition's
-   *    documented behaviour when no practice node is known to gate the pair.
+   *    successor). Whether a Practice node gates that pair is determined from
+   *    the course's manual practice nodes via `practiceGateAfterLesson` (only
+   *    manual nodes gate — see that function's doc comment for why auto nodes
+   *    are excluded): `practiceGoalReached` is `undefined` when no manual node
+   *    sits in the slot (condition 1, lessonTaught, gates alone), or `false`
+   *    when one does — the lesson session itself cannot have satisfied a
+   *    practice objective, so the pair stays blocked until a practice session
+   *    over that node reaches its goal (the branch below).
    *  - Course-scoped (practice) completion: sweeps every adjacent lesson pair
    *    with `practiceGoalReached: true`, ratcheting any successor whose
    *    predecessor is taught — the "re-evaluate on practice objective reached"
@@ -269,13 +274,16 @@ export function LearnMode() {
       .filter((l) => !l.isExtension);
     const lId = ratchetLessonIdRef.current;
     const now = Date.now();
+    const practiceNodes = lId ? await db.practiceNodes.where('courseId').equals(cId).toArray() : [];
     for (let i = 0; i < coreLessons.length - 1; i++) {
       const lessonN = coreLessons[i];
       const lessonN1 = coreLessons[i + 1];
       if (lessonN1.unlockedAt !== undefined) continue;
       if (lId && lessonN.id !== lId) continue;
       const lessonNCards = await db.cards.where('primaryLessonId').equals(lessonN.id).toArray();
-      const practiceGoalReached = lId ? undefined : true;
+      const practiceGoalReached = lId
+        ? (practiceGateAfterLesson(coreLessons, practiceNodes, lessonN.id) ? false : undefined)
+        : true;
       if (nextLessonUnlockCondition(lessonNCards, practiceGoalReached)) {
         await ratchetLessonUnlock(lessonN1.id, now);
       }
@@ -656,7 +664,7 @@ export function LearnMode() {
         const progressSnapshot = cachedSessionProgress(cardsRef.current, ctx);
         const perfBefore = perf ?? null;
 
-        const { card: updated, sessionHistoryId } = await recordReview({
+        const { card: updated, sessionHistoryId, kind } = await recordReview({
           card: cardNow,
           deck,
           kind: reviewKindRef.current,
@@ -690,7 +698,7 @@ export function LearnMode() {
         reviewsByDeck.current.set(deck.id, deckReviews);
 
         lastAnswer.current = {
-          undo: { cardBefore: cardNow, perfBefore, sessionHistoryId, deckId: deck.id },
+          undo: { cardBefore: cardNow, perfBefore, sessionHistoryId, deckId: deck.id, kind },
           cooldowns: cooldownsSnapshot,
           progressBefore: progressSnapshot,
           eventsLen,

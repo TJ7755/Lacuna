@@ -452,7 +452,53 @@ export function buildPath(
 }
 
 // ---------------------------------------------------------------------------
-// 5. pathPosition
+// 5. practiceGateAfterLesson
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether a practice node gates the path slot immediately after `lessonId`, for
+ * the semi-linear unlock ratchet (addendum 2 §I; see `unlock.ts`'s
+ * `nextLessonUnlockCondition`).
+ *
+ * Only **manual** practice nodes gate the ratchet. Auto nodes are deliberately
+ * excluded: they are advisory, recomputed on every `buildPath` call from a
+ * volatile due-card/mean-review-seconds snapshot (see `buildPath`'s doc
+ * comment), so whether one "exists" in a given slot can change from one
+ * render to the next as the backlog is cleared or grows. Gating a one-way
+ * unlock ratchet on a signal that flickers would make the dual gate
+ * unpredictable — a lesson could appear to need practice on one check and not
+ * the next, depending on unrelated review activity elsewhere in the course.
+ * Manual nodes are teacher-authored and stable, so they are the only sound
+ * gate for this decision.
+ *
+ * This intentionally mirrors only the manual-placement half of `buildPath`
+ * (same "highest orderIndex `<=` position" rule) rather than calling the full
+ * function, so call sites that only have a lesson list and the course's
+ * practice nodes to hand — not the card and due-count data `buildPath`
+ * requires — can still evaluate the gate.
+ */
+export function practiceGateAfterLesson(
+  lessons: Lesson[],
+  practiceNodes: PracticeNode[],
+  lessonId: string,
+): boolean {
+  const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
+  if (!sorted.some((l) => l.id === lessonId)) return false;
+
+  const manualNodes = practiceNodes.filter((pn) => pn.type === 'manual');
+  for (const pn of manualNodes) {
+    if (pn.position === undefined) continue;
+    let afterLessonId: string | null = null;
+    for (const l of sorted) {
+      if (l.orderIndex <= pn.position) afterLessonId = l.id;
+    }
+    if (afterLessonId === lessonId) return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// 6. pathPosition
 // ---------------------------------------------------------------------------
 
 /**

@@ -50,7 +50,7 @@ describe('undoReview', () => {
     expect(await db.sessionHistory.count()).toBe(1);
     expect((await db.userPerformance.get(deck.id))!.totalCorrectReviews).toBe(1);
 
-    await undoReview({ cardBefore, perfBefore, sessionHistoryId, deckId: deck.id });
+    await undoReview({ cardBefore, perfBefore, sessionHistoryId, deckId: deck.id, kind: 'deck' });
 
     const restored = (await db.cards.get(card.id))!;
     expect(restored.reps).toBe(0);
@@ -96,7 +96,7 @@ describe('undoReview', () => {
     // by the course-keyed review: its calibration row stays at zero reviews.
     expect((await db.userPerformance.get(card.deckId))?.totalCorrectReviews).toBe(0);
 
-    await undoReview({ cardBefore, perfBefore, sessionHistoryId, deckId: c.id });
+    await undoReview({ cardBefore, perfBefore, sessionHistoryId, deckId: c.id, kind: 'course' });
 
     const restored = (await db.cards.get(card.id))!;
     expect(restored.reps).toBe(0);
