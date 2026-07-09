@@ -15,6 +15,7 @@ import type {
   Note,
   PracticeNode,
   ReviewLog,
+  SchedulerConfig,
   SessionHistoryEntry,
   UserPerformance,
 } from './types';
@@ -735,9 +736,20 @@ export async function setCardFlag(id: string, flagged: boolean): Promise<void> {
 // Reviews
 // ---------------------------------------------------------------------------
 
+/** Which table owns the reviewed unit: a legacy Deck, or a course/lesson-scoped Course. */
+export type ReviewUnitKind = 'deck' | 'course';
+
 export interface RecordReviewArgs {
   card: Card;
-  deck: Deck;
+  /**
+   * The Deck (legacy per-deck/global-Today scope) or Course (course/lesson scope) this
+   * review is scheduled and calibrated against. Both satisfy SchedulerConfig, so the
+   * FSRS maths is identical either way; only the bookkeeping below (lastInteractedAt
+   * table, and the card set the retrievability snapshot spans) differs by `kind`.
+   */
+  deck: SchedulerConfig;
+  /** Defaults to 'deck' so every existing Deck-keyed caller is unaffected. */
+  kind?: ReviewUnitKind;
   grade: Grade;
   responseTimeSec: number;
   distracted: boolean;
@@ -763,6 +775,7 @@ export interface RecordReviewResult {
 export async function recordReview(args: RecordReviewArgs): Promise<RecordReviewResult> {
   try {
     const { card, deck, grade, responseTimeSec, distracted, correct } = args;
+    const kind: ReviewUnitKind = args.kind ?? 'deck';
     const now = args.now ?? Date.now();
 
   // All FSRS-6 maths is delegated to ts-fsrs via the engine wrapper.
@@ -811,31 +824,42 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
 
   const sessionHistoryId = await db.transaction(
     'rw',
-    db.cards,
-    db.decks,
-    db.sessionHistory,
-    db.userPerformance,
+    [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance],
     async () => {
       await db.cards.put(updatedCard);
-      await db.decks.update(deck.id, { lastInteractedAt: now });
+      if (kind === 'course') {
+        await db.courses.update(deck.id, { lastInteractedAt: now });
+      } else {
+        await db.decks.update(deck.id, { lastInteractedAt: now });
+      }
 
       if (correct) {
+        // Per decision: UserPerformance keeps its existing deckId-named primary key;
+        // for course/lesson-scoped reviews we simply write the courseId string into
+        // that same field (no schema bump).
         const perf =
           (await db.userPerformance.get(deck.id)) ?? emptyPerformance(deck.id);
         await db.userPerformance.put(updatePerformance(perf, responseTimeSec));
       }
 
-      // Read deck cards inside the transaction so concurrent reviews cannot
-      // race the average predicted retrievability calculation.
-      const allDeckCards = await db.cards.where('deckId').equals(deck.id).toArray();
-      const deckCards = allDeckCards.map((c) =>
+      // Read the unit's cards inside the transaction so concurrent reviews cannot
+      // race the average predicted retrievability calculation. Deck scope spans the
+      // deck's own cards; course scope spans every card in the course (across lessons).
+      const allUnitCards =
+        kind === 'course'
+          ? await db.cards.where('courseId').equals(deck.id).toArray()
+          : await db.cards.where('deckId').equals(deck.id).toArray();
+      const unitCards = allUnitCards.map((c) =>
         c.id === updatedCard.id ? updatedCard : c,
       );
-      const avgRetrievability = averagePredictedRetrievability(deckCards, deck);
+      const avgRetrievability = averagePredictedRetrievability(unitCards, deck);
 
       return db.sessionHistory.add({
         timestamp: now,
-        deckId: deck.id,
+        // deckId always identifies the backing (possibly shadow) deck the card lives
+        // in; courseId is populated in addition for course/lesson-scoped reviews.
+        deckId: updatedCard.deckId,
+        ...(kind === 'course' ? { courseId: deck.id } : {}),
         averagePredictedRetrievability: avgRetrievability,
       });
     },
@@ -855,7 +879,10 @@ export interface ReviewUndo {
   perfBefore: UserPerformance | null;
   /** The SessionHistory row id written by the review. */
   sessionHistoryId: number;
-  /** The deck that was reviewed (in case the card was moved since). */
+  /**
+   * The UserPerformance key of the unit that was reviewed (a deckId for deck scope,
+   * or a courseId for course/lesson scope — see {@link RecordReviewArgs.kind}).
+   */
   deckId: string;
 }
 
