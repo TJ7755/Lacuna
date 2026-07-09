@@ -170,7 +170,7 @@ describe('importBackup', () => {
 
   it('adds a missing practice node in merge mode', async () => {
     const course = await createCourse('Chemistry');
-    const node = await createPracticeNode(course.id, { type: 'card', name: 'Node A' });
+    const node = await createPracticeNode(course.id, { type: 'manual', name: 'Node A' });
     const backup = await exportDatabase();
 
     await db.practiceNodes.delete(node.id);
@@ -185,7 +185,7 @@ describe('importBackup', () => {
 
   it('resolves a practice node id collision by newer createdAt in merge mode', async () => {
     const course = await createCourse('Chemistry');
-    const node = await createPracticeNode(course.id, { type: 'card', name: 'Old Name' });
+    const node = await createPracticeNode(course.id, { type: 'manual', name: 'Old Name' });
     const backup = await exportDatabase();
 
     // Local copy is edited after the backup was taken, so its createdAt is newer.
