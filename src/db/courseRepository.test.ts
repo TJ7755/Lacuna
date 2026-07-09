@@ -82,6 +82,27 @@ describe('createCourse', () => {
     expect(course.autoPractice).toBe(false);
   });
 
+  it('seeds practice fields from the global practice defaults', async () => {
+    const { writePracticeDefaults } = await import('../state/practiceDefaults');
+    writePracticeDefaults({
+      autoPractice: false,
+      practiceThresholdMinutesFar: 90,
+      practiceThresholdMinutesNear: 45,
+      practiceUrgentWindowDays: 14,
+      practiceMaxGap: 8,
+    });
+
+    const course = await createCourse('Chemistry');
+
+    expect(course.autoPractice).toBe(false);
+    expect(course.practiceThresholdMinutesFar).toBe(90);
+    expect(course.practiceThresholdMinutesNear).toBe(45);
+    expect(course.practiceUrgentWindowDays).toBe(14);
+    expect(course.practiceMaxGap).toBe(8);
+
+    localStorage.clear();
+  });
+
   it('falls back to "Untitled course" for a blank name', async () => {
     const course = await createCourse('   ');
     expect(course.name).toBe('Untitled course');

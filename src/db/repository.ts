@@ -25,6 +25,7 @@ import { emptyPerformance, updatePerformance } from '../fsrs/grading';
 import { isLeech } from '../fsrs/leech';
 import { averagePredictedRetrievability } from '../fsrs/progress';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
+import { readPracticeDefaults } from '../state/practiceDefaults';
 import { scheduleAssetGc } from './assets';
 
 /** Convert low-level IndexedDB errors into user-friendly messages. */
@@ -930,6 +931,7 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
 export async function createCourse(name: string, opts?: Partial<Course>): Promise<Course> {
   try {
     const createdAt = Date.now();
+    const practiceDefaults = readPracticeDefaults();
     const course: Course = {
       id: makeId(),
       name: name.trim() || 'Untitled course',
@@ -941,11 +943,7 @@ export async function createCourse(name: string, opts?: Partial<Course>): Promis
       fsrsParameters: defaultFsrsParameters(),
       examObjective: 'expectedMarks',
       unlockMode: 'open',
-      autoPractice: true,
-      practiceThresholdMinutesFar: 60,
-      practiceThresholdMinutesNear: 30,
-      practiceUrgentWindowDays: 7,
-      practiceMaxGap: 5,
+      ...practiceDefaults,
       ...opts,
     };
     await db.courses.add(course);

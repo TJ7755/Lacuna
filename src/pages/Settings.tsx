@@ -34,6 +34,7 @@ import type { BackupFile } from '../db/types';
 import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
+import { usePracticeDefaults } from '../state/practiceDefaults';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
 import { useInputMode, type InputMode } from '../state/inputMode';
@@ -74,6 +75,7 @@ export function Settings() {
   const { notify } = useToast();
   const [gradingMode, setGradingMode] = useGradingMode();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
+  const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
   const [inputMode, setInputMode] = useInputMode();
   const [gestureSettings, setGestureSettings] = useGestureSettings();
@@ -638,6 +640,77 @@ export function Settings() {
             checked={autoOptimise}
             onChange={setAutoOptimise}
           />
+        </div>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <h3 className="font-display text-base">Course defaults</h3>
+          <p className="mt-1 mb-4 text-sm text-ink-soft">
+            Starting point for practice nodes on new courses. Any course can override
+            these in its own settings, which always take priority.
+          </p>
+
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-sm">Auto-insert practice nodes</div>
+              <p className="mt-1 text-sm text-ink-soft">
+                Automatically add practice nodes between lessons on the course path.
+              </p>
+            </div>
+            <Toggle
+              checked={practiceDefaults.autoPractice}
+              onChange={(checked) =>
+                setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })
+              }
+            />
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <NumberField
+              label="Threshold (far)"
+              value={practiceDefaults.practiceThresholdMinutesFar}
+              suffix="min"
+              min={1}
+              max={999}
+              onChange={(v) =>
+                setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesFar: v })
+              }
+            />
+            <NumberField
+              label="Threshold (near)"
+              value={practiceDefaults.practiceThresholdMinutesNear}
+              suffix="min"
+              min={1}
+              max={999}
+              onChange={(v) =>
+                setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesNear: v })
+              }
+            />
+            <NumberField
+              label="Revision period"
+              value={practiceDefaults.practiceUrgentWindowDays}
+              suffix="days"
+              min={0}
+              max={365}
+              onChange={(v) =>
+                setPracticeDefaults({ ...practiceDefaults, practiceUrgentWindowDays: v })
+              }
+            />
+            <NumberField
+              label="Max gap"
+              value={practiceDefaults.practiceMaxGap}
+              suffix="lessons"
+              min={1}
+              max={99}
+              onChange={(v) =>
+                setPracticeDefaults({ ...practiceDefaults, practiceMaxGap: v })
+              }
+            />
+          </div>
+          <p className="mt-3 text-xs text-ink-faint">
+            The near threshold applies once an exam is within the revision period; the
+            far threshold applies otherwise. Max gap forces a practice node after this
+            many lessons without one.
+          </p>
         </div>
       </motion.section>
 
@@ -1319,6 +1392,42 @@ function DurationInput({
           className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-ink outline-none transition-colors focus:border-accent"
         />
         <span className="shrink-0 text-xs text-ink-faint">min</span>
+      </div>
+    </label>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  suffix,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  suffix: string;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="block text-sm text-ink-soft">
+      {label}
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            if (!Number.isNaN(n)) onChange(Math.max(min, Math.min(max, n)));
+          }}
+          className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-ink outline-none transition-colors focus:border-accent"
+        />
+        <span className="shrink-0 text-xs text-ink-faint">{suffix}</span>
       </div>
     </label>
   );
