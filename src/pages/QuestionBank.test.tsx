@@ -83,6 +83,11 @@ const course: Course = {
   fsrsParameters: { requestRetention: 0.9, w: Array(21).fill(0), enable_fuzz: true, maximum_interval: 36500, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] },
   examObjective: 'expectedMarks',
   unlockMode: 'linear',
+  autoPractice: false,
+  practiceThresholdMinutesFar: 60,
+  practiceThresholdMinutesNear: 30,
+  practiceUrgentWindowDays: 7,
+  practiceMaxGap: 5,
 };
 
 const lesson1: Lesson = {
