@@ -24,13 +24,43 @@ function formatRow(values: string[], delimiter: ',' | '\t'): string {
 }
 
 async function fetchDecksAndCards() {
-  const [decks, cards] = await Promise.all([
+  const [decks, cards, courses, lessons] = await Promise.all([
     db.decks.toArray(),
     db.cards.toArray(),
+    db.courses.toArray(),
+    db.lessons.toArray(),
   ]);
   const deckMap = new Map(decks.map((d) => [d.id, d.name]));
   const colourMap = new Map(decks.map((d) => [d.id, d.colour ?? '']));
-  return { deckMap, colourMap, cards };
+  const courseNameMap = new Map(courses.map((c) => [c.id, c.name]));
+  const courseColourMap = new Map(courses.map((c) => [c.id, c.colour ?? '']));
+  const lessonNameMap = new Map(lessons.map((l) => [l.id, l.name]));
+  return { deckMap, colourMap, courseNameMap, courseColourMap, lessonNameMap, cards };
+}
+
+/**
+ * Resolve the display name and colour for a card's deck/course grouping.
+ * Course-created cards resolve to "<Course name> — <Lesson name>" (or just the
+ * course name when no lesson is set), taking precedence over the raw backing
+ * deck name. Legacy deck-only cards fall back to the deck map unchanged.
+ */
+function resolveDeckDisplay(
+  c: { deckId: string; courseId?: string | null; primaryLessonId?: string | null },
+  maps: Pick<
+    Awaited<ReturnType<typeof fetchDecksAndCards>>,
+    'deckMap' | 'colourMap' | 'courseNameMap' | 'courseColourMap' | 'lessonNameMap'
+  >,
+): { name: string; colour: string } {
+  if (c.courseId) {
+    const courseName = maps.courseNameMap.get(c.courseId);
+    if (courseName !== undefined) {
+      const lessonName = c.primaryLessonId ? maps.lessonNameMap.get(c.primaryLessonId) : undefined;
+      const name = lessonName ? `${courseName} — ${lessonName}` : courseName;
+      const colour = maps.courseColourMap.get(c.courseId) ?? '';
+      return { name, colour };
+    }
+  }
+  return { name: maps.deckMap.get(c.deckId) ?? '', colour: maps.colourMap.get(c.deckId) ?? '' };
 }
 
 const EXPORT_HEADERS = [
@@ -53,12 +83,15 @@ const EXPORT_HEADERS = [
 
 function cardToRow(
   c: Awaited<ReturnType<typeof fetchDecksAndCards>>['cards'][number],
-  deckMap: Map<string, string>,
-  colourMap: Map<string, string>,
+  maps: Pick<
+    Awaited<ReturnType<typeof fetchDecksAndCards>>,
+    'deckMap' | 'colourMap' | 'courseNameMap' | 'courseColourMap' | 'lessonNameMap'
+  >,
 ): string[] {
+  const { name, colour } = resolveDeckDisplay(c, maps);
   return [
-    deckMap.get(c.deckId) ?? '',
-    colourMap.get(c.deckId) ?? '',
+    name,
+    colour,
     c.front,
     c.back,
     (c.tags ?? []).join(';'),
@@ -78,25 +111,26 @@ function cardToRow(
 const CSV_WARNING = '# WARNING: This is a human-readable export, not a full backup. Re-importing will lose review history, image assets, and FSRS parameters. Use JSON backup for a complete snapshot.\n';
 
 export async function exportCardsCsv(): Promise<string> {
-  const { deckMap, colourMap, cards } = await fetchDecksAndCards();
-  const rows = [formatRow(EXPORT_HEADERS, ','), ...cards.map((c) => formatRow(cardToRow(c, deckMap, colourMap), ','))];
+  const maps = await fetchDecksAndCards();
+  const rows = [formatRow(EXPORT_HEADERS, ','), ...maps.cards.map((c) => formatRow(cardToRow(c, maps), ','))];
   return CSV_WARNING + rows.join('\r\n');
 }
 
 const TSV_WARNING = '# WARNING: This is a human-readable export, not a full backup. Re-importing will lose review history, image assets, and FSRS parameters. Use JSON backup for a complete snapshot.\n';
 
 export async function exportCardsTsv(): Promise<string> {
-  const { deckMap, colourMap, cards } = await fetchDecksAndCards();
-  const rows = [formatRow(EXPORT_HEADERS, '\t'), ...cards.map((c) => formatRow(cardToRow(c, deckMap, colourMap), '\t'))];
+  const maps = await fetchDecksAndCards();
+  const rows = [formatRow(EXPORT_HEADERS, '\t'), ...maps.cards.map((c) => formatRow(cardToRow(c, maps), '\t'))];
   return TSV_WARNING + rows.join('\r\n');
 }
 
 export async function exportCardsPlainText(): Promise<string> {
-  const { deckMap, colourMap, cards } = await fetchDecksAndCards();
+  const maps = await fetchDecksAndCards();
   const parts: string[] = [];
-  for (const c of cards) {
-    const deckName = deckMap.get(c.deckId) ?? 'Unknown deck';
-    const deckColour = colourMap.get(c.deckId);
+  for (const c of maps.cards) {
+    const { name, colour } = resolveDeckDisplay(c, maps);
+    const deckName = name || 'Unknown deck';
+    const deckColour = colour;
     const tags = (c.tags ?? []).join(', ');
     const lines: string[] = [`Deck: ${deckName}`];
     if (deckColour) lines.push(`Colour: ${deckColour}`);
@@ -149,11 +183,11 @@ export function exportCardsSimple(
  * Pipes in cell content are escaped so the table stays valid.
  */
 export async function exportCardsMarkdownTable(): Promise<string> {
-  const { deckMap, cards } = await fetchDecksAndCards();
+  const maps = await fetchDecksAndCards();
   const header = '| Deck | Front | Back | Tags |';
   const separator = '| --- | --- | --- | --- |';
-  const rows = cards.map((c) => {
-    const deck = escapeMarkdownPipe(deckMap.get(c.deckId) ?? '');
+  const rows = maps.cards.map((c) => {
+    const deck = escapeMarkdownPipe(resolveDeckDisplay(c, maps).name);
     const front = escapeMarkdownPipe(c.front);
     const back = c.type === 'cloze' ? '' : escapeMarkdownPipe(c.back);
     const tags = escapeMarkdownPipe((c.tags ?? []).join(', '));
@@ -171,12 +205,12 @@ export async function exportCardsMarkdownTable(): Promise<string> {
  * keys. Suitable for re-import into Lacuna or other tools.
  */
 export async function exportCardsJson(): Promise<string> {
-  const { deckMap, cards } = await fetchDecksAndCards();
-  const items = cards.map((c) => ({
+  const maps = await fetchDecksAndCards();
+  const items = maps.cards.map((c) => ({
     front: c.front,
     back: c.back,
     tags: c.tags ?? [],
-    deck: deckMap.get(c.deckId) ?? '',
+    deck: resolveDeckDisplay(c, maps).name,
     type: c.type,
   }));
   return JSON.stringify(items, null, 2);
@@ -212,10 +246,10 @@ function gradeLabel(grade: number): string {
 
 /** Export every review log across all cards as a CSV. */
 export async function exportReviewHistoryCsv(): Promise<string> {
-  const { deckMap, cards } = await fetchDecksAndCards();
+  const maps = await fetchDecksAndCards();
   const rows: string[] = [formatRow(REVIEW_HISTORY_HEADERS, ',')];
-  for (const card of cards) {
-    const deckName = deckMap.get(card.deckId) ?? '';
+  for (const card of maps.cards) {
+    const deckName = resolveDeckDisplay(card, maps).name;
     for (const log of card.history) {
       const front = card.front.slice(0, 120).replace(/\n/g, ' ');
       const row = [
@@ -239,10 +273,10 @@ export async function exportReviewHistoryCsv(): Promise<string> {
 
 /** Export review history as a JSON array of objects. */
 export async function exportReviewHistoryJson(): Promise<string> {
-  const { deckMap, cards } = await fetchDecksAndCards();
+  const maps = await fetchDecksAndCards();
   const items: unknown[] = [];
-  for (const card of cards) {
-    const deckName = deckMap.get(card.deckId) ?? '';
+  for (const card of maps.cards) {
+    const deckName = resolveDeckDisplay(card, maps).name;
     for (const log of card.history) {
       items.push({
         timestamp: log.timestamp,
