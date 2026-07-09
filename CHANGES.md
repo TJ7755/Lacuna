@@ -172,6 +172,41 @@ is no user-visible change yet — the UI is delivered in a later stage.
   predated the Course practice fields (vitest does not type-check, so this only surfaced on
   the project build).
 
+### Settings and course management (Phase 7)
+
+- Extracted `DeckSettings.tsx` (848 lines) into reusable pieces under `src/pages/settings/`:
+  `SchedulingFieldsSection` (pure controlled fields), `OptimisationPanel` (generalised to a
+  `{ id, fsrsParameters, autoOptimise }` entity with an `onUpdate` callback instead of calling
+  `updateDeck` directly), `DangerZoneSection` (delete-with-undo-toast, parameterised), and the
+  `parseSteps` helper, so the new `CourseSettings.tsx` can share them. Added a `DeckSettings`
+  smoke test to guard behaviour through the extraction; `DeckSettings.tsx` and its route remain
+  as the legacy deck-scoped settings surface until Phase 8.
+- Added `src/state/practiceDefaults.ts` (localStorage-backed, mirrors `optimiseSetting.ts`
+  conventions) for the `autoPractice`/threshold/urgent-window/max-gap fields on `Course`.
+  `createCourse` now seeds new courses from these defaults instead of hardcoded literals;
+  explicit opts still override. `Settings.tsx` gains a "Course defaults" sub-section inside
+  Study & scheduling exposing the fields, with the urgent-window field framed as the revision
+  period.
+- Added the course-only settings sections `UnlockModeSection`, `PracticeSettingsSection`,
+  `ExamDatesSection` and `LessonManagementSection` under `src/pages/settings/`, and composed
+  them into the new `CourseSettings.tsx` page (route `/course/:courseId/settings`), with an
+  entry point from `CoursePath`. Course deletion uses a plain confirmation dialogue with no
+  undo — an intentional trade-off for this phase; undo is deferred.
+- Fixed card exporters (plain text, CSV, TSV, Markdown, JSON) showing the internal lesson
+  backing-deck name for course-created cards; they now resolve `"<Course name> — <Lesson name>"`
+  (or just the course name) via `courseId`/`primaryLessonId` lookups, falling back to the deck
+  map for legacy deck-only cards. `deck_name`/`deck_colour` CSV headers are unchanged. This was
+  the only import/export gap: `portability.ts` (backups, merge/replace import) already carried
+  `courseExamDates` and `practiceNodes` correctly; `import.ts` needed no changes. Added
+  merge-mode test coverage for both tables in `portability.ts`.
+- Fixed a `CourseSettings` not-found branch that could never be reached: `useCourse` can only
+  ever resolve `Course | undefined` (Dexie's `.get()` has no not-found sentinel), so a bad
+  `courseId` hung on the loading skeleton forever instead of showing "not found". Resolved the
+  course locally with the same null-sentinel `useLiveQuery` pattern `CoursePath` already uses.
+- Fixed `parsePositiveIntOr` rejecting `0` for the practice threshold and urgent-window fields,
+  where `0` is a meaningful value (see `src/fsrs/practice.ts`) and the inputs allow `min=0`; the
+  maximum lesson gap keeps its floor of 1, matching its `min=1` input.
+
 ## 0.0.3 — Simple learn mode, card types, and touch-first polish
 
 - Added `useStudyMode` hook (`src/state/studyMode.ts`) with `fsrs` and `simple` modes, persisted to `localStorage`.

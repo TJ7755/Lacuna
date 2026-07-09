@@ -863,7 +863,29 @@ LAC2 (share code v2)
    - Show Practice session stats
 4. **Test practice sessions**
 
-### Phase 7: Settings and Course Management (Week 7-8)
+### Phase 7: Settings and Course Management (Week 7-8) — DONE
+
+> **Status note (Phase 7 close-out):**
+> - Import/export scope was narrower than §12.7's file list implied: `src/db/portability.ts`
+>   (backup/restore) already carried the six Phase-1 tables end to end, including
+>   `courseExamDates` and `practiceNodes` in merge mode. Only `src/db/export.ts` needed a fix —
+>   card exporters (plain text, CSV, TSV, Markdown, JSON) were resolving the internal
+>   lesson backing-deck name instead of `"<Course name> — <Lesson name>"` for course-created
+>   cards. `src/db/import.ts` needed no changes.
+> - "Study pattern calculation" and "revision period settings" (§12.7 item 2) were interpreted
+>   as **global, per-user course-practice defaults** — `src/state/practiceDefaults.ts`
+>   (localStorage-backed, mirrors `optimiseSetting.ts`) seeds `autoPractice`/threshold/
+>   urgent-window/max-gap fields on newly created courses, exposed as "Course defaults" in
+>   Settings under Study & scheduling, with the urgent-window field framed as the revision
+>   period. This is a proposal for reviewer confirmation, not a literal reading of the plan
+>   text, which did not specify a mechanism.
+> - Course deletion (`DangerZoneSection`, composed into `CourseSettings.tsx`) uses a plain
+>   `confirm()` dialogue with no undo, unlike deck deletion's undo-toast pattern. This is an
+>   intentional trade-off for this phase — undo for course deletion is deferred, not an
+>   oversight.
+> - `DeckSettings.tsx` and its `/deck/:deckId/settings` route remain in place as the legacy
+>   deck-scoped settings surface until Phase 8; `CourseSettings.tsx` is additive, not a
+>   replacement.
 
 1. **Update Course Settings**
    - `src/pages/CourseSettings.tsx` (new)
