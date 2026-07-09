@@ -128,6 +128,23 @@ is no user-visible change yet — the UI is delivered in a later stage.
 - Fixed the `MarkdownEditor` toolbar overflowing when `allowEmbeds` is on (the Collapsible and Video actions overlapped and clipped): the toolbar now wraps instead of silently overflowing a hidden scroll region.
 - Fixed the dashboard seven-day forecast showing "Unknown deck": the course cutover stopped passing decks to `StudySignals`, so the forecast now groups slices by `courseId` (falling back to `deckId` for legacy cards) and resolves names and colours from the active courses (`DeckForecastSlice.deckId` renamed to `sourceId`).
 
+### Course-scoped sharing and question bank (Phase 5)
+
+- `SharePage` now exports and imports whole courses instead of individual decks: pick a
+  course, generate a share code, QR code or plain-text export directly from it. Share
+  codes moved to payload v2 (course metadata, ordered lessons with notes and cards, exam
+  dates); legacy v1 deck codes still import and are auto-migrated into a single course.
+  Typing-answer cards round-trip through the compact `k:3` type code alongside Basic and
+  Reversed.
+- Added the Question Bank page (route `/course/:courseId/bank`): every card in a course
+  grouped by lesson, with an Unassigned bucket for cards not tied to a lesson, bulk
+  assign-to-lesson from the card list, and unassigned card creation backed by a lazily
+  created per-course bank deck.
+- Fixed a regression from the export rewrite: the pre-generation warning that images in
+  the selected material will be replaced with placeholders was dropped when the export
+  flow moved from decks to courses. Reinstated it against the selected course's cards
+  (`referencedAssetHashesInCards`).
+
 ## 0.0.3 — Simple learn mode, card types, and touch-first polish
 
 - Added `useStudyMode` hook (`src/state/studyMode.ts`) with `fsrs` and `simple` modes, persisted to `localStorage`.
