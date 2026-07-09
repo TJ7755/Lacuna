@@ -170,6 +170,28 @@ const router = createHashRouter([
       </ErrorBoundary>
     ),
   },
+  {
+    // A practice session over every due card in the course.
+    path: '/course/:courseId/learn',
+    element: (
+      <ErrorBoundary label="the Learn session">
+        <Suspense fallback={<RouteFallback />}>
+          <LearnMode />
+        </Suspense>
+      </ErrorBoundary>
+    ),
+  },
+  {
+    // A lesson study session (new cards for that lesson).
+    path: '/lesson/:lessonId/learn',
+    element: (
+      <ErrorBoundary label="the Learn session">
+        <Suspense fallback={<RouteFallback />}>
+          <LearnMode />
+        </Suspense>
+      </ErrorBoundary>
+    ),
+  },
 ]);
 
 export function App() {

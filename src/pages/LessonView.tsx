@@ -299,15 +299,10 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
             Cards{' '}
             <span className="text-ink-faint">({lessonCards.length})</span>
           </h2>
-          {/*
-           * Study bridge: navigates to the existing deck-based LearnMode using the
-           * lesson's underlying deck. This is a temporary bridge until the
-           * course/lesson-aware LearnMode lands in a later phase.
-           */}
-          {lessonCards.length > 0 && lessonDeckId && (
+          {lessonCards.length > 0 && lessonId && (
             <Button
               variant="primary"
-              onClick={() => navigate(`/deck/${lessonDeckId}/learn`)}
+              onClick={() => navigate(`/lesson/${lessonId}/learn`)}
             >
               <PlayIcon width={18} height={18} />
               Study

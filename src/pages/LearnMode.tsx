@@ -3,15 +3,17 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { hapticLight, hapticMedium } from '../utils/haptic';
 import { db } from '../db/schema';
-import type { Card, Deck, Grade, UserPerformance } from '../db/types';
+import type { Card, Course, Deck, Grade, Lesson, UserPerformance } from '../db/types';
 import {
   buryCard,
+  ratchetLessonUnlock,
   recordReview,
   setCardFlag,
   suspendCard,
   undoReview,
 } from '../db/repository';
 import type { ReviewUndo } from '../db/repository';
+import { nextLessonUnlockCondition } from '../course/unlock';
 import { emptyPerformance, gradeFromResponse, updatePerformance } from '../fsrs/grading';
 import {
   applyCooldown,
@@ -25,7 +27,7 @@ import {
   sessionComplete,
   sessionProgress,
 } from '../fsrs/session';
-import type { SessionContext } from '../fsrs/session';
+import type { SessionContext, SessionUnit } from '../fsrs/session';
 import { startOfDay } from '../utils/datetime';
 import { MS_PER_DAY } from '../fsrs/params';
 import { CardContent } from '../components/cards/CardContent';
@@ -61,6 +63,14 @@ import { cn } from '../components/ui/cn';
 
 type Phase = 'loading' | 'question' | 'answer' | 'finished';
 
+/**
+ * The scheduling unit a session studies: a legacy Deck, or a Course (both the
+ * course-wide practice scope and the lesson scope, which schedules against its
+ * parent Course — see SessionUnitScope in fsrs/session.ts). Both shapes carry
+ * the fields this component reads directly (name, dailyReviewGoal, etc).
+ */
+type StudyUnit = Deck | Course;
+
 /** The distinct visual identity of the current learn session. */
 type LearnModeType = 'fsrs' | 'simple' | 'cram' | 'filtered' | 'filtered-due' | 'filtered-new' | 'filtered-leech' | 'filtered-flagged' | 'filtered-suspended';
 
@@ -83,7 +93,7 @@ interface AnswerSnapshot {
 }
 
 export function LearnMode() {
-  const { deckId } = useParams<{ deckId: string }>();
+  const { deckId, courseId, lessonId } = useParams<{ deckId: string; courseId: string; lessonId: string }>();
   const [searchParams] = useSearchParams();
   const tagFilter = searchParams.get('tag');
   const cramMode = searchParams.get('mode') === 'cram';
@@ -120,11 +130,23 @@ export function LearnMode() {
     return 'fsrs';
   }, [isSimpleMode, cramMode, filterParams]);
 
-  const isGlobal = !deckId;
+  // Exactly one of deckId/courseId/lessonId is set by the matching route (or none,
+  // for the global "Today" session). The lesson route (/lesson/:lessonId/learn)
+  // carries no courseId, so it is resolved from the loaded lesson (see resolvedCourseId).
+  const isLessonScoped = !!lessonId;
+  const isCourseScoped = !!courseId && !lessonId;
+  const isGlobal = !deckId && !courseId && !lessonId;
 
   const [phase, setPhase] = useState<Phase>('loading');
-  // The deck a single-deck session is studying (null for the global session).
-  const [singleDeck, setSingleDeck] = useState<Deck | null>(null);
+  // The unit a single-unit session is studying (null for the global session).
+  const [singleDeck, setSingleDeck] = useState<StudyUnit | null>(null);
+  // Display name for the header: the lesson's own name under lesson scope (its
+  // scheduling unit is the parent Course, whose name would otherwise show instead).
+  const [unitDisplayName, setUnitDisplayName] = useState<string | null>(null);
+  // The course id backing a course/lesson-scoped session. Known directly from the
+  // route for /course/:courseId/learn; resolved from the lesson for /lesson/:lessonId/learn
+  // (that route carries no courseId param). Used for exitTo and the unlock ratchet.
+  const [resolvedCourseId, setResolvedCourseId] = useState<string | null>(null);
   const [current, setCurrent] = useState<Card | null>(null);
   const [progress, setProgress] = useState(0);
   // Cache sessionProgress so repeated calls while the card pool is unchanged don't recompute.
@@ -161,8 +183,17 @@ export function LearnMode() {
   // and so the stable callbacks below always read current values (no stale closures).
   const cooldowns = useRef<CooldownMap>(new Map());
   const perfRef = useRef<Map<string, UserPerformance>>(new Map());
-  const decksRef = useRef<Map<string, Deck>>(new Map());
+  const decksRef = useRef<Map<string, StudyUnit>>(new Map());
   const ctxRef = useRef<SessionContext | null>(null);
+  // Whether reviews in this session should be recorded against a Course (course
+  // and lesson scope) or a Deck (deck scope and the global "Today" session).
+  const reviewKindRef = useRef<'deck' | 'course'>('deck');
+  // Set for course/lesson-scoped sessions so a completed session can evaluate the
+  // semi-linear unlock ratchet (see ratchetUnlocks below). Null for deck/global sessions.
+  const ratchetCourseIdRef = useRef<string | null>(null);
+  // Set only for lesson scope, so ratchetUnlocks knows which single lesson to
+  // evaluate (course/practice-scope completion instead sweeps every lesson).
+  const ratchetLessonIdRef = useRef<string | null>(null);
   const cardsRef = useRef<Card[]>([]);
   const timerStart = useRef(0);
   const responseTime = useRef(0);
@@ -195,13 +226,61 @@ export function LearnMode() {
     return () => {
       mountedRef.current = false;
     };
-  }, []);  const exitTo = isGlobal ? '/' : `/deck/${deckId}`;
+  }, []);
+  const exitTo = isLessonScoped
+    ? resolvedCourseId
+      ? `/course/${resolvedCourseId}/lesson/${lessonId}`
+      : '/'
+    : isCourseScoped
+      ? `/course/${courseId}`
+      : isGlobal
+        ? '/'
+        : `/deck/${deckId}`;
   const backOut = useCallback(() => navigate(exitTo), [navigate, exitTo]);
 
   const objectiveLabel = useCallback(() => {
     if (singleDeck) return progressHeading(singleDeck);
     return 'Predicted readiness across all decks';
   }, [singleDeck]);
+
+  /**
+   * Evaluate and, where satisfied, write the semi-linear unlock ratchet (Course
+   * Architecture Plan Addendum 2, §I) after a course/lesson-scoped session reaches
+   * its objective. No-ops for deck-scoped or global sessions, or when the course
+   * is not under `semi-linear` unlock mode.
+   *
+   *  - Lesson-scoped completion: evaluates only the pair (this lesson, its
+   *    successor), with `practiceGoalReached: undefined` — this component has no
+   *    visibility into path-level practice-node placement, so it defers to
+   *    condition 1 alone (lessonTaught), matching nextLessonUnlockCondition's
+   *    documented behaviour when no practice node is known to gate the pair.
+   *  - Course-scoped (practice) completion: sweeps every adjacent lesson pair
+   *    with `practiceGoalReached: true`, ratcheting any successor whose
+   *    predecessor is taught — the "re-evaluate on practice objective reached"
+   *    hook described in nextLessonUnlockCondition's doc comment.
+   */
+  const ratchetUnlocks = useCallback(async (reachedGoal: boolean) => {
+    if (!reachedGoal) return;
+    const cId = ratchetCourseIdRef.current;
+    if (!cId) return;
+    const course = await db.courses.get(cId);
+    if (!course || course.unlockMode !== 'semi-linear') return;
+    const coreLessons = (await db.lessons.where('courseId').equals(cId).sortBy('orderIndex'))
+      .filter((l) => !l.isExtension);
+    const lId = ratchetLessonIdRef.current;
+    const now = Date.now();
+    for (let i = 0; i < coreLessons.length - 1; i++) {
+      const lessonN = coreLessons[i];
+      const lessonN1 = coreLessons[i + 1];
+      if (lessonN1.unlockedAt !== undefined) continue;
+      if (lId && lessonN.id !== lId) continue;
+      const lessonNCards = await db.cards.where('primaryLessonId').equals(lessonN.id).toArray();
+      const practiceGoalReached = lId ? undefined : true;
+      if (nextLessonUnlockCondition(lessonNCards, practiceGoalReached)) {
+        await ratchetLessonUnlock(lessonN1.id, now);
+      }
+    }
+  }, []);
 
   /** Compute sessionProgress with a lightweight dirty-check cache. */
   const cachedSessionProgress = useCallback((cards: Card[], ctx: SessionContext): number => {
@@ -239,8 +318,9 @@ export function LearnMode() {
       lastAnswer.current = null;
       if (!mountedRef.current) return;
       setPhase('finished');
+      if (ratchetCourseIdRef.current) void ratchetUnlocks(reachedGoal);
     },
-    [objectiveLabel, distraction, cachedSessionProgress, isSimpleMode, mode],
+    [objectiveLabel, distraction, cachedSessionProgress, isSimpleMode, mode, ratchetUnlocks],
   );
 
   /** Present the next eligible card, or finish if the goal has been reached. */
@@ -323,45 +403,106 @@ export function LearnMode() {
     setTimeLimitOverride(false);
     sessionStartMs.current = 0;
     setPhase('loading');
+    reviewKindRef.current = 'deck';
+    ratchetCourseIdRef.current = null;
+    ratchetLessonIdRef.current = null;
+    setUnitDisplayName(null);
+    setResolvedCourseId(null);
     void (async () => {
-      let decks: Deck[];
+      let units: StudyUnit[];
+      let sessionUnits: Deck[] | SessionUnit[];
       let cards: Card[];
-      if (deckId) {
+
+      if (lessonId) {
+        const lesson: Lesson | undefined = await db.lessons.get(lessonId);
+        if (!lesson) {
+          navigate('/');
+          return;
+        }
+        const course = await db.courses.get(lesson.courseId);
+        if (!course) {
+          navigate('/');
+          return;
+        }
+        setResolvedCourseId(course.id);
+        const links = await db.lessonCards.where('lessonId').equals(lessonId).toArray();
+        const linkedCardIds = new Set(links.map((l) => l.cardId));
+        const primaryCards = await db.cards.where('primaryLessonId').equals(lessonId).toArray();
+        const linkedCards =
+          linkedCardIds.size > 0
+            ? await db.cards.where('id').anyOf([...linkedCardIds]).toArray()
+            : [];
+        const seen = new Set<string>();
+        const merged: Card[] = [];
+        for (const c of [...primaryCards, ...linkedCards]) {
+          if (!seen.has(c.id)) {
+            seen.add(c.id);
+            merged.push(c);
+          }
+        }
+        // Phase 6 default: a lesson session studies only its new (unseen) cards.
+        // Teacher-configured filters (e.g. review-only or mixed) are deferred.
+        cards = merged.filter((c) => c.state === 0);
+        units = [course];
+        sessionUnits = [
+          { config: course, scope: { kind: 'lesson', courseId: course.id, lessonId, linkedCardIds } },
+        ];
+        reviewKindRef.current = 'course';
+        ratchetCourseIdRef.current = course.id;
+        ratchetLessonIdRef.current = lessonId;
+        setUnitDisplayName(lesson.name);
+      } else if (courseId) {
+        const course = await db.courses.get(courseId);
+        if (!course) {
+          navigate('/');
+          return;
+        }
+        cards = await db.cards.where('courseId').equals(courseId).toArray();
+        units = [course];
+        sessionUnits = [{ config: course, scope: { kind: 'course', courseId } }];
+        reviewKindRef.current = 'course';
+        ratchetCourseIdRef.current = course.id;
+        setUnitDisplayName(course.name);
+      } else if (deckId) {
         const d = await db.decks.get(deckId);
         if (!d) {
           navigate(`/deck/${deckId}`);
           return;
         }
-        decks = [d];
+        units = [d];
+        sessionUnits = [d];
         cards = await db.cards.where('deckId').equals(deckId).toArray();
         if (tagFilter) cards = cards.filter((c) => (c.tags ?? []).includes(tagFilter));
         const now = Date.now();
         if (filterParams.length > 0) {
           cards = cards.filter((c) => filterParams.every((f) => matchesFilter(c, f, now)));
         }
+        setUnitDisplayName(d.name);
       } else {
-        decks = await db.decks.toArray();
+        const decks = await db.decks.toArray();
+        units = decks;
+        sessionUnits = decks;
         cards = await db.cards.toArray();
       }
       if (cancelled) return;
 
-      const perfs = await Promise.all(decks.map((d) => db.userPerformance.get(d.id)));
+      const perfs = await Promise.all(units.map((u) => db.userPerformance.get(u.id)));
       const perfMap = new Map<string, UserPerformance>();
-      decks.forEach((d, i) => perfMap.set(d.id, perfs[i] ?? emptyPerformance(d.id)));
+      units.forEach((u, i) => perfMap.set(u.id, perfs[i] ?? emptyPerformance(u.id)));
       perfRef.current = perfMap;
-      decksRef.current = new Map(decks.map((d) => [d.id, d]));
-      const ctx = makeSessionContext(decks, cramMode ? 'cram' : 'objective');
+      decksRef.current = new Map(units.map((u) => [u.id, u]));
+      const ctx = makeSessionContext(sessionUnits, cramMode ? 'cram' : 'objective');
       ctxRef.current = ctx;
       cardsRef.current = cards;
       reviewsByDeck.current = new Map();
       setLimitOverride(false);
       setSingleDeck((prev) => {
-        const next = deckId ? decks[0] : null;
+        const next = !isGlobal ? units[0] : null;
         if (prev?.id === next?.id) return prev;
         return next;
       });
 
-      if (decks.length === 0 || cards.length === 0) {
+      if (units.length === 0 || cards.length === 0) {
         if (cancelled) return;
         // Show an empty-state screen instead of navigating away so the user
         // understands what happened and can choose what to do next.
@@ -380,8 +521,8 @@ export function LearnMode() {
           masteryAfter: progressBefore.current,
           objectiveLabel: isFiltered
             ? `No cards matching ${filterLabel} to study`
-            : deckId
-              ? progressHeading(decks[0])
+            : !isGlobal
+              ? progressHeading(units[0])
               : 'Predicted readiness across all decks',
           focusFraction: 1,
           reachedGoal: false,
@@ -409,7 +550,7 @@ export function LearnMode() {
           events: [],
           masteryBefore: progressBefore.current,
           masteryAfter: progressBefore.current,
-          objectiveLabel: deckId ? progressHeading(decks[0]) : 'Predicted readiness across all decks',
+          objectiveLabel: !isGlobal ? progressHeading(units[0]) : 'Predicted readiness across all decks',
           focusFraction: 1,
           reachedGoal: true,
           limitReached: false,
@@ -417,6 +558,7 @@ export function LearnMode() {
           mode,
         });
         setPhase('finished');
+        if (ratchetCourseIdRef.current) void ratchetUnlocks(true);
       } else {
         sessionStartMs.current = Date.now();
         serveNextRef.current();
@@ -425,7 +567,7 @@ export function LearnMode() {
     return () => {
       cancelled = true;
     };
-  }, [deckId, tagFilter, cramMode, filterParams, navigate, isSimpleMode, mode]);
+  }, [deckId, courseId, lessonId, tagFilter, cramMode, filterParams, navigate, isSimpleMode, mode, isGlobal, ratchetUnlocks]);
 
   const reveal = useCallback(() => {
     setPhase((p) => {
@@ -493,7 +635,13 @@ export function LearnMode() {
         }
 
         const ctx = ctxRef.current;
-        const deck = decksRef.current.get(cardNow.deckId);
+        // Deck-scoped/global sessions key units by the card's own deckId; course
+        // and lesson scope are always single-unit sessions whose unit id (a
+        // Course id) never matches the card's backing (shadow) deckId, so the
+        // sole entry in decksRef is used directly instead.
+        const deck = isGlobal
+          ? decksRef.current.get(cardNow.deckId)
+          : decksRef.current.values().next().value;
         if (!ctx || !deck) {
           submitting.current = false;
           return;
@@ -511,6 +659,7 @@ export function LearnMode() {
         const { card: updated, sessionHistoryId } = await recordReview({
           card: cardNow,
           deck,
+          kind: reviewKindRef.current,
           grade,
           responseTimeSec: t,
           distracted,
@@ -525,7 +674,12 @@ export function LearnMode() {
         cardsRef.current = nextCards;
 
         if (grade === 1) {
-          const deckSize = nextCards.filter((c) => c.deckId === deck.id).length;
+          // Global sessions span several decks, so size the cooldown to just this
+          // card's deck; course/lesson sessions are already scoped to their own
+          // pool (see the loading effect), so the whole pool applies.
+          const deckSize = isGlobal
+            ? nextCards.filter((c) => c.deckId === deck.id).length
+            : nextCards.length;
           applyCooldown(cooldowns.current, updated.id, deckSize);
         }
         decrementCooldowns(cooldowns.current, updated.id);
@@ -575,7 +729,7 @@ export function LearnMode() {
         submitting.current = false;
       }
     },
-    [distraction, finish, serveNext, cachedSessionProgress, limitOverride, timeLimitOverride, m, isSimpleMode],
+    [distraction, finish, serveNext, cachedSessionProgress, limitOverride, timeLimitOverride, m, isSimpleMode, isGlobal],
   );
 
   const undoLast = useCallback(async () => {
@@ -977,6 +1131,7 @@ export function LearnMode() {
         <LearnHeader
           mode={mode}
           singleDeck={singleDeck}
+          unitDisplayName={unitDisplayName}
           progress={progress}
           filterParams={filterParams}
           tagFilter={tagFilter}
@@ -1182,16 +1337,20 @@ function modeProgressVariant(mode: LearnModeType): ProgressVariant {
 
 function computeHeaderInfo({
   singleDeck,
+  unitDisplayName,
   mode,
   filterParams,
   tagFilter,
 }: {
-  singleDeck: Deck | null;
+  singleDeck: StudyUnit | null;
+  unitDisplayName: string | null;
   mode: LearnModeType;
   filterParams: CardFilter[];
   tagFilter: string | null;
 }) {
-  const deckName = singleDeck ? singleDeck.name : 'Today · all decks';
+  // unitDisplayName overrides the unit's own name for lesson scope, whose
+  // scheduling unit is the parent Course rather than the lesson itself.
+  const deckName = unitDisplayName ?? (singleDeck ? singleDeck.name : 'Today · all decks');
   const tagPart = tagFilter ? `tag "${tagFilter}"` : '';
 
   const filterLabels = filterParams.map((f) => FILTER_LABELS[f] ?? f);
@@ -1249,6 +1408,7 @@ function computeHeaderInfo({
 function LearnHeader({
   mode,
   singleDeck,
+  unitDisplayName,
   progress,
   filterParams,
   tagFilter,
@@ -1271,7 +1431,8 @@ function LearnHeader({
   phase,
 }: {
   mode: LearnModeType;
-  singleDeck: Deck | null;
+  singleDeck: StudyUnit | null;
+  unitDisplayName: string | null;
   progress: number;
   filterParams: CardFilter[];
   tagFilter: string | null;
@@ -1293,7 +1454,7 @@ function LearnHeader({
   isSimpleMode: boolean;
   phase: Phase;
 }) {
-  const info = computeHeaderInfo({ singleDeck, mode, filterParams, tagFilter });
+  const info = computeHeaderInfo({ singleDeck, unitDisplayName, mode, filterParams, tagFilter });
   const progressVariant = modeProgressVariant(mode);
 
   return (

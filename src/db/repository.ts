@@ -1026,6 +1026,23 @@ export async function updateLesson(id: string, changes: Partial<Lesson>): Promis
 }
 
 /**
+ * The semi-linear unlock ratchet (Course Architecture Plan Addendum 2, §I): sets
+ * `Lesson.unlockedAt` to `now` the first time the gate is satisfied, and never
+ * clears or re-sets it afterwards (a one-way ratchet). No-ops if the lesson does
+ * not exist or is already unlocked. Callers determine WHETHER to ratchet via
+ * {@link nextLessonUnlockCondition} in src/course/unlock.ts — this function only
+ * performs the write, and only under `semi-linear` unlock mode (other modes derive
+ * their unlock state at read time in src/course/path.ts and have nothing to write).
+ */
+export async function ratchetLessonUnlock(lessonId: string, now: number = Date.now()): Promise<void> {
+  await db.transaction('rw', db.lessons, async () => {
+    const lesson = await db.lessons.get(lessonId);
+    if (!lesson || lesson.unlockedAt !== undefined) return;
+    await db.lessons.update(lessonId, { unlockedAt: now });
+  });
+}
+
+/**
  * Delete a lesson: remove its notes and lessonCard links in one transaction.
  * Cards whose primaryLessonId pointed here become unassigned (primaryLessonId set
  * to null) rather than deleted — they remain in the question bank. Sibling

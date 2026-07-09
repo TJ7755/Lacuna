@@ -10,6 +10,7 @@ import {
   createDeck,
   createLesson,
   createLessonCard,
+  ratchetLessonUnlock,
   recordReview,
   removeTagFromCards,
   rescheduleCards,
@@ -101,6 +102,38 @@ describe('undoReview', () => {
     expect(restored.reps).toBe(0);
     expect(await db.sessionHistory.get(sessionHistoryId)).toBeUndefined();
     expect(await db.userPerformance.get(c.id)).toBeUndefined();
+  });
+});
+
+describe('ratchetLessonUnlock', () => {
+  beforeEach(async () => {
+    await Promise.all([db.courses.clear(), db.lessons.clear()]);
+  });
+
+  it('sets unlockedAt the first time it is called', async () => {
+    const course = await createCourse('Test course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    expect((await db.lessons.get(lesson.id))?.unlockedAt).toBeUndefined();
+
+    const now = Date.now();
+    await ratchetLessonUnlock(lesson.id, now);
+
+    expect((await db.lessons.get(lesson.id))?.unlockedAt).toBe(now);
+  });
+
+  it('never re-sets or clears an already-ratcheted lesson (one-way)', async () => {
+    const course = await createCourse('Test course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+
+    const first = Date.now();
+    await ratchetLessonUnlock(lesson.id, first);
+    await ratchetLessonUnlock(lesson.id, first + 10_000);
+
+    expect((await db.lessons.get(lesson.id))?.unlockedAt).toBe(first);
+  });
+
+  it('no-ops for a non-existent lesson', async () => {
+    await expect(ratchetLessonUnlock('missing-lesson-id')).resolves.toBeUndefined();
   });
 });
 
