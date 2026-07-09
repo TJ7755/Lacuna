@@ -1,9 +1,11 @@
-// Deck sharing: turn one or more decks' content into a single compact, copy-and-paste
-// code, and rebuild decks from such a code. A share code carries only the *content*
-// needed to recreate the cards (type, front, back, tags — images ride along inside the
-// Markdown as base64 data URIs) plus light deck metadata (name, objective, the date it
-// was created and the date due). It deliberately omits personal scheduling state and
-// review history: sharing is about the material, not one learner's progress.
+// Deck/course sharing: turn one or more decks' content, or a whole course, into a
+// single compact, copy-and-paste code, and rebuild it from such a code. A share code
+// carries only the *content* needed to recreate the material (type, front, back, tags
+// — images ride along inside the Markdown as base64 data URIs — plus, for a course,
+// its lessons, notes and extra exam dates) alongside light scheduling metadata (name,
+// objective, the date it was created and the date due). It deliberately omits personal
+// scheduling state and review history: sharing is about the material, not one
+// learner's progress.
 //
 // Compression comes from three places, in order of impact:
 //   1. Reverse pairs (a front/back card and its mirror) are stored once as a single
@@ -21,18 +23,33 @@
 //   LAC0 = plain base64 (legacy, uncompressed fallback)
 //   LAC2 = DEFLATE + Base45 (densest in QR codes, longer as raw text)
 //   LAC3 = plain Base45 (legacy, uncompressed fallback)
+//
+// Payload version (the `v` field, unrelated to the LACn encoding prefix above):
+//   v1 = a flat list of decks (the original shape).
+//   v2 = a single course: course metadata, ordered lessons (each with notes and
+//        cards) and any extra exam dates. Deliberately out of scope for v2:
+//        LessonCardLink (display-only linking) and PracticeNode (practice is a
+//        later phase) — a shared course carries only the taught material.
 
 import { z } from 'zod';
-import { db } from './schema';
-import { createDeckWithCards, updateDeck } from './repository';
-import { clampRequestRetention } from '../fsrs/params';
+import { db, makeId } from './schema';
+import {
+  createCards,
+  createCourse,
+  createCourseExamDate,
+  createLesson,
+  createLessonCard,
+  createNote,
+} from './repository';
+import { clampRequestRetention, defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
+import { emptyPerformance } from '../fsrs/grading';
+import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import type { ParsedCard } from './import';
-import type { Card } from './types';
+import type { Card, Deck, Folder, UnlockMode } from './types';
 import { stripAssetImages } from './assets';
 import { bytesToBase45, base45ToBytes } from './base45';
+import { buildCourseMigration } from './courseMigration';
 
-/** Format version. Bump only on a breaking change to the payload shape. */
-const SHARE_VERSION = 1;
 const PREFIX_BASE45_COMPRESSED = 'LAC2';
 const PREFIX_BASE45_PLAIN = 'LAC3';
 const PREFIX_COMPRESSED = 'LAC1';
@@ -43,7 +60,7 @@ const PREFIX_PLAIN = 'LAC0';
 // ---------------------------------------------------------------------------
 
 const ShareCardSchema = z.object({
-  k: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+  k: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
   f: z.string(),
   b: z.string().optional(),
   g: z.array(z.string()).optional(),
@@ -61,17 +78,75 @@ const ShareDeckSchema = z.object({
   cards: z.array(ShareCardSchema),
 });
 
-const SharePayloadSchema = z.object({
-  v: z.literal(SHARE_VERSION),
+/** A single note in a v2 (course) share payload. */
+const ShareNoteSchema = z.object({
+  n: z.string(), // name
+  c: z.string(), // content
+  i: z.literal(1).optional(), // one or more images were replaced by a placeholder
+});
+
+/** A single lesson in a v2 (course) share payload. */
+const ShareLessonSchema = z.object({
+  n: z.string().min(1),
+  d: z.string().optional(), // description
+  x: z.union([z.literal(0), z.literal(1)]).optional(), // isExtension
+  rd: z.number().optional(), // releaseDate
+  ed: z.number().optional(), // examDate override
+  tz: z.string().optional(), // timeZone (paired with rd/ed)
+  notes: z.array(ShareNoteSchema),
+  cards: z.array(ShareCardSchema),
+});
+
+/** Course metadata in a v2 share payload, mirroring ShareDeck's conventions. */
+const ShareCourseSchema = z.object({
+  n: z.string().min(1),
+  d: z.string().optional(), // description
+  o: z.union([z.literal(0), z.literal(1)]), // objective: 0 expectedMarks, 1 securedTopics
+  c: z.number(), // createdAt
+  e: z.number(), // examDate (primary date due)
+  r: z.number().optional(), // requestRetention
+  p: z.number().optional(), // newCardsPerDay
+  l: z.string().optional(), // colour
+  um: z.union([z.literal('linear'), z.literal('semi-linear'), z.literal('open')]),
+});
+
+/**
+ * An extra CourseExamDate (beyond the course's primary exam date) in a v2 payload.
+ * `excludedCardIds` is deliberately omitted: per-card checkpoint exclusions are a
+ * lossy detail that does not survive a share round-trip.
+ */
+const ShareExamSchema = z.object({
+  n: z.string(), // name
+  e: z.number(), // examDate
+  tz: z.string().optional(), // timeZone
+  ls: z.array(z.number()).optional(), // indices into the payload's lessons array
+});
+
+const SharePayloadV1Schema = z.object({
+  v: z.literal(1),
   by: z.union([z.string(), z.null()]).optional(),
   at: z.number(),
   decks: z.array(ShareDeckSchema),
 });
 
+const SharePayloadV2Schema = z.object({
+  v: z.literal(2),
+  by: z.union([z.string(), z.null()]).optional(),
+  at: z.number(),
+  course: ShareCourseSchema,
+  lessons: z.array(ShareLessonSchema),
+  exams: z.array(ShareExamSchema).optional(),
+});
+
+const SharePayloadSchema = z.discriminatedUnion('v', [SharePayloadV1Schema, SharePayloadV2Schema]);
+
 /** A single card in a share payload. `k` is the kind. */
 interface ShareCard {
-  /** 0 = front/back, 1 = cloze, 2 = reversible front/back pair (expands to two cards). */
-  k: 0 | 1 | 2;
+  /**
+   * 0 = front/back, 1 = cloze, 2 = reversible front/back pair (expands to two
+   * cards), 3 = typing (answer stored in `b`, never folded into a reversible pair).
+   */
+  k: 0 | 1 | 2 | 3;
   /** Front (Markdown). For cloze this holds the whole `{{cN::…}}` source. */
   f: string;
   /** Back (Markdown). Absent for cloze. */
@@ -82,7 +157,7 @@ interface ShareCard {
   i?: 1;
 }
 
-/** A single deck in a share payload, with compact keys. */
+/** A single deck in a v1 share payload, with compact keys. */
 interface ShareDeck {
   n: string; // name
   o: 0 | 1; // objective: 0 expectedMarks, 1 securedTopics
@@ -94,9 +169,49 @@ interface ShareDeck {
   cards: ShareCard[];
 }
 
-/** The decoded contents of a share code. */
-export interface SharePayload {
-  v: number;
+/** A single note in a v2 share payload. */
+interface ShareNote {
+  n: string; // name
+  c: string; // content
+  i?: 1; // one or more images were replaced by a placeholder
+}
+
+/** A single lesson in a v2 share payload. */
+interface ShareLesson {
+  n: string; // name
+  d?: string; // description
+  x?: 0 | 1; // isExtension
+  rd?: number; // releaseDate
+  ed?: number; // examDate override
+  tz?: string; // timeZone (paired with rd/ed)
+  notes: ShareNote[];
+  cards: ShareCard[];
+}
+
+/** Course metadata in a v2 share payload. */
+interface ShareCourse {
+  n: string; // name
+  d?: string; // description
+  o: 0 | 1; // objective: 0 expectedMarks, 1 securedTopics
+  c: number; // createdAt
+  e: number; // examDate (primary date due)
+  r?: number; // requestRetention
+  p?: number; // newCardsPerDay
+  l?: string; // colour
+  um: UnlockMode;
+}
+
+/** An extra CourseExamDate in a v2 share payload. */
+interface ShareExam {
+  n: string; // name
+  e: number; // examDate
+  tz?: string; // timeZone
+  ls?: number[]; // indices into the payload's lessons array (scoped lessons)
+}
+
+/** The decoded contents of a v1 (flat deck list) share code. */
+export interface SharePayloadV1 {
+  v: 1;
   /** Creator, reserved for a future "shared by" field; currently always null. */
   by?: string | null;
   /** Exported-at epoch ms. */
@@ -104,13 +219,33 @@ export interface SharePayload {
   decks: ShareDeck[];
 }
 
+/** The decoded contents of a v2 (single course) share code. */
+export interface SharePayloadV2 {
+  v: 2;
+  /** Creator, reserved for a future "shared by" field; currently always null. */
+  by?: string | null;
+  /** Exported-at epoch ms. */
+  at: number;
+  course: ShareCourse;
+  lessons: ShareLesson[];
+  exams?: ShareExam[];
+}
+
+/** The decoded contents of a share code, either a flat deck list or a single course. */
+export type SharePayload = SharePayloadV1 | SharePayloadV2;
+
 /** A human-friendly summary of a share code, for the import preview. */
 export interface ShareSummary {
+  kind: 'deck' | 'course';
   deckCount: number;
   cardCount: number;
   exportedAt: number;
   deckNames: string[];
   omittedImages: boolean;
+  /** v2 only: the course's name. */
+  courseName?: string;
+  /** v2 only: number of lessons. */
+  lessonCount?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -364,6 +499,30 @@ export async function decodeShare(code: string): Promise<SharePayload> {
 
 /** Count the cards a payload would create (reversible pairs count as two). */
 export function summariseShare(payload: SharePayload): ShareSummary {
+  if (payload.v === 2) {
+    let cardCount = 0;
+    let omittedImages = false;
+    const lessonNames: string[] = [];
+    for (const lesson of payload.lessons) {
+      lessonNames.push(lesson.n);
+      for (const card of lesson.cards) {
+        cardCount += card.k === 2 ? 2 : 1;
+        if (card.i === 1) omittedImages = true;
+      }
+      if (lesson.notes.some((n) => n.i === 1)) omittedImages = true;
+    }
+    return {
+      kind: 'course',
+      deckCount: payload.lessons.length,
+      cardCount,
+      exportedAt: payload.at,
+      deckNames: lessonNames,
+      omittedImages,
+      courseName: payload.course.n,
+      lessonCount: payload.lessons.length,
+    };
+  }
+
   let cardCount = 0;
   const deckNames: string[] = [];
   for (const deck of payload.decks) {
@@ -371,6 +530,7 @@ export function summariseShare(payload: SharePayload): ShareSummary {
     for (const card of deck.cards) cardCount += card.k === 2 ? 2 : 1;
   }
   return {
+    kind: 'deck',
     deckCount: payload.decks.length,
     cardCount,
     exportedAt: payload.at,
@@ -418,6 +578,14 @@ function packCards(cards: Card[]): ShareCard[] {
       continue;
     }
 
+    if (c.type === 'typing') {
+      // Typing cards never fold into a reversible pair — the front/back roles are
+      // not interchangeable (the answer is always typed against the front prompt).
+      out.push({ k: 3, f: front.markdown, b: back.markdown, ...tags, ...imageFlag });
+      consumed.add(c.id);
+      continue;
+    }
+
     const partner = (byContent.get(key(c.back, c.front)) ?? []).find(
       (p) => p.id !== c.id && !consumed.has(p.id),
     );
@@ -454,17 +622,12 @@ async function buildSharePayload(deckIds: string[]): Promise<SharePayload> {
     });
   }
 
-  return { v: SHARE_VERSION, by: null, at: Date.now(), decks };
+  return { v: 1, by: null, at: Date.now(), decks };
 }
 
 /** Build a single share code for the given decks, in the order supplied. */
 export async function buildShareCode(deckIds: string[]): Promise<string> {
   return encodeShare(await buildSharePayload(deckIds));
-}
-
-/** Build a QR-code-optimised share code using Base45 for maximum QR density. */
-export async function buildShareCodeQR(deckIds: string[]): Promise<string> {
-  return encodeShareQR(await buildSharePayload(deckIds));
 }
 
 // ---------------------------------------------------------------------------
@@ -481,38 +644,256 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
       { type: 'front_back', front: back, back: sc.f, ...tags },
     ];
   }
+  if (sc.k === 3) return [{ type: 'typing', front: sc.f, back: sc.b ?? '', ...tags }];
   return [{ type: 'front_back', front: sc.f, back: sc.b ?? '', ...tags }];
 }
 
-/**
- * Create fresh decks from a decoded payload. Imported decks always become new decks
- * (sharing never overwrites existing data); their content and the original date due
- * are preserved, while all FSRS/review state starts clean for the new owner.
- */
-export async function importSharePayload(
-  payload: SharePayload,
-): Promise<{ decks: number; cards: number }> {
-  let cardCount = 0;
-  await db.transaction('rw', db.decks, db.cards, db.userPerformance, db.assets, async () => {
-    for (const d of payload.decks) {
-      const drafts = d.cards.flatMap(unpackCard);
-      const deck = await createDeckWithCards(d.n || 'Shared deck', drafts);
-      await updateDeck(deck.id, {
-        examObjective: d.o === 1 ? 'securedTopics' : 'expectedMarks',
-        examDate: typeof d.e === 'number' ? d.e : deck.examDate,
-        ...(d.p && d.p > 0 ? { newCardsPerDay: d.p } : {}),
-        ...(typeof d.r === 'number'
-          ? {
-              fsrsParameters: {
-                ...deck.fsrsParameters,
-                requestRetention: clampRequestRetention(d.r),
-              },
-            }
-          : {}),
-        ...(d.l ? { colour: d.l } : {}),
-      });
-      cardCount += drafts.length;
-    }
+// ---------------------------------------------------------------------------
+// Packing a whole course (DB -> v2 payload)
+// ---------------------------------------------------------------------------
+
+/** Pack a lesson's notes, stripping images the same way card content is stripped. */
+function packNotes(notes: { name: string; content: string }[]): ShareNote[] {
+  return notes.map((n) => {
+    const content = stripAssetImages(n.content);
+    return { n: n.name, c: content.markdown, ...(content.stripped ? { i: 1 as const } : {}) };
   });
-  return { decks: payload.decks.length, cards: cardCount };
+}
+
+/** Pack a whole course — its lessons, notes, cards and extra exam dates — into a v2 payload. */
+export async function buildCourseSharePayload(courseId: string): Promise<SharePayload> {
+  const course = await db.courses.get(courseId);
+  if (!course) throw new Error('Course not found.');
+
+  const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
+  const lessonIndexById = new Map(lessons.map((l, i) => [l.id, i]));
+
+  const shareLessons: ShareLesson[] = [];
+  for (const lesson of lessons) {
+    const notes = await db.notes.where('lessonId').equals(lesson.id).sortBy('orderIndex');
+    const cards = await db.cards.where('primaryLessonId').equals(lesson.id).sortBy('createdAt');
+    shareLessons.push({
+      n: lesson.name,
+      ...(lesson.description ? { d: lesson.description } : {}),
+      ...(lesson.isExtension ? { x: 1 as const } : {}),
+      ...(typeof lesson.releaseDate === 'number' ? { rd: lesson.releaseDate } : {}),
+      ...(typeof lesson.examDate === 'number' ? { ed: lesson.examDate } : {}),
+      ...(lesson.timeZone ? { tz: lesson.timeZone } : {}),
+      notes: packNotes(notes),
+      cards: packCards(cards),
+    });
+  }
+
+  const examDates = await db.courseExamDates.where('courseId').equals(courseId).sortBy('examDate');
+  const shareExams: ShareExam[] = examDates.map((e) => {
+    const ls = (e.lessonIds ?? [])
+      .map((id) => lessonIndexById.get(id))
+      .filter((i): i is number => i !== undefined);
+    return {
+      n: e.name,
+      e: e.examDate,
+      ...(e.timeZone ? { tz: e.timeZone } : {}),
+      ...(e.lessonIds && e.lessonIds.length ? { ls } : {}),
+    };
+  });
+
+  const shareCourse: ShareCourse = {
+    n: course.name,
+    ...(course.description ? { d: course.description } : {}),
+    o: course.examObjective === 'securedTopics' ? 1 : 0,
+    c: course.createdAt,
+    e: course.examDate,
+    r: course.fsrsParameters.requestRetention,
+    ...(course.newCardsPerDay ? { p: course.newCardsPerDay } : {}),
+    ...(course.colour ? { l: course.colour } : {}),
+    um: course.unlockMode,
+  };
+
+  return {
+    v: 2,
+    by: null,
+    at: Date.now(),
+    course: shareCourse,
+    lessons: shareLessons,
+    ...(shareExams.length ? { exams: shareExams } : {}),
+  };
+}
+
+/** Build a single v2 share code for the given course. */
+export async function buildCourseShareCode(courseId: string): Promise<string> {
+  return encodeShare(await buildCourseSharePayload(courseId));
+}
+
+/** Build a QR-code-optimised v2 share code for the given course. */
+export async function buildCourseShareCodeQR(courseId: string): Promise<string> {
+  return encodeShareQR(await buildCourseSharePayload(courseId));
+}
+
+// ---------------------------------------------------------------------------
+// Importing (code -> DB). Both v1 and v2 payloads land in the course model:
+// a shared course dashboard only shows courses/lessons, so a v1 (deck) code is
+// migrated on the fly via the same buildCourseMigration helper the schema
+// upgrade uses.
+// ---------------------------------------------------------------------------
+
+/** The result of importing a share payload: everything created. */
+export interface ImportShareResult {
+  courses: number;
+  lessons: number;
+  cards: number;
+}
+
+/**
+ * Import a v1 (flat deck list) payload. Real decks are still created — course
+ * cards need a backing deck for recordReview/userPerformance/the learn-mode
+ * bridge — but they are also folded into a course via buildCourseMigration so
+ * the imported content is visible on the course dashboard: a single shared deck
+ * becomes a single-lesson course; several decks in one payload are treated as
+ * one course with one ordered lesson per deck (mirroring how a folder migrates).
+ */
+async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportShareResult> {
+  const now = Date.now();
+  const decks: Deck[] = payload.decks.map((d, i) => ({
+    id: makeId(),
+    name: d.n || 'Shared deck',
+    examDate: typeof d.e === 'number' && d.e > 0 ? d.e : defaultExamDate(now),
+    timeZone: getLocalTimeZone(),
+    createdAt: now + i,
+    fsrsVersion: FSRS_VERSION,
+    fsrsParameters: {
+      ...defaultFsrsParameters(),
+      ...(typeof d.r === 'number' ? { requestRetention: clampRequestRetention(d.r) } : {}),
+    },
+    examObjective: d.o === 1 ? 'securedTopics' : 'expectedMarks',
+    ...(d.p && d.p > 0 ? { newCardsPerDay: d.p } : {}),
+    ...(d.l ? { colour: d.l } : {}),
+  }));
+
+  // Several decks in one payload were shared together (e.g. from a folder); give
+  // them a synthetic folder so buildCourseMigration folds them into one course
+  // with one lesson per deck, rather than N separate courses.
+  const folders: Folder[] = [];
+  if (decks.length > 1) {
+    const folder: Folder = { id: makeId(), name: 'Shared course', parentId: null, createdAt: now };
+    folders.push(folder);
+    for (const deck of decks) deck.folderId = folder.id;
+  }
+
+  const migration = buildCourseMigration(decks, folders, makeId);
+  let cardCount = 0;
+
+  await db.transaction(
+    'rw',
+    [db.decks, db.cards, db.userPerformance, db.assets, db.courses, db.lessons],
+    async () => {
+      for (let i = 0; i < decks.length; i++) {
+        const deck = decks[i];
+        const drafts = payload.decks[i].cards.flatMap(unpackCard);
+        await db.decks.add(deck);
+        await db.userPerformance.add(emptyPerformance(deck.id));
+        const cards = drafts.length > 0 ? await createCards(deck.id, drafts) : [];
+        const courseId = migration.courseIdByDeckId.get(deck.id);
+        const lessonId = migration.lessonIdByDeckId.get(deck.id);
+        if (courseId && lessonId && cards.length > 0) {
+          await db.cards
+            .where('id')
+            .anyOf(cards.map((c) => c.id))
+            .modify({ courseId, primaryLessonId: lessonId });
+        }
+        cardCount += cards.length;
+      }
+      await db.courses.bulkAdd(migration.courses);
+      await db.lessons.bulkAdd(migration.lessons);
+    },
+  );
+
+  return { courses: migration.courses.length, lessons: migration.lessons.length, cards: cardCount };
+}
+
+/** Import a v2 (single course) payload directly into the course model. */
+async function importCourseSharePayload(payload: SharePayloadV2): Promise<ImportShareResult> {
+  let cardCount = 0;
+
+  await db.transaction(
+    'rw',
+    [
+      db.courses,
+      db.lessons,
+      db.notes,
+      db.decks,
+      db.cards,
+      db.userPerformance,
+      db.assets,
+      db.courseExamDates,
+    ],
+    async () => {
+      const course = await createCourse(payload.course.n || 'Shared course', {
+        description: payload.course.d ?? '',
+        examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
+        createdAt: payload.course.c,
+        examDate: payload.course.e,
+        fsrsParameters: {
+          ...defaultFsrsParameters(),
+          ...(typeof payload.course.r === 'number'
+            ? { requestRetention: clampRequestRetention(payload.course.r) }
+            : {}),
+        },
+        ...(payload.course.p && payload.course.p > 0 ? { newCardsPerDay: payload.course.p } : {}),
+        ...(payload.course.l ? { colour: payload.course.l } : {}),
+        unlockMode: payload.course.um,
+      });
+
+      const lessonIds: string[] = [];
+      for (const shareLesson of payload.lessons) {
+        const lesson = await createLesson(course.id, shareLesson.n || 'Untitled lesson', {
+          ...(shareLesson.d ? { description: shareLesson.d } : {}),
+          isExtension: shareLesson.x === 1,
+          ...(typeof shareLesson.rd === 'number' ? { releaseDate: shareLesson.rd } : {}),
+          ...(typeof shareLesson.ed === 'number' ? { examDate: shareLesson.ed } : {}),
+          ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
+        });
+        lessonIds.push(lesson.id);
+
+        for (const shareNote of shareLesson.notes) {
+          await createNote(lesson.id, shareNote.n || 'Untitled note', shareNote.c);
+        }
+
+        for (const shareCard of shareLesson.cards) {
+          for (const draft of unpackCard(shareCard)) {
+            await createLessonCard(
+              course.id,
+              lesson.id,
+              draft.type,
+              draft.front,
+              draft.back,
+              draft.tags ?? [],
+            );
+            cardCount += 1;
+          }
+        }
+      }
+
+      for (const shareExam of payload.exams ?? []) {
+        await createCourseExamDate(course.id, shareExam.n || 'Exam', shareExam.e, {
+          ...(shareExam.tz ? { timeZone: shareExam.tz } : {}),
+          ...(shareExam.ls && shareExam.ls.length
+            ? { lessonIds: shareExam.ls.map((i) => lessonIds[i]).filter((id): id is string => !!id) }
+            : {}),
+        });
+      }
+    },
+  );
+
+  return { courses: 1, lessons: payload.lessons.length, cards: cardCount };
+}
+
+/**
+ * Import a decoded share payload into the course model. Imported content is always
+ * new (sharing never overwrites existing data); a v1 deck payload is migrated into
+ * a course on the fly, and a v2 payload recreates its course directly. All FSRS/
+ * review state starts clean for the new owner.
+ */
+export async function importSharePayload(payload: SharePayload): Promise<ImportShareResult> {
+  if (payload.v === 2) return importCourseSharePayload(payload);
+  return importDeckSharePayload(payload);
 }

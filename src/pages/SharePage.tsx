@@ -1,19 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { useAllCards, useDecks } from '../state/useData';
+import { useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import {
-  buildShareCode,
-  buildShareCodeQR,
+  buildCourseShareCode,
+  buildCourseShareCodeQR,
   decodeShare,
   importSharePayload,
   summariseShare,
   type ShareSummary,
 } from '../db/share';
-import { referencedAssetHashesInCards } from '../db/assets';
 import { exportCardsSimple } from '../db/export';
 import {
   CheckIcon,
@@ -34,15 +33,15 @@ import type { Html5Qrcode } from 'html5-qrcode';
 const MAX_QR_ALPHANUMERIC_CHARS = 4296;
 
 /**
- * Share decks as a single copy-and-paste code, and rebuild decks from a code. Share codes
- * are text-only so they stay small; full backups are the route for transferring images.
+ * Share a course as a single copy-and-paste code, and rebuild a course from a code. Share
+ * codes are text-only so they stay small; full backups are the route for transferring images.
  */
 export function SharePage() {
-  const decks = useDecks();
-  const cards = useAllCards();
+  const courses = useCourses();
+  const summaries = useCourseSummaries();
   const { notify } = useToast();
 
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -76,6 +75,8 @@ export function SharePage() {
     };
   }, []);
 
+  const courseCards = useCourseCards(selectedCourseId ?? undefined);
+
   // Clean up QR scanner on unmount
   useEffect(() => {
     return () => {
@@ -93,34 +94,10 @@ export function SharePage() {
 
   const m = speedMultiplier(motionSpeed);
 
-  // Card counts per deck, for the selection labels.
-  const cardCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const c of cards ?? []) counts.set(c.deckId, (counts.get(c.deckId) ?? 0) + 1);
-    return counts;
-  }, [cards]);
+  const selectedSummary = selectedCourseId ? summaries?.[selectedCourseId] : undefined;
 
-  const selectedCount = selected.size;
-  const selectedCards = useMemo(
-    () => [...selected].reduce((sum, id) => sum + (cardCounts.get(id) ?? 0), 0),
-    [selected, cardCounts],
-  );
-  const selectedHasImages = useMemo(() => {
-    const selectedSet = selected;
-    const selectedCardRows = (cards ?? []).filter((card) => selectedSet.has(card.deckId));
-    return referencedAssetHashesInCards(selectedCardRows).length > 0;
-  }, [cards, selected]);
-
-  function toggle(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  function select(id: string) {
+    setSelectedCourseId((prev) => (prev === id ? null : id));
     // Any change invalidates a previously generated code or plain text export.
     setCode('');
     setPlainText('');
@@ -128,25 +105,11 @@ export function SharePage() {
     setShowQR(false);
   }
 
-  function toggleAll() {
-    if (!decks) return;
-    setCode('');
-    setPlainText('');
-    setQrCode('');
-    setShowQR(false);
-    setSelected((prev) => {
-      if (prev.size === decks.length) {
-        return new Set();
-      }
-      return new Set(decks.map((d) => d.id));
-    });
-  }
-
   async function handleGenerate() {
-    if (selectedCount === 0) return;
+    if (!selectedCourseId) return;
     setGenerating(true);
     try {
-      const result = await buildShareCode([...selected]);
+      const result = await buildCourseShareCode(selectedCourseId);
       setCode(result);
       setCopied(false);
     } catch (err) {
@@ -157,13 +120,13 @@ export function SharePage() {
   }
 
   async function handleGenerateQR() {
-    if (selectedCount === 0) return;
+    if (!selectedCourseId) return;
     setQrGenerating(true);
     try {
-      const result = await buildShareCodeQR([...selected]);
+      const result = await buildCourseShareCodeQR(selectedCourseId);
       if (result.length > MAX_QR_ALPHANUMERIC_CHARS) {
         notify(
-          'This deck is too large for a single QR code. Use the text share code instead.',
+          'This course is too large for a single QR code. Use the text share code instead.',
           'negative',
         );
         setQrCode('');
@@ -202,14 +165,11 @@ export function SharePage() {
   }
 
   function handleExportPlainText() {
-    if (selectedCount === 0) return;
-    const selectedSet = selected;
-    const selectedCardRows = (cards ?? []).filter((card) => selectedSet.has(card.deckId));
-    if (selectedCardRows.length === 0) {
-      notify('Selected decks have no cards to export.', 'negative');
+    if (!selectedCourseId || !courseCards || courseCards.length === 0) {
+      notify('The selected course has no cards to export.', 'negative');
       return;
     }
-    const text = exportCardsSimple(selectedCardRows);
+    const text = exportCardsSimple(courseCards);
     setPlainText(text);
     setPlainTextCopied(false);
   }
@@ -242,9 +202,9 @@ export function SharePage() {
     setImporting(true);
     try {
       const payload = await decodeShare(pending.raw);
-      const { decks: d, cards: c } = await importSharePayload(payload);
+      const { courses, cards: c } = await importSharePayload(payload);
       notify(
-        `Added ${d} deck${d === 1 ? '' : 's'} and ${c} card${c === 1 ? '' : 's'}.`,
+        `Added ${courses} course${courses === 1 ? '' : 's'} and ${c} card${c === 1 ? '' : 's'}.`,
         'positive',
       );
       setPending(null);
@@ -313,8 +273,6 @@ export function SharePage() {
     setScanError(null);
   }
 
-  const allSelected = decks ? decks.length > 0 && selected.size === decks.length : false;
-
   return (
     <div className="mx-auto max-w-3xl px-6 py-10 md:px-10">
       <motion.header
@@ -328,7 +286,7 @@ export function SharePage() {
           <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Collaborate</p>
           <h1 className="font-display text-4xl tracking-tight md:text-5xl">Share</h1>
           <p className="mt-3 max-w-prose text-sm text-ink-soft">
-            Turn your decks into a single code to send to anyone, and rebuild decks from a
+            Turn a course into a single code to send to anyone, and rebuild a course from a
             code you have been given. Codes carry text material only; scheduling and review
             history stay private to each person.
           </p>
@@ -339,17 +297,17 @@ export function SharePage() {
       <section className="mb-8 rounded-2xl border border-line bg-surface p-6 shadow-sm">
         <div className="mb-1 flex items-center gap-2">
           <DownloadIcon width={18} height={18} className="text-accent" />
-          <h2 className="font-display text-xl">Export decks</h2>
+          <h2 className="font-display text-xl">Export a course</h2>
         </div>
         <p className="mb-5 text-sm text-ink-soft">
-          Select one or more decks, then generate a code to copy and share. Images are not
-          included in share codes because they make pasteable codes too large; use a full
-          backup when you need to transfer images.
+          Select a course, then generate a code to copy and share. Images are not included
+          in share codes because they make pasteable codes too large; use a full backup
+          when you need to transfer images.
         </p>
 
-        {!decks ? (
+        {!courses ? (
           <ShareSkeleton />
-        ) : decks.length === 0 ? (
+        ) : courses.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -359,44 +317,22 @@ export function SharePage() {
             <div className="mb-4 grid h-12 w-12 place-items-center rounded-xl bg-accent-soft text-accent">
               <CardsIcon width={22} height={22} />
             </div>
-            <h3 className="mb-1 font-display text-xl">No decks yet</h3>
+            <h3 className="mb-1 font-display text-xl">No courses yet</h3>
             <p className="max-w-sm text-sm text-ink-soft">
-              Create a deck first, then come back here to share it with others.
+              Create a course first, then come back here to share it with others.
             </p>
           </motion.div>
         ) : (
           <>
-            <div className="mb-3 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={toggleAll}
-              aria-pressed={allSelected}
-              className="flex items-center gap-2 text-sm text-ink-soft transition-colors hover:text-ink"
-            >
-              <span
-                className={cn(
-                  'grid h-5 w-5 place-items-center rounded-md border transition-colors',
-                  allSelected
-                    ? 'border-accent bg-accent text-accent-fg'
-                    : 'border-line-strong',
-                )}
-              >
-                {allSelected && <CheckIcon width={12} height={12} />}
-              </span>
-              {allSelected ? 'Deselect all' : 'Select all'}
-            </button>
-              <span className="text-sm text-ink-faint">
-                {selectedCount} deck{selectedCount === 1 ? '' : 's'} · {selectedCards} card
-                {selectedCards === 1 ? '' : 's'}
-              </span>
-            </div>                    <div className="flex flex-col gap-2">
-              {decks.map((deck, index) => {
-                const on = selected.has(deck.id);
+            <div className="flex flex-col gap-2">
+              {courses.map((course, index) => {
+                const on = selectedCourseId === course.id;
+                const summary = summaries?.[course.id];
                 return (
                   <motion.button
-                    key={deck.id}
+                    key={course.id}
                     type="button"
-                    onClick={() => toggle(deck.id)}
+                    onClick={() => select(course.id)}
                     aria-pressed={on}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -429,9 +365,10 @@ export function SharePage() {
                         )}
                       </AnimatePresence>
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{deck.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{course.name}</span>
                     <span className="shrink-0 text-xs text-ink-faint">
-                      {cardCounts.get(deck.id) ?? 0} cards
+                      {summary?.lessonCount ?? 0} lesson{summary?.lessonCount === 1 ? '' : 's'} ·{' '}
+                      {summary?.cardCount ?? 0} card{summary?.cardCount === 1 ? '' : 's'}
                     </span>
                   </motion.button>
                 );
@@ -439,18 +376,11 @@ export function SharePage() {
             </div>
 
             <div className="mt-5">
-              {selectedHasImages && (
-                <p className="mb-3 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
-                  One or more selected decks contains images. The share code will replace
-                  them with placeholders; export a full backup from Settings to transfer
-                  the images too.
-                </p>
-              )}
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="primary"
                   onClick={handleGenerate}
-                  disabled={selectedCount === 0 || generating}
+                  disabled={!selectedCourseId || generating}
                 >
                   <ShareIcon width={18} height={18} />
                   {generating ? 'Generating…' : 'Generate share code'}
@@ -458,7 +388,7 @@ export function SharePage() {
                 <Button
                   variant="secondary"
                   onClick={handleGenerateQR}
-                  disabled={selectedCount === 0 || qrGenerating}
+                  disabled={!selectedCourseId || qrGenerating}
                 >
                   <QrCodeIcon width={18} height={18} />
                   {qrGenerating ? 'Generating…' : 'Generate QR code'}
@@ -466,7 +396,7 @@ export function SharePage() {
                 <Button
                   variant="secondary"
                   onClick={handleExportPlainText}
-                  disabled={selectedCount === 0 || selectedCards === 0}
+                  disabled={!selectedCourseId || !selectedSummary?.cardCount}
                 >
                   <FileTextIcon width={18} height={18} />
                   Export as plain text
@@ -568,7 +498,8 @@ export function SharePage() {
                   <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
                     <div className="mb-2 flex items-center justify-between">
                       <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-                        Plain text export · {selectedCards.toLocaleString()} card{selectedCards === 1 ? '' : 's'}
+                        Plain text export · {(courseCards?.length ?? 0).toLocaleString()} card
+                        {(courseCards?.length ?? 0) === 1 ? '' : 's'}
                       </span>
                       <Button size="sm" variant="secondary" onClick={handleCopyPlainText}>
                         {plainTextCopied ? (
@@ -600,11 +531,12 @@ export function SharePage() {
       <section className="rounded-2xl border border-line bg-surface p-6 shadow-sm">
         <div className="mb-1 flex items-center gap-2">
           <UploadIcon width={18} height={18} className="text-accent" />
-          <h2 className="font-display text-xl">Import a shared deck</h2>
+          <h2 className="font-display text-xl">Import a shared course</h2>
         </div>
         <p className="mb-5 text-sm text-ink-soft">
-          Paste a share code below to add its decks to your own. This never overwrites your
-          existing decks. Legacy codes (LAC0, LAC1) and new codes (LAC2, LAC3) are both supported.
+          Paste a share code below to add it as a new course of your own. This never
+          overwrites your existing courses. Legacy deck codes (LAC0, LAC1) and current
+          course codes (LAC2, LAC3) are both supported.
         </p>
 
         <div className="rounded-xl border border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
@@ -682,14 +614,26 @@ export function SharePage() {
             >
               <div className="rounded-xl border border-accent/40 bg-accent-soft/40 p-5">
                 <h3 className="mb-2 font-display text-lg">Ready to import</h3>
-                <p className="mb-3 text-sm text-ink-soft">
-                  This code contains{' '}
-                  <strong className="text-ink">{pending.summary.deckCount}</strong> deck
-                  {pending.summary.deckCount === 1 ? '' : 's'} and{' '}
-                  <strong className="text-ink">{pending.summary.cardCount}</strong> card
-                  {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
-                  {formatDate(pending.summary.exportedAt)}.
-                </p>
+                {pending.summary.kind === 'course' ? (
+                  <p className="mb-3 text-sm text-ink-soft">
+                    <strong className="text-ink">{pending.summary.courseName}</strong> —{' '}
+                    <strong className="text-ink">{pending.summary.lessonCount}</strong> lesson
+                    {pending.summary.lessonCount === 1 ? '' : 's'} and{' '}
+                    <strong className="text-ink">{pending.summary.cardCount}</strong> card
+                    {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
+                    {formatDate(pending.summary.exportedAt)}.
+                  </p>
+                ) : (
+                  <p className="mb-3 text-sm text-ink-soft">
+                    This code contains{' '}
+                    <strong className="text-ink">{pending.summary.deckCount}</strong> deck
+                    {pending.summary.deckCount === 1 ? '' : 's'} and{' '}
+                    <strong className="text-ink">{pending.summary.cardCount}</strong> card
+                    {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
+                    {formatDate(pending.summary.exportedAt)}. It will be added as a single
+                    imported course.
+                  </p>
+                )}
                 {pending.summary.deckNames.length > 0 && (
                   <ul className="mb-4 flex flex-wrap gap-1.5">
                     {pending.summary.deckNames.map((name, i) => (
@@ -713,7 +657,7 @@ export function SharePage() {
                     Cancel
                   </Button>
                   <Button variant="primary" onClick={handleImport} disabled={importing}>
-                    {importing ? 'Importing…' : 'Add to my decks'}
+                    {importing ? 'Importing…' : 'Add to my courses'}
                   </Button>
                 </div>
               </div>
