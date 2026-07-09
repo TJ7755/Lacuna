@@ -11,7 +11,10 @@ import {
   useCourseExamDates,
   useCourseCards,
   useCourseSummaries,
+  usePracticeNodes,
 } from '../state/useCourseData';
+import { availableCards } from '../fsrs/eligibility';
+import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import { buildPath, pathPosition } from '../course/path';
 import type { PathNode } from '../course/path';
 import { PathNodeView } from '../components/course/PathNodeView';
@@ -21,6 +24,27 @@ import { ChevronLeftIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { formatDate } from '../utils/datetime';
 import type { Card, Course } from '../db/types';
+
+/**
+ * Course-wide mean seconds per review, re-scoped from the existing per-deck
+ * response-time calibration (see `src/fsrs/stats.ts`'s `computeStudyStats`) to
+ * a Course: an unweighted mean across the distinct decks backing the course's
+ * cards, falling back to the same default a single uncalibrated deck would use.
+ */
+function courseMeanReviewSeconds(cards: Card[], deckSeconds: Map<string, number>): number {
+  let sum = 0;
+  let count = 0;
+  const seen = new Set<string>();
+  for (const card of cards) {
+    if (seen.has(card.deckId)) continue;
+    seen.add(card.deckId);
+    const seconds = deckSeconds.get(card.deckId);
+    if (seconds === undefined) continue;
+    sum += seconds;
+    count += 1;
+  }
+  return count > 0 ? sum / count : DEFAULT_REVIEW_SECONDS;
+}
 
 export function CoursePath() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -41,6 +65,14 @@ export function CoursePath() {
   const examDates = useCourseExamDates(courseId);
   const courseCards = useCourseCards(courseId);
   const summaries = useCourseSummaries();
+  const practiceNodes = usePracticeNodes(courseId);
+  // Per-deck response-time calibration for the decks backing this course's cards,
+  // re-scoped into a single course-wide mean (see courseMeanReviewSeconds above).
+  const deckIds = courseCards ? Array.from(new Set(courseCards.map((c) => c.deckId))) : [];
+  const perf = useLiveQuery(
+    () => (deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : []),
+    [deckIds.join(',')],
+  );
 
   // Loading state — match DeckView's skeleton approach.
   if (
@@ -48,7 +80,9 @@ export function CoursePath() {
     lessons === undefined ||
     examDates === undefined ||
     courseCards === undefined ||
-    summaries === undefined
+    summaries === undefined ||
+    practiceNodes === undefined ||
+    perf === undefined
   ) {
     return <CoursePathSkeleton />;
   }
@@ -91,7 +125,29 @@ export function CoursePath() {
     }
   }
 
-  const nodes = buildPath(course, lessons, examDates, lessonCardsById);
+  // Live due-card count and mean review time, feeding shouldInsertPractice (addendum 2 §H).
+  const now = Date.now();
+  const dueCardCount = availableCards(courseCards, now).filter(
+    (c) => c.due !== null && c.due !== undefined && c.due <= now,
+  ).length;
+  const deckSeconds = new Map<string, number>();
+  for (const p of perf) {
+    if (p.totalCorrectReviews > 0 && p.runningMeanResponseTime > 0) {
+      deckSeconds.set(p.deckId, p.runningMeanResponseTime);
+    }
+  }
+  const meanReviewSeconds = courseMeanReviewSeconds(courseCards, deckSeconds);
+
+  const nodes = buildPath(
+    course,
+    lessons,
+    examDates,
+    lessonCardsById,
+    practiceNodes,
+    dueCardCount,
+    meanReviewSeconds,
+    now,
+  );
 
   // Curriculum position (addendum J): counts non-extension lessons reached.
   // This is pacing — it has nothing to do with mastery or FSRS retention.
@@ -103,7 +159,6 @@ export function CoursePath() {
 
   // Nearest upcoming exam date: consider course.examDate and all explicit exam dates;
   // show the soonest one that is still in the future.
-  const now = Date.now();
   const futureDates = [
     course.examDate,
     ...examDates.map((ed) => ed.examDate),
@@ -183,6 +238,7 @@ export function CoursePath() {
               onLessonClick={(lessonId) =>
                 navigate(`/course/${courseId}/lesson/${lessonId}`)
               }
+              onPracticeClick={() => navigate(`/course/${courseId}/learn`)}
             />
           ))}
         </div>
@@ -200,10 +256,12 @@ function PathNodeWithLine({
   node,
   isLast,
   onLessonClick,
+  onPracticeClick,
 }: {
   node: PathNode;
   isLast: boolean;
   onLessonClick: (lessonId: string) => void;
+  onPracticeClick: () => void;
 }) {
   // A segment is completed when the node it trails is a completed lesson.
   // Checkpoints and available/locked lessons leave the segment neutral.
@@ -212,7 +270,7 @@ function PathNodeWithLine({
 
   return (
     <div className="flex flex-col items-center">
-      <PathNodeView node={node} onLessonClick={onLessonClick} />
+      <PathNodeView node={node} onLessonClick={onLessonClick} onPracticeClick={onPracticeClick} />
       {!isLast && <PathLine completed={segmentCompleted} />}
     </div>
   );

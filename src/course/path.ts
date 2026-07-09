@@ -7,8 +7,9 @@
 //
 // British English throughout.
 
-import type { Card, Course, CourseExamDate, Lesson } from '../db/types';
+import type { Card, Course, CourseExamDate, Lesson, PracticeNode } from '../db/types';
 import { MS_PER_DAY } from '../fsrs/params';
+import { shouldInsertPractice } from '../fsrs/practice';
 
 // ---------------------------------------------------------------------------
 // Node type registry (addendum K).
@@ -17,8 +18,8 @@ import { MS_PER_DAY } from '../fsrs/params';
 // course exported by a future build with plugin node types still renders.
 // ---------------------------------------------------------------------------
 
-/** The set of node types this build knows how to render. Practice types are added in Phase 6. */
-export const KNOWN_NODE_TYPES = ['lesson', 'checkpoint'] as const;
+/** The set of node types this build knows how to render. */
+export const KNOWN_NODE_TYPES = ['lesson', 'checkpoint', 'practice-auto', 'practice-manual'] as const;
 
 /**
  * A string rather than a literal union so that future plugin node types do not
@@ -56,8 +57,30 @@ export interface CheckpointPathNode {
   afterLessonId: string | null;
 }
 
+/**
+ * A practice session rendered as a path node (addendum 2 §H).
+ *
+ *  - `practice-manual`: a teacher-authored `PracticeNode` (type 'manual'), placed
+ *    at its own stored `position`. `practiceNode` carries the authored record.
+ *  - `practice-auto`: computed fresh on every `buildPath` call from the course's
+ *    live due-card count and lessons-since-last-practice; never persisted.
+ *    `practiceNode` is undefined — there is no authored configuration, it always
+ *    covers the whole course's due cards.
+ */
+export interface PracticePathNode {
+  id: string;
+  nodeType: 'practice-auto' | 'practice-manual';
+  /** The authored record for `practice-manual` nodes; undefined for `practice-auto`. */
+  practiceNode?: PracticeNode;
+  /**
+   * ID of the lesson immediately before this node on the path, or null when it
+   * precedes every lesson (mirrors CheckpointPathNode.afterLessonId).
+   */
+  afterLessonId: string | null;
+}
+
 /** A discriminated union of every path-node view model this build defines. */
-export type PathNode = LessonPathNode | CheckpointPathNode;
+export type PathNode = LessonPathNode | CheckpointPathNode | PracticePathNode;
 
 // ---------------------------------------------------------------------------
 // 1. lessonEffectiveReleaseDates
@@ -226,12 +249,31 @@ export function lessonStatus(
  *
  * `lessonCardsById` is `Map<lessonId, Card[]>` supplied by the caller so this
  * function remains pure and database-free.
+ *
+ * **Practice placement (addendum 2 §H, §K):**
+ *  - `practiceNodes` are the course's stored `PracticeNode` records. Only
+ *    `type: 'manual'` ones are placed here — `auto` records are never persisted
+ *    (see the `PracticeNode.position` doc comment) and are recomputed below.
+ *    A manual node's `position` is compared against lesson `orderIndex`: it is
+ *    placed immediately after the lesson with the highest `orderIndex` that is
+ *    `<= position` (or before every lesson when `position` is undefined or
+ *    lower than the first lesson's `orderIndex`).
+ *  - Auto slots are computed by walking the lesson list in path order and
+ *    calling `shouldInsertPractice` (from `src/fsrs/practice.ts`) after every
+ *    lesson, tracking `lessonsSinceLastPractice` since the previous practice
+ *    node (manual or auto) and resetting it whenever one is inserted. This only
+ *    runs when `course.autoPractice` is true. `dueCardCount` and
+ *    `meanReviewSeconds` are course-wide, live figures the caller derives (see
+ *    `shouldInsertPractice`'s own doc comment) — this function stays pure.
  */
 export function buildPath(
   course: Course,
   lessons: Lesson[],
   examDates: CourseExamDate[],
   lessonCardsById: Map<string, Card[]>,
+  practiceNodes: PracticeNode[] = [],
+  dueCardCount: number = 0,
+  meanReviewSeconds: number = 0,
   now: number = Date.now(),
 ): PathNode[] {
   const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
@@ -254,14 +296,14 @@ export function buildPath(
     };
   });
 
-  // Determine the insertion index for each checkpoint.
+  // Determine the insertion index for each checkpoint and practice node.
   interface Placement {
-    /** Insert checkpoint immediately after lessonNodes[afterIndex]. */
+    /** Insert the node immediately after lessonNodes[afterIndex] (-1 = before all lessons). */
     afterIndex: number;
-    node: CheckpointPathNode;
+    node: CheckpointPathNode | PracticePathNode;
   }
 
-  const placements: Placement[] = examDates.map((ed) => {
+  const checkpointPlacements: Placement[] = examDates.map((ed) => {
     // Default: after the last lesson.
     let afterIndex = lessonNodes.length - 1;
 
@@ -290,23 +332,91 @@ export function buildPath(
     };
   });
 
-  // Sort placements so we can weave them in a single forward pass.
+  // Manual practice nodes: placed after the highest-orderIndex lesson at or
+  // before the node's stored `position`, or before every lesson when `position`
+  // is undefined or precedes the first lesson (addendum L §2).
+  const manualPlacements: Placement[] = practiceNodes
+    .filter((pn) => pn.type === 'manual')
+    .map((pn) => {
+      let afterIndex = -1;
+      if (pn.position !== undefined) {
+        for (let i = 0; i < lessonNodes.length; i++) {
+          if (lessonNodes[i].lesson.orderIndex <= pn.position) afterIndex = i;
+        }
+      }
+      const afterLesson = lessonNodes[afterIndex];
+      return {
+        afterIndex,
+        node: {
+          id: pn.id,
+          nodeType: 'practice-manual',
+          practiceNode: pn,
+          afterLessonId: afterLesson?.lesson.id ?? null,
+        },
+      };
+    });
+
+  // Auto practice slots (addendum 2 §H): walk the lesson list in path order,
+  // evaluating shouldInsertPractice after every lesson against the current
+  // course-wide due-card count. lessonsSinceLastPractice resets at every
+  // already-placed manual node and every auto slot this walk inserts.
+  const autoPlacements: Placement[] = [];
+  if (course.autoPractice) {
+    const resetIndices = new Set(manualPlacements.map((p) => p.afterIndex));
+    let lessonsSinceLastPractice = 0;
+    let autoSeq = 0;
+    for (let i = 0; i < lessonNodes.length; i++) {
+      lessonsSinceLastPractice++;
+      if (resetIndices.has(i)) {
+        lessonsSinceLastPractice = 0;
+        continue;
+      }
+      if (
+        shouldInsertPractice(course, dueCardCount, lessonsSinceLastPractice, meanReviewSeconds, now)
+      ) {
+        autoPlacements.push({
+          afterIndex: i,
+          node: {
+            id: `practice-auto-${lessonNodes[i].lesson.id}-${autoSeq++}`,
+            nodeType: 'practice-auto',
+            afterLessonId: lessonNodes[i].lesson.id,
+          },
+        });
+        lessonsSinceLastPractice = 0;
+      }
+    }
+  }
+
+  // Sort placements so we can weave them in a single forward pass. Checkpoints,
+  // manual, then auto placements are pushed in that order for a stable tie-break
+  // when multiple nodes share a slot (Array.prototype.sort is stable).
+  const placements: Placement[] = [
+    ...checkpointPlacements,
+    ...manualPlacements,
+    ...autoPlacements,
+  ];
   placements.sort((a, b) => a.afterIndex - b.afterIndex);
 
-  // Weave lesson and checkpoint nodes together.
+  // Weave lesson, checkpoint and practice nodes together.
   const result: PathNode[] = [];
   let pi = 0; // placement index
 
+  // Placements with afterIndex -1 precede every lesson.
+  while (pi < placements.length && placements[pi].afterIndex < 0) {
+    result.push(placements[pi].node);
+    pi++;
+  }
+
   for (let i = 0; i < lessonNodes.length; i++) {
     result.push(lessonNodes[i]);
-    // Insert every checkpoint that follows lessonNodes[i].
+    // Insert every checkpoint/practice node that follows lessonNodes[i].
     while (pi < placements.length && placements[pi].afterIndex === i) {
       result.push(placements[pi].node);
       pi++;
     }
   }
 
-  // Trailing checkpoints when there are no lessons, or the placement calculation
+  // Trailing nodes when there are no lessons, or the placement calculation
   // produced an out-of-range afterIndex.
   while (pi < placements.length) {
     result.push(placements[pi].node);

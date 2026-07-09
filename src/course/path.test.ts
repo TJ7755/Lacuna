@@ -7,9 +7,10 @@ import {
   pathPosition,
   KNOWN_NODE_TYPES,
   type PathNode,
+  type PracticePathNode,
 } from './path';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
-import type { Card, Course, CourseExamDate, Lesson } from '../db/types';
+import type { Card, Course, CourseExamDate, Lesson, PracticeNode } from '../db/types';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers (mirroring useCourseData.test.ts)
@@ -59,6 +60,16 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
     scheduledDays: 0,
     learningSteps: 0,
     history: [],
+    createdAt: 0,
+    ...overrides,
+  };
+}
+
+function makePracticeNode(
+  overrides: Partial<PracticeNode> & Pick<PracticeNode, 'id' | 'courseId' | 'type'>,
+): PracticeNode {
+  return {
+    name: 'Practice',
     createdAt: 0,
     ...overrides,
   };
@@ -369,6 +380,137 @@ describe('buildPath', () => {
 });
 
 // ---------------------------------------------------------------------------
+// buildPath — practice-node placement (addendum 2 §H, §K)
+// ---------------------------------------------------------------------------
+
+describe('buildPath — practice nodes', () => {
+  const lessons = [
+    { id: 'l1', courseId: 'c1', orderIndex: 0 },
+    { id: 'l2', courseId: 'c1', orderIndex: 1 },
+    { id: 'l3', courseId: 'c1', orderIndex: 2 },
+    { id: 'l4', courseId: 'c1', orderIndex: 3 },
+  ].map((l) => makeLesson(l));
+
+  it('inserts no auto-practice node when there are no due cards and the gap is small', () => {
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'open',
+      autoPractice: true,
+      practiceMaxGap: 10,
+    });
+    const nodes = buildPath(course, lessons, [], new Map(), [], 0, 30);
+    expect(nodes.every((n) => n.nodeType !== 'practice-auto')).toBe(true);
+  });
+
+  it('inserts an auto-practice node once minutes-to-clear crosses the far threshold', () => {
+    const now = 0;
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'open',
+      autoPractice: true,
+      practiceMaxGap: 10,
+      examDate: 100 * MS_PER_DAY, // well in the future relative to `now`
+    });
+    // 500 due cards x 8s = ~67 minutes, above the 60-minute far threshold.
+    const nodes = buildPath(course, lessons, [], new Map(), [], 500, 8, now);
+    const autoNodes = nodes.filter((n): n is PracticePathNode => n.nodeType === 'practice-auto');
+    expect(autoNodes.length).toBeGreaterThan(0);
+    // First auto node lands right after the first lesson (lessonsSinceLastPractice = 1).
+    expect(autoNodes[0].afterLessonId).toBe('l1');
+  });
+
+  it('uses the tighter near-exam threshold once inside practiceUrgentWindowDays', () => {
+    const now = 0;
+    const dueCardCount = 150; // 150 x 8s = 20 minutes: below far (60) but above near (15).
+    const farCourse = makeCourse({
+      id: 'c1',
+      unlockMode: 'open',
+      autoPractice: true,
+      practiceMaxGap: 10,
+      practiceThresholdMinutesNear: 15,
+      examDate: 100 * MS_PER_DAY, // far in the future -> far threshold applies
+    });
+    const nearCourse = makeCourse({
+      id: 'c1',
+      unlockMode: 'open',
+      autoPractice: true,
+      practiceMaxGap: 10,
+      practiceThresholdMinutesNear: 15,
+      examDate: 1 * MS_PER_DAY, // inside the default 7-day urgent window
+    });
+    const farNodes = buildPath(farCourse, lessons, [], new Map(), [], dueCardCount, 8, now);
+    const nearNodes = buildPath(nearCourse, lessons, [], new Map(), [], dueCardCount, 8, now);
+    expect(farNodes.some((n) => n.nodeType === 'practice-auto')).toBe(false);
+    expect(nearNodes.some((n) => n.nodeType === 'practice-auto')).toBe(true);
+  });
+
+  it('the practiceMaxGap backstop forces a practice node even with no due cards', () => {
+    const now = 0;
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'open',
+      autoPractice: true,
+      practiceMaxGap: 3,
+    });
+    const nodes = buildPath(course, lessons, [], new Map(), [], 0, 0, now);
+    const autoNodes = nodes.filter((n): n is PracticePathNode => n.nodeType === 'practice-auto');
+    // Backstop trips after the 3rd lesson (l3).
+    expect(autoNodes.length).toBe(1);
+    expect(autoNodes[0].afterLessonId).toBe('l3');
+  });
+
+  it('does not auto-insert practice nodes when course.autoPractice is false', () => {
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'open',
+      autoPractice: false,
+      practiceMaxGap: 1,
+    });
+    const nodes = buildPath(course, lessons, [], new Map(), [], 10_000, 100);
+    expect(nodes.every((n) => n.nodeType !== 'practice-auto')).toBe(true);
+  });
+
+  it('places a manual practice node after the lesson at its stored position', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open', autoPractice: false });
+    const manual = makePracticeNode({ id: 'pn1', courseId: 'c1', type: 'manual', position: 1 });
+    const nodes = buildPath(course, lessons, [], new Map(), [manual]);
+    expect(nodes.map((n) => n.id)).toEqual(['l1', 'l2', 'pn1', 'l3', 'l4']);
+    const pn = nodes.find((n) => n.id === 'pn1');
+    expect(pn?.nodeType).toBe('practice-manual');
+    if (pn?.nodeType === 'practice-manual') {
+      expect(pn.afterLessonId).toBe('l2');
+      expect(pn.practiceNode).toBe(manual);
+    }
+  });
+
+  it('places a manual practice node before every lesson when position is undefined', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open', autoPractice: false });
+    const manual = makePracticeNode({ id: 'pn1', courseId: 'c1', type: 'manual' });
+    const nodes = buildPath(course, lessons, [], new Map(), [manual]);
+    expect(nodes[0].id).toBe('pn1');
+    if (nodes[0].nodeType === 'practice-manual') {
+      expect(nodes[0].afterLessonId).toBeNull();
+    }
+  });
+
+  it('resets lessonsSinceLastPractice at a manual node, so the backstop counts from there', () => {
+    const course = makeCourse({
+      id: 'c1',
+      unlockMode: 'open',
+      autoPractice: true,
+      practiceMaxGap: 2,
+    });
+    // Manual node sits right after l1; the backstop should only re-trip after
+    // 2 more lessons (l3), not re-count from the very start.
+    const manual = makePracticeNode({ id: 'pn1', courseId: 'c1', type: 'manual', position: 0 });
+    const nodes = buildPath(course, lessons, [], new Map(), [manual], 0, 0);
+    const autoNodes = nodes.filter((n): n is PracticePathNode => n.nodeType === 'practice-auto');
+    expect(autoNodes.length).toBe(1);
+    expect(autoNodes[0].afterLessonId).toBe('l3');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // pathPosition
 // ---------------------------------------------------------------------------
 
@@ -416,9 +558,11 @@ describe('pathPosition', () => {
 // ---------------------------------------------------------------------------
 
 describe('KNOWN_NODE_TYPES', () => {
-  it('contains lesson and checkpoint', () => {
+  it('contains lesson, checkpoint and practice types', () => {
     expect(KNOWN_NODE_TYPES).toContain('lesson');
     expect(KNOWN_NODE_TYPES).toContain('checkpoint');
+    expect(KNOWN_NODE_TYPES).toContain('practice-auto');
+    expect(KNOWN_NODE_TYPES).toContain('practice-manual');
   });
 
   it('every built path node has a known node type', () => {

@@ -11,10 +11,12 @@
 import type { PathNode } from '../../course/path';
 import { LessonNode } from './LessonNode';
 import { CheckpointNode } from './CheckpointNode';
+import { PracticeNode } from './PracticeNode';
 
 interface PathNodeViewProps {
   node: PathNode;
   onLessonClick?: (lessonId: string) => void;
+  onPracticeClick?: () => void;
 }
 
 /** A neutral placeholder for node types this build does not recognise. */
@@ -35,7 +37,7 @@ function UnrecognisedNode() {
   );
 }
 
-export function PathNodeView({ node, onLessonClick }: PathNodeViewProps) {
+export function PathNodeView({ node, onLessonClick, onPracticeClick }: PathNodeViewProps) {
   switch (node.nodeType) {
     case 'lesson':
       return (
@@ -49,6 +51,9 @@ export function PathNodeView({ node, onLessonClick }: PathNodeViewProps) {
       );
     case 'checkpoint':
       return <CheckpointNode examDate={node.examDate} />;
+    case 'practice-auto':
+    case 'practice-manual':
+      return <PracticeNode node={node} onClick={onPracticeClick} />;
     default:
       // Any nodeType outside KNOWN_NODE_TYPES (e.g. a future plugin type).
       return <UnrecognisedNode />;
