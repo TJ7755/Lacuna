@@ -2,7 +2,15 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { exportDatabase, importBackup, validateBackup, BACKUP_VERSION } from './portability';
-import { createCourse, createDeck, createCard, createLesson, createNote } from './repository';
+import {
+  createCourse,
+  createDeck,
+  createCard,
+  createLesson,
+  createNote,
+  createPracticeNode,
+  createCourseExamDate,
+} from './repository';
 
 async function reset() {
   await Promise.all([
@@ -158,5 +166,67 @@ describe('importBackup', () => {
     const courses = await db.courses.toArray();
     expect(courses).toHaveLength(2);
     expect(courses.map((c) => c.id)).toContain(existing.id);
+  });
+
+  it('adds a missing practice node in merge mode', async () => {
+    const course = await createCourse('Chemistry');
+    const node = await createPracticeNode(course.id, { type: 'card', name: 'Node A' });
+    const backup = await exportDatabase();
+
+    await db.practiceNodes.delete(node.id);
+    expect(await db.practiceNodes.count()).toBe(0);
+
+    await importBackup(backup, 'merge');
+
+    const nodes = await db.practiceNodes.toArray();
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].name).toBe('Node A');
+  });
+
+  it('resolves a practice node id collision by newer createdAt in merge mode', async () => {
+    const course = await createCourse('Chemistry');
+    const node = await createPracticeNode(course.id, { type: 'card', name: 'Old Name' });
+    const backup = await exportDatabase();
+
+    // Local copy is edited after the backup was taken, so its createdAt is newer.
+    await db.practiceNodes.update(node.id, {
+      name: 'New Name',
+      createdAt: node.createdAt + 1000,
+    });
+    await importBackup(backup, 'merge');
+
+    const updated = await db.practiceNodes.get(node.id);
+    expect(updated!.name).toBe('New Name'); // local wins because more recently created/edited
+  });
+
+  it('adds a missing course exam date in merge mode', async () => {
+    const course = await createCourse('Chemistry');
+    const examDate = await createCourseExamDate(course.id, 'Paper 1', Date.now() + 86400000);
+    const backup = await exportDatabase();
+
+    await db.courseExamDates.delete(examDate.id);
+    expect(await db.courseExamDates.count()).toBe(0);
+
+    await importBackup(backup, 'merge');
+
+    const examDates = await db.courseExamDates.toArray();
+    expect(examDates).toHaveLength(1);
+    expect(examDates[0].name).toBe('Paper 1');
+  });
+
+  it('resolves a course exam date id collision by newer createdAt in merge mode', async () => {
+    const course = await createCourse('Chemistry');
+    const examDate = await createCourseExamDate(course.id, 'Paper 1', Date.now() + 86400000);
+    const backup = await exportDatabase();
+
+    // Local copy is edited after the backup was taken, so its createdAt is newer.
+    await db.courseExamDates.update(examDate.id, {
+      name: 'Paper 1 (Resit)',
+      createdAt: examDate.createdAt + 1000,
+    });
+    await importBackup(backup, 'merge');
+
+    const updated = await db.courseExamDates.get(examDate.id);
+    expect(updated!.name).toBe('Paper 1 (Resit)'); // local wins because more recently created/edited
   });
 });
