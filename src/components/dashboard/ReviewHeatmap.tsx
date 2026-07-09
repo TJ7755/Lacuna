@@ -7,6 +7,9 @@ import type { Card } from '../../db/types';
 
 /** How many weeks of history the calendar shows. */
 const WEEKS = 26;
+const CELL_PX = 12;
+const GAP_PX = 3;
+const WEEK_STRIDE = CELL_PX + GAP_PX;
 const WEEKDAY_LABELS = ['Mon', '', 'Wed', '', 'Fri', '', ''];
 
 interface Cell {
@@ -22,7 +25,7 @@ interface Cell {
 export function ReviewHeatmap({ cards }: { cards: Card[] }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const { columns, total, max } = useMemo(() => {
+  const { columns, total, max, monthLabels } = useMemo(() => {
     const buckets = bucketReviewsByDay(reviewTimestamps(cards));
     const today = startOfDay(Date.now());
     // Monday-indexed weekday so weeks read left-to-right, Monday at the top.
@@ -53,7 +56,24 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
       }
       cols.push(col);
     }
-    return { columns: cols, total: sum, max: maxCount };
+
+    // Build month labels with de-duplication so adjacent names never overlap.
+    const labels: { weekIndex: number; text: string }[] = [];
+    let lastLabelWeek = -Infinity;
+    for (let w = 0; w < cols.length; w += 1) {
+      const firstDay = new Date(cols[w][0].day);
+      const prev = w > 0 ? new Date(cols[w - 1][0].day) : null;
+      const isNewMonth = !prev || firstDay.getMonth() !== prev.getMonth();
+      if (isNewMonth && w - lastLabelWeek >= 3) {
+        labels.push({
+          weekIndex: w,
+          text: firstDay.toLocaleDateString('en-GB', { month: 'short' }),
+        });
+        lastLabelWeek = w;
+      }
+    }
+
+    return { columns: cols, total: sum, max: maxCount, monthLabels: labels };
   }, [cards]);
 
   // Five intensity bands, GitHub-style, expressed as accent opacity so they track
@@ -80,31 +100,28 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
         </span>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1">
-        <div className="flex flex-col gap-[3px] text-[10px] text-ink-faint">
+        <div className="flex flex-col gap-[3px] text-[10px] text-ink-faint sticky left-0 bg-surface z-10 pr-1 pt-[16px]">
           {WEEKDAY_LABELS.map((label, i) => (
-            <span key={i} className="h-[12px] leading-[12px]">
+            <span key={i} className="h-[12px] inline-flex items-center">
               {label}
             </span>
           ))}
         </div>
-        <div className="flex flex-col gap-[3px]">
-          {/* Month labels: show a short month name on the first column of each
-              new month so the calendar is readable without a separate legend. */}
-          <div className="flex gap-[3px] h-[12px] text-[10px] text-ink-faint">
-            {columns.map((col, w) => {
-              const firstDay = new Date(col[0].day);
-              const prev = w > 0 ? new Date(columns[w - 1][0].day) : null;
-              const isNewMonth = !prev || firstDay.getMonth() !== prev.getMonth();
-              return (
-                <span key={w} className="w-[12px] shrink-0 leading-[12px]">
-                  {isNewMonth
-                    ? firstDay.toLocaleDateString('en-GB', { month: 'short' })
-                    : ''}
-                </span>
-              );
-            })}
+        <div className="flex flex-col gap-[3px] relative">
+          {/* Month labels: absolutely positioned above the grid so they can be
+              wider than a single cell without overlapping adjacent columns. */}
+          <div className="absolute top-0 left-0 h-[14px] pointer-events-none">
+            {monthLabels.map((label) => (
+              <span
+                key={label.weekIndex}
+                className="absolute text-[10px] text-ink-faint leading-[14px] whitespace-nowrap"
+                style={{ left: `${label.weekIndex * WEEK_STRIDE}px` }}
+              >
+                {label.text}
+              </span>
+            ))}
           </div>
-          <div className="flex gap-[3px]">
+          <div className="flex gap-[3px] pt-[16px]">
             {columns.map((col, w) => (
               <motion.div
                 key={w}
@@ -120,7 +137,7 @@ export function ReviewHeatmap({ cards }: { cards: Card[] }) {
                 {col.map((cell) => (
                   <span
                     key={cell.day}
-                    className="h-[12px] w-[12px] rounded-[2px]"
+                    className="h-[12px] w-[12px] rounded-[2px] shrink-0"
                     style={cellStyle(cell)}
                     title={
                       cell.future

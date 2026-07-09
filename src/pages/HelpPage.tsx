@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { m as motion } from 'motion/react';
+import { m as motion, useMotionValue, useSpring, LayoutGroup } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Button } from '../components/ui/Button';
+import { cn } from '../components/ui/cn';
 import {
   PlayIcon,
   CheckIcon,
@@ -22,6 +23,17 @@ type Section = {
   icon: React.ReactNode;
   content: React.ReactNode;
 };
+
+const HELP_SECTIONS = [
+  { id: 'study-modes', label: 'Study modes' },
+  { id: 'filtered-modes', label: 'Filtered study' },
+  { id: 'how-to-study', label: 'How to study' },
+  { id: 'keyboard-shortcuts', label: 'Keyboard shortcuts' },
+  { id: 'touch-gestures', label: 'Touch gestures' },
+  { id: 'progress', label: 'Progress & scheduling' },
+  { id: 'card-types', label: 'Card types' },
+  { id: 'tips', label: 'Tips & best practice' },
+];
 
 function SectionCard({
   icon,
@@ -52,12 +64,12 @@ function SectionCard({
           : 'bg-accent/10 text-accent';
 
   return (
-    <div className={`rounded-2xl border border-line bg-surface p-6 shadow-sm ${borderClass} border-l-[3px]`}>
-      <div className="mb-4 flex items-center gap-3">
+    <div className={`rounded-2xl border border-line bg-surface p-7 shadow-sm md:p-8 ${borderClass} border-l-[3px]`}>
+      <div className="mb-5 flex items-center gap-3">
         <span className={`grid h-10 w-10 place-items-center rounded-xl ${iconBgClass}`}>
           {icon}
         </span>
-        <h2 className="font-display text-xl tracking-tight">{label}</h2>
+        <h2 className="font-display text-2xl tracking-tight">{label}</h2>
       </div>
       {children}
     </div>
@@ -78,8 +90,8 @@ function ModeCard({
   tip?: string;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-surface-raised/60 p-4 transition-colors hover:border-line-strong">
-      <h3 className="mb-1 font-medium text-ink">{title}</h3>
+    <div className="rounded-xl border border-line bg-surface-raised/60 p-5 transition-colors hover:border-line-strong">
+      <h3 className="mb-1.5 font-medium text-ink">{title}</h3>
       <p className="mb-3 text-sm text-ink-soft">{description}</p>
       <div className="space-y-2 text-sm text-ink-soft">
         <p>
@@ -89,7 +101,7 @@ function ModeCard({
           <strong className="text-ink">When to use:</strong> {whenToUse}
         </p>
         {tip && (
-          <p className="rounded-lg bg-accent-soft/40 px-3 py-2 text-xs text-accent-ink">
+          <p className="rounded-lg bg-accent-soft/40 px-3 py-2.5 text-xs text-accent-ink">
             <strong className="text-accent">Tip:</strong> {tip}
           </p>
         )}
@@ -98,9 +110,127 @@ function ModeCard({
   );
 }
 
+function NavItem({
+  section,
+  active,
+  onClick,
+  index,
+  m,
+}: {
+  section: (typeof HELP_SECTIONS)[number];
+  active: boolean;
+  onClick: () => void;
+  index: number;
+  m: number;
+}) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const springX = useSpring(mouseX, { stiffness: 350, damping: 25 });
+  const springY = useSpring(mouseY, { stiffness: 350, damping: 25 });
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const distX = (e.clientX - centerX) * 0.12;
+    const distY = (e.clientY - centerY) * 0.12;
+    mouseX.set(distX);
+    mouseY.set(distY);
+  };
+
+  const handleMouseLeave = () => {
+    mouseX.set(0);
+    mouseY.set(0);
+  };
+
+  return (
+    <motion.button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ x: springX, y: springY }}
+      initial={{ opacity: 0, x: 16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{
+        delay: 0.04 * index * m,
+        duration: 0.35 * m,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+      whileHover={{ scale: 1.04 }}
+      whileTap={{ scale: 0.96 }}
+      className={cn(
+        'relative flex items-center rounded-lg px-3 py-2.5 text-left text-sm transition-colors duration-150',
+        active ? 'text-accent' : 'text-ink-soft hover:text-ink',
+      )}
+    >
+      {active && (
+        <motion.div
+          layoutId="helpActivePill"
+          className="absolute inset-0 rounded-lg bg-accent/10"
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+        >
+          <motion.div
+            layoutId="helpActiveBar"
+            className="absolute inset-y-0 left-0 w-1 rounded-r-full bg-accent"
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          />
+          <motion.div
+            aria-hidden
+            className="absolute inset-0 rounded-lg bg-gradient-to-r from-accent/10 via-accent/5 to-transparent"
+            animate={{ opacity: [0.3, 0.7, 0.3] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        </motion.div>
+      )}
+      <span className="relative z-10 truncate font-medium">{section.label}</span>
+    </motion.button>
+  );
+}
+
 export function HelpPage() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const [activeSection, setActiveSection] = useState<string>(HELP_SECTIONS[0].id);
+
+  // Track which section is currently visible using IntersectionObserver.
+  useEffect(() => {
+    const intersecting = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) intersecting.add(entry.target.id);
+          else intersecting.delete(entry.target.id);
+        });
+        const top = HELP_SECTIONS.find((s) => intersecting.has(s.id));
+        if (top) setActiveSection(top.id);
+      },
+      { rootMargin: '-20% 0px -60% 0px', threshold: 0 },
+    );
+    HELP_SECTIONS.forEach((section) => {
+      const el = document.getElementById(section.id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  // If the user navigated directly to a hash (e.g. /help#card-types), scroll
+  // to it and highlight the correct sidebar item on mount.
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash && HELP_SECTIONS.some((s) => s.id === hash)) {
+      setActiveSection(hash);
+      const el = document.getElementById(hash);
+      if (el) {
+        window.requestAnimationFrame(() => {
+          el.scrollIntoView({ behavior: 'instant', block: 'start' });
+        });
+      }
+    }
+  }, []);
 
   const sections = useMemo<Section[]>(
     () => [
@@ -110,7 +240,7 @@ export function HelpPage() {
         icon: <PlayIcon width={20} height={20} />,
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-ink-soft">
+            <p className="text-base text-ink-soft">
               Lacuna offers several ways to study your cards. Each mode is designed for a
               different purpose. You can choose one from the study dropdown on any deck.
             </p>
@@ -146,7 +276,7 @@ export function HelpPage() {
         icon: <InfoIcon width={20} height={20} />,
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-ink-soft">
+            <p className="text-base text-ink-soft">
               Filtered study lets you narrow down to a specific subset of cards. These are
               useful for targeted review, maintenance, or catching up on specific categories.
             </p>
@@ -183,7 +313,7 @@ export function HelpPage() {
                 whenToUse="Use this to review or unsuspend cards you had previously removed from rotation."
               />
             </div>
-            <p className="text-sm text-ink-soft">
+            <p className="text-base text-ink-soft">
               You can combine multiple filters together (e.g., due + flagged) to study only
               cards that match all selected criteria.
             </p>
@@ -196,12 +326,12 @@ export function HelpPage() {
         icon: <KeyboardIcon width={20} height={20} />,
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-ink-soft">
+            <p className="text-base text-ink-soft">
               The study session is designed to be fast and keyboard-driven. Here is how a
               typical session works.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">1. Question phase</h3>
                 <p className="text-sm text-ink-soft">
                   The card is shown front-side only. Read the question and try to recall the
@@ -214,7 +344,7 @@ export function HelpPage() {
                   <strong className="text-ink">Touch:</strong> tap the card or the &lsquo;Show answer&rsquo; button.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">2. Answer phase</h3>
                 <p className="text-sm text-ink-soft">
                   The card flips to reveal the answer. Compare your recalled answer with the
@@ -226,7 +356,7 @@ export function HelpPage() {
                   <strong className="text-ink">Manual grading:</strong> press 1 (Again), 2 (Hard), 3 (Good), or 4 (Easy) to self-grade. Enable this in Settings under &lsquo;Study &amp; scheduling&rsquo;.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">3. Card actions</h3>
                 <p className="text-sm text-ink-soft">
                   During a study session, you can perform actions on the current card without
@@ -260,7 +390,7 @@ export function HelpPage() {
         icon: <KeyboardIcon width={20} height={20} />,
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-ink-soft">
+            <p className="text-base text-ink-soft">
               All shortcuts can be customised in Settings &rarr; Keyboard shortcuts.
             </p>
             <div className="overflow-hidden rounded-xl border border-line">
@@ -345,32 +475,32 @@ export function HelpPage() {
         icon: <SparklesIcon width={20} height={20} />,
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-ink-soft">
+            <p className="text-base text-ink-soft">
               In touch-first mode, the study interface supports swipe gestures for faster
               grading.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Tap to flip</h3>
                 <p className="text-sm text-ink-soft">
                   Tap anywhere on the card to reveal the answer. Tap again to hide it.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Swipe right = Yes</h3>
                 <p className="text-sm text-ink-soft">
                   In the answer phase, swipe right on the card to mark it correct. A green glow
                   appears to confirm the action.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Swipe left = No</h3>
                 <p className="text-sm text-ink-soft">
                   In the answer phase, swipe left on the card to mark it wrong. A red glow
                   appears to confirm the action.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Dashboard gestures</h3>
                 <p className="text-sm text-ink-soft">
                   On the deck dashboard, you can swipe a deck card to archive it or start
@@ -387,12 +517,12 @@ export function HelpPage() {
         icon: <CheckIcon width={20} height={20} />,
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-ink-soft">
+            <p className="text-base text-ink-soft">
               Understanding the progress bar and scheduling helps you use Lacuna more
               effectively.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">What the progress bar means</h3>
                 <p className="text-sm text-ink-soft">
                   The progress bar shows how close your deck is to being exam-ready. The exact
@@ -407,7 +537,7 @@ export function HelpPage() {
                   </li>
                 </ul>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">FSRS scheduling</h3>
                 <p className="text-sm text-ink-soft">
                   Lacuna uses FSRS (Free Spaced Repetition Scheduler), an open-source algorithm
@@ -420,7 +550,7 @@ export function HelpPage() {
                   frequently, while cards you struggle with will come back sooner.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Optimisation</h3>
                 <p className="text-sm text-ink-soft">
                   Lacuna can fit the FSRS weights to your own review history. This is where most
@@ -439,25 +569,25 @@ export function HelpPage() {
         icon: <CardsIcon width={20} height={20} />,
         content: (
           <div className="space-y-4">
-            <p className="text-sm text-ink-soft">
+            <p className="text-base text-ink-soft">
               Lacuna supports several card types for different kinds of learning.
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Basic card</h3>
                 <p className="text-sm text-ink-soft">
                   A simple front-and-back flashcard. The question appears on the front; the answer
                   on the back. This is the default and works for most material.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Reversed card</h3>
                 <p className="text-sm text-ink-soft">
                   Creates two cards from one note: one in each direction. Useful for vocabulary
                   (English-to-French and French-to-English) or any bidirectional knowledge.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Typing-answer card</h3>
                 <p className="text-sm text-ink-soft">
                   You type the answer into a text box before revealing. This is more demanding
@@ -465,7 +595,7 @@ export function HelpPage() {
                   terminology.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Cloze card</h3>
                 <p className="text-sm text-ink-soft">
                   A sentence with one or more words hidden. You recall the hidden words before
@@ -484,7 +614,7 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <div className="space-y-3">
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Set an exam date</h3>
                 <p className="text-sm text-ink-soft">
                   The single most important thing you can do is set an accurate exam date and time
@@ -492,14 +622,14 @@ export function HelpPage() {
                   not prioritise the cards that matter most. The exam date is set in Deck Settings.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Keep cards small</h3>
                 <p className="text-sm text-ink-soft">
                   Each card should test one atomic fact. Complex cards that require multiple steps
                   are harder to remember and harder to grade. If a card keeps failing, split it.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Be honest when grading</h3>
                 <p className="text-sm text-ink-soft">
                   The algorithm is only as good as your self-assessment. If you were not sure,
@@ -507,7 +637,7 @@ export function HelpPage() {
                   exam day.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Use the Pomodoro timer</h3>
                 <p className="text-sm text-ink-soft">
                   The built-in Pomodoro timer helps you maintain focus. Short breaks prevent
@@ -515,7 +645,7 @@ export function HelpPage() {
                   Settings &rarr; Pomodoro timer.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Export your data regularly</h3>
                 <p className="text-sm text-ink-soft">
                   All your data lives locally in your browser. Use the automatic backups feature
@@ -532,96 +662,136 @@ export function HelpPage() {
   );
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      <Link
-        to="/"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
-      >
-        <ChevronLeftIcon width={16} height={16} />
-        Back to dashboard
-      </Link>
+    <div className="mx-auto flex max-w-6xl gap-8 px-6 py-8 md:px-10 md:py-10">
+      <div className="min-w-0 flex-1 max-w-4xl">
+        <Link
+          to="/"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
+        >
+          <ChevronLeftIcon width={16} height={16} />
+          Back to dashboard
+        </Link>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 * m }}
-      >
-        <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-8 md:p-10">
-          <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
-          <div className="relative">
-            <p className="mb-2 text-sm uppercase tracking-[0.18em] text-ink-faint">
-              Documentation
-            </p>
-            <h1 className="font-display text-4xl tracking-tight md:text-6xl">Help</h1>
-            <p className="mt-3 max-w-lg text-sm text-ink-soft">
-              Everything you need to know about using Lacuna, from study modes to keyboard
-              shortcuts.
-            </p>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 * m }}
+        >
+          <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-8 md:p-10">
+            <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
+            <div className="relative">
+              <p className="mb-2 text-sm uppercase tracking-[0.18em] text-ink-faint">
+                Documentation
+              </p>
+              <h1 className="font-display text-4xl tracking-tight md:text-6xl">Help</h1>
+              <p className="mt-3 max-w-xl text-base text-ink-soft">
+                Everything you need to know about using Lacuna, from study modes to keyboard
+                shortcuts.
+              </p>
+            </div>
+          </header>
+
+          {/* Sections */}
+          <div className="flex flex-col gap-8">
+            {sections.map((s, i) => (
+              <motion.section
+                key={s.id}
+                id={s.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.24 * m,
+                  delay: Math.min(i * 0.04, 0.2) * m,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+              >
+                <SectionCard icon={s.icon} label={s.label}>
+                  {s.content}
+                </SectionCard>
+              </motion.section>
+            ))}
           </div>
-        </header>
 
-        {/* Section nav */}
-        <div className="mb-8 flex flex-wrap gap-2">
-          {sections.map((s) => (
-            <motion.a
-              key={s.id}
-              href={`#${s.id}`}
-              whileHover={{ y: -1 }}
-              whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs text-ink-soft shadow-sm transition-colors hover:border-line-strong hover:text-ink"
-            >
-              <span className="text-ink-faint">{s.icon}</span>
-              {s.label}
-            </motion.a>
-          ))}
-        </div>
+          {/* Footer */}
+          <div className="mt-10 rounded-2xl border border-line bg-surface p-6 text-center shadow-sm">
+            <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
+              <InfoIcon width={20} height={20} />
+            </div>
+            <p className="mb-3 text-base text-ink-soft">
+              Still have questions? Check the settings pages for more granular controls, or
+              explore the analytics page to understand your study patterns.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link to="/settings">
+                <Button variant="secondary" size="sm">
+                  <SettingsIcon width={16} height={16} />
+                  Settings
+                </Button>
+              </Link>
+              <Link to="/analytics">
+                <Button variant="secondary" size="sm">
+                  <ChartIcon width={16} height={16} />
+                  Analytics
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
-        {/* Sections */}
-        <div className="flex flex-col gap-6">
-          {sections.map((s, i) => (
-            <motion.section
-              key={s.id}
-              id={s.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.24 * m,
-                delay: Math.min(i * 0.04, 0.2) * m,
-                ease: [0.16, 1, 0.3, 1],
+      {/* Right-side section nav */}
+      <aside className="hidden xl:block w-64 shrink-0">
+        <div className="sticky top-24">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5 backdrop-blur-sm"
+          >
+            {/* Ambient top glow that subtly pulses */}
+            <motion.div
+              aria-hidden
+              className="pointer-events-none absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
+              animate={{ opacity: [0.4, 0.8, 0.4] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            {/* Soft radial ambient wash behind the card */}
+            <motion.div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-2xl"
+              style={{
+                background:
+                  'radial-gradient(circle at 50% 0%, hsl(var(--accent) / 0.06), transparent 55%)',
               }}
-            >
-              <SectionCard icon={s.icon} label={s.label}>
-                {s.content}
-              </SectionCard>
-            </motion.section>
-          ))}
-        </div>
+              animate={{ opacity: [0.5, 0.8, 0.5] }}
+              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+            />
 
-        {/* Footer */}
-        <div className="mt-10 rounded-2xl border border-line bg-surface p-6 text-center shadow-sm">
-          <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
-            <InfoIcon width={20} height={20} />
-          </div>
-          <p className="mb-3 text-sm text-ink-soft">
-            Still have questions? Check the settings pages for more granular controls, or
-            explore the analytics page to understand your study patterns.
-          </p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <Link to="/settings">
-              <Button variant="secondary" size="sm">
-                <SettingsIcon width={16} height={16} />
-                Settings
-              </Button>
-            </Link>
-            <Link to="/analytics">
-              <Button variant="secondary" size="sm">
-                <ChartIcon width={16} height={16} />
-                Analytics
-              </Button>
-            </Link>
-          </div>
+            <div className="relative mb-3 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-ink-faint">
+              On this page
+            </div>
+            <LayoutGroup>
+              <nav className="relative flex flex-col gap-1">
+                {HELP_SECTIONS.map((section, index) => (
+                  <NavItem
+                    key={section.id}
+                    section={section}
+                    active={activeSection === section.id}
+                    onClick={() => {
+                      const el = document.getElementById(section.id);
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    }}
+                    index={index}
+                    m={m}
+                  />
+                ))}
+              </nav>
+            </LayoutGroup>
+          </motion.div>
         </div>
-      </motion.div>
+      </aside>
     </div>
   );
 }

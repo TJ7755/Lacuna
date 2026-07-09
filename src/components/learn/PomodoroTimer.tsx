@@ -81,9 +81,9 @@ export function PomodoroTimer() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         title={active ? `${label(phase)} · ${formattedTime}` : 'Pomodoro timer'}
-        className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+        className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
       >
-        <svg width="36" height="36" viewBox="0 0 36 36" className="absolute inset-0">
+        <svg width="36" height="36" viewBox="0 0 36 36" className="absolute inset-0 h-full w-full">
           {/* track */}
           <circle
             cx="18"

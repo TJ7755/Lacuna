@@ -18,7 +18,7 @@ import {
   decrementCooldowns,
 } from '../fsrs/cooldown';
 import type { CooldownMap } from '../fsrs/cooldown';
-import { progressHeading, progressNoun } from '../fsrs/objective';
+import { progressHeading } from '../fsrs/objective';
 import {
   makeSessionContext,
   selectNext,
@@ -49,7 +49,6 @@ import {
   CloseIcon,
   EditIcon,
   FlagIcon,
-  HelpIcon,
   KeyboardIcon,
   MenuIcon,
   MoreIcon,
@@ -819,8 +818,6 @@ export function LearnMode() {
     return <LearnSkeleton mode={mode} />;
   }
 
-  const noun = singleDeck ? progressNoun(singleDeck) : 'ready';
-
   const isTypingCard = current?.type === 'typing';
 
   return (
@@ -981,7 +978,6 @@ export function LearnMode() {
           mode={mode}
           singleDeck={singleDeck}
           progress={progress}
-          noun={noun}
           filterParams={filterParams}
           tagFilter={tagFilter}
           onOpenNav={() => setNavOpen(true)}
@@ -1254,7 +1250,6 @@ function LearnHeader({
   mode,
   singleDeck,
   progress,
-  noun,
   filterParams,
   tagFilter,
   onOpenNav,
@@ -1278,7 +1273,6 @@ function LearnHeader({
   mode: LearnModeType;
   singleDeck: Deck | null;
   progress: number;
-  noun: string;
   filterParams: CardFilter[];
   tagFilter: string | null;
   onOpenNav: () => void;
@@ -1314,7 +1308,7 @@ function LearnHeader({
           !['cram', 'simple', 'filtered-leech', 'filtered-flagged'].includes(mode) && 'border-line',
         )}
       >
-        <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-4">
+        <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-3">
           <button
             type="button"
             onClick={onOpenNav}
@@ -1326,17 +1320,12 @@ function LearnHeader({
           </button>
 
           <div className="min-w-0 flex-1">
-            <div className="mb-2 flex flex-col items-start gap-1 text-xs sm:flex-row sm:items-center sm:justify-between sm:gap-0">
-              <span className={cn('font-medium uppercase tracking-[0.14em] sm:truncate', mode === 'cram' && 'text-amber-600', mode === 'simple' && 'text-positive', mode === 'filtered-leech' && 'text-negative', mode === 'filtered-flagged' && 'text-amber-600', 'text-ink-faint')}>
+            <div className="mb-2 flex items-center gap-2 text-xs">
+              <span className={cn('font-medium uppercase tracking-[0.14em] truncate', mode === 'cram' && 'text-amber-600', mode === 'simple' && 'text-positive', mode === 'filtered-leech' && 'text-negative', mode === 'filtered-flagged' && 'text-amber-600', 'text-ink-faint')}>
                 {info.title}
               </span>
-              <span className="whitespace-nowrap tabular text-sm font-medium text-ink">
-                {mode === 'simple'
-                  ? `${Math.round((simpleMastered / Math.max(1, simpleMastered + simpleRemaining)) * 100)}%`
-                  : `${Math.round(progress * 100)}% ${noun}`}
-              </span>
             </div>
-            <ProgressBar value={progress} height={8} variant={progressVariant} showLabel />
+            <ProgressBar value={progress} height={6} variant={progressVariant} showLabel />
             {info.subtitle && (
               <div className="mt-1.5 text-[10px] text-ink-faint">{info.subtitle}</div>
             )}
@@ -1411,7 +1400,7 @@ export function LearnSkeleton({ mode }: { mode?: LearnModeType }) {
   return (
     <div className="flex min-h-screen flex-col bg-paper">
       <header className={cn('sticky top-0 z-10 border-b bg-paper/85 backdrop-blur', borderClass)}>
-        <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-4">
+        <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-3">
           <div className="h-11 w-11 animate-pulse rounded-lg bg-ink/10" />
           <div className="min-w-0 flex-1">
             <div className="mb-1 h-3 w-32 animate-pulse rounded bg-ink/10" />
@@ -1423,7 +1412,7 @@ export function LearnSkeleton({ mode }: { mode?: LearnModeType }) {
       </header>
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-8">
         <div className="flex flex-1 items-center justify-center">
-          <div className="w-full rounded-3xl border border-line bg-surface px-8 py-12">
+          <div className="w-full rounded-3xl border border-line bg-surface px-6 py-10">
             <div className="mx-auto mb-4 h-3 w-20 animate-pulse rounded bg-ink/10" />
             <div className="mx-auto h-6 w-3/4 animate-pulse rounded bg-ink/10" />
           </div>
@@ -1899,7 +1888,6 @@ function FlipCard({
   mode: LearnModeType;
 }) {
   const m = speedMultiplier(motionSpeed);
-  const isCloze = card.type === 'cloze';
   const isTyping = card.type === 'typing';
   const [swipe, setSwipe] = useState({ x: 0, hint: null as 'left' | 'right' | null });
   const [hasSwiped, setHasSwiped] = useState(() => {
@@ -2108,66 +2096,15 @@ function FlipCard({
             }}
             style={{ transformOrigin: 'center center', x: swipeXSpring }}
             className={cn(
-              'relative z-10 rounded-3xl border bg-surface px-8 py-14 md:px-12 md:py-16',
+              'relative z-10 rounded-3xl border bg-surface px-6 py-10 md:px-10 md:py-12',
               modeBorderClass(mode, revealed),
             )}
           >
-            {/* Mode-aware label pill */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 * m, delay: 0.1 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="mb-6 flex justify-center"
-            >
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]',
-                  revealed
-                    ? isTyping
-                      ? 'bg-accent/10 text-accent'
-                      : 'bg-positive/10 text-positive'
-                    : isCloze
-                      ? 'bg-accent/10 text-accent'
-                      : isTyping
-                        ? 'bg-accent/10 text-accent'
-                        : 'bg-ink/5 text-ink-soft',
-                )}
-              >
-                {revealed ? (
-                  isTyping ? (
-                    <>
-                      <CheckIcon width={12} height={12} />
-                      Your answer
-                    </>
-                  ) : (
-                    <>
-                      <CheckIcon width={12} height={12} />
-                      Answer
-                    </>
-                  )
-                ) : isCloze ? (
-                  <>
-                    <EditIcon width={12} height={12} />
-                    Fill the gap
-                  </>
-                ) : isTyping ? (
-                  <>
-                    <KeyboardIcon width={12} height={12} />
-                    Type the answer
-                  </>
-                ) : (
-                  <>
-                    <HelpIcon width={12} height={12} />
-                    Question
-                  </>
-                )}
-              </span>
-            </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24 * m, delay: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto max-w-prose text-center text-xl leading-relaxed md:text-2xl"
+              className="mx-auto max-w-prose text-center text-lg leading-relaxed md:text-xl"
             >
               <CardContent card={card} side={revealed ? 'back' : 'front'} />
             </motion.div>
