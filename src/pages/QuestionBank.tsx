@@ -146,8 +146,18 @@ function LessonBucket({
   assignableLessons: AssignableLesson[];
 }) {
   const navigate = useNavigate();
-  // All cards sharing a primaryLessonId share one backing deck (see ensureLessonDeck).
+  // Invariant (assignCardsToLesson): every card assigned to a lesson shares that
+  // lesson's single backing deck, so the bucket's deck can be read off the first card.
   const deckId = cards[0]?.deckId;
+  if (import.meta.env.DEV) {
+    const stray = cards.find((c) => c.deckId !== deckId);
+    if (stray) {
+      console.warn(
+        `QuestionBank: lesson "${lesson.name}" has cards from more than one deck ` +
+          `(expected ${deckId}, found ${stray.deckId} on card ${stray.id}).`,
+      );
+    }
+  }
   const deck = useDeck(deckId);
   const allDecks = useMemo(() => (deck ? [deck] : []), [deck]);
 
@@ -191,7 +201,18 @@ function UnassignedBucket({
   assignableLessons: AssignableLesson[];
 }) {
   const navigate = useNavigate();
+  // Invariant (assignCardsToLesson): unassigned cards all share the course's lazy
+  // bank deck, so the bucket's deck can be read off the first card.
   const deckId = cards[0]?.deckId;
+  if (import.meta.env.DEV) {
+    const stray = cards.find((c) => c.deckId !== deckId);
+    if (stray) {
+      console.warn(
+        `QuestionBank: Unassigned bucket has cards from more than one deck ` +
+          `(expected ${deckId}, found ${stray.deckId} on card ${stray.id}).`,
+      );
+    }
+  }
   const deck = useDeck(deckId);
   const allDecks = useMemo(() => (deck ? [deck] : []), [deck]);
 

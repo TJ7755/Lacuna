@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
@@ -13,6 +13,7 @@ import {
   summariseShare,
   type ShareSummary,
 } from '../db/share';
+import { referencedAssetHashesInCards } from '../db/assets';
 import { exportCardsSimple } from '../db/export';
 import {
   CheckIcon,
@@ -95,6 +96,10 @@ export function SharePage() {
   const m = speedMultiplier(motionSpeed);
 
   const selectedSummary = selectedCourseId ? summaries?.[selectedCourseId] : undefined;
+  const selectedHasImages = useMemo(
+    () => referencedAssetHashesInCards(courseCards ?? []).length > 0,
+    [courseCards],
+  );
 
   function select(id: string) {
     setSelectedCourseId((prev) => (prev === id ? null : id));
@@ -376,6 +381,12 @@ export function SharePage() {
             </div>
 
             <div className="mt-5">
+              {selectedHasImages && (
+                <p className="mb-3 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
+                  This course contains images. The share code will replace them with
+                  placeholders; export a full backup from Settings to transfer the images too.
+                </p>
+              )}
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="primary"

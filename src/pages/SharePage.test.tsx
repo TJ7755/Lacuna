@@ -1,18 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SharePage } from './SharePage';
-import type { Course } from '../db/types';
+import type { Card, Course } from '../db/types';
 import type { CourseSummary } from '../state/useCourseData';
 
 const mockNotify = vi.fn();
 
 let mockCourses: Course[] | undefined = undefined;
 let mockSummaries: Record<string, CourseSummary> | undefined = undefined;
+let mockCourseCards: Card[] = [];
 
 vi.mock('../state/useCourseData', () => ({
   useCourses: () => mockCourses,
   useCourseSummaries: () => mockSummaries,
-  useCourseCards: () => [],
+  useCourseCards: () => mockCourseCards,
 }));
 
 vi.mock('../components/ui/Toast', () => ({
@@ -95,6 +96,7 @@ beforeEach(() => {
   mockNotify.mockClear();
   mockCourses = undefined;
   mockSummaries = undefined;
+  mockCourseCards = [];
 });
 
 describe('SharePage', () => {
@@ -135,6 +137,33 @@ describe('SharePage', () => {
     render(<SharePage />);
     const generateBtn = screen.getByText('Generate share code');
     expect(generateBtn).toBeDisabled();
+  });
+
+  it('shows an image-placeholder warning when the selected course has images', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockCourseCards = [
+      {
+        front: 'What is shown? lacuna-asset://' + 'a'.repeat(64),
+        back: 'Answer',
+      } as Card,
+    ];
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(
+      screen.getByText(/This course contains images\. The share code will replace them/),
+    ).toBeInTheDocument();
+  });
+
+  it('does not show the image-placeholder warning when the selected course has no images', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockCourseCards = [{ front: 'Plain text', back: 'Answer' } as Card];
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(
+      screen.queryByText(/This course contains images\. The share code will replace them/),
+    ).not.toBeInTheDocument();
   });
 
   it('shows import section with textarea', () => {
