@@ -145,6 +145,33 @@ is no user-visible change yet — the UI is delivered in a later stage.
   flow moved from decks to courses. Reinstated it against the selected course's cards
   (`referencedAssetHashesInCards`).
 
+### Course-scoped sessions and practice nodes (Phase 6)
+
+- Widened `session.ts` to `SessionUnit` scopes (deck/course/lesson, `LessonCardLink`-aware)
+  and `recordReview` to `SchedulerConfig` with a deck/course discriminator; course reviews
+  bump `Course.lastInteractedAt` and populate `sessionHistory.courseId`. Cards linked into
+  multiple lesson units are deduped in the serve pool by card id, scored via the
+  `primaryLessonId`-owning unit or else the most urgent matching unit (previously entered
+  the pool once per unit with last-write-wins priority by map order).
+- Added practice nodes on the course path: `practice-auto`/`practice-manual` `PathNode`
+  variants, manual `PracticeNode` records and `shouldInsertPractice` auto slots woven into
+  `buildPath`, a distinct `PracticeNode` component, and clicks wired to the course practice
+  session route. A due-count snapshot no longer keeps the volume trigger latched after it
+  fires — only the `practiceMaxGap` backstop can insert another auto slot until a manual
+  node re-arms the volume trigger.
+- Added `/course/:courseId/learn` (practice over due course cards) and
+  `/lesson/:lessonId/learn` (new cards, including `LessonCardLink`-linked cards) routes,
+  replacing `LessonView`'s temporary shadow-deck study bridge.
+- Wired `nextLessonUnlockCondition` and `ratchetLessonUnlock` on session completion in
+  semi-linear mode: the one-way `unlockedAt` ratchet advances once a lesson is taught and,
+  where a manual practice node sits in the slot after it, that practice session is also
+  completed. Auto practice nodes deliberately do not gate the ratchet, since they are
+  recomputed from a volatile due-card snapshot and would make the one-way ratchet flap.
+- Added a `kind` (deck/course) discriminator to `ReviewUndo`.
+- Fixed a `tsc -b` break in `QuestionBank.test.tsx` and `SharePage.test.tsx`: their fixtures
+  predated the Course practice fields (vitest does not type-check, so this only surfaced on
+  the project build).
+
 ## 0.0.3 — Simple learn mode, card types, and touch-first polish
 
 - Added `useStudyMode` hook (`src/state/studyMode.ts`) with `fsrs` and `simple` modes, persisted to `localStorage`.
