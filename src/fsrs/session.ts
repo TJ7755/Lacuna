@@ -137,32 +137,72 @@ function getUnitCards(
   return result;
 }
 
-/** Find the unit a served card belongs to (matched by scope, not deckId, so
- *  course/lesson-scoped units resolve correctly for shadow-decked cards). */
-function findUnit(card: Card, ctx: SessionContext): SessionDeckContext | undefined {
+/** All units whose scope matches a card. Usually a single entry, but a card
+ *  linked into another lesson via LessonCardLink matches its own lesson's unit
+ *  *and* every lesson unit it's linked into (see cardMatchesScope). */
+function unitsForCard(card: Card, ctx: SessionContext): SessionDeckContext[] {
+  const out: SessionDeckContext[] = [];
   for (const dc of ctx.decks.values()) {
-    if (cardMatchesScope(card, dc.scope)) return dc;
+    if (cardMatchesScope(card, dc.scope)) out.push(dc);
   }
-  return undefined;
+  return out;
 }
 
-/** The cards a session may serve right now (studyPool per unit, unioned).
+/** Resolve the single unit that should score a card matching more than one unit:
+ *  the unit that owns the card (its primaryLessonId) when that unit is amongst
+ *  the matches, otherwise whichever matching unit gives it the best (most
+ *  urgent/highest) score — so a shared card's priority is deterministic
+ *  regardless of unit registration order. */
+function resolveScoringUnit(
+  card: Card,
+  units: SessionDeckContext[],
+  scoreFn: (dc: SessionDeckContext) => number,
+): SessionDeckContext {
+  const owner = units.find(
+    (dc) => dc.scope.kind === 'lesson' && dc.scope.lessonId === card.primaryLessonId,
+  );
+  if (owner) return owner;
+  return units.reduce((best, dc) => (scoreFn(dc) > scoreFn(best) ? dc : best));
+}
+
+/** Find the unit a served card belongs to (matched by scope, not deckId, so
+ *  course/lesson-scoped units resolve correctly for shadow-decked cards). When
+ *  a card matches more than one unit (linked into several lessons), resolves
+ *  deterministically via {@link resolveScoringUnit} rather than returning
+ *  whichever unit happens to iterate first. */
+function findUnit(card: Card, ctx: SessionContext, now: number = Date.now()): SessionDeckContext | undefined {
+  const units = unitsForCard(card, ctx);
+  if (units.length === 0) return undefined;
+  if (units.length === 1) return units[0];
+  return resolveScoringUnit(card, units, (dc) => cramScore(card, dc.oc, now));
+}
+
+/** The cards a session may serve right now (studyPool per unit, unioned and
+ *  deduplicated by card id — a card linked into more than one lesson unit via
+ *  LessonCardLink would otherwise be counted once per matching unit).
  *  In cram mode the new-card cap is bypassed so every card is available. */
 export function sessionServePool(
   cards: Card[],
   ctx: SessionContext,
   now: number = Date.now(),
 ): Card[] {
+  const seen = new Set<string>();
   const pool: Card[] = [];
   for (const { deck, scope } of ctx.decks.values()) {
     // Archived decks/courses are excluded from all study modes.
     if (deck.archived) continue;
     const deckCards = cardsOfUnit(cards, scope);
-    if (ctx.mode === 'cram') {
-      // Cram serves every available card, ignoring the daily new-card cap.
-      pool.push(...deckCards.filter((c) => !c.suspended && !(c.buriedUntil !== null && c.buriedUntil !== undefined && c.buriedUntil > now)));
-    } else {
-      pool.push(...studyPool(deckCards, deck, now));
+    const eligible =
+      ctx.mode === 'cram'
+        ? // Cram serves every available card, ignoring the daily new-card cap.
+          deckCards.filter(
+            (c) => !c.suspended && !(c.buriedUntil !== null && c.buriedUntil !== undefined && c.buriedUntil > now),
+          )
+        : studyPool(deckCards, deck, now);
+    for (const c of eligible) {
+      if (seen.has(c.id)) continue;
+      seen.add(c.id);
+      pool.push(c);
     }
   }
   return pool;
@@ -186,7 +226,7 @@ export function selectNext(
     // the session. Cooldown-eligible cards win; otherwise serve the soonest.
     const cramPriority = new Map<string, number>();
     for (const card of pool) {
-      const dc = findUnit(card, ctx);
+      const dc = findUnit(card, ctx, now);
       if (dc) cramPriority.set(card.id, cramScore(card, dc.oc, now));
     }
     const ordered = pool
@@ -206,8 +246,12 @@ export function selectNext(
 
   // Multi-unit: normalise each unit's scores to 0..1 and weight by urgency so the
   // figures are comparable across units with different objectives and exam dates.
-  const priority = new Map<string, number>();
-  for (const { deck, scope, oc } of ctx.decks.values()) {
+  // Each unit's normalised value is kept per-unit (perUnitPriority) so a card
+  // shared across units can be resolved deterministically afterwards, instead
+  // of last-write-wins over Map iteration order.
+  const perUnitPriority = new Map<string, Map<string, number>>();
+  for (const dc of ctx.decks.values()) {
+    const { deck, scope, oc } = dc;
     const deckCards = pool.filter((c) => cardMatchesScope(c, scope));
     if (deckCards.length === 0) continue;
     const scores = deckCards.map((c) => scoreCard(c, oc, now));
@@ -216,10 +260,27 @@ export function selectNext(
     const w = urgency(deck, now);
     const span = max - min;
     const degenerate = Math.abs(span) < 1e-9;
+    const values = new Map<string, number>();
     deckCards.forEach((c, i) => {
       const normalised = degenerate ? 0.5 : (scores[i] - min) / span;
-      priority.set(c.id, w * normalised);
+      values.set(c.id, w * normalised);
     });
+    perUnitPriority.set(unitKey(scope), values);
+  }
+
+  const priority = new Map<string, number>();
+  for (const card of pool) {
+    const units = unitsForCard(card, ctx);
+    if (units.length === 0) continue;
+    const dc =
+      units.length === 1
+        ? units[0]
+        : resolveScoringUnit(
+            card,
+            units,
+            (u) => perUnitPriority.get(unitKey(u.scope))?.get(card.id) ?? -Infinity,
+          );
+    priority.set(card.id, perUnitPriority.get(unitKey(dc.scope))?.get(card.id) ?? 0);
   }
 
   const scored = pool

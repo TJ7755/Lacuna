@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Deck, SchedulerConfig } from '../db/types';
 import { defaultFsrsParameters } from './params';
-import { makeSessionContext, selectNext, sessionComplete, sessionProgress, type SessionUnit } from './session';
+import {
+  makeSessionContext,
+  selectNext,
+  sessionComplete,
+  sessionProgress,
+  sessionServePool,
+  type SessionUnit,
+} from './session';
 
 const NOW = new Date(2026, 5, 4, 12).getTime();
 
@@ -123,5 +130,71 @@ describe('course/lesson-scoped sessions', () => {
     expect(served.has('own-card')).toBe(true);
     expect(served.has('linked-card')).toBe(true);
     expect(served.has('unrelated')).toBe(false);
+  });
+
+  it('dedupes a card shared between two lesson units into a single pool entry', () => {
+    const cA = course('course-1', 10);
+    const cB = course('course-1', 30);
+    const lessonA: SessionUnit = {
+      config: cA,
+      scope: { kind: 'lesson', courseId: 'course-1', lessonId: 'lesson-a', linkedCardIds: new Set() },
+    };
+    const lessonB: SessionUnit = {
+      config: cB,
+      scope: {
+        kind: 'lesson',
+        courseId: 'course-1',
+        lessonId: 'lesson-b',
+        linkedCardIds: new Set(['shared']),
+      },
+    };
+    const cards = [
+      card('shared', 'shadow-deck-a', { courseId: 'course-1', primaryLessonId: 'lesson-a' }),
+      card('a2', 'shadow-deck-a', { courseId: 'course-1', primaryLessonId: 'lesson-a' }),
+      card('b1', 'shadow-deck-b', { courseId: 'course-1', primaryLessonId: 'lesson-b' }),
+    ];
+
+    const pool = sessionServePool(cards, makeSessionContext([lessonA, lessonB]), NOW);
+
+    expect(pool.filter((c) => c.id === 'shared')).toHaveLength(1);
+    expect(pool).toHaveLength(3);
+  });
+
+  it('scores a card shared between two lesson units deterministically regardless of unit registration order', () => {
+    const cA = course('course-1', 10);
+    const cB = course('course-1', 30);
+    const lessonA: SessionUnit = {
+      config: cA,
+      scope: { kind: 'lesson', courseId: 'course-1', lessonId: 'lesson-a', linkedCardIds: new Set() },
+    };
+    const lessonB: SessionUnit = {
+      config: cB,
+      scope: {
+        kind: 'lesson',
+        courseId: 'course-1',
+        lessonId: 'lesson-b',
+        linkedCardIds: new Set(['shared']),
+      },
+    };
+    const cards = [
+      card('shared', 'shadow-deck-a', { courseId: 'course-1', primaryLessonId: 'lesson-a' }),
+      card('a2', 'shadow-deck-a', { courseId: 'course-1', primaryLessonId: 'lesson-a' }),
+      card('b1', 'shadow-deck-b', { courseId: 'course-1', primaryLessonId: 'lesson-b' }),
+    ];
+
+    const serveOrder = (units: SessionUnit[]) => {
+      const ctx = makeSessionContext(units);
+      const served: string[] = [];
+      let cd = new Map<string, number>();
+      for (let i = 0; i < 3; i++) {
+        const next = selectNext(cards, ctx, cd, NOW);
+        if (!next) break;
+        served.push(next.id);
+        cd = new Map(cd).set(next.id, 999);
+      }
+      return served;
+    };
+
+    expect(serveOrder([lessonA, lessonB])).toEqual(serveOrder([lessonB, lessonA]));
   });
 });
