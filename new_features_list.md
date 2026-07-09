@@ -55,7 +55,9 @@ interface Course {
   archived?: boolean;
   autoOptimise?: boolean;
   // Course-specific settings
-  pathMode: 'linear' | 'semi-linear' | 'free'; // How students navigate the path
+  // Stale: originally `pathMode: 'linear' | 'semi-linear' | 'free'`. Superseded by
+  // Addendum 2 §F — see `unlockMode: 'linear' | 'semi-linear' | 'open'` plus
+  // `linearCadence` (this is the shipped shape, per src/db/types.ts).
   autoPractice: boolean;          // Auto-generate practice sessions
   practiceMinCards: number;       // Minimum due cards before auto-inserting practice
   practiceMaxGap: number;         // Max lessons between practice sessions
@@ -304,10 +306,12 @@ Exam: 14 Jun 2026
 - The path winds visually (like a board game or Duolingo)
 - Clicking a node opens it (if not locked)
 
-**Path modes**:
+**Path modes** (stale naming — this describes the original `pathMode` field, since
+renamed to `unlockMode` with `'open'` replacing `'free'`; see Addendum 2 §F for the
+shipped shape and `linearCadence`):
 - `linear`: Must complete Lesson 1 before Lesson 2 unlocks
 - `semi-linear`: Can view any Lesson, but study only unlocks after previous ones
-- `free`: All nodes are always clickable
+- `free` (now `open`): All nodes are always clickable
 
 ### 4.3 Lesson View (`/course/:courseId/lesson/:lessonId`)
 
@@ -431,7 +435,9 @@ STANDALONE LESSONS
 **Modified**: `/course/:courseId/settings`
 
 - All the current Deck settings (exam date, FSRS, objective, etc.) move here
-- New settings: path mode, auto-practice, practice thresholds
+- New settings: path mode (i.e. `unlockMode`, plus `linearCadence` when
+  `unlockMode === 'linear'` — see Addendum 2 §F; not a new field), auto-practice,
+  practice thresholds
 - New section: Course exam dates (multiple dates)
 - New section: Lesson management (reorder, rename, delete)
 
@@ -862,12 +868,19 @@ LAC2 (share code v2)
 1. **Update Course Settings**
    - `src/pages/CourseSettings.tsx` (new)
    - All current Deck settings
-   - New settings: path mode, auto-practice, practice thresholds
+   - New settings: path mode ("path mode" here means the shipped `unlockMode`
+     field, plus `linearCadence` when `unlockMode === 'linear'` — see Addendum 2
+     §F. Not a new field to design; §2.1 and §4.2's `pathMode`/`free` wording
+     above is stale.), auto-practice, practice thresholds
    - Multiple exam dates
 2. **Update global Settings**
    - `src/pages/Settings.tsx`
    - Study pattern calculation
    - Revision period settings
+
+> **Scope note:** the Phase 6 deferrals recorded in Addendum 2 §O — teacher-configured
+> lesson session filters, and manual practice-node authoring UI — are explicitly
+> deferred to **Phase 8**, not picked up here in Phase 7.
 3. **Update import/export**
    - `src/db/import.ts`, `src/db/export.ts`
    - Support new tables
