@@ -22,10 +22,16 @@ vi.mock('react-router-dom', async () => {
 });
 
 vi.mock('../state/useCourseData', () => ({
-  useCourse: () => mockCourse,
   useCourseCards: () => mockCards,
   useCourseExamDates: () => [],
   useLessons: () => [],
+}));
+
+// CourseSettings resolves the course itself via useLiveQuery + db.courses.get
+// (mapping a missing row to null, matching CoursePath's reachable not-found
+// pattern), rather than the useCourse hook — see the finding this test now covers.
+vi.mock('dexie-react-hooks', () => ({
+  useLiveQuery: () => mockCourse,
 }));
 
 vi.mock('../state/motionSpeed', () => ({
@@ -158,6 +164,37 @@ describe('CourseSettings', () => {
     renderPage();
     const maxGapInput = screen.getByDisplayValue('5');
     fireEvent.change(maxGapInput, { target: { value: '' } });
+    fireEvent.click(screen.getByText('Save changes'));
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ practiceMaxGap: 5 }),
+    );
+  });
+
+  it('accepts a zero value for the far/near thresholds and urgent window', () => {
+    renderPage();
+    fireEvent.change(screen.getByLabelText(/Threshold \(exam not near\)/), {
+      target: { value: '0' },
+    });
+    fireEvent.change(screen.getByLabelText(/Threshold \(exam near\)/), {
+      target: { value: '0' },
+    });
+    fireEvent.change(screen.getByLabelText(/Urgent window/), { target: { value: '0' } });
+    fireEvent.click(screen.getByText('Save changes'));
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({
+        practiceThresholdMinutesFar: 0,
+        practiceThresholdMinutesNear: 0,
+        practiceUrgentWindowDays: 0,
+      }),
+    );
+  });
+
+  it('falls back to the current value when the maximum lesson gap is set to zero', () => {
+    renderPage();
+    const maxGapInput = screen.getByDisplayValue('5');
+    fireEvent.change(maxGapInput, { target: { value: '0' } });
     fireEvent.click(screen.getByText('Save changes'));
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',

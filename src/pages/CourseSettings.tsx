@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
-import { useCourse, useCourseCards } from '../state/useCourseData';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/schema';
+import { useCourseCards } from '../state/useCourseData';
+import type { Course } from '../db/types';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Button } from '../components/ui/Button';
 import { Toggle } from '../components/ui/Toggle';
@@ -38,7 +41,16 @@ export function CourseSettings() {
   const navigate = useNavigate();
   const { notify } = useToast();
 
-  const course = useCourse(courseId);
+  // Use a null-sentinel to distinguish "loading" (undefined) from "not found"
+  // (null), matching CoursePath's pattern — Dexie's .get() resolves to
+  // undefined for a missing row, so useCourse alone cannot signal not-found.
+  const course = useLiveQuery<Course | null>(
+    () =>
+      courseId
+        ? db.courses.get(courseId).then((c) => c ?? null)
+        : Promise.resolve(null),
+    [courseId],
+  );
   const cards = useCourseCards(courseId);
 
   const [name, setName] = useState('');
@@ -116,10 +128,16 @@ export function CourseSettings() {
 
   const coursePath = `/course/${course.id}`;
 
-  /** Parse a non-optional numeric field, falling back to the current course value on blank/invalid input. */
-  function parsePositiveIntOr(value: string, fallback: number): number {
+  /**
+   * Parse a non-optional numeric field, falling back to the current course value on
+   * blank/NaN/negative input. Zero is accepted when `allowZero` is set — it is a
+   * meaningful value for the practice threshold, urgent-window and max-gap fields
+   * (see src/fsrs/practice.ts), unlike the other fields parsed inline in handleSave.
+   */
+  function parsePositiveIntOr(value: string, fallback: number, allowZero = false): number {
     const parsed = Math.floor(Number(value));
-    return value.trim() === '' || !Number.isFinite(parsed) || parsed <= 0 ? fallback : parsed;
+    const min = allowZero ? 0 : 1;
+    return value.trim() === '' || !Number.isFinite(parsed) || parsed < min ? fallback : parsed;
   }
 
   async function handleSave() {
@@ -190,15 +208,20 @@ export function CourseSettings() {
       practiceThresholdMinutesFar: parsePositiveIntOr(
         practiceThresholdMinutesFar,
         course.practiceThresholdMinutesFar,
+        true,
       ),
       practiceThresholdMinutesNear: parsePositiveIntOr(
         practiceThresholdMinutesNear,
         course.practiceThresholdMinutesNear,
+        true,
       ),
       practiceUrgentWindowDays: parsePositiveIntOr(
         practiceUrgentWindowDays,
         course.practiceUrgentWindowDays,
+        true,
       ),
+      // Maximum lesson gap is a backstop count of lessons; the input's min={1}
+      // (PracticeSettingsSection) reflects that zero has no meaningful gap semantics.
       practiceMaxGap: parsePositiveIntOr(practiceMaxGap, course.practiceMaxGap),
     });
     notify('Course updated.', 'positive');
