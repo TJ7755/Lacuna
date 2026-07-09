@@ -9,6 +9,7 @@ import { UnifiedImportPanel } from '../import/UnifiedImportPanel';
 import { CardAnalytics } from './CardAnalytics';
 import {
   addTagToCards,
+  assignCardsToLesson,
   buryCards,
   createCards,
   deleteCards,
@@ -39,6 +40,12 @@ import type { ParsedCard } from '../../db/import';
 import { importApkgResult, type ApkgImportResult } from '../../db/apkgImport';
 import type { Card, Deck } from '../../db/types';
 
+/** A lesson a card can be bulk-assigned to, offered in the "Assign to lesson…" panel. */
+interface AssignableLesson {
+  id: string;
+  name: string;
+}
+
 interface CardListProps {
   cards: Card[];
   deck: Deck;
@@ -48,9 +55,16 @@ interface CardListProps {
   /** When true, suppresses the internal "Cards (N)" heading row. Use when the
    *  parent already renders its own heading for the cards section. */
   hideHeader?: boolean;
+  /**
+   * When supplied together with courseId, the bulk toolbar gains an "Assign to
+   * lesson…" action that reassigns selected cards' primaryLessonId (and moves
+   * them to that lesson's backing deck). Used by the course Question Bank.
+   */
+  assignableLessons?: AssignableLesson[];
+  courseId?: string;
 }
 
-export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHeader = false }: CardListProps) {
+export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHeader = false, assignableLessons, courseId }: CardListProps) {
   const { notify } = useToast();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -60,6 +74,9 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHea
   const [tagValue, setTagValue] = useState('');
   const [rescheduling, setRescheduling] = useState(false);
   const [rescheduleMode, setRescheduleMode] = useState<'new' | 'dueNow'>('new');
+  const [assigningLesson, setAssigningLesson] = useState(false);
+  // Sentinel '' means "Unassigned" (primaryLessonId null); otherwise a lesson id.
+  const [assignTarget, setAssignTarget] = useState<string>('');
   const [importing, setImporting] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
@@ -109,6 +126,8 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHea
     setTagValue('');
     setRescheduling(false);
     setRescheduleMode('new');
+    setAssigningLesson(false);
+    setAssignTarget('');
   }
 
   /** Apply a reversible bulk change to the selected cards, with an Undo toast. */
@@ -175,6 +194,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHea
   function startMove() {
     setTagging(false);
     setRescheduling(false);
+    setAssigningLesson(false);
     setMoveTarget(otherDecks[0]?.id ?? '');
     setMoving(true);
   }
@@ -182,13 +202,42 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHea
   function startTag() {
     setMoving(false);
     setRescheduling(false);
+    setAssigningLesson(false);
     setTagging(true);
   }
 
   function startReschedule() {
     setMoving(false);
     setTagging(false);
+    setAssigningLesson(false);
     setRescheduling(true);
+  }
+
+  function startAssignLesson() {
+    setMoving(false);
+    setTagging(false);
+    setRescheduling(false);
+    setAssignTarget(assignableLessons?.[0]?.id ?? '');
+    setAssigningLesson(true);
+  }
+
+  async function handleAssignLesson() {
+    if (!courseId) return;
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    const snapshot = await snapshotCards(ids);
+    const lessonId = assignTarget || null;
+    await assignCardsToLesson(ids, courseId, lessonId);
+    exitSelect();
+    const lessonName = lessonId
+      ? assignableLessons?.find((l) => l.id === lessonId)?.name ?? 'lesson'
+      : 'Unassigned';
+    notify(`${ids.length} card${ids.length === 1 ? '' : 's'} assigned to ${lessonName}.`, 'neutral', {
+      actionLabel: 'Undo',
+      onAction: () => {
+        void restoreCards(snapshot);
+      },
+    });
   }
 
   async function handleBury() {
@@ -419,6 +468,16 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHea
               >
                 Move to…
               </Button>
+              {assignableLessons && courseId && (
+                <Button
+                  size="sm"
+                  variant={assigningLesson ? 'primary' : 'secondary'}
+                  disabled={selected.size === 0}
+                  onClick={() => (assigningLesson ? setAssigningLesson(false) : startAssignLesson())}
+                >
+                  Assign to lesson…
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="danger"
@@ -575,6 +634,45 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHea
                       disabled={!moveTarget}
                     >
                       Move
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Inline lesson assignment chooser */}
+          <AnimatePresence>
+            {assigningLesson && selected.size > 0 && assignableLessons && courseId && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="border-t border-line pt-3">
+                  <label className="block text-sm text-ink-soft">
+                    Assign {selected.size} card{selected.size === 1 ? '' : 's'} to
+                    <select
+                      value={assignTarget}
+                      onChange={(e) => setAssignTarget(e.target.value)}
+                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+                    >
+                      <option value="">Unassigned</option>
+                      {assignableLessons.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setAssigningLesson(false)}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" variant="primary" onClick={handleAssignLesson}>
+                      Assign
                     </Button>
                   </div>
                 </div>

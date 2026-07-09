@@ -522,6 +522,91 @@ export async function createLessonBasicReversedPair(
   return createBasicReversedPair(deckId, front, back, tags, { courseId, primaryLessonId: lessonId });
 }
 
+/**
+ * Every unassigned course card (primaryLessonId null) also needs a real backing Deck,
+ * for the same reasons as {@link ensureLessonDeck}. Lazily creates one hidden "question
+ * bank" deck per course and reuses it for every card in that course with no lesson.
+ */
+export async function ensureCourseBankDeck(courseId: string): Promise<string> {
+  const existing = await db.cards
+    .where('courseId')
+    .equals(courseId)
+    .filter((c) => c.primaryLessonId === null || c.primaryLessonId === undefined)
+    .first();
+  if (existing) return existing.deckId;
+
+  const course = await db.courses.get(courseId);
+  const createdAt = Date.now();
+  const deck: Deck = {
+    id: makeId(),
+    name: course ? `${course.name} — Question bank` : 'Question bank',
+    examDate: course?.examDate ?? defaultExamDate(createdAt),
+    timeZone: course?.timeZone ?? getLocalTimeZone(),
+    createdAt,
+    fsrsVersion: course?.fsrsVersion ?? FSRS_VERSION,
+    fsrsParameters: course?.fsrsParameters ?? defaultFsrsParameters(),
+    examObjective: course?.examObjective ?? 'expectedMarks',
+    lastInteractedAt: createdAt,
+    ...(course?.colour ? { colour: course.colour } : {}),
+  };
+  await db.decks.add(deck);
+  await db.userPerformance.add(emptyPerformance(deck.id));
+  return deck.id;
+}
+
+/** Create a course-scoped card with no lesson, lazily creating the course's bank deck. */
+export async function createCourseCard(
+  courseId: string,
+  type: CardType,
+  front: string,
+  back: string,
+  tags: string[] = [],
+): Promise<Card> {
+  const deckId = await ensureCourseBankDeck(courseId);
+  return createCard(deckId, type, front, back, tags, { courseId, primaryLessonId: null });
+}
+
+/** Course-bank equivalent of {@link createCardWithReverse}. */
+export async function createCourseCardWithReverse(
+  courseId: string,
+  front: string,
+  back: string,
+  tags: string[] = [],
+): Promise<{ card: Card; reverse: Card }> {
+  const deckId = await ensureCourseBankDeck(courseId);
+  return createCardWithReverse(deckId, front, back, tags, { courseId, primaryLessonId: null });
+}
+
+/** Course-bank equivalent of {@link createBasicReversedPair}. */
+export async function createCourseBasicReversedPair(
+  courseId: string,
+  front: string,
+  back: string,
+  tags: string[] = [],
+): Promise<{ card: Card; reverse: Card }> {
+  const deckId = await ensureCourseBankDeck(courseId);
+  return createBasicReversedPair(deckId, front, back, tags, { courseId, primaryLessonId: null });
+}
+
+/**
+ * Bulk-assign cards to a lesson (or unassign, with lessonId null). Keeps deckId in sync
+ * with primaryLessonId — every lesson (and the course's unassigned bucket) has exactly
+ * one backing deck, so reassigning a card's lesson must move it to that deck too.
+ * LessonCardLink rows are untouched: this changes the primary lesson, not the display links.
+ */
+export async function assignCardsToLesson(
+  ids: string[],
+  courseId: string,
+  lessonId: string | null,
+): Promise<void> {
+  const deckId = lessonId
+    ? await ensureLessonDeck(courseId, lessonId)
+    : await ensureCourseBankDeck(courseId);
+  await db.transaction('rw', db.cards, async () => {
+    await db.cards.where('id').anyOf(ids).modify({ primaryLessonId: lessonId, deckId });
+  });
+}
+
 export async function updateCard(id: string, changes: Partial<Card>): Promise<void> {
   try {
     await db.cards.update(id, changes);

@@ -115,13 +115,21 @@ export function CoursePath() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-8 md:px-10">
       {/* Breadcrumb */}
-      <Link
-        to="/"
-        className="mb-6 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-      >
-        <ChevronLeftIcon width={16} height={16} />
-        All courses
-      </Link>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+        >
+          <ChevronLeftIcon width={16} height={16} />
+          All courses
+        </Link>
+        <Link
+          to={`/course/${courseId}/bank`}
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+        >
+          Question bank
+        </Link>
+      </div>
 
       {/* Header */}
       <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">

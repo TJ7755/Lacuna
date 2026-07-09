@@ -17,6 +17,11 @@ import {
   deleteCourse,
   deleteLesson,
   ensureLessonDeck,
+  ensureCourseBankDeck,
+  createCourseCard,
+  createCourseCardWithReverse,
+  createCourseBasicReversedPair,
+  assignCardsToLesson,
   linkCardToLesson,
   listCourseExamDates,
   listLessonCardLinks,
@@ -433,5 +438,124 @@ describe('createCardWithReverse / createBasicReversedPair without opts', () => {
     const { card: card2, reverse: reverse2 } = await createBasicReversedPair(deck.id, 'q2', 'a2');
     expect(card2.courseId).toBeUndefined();
     expect(reverse2.courseId).toBeUndefined();
+  });
+});
+
+describe('ensureCourseBankDeck', () => {
+  beforeEach(reset);
+
+  it('creates a backing deck and userPerformance row for a course with no unassigned cards yet', async () => {
+    const course = await createCourse('Course', { examObjective: 'securedTopics' });
+
+    const deckId = await ensureCourseBankDeck(course.id);
+
+    const deck = await db.decks.get(deckId);
+    expect(deck).toBeDefined();
+    expect(deck?.name).toBe('Course — Question bank');
+    expect(deck?.examDate).toBe(course.examDate);
+    expect(deck?.examObjective).toBe('securedTopics');
+    expect(await db.userPerformance.get(deckId)).toBeDefined();
+  });
+
+  it('reuses the existing bank deck on a second call, ignoring lesson-assigned cards', async () => {
+    const course = await createCourse('Course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+
+    const deckId = await ensureCourseBankDeck(course.id);
+    await createCard(deckId, 'front_back', 'q2', 'a2', [], { courseId: course.id, primaryLessonId: null });
+
+    const deckIdAgain = await ensureCourseBankDeck(course.id);
+
+    expect(deckIdAgain).toBe(deckId);
+    // One lesson deck plus one bank deck.
+    expect(await db.decks.count()).toBe(2);
+  });
+});
+
+describe('createCourseCard', () => {
+  beforeEach(reset);
+
+  it('creates a card with courseId set and primaryLessonId null, backed by a real deck', async () => {
+    const course = await createCourse('Course');
+
+    const card = await createCourseCard(course.id, 'front_back', 'q', 'a');
+
+    expect(card.courseId).toBe(course.id);
+    expect(card.primaryLessonId).toBeNull();
+    expect(await db.decks.get(card.deckId)).toBeDefined();
+  });
+
+  it('reuses the same bank deck for a second unassigned card', async () => {
+    const course = await createCourse('Course');
+
+    const first = await createCourseCard(course.id, 'front_back', 'q1', 'a1');
+    const second = await createCourseCard(course.id, 'front_back', 'q2', 'a2');
+
+    expect(second.deckId).toBe(first.deckId);
+    expect(await db.decks.count()).toBe(1);
+  });
+
+  it('createCourseCardWithReverse and createCourseBasicReversedPair stamp courseId with a null primaryLessonId', async () => {
+    const course = await createCourse('Course');
+
+    const { card, reverse } = await createCourseCardWithReverse(course.id, 'q', 'a');
+    for (const c of [card, reverse]) {
+      expect(c.courseId).toBe(course.id);
+      expect(c.primaryLessonId).toBeNull();
+    }
+
+    const pair = await createCourseBasicReversedPair(course.id, 'q2', 'a2');
+    expect(pair.card.primaryLessonId).toBeNull();
+    expect(pair.reverse.primaryLessonId).toBeNull();
+    expect(pair.card.reverseCardId).toBe(pair.reverse.id);
+  });
+});
+
+describe('assignCardsToLesson', () => {
+  beforeEach(reset);
+
+  it('moves unassigned cards into a lesson and updates deckId to match', async () => {
+    const course = await createCourse('Course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    const card = await createCourseCard(course.id, 'front_back', 'q', 'a');
+    const bankDeckId = card.deckId;
+
+    await assignCardsToLesson([card.id], course.id, lesson.id);
+
+    const updated = await db.cards.get(card.id);
+    expect(updated?.primaryLessonId).toBe(lesson.id);
+    expect(updated?.deckId).not.toBe(bankDeckId);
+    expect(updated?.deckId).toBe(await ensureLessonDeck(course.id, lesson.id));
+  });
+
+  it('unassigns a lesson card back to the course bank deck when lessonId is null', async () => {
+    const course = await createCourse('Course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+
+    await assignCardsToLesson([card.id], course.id, null);
+
+    const updated = await db.cards.get(card.id);
+    expect(updated?.primaryLessonId).toBeNull();
+    expect(updated?.deckId).toBe(await ensureCourseBankDeck(course.id));
+  });
+
+  it('reassigns multiple cards from different lessons to the same target lesson', async () => {
+    const course = await createCourse('Course');
+    const lessonA = await createLesson(course.id, 'Lesson A');
+    const lessonB = await createLesson(course.id, 'Lesson B');
+    const cardA = await createLessonCard(course.id, lessonA.id, 'front_back', 'qa', 'aa');
+    const cardB = await createLessonCard(course.id, lessonB.id, 'front_back', 'qb', 'ab');
+
+    await assignCardsToLesson([cardA.id, cardB.id], course.id, lessonB.id);
+
+    const [updatedA, updatedB] = await Promise.all([
+      db.cards.get(cardA.id),
+      db.cards.get(cardB.id),
+    ]);
+    expect(updatedA?.primaryLessonId).toBe(lessonB.id);
+    expect(updatedB?.primaryLessonId).toBe(lessonB.id);
+    expect(updatedA?.deckId).toBe(updatedB?.deckId);
   });
 });

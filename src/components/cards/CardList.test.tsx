@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CardList } from './CardList';
 import type { Card, Deck } from '../../db/types';
 
@@ -21,6 +21,7 @@ vi.mock('../../state/inputMode', () => ({
 
 vi.mock('../../db/repository', () => ({
   addTagToCards: vi.fn(),
+  assignCardsToLesson: vi.fn(),
   createCards: vi.fn(),
   deleteCards: vi.fn(),
   moveCards: vi.fn(),
@@ -231,5 +232,66 @@ describe('CardList', () => {
     );
     fireEvent.click(screen.getByText('New card'));
     expect(onNewCard).toHaveBeenCalledOnce();
+  });
+
+  it('does not show "Assign to lesson…" without assignableLessons/courseId', () => {
+    render(
+      <CardList
+        cards={[mockCard, mockCard2]}
+        deck={mockDeck}
+        allDecks={[mockDeck]}
+        onNewCard={vi.fn()}
+        onEditCard={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('Select'));
+    expect(screen.queryByText('Assign to lesson…')).not.toBeInTheDocument();
+  });
+
+  it('bulk-assigns selected cards to a lesson', async () => {
+    const { assignCardsToLesson } = await import('../../db/repository');
+    render(
+      <CardList
+        cards={[mockCard, mockCard2]}
+        deck={mockDeck}
+        allDecks={[mockDeck]}
+        onNewCard={vi.fn()}
+        onEditCard={vi.fn()}
+        courseId="course-1"
+        assignableLessons={[{ id: 'lesson-1', name: 'Lesson 1' }]}
+      />
+    );
+    fireEvent.click(screen.getByText('Select'));
+    fireEvent.click(screen.getByText('Select all'));
+    fireEvent.click(screen.getByText('Assign to lesson…'));
+    fireEvent.click(screen.getByText('Assign'));
+
+    await waitFor(() =>
+      expect(assignCardsToLesson).toHaveBeenCalledWith(['card-1', 'card-2'], 'course-1', 'lesson-1'),
+    );
+  });
+
+  it('unassigns selected cards when the Unassigned option is chosen', async () => {
+    const { assignCardsToLesson } = await import('../../db/repository');
+    render(
+      <CardList
+        cards={[mockCard]}
+        deck={mockDeck}
+        allDecks={[mockDeck]}
+        onNewCard={vi.fn()}
+        onEditCard={vi.fn()}
+        courseId="course-1"
+        assignableLessons={[{ id: 'lesson-1', name: 'Lesson 1' }]}
+      />
+    );
+    fireEvent.click(screen.getByText('Select'));
+    fireEvent.click(screen.getByText('Select all'));
+    fireEvent.click(screen.getByText('Assign to lesson…'));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } });
+    fireEvent.click(screen.getByText('Assign'));
+
+    await waitFor(() =>
+      expect(assignCardsToLesson).toHaveBeenCalledWith(['card-1'], 'course-1', null),
+    );
   });
 });
