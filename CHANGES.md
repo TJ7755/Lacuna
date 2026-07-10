@@ -233,8 +233,9 @@ is no user-visible change yet — the UI is delivered in a later stage.
   dashboard course cards is now fixed behaviour. The `decks`/`folders` tables are untouched —
   this was a UI-surface removal only (see `next_plan.md` §0.3).
 - Wired the dashboard's course-ordering control (recent / ready to study / mastery / exam date /
-  name / created) and every Settings → Sidebar visibility/due-count/compact-mode toggle, which
-  had stopped taking effect during the course-UI cutover.
+  name / created) and the Settings → Sidebar due-count and archived-course visibility toggles,
+  which had stopped taking effect during the course-UI cutover. Compact mode and the
+  per-nav-item visibility toggles were unaffected and continued to work throughout.
 - Rewrote the first-run seed (`src/db/seed.ts`) to build a demo **course** (with lessons, notes
   and cards) instead of a demo deck, so a fresh install no longer seeds deck-era example content
   into a UI that can't show it.

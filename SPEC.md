@@ -79,7 +79,7 @@ British English throughout. No emojis anywhere in the product or its copy.
 Scripts: `dev`/`start` (Vite), `build` (`tsc -b && vite build`), `typecheck`, `test`,
 `test:watch`, `lint`. Heavy routes (Course path, Lesson view, Question bank, Learn, Card
 editor, Course settings, Course analytics) are lazy-loaded as separate chunks; the dashboard,
-settings and search are eager.
+settings, search, share, global analytics and help pages are eager.
 
 ---
 
@@ -276,7 +276,7 @@ outside the shell. The shell is a flex row:
 | `/settings` | Settings | yes | eager |
 | `/search` | Search | yes | eager |
 | `/share` | Share (export/import via codes) | yes | eager |
-| `/analytics` | Global (cross-course) analytics | yes | lazy |
+| `/analytics` | Global (cross-course) analytics | yes | eager |
 | `/help` | Help | yes | eager |
 | `/course/:courseId/learn` | Learn session (practice over every due card in the course) | **no** | lazy |
 | `/lesson/:lessonId/learn` | Learn session (new cards for one lesson) | **no** | lazy |
