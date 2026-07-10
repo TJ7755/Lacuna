@@ -231,17 +231,15 @@ export function searchCourseContent(
 }
 
 /**
- * Where a card result should deep-link to. Course-owned cards (courseId set)
- * open the lesson-scoped editor when they belong to a lesson, or the course
- * question bank otherwise; legacy deck-only cards keep the old deck route.
+ * Where a card result should deep-link to: the lesson-scoped editor when the card
+ * belongs to a lesson, or the course question bank otherwise. Every card carries a
+ * courseId (the schema v9 migration stamps one onto every legacy deck's cards), so
+ * this is the only edit route left.
  */
 export function cardEditPath(card: Card): string {
-  if (card.courseId) {
-    return card.primaryLessonId
-      ? `/course/${card.courseId}/lesson/${card.primaryLessonId}/cards/${card.id}/edit`
-      : `/course/${card.courseId}/cards/${card.id}/edit`;
-  }
-  return `/deck/${card.deckId}/cards/${card.id}/edit`;
+  return card.primaryLessonId
+    ? `/course/${card.courseId}/lesson/${card.primaryLessonId}/cards/${card.id}/edit`
+    : `/course/${card.courseId}/cards/${card.id}/edit`;
 }
 
 /** A short, plain-text preview of a card's markdown for result lists. */

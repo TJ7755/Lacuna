@@ -685,7 +685,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHea
       {cards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
           <p className={onNewCard ? 'mb-4 text-ink-soft' : 'text-ink-soft'}>
-            This deck has no cards yet.
+            No cards yet.
           </p>
           {onNewCard && (
             <Button variant="primary" onClick={onNewCard}>

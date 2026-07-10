@@ -14,9 +14,9 @@ export interface CourseCardProps {
 }
 
 /**
- * Dashboard card for a single Course. Mirrors DeckCard's visual idiom: colour
- * accent bar, exam-date label, course name, lesson/card counts, mastery progress
- * bar, and a "due today" hint. The entire card is a button that calls onClick.
+ * Dashboard card for a single Course: colour accent bar, exam-date label, course
+ * name, lesson/card counts, mastery progress bar, and a "due today" hint. The
+ * entire card is a button that calls onClick.
  */
 export function CourseCard({ course, summary, onClick }: CourseCardProps) {
   const [motionSpeed] = useMotionSpeed();

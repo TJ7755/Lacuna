@@ -457,11 +457,11 @@ export async function createDeckWithCards(
 }
 
 /**
- * Every course card still needs a real backing Deck (recordReview, userPerformance and
- * the legacy `/deck/:id/learn` bridge all key off deckId). This lazily creates one hidden
- * deck per lesson, inheriting the course's scheduling fields, and reuses it on subsequent
- * calls for the same lesson. May run inside an outer transaction (e.g. share import), so
- * it never opens its own `db.transaction` — only plain table operations.
+ * Every course card still needs a real backing Deck (recordReview and userPerformance
+ * both key off deckId). This lazily creates one hidden deck per lesson, inheriting the
+ * course's scheduling fields, and reuses it on subsequent calls for the same lesson. May
+ * run inside an outer transaction (e.g. share import), so it never opens its own
+ * `db.transaction` — only plain table operations.
  */
 export async function ensureLessonDeck(courseId: string, lessonId: string): Promise<string> {
   const existing = await db.cards.where('primaryLessonId').equals(lessonId).first();

@@ -241,7 +241,7 @@ export function LearnMode() {
 
   const objectiveLabel = useCallback(() => {
     if (singleDeck) return progressHeading(singleDeck);
-    return 'Predicted readiness across all decks';
+    return 'Predicted readiness across all courses';
   }, [singleDeck]);
 
   /**
@@ -531,7 +531,7 @@ export function LearnMode() {
             ? `No cards matching ${filterLabel} to study`
             : !isGlobal
               ? progressHeading(units[0])
-              : 'Predicted readiness across all decks',
+              : 'Predicted readiness across all courses',
           focusFraction: 1,
           reachedGoal: false,
           limitReached: false,
@@ -558,7 +558,7 @@ export function LearnMode() {
           events: [],
           masteryBefore: progressBefore.current,
           masteryAfter: progressBefore.current,
-          objectiveLabel: !isGlobal ? progressHeading(units[0]) : 'Predicted readiness across all decks',
+          objectiveLabel: !isGlobal ? progressHeading(units[0]) : 'Predicted readiness across all courses',
           focusFraction: 1,
           reachedGoal: true,
           limitReached: false,

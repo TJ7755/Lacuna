@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { useCard, useCards, useDeck } from '../state/useData';
+import { useCard } from '../state/useData';
 import { useCourse, useCourseCards, useLesson, useLessonCards } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
@@ -9,9 +9,6 @@ import { TagInput } from '../components/ui/TagInput';
 import { useToast } from '../components/ui/Toast';
 import {
   checkDuplicate,
-  createCard,
-  createCardWithReverse,
-  createBasicReversedPair,
   createLessonCard,
   createLessonCardWithReverse,
   createLessonBasicReversedPair,
@@ -35,21 +32,18 @@ import type { Card, CardType } from '../db/types';
  * decides the mode.
  */
 export function CardEditor() {
-  const { deckId, cardId, courseId, lessonId } = useParams<{
-    deckId?: string;
+  const { cardId, courseId, lessonId } = useParams<{
     cardId?: string;
     courseId?: string;
     lessonId?: string;
   }>();
   // Lesson-scoped route (course/:courseId/lesson/:lessonId/cards/...) vs the
-  // course-scoped "question bank" route (course/:courseId/cards/..., no lessonId)
-  // vs the original deck-scoped route (deck/:deckId/cards/...).
+  // course-scoped "question bank" route (course/:courseId/cards/..., no lessonId).
   const lessonMode = Boolean(lessonId);
-  const bankMode = Boolean(courseId) && !lessonId;
+  const bankMode = !lessonMode;
   const navigate = useNavigate();
   const { notify } = useToast();
 
-  const deck = useDeck(deckId);
   const course = useCourse(courseId);
   const lesson = useLesson(lessonId);
   const lessonCards = useLessonCards(lessonId);
@@ -65,7 +59,6 @@ export function CardEditor() {
   const bankDeckId = bankCards[0]?.deckId;
   const editing = Boolean(cardId);
   const card = useCard(cardId);
-  const deckCards = useCards(deckId);
 
   const [type, setType] = useState<CardType>('front_back');
   const [front, setFront] = useState('');
@@ -77,7 +70,7 @@ export function CardEditor() {
   const [loaded, setLoaded] = useState(false);
   // Whether a stored draft was found and is offered for restoration.
   const [draftPrompt, setDraftPrompt] = useState(false);
-  const draftKeyRef = useRef(draftKey(lessonId ?? (bankMode ? `bank:${courseId}` : deckId) ?? '', cardId ?? 'new'));
+  const draftKeyRef = useRef(draftKey(lessonId ?? `bank:${courseId}`, cardId ?? 'new'));
   const draftTimer = useRef<number>();
 
   // Re-arm the loaded latch whenever the card being edited changes so direct
@@ -119,16 +112,15 @@ export function CardEditor() {
   }
   useEffect(() => () => window.clearTimeout(savedTimer.current), []);
 
-  // Existing tags across the deck (or lesson/bank, in lesson/bank mode), offered as
-  // suggestions in the tag input.
+  // Existing tags across the lesson or bank, offered as suggestions in the tag input.
   const tagSuggestions = useMemo(() => {
     const set = new Set<string>();
-    const source = lessonMode ? lessonCards : bankMode ? bankCards : deckCards;
+    const source = lessonMode ? lessonCards : bankCards;
     for (const c of source ?? []) {
       for (const t of c.tags ?? []) set.add(t);
     }
     return [...set].sort();
-  }, [lessonMode, bankMode, lessonCards, bankCards, deckCards]);
+  }, [lessonMode, lessonCards, bankCards]);
 
   // Seed the form from the card being edited once it has loaded (new cards start blank).
   // If a draft exists, offer it instead of the persisted state.
@@ -196,9 +188,9 @@ export function CardEditor() {
     return () => window.clearTimeout(draftTimer.current);
   }, [loaded, type, front, back, tags, alsoReverse]);
 
-  // Check for duplicate cards whenever front/back/type changes. In lesson/bank mode a
-  // fresh, empty lesson/bank has no backing deck yet, so there is nothing to check against.
-  const duplicateCheckDeckId = lessonMode ? lessonDeckId : bankMode ? bankDeckId : deckId;
+  // Check for duplicate cards whenever front/back/type changes. A fresh, empty lesson
+  // or bank has no backing deck yet, so there is nothing to check against.
+  const duplicateCheckDeckId = lessonMode ? lessonDeckId : bankDeckId;
   useEffect(() => {
     if (!loaded || !duplicateCheckDeckId) return;
     if (editing && !card) return;
@@ -215,35 +207,18 @@ export function CardEditor() {
     return () => window.clearTimeout(duplicateTimer.current);
   }, [loaded, duplicateCheckDeckId, type, front, back, editing, card]);
 
-  const deckPath = `/deck/${deckId}`;
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/bank`;
   // Where Cancel, post-save navigation and the breadcrumb "back" target all point.
-  const backPath = lessonMode ? lessonPath : bankMode ? bankPath : deckPath;
+  const backPath = lessonMode ? lessonPath : bankPath;
 
   if (
     (lessonMode
       ? course === undefined || lesson === undefined || lessonCards === undefined
-      : bankMode
-        ? course === undefined
-        : deck === undefined) ||
+      : course === undefined) ||
     (editing && card === undefined && !loaded)
   ) {
     return <CardEditorSkeleton />;
-  }
-  if (!lessonMode && !bankMode && deck === null) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-10"
-      >
-        <p className="mb-4 text-ink-soft">This deck could not be found.</p>
-        <Link to="/" className="text-accent underline">
-          Back to dashboard
-        </Link>
-      </motion.div>
-    );
   }
   if (lessonMode && lesson === null) {
     return (
@@ -268,7 +243,7 @@ export function CardEditor() {
       >
         <p className="mb-4 text-ink-soft">This card could not be found.</p>
         <Link to={backPath} className="text-accent underline">
-          Back to {lessonMode ? lesson?.name : bankMode ? 'Question bank' : deck?.name}
+          Back to {lessonMode ? lesson?.name : 'Question bank'}
         </Link>
       </motion.div>
     );
@@ -283,7 +258,7 @@ export function CardEditor() {
   const canSave = frontValid && backValid && clozeValid;
 
   async function handleSave(andAnother = false) {
-    const missingOwner = lessonMode ? !courseId || !lessonId : bankMode ? !courseId : !deckId;
+    const missingOwner = lessonMode ? !courseId || !lessonId : !courseId;
     if (!canSave || missingOwner) {
       // Shake the first invalid field to give the user tactile feedback on why save is blocked.
       if (!frontValid) setShakeField('front');
@@ -320,20 +295,12 @@ export function CardEditor() {
       } else {
         await createLessonCard(courseId!, lessonId!, type, front, backValue, tags);
       }
-    } else if (bankMode) {
-      if (isBasicReversed) {
-        await createCourseBasicReversedPair(courseId!, front, backValue, tags);
-      } else if (reversed) {
-        await createCourseCardWithReverse(courseId!, front, backValue, tags);
-      } else {
-        await createCourseCard(courseId!, type, front, backValue, tags);
-      }
     } else if (isBasicReversed) {
-      await createBasicReversedPair(deckId!, front, backValue, tags);
+      await createCourseBasicReversedPair(courseId!, front, backValue, tags);
     } else if (reversed) {
-      await createCardWithReverse(deckId!, front, backValue, tags);
+      await createCourseCardWithReverse(courseId!, front, backValue, tags);
     } else {
-      await createCard(deckId!, type, front, backValue, tags);
+      await createCourseCard(courseId!, type, front, backValue, tags);
     }
     clearDraft(draftKeyRef.current);
     if (andAnother) {
@@ -376,7 +343,7 @@ export function CardEditor() {
               {lesson?.name}
             </Link>
           </>
-        ) : bankMode ? (
+        ) : (
           <>
             <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
               {course?.name}
@@ -384,16 +351,6 @@ export function CardEditor() {
             <ChevronRight />
             <Link to={backPath} className="transition-colors hover:text-ink">
               Question bank
-            </Link>
-          </>
-        ) : (
-          <>
-            <Link to="/" className="transition-colors hover:text-ink">
-              All decks
-            </Link>
-            <ChevronRight />
-            <Link to={deckPath} className="transition-colors hover:text-ink">
-              {deck?.name}
             </Link>
           </>
         )}

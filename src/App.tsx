@@ -32,7 +32,6 @@ function RouterWithQuotaWarning() {
 // round-trip and Suspense flash when switching tabs.
 const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default: m.LearnMode })));
 const CardEditor = lazy(() => import('./pages/CardEditor').then((m) => ({ default: m.CardEditor })));
-const DeckSettings = lazy(() => import('./pages/DeckSettings').then((m) => ({ default: m.DeckSettings })));
 const CourseSettings = lazy(() => import('./pages/CourseSettings').then((m) => ({ default: m.CourseSettings })));
 const CourseAnalytics = lazy(() => import('./pages/CourseAnalytics').then((m) => ({ default: m.CourseAnalytics })));
 const CoursePath = lazy(() => import('./pages/CoursePath').then((m) => ({ default: m.CoursePath })));
@@ -109,14 +108,6 @@ const router = createHashRouter([
         ),
       },
       {
-        path: 'deck/:deckId/settings',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <DeckSettings />
-          </Suspense>
-        ),
-      },
-      {
         path: 'course/:courseId/settings',
         element: (
           <Suspense fallback={<RouteFallback />}>
@@ -129,22 +120,6 @@ const router = createHashRouter([
         element: (
           <Suspense fallback={<RouteFallback />}>
             <CourseAnalytics />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'deck/:deckId/cards/new',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <CardEditor />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'deck/:deckId/cards/:cardId/edit',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <CardEditor />
           </Suspense>
         ),
       },
@@ -167,18 +142,8 @@ const router = createHashRouter([
     ],
   },
   {
-    // Learn mode is a full-screen, focused experience outside the shell.
-    path: '/deck/:deckId/learn',
-    element: (
-      <ErrorBoundary label="the Learn session">
-        <Suspense fallback={<RouteFallback />}>
-          <LearnMode />
-        </Suspense>
-      </ErrorBoundary>
-    ),
-  },
-  {
-    // The global, cross-deck "Today" session (no deckId param).
+    // Learn mode is a full-screen, focused experience outside the shell. The
+    // global, cross-course "Today" session (no deckId param).
     path: '/learn',
     element: (
       <ErrorBoundary label="the Learn session">
@@ -266,10 +231,6 @@ export function App() {
       // Take a daily restore point in the background; never blocks the UI.
       void autoBackupIfStale().catch(() => {
         // Background backup failures are non-fatal.
-      });
-      // Warm the DeckView chunk in the background so the first deck click is instant.
-      void import('./pages/DeckView').catch(() => {
-        // Pre-warm failures are non-fatal; the lazy import still works on first use.
       });
     })();
   }, []);

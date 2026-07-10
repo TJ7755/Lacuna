@@ -126,7 +126,7 @@ describe('CardList', () => {
         onEditCard={onEditCard}
       />
     );
-    expect(screen.getByText('This deck has no cards yet.')).toBeInTheDocument();
+    expect(screen.getByText('No cards yet.')).toBeInTheDocument();
     expect(screen.getByText('Add your first card')).toBeInTheDocument();
   });
 

@@ -74,7 +74,7 @@ export function CoursePath() {
     [deckIds.join(',')],
   );
 
-  // Loading state — match DeckView's skeleton approach.
+  // Loading state — a skeleton while course/lesson data resolves.
   if (
     course === undefined ||
     lessons === undefined ||

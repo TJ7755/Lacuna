@@ -74,10 +74,10 @@ describe('SessionReport', () => {
     expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 
-  it('calls onReturn when Back to deck is clicked', () => {
+  it('calls onReturn when Done is clicked', () => {
     const onReturn = vi.fn();
     render(<SessionReport summary={mockSummary} onReturn={onReturn} />);
-    fireEvent.click(screen.getByText('Back to deck'));
+    fireEvent.click(screen.getByText('Done'));
     expect(onReturn).toHaveBeenCalledOnce();
   });
 

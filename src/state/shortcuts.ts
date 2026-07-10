@@ -1,6 +1,6 @@
 // The single source of truth for the keyboard shortcuts shown in the help overlay (?).
-// The handlers live in the relevant components (AppShell, DeckView, LearnMode); this
-// registry only describes them so the cheatsheet can never drift out of date.
+// The handlers live in the relevant components (AppShell, LearnMode); this registry only
+// describes them so the cheatsheet can never drift out of date.
 
 export interface Shortcut {
   keys: string[];
@@ -20,10 +20,6 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['/'], description: 'Jump to search' },
       { keys: ['?'], description: 'Show this help' },
     ],
-  },
-  {
-    title: 'Decks',
-    shortcuts: [{ keys: ['N'], description: 'New card (while viewing a deck)' }],
   },
   {
     title: 'Studying',
