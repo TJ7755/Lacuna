@@ -207,6 +207,43 @@ is no user-visible change yet — the UI is delivered in a later stage.
   where `0` is a meaningful value (see `src/fsrs/practice.ts`) and the inputs allow `min=0`; the
   maximum lesson gap keeps its floor of 1, matching its `min=1` input.
 
+### Phase 8 close-out (Arc 0 — one data model, paid-down deferrals)
+
+- Rewrote `HelpPage.tsx` for the Course/Lesson/Note model (courses & lessons, study modes,
+  filtered study, how to study, keyboard shortcuts, touch gestures, progress & scheduling,
+  card types, tips), replacing the deck-era copy. Fixed the coloured left accent left over on
+  the section cards and removed a gesture-configuration line that no longer described anything
+  the app does (dashboard swipe actions are fixed, not user-configurable).
+- Added `src/db/search.ts`'s `searchCourseContent` (courses, lessons and notes, ranked
+  alongside the existing card search) and rewired `SearchPage` and `CommandPalette` to search
+  both cores and deep-link results to `/course/:courseId/...` routes, replacing the deck/card-only
+  search.
+- Added course-scoped analytics: `src/components/analytics/CourseAnalytics.tsx` (predicted
+  exam-day trajectory, stability profile and review volume over a course's deduplicated card
+  set) plus a lesson-level breakdown chart (cards, mastery, completion per lesson), rendered at
+  the new `/course/:courseId/analytics` route with an entry point from `CoursePath`. Fixed a
+  related inconsistency: an empty lesson's mastery now follows the same course-level convention
+  (empty = 100%, not 0%) as `computeCourseSummaries`.
+- Removed the legacy deck-facing UI surfaces: `DeckView.tsx`, `DeckSettings.tsx` (and its test),
+  `DeckAnalytics.tsx`, `DeckSearchOverlay.tsx`, `folderTree.ts`, and the `/deck/:deckId/*` routes
+  (view, settings, card create/edit, learn) — all superseded by their course/lesson equivalents.
+  `/deck/:deckId` now redirects to `/` so old links don't dead-end. The `gestureSettings.ts`
+  module (per-user configurable swipe actions) was removed alongside it, since it configured a
+  deck-card affordance that no longer has a settings surface; swipe-to-study/archive on the
+  dashboard course cards is now fixed behaviour. The `decks`/`folders` tables are untouched —
+  this was a UI-surface removal only (see `next_plan.md` §0.3).
+- Wired the dashboard's course-ordering control (recent / ready to study / mastery / exam date /
+  name / created) and every Settings → Sidebar visibility/due-count/compact-mode toggle, which
+  had stopped taking effect during the course-UI cutover.
+- Rewrote the first-run seed (`src/db/seed.ts`) to build a demo **course** (with lessons, notes
+  and cards) instead of a demo deck, so a fresh install no longer seeds deck-era example content
+  into a UI that can't show it.
+- Rewrote `README.md` and `SPEC.md` for the Course/Lesson/Note model: route map, wireframes,
+  navigation, search, analytics, sharing and settings sections now describe courses and lessons
+  throughout; the data-model section documents the `decks`/`folders` tables honestly as the
+  legacy backing structure each lesson still runs on (a lesson is a hidden single-lesson deck),
+  rather than as a user-facing concept.
+
 ## 0.0.3 — Simple learn mode, card types, and touch-first polish
 
 - Added `useStudyMode` hook (`src/state/studyMode.ts`) with `fsrs` and `simple` modes, persisted to `localStorage`.
