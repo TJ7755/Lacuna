@@ -178,6 +178,13 @@
     background-clip: content-box;
   }
 
+  /* Glide, don't jump, on in-page anchors (landing page syllabus link). */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
   /* Consistent, theme-aware focus rings for keyboard navigation. */
   :focus-visible {
     outline: none;
@@ -283,6 +290,58 @@
     20%, 80% { transform: translateX(2px); }
     30%, 50%, 70% { transform: translateX(-3px); }
     40%, 60% { transform: translateX(3px); }
+  }
+
+  /* ——— Landing page (Welcome) animation kit ——— */
+
+  /* Scroll reveal: elements start lowered and transparent, rise when marked.
+     Deliberately unhurried — the page should feel like it takes its time. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity 1100ms ease, transform 1100ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Hero entrance: staggered rise on first paint. */
+  .hero-rise {
+    animation: hero-rise 1200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes hero-rise {
+    from { opacity: 0; transform: translateY(26px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Pulsing exam-day marker on the retrievability sketch. */
+  .exam-pulse {
+    animation: exam-pulse 2.4s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  @keyframes exam-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.55; }
+  }
+
+  /* Grading demo: faces flip in as the card state changes. */
+  .animate-demo-flip {
+    animation: demo-flip 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes demo-flip {
+    from { opacity: 0; transform: rotateX(-35deg) translateY(8px); }
+    to { opacity: 1; transform: rotateX(0) translateY(0); }
+  }
+
+  /* Gentle beckoning nudge for the scroll hint beneath the hero. */
+  .scroll-hint {
+    animation: scroll-hint 2.2s ease-in-out infinite;
+  }
+  @keyframes scroll-hint {
+    0%, 100% { transform: translate(-50%, 0); }
+    50% { transform: translate(-50%, 6px); }
   }
 }
 

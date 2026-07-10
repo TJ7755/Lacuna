@@ -123,6 +123,20 @@ function makeSeedLesson(
   return { lesson, deck };
 }
 
+/**
+ * True only on a genuinely fresh browser: nothing seeded and no courses in the
+ * database. Checked before seedIfFirstRun runs (seeding creates a course, so
+ * afterwards this can never be true again).
+ */
+export async function isFirstRun(): Promise<boolean> {
+  try {
+    if (localStorage.getItem(FLAG_KEY)) return false;
+  } catch {
+    // localStorage may be unavailable; fall through to the database check.
+  }
+  return (await db.courses.count()) === 0;
+}
+
 /** Seed the example course exactly once per browser, and only if the database is empty. */
 export async function seedIfFirstRun(): Promise<void> {
   if (seeding) return;

@@ -13,7 +13,7 @@ import { SearchPage } from './pages/SearchPage';
 import { SharePage } from './pages/SharePage';
 import { Analytics } from './pages/Analytics';
 import { HelpPage } from './pages/HelpPage';
-import { seedIfFirstRun } from './db/seed';
+import { isFirstRun, seedIfFirstRun } from './db/seed';
 import { autoBackupIfStale } from './db/backups';
 import { ensurePreMigrationSnapshot, openDatabase } from './db/schema';
 import { requestPersistentStorage } from './db/persistence';
@@ -37,6 +37,7 @@ const CourseAnalytics = lazy(() => import('./pages/CourseAnalytics').then((m) =>
 const CoursePath = lazy(() => import('./pages/CoursePath').then((m) => ({ default: m.CoursePath })));
 const LessonView = lazy(() => import('./pages/LessonView').then((m) => ({ default: m.LessonView })));
 const QuestionBank = lazy(() => import('./pages/QuestionBank').then((m) => ({ default: m.QuestionBank })));
+const Welcome = lazy(() => import('./pages/Welcome').then((m) => ({ default: m.Welcome })));
 
 function RouteFallback() {
   return (
@@ -142,6 +143,17 @@ const router = createHashRouter([
     ],
   },
   {
+    // The landing page is a full-screen editorial experience outside the shell.
+    path: '/welcome',
+    element: (
+      <ErrorBoundary label="the landing page">
+        <Suspense fallback={<RouteFallback />}>
+          <Welcome />
+        </Suspense>
+      </ErrorBoundary>
+    ),
+  },
+  {
     // Learn mode is a full-screen, focused experience outside the shell. The
     // global, cross-course "Today" session (no deckId param).
     path: '/learn',
@@ -211,6 +223,13 @@ export function App() {
         } catch {
           // localStorage may be unavailable in private browsing or with storage
           // restrictions; the app should still initialise without persistence.
+        }
+
+        // A genuinely fresh browser opens on the landing page; anyone with
+        // existing data goes straight to the app they know. Decided before
+        // seeding, because the seed itself creates a course.
+        if ((await isFirstRun()) && !window.location.hash.startsWith('#/welcome')) {
+          window.location.hash = '#/welcome';
         }
 
         await seedIfFirstRun();
