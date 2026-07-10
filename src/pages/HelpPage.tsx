@@ -25,6 +25,7 @@ type Section = {
 };
 
 const HELP_SECTIONS = [
+  { id: 'course-model', label: 'Courses & lessons' },
   { id: 'study-modes', label: 'Study modes' },
   { id: 'filtered-modes', label: 'Filtered study' },
   { id: 'how-to-study', label: 'How to study' },
@@ -235,6 +236,74 @@ export function HelpPage() {
   const sections = useMemo<Section[]>(
     () => [
       {
+        id: 'course-model',
+        label: 'Courses & lessons',
+        icon: <CardsIcon width={20} height={20} />,
+        content: (
+          <div className="space-y-4">
+            <p className="text-base text-ink-soft">
+              Lacuna organises material into courses. Each course is made up of lessons,
+              studied in order along a path.
+            </p>
+            <div className="space-y-3">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Courses</h3>
+                <p className="text-sm text-ink-soft">
+                  A course is the top-level subject you are studying &mdash; a module, a
+                  subject, an exam. The dashboard lists your courses; opening one takes you to
+                  its path. A course with a single lesson skips the path and opens straight
+                  into that lesson.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">The course path</h3>
+                <p className="text-sm text-ink-soft">
+                  The path is an ordered sequence of lessons. Completing a lesson unlocks the
+                  next one. Alongside lessons, the path can show:
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
+                  <li>
+                    <strong className="text-ink">Checkpoints:</strong> markers for exam dates
+                    you have set on the course. They are informational only and never block
+                    progress.
+                  </li>
+                  <li>
+                    <strong className="text-ink">Practice sessions:</strong> nodes that gather
+                    up due cards from the lessons studied so far, so you keep reviewing older
+                    material as you move through the course.
+                  </li>
+                </ul>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Lessons and notes</h3>
+                <p className="text-sm text-ink-soft">
+                  A lesson holds the notes and cards for one topic. Notes are Markdown blocks
+                  where you write out explanations, examples or source material &mdash; add,
+                  reorder and edit them directly on the lesson page. Cards are the flashcards
+                  you actually get quizzed on; create them from the lesson page or generate
+                  them from a note.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Question bank</h3>
+                <p className="text-sm text-ink-soft">
+                  Every course has a question bank listing all of its cards in one place,
+                  regardless of which lesson they belong to. Use it to browse, search, edit or
+                  bulk-manage cards.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Course settings</h3>
+                <p className="text-sm text-ink-soft">
+                  Course Settings holds the exam date(s), study objective, scheduling
+                  optimisation, import/export and course deletion. Open it from the path page.
+                </p>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
         id: 'study-modes',
         label: 'Study modes',
         icon: <PlayIcon width={20} height={20} />,
@@ -242,7 +311,8 @@ export function HelpPage() {
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
               Lacuna offers several ways to study your cards. Each mode is designed for a
-              different purpose. You can choose one from the study dropdown on any deck.
+              different purpose. You can start a session from a lesson, from the course path,
+              or from the global &lsquo;Today&rsquo; review across every course.
             </p>
             <div className="grid gap-3">
               <ModeCard
@@ -255,14 +325,14 @@ export function HelpPage() {
               <ModeCard
                 title="Simple learn"
                 description="A stripped-back mode with no algorithm. You simply mark each card as correct or incorrect, and it loops until you have answered every card correctly."
-                whatItDoes="Shows every card in the deck. If you answer correctly, the card is marked as mastered. If you answer incorrectly, the card is sent to the back of the queue and reappears later. The session ends only when every card has been marked correct."
+                whatItDoes="Shows every card in the course. If you answer correctly, the card is marked as mastered. If you answer incorrectly, the card is sent to the back of the queue and reappears later. The session ends only when every card has been marked correct."
                 whenToUse="Use this when you want to learn a set of cards for the first time, or when you want to drill through every card without any algorithmic scheduling."
                 tip="The progress bar at the top shows how many cards are wrong, remaining, and mastered. Try to turn them all correct before you finish."
               />
               <ModeCard
                 title="Cram mode"
                 description="Exam-eve emergency mode. Reorders cards so the weakest ones appear first, bypassing normal scheduling limits."
-                whatItDoes="Serves every card in the deck, ignoring the daily new-card cap. Cards are ordered by their predicted exam-day retrievability, weakest first. Already-secured cards are pushed to the back."
+                whatItDoes="Serves every card in the course, ignoring the daily new-card cap. Cards are ordered by their predicted exam-day retrievability, weakest first. Already-secured cards are pushed to the back."
                 whenToUse="Use this only in the final 48 hours before an exam. It trades long-term retention for short-term coverage."
                 tip="Cram mode appears automatically in the study dropdown when your exam is within 48 hours. It is not recommended for regular studying."
               />
@@ -304,7 +374,7 @@ export function HelpPage() {
                 title="Study flagged cards"
                 description="Cards you have manually flagged for attention."
                 whatItDoes="Shows only cards that have the flag marker set. You can flag a card during a study session by opening the card menu and selecting 'Flag card'."
-                whenToUse="Use this when you want to review cards you have marked as needing attention, without searching through the entire deck."
+                whenToUse="Use this when you want to review cards you have marked as needing attention, without searching through the entire course."
               />
               <ModeCard
                 title="Study suspended cards"
@@ -501,10 +571,9 @@ export function HelpPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
-                <h3 className="mb-2 font-medium text-ink">Dashboard gestures</h3>
+                <h3 className="mb-2 font-medium text-ink">Configuring gestures</h3>
                 <p className="text-sm text-ink-soft">
-                  On the deck dashboard, you can swipe a deck card to archive it or start
-                  studying. Configure these in Settings &rarr; Input mode.
+                  Swipe actions during study can be changed in Settings &rarr; Input mode.
                 </p>
               </div>
             </div>
@@ -525,7 +594,7 @@ export function HelpPage() {
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">What the progress bar means</h3>
                 <p className="text-sm text-ink-soft">
-                  The progress bar shows how close your deck is to being exam-ready. The exact
+                  The progress bar shows how close your course is to being exam-ready. The exact
                   meaning depends on your exam objective:
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
@@ -554,9 +623,9 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Optimisation</h3>
                 <p className="text-sm text-ink-soft">
                   Lacuna can fit the FSRS weights to your own review history. This is where most
-                  of the efficiency gains come from. You can run this manually per deck in Deck
-                  Settings &rarr; Scheduling optimisation, or enable automatic optimisation in
-                  Settings &rarr; Study & scheduling.
+                  of the efficiency gains come from. You can run this manually per course in
+                  Course Settings &rarr; Scheduling optimisation, or enable automatic
+                  optimisation in Settings &rarr; Study & scheduling.
                 </p>
               </div>
             </div>
@@ -618,8 +687,9 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Set an exam date</h3>
                 <p className="text-sm text-ink-soft">
                   The single most important thing you can do is set an accurate exam date and time
-                  for each deck. Without it, Lacuna defaults to a generic rolling horizon and will
-                  not prioritise the cards that matter most. The exam date is set in Deck Settings.
+                  for each course. Without it, Lacuna defaults to a generic rolling horizon and
+                  will not prioritise the cards that matter most. The exam date is set in Course
+                  Settings.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
