@@ -647,7 +647,7 @@ export function LearnMode() {
         const progressSnapshot = cachedSessionProgress(cardsRef.current, ctx);
         const perfBefore = perf ?? null;
 
-        const { card: updated, sessionHistoryId, kind } = await recordReview({
+        const { card: updated, sessionHistoryId, kind, lastInteractedAtBefore } = await recordReview({
           card: cardNow,
           deck,
           kind: reviewKindRef.current,
@@ -681,7 +681,7 @@ export function LearnMode() {
         reviewsByDeck.current.set(deck.id, deckReviews);
 
         lastAnswer.current = {
-          undo: { cardBefore: cardNow, perfBefore, sessionHistoryId, deckId: deck.id, kind },
+          undo: { cardBefore: cardNow, perfBefore, sessionHistoryId, deckId: deck.id, kind, lastInteractedAtBefore },
           cooldowns: cooldownsSnapshot,
           progressBefore: progressSnapshot,
           eventsLen,

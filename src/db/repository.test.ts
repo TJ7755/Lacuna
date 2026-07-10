@@ -35,8 +35,9 @@ describe('undoReview', () => {
 
     const cardBefore = (await db.cards.get(card.id))!;
     const perfBefore = (await db.userPerformance.get(deck.id)) ?? null;
+    const deckLastInteractedAtBefore = (await db.decks.get(deck.id))!.lastInteractedAt;
 
-    const { card: updated, sessionHistoryId } = await recordReview({
+    const { card: updated, sessionHistoryId, lastInteractedAtBefore } = await recordReview({
       card,
       deck,
       grade: 3,
@@ -49,8 +50,17 @@ describe('undoReview', () => {
     expect(updated.reps).toBe(1);
     expect(await db.sessionHistory.count()).toBe(1);
     expect((await db.userPerformance.get(deck.id))!.totalCorrectReviews).toBe(1);
+    expect(lastInteractedAtBefore).toBe(deckLastInteractedAtBefore);
+    expect((await db.decks.get(deck.id))!.lastInteractedAt).not.toBe(deckLastInteractedAtBefore);
 
-    await undoReview({ cardBefore, perfBefore, sessionHistoryId, deckId: deck.id, kind: 'deck' });
+    await undoReview({
+      cardBefore,
+      perfBefore,
+      sessionHistoryId,
+      deckId: deck.id,
+      kind: 'deck',
+      lastInteractedAtBefore,
+    });
 
     const restored = (await db.cards.get(card.id))!;
     expect(restored.reps).toBe(0);
@@ -58,6 +68,7 @@ describe('undoReview', () => {
     expect(restored.lastReviewed).toBeNull();
     expect(await db.sessionHistory.count()).toBe(0);
     expect((await db.userPerformance.get(deck.id))!.totalCorrectReviews).toBe(0);
+    expect((await db.decks.get(deck.id))!.lastInteractedAt).toBe(deckLastInteractedAtBefore);
   });
 
   it('course-keyed review updates Course.lastInteractedAt, courseId-keyed userPerformance, and sessionHistory.courseId', async () => {
@@ -69,8 +80,9 @@ describe('undoReview', () => {
 
     const cardBefore = (await db.cards.get(card.id))!;
     const perfBefore = (await db.userPerformance.get(c.id)) ?? null;
+    const courseLastInteractedAtBefore = (await db.courses.get(c.id))!.lastInteractedAt;
 
-    const { card: updated, sessionHistoryId } = await recordReview({
+    const { card: updated, sessionHistoryId, lastInteractedAtBefore } = await recordReview({
       card,
       deck: c,
       kind: 'course',
@@ -91,17 +103,27 @@ describe('undoReview', () => {
 
     const updatedCourse = await db.courses.get(c.id);
     expect(updatedCourse?.lastInteractedAt).toBeDefined();
+    expect(lastInteractedAtBefore).toBe(courseLastInteractedAtBefore);
+    expect(updatedCourse?.lastInteractedAt).not.toBe(courseLastInteractedAtBefore);
 
     // The card's own shadow deck (created empty by ensureLessonDeck) is untouched
     // by the course-keyed review: its calibration row stays at zero reviews.
     expect((await db.userPerformance.get(card.deckId))?.totalCorrectReviews).toBe(0);
 
-    await undoReview({ cardBefore, perfBefore, sessionHistoryId, deckId: c.id, kind: 'course' });
+    await undoReview({
+      cardBefore,
+      perfBefore,
+      sessionHistoryId,
+      deckId: c.id,
+      kind: 'course',
+      lastInteractedAtBefore,
+    });
 
     const restored = (await db.cards.get(card.id))!;
     expect(restored.reps).toBe(0);
     expect(await db.sessionHistory.get(sessionHistoryId)).toBeUndefined();
     expect(await db.userPerformance.get(c.id)).toBeUndefined();
+    expect((await db.courses.get(c.id))!.lastInteractedAt).toBe(courseLastInteractedAtBefore);
   });
 });
 

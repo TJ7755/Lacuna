@@ -767,6 +767,12 @@ export interface RecordReviewResult {
   /** The review kind this was recorded against (see {@link RecordReviewArgs.kind}), so
    * the caller can carry it straight into {@link ReviewUndo} without re-deriving it. */
   kind: ReviewUnitKind;
+  /**
+   * The unit's `lastInteractedAt` immediately before this review overwrote it (undefined
+   * if the unit had none yet), so the caller can carry it into {@link ReviewUndo} and
+   * restore it on undo.
+   */
+  lastInteractedAtBefore: number | undefined;
 }
 
 /**
@@ -826,14 +832,17 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
     }
   }
 
+  let lastInteractedAtBefore: number | undefined;
   const sessionHistoryId = await db.transaction(
     'rw',
     [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance],
     async () => {
       await db.cards.put(updatedCard);
       if (kind === 'course') {
+        lastInteractedAtBefore = (await db.courses.get(deck.id))?.lastInteractedAt;
         await db.courses.update(deck.id, { lastInteractedAt: now });
       } else {
+        lastInteractedAtBefore = (await db.decks.get(deck.id))?.lastInteractedAt;
         await db.decks.update(deck.id, { lastInteractedAt: now });
       }
 
@@ -869,7 +878,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
     },
   );
 
-    return { card: updatedCard, sessionHistoryId, kind };
+    return { card: updatedCard, sessionHistoryId, kind, lastInteractedAtBefore };
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -890,11 +899,16 @@ export interface ReviewUndo {
   deckId: string;
   /**
    * Which table `deckId` belongs to: a legacy Deck, or a course/lesson-scoped Course.
-   * Recorded by `recordReview` (see {@link RecordReviewResult.kind}) so a future
-   * `lastInteractedAt` restore on undo (not yet implemented — `undoReview` does not
-   * currently touch `lastInteractedAt`) knows which table to look the id up in.
+   * Recorded by `recordReview` (see {@link RecordReviewResult.kind}) so the
+   * `lastInteractedAt` restore on undo knows which table to look the id up in.
    */
   kind: ReviewUnitKind;
+  /**
+   * The unit's `lastInteractedAt` immediately before the review (see
+   * {@link RecordReviewResult.lastInteractedAtBefore}), restored on undo. Undefined if
+   * the unit had no prior interaction.
+   */
+  lastInteractedAtBefore: number | undefined;
 }
 
 /**
@@ -906,15 +920,20 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
   try {
     await db.transaction(
       'rw',
-      db.cards,
-      db.sessionHistory,
-      db.userPerformance,
+      [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance],
       async () => {
         await db.cards.put(undo.cardBefore);
         if (undo.perfBefore) {
           await db.userPerformance.put(undo.perfBefore);
         } else {
           await db.userPerformance.delete(undo.deckId);
+        }
+        // Dexie's update() deletes the property when the patch value is undefined, so
+        // this also correctly restores "never interacted" (no prior lastInteractedAt).
+        if (undo.kind === 'course') {
+          await db.courses.update(undo.deckId, { lastInteractedAt: undo.lastInteractedAtBefore });
+        } else {
+          await db.decks.update(undo.deckId, { lastInteractedAt: undo.lastInteractedAtBefore });
         }
         await db.sessionHistory.delete(undo.sessionHistoryId);
       },
