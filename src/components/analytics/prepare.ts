@@ -2,7 +2,8 @@
 
 import { startOfDay } from '../../utils/datetime';
 import { isLeech } from '../../fsrs/leech';
-import type { Card, SessionHistoryEntry } from '../../db/types';
+import { progressValue } from '../../fsrs/objective';
+import type { Card, Lesson, SchedulerConfig, SessionHistoryEntry } from '../../db/types';
 
 /** DST-safe day offset: add/subtract whole days from a local-midnight epoch. */
 function addDays(dayStart: number, days: number): number {
@@ -218,4 +219,54 @@ export function leechCountByDeck(cards: Card[], deckMap: Map<string, string>): L
   return [...counts.entries()]
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
+}
+
+export interface LessonBreakdownPoint {
+  lessonId: string;
+  name: string;
+  cardCount: number;
+  masteryPct: number;
+  completionPct: number;
+}
+
+/**
+ * Per-lesson breakdown for the course analytics page: card count, objective-aware
+ * mastery (per Addendum 2 §J — the same `progressValue` the course-level figure
+ * uses, scoped to this lesson's own cards) and completion (fraction of the
+ * lesson's cards that have been reviewed at least once). Extension lessons are
+ * excluded, matching `computeCourseSummaries`. Cards are grouped by
+ * `primaryLessonId` — a card belongs to exactly one lesson here, so no
+ * double-counting across the breakdown.
+ */
+export function lessonBreakdown(
+  lessons: Lesson[],
+  cards: Card[],
+  scheduler: SchedulerConfig,
+): LessonBreakdownPoint[] {
+  const byLesson = new Map<string, Card[]>();
+  for (const card of cards) {
+    if (!card.primaryLessonId) continue;
+    const bucket = byLesson.get(card.primaryLessonId) ?? [];
+    bucket.push(card);
+    byLesson.set(card.primaryLessonId, bucket);
+  }
+  return lessons
+    .filter((lesson) => !lesson.isExtension)
+    .map((lesson) => {
+      const lessonCards = byLesson.get(lesson.id) ?? [];
+      const reviewed = lessonCards.filter((c) => c.lastReviewed !== null).length;
+      return {
+        lessonId: lesson.id,
+        name: lesson.name,
+        cardCount: lessonCards.length,
+        masteryPct:
+          lessonCards.length > 0
+            ? Math.round(progressValue(lessonCards, scheduler) * 100)
+            : 0,
+        completionPct:
+          lessonCards.length > 0
+            ? Math.round((reviewed / lessonCards.length) * 100)
+            : 0,
+      };
+    });
 }

@@ -34,6 +34,7 @@ const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default:
 const CardEditor = lazy(() => import('./pages/CardEditor').then((m) => ({ default: m.CardEditor })));
 const DeckSettings = lazy(() => import('./pages/DeckSettings').then((m) => ({ default: m.DeckSettings })));
 const CourseSettings = lazy(() => import('./pages/CourseSettings').then((m) => ({ default: m.CourseSettings })));
+const CourseAnalytics = lazy(() => import('./pages/CourseAnalytics').then((m) => ({ default: m.CourseAnalytics })));
 const CoursePath = lazy(() => import('./pages/CoursePath').then((m) => ({ default: m.CoursePath })));
 const LessonView = lazy(() => import('./pages/LessonView').then((m) => ({ default: m.LessonView })));
 const QuestionBank = lazy(() => import('./pages/QuestionBank').then((m) => ({ default: m.QuestionBank })));
@@ -120,6 +121,14 @@ const router = createHashRouter([
         element: (
           <Suspense fallback={<RouteFallback />}>
             <CourseSettings />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/analytics',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <CourseAnalytics />
           </Suspense>
         ),
       },

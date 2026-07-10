@@ -11,6 +11,7 @@ import type {
   Lesson,
   Note,
   PracticeNode,
+  SessionHistoryEntry,
 } from '../db/types';
 import { progressValue } from '../fsrs/objective';
 import { availableCards, studyPool } from '../fsrs/eligibility';
@@ -61,6 +62,11 @@ export function useNotes(lessonId: string | undefined): Note[] | undefined {
         : [],
     [lessonId],
   );
+}
+
+/** All notes across every lesson (for global search, which has no single lessonId scope). */
+export function useAllNotes(): Note[] | undefined {
+  return useLiveQuery(() => db.notes.toArray(), []);
 }
 
 export function useCourseCards(courseId: string | undefined): Card[] | undefined {
@@ -118,6 +124,19 @@ export function useCourseExamDates(courseId: string | undefined): CourseExamDate
     () =>
       courseId
         ? db.courseExamDates.where('courseId').equals(courseId).sortBy('examDate')
+        : [],
+    [courseId],
+  );
+}
+
+/** Session-history snapshots (predicted-retrievability trajectory) for a Course. */
+export function useCourseSessionHistory(
+  courseId: string | undefined,
+): SessionHistoryEntry[] | undefined {
+  return useLiveQuery(
+    () =>
+      courseId
+        ? db.sessionHistory.where('courseId').equals(courseId).sortBy('timestamp')
         : [],
     [courseId],
   );

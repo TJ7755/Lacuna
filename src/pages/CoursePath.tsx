@@ -20,7 +20,7 @@ import type { PathNode } from '../course/path';
 import { PathNodeView } from '../components/course/PathNodeView';
 import { PathLine } from '../components/course/PathLine';
 import { LessonView } from './LessonView';
-import { ChevronLeftIcon, SettingsIcon } from '../components/ui/icons';
+import { ChartIcon, ChevronLeftIcon, SettingsIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { formatDate } from '../utils/datetime';
 import type { Card, Course } from '../db/types';
@@ -184,6 +184,14 @@ export function CoursePath() {
             className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
           >
             Question bank
+          </Link>
+          <Link
+            to={`/course/${courseId}/analytics`}
+            aria-label="Course analytics"
+            title="Course analytics"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center text-ink-faint transition-colors hover:text-ink active:text-ink"
+          >
+            <ChartIcon width={18} height={18} />
           </Link>
           <Link
             to={`/course/${courseId}/settings`}
