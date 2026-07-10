@@ -9,6 +9,7 @@ import { FlaskIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
 import { CourseCard } from '../components/course/CourseCard';
 import { NewCourseForm } from '../components/course/NewCourseForm';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { useDashboardSort } from '../state/dashboardSort';
 
 export function Dashboard() {
   const data = useCourseDashboardData();
@@ -20,18 +21,37 @@ export function Dashboard() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const [creatingCourse, setCreatingCourse] = useState(false);
+  const [dashboardSort] = useDashboardSort();
 
-  // Sort by createdAt ascending so older courses appear first.
-  const sortedCourses = useMemo(
-    () => (courses ? [...courses].sort((a, b) => a.createdAt - b.createdAt) : undefined),
-    [courses],
-  );
-
-  // Active courses only (archived ones are hidden from the main grid).
-  const activeCourses = useMemo(
-    () => sortedCourses?.filter((c) => !c.archived),
-    [sortedCourses],
-  );
+  // Active courses only (archived ones are hidden from the main grid), ordered per
+  // the "Choose how courses are ordered" dashboard setting.
+  const activeCourses = useMemo(() => {
+    const active = courses?.filter((c) => !c.archived);
+    if (!active) return undefined;
+    const sorted = [...active];
+    switch (dashboardSort) {
+      case 'ready':
+        sorted.sort((a, b) => (summaries?.[b.id]?.eligible ?? 0) - (summaries?.[a.id]?.eligible ?? 0));
+        break;
+      case 'mastery':
+        sorted.sort((a, b) => (summaries?.[a.id]?.mastery ?? 0) - (summaries?.[b.id]?.mastery ?? 0));
+        break;
+      case 'exam':
+        sorted.sort((a, b) => a.examDate - b.examDate);
+        break;
+      case 'name':
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'created':
+        sorted.sort((a, b) => b.createdAt - a.createdAt);
+        break;
+      case 'recent':
+      default:
+        sorted.sort((a, b) => (b.lastInteractedAt ?? b.createdAt) - (a.lastInteractedAt ?? a.createdAt));
+        break;
+    }
+    return sorted;
+  }, [courses, summaries, dashboardSort]);
 
   // Total cards a global session would serve today, across all active courses.
   const totalEligible = useMemo(

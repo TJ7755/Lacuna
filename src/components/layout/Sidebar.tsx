@@ -320,10 +320,11 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
   const [creatingCourse, setCreatingCourse] = useState(false);
 
-  // Active (non-archived) courses, in creation order.
-  const activeCourses = useMemo(
-    () => courses?.filter((c) => !c.archived) ?? [],
-    [courses],
+  // Courses shown in the sidebar list; archived courses are included only when the
+  // "Show archived courses" setting is on.
+  const sidebarCourses = useMemo(
+    () => courses?.filter((c) => sidebarSettings.showArchived || !c.archived) ?? [],
+    [courses, sidebarSettings.showArchived],
   );
 
   // Group lessons by course, preserving per-course orderIndex order.
@@ -472,7 +473,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           )}
         >
           <AnimatePresence initial={false}>
-            {activeCourses.map((course, idx) => (
+            {sidebarCourses.map((course, idx) => (
               <motion.div
                 key={course.id}
                 initial={{ opacity: 0, x: -8 }}
@@ -489,7 +490,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                   courseId={course.id}
                   courseName={course.name}
                   lessons={lessonsByCourse.get(course.id) ?? []}
-                  eligible={summaries?.[course.id]?.eligible ?? 0}
+                  eligible={sidebarSettings.showDueCounts ? summaries?.[course.id]?.eligible ?? 0 : 0}
                   expanded={expandedCourses}
                   onToggle={toggleCourse}
                   collapsed={collapsed}
@@ -500,7 +501,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             ))}
           </AnimatePresence>
 
-          {activeCourses.length === 0 && !collapsed && (
+          {sidebarCourses.length === 0 && !collapsed && (
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
