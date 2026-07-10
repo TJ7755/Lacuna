@@ -47,14 +47,6 @@ function SectionCard({
   children: React.ReactNode;
   accent?: 'accent' | 'positive' | 'negative' | 'amber';
 }) {
-  const borderClass =
-    accent === 'positive'
-      ? 'border-l-positive/40'
-      : accent === 'negative'
-        ? 'border-l-negative/40'
-        : accent === 'amber'
-          ? 'border-l-amber-500/40'
-          : 'border-l-accent/40';
   const iconBgClass =
     accent === 'positive'
       ? 'bg-positive/10 text-positive'
@@ -65,7 +57,7 @@ function SectionCard({
           : 'bg-accent/10 text-accent';
 
   return (
-    <div className={`rounded-2xl border border-line bg-surface p-7 shadow-sm md:p-8 ${borderClass} border-l-[3px]`}>
+    <div className="rounded-2xl border border-line bg-surface p-7 shadow-sm md:p-8">
       <div className="mb-5 flex items-center gap-3">
         <span className={`grid h-10 w-10 place-items-center rounded-xl ${iconBgClass}`}>
           {icon}
