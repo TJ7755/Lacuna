@@ -902,7 +902,7 @@ export function Settings() {
                 <div className="text-sm text-ink-soft">
                   <p className="mb-3">
                     This backup contains{' '}
-                    <strong className="text-ink">{pending.decks.length}</strong> decks and{' '}
+                    <strong className="text-ink">{pending.decks.length}</strong> lessons and{' '}
                     <strong className="text-ink">{pending.cards.length}</strong> cards,
                     exported on {formatDate(pending.exportedAt)}.
                   </p>
@@ -1046,7 +1046,7 @@ export function Settings() {
                 <div className="min-w-0">
                   <div className="text-sm text-ink">{formatDateTime(b.createdAt)}</div>
                   <div className="text-xs text-ink-faint">
-                    {b.deckCount} deck{b.deckCount === 1 ? '' : 's'} · {b.cardCount} card
+                    {b.deckCount} lesson{b.deckCount === 1 ? '' : 's'} · {b.cardCount} card
                     {b.cardCount === 1 ? '' : 's'}
                   </div>
                 </div>

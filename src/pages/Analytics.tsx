@@ -125,7 +125,7 @@ export function Analytics() {
         <div className="relative">
           <h1 className="font-display text-3xl tracking-tight">Analytics</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Insights across every deck.
+            Insights across every lesson.
           </p>
         </div>
       </m.header>
@@ -189,7 +189,7 @@ export function Analytics() {
         <FadeInView delay={0.06} y={0}>
           <ChartCard
             title="Predicted exam-day score"
-            description="Average predicted retrievability across all decks over time."
+            description="Average predicted retrievability across all lessons over time."
             empty={trajectory.length < 2}
             emptyMessage="Study cards to start plotting your trajectory."
             delay={0.06}
@@ -368,8 +368,8 @@ export function Analytics() {
         {/* Leech count by deck */}
         <FadeInView delay={0.36} y={0}>
           <ChartCard
-            title="Leech count by deck"
-            description="Number of leech cards in each deck."
+            title="Leech count by lesson"
+            description="Number of leech cards in each lesson."
             empty={leeches.length === 0}
             emptyMessage="No leeches found — great job keeping up with reviews!"
             delay={0.36}

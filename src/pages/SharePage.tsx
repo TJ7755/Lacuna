@@ -637,7 +637,7 @@ export function SharePage() {
                 ) : (
                   <p className="mb-3 text-sm text-ink-soft">
                     This code contains{' '}
-                    <strong className="text-ink">{pending.summary.deckCount}</strong> deck
+                    <strong className="text-ink">{pending.summary.deckCount}</strong> lesson
                     {pending.summary.deckCount === 1 ? '' : 's'} and{' '}
                     <strong className="text-ink">{pending.summary.cardCount}</strong> card
                     {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}

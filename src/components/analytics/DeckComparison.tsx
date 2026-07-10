@@ -176,7 +176,7 @@ function ComparisonBar({
             transition={{ duration: 0.3 * m, delay: (delay + 0.35) * m, type: 'spring', stiffness: 500, damping: 25 }}
             className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-sm"
             style={{ backgroundColor: winnerColour }}
-            aria-label={winner === 'A' ? 'Deck A leads' : 'Deck B leads'}
+            aria-label={winner === 'A' ? 'Lesson A leads' : 'Lesson B leads'}
           >
             {winner}
           </motion.span>
@@ -266,10 +266,10 @@ export function DeckComparison({ decks, cards }: DeckComparisonProps) {
 
   return (
     <ChartCard
-      title="Deck comparison"
-      description="Select two decks to compare their statistics side by side."
+      title="Lesson comparison"
+      description="Select two lessons to compare their statistics side by side."
       empty={decks.length < 2}
-      emptyMessage="Create at least two decks to compare them."
+      emptyMessage="Create at least two lessons to compare them."
       delay={0}
       className="h-auto"
     >
@@ -279,9 +279,9 @@ export function DeckComparison({ decks, cards }: DeckComparisonProps) {
             value={deckAId}
             onChange={(e) => setDeckAId(e.target.value)}
             className="min-w-[10rem] rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
-            aria-label="First deck"
+            aria-label="First lesson"
           >
-            <option value="">Select a deck…</option>
+            <option value="">Select a lesson…</option>
             {decks.map((d) => (
               <option key={d.id} value={d.id} disabled={d.id === deckBId}>
                 {d.name}
@@ -293,9 +293,9 @@ export function DeckComparison({ decks, cards }: DeckComparisonProps) {
             value={deckBId}
             onChange={(e) => setDeckBId(e.target.value)}
             className="min-w-[10rem] rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
-            aria-label="Second deck"
+            aria-label="Second lesson"
           >
-            <option value="">Select a deck…</option>
+            <option value="">Select a lesson…</option>
             {decks.map((d) => (
               <option key={d.id} value={d.id} disabled={d.id === deckAId}>
                 {d.name}

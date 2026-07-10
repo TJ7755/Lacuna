@@ -237,6 +237,9 @@ export function searchCourseContent(
  * this is the only edit route left.
  */
 export function cardEditPath(card: Card): string {
+  // Orphaned cards (deckId matched no deck at the v9 migration) keep courseId
+  // undefined; deep-linking to /course/undefined/... would 404, so fall back home.
+  if (!card.courseId) return '/';
   return card.primaryLessonId
     ? `/course/${card.courseId}/lesson/${card.primaryLessonId}/cards/${card.id}/edit`
     : `/course/${card.courseId}/cards/${card.id}/edit`;

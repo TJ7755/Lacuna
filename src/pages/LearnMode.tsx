@@ -59,7 +59,7 @@ import {
 } from '../components/ui/icons';
 import { PomodoroTimer } from '../components/learn/PomodoroTimer';
 import { useToast } from '../components/ui/Toast';
-import { matchesFilter, type CardFilter } from '../db/search';
+import type { CardFilter } from '../db/search';
 import { cn } from '../components/ui/cn';
 
 type Phase = 'loading' | 'question' | 'answer' | 'finished';
@@ -94,7 +94,7 @@ interface AnswerSnapshot {
 }
 
 export function LearnMode() {
-  const { deckId, courseId, lessonId } = useParams<{ deckId: string; courseId: string; lessonId: string }>();
+  const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>();
   const [searchParams] = useSearchParams();
   const tagFilter = searchParams.get('tag');
   const cramMode = searchParams.get('mode') === 'cram';
@@ -131,12 +131,12 @@ export function LearnMode() {
     return 'fsrs';
   }, [isSimpleMode, cramMode, filterParams]);
 
-  // Exactly one of deckId/courseId/lessonId is set by the matching route (or none,
+  // Exactly one of courseId/lessonId is set by the matching route (or neither,
   // for the global "Today" session). The lesson route (/lesson/:lessonId/learn)
   // carries no courseId, so it is resolved from the loaded lesson (see resolvedCourseId).
   const isLessonScoped = !!lessonId;
   const isCourseScoped = !!courseId && !lessonId;
-  const isGlobal = !deckId && !courseId && !lessonId;
+  const isGlobal = !courseId && !lessonId;
 
   const [phase, setPhase] = useState<Phase>('loading');
   // The unit a single-unit session is studying (null for the global session).
@@ -187,7 +187,7 @@ export function LearnMode() {
   const decksRef = useRef<Map<string, StudyUnit>>(new Map());
   const ctxRef = useRef<SessionContext | null>(null);
   // Whether reviews in this session should be recorded against a Course (course
-  // and lesson scope) or a Deck (deck scope and the global "Today" session).
+  // and lesson scope) or a Deck (the global "Today" session).
   const reviewKindRef = useRef<'deck' | 'course'>('deck');
   // Set for course/lesson-scoped sessions so a completed session can evaluate the
   // semi-linear unlock ratchet (see ratchetUnlocks below). Null for deck/global sessions.
@@ -234,9 +234,7 @@ export function LearnMode() {
       : '/'
     : isCourseScoped
       ? `/course/${courseId}`
-      : isGlobal
-        ? '/'
-        : `/deck/${deckId}`;
+      : '/';
   const backOut = useCallback(() => navigate(exitTo), [navigate, exitTo]);
 
   const objectiveLabel = useCallback(() => {
@@ -471,21 +469,6 @@ export function LearnMode() {
         reviewKindRef.current = 'course';
         ratchetCourseIdRef.current = course.id;
         setUnitDisplayName(course.name);
-      } else if (deckId) {
-        const d = await db.decks.get(deckId);
-        if (!d) {
-          navigate(`/deck/${deckId}`);
-          return;
-        }
-        units = [d];
-        sessionUnits = [d];
-        cards = await db.cards.where('deckId').equals(deckId).toArray();
-        if (tagFilter) cards = cards.filter((c) => (c.tags ?? []).includes(tagFilter));
-        const now = Date.now();
-        if (filterParams.length > 0) {
-          cards = cards.filter((c) => filterParams.every((f) => matchesFilter(c, f, now)));
-        }
-        setUnitDisplayName(d.name);
       } else {
         const decks = await db.decks.toArray();
         units = decks;
@@ -575,7 +558,7 @@ export function LearnMode() {
     return () => {
       cancelled = true;
     };
-  }, [deckId, courseId, lessonId, tagFilter, cramMode, filterParams, navigate, isSimpleMode, mode, isGlobal, ratchetUnlocks]);
+  }, [courseId, lessonId, tagFilter, cramMode, filterParams, navigate, isSimpleMode, mode, isGlobal, ratchetUnlocks]);
 
   const reveal = useCallback(() => {
     setPhase((p) => {
