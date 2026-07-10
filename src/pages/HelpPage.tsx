@@ -570,12 +570,6 @@ export function HelpPage() {
                   appears to confirm the action.
                 </p>
               </div>
-              <div className="rounded-xl border border-line bg-surface-raised p-5">
-                <h3 className="mb-2 font-medium text-ink">Configuring gestures</h3>
-                <p className="text-sm text-ink-soft">
-                  Swipe actions during study can be changed in Settings &rarr; Input mode.
-                </p>
-              </div>
             </div>
           </div>
         ),
