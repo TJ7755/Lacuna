@@ -236,7 +236,10 @@ export interface LessonBreakdownPoint {
  * lesson's cards that have been reviewed at least once). Extension lessons are
  * excluded, matching `computeCourseSummaries`. Cards are grouped by
  * `primaryLessonId` — a card belongs to exactly one lesson here, so no
- * double-counting across the breakdown.
+ * double-counting across the breakdown. Assumes every non-extension card has
+ * a valid `primaryLessonId` pointing at a lesson in this course; cards with a
+ * stale or missing `primaryLessonId` are silently dropped, so per-lesson
+ * `cardCount` totals may not sum to the course's overall card count.
  */
 export function lessonBreakdown(
   lessons: Lesson[],
@@ -259,10 +262,10 @@ export function lessonBreakdown(
         lessonId: lesson.id,
         name: lesson.name,
         cardCount: lessonCards.length,
-        masteryPct:
-          lessonCards.length > 0
-            ? Math.round(progressValue(lessonCards, scheduler) * 100)
-            : 0,
+        // progressValue is called unconditionally so a zero-card lesson gets the
+        // same 100% convention as course-level mastery (Addendum 2 §J), rather
+        // than a hardcoded 0.
+        masteryPct: Math.round(progressValue(lessonCards, scheduler) * 100),
         completionPct:
           lessonCards.length > 0
             ? Math.round((reviewed / lessonCards.length) * 100)

@@ -88,12 +88,14 @@ describe('lessonBreakdown', () => {
     expect(lessonBreakdown([extensionLesson], cards, course)).toEqual([]);
   });
 
-  it('gives a lesson with no cards a zero-valued entry rather than omitting it', () => {
+  it('gives a lesson with no cards a fully-mastered entry rather than omitting it', () => {
+    // An empty card set is treated as fully mastered, matching the course-level
+    // progressValue convention (Addendum 2 §J), not hardcoded to zero.
     const course = makeCourse({ id: 'c1' });
     const lesson = makeLesson({ id: 'l1', courseId: 'c1' });
     const [entry] = lessonBreakdown([lesson], [], course);
     expect(entry.cardCount).toBe(0);
-    expect(entry.masteryPct).toBe(0);
+    expect(entry.masteryPct).toBe(100);
     expect(entry.completionPct).toBe(0);
   });
 });
