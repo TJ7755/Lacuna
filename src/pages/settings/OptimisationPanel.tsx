@@ -24,6 +24,8 @@ export interface OptimisationPanelProps {
   cards: Card[];
   /** Persist partial changes to the entity, e.g. via updateDeck or updateCourse. */
   onUpdate: (changes: Partial<OptimisableEntity>) => Promise<void>;
+  /** Noun used in user-facing copy, e.g. "deck" or "course". Defaults to "deck". */
+  entityLabel?: string;
 }
 
 /**
@@ -33,7 +35,12 @@ export interface OptimisationPanelProps {
  * restore-point snapshot first. Gated on a minimum review count, and on the
  * per-entity/global "Optimise scheduling" setting.
  */
-export function OptimisationPanel({ entity, cards, onUpdate }: OptimisationPanelProps) {
+export function OptimisationPanel({
+  entity,
+  cards,
+  onUpdate,
+  entityLabel = 'deck',
+}: OptimisationPanelProps) {
   const { notify } = useToast();
   const [globalDefault] = useAutoOptimiseDefault();
   const optimiser = useOptimiser();
@@ -98,14 +105,14 @@ export function OptimisationPanel({ entity, cards, onUpdate }: OptimisationPanel
         <div className="min-w-0">
           <h2 className="font-display text-xl">Scheduling optimisation</h2>
           <p className="mt-1 text-sm text-ink-soft">
-            Fit this deck&apos;s FSRS weights to its own review history. Optimisation runs off the
+            Fit this {entityLabel}&apos;s FSRS weights to its own review history. Optimisation runs off the
             main thread and is applied only when you confirm; a restore point is taken first.
           </p>
         </div>
         <Toggle
           checked={enabled}
           onChange={(checked) => void onUpdate({ autoOptimise: checked })}
-          label="Optimise this deck"
+          label={`Optimise this ${entityLabel}`}
         />
       </div>
 
@@ -122,7 +129,7 @@ export function OptimisationPanel({ entity, cards, onUpdate }: OptimisationPanel
             >
               Optimisation needs at least {MIN_OPTIMISE_REVIEWS} reviews so that a
               held-out validation portion is large enough to judge the fit honestly.
-              This deck has {reviews}. Keep revising and it will become available.
+              This {entityLabel} has {reviews}. Keep revising and it will become available.
             </motion.p>
           ) : !enabled ? (
             <motion.p
@@ -133,7 +140,7 @@ export function OptimisationPanel({ entity, cards, onUpdate }: OptimisationPanel
               transition={{ duration: 0.16 * m }}
               className="text-sm text-ink-faint"
             >
-              Optimisation is turned off for this deck. Enable it above to fit the weights.
+              Optimisation is turned off for this {entityLabel}. Enable it above to fit the weights.
             </motion.p>
           ) : optimiser.status === 'running' ? (
             <motion.div

@@ -408,6 +408,7 @@ export function CourseSettings() {
               entity={course}
               cards={cards ?? []}
               onUpdate={(changes) => updateCourse(course.id, changes)}
+              entityLabel="course"
             />
           </motion.div>
 
