@@ -24,7 +24,13 @@ import type { Card } from '../../db/types';
 interface MemoryBackdropProps {
   cards: Card[];
   /** Forgetting-curve decay exponent for the course (see decayOf). */
-  decay: number;
+  decay?: number;
+  /**
+   * Per-card decay lookup, for backdrops spanning multiple courses whose FSRS
+   * parameters differ (e.g. the dashboard). Takes precedence over the scalar
+   * `decay` when supplied; single-course pages can keep using `decay`.
+   */
+  decayFor?: (card: Card) => number;
   now: number;
   /** Opens a card for editing when a light is clicked. */
   onOpenCard?: (card: Card) => void;
@@ -33,7 +39,7 @@ interface MemoryBackdropProps {
 /** Enough to feel alive without turning the page into static. */
 const MAX_LIGHTS = 72;
 
-export function MemoryBackdrop({ cards, decay, now, onOpenCard }: MemoryBackdropProps) {
+export function MemoryBackdrop({ cards, decay, decayFor, now, onOpenCard }: MemoryBackdropProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   // Deterministic sample for very large courses: hash order, not slice order,
@@ -48,7 +54,8 @@ export function MemoryBackdrop({ cards, decay, now, onOpenCard }: MemoryBackdrop
       {sample.map((card, i) => {
         const unseen = card.lastReviewed === null || card.state === 0;
         const dueNow = !unseen && card.due !== null && card.due <= now;
-        const r = retrievabilityNow(card, decay, now);
+        const cardDecay = decayFor ? decayFor(card) : (decay ?? 0);
+        const r = retrievabilityNow(card, cardDecay, now);
         const x = 2 + hashJitter(card.id, 1) * 96;
         const y = 4 + hashJitter(card.id, 2) * 92;
         const size = 7 + hashJitter(card.id, 3) * 5;
@@ -91,7 +98,7 @@ export function MemoryBackdrop({ cards, decay, now, onOpenCard }: MemoryBackdrop
                 unseen={unseen}
                 dueNow={dueNow}
                 r={r}
-                decay={decay}
+                decay={cardDecay}
                 now={now}
                 above={y > 20}
                 xPct={x}

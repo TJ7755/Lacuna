@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { m as motion } from 'motion/react';
 import { ProgressBar } from '../ui/ProgressBar';
+import { MiniRing } from '../ui/MiniRing';
 import { relativeExam } from '../../utils/datetime';
 import { progressNoun } from '../../fsrs/objective';
 import { cn } from '../ui/cn';
@@ -21,6 +23,7 @@ export interface CourseCardProps {
 export function CourseCard({ course, summary, onClick }: CourseCardProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const [hovered, setHovered] = useState(false);
 
   const examPassed = course.examDate < Date.now();
   const examLabel = examPassed
@@ -39,6 +42,8 @@ export function CourseCard({ course, summary, onClick }: CourseCardProps) {
       className="group block h-full w-full text-left"
     >
       <motion.div
+        onHoverStart={() => setHovered(true)}
+        onHoverEnd={() => setHovered(false)}
         whileHover={{ y: -4, transition: { duration: 0.12 * m } }}
         whileTap={{ scale: 0.98, transition: { duration: 0.08 * m } }}
         className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface p-5 shadow-sm shadow-black/[0.02] transition-all duration-200 hover:border-line-strong hover:shadow-lg hover:shadow-black/[0.04]"
@@ -72,7 +77,16 @@ export function CourseCard({ course, summary, onClick }: CourseCardProps) {
             <span>
               {lessonCount} lesson{lessonCount === 1 ? '' : 's'} · {cardCount} card{cardCount === 1 ? '' : 's'}
             </span>
-            <span className="tabular-nums">
+            <span className="flex items-center gap-1.5 tabular-nums">
+              {hovered && (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.7 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.15 * m }}
+                >
+                  <MiniRing value={mastery} size={14} strokeWidth={2} />
+                </motion.span>
+              )}
               {Math.round(mastery * 100)}% {progressNoun(course)}
             </span>
           </div>
