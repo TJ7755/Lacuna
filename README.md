@@ -16,7 +16,9 @@ export** to back up or move your data as a single JSON file.
 - **Courses, lessons and notes** — a course is the top-level subject; it holds an ordered
   path of lessons, each with its own Markdown notes and cards. Completing a lesson unlocks
   the next; checkpoints mark exam dates and practice nodes gather up due cards from lessons
-  studied so far. A single-lesson course skips the path and opens straight into that lesson.
+  studied so far, whether auto-inserted or placed manually by a teacher. A single-lesson
+  course skips the path and opens straight into that lesson. Each lesson's `/learn` session
+  defaults to new material, but a teacher can switch it to revision (due cards) or both.
 - **FSRS-6 engine** via the official `ts-fsrs` library (21 trainable parameters, including the
   decay w20). All memory-state updates are delegated to the package; no hand-rolled FSRS maths.
 - **Single exam objective** drives both the scheduler and the progress bar, so they can never

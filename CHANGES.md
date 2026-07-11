@@ -245,6 +245,34 @@ is no user-visible change yet — the UI is delivered in a later stage.
   legacy backing structure each lesson still runs on (a lesson is a hidden single-lesson deck),
   rather than as a user-facing concept.
 
+### Lesson session filters, manual practice-node authoring, and course-deletion undo
+
+- **Teacher-configured lesson session filters.** Lessons gain an optional, un-indexed
+  `Lesson.sessionFilter` (`'new' | 'due' | 'mixed'`; default `'new'` preserves current
+  behaviour). `LearnMode`'s lesson-session card selection now honours it, reusing the same
+  due semantics (`isDue`/`dueCards`, new in `src/fsrs/eligibility.ts`) as the course-level
+  session. Teachers set it per lesson from `LessonManagementSection`, with plain-language
+  descriptions for each option (New material / Revision / Both). The field round-trips
+  through v2 share payloads as `sf`. `CoursePath`'s due-count logic was also switched to the
+  new shared `dueCards` helper instead of an inlined duplicate.
+- **Manual practice-node authoring.** Adds create/edit/delete UI for teacher-authored
+  `PracticeNode` records: a hover-revealed "+" between lesson nodes on `CoursePath` inserts
+  one at a specific gap, an edit badge on manual practice nodes lets a teacher reposition,
+  rename or delete them, and a new `PracticeNodesSection` in course settings mirrors
+  `ExamDatesSection`'s list/inline-edit pattern. Auto-inserted practice nodes are untouched by
+  this UI and remain computed fresh on every path render. Filters are intentionally left out
+  of the form (no existing `CardFilter`-builder UI to reuse) but remain supported in storage.
+  Create/update/delete are wrapped in try/catch with a failure toast so a repository error
+  cannot soft-lock the editor.
+- **Course deletion undo.** Replaces `CourseSettings`' blocking `window.confirm()` with the
+  same snapshot + undo-toast pattern deck deletion uses (`DangerZoneSection`), closing the
+  deferral noted above. Adds `snapshotCourse`/`restoreCourse` to `repository.ts`, capturing
+  everything `deleteCourse` removes — including the lessons' hidden backing decks and
+  question-bank deck, and their session history and calibration profiles. Incidentally,
+  `deleteCourse` itself never removed those backing decks, their `userPerformance` rows, or
+  the course/deck-scoped `sessionHistory` rows, leaving them orphaned on every course
+  deletion; `deleteCourse` now sweeps them up too.
+
 ## 0.0.3 — Simple learn mode, card types, and touch-first polish
 
 - Added `useStudyMode` hook (`src/state/studyMode.ts`) with `fsrs` and `simple` modes, persisted to `localStorage`.

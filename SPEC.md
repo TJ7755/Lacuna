@@ -124,7 +124,8 @@ Shared conventions:
 - Standard easing curve `[0.16, 1, 0.3, 1]` (a soft "ease-out-quint") for entrances.
 - Springs for tactile controls and shared-layout indicators.
 - Staggered list/grid reveals with a small per-item delay, capped so long lists do not crawl.
-- `LayoutGroup` coordinates reflow animations across sibling elements (e.g. the deck grid).
+- `LayoutGroup` coordinates reflow animations across sibling elements (e.g. Settings' and
+  Help's active-tab underline).
 
 Specific motion (current state of the app):
 - **Page transitions:** the routed page fades and lifts in (`y: 12 → 0`) as the previous one
@@ -137,25 +138,29 @@ Specific motion (current state of the app):
 - **Sidebar:** width animates on collapse/expand (spring); the active-item marker is a
   shared-layout element (`layoutId="nav-active"`) that slides between items; items nudge
   right slightly on hover. A collapsible drawer on mobile (§4.1).
-- **Deck cards:** staggered entrance, plus a `whileHover` lift (`y: -4`) with a smooth
-  shadow/border transition. In touch mode, each card supports horizontal **swipe gestures**
-  (right = study, left = archive) with a directional glow that follows the finger and a
-  springy snap-back on release.
+- **Course cards** (dashboard grid): staggered entrance, plus a `whileHover` lift (`y: -4`)
+  with a smooth shadow/border transition; a `whileTap` scale-down confirms the press. They do
+  not carry swipe gestures — that affordance lives on card-list rows instead (below).
+- **Card list rows** (`CardList`): in touch mode, each row supports a horizontal **swipe
+  gesture** — drag left past a threshold to spring open a per-card action tray, drag right
+  to quick-toggle the flag — backed by a `useSpring`-driven `useMotionValue` with a springy
+  snap-back below the threshold.
 - **Learn answer feedback:** the instant a card is graded, a soft full-width glow rises from
   the foot of the screen — green for correct, muted red for incorrect — for ~0.5 s. It is
   purely decorative (`pointer-events-none`), fired independently of the async write so the
   reward always lands on the keypress, and never delays the next card. A radial ring
   pulses outward from centre as a secondary cue.
 - **Flip card:** the question/answer faces swap with a 3-D `rotateX` flip (perspective 1600).
-  Swipe gestures (right = Yes, left = No) share the same spring physics as the deck card
+  Swipe gestures (right = Yes, left = No) share the same spring physics as the card-list row
   swipes; the flip card is the only place in the app that combines rotation with translation.
 - **Touch bottom sheets:** in touch mode, the Learn grading controls live in a fixed
   bottom sheet that springs in and out, with a drag handle that closes the sheet when
   dragged down past a threshold or flicked quickly. The card-actions menu is a similar
   bottom sheet rather than a dropdown.
 - **Session report:** the whole panel rises in; reaching the goal springs in a tick badge and fires a confetti burst; the four stat tiles reveal in sequence with count-up numbers; the progress bar animates from before to after with a delta badge; a grade-distribution bar chart shows the rating breakdown.
-- **Tabs / chips:** the active deck-view tab underline is a shared-layout element
-  (`layoutId="deck-tab"`).
+- **Tabs / chips:** active-tab underlines are shared-layout elements, e.g. Settings'
+  (`layoutId="activePill"`/`"activeBar"`) and Help's (`layoutId="helpActivePill"`/
+  `"helpActiveBar"`).
 - **Toasts:** slide in from the right with a slight scale.
 - **Dashboard streak:** the flame icon gently pulses/rotates while a streak is alight; the
   streak number springs when it changes.
@@ -179,12 +184,13 @@ keyboard shortcuts on keyboard).
 - **Active states.** Touch-interactive elements carry an explicit `active:bg-ink/10` or
   variant-specific `active` colour so the press is visible without relying on a `:hover`
   that never fires on touch.
-- **Swipe gestures** (touch mode only, gated on the resolved input mode). The deck cards
-  swipe right to study and left to archive; the Learn flip card swipes right for Yes and
-  left for No. Swipes are springy (a `useSpring`-backed `useMotionValue`), with a
-  directional glow that follows the finger, a threshold past which the action commits, and
-  a snap-back below the threshold. The first successful Learn swipe hides the persistent
-  swipe hints via a `localStorage` flag (`lacuna.learnHints`).
+- **Swipe gestures** (touch mode only, gated on the resolved input mode). Card-list rows
+  (`CardList`) drag left past a threshold to open a per-card action tray and right to
+  quick-toggle the flag; the Learn flip card swipes right for Yes and left for No. Swipes
+  are springy (a `useSpring`-backed `useMotionValue`), with a directional glow that follows
+  the finger on the flip card, a threshold past which the action commits, and a snap-back
+  below the threshold. The first successful Learn swipe hides the persistent swipe hints
+  via a `localStorage` flag (`lacuna.learnHints`).
 - **Bottom sheets** (touch mode). The Learn grading controls and the per-card actions menu
   render as bottom sheets with a drag handle, a scrim backdrop and a focus-trapped dialog
   role. On keyboard, the same actions live in a dropdown menu.
@@ -201,13 +207,13 @@ keyboard shortcuts on keyboard).
 
 ### 3.5 Layout grid & surfaces
 
-- Content is centred in a max-width column per page (dashboard `max-w-6xl`, deck `max-w-5xl`,
-  editor `max-w-4xl`, learn/report/search `max-w-3xl`, settings/deck-settings `max-w-2xl`)
-  with responsive horizontal padding (`px-6 md:px-10`).
+- Content is centred in a max-width column per page (dashboard `max-w-6xl`, course path/course
+  settings `max-w-2xl`, lesson view `max-w-3xl`, editor `max-w-4xl`, learn/report/search
+  `max-w-3xl`) with responsive horizontal padding (`px-6 md:px-10`).
 - Cards/sections: `rounded-2xl border border-line bg-surface p-5/6`, soft black shadows on
   hover.
 - Pills/chips: `rounded-full border` with accent-soft active state.
-- Sticky action bars (editor, deck settings) pin to the bottom of the content column; the
+- Sticky action bars (editor, course settings) pin to the bottom of the content column; the
   editor's bar fades up from the paper via a gradient so it never sits on a hard slab.
 
 ---
@@ -410,6 +416,16 @@ course kept it as a per-lesson override. Migration mapping lives in
 and `createCourseExamDate`/`updateCourseExamDate`/`deleteCourseExamDate`/`listCourseExamDates`.
 All functions are independently callable with no UI or React dependency, so future AI
 authoring agents and button handlers can share the same layer without duplication.
+
+`PracticeNode.type` is `'auto'` or `'manual'`. Auto nodes are never persisted — they are
+computed fresh on every path render from the live due-card backlog (§4.3's path diagram).
+Manual nodes are teacher-authored and persisted: a hover-revealed "+" between lesson nodes
+on `CoursePath` inserts one at a specific gap (`position`), and an edit badge on existing
+manual nodes lets a teacher reposition, rename or delete them (`PracticeNodeEditor`,
+`src/components/course/`); `PracticeNodesSection` in course settings mirrors the same
+create/edit/delete flow as a list (§15's Course settings section). Both surfaces share
+`practiceNodeDraft.ts`'s draft helpers. Filters (`CardFilter[]`) are supported in storage
+but intentionally left out of both forms — there is no existing filter-builder UI to reuse.
 
 ### Deck and Folder (legacy backing structures, no UI)
 `Deck` (`id, name, examDate, createdAt, examDatePromptDismissed?, fsrsVersion,
@@ -1020,7 +1036,9 @@ never one person's scheduling progress or review history.
 
 - **What a code contains (current, v2 payload):** course metadata (name, exam objective,
   date created, date due, target retention, new-card cap), its ordered lessons each with
-  their notes and cards (type, front, back, tags), and any extra `CourseExamDate` checkpoints.
+  their notes and cards (type, front, back, tags), any extra `CourseExamDate` checkpoints,
+  and each lesson's teacher-configured `sessionFilter` (`sf`), when set to `'due'` or
+  `'mixed'` — `'new'` is the default and is omitted from the payload.
   Images ride along inline inside card/note Markdown as base64 data URIs rather than being
   stripped, so a shared course renders faithfully; DEFLATE still compresses the payload
   overall. `LessonCardLink` (display-only cross-lesson linking) and `PracticeNode` are
@@ -1219,18 +1237,29 @@ reviews/interval, learning/relearning steps, leech threshold/action, daily revie
 session time limit), `UnlockModeSection` (semi-linear vs linear lesson unlocking, with
 linear cadence fields), `PracticeSettingsSection` (auto-practice toggle and the four
 threshold/window/gap fields feeding `shouldInsertPractice`, §-linked to
-`src/fsrs/practice.ts`), `ExamDatesSection` (per-course exam-date list) and
-`LessonManagementSection` (reorder/rename/delete lessons), plus the `OptimisationPanel`
+`src/fsrs/practice.ts`), `ExamDatesSection` (per-course exam-date list),
+`LessonManagementSection` (reorder/rename/delete lessons, plus a per-lesson **session
+type** select — New material / Revision / Both, backed by `Lesson.sessionFilter`; see
+below) and `PracticeNodesSection` (list/create/edit/delete teacher-authored manual
+practice nodes; see §5's Course architecture section), plus the `OptimisationPanel`
 (§8.1): a per-course on/off override for scheduling optimisation, a review-count gate,
 and an **Optimise now** action that runs in a Web Worker with a progress bar, then shows
 the before/after log loss; applying takes a restore-point snapshot first and **Reset to
 defaults** is always available.
+- **Lesson session filter:** a lesson's `/learn` session defaults to new (unseen) cards
+  only. A teacher can instead set it to **Revision** (only cards `isDue`/`dueCards` say are
+  due, `src/fsrs/eligibility.ts`) or **Both**, per lesson, from `LessonManagementSection`.
+  Un-set (`undefined`) behaves identically to `'new'` and is the default for every
+  existing lesson. Round-trips through v2 share codes as `sf` (§13).
 - Once the **exam date has passed** (§8.2), the course offers set-new-date / archive /
   keep-revising.
-- **Danger zone:** unlike deck deletion, course deletion has no restorable
-  snapshot, so it uses a **blocking `window.confirm`** dialog rather than an
-  Undo toast — deleting a course removes all of its lessons, notes and card
-  assignments irreversibly. Sticky Save/Cancel bar.
+- **Danger zone:** course deletion uses the same snapshot + undo-toast pattern as deck
+  deletion (`DangerZoneSection`) rather than a blocking confirmation — deleting is
+  immediate, with an "Undo" toast that restores everything from a `CourseSnapshot`
+  (`snapshotCourse`/`restoreCourse`, `src/db/repository.ts`): the course, its lessons,
+  notes, lesson-card links, practice nodes, exam dates, cards, their hidden backing decks
+  (§5, Deck and Folder), and the session history/calibration profiles keyed to either the
+  course or those decks. Sticky Save/Cancel bar.
 - **Not-found handling:** the course is resolved via a null-sentinel
   `useLiveQuery` (missing row mapped to `null`, matching `CoursePath`) so a
   stale or deleted `courseId` reaches a genuine not-found state instead of
