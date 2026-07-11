@@ -213,9 +213,6 @@
   .will-change-transform {
     will-change: transform;
   }
-  .will-change-opacity {
-    will-change: opacity;
-  }
   .will-change-transform-opacity {
     will-change: transform, opacity;
   }
@@ -243,15 +240,6 @@
     .touch-visible {
       opacity: 1 !important;
     }
-  }
-
-  /* Hide scrollbar for touch-friendly horizontally scrollable toolbars. */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
   }
 
   /* Paper-like offset shadow for physical card illusion. */

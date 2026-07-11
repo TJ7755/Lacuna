@@ -8,7 +8,6 @@ import type {
   Course,
   CourseExamDate,
   Deck,
-  Folder,
   Grade,
   Lesson,
   LessonCardLink,
@@ -72,21 +71,6 @@ export async function updateDeck(id: string, changes: Partial<Deck>): Promise<vo
   }
 }
 
-/** Archive a deck: keep all data but withdraw it from active study and progress totals. */
-export async function archiveDeck(id: string): Promise<void> {
-  await db.decks.update(id, { archived: true });
-}
-
-/** Return an archived deck to active study. */
-export async function unarchiveDeck(id: string): Promise<void> {
-  await db.decks.update(id, { archived: false });
-}
-
-/** Set a deck's exam date (used to resolve the passed-exam state with a fresh date). */
-export async function setExamDate(id: string, examDate: number): Promise<void> {
-  await db.decks.update(id, { examDate });
-}
-
 export async function deleteDeck(id: string): Promise<void> {
   await db.transaction(
     'rw',
@@ -102,183 +86,6 @@ export async function deleteDeck(id: string): Promise<void> {
     },
   );
   scheduleAssetGc();
-}
-
-export async function deleteDecks(ids: string[]): Promise<void> {
-  await db.transaction(
-    'rw',
-    db.decks,
-    db.cards,
-    db.sessionHistory,
-    db.userPerformance,
-    async () => {
-      for (const id of ids) {
-        await db.cards.where('deckId').equals(id).delete();
-        await db.sessionHistory.where('deckId').equals(id).delete();
-        await db.userPerformance.delete(id);
-        await db.decks.delete(id);
-      }
-    },
-  );
-  scheduleAssetGc();
-}
-
-/** A complete copy of one or more decks and everything that hangs off them. */
-export interface DeckSnapshot {
-  decks: Deck[];
-  cards: Card[];
-  sessionHistory: SessionHistoryEntry[];
-  userPerformance: UserPerformance[];
-}
-
-/**
- * Capture decks plus their cards, session history and performance before deletion,
- * so the action can be offered with an "Undo". Call this *before* deleteDecks.
- */
-export async function snapshotDecks(ids: string[]): Promise<DeckSnapshot> {
-  const idSet = new Set(ids);
-  const [decks, cards, sessionHistory, userPerformance] = await Promise.all([
-    db.decks.where('id').anyOf(ids).toArray(),
-    db.cards.where('deckId').anyOf(ids).toArray(),
-    db.sessionHistory.where('deckId').anyOf(ids).toArray(),
-    db.userPerformance.where('deckId').anyOf(ids).toArray(),
-  ]);
-  // Guard against any stray records the indexes might miss.
-  return {
-    decks: decks.filter((d) => idSet.has(d.id)),
-    cards,
-    sessionHistory,
-    userPerformance,
-  };
-}
-
-/** Re-insert a previously captured DeckSnapshot (the inverse of deleteDecks). */
-export async function restoreDecks(snapshot: DeckSnapshot): Promise<void> {
-  try {
-    await db.transaction(
-      'rw',
-      db.decks,
-      db.cards,
-      db.sessionHistory,
-      db.userPerformance,
-      async () => {
-        await Promise.all([
-          db.decks.bulkPut(snapshot.decks),
-          db.cards.bulkPut(snapshot.cards),
-          db.userPerformance.bulkPut(snapshot.userPerformance),
-          // Drop the old auto-increment ids so Dexie reassigns them cleanly.
-          db.sessionHistory.bulkAdd(
-            snapshot.sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
-          ),
-        ]);
-      },
-    );
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
-}
-
-/**
- * Merge several decks into a chosen target. The target keeps its name, exam date and
- * performance profile; all other decks' cards are reassigned to it, their session history
- * is concatenated onto the target, and the emptied decks are removed.
- */
-export async function mergeDecks(sourceIds: string[], targetId: string): Promise<void> {
-  const others = sourceIds.filter((id) => id !== targetId);
-  if (others.length === 0) return;
-  const now = Date.now();
-  await db.transaction(
-    'rw',
-    db.decks,
-    db.cards,
-    db.sessionHistory,
-    db.userPerformance,
-    async () => {
-      for (const sourceId of others) {
-        await db.cards.where('deckId').equals(sourceId).modify({ deckId: targetId });
-        await db.sessionHistory
-          .where('deckId')
-          .equals(sourceId)
-          .modify({ deckId: targetId });
-        await db.userPerformance.delete(sourceId);
-        await db.decks.delete(sourceId);
-      }
-      await db.decks.update(targetId, { lastInteractedAt: now });
-    },
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Folders
-// ---------------------------------------------------------------------------
-
-export async function createFolder(name: string, parentId?: string | null): Promise<Folder> {
-  try {
-    const folder: Folder = {
-      id: makeId(),
-      name: name.trim() || 'Untitled folder',
-      parentId: parentId ?? null,
-      createdAt: Date.now(),
-    };
-    await db.folders.add(folder);
-    return folder;
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
-}
-
-export async function updateFolder(id: string, changes: Partial<Folder>): Promise<void> {
-  try {
-    await db.folders.update(id, changes);
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
-}
-
-/** Move a deck into (or out of) a folder. Pass null to move to top level. */
-export async function moveDeckToFolder(deckId: string, folderId: string | null): Promise<void> {
-  try {
-    await db.decks.update(deckId, { folderId });
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
-}
-
-/** Move a folder into (or out of) another folder. Pass null to move to top level. */
-export async function moveFolder(folderId: string, parentId: string | null): Promise<void> {
-  try {
-    await db.folders.update(folderId, { parentId });
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
-}
-
-/** Move many decks into (or out of) a folder at once. */
-export async function moveDecksToFolder(deckIds: string[], folderId: string | null): Promise<void> {
-  await db.transaction('rw', db.decks, async () => {
-    await db.decks.where('id').anyOf(deckIds).modify({ folderId });
-  });
-}
-
-/**
- * Delete a folder. Its child decks are moved to the top level (folderId set to null).
- * Child folders are re-parented to the deleted folder's parent (or top level).
- */
-export async function deleteFolder(id: string): Promise<void> {
-  await db.transaction('rw', db.folders, db.decks, async () => {
-    const target = await db.folders.get(id);
-    if (!target) return;
-    // Re-parent child folders to the deleted folder's parent.
-    await db.folders.where('parentId').equals(id).modify({ parentId: target.parentId });
-    // Move decks out of this folder to the top level (or parent folder).
-    await db.decks.where('folderId').equals(id).modify({ folderId: target.parentId });
-    await db.folders.delete(id);
-  });
-}
-
-/** All folders in creation order. */
-export async function listFolders(): Promise<Folder[]> {
-  return db.folders.orderBy('createdAt').toArray();
 }
 
 // ---------------------------------------------------------------------------
@@ -440,20 +247,6 @@ export async function createBasicReversedPair(
   await db.cards.update(card.id, { reverseCardId: reverse.id });
   await db.cards.update(reverse.id, { reverseCardId: card.id });
   return { card: { ...card, reverseCardId: reverse.id }, reverse: { ...reverse, reverseCardId: card.id } };
-}
-
-/** Create a deck and immediately populate it with imported cards, in one go. */
-export async function createDeckWithCards(
-  name: string,
-  drafts: { type: CardType; front: string; back: string; tags?: string[] }[],
-): Promise<Deck> {
-  try {
-    const deck = await createDeck(name);
-    if (drafts.length > 0) await createCards(deck.id, drafts);
-    return deck;
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
 }
 
 /**
@@ -738,7 +531,7 @@ export async function setCardFlag(id: string, flagged: boolean): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /** Which table owns the reviewed unit: a legacy Deck, or a course/lesson-scoped Course. */
-export type ReviewUnitKind = 'deck' | 'course';
+type ReviewUnitKind = 'deck' | 'course';
 
 export interface RecordReviewArgs {
   card: Card;
@@ -1034,14 +827,6 @@ export async function deleteCourse(id: string): Promise<void> {
   scheduleAssetGc();
 }
 
-export async function listCourses(): Promise<Course[]> {
-  return db.courses.orderBy('createdAt').toArray();
-}
-
-export async function getCourse(id: string): Promise<Course | undefined> {
-  return db.courses.get(id);
-}
-
 /** A complete copy of a course and everything that hangs off it: lessons, notes,
  * lesson-card links, practice nodes, exam dates, cards and their hidden backing decks
  * (plus the session history and calibration profiles keyed to either). */
@@ -1060,8 +845,8 @@ export interface CourseSnapshot {
 
 /**
  * Capture a course plus everything {@link deleteCourse} removes, so the action can be
- * offered with an "Undo". Call this *before* deleteCourse. Mirrors {@link snapshotDecks},
- * but also captures the lessons' hidden backing decks (see {@link ensureLessonDeck} /
+ * offered with an "Undo". Call this *before* deleteCourse. Also captures the lessons'
+ * hidden backing decks (see {@link ensureLessonDeck} /
  * {@link ensureCourseBankDeck}) since deleteCourse removes those too. Returns null if the
  * course no longer exists.
  */
@@ -1315,14 +1100,6 @@ export async function linkCardToLesson(lessonId: string, cardId: string): Promis
   } catch (err) {
     throw friendlyDbError(err);
   }
-}
-
-export async function unlinkCardFromLesson(lessonId: string, cardId: string): Promise<void> {
-  await db.lessonCards
-    .where('lessonId')
-    .equals(lessonId)
-    .filter((lc) => lc.cardId === cardId)
-    .delete();
 }
 
 export async function listLessonCardLinks(lessonId: string): Promise<LessonCardLink[]> {
