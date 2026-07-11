@@ -10,6 +10,8 @@ import { useDeck } from '../state/useData';
 import { CardList } from '../components/cards/CardList';
 import { Button } from '../components/ui/Button';
 import { ChevronLeftIcon, PlusIcon, SearchIcon } from '../components/ui/icons';
+import { MemoryBackdrop } from '../components/course/MemoryBackdrop';
+import { decayOf } from '../fsrs/fsrs';
 import type { Card, Lesson } from '../db/types';
 
 export function QuestionBank() {
@@ -52,6 +54,18 @@ export function QuestionBank() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
+      {/* Ambient constellation: every card in the course's bank as a point of
+          light behind the page — mirrors CoursePath's treatment. */}
+      <MemoryBackdrop
+        cards={cards}
+        decay={decayOf(course.fsrsParameters)}
+        now={Date.now()}
+        onOpenCard={(card) =>
+          card.primaryLessonId && lessonIds.has(card.primaryLessonId)
+            ? navigate(`/course/${courseId}/lesson/${card.primaryLessonId}/cards/${card.id}/edit`)
+            : navigate(`/course/${courseId}/cards/${card.id}/edit`)
+        }
+      />
       {/* Breadcrumb */}
       <Link
         to={`/course/${courseId}`}

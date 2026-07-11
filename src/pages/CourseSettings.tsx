@@ -11,6 +11,9 @@ import { Toggle } from '../components/ui/Toggle';
 import { useToast } from '../components/ui/Toast';
 import { deleteCourse, snapshotCourse, restoreCourse, updateCourse } from '../db/repository';
 import type { CourseSnapshot } from '../db/repository';
+import { MemoryBackdrop } from '../components/course/MemoryBackdrop';
+import { hashJitter } from '../components/course/memoryFieldMath';
+import { decayOf } from '../fsrs/fsrs';
 import {
   fromDateTimeLocalValue,
   formatDateTime,
@@ -231,8 +234,25 @@ export function CourseSettings() {
     navigate(coursePath);
   }
 
+  // Settings is a utility page — a much sparser, dimmer echo of the course's
+  // constellation (a fifth of the cards, non-interactive) rather than the full
+  // ambient treatment CoursePath gives it.
+  const settingsBackdropCards =
+    cards && cards.length > 0
+      ? cards.filter((c) => hashJitter(c.id, 5) < 0.2)
+      : [];
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-8 md:px-10">
+      {settingsBackdropCards.length > 0 && (
+        <div className="opacity-40">
+          <MemoryBackdrop
+            cards={settingsBackdropCards}
+            decay={decayOf(course.fsrsParameters)}
+            now={Date.now()}
+          />
+        </div>
+      )}
       <Link
         to={coursePath}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
