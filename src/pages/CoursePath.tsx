@@ -2,7 +2,7 @@
 // Route: /course/:courseId
 // British English throughout.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
@@ -11,7 +11,7 @@ import {
   useLessons,
   useCourseExamDates,
   useCourseCards,
-  useCourseSummaries,
+  useCourseSummary,
   usePracticeNodes,
 } from '../state/useCourseData';
 import { availableCards, dueCards } from '../fsrs/eligibility';
@@ -92,11 +92,14 @@ export function CoursePath() {
   const lessons = useLessons(courseId);
   const examDates = useCourseExamDates(courseId);
   const courseCards = useCourseCards(courseId);
-  const summaries = useCourseSummaries();
+  const summary = useCourseSummary(courseId);
   const practiceNodes = usePracticeNodes(courseId);
   // Per-deck response-time calibration for the decks backing this course's cards,
   // re-scoped into a single course-wide mean (see courseMeanReviewSeconds above).
-  const deckIds = courseCards ? Array.from(new Set(courseCards.map((c) => c.deckId))) : [];
+  const deckIds = useMemo(
+    () => (courseCards ? Array.from(new Set(courseCards.map((c) => c.deckId))) : []),
+    [courseCards],
+  );
   const perf = useLiveQuery(
     () => (deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : []),
     [deckIds.join(',')],
@@ -108,7 +111,7 @@ export function CoursePath() {
     lessons === undefined ||
     examDates === undefined ||
     courseCards === undefined ||
-    summaries === undefined ||
+    summary === undefined ||
     practiceNodes === undefined ||
     perf === undefined
   ) {
@@ -141,38 +144,48 @@ export function CoursePath() {
     return <LessonView courseId={courseId} lessonId={lessons[0].id} />;
   }
 
-  const summary = summaries[course.id];
-
   // Build lessonCardsById: group course cards by primaryLessonId.
-  const lessonCardsById = new Map<string, Card[]>();
-  for (const card of courseCards) {
-    if (card.primaryLessonId) {
-      const bucket = lessonCardsById.get(card.primaryLessonId) ?? [];
-      bucket.push(card);
-      lessonCardsById.set(card.primaryLessonId, bucket);
+  const lessonCardsById = useMemo(() => {
+    const map = new Map<string, Card[]>();
+    for (const card of courseCards) {
+      if (card.primaryLessonId) {
+        const bucket = map.get(card.primaryLessonId) ?? [];
+        bucket.push(card);
+        map.set(card.primaryLessonId, bucket);
+      }
     }
-  }
+    return map;
+  }, [courseCards]);
 
   // Live due-card count and mean review time, feeding shouldInsertPractice (addendum 2 §H).
   const now = Date.now();
-  const dueCardCount = dueCards(availableCards(courseCards, now), now).length;
-  const deckSeconds = new Map<string, number>();
-  for (const p of perf) {
-    if (p.totalCorrectReviews > 0 && p.runningMeanResponseTime > 0) {
-      deckSeconds.set(p.deckId, p.runningMeanResponseTime);
+  const { dueCardCount, meanReviewSeconds } = useMemo(() => {
+    const dueCardCount = dueCards(availableCards(courseCards, now), now).length;
+    const deckSeconds = new Map<string, number>();
+    for (const p of perf) {
+      if (p.totalCorrectReviews > 0 && p.runningMeanResponseTime > 0) {
+        deckSeconds.set(p.deckId, p.runningMeanResponseTime);
+      }
     }
-  }
-  const meanReviewSeconds = courseMeanReviewSeconds(courseCards, deckSeconds);
+    const meanReviewSeconds = courseMeanReviewSeconds(courseCards, deckSeconds);
+    return { dueCardCount, meanReviewSeconds };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseCards, perf]);
 
-  const nodes = buildPath(
-    course,
-    lessons,
-    examDates,
-    lessonCardsById,
-    practiceNodes,
-    dueCardCount,
-    meanReviewSeconds,
-    now,
+  const nodes = useMemo(
+    () =>
+      buildPath(
+        course,
+        lessons,
+        examDates,
+        lessonCardsById,
+        practiceNodes,
+        dueCardCount,
+        meanReviewSeconds,
+        now,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [course, lessons, examDates, lessonCardsById, practiceNodes, dueCardCount, meanReviewSeconds],
   );
 
   // Precomputed for the manual practice-node insertion affordances (see InsertGap/
@@ -187,10 +200,7 @@ export function CoursePath() {
   const currentNodeId = nodes.find(
     (n) => n.nodeType === 'lesson' && n.status === 'available',
   )?.id;
-  const lastLessonOrderIndex = lessons.reduce<number | undefined>(
-    (max, l) => (max === undefined || l.orderIndex > max ? l.orderIndex : max),
-    undefined,
-  );
+  const lastLessonOrderIndex = lessons[lessons.length - 1]?.orderIndex;
 
   // Curriculum position (addendum J): counts non-extension lessons reached.
   // This is pacing — it has nothing to do with mastery or FSRS retention.

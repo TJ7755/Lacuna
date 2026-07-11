@@ -246,6 +246,25 @@ export function useCourseSummaries(): Record<string, CourseSummary> | undefined 
 }
 
 /**
+ * Per-course summary statistics for a single course, scoped to that course's own
+ * lessons/cards rather than the whole app (contrast `useCourseSummaries`, which
+ * reruns on any write anywhere). Use this wherever only one course's summary is
+ * needed, e.g. CoursePath.
+ */
+export function useCourseSummary(courseId: string | undefined): CourseSummary | undefined {
+  return useLiveQuery(async () => {
+    if (!courseId) return undefined;
+    const [course, lessons, cards] = await Promise.all([
+      db.courses.get(courseId),
+      db.lessons.where('courseId').equals(courseId).toArray(),
+      db.cards.where('courseId').equals(courseId).toArray(),
+    ]);
+    if (!course) return undefined;
+    return computeCourseSummaries([course], lessons, cards)[courseId];
+  }, [courseId]);
+}
+
+/**
  * Single aggregated live query for the course dashboard. Returns courses, lessons,
  * all cards, per-course summaries and global study stats in one reactive read so a
  * shared transaction triggers only one re-render instead of five.
