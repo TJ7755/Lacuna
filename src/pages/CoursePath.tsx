@@ -14,7 +14,7 @@ import {
   useCourseSummaries,
   usePracticeNodes,
 } from '../state/useCourseData';
-import { availableCards } from '../fsrs/eligibility';
+import { availableCards, dueCards } from '../fsrs/eligibility';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import { buildPath, pathPosition } from '../course/path';
 import type { PathNode, PracticePathNode } from '../course/path';
@@ -135,9 +135,7 @@ export function CoursePath() {
 
   // Live due-card count and mean review time, feeding shouldInsertPractice (addendum 2 §H).
   const now = Date.now();
-  const dueCardCount = availableCards(courseCards, now).filter(
-    (c) => c.due !== null && c.due !== undefined && c.due <= now,
-  ).length;
+  const dueCardCount = dueCards(availableCards(courseCards, now), now).length;
   const deckSeconds = new Map<string, number>();
   for (const p of perf) {
     if (p.totalCorrectReviews > 0 && p.runningMeanResponseTime > 0) {
