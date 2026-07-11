@@ -21,6 +21,7 @@ import {
   decrementCooldowns,
 } from '../fsrs/cooldown';
 import type { CooldownMap } from '../fsrs/cooldown';
+import { dueCards } from '../fsrs/eligibility';
 import { progressHeading } from '../fsrs/objective';
 import {
   makeSessionContext,
@@ -446,9 +447,21 @@ export function LearnMode() {
             merged.push(c);
           }
         }
-        // Phase 6 default: a lesson session studies only its new (unseen) cards.
-        // Teacher-configured filters (e.g. review-only or mixed) are deferred.
-        cards = merged.filter((c) => c.state === 0);
+        // Teacher-configured filter selects which of the lesson's cards a session
+        // serves: 'new' (default) is unseen cards only, 'due' is cards the FSRS
+        // schedule says are due, 'mixed' is both.
+        switch (lesson.sessionFilter) {
+          case 'due':
+            cards = dueCards(merged);
+            break;
+          case 'mixed': {
+            const due = new Set(dueCards(merged).map((c) => c.id));
+            cards = merged.filter((c) => c.state === 0 || due.has(c.id));
+            break;
+          }
+          default:
+            cards = merged.filter((c) => c.state === 0);
+        }
         units = [course];
         sessionUnits = [
           { config: course, scope: { kind: 'lesson', courseId: course.id, lessonId, linkedCardIds } },

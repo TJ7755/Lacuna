@@ -184,6 +184,7 @@ interface ShareLesson {
   rd?: number; // releaseDate
   ed?: number; // examDate override
   tz?: string; // timeZone (paired with rd/ed)
+  sf?: 'due' | 'mixed'; // sessionFilter ('new' is the default, so omitted)
   notes: ShareNote[];
   cards: ShareCard[];
 }
@@ -679,6 +680,7 @@ export async function buildCourseSharePayload(courseId: string): Promise<SharePa
       ...(typeof lesson.releaseDate === 'number' ? { rd: lesson.releaseDate } : {}),
       ...(typeof lesson.examDate === 'number' ? { ed: lesson.examDate } : {}),
       ...(lesson.timeZone ? { tz: lesson.timeZone } : {}),
+      ...(lesson.sessionFilter && lesson.sessionFilter !== 'new' ? { sf: lesson.sessionFilter } : {}),
       notes: packNotes(notes),
       cards: packCards(cards),
     });
@@ -851,6 +853,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           ...(typeof shareLesson.rd === 'number' ? { releaseDate: shareLesson.rd } : {}),
           ...(typeof shareLesson.ed === 'number' ? { examDate: shareLesson.ed } : {}),
           ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
+          ...(shareLesson.sf ? { sessionFilter: shareLesson.sf } : {}),
         });
         lessonIds.push(lesson.id);
 

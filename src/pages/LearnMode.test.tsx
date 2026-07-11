@@ -192,6 +192,58 @@ describe('LearnMode course/lesson scope', () => {
     expect(screen.queryByText(/Reviewed Q/)).not.toBeInTheDocument();
   });
 
+  it("studies only due cards when the lesson's session filter is 'due'", async () => {
+    const course = await createCourse('History');
+    const lesson = await createLesson(course.id, 'Empires', { sessionFilter: 'due' });
+    const dueCard = await createLessonCard(course.id, lesson.id, 'front_back', 'Due Q', 'A');
+    await db.cards.update(dueCard.id, { state: 1, due: Date.now() - 1000 });
+    const notYetDueCard = await createLessonCard(course.id, lesson.id, 'front_back', 'Not Due Q', 'A');
+    await db.cards.update(notYetDueCard.id, { state: 1, due: Date.now() + 1000 * 60 * 60 * 24 });
+    await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
+
+    render(
+      <ThemeProvider>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+          <Routes>
+            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText(/Due Q/)).toBeInTheDocument();
+    expect(screen.queryByText(/Not Due Q/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/New Q/)).not.toBeInTheDocument();
+  });
+
+  it("studies both new and due cards when the lesson's session filter is 'mixed'", async () => {
+    const course = await createCourse('Geography');
+    const lesson = await createLesson(course.id, 'Rivers', { sessionFilter: 'mixed' });
+    const dueCard = await createLessonCard(course.id, lesson.id, 'front_back', 'Due Q', 'A');
+    await db.cards.update(dueCard.id, { state: 1, due: Date.now() - 1000 });
+    const notYetDueCard = await createLessonCard(course.id, lesson.id, 'front_back', 'Not Due Q', 'A');
+    await db.cards.update(notYetDueCard.id, { state: 1, due: Date.now() + 1000 * 60 * 60 * 24 });
+    await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
+
+    render(
+      <ThemeProvider>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+          <Routes>
+            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    // The session serves the due and new cards but never the not-yet-due one.
+    await screen.findByText(/(Due Q|New Q)/);
+    expect(screen.queryByText(/Not Due Q/)).not.toBeInTheDocument();
+  });
+
   it('sweeps every taught-but-unratcheted lesson pair from one course-scoped completion', async () => {
     const course = await createCourse('Chemistry II', { unlockMode: 'semi-linear' });
     const lesson1 = await createLesson(course.id, 'A');

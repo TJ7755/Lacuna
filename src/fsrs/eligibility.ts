@@ -25,6 +25,16 @@ export function availableCards(cards: Card[], now: number = Date.now()): Card[] 
   return cards.filter((c) => isAvailable(c, now));
 }
 
+/** Whether a card is due for review at `now` (has a due date that has passed). */
+export function isDue(card: Card, now: number = Date.now()): boolean {
+  return card.due !== null && card.due !== undefined && card.due <= now;
+}
+
+/** All available cards that are due for review at `now`. */
+export function dueCards(cards: Card[], now: number = Date.now()): Card[] {
+  return availableCards(cards, now).filter((c) => isDue(c, now));
+}
+
 /** How many brand-new cards a card-set has already introduced in the last 24 hours.
  *  Uses a rolling window so a late-night session that crosses midnight does not
  *  double-spend the daily new-card budget.

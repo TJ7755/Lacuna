@@ -292,6 +292,13 @@ export interface Lesson {
    * counted in core progress, and excluded from the study pool until opted into.
    */
   isExtension: boolean;
+  /**
+   * Which cards a lesson session serves. Undefined (or 'new') preserves the
+   * original behaviour: new (unseen) cards only. 'due' studies cards the FSRS
+   * schedule has come round to; 'mixed' studies both. Un-indexed — a teacher
+   * preference, not something queried on.
+   */
+  sessionFilter?: 'new' | 'due' | 'mixed';
 }
 
 /** A rich Markdown content block within a Lesson. */
