@@ -2,9 +2,8 @@
 //
 // Checkpoints are informational assessment events: they never gate progression
 // (addendum G). Presentational only — shows the checkpoint name and its date.
-// It carries the same hover spring as the interactive lesson/practice nodes
-// (see LessonNode/PracticeNode) so the path reads as uniformly alive even
-// where a node has nothing to click.
+// It has no hover/tap affordance (unlike LessonNode/PracticeNode) since it
+// carries no click handler; only its entrance animation is shared with them.
 //
 // British English throughout.
 
@@ -26,8 +25,7 @@ export function CheckpointNode({ examDate }: CheckpointNodeProps) {
     <div className="flex flex-col items-center gap-2">
       {/* A square rotated 45deg reads as a diamond, distinct from the round lesson nodes. */}
       <motion.div
-        whileHover={{ scale: 1.05 }}
-        transition={{ type: 'spring', stiffness: 600, damping: 28 * (m || 1) }}
+        transition={m === 0 ? { duration: 0 } : { type: 'spring', stiffness: 600, damping: 28 * m }}
         className="flex h-12 w-12 rotate-45 items-center justify-center rounded-md border-2 border-accent/60 bg-accent-soft text-accent-ink"
         role="img"
         aria-label={`Checkpoint: ${examDate.name}`}

@@ -5,7 +5,7 @@
 //
 // British English throughout.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import type { Lesson } from '../../db/types';
 import type { LessonStatus } from '../../course/path';
@@ -48,11 +48,19 @@ export function LessonNode({ lesson, status, onClick, current, lockHint }: Lesso
   // completing while the page is mounted animates into its new state rather
   // than snapping. Suppressed on the very first render, which the path-wide
   // stagger in CoursePath already animates in.
-  const mountedRef = useRef(false);
+  //
+  // `settleKey` is state, not a plain derived value, so it only ever changes
+  // in response to a genuine status transition (detected against `prevStatus`
+  // in the effect below) — an unrelated re-render leaves it untouched and so
+  // never remounts the node or replays the pop.
+  const prevStatusRef = useRef(status);
+  const [settleKey, setSettleKey] = useState<LessonStatus | 'initial'>('initial');
   useEffect(() => {
-    mountedRef.current = true;
-  }, []);
-  const settleKey = mountedRef.current ? status : 'initial';
+    if (prevStatusRef.current !== status) {
+      prevStatusRef.current = status;
+      setSettleKey(status);
+    }
+  }, [status]);
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -64,11 +72,11 @@ export function LessonNode({ lesson, status, onClick, current, lockHint }: Lesso
         aria-disabled={locked || undefined}
         aria-label={lesson.name}
         title={locked ? lockHint : undefined}
-        initial={mountedRef.current ? { scale: 0.82, opacity: 0.5 } : false}
+        initial={settleKey !== 'initial' ? { scale: 0.82, opacity: 0.5 } : false}
         animate={{ scale: 1, opacity: 1 }}
         whileTap={interactive ? { scale: 0.94 } : undefined}
         whileHover={interactive ? { scale: 1.05 } : undefined}
-        transition={{ type: 'spring', stiffness: 600, damping: 28 * (m || 1) }}
+        transition={m === 0 ? { duration: 0 } : { type: 'spring', stiffness: 600, damping: 28 * m }}
         className={cn(
           'relative flex h-14 w-14 items-center justify-center rounded-full border-2',
           'transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2',

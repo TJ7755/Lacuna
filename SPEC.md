@@ -943,10 +943,11 @@ background, `::selection` paints cleanly across the cloze mark.
   (recent, ready to study, mastery, exam date, name, or created; §4.3).
 - **Course path** (`/course/:courseId`) is the primary navigation surface within a course:
   an ordered sequence of lesson nodes, checkpoints and practice nodes (§4.3, §14).
-- **Lesson view** (`/course/:courseId/lesson/:lessonId`) holds a lesson's notes and cards in
-  two tabs; a "Study this lesson" entry point starts a lesson-scoped session.
+- **Lesson view** (`/course/:courseId/lesson/:lessonId`) is study-first: a prominent
+  "Study this lesson" call-to-action starts a lesson-scoped session, with the lesson's
+  notes and cards stacked in sections below it.
 - **Question bank** (`/course/:courseId/bank`) lists every card in a course in one flat list
-  regardless of lesson, sharing `CardList` with the lesson view's card tab.
+  regardless of lesson, sharing `CardList` with the lesson view's card section.
 - **Card list** (`CardList`) supports per-card edit, suspend/flag, and **long-press to
   bulk-select** (touch mode); a tag-filter row scopes both the list and the study session.
   In multi-select mode the bulk toolbar offers **delete** (with an Undo toast that restores

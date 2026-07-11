@@ -17,11 +17,11 @@ import {
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import { progressDescription } from '../fsrs/objective';
-import { MS_PER_DAY } from '../fsrs/params';
 import {
   buildPath,
   pathPosition,
   nearestExamDate,
+  examIsUrgent,
   lessonEffectiveReleaseDates,
 } from '../course/path';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
@@ -46,9 +46,6 @@ import {
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { formatDate } from '../utils/datetime';
 import type { Card, Course, PracticeNode } from '../db/types';
-
-/** An exam within this many days is flagged as urgent (pulsing header marker). */
-const EXAM_URGENT_DAYS = 3;
 
 /**
  * Course-wide mean seconds per review, re-scoped from the existing per-deck
@@ -206,7 +203,7 @@ export function CoursePath() {
   // Nearest upcoming exam date: consider course.examDate and all explicit exam dates;
   // show the soonest one that is still in the future.
   const nearestExam = nearestExamDate(course, examDates, now);
-  const examUrgent = nearestExam > now && nearestExam - now <= EXAM_URGENT_DAYS * MS_PER_DAY;
+  const examUrgent = examIsUrgent(nearestExam, now);
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8 md:px-10">

@@ -542,3 +542,15 @@ export function nearestExamDate(
   );
   return futureDates.length > 0 ? Math.min(...futureDates) : course.examDate;
 }
+
+/** An exam within this many days is flagged as urgent (pulsing header marker). */
+export const EXAM_URGENT_DAYS = 3;
+
+/**
+ * Whether `nearestExam` (as returned by `nearestExamDate`) is both still
+ * upcoming and within `EXAM_URGENT_DAYS` of `now`. Shared by CoursePath and
+ * LessonView so both headers agree on when to flag urgency.
+ */
+export function examIsUrgent(nearestExam: number, now: number = Date.now()): boolean {
+  return nearestExam > now && nearestExam - now <= EXAM_URGENT_DAYS * MS_PER_DAY;
+}

@@ -42,8 +42,8 @@ export function PathLine({
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
       transition={{
-        duration: 0.35 * (m || 1),
-        delay: (revealDelay / 1000) * (m || 1),
+        duration: 0.35 * m,
+        delay: (revealDelay / 1000) * m,
         ease: [0.22, 1, 0.36, 1],
       }}
       style={{ transformOrigin: vertical ? 'top' : 'left' }}

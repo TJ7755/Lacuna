@@ -35,7 +35,7 @@ export function PracticeNode({ node, onClick, onEdit }: PracticeNodeProps) {
         aria-label={`Practice: ${name}`}
         whileTap={interactive ? { scale: 0.94 } : undefined}
         whileHover={interactive ? { scale: 1.05 } : undefined}
-        transition={{ type: 'spring', stiffness: 600, damping: 28 * (m || 1) }}
+        transition={m === 0 ? { duration: 0 } : { type: 'spring', stiffness: 600, damping: 28 * m }}
         className="flex h-12 w-12 rotate-45 items-center justify-center rounded-md border-2 border-dashed border-accent/50 bg-surface-raised text-accent transition-colors duration-150 hover:border-accent hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:cursor-default"
       >
         <span className="-rotate-45">

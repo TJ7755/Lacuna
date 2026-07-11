@@ -24,16 +24,12 @@ import { CourseHeader } from '../components/course/CourseHeader';
 import { CourseHeaderStat } from '../components/course/CourseHeaderStat';
 import { MasteryRing } from '../components/course/MasteryRing';
 import { LessonStudyCTA } from '../components/course/LessonStudyCTA';
-import { nearestExamDate } from '../course/path';
-import { availableCards, dueCards } from '../fsrs/eligibility';
+import { nearestExamDate, examIsUrgent } from '../course/path';
+import { dueCards } from '../fsrs/eligibility';
 import { progressValue, progressDescription } from '../fsrs/objective';
-import { MS_PER_DAY } from '../fsrs/params';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { formatDate } from '../utils/datetime';
 import type { Lesson } from '../db/types';
-
-/** An exam within this many days is flagged as urgent (pulsing header marker). */
-const EXAM_URGENT_DAYS = 3;
 
 interface LessonViewProps {
   /**
@@ -123,10 +119,9 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
   // fsrs/eligibility.ts, fsrs/objective.ts).
   const now = Date.now();
   const nearestExam = nearestExamDate(course, examDates, now);
-  const examUrgent = nearestExam > now && nearestExam - now <= EXAM_URGENT_DAYS * MS_PER_DAY;
-  const lessonAvailable = availableCards(lessonCards, now);
-  const lessonMastery = progressValue(lessonAvailable, course, now);
-  const lessonDueCount = dueCards(lessonAvailable, now).length;
+  const examUrgent = examIsUrgent(nearestExam, now);
+  const lessonMastery = progressValue(lessonCards, course, now);
+  const lessonDueCount = dueCards(lessonCards, now).length;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">

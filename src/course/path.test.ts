@@ -7,6 +7,9 @@ import {
   pathPosition,
   practiceGateAfterLesson,
   KNOWN_NODE_TYPES,
+  nearestExamDate,
+  examIsUrgent,
+  EXAM_URGENT_DAYS,
   type PathNode,
   type PracticePathNode,
 } from './path';
@@ -633,5 +636,54 @@ describe('KNOWN_NODE_TYPES', () => {
     for (const node of nodes) {
       expect(KNOWN_NODE_TYPES).toContain(node.nodeType);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// nearestExamDate / examIsUrgent
+// ---------------------------------------------------------------------------
+
+describe('nearestExamDate', () => {
+  it('returns course.examDate when there are no checkpoints', () => {
+    const course = makeCourse({ id: 'c1', examDate: 10 * MS_PER_DAY });
+    expect(nearestExamDate(course, [], 0)).toBe(10 * MS_PER_DAY);
+  });
+
+  it('returns the soonest future date across course.examDate and checkpoints', () => {
+    const course = makeCourse({ id: 'c1', examDate: 20 * MS_PER_DAY });
+    const checkpoints = [
+      makeExamDate({ id: 'cp1', courseId: 'c1', examDate: 5 * MS_PER_DAY }),
+      makeExamDate({ id: 'cp2', courseId: 'c1', examDate: 12 * MS_PER_DAY }),
+    ];
+    expect(nearestExamDate(course, checkpoints, 0)).toBe(5 * MS_PER_DAY);
+  });
+
+  it('ignores dates that have already passed', () => {
+    const course = makeCourse({ id: 'c1', examDate: 20 * MS_PER_DAY });
+    const checkpoints = [makeExamDate({ id: 'cp1', courseId: 'c1', examDate: 5 * MS_PER_DAY })];
+    expect(nearestExamDate(course, checkpoints, 8 * MS_PER_DAY)).toBe(20 * MS_PER_DAY);
+  });
+
+  it('falls back to course.examDate even if it has already passed', () => {
+    const course = makeCourse({ id: 'c1', examDate: 5 * MS_PER_DAY });
+    expect(nearestExamDate(course, [], 8 * MS_PER_DAY)).toBe(5 * MS_PER_DAY);
+  });
+});
+
+describe('examIsUrgent', () => {
+  it('is false when the exam is in the past', () => {
+    expect(examIsUrgent(5 * MS_PER_DAY, 8 * MS_PER_DAY)).toBe(false);
+  });
+
+  it('is false when the exam is further away than EXAM_URGENT_DAYS', () => {
+    const now = 0;
+    const nearestExam = now + (EXAM_URGENT_DAYS + 1) * MS_PER_DAY;
+    expect(examIsUrgent(nearestExam, now)).toBe(false);
+  });
+
+  it('is true when the exam is within EXAM_URGENT_DAYS and still upcoming', () => {
+    const now = 0;
+    const nearestExam = now + (EXAM_URGENT_DAYS - 1) * MS_PER_DAY;
+    expect(examIsUrgent(nearestExam, now)).toBe(true);
   });
 });
