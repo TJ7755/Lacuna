@@ -366,7 +366,45 @@
     border-bottom-left-radius: 2px;
   }
 
+  /* ——— Memory Field (course/lesson hero visualisation) ——— */
+
+  /* Marks settle into the field on load: a slow drift in from the left, like
+     ink resolving on the map. Delay is set inline per mark for the stagger. */
+  .field-mark {
+    animation: field-mark-in 900ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  /* `from`-only keyframes: the element settles into its natural state, so the
+     inline `scale` used for hover/focus emphasis still applies afterwards.
+     Vertical centring is the `translate` property (set inline), not transform,
+     so it holds throughout the entrance. */
+  @keyframes field-mark-in {
+    from { opacity: 0; transform: translateX(-14px) scale(0.4); }
+  }
+
+  /* Due cards sit on the now line and breathe — memory actively fading. */
+  .field-mark-due {
+    animation: field-mark-in 900ms cubic-bezier(0.22, 1, 0.36, 1) backwards,
+      field-due-breathe 2.6s ease-in-out infinite;
+  }
+  @keyframes field-due-breathe {
+    0%, 100% { box-shadow: 0 0 6px 1px hsl(var(--accent) / 0.55); }
+    50% { box-shadow: 0 0 12px 4px hsl(var(--accent) / 0.2); }
+  }
+
+  /* A reviewed mark glides right as its interval extends (position is inline;
+     this just makes the change of `left` read as motion, not a jump). */
+  .field-mark,
+  .field-mark-due {
+    transition: left 800ms cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 400ms ease, box-shadow 400ms ease, scale 150ms ease;
+  }
+
   @media (prefers-reduced-motion: reduce) {
+    .field-mark,
+    .field-mark-due {
+      animation: none;
+      transition: none;
+    }
     .hero-rise {
       animation: none;
       opacity: 1;

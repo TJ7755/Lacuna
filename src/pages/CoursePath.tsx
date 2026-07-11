@@ -16,7 +16,8 @@ import {
 } from '../state/useCourseData';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { DEFAULT_REVIEW_SECONDS, buildDeckSecondsMap } from '../fsrs/stats';
-import { progressDescription } from '../fsrs/objective';
+import { decayOf } from '../fsrs/fsrs';
+import { MS_PER_DAY } from '../fsrs/params';
 import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
 import { courseHeaderStats } from '../course/headerStats';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
@@ -28,14 +29,12 @@ import {
   lockHintFor,
 } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
-import { CourseHeaderStat } from '../components/course/CourseHeaderStat';
-import { MasteryRing } from '../components/course/MasteryRing';
+import { MemoryField } from '../components/course/MemoryField';
+import { fieldStandfirst } from '../components/course/memoryField';
 import { LessonView } from './LessonView';
 import {
   ChartIcon,
   ChevronLeftIcon,
-  ClockIcon,
-  PathIcon,
   SettingsIcon,
 } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -100,16 +99,64 @@ export function CoursePath() {
     [deckIds.join(',')],
   );
 
+  const dataLoaded =
+    course !== undefined &&
+    lessons !== undefined &&
+    examDates !== undefined &&
+    courseCards !== undefined &&
+    summary !== undefined &&
+    practiceNodes !== undefined &&
+    perf !== undefined;
+
+  // Build lessonCardsById: group course cards by primaryLessonId.
+  // Hooks below must run unconditionally (Rules of Hooks), so they tolerate
+  // not-yet-loaded data via fallbacks and are only consumed once `dataLoaded`.
+  const lessonCardsById = useMemo(() => {
+    const map = new Map<string, Card[]>();
+    for (const card of courseCards ?? []) {
+      if (card.primaryLessonId) {
+        const bucket = map.get(card.primaryLessonId) ?? [];
+        bucket.push(card);
+        map.set(card.primaryLessonId, bucket);
+      }
+    }
+    return map;
+  }, [courseCards]);
+
+  // Live due-card count and mean review time, feeding shouldInsertPractice (addendum 2 §H).
+  const now = Date.now();
+  const { dueCardCount, meanReviewSeconds } = useMemo(() => {
+    const dueCardCount = dueCards(availableCards(courseCards ?? [], now), now).length;
+    const deckSeconds = buildDeckSecondsMap(perf ?? []);
+    const meanReviewSeconds = courseMeanReviewSeconds(courseCards ?? [], deckSeconds);
+    return { dueCardCount, meanReviewSeconds };
+    // `now` is deliberately excluded: recomputation is scoped to data changes
+    // (cards/perf), not wall-clock drift, and live-query updates re-render anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseCards, perf]);
+
+  const nodes = useMemo(
+    () =>
+      course && lessons && examDates && practiceNodes
+        ? buildPath(
+            course,
+            lessons,
+            examDates,
+            lessonCardsById,
+            practiceNodes,
+            dueCardCount,
+            meanReviewSeconds,
+            now,
+          )
+        : [],
+    // `now` is deliberately excluded: recomputation is scoped to data changes,
+    // not wall-clock drift, and live-query updates re-render anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [course, lessons, examDates, lessonCardsById, practiceNodes, dueCardCount, meanReviewSeconds],
+  );
+
   // Loading state — a skeleton while course/lesson data resolves.
-  if (
-    course === undefined ||
-    lessons === undefined ||
-    examDates === undefined ||
-    courseCards === undefined ||
-    summary === undefined ||
-    practiceNodes === undefined ||
-    perf === undefined
-  ) {
+  if (!dataLoaded) {
     return <CoursePathSkeleton />;
   }
 
@@ -138,49 +185,6 @@ export function CoursePath() {
   if (lessons.length === 1) {
     return <LessonView courseId={courseId} lessonId={lessons[0].id} />;
   }
-
-  // Build lessonCardsById: group course cards by primaryLessonId.
-  const lessonCardsById = useMemo(() => {
-    const map = new Map<string, Card[]>();
-    for (const card of courseCards) {
-      if (card.primaryLessonId) {
-        const bucket = map.get(card.primaryLessonId) ?? [];
-        bucket.push(card);
-        map.set(card.primaryLessonId, bucket);
-      }
-    }
-    return map;
-  }, [courseCards]);
-
-  // Live due-card count and mean review time, feeding shouldInsertPractice (addendum 2 §H).
-  const now = Date.now();
-  const { dueCardCount, meanReviewSeconds } = useMemo(() => {
-    const dueCardCount = dueCards(availableCards(courseCards, now), now).length;
-    const deckSeconds = buildDeckSecondsMap(perf);
-    const meanReviewSeconds = courseMeanReviewSeconds(courseCards, deckSeconds);
-    return { dueCardCount, meanReviewSeconds };
-    // `now` is deliberately excluded: recomputation is scoped to data changes
-    // (cards/perf), not wall-clock drift, and live-query updates re-render anyway.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseCards, perf]);
-
-  const nodes = useMemo(
-    () =>
-      buildPath(
-        course,
-        lessons,
-        examDates,
-        lessonCardsById,
-        practiceNodes,
-        dueCardCount,
-        meanReviewSeconds,
-        now,
-      ),
-    // `now` is deliberately excluded: recomputation is scoped to data changes,
-    // not wall-clock drift, and live-query updates re-render anyway.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [course, lessons, examDates, lessonCardsById, practiceNodes, dueCardCount, meanReviewSeconds],
-  );
 
   // Precomputed for the manual practice-node insertion affordances (see InsertGap/
   // InsertButton below): which lines on the path may host a "+", and the position
@@ -213,8 +217,27 @@ export function CoursePath() {
   );
   const masteryPct = Math.round(mastery * 100);
 
+  // Memory Field bands: one per lesson (path order), plus an "Unassigned" band
+  // for question-bank cards that belong to the course but to no lesson.
+  const orderedLessons = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
+  const unassignedCards = courseCards.filter((c) => !c.primaryLessonId);
+  const fieldBands = [
+    ...orderedLessons.map((lesson) => ({
+      id: lesson.id,
+      label: lesson.name,
+      cards: lessonCardsById.get(lesson.id) ?? [],
+      onOpen: () => navigate(`/course/${courseId}/lesson/${lesson.id}`),
+    })),
+    ...(unassignedCards.length > 0
+      ? [{ id: 'unassigned', label: 'Unassigned', cards: unassignedCards }]
+      : []),
+  ];
+  const unseenCount = courseCards.filter(
+    (c) => c.lastReviewed === null || c.state === 0,
+  ).length;
+
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8 md:px-10">
+    <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
       {/* Breadcrumb */}
       <div className="mb-6 flex items-center justify-between gap-4">
         <Link
@@ -250,45 +273,54 @@ export function CoursePath() {
         </div>
       </div>
 
-      {/* Header */}
+      {/* Header — title plus a one-sentence editorial standfirst. The stats it
+          summarises (mastery, due count, pacing) are all visible in the Memory
+          Field below, which is the page's instrument. */}
       <CourseHeader
-        className="mb-10"
+        className="mb-4"
         eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
         examUrgent={examUrgent}
         title={course.name}
       >
-        {/*
-         * Curriculum position: how many lessons the student has reached. This is
-         * a pacing metric — SEPARATE from mastery, hence the distinct icon and
-         * one-line descriptor below.
-         */}
-        <CourseHeaderStat
-          icon={<PathIcon width={18} height={18} />}
-          label="Curriculum position"
-          value={`Lesson ${reached} of ${total}`}
-          description="How far you've worked through the course."
-        />
-        {/*
-         * Mastery: mean predicted FSRS retention across the card pool. A
-         * different metric from curriculum position — see the ring, not a bar,
-         * so it reads as its own instrument.
-         */}
-        <CourseHeaderStat
-          icon={<MasteryRing value={summary?.mastery ?? 0} />}
-          label="Mastery"
-          value={`${masteryPct}%`}
-          description={progressDescription(course)}
-        />
-        {/* Due today: cards a session would serve right now, course-wide. */}
-        <CourseHeaderStat
-          icon={<ClockIcon width={18} height={18} />}
-          label="Due today"
-          value={`${dueCardCount} card${dueCardCount === 1 ? '' : 's'}`}
-          description="Ready for review right now."
-        />
+        <p className="max-w-prose text-sm text-ink-soft">
+          {fieldStandfirst({
+            dueCount: dueCardCount,
+            masteryPct,
+            daysToExam: Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0),
+            totalCards: courseCards.length,
+            unseenCount,
+          })}{' '}
+          Lesson {reached} of {total} reached.
+        </p>
       </CourseHeader>
 
-      {/* Course path */}
+      {/* The Memory Field — every card in the course as a mark: position is
+          when it next surfaces (now → exam), glow is how well it is currently
+          remembered. One band per lesson. */}
+      {courseCards.length > 0 && (
+        <MemoryField
+          className="mb-12"
+          bands={fieldBands}
+          decay={decayOf(course.fsrsParameters)}
+          examDate={nearestExam}
+          timeZone={course.timeZone}
+          now={now}
+          dueCount={dueCardCount}
+          onStudy={() => navigate(`/course/${courseId}/learn`)}
+          onOpenCard={(card) => {
+            if (card.primaryLessonId) {
+              navigate(
+                `/course/${courseId}/lesson/${card.primaryLessonId}/cards/${card.id}/edit`,
+              );
+            }
+          }}
+        />
+      )}
+
+      {/* Curriculum — the ordered path with practice nodes, unlock rules and
+          insertion points. Demoted below the field: it is structure and
+          authoring, not the day's work. */}
+      <h2 className="mb-6 font-display text-2xl">Curriculum</h2>
       {nodes.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-line-strong py-16 text-center">
           <p className="text-sm text-ink-soft">This course has no lessons yet.</p>

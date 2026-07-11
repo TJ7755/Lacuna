@@ -18,14 +18,15 @@ import {
 import { useDeck } from '../state/useData';
 import { LessonNotesSection } from '../components/notes/LessonNotesSection';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
-import { ChevronLeftIcon, ClockIcon } from '../components/ui/icons';
+import { ChevronLeftIcon } from '../components/ui/icons';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { CourseHeader } from '../components/course/CourseHeader';
-import { CourseHeaderStat } from '../components/course/CourseHeaderStat';
-import { MasteryRing } from '../components/course/MasteryRing';
-import { LessonStudyCTA } from '../components/course/LessonStudyCTA';
+import { MemoryField } from '../components/course/MemoryField';
+import { fieldStandfirst } from '../components/course/memoryField';
 import { courseHeaderStats } from '../course/headerStats';
-import { progressValue, progressDescription } from '../fsrs/objective';
+import { progressValue } from '../fsrs/objective';
+import { decayOf } from '../fsrs/fsrs';
+import { MS_PER_DAY } from '../fsrs/params';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { formatDate } from '../utils/datetime';
 import type { Lesson } from '../db/types';
@@ -146,36 +147,42 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
         )}
       </div>
 
-      {/* Header + Study CTA — study is this page's primary action, so the CTA
-          sits directly beside the cockpit header rather than in the cards
-          section below. */}
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-stretch">
-        <CourseHeader
-          className="flex-1"
-          eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
-          examUrgent={examUrgent}
-          title={lesson.name}
-        >
-          <CourseHeaderStat
-            icon={<MasteryRing value={lessonMastery} />}
-            label="Mastery"
-            value={`${Math.round(lessonMastery * 100)}%`}
-            description={progressDescription(course)}
-          />
-          <CourseHeaderStat
-            icon={<ClockIcon width={18} height={18} />}
-            label="Due today"
-            value={`${lessonDueCount} card${lessonDueCount === 1 ? '' : 's'}`}
-            description="Ready for review right now."
-          />
-        </CourseHeader>
-        <LessonStudyCTA
-          className="md:w-56"
-          dueCount={lessonDueCount}
-          totalCards={lessonCards.length}
-          onClick={() => navigate(`/lesson/${lessonId}/learn`)}
-        />
-      </div>
+      {/* Header — title plus a one-sentence editorial standfirst; the Memory
+          Field below carries the numbers visually, so there is no stat row. */}
+      <CourseHeader
+        className="mb-4"
+        eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
+        examUrgent={examUrgent}
+        title={lesson.name}
+      >
+        <p className="max-w-prose text-sm text-ink-soft">
+          {fieldStandfirst({
+            dueCount: lessonDueCount,
+            masteryPct: Math.round(lessonMastery * 100),
+            daysToExam: Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0),
+            totalCards: lessonCards.length,
+            unseenCount: lessonCards.filter((c) => c.lastReviewed === null || c.state === 0)
+              .length,
+          })}
+        </p>
+      </CourseHeader>
+
+      {/* The Memory Field — study is this page's primary action, and the field
+          is both the instrument (every card's fade and next surfacing) and the
+          place the Study button lives. */}
+      <MemoryField
+        className="mb-8"
+        bands={[{ id: lesson.id, cards: lessonCards }]}
+        decay={decayOf(course.fsrsParameters)}
+        examDate={nearestExam}
+        timeZone={course.timeZone}
+        now={now}
+        dueCount={lessonDueCount}
+        onStudy={() => navigate(`/lesson/${lessonId}/learn`)}
+        onOpenCard={(card) =>
+          navigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
+        }
+      />
       {lesson.description && (
         <p className="mb-8 text-sm text-ink-soft">{lesson.description}</p>
       )}

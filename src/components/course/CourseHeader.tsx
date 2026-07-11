@@ -1,6 +1,6 @@
-// Shared "course cockpit" header: exam eyebrow, serif title, and a row of
-// stat blocks (mastery, curriculum position, due today, exam countdown).
-// Used by CoursePath (full course) and, in a leaner form, LessonView.
+// Shared "course cockpit" header: exam eyebrow, serif title, and a standfirst
+// line (see memoryField.ts's fieldStandfirst). Used by CoursePath (full
+// course) and, in a leaner form, LessonView.
 
 import type { ReactNode } from 'react';
 import { cn } from '../ui/cn';
@@ -11,16 +11,15 @@ interface CourseHeaderProps {
   /** Pulses a small accent dot beside the eyebrow — reserve for an imminent exam. */
   examUrgent?: boolean;
   title: string;
-  /** Stat blocks — typically a row of CourseHeaderStat. */
+  /** Content under the title — typically the standfirst paragraph. */
   children?: ReactNode;
   className?: string;
 }
 
 /**
- * Frame for a course/lesson header: eyebrow row, serif display title, and a
- * wrapping row of stat blocks. Callers supply the stats as children so the
- * same frame serves both the full CoursePath header and LessonView's leaner
- * adoption.
+ * Frame for a course/lesson header: eyebrow row, serif display title, and
+ * caller-supplied content beneath (the standfirst), so the same frame serves
+ * both the CoursePath header and LessonView's leaner adoption.
  */
 export function CourseHeader({
   eyebrow,
