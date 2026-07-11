@@ -21,12 +21,6 @@ import { shouldInsertPractice } from '../fsrs/practice';
 /** The set of node types this build knows how to render. */
 export const KNOWN_NODE_TYPES = ['lesson', 'checkpoint', 'practice-auto', 'practice-manual'] as const;
 
-/**
- * A string rather than a literal union so that future plugin node types do not
- * require a database schema migration to add.
- */
-export type PathNodeType = string;
-
 // ---------------------------------------------------------------------------
 // View-model types
 // ---------------------------------------------------------------------------

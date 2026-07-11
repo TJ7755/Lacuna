@@ -159,6 +159,8 @@ export function CoursePath() {
     const deckSeconds = buildDeckSecondsMap(perf);
     const meanReviewSeconds = courseMeanReviewSeconds(courseCards, deckSeconds);
     return { dueCardCount, meanReviewSeconds };
+    // `now` is deliberately excluded: recomputation is scoped to data changes
+    // (cards/perf), not wall-clock drift, and live-query updates re-render anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseCards, perf]);
 
@@ -174,6 +176,8 @@ export function CoursePath() {
         meanReviewSeconds,
         now,
       ),
+    // `now` is deliberately excluded: recomputation is scoped to data changes,
+    // not wall-clock drift, and live-query updates re-render anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [course, lessons, examDates, lessonCardsById, practiceNodes, dueCardCount, meanReviewSeconds],
   );
