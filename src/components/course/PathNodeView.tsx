@@ -19,6 +19,10 @@ interface PathNodeViewProps {
   onPracticeClick?: () => void;
   /** Only ever invoked for `practice-manual` nodes — see PracticeNode.tsx. */
   onPracticeEdit?: (node: PracticePathNode) => void;
+  /** True when this is the single next-up lesson on the path — see LessonNode's "you are here" halo. */
+  current?: boolean;
+  /** Shown as a tooltip on a locked lesson, explaining what unlocks it. */
+  lockHint?: string;
 }
 
 /** A neutral placeholder for node types this build does not recognise. */
@@ -44,6 +48,8 @@ export function PathNodeView({
   onLessonClick,
   onPracticeClick,
   onPracticeEdit,
+  current,
+  lockHint,
 }: PathNodeViewProps) {
   switch (node.nodeType) {
     case 'lesson':
@@ -51,6 +57,8 @@ export function PathNodeView({
         <LessonNode
           lesson={node.lesson}
           status={node.status}
+          current={current}
+          lockHint={lockHint}
           onClick={
             onLessonClick ? () => onLessonClick(node.lesson.id) : undefined
           }

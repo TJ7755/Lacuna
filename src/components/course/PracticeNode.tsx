@@ -8,8 +8,10 @@
 //
 // British English throughout.
 
+import { m as motion } from 'motion/react';
 import type { PracticePathNode } from '../../course/path';
 import { CardsIcon, EditIcon } from '../ui/icons';
+import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 
 interface PracticeNodeProps {
   node: PracticePathNode;
@@ -18,23 +20,28 @@ interface PracticeNodeProps {
 }
 
 export function PracticeNode({ node, onClick, onEdit }: PracticeNodeProps) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const name = node.practiceNode?.name ?? 'Practice';
   const interactive = onClick !== undefined;
 
   return (
     <div className="group relative flex flex-col items-center gap-2">
       {/* A square rotated 45deg reads as a diamond, distinct from the round lesson nodes. */}
-      <button
+      <motion.button
         type="button"
         onClick={onClick}
         disabled={!interactive}
         aria-label={`Practice: ${name}`}
+        whileTap={interactive ? { scale: 0.94 } : undefined}
+        whileHover={interactive ? { scale: 1.05 } : undefined}
+        transition={{ type: 'spring', stiffness: 600, damping: 28 * (m || 1) }}
         className="flex h-12 w-12 rotate-45 items-center justify-center rounded-md border-2 border-dashed border-accent/50 bg-surface-raised text-accent transition-colors duration-150 hover:border-accent hover:bg-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:cursor-default"
       >
         <span className="-rotate-45">
           <CardsIcon width={18} height={18} />
         </span>
-      </button>
+      </motion.button>
       {onEdit && (
         <button
           type="button"
@@ -43,7 +50,7 @@ export function PracticeNode({ node, onClick, onEdit }: PracticeNodeProps) {
             onEdit();
           }}
           aria-label={`Edit ${name}`}
-          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-line-strong bg-surface-raised text-ink-faint opacity-0 shadow-sm transition-opacity duration-150 hover:text-accent focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100"
+          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-line-strong bg-surface-raised text-ink-faint opacity-0 shadow-sm transition-opacity duration-150 hover:text-accent focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100 touch-visible"
         >
           <EditIcon width={11} height={11} />
         </button>

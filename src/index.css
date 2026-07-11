@@ -351,6 +351,18 @@
     box-shadow: 0 0 0.5px hsl(var(--accent) / 0.5), 1px 0 0 hsl(var(--accent) / 0.12);
   }
 
+  /* "You are here": a quiet breathing halo on the course path's next lesson.
+     Distinct from .exam-pulse (which scales an icon for urgency) — this stays
+     still and lets a soft ring expand outward, reading as a gentle beacon
+     rather than an alarm. */
+  .path-here-glow {
+    animation: path-here-glow 2.6s ease-in-out infinite;
+  }
+  @keyframes path-here-glow {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--accent) / 0.35); }
+    50% { box-shadow: 0 0 0 7px hsl(var(--accent) / 0); }
+  }
+
   /* Checkpoint card: a light dog-ear on the top-right corner. */
   .checkpoint-card {
     position: relative;
@@ -376,6 +388,9 @@
       animation: none;
     }
     .exam-pulse {
+      animation: none;
+    }
+    .path-here-glow {
       animation: none;
     }
     .reveal {

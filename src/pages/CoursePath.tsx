@@ -18,12 +18,20 @@ import { availableCards, dueCards } from '../fsrs/eligibility';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import { progressDescription } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
-import { buildPath, pathPosition, nearestExamDate } from '../course/path';
-import type { PathNode, PracticePathNode } from '../course/path';
-import { PathNodeView } from '../components/course/PathNodeView';
-import { PathLine } from '../components/course/PathLine';
+import {
+  buildPath,
+  pathPosition,
+  nearestExamDate,
+  lessonEffectiveReleaseDates,
+} from '../course/path';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { AddLessonControl } from '../components/course/AddLessonControl';
+import {
+  PathNodeWithLine,
+  InsertGap,
+  computeLineInserts,
+  lockHintFor,
+} from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { CourseHeaderStat } from '../components/course/CourseHeaderStat';
 import { MasteryRing } from '../components/course/MasteryRing';
@@ -33,7 +41,6 @@ import {
   ChevronLeftIcon,
   ClockIcon,
   PathIcon,
-  PlusIcon,
   SettingsIcon,
 } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -175,6 +182,14 @@ export function CoursePath() {
   // InsertButton below): which lines on the path may host a "+", and the position
   // value ("end of course") the trailing insertion point should seed a new node with.
   const lineInserts = computeLineInserts(nodes);
+  // Release-date map for the "locked" hint (see lockHintFor below) — only
+  // consulted under `linear` unlock mode.
+  const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
+  // The single next-up lesson gets the "you are here" halo (see LessonNode):
+  // the first lesson node on the path still in 'available' status.
+  const currentNodeId = nodes.find(
+    (n) => n.nodeType === 'lesson' && n.status === 'available',
+  )?.id;
   const lastLessonOrderIndex = lessons.reduce<number | undefined>(
     (max, l) => (max === undefined || l.orderIndex > max ? l.orderIndex : max),
     undefined,
@@ -285,8 +300,15 @@ export function CoursePath() {
             <PathNodeWithLine
               key={node.id}
               node={node}
+              index={i}
               isLast={i === nodes.length - 1}
               lineInsert={lineInserts[i]}
+              current={node.id === currentNodeId}
+              lockHint={
+                node.nodeType === 'lesson'
+                  ? lockHintFor(course, node.lesson.id, effectiveDates)
+                  : undefined
+              }
               onLessonClick={(lessonId) =>
                 navigate(`/course/${courseId}/lesson/${lessonId}`)
               }
@@ -320,110 +342,6 @@ export function CoursePath() {
           onCancel={() => setEditorState(null)}
         />
       )}
-    </div>
-  );
-}
-
-/** Whether the line/gap right after `nodes[i]` should offer a practice-node insertion point. */
-interface LineInsert {
-  insertable: boolean;
-  position?: number;
-}
-
-/**
- * Precomputes, for the line following each node, whether inserting a manual
- * practice node there is meaningful and which `position` it should carry.
- *
- * A gap is only ever meaningful at a lesson boundary (manual placement keys off
- * lesson `orderIndex`, see buildPath/practiceGateAfterLesson), so this only marks
- * the line immediately preceding the *next* lesson node as insertable — even when
- * several checkpoint/practice nodes sit between two lessons, only one insertion
- * point renders for that whole stretch.
- */
-function computeLineInserts(nodes: PathNode[]): LineInsert[] {
-  const result: LineInsert[] = [];
-  let lastLessonOrder: number | undefined;
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    if (node.nodeType === 'lesson') lastLessonOrder = node.lesson.orderIndex;
-    const next = nodes[i + 1];
-    result.push(
-      next && next.nodeType === 'lesson'
-        ? { insertable: true, position: lastLessonOrder }
-        : { insertable: false },
-    );
-  }
-  return result;
-}
-
-/**
- * Renders a single path node followed by its connecting line (if not the last node).
- * The connecting line is accent-tinted when the preceding node is a completed lesson,
- * indicating the student has already cleared that stretch of the path. When
- * `lineInsert.insertable`, the line also carries a hover-revealed "+" affordance for
- * inserting a manual practice node at that gap.
- */
-function PathNodeWithLine({
-  node,
-  isLast,
-  lineInsert,
-  onLessonClick,
-  onPracticeClick,
-  onPracticeEdit,
-  onInsertOnLine,
-}: {
-  node: PathNode;
-  isLast: boolean;
-  lineInsert: LineInsert;
-  onLessonClick: (lessonId: string) => void;
-  onPracticeClick: () => void;
-  onPracticeEdit: (node: PracticePathNode) => void;
-  onInsertOnLine: (position: number | undefined) => void;
-}) {
-  // A segment is completed when the node it trails is a completed lesson.
-  // Checkpoints and available/locked lessons leave the segment neutral.
-  const segmentCompleted =
-    !isLast && node.nodeType === 'lesson' && node.status === 'completed';
-
-  return (
-    <div className="flex flex-col items-center">
-      <PathNodeView
-        node={node}
-        onLessonClick={onLessonClick}
-        onPracticeClick={onPracticeClick}
-        onPracticeEdit={onPracticeEdit}
-      />
-      {!isLast && (
-        <div className="relative">
-          <PathLine completed={segmentCompleted} />
-          {lineInsert.insertable && (
-            <InsertButton onInsert={() => onInsertOnLine(lineInsert.position)} />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** A hover-revealed "+" for inserting a manual practice node at a specific path gap. */
-function InsertButton({ onInsert }: { onInsert: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onInsert}
-      aria-label="Insert practice node here"
-      className="absolute left-1/2 top-1/2 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-dashed border-line-strong bg-surface text-ink-faint opacity-0 transition-opacity duration-150 hover:opacity-100 hover:border-accent hover:text-accent focus-visible:opacity-100 focus-visible:outline-none"
-    >
-      <PlusIcon width={12} height={12} />
-    </button>
-  );
-}
-
-/** The start/end insertion points, where there is no existing connecting line to anchor to. */
-function InsertGap({ onInsert }: { onInsert: () => void }) {
-  return (
-    <div className="relative h-8 w-1">
-      <InsertButton onInsert={onInsert} />
     </div>
   );
 }
