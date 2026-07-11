@@ -22,7 +22,7 @@ import { ChevronLeftIcon } from '../components/ui/icons';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { MemoryField } from '../components/course/MemoryField';
-import { fieldStandfirst } from '../components/course/memoryField';
+import { fieldStandfirst } from '../components/course/memoryFieldMath';
 import { courseHeaderStats } from '../course/headerStats';
 import { progressValue } from '../fsrs/objective';
 import { decayOf } from '../fsrs/fsrs';

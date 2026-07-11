@@ -30,7 +30,7 @@ import {
 } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { MemoryField } from '../components/course/MemoryField';
-import { fieldStandfirst } from '../components/course/memoryField';
+import { fieldStandfirst } from '../components/course/memoryFieldMath';
 import { LessonView } from './LessonView';
 import {
   ChartIcon,

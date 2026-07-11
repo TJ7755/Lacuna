@@ -10,7 +10,7 @@
 //   - pulsing marks on the now line = due for review right now.
 // Hovering or focusing a mark shows the card's front and its personal
 // forgetting curve projected to exam day. All layout maths lives in
-// memoryField.ts; this file is rendering and interaction only.
+// memoryFieldMath.ts; this file is rendering and interaction only.
 // British English throughout.
 
 import { useState } from 'react';
@@ -27,7 +27,7 @@ import {
   curvePoints,
   plainFront,
   type FieldMark,
-} from './memoryField';
+} from './memoryFieldMath';
 import type { Card } from '../../db/types';
 
 export interface FieldBand {
@@ -55,7 +55,8 @@ interface MemoryFieldProps {
 
 /** Band height grows gently with card count so dense lessons get more air. */
 function bandHeight(cardCount: number): number {
-  return Math.min(56 + Math.ceil(Math.sqrt(Math.max(cardCount, 1))) * 10, 116);
+  if (cardCount === 0) return 36; // just room for the "No cards yet" line
+  return Math.min(56 + Math.ceil(Math.sqrt(cardCount)) * 10, 116);
 }
 
 const CURVE_W = 168;
@@ -92,38 +93,48 @@ export function MemoryField({
     >
       <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
 
-      {/* Fog gutter — unmapped territory left of the now line. */}
-      <div
-        className="absolute inset-y-0 left-0 border-r border-dashed border-line-strong/60 bg-ink/[0.025]"
-        style={{ width: `${NOW_X}%` }}
-        aria-hidden="true"
-      />
-      {/* Exam line. */}
-      <div
-        className="absolute inset-y-0 w-px bg-line-strong"
-        style={{ left: `${EXAM_X}%` }}
-        aria-hidden="true"
-      />
-      {/* Now line — where studying happens. */}
-      <div
-        className="absolute inset-y-0 w-px bg-accent/70"
-        style={{ left: `${NOW_X}%` }}
-        aria-hidden="true"
-      />
-
       <div className="relative px-5 pb-5 pt-4">
-        {/* Axis labels. */}
-        <div className="relative mb-3 h-4 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
-          <span className="absolute -translate-x-1/2 text-accent" style={{ left: `${NOW_X}%` }}>
-            Now
-          </span>
-          <span className="absolute -translate-x-1/2" style={{ left: `${EXAM_X}%` }}>
-            Exam · {formatDate(examDate, timeZone)}
-          </span>
-        </div>
+        {/* Chart area — the fog gutter and the now/exam lines span exactly the
+            labels + bands + ticks, sharing the marks' coordinate space, and
+            stop before the Study row and legend. */}
+        <div className="relative">
+          {/* Fog gutter — unmapped territory left of the now line. */}
+          <div
+            className="absolute inset-y-0 left-0 border-r border-dashed border-line-strong/60 bg-ink/[0.025]"
+            style={{ width: `${NOW_X}%` }}
+            aria-hidden="true"
+          />
+          {/* Exam line. */}
+          <div
+            className="absolute inset-y-0 w-px bg-line-strong"
+            style={{ left: `${EXAM_X}%` }}
+            aria-hidden="true"
+          />
+          {/* Now line — where studying happens. */}
+          <div
+            className="absolute inset-y-0 w-px bg-accent/70"
+            style={{ left: `${NOW_X}%` }}
+            aria-hidden="true"
+          />
 
-        {/* Bands. */}
-        <div className="flex flex-col gap-1">
+          {/* Axis labels. */}
+          <div className="relative mb-3 h-4 text-[10px] uppercase tracking-[0.16em] text-ink-faint">
+            <span
+              className="absolute ml-2 whitespace-nowrap text-accent"
+              style={{ left: `${NOW_X}%` }}
+            >
+              Now
+            </span>
+            <span
+              className="absolute mr-2 whitespace-nowrap"
+              style={{ right: `${100 - EXAM_X}%` }}
+            >
+              Exam · {formatDate(examDate, timeZone)}
+            </span>
+          </div>
+
+          {/* Bands. */}
+          <div className="flex flex-col gap-1">
           {bands.map((band) => {
             const marks = buildFieldMarks(band.cards, decay, now, examDate);
             return (
@@ -214,17 +225,18 @@ export function MemoryField({
           })}
         </div>
 
-        {/* Duration ticks along the bottom of the field. */}
-        <div className="relative mt-1 h-4 font-mono text-[10px] text-ink-faint">
-          {ticks.map((tick) => (
-            <span
-              key={tick.label}
-              className="absolute -translate-x-1/2 whitespace-nowrap"
-              style={{ left: `${tick.x}%` }}
-            >
-              {tick.label}
-            </span>
-          ))}
+          {/* Duration ticks along the bottom of the field. */}
+          <div className="relative mt-1 h-4 font-mono text-[10px] text-ink-faint">
+            {ticks.map((tick) => (
+              <span
+                key={tick.label}
+                className="absolute -translate-x-1/2 whitespace-nowrap"
+                style={{ left: `${tick.x}%` }}
+              >
+                {tick.label}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Study action, anchored at the now line — the place work happens. */}

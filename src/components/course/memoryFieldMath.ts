@@ -68,6 +68,11 @@ export function retrievabilityNow(card: Card, decay: number, now: number): numbe
   return forgettingCurve(days, card.stability, decay);
 }
 
+/** Fraction of the golden angle — spreads n items evenly but organically. */
+function goldenSpread(i: number): number {
+  return (i * 0.618034) % 1;
+}
+
 /** Build the mark set for one band (one lesson, or a whole course band). */
 export function buildFieldMarks(
   cards: Card[],
@@ -75,20 +80,40 @@ export function buildFieldMarks(
   now: number,
   exam: number,
 ): FieldMark[] {
+  // Piles (unseen fog, due-now line) are placed by index within their pile so
+  // they spread evenly instead of clumping — hash jitter alone stacks small
+  // piles on top of themselves.
+  let unseenIdx = 0;
+  let dueIdx = 0;
+  const unseenTotal = cards.filter((c) => c.lastReviewed === null || c.state === 0).length;
+
   return cards.map((card) => {
     const unseen = card.lastReviewed === null || card.state === 0;
     const dueNow = !unseen && card.due !== null && card.due <= now;
-    // Unseen cards drift in the fog gutter (left of the now line); due cards sit
-    // on the line itself with a whisker of jitter so a pile stays readable.
-    const x = unseen
-      ? 1.5 + hashJitter(card.id, 7) * (NOW_X - 4)
-      : dueNow
-        ? NOW_X + hashJitter(card.id, 7) * 1.6
-        : fieldX(card.due ?? now, now, exam) + (hashJitter(card.id, 7) - 0.5) * 1.2;
+    let x: number;
+    let y: number;
+    if (unseen) {
+      // Fog gutter: spread across its width, one even step per card.
+      const i = unseenIdx++;
+      x = 2.5 + (unseenTotal === 1 ? 0.5 : i / Math.max(unseenTotal - 1, 1)) * (NOW_X - 6);
+      y = 0.15 + goldenSpread(i) * 0.7;
+    } else if (dueNow) {
+      // The due pile sits hard on the now line, fanned vertically.
+      const i = dueIdx++;
+      x = NOW_X + 0.3 + (i % 2) * 0.7;
+      y = 0.15 + goldenSpread(i) * 0.7;
+    } else {
+      // Scheduled cards: position is the real due date; keep clear of both lines.
+      x = Math.min(
+        Math.max(fieldX(card.due ?? now, now, exam), NOW_X + 1.2),
+        EXAM_X - 1.2,
+      );
+      y = 0.1 + hashJitter(card.id) * 0.8;
+    }
     return {
       card,
-      x: Math.min(Math.max(x, 1), 99),
-      y: 0.08 + hashJitter(card.id) * 0.84,
+      x,
+      y,
       r: retrievabilityNow(card, decay, now),
       unseen,
       dueNow,
