@@ -29,12 +29,14 @@ import {
   lockHintFor,
 } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
-import { MemoryField } from '../components/course/MemoryField';
+import { MemoryBackdrop } from '../components/course/MemoryBackdrop';
 import { fieldStandfirst } from '../components/course/memoryFieldMath';
 import { LessonView } from './LessonView';
+import { Button } from '../components/ui/Button';
 import {
   ChartIcon,
   ChevronLeftIcon,
+  PlayIcon,
   SettingsIcon,
 } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -216,28 +218,20 @@ export function CoursePath() {
     now,
   );
   const masteryPct = Math.round(mastery * 100);
-
-  // Memory Field bands: one per lesson (path order), plus an "Unassigned" band
-  // for question-bank cards that belong to the course but to no lesson.
-  const orderedLessons = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
-  const unassignedCards = courseCards.filter((c) => !c.primaryLessonId);
-  const fieldBands = [
-    ...orderedLessons.map((lesson) => ({
-      id: lesson.id,
-      label: lesson.name,
-      cards: lessonCardsById.get(lesson.id) ?? [],
-      onOpen: () => navigate(`/course/${courseId}/lesson/${lesson.id}`),
-    })),
-    ...(unassignedCards.length > 0
-      ? [{ id: 'unassigned', label: 'Unassigned', cards: unassignedCards }]
-      : []),
-  ];
   const unseenCount = courseCards.filter(
     (c) => c.lastReviewed === null || c.state === 0,
   ).length;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
+      {/* Ambient constellation: every card in the course as a point of light
+          behind the page — bright when well remembered, hollow when unseen,
+          breathing when due. */}
+      <MemoryBackdrop
+        cards={courseCards}
+        decay={decayOf(course.fsrsParameters)}
+        now={now}
+      />
       {/* Breadcrumb */}
       <div className="mb-6 flex items-center justify-between gap-4">
         <Link
@@ -273,53 +267,53 @@ export function CoursePath() {
         </div>
       </div>
 
-      {/* Header — title plus a one-sentence editorial standfirst. The stats it
-          summarises (mastery, due count, pacing) are all visible in the Memory
-          Field below, which is the page's instrument. */}
+      {/* Header — title, a one-sentence editorial standfirst, and the Study
+          action. The ambient backdrop carries the card-level detail. */}
       <CourseHeader
-        className="mb-4"
+        className="mb-12"
         eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
         examUrgent={examUrgent}
         title={course.name}
       >
-        <p className="max-w-prose text-sm text-ink-soft">
-          {fieldStandfirst({
-            dueCount: dueCardCount,
-            masteryPct,
-            daysToExam: Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0),
-            totalCards: courseCards.length,
-            unseenCount,
-          })}{' '}
-          Lesson {reached} of {total} reached.
-        </p>
+        <div>
+          <p className="max-w-prose text-sm text-ink-soft">
+            {fieldStandfirst({
+              dueCount: dueCardCount,
+              masteryPct,
+              daysToExam: Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0),
+              totalCards: courseCards.length,
+              unseenCount,
+            })}{' '}
+            Lesson {reached} of {total} reached.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={courseCards.length === 0}
+              onClick={() => navigate(`/course/${courseId}/learn`)}
+            >
+              <PlayIcon width={18} height={18} />
+              Study
+              {dueCardCount > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-fg/20 px-1.5 text-xs font-semibold tabular-nums">
+                  {dueCardCount}
+                </span>
+              )}
+            </Button>
+            <p className="text-sm text-ink-faint">
+              {courseCards.length === 0
+                ? 'Add cards to begin studying.'
+                : dueCardCount > 0
+                  ? `${dueCardCount} card${dueCardCount === 1 ? '' : 's'} ready for review.`
+                  : 'Nothing due — study ahead.'}
+            </p>
+          </div>
+        </div>
       </CourseHeader>
 
-      {/* The Memory Field — every card in the course as a mark: position is
-          when it next surfaces (now → exam), glow is how well it is currently
-          remembered. One band per lesson. */}
-      {courseCards.length > 0 && (
-        <MemoryField
-          className="mb-12"
-          bands={fieldBands}
-          decay={decayOf(course.fsrsParameters)}
-          examDate={nearestExam}
-          timeZone={course.timeZone}
-          now={now}
-          dueCount={dueCardCount}
-          onStudy={() => navigate(`/course/${courseId}/learn`)}
-          onOpenCard={(card) => {
-            if (card.primaryLessonId) {
-              navigate(
-                `/course/${courseId}/lesson/${card.primaryLessonId}/cards/${card.id}/edit`,
-              );
-            }
-          }}
-        />
-      )}
-
       {/* Curriculum — the ordered path with practice nodes, unlock rules and
-          insertion points. Demoted below the field: it is structure and
-          authoring, not the day's work. */}
+          insertion points. */}
       <h2 className="mb-6 font-display text-2xl">Curriculum</h2>
       {nodes.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-line-strong py-16 text-center">

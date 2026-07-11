@@ -18,10 +18,11 @@ import {
 import { useDeck } from '../state/useData';
 import { LessonNotesSection } from '../components/notes/LessonNotesSection';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
-import { ChevronLeftIcon } from '../components/ui/icons';
+import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
+import { Button } from '../components/ui/Button';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { CourseHeader } from '../components/course/CourseHeader';
-import { MemoryField } from '../components/course/MemoryField';
+import { MemoryBackdrop } from '../components/course/MemoryBackdrop';
 import { fieldStandfirst } from '../components/course/memoryFieldMath';
 import { courseHeaderStats } from '../course/headerStats';
 import { progressValue } from '../fsrs/objective';
@@ -129,6 +130,15 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
+      {/* Ambient constellation: every card in the lesson as a point of light
+          behind the page — bright when well remembered, hollow when unseen,
+          breathing when due. */}
+      <MemoryBackdrop
+        cards={lessonCards}
+        decay={decayOf(course.fsrsParameters)}
+        now={now}
+      />
+
       {/* Breadcrumb */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <Link
@@ -147,42 +157,50 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
         )}
       </div>
 
-      {/* Header — title plus a one-sentence editorial standfirst; the Memory
-          Field below carries the numbers visually, so there is no stat row. */}
+      {/* Header — title, a one-sentence editorial standfirst, and the Study
+          action. The ambient backdrop carries the card-level detail. */}
       <CourseHeader
-        className="mb-4"
+        className="mb-8"
         eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
         examUrgent={examUrgent}
         title={lesson.name}
       >
-        <p className="max-w-prose text-sm text-ink-soft">
-          {fieldStandfirst({
-            dueCount: lessonDueCount,
-            masteryPct: Math.round(lessonMastery * 100),
-            daysToExam: Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0),
-            totalCards: lessonCards.length,
-            unseenCount: lessonCards.filter((c) => c.lastReviewed === null || c.state === 0)
-              .length,
-          })}
-        </p>
+        <div>
+          <p className="max-w-prose text-sm text-ink-soft">
+            {fieldStandfirst({
+              dueCount: lessonDueCount,
+              masteryPct: Math.round(lessonMastery * 100),
+              daysToExam: Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0),
+              totalCards: lessonCards.length,
+              unseenCount: lessonCards.filter((c) => c.lastReviewed === null || c.state === 0)
+                .length,
+            })}
+          </p>
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={lessonCards.length === 0}
+              onClick={() => navigate(`/lesson/${lessonId}/learn`)}
+            >
+              <PlayIcon width={18} height={18} />
+              Study
+              {lessonDueCount > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-fg/20 px-1.5 text-xs font-semibold tabular-nums">
+                  {lessonDueCount}
+                </span>
+              )}
+            </Button>
+            <p className="text-sm text-ink-faint">
+              {lessonCards.length === 0
+                ? 'Add cards to begin studying.'
+                : lessonDueCount > 0
+                  ? `${lessonDueCount} card${lessonDueCount === 1 ? '' : 's'} ready for review.`
+                  : 'Nothing due — study ahead.'}
+            </p>
+          </div>
+        </div>
       </CourseHeader>
-
-      {/* The Memory Field — study is this page's primary action, and the field
-          is both the instrument (every card's fade and next surfacing) and the
-          place the Study button lives. */}
-      <MemoryField
-        className="mb-8"
-        bands={[{ id: lesson.id, cards: lessonCards }]}
-        decay={decayOf(course.fsrsParameters)}
-        examDate={nearestExam}
-        timeZone={course.timeZone}
-        now={now}
-        dueCount={lessonDueCount}
-        onStudy={() => navigate(`/lesson/${lessonId}/learn`)}
-        onOpenCard={(card) =>
-          navigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
-        }
-      />
       {lesson.description && (
         <p className="mb-8 text-sm text-ink-soft">{lesson.description}</p>
       )}
