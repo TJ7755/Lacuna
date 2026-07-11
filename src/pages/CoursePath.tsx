@@ -2,6 +2,7 @@
 // Route: /course/:courseId
 // British English throughout.
 
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
@@ -16,14 +17,15 @@ import {
 import { availableCards } from '../fsrs/eligibility';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
 import { buildPath, pathPosition } from '../course/path';
-import type { PathNode } from '../course/path';
+import type { PathNode, PracticePathNode } from '../course/path';
 import { PathNodeView } from '../components/course/PathNodeView';
 import { PathLine } from '../components/course/PathLine';
+import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { LessonView } from './LessonView';
-import { ChartIcon, ChevronLeftIcon, SettingsIcon } from '../components/ui/icons';
+import { ChartIcon, ChevronLeftIcon, PlusIcon, SettingsIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { formatDate } from '../utils/datetime';
-import type { Card, Course } from '../db/types';
+import type { Card, Course, PracticeNode } from '../db/types';
 
 /**
  * Course-wide mean seconds per review, re-scoped from the existing per-deck
@@ -51,6 +53,12 @@ export function CoursePath() {
   const navigate = useNavigate();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  // State for the manual practice-node editor modal (see PracticeNodeEditor):
+  // 'new' with a seeded position when opened from a "+" insertion point, or an
+  // existing PracticeNode when opened from a node's edit badge.
+  const [editorState, setEditorState] = useState<
+    { mode: 'new'; defaultPosition?: number } | { mode: 'edit'; node: PracticeNode } | null
+  >(null);
 
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found" (null).
   // When courseId is absent the query resolves immediately to null.
@@ -147,6 +155,15 @@ export function CoursePath() {
     dueCardCount,
     meanReviewSeconds,
     now,
+  );
+
+  // Precomputed for the manual practice-node insertion affordances (see InsertGap/
+  // InsertButton below): which lines on the path may host a "+", and the position
+  // value ("end of course") the trailing insertion point should seed a new node with.
+  const lineInserts = computeLineInserts(nodes);
+  const lastLessonOrderIndex = lessons.reduce<number | undefined>(
+    (max, l) => (max === undefined || l.orderIndex > max ? l.orderIndex : max),
+    undefined,
   );
 
   // Curriculum position (addendum J): counts non-extension lessons reached.
@@ -248,38 +265,98 @@ export function CoursePath() {
         </div>
       ) : (
         <div className="flex flex-col items-center">
+          <InsertGap onInsert={() => setEditorState({ mode: 'new', defaultPosition: undefined })} />
           {nodes.map((node, i) => (
             <PathNodeWithLine
               key={node.id}
               node={node}
               isLast={i === nodes.length - 1}
+              lineInsert={lineInserts[i]}
               onLessonClick={(lessonId) =>
                 navigate(`/course/${courseId}/lesson/${lessonId}`)
               }
               onPracticeClick={() => navigate(`/course/${courseId}/learn`)}
+              onPracticeEdit={(pn) =>
+                pn.practiceNode && setEditorState({ mode: 'edit', node: pn.practiceNode })
+              }
+              onInsertOnLine={(position) => setEditorState({ mode: 'new', defaultPosition: position })}
             />
           ))}
+          <InsertGap
+            onInsert={() => setEditorState({ mode: 'new', defaultPosition: lastLessonOrderIndex })}
+          />
         </div>
+      )}
+
+      {editorState && (
+        <PracticeNodeEditor
+          courseId={course.id}
+          lessons={lessons}
+          node={editorState.mode === 'edit' ? editorState.node : undefined}
+          defaultPosition={editorState.mode === 'new' ? editorState.defaultPosition : undefined}
+          onSaved={() => setEditorState(null)}
+          onCancel={() => setEditorState(null)}
+        />
       )}
     </div>
   );
 }
 
+/** Whether the line/gap right after `nodes[i]` should offer a practice-node insertion point. */
+interface LineInsert {
+  insertable: boolean;
+  position?: number;
+}
+
+/**
+ * Precomputes, for the line following each node, whether inserting a manual
+ * practice node there is meaningful and which `position` it should carry.
+ *
+ * A gap is only ever meaningful at a lesson boundary (manual placement keys off
+ * lesson `orderIndex`, see buildPath/practiceGateAfterLesson), so this only marks
+ * the line immediately preceding the *next* lesson node as insertable — even when
+ * several checkpoint/practice nodes sit between two lessons, only one insertion
+ * point renders for that whole stretch.
+ */
+function computeLineInserts(nodes: PathNode[]): LineInsert[] {
+  const result: LineInsert[] = [];
+  let lastLessonOrder: number | undefined;
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    if (node.nodeType === 'lesson') lastLessonOrder = node.lesson.orderIndex;
+    const next = nodes[i + 1];
+    result.push(
+      next && next.nodeType === 'lesson'
+        ? { insertable: true, position: lastLessonOrder }
+        : { insertable: false },
+    );
+  }
+  return result;
+}
+
 /**
  * Renders a single path node followed by its connecting line (if not the last node).
  * The connecting line is accent-tinted when the preceding node is a completed lesson,
- * indicating the student has already cleared that stretch of the path.
+ * indicating the student has already cleared that stretch of the path. When
+ * `lineInsert.insertable`, the line also carries a hover-revealed "+" affordance for
+ * inserting a manual practice node at that gap.
  */
 function PathNodeWithLine({
   node,
   isLast,
+  lineInsert,
   onLessonClick,
   onPracticeClick,
+  onPracticeEdit,
+  onInsertOnLine,
 }: {
   node: PathNode;
   isLast: boolean;
+  lineInsert: LineInsert;
   onLessonClick: (lessonId: string) => void;
   onPracticeClick: () => void;
+  onPracticeEdit: (node: PracticePathNode) => void;
+  onInsertOnLine: (position: number | undefined) => void;
 }) {
   // A segment is completed when the node it trails is a completed lesson.
   // Checkpoints and available/locked lessons leave the segment neutral.
@@ -288,8 +365,43 @@ function PathNodeWithLine({
 
   return (
     <div className="flex flex-col items-center">
-      <PathNodeView node={node} onLessonClick={onLessonClick} onPracticeClick={onPracticeClick} />
-      {!isLast && <PathLine completed={segmentCompleted} />}
+      <PathNodeView
+        node={node}
+        onLessonClick={onLessonClick}
+        onPracticeClick={onPracticeClick}
+        onPracticeEdit={onPracticeEdit}
+      />
+      {!isLast && (
+        <div className="relative">
+          <PathLine completed={segmentCompleted} />
+          {lineInsert.insertable && (
+            <InsertButton onInsert={() => onInsertOnLine(lineInsert.position)} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A hover-revealed "+" for inserting a manual practice node at a specific path gap. */
+function InsertButton({ onInsert }: { onInsert: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onInsert}
+      aria-label="Insert practice node here"
+      className="absolute left-1/2 top-1/2 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-dashed border-line-strong bg-surface text-ink-faint opacity-0 transition-opacity duration-150 hover:opacity-100 hover:border-accent hover:text-accent focus-visible:opacity-100 focus-visible:outline-none"
+    >
+      <PlusIcon width={12} height={12} />
+    </button>
+  );
+}
+
+/** The start/end insertion points, where there is no existing connecting line to anchor to. */
+function InsertGap({ onInsert }: { onInsert: () => void }) {
+  return (
+    <div className="relative h-8 w-1">
+      <InsertButton onInsert={onInsert} />
     </div>
   );
 }

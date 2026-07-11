@@ -27,6 +27,7 @@ import { UnlockModeSection } from './settings/UnlockModeSection';
 import { PracticeSettingsSection } from './settings/PracticeSettingsSection';
 import { ExamDatesSection } from './settings/ExamDatesSection';
 import { LessonManagementSection } from './settings/LessonManagementSection';
+import { PracticeNodesSection } from './settings/PracticeNodesSection';
 
 /**
  * Full-page course settings, mirroring DeckSettings but for the Course/Lesson model:
@@ -399,10 +400,20 @@ export function CourseSettings() {
             <LessonManagementSection courseId={course.id} />
           </motion.section>
 
-          <motion.div
+          <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.24 * m, delay: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
+          >
+            <h2 className="mb-4 font-display text-xl">Practice nodes</h2>
+            <PracticeNodesSection courseId={course.id} />
+          </motion.section>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24 * m, delay: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
           >
             <OptimisationPanel
               entity={course}
@@ -415,7 +426,7 @@ export function CourseSettings() {
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24 * m, delay: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.24 * m, delay: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
             className="rounded-2xl border border-negative/30 bg-negative/5 p-6 shadow-sm shadow-negative/10"
           >
             <div className="mb-1 text-sm font-medium text-negative">Danger zone</div>

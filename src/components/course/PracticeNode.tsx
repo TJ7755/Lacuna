@@ -2,24 +2,25 @@
 //
 // Distinct from CheckpointNode (also diamond, but flag icon + accent-soft fill):
 // practice nodes use a cards icon and a dashed border, so their visual language
-// reads as "review session", not "assessment event". Presentational only.
-//
-// British English throughout.
+// reads as "review session", not "assessment event". Presentational only, save
+// for the edit badge: `onEdit` is only ever supplied for `practice-manual` nodes
+// (see PathNodeView) — `auto` nodes are system-generated and have nothing to edit.
 
 import type { PracticePathNode } from '../../course/path';
-import { CardsIcon } from '../ui/icons';
+import { CardsIcon, EditIcon } from '../ui/icons';
 
 interface PracticeNodeProps {
   node: PracticePathNode;
   onClick?: () => void;
+  onEdit?: () => void;
 }
 
-export function PracticeNode({ node, onClick }: PracticeNodeProps) {
+export function PracticeNode({ node, onClick, onEdit }: PracticeNodeProps) {
   const name = node.practiceNode?.name ?? 'Practice';
   const interactive = onClick !== undefined;
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="group relative flex flex-col items-center gap-2">
       {/* A square rotated 45deg reads as a diamond, distinct from the round lesson nodes. */}
       <button
         type="button"
@@ -32,6 +33,19 @@ export function PracticeNode({ node, onClick }: PracticeNodeProps) {
           <CardsIcon width={18} height={18} />
         </span>
       </button>
+      {onEdit && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+          aria-label={`Edit ${name}`}
+          className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-line-strong bg-surface-raised text-ink-faint opacity-0 shadow-sm transition-opacity duration-150 hover:text-accent focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100"
+        >
+          <EditIcon width={11} height={11} />
+        </button>
+      )}
       <span className="max-w-[7rem] text-center text-xs font-medium leading-tight text-ink-soft">
         {name}
       </span>

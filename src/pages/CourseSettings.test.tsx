@@ -25,6 +25,7 @@ vi.mock('../state/useCourseData', () => ({
   useCourseCards: () => mockCards,
   useCourseExamDates: () => [],
   useLessons: () => [],
+  usePracticeNodes: () => [],
 }));
 
 // CourseSettings resolves the course itself via useLiveQuery + db.courses.get

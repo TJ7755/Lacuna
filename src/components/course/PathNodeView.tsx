@@ -8,7 +8,7 @@
 //
 // British English throughout.
 
-import type { PathNode } from '../../course/path';
+import type { PathNode, PracticePathNode } from '../../course/path';
 import { LessonNode } from './LessonNode';
 import { CheckpointNode } from './CheckpointNode';
 import { PracticeNode } from './PracticeNode';
@@ -17,6 +17,8 @@ interface PathNodeViewProps {
   node: PathNode;
   onLessonClick?: (lessonId: string) => void;
   onPracticeClick?: () => void;
+  /** Only ever invoked for `practice-manual` nodes — see PracticeNode.tsx. */
+  onPracticeEdit?: (node: PracticePathNode) => void;
 }
 
 /** A neutral placeholder for node types this build does not recognise. */
@@ -37,7 +39,12 @@ function UnrecognisedNode() {
   );
 }
 
-export function PathNodeView({ node, onLessonClick, onPracticeClick }: PathNodeViewProps) {
+export function PathNodeView({
+  node,
+  onLessonClick,
+  onPracticeClick,
+  onPracticeEdit,
+}: PathNodeViewProps) {
   switch (node.nodeType) {
     case 'lesson':
       return (
@@ -53,7 +60,17 @@ export function PathNodeView({ node, onLessonClick, onPracticeClick }: PathNodeV
       return <CheckpointNode examDate={node.examDate} />;
     case 'practice-auto':
     case 'practice-manual':
-      return <PracticeNode node={node} onClick={onPracticeClick} />;
+      return (
+        <PracticeNode
+          node={node}
+          onClick={onPracticeClick}
+          onEdit={
+            node.nodeType === 'practice-manual' && onPracticeEdit
+              ? () => onPracticeEdit(node)
+              : undefined
+          }
+        />
+      );
     default:
       // Any nodeType outside KNOWN_NODE_TYPES (e.g. a future plugin type).
       return <UnrecognisedNode />;
