@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import {
   Area,
@@ -32,10 +31,6 @@ import {
 } from '../components/analytics/prepare';
 import { predictionAccuracySeries } from '../fsrs/calibration';
 import { CourseComparison } from '../components/analytics/CourseComparison';
-import { MemoryBackdrop } from '../components/course/MemoryBackdrop';
-import { decayOf } from '../fsrs/fsrs';
-import { defaultFsrsParameters } from '../fsrs/params';
-import { cardEditPath } from '../db/search';
 
 function AnalyticsSkeleton() {
   return (
@@ -68,10 +63,6 @@ function AnalyticsSkeleton() {
   );
 }
 
-/** Fallback decay for cards whose course cannot be matched — should not
- *  normally happen, since cards are filtered to active courses below. */
-const FALLBACK_DECAY = decayOf(defaultFsrsParameters());
-
 export function Analytics() {
   const [motionSpeed] = useMotionSpeed();
   const motionMult = speedMultiplier(motionSpeed);
@@ -79,7 +70,6 @@ export function Analytics() {
   const allCards = useAllCards();
   const history = useAllSessionHistory();
   const c = useChartColours();
-  const navigate = useNavigate();
 
   const activeCourses = useMemo(
     () => (courses ?? []).filter((course) => !course.archived),
@@ -93,14 +83,6 @@ export function Analytics() {
 
   const courseMap = useMemo(
     () => new Map(activeCourses.map((course) => [course.id, course.name])),
-    [activeCourses],
-  );
-
-  // Per-course decay lookup for the backdrop — courses can each tune their
-  // own FSRS parameters, so the scalar decayOf used on single-course pages
-  // does not apply here.
-  const decayByCourse = useMemo(
-    () => new Map(activeCourses.map((course) => [course.id, decayOf(course.fsrsParameters)])),
     [activeCourses],
   );
 
@@ -158,14 +140,6 @@ export function Analytics() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Ambient constellation across every active course's cards, each glowing
-          at its own course's decay rate. */}
-      <MemoryBackdrop
-        cards={cards}
-        decayFor={(card) => (card.courseId ? decayByCourse.get(card.courseId) ?? FALLBACK_DECAY : FALLBACK_DECAY)}
-        now={Date.now()}
-        onOpenCard={(card) => navigate(cardEditPath(card))}
-      />
       <motion.header
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

@@ -8,11 +8,8 @@ import { Button } from '../components/ui/Button';
 import { FlaskIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
 import { CourseCard } from '../components/course/CourseCard';
 import { NewCourseForm } from '../components/course/NewCourseForm';
-import { MemoryBackdrop } from '../components/course/MemoryBackdrop';
-import { decayOf } from '../fsrs/fsrs';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useDashboardSort } from '../state/dashboardSort';
-import type { Card } from '../db/types';
 
 export function Dashboard() {
   const data = useCourseDashboardData();
@@ -66,39 +63,8 @@ export function Dashboard() {
     [activeCourses, summaries],
   );
 
-  // Per-course decay exponents, keyed by courseId, for the backdrop's per-card
-  // retrievability maths — courses can carry different FSRS parameters, so a
-  // single scalar decay (as single-course pages use) would misrepresent cards
-  // from any course but one.
-  const decayByCourse = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const c of courses ?? []) map.set(c.id, decayOf(c.fsrsParameters));
-    return map;
-  }, [courses]);
-  const decayFor = useMemo(
-    () => (card: Card) => (card.courseId ? (decayByCourse.get(card.courseId) ?? 0) : 0),
-    [decayByCourse],
-  );
-
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
-      {/* Ambient constellation: every card across every active course as a
-          point of light behind the page — bright when well remembered,
-          hollow when unseen, breathing when due. */}
-      {allCards && allCards.length > 0 && (
-        <MemoryBackdrop
-          cards={allCards}
-          decayFor={decayFor}
-          now={Date.now()}
-          onOpenCard={(card) =>
-            card.courseId &&
-            card.primaryLessonId &&
-            navigate(
-              `/course/${card.courseId}/lesson/${card.primaryLessonId}/cards/${card.id}/edit`,
-            )
-          }
-        />
-      )}
       {/* Page header */}
       <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
         <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />

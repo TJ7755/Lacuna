@@ -1,7 +1,7 @@
 // Course-scoped analytics page.
 // Route: /course/:courseId/analytics
 
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
@@ -11,9 +11,6 @@ import {
   useCourseSessionHistory,
 } from '../state/useCourseData';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
-import { MemoryBackdrop } from '../components/course/MemoryBackdrop';
-import { decayOf } from '../fsrs/fsrs';
-import { cardEditPath } from '../db/search';
 import { ChevronLeftIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import type { Course } from '../db/types';
@@ -48,7 +45,6 @@ function CourseAnalyticsSkeleton() {
 
 export function CourseAnalytics() {
   const { courseId } = useParams<{ courseId: string }>();
-  const navigate = useNavigate();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
@@ -91,14 +87,6 @@ export function CourseAnalytics() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8 md:px-10">
-      {/* Ambient constellation: every card in the course as a point of light
-          behind the analytics, echoing the course path's backdrop. */}
-      <MemoryBackdrop
-        cards={cards}
-        decay={decayOf(course.fsrsParameters)}
-        now={Date.now()}
-        onOpenCard={(card) => navigate(cardEditPath(card))}
-      />
       <Link
         to={`/course/${course.id}`}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
