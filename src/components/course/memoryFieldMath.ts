@@ -122,41 +122,6 @@ export function buildFieldMarks(
 }
 
 /* ------------------------------------------------------------------------ */
-/* Axis ticks                                                                */
-/* ------------------------------------------------------------------------ */
-
-export interface FieldTick {
-  x: number;
-  label: string;
-}
-
-const TICK_CANDIDATES: Array<{ days: number; label: string }> = [
-  { days: 1, label: '1 day' },
-  { days: 3, label: '3 days' },
-  { days: 7, label: '1 week' },
-  { days: 14, label: '2 weeks' },
-  { days: 30, label: '1 month' },
-  { days: 90, label: '3 months' },
-  { days: 180, label: '6 months' },
-  { days: 365, label: '1 year' },
-];
-
-/** Duration ticks between now and the exam, kept sparse enough to breathe. */
-export function fieldTicks(now: number, exam: number): FieldTick[] {
-  const spanDays = (exam - now) / MS_PER_DAY;
-  const ticks: FieldTick[] = [];
-  let lastX = NOW_X;
-  for (const { days, label } of TICK_CANDIDATES) {
-    if (days >= spanDays * 0.9) break;
-    const x = fieldX(now + days * MS_PER_DAY, now, exam);
-    if (x - lastX < 9 || EXAM_X - x < 9) continue; // too crowded to label
-    ticks.push({ x, label });
-    lastX = x;
-  }
-  return ticks;
-}
-
-/* ------------------------------------------------------------------------ */
 /* Forgetting-curve preview (hover tooltip)                                  */
 /* ------------------------------------------------------------------------ */
 

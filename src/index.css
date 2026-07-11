@@ -387,8 +387,8 @@
       field-due-breathe 2.6s ease-in-out infinite;
   }
   @keyframes field-due-breathe {
-    0%, 100% { box-shadow: 0 0 6px 1px hsl(var(--accent) / 0.55); }
-    50% { box-shadow: 0 0 12px 4px hsl(var(--accent) / 0.2); }
+    0%, 100% { box-shadow: 0 0 10px 2px hsl(var(--accent) / 0.5); }
+    50% { box-shadow: 0 0 18px 7px hsl(var(--accent) / 0.18); }
   }
 
   /* A reviewed mark glides right as its interval extends (position is inline;
