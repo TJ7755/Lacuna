@@ -21,6 +21,13 @@
 >
 > **Full changelog below**
 
+## Landing page
+
+- Welcome path is now a playable micro-course: interactive exam curve (drag the
+  horizon; also drives the dashboard mock), multi-card grading demo, interactive
+  path demo that unlocks later nodes, practice queue instead of a feature grid,
+  and a soft-gated checkpoint CTA. British English throughout.
+
 ## Unreleased — Course architecture (data model and scheduling groundwork)
 
 First, additive stage of the migration from `Folder -> Deck -> Card` to

@@ -335,13 +335,54 @@
     to { opacity: 1; transform: rotateX(0) translateY(0); }
   }
 
-  /* Gentle beckoning nudge for the scroll hint beneath the hero. */
+  /* Gentle beckoning nudge for the scroll hint beneath the hero.
+     Horizontal centring is on the element (-translate-x-1/2); only Y is animated
+     so reduced-motion (animation: none) still keeps the label centred. */
   .scroll-hint {
     animation: scroll-hint 2.2s ease-in-out infinite;
   }
   @keyframes scroll-hint {
     0%, 100% { transform: translate(-50%, 0); }
     50% { transform: translate(-50%, 6px); }
+  }
+
+  /* Landing path spine: slight ink bleed so the drawn line feels hand-ruled. */
+  .path-spine {
+    box-shadow: 0 0 0.5px hsl(var(--accent) / 0.5), 1px 0 0 hsl(var(--accent) / 0.12);
+  }
+
+  /* Checkpoint card: a light dog-ear on the top-right corner. */
+  .checkpoint-card {
+    position: relative;
+  }
+  .checkpoint-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    border-style: solid;
+    border-width: 0 18px 18px 0;
+    border-color: transparent hsl(var(--accent) / 0.22) transparent transparent;
+    border-bottom-left-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-rise {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+    .scroll-hint {
+      animation: none;
+    }
+    .exam-pulse {
+      animation: none;
+    }
+    .reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
   }
 }
 
