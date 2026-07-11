@@ -1,23 +1,14 @@
-// Pure maths and copy for the Memory Backdrop (MemoryBackdrop.tsx): stable
-// per-card hashing for placement, current retrievability for glow strength,
-// a per-card forgetting-curve sample for the hover squircle, and the header
-// standfirst sentence. No React, no database — same testable-pure convention
-// as src/course/path.ts.
+// Pure FSRS-derived display maths and copy shared across course/lesson pages:
+// current retrievability (used by SearchPage), a per-card forgetting-curve
+// sample and cloze-stripped preview text (curvePoints/plainFront — currently
+// unused here but kept exported for upcoming hover-squircle UI elsewhere), and
+// the header standfirst sentence. No React, no database — same testable-pure
+// convention as src/course/path.ts.
 // British English throughout.
 
 import { forgettingCurve } from '../../fsrs/forwardSim';
 import { MS_PER_DAY } from '../../fsrs/params';
 import type { Card } from '../../db/types';
-
-/** Deterministic 0..1 hash of a card id — stable placement without Math.random. */
-export function hashJitter(id: string, salt = 0): number {
-  let h = 2166136261 ^ salt;
-  for (let i = 0; i < id.length; i++) {
-    h ^= id.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return ((h >>> 0) % 1000) / 1000;
-}
 
 /**
  * Current (this instant, not exam-day) predicted retrievability of a card.

@@ -17,7 +17,6 @@ import {
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { DEFAULT_REVIEW_SECONDS, buildDeckSecondsMap } from '../fsrs/stats';
 import { progressValue } from '../fsrs/objective';
-import { decayOf } from '../fsrs/fsrs';
 import { MS_PER_DAY } from '../fsrs/params';
 import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
 import { courseHeaderStats } from '../course/headerStats';
@@ -30,7 +29,6 @@ import {
   lockHintFor,
 } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
-import { MemoryBackdrop } from '../components/course/MemoryBackdrop';
 import { fieldStandfirst } from '../components/course/memoryFieldMath';
 import { LessonView } from './LessonView';
 import { Button } from '../components/ui/Button';
@@ -235,21 +233,6 @@ export function CoursePath() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      {/* Ambient constellation: every card in the course as a point of light
-          behind the page — bright when well remembered, hollow when unseen,
-          breathing when due. */}
-      <MemoryBackdrop
-        cards={courseCards}
-        decay={decayOf(course.fsrsParameters)}
-        now={now}
-        onOpenCard={(card) => {
-          if (card.primaryLessonId) {
-            navigate(
-              `/course/${courseId}/lesson/${card.primaryLessonId}/cards/${card.id}/edit`,
-            );
-          }
-        }}
-      />
       {/* Breadcrumb */}
       <div className="mb-6 flex items-center justify-between gap-4">
         <Link
@@ -286,7 +269,7 @@ export function CoursePath() {
       </div>
 
       {/* Header — title, a one-sentence editorial standfirst, and the Study
-          action. The ambient backdrop carries the card-level detail. */}
+          action. */}
       <CourseHeader
         className="mb-12"
         eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}

@@ -22,11 +22,9 @@ import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { CourseHeader } from '../components/course/CourseHeader';
-import { MemoryBackdrop } from '../components/course/MemoryBackdrop';
 import { fieldStandfirst } from '../components/course/memoryFieldMath';
 import { courseHeaderStats } from '../course/headerStats';
 import { progressValue } from '../fsrs/objective';
-import { decayOf } from '../fsrs/fsrs';
 import { MS_PER_DAY } from '../fsrs/params';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { formatDate } from '../utils/datetime';
@@ -130,18 +128,6 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      {/* Ambient constellation: every card in the lesson as a point of light
-          behind the page — bright when well remembered, hollow when unseen,
-          breathing when due. */}
-      <MemoryBackdrop
-        cards={lessonCards}
-        decay={decayOf(course.fsrsParameters)}
-        now={now}
-        onOpenCard={(card) =>
-          navigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
-        }
-      />
-
       {/* Breadcrumb */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <Link
@@ -161,7 +147,7 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
       </div>
 
       {/* Header — title, a one-sentence editorial standfirst, and the Study
-          action. The ambient backdrop carries the card-level detail. */}
+          action. */}
       <CourseHeader
         className="mb-8"
         eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
