@@ -328,7 +328,7 @@ exists in the course UI yet).
 < All courses                          Question bank   [chart]  [gear]
 Exam 14 Jun 2026, 23:59
 Organic Chemistry
-Curriculum position: Lesson 4 of 9        Mastery: 68%
+[path] Lesson 4 of 9   [ring] Mastery 68%   [clock] Due today 12 cards
 
   (o) Lesson 1 -- completed
    |
@@ -346,18 +346,31 @@ Curriculum position: Lesson 4 of 9        Mastery: 68%
 An ordered path of lesson nodes, checkpoint markers (informational, never block progress)
 and practice nodes (gather due cards from lessons studied so far), built by
 `src/course/path.ts`. A course with exactly one lesson skips the path entirely and renders
-that lesson directly (no one-node path). Curriculum position ("Lesson X of N") is a pacing
-metric, kept visually and semantically separate from mastery (mean predicted FSRS retention).
+that lesson directly (no one-node path). The header is the shared `CourseHeader` cockpit
+(`src/components/course/CourseHeader.tsx`, with stat primitives in `CourseHeaderStat.tsx`
+and `MasteryRing.tsx`): exam eyebrow (pulses when the exam is within three days, via the
+`exam-pulse` animation), serif title, and a row of stat blocks each carrying a plain-language
+one-line descriptor so distinct metrics can't be conflated. Curriculum position ("Lesson X of
+N") is a pacing metric, kept visually and semantically separate from mastery (mean predicted
+FSRS retention, shown as a ring rather than a bar) and from due-today (a live count of cards a
+session would serve right now), computed via `src/course/path.ts`'s `nearestExamDate` and the
+same `fsrs/eligibility.ts` due-card logic the path itself uses.
 
 **Lesson view** (`/course/:courseId/lesson/:lessonId`):
 
 ```
 < Course path
+Exam 14 Jun 2026, 23:59
 Lesson name
+[ring] Mastery 71%   [clock] Due today 3 cards
 [ Notes ]  [ Cards ]                      <- tab underline slides
 <note list, add/reorder/edit>  |  <card list with editor>
                                              [> Study this lesson]
 ```
+
+The lesson header adopts the same `CourseHeader` cockpit, scoped to the lesson's own cards
+(mastery and due-today only — no curriculum-position stat, since a single lesson has no
+pacing sequence of its own).
 
 **Learn session** (full screen, outside the shell):
 

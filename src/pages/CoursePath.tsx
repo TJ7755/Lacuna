@@ -16,17 +16,32 @@ import {
 } from '../state/useCourseData';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
-import { buildPath, pathPosition } from '../course/path';
+import { progressDescription } from '../fsrs/objective';
+import { MS_PER_DAY } from '../fsrs/params';
+import { buildPath, pathPosition, nearestExamDate } from '../course/path';
 import type { PathNode, PracticePathNode } from '../course/path';
 import { PathNodeView } from '../components/course/PathNodeView';
 import { PathLine } from '../components/course/PathLine';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { AddLessonControl } from '../components/course/AddLessonControl';
+import { CourseHeader } from '../components/course/CourseHeader';
+import { CourseHeaderStat } from '../components/course/CourseHeaderStat';
+import { MasteryRing } from '../components/course/MasteryRing';
 import { LessonView } from './LessonView';
-import { ChartIcon, ChevronLeftIcon, PlusIcon, SettingsIcon } from '../components/ui/icons';
+import {
+  ChartIcon,
+  ChevronLeftIcon,
+  ClockIcon,
+  PathIcon,
+  PlusIcon,
+  SettingsIcon,
+} from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { formatDate } from '../utils/datetime';
 import type { Card, Course, PracticeNode } from '../db/types';
+
+/** An exam within this many days is flagged as urgent (pulsing header marker). */
+const EXAM_URGENT_DAYS = 3;
 
 /**
  * Course-wide mean seconds per review, re-scoped from the existing per-deck
@@ -175,13 +190,8 @@ export function CoursePath() {
 
   // Nearest upcoming exam date: consider course.examDate and all explicit exam dates;
   // show the soonest one that is still in the future.
-  const futureDates = [
-    course.examDate,
-    ...examDates.map((ed) => ed.examDate),
-  ].filter((d) => d > now);
-  const nearestExam = futureDates.length > 0
-    ? Math.min(...futureDates)
-    : course.examDate; // Fall back to the primary date even if it has passed.
+  const nearestExam = nearestExamDate(course, examDates, now);
+  const examUrgent = nearestExam > now && nearestExam - now <= EXAM_URGENT_DAYS * MS_PER_DAY;
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8 md:px-10">
@@ -221,41 +231,42 @@ export function CoursePath() {
       </div>
 
       {/* Header */}
-      <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
-        <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
-        <div className="relative">
-          <div className="mb-1 text-sm uppercase tracking-[0.16em] text-ink-faint">
-            Exam {formatDate(nearestExam, course.timeZone)}
-          </div>
-          <h1 className="mb-5 font-display text-4xl tracking-tight md:text-5xl">
-            {course.name}
-          </h1>
-          <div className="flex flex-wrap gap-6">
-            {/*
-             * Curriculum position: how many lessons the student has reached.
-             * This is a pacing metric and is SEPARATE from mastery.
-             */}
-            <div className="text-sm">
-              <span className="text-xs uppercase tracking-[0.12em] text-ink-faint">
-                Curriculum position
-              </span>
-              <p className="mt-0.5 font-medium text-ink">
-                Lesson {reached} of {total}
-              </p>
-            </div>
-            {/*
-             * Mastery: mean predicted FSRS retention across the card pool.
-             * A different metric from curriculum position.
-             */}
-            <div className="text-sm">
-              <span className="text-xs uppercase tracking-[0.12em] text-ink-faint">
-                Mastery
-              </span>
-              <p className="mt-0.5 font-medium text-ink">{masteryPct}%</p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <CourseHeader
+        className="mb-10"
+        eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
+        examUrgent={examUrgent}
+        title={course.name}
+      >
+        {/*
+         * Curriculum position: how many lessons the student has reached. This is
+         * a pacing metric — SEPARATE from mastery, hence the distinct icon and
+         * one-line descriptor below.
+         */}
+        <CourseHeaderStat
+          icon={<PathIcon width={18} height={18} />}
+          label="Curriculum position"
+          value={`Lesson ${reached} of ${total}`}
+          description="How far you've worked through the course."
+        />
+        {/*
+         * Mastery: mean predicted FSRS retention across the card pool. A
+         * different metric from curriculum position — see the ring, not a bar,
+         * so it reads as its own instrument.
+         */}
+        <CourseHeaderStat
+          icon={<MasteryRing value={summary?.mastery ?? 0} />}
+          label="Mastery"
+          value={`${masteryPct}%`}
+          description={progressDescription(course)}
+        />
+        {/* Due today: cards a session would serve right now, course-wide. */}
+        <CourseHeaderStat
+          icon={<ClockIcon width={18} height={18} />}
+          label="Due today"
+          value={`${dueCardCount} card${dueCardCount === 1 ? '' : 's'}`}
+          description="Ready for review right now."
+        />
+      </CourseHeader>
 
       {/* Course path */}
       {nodes.length === 0 ? (
@@ -424,7 +435,7 @@ function CoursePathSkeleton() {
       <div className="mb-10 rounded-2xl border border-line bg-surface p-6 md:p-8">
         <div className="mb-1 h-3 w-40 animate-pulse rounded bg-ink/10" />
         <div className="mb-5 h-10 w-64 animate-pulse rounded bg-ink/10 md:w-80" />
-        <div className="flex gap-6">
+        <div className="flex flex-wrap gap-8">
           <div>
             <div className="mb-1 h-2.5 w-28 animate-pulse rounded bg-ink/10" />
             <div className="h-4 w-20 animate-pulse rounded bg-ink/10" />
@@ -432,6 +443,10 @@ function CoursePathSkeleton() {
           <div>
             <div className="mb-1 h-2.5 w-16 animate-pulse rounded bg-ink/10" />
             <div className="h-4 w-12 animate-pulse rounded bg-ink/10" />
+          </div>
+          <div>
+            <div className="mb-1 h-2.5 w-16 animate-pulse rounded bg-ink/10" />
+            <div className="h-4 w-16 animate-pulse rounded bg-ink/10" />
           </div>
         </div>
       </div>

@@ -9,7 +9,13 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { db } from '../db/schema';
-import { useCourse, useNotes, useLessonCards, useLessons } from '../state/useCourseData';
+import {
+  useCourse,
+  useNotes,
+  useLessonCards,
+  useLessons,
+  useCourseExamDates,
+} from '../state/useCourseData';
 import { useDeck } from '../state/useData';
 import { CardList } from '../components/cards/CardList';
 import { LessonNoteEditor } from '../components/notes/LessonNoteEditor';
@@ -18,6 +24,7 @@ import { Button } from '../components/ui/Button';
 import {
   ChevronLeftIcon,
   ChevronDownIcon,
+  ClockIcon,
   PlusIcon,
   EditIcon,
   TrashIcon,
@@ -25,7 +32,15 @@ import {
 } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
 import { AddLessonControl } from '../components/course/AddLessonControl';
+import { CourseHeader } from '../components/course/CourseHeader';
+import { CourseHeaderStat } from '../components/course/CourseHeaderStat';
+import { MasteryRing } from '../components/course/MasteryRing';
+import { nearestExamDate } from '../course/path';
+import { availableCards, dueCards } from '../fsrs/eligibility';
+import { progressValue, progressDescription } from '../fsrs/objective';
+import { MS_PER_DAY } from '../fsrs/params';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { formatDate } from '../utils/datetime';
 import {
   createNote,
   updateNote,
@@ -33,6 +48,9 @@ import {
   reorderNotes,
 } from '../db/repository';
 import type { Lesson, Note } from '../db/types';
+
+/** An exam within this many days is flagged as urgent (pulsing header marker). */
+const EXAM_URGENT_DAYS = 3;
 
 interface LessonViewProps {
   /**
@@ -68,6 +86,7 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
   );
   const course = useCourse(courseId);
   const lessons = useLessons(courseId);
+  const examDates = useCourseExamDates(courseId);
   const notes = useNotes(lessonId);
   const lessonCards = useLessonCards(lessonId);
 
@@ -90,6 +109,7 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
     lesson === undefined ||
     course === undefined ||
     lessons === undefined ||
+    examDates === undefined ||
     notes === undefined ||
     lessonCards === undefined
   ) {
@@ -126,6 +146,16 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
   // for a single-lesson course (no path to navigate back to).
   const backTo = isInline ? '/' : `/course/${courseId}`;
   const backLabel = isInline ? 'Dashboard' : 'Course';
+
+  // Header stats, scoped to this lesson's own cards (reusing the same FSRS
+  // helpers CoursePath uses at course scope — see CoursePath.tsx and
+  // fsrs/eligibility.ts, fsrs/objective.ts).
+  const now = Date.now();
+  const nearestExam = nearestExamDate(course, examDates, now);
+  const examUrgent = nearestExam > now && nearestExam - now <= EXAM_URGENT_DAYS * MS_PER_DAY;
+  const lessonAvailable = availableCards(lessonCards, now);
+  const lessonMastery = progressValue(lessonAvailable, course, now);
+  const lessonDueCount = dueCards(lessonAvailable, now).length;
 
   // ---------------------------------------------------------------------------
   // Note handlers
@@ -203,15 +233,30 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
         )}
       </div>
 
-      {/* Header */}
-      <header className="mb-8">
-        <h1 className="font-display text-4xl tracking-tight md:text-5xl">
-          {lesson.name}
-        </h1>
-        {lesson.description && (
-          <p className="mt-2 text-sm text-ink-soft">{lesson.description}</p>
-        )}
-      </header>
+      {/* Header — a lean adoption of the course cockpit header, scoped to this
+          lesson's own cards rather than the whole course. */}
+      <CourseHeader
+        className="mb-8"
+        eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
+        examUrgent={examUrgent}
+        title={lesson.name}
+      >
+        <CourseHeaderStat
+          icon={<MasteryRing value={lessonMastery} />}
+          label="Mastery"
+          value={`${Math.round(lessonMastery * 100)}%`}
+          description={progressDescription(course)}
+        />
+        <CourseHeaderStat
+          icon={<ClockIcon width={18} height={18} />}
+          label="Due today"
+          value={`${lessonDueCount} card${lessonDueCount === 1 ? '' : 's'}`}
+          description="Ready for review right now."
+        />
+      </CourseHeader>
+      {lesson.description && (
+        <p className="mb-8 text-sm text-ink-soft">{lesson.description}</p>
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* Notes section                                                        */}

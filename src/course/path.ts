@@ -524,3 +524,21 @@ export function pathPosition(nodes: PathNode[]): { reached: number; total: numbe
 
   return { reached, total };
 }
+
+/**
+ * Nearest upcoming exam date for a course: considers `course.examDate` and all
+ * explicit `CourseExamDate` checkpoints, and returns the soonest one still in
+ * the future. Falls back to `course.examDate` even if it has already passed,
+ * so the header always has something to show. Shared by CoursePath and
+ * LessonView so both headers agree on "the" exam date.
+ */
+export function nearestExamDate(
+  course: Course,
+  examDates: CourseExamDate[],
+  now: number = Date.now(),
+): number {
+  const futureDates = [course.examDate, ...examDates.map((ed) => ed.examDate)].filter(
+    (d) => d > now,
+  );
+  return futureDates.length > 0 ? Math.min(...futureDates) : course.examDate;
+}
