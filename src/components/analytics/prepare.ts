@@ -221,6 +221,56 @@ export function leechCountByDeck(cards: Card[], deckMap: Map<string, string>): L
     .sort((a, b) => b.count - a.count);
 }
 
+/** Leech counts per course, sorted descending. */
+export function leechCountByCourse(cards: Card[], courseMap: Map<string, string>): LeechCount[] {
+  const counts = new Map<string, number>();
+  for (const card of cards) {
+    if (!card.courseId || !isLeech(card)) continue;
+    const courseName = courseMap.get(card.courseId) ?? 'Unknown';
+    counts.set(courseName, (counts.get(courseName) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+/**
+ * Cross-course predicted exam-day trajectory: for each calendar day, average the
+ * last per-course snapshot recorded that day. Ignores legacy deck-only entries.
+ */
+export function globalTrajectorySeries(history: SessionHistoryEntry[]): TrajectoryPoint[] {
+  const perDayPerCourse = new Map<number, Map<string, SessionHistoryEntry>>();
+  for (const entry of history) {
+    if (!entry.courseId) continue;
+    const day = startOfDay(entry.timestamp);
+    let courseMap = perDayPerCourse.get(day);
+    if (!courseMap) {
+      courseMap = new Map();
+      perDayPerCourse.set(day, courseMap);
+    }
+    const existing = courseMap.get(entry.courseId);
+    if (!existing || entry.timestamp >= existing.timestamp) {
+      courseMap.set(entry.courseId, entry);
+    }
+  }
+  return [...perDayPerCourse.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([day, courseMap]) => {
+      const values = [...courseMap.values()];
+      const avg =
+        values.reduce((sum, entry) => sum + entry.averagePredictedRetrievability, 0) /
+        values.length;
+      return {
+        day,
+        label: new Date(day).toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+        }),
+        retrievability: Number.isFinite(avg) ? Math.round(avg * 100) : 0,
+      };
+    });
+}
+
 export interface LessonBreakdownPoint {
   lessonId: string;
   name: string;

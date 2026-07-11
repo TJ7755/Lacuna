@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { lessonBreakdown } from './prepare';
+import { globalTrajectorySeries, leechCountByCourse, lessonBreakdown } from './prepare';
 import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
-import type { Card, Course, Lesson } from '../../db/types';
+import type { Card, Course, Lesson, SessionHistoryEntry } from '../../db/types';
+import { startOfDay } from '../../utils/datetime';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers (mirrors src/state/useCourseData.test.ts)
@@ -56,10 +57,6 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
   };
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
 describe('lessonBreakdown', () => {
   it('returns an empty array when there are no lessons', () => {
     expect(lessonBreakdown([], [], makeCourse({ id: 'c1' }))).toEqual([]);
@@ -97,5 +94,63 @@ describe('lessonBreakdown', () => {
     expect(entry.cardCount).toBe(0);
     expect(entry.masteryPct).toBe(100);
     expect(entry.completionPct).toBe(0);
+  });
+});
+
+describe('leechCountByCourse', () => {
+  it('groups leeches by course name and ignores cards without a courseId', () => {
+    const courseMap = new Map([
+      ['c1', 'Biology'],
+      ['c2', 'Chemistry'],
+    ]);
+    const cards = [
+      makeCard({
+        id: 'card1',
+        deckId: 'd1',
+        courseId: 'c1',
+        lapses: 8,
+        reps: 10,
+      }),
+      makeCard({ id: 'card2', deckId: 'd2', courseId: 'c2', lapses: 9, reps: 10 }),
+      makeCard({ id: 'card3', deckId: 'd3', lapses: 2, reps: 2 }),
+    ];
+    const result = leechCountByCourse(cards, courseMap);
+    expect(result).toEqual([
+      { name: 'Biology', count: 1 },
+      { name: 'Chemistry', count: 1 },
+    ]);
+  });
+});
+
+describe('globalTrajectorySeries', () => {
+  it('averages the last per-course snapshot for each day', () => {
+    const day = startOfDay(Date.UTC(2026, 0, 15));
+    const history: SessionHistoryEntry[] = [
+      {
+        timestamp: day + 1000,
+        deckId: 'd1',
+        courseId: 'c1',
+        averagePredictedRetrievability: 0.8,
+      },
+      {
+        timestamp: day + 2000,
+        deckId: 'd2',
+        courseId: 'c1',
+        averagePredictedRetrievability: 0.9,
+      },
+      {
+        timestamp: day + 1500,
+        deckId: 'd3',
+        courseId: 'c2',
+        averagePredictedRetrievability: 0.6,
+      },
+      {
+        timestamp: day + 500,
+        deckId: 'legacy',
+        averagePredictedRetrievability: 0.1,
+      },
+    ];
+    const [point] = globalTrajectorySeries(history);
+    expect(point.retrievability).toBe(75);
   });
 });

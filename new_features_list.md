@@ -1434,8 +1434,10 @@ Replaces main plan §16 and Addendum 1 §D — most of those are now resolved. W
 
 ## O. Phase 6 Deferrals and Decisions
 
-- **Teacher-configured lesson session filters** — deferred. `/lesson/:lessonId/learn` currently serves new cards only (Lesson N's own cards plus `LessonCardLink`-linked cards); a teacher-facing filter UI (e.g. due-only, mixed) is not yet built.
-- **Manual practice-node authoring UI** — deferred. Manual `PracticeNode` records render and gate the unlock ratchet correctly (§I), but there is no UI yet for a teacher to create or place one; only rendering/placement logic is done.
+> **Status:** all deferrals listed below were closed during Arc 0 (see `CHANGES.md`).
+
+- **Teacher-configured lesson session filters** — implemented. `Lesson.sessionFilter` (`new` / `due` / `mixed`) is configurable per lesson in `LessonManagementSection`.
+- **Manual practice-node authoring UI** — implemented. Teachers can create, edit and delete manual `PracticeNode` records from the course path and course settings.
 - **Auto practice nodes do not gate the semi-linear unlock ratchet** — implemented per §I's rationale exactly: auto slots are recomputed from a volatile due-card snapshot (`shouldInsertPractice`, §H) and would make the one-way ratchet flap if they gated it. Only a manual `PracticeNode` in the slot after Lesson N gates unlock; this is a deliberate scope narrowing of §I condition 2, not an oversight.
 - **`UserPerformance` calibration reuses the `deckId` key for `courseId` strings** — no schema bump for Phase 6. Revisit if per-course calibration needs to diverge from the deck-keyed shape.
-- **`undoReview` does not restore `lastInteractedAt`** — pre-existing gap, unchanged by Phase 6. The new `ReviewUndo` `kind` (deck/course) discriminator is recorded so a future fix can restore the right entity's timestamp; not itself a fix.
+- **`undoReview` does not restore `lastInteractedAt`** — fixed. `ReviewUndo.kind` now restores the correct course or deck timestamp on undo.

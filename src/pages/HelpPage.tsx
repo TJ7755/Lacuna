@@ -271,9 +271,10 @@ export function HelpPage() {
                 <p className="text-sm text-ink-soft">
                   A lesson holds the notes and cards for one topic. Notes are Markdown blocks
                   where you write out explanations, examples or source material &mdash; add,
-                  reorder and edit them directly on the lesson page. Cards are the flashcards
-                  you actually get quizzed on; create them from the lesson page or generate
-                  them from a note.
+                  reorder and edit them directly on the lesson page. Add further lessons from
+                  the course path, from course settings under Lessons, or from a single-lesson
+                  course view. Cards are the flashcards you actually get quizzed on; create
+                  them from the lesson page or generate them from a note.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">

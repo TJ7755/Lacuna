@@ -21,6 +21,11 @@ carries full detail. Outline arcs are scoped, not specified.
 
 # Arc 0 — Course Architecture Close-out
 
+> **Status (July 2026): complete.** All Phase 8 items, deferred debts and the add-lesson
+> UI gap are implemented. The only remaining checklist item is the manual end-to-end pass
+> (§0.1 item 6), which must be run by a human in the browser. Schema removal of the
+> internal `decks`/`folders` tables remains explicitly out of scope (§0.3).
+
 Finish what the Course plan started. No new features; the goal is one data model in the UI,
 paid-down deferrals, and accurate documentation.
 

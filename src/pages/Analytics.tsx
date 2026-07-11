@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { m } from 'motion/react';
+import { m as motion } from 'motion/react';
 import {
   Area,
   AreaChart,
@@ -14,7 +14,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useDecks, useAllCards, useAllSessionHistory } from '../state/useData';
+import { useAllCards, useAllSessionHistory } from '../state/useData';
+import { useCourses } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { ChartCard } from '../components/analytics/ChartCard';
 import { FadeInView } from '../components/ui/FadeInView';
@@ -23,13 +24,13 @@ import {
   forecastSeries,
   studyTimeSeries,
   retentionByAge,
-  leechCountByDeck,
+  leechCountByCourse,
   reviewVolume,
   stabilityProfile,
-  trajectorySeries,
+  globalTrajectorySeries,
 } from '../components/analytics/prepare';
 import { predictionAccuracySeries } from '../fsrs/calibration';
-import { DeckComparison } from '../components/analytics/DeckComparison';
+import { CourseComparison } from '../components/analytics/CourseComparison';
 
 function AnalyticsSkeleton() {
   return (
@@ -65,26 +66,50 @@ function AnalyticsSkeleton() {
 export function Analytics() {
   const [motionSpeed] = useMotionSpeed();
   const motionMult = speedMultiplier(motionSpeed);
-  const decks = useDecks();
+  const courses = useCourses();
   const allCards = useAllCards();
   const history = useAllSessionHistory();
   const c = useChartColours();
 
-  const deckMap = useMemo(
-    () => new Map((decks ?? []).map((d) => [d.id, d.name])),
-    [decks],
+  const activeCourses = useMemo(
+    () => (courses ?? []).filter((course) => !course.archived),
+    [courses],
   );
 
-  const cards = useMemo(() => allCards ?? [], [allCards]);
+  const activeCourseIds = useMemo(
+    () => new Set(activeCourses.map((course) => course.id)),
+    [activeCourses],
+  );
+
+  const courseMap = useMemo(
+    () => new Map(activeCourses.map((course) => [course.id, course.name])),
+    [activeCourses],
+  );
+
+  const cards = useMemo(
+    () =>
+      (allCards ?? []).filter(
+        (card) => card.courseId != null && activeCourseIds.has(card.courseId),
+      ),
+    [allCards, activeCourseIds],
+  );
+
+  const courseHistory = useMemo(
+    () =>
+      (history ?? []).filter(
+        (entry) => entry.courseId != null && activeCourseIds.has(entry.courseId),
+      ),
+    [history, activeCourseIds],
+  );
 
   const forecast = useMemo(() => forecastSeries(cards), [cards]);
   const studyTime = useMemo(() => studyTimeSeries(cards), [cards]);
   const volume = useMemo(() => reviewVolume(cards), [cards]);
   const retention = useMemo(() => retentionByAge(cards), [cards]);
-  const leeches = useMemo(() => leechCountByDeck(cards, deckMap), [cards, deckMap]);
+  const leeches = useMemo(() => leechCountByCourse(cards, courseMap), [cards, courseMap]);
   const profile = useMemo(() => stabilityProfile(cards), [cards]);
   const prediction = useMemo(() => predictionAccuracySeries(cards), [cards]);
-  const trajectory = useMemo(() => trajectorySeries(history ?? []), [history]);
+  const trajectory = useMemo(() => globalTrajectorySeries(courseHistory), [courseHistory]);
 
   const hasReviews = useMemo(
     () => cards.some((card) => card.history.length > 0),
@@ -105,7 +130,7 @@ export function Analytics() {
     fontSize: 13,
   } as const;
 
-  if (decks === undefined || allCards === undefined || history === undefined) {
+  if (courses === undefined || allCards === undefined || history === undefined) {
     return (
       <div role="status" aria-busy="true" aria-label="Loading analytics">
         <AnalyticsSkeleton />
@@ -115,7 +140,7 @@ export function Analytics() {
 
   return (
     <div className="space-y-6 p-6">
-      <m.header
+      <motion.header
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28 * motionMult, ease: [0.25, 0.1, 0.25, 1] }}
@@ -125,18 +150,16 @@ export function Analytics() {
         <div className="relative">
           <h1 className="font-display text-3xl tracking-tight">Analytics</h1>
           <p className="mt-1 text-sm text-ink-soft">
-            Insights across every lesson.
+            Insights across every course.
           </p>
         </div>
-      </m.header>
+      </motion.header>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Deck comparison */}
         <FadeInView className="lg:col-span-2" delay={0} y={0}>
-          <DeckComparison decks={decks ?? []} cards={cards} />
+          <CourseComparison courses={activeCourses} cards={cards} />
         </FadeInView>
 
-        {/* Forecast */}
         <FadeInView className="lg:col-span-2" delay={0.04} y={0}>
           <ChartCard
             title="Forecast"
@@ -185,11 +208,10 @@ export function Analytics() {
           </ChartCard>
         </FadeInView>
 
-        {/* Predicted exam-day score */}
         <FadeInView delay={0.06} y={0}>
           <ChartCard
             title="Predicted exam-day score"
-            description="Average predicted retrievability across all lessons over time."
+            description="Average predicted retrievability across all courses over time."
             empty={trajectory.length < 2}
             emptyMessage="Study cards to start plotting your trajectory."
             delay={0.06}
@@ -223,7 +245,6 @@ export function Analytics() {
           </ResponsiveContainer>          </ChartCard>
         </FadeInView>
 
-        {/* Prediction accuracy */}
         <FadeInView delay={0.12} y={0}>
           <ChartCard
             title="Prediction accuracy"
@@ -273,7 +294,6 @@ export function Analytics() {
           </ResponsiveContainer>          </ChartCard>
         </FadeInView>
 
-        {/* Review volume */}
         <FadeInView delay={0.18} y={0}>
           <ChartCard
             title="Review volume"
@@ -297,7 +317,6 @@ export function Analytics() {
           </ResponsiveContainer>          </ChartCard>
         </FadeInView>
 
-        {/* Study time */}
         <FadeInView delay={0.24} y={0}>
           <ChartCard
             title="Study time"
@@ -334,7 +353,6 @@ export function Analytics() {
           </ResponsiveContainer>          </ChartCard>
         </FadeInView>
 
-        {/* Retention by age */}
         <FadeInView delay={0.30} y={0}>
           <ChartCard
             title="Retention by age"
@@ -365,11 +383,10 @@ export function Analytics() {
           </ResponsiveContainer>          </ChartCard>
         </FadeInView>
 
-        {/* Leech count by deck */}
         <FadeInView delay={0.36} y={0}>
           <ChartCard
-            title="Leech count by lesson"
-            description="Number of leech cards in each lesson."
+            title="Leech count by course"
+            description="Number of leech cards in each course."
             empty={leeches.length === 0}
             emptyMessage="No leeches found — great job keeping up with reviews!"
             delay={0.36}
@@ -389,7 +406,6 @@ export function Analytics() {
           </ResponsiveContainer>          </ChartCard>
         </FadeInView>
 
-        {/* Stability profile */}
         <FadeInView delay={0.42} y={0}>
           <ChartCard
             title="Stability profile"

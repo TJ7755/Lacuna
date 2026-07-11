@@ -1,39 +1,39 @@
-# Lacuna — version 0.0.3
+# Lacuna — version 0.1.0
 
-> **GitHub Release Note for v0.0.3**
+> **GitHub Release Note for v0.1.0**
 >
-> This release adds a new algorithm-free study mode, formal card types, and polishes the touch-first experience.
+> This release completes the Course Architecture Plan: Lacuna is now organised around
+> **courses, lessons, notes and cards** throughout the UI. The legacy deck and folder
+> surfaces are gone; scheduling, sharing, search, analytics and settings are course-aware.
 >
 > **What's new**
-> - **Simple learn mode** — a YES/NO-only study loop with no FSRS algorithms, no DB writes, and a live pill UI (Wrong/Remaining/Right). Perfect for pure memorisation without scheduling.
-> - **Card types** — cards can now be Basic (front/back), Reversed (back/front), or Typing-answer (type the answer before revealing). The typing card shows a live input field and compares the typed answer against the correct answer on reveal.
-> - **Touch-first polish** — default font size auto-switches to Large in touch mode, swipe gestures are configurable in settings, and the text selection focus ring is cleaned up.
-> - **Study options dropdown** — every deck now offers Simple learn, Cram mode, Due cards, New cards, Leech cards, and Flagged cards from a single menu.
-> - **Folder deletion** — folders can now be deleted from the dashboard with a confirmation dialog.
-> - **Share code importing** — fixed Base45 whitespace stripping that corrupted share code decoding for both legacy and compressed formats.
+> - **Course model** — courses with ordered lesson paths, notes, practice nodes, exam
+>   checkpoints, question bank, course settings and course-scoped learn sessions.
+> - **Migration** — existing decks and folders upgrade automatically to courses and lessons
+>   (schema v9); v1 share codes still import.
+> - **Teacher tooling** — add lessons, configure lesson session filters, author manual
+>   practice nodes, manage exam dates, undo course deletion.
+> - **Analytics** — per-course analytics on the path; global analytics compares courses.
+> - **Simple learn mode and card types** (from v0.0.3) — algorithm-free YES/NO study loop;
+>   Basic, Reversed, Cloze and Typing-answer cards.
 >
-> **Bug fixes**
-> - Fixed internal text selection ring overlapping the external focus ring.
-> - Fixed share code import showing 0 cards due to Base45 whitespace corruption.
-> - Fixed folder deletion missing from the dashboard.
-> - Fixed touch mode not defaulting to Large font size.
-> - Fixed gesture settings not persisting correctly.
+> **Note:** internal `decks`/`folders` tables remain as hidden backing storage; dropping them
+> is deferred to a later migration. See `next_plan.md` for Arc 1 (sequence learning).
 >
 > **Full changelog below**
 
-## Landing page
+## Unreleased — Landing page
 
 - Welcome path is now a playable micro-course: interactive exam curve (drag the
   horizon; also drives the dashboard mock), multi-card grading demo, interactive
   path demo that unlocks later nodes, practice queue instead of a feature grid,
   and a soft-gated checkpoint CTA. British English throughout.
 
-## Unreleased — Course architecture (data model and scheduling groundwork)
+## 0.1.0 — Course architecture
 
-First, additive stage of the migration from `Folder -> Deck -> Card` to
-`Course -> Lesson -> Note + Card`. The new model is built alongside the existing
-Deck/Folder model; nothing is removed and the Deck-based UI keeps running. There
-is no user-visible change yet — the UI is delivered in a later stage.
+Completes the migration from `Folder -> Deck -> Card` to `Course -> Lesson -> Note + Card`
+(Arc 0 in `next_plan.md`). The course model is built, the UI is cut over, and legacy
+deck/folder surfaces are removed. Internal backing decks remain in storage only.
 
 - Added the course domain types in `src/db/types.ts`: `Course`, `CourseExamDate`,
   `Lesson`, `Note`, `LessonCardLink`, `PracticeNode`, `UnlockMode`, plus optional
@@ -279,6 +279,23 @@ is no user-visible change yet — the UI is delivered in a later stage.
   `deleteCourse` itself never removed those backing decks, their `userPerformance` rows, or
   the course/deck-scoped `sessionHistory` rows, leaving them orphaned on every course
   deletion; `deleteCourse` now sweeps them up too.
+
+### Add lesson UI (course architecture close-out)
+
+- Added `AddLessonControl` (`src/components/course/AddLessonControl.tsx`): inline form wired
+  to the existing `createLesson` repository function, with a suggested default name
+  (`Lesson N`). Surfaces on the course path (including the empty state), in course settings
+  under Lessons (`LessonManagementSection`), and on single-lesson course views where the path
+  is hidden (`LessonView`). Creating a second lesson switches the course from the inline
+  single-lesson view to the full path.
+
+### Global analytics course cutover (Arc 0 close-out)
+
+- Migrated `/analytics` from the legacy deck model to courses: `CourseComparison` replaces
+  `DeckComparison`, cards and session history are scoped to active courses via `courseId`,
+  leech counts use `leechCountByCourse`, and the predicted exam-day trajectory uses a new
+  `globalTrajectorySeries` helper that averages per-course snapshots per day. Removed
+  `DeckComparison.tsx`.
 
 ## 0.0.3 — Simple learn mode, card types, and touch-first polish
 

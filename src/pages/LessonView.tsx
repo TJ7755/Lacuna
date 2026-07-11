@@ -9,7 +9,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { db } from '../db/schema';
-import { useCourse, useNotes, useLessonCards } from '../state/useCourseData';
+import { useCourse, useNotes, useLessonCards, useLessons } from '../state/useCourseData';
 import { useDeck } from '../state/useData';
 import { CardList } from '../components/cards/CardList';
 import { LessonNoteEditor } from '../components/notes/LessonNoteEditor';
@@ -24,6 +24,7 @@ import {
   PlayIcon,
 } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
+import { AddLessonControl } from '../components/course/AddLessonControl';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import {
   createNote,
@@ -66,6 +67,7 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
     [lessonId],
   );
   const course = useCourse(courseId);
+  const lessons = useLessons(courseId);
   const notes = useNotes(lessonId);
   const lessonCards = useLessonCards(lessonId);
 
@@ -87,6 +89,7 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
   if (
     lesson === undefined ||
     course === undefined ||
+    lessons === undefined ||
     notes === undefined ||
     lessonCards === undefined
   ) {
@@ -183,13 +186,22 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
       {/* Breadcrumb */}
-      <Link
-        to={backTo}
-        className="mb-6 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-      >
-        <ChevronLeftIcon width={16} height={16} />
-        {backLabel}
-      </Link>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <Link
+          to={backTo}
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+        >
+          <ChevronLeftIcon width={16} height={16} />
+          {backLabel}
+        </Link>
+        {isInline && courseId && (
+          <AddLessonControl
+            courseId={courseId}
+            lessonCount={lessons.length}
+            onCreated={() => navigate(`/course/${courseId}`)}
+          />
+        )}
+      </div>
 
       {/* Header */}
       <header className="mb-8">

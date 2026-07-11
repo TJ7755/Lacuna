@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
+import { AddLessonControl } from '../../components/course/AddLessonControl';
 import { ChevronDownIcon, TrashIcon, EditIcon } from '../../components/ui/icons';
 import { useLessons } from '../../state/useCourseData';
 import { updateLesson, deleteLesson, reorderLessons } from '../../db/repository';
@@ -59,7 +60,10 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-ink-faint">
+        Lessons appear in order on the course path. Add, rename, reorder or remove them here.
+      </p>
       {lessons?.length === 0 && (
         <p className="text-xs text-ink-faint">This course has no lessons yet.</p>
       )}
@@ -145,6 +149,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
           </div>
         </div>
       ))}
+      <AddLessonControl courseId={courseId} lessonCount={lessons?.length ?? 0} />
     </div>
   );
 }

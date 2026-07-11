@@ -3,7 +3,7 @@ import { m as motion, AnimatePresence } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useChartColours } from './useChartColours';
 import { ChartCard } from './ChartCard';
-import type { Deck, Card } from '../../db/types';
+import type { Course, Card } from '../../db/types';
 import {
   averagePredictedRetrievability,
   masteryFraction,
@@ -13,23 +13,22 @@ import { startOfDay } from '../../utils/datetime';
 
 interface ComparisonMetric {
   label: string;
-  deckA: number;
-  deckB: number;
+  courseA: number;
+  courseB: number;
   unit?: string;
-  format?: (v: number) => string;
   higherIsBetter?: boolean;
 }
 
 function computeMetrics(
-  deckA: Deck,
+  courseA: Course,
   cardsA: Card[],
-  deckB: Deck,
+  courseB: Course,
   cardsB: Card[],
 ): ComparisonMetric[] {
-  const avgRetA = averagePredictedRetrievability(cardsA, deckA);
-  const avgRetB = averagePredictedRetrievability(cardsB, deckB);
-  const masteryA = masteryFraction(cardsA, deckA);
-  const masteryB = masteryFraction(cardsB, deckB);
+  const avgRetA = averagePredictedRetrievability(cardsA, courseA);
+  const avgRetB = averagePredictedRetrievability(cardsB, courseB);
+  const masteryA = masteryFraction(cardsA, courseA);
+  const masteryB = masteryFraction(cardsB, courseB);
 
   const reviewedA = cardsA.filter((c) => c.history.length > 0).length;
   const reviewedB = cardsB.filter((c) => c.history.length > 0).length;
@@ -69,61 +68,36 @@ function computeMetrics(
   );
 
   return [
-    {
-      label: 'Cards',
-      deckA: cardsA.length,
-      deckB: cardsB.length,
-      higherIsBetter: true,
-    },
+    { label: 'Cards', courseA: cardsA.length, courseB: cardsB.length, higherIsBetter: true },
     {
       label: 'Predicted exam score',
-      deckA: Math.round(avgRetA * 100),
-      deckB: Math.round(avgRetB * 100),
+      courseA: Math.round(avgRetA * 100),
+      courseB: Math.round(avgRetB * 100),
       unit: '%',
       higherIsBetter: true,
     },
     {
       label: 'Mastery fraction',
-      deckA: Math.round(masteryA * 100),
-      deckB: Math.round(masteryB * 100),
+      courseA: Math.round(masteryA * 100),
+      courseB: Math.round(masteryB * 100),
       unit: '%',
       higherIsBetter: true,
     },
-    {
-      label: 'Cards reviewed',
-      deckA: reviewedA,
-      deckB: reviewedB,
-      higherIsBetter: true,
-    },
-    {
-      label: 'Total reviews',
-      deckA: totalReviewsA,
-      deckB: totalReviewsB,
-      higherIsBetter: true,
-    },
-    {
-      label: 'Reviews today',
-      deckA: reviewsTodayA,
-      deckB: reviewsTodayB,
-      higherIsBetter: true,
-    },
-    {
-      label: 'Leech cards',
-      deckA: leechesA,
-      deckB: leechesB,
-      higherIsBetter: false,
-    },
+    { label: 'Cards reviewed', courseA: reviewedA, courseB: reviewedB, higherIsBetter: true },
+    { label: 'Total reviews', courseA: totalReviewsA, courseB: totalReviewsB, higherIsBetter: true },
+    { label: 'Reviews today', courseA: reviewsTodayA, courseB: reviewsTodayB, higherIsBetter: true },
+    { label: 'Leech cards', courseA: leechesA, courseB: leechesB, higherIsBetter: false },
     {
       label: 'Mean stability',
-      deckA: Number(avgStabilityA.toFixed(1)),
-      deckB: Number(avgStabilityB.toFixed(1)),
+      courseA: Number(avgStabilityA.toFixed(1)),
+      courseB: Number(avgStabilityB.toFixed(1)),
       unit: ' days',
       higherIsBetter: true,
     },
     {
       label: 'Mean difficulty',
-      deckA: Number(avgDifficultyA.toFixed(1)),
-      deckB: Number(avgDifficultyB.toFixed(1)),
+      courseA: Number(avgDifficultyA.toFixed(1)),
+      courseB: Number(avgDifficultyB.toFixed(1)),
       higherIsBetter: false,
     },
   ];
@@ -144,18 +118,18 @@ function ComparisonBar({
   delay: number;
   m: number;
 }) {
-  const widthA = max > 0 ? (metric.deckA / max) * 100 : 0;
-  const widthB = max > 0 ? (metric.deckB / max) * 100 : 0;
+  const widthA = max > 0 ? (metric.courseA / max) * 100 : 0;
+  const widthB = max > 0 ? (metric.courseB / max) * 100 : 0;
   const unit = metric.unit ?? '';
   const winner = metric.higherIsBetter
-    ? metric.deckA > metric.deckB
+    ? metric.courseA > metric.courseB
       ? 'A'
-      : metric.deckB > metric.deckA
+      : metric.courseB > metric.courseA
         ? 'B'
         : null
-    : metric.deckA < metric.deckB
+    : metric.courseA < metric.courseB
       ? 'A'
-      : metric.deckB < metric.deckA
+      : metric.courseB < metric.courseA
         ? 'B'
         : null;
   const winnerColour = winner === 'A' ? colourA : winner === 'B' ? colourB : null;
@@ -176,13 +150,12 @@ function ComparisonBar({
             transition={{ duration: 0.3 * m, delay: (delay + 0.35) * m, type: 'spring', stiffness: 500, damping: 25 }}
             className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-sm"
             style={{ backgroundColor: winnerColour }}
-            aria-label={winner === 'A' ? 'Lesson A leads' : 'Lesson B leads'}
+            aria-label={winner === 'A' ? 'Course A leads' : 'Course B leads'}
           >
             {winner}
           </motion.span>
         )}
       </div>
-      {/* Stacked bars: each deck gets its own row so values never overlap. */}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colourA }} />
@@ -196,7 +169,7 @@ function ComparisonBar({
             />
           </div>
           <span className="w-14 shrink-0 text-right tabular text-sm" style={{ color: colourA }}>
-            {metric.deckA}
+            {metric.courseA}
             {unit}
           </span>
         </div>
@@ -212,7 +185,7 @@ function ComparisonBar({
             />
           </div>
           <span className="w-14 shrink-0 text-right tabular text-sm" style={{ color: colourB }}>
-            {metric.deckB}
+            {metric.courseB}
             {unit}
           </span>
         </div>
@@ -221,93 +194,95 @@ function ComparisonBar({
   );
 }
 
-interface DeckComparisonProps {
-  decks: Deck[];
+export interface CourseComparisonProps {
+  courses: Course[];
   cards: Card[];
 }
 
-export function DeckComparison({ decks, cards }: DeckComparisonProps) {
-  const [deckAId, setDeckAId] = useState<string>('');
-  const [deckBId, setDeckBId] = useState<string>('');
+/** Side-by-side statistics for two courses on the global analytics page. */
+export function CourseComparison({ courses, cards }: CourseComparisonProps) {
+  const [courseAId, setCourseAId] = useState<string>('');
+  const [courseBId, setCourseBId] = useState<string>('');
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const c = useChartColours();
 
-  const byDeck = useMemo(() => {
+  const byCourse = useMemo(() => {
     const map = new Map<string, Card[]>();
     for (const card of cards) {
-      const list = map.get(card.deckId) ?? [];
+      if (!card.courseId) continue;
+      const list = map.get(card.courseId) ?? [];
       list.push(card);
-      map.set(card.deckId, list);
+      map.set(card.courseId, list);
     }
     return map;
   }, [cards]);
 
-  const deckA = decks.find((d) => d.id === deckAId);
-  const deckB = decks.find((d) => d.id === deckBId);
-  const cardsA = useMemo(() => byDeck.get(deckAId) ?? [], [byDeck, deckAId]);
-  const cardsB = useMemo(() => byDeck.get(deckBId) ?? [], [byDeck, deckBId]);
+  const courseA = courses.find((course) => course.id === courseAId);
+  const courseB = courses.find((course) => course.id === courseBId);
+  const cardsA = useMemo(() => byCourse.get(courseAId) ?? [], [byCourse, courseAId]);
+  const cardsB = useMemo(() => byCourse.get(courseBId) ?? [], [byCourse, courseBId]);
 
   const metrics = useMemo(() => {
-    if (!deckA || !deckB) return [];
-    return computeMetrics(deckA, cardsA, deckB, cardsB);
-  }, [deckA, deckB, cardsA, cardsB]);
+    if (!courseA || !courseB) return [];
+    return computeMetrics(courseA, cardsA, courseB, cardsB);
+  }, [courseA, courseB, cardsA, cardsB]);
 
   const maxByMetric = useMemo(() => {
     const map = new Map<string, number>();
     for (const metric of metrics) {
-      map.set(metric.label, Math.max(metric.deckA, metric.deckB, 1));
+      map.set(metric.label, Math.max(metric.courseA, metric.courseB, 1));
     }
     return map;
   }, [metrics]);
 
-  const colourA = deckA?.colour ?? c.accent;
-  const colourB = deckB?.colour ?? c.positive;
+  const colourA = courseA?.colour ?? c.accent;
+  const colourB = courseB?.colour ?? c.positive;
 
   return (
     <ChartCard
-      title="Lesson comparison"
-      description="Select two lessons to compare their statistics side by side."
-      empty={decks.length < 2}
-      emptyMessage="Create at least two lessons to compare them."
+      title="Course comparison"
+      description="Select two courses to compare their statistics side by side."
+      empty={courses.length < 2}
+      emptyMessage="Create at least two courses to compare them."
       delay={0}
       className="h-auto"
     >
       <div className="space-y-4">
         <div className="flex flex-wrap gap-3">
           <select
-            value={deckAId}
-            onChange={(e) => setDeckAId(e.target.value)}
+            value={courseAId}
+            onChange={(e) => setCourseAId(e.target.value)}
             className="min-w-[10rem] rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
-            aria-label="First lesson"
+            aria-label="First course"
           >
-            <option value="">Select a lesson…</option>
-            {decks.map((d) => (
-              <option key={d.id} value={d.id} disabled={d.id === deckBId}>
-                {d.name}
+            <option value="">Select a course…</option>
+            {courses.map((course) => (
+              <option key={course.id} value={course.id} disabled={course.id === courseBId}>
+                {course.name}
               </option>
             ))}
           </select>
           <span className="self-center text-sm text-ink-faint">vs</span>
           <select
-            value={deckBId}
-            onChange={(e) => setDeckBId(e.target.value)}
+            value={courseBId}
+            onChange={(e) => setCourseBId(e.target.value)}
             className="min-w-[10rem] rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
-            aria-label="Second lesson"
+            aria-label="Second course"
           >
-            <option value="">Select a lesson…</option>
-            {decks.map((d) => (
-              <option key={d.id} value={d.id} disabled={d.id === deckAId}>
-                {d.name}
+            <option value="">Select a course…</option>
+            {courses.map((course) => (
+              <option key={course.id} value={course.id} disabled={course.id === courseAId}>
+                {course.name}
               </option>
             ))}
           </select>
         </div>
 
         <AnimatePresence mode="wait">
-          {deckA && deckB && (
+          {courseA && courseB && (
             <motion.div
-              key={`${deckAId}-${deckBId}`}
+              key={`${courseAId}-${courseBId}`}
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
@@ -317,12 +292,12 @@ export function DeckComparison({ decks, cards }: DeckComparisonProps) {
               <div className="flex items-center gap-3 text-sm">
                 <div className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colourA }} />
-                  <span className="text-ink">{deckA.name}</span>
+                  <span className="text-ink">{courseA.name}</span>
                 </div>
                 <span className="text-ink-faint">vs</span>
                 <div className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colourB }} />
-                  <span className="text-ink">{deckB.name}</span>
+                  <span className="text-ink">{courseB.name}</span>
                 </div>
               </div>
 

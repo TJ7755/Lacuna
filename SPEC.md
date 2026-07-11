@@ -1,4 +1,4 @@
-# Lacuna — Specification (v0.0.3)
+# Lacuna — Specification (v0.1.0)
 
 Lacuna is a local-only, exam-driven spaced-revision application built on FSRS-6. Material is
 organised into **courses**, each made of an ordered path of **lessons** holding **notes** and
@@ -17,12 +17,10 @@ modules keep working unchanged — but no route, page or sidebar entry exposes a
 directly any more. Where this document says "deck" it means that internal backing structure,
 not a user-facing concept.
 
-**Version 0.0.3** adds a Simple learn mode (algorithm-free YES/NO study loop), formal card
-types (Basic, Reversed, Cloze, Typing-answer), and further touch-first polish (auto font
-scaling, cleaned-up focus rings). It also fixes share code importing and a number of UI/UX
-issues (see §20). The Course/Lesson/Note UI, course-aware search, course-scoped analytics and
-the removal of the legacy deck surfaces landed after v0.0.3 and are documented throughout this
-file and in `CHANGES.md`; a formal version bump for that work is still pending.
+**Version 0.1.0** completes the Course Architecture Plan (Arc 0): the product is organised
+around **courses, lessons, notes and cards** end to end, with no user-facing deck or folder
+surfaces. v0.0.3 added Simple learn mode, formal card types and touch-first polish (see §20);
+that work ships inside 0.1.0 on this branch.
 
 British English throughout. No emojis anywhere in the product or its copy.
 

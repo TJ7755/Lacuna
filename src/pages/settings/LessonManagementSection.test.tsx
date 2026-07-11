@@ -12,11 +12,24 @@ vi.mock('../../state/useCourseData', () => ({
 const updateLesson = vi.fn().mockResolvedValue(undefined);
 const deleteLesson = vi.fn().mockResolvedValue(undefined);
 const reorderLessons = vi.fn().mockResolvedValue(undefined);
+const createLesson = vi.fn().mockResolvedValue({
+  id: 'lesson-new',
+  courseId: 'course-1',
+  name: 'Lesson 3',
+  orderIndex: 2,
+  isExtension: false,
+  createdAt: Date.now(),
+});
 
 vi.mock('../../db/repository', () => ({
   updateLesson: (...args: unknown[]) => updateLesson(...args),
   deleteLesson: (...args: unknown[]) => deleteLesson(...args),
   reorderLessons: (...args: unknown[]) => reorderLessons(...args),
+  createLesson: (...args: unknown[]) => createLesson(...args),
+}));
+
+vi.mock('../../components/ui/Toast', () => ({
+  useToast: () => ({ notify: vi.fn() }),
 }));
 
 const lessonOne: Lesson = {
@@ -42,6 +55,7 @@ describe('LessonManagementSection', () => {
     updateLesson.mockClear();
     deleteLesson.mockClear();
     reorderLessons.mockClear();
+    createLesson.mockClear();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
@@ -70,5 +84,16 @@ describe('LessonManagementSection', () => {
     fireEvent.change(input, { target: { value: 'Renamed lesson' } });
     fireEvent.blur(input);
     expect(updateLesson).toHaveBeenCalledWith('lesson-1', { name: 'Renamed lesson' });
+  });
+
+  it('creates a lesson from the add form', async () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /add lesson/i }));
+    const input = screen.getByPlaceholderText('e.g. Elasticity');
+    fireEvent.change(input, { target: { value: 'Lesson 3' } });
+    fireEvent.click(screen.getByRole('button', { name: /create lesson/i }));
+    await vi.waitFor(() => {
+      expect(createLesson).toHaveBeenCalledWith('course-1', 'Lesson 3');
+    });
   });
 });
