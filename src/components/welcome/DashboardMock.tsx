@@ -98,9 +98,9 @@ export function DashboardMock() {
         <circle cx="278" cy="212" r="13" fill={accentSoft} />
         <path d="M278 205c3 4 5 6 5 9a5 5 0 0 1-10 0c0-3 2-5 5-9z" fill="none" stroke={accent} strokeWidth="1.6" strokeLinejoin="round" />
         <text x="300" y="217" fontFamily={display} fontSize="18" fill={ink}>0 <tspan fontFamily={body} fontSize="11" fill={inkSoft}>days</tspan></text>
-        <Bar x="266" y="232" w={110} o={0.7} />
+        <Bar x={266} y={232} w={110} o={0.7} />
         <text x="266" y="262" fontFamily={body} fontSize="10" fill={inkFaint}>study streak</text>
-        <Bar x="266" y="286" w={110} o={0.7} />
+        <Bar x={266} y={286} w={110} o={0.7} />
         <text x="266" y="314" fontFamily={body} fontSize="10" fill={inkFaint}>reviewed today</text>
         <line x1="412" y1="190" x2="412" y2="314" stroke={line} />
 
