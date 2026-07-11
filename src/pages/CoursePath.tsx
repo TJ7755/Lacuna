@@ -16,6 +16,7 @@ import {
 } from '../state/useCourseData';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { DEFAULT_REVIEW_SECONDS, buildDeckSecondsMap } from '../fsrs/stats';
+import { progressValue } from '../fsrs/objective';
 import { decayOf } from '../fsrs/fsrs';
 import { MS_PER_DAY } from '../fsrs/params';
 import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
@@ -218,6 +219,16 @@ export function CoursePath() {
     now,
   );
   const masteryPct = Math.round(mastery * 100);
+
+  // Hover detail for a lesson node's expanding squircle (see LessonNode).
+  const detailForLesson = (lessonId: string) => {
+    const cards = lessonCardsById.get(lessonId) ?? [];
+    return {
+      cardCount: cards.length,
+      dueCount: dueCards(availableCards(cards, now), now).length,
+      masteryPct: Math.round(progressValue(cards, course, now) * 100),
+    };
+  };
   const unseenCount = courseCards.filter(
     (c) => c.lastReviewed === null || c.state === 0,
   ).length;
@@ -231,6 +242,13 @@ export function CoursePath() {
         cards={courseCards}
         decay={decayOf(course.fsrsParameters)}
         now={now}
+        onOpenCard={(card) => {
+          if (card.primaryLessonId) {
+            navigate(
+              `/course/${courseId}/lesson/${card.primaryLessonId}/cards/${card.id}/edit`,
+            );
+          }
+        }}
       />
       {/* Breadcrumb */}
       <div className="mb-6 flex items-center justify-between gap-4">
@@ -339,6 +357,9 @@ export function CoursePath() {
                 node.nodeType === 'lesson'
                   ? lockHintFor(course, node.lesson.id, effectiveDates)
                   : undefined
+              }
+              lessonDetail={
+                node.nodeType === 'lesson' ? detailForLesson(node.lesson.id) : undefined
               }
               onLessonClick={(lessonId) =>
                 navigate(`/course/${courseId}/lesson/${lessonId}`)

@@ -100,13 +100,17 @@ function StudyStreakBadge({ collapsed }: { collapsed: boolean }) {
       animate={{ scale: 1, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 500, damping: 20, delay: 0.3 * m }}
       className={cn(
-        'ml-auto flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium tabular text-accent',
+        'group/streak ml-auto flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium tabular text-accent',
         collapsed && 'hidden',
       )}
       title={`${streak} day streak`}
     >
       <FlameIcon width={12} height={12} />
       {streak}
+      {/* Hover: the bubble grows a word, expanding pill-to-squircle in place. */}
+      <span className="max-w-0 overflow-hidden whitespace-nowrap transition-[max-width] duration-300 ease-out group-hover/streak:max-w-20">
+        day streak
+      </span>
     </motion.span>
   );
 }

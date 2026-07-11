@@ -137,6 +137,9 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
         cards={lessonCards}
         decay={decayOf(course.fsrsParameters)}
         now={now}
+        onOpenCard={(card) =>
+          navigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
+        }
       />
 
       {/* Breadcrumb */}

@@ -9,7 +9,7 @@
 // British English throughout.
 
 import type { PathNode, PracticePathNode } from '../../course/path';
-import { LessonNode } from './LessonNode';
+import { LessonNode, type LessonNodeDetail } from './LessonNode';
 import { CheckpointNode } from './CheckpointNode';
 import { PracticeNode } from './PracticeNode';
 
@@ -23,6 +23,8 @@ interface PathNodeViewProps {
   current?: boolean;
   /** Shown as a tooltip on a locked lesson, explaining what unlocks it. */
   lockHint?: string;
+  /** Hover-revealed stats for lesson nodes — see LessonNode's detail squircle. */
+  lessonDetail?: LessonNodeDetail;
 }
 
 /** A neutral placeholder for node types this build does not recognise. */
@@ -50,6 +52,7 @@ export function PathNodeView({
   onPracticeEdit,
   current,
   lockHint,
+  lessonDetail,
 }: PathNodeViewProps) {
   switch (node.nodeType) {
     case 'lesson':
@@ -59,6 +62,7 @@ export function PathNodeView({
           status={node.status}
           current={current}
           lockHint={lockHint}
+          detail={lessonDetail}
           onClick={
             onLessonClick ? () => onLessonClick(node.lesson.id) : undefined
           }

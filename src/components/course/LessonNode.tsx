@@ -13,6 +13,13 @@ import { CheckIcon, SparklesIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 
+/** Hover-revealed lesson stats — see CoursePath's detailForLesson. */
+export interface LessonNodeDetail {
+  cardCount: number;
+  dueCount: number;
+  masteryPct: number;
+}
+
 interface LessonNodeProps {
   lesson: Lesson;
   status: LessonStatus;
@@ -21,6 +28,8 @@ interface LessonNodeProps {
   current?: boolean;
   /** Shown as a title tooltip while locked, explaining what unlocks the lesson. */
   lockHint?: string;
+  /** When provided, hovering/focusing the circle expands it into a detail squircle. */
+  detail?: LessonNodeDetail;
 }
 
 /** Per-status styling for the circular node. */
@@ -34,7 +43,7 @@ const circleByStatus: Record<LessonStatus, string> = {
   locked: 'bg-surface text-ink-faint border-line',
 };
 
-export function LessonNode({ lesson, status, onClick, current, lockHint }: LessonNodeProps) {
+export function LessonNode({ lesson, status, onClick, current, lockHint, detail }: LessonNodeProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
@@ -42,6 +51,11 @@ export function LessonNode({ lesson, status, onClick, current, lockHint }: Lesso
   const interactive = !locked && onClick !== undefined;
   const isExtension = lesson.isExtension;
   const here = current && status === 'available';
+
+  // Hover/focus morphs the circle into a detail squircle (locked nodes stay
+  // inert circles — their hint lives in the title tooltip instead).
+  const [hovered, setHovered] = useState(false);
+  const expanded = hovered && !locked && detail !== undefined;
 
   // Replay a short settle-in whenever the status itself changes after mount
   // (most notably locked → available or available → completed), so a lesson
@@ -64,41 +78,74 @@ export function LessonNode({ lesson, status, onClick, current, lockHint }: Lesso
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <motion.button
-        key={settleKey}
-        type="button"
-        onClick={interactive ? onClick : undefined}
-        disabled={!interactive}
-        aria-disabled={locked || undefined}
-        aria-label={lesson.name}
-        title={locked ? lockHint : undefined}
-        initial={settleKey !== 'initial' ? { scale: 0.82, opacity: 0.5 } : false}
-        animate={{ scale: 1, opacity: 1 }}
-        whileTap={interactive ? { scale: 0.94 } : undefined}
-        whileHover={interactive ? { scale: 1.05 } : undefined}
-        transition={m === 0 ? { duration: 0 } : { type: 'spring', stiffness: 600, damping: 28 * m }}
-        className={cn(
-          'relative flex h-14 w-14 items-center justify-center rounded-full border-2',
-          'transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2',
-          'focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
-          interactive ? 'cursor-pointer' : 'cursor-default',
-          // Extension nodes use a dashed border to read as off-path enrichment.
-          isExtension && !locked && 'border-dashed',
-          // "You are here": a quiet breathing halo on the next lesson to take.
-          here && 'path-here-glow',
-          circleByStatus[status],
-        )}
-      >
-        {status === 'completed' ? (
-          <CheckIcon width={24} height={24} />
-        ) : isExtension ? (
-          <SparklesIcon width={22} height={22} />
-        ) : (
-          <span className="text-base font-semibold tabular-nums">
-            {lesson.orderIndex + 1}
-          </span>
-        )}
-      </motion.button>
+      {/* Fixed 14x14 slot so the expansion overlays neighbours instead of
+          shoving the path about; the button itself morphs within it. */}
+      <div className="relative h-14 w-14">
+        <motion.button
+          key={settleKey}
+          type="button"
+          onClick={interactive ? onClick : undefined}
+          disabled={!interactive}
+          aria-disabled={locked || undefined}
+          aria-label={lesson.name}
+          title={locked ? lockHint : undefined}
+          onHoverStart={() => setHovered(true)}
+          onHoverEnd={() => setHovered(false)}
+          onFocus={() => setHovered(true)}
+          onBlur={() => setHovered(false)}
+          initial={settleKey !== 'initial' ? { scale: 0.82, opacity: 0.5 } : false}
+          animate={{
+            scale: 1,
+            opacity: 1,
+            width: expanded ? 200 : 56,
+            height: expanded ? 84 : 56,
+            borderRadius: expanded ? 22 : 28,
+          }}
+          style={{ x: '-50%', y: '-50%' }}
+          whileTap={interactive ? { scale: 0.96 } : undefined}
+          whileHover={interactive && !detail ? { scale: 1.05 } : undefined}
+          transition={
+            m === 0 ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 32 * m }
+          }
+          className={cn(
+            'absolute left-1/2 top-1/2 flex items-center justify-center border-2',
+            'transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2',
+            'focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
+            interactive ? 'cursor-pointer' : 'cursor-default',
+            expanded && 'z-10 shadow-lg shadow-black/10',
+            // Extension nodes use a dashed border to read as off-path enrichment.
+            isExtension && !locked && 'border-dashed',
+            // "You are here": a quiet breathing halo on the next lesson to take.
+            here && !expanded && 'path-here-glow',
+            circleByStatus[status],
+          )}
+        >
+          {expanded && detail ? (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 * m, delay: 0.06 * m }}
+              className="flex w-full min-w-0 flex-col items-center gap-0.5 px-4"
+            >
+              <span className="max-w-full truncate text-sm font-semibold">{lesson.name}</span>
+              <span className="whitespace-nowrap text-xs opacity-80">
+                {detail.cardCount} card{detail.cardCount === 1 ? '' : 's'}
+                {detail.dueCount > 0 && ` · ${detail.dueCount} due`}
+                {' · '}
+                {detail.masteryPct}% mastered
+              </span>
+            </motion.span>
+          ) : status === 'completed' ? (
+            <CheckIcon width={24} height={24} />
+          ) : isExtension ? (
+            <SparklesIcon width={22} height={22} />
+          ) : (
+            <span className="text-base font-semibold tabular-nums">
+              {lesson.orderIndex + 1}
+            </span>
+          )}
+        </motion.button>
+      </div>
       <span
         className={cn(
           'max-w-[7rem] text-center text-xs font-medium leading-tight',

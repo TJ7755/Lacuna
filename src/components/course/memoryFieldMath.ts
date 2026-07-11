@@ -28,6 +28,16 @@ export function retrievabilityNow(card: Card, decay: number, now: number): numbe
   return forgettingCurve(days, card.stability, decay);
 }
 
+/** Cloze notation reads badly in a hover card; show the concealed text instead. */
+export function plainFront(front: string, max = 80): string {
+  const text = front
+    .replace(/\{\{c\d+::(.*?)(?:::.*?)?\}\}/g, '$1')
+    .replace(/[#*_`>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
 export interface StandfirstInput {
   dueCount: number;
   masteryPct: number;

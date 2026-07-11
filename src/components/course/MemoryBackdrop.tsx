@@ -7,11 +7,15 @@
 //   - hollow rings      = cards never studied,
 //   - breathing lights  = due for review right now.
 // Placement is deterministic (hashed from the card id) so the constellation
-// is stable between visits and drifts, very slowly, in place. Decorative:
-// hidden from assistive tech and pointer-transparent. The maths lives in
-// memoryFieldMath.ts. British English throughout.
+// is stable between visits and drifts, very slowly, in place. Hovering a
+// light expands it into a small squircle naming the card and its state;
+// clicking opens the card (when `onOpenCard` is given). The layer is hidden
+// from assistive tech — the same cards remain reachable through the lists.
+// The maths lives in memoryFieldMath.ts. British English throughout.
 
-import { hashJitter, retrievabilityNow } from './memoryFieldMath';
+import { useState } from 'react';
+import { hashJitter, plainFront, retrievabilityNow } from './memoryFieldMath';
+import { MS_PER_DAY } from '../../fsrs/params';
 import type { Card } from '../../db/types';
 
 interface MemoryBackdropProps {
@@ -19,12 +23,16 @@ interface MemoryBackdropProps {
   /** Forgetting-curve decay exponent for the course (see decayOf). */
   decay: number;
   now: number;
+  /** Opens a card for editing when a light is clicked. */
+  onOpenCard?: (card: Card) => void;
 }
 
 /** Enough to feel alive without turning the page into static. */
 const MAX_LIGHTS = 72;
 
-export function MemoryBackdrop({ cards, decay, now }: MemoryBackdropProps) {
+export function MemoryBackdrop({ cards, decay, now, onOpenCard }: MemoryBackdropProps) {
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
   // Deterministic sample for very large courses: hash order, not slice order,
   // so the chosen lights do not all come from the oldest cards.
   const sample =
@@ -41,16 +49,23 @@ export function MemoryBackdrop({ cards, decay, now }: MemoryBackdropProps) {
         const x = 2 + hashJitter(card.id, 1) * 96;
         const y = 4 + hashJitter(card.id, 2) * 92;
         const size = 7 + hashJitter(card.id, 3) * 5;
+        const hovered = hoveredId === card.id;
         return (
           <span
             key={card.id}
-            className={`absolute rounded-full ${dueNow ? 'backdrop-light-due' : 'backdrop-light'}`}
+            className={`pointer-events-auto absolute rounded-full ${
+              dueNow ? 'backdrop-light-due' : 'backdrop-light'
+            } ${onOpenCard ? 'cursor-pointer' : ''}`}
+            onMouseEnter={() => setHoveredId(card.id)}
+            onMouseLeave={() => setHoveredId((id) => (id === card.id ? null : id))}
+            onClick={onOpenCard ? () => onOpenCard(card) : undefined}
             style={{
               left: `${x}%`,
               top: `${y}%`,
               width: size,
               height: size,
               translate: '-50% -50%',
+              scale: hovered ? '1.6' : '1',
               animationDelay: `${Math.min(i * 60, 2400)}ms`,
               // Entrance duration, then a per-light drift period (due lights
               // breathe on their class's own rhythm instead of drifting).
@@ -66,9 +81,66 @@ export function MemoryBackdrop({ cards, decay, now }: MemoryBackdropProps) {
                     boxShadow: `0 0 ${6 + 10 * r}px ${1 + 2 * r}px hsl(var(--accent) / ${0.08 + 0.28 * r})`,
                   }),
             }}
-          />
+          >
+            {hovered && (
+              <LightDetail
+                card={card}
+                unseen={unseen}
+                dueNow={dueNow}
+                r={r}
+                now={now}
+                above={y > 20}
+                xPct={x}
+                clickable={onOpenCard !== undefined}
+              />
+            )}
+          </span>
         );
       })}
     </div>
+  );
+}
+
+/** The squircle a hovered light expands into: card front plus memory state. */
+function LightDetail({
+  card,
+  unseen,
+  dueNow,
+  r,
+  now,
+  above,
+  xPct,
+  clickable,
+}: {
+  card: Card;
+  unseen: boolean;
+  dueNow: boolean;
+  r: number;
+  now: number;
+  above: boolean;
+  /** Light's horizontal page position — used to keep the squircle on screen. */
+  xPct: number;
+  clickable: boolean;
+}) {
+  let state: string;
+  if (unseen) state = 'Not yet studied';
+  else if (dueNow) state = 'Due now';
+  else {
+    const days = Math.max(Math.ceil(((card.due ?? now) - now) / MS_PER_DAY), 1);
+    state = `${Math.round(r * 100)}% retained · due in ${days} day${days === 1 ? '' : 's'}`;
+  }
+  return (
+    <span
+      className={`backdrop-light-detail absolute left-1/2 z-10 block w-52 rounded-2xl border border-line bg-surface-raised p-3.5 shadow-lg shadow-black/10 ${
+        above ? 'bottom-full mb-2' : 'top-full mt-2'
+      }`}
+      style={{ translate: xPct < 12 ? '-12%' : xPct > 88 ? '-88%' : '-50%' }}
+    >
+      <span className="block text-sm leading-snug text-ink">{plainFront(card.front)}</span>
+      <span className="mt-1 block text-xs text-ink-faint">
+        {state}
+        {clickable && ' · click to open'}
+      </span>
+    </span>
   );
 }

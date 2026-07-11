@@ -8,6 +8,7 @@
 import { m as motion } from 'motion/react';
 import type { Course } from '../../db/types';
 import type { PathNode, PracticePathNode } from '../../course/path';
+import type { LessonNodeDetail } from './LessonNode';
 import { PathNodeView } from './PathNodeView';
 import { PathLine } from './PathLine';
 import { PlusIcon } from '../ui/icons';
@@ -90,6 +91,7 @@ export function PathNodeWithLine({
   lineInsert,
   current,
   lockHint,
+  lessonDetail,
   onLessonClick,
   onPracticeClick,
   onPracticeEdit,
@@ -101,6 +103,7 @@ export function PathNodeWithLine({
   lineInsert: LineInsert;
   current: boolean;
   lockHint?: string;
+  lessonDetail?: LessonNodeDetail;
   onLessonClick: (lessonId: string) => void;
   onPracticeClick: () => void;
   onPracticeEdit: (node: PracticePathNode) => void;
@@ -129,6 +132,7 @@ export function PathNodeWithLine({
         node={node}
         current={current}
         lockHint={lockHint}
+        lessonDetail={lessonDetail}
         onLessonClick={onLessonClick}
         onPracticeClick={onPracticeClick}
         onPracticeEdit={onPracticeEdit}
