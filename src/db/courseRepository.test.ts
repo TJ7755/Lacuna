@@ -246,6 +246,11 @@ describe('snapshotCourse / restoreCourse', () => {
       distracted: false,
       correct: true,
     });
+    // Give a lesson some unlock state so restore fidelity can be asserted on it.
+    const unlockedAt = Date.now();
+    await db.lessons.update(lesson1.id, { unlockedAt });
+    const cardBefore = await db.cards.get(lessonCard.id);
+    expect(cardBefore!.stability).not.toBeNull();
 
     const snapshot = await snapshotCourse(course.id);
     expect(snapshot).not.toBeNull();
@@ -274,6 +279,15 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(await db.userPerformance.get(lessonCard.deckId)).toBeDefined();
     expect(await db.userPerformance.get(course.id)).toBeDefined();
     expect(await db.sessionHistory.where('courseId').equals(course.id).count()).toBe(1);
+
+    // Field-level fidelity: the restored card keeps its FSRS memory state and
+    // review history exactly, and the restored lesson keeps its unlock ratchet.
+    const cardAfter = await db.cards.get(lessonCard.id);
+    expect(cardAfter!.stability).toBe(cardBefore!.stability);
+    expect(cardAfter!.difficulty).toBe(cardBefore!.difficulty);
+    expect(cardAfter!.history).toEqual(cardBefore!.history);
+    const lessonAfter = await db.lessons.get(lesson1.id);
+    expect(lessonAfter!.unlockedAt).toBe(unlockedAt);
   });
 });
 

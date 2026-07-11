@@ -8,7 +8,11 @@ export interface DangerZoneSectionProps {
   entityName: string;
   /** Description of what deletion removes, shown above the delete button. */
   description: string;
-  /** Take a restorable snapshot immediately before deletion. */
+  /**
+   * Take a restorable snapshot immediately before deletion. May resolve to null
+   * when there is nothing left to snapshot (e.g. the entity vanished after the
+   * page loaded), in which case the toast offers no Undo action.
+   */
   snapshot: () => Promise<unknown>;
   /** Delete the entity. */
   onDelete: () => Promise<void>;
@@ -36,12 +40,19 @@ export function DangerZoneSection({
   async function handleDelete() {
     const snap = await snapshot();
     await onDelete();
-    notify(`'${entityName}' deleted.`, 'neutral', {
-      actionLabel: 'Undo',
-      onAction: () => {
-        void onRestore(snap);
-      },
-    });
+    // A null snapshot cannot be restored, so offer no Undo in that case.
+    notify(
+      `'${entityName}' deleted.`,
+      'neutral',
+      snap === null || snap === undefined
+        ? undefined
+        : {
+            actionLabel: 'Undo',
+            onAction: () => {
+              void onRestore(snap);
+            },
+          },
+    );
     onDeleted();
   }
 
