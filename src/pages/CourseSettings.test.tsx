@@ -8,6 +8,8 @@ import type { Card, Course } from '../db/types';
 const mockNavigate = vi.fn();
 const mockUpdateCourse = vi.fn().mockResolvedValue(undefined);
 const mockDeleteCourse = vi.fn().mockResolvedValue(undefined);
+const mockSnapshotCourse = vi.fn().mockResolvedValue({ course: 'snapshot' });
+const mockRestoreCourse = vi.fn().mockResolvedValue(undefined);
 const mockNotify = vi.fn();
 
 let mockCourse: Course | null | undefined;
@@ -43,6 +45,8 @@ vi.mock('../state/motionSpeed', () => ({
 vi.mock('../db/repository', () => ({
   updateCourse: (id: string, changes: Record<string, unknown>) => mockUpdateCourse(id, changes),
   deleteCourse: (id: string) => mockDeleteCourse(id),
+  snapshotCourse: (id: string) => mockSnapshotCourse(id),
+  restoreCourse: (snapshot: unknown) => mockRestoreCourse(snapshot),
   createCourseExamDate: vi.fn().mockResolvedValue(undefined),
   updateCourseExamDate: vi.fn().mockResolvedValue(undefined),
   deleteCourseExamDate: vi.fn().mockResolvedValue(undefined),
@@ -111,9 +115,10 @@ beforeEach(() => {
   mockCards = [];
   mockUpdateCourse.mockClear();
   mockDeleteCourse.mockClear();
+  mockSnapshotCourse.mockClear();
+  mockRestoreCourse.mockClear();
   mockNotify.mockClear();
   mockNavigate.mockClear();
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
 });
 
 describe('CourseSettings', () => {
@@ -214,16 +219,27 @@ describe('CourseSettings', () => {
     );
   });
 
-  it('confirms then deletes the course and navigates away without an undo toast', async () => {
+  it('snapshots then deletes the course immediately, navigating away with an undo toast', async () => {
     renderPage();
     fireEvent.click(screen.getByText('Delete course'));
-    expect(window.confirm).toHaveBeenCalled();
+    await vi.waitFor(() => expect(mockSnapshotCourse).toHaveBeenCalledWith('course-1'));
     await vi.waitFor(() => expect(mockDeleteCourse).toHaveBeenCalledWith('course-1'));
     await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'));
-    expect(mockNotify).not.toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(String),
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.stringContaining('deleted'),
+      'neutral',
       expect.objectContaining({ actionLabel: 'Undo' }),
+    );
+  });
+
+  it('restores the course from its snapshot when the undo toast action fires', async () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Delete course'));
+    await vi.waitFor(() => expect(mockDeleteCourse).toHaveBeenCalledWith('course-1'));
+    const [, , options] = mockNotify.mock.calls[mockNotify.mock.calls.length - 1];
+    options.onAction();
+    await vi.waitFor(() =>
+      expect(mockRestoreCourse).toHaveBeenCalledWith({ course: 'snapshot' }),
     );
   });
 });
