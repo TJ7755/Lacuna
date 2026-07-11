@@ -356,21 +356,33 @@ FSRS retention, shown as a ring rather than a bar) and from due-today (a live co
 session would serve right now), computed via `src/course/path.ts`'s `nearestExamDate` and the
 same `fsrs/eligibility.ts` due-card logic the path itself uses.
 
-**Lesson view** (`/course/:courseId/lesson/:lessonId`):
+**Lesson view** (`/course/:courseId/lesson/:lessonId`, `src/pages/LessonView.tsx`):
 
 ```
 < Course path
 Exam 14 Jun 2026, 23:59
-Lesson name
-[ring] Mastery 71%   [clock] Due today 3 cards
-[ Notes ]  [ Cards ]                      <- tab underline slides
-<note list, add/reorder/edit>  |  <card list with editor>
-                                             [> Study this lesson]
+Lesson name                                 [> Study  •3]
+[ring] Mastery 71%   [clock] Due today 3 cards   3 cards due today.
+──────────────────────────────────────────
+Notes                                      [+ Add note]
+<collapsible note list, add/reorder/edit>
+Cards (12)
+<card list with editor>
 ```
 
 The lesson header adopts the same `CourseHeader` cockpit, scoped to the lesson's own cards
 (mastery and due-today only — no curriculum-position stat, since a single lesson has no
-pacing sequence of its own).
+pacing sequence of its own). A `LessonStudyCTA` (`src/components/course/LessonStudyCTA.tsx`)
+sits beside the header as the page's primary action — a prominent "Study" button carrying a
+due-count badge, routing to `/lesson/:lessonId/learn`. It stays enabled even when nothing is
+due (the learn route falls back to unseen cards per the lesson's `sessionFilter`, so studying
+ahead is always possible) and disables only when the lesson has no cards at all. Notes and
+cards sit below a divider as a visually quieter "editor" section (smaller headings, subtle
+entrance animation respecting `useMotionSpeed`) — extracted into `LessonNotesSection`
+(`src/components/notes/`) and `LessonCardsSection` (`src/components/cards/`) so the page
+component stays a thin layout/data shell. When CoursePath renders this page inline for a
+single-lesson course, it gets the same full header/CTA treatment, including exam context via
+`nearestExamDate`.
 
 **Learn session** (full screen, outside the shell):
 
