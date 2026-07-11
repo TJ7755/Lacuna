@@ -108,7 +108,7 @@ export function PracticeNodeEditor({
         transition={{ type: 'spring', stiffness: 320, damping: 30 }}
         className="relative z-10 m-auto flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
       >
-        <div className="absolute inset-0 bg-dot-grid opacity-20" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20" aria-hidden="true" />
         <header className="flex items-center justify-between border-b border-line px-6 py-4">
           <h2 className="font-display text-xl">{node ? 'Edit practice' : 'Add practice'}</h2>
           <button

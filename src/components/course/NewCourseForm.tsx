@@ -72,7 +72,7 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
         transition={{ type: 'spring', stiffness: 320, damping: 30 }}
         className="relative z-10 m-auto flex w-full max-w-md flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
       >
-        <div className="absolute inset-0 bg-dot-grid opacity-20" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20" aria-hidden="true" />
         <header className="flex items-center justify-between border-b border-line px-6 py-4">
           <h2 className="font-display text-xl">New course</h2>
           <button
