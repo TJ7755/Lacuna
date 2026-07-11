@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent, 
 import { useRevealOnScroll } from '../../hooks/useRevealOnScroll';
 
 /** Allowed exam horizons for the landing-page toy (weeks from today). */
-export const EXAM_WEEK_OPTIONS = [4, 6, 8, 12, 16, 20, 24] as const;
+const EXAM_WEEK_OPTIONS = [4, 6, 8, 12, 16, 20, 24] as const;
 export type ExamWeeks = (typeof EXAM_WEEK_OPTIONS)[number];
 
 const MIN_WEEKS = EXAM_WEEK_OPTIONS[0];

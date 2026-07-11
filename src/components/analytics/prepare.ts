@@ -207,20 +207,6 @@ export interface LeechCount {
   count: number;
 }
 
-/** Leech counts per deck, sorted descending. */
-export function leechCountByDeck(cards: Card[], deckMap: Map<string, string>): LeechCount[] {
-  const counts = new Map<string, number>();
-  for (const card of cards) {
-    if (isLeech(card)) {
-      const deckName = deckMap.get(card.deckId) ?? 'Unknown';
-      counts.set(deckName, (counts.get(deckName) ?? 0) + 1);
-    }
-  }
-  return [...counts.entries()]
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count);
-}
-
 /** Leech counts per course, sorted descending. */
 export function leechCountByCourse(cards: Card[], courseMap: Map<string, string>): LeechCount[] {
   const counts = new Map<string, number>();

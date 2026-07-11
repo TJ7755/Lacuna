@@ -4,7 +4,7 @@
 import type { Grade, UserPerformance } from '../db/types';
 
 /** Number of correct reviews required before switching from fixed to adaptive thresholds. */
-export const CALIBRATION_THRESHOLD = 20;
+const CALIBRATION_THRESHOLD = 20;
 
 /** Fixed thresholds (seconds) used during the calibration period. */
 const FAST_SECONDS = 3.0;

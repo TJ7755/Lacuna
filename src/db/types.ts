@@ -65,17 +65,6 @@ export interface ReviewLog {
   retrievabilityAtReview: number | null;
 }
 
-/** Predefined deck colours for visual identification. */
-export const DECK_COLOURS = [
-  { key: 'slate',   label: 'Slate',   hex: '#64748b' },
-  { key: 'rose',    label: 'Rose',    hex: '#e11d48' },
-  { key: 'amber',   label: 'Amber',   hex: '#d97706' },
-  { key: 'emerald', label: 'Emerald', hex: '#059669' },
-  { key: 'sky',     label: 'Sky',     hex: '#0284c7' },
-  { key: 'violet',  label: 'Violet',  hex: '#7c3aed' },
-  { key: 'coral',   label: 'Coral',   hex: '#ea580c' },
-  { key: 'teal',    label: 'Teal',    hex: '#0d9488' },
-] as const;
 
 /**
  * The structural subset of scheduling fields the FSRS engine reads. Both Deck

@@ -13,7 +13,7 @@ import { optimiseEnabledForDeck, useAutoOptimiseDefault } from '../../state/opti
 import type { Card, FsrsParameters } from '../../db/types';
 
 /** Minimal shape an optimisable entity (deck or course) must provide. */
-export interface OptimisableEntity {
+interface OptimisableEntity {
   id: string;
   fsrsParameters: FsrsParameters;
   autoOptimise?: boolean;

@@ -2,7 +2,7 @@
 // The handlers live in the relevant components (AppShell, LearnMode); this registry only
 // describes them so the cheatsheet can never drift out of date.
 
-export interface Shortcut {
+interface Shortcut {
   keys: string[];
   description: string;
 }

@@ -5,11 +5,6 @@ export function getLocalTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-/** Elapsed days between two epoch-millisecond instants (fractional, never negative). */
-export function elapsedDays(fromMs: number, toMs: number): number {
-  return Math.max(toMs - fromMs, 0) / MS_PER_DAY;
-}
-
 /** Days from now until a future instant, clamped at zero (past exams read as "today"). */
 export function daysUntil(targetMs: number, nowMs: number = Date.now()): number {
   return Math.max(targetMs - nowMs, 0) / MS_PER_DAY;

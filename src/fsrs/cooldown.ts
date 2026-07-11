@@ -6,9 +6,9 @@ import { sortByObjective, type ObjectiveContext } from './objective';
 import type { Card } from '../db/types';
 
 /** Default maximum cooldown, scaled down for very small decks (size - 1, floored at 0). */
-export const DEFAULT_COOLDOWN = 5;
+const DEFAULT_COOLDOWN = 5;
 
-export function maxCooldown(deckSize: number): number {
+function maxCooldown(deckSize: number): number {
   if (deckSize >= 6) return DEFAULT_COOLDOWN;
   return Math.max(deckSize - 1, 0);
 }

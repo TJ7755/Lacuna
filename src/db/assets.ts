@@ -378,12 +378,3 @@ export function scheduleAssetGc(delayMs = 3000): void {
     void collectOrphanedAssets();
   }, delayMs);
 }
-
-/** Wait for any pending scheduled GC to complete. Exposed for tests. */
-export async function flushAssetGc(): Promise<void> {
-  if (gcTimeout) {
-    clearTimeout(gcTimeout);
-    gcTimeout = null;
-    await collectOrphanedAssets();
-  }
-}

@@ -9,7 +9,7 @@ import {
 } from 'react';
 
 export type Theme = 'dark' | 'light' | 'auto';
-export type ResolvedTheme = 'dark' | 'light';
+type ResolvedTheme = 'dark' | 'light';
 
 const STORAGE_KEY = 'lacuna-theme';
 

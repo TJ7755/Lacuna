@@ -7,14 +7,14 @@
 
 const CLOZE_PATTERN = /\{\{c(\d+)::(.*?)(?:::(.*?))?\}\}/gs;
 
-export interface ClozeSpan {
+interface ClozeSpan {
   index: number;
   answer: string;
   hint?: string;
 }
 
 /** Extract all cloze spans from a source string. */
-export function parseClozes(source: string): ClozeSpan[] {
+function parseClozes(source: string): ClozeSpan[] {
   const spans: ClozeSpan[] = [];
   for (const match of source.matchAll(CLOZE_PATTERN)) {
     spans.push({

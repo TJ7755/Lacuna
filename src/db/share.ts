@@ -221,7 +221,7 @@ export interface SharePayloadV1 {
 }
 
 /** The decoded contents of a v2 (single course) share code. */
-export interface SharePayloadV2 {
+interface SharePayloadV2 {
   v: 2;
   /** Creator, reserved for a future "shared by" field; currently always null. */
   by?: string | null;
@@ -662,7 +662,7 @@ function packNotes(notes: { name: string; content: string }[]): ShareNote[] {
 }
 
 /** Pack a whole course — its lessons, notes, cards and extra exam dates — into a v2 payload. */
-export async function buildCourseSharePayload(courseId: string): Promise<SharePayload> {
+async function buildCourseSharePayload(courseId: string): Promise<SharePayload> {
   const course = await db.courses.get(courseId);
   if (!course) throw new Error('Course not found.');
 

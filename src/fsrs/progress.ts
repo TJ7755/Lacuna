@@ -10,7 +10,7 @@ import type { Card, SchedulerConfig } from '../db/types';
 
 /** The deck's forgetting-curve decay exponent (= -w20).
  *  Accepts any SchedulerConfig (a Deck or a Course). */
-export function deckDecay(deck: SchedulerConfig): number {
+function deckDecay(deck: SchedulerConfig): number {
   return decayOf(deck.fsrsParameters);
 }
 

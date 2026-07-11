@@ -46,10 +46,3 @@ export async function getPreMigrationSnapshot(
   return preMigrationDb.snapshots.where({ targetVersion }).last();
 }
 
-export async function deletePreMigrationSnapshot(id: number): Promise<void> {
-  await preMigrationDb.snapshots.delete(id);
-}
-
-export async function listPreMigrationSnapshots(): Promise<PreMigrationSnapshot[]> {
-  return preMigrationDb.snapshots.orderBy('createdAt').reverse().toArray();
-}

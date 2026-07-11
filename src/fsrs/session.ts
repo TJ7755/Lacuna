@@ -41,7 +41,7 @@ export type SessionMode = 'objective' | 'cram';
  *  - `lesson`: a single lesson's cards — primaryLessonId match, plus any cards
  *    linked in from elsewhere via LessonCardLink (see db/types.ts).
  */
-export type SessionUnitScope =
+type SessionUnitScope =
   | { kind: 'deck'; deckId: string }
   | { kind: 'course'; courseId: string }
   | { kind: 'lesson'; courseId: string; lessonId: string; linkedCardIds: ReadonlySet<string> };
@@ -75,7 +75,7 @@ function cardMatchesScope(card: Card, scope: SessionUnitScope): boolean {
 }
 
 /** Per-unit scoring context held for the life of a session. */
-export interface SessionDeckContext {
+interface SessionDeckContext {
   /** The unit's scheduling config — a Deck (deck scope) or a Course (lesson/course scope). */
   deck: SchedulerConfig;
   scope: SessionUnitScope;
@@ -113,7 +113,7 @@ export function makeSessionContext(
 /** Exam-proximity urgency: nearer exams weigh more. Smooth and always positive.
  * Uses the scheduling horizon so a passed exam falls back to its rolling
  * maintenance horizon rather than reading as maximally urgent forever. */
-export function urgency(deck: SchedulerConfig, now: number = Date.now()): number {
+function urgency(deck: SchedulerConfig, now: number = Date.now()): number {
   return 1 / (1 + daysUntil(schedulingHorizon(deck, now), now));
 }
 

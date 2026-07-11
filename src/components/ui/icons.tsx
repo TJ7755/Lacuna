@@ -127,12 +127,6 @@ export const CloseIcon = (p: IconProps) => (
   </Icon>
 );
 
-export const MergeIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M6 3v6a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3M12 15v6" />
-  </Icon>
-);
-
 export const ImageIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -186,13 +180,6 @@ export const ClockIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="9" />
     <path d="M12 7v5l3 2" />
-  </Icon>
-);
-
-export const UndoIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M9 14L4 9l5-5" />
-    <path d="M4 9h11a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5H9" />
   </Icon>
 );
 
@@ -286,12 +273,6 @@ export const ChevronDownIcon = (p: IconProps) => (
   </Icon>
 );
 
-export const ReplaceIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M14 4h6v6M10 20H4v-6M4 14l16-10" />
-  </Icon>
-);
-
 export const QrCodeIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -323,13 +304,6 @@ export const ArchiveIcon = (p: IconProps) => (
   </Icon>
 );
 
-export const ShieldIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M12 2L4 5v6c0 5 3.5 9 8 11 4.5-2 8-6 8-11V5z" />
-    <path d="M9 12l2 2 4-4" />
-  </Icon>
-);
-
 export const PathIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="6" cy="6" r="2.5" />
@@ -338,34 +312,6 @@ export const PathIcon = (p: IconProps) => (
     <path d="M6 8.5v7" strokeDasharray="2 2" />
     <path d="M8.5 6.5L16 11" strokeDasharray="2 2" />
     <path d="M8.5 17.5L16 13" strokeDasharray="2 2" />
-  </Icon>
-);
-
-export const ListIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M8 6h13M8 12h13M8 18h13" />
-    <path d="M3 6h.01M3 12h.01M3 18h.01" />
-  </Icon>
-);
-
-export const TerminalIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <rect x="3" y="4" width="18" height="16" rx="2" />
-    <path d="M7 9l3 3-3 3M13 15h4" />
-  </Icon>
-);
-
-export const ZapIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M13 2L4 14h7l-1 8 9-12h-7z" />
-  </Icon>
-);
-
-export const FingerprintIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M12 4a8 8 0 0 0-8 8v4M20 12a8 8 0 0 0-2-5" />
-    <path d="M12 8a4 4 0 0 0-4 4v3a4 4 0 0 0 4 4M20 16v-4" />
-    <path d="M8 16v-1M16 18v-6M12 12v6" />
   </Icon>
 );
 

@@ -33,7 +33,7 @@ export const ACCENTS: readonly Accent[] = [
   { key: 'green', label: 'Green', swatch: 'hsl(150 70% 38%)' },
 ] as const;
 
-export const DEFAULT_ACCENT = ACCENTS[0].key;
+const DEFAULT_ACCENT = ACCENTS[0].key;
 
 interface AccentValue {
   accent: string;

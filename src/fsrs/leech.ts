@@ -6,8 +6,6 @@ import type { Card } from '../db/types';
 
 /** Global default: total lapses at or above which a card is treated as a leech. */
 export const DEFAULT_LEECH_LAPSE_THRESHOLD = 8;
-/** @deprecated Use DEFAULT_LEECH_LAPSE_THRESHOLD instead. Kept for test compatibility. */
-export const LEECH_LAPSE_THRESHOLD = DEFAULT_LEECH_LAPSE_THRESHOLD;
 
 /** Whether a card has lapsed often enough to be flagged as a leech.
  *  Uses the per-deck threshold when available, otherwise the global default. */

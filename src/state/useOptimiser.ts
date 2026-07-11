@@ -10,7 +10,7 @@ import type {
 import type { OptimiseResult } from '../fsrs/optimise';
 import type { Card } from '../db/types';
 
-export type OptimiseStatus = 'idle' | 'running' | 'done' | 'error';
+type OptimiseStatus = 'idle' | 'running' | 'done' | 'error';
 
 export interface OptimiserState {
   status: OptimiseStatus;

@@ -26,7 +26,7 @@ export function availableCards(cards: Card[], now: number = Date.now()): Card[] 
 }
 
 /** Whether a card is due for review at `now` (has a due date that has passed). */
-export function isDue(card: Card, now: number = Date.now()): boolean {
+function isDue(card: Card, now: number = Date.now()): boolean {
   return card.due !== null && card.due !== undefined && card.due <= now;
 }
 
@@ -39,7 +39,7 @@ export function dueCards(cards: Card[], now: number = Date.now()): Card[] {
  *  Uses a rolling window so a late-night session that crosses midnight does not
  *  double-spend the daily new-card budget.
  */
-export function newCardsIntroducedRecently(cards: Card[], now: number = Date.now()): number {
+function newCardsIntroducedRecently(cards: Card[], now: number = Date.now()): number {
   const cutoff = now - MS_PER_DAY;
   return cards.filter((c) => {
     if (c.history.length === 0) return false;

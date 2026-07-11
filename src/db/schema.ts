@@ -31,7 +31,7 @@ import { blobToArrayBuffer, bytesToBase64 } from './assets';
  * Indexes are declared in version().stores(); only indexed fields are listed there,
  * other properties are stored implicitly on the record.
  */
-export class LacunaDatabase extends Dexie {
+class LacunaDatabase extends Dexie {
   decks!: Table<Deck, string>;
   cards!: Table<Card, string>;
   sessionHistory!: Table<SessionHistoryEntry, number>;
@@ -279,7 +279,7 @@ export class LacunaDatabase extends Dexie {
   }
 }
 
-export const CURRENT_SCHEMA_VERSION = 9;
+const CURRENT_SCHEMA_VERSION = 9;
 
 export const db = new LacunaDatabase();
 

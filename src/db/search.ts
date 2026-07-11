@@ -29,7 +29,7 @@ export interface SearchOptions {
   parseQuery?: boolean;
 }
 
-export interface ParsedQuery {
+interface ParsedQuery {
   text: string;
   tags: string[];
   decks: string[];
@@ -44,7 +44,7 @@ export interface ParsedQuery {
  *   is:due|new|leech|flagged|suspended -> structured filter
  * The remaining text is treated as a plain substring query.
  */
-export function parseAdvancedQuery(query: string): ParsedQuery {
+function parseAdvancedQuery(query: string): ParsedQuery {
   const tags: string[] = [];
   const decks: string[] = [];
   const filters: CardFilter[] = [];
@@ -90,7 +90,7 @@ export function parseAdvancedQuery(query: string): ParsedQuery {
 }
 
 /** Whether a single card satisfies one structured filter. */
-export function matchesFilter(card: Card, filter: CardFilter, now: number): boolean {
+function matchesFilter(card: Card, filter: CardFilter, now: number): boolean {
   switch (filter) {
     case 'due':
       return card.due !== null && card.due <= now;
@@ -106,7 +106,7 @@ export function matchesFilter(card: Card, filter: CardFilter, now: number): bool
 }
 
 /** Lower-case and strip accents so "résumé" matches "resume". */
-export function normalise(text: string): string {
+function normalise(text: string): string {
   return text
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')

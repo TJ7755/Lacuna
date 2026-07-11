@@ -24,8 +24,8 @@ export interface ImportParseResult {
 }
 
 /** Defaults requested by the spec: tab between fields, newline between cards. */
-export const DEFAULT_FIELD_SEPARATOR = '\t';
-export const DEFAULT_ROW_SEPARATOR = '\n';
+const DEFAULT_FIELD_SEPARATOR = '\t';
+const DEFAULT_ROW_SEPARATOR = '\n';
 
 /**
  * Split raw text into rows of fields, honouring double-quoted fields. A quote only
