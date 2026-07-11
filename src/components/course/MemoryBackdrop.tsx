@@ -131,13 +131,13 @@ function LightDetail({
   }
   return (
     <span
-      className={`backdrop-light-detail absolute left-1/2 z-10 block w-52 rounded-2xl border border-line bg-surface-raised p-3.5 shadow-lg shadow-black/10 ${
-        above ? 'bottom-full mb-2' : 'top-full mt-2'
+      className={`backdrop-light-detail absolute left-1/2 z-10 block w-40 rounded-xl border border-line bg-surface-raised p-2.5 shadow-md shadow-black/10 ${
+        above ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
       }`}
       style={{ translate: xPct < 12 ? '-12%' : xPct > 88 ? '-88%' : '-50%' }}
     >
-      <span className="block text-sm leading-snug text-ink">{plainFront(card.front)}</span>
-      <span className="mt-1 block text-xs text-ink-faint">
+      <span className="block text-xs leading-snug text-ink">{plainFront(card.front, 60)}</span>
+      <span className="mt-0.5 block text-[11px] text-ink-faint">
         {state}
         {clickable && ' · click to open'}
       </span>
