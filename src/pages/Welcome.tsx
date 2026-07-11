@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useRevealOnScroll } from '../hooks/useRevealOnScroll';
 import { GradingDemo } from '../components/welcome/GradingDemo';
 import { DashboardMock } from '../components/welcome/DashboardMock';
+import { ExamCurve } from '../components/welcome/ExamCurve';
+import { FeatureGrid } from '../components/welcome/FeatureGrid';
 import { useSmoothScroll } from '../components/welcome/useSmoothScroll';
 
 /**
@@ -86,80 +88,6 @@ function PathNode({
         <div className="mt-5 max-w-2xl">{children}</div>
       </div>
     </section>
-  );
-}
-
-/** Retrievability sketch: a forgetting curve bent so it peaks on exam day. */
-function ExamCurve() {
-  const { ref, visible } = useRevealOnScroll<HTMLElement>();
-  return (
-    <figure ref={ref} className="mt-6 rounded-[10px] border border-line bg-surface p-5 shadow-paper">
-      <svg viewBox="0 0 560 180" className="w-full" role="img" aria-label="Recall probability scheduled to peak on the exam date rather than decay between fixed intervals">
-        {/* Decaying interval-based recall, the conventional approach. */}
-        <path
-          d="M20 40 C 80 130, 110 55, 130 55 C 190 145, 220 70, 240 70 C 310 155, 350 90, 380 90 C 440 160, 480 120, 500 120"
-          fill="none"
-          stroke="hsl(var(--ink-faint))"
-          strokeWidth="1.5"
-          strokeDasharray="4 4"
-          style={{ opacity: visible ? 1 : 0, transition: 'opacity 800ms ease 200ms' }}
-        />
-        {/* Exam-objective scheduling: retrievability shepherded upwards to exam
-            day, traced live as the figure scrolls into view. */}
-        <path
-          d="M20 40 C 90 110, 150 60, 210 78 C 290 100, 380 55, 500 28"
-          fill="none"
-          stroke="hsl(var(--accent))"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={visible ? 0 : 1}
-          style={{ transition: 'stroke-dashoffset 1600ms cubic-bezier(0.4, 0, 0.2, 1) 300ms' }}
-        />
-        {/* Exam-day marker. */}
-        <line x1="500" y1="14" x2="500" y2="166" stroke="hsl(var(--line-strong))" strokeWidth="1" />
-        <circle cx="500" cy="28" r="4.5" fill="hsl(var(--accent))" className={visible ? 'exam-pulse' : ''} />
-        <text x="492" y="176" textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">
-          exam day
-        </text>
-        <text x="20" y="176" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">
-          today
-        </text>
-      </svg>
-      <figcaption className="mt-3 flex flex-wrap gap-x-6 gap-y-1 font-mono text-[11px] text-ink-faint">
-        <span className="inline-flex items-center gap-2">
-          <span className="inline-block h-0.5 w-5 bg-accent" aria-hidden />
-          scheduled against the exam
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="inline-block h-px w-5 border-t border-dashed border-ink-faint" aria-hidden />
-          left to fixed intervals
-        </span>
-      </figcaption>
-    </figure>
-  );
-}
-
-/** Feature grid with a per-card staggered reveal and accent-tinted hover. */
-function FeatureGrid() {
-  const { ref, visible } = useRevealOnScroll<HTMLUListElement>();
-  return (
-    <ul ref={ref} className="grid gap-px overflow-hidden rounded-[10px] border border-line bg-line sm:grid-cols-2">
-      {FEATURES.map((f, i) => (
-        <li
-          key={f.name}
-          className={
-            'reveal bg-surface p-5 transition-colors hover:bg-accent-soft/40 ' +
-            (visible ? 'reveal-visible' : '')
-          }
-          style={{ transitionDelay: visible ? `${i * 70}ms` : undefined }}
-        >
-          <h3 className="font-body text-sm font-semibold tracking-normal">{f.name}</h3>
-          <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{f.detail}</p>
-        </li>
-      ))}
-    </ul>
   );
 }
 
@@ -251,17 +179,6 @@ function HeroDashboard() {
     </div>
   );
 }
-
-const FEATURES: Array<{ name: string; detail: string }> = [
-  { name: 'Local only', detail: 'Everything lives in your browser. No server, no account, no network.' },
-  { name: 'Card types', detail: 'Basic, reversed, cloze deletions and typed answers.' },
-  { name: 'Rich notes', detail: 'Markdown with maths, code highlighting and inline images.' },
-  { name: 'Simple mode', detail: 'An algorithm-free Yes/No loop when you just want to drill.' },
-  { name: 'Analytics', detail: 'Predicted trajectory, stability and review volume per course.' },
-  { name: 'Question bank', detail: 'Every card in a course, searchable and editable in one place.' },
-  { name: 'Touch first', detail: 'Swipes, bottom sheets and generous targets on every screen.' },
-  { name: 'Portable', detail: 'Import and export a whole course as a single JSON file.' },
-];
 
 const PLANNED: Array<{ name: string; detail: string }> = [
   { name: 'Sequence learning', detail: 'Cards that teach ordered material — steps, stages, proofs — as a sequence rather than isolated facts.' },
