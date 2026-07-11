@@ -240,7 +240,13 @@ describe('LearnMode course/lesson scope', () => {
     );
 
     // The session serves the due and new cards but never the not-yet-due one.
-    await screen.findByText(/(Due Q|New Q)/);
+    // Drive through the first card and require the other category to follow,
+    // proving BOTH the new card and the due card are in the session's set.
+    const first = await screen.findByText(/^(Due Q|New Q)$/);
+    const other = first.textContent === 'Due Q' ? /^New Q$/ : /^Due Q$/;
+    expect(screen.queryByText(/Not Due Q/)).not.toBeInTheDocument();
+    await answerYes();
+    expect(await screen.findByText(other)).toBeInTheDocument();
     expect(screen.queryByText(/Not Due Q/)).not.toBeInTheDocument();
   });
 
