@@ -5,6 +5,8 @@
 // reads as "review session", not "assessment event". Presentational only, save
 // for the edit badge: `onEdit` is only ever supplied for `practice-manual` nodes
 // (see PathNodeView) — `auto` nodes are system-generated and have nothing to edit.
+//
+// British English throughout.
 
 import type { PracticePathNode } from '../../course/path';
 import { CardsIcon, EditIcon } from '../ui/icons';

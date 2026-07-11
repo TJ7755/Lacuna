@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
+import { useToast } from '../ui/Toast';
 import { CloseIcon } from '../ui/icons';
 import { createPracticeNode, updatePracticeNode, deletePracticeNode } from '../../db/repository';
 import type { Lesson, PracticeNode } from '../../db/types';
@@ -39,6 +40,7 @@ export function PracticeNodeEditor({
   onSaved,
   onCancel,
 }: PracticeNodeEditorProps) {
+  const { notify } = useToast();
   const trapRef = useFocusTrap(true);
   const [draft, setDraft] = useState(() =>
     node ? draftFromPracticeNode(node) : emptyPracticeNodeDraft(defaultPosition),
@@ -54,19 +56,28 @@ export function PracticeNodeEditor({
       cardCount: parseCardCount(draft.cardCount),
       randomize: draft.randomize,
     };
-    if (node) {
-      await updatePracticeNode(node.id, { name, ...opts });
-    } else {
-      await createPracticeNode(courseId, { type: 'manual', name, ...opts });
+    try {
+      if (node) {
+        await updatePracticeNode(node.id, { name, ...opts });
+      } else {
+        await createPracticeNode(courseId, { type: 'manual', name, ...opts });
+      }
+      onSaved();
+    } catch (err) {
+      setSaving(false);
+      notify(err instanceof Error ? err.message : 'Could not save the practice node.', 'negative');
     }
-    onSaved();
   }
 
   async function handleDelete() {
     if (!node) return;
     if (!window.confirm(`Delete '${node.name}'? This cannot be undone.`)) return;
-    await deletePracticeNode(node.id);
-    onSaved();
+    try {
+      await deletePracticeNode(node.id);
+      onSaved();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not delete the practice node.', 'negative');
+    }
   }
 
   return (

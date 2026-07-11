@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
+import { useToast } from '../../components/ui/Toast';
 import { TrashIcon, EditIcon, PlusIcon } from '../../components/ui/icons';
 import { useLessons, usePracticeNodes } from '../../state/useCourseData';
 import { createPracticeNode, updatePracticeNode, deletePracticeNode } from '../../db/repository';
@@ -25,6 +26,7 @@ export interface PracticeNodesSectionProps {
  * mirrors ExamDatesSection's list/inline-edit shape.
  */
 export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
+  const { notify } = useToast();
   const lessons = useLessons(courseId);
   const practiceNodes = usePracticeNodes(courseId);
   const manualNodes = practiceNodes?.filter((n) => n.type === 'manual');
@@ -56,18 +58,26 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
       cardCount: parseCardCount(draft.cardCount),
       randomize: draft.randomize,
     };
-    if (editingId === 'new') {
-      await createPracticeNode(courseId, { type: 'manual', name, ...opts });
-    } else if (editingId) {
-      await updatePracticeNode(editingId, { name, ...opts });
+    try {
+      if (editingId === 'new') {
+        await createPracticeNode(courseId, { type: 'manual', name, ...opts });
+      } else if (editingId) {
+        await updatePracticeNode(editingId, { name, ...opts });
+      }
+      cancel();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not save the practice node.', 'negative');
     }
-    cancel();
   }
 
   async function remove(id: string, name: string) {
     if (!window.confirm(`Delete '${name}'? This cannot be undone.`)) return;
-    await deletePracticeNode(id);
-    if (editingId === id) cancel();
+    try {
+      await deletePracticeNode(id);
+      if (editingId === id) cancel();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not delete the practice node.', 'negative');
+    }
   }
 
   function describePosition(position: number | undefined): string {
