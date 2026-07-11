@@ -10,10 +10,12 @@ import { m as motion } from 'motion/react';
 import type { Lesson } from '../../db/types';
 import type { LessonStatus } from '../../course/path';
 import { CheckIcon, SparklesIcon } from '../ui/icons';
+import { MiniRing } from '../ui/MiniRing';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 
-/** Hover-revealed lesson stats — see CoursePath's detailForLesson. */
+/** Hover-revealed lesson stats — see CoursePath's detailForLesson. Mastery is
+ *  shown as a small MiniRing alongside its percentage. */
 export interface LessonNodeDetail {
   cardCount: number;
   dueCount: number;
@@ -128,11 +130,12 @@ export function LessonNode({ lesson, status, onClick, current, lockHint, detail 
               className="flex w-full min-w-0 flex-col items-center gap-0.5 px-4"
             >
               <span className="max-w-full truncate text-sm font-semibold">{lesson.name}</span>
-              <span className="whitespace-nowrap text-xs opacity-80">
+              <span className="flex items-center gap-1.5 whitespace-nowrap text-xs opacity-80">
                 {detail.cardCount} card{detail.cardCount === 1 ? '' : 's'}
                 {detail.dueCount > 0 && ` · ${detail.dueCount} due`}
                 {' · '}
-                {detail.masteryPct}% mastered
+                <MiniRing value={detail.masteryPct / 100} size={14} strokeWidth={2} />
+                {detail.masteryPct}%
               </span>
             </motion.span>
           ) : status === 'completed' ? (

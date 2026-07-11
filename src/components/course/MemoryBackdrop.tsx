@@ -8,13 +8,16 @@
 //   - breathing lights  = due for review right now.
 // Placement is deterministic (hashed from the card id) so the constellation
 // is stable between visits and drifts, very slowly, in place. Hovering a
-// light expands it into a small squircle naming the card and its state;
-// clicking opens the card (when `onOpenCard` is given). The layer is hidden
-// from assistive tech — the same cards remain reachable through the lists.
+// light expands it into a small squircle naming the card, its state, and (for
+// studied cards) a MiniCurve preview of its personal forgetting curve out to
+// its due date, or a month-long fallback for cards without one; clicking
+// opens the card (when `onOpenCard` is given). The layer is hidden from
+// assistive tech — the same cards remain reachable through the lists.
 // The maths lives in memoryFieldMath.ts. British English throughout.
 
 import { useState } from 'react';
-import { hashJitter, plainFront, retrievabilityNow } from './memoryFieldMath';
+import { curvePoints, hashJitter, plainFront, retrievabilityNow } from './memoryFieldMath';
+import { MiniCurve } from '../ui/MiniCurve';
 import { MS_PER_DAY } from '../../fsrs/params';
 import type { Card } from '../../db/types';
 
@@ -88,6 +91,7 @@ export function MemoryBackdrop({ cards, decay, now, onOpenCard }: MemoryBackdrop
                 unseen={unseen}
                 dueNow={dueNow}
                 r={r}
+                decay={decay}
                 now={now}
                 above={y > 20}
                 xPct={x}
@@ -102,11 +106,15 @@ export function MemoryBackdrop({ cards, decay, now, onOpenCard }: MemoryBackdrop
 }
 
 /** The squircle a hovered light expands into: card front plus memory state. */
+/** Cards with no due date shown yet fall back to a month-long curve preview. */
+const FALLBACK_HORIZON_DAYS = 30;
+
 function LightDetail({
   card,
   unseen,
   dueNow,
   r,
+  decay,
   now,
   above,
   xPct,
@@ -116,6 +124,7 @@ function LightDetail({
   unseen: boolean;
   dueNow: boolean;
   r: number;
+  decay: number;
   now: number;
   above: boolean;
   /** Light's horizontal page position — used to keep the squircle on screen. */
@@ -129,6 +138,10 @@ function LightDetail({
     const days = Math.max(Math.ceil(((card.due ?? now) - now) / MS_PER_DAY), 1);
     state = `${Math.round(r * 100)}% retained · due in ${days} day${days === 1 ? '' : 's'}`;
   }
+  const horizon = card.due !== null && card.due > now
+    ? card.due
+    : now + FALLBACK_HORIZON_DAYS * MS_PER_DAY;
+  const curve = unseen ? null : curvePoints(card, decay, now, horizon, 140, 28);
   return (
     <span
       className={`backdrop-light-detail absolute left-1/2 z-10 block w-40 rounded-xl border border-line bg-surface-raised p-2.5 shadow-md shadow-black/10 ${
@@ -141,6 +154,7 @@ function LightDetail({
         {state}
         {clickable && ' · click to open'}
       </span>
+      {curve && <MiniCurve points={curve} width={140} height={28} />}
     </span>
   );
 }
