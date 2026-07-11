@@ -28,7 +28,10 @@ import {
   listLessons,
   listNotes,
   listPracticeNodes,
+  recordReview,
   reorderLessons,
+  restoreCourse,
+  snapshotCourse,
 } from './repository';
 import { FSRS_VERSION } from '../fsrs/params';
 
@@ -43,6 +46,7 @@ async function reset() {
     db.cards.clear(),
     db.decks.clear(),
     db.userPerformance.clear(),
+    db.sessionHistory.clear(),
   ]);
 }
 
@@ -183,6 +187,93 @@ describe('deleteCourse cascade', () => {
     expect(await db.practiceNodes.where('courseId').equals(course.id).count()).toBe(0);
     expect(await db.courseExamDates.where('courseId').equals(course.id).count()).toBe(0);
     expect(await db.cards.where('courseId').equals(course.id).count()).toBe(0);
+  });
+
+  it('also removes the lessons hidden backing decks, session history and calibration profiles', async () => {
+    const course = await createCourse('Cascade backing-deck test');
+    const lesson = await createLesson(course.id, 'L1');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+    const deckId = card.deckId;
+
+    await recordReview({
+      card,
+      deck: course,
+      kind: 'course',
+      grade: 3,
+      responseTimeSec: 1,
+      distracted: false,
+      correct: true,
+    });
+
+    expect(await db.decks.get(deckId)).toBeDefined();
+    expect(await db.userPerformance.get(deckId)).toBeDefined();
+    expect(await db.userPerformance.get(course.id)).toBeDefined();
+    expect(await db.sessionHistory.where('deckId').equals(deckId).count()).toBe(1);
+
+    await deleteCourse(course.id);
+
+    expect(await db.decks.get(deckId)).toBeUndefined();
+    expect(await db.userPerformance.get(deckId)).toBeUndefined();
+    expect(await db.userPerformance.get(course.id)).toBeUndefined();
+    expect(await db.sessionHistory.where('deckId').equals(deckId).count()).toBe(0);
+    expect(await db.sessionHistory.where('courseId').equals(course.id).count()).toBe(0);
+  });
+});
+
+describe('snapshotCourse / restoreCourse', () => {
+  beforeEach(reset);
+
+  it('returns null for a course that does not exist', async () => {
+    expect(await snapshotCourse('missing')).toBeNull();
+  });
+
+  it('restores everything deleteCourse removes, including backing decks and session history', async () => {
+    const course = await createCourse('Undo test');
+    const lesson1 = await createLesson(course.id, 'L1');
+    const lesson2 = await createLesson(course.id, 'L2');
+    await createNote(lesson1.id, 'Note A');
+    const lessonCard = await createLessonCard(course.id, lesson1.id, 'front_back', 'q', 'a');
+    const bankCard = await createCourseCard(course.id, 'front_back', 'q2', 'a2');
+    await linkCardToLesson(lesson2.id, lessonCard.id);
+    await createPracticeNode(course.id, { type: 'manual', name: 'Practice 1' });
+    await createCourseExamDate(course.id, 'Mid-term', Date.now() + 7 * 86400000);
+    await recordReview({
+      card: lessonCard,
+      deck: course,
+      kind: 'course',
+      grade: 3,
+      responseTimeSec: 1,
+      distracted: false,
+      correct: true,
+    });
+
+    const snapshot = await snapshotCourse(course.id);
+    expect(snapshot).not.toBeNull();
+    expect(snapshot!.decks).toHaveLength(2); // lesson1's deck + the course's bank deck
+    expect(snapshot!.cards).toHaveLength(2);
+    expect(snapshot!.sessionHistory).toHaveLength(1);
+    // Both backing decks' own profiles (lesson + bank) plus the course-level aggregate.
+    expect(snapshot!.userPerformance).toHaveLength(3);
+
+    await deleteCourse(course.id);
+    expect(await db.courses.get(course.id)).toBeUndefined();
+    expect(await db.decks.get(lessonCard.deckId)).toBeUndefined();
+    expect(await db.decks.get(bankCard.deckId)).toBeUndefined();
+
+    await restoreCourse(snapshot!);
+
+    expect(await db.courses.get(course.id)).toBeDefined();
+    expect(await db.lessons.where('courseId').equals(course.id).count()).toBe(2);
+    expect(await db.notes.where('lessonId').equals(lesson1.id).count()).toBe(1);
+    expect(await db.lessonCards.where('lessonId').equals(lesson2.id).count()).toBe(1);
+    expect(await db.practiceNodes.where('courseId').equals(course.id).count()).toBe(1);
+    expect(await db.courseExamDates.where('courseId').equals(course.id).count()).toBe(1);
+    expect(await db.cards.where('courseId').equals(course.id).count()).toBe(2);
+    expect(await db.decks.get(lessonCard.deckId)).toBeDefined();
+    expect(await db.decks.get(bankCard.deckId)).toBeDefined();
+    expect(await db.userPerformance.get(lessonCard.deckId)).toBeDefined();
+    expect(await db.userPerformance.get(course.id)).toBeDefined();
+    expect(await db.sessionHistory.where('courseId').equals(course.id).count()).toBe(1);
   });
 });
 

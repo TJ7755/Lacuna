@@ -9,7 +9,8 @@ import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Button } from '../components/ui/Button';
 import { Toggle } from '../components/ui/Toggle';
 import { useToast } from '../components/ui/Toast';
-import { deleteCourse, updateCourse } from '../db/repository';
+import { deleteCourse, snapshotCourse, restoreCourse, updateCourse } from '../db/repository';
+import type { CourseSnapshot } from '../db/repository';
 import {
   fromDateTimeLocalValue,
   formatDateTime,
@@ -28,12 +29,13 @@ import { PracticeSettingsSection } from './settings/PracticeSettingsSection';
 import { ExamDatesSection } from './settings/ExamDatesSection';
 import { LessonManagementSection } from './settings/LessonManagementSection';
 import { PracticeNodesSection } from './settings/PracticeNodesSection';
+import { DangerZoneSection } from './settings/DangerZoneSection';
 
 /**
  * Full-page course settings, mirroring DeckSettings but for the Course/Lesson model:
  * scheduling fields, optimisation, unlock mode, auto-practice, exam dates and lesson
- * management, plus a danger zone. Unlike deck deletion, course deletion has no
- * restorable snapshot, so it uses a blocking confirmation instead of an undo toast.
+ * management, plus a danger zone. Course deletion uses the same snapshot + undo-toast
+ * pattern as deck deletion (see DangerZoneSection), rather than a blocking confirmation.
  */
 export function CourseSettings() {
   const [motionSpeed] = useMotionSpeed();
@@ -229,16 +231,6 @@ export function CourseSettings() {
     navigate(coursePath);
   }
 
-  async function handleDelete() {
-    if (!course) return;
-    if (!window.confirm(`Delete '${course.name}'? This removes all its lessons and cannot be undone.`)) {
-      return;
-    }
-    await deleteCourse(course.id);
-    notify(`'${course.name}' deleted.`, 'neutral');
-    navigate('/');
-  }
-
   return (
     <div className="mx-auto max-w-2xl px-6 py-8 md:px-10">
       <Link
@@ -423,21 +415,21 @@ export function CourseSettings() {
             />
           </motion.div>
 
-          <motion.section
+          <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.24 * m, delay: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="rounded-2xl border border-negative/30 bg-negative/5 p-6 shadow-sm shadow-negative/10"
           >
-            <div className="mb-1 text-sm font-medium text-negative">Danger zone</div>
-            <p className="mb-4 text-sm text-ink-soft">
-              Deleting this course removes all of its lessons, notes and card assignments.
-              This cannot be undone.
-            </p>
-            <Button variant="danger" size="sm" onClick={() => void handleDelete()}>
-              Delete course
-            </Button>
-          </motion.section>
+            <DangerZoneSection
+              entityLabel="course"
+              entityName={course.name}
+              description="Deleting this course removes all of its lessons, notes and card assignments."
+              snapshot={() => snapshotCourse(course.id)}
+              onDelete={() => deleteCourse(course.id)}
+              onRestore={(snap) => restoreCourse(snap as CourseSnapshot)}
+              onDeleted={() => navigate('/')}
+            />
+          </motion.div>
         </div>
       </motion.div>
 

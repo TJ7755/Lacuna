@@ -990,17 +990,43 @@ export async function updateCourse(id: string, changes: Partial<Course>): Promis
 export async function deleteCourse(id: string): Promise<void> {
   await db.transaction(
     'rw',
-    [db.courses, db.lessons, db.notes, db.lessonCards, db.practiceNodes, db.courseExamDates, db.cards],
+    [
+      db.courses,
+      db.lessons,
+      db.notes,
+      db.lessonCards,
+      db.practiceNodes,
+      db.courseExamDates,
+      db.cards,
+      db.decks,
+      db.sessionHistory,
+      db.userPerformance,
+    ],
     async () => {
       const lessonIds = await db.lessons.where('courseId').equals(id).primaryKeys();
       if (lessonIds.length > 0) {
         await db.notes.where('lessonId').anyOf(lessonIds).delete();
         await db.lessonCards.where('lessonId').anyOf(lessonIds).delete();
       }
+      // Every course card has a hidden backing deck (see ensureLessonDeck /
+      // ensureCourseBankDeck); nothing else can reference those decks, so they and
+      // their per-deck calibration profiles must be swept up alongside the cards.
+      const deckIds = [
+        ...new Set((await db.cards.where('courseId').equals(id).toArray()).map((c) => c.deckId)),
+      ];
       await db.lessons.where('courseId').equals(id).delete();
       await db.practiceNodes.where('courseId').equals(id).delete();
       await db.courseExamDates.where('courseId').equals(id).delete();
       await db.cards.where('courseId').equals(id).delete();
+      if (deckIds.length > 0) {
+        await db.decks.where('id').anyOf(deckIds).delete();
+        await db.sessionHistory.where('deckId').anyOf(deckIds).delete();
+        await db.userPerformance.where('deckId').anyOf(deckIds).delete();
+      }
+      // The course-level calibration profile and session history are keyed by the
+      // course id itself for course/lesson-scoped reviews (see recordReview).
+      await db.userPerformance.delete(id);
+      await db.sessionHistory.where('courseId').equals(id).delete();
       await db.courses.delete(id);
     },
   );
@@ -1014,6 +1040,112 @@ export async function listCourses(): Promise<Course[]> {
 
 export async function getCourse(id: string): Promise<Course | undefined> {
   return db.courses.get(id);
+}
+
+/** A complete copy of a course and everything that hangs off it: lessons, notes,
+ * lesson-card links, practice nodes, exam dates, cards and their hidden backing decks
+ * (plus the session history and calibration profiles keyed to either). */
+export interface CourseSnapshot {
+  course: Course;
+  lessons: Lesson[];
+  notes: Note[];
+  lessonCards: LessonCardLink[];
+  practiceNodes: PracticeNode[];
+  courseExamDates: CourseExamDate[];
+  cards: Card[];
+  decks: Deck[];
+  sessionHistory: SessionHistoryEntry[];
+  userPerformance: UserPerformance[];
+}
+
+/**
+ * Capture a course plus everything {@link deleteCourse} removes, so the action can be
+ * offered with an "Undo". Call this *before* deleteCourse. Mirrors {@link snapshotDecks},
+ * but also captures the lessons' hidden backing decks (see {@link ensureLessonDeck} /
+ * {@link ensureCourseBankDeck}) since deleteCourse removes those too. Returns null if the
+ * course no longer exists.
+ */
+export async function snapshotCourse(id: string): Promise<CourseSnapshot | null> {
+  const course = await db.courses.get(id);
+  if (!course) return null;
+
+  const [lessons, practiceNodes, courseExamDates, cards, coursePerf] = await Promise.all([
+    db.lessons.where('courseId').equals(id).toArray(),
+    db.practiceNodes.where('courseId').equals(id).toArray(),
+    db.courseExamDates.where('courseId').equals(id).toArray(),
+    db.cards.where('courseId').equals(id).toArray(),
+    db.userPerformance.get(id),
+  ]);
+  const lessonIds = lessons.map((l) => l.id);
+  const deckIds = [...new Set(cards.map((c) => c.deckId))];
+
+  const [notes, lessonCards, decks, deckSessionHistory, courseSessionHistory, deckPerf] =
+    await Promise.all([
+      lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
+      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+      deckIds.length > 0 ? db.decks.where('id').anyOf(deckIds).toArray() : [],
+      deckIds.length > 0 ? db.sessionHistory.where('deckId').anyOf(deckIds).toArray() : [],
+      db.sessionHistory.where('courseId').equals(id).toArray(),
+      deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
+    ]);
+  // A backing deck's session history is always course-scoped too (see recordReview),
+  // so de-duplicate by row id between the deckId and courseId lookups.
+  const sessionHistoryById = new Map(
+    [...deckSessionHistory, ...courseSessionHistory].map((entry) => [entry.id, entry]),
+  );
+
+  return {
+    course,
+    lessons,
+    notes,
+    lessonCards,
+    practiceNodes,
+    courseExamDates,
+    cards,
+    decks,
+    sessionHistory: [...sessionHistoryById.values()],
+    userPerformance: coursePerf ? [...deckPerf, coursePerf] : deckPerf,
+  };
+}
+
+/** Re-insert a previously captured CourseSnapshot (the inverse of deleteCourse). */
+export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
+  try {
+    await db.transaction(
+      'rw',
+      [
+        db.courses,
+        db.lessons,
+        db.notes,
+        db.lessonCards,
+        db.practiceNodes,
+        db.courseExamDates,
+        db.cards,
+        db.decks,
+        db.sessionHistory,
+        db.userPerformance,
+      ],
+      async () => {
+        await Promise.all([
+          db.courses.put(snapshot.course),
+          db.lessons.bulkPut(snapshot.lessons),
+          db.notes.bulkPut(snapshot.notes),
+          db.lessonCards.bulkPut(snapshot.lessonCards),
+          db.practiceNodes.bulkPut(snapshot.practiceNodes),
+          db.courseExamDates.bulkPut(snapshot.courseExamDates),
+          db.cards.bulkPut(snapshot.cards),
+          db.decks.bulkPut(snapshot.decks),
+          db.userPerformance.bulkPut(snapshot.userPerformance),
+          // Drop the old auto-increment ids so Dexie reassigns them cleanly.
+          db.sessionHistory.bulkAdd(
+            snapshot.sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
+          ),
+        ]);
+      },
+    );
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
 
 // ---------------------------------------------------------------------------
