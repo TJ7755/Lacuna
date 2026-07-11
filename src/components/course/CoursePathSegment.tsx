@@ -146,7 +146,7 @@ export function PathNodeWithLine({
 }
 
 /** A hover-revealed "+" for inserting a manual practice node at a specific path gap. */
-export function InsertButton({ onInsert }: { onInsert: () => void }) {
+function InsertButton({ onInsert }: { onInsert: () => void }) {
   return (
     <button
       type="button"

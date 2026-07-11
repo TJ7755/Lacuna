@@ -15,7 +15,7 @@ import type {
 } from '../db/types';
 import { progressValue } from '../fsrs/objective';
 import { availableCards, studyPool } from '../fsrs/eligibility';
-import { computeStudyStats, type StudyStats } from '../fsrs/stats';
+import { computeStudyStats, buildDeckSecondsMap, type StudyStats } from '../fsrs/stats';
 
 // ---------------------------------------------------------------------------
 // Individual record hooks
@@ -290,13 +290,7 @@ export function useCourseDashboardData():
       db.userPerformance.toArray(),
     ]);
     const summaries = computeCourseSummaries(courses, lessons, cards);
-    // Only trust a deck's mean once it has at least one correct review to learn from.
-    const deckSeconds = new Map<string, number>();
-    for (const p of perf) {
-      if (p.totalCorrectReviews > 0 && p.runningMeanResponseTime > 0) {
-        deckSeconds.set(p.deckId, p.runningMeanResponseTime);
-      }
-    }
+    const deckSeconds = buildDeckSecondsMap(perf);
     const stats = computeStudyStats(cards, deckSeconds);
     return { courses, lessons, allCards: cards, summaries, stats };
   }, []);

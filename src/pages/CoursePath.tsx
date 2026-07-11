@@ -15,15 +15,10 @@ import {
   usePracticeNodes,
 } from '../state/useCourseData';
 import { availableCards, dueCards } from '../fsrs/eligibility';
-import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
+import { DEFAULT_REVIEW_SECONDS, buildDeckSecondsMap } from '../fsrs/stats';
 import { progressDescription } from '../fsrs/objective';
-import {
-  buildPath,
-  pathPosition,
-  nearestExamDate,
-  examIsUrgent,
-  lessonEffectiveReleaseDates,
-} from '../course/path';
+import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
+import { courseHeaderStats } from '../course/headerStats';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import {
@@ -161,12 +156,7 @@ export function CoursePath() {
   const now = Date.now();
   const { dueCardCount, meanReviewSeconds } = useMemo(() => {
     const dueCardCount = dueCards(availableCards(courseCards, now), now).length;
-    const deckSeconds = new Map<string, number>();
-    for (const p of perf) {
-      if (p.totalCorrectReviews > 0 && p.runningMeanResponseTime > 0) {
-        deckSeconds.set(p.deckId, p.runningMeanResponseTime);
-      }
-    }
+    const deckSeconds = buildDeckSecondsMap(perf);
     const meanReviewSeconds = courseMeanReviewSeconds(courseCards, deckSeconds);
     return { dueCardCount, meanReviewSeconds };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,14 +196,18 @@ export function CoursePath() {
   // This is pacing — it has nothing to do with mastery or FSRS retention.
   const { reached, total } = pathPosition(nodes);
 
-  // Mastery: FSRS-derived mean predicted retention across the card pool,
-  // expressed as a percentage. Distinct from path position.
-  const masteryPct = summary ? Math.round(summary.mastery * 100) : 0;
-
-  // Nearest upcoming exam date: consider course.examDate and all explicit exam dates;
-  // show the soonest one that is still in the future.
-  const nearestExam = nearestExamDate(course, examDates, now);
-  const examUrgent = examIsUrgent(nearestExam, now);
+  // Header stats: nearest exam + urgency use the same maths as LessonView's
+  // (see courseHeaderStats); mastery is passed in from the course-level summary
+  // (extension-lesson cards already excluded there), and dueCardCount reuses
+  // the value already computed above for buildPath rather than recomputing it.
+  const { nearestExam, examUrgent, mastery } = courseHeaderStats(
+    course,
+    examDates,
+    courseCards,
+    summary?.mastery ?? 0,
+    now,
+  );
+  const masteryPct = Math.round(mastery * 100);
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8 md:px-10">

@@ -24,8 +24,7 @@ import { CourseHeader } from '../components/course/CourseHeader';
 import { CourseHeaderStat } from '../components/course/CourseHeaderStat';
 import { MasteryRing } from '../components/course/MasteryRing';
 import { LessonStudyCTA } from '../components/course/LessonStudyCTA';
-import { nearestExamDate, examIsUrgent } from '../course/path';
-import { dueCards } from '../fsrs/eligibility';
+import { courseHeaderStats } from '../course/headerStats';
 import { progressValue, progressDescription } from '../fsrs/objective';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { formatDate } from '../utils/datetime';
@@ -118,10 +117,14 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
   // helpers CoursePath uses at course scope — see CoursePath.tsx and
   // fsrs/eligibility.ts, fsrs/objective.ts).
   const now = Date.now();
-  const nearestExam = nearestExamDate(course, examDates, now);
-  const examUrgent = examIsUrgent(nearestExam, now);
   const lessonMastery = progressValue(lessonCards, course, now);
-  const lessonDueCount = dueCards(lessonCards, now).length;
+  const { nearestExam, examUrgent, dueCardCount: lessonDueCount } = courseHeaderStats(
+    course,
+    examDates,
+    lessonCards,
+    lessonMastery,
+    now,
+  );
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">

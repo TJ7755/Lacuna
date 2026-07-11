@@ -35,7 +35,7 @@ export type PathNodeType = string;
 export type LessonStatus = 'completed' | 'available' | 'locked';
 
 /** A lesson rendered as a path node. */
-export interface LessonPathNode {
+interface LessonPathNode {
   id: string;
   nodeType: 'lesson';
   lesson: Lesson;
@@ -46,7 +46,7 @@ export interface LessonPathNode {
  * A checkpoint (CourseExamDate) rendered as a path node.
  * Checkpoints are informational and never gate progression (addendum G).
  */
-export interface CheckpointPathNode {
+interface CheckpointPathNode {
   id: string;
   nodeType: 'checkpoint';
   examDate: CourseExamDate;
@@ -230,6 +230,26 @@ export function lessonStatus(
   return allServed ? 'completed' : 'available';
 }
 
+/**
+ * Finds the index, within `sortedLessons` (already sorted ascending by
+ * `orderIndex`), of the lesson with the highest `orderIndex <= position` — the
+ * "place immediately after this lesson" rule used for manual practice-node
+ * placement. Returns -1 when `position` is `undefined` or precedes every
+ * lesson. Shared by `buildPath`'s manual-node placement and
+ * `practiceGateAfterLesson`, which both apply this exact rule.
+ */
+function lessonIndexAtOrBeforePosition(
+  sortedLessons: Lesson[],
+  position: number | undefined,
+): number {
+  if (position === undefined) return -1;
+  let result = -1;
+  for (let i = 0; i < sortedLessons.length; i++) {
+    if (sortedLessons[i].orderIndex <= position) result = i;
+  }
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // 4. buildPath
 // ---------------------------------------------------------------------------
@@ -347,12 +367,7 @@ export function buildPath(
   const manualPlacements: Placement[] = practiceNodes
     .filter((pn) => pn.type === 'manual')
     .map((pn) => {
-      let afterIndex = -1;
-      if (pn.position !== undefined) {
-        for (let i = 0; i < lessonNodes.length; i++) {
-          if (lessonNodes[i].lesson.orderIndex <= pn.position) afterIndex = i;
-        }
-      }
+      const afterIndex = lessonIndexAtOrBeforePosition(sorted, pn.position);
       const afterLesson = lessonNodes[afterIndex];
       return {
         afterIndex,
@@ -488,11 +503,8 @@ export function practiceGateAfterLesson(
   const manualNodes = practiceNodes.filter((pn) => pn.type === 'manual');
   for (const pn of manualNodes) {
     if (pn.position === undefined) continue;
-    let afterLessonId: string | null = null;
-    for (const l of sorted) {
-      if (l.orderIndex <= pn.position) afterLessonId = l.id;
-    }
-    if (afterLessonId === lessonId) return true;
+    const afterIndex = lessonIndexAtOrBeforePosition(sorted, pn.position);
+    if (afterIndex >= 0 && sorted[afterIndex].id === lessonId) return true;
   }
   return false;
 }

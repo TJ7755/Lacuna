@@ -4,7 +4,7 @@
 // (review history, card due dates, per-deck response-time calibration), so they need no
 // new tables. Every function is pure and works in local time.
 
-import type { Card } from '../db/types';
+import type { Card, UserPerformance } from '../db/types';
 import { MS_PER_DAY } from './params';
 import { startOfDay } from '../utils/datetime';
 
@@ -42,6 +42,21 @@ export interface StudyStats {
   reviewedToday: number;
   /** Per-day workload for the next FORECAST_DAYS days. */
   forecast: DayForecast[];
+}
+
+/**
+ * Deck response-time calibration keyed by deckId, trusting a deck's mean only
+ * once it has at least one correct review to learn from. Shared by
+ * useCourseDashboardData and CoursePath, which otherwise duplicated this loop.
+ */
+export function buildDeckSecondsMap(perf: UserPerformance[]): Map<string, number> {
+  const deckSeconds = new Map<string, number>();
+  for (const p of perf) {
+    if (p.totalCorrectReviews > 0 && p.runningMeanResponseTime > 0) {
+      deckSeconds.set(p.deckId, p.runningMeanResponseTime);
+    }
+  }
+  return deckSeconds;
 }
 
 /** Local midnight n days before the given local-midnight epoch (DST-safe). */
