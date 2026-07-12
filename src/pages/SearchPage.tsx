@@ -11,10 +11,6 @@ import {
   type CardFilter,
   type CourseContentHit,
 } from '../db/search';
-import { retrievabilityNow } from '../components/course/memoryFieldMath';
-import { MiniRing } from '../components/ui/MiniRing';
-import { decayOf } from '../fsrs/fsrs';
-import { defaultFsrsParameters } from '../fsrs/params';
 import { cn } from '../components/ui/cn';
 import {
   FlagIcon,
@@ -26,9 +22,6 @@ import {
   FileTextIcon,
 } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-
-/** Fallback decay for a card whose course cannot be matched. */
-const FALLBACK_DECAY = decayOf(defaultFsrsParameters());
 
 /** The structured filters offered as quick chips, in display order. */
 const FILTER_CHIPS: { value: CardFilter; label: string }[] = [
@@ -79,14 +72,6 @@ export function SearchPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<Set<CardFilter>>(new Set());
-  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
-
-  // Per-course decay, so a result row's retention preview uses that course's
-  // own FSRS parameters rather than a single global assumption.
-  const decayByCourse = useMemo(
-    () => new Map((courses ?? []).map((course) => [course.id, decayOf(course.fsrsParameters)])),
-    [courses],
-  );
 
   const results = useMemo(
     () =>
@@ -253,67 +238,39 @@ export function SearchPage() {
                 </motion.button>
               );
             })}
-            {results.map((hit) => {
-              const { card } = hit;
-              const unseen = card.lastReviewed === null || card.state === 0;
-              const decay = card.courseId
-                ? decayByCourse.get(card.courseId) ?? FALLBACK_DECAY
-                : FALLBACK_DECAY;
-              const retention = unseen ? null : retrievabilityNow(card, decay, Date.now());
-              return (
-                <motion.button
-                  key={card.id}
-                  type="button"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.16 * m }}
-                  onClick={() => navigate(cardEditPath(card))}
-                  onMouseEnter={() => setHoveredCardId(card.id)}
-                  onMouseLeave={() => setHoveredCardId((id) => (id === card.id ? null : id))}
-                  onFocus={() => setHoveredCardId(card.id)}
-                  onBlur={() => setHoveredCardId((id) => (id === card.id ? null : id))}
-                  whileHover={{ y: -3, transition: { duration: 0.12 * m } }}
-                  className="flex items-start gap-3 rounded-xl border border-line bg-surface p-4 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.04]"
-                >
-                  <span className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="text-sm text-ink">
-                      {plainPreview(card.front, 140) || '(empty front)'}
-                    </span>
-                    {card.back.trim() && (
-                      <span className="truncate text-sm text-ink-faint">
-                        {plainPreview(card.back, 140)}
-                      </span>
-                    )}
-                    <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
-                      <span>{hit.deck.name}</span>
-                      {card.flagged && (
-                        <FlagIcon width={12} height={12} className="text-accent" />
-                      )}
-                      {(card.tags ?? []).length > 0 && (
-                        <span className="inline-flex items-center gap-1">
-                          <TagIcon width={12} height={12} />
-                          {card.tags!.join(', ')}
-                        </span>
-                      )}
-                    </span>
+            {results.map((hit) => (
+              <motion.button
+                key={hit.card.id}
+                type="button"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.16 * m }}
+                onClick={() => navigate(cardEditPath(hit.card))}
+                whileHover={{ y: -3, transition: { duration: 0.12 * m } }}
+                className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.04]"
+              >
+                <span className="text-sm text-ink">
+                  {plainPreview(hit.card.front, 140) || '(empty front)'}
+                </span>
+                {hit.card.back.trim() && (
+                  <span className="truncate text-sm text-ink-faint">
+                    {plainPreview(hit.card.back, 140)}
                   </span>
-                  {/* Fixed slot so the retention ring's fade-in never reflows
-                      the row; empty for unseen cards, which have no memory
-                      state to show. */}
-                  {retention !== null && (
-                    <span
-                      className={cn(
-                        'flex shrink-0 items-center gap-1.5 pt-0.5 text-xs text-ink-faint transition-opacity duration-150',
-                        hoveredCardId === card.id ? 'opacity-100' : 'opacity-0',
-                      )}
-                    >
-                      <MiniRing value={retention} size={16} strokeWidth={2} />
-                      {Math.round(retention * 100)}%
+                )}
+                <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
+                  <span>{hit.deck.name}</span>
+                  {hit.card.flagged && (
+                    <FlagIcon width={12} height={12} className="text-accent" />
+                  )}
+                  {(hit.card.tags ?? []).length > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <TagIcon width={12} height={12} />
+                      {hit.card.tags!.join(', ')}
                     </span>
                   )}
-                </motion.button>
-              );
-            })}
+                </span>
+              </motion.button>
+            ))}
           </div>
         </>
       )}
