@@ -81,7 +81,7 @@ export function useOptimiser() {
       const request: OptimiseRequest = { cards, requestRetention };
       worker.postMessage(request);
     },
-    [terminate, mountedRef],
+    [terminate],
   );
 
   const reset = useCallback(() => {
@@ -89,7 +89,7 @@ export function useOptimiser() {
     if (mountedRef.current) {
       setState({ status: 'idle', progress: 0, result: null, error: null });
     }
-  }, [terminate, mountedRef]);
+  }, [terminate]);
 
   return { ...state, run, reset };
 }
