@@ -36,6 +36,7 @@ import { useGradingMode } from '../state/gradingMode';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { usePracticeDefaults } from '../state/practiceDefaults';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
+import { useCourseCardDetail } from '../state/courseCardDetail';
 import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
 import { useInputMode, type InputMode } from '../state/inputMode';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
@@ -76,6 +77,7 @@ export function Settings() {
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
+  const [cardDetail, setCardDetail] = useCourseCardDetail();
   const [inputMode, setInputMode] = useInputMode();
   const [pomoSettings, setPomoSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
   const backups = useBackups();
@@ -571,6 +573,34 @@ export function Settings() {
               </button>
             );
           })}
+        </div>
+
+        {/* Card hover detail modules */}
+        <div className="mt-6 border-t border-line pt-5">
+          <h3 className="mb-1 text-sm font-medium text-ink">Card hover detail</h3>
+          <p className="mb-4 text-sm text-ink-soft">
+            Choose what a course card reveals when you hover over it.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Toggle
+              id="card-detail-next-due"
+              label="Next review time"
+              checked={cardDetail.nextDue}
+              onChange={(checked) => setCardDetail({ nextDue: checked })}
+            />
+            <Toggle
+              id="card-detail-breakdown"
+              label="New, learnt and due breakdown"
+              checked={cardDetail.breakdown}
+              onChange={(checked) => setCardDetail({ breakdown: checked })}
+            />
+            <Toggle
+              id="card-detail-activity"
+              label="Recent review activity"
+              checked={cardDetail.activity}
+              onChange={(checked) => setCardDetail({ activity: checked })}
+            />
+          </div>
         </div>
       </motion.section>
 

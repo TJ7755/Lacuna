@@ -53,6 +53,15 @@ export function Dashboard() {
     return sorted;
   }, [courses, summaries, dashboardSort]);
 
+  // Cards grouped by course, for the card hover detail modules.
+  const cardsByCourse = useMemo(() => {
+    const grouped: Record<string, typeof allCards> = {};
+    for (const card of allCards ?? []) {
+      if (card.courseId) (grouped[card.courseId] ??= []).push(card);
+    }
+    return grouped;
+  }, [allCards]);
+
   // Total cards a global session would serve today, across all active courses.
   const totalEligible = useMemo(
     () =>
@@ -147,6 +156,7 @@ export function Dashboard() {
               <CourseCard
                 course={course}
                 summary={summaries?.[course.id]}
+                cards={cardsByCourse[course.id]}
                 onClick={() => navigate(`/course/${course.id}`)}
               />
             </motion.div>
