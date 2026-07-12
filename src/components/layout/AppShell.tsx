@@ -8,6 +8,7 @@ import { CommandPalette } from '../search/CommandPalette';
 import { KeyHints } from '../ui/KeyHints';
 import { FlaskIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { consumeLandingArrival } from './LandingTransition';
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 
@@ -35,6 +36,7 @@ export function AppShell() {
   const mainRef = useRef<HTMLElement>(null);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const [arrivedFromLanding] = useState(() => consumeLandingArrival());
 
   // Debounce sidebar collapse writes so rapid toggles / drag-resize don't hammer localStorage.
   useEffect(() => {
@@ -81,7 +83,14 @@ export function AppShell() {
   }, [navigate]);
 
   return (
-    <div className="flex h-screen overflow-hidden flex-col">
+    // Arriving from the landing page's Get Started transition, the shell
+    // settles up from slightly under scale while the overlay halves part.
+    <motion.div
+      initial={arrivedFromLanding ? { scale: 0.96 } : false}
+      animate={{ scale: 1 }}
+      transition={{ duration: 0.7 * m, delay: 0.3 * m, ease: [0.16, 1, 0.3, 1] }}
+      className="flex h-screen overflow-hidden flex-col"
+    >
       <Titlebar />
       <div className="flex flex-1 overflow-hidden">
       {/* Desktop sidebar */}
@@ -160,6 +169,6 @@ export function AppShell() {
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
       </div>
-    </div>
+    </motion.div>
   );
 }

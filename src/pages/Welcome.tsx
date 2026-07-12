@@ -6,6 +6,7 @@ import { DashboardMock, mockPredictedScore } from '../components/welcome/Dashboa
 import { ExamCurve, type ExamWeeks } from '../components/welcome/ExamCurve';
 import { PathDemo } from '../components/welcome/PathDemo';
 import { PracticeDeck } from '../components/welcome/PracticeDeck';
+import { LandingCta } from '../components/welcome/LandingCta';
 import { useSmoothScroll } from '../components/welcome/useSmoothScroll';
 
 /**
@@ -340,12 +341,7 @@ export function Welcome() {
           </p>
 
           <div className="hero-rise mt-10 flex flex-wrap items-center gap-4" style={{ animationDelay: '360ms' }}>
-            <Link
-              to="/"
-              className="shadow-paper shadow-paper-hover inline-flex min-h-16 items-center rounded-[10px] bg-accent px-9 text-base font-medium text-accent-fg"
-            >
-              Create your first course
-            </Link>
+            <LandingCta>Create your first course</LandingCta>
             <button
               type="button"
               onClick={() => {
@@ -580,12 +576,7 @@ function CheckpointSection({
               Demo horizon · {examDateLabel} · {predicted}% predicted readiness
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link
-                to="/"
-                className="shadow-paper shadow-paper-hover inline-flex min-h-16 items-center rounded-[10px] bg-accent px-9 text-base font-medium text-accent-fg"
-              >
-                Open the dashboard
-              </Link>
+              <LandingCta>Open the dashboard</LandingCta>
               <Link
                 to="/settings"
                 className="inline-flex min-h-12 items-center font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition-colors hover:text-accent"

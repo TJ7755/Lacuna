@@ -7,6 +7,7 @@ import { FontScaleProvider } from './state/FontScaleContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { AppShell } from './components/layout/AppShell';
+import { LandingTransition } from './components/layout/LandingTransition';
 import { Dashboard } from './pages/Dashboard';
 import { Settings } from './pages/Settings';
 import { SearchPage } from './pages/SearchPage';
@@ -309,6 +310,7 @@ export function App() {
           <FontScaleProvider>
             <ToastProvider>
               <RouterWithQuotaWarning />
+              <LandingTransition />
             </ToastProvider>
           </FontScaleProvider>
         </AccentProvider>

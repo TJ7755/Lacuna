@@ -152,7 +152,7 @@ function LessonBucket({
   if (import.meta.env.DEV) {
     const stray = cards.find((c) => c.deckId !== deckId);
     if (stray) {
-      console.warn(
+      console.error(
         `QuestionBank: lesson "${lesson.name}" has cards from more than one deck ` +
           `(expected ${deckId}, found ${stray.deckId} on card ${stray.id}).`,
       );
@@ -207,7 +207,7 @@ function UnassignedBucket({
   if (import.meta.env.DEV) {
     const stray = cards.find((c) => c.deckId !== deckId);
     if (stray) {
-      console.warn(
+      console.error(
         `QuestionBank: Unassigned bucket has cards from more than one deck ` +
           `(expected ${deckId}, found ${stray.deckId} on card ${stray.id}).`,
       );

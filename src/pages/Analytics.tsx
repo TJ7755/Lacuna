@@ -89,7 +89,8 @@ export function Analytics() {
   const cards = useMemo(
     () =>
       (allCards ?? []).filter(
-        (card) => card.courseId != null && activeCourseIds.has(card.courseId),
+        (card) =>
+          card.courseId !== null && card.courseId !== undefined && activeCourseIds.has(card.courseId),
       ),
     [allCards, activeCourseIds],
   );
@@ -97,7 +98,8 @@ export function Analytics() {
   const courseHistory = useMemo(
     () =>
       (history ?? []).filter(
-        (entry) => entry.courseId != null && activeCourseIds.has(entry.courseId),
+        (entry) =>
+          entry.courseId !== null && entry.courseId !== undefined && activeCourseIds.has(entry.courseId),
       ),
     [history, activeCourseIds],
   );
