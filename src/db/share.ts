@@ -432,8 +432,15 @@ function runShareWorker<T>(
   return new Promise((resolve, reject) => {
     const id = ++shareJobId;
     const w = getShareWorker();
+    const TIMEOUT_MS = 30000; // 30 seconds
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     function cleanup() {
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
       w.removeEventListener('message', messageHandler);
       w.removeEventListener('error', errorHandler);
       w.removeEventListener('messageerror', messageErrorHandler);
@@ -472,6 +479,13 @@ function runShareWorker<T>(
     w.addEventListener('error', errorHandler);
     w.addEventListener('messageerror', messageErrorHandler);
     w.postMessage({ ...message, id });
+
+    // Set timeout to force cleanup if the worker hangs
+    timeoutId = setTimeout(() => {
+      cleanup();
+      shareWorker = null;
+      reject(new Error('Share worker timed out after 30 seconds.'));
+    }, TIMEOUT_MS);
   });
 }
 

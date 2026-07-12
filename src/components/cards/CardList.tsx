@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { CardContent } from './CardContent';
@@ -827,7 +827,7 @@ function CardListBody({
   );
 }
 
-function CardRow({
+const CardRow = React.memo(function CardRow({
   card,
   deck,
   index,
@@ -894,6 +894,16 @@ function CardRow({
   const swipeThreshold = 40;
   const MAX_DRAG = 120;
 
+  // Refs for stable callback dependencies
+  const trayOpenRef = useRef(trayOpen);
+  const cardRefForCallback = useRef(card);
+  useEffect(() => {
+    trayOpenRef.current = trayOpen;
+  }, [trayOpen]);
+  useEffect(() => {
+    cardRefForCallback.current = card;
+  }, [card]);
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (selectMode || expanded) return;
     if (e.button !== 0) return;
@@ -905,10 +915,10 @@ function CardRow({
       startX: e.clientX,
       startY: e.clientY,
       isSwipe: false,
-      openBeforeDrag: trayOpen,
+      openBeforeDrag: trayOpenRef.current,
     };
     cardRef.current?.setPointerCapture(e.pointerId);
-  }, [selectMode, expanded, trayOpen]);
+  }, [selectMode, expanded]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!swipeState.current.dragging) return;
@@ -963,46 +973,46 @@ function CardRow({
           // Drag right — quick flag (touch mode only)
           hapticLight();
           dragX.set(0);
-          onToggleFlag(card);
+          onToggleFlag(cardRefForCallback.current);
         } else {
           setTrayOpen(false);
           dragX.set(0);
         }
       }
     } else {        // It was a tap — close the tray if it is open; suppress the subsequent click.
-      if (trayOpen) {
+      if (trayOpenRef.current) {
         hapticLight();
         justHandledTap.current = true;
         setTrayOpen(false);
         dragX.set(0);
       }
     }
-  }, [dragX, trayOpen, isTouchMode, onToggleFlag, card]);
+  }, [dragX, isTouchMode, onToggleFlag]);
 
   const handlePointerCancel = useCallback((e: React.PointerEvent) => {
     e.stopPropagation();
     cardRef.current?.releasePointerCapture(e.pointerId);
     swipeState.current.dragging = false;
     swipeState.current.isSwipe = false;
-    dragX.set(trayOpen ? -trayWidth : 0);
-  }, [dragX, trayOpen]);
+    dragX.set(trayOpenRef.current ? -trayWidth : 0);
+  }, [dragX]);
 
-  function handleClick() {
+  const handleClick = useCallback(() => {
     if (justHandledTap.current) {
       justHandledTap.current = false;
       return;
     }
     if (selectMode) {
       onToggle();
-    } else if (trayOpen) {
+    } else if (trayOpenRef.current) {
       setTrayOpen(false);
       dragX.set(0);
     } else {
       onToggleExpand();
     }
-  }
+  }, [selectMode, onToggle, onToggleExpand, dragX]);
 
-  function handleKeyDown(e: React.KeyboardEvent) {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       if (selectMode) {
@@ -1011,7 +1021,47 @@ function CardRow({
         onToggleExpand();
       }
     }
-  }
+  }, [selectMode, onToggle, onToggleExpand]);
+
+  const handleMouseEnter = useCallback(() => {
+    if (!selectMode) setHovered(true);
+  }, [selectMode]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (!selectMode) setHovered(false);
+  }, [selectMode]);
+
+  const handleFlagClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticLight();
+    onToggleFlag(cardRefForCallback.current);
+  }, [onToggleFlag]);
+
+  const handleEditClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticLight();
+    onEdit();
+  }, [onEdit]);
+
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticMedium();
+    onDelete();
+  }, [onDelete]);
+
+  const handleResumeClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onResume();
+  }, [onResume]);
+
+  const handleFlagHoverClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleFlag(cardRefForCallback.current);
+  }, [onToggleFlag]);
+
+  const handleExpandedClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
 
   return (
     <div
@@ -1030,8 +1080,9 @@ function CardRow({
         <div className="flex h-full w-full items-center">
           <button
             type="button"
+            aria-label={flagged ? 'Remove flag from card' : 'Flag card'}
             aria-pressed={flagged}
-            onClick={(e) => { e.stopPropagation(); hapticLight(); onToggleFlag(card); }}
+            onClick={handleFlagClick}
             className={cn(
               'flex h-full flex-1 flex-col items-center justify-center gap-1 text-xs transition-colors',
               flagged
@@ -1044,7 +1095,8 @@ function CardRow({
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); hapticLight(); onEdit(); }}
+            aria-label="Edit card"
+            onClick={handleEditClick}
             className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-ink/[0.03] text-xs text-ink-soft transition-colors hover:bg-accent/10 hover:text-accent"
           >
             <EditIcon width={18} height={18} />
@@ -1052,7 +1104,8 @@ function CardRow({
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); hapticMedium(); onDelete(); }}
+            aria-label="Delete card"
+            onClick={handleDeleteClick}
             className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-negative/10 text-xs text-negative transition-colors hover:bg-negative/20"
           >
             <TrashIcon width={18} height={18} />
@@ -1069,8 +1122,8 @@ function CardRow({
         transition={{ duration: skipAnimation ? 0 : 0.16 * m, delay: Math.min(index * 0.03, 0.25) * m }}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
-        onMouseEnter={() => !selectMode && setHovered(true)}
-        onMouseLeave={() => !selectMode && setHovered(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1166,7 +1219,7 @@ function CardRow({
               {card.suspended && (
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); onResume(); }}
+                  onClick={handleResumeClick}
                   title="Resume card"
                   className="min-h-11 rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
                 >
@@ -1175,7 +1228,7 @@ function CardRow({
               )}
               <motion.button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onToggleFlag(card); }}
+                onClick={handleFlagHoverClick}
                 title={flagged ? 'Remove flag' : 'Flag card'}
                 aria-pressed={flagged}
                 whileTap={{ scale: 0.85 }}
@@ -1191,7 +1244,7 @@ function CardRow({
               </motion.button>
               <motion.button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                onClick={handleEditClick}
                 title="Edit card"
                 whileTap={{ scale: 0.85 }}
                 whileHover={{ scale: 1.08 }}
@@ -1201,7 +1254,7 @@ function CardRow({
               </motion.button>
               <motion.button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                onClick={handleDeleteClick}
                 title="Delete card"
                 whileTap={{ scale: 0.85 }}
                 whileHover={{ scale: 1.08 }}
@@ -1220,7 +1273,7 @@ function CardRow({
               exit={{ opacity: 0, height: 0, marginTop: 0 }}
               transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
+              onClick={handleExpandedClick}
             >
               <div className="border-t border-line pt-4">
                 <CardAnalytics card={card} deck={deck} motionMultiplier={m} />
@@ -1231,4 +1284,4 @@ function CardRow({
       </motion.div>
     </div>
   );
-}
+});

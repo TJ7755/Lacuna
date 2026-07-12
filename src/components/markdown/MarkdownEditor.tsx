@@ -126,7 +126,11 @@ export function MarkdownEditor({
     return () => {
       cancelHistoryTimer();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Intentionally run only on mount to initialise history. Adding 'value' would reset
+    // history on every keystroke, breaking undo/redo. The initial value is captured here
+    // for history setup; subsequent changes are handled by pushHistory/scheduleHistoryPush.
+  }, []);
 
   function pushHistory() {
     const el = textareaRef.current;
