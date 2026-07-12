@@ -73,6 +73,19 @@ export function CourseAnalytics({ course, lessons, cards, history }: CourseAnaly
           empty={trajectory.length < 2}
           emptyMessage="Study this course to start plotting your trajectory."
           delay={0}
+          headline={
+            trajectory.length > 0
+              ? {
+                  value: `${trajectory[trajectory.length - 1].retrievability}%`,
+                  ring: trajectory[trajectory.length - 1].retrievability / 100,
+                  detail: `Latest predicted retrievability, averaged across this course's cards. ${
+                    trajectory.length > 1
+                      ? `${trajectory[trajectory.length - 1].retrievability >= trajectory[0].retrievability ? 'Up' : 'Down'} from ${trajectory[0].retrievability}% on ${new Date(trajectory[0].day).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.`
+                      : ''
+                  }`,
+                }
+              : undefined
+          }
         >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={trajectory} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>

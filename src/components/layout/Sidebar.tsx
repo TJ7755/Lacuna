@@ -186,11 +186,15 @@ const CourseRow = memo(function CourseRow({
     eligible > 0 ? (
       <span
         className={cn(
-          'ml-auto shrink-0 rounded-full bg-accent/10 px-1.5 py-0 text-[10px] font-medium tabular text-accent',
+          'ml-auto flex shrink-0 items-center rounded-full bg-accent/10 px-1.5 py-0 text-[10px] font-medium tabular text-accent',
           compact && 'text-[9px]',
         )}
       >
         {eligible}
+        {/* Hover/focus the row: the bubble grows a word, following the streak-pill precedent. */}
+        <span className="max-w-0 overflow-hidden whitespace-nowrap transition-[max-width] duration-300 ease-out group-hover/courserow:max-w-10 group-focus-within/courserow:max-w-10">
+          &nbsp;due
+        </span>
       </span>
     ) : null;
 
@@ -226,7 +230,7 @@ const CourseRow = memo(function CourseRow({
         to={`/course/${courseId}`}
         className={({ isActive }) =>
           cn(
-            'flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
+            'group/courserow flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
             compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
             'hover:translate-x-0.5',
             isActive
@@ -253,7 +257,7 @@ const CourseRow = memo(function CourseRow({
     <div>
       <div
         className={cn(
-          'group flex w-full min-h-11 cursor-pointer items-center gap-3 rounded-lg transition-all duration-150',
+          'group/courserow flex w-full min-h-11 cursor-pointer items-center gap-3 rounded-lg transition-all duration-150',
           compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
           'hover:translate-x-0.5',
           isCourseActive

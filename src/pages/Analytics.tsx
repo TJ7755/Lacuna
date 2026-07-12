@@ -116,6 +116,18 @@ export function Analytics() {
     [cards],
   );
 
+  // Weighted overall retention across every age bucket, plus the strongest
+  // and weakest bucket — surfaced in the "Retention by age" headline.
+  const retentionSummary = useMemo(() => {
+    const withData = retention.filter((b) => b.count > 0);
+    if (withData.length === 0) return null;
+    const totalCount = withData.reduce((s, b) => s + b.count, 0);
+    const weighted = withData.reduce((s, b) => s + b.retention * b.count, 0) / totalCount;
+    const strongest = withData.reduce((a, b) => (b.retention > a.retention ? b : a));
+    const weakest = withData.reduce((a, b) => (b.retention < a.retention ? b : a));
+    return { overall: Math.round(weighted), strongest, weakest };
+  }, [retention]);
+
   const axisProps = {
     stroke: c.inkFaint,
     tick: { fill: c.inkFaint, fontSize: 11 },
@@ -215,6 +227,19 @@ export function Analytics() {
             empty={trajectory.length < 2}
             emptyMessage="Study cards to start plotting your trajectory."
             delay={0.06}
+            headline={
+              trajectory.length > 0
+                ? {
+                    value: `${trajectory[trajectory.length - 1].retrievability}%`,
+                    ring: trajectory[trajectory.length - 1].retrievability / 100,
+                    detail: `Latest predicted retrievability, averaged across every card in every active course. ${
+                      trajectory.length > 1
+                        ? `${trajectory[trajectory.length - 1].retrievability >= trajectory[0].retrievability ? 'Up' : 'Down'} from ${trajectory[0].retrievability}% on ${new Date(trajectory[0].day).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.`
+                        : ''
+                    }`,
+                  }
+                : undefined
+            }
           >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={trajectory} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
@@ -360,6 +385,15 @@ export function Analytics() {
             empty={!hasReviews}
             emptyMessage="Retention data will appear after your first reviews."
             delay={0.30}
+            headline={
+              retentionSummary
+                ? {
+                    value: `${retentionSummary.overall}%`,
+                    ring: retentionSummary.overall / 100,
+                    detail: `Overall recall rate, weighted by card count across every age bucket. Strongest at ${retentionSummary.strongest.ageLabel} (${retentionSummary.strongest.retention}%), weakest at ${retentionSummary.weakest.ageLabel} (${retentionSummary.weakest.retention}%).`,
+                  }
+                : undefined
+            }
           >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={retention} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
