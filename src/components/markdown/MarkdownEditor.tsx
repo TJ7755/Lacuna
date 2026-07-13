@@ -107,29 +107,32 @@ export function MarkdownEditor({
     selStart: number;
     selEnd: number;
   }
-  const historyRef = useRef<HistoryEntry[]>([{ text: value, selStart: 0, selEnd: 0 }]);
+  // Captured once on first render (lazy ref init) so the mount-only effect below can seed
+  // history without depending on the `value` prop, which changes on every keystroke.
+  const initialValueRef = useRef(value);
+  const historyRef = useRef<HistoryEntry[]>([{ text: initialValueRef.current, selStart: 0, selEnd: 0 }]);
   const historyIndexRef = useRef(0);
   const historyTimerRef = useRef<number | null>(null);
-  const lastPushedTextRef = useRef(value);
-  const currentValueRef = useRef(value);
+  const lastPushedTextRef = useRef(initialValueRef.current);
+  const currentValueRef = useRef(initialValueRef.current);
 
   useEffect(() => {
     currentValueRef.current = value;
   }, [value]);
 
   useEffect(() => {
-    // Reset history when the editor is mounted for a new card.
-    historyRef.current = [{ text: value, selStart: 0, selEnd: 0 }];
+    // Reset history when the editor is mounted for a new card. Uses the value captured at
+    // first render (initialValueRef), not the live `value` prop, so this genuinely only
+    // needs to run on mount — no eslint suppression required. Subsequent changes are
+    // handled by pushHistory/scheduleHistoryPush.
+    const initial = initialValueRef.current;
+    historyRef.current = [{ text: initial, selStart: 0, selEnd: 0 }];
     historyIndexRef.current = 0;
-    lastPushedTextRef.current = value;
-    currentValueRef.current = value;
+    lastPushedTextRef.current = initial;
+    currentValueRef.current = initial;
     return () => {
       cancelHistoryTimer();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // Intentionally run only on mount to initialise history. Adding 'value' would reset
-    // history on every keystroke, breaking undo/redo. The initial value is captured here
-    // for history setup; subsequent changes are handled by pushHistory/scheduleHistoryPush.
   }, []);
 
   function pushHistory() {
