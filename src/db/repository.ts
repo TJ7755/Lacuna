@@ -15,6 +15,8 @@ import type {
   PracticeNode,
   ReviewLog,
   SchedulerConfig,
+  Sequence,
+  SequenceItem,
   SessionHistoryEntry,
   UserPerformance,
 } from './types';
@@ -26,6 +28,12 @@ import { averagePredictedRetrievability } from '../fsrs/progress';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import { readPracticeDefaults } from '../state/practiceDefaults';
 import { scheduleAssetGc } from './assets';
+import {
+  diffRegeneration,
+  generateCards,
+  LABEL_CARD_SUFFIX,
+  type GeneratedCardPayload,
+} from './sequenceGeneration';
 
 /** Convert low-level IndexedDB errors into user-friendly messages. */
 function friendlyDbError(err: unknown): Error {
@@ -1191,4 +1199,179 @@ export async function deleteCourseExamDate(id: string): Promise<void> {
 /** All exam dates for a course, ordered by examDate ascending. */
 export async function listCourseExamDates(courseId: string): Promise<CourseExamDate[]> {
   return db.courseExamDates.where('courseId').equals(courseId).sortBy('examDate');
+}
+
+// ---------------------------------------------------------------------------
+// Sequences
+// ---------------------------------------------------------------------------
+
+/** Every `Card.sequenceItemId` a sequence could ever have produced (positional + label), keyed by item. */
+function sequenceItemKeys(sequence: Sequence): string[] {
+  return sequence.items.flatMap((item) => [item.id, `${item.id}${LABEL_CARD_SUFFIX}`]);
+}
+
+/** Turn a generation payload into a full Card row with fresh FSRS defaults (mirrors {@link createCards}). */
+function generatedCardFromPayload(deckId: string, payload: GeneratedCardPayload, createdAt: number): Card {
+  return {
+    id: makeId(),
+    deckId,
+    courseId: payload.courseId,
+    primaryLessonId: payload.primaryLessonId,
+    type: payload.type,
+    front: payload.front,
+    back: payload.back,
+    stability: null,
+    difficulty: null,
+    lastReviewed: null,
+    reps: 0,
+    lapses: 0,
+    state: 0,
+    due: null,
+    scheduledDays: 0,
+    learningSteps: 0,
+    history: [],
+    createdAt,
+    tags: [],
+    suspended: false,
+    buriedUntil: null,
+    sequenceItemId: payload.sequenceItemId,
+  };
+}
+
+/** All cards ever generated from a sequence (positional and label cards alike). */
+export async function cardsForSequence(sequence: Sequence): Promise<Card[]> {
+  const keys = sequenceItemKeys(sequence);
+  if (keys.length === 0) return [];
+  return db.cards.where('sequenceItemId').anyOf(keys).toArray();
+}
+
+/**
+ * Create a Sequence and, in the same transaction, every card {@link generateCards} derives
+ * from it. Cards get a real backing deck via the same lazy lesson/question-bank deck as
+ * ordinary lesson/course cards (see {@link ensureLessonDeck} / {@link ensureCourseBankDeck}),
+ * looked up before the transaction since those helpers may open their own table writes.
+ */
+export async function createSequence(
+  courseId: string,
+  primaryLessonId: string | null,
+  name: string,
+  items: SequenceItem[],
+  opts?: Partial<Sequence>,
+): Promise<Sequence> {
+  try {
+    const sequence: Sequence = {
+      id: makeId(),
+      courseId,
+      primaryLessonId,
+      name: name.trim() || 'Untitled sequence',
+      items,
+      cueWindow: 2,
+      createdAt: Date.now(),
+      ...opts,
+    };
+    const deckId = primaryLessonId
+      ? await ensureLessonDeck(courseId, primaryLessonId)
+      : await ensureCourseBankDeck(courseId);
+    const payloads = generateCards(sequence);
+    const now = Date.now();
+    const cards = payloads.map((payload, i) => generatedCardFromPayload(deckId, payload, now + i));
+    await db.transaction('rw', db.sequences, db.cards, async () => {
+      await db.sequences.add(sequence);
+      await db.cards.bulkAdd(cards);
+    });
+    return sequence;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/**
+ * Persist an edited Sequence and regenerate its cards to match: loads the previously-stored
+ * sequence to find its prior generated cards, diffs against the new sequence via
+ * {@link diffRegeneration}, and applies creates/updates/deletes to the cards table — all in
+ * one transaction alongside the sequence write. Updates only ever touch front/back, never
+ * FSRS/scheduling fields, so existing memory state survives content-only regeneration.
+ */
+export async function updateSequence(sequence: Sequence): Promise<void> {
+  try {
+    await db.transaction(
+      'rw',
+      [db.sequences, db.cards, db.decks, db.userPerformance, db.courses, db.lessons],
+      async () => {
+        const previous = await db.sequences.get(sequence.id);
+        const existingCards = previous ? await cardsForSequence(previous) : [];
+        const diff = diffRegeneration(sequence, existingCards);
+
+        await db.sequences.put(sequence);
+
+        if (diff.deletes.length > 0) {
+          await db.cards.bulkDelete(diff.deletes);
+        }
+        for (const update of diff.updates) {
+          const { id, ...changes } = update;
+          await db.cards.update(id, changes);
+        }
+        if (diff.creates.length > 0) {
+          const deckId = sequence.primaryLessonId
+            ? await ensureLessonDeck(sequence.courseId, sequence.primaryLessonId)
+            : await ensureCourseBankDeck(sequence.courseId);
+          const now = Date.now();
+          const newCards = diff.creates.map((payload, i) => generatedCardFromPayload(deckId, payload, now + i));
+          await db.cards.bulkAdd(newCards);
+        }
+
+        if (diff.updates.length > 0 || diff.deletes.length > 0) {
+          scheduleAssetGc();
+        }
+      },
+    );
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/** Delete a sequence and every card it generated, in one transaction. */
+export async function deleteSequence(id: string): Promise<void> {
+  await db.transaction('rw', db.sequences, db.cards, async () => {
+    const sequence = await db.sequences.get(id);
+    if (!sequence) return;
+    const keys = sequenceItemKeys(sequence);
+    if (keys.length > 0) {
+      await db.cards.where('sequenceItemId').anyOf(keys).delete();
+    }
+    await db.sequences.delete(id);
+  });
+  scheduleAssetGc();
+}
+
+/** All sequences for a course, ordered by createdAt ascending. */
+export async function listSequences(courseId: string): Promise<Sequence[]> {
+  return db.sequences.where('courseId').equals(courseId).sortBy('createdAt');
+}
+
+/** A sequence plus every card it generated, with full FSRS state — for the undo-toast pattern. */
+export interface SequenceSnapshot {
+  sequence: Sequence;
+  cards: Card[];
+}
+
+/** Capture a sequence and its generated cards before deletion/regeneration, so the
+ *  action can be offered with an "Undo". Returns null if the sequence no longer exists. */
+export async function snapshotSequence(id: string): Promise<SequenceSnapshot | null> {
+  const sequence = await db.sequences.get(id);
+  if (!sequence) return null;
+  const cards = await cardsForSequence(sequence);
+  return { sequence, cards };
+}
+
+/** Re-insert a previously captured SequenceSnapshot (the inverse of deleteSequence/updateSequence). */
+export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void> {
+  try {
+    await db.transaction('rw', db.sequences, db.cards, async () => {
+      await db.sequences.put(snapshot.sequence);
+      await db.cards.bulkPut(snapshot.cards);
+    });
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
