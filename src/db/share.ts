@@ -786,7 +786,13 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
     um: course.unlockMode,
   };
 
-  const sequences = await db.sequences.where('courseId').equals(courseId).sortBy('createdAt');
+  // Bank-scoped sequences (primaryLessonId null) have no packed cards — see the
+  // per-lesson `cards` query above, which only covers lesson-scoped cards. Excluding
+  // them here keeps the payload internally consistent, mirroring the exclusion of
+  // bank cards from shares.
+  const sequences = (await db.sequences.where('courseId').equals(courseId).sortBy('createdAt')).filter(
+    (s) => s.primaryLessonId !== null
+  );
   const shareSequences: ShareSequence[] = sequences.map((s) => {
     const pl = s.primaryLessonId ? lessonIndexById.get(s.primaryLessonId) : undefined;
     return {
