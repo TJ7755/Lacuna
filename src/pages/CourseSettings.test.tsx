@@ -219,6 +219,34 @@ describe('CourseSettings', () => {
     );
   });
 
+  it('does not include lessonViewMode in the save payload when the override is off', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Save changes'));
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ lessonViewMode: undefined }),
+    );
+  });
+
+  it('enabling the lesson-view override and picking Edit saves lessonViewMode: edit', () => {
+    renderPage();
+    // "Override default" toggle sits above the study/edit radio choices.
+    fireEvent.click(screen.getByRole('switch', { name: 'Override default' }));
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Save changes'));
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ lessonViewMode: 'edit' }),
+    );
+  });
+
+  it('pre-populates the override toggle and choice from an existing course value', () => {
+    mockCourse = { ...course, lessonViewMode: 'edit' };
+    renderPage();
+    const editRadio = screen.getByRole('radio', { name: /Edit/ });
+    expect(editRadio).toBeChecked();
+  });
+
   it('snapshots then deletes the course immediately, navigating away with an undo toast', async () => {
     renderPage();
     fireEvent.click(screen.getByText('Delete course'));

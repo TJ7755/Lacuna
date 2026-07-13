@@ -35,6 +35,7 @@ import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { usePracticeDefaults } from '../state/practiceDefaults';
+import { useLessonViewMode } from '../state/lessonViewMode';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { useCourseCardDetail } from '../state/courseCardDetail';
 import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
@@ -76,6 +77,7 @@ export function Settings() {
   const [gradingMode, setGradingMode] = useGradingMode();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
+  const [lessonViewMode, setLessonViewMode] = useLessonViewMode();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
   const [cardDetail, setCardDetail] = useCourseCardDetail();
   const [inputMode, setInputMode] = useInputMode();
@@ -720,6 +722,21 @@ export function Settings() {
             far threshold applies otherwise. Max gap forces a practice node after this
             many lessons without one.
           </p>
+        </div>
+
+        <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
+          <div className="min-w-0">
+            <div className="text-sm">Open lessons in edit mode</div>
+            <p className="mt-1 text-sm text-ink-soft">
+              By default a lesson opens as a read-only study page. Turn this on to open
+              straight into notes and cards editing instead. Any course can override this
+              in its own settings.
+            </p>
+          </div>
+          <Toggle
+            checked={lessonViewMode === 'edit'}
+            onChange={(checked) => setLessonViewMode(checked ? 'edit' : 'study')}
+          />
         </div>
       </motion.section>
 

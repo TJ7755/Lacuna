@@ -1,4 +1,8 @@
-// Lesson view page — a study destination first, a notes/cards editor second.
+// Lesson view page — a study destination first, notes/cards second. The
+// second half renders in one of two modes, resolved by
+// src/course/lessonViewMode.ts: study (read-only notes, a cards summary) or
+// edit (full notes/cards CRUD). See src/state/lessonViewMode.ts for the
+// global default and Course.lessonViewMode for the per-course override.
 // Route: /course/:courseId/lesson/:lessonId
 // Also renderable inline by CoursePath when a course has exactly one lesson
 // (via optional courseId/lessonId props that take precedence over route params).
@@ -17,16 +21,20 @@ import {
 } from '../state/useCourseData';
 import { useDeck } from '../state/useData';
 import { LessonNotesSection } from '../components/notes/LessonNotesSection';
+import { LessonNotesStudyView } from '../components/notes/LessonNotesStudyView';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
+import { LessonCardsSummary } from '../components/cards/LessonCardsSummary';
 import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { fieldStandfirst } from '../components/course/memoryFieldMath';
 import { courseHeaderStats } from '../course/headerStats';
+import { resolveLessonViewMode } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { useLessonViewMode } from '../state/lessonViewMode';
 import { formatDate } from '../utils/datetime';
 import type { Lesson } from '../db/types';
 
@@ -52,6 +60,7 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
   const navigate = useNavigate();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const [globalLessonViewMode] = useLessonViewMode();
 
   // Use a null-sentinel to distinguish loading (undefined) from not found (null).
   // When lessonId is absent the query resolves immediately to null.
@@ -125,6 +134,7 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
     lessonMastery,
     now,
   );
+  const viewMode = resolveLessonViewMode(course, globalLessonViewMode);
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
@@ -195,9 +205,11 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* Editor — notes and cards. Demoted below the study CTA: a quieter,   */}
-      {/* smaller-heading section since it's the secondary "authoring" half   */}
-      {/* of the page rather than the reason a student opens it.              */}
+      {/* Notes and cards. Demoted below the study CTA: a quieter, smaller-   */}
+      {/* heading section either way. In edit mode this is the full CRUD     */}
+      {/* editor (LessonNotesSection/LessonCardsSection); in study mode it   */}
+      {/* is read-only content plus a cards summary — see                    */}
+      {/* src/course/lessonViewMode.ts for how the mode is resolved.         */}
       {/* ------------------------------------------------------------------ */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -205,16 +217,29 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
         transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
         className="space-y-10 border-t border-line pt-8"
       >
-        {lessonId && <LessonNotesSection lessonId={lessonId} notes={notes} />}
+        {viewMode === 'edit' ? (
+          <>
+            {lessonId && <LessonNotesSection lessonId={lessonId} notes={notes} />}
 
-        {courseId && lessonId && (
-          <LessonCardsSection
-            courseId={courseId}
-            lessonId={lessonId}
-            lessonCards={lessonCards}
-            lessonDeck={lessonDeck}
-            onNavigate={navigate}
-          />
+            {courseId && lessonId && (
+              <LessonCardsSection
+                courseId={courseId}
+                lessonId={lessonId}
+                lessonCards={lessonCards}
+                lessonDeck={lessonDeck}
+                onNavigate={navigate}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            <LessonNotesStudyView notes={notes} />
+            <LessonCardsSummary
+              cardCount={lessonCards.length}
+              dueCount={lessonDueCount}
+              masteryPct={Math.round(lessonMastery * 100)}
+            />
+          </>
         )}
       </motion.div>
     </div>

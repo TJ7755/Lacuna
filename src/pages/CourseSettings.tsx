@@ -21,11 +21,13 @@ import { DateTimePicker } from '../components/ui/DateTimePicker';
 import { clampRequestRetention, DEFAULT_REQUEST_RETENTION } from '../fsrs/params';
 import { ChevronLeftIcon } from '../components/ui/icons';
 import type { ExamObjective, UnlockMode } from '../db/types';
+import type { LessonViewMode } from '../state/lessonViewMode';
 import { parseSteps } from './settings/parseSteps';
 import { SchedulingFieldsSection } from './settings/SchedulingFieldsSection';
 import { OptimisationPanel } from './settings/OptimisationPanel';
 import { UnlockModeSection } from './settings/UnlockModeSection';
 import { PracticeSettingsSection } from './settings/PracticeSettingsSection';
+import { LessonViewModeSection } from './settings/LessonViewModeSection';
 import { ExamDatesSection } from './settings/ExamDatesSection';
 import { LessonManagementSection } from './settings/LessonManagementSection';
 import { PracticeNodesSection } from './settings/PracticeNodesSection';
@@ -78,6 +80,7 @@ export function CourseSettings() {
   const [practiceThresholdMinutesNear, setPracticeThresholdMinutesNear] = useState('');
   const [practiceUrgentWindowDays, setPracticeUrgentWindowDays] = useState('');
   const [practiceMaxGap, setPracticeMaxGap] = useState('');
+  const [lessonViewMode, setLessonViewMode] = useState<LessonViewMode | undefined>(undefined);
   const [loaded, setLoaded] = useState(false);
 
   // Re-arm the loaded latch whenever the course changes so back/forward navigation
@@ -112,6 +115,7 @@ export function CourseSettings() {
     setPracticeThresholdMinutesNear(String(course.practiceThresholdMinutesNear));
     setPracticeUrgentWindowDays(String(course.practiceUrgentWindowDays));
     setPracticeMaxGap(String(course.practiceMaxGap));
+    setLessonViewMode(course.lessonViewMode);
     setLoaded(true);
   }, [course, loaded]);
 
@@ -226,6 +230,7 @@ export function CourseSettings() {
       // Maximum lesson gap is a backstop count of lessons; the input's min={1}
       // (PracticeSettingsSection) reflects that zero has no meaningful gap semantics.
       practiceMaxGap: parsePositiveIntOr(practiceMaxGap, course.practiceMaxGap),
+      lessonViewMode,
     });
     notify('Course updated.', 'positive');
     navigate(coursePath);
@@ -378,6 +383,19 @@ export function CourseSettings() {
             transition={{ duration: 0.24 * m, delay: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
             className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
           >
+            <h2 className="mb-4 font-display text-xl">Lesson view</h2>
+            <LessonViewModeSection
+              lessonViewMode={lessonViewMode}
+              onLessonViewModeChange={setLessonViewMode}
+            />
+          </motion.section>
+
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24 * m, delay: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
+          >
             <h2 className="mb-4 font-display text-xl">Exam dates</h2>
             <ExamDatesSection courseId={course.id} timeZone={timeZone} />
           </motion.section>
@@ -385,7 +403,7 @@ export function CourseSettings() {
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24 * m, delay: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.24 * m, delay: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
             className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
           >
             <h2 className="mb-4 font-display text-xl">Lessons</h2>
@@ -395,7 +413,7 @@ export function CourseSettings() {
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24 * m, delay: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.24 * m, delay: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
             className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
           >
             <h2 className="mb-4 font-display text-xl">Practice nodes</h2>
@@ -405,7 +423,7 @@ export function CourseSettings() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24 * m, delay: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.24 * m, delay: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
           >
             <OptimisationPanel
               entity={course}
@@ -418,7 +436,7 @@ export function CourseSettings() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24 * m, delay: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.24 * m, delay: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
           >
             <DangerZoneSection
               entityLabel="course"

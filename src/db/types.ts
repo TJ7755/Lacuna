@@ -234,6 +234,13 @@ export interface Course {
   practiceUrgentWindowDays: number;
   /** Backstop: force a practice node after this many lessons without one. */
   practiceMaxGap: number;
+  /**
+   * Per-course override of the global lesson-view-mode default (see
+   * src/state/lessonViewMode.ts). Undefined inherits the global default.
+   * Resolved via src/course/lessonViewMode.ts, which is also the single gate
+   * for whether edit mode is available at all.
+   */
+  lessonViewMode?: 'study' | 'edit';
 }
 
 /**

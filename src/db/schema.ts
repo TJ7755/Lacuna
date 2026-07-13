@@ -276,10 +276,31 @@ class LacunaDatabase extends Dexie {
             if (courseId !== undefined) perf.courseId = courseId;
           });
       });
+
+    // Version 10: add an optional per-course lesson-view-mode override (study
+    // vs edit; see src/state/lessonViewMode.ts and src/course/lessonViewMode.ts).
+    // No index needed — it's a display-only field read by LessonView. Undefined
+    // on existing courses inherits the global default, so no upgrade is needed.
+    this.version(10).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed',
+      sessionHistory: '++id, deckId, courseId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+      courses: 'id, createdAt, examDate',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      practiceNodes: 'id, courseId, position, createdAt',
+      courseExamDates: 'id, courseId, examDate, createdAt',
+    });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 9;
+const CURRENT_SCHEMA_VERSION = 10;
 
 export const db = new LacunaDatabase();
 

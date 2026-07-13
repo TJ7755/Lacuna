@@ -372,17 +372,31 @@ Cards (12)
 
 The lesson header adopts the same `CourseHeader` cockpit, scoped to the lesson's own cards
 (mastery and due-today only — no curriculum-position stat, since a single lesson has no
-pacing sequence of its own). A `LessonStudyCTA` (`src/components/course/LessonStudyCTA.tsx`)
-sits beside the header as the page's primary action — a prominent "Study" button carrying a
-due-count badge, routing to `/lesson/:lessonId/learn`. It stays enabled even when nothing is
-due (the learn route falls back to unseen cards per the lesson's `sessionFilter`, so studying
-ahead is always possible) and disables only when the lesson has no cards at all. Notes and
-cards sit below a divider as a visually quieter "editor" section (smaller headings, subtle
-entrance animation respecting `useMotionSpeed`) — extracted into `LessonNotesSection`
-(`src/components/notes/`) and `LessonCardsSection` (`src/components/cards/`) so the page
-component stays a thin layout/data shell. When CoursePath renders this page inline for a
-single-lesson course, it gets the same full header/CTA treatment, including exam context via
-`nearestExamDate`.
+pacing sequence of its own). A prominent "Study" button sits beside the header as the page's
+primary action, carrying a due-count badge and routing to `/lesson/:lessonId/learn`. It stays
+enabled even when nothing is due (the learn route falls back to unseen cards per the lesson's
+`sessionFilter`, so studying ahead is always possible) and disables only when the lesson has
+no cards at all. Notes and cards sit below a divider as a visually quieter section (smaller
+headings, subtle entrance animation respecting `useMotionSpeed`), which renders in one of two
+modes resolved by `src/course/lessonViewMode.ts`:
+
+- **Study** (the default): notes render read-only via `LessonNotesStudyView`
+  (`src/components/notes/`, reusing `MarkdownView` for each note's body), and cards show a
+  summary — count, due count, mastery % — via `LessonCardsSummary` (`src/components/cards/`)
+  rather than an editable table.
+- **Edit**: the full notes/cards CRUD, extracted into `LessonNotesSection`
+  (`src/components/notes/`) and `LessonCardsSection` (`src/components/cards/`) so the page
+  component stays a thin layout/data shell.
+
+The mode is a persisted global default (`src/state/lessonViewMode.ts`, `usePracticeDefaults`-
+style localStorage + custom event) that any course can override via `Course.lessonViewMode`
+(`src/db/types.ts`) — set globally on the Settings page and per course on Course Settings
+(`LessonViewModeSection`, `src/pages/settings/`). `resolveLessonViewMode` combines the two, and
+a single `canEditLessons(course)` gate (currently always `true`, since there is no locked-course
+concept yet) is the one place that will later decide whether edit mode is available at all —
+every call site goes through it rather than reading the mode fields directly. When CoursePath
+renders this page inline for a single-lesson course, it gets the same full header/CTA
+treatment, including exam context via `nearestExamDate`.
 
 **Learn session** (full screen, outside the shell):
 

@@ -22,6 +22,24 @@
 >
 > **Full changelog below**
 
+## Unreleased — Lesson view study/edit mode
+
+- Split `LessonView` into two modes instead of always showing full notes/cards
+  CRUD: **study** (the new default) renders notes read-only and shows a cards
+  summary (count, due count, mastery %); **edit** is the previous full-CRUD
+  behaviour, unchanged. Added `LessonNotesStudyView` (`src/components/notes/`)
+  and `LessonCardsSummary` (`src/components/cards/`) for the study-mode
+  sections.
+- Added a persisted global default (`src/state/lessonViewMode.ts`, mirroring
+  `practiceDefaults`/`motionSpeed`) with a toggle on the Settings page, and an
+  optional per-course override (`Course.lessonViewMode`, schema **v10**,
+  additive) with a toggle on Course Settings (`LessonViewModeSection`,
+  `src/pages/settings/`).
+- Added `src/course/lessonViewMode.ts`: `resolveLessonViewMode` (course
+  override, else global default) and `canEditLessons`, a single gate for
+  whether edit mode is available at all — today always `true`, but the sole
+  hook point for a future teacher/student locked-course sync.
+
 ## Unreleased — Landing page
 
 - Welcome path is now a playable micro-course: interactive exam curve (drag the
