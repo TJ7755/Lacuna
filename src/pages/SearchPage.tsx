@@ -21,6 +21,7 @@ import {
   FolderIcon,
   FileTextIcon,
 } from '../components/ui/icons';
+import { SequenceBadge } from '../components/cards/SequenceBadge';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 
 /** The structured filters offered as quick chips, in display order. */
@@ -268,6 +269,7 @@ export function SearchPage() {
                       {hit.card.tags!.join(', ')}
                     </span>
                   )}
+                  {hit.card.sequenceItemId != null && <SequenceBadge />}
                 </span>
               </motion.button>
             ))}

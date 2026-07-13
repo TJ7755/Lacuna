@@ -12,6 +12,7 @@ import {
   type SearchResult,
 } from '../../db/search';
 import { SearchIcon, GridIcon, FolderIcon, FileTextIcon } from '../ui/icons';
+import { SequenceBadge } from '../cards/SequenceBadge';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 
 /** A single, ordered list mixing course/lesson/note hits ahead of card hits. */
@@ -251,6 +252,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                                       · {hit.card.tags!.join(', ')}
                                     </span>
                                   )}
+                                  {hit.card.sequenceItemId != null && <SequenceBadge />}
                                 </span>
                               </span>
                             ) : (
