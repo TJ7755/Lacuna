@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CardList } from './CardList';
-import type { Card, Deck } from '../../db/types';
+import type { Card, Deck, Sequence } from '../../db/types';
 
 const mockNotify = vi.fn();
 
@@ -41,6 +41,7 @@ vi.mock('../ui/icons', () => ({
   CheckIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="check-icon" {...props} />,
   EditIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="edit-icon" {...props} />,
   FlagIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="flag-icon" {...props} />,
+  PathIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="path-icon" {...props} />,
   PlusIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="plus-icon" {...props} />,
   TagIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="tag-icon" {...props} />,
   TrashIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="trash-icon" {...props} />,
@@ -293,5 +294,75 @@ describe('CardList', () => {
     await waitFor(() =>
       expect(assignCardsToLesson).toHaveBeenCalledWith(['card-1'], 'course-1', null),
     );
+  });
+
+  describe('generated cards', () => {
+    const sequence: Sequence = {
+      id: 'sequence-1',
+      courseId: 'course-1',
+      primaryLessonId: null,
+      name: 'The alkali metals',
+      items: [{ id: 'item-1', value: 'Sodium' }],
+      cueWindow: 2,
+      createdAt: Date.now(),
+    };
+    const generatedCard: Card = {
+      ...mockCard,
+      id: 'card-3',
+      front: '**The alkali metals**\n\nFirst item?',
+      back: 'Sodium',
+      sequenceItemId: 'item-1',
+    };
+
+    it('groups a generated card under a sequence header with a card count', () => {
+      render(
+        <CardList
+          cards={[mockCard, generatedCard]}
+          deck={mockDeck}
+          allDecks={[mockDeck]}
+          onEditCard={vi.fn()}
+          sequences={[sequence]}
+        />,
+      );
+      expect(screen.getByText('The alkali metals')).toBeInTheDocument();
+      expect(screen.getByText('1 card')).toBeInTheDocument();
+      // The ordinary card still renders in the loose list underneath.
+      expect(screen.getByText('What is the capital of France?')).toBeInTheDocument();
+    });
+
+    it('shows an "Edit sequence" link that calls onEditSequence with the sequence id', () => {
+      const onEditSequence = vi.fn();
+      render(
+        <CardList
+          cards={[generatedCard]}
+          deck={mockDeck}
+          allDecks={[mockDeck]}
+          onEditCard={vi.fn()}
+          sequences={[sequence]}
+          onEditSequence={onEditSequence}
+        />,
+      );
+      fireEvent.click(screen.getByText('Edit sequence'));
+      expect(onEditSequence).toHaveBeenCalledWith('sequence-1');
+    });
+
+    it('badges a generated card and hides its select checkbox and delete action', () => {
+      render(
+        <CardList
+          cards={[mockCard, generatedCard]}
+          deck={mockDeck}
+          allDecks={[mockDeck]}
+          onNewCard={vi.fn()}
+          onEditCard={vi.fn()}
+          sequences={[sequence]}
+        />,
+      );
+      expect(screen.getByText('Sequence')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Select'));
+      // Only the ordinary card is selectable: "Select all" only ever selects it.
+      fireEvent.click(screen.getByText('Select all'));
+      expect(screen.getByText('1 selected')).toBeInTheDocument();
+    });
   });
 });
