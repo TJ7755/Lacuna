@@ -1205,6 +1205,15 @@ export async function listCourseExamDates(courseId: string): Promise<CourseExamD
 // Sequences
 // ---------------------------------------------------------------------------
 
+// Guarantees `createSequence`'s createdAt strictly increases even when two sequences are
+// created within the same millisecond (e.g. back-to-back in a test or a scripted import),
+// so `listSequences`'s createdAt ordering doesn't fall back to comparing (random) ids.
+let lastSequenceTimestamp = 0;
+function nextSequenceTimestamp(): number {
+  lastSequenceTimestamp = Math.max(Date.now(), lastSequenceTimestamp + 1);
+  return lastSequenceTimestamp;
+}
+
 /** Every `Card.sequenceItemId` a sequence could ever have produced (positional + label), keyed by item. */
 function sequenceItemKeys(sequence: Sequence): string[] {
   return sequence.items.flatMap((item) => [item.id, `${item.id}${LABEL_CARD_SUFFIX}`]);
@@ -1266,7 +1275,7 @@ export async function createSequence(
       name: name.trim() || 'Untitled sequence',
       items,
       cueWindow: 2,
-      createdAt: Date.now(),
+      createdAt: nextSequenceTimestamp(),
       ...opts,
     };
     const deckId = primaryLessonId
