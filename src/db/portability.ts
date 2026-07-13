@@ -18,6 +18,7 @@ import type {
   LessonCardLink,
   Note,
   PracticeNode,
+  Sequence,
   SessionHistoryEntry,
   UserPerformance,
   ImageAsset,
@@ -45,6 +46,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     lessonCards,
     practiceNodes,
     courseExamDates,
+    sequences,
   ] = await Promise.all([
     db.decks.toArray(),
     db.cards.toArray(),
@@ -57,6 +59,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.lessonCards.toArray(),
     db.practiceNodes.toArray(),
     db.courseExamDates.toArray(),
+    db.sequences.toArray(),
   ]);
   const assets = await assetsForBackup(referencedAssetHashesInCards(cards));
   return {
@@ -75,6 +78,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     lessonCards,
     practiceNodes,
     courseExamDates,
+    sequences,
   };
 }
 
@@ -165,6 +169,7 @@ export async function importBackup(
       db.lessonCards,
       db.practiceNodes,
       db.courseExamDates,
+      db.sequences,
     ],
     async () => {
       // Deduplicate by hash so bulkPut never encounters a constraint conflict.
@@ -185,6 +190,7 @@ export async function importBackup(
           db.lessonCards.clear(),
           db.practiceNodes.clear(),
           db.courseExamDates.clear(),
+          db.sequences.clear(),
         ]);
         await db.decks.bulkAdd(decks);
         await db.cards.bulkAdd(cards);
@@ -216,6 +222,9 @@ export async function importBackup(
         }
         if (backup.courseExamDates && backup.courseExamDates.length > 0) {
           await db.courseExamDates.bulkAdd(backup.courseExamDates);
+        }
+        if (backup.sequences && backup.sequences.length > 0) {
+          await db.sequences.bulkAdd(backup.sequences);
         }
         return;
       }
@@ -373,6 +382,24 @@ export async function importBackup(
           }
         }
         await db.courseExamDates.bulkPut(mergedCourseExamDates);
+      }
+
+      if (backup.sequences && backup.sequences.length > 0) {
+        const existingSequences = new Map(
+          (await db.sequences.toArray()).map((s) => [s.id, s]),
+        );
+        const mergedSequences: Sequence[] = [];
+        for (const incoming of backup.sequences) {
+          const existing = existingSequences.get(incoming.id);
+          if (!existing) {
+            mergedSequences.push(incoming);
+          } else {
+            mergedSequences.push(
+              incoming.createdAt >= existing.createdAt ? incoming : existing,
+            );
+          }
+        }
+        await db.sequences.bulkPut(mergedSequences);
       }
 
       // Merge cards (most recent lastReviewed wins, falling back to createdAt).
