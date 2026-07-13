@@ -11,6 +11,7 @@ import type {
   Lesson,
   Note,
   PracticeNode,
+  Sequence,
   SessionHistoryEntry,
 } from '../db/types';
 import { progressValue } from '../fsrs/objective';
@@ -51,6 +52,13 @@ export function useLesson(lessonId: string | undefined): Lesson | undefined {
   return useLiveQuery(
     () => (lessonId ? db.lessons.get(lessonId) : undefined),
     [lessonId],
+  );
+}
+
+export function useSequence(sequenceId: string | undefined): Sequence | undefined {
+  return useLiveQuery(
+    () => (sequenceId ? db.sequences.get(sequenceId) : undefined),
+    [sequenceId],
   );
 }
 

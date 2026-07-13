@@ -33,6 +33,9 @@ function RouterWithQuotaWarning() {
 // round-trip and Suspense flash when switching tabs.
 const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default: m.LearnMode })));
 const CardEditor = lazy(() => import('./pages/CardEditor').then((m) => ({ default: m.CardEditor })));
+const SequenceEditor = lazy(() =>
+  import('./pages/SequenceEditor').then((m) => ({ default: m.SequenceEditor })),
+);
 const CourseSettings = lazy(() => import('./pages/CourseSettings').then((m) => ({ default: m.CourseSettings })));
 const CourseAnalytics = lazy(() => import('./pages/CourseAnalytics').then((m) => ({ default: m.CourseAnalytics })));
 const CoursePath = lazy(() => import('./pages/CoursePath').then((m) => ({ default: m.CoursePath })));
@@ -138,6 +141,30 @@ const router = createHashRouter([
         element: (
           <Suspense fallback={<RouteFallback />}>
             <CardEditor />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/sequence/new',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <SequenceEditor />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/sequence/:sequenceId/edit',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <SequenceEditor />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/lesson/:lessonId/sequence/new',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <SequenceEditor />
           </Suspense>
         ),
       },
