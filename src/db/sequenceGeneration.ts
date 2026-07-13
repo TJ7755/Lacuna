@@ -46,6 +46,24 @@ export function isLabelCardId(sequenceItemId: string): boolean {
   return sequenceItemId.endsWith(LABEL_CARD_SUFFIX);
 }
 
+/** Strip the label-card suffix (if present) to recover the underlying SequenceItem id. */
+export function baseItemId(sequenceItemId: string): string {
+  return isLabelCardId(sequenceItemId)
+    ? sequenceItemId.slice(0, -LABEL_CARD_SUFFIX.length)
+    : sequenceItemId;
+}
+
+/** Find the Sequence that owns a generated card's `sequenceItemId` among a list of candidates.
+ *  Used by management surfaces to resolve which sequence a generated card belongs to (for
+ *  grouping, badging, and linking back to the sequence editor) without a dedicated index. */
+export function sequenceForItemId(
+  sequences: Sequence[],
+  sequenceItemId: string,
+): Sequence | undefined {
+  const itemId = baseItemId(sequenceItemId);
+  return sequences.find((sequence) => sequence.items.some((item) => item.id === itemId));
+}
+
 /** The generated card type. Plain front/back is correct here: the cue/answer split
  *  maps directly onto front/back, and cloze notation would add nothing since only
  *  one item is ever hidden per card. */

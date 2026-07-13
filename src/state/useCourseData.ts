@@ -62,6 +62,18 @@ export function useSequence(sequenceId: string | undefined): Sequence | undefine
   );
 }
 
+/** All sequences for a course, ordered by createdAt (mirrors listSequences). Used by
+ *  management surfaces to group/badge generated cards and resolve a card's owning sequence. */
+export function useSequences(courseId: string | undefined): Sequence[] | undefined {
+  return useLiveQuery(
+    () =>
+      courseId
+        ? db.sequences.where('courseId').equals(courseId).sortBy('createdAt')
+        : [],
+    [courseId],
+  );
+}
+
 export function useNotes(lessonId: string | undefined): Note[] | undefined {
   return useLiveQuery(
     () =>
