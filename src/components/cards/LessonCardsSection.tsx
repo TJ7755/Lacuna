@@ -33,13 +33,22 @@ export function LessonCardsSection({
       {lessonCards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-12 text-center">
           <p className="mb-4 text-sm text-ink-soft">No cards in this lesson yet.</p>
-          <Button
-            variant="primary"
-            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
-          >
-            <PlusIcon width={18} height={18} />
-            Add your first card
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button
+              variant="primary"
+              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
+            >
+              <PlusIcon width={18} height={18} />
+              Add your first card
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
+            >
+              <PlusIcon width={18} height={18} />
+              Add a sequence
+            </Button>
+          </div>
         </div>
       ) : lessonDeck ? (
         <CardList
@@ -48,6 +57,7 @@ export function LessonCardsSection({
           allDecks={[lessonDeck]}
           hideHeader
           onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
+          onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
           onEditCard={(card) => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)}
         />
       ) : (

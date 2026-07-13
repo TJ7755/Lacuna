@@ -51,6 +51,8 @@ interface CardListProps {
   deck: Deck;
   allDecks: Deck[];
   onNewCard?: () => void;
+  /** Sibling to onNewCard: offers "New sequence" alongside "New card" when supplied. */
+  onNewSequence?: () => void;
   onEditCard: (card: Card) => void;
   /** When true, suppresses the internal "Cards (N)" heading row. Use when the
    *  parent already renders its own heading for the cards section. */
@@ -64,7 +66,7 @@ interface CardListProps {
   courseId?: string;
 }
 
-export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHeader = false, assignableLessons, courseId }: CardListProps) {
+export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEditCard, hideHeader = false, assignableLessons, courseId }: CardListProps) {
   const { notify } = useToast();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -360,6 +362,12 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHea
             >
               <UploadIcon width={16} height={16} />
               Import
+            </Button>
+          )}
+          {onNewSequence && (
+            <Button variant="secondary" size="sm" onClick={onNewSequence}>
+              <PlusIcon width={16} height={16} />
+              New sequence
             </Button>
           )}
           {onNewCard && (
@@ -684,15 +692,23 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard, hideHea
 
       {cards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
-          <p className={onNewCard ? 'mb-4 text-ink-soft' : 'text-ink-soft'}>
+          <p className={onNewCard || onNewSequence ? 'mb-4 text-ink-soft' : 'text-ink-soft'}>
             No cards yet.
           </p>
-          {onNewCard && (
-            <Button variant="primary" onClick={onNewCard}>
-              <PlusIcon width={18} height={18} />
-              Add your first card
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {onNewCard && (
+              <Button variant="primary" onClick={onNewCard}>
+                <PlusIcon width={18} height={18} />
+                Add your first card
+              </Button>
+            )}
+            {onNewSequence && (
+              <Button variant="secondary" onClick={onNewSequence}>
+                <PlusIcon width={18} height={18} />
+                Add a sequence
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <CardListBody

@@ -69,10 +69,16 @@ export function QuestionBank() {
             {cards.length} card{cards.length === 1 ? '' : 's'} across {course.name}
           </p>
         </div>
-        <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
-          <PlusIcon width={18} height={18} />
-          Create new card
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/sequence/new`)}>
+            <PlusIcon width={18} height={18} />
+            Create new sequence
+          </Button>
+          <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
+            <PlusIcon width={18} height={18} />
+            Create new card
+          </Button>
+        </div>
       </header>
 
       {/* Search */}
@@ -96,10 +102,16 @@ export function QuestionBank() {
       {isEmpty ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
           <p className="mb-4 text-sm text-ink-soft">This course has no cards yet.</p>
-          <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
-            <PlusIcon width={18} height={18} />
-            Create your first card
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
+              <PlusIcon width={18} height={18} />
+              Create your first card
+            </Button>
+            <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/sequence/new`)}>
+              <PlusIcon width={18} height={18} />
+              Create a sequence
+            </Button>
+          </div>
         </div>
       ) : noMatches ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
@@ -232,6 +244,7 @@ function UnassignedBucket({
           courseId={courseId}
           assignableLessons={assignableLessons}
           onNewCard={() => navigate(`/course/${courseId}/cards/new`)}
+          onNewSequence={() => navigate(`/course/${courseId}/sequence/new`)}
           onEditCard={(card) => navigate(`/course/${courseId}/cards/${card.id}/edit`)}
         />
       )}
