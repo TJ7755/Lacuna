@@ -77,6 +77,15 @@ paid-down deferrals, and accurate documentation.
 
 # Arc 1 — Sequence Learning (v1: ordered lists)
 
+> **Status (July 2026): v1 slice complete.** `Sequence`/`SequenceItem` entities, the pure
+> generation/regeneration module, repository CRUD with undo, full portability (backup,
+> diagnostics, share-code v2), the sequence editor, and grouping/badging/read-only
+> enforcement of generated cards across all management surfaces are implemented and
+> documented (§5, §12–13 of `SPEC.md`; see `CHANGES.md`). **Schema correction:** §1.2 below
+> still says v10 as originally planned, but v10 was taken in the meantime by
+> `Course.lessonViewMode` (an unrelated change landed first), so sequences shipped at
+> schema **v11** instead. §1.5's **v2 lines-mode slice remains open** — not started.
+
 ## 1.1 Motivation and approach
 
 Some material is inherently ordered: the periodic table, taxonomic ranks, historical
