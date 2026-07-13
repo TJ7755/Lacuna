@@ -10,6 +10,7 @@ import {
   createLesson,
   createLessonCard,
   createNote,
+  createSequence,
   updateDeck,
 } from './repository';
 import {
@@ -18,6 +19,7 @@ import {
   buildShareCode,
   decodeShare,
   decodeShareDirect,
+  encodeShareDirect,
   importSharePayload,
   summariseShare,
   type SharePayload,
@@ -37,6 +39,7 @@ async function reset() {
     db.lessons.clear(),
     db.notes.clear(),
     db.courseExamDates.clear(),
+    db.sequences.clear(),
   ]);
 }
 
@@ -352,6 +355,83 @@ describe('course share codes (v2)', () => {
 
     const summary = summariseShare(payload);
     expect(summary.omittedImages).toBe(true);
+  });
+
+  it('round-trips a course with a sequence and its generated cards, incl. a label card', async () => {
+    const course = await createCourse('Chemistry');
+    const lesson = await createLesson(course.id, 'Periodic table');
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'Group 1 metals',
+      [
+        { id: 'item-li', value: 'Lithium', label: '3' },
+        { id: 'item-na', value: 'Sodium', label: '11' },
+      ],
+      { generateLabelCards: true },
+    );
+
+    const code = await buildCourseShareCode(course.id);
+    const payload = await decodeShare(code);
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.sequences).toHaveLength(1);
+    expect(payload.sequences![0].n).toBe('Group 1 metals');
+    expect(payload.sequences![0].items).toHaveLength(2);
+    expect(payload.sequences![0].lc).toBe(1);
+    // Positional + label cards for both items = 4 shared cards, each carrying `si`.
+    expect(payload.lessons[0].cards).toHaveLength(4);
+    expect(payload.lessons[0].cards.every((c) => typeof c.si === 'string')).toBe(true);
+    expect(payload.lessons[0].cards.some((c) => c.si === 'item-li::label')).toBe(true);
+
+    await importSharePayload(payload);
+
+    const importedSequences = await db.sequences.toArray();
+    const imported = importedSequences.find((s) => s.id !== sequence.id)!;
+    expect(imported.name).toBe('Group 1 metals');
+    expect(imported.generateLabelCards).toBe(true);
+    expect(imported.items).toHaveLength(2);
+    // Item ids are freshly minted, not reused from the original sequence.
+    expect(imported.items.map((i) => i.id)).not.toContain('item-li');
+
+    const importedLithiumItem = imported.items.find((i) => i.value === 'Lithium')!;
+    const positional = await db.cards.where('sequenceItemId').equals(importedLithiumItem.id).first();
+    const labelCard = await db.cards
+      .where('sequenceItemId')
+      .equals(`${importedLithiumItem.id}::label`)
+      .first();
+    expect(positional).toBeDefined();
+    expect(labelCard).toBeDefined();
+    expect(positional!.back).toBe('Lithium');
+    expect(labelCard!.back).toBe('Lithium');
+  });
+
+  it('parses an old v2 payload with no sequences field', async () => {
+    const legacyPayload = {
+      v: 2 as const,
+      by: null,
+      at: Date.now(),
+      course: {
+        n: 'Legacy course',
+        o: 0 as const,
+        c: 0,
+        e: 0,
+        um: 'linear' as const,
+      },
+      lessons: [
+        { n: 'Lesson 1', notes: [], cards: [{ k: 0 as const, f: 'Q', b: 'A' }] },
+      ],
+    };
+
+    const code = await encodeShareDirect(legacyPayload);
+    const payload = await decodeShare(code);
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    expect(payload.sequences).toBeUndefined();
+    expect(payload.lessons).toHaveLength(1);
+
+    const result = await importSharePayload(payload);
+    expect(result.courses).toBe(1);
+    expect(await db.sequences.count()).toBe(0);
   });
 });
 

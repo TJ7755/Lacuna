@@ -10,6 +10,7 @@ import {
   createNote,
   createPracticeNode,
   createCourseExamDate,
+  createSequence,
 } from './repository';
 
 async function reset() {
@@ -26,6 +27,7 @@ async function reset() {
     db.lessonCards.clear(),
     db.practiceNodes.clear(),
     db.courseExamDates.clear(),
+    db.sequences.clear(),
   ]);
 }
 
@@ -228,5 +230,74 @@ describe('importBackup', () => {
 
     const updated = await db.courseExamDates.get(examDate.id);
     expect(updated!.name).toBe('Paper 1 (Resit)'); // local wins because more recently created/edited
+  });
+
+  it('round-trips a sequence in replace mode', async () => {
+    const course = await createCourse('Chemistry');
+    await createSequence(course.id, null, 'Group 1 metals', [
+      { id: 'item-1', value: 'Lithium' },
+      { id: 'item-2', value: 'Sodium' },
+    ]);
+    const backup = await exportDatabase();
+
+    await createCourse('Ephemeral');
+    expect(await db.courses.count()).toBe(2);
+
+    await importBackup(backup, 'replace');
+
+    const sequences = await db.sequences.toArray();
+    expect(sequences).toHaveLength(1);
+    expect(sequences[0].name).toBe('Group 1 metals');
+    expect(sequences[0].items).toHaveLength(2);
+    // The sequence's generated cards ride along as ordinary cards.
+    const cards = await db.cards.where('sequenceItemId').equals('item-1').toArray();
+    expect(cards).toHaveLength(1);
+  });
+
+  it('adds a missing sequence in merge mode', async () => {
+    const course = await createCourse('Chemistry');
+    const sequence = await createSequence(course.id, null, 'Group 1 metals', [
+      { id: 'item-1', value: 'Lithium' },
+    ]);
+    const backup = await exportDatabase();
+
+    await db.sequences.delete(sequence.id);
+    expect(await db.sequences.count()).toBe(0);
+
+    await importBackup(backup, 'merge');
+
+    const sequences = await db.sequences.toArray();
+    expect(sequences).toHaveLength(1);
+    expect(sequences[0].name).toBe('Group 1 metals');
+  });
+
+  it('resolves a sequence id collision by newer createdAt in merge mode', async () => {
+    const course = await createCourse('Chemistry');
+    const sequence = await createSequence(course.id, null, 'Group 1 metals', [
+      { id: 'item-1', value: 'Lithium' },
+    ]);
+    const backup = await exportDatabase();
+
+    await db.sequences.update(sequence.id, {
+      name: 'Group 1 metals (renamed)',
+      createdAt: sequence.createdAt + 1000,
+    });
+    await importBackup(backup, 'merge');
+
+    const updated = await db.sequences.get(sequence.id);
+    expect(updated!.name).toBe('Group 1 metals (renamed)'); // local wins because more recently created/edited
+  });
+
+  it('imports an older backup without a sequences array cleanly', async () => {
+    const deck = await createDeck('Legacy');
+    await createCard(deck.id, 'front_back', 'Q1', 'A1');
+    const backup = await exportDatabase();
+    const { sequences: _sequences, ...legacyBackup } = backup;
+
+    await importBackup(legacyBackup, 'replace');
+
+    expect(await db.sequences.count()).toBe(0);
+    const decks = await db.decks.toArray();
+    expect(decks).toHaveLength(1);
   });
 });
