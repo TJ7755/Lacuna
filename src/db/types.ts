@@ -263,6 +263,42 @@ export interface CourseExamDate {
   createdAt: number;
 }
 
+/**
+ * An overlapping-cloze sequence: an ordered list of small recallable units
+ * (e.g. a numbered list, a chain of steps) from which generation logic
+ * derives ordinary FSRS cards, each cueing on the preceding `cueWindow`
+ * items. Sequences themselves are not studied directly.
+ */
+export interface Sequence {
+  id: string;
+  courseId: string;
+  /** Same semantics as Card.primaryLessonId. */
+  primaryLessonId: string | null;
+  name: string;
+  description?: string;
+  /** Ordered; stored inline as sequences are small. */
+  items: SequenceItem[];
+  /** Preceding items shown as cue. Default 2. */
+  cueWindow: number;
+  /** Optional named chunks; items reference one by index. */
+  chunkLabels?: string[];
+  /** Toggle for label -> value cards. Default off. */
+  generateLabelCards?: boolean;
+  createdAt: number;
+}
+
+/** A single recallable unit within a Sequence. */
+export interface SequenceItem {
+  /** Stable across edits — anchors generated cards. */
+  id: string;
+  /** Markdown; the recallable unit. */
+  value: string;
+  /** Optional display key (e.g. "11" for Sodium). */
+  label?: string;
+  /** Membership of a named chunk. */
+  chunkIndex?: number;
+}
+
 /** A learning unit on the course path: notes plus the cards taught in it. */
 export interface Lesson {
   id: string;
@@ -377,6 +413,8 @@ export interface Card {
   buriedUntil?: number | null;
   /** Id of the reverse card in a basic_reversed pair. Only set when type is 'basic_reversed'. */
   reverseCardId?: string | null;
+  /** Id of the SequenceItem this card was generated from. Present iff the card was generated from a sequence item. */
+  sequenceItemId?: string;
   /** Epoch ms of the next scheduled review (= ts-fsrs `due`). Null until first review. */
   due: number | null;
   /** Days ts-fsrs last scheduled this card for (= ts-fsrs `scheduled_days`). */
@@ -474,4 +512,6 @@ export interface BackupFile {
   lessonCards?: LessonCardLink[];
   practiceNodes?: PracticeNode[];
   courseExamDates?: CourseExamDate[];
+  // Overlapping-cloze sequences. Optional so older backups still import cleanly.
+  sequences?: Sequence[];
 }
