@@ -37,6 +37,7 @@ export interface DiagnosticBundle {
     lessonCards?: number;
     practiceNodes?: number;
     courseExamDates?: number;
+    sequences?: number;
   };
   /** Present only when the user explicitly opts in to including card content. */
   contentSample?: { front: string; back: string }[];
@@ -57,6 +58,7 @@ export interface DiagnosticInput {
     lessonCards?: number;
     practiceNodes?: number;
     courseExamDates?: number;
+    sequences?: number;
   };
   contentSample?: { front: string; back: string }[];
   userAgent?: string;
@@ -114,7 +116,8 @@ export function formatDiagnostics(bundle: DiagnosticBundle): string {
       (bundle.data.courses !== undefined
         ? `, ${bundle.data.courses} courses, ${bundle.data.lessons ?? 0} lessons, ` +
           `${bundle.data.notes ?? 0} notes, ${bundle.data.lessonCards ?? 0} lesson card links, ` +
-          `${bundle.data.practiceNodes ?? 0} practice nodes, ${bundle.data.courseExamDates ?? 0} course exam dates`
+          `${bundle.data.practiceNodes ?? 0} practice nodes, ${bundle.data.courseExamDates ?? 0} course exam dates, ` +
+          `${bundle.data.sequences ?? 0} sequences`
         : ''),
   ];
   if (bundle.contentSample) {
@@ -125,7 +128,7 @@ export function formatDiagnostics(bundle: DiagnosticBundle): string {
 
 /** Read non-sensitive record counts from the database for a bundle. */
 export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
-  const [decks, cards, backups, reviews, courses, lessons, notes, lessonCards, practiceNodes, courseExamDates] =
+  const [decks, cards, backups, reviews, courses, lessons, notes, lessonCards, practiceNodes, courseExamDates, sequences] =
     await Promise.all([
       db.decks.count(),
       db.cards.count(),
@@ -137,8 +140,9 @@ export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
       db.lessonCards.count(),
       db.practiceNodes.count(),
       db.courseExamDates.count(),
+      db.sequences.count(),
     ]);
-  return { decks, cards, reviews, backups, courses, lessons, notes, lessonCards, practiceNodes, courseExamDates };
+  return { decks, cards, reviews, backups, courses, lessons, notes, lessonCards, practiceNodes, courseExamDates, sequences };
 }
 
 /** Read a small sample of card content. Only called when the user opts in. */
