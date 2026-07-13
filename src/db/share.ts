@@ -45,10 +45,11 @@ import { clampRequestRetention, defaultFsrsParameters, FSRS_VERSION } from '../f
 import { emptyPerformance } from '../fsrs/grading';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import type { ParsedCard } from './import';
-import type { Card, Deck, Folder, UnlockMode } from './types';
+import type { Card, Deck, Folder, Sequence, SequenceItem, UnlockMode } from './types';
 import { stripAssetImages } from './assets';
 import { bytesToBase45, base45ToBytes } from './base45';
 import { buildCourseMigration } from './courseMigration';
+import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
 
 const PREFIX_BASE45_COMPRESSED = 'LAC2';
 const PREFIX_BASE45_PLAIN = 'LAC3';
@@ -65,6 +66,9 @@ const ShareCardSchema = z.object({
   b: z.string().optional(),
   g: z.array(z.string()).optional(),
   i: z.literal(1).optional(),
+  // Present iff this card was generated from a sequence item (positional or label,
+  // the latter carrying the `::label` suffix, mirroring Card.sequenceItemId).
+  si: z.string().optional(),
 });
 
 const ShareDeckSchema = z.object({
@@ -122,6 +126,26 @@ const ShareExamSchema = z.object({
   ls: z.array(z.number()).optional(), // indices into the payload's lessons array
 });
 
+/** A single SequenceItem in a v2 share payload. */
+const ShareSequenceItemSchema = z.object({
+  id: z.string(),
+  v: z.string(), // value
+  l: z.string().optional(), // label
+  ci: z.number().optional(), // chunkIndex
+});
+
+/** A whole Sequence (items inline) in a v2 share payload. */
+const ShareSequenceSchema = z.object({
+  id: z.string(),
+  n: z.string().min(1),
+  d: z.string().optional(), // description
+  items: z.array(ShareSequenceItemSchema),
+  cw: z.number(), // cueWindow
+  cl: z.array(z.string()).optional(), // chunkLabels
+  lc: z.union([z.literal(0), z.literal(1)]).optional(), // generateLabelCards
+  pl: z.number().optional(), // index into the payload's lessons array (primaryLessonId)
+});
+
 const SharePayloadV1Schema = z.object({
   v: z.literal(1),
   by: z.union([z.string(), z.null()]).optional(),
@@ -136,6 +160,8 @@ const SharePayloadV2Schema = z.object({
   course: ShareCourseSchema,
   lessons: z.array(ShareLessonSchema),
   exams: z.array(ShareExamSchema).optional(),
+  // Additive/optional so existing v2 codes without sequences still parse cleanly.
+  sequences: z.array(ShareSequenceSchema).optional(),
 });
 
 const SharePayloadSchema = z.discriminatedUnion('v', [SharePayloadV1Schema, SharePayloadV2Schema]);
@@ -155,6 +181,8 @@ interface ShareCard {
   g?: string[];
   /** True when one or more images were replaced by a placeholder. */
   i?: 1;
+  /** Present iff generated from a sequence item; mirrors Card.sequenceItemId. */
+  si?: string;
 }
 
 /** A single deck in a v1 share payload, with compact keys. */
@@ -210,6 +238,26 @@ interface ShareExam {
   ls?: number[]; // indices into the payload's lessons array (scoped lessons)
 }
 
+/** A single SequenceItem in a v2 share payload. */
+interface ShareSequenceItem {
+  id: string;
+  v: string; // value
+  l?: string; // label
+  ci?: number; // chunkIndex
+}
+
+/** A whole Sequence (items inline) in a v2 share payload. */
+interface ShareSequence {
+  id: string;
+  n: string; // name
+  d?: string; // description
+  items: ShareSequenceItem[];
+  cw: number; // cueWindow
+  cl?: string[]; // chunkLabels
+  lc?: 0 | 1; // generateLabelCards
+  pl?: number; // index into the payload's lessons array (primaryLessonId)
+}
+
 /** The decoded contents of a v1 (flat deck list) share code. */
 export interface SharePayloadV1 {
   v: 1;
@@ -230,6 +278,9 @@ interface SharePayloadV2 {
   course: ShareCourse;
   lessons: ShareLesson[];
   exams?: ShareExam[];
+  /** Overlapping-cloze sequences belonging to the course. Optional so existing v2
+   *  codes without sequences still parse. */
+  sequences?: ShareSequence[];
 }
 
 /** The decoded contents of a share code, either a flat deck list or a single course. */
@@ -586,9 +637,10 @@ function packCards(cards: Card[]): ShareCard[] {
     const front = stripAssetImages(c.front);
     const back = stripAssetImages(c.back);
     const imageFlag = front.stripped || back.stripped ? { i: 1 as const } : {};
+    const seqRef = c.sequenceItemId ? { si: c.sequenceItemId } : {};
 
     if (c.type === 'cloze') {
-      out.push({ k: 1, f: front.markdown, ...tags, ...imageFlag });
+      out.push({ k: 1, f: front.markdown, ...tags, ...imageFlag, ...seqRef });
       consumed.add(c.id);
       continue;
     }
@@ -596,7 +648,16 @@ function packCards(cards: Card[]): ShareCard[] {
     if (c.type === 'typing') {
       // Typing cards never fold into a reversible pair — the front/back roles are
       // not interchangeable (the answer is always typed against the front prompt).
-      out.push({ k: 3, f: front.markdown, b: back.markdown, ...tags, ...imageFlag });
+      out.push({ k: 3, f: front.markdown, b: back.markdown, ...tags, ...imageFlag, ...seqRef });
+      consumed.add(c.id);
+      continue;
+    }
+
+    if (c.sequenceItemId) {
+      // Cards generated from a sequence item never fold into a reversible pair either —
+      // the `si` reference must stay on exactly one, unambiguous card so it can be
+      // remapped consistently on import.
+      out.push({ k: 0, f: front.markdown, b: back.markdown, ...tags, ...imageFlag, ...seqRef });
       consumed.add(c.id);
       continue;
     }
@@ -725,6 +786,26 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
     um: course.unlockMode,
   };
 
+  const sequences = await db.sequences.where('courseId').equals(courseId).sortBy('createdAt');
+  const shareSequences: ShareSequence[] = sequences.map((s) => {
+    const pl = s.primaryLessonId ? lessonIndexById.get(s.primaryLessonId) : undefined;
+    return {
+      id: s.id,
+      n: s.name,
+      ...(s.description ? { d: s.description } : {}),
+      items: s.items.map((item) => ({
+        id: item.id,
+        v: item.value,
+        ...(item.label ? { l: item.label } : {}),
+        ...(item.chunkIndex !== undefined ? { ci: item.chunkIndex } : {}),
+      })),
+      cw: s.cueWindow,
+      ...(s.chunkLabels && s.chunkLabels.length ? { cl: s.chunkLabels } : {}),
+      ...(s.generateLabelCards ? { lc: 1 as const } : {}),
+      ...(pl !== undefined ? { pl } : {}),
+    };
+  });
+
   return {
     v: 2,
     by: null,
@@ -732,6 +813,7 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
     course: shareCourse,
     lessons: shareLessons,
     ...(shareExams.length ? { exams: shareExams } : {}),
+    ...(shareSequences.length ? { sequences: shareSequences } : {}),
   };
 }
 
@@ -826,6 +908,14 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
   return { courses: migration.courses.length, lessons: migration.lessons.length, cards: cardCount };
 }
 
+/** Split a sequenceItemId into its base item id and, when present, the label-card suffix. */
+function splitSequenceItemId(si: string): { baseId: string; isLabel: boolean } {
+  if (si.endsWith(LABEL_CARD_SUFFIX)) {
+    return { baseId: si.slice(0, -LABEL_CARD_SUFFIX.length), isLabel: true };
+  }
+  return { baseId: si, isLabel: false };
+}
+
 /** Import a v2 (single course) payload directly into the course model. */
 async function importCourseSharePayload(payload: SharePayloadV2): Promise<ImportShareResult> {
   let cardCount = 0;
@@ -841,8 +931,25 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
       db.userPerformance,
       db.assets,
       db.courseExamDates,
+      db.sequences,
     ],
     async () => {
+      // Pre-compute fresh ids for every incoming sequence and sequence item before any
+      // lesson card is created, so a shared card's `si` reference (which is set while
+      // walking `shareLesson.cards` below) can be remapped to the new item id straight
+      // away. The sequence rows themselves are only inserted once every lesson (hence
+      // lessonIds, needed for `primaryLessonId`) exists — see the loop after exams.
+      const itemIdMap = new Map<string, string>();
+      for (const shareSeq of payload.sequences ?? []) {
+        for (const item of shareSeq.items) itemIdMap.set(item.id, makeId());
+      }
+      const remapSequenceItemId = (si: string): string | undefined => {
+        const { baseId, isLabel } = splitSequenceItemId(si);
+        const mapped = itemIdMap.get(baseId);
+        if (!mapped) return undefined;
+        return isLabel ? `${mapped}${LABEL_CARD_SUFFIX}` : mapped;
+      };
+
       const course = await createCourse(payload.course.n || 'Shared course', {
         description: payload.course.d ?? '',
         examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
@@ -877,7 +984,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
 
         for (const shareCard of shareLesson.cards) {
           for (const draft of unpackCard(shareCard)) {
-            await createLessonCard(
+            const card = await createLessonCard(
               course.id,
               lesson.id,
               draft.type,
@@ -885,6 +992,10 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
               draft.back,
               draft.tags ?? [],
             );
+            if (shareCard.si) {
+              const remapped = remapSequenceItemId(shareCard.si);
+              if (remapped) await db.cards.update(card.id, { sequenceItemId: remapped });
+            }
             cardCount += 1;
           }
         }
@@ -897,6 +1008,34 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
             ? { lessonIds: shareExam.ls.map((i) => lessonIds[i]).filter((id): id is string => !!id) }
             : {}),
         });
+      }
+
+      // Insert the sequences themselves once lessonIds is complete (for primaryLessonId)
+      // and their generated cards already exist with remapped sequenceItemIds. Inserted
+      // directly rather than via createSequence, which would generate a duplicate set of
+      // cards — the shared cards already carry the sequence's generated content.
+      for (const shareSeq of payload.sequences ?? []) {
+        const items: SequenceItem[] = shareSeq.items.map((item) => ({
+          id: itemIdMap.get(item.id)!,
+          value: item.v,
+          ...(item.l ? { label: item.l } : {}),
+          ...(item.ci !== undefined ? { chunkIndex: item.ci } : {}),
+        }));
+        const primaryLessonId =
+          typeof shareSeq.pl === 'number' ? (lessonIds[shareSeq.pl] ?? null) : null;
+        const sequence: Sequence = {
+          id: makeId(),
+          courseId: course.id,
+          primaryLessonId,
+          name: shareSeq.n || 'Shared sequence',
+          ...(shareSeq.d ? { description: shareSeq.d } : {}),
+          items,
+          cueWindow: shareSeq.cw,
+          ...(shareSeq.cl && shareSeq.cl.length ? { chunkLabels: shareSeq.cl } : {}),
+          ...(shareSeq.lc === 1 ? { generateLabelCards: true } : {}),
+          createdAt: Date.now(),
+        };
+        await db.sequences.add(sequence);
       }
     },
   );
