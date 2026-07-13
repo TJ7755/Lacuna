@@ -916,7 +916,12 @@ export function LearnMode() {
         setFocusMode((v) => !v);
         return;
       }
-      if (keyMatches(e, bindings.edit) && current && (phase === 'question' || phase === 'answer')) {
+      if (
+        keyMatches(e, bindings.edit) &&
+        current &&
+        current.sequenceItemId == null &&
+        (phase === 'question' || phase === 'answer')
+      ) {
         e.preventDefault();
         openEdit();
         return;
@@ -1529,7 +1534,9 @@ function LearnHeader({
                     transition={{ duration: 0.12 * m }}
                     className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
                   >
-                    <MenuItem icon={<EditIcon width={16} height={16} />} label="Edit card" onClick={onEdit} />
+                    {current.sequenceItemId == null && (
+                      <MenuItem icon={<EditIcon width={16} height={16} />} label="Edit card" onClick={onEdit} />
+                    )}
                     <MenuItem icon={<FlagIcon width={16} height={16} />} label={current.flagged ? 'Remove flag' : 'Flag card'} onClick={onToggleFlag} />
                     <MenuItem icon={<ClockIcon width={16} height={16} />} label="Bury until tomorrow" onClick={onBury} />
                     <MenuItem icon={<PauseIcon width={16} height={16} />} label="Suspend card" onClick={onSuspend} />
@@ -1754,11 +1761,13 @@ function TouchMenuSheet({
               </div>
             </div>
         <div className="mx-auto flex max-w-3xl flex-col gap-1">
-          <TouchMenuButton
-            icon={<EditIcon width={22} height={22} />}
-            label="Edit card"
-            onClick={() => { hapticLight(); onEdit(); }}
-          />
+          {current.sequenceItemId == null && (
+            <TouchMenuButton
+              icon={<EditIcon width={22} height={22} />}
+              label="Edit card"
+              onClick={() => { hapticLight(); onEdit(); }}
+            />
+          )}
           <TouchMenuButton
             icon={<FlagIcon width={22} height={22} />}
             label={current.flagged ? 'Remove flag' : 'Flag card'}
