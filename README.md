@@ -30,6 +30,10 @@ export** to back up or move your data as a single JSON file.
   and a live pill UI (Wrong / Remaining / Right). Cards loop until every one is marked correct.
 - **Card types** — Basic (front/back), Reversed (back/front), Cloze, and Typing-answer (type the
   answer before revealing, with a comparison on the back).
+- **Sequences** — author an ordered list once (e.g. the periodic table, a timeline, a chain of
+  steps) and Lacuna generates a full set of overlapping-cloze cards, each cueing recall from the
+  preceding items; editing the sequence regenerates its cards without losing their scheduling
+  progress.
 - **Cooldown slotting** — failed cards are held back briefly to prevent fatigue.
 - **Continuous Learn mode** with a live, objective-aware progress bar that ends automatically once
   the objective is met, followed by a performance report (including a focus/distraction summary).
@@ -88,6 +92,7 @@ bundling, Cross-Origin Isolation headers for WASM, and auto-updates via
 | IndexedDB schema & operations | `src/db/` |
 | Course/lesson data layer | `src/state/useCourseData.ts`, `src/course/path.ts` |
 | Course path, lesson view, question bank | `src/pages/CoursePath.tsx`, `src/pages/LessonView.tsx`, `src/pages/QuestionBank.tsx` |
+| Sequence generation & editor | `src/db/sequenceGeneration.ts`, `src/pages/SequenceEditor.tsx` |
 | Learn session | `src/pages/LearnMode.tsx` |
 | Analytics charts | `src/components/analytics/` |
 
