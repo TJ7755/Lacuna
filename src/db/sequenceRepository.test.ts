@@ -12,7 +12,7 @@ import {
   snapshotSequence,
   updateSequence,
 } from './repository';
-import type { Sequence, SequenceItem } from './types';
+import type { FsrsCardState, Sequence, SequenceItem } from './types';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
 
 async function reset() {
@@ -139,6 +139,53 @@ describe('updateSequence', () => {
     expect(reloaded!.lapses).toBe(1);
     expect(reloaded!.due).toBe(123456);
     expect(reloaded!.lastReviewed).toBe(100000);
+  });
+
+  it('keeps each card\'s FSRS state and back exact across a genuine multi-item reorder', async () => {
+    const course = await createCourse('Chemistry');
+    const sequence = await createSequence(course.id, null, 'Halogens', items('F', 'Cl', 'Br'));
+    const cards = await cardsForSequence(sequence);
+
+    // Give each card distinctive, non-default scheduling state so a mix-up between
+    // cards (not just a reset to defaults) would be caught.
+    const stateByItem: Record<string, { state: FsrsCardState; stability: number; difficulty: number; reps: number; lapses: number; due: number; lastReviewed: number }> = {
+      'item-0': { state: 2, stability: 12.5, difficulty: 4.2, reps: 3, lapses: 1, due: 111, lastReviewed: 100 },
+      'item-1': { state: 3, stability: 30.1, difficulty: 6.7, reps: 5, lapses: 2, due: 222, lastReviewed: 200 },
+      'item-2': { state: 1, stability: 1.9, difficulty: 3.3, reps: 1, lapses: 0, due: 333, lastReviewed: 300 },
+    };
+    for (const card of cards) {
+      await db.cards.update(card.id, stateByItem[card.sequenceItemId!]);
+    }
+    const backById = new Map(cards.map((c) => [c.id, c.back]));
+    const frontById = new Map(cards.map((c) => [c.id, c.front]));
+
+    // Reorder to item-2, item-0, item-1 — the ids (and hence FSRS rows) are stable,
+    // but each card's cue-window-dependent front is regenerated.
+    const updated: Sequence = {
+      ...sequence,
+      items: [
+        { id: 'item-2', value: 'Br' },
+        { id: 'item-0', value: 'F' },
+        { id: 'item-1', value: 'Cl' },
+      ],
+    };
+    await updateSequence(updated);
+
+    const reorderedCards = await cardsForSequence(updated);
+    expect(reorderedCards).toHaveLength(3);
+    for (const card of reorderedCards) {
+      const expected = stateByItem[card.sequenceItemId!];
+      expect(card.state).toBe(expected.state);
+      expect(card.stability).toBe(expected.stability);
+      expect(card.difficulty).toBe(expected.difficulty);
+      expect(card.reps).toBe(expected.reps);
+      expect(card.lapses).toBe(expected.lapses);
+      expect(card.due).toBe(expected.due);
+      expect(card.lastReviewed).toBe(expected.lastReviewed);
+      // Reordering changes cue-window-dependent fronts but must never touch backs.
+      expect(card.back).toBe(backById.get(card.id));
+      expect(card.front).not.toBe(frontById.get(card.id));
+    }
   });
 });
 

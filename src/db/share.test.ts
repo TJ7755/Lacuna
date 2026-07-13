@@ -406,6 +406,35 @@ describe('course share codes (v2)', () => {
     expect(labelCard!.back).toBe('Lithium');
   });
 
+  it('excludes bank-scoped sequences from a course share while lesson-scoped ones still round-trip', async () => {
+    const course = await createCourse('Chemistry');
+    const lesson = await createLesson(course.id, 'Periodic table');
+    await createSequence(course.id, lesson.id, 'Group 1 metals', [
+      { id: 'item-li', value: 'Lithium', label: '3' },
+      { id: 'item-na', value: 'Sodium', label: '11' },
+    ]);
+    // A sequence created from the Question Bank has no primary lesson, and its
+    // generated cards (also primaryLessonId null) are never packed into a share —
+    // so the sequence itself must be excluded too, or it would import with no cards.
+    await createSequence(course.id, null, 'Bank sequence', [
+      { id: 'item-k', value: 'Potassium', label: '19' },
+    ]);
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.sequences).toHaveLength(1);
+    expect(payload.sequences![0].n).toBe('Group 1 metals');
+
+    await importSharePayload(payload);
+
+    // Two originals (lesson-scoped + bank-scoped) already exist pre-import; the import
+    // should only ever add the lesson-scoped one back, never a second bank sequence.
+    const allSequences = await db.sequences.toArray();
+    expect(allSequences.filter((s) => s.name === 'Group 1 metals')).toHaveLength(2);
+    expect(allSequences.filter((s) => s.name === 'Bank sequence')).toHaveLength(1);
+  });
+
   it('parses an old v2 payload with no sequences field', async () => {
     const legacyPayload = {
       v: 2 as const,
