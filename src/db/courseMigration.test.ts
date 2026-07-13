@@ -56,10 +56,10 @@ describe('buildCourseMigration', () => {
     // Course-path defaults.
     expect(course.unlockMode).toBe('open');
     expect(course.autoPractice).toBe(true);
-    expect(course.practiceThresholdMinutesFar).toBe(60);
-    expect(course.practiceThresholdMinutesNear).toBe(30);
+    expect(course.practiceThresholdMinutesFar).toBe(12);
+    expect(course.practiceThresholdMinutesNear).toBe(6);
     expect(course.practiceUrgentWindowDays).toBe(7);
-    expect(course.practiceMaxGap).toBe(5);
+    expect(course.practiceMaxGap).toBe(3);
 
     const lesson = lessons[0];
     expect(lesson.courseId).toBe(course.id);

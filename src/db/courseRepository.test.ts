@@ -67,10 +67,10 @@ describe('createCourse', () => {
     expect(course.examObjective).toBe('expectedMarks');
     expect(course.unlockMode).toBe('open');
     expect(course.autoPractice).toBe(true);
-    expect(course.practiceThresholdMinutesFar).toBe(60);
-    expect(course.practiceThresholdMinutesNear).toBe(30);
+    expect(course.practiceThresholdMinutesFar).toBe(12);
+    expect(course.practiceThresholdMinutesNear).toBe(6);
     expect(course.practiceUrgentWindowDays).toBe(7);
-    expect(course.practiceMaxGap).toBe(5);
+    expect(course.practiceMaxGap).toBe(3);
     // examDate is 7 days ahead of createdAt at 23:59 local time.
     expect(course.examDate).toBeGreaterThan(course.createdAt);
     // id is generated.

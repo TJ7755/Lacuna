@@ -166,10 +166,10 @@ export async function seedIfFirstRun(): Promise<void> {
       lastInteractedAt: createdAt,
       unlockMode: 'open',
       autoPractice: true,
-      practiceThresholdMinutesFar: 60,
-      practiceThresholdMinutesNear: 30,
+      practiceThresholdMinutesFar: 12,
+      practiceThresholdMinutesNear: 6,
       practiceUrgentWindowDays: 7,
-      practiceMaxGap: 5,
+      practiceMaxGap: 3,
     };
 
     const [fcAsset, sampleAsset] = await Promise.all([

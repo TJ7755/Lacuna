@@ -31,10 +31,10 @@ function makeCourse(overrides: Partial<Course> & Pick<Course, 'id'>): Course {
     examObjective: 'expectedMarks',
     unlockMode: 'open',
     autoPractice: false,
-    practiceThresholdMinutesFar: 60,
-    practiceThresholdMinutesNear: 30,
+    practiceThresholdMinutesFar: 12,
+    practiceThresholdMinutesNear: 6,
     practiceUrgentWindowDays: 7,
-    practiceMaxGap: 5,
+    practiceMaxGap: 3,
     ...overrides,
   };
 }
@@ -415,8 +415,8 @@ describe('buildPath — practice nodes', () => {
       practiceMaxGap: 10,
       examDate: 100 * MS_PER_DAY, // well in the future relative to `now`
     });
-    // 500 due cards x 8s = ~67 minutes, above the 60-minute far threshold.
-    const nodes = buildPath(course, lessons, [], new Map(), [], 500, 8, now);
+    // 100 due cards x 8s = ~13.3 minutes, above the 12-minute far threshold.
+    const nodes = buildPath(course, lessons, [], new Map(), [], 100, 8, now);
     const autoNodes = nodes.filter((n): n is PracticePathNode => n.nodeType === 'practice-auto');
     expect(autoNodes.length).toBeGreaterThan(0);
     // First auto node lands right after the first lesson (lessonsSinceLastPractice = 1).
@@ -425,13 +425,13 @@ describe('buildPath — practice nodes', () => {
 
   it('uses the tighter near-exam threshold once inside practiceUrgentWindowDays', () => {
     const now = 0;
-    const dueCardCount = 150; // 150 x 8s = 20 minutes: below far (60) but above near (15).
+    const dueCardCount = 50; // 50 x 8s = ~6.7 minutes: below far (12) but above near (3).
     const farCourse = makeCourse({
       id: 'c1',
       unlockMode: 'open',
       autoPractice: true,
       practiceMaxGap: 10,
-      practiceThresholdMinutesNear: 15,
+      practiceThresholdMinutesNear: 3,
       examDate: 100 * MS_PER_DAY, // far in the future -> far threshold applies
     });
     const nearCourse = makeCourse({
@@ -439,7 +439,7 @@ describe('buildPath — practice nodes', () => {
       unlockMode: 'open',
       autoPractice: true,
       practiceMaxGap: 10,
-      practiceThresholdMinutesNear: 15,
+      practiceThresholdMinutesNear: 3,
       examDate: 1 * MS_PER_DAY, // inside the default 7-day urgent window
     });
     const farNodes = buildPath(farCourse, lessons, [], new Map(), [], dueCardCount, 8, now);

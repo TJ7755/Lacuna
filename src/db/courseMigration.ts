@@ -40,10 +40,10 @@ type CourseScheduling = Pick<
 const COURSE_PATH_DEFAULTS = {
   unlockMode: 'open',
   autoPractice: true,
-  practiceThresholdMinutesFar: 60,
-  practiceThresholdMinutesNear: 30,
+  practiceThresholdMinutesFar: 12,
+  practiceThresholdMinutesNear: 6,
   practiceUrgentWindowDays: 7,
-  practiceMaxGap: 5,
+  practiceMaxGap: 3,
 } as const satisfies Pick<
   Course,
   | 'unlockMode'

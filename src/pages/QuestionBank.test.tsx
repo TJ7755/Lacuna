@@ -84,10 +84,10 @@ const course: Course = {
   examObjective: 'expectedMarks',
   unlockMode: 'linear',
   autoPractice: false,
-  practiceThresholdMinutesFar: 60,
-  practiceThresholdMinutesNear: 30,
+  practiceThresholdMinutesFar: 12,
+  practiceThresholdMinutesNear: 6,
   practiceUrgentWindowDays: 7,
-  practiceMaxGap: 5,
+  practiceMaxGap: 3,
 };
 
 const lesson1: Lesson = {
