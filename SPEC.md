@@ -464,6 +464,53 @@ create/edit/delete flow as a list (§15's Course settings section). Both surface
 `practiceNodeDraft.ts`'s draft helpers. Filters (`CardFilter[]`) are supported in storage
 but intentionally left out of both forms — there is no existing filter-builder UI to reuse.
 
+### Sequences — overlapping-cloze sequence learning (schema v11)
+Schema **v11** adds `sequences: 'id, courseId, primaryLessonId, createdAt'` (additive; no
+`upgrade()` needed) and one optional indexed field on `cards`: `sequenceItemId`. A `Sequence`
+is an **authoring-time entity only** — it is never itself studied — that generates ordinary
+`front_back` `Card` rows via **overlapping cloze**: for items `i₀ … iₙ` and a configurable
+`cueWindow` (default 2), each generated card's front shows the preceding `min(cueWindow,
+position)` item values (plus the sequence name and, if chunked, the chunk label) and its back
+is the item's own value. The first item is cued by the sequence/chunk name alone. This
+directly targets the serial-position effect (mid-sequence recall is weakest) by giving every
+element a turn as the recall target with local context as the cue.
+
+- `Sequence { id, courseId, primaryLessonId: string | null, name, description?,
+  items: SequenceItem[], cueWindow, chunkLabels?, generateLabelCards?, createdAt }` —
+  `items` is ordered and stored inline (sequences are small); `primaryLessonId` follows the
+  same semantics as `Card.primaryLessonId`. `generateLabelCards` (default off) additionally
+  generates an unordered label -> value card per item that carries a `label` (e.g. "Atomic
+  number 11 -> ?"), alongside the positional card.
+- `SequenceItem { id, value, label?, chunkIndex? }` — `id` is stable across edits and anchors
+  the generated card(s); `value` is Markdown.
+- `Card.sequenceItemId?: string` is present iff the card was generated from a sequence item:
+  the positional card carries the item's own id; the label card (when generated) carries
+  `${item.id}::label` (`LABEL_CARD_SUFFIX`), so the two never collide and `isLabelCardId`/
+  `baseItemId` (`src/db/sequenceGeneration.ts`) can recover the relationship without a
+  second field.
+- **Generation and regeneration** (`src/db/sequenceGeneration.ts`) is a pure, Dexie-free
+  module — deliberately so its correctness (the risk centre of this feature) is covered by
+  exhaustive unit tests ahead of any UI or repository code. `diffRegeneration` compares a
+  previous and edited `Sequence` and produces create/update/delete instructions per card: an
+  edited item updates its card's content in place (memory state kept); an inserted/reordered
+  item regenerates only the affected cue-window fronts (memory state kept, since the recall
+  target is unchanged); a deleted item deletes its card. `sequenceForItemId` resolves which
+  `Sequence` (if any) owns a generated card's `sequenceItemId`, for grouping/badging.
+- **Repository** (`src/db/repository.ts`): `createSequence`/`updateSequence`/
+  `deleteSequence`/`listSequences`, plus `snapshotSequence`/`restoreSequence` for the
+  standard undo pattern (a `SequenceSnapshot` captures the sequence and its generated
+  cards together). `createSequence` and `updateSequence` generate/regenerate cards in the
+  same transaction as the sequence write.
+- **Portability**: sequences ride through backup export/import (replace and merge, by the
+  same per-table semantics as the other course-architecture tables), diagnostics bundles
+  (`sequences` count), and course share codes as an **additive v2 field** (§13) — older v2
+  codes without it still parse.
+- Generated cards are **read-only** in the card editor (edit the sequence instead) and
+  carry a `SequenceBadge` (`src/components/cards/SequenceBadge.tsx`) wherever cards are
+  listed, searched or shown in the command palette; `CardList` additionally groups
+  generated cards under their owning sequence (`SequenceCardGroup`) rather than listing
+  them loose (§12).
+
 ### Deck and Folder (legacy backing structures, no UI)
 `Deck` (`id, name, examDate, createdAt, examDatePromptDismissed?, fsrsVersion,
 fsrsParameters, examObjective, newCardsPerDay?, archived?, autoOptimise?, folderId?,
@@ -482,8 +529,8 @@ course UI is still soaking.
 
 ### Card
 `id, deckId, type('front_back'|'cloze'), front, back, stability|null, difficulty|null,
-lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?, due|null,
-scheduledDays, learningSteps, history[], createdAt`
+lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?,
+sequenceItemId?, due|null, scheduledDays, learningSteps, history[], createdAt`
 - `front`/`back` are Markdown source. **Cloze** source lives entirely in `front`
   (`{{cN::...}}`); `back` is empty.
 - `stability` (days; the interval at which R = 0.90), `difficulty` (in [1,10]),
@@ -917,6 +964,14 @@ the global `::selection` rule (both painted translucent amber), producing a mudd
 double-highlight on selected text inside a revealed cloze. With no element
 background, `::selection` paints cleanly across the cloze mark.
 
+### Sequence-generated cards in Learn mode
+When a card was generated from a Sequence (§5), `CardContent`'s `sequenceCue` prop (set in
+`LearnMode`) parses the front's header/cue-items structure (`parseSequenceFront`) and styles
+the preceding cue items as muted context above the recall prompt, rather than rendering the
+whole front as one undifferentiated block. Label cards (`isLabelCardId`) are excluded, since
+they have no cue window to style. No FSRS or session-flow changes: generated cards are
+ordinary `front_back` cards to the scheduler.
+
 ### Editor (`src/pages/CardEditor.tsx`, full page)
 - Mode is decided by the route (`/cards/new` vs `/cards/:id/edit`).
 - **Card type** selector: Basic (front/back), Reversed (back/front), Cloze, or Typing-answer.
@@ -970,6 +1025,13 @@ background, `::selection` paints cleanly across the cloze mark.
   the list is passed a `courseId`). Clicking a card row expands it in-place to show a
   **per-card forgetting curve** and **vital statistics** (see §14, Per-card analysis).
 - Course creation can **start blank** or **import** material immediately (see §13).
+- **Sequences** (§5) have their own editor (`/course/:courseId/sequence/new`,
+  `/course/:courseId/sequence/:sequenceId/edit`, and a lesson-scoped
+  `/course/:courseId/lesson/:lessonId/sequence/new`), reached via "New sequence" entry
+  points alongside "Add card" in both Lesson View (`LessonCardsSection`) and the Question
+  Bank. `CardList` groups a sequence's generated cards under its name (`SequenceCardGroup`)
+  and excludes them from bulk-select, since they can only be edited or deleted through the
+  sequence.
 
 ---
 
@@ -1028,23 +1090,24 @@ A single, reusable export UI offering multiple output formats:
 
 ### Backup file import/export
 - **Export:** versioned JSON of the whole database (`BackupFile`: decks, cards,
-  **referenced image assets**, session history, user performance, folders, and the six
+  **referenced image assets**, session history, user performance, folders, the six
   course-architecture tables — courses, lessons, notes, lessonCards, practiceNodes,
-  courseExamDates). Backups are the route that carries images between machines (share
-  codes deliberately do not, §13). Older backups that pre-date the course tables still
-  import cleanly: all six arrays are optional in `BackupFile`.
+  courseExamDates — and `sequences`, schema v11). Backups are the route that carries
+  images between machines (share codes deliberately do not, §13). Older backups that
+  pre-date the course tables or sequences still import cleanly: all these arrays are
+  optional in `BackupFile`.
 - **Import modes:**
-  - **Replace all** — wipe then restore exactly. All twelve data tables (including the
-    six course tables) are cleared before the backup is written; each course table is
+  - **Replace all** — wipe then restore exactly. All thirteen data tables (including the
+    six course tables and `sequences`) are cleared before the backup is written; each is
     restored only if the backup contains it.
   - **Merge** — fold in by id. Before committing, a **visible diff** summarises
     what will be **added, changed and overwritten** (counts at minimum) and
     requires **explicit confirmation**; only on confirm are changes applied
-    (newest `lastReviewed`/`createdAt` wins per conflicting record). The six course
-    tables follow the same per-table merge semantics as folders: incoming rows that
-    do not exist locally are added; where both sides share an id, the newer record
-    (by `createdAt`) wins. Existing local rows absent from the backup are never deleted.
-    This replaces the previous silent "most-recent-wins" merge, which was a
+    (newest `lastReviewed`/`createdAt` wins per conflicting record). The course
+    tables and `sequences` follow the same per-table merge semantics as folders: incoming
+    rows that do not exist locally are added; where both sides share an id, the newer
+    record (by `createdAt`) wins. Existing local rows absent from the backup are never
+    deleted. This replaces the previous silent "most-recent-wins" merge, which was a
     data-loss footgun.
 
 ### Automatic restore points & migration safety
@@ -1076,7 +1139,12 @@ never one person's scheduling progress or review history.
   date created, date due, target retention, new-card cap), its ordered lessons each with
   their notes and cards (type, front, back, tags), any extra `CourseExamDate` checkpoints,
   and each lesson's teacher-configured `sessionFilter` (`sf`), when set to `'due'` or
-  `'mixed'` — `'new'` is the default and is omitted from the payload.
+  `'mixed'` — `'new'` is the default and is omitted from the payload. **Sequences**
+  (§5) ride along as an additive optional field: each `Sequence` and its `SequenceItem`s
+  travel inline, and on import every sequence/item id is remapped fresh alongside its
+  generated cards' `sequenceItemId` (including the `::label` suffix for label cards), so a
+  shared sequence never collides with one already present locally. Older v2 codes without
+  a `sequences` field still parse.
   Images ride along inline inside card/note Markdown as base64 data URIs rather than being
   stripped, so a shared course renders faithfully; DEFLATE still compresses the payload
   overall. `LessonCardLink` (display-only cross-lesson linking) and `PracticeNode` are
