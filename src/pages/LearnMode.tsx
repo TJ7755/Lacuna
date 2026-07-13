@@ -2280,7 +2280,7 @@ function FlipCard({
               transition={{ duration: 0.24 * m, delay: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
               className="mx-auto max-w-prose text-center text-lg leading-relaxed md:text-xl"
             >
-              <CardContent card={card} side={revealed ? 'back' : 'front'} />
+              <CardContent card={card} side={revealed ? 'back' : 'front'} sequenceCue />
             </motion.div>
             {/* For typing cards in answer phase, show the typed answer and correct answer */}
             {isTyping && revealed && typedAnswer !== undefined && (
