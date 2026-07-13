@@ -22,6 +22,40 @@
 >
 > **Full changelog below**
 
+## Unreleased — Sequence learning (Arc 1 v1 slice)
+
+Adds overlapping-cloze **sequence learning**: authoring an ordered list once (the periodic
+table, a timeline, a chain of steps) generates a full set of ordinary FSRS cards, each
+cueing recall from a configurable window of preceding items. See `next_plan.md` Arc 1 for
+the design; the v2 lines-mode slice is not part of this release.
+
+- Added `Sequence`/`SequenceItem` types (`src/db/types.ts`) and one optional field on
+  `Card`, `sequenceItemId`, present iff the card was generated from a sequence item.
+- Added schema **v11** (`sequences: 'id, courseId, primaryLessonId, createdAt'`, plus a
+  `sequenceItemId` index on `cards`) — additive, no upgrade needed. (v10 was already taken
+  by the lesson-view-mode override above, so sequences landed at v11 rather than v10.)
+- Added a pure generation/regeneration module, `src/db/sequenceGeneration.ts`: derives
+  positional (and, optionally, label -> value) cards from a sequence's items, and diffs a
+  previous against an edited sequence to update/regenerate/delete only the affected cards
+  while preserving FSRS memory state wherever the recall target is unchanged.
+- Added repository CRUD (`src/db/repository.ts`): `createSequence`/`updateSequence`/
+  `deleteSequence`/`listSequences`, plus `snapshotSequence`/`restoreSequence` for the
+  standard undo pattern.
+- Wired sequences through **backup export/import** (replace and merge), **diagnostics**
+  bundles, and **course share codes** as an additive v2 field, with id remapping for
+  sequences, items and their generated cards' `sequenceItemId` (including label-card
+  suffixes) on import.
+- Added the **sequence editor** (`src/pages/SequenceEditor.tsx`) at
+  `/course/:courseId/sequence/new`, `/course/:courseId/sequence/:sequenceId/edit`, and a
+  lesson-scoped `/course/:courseId/lesson/:lessonId/sequence/new`, with entry points beside
+  "Add card" in Lesson View and the Question Bank.
+- Grouped and badged generated cards across management surfaces: `CardList` groups a
+  sequence's cards under its name (`SequenceCardGroup`) and excludes them from bulk-select;
+  a `SequenceBadge` marks generated cards in global search and the command palette; the
+  card editor renders generated cards read-only (edit the sequence instead).
+- Styled the cue items distinctly from the recall prompt on generated cards in Learn mode
+  (`CardContent`'s `sequenceCue`), with no FSRS or session-flow changes.
+
 ## Unreleased — Lesson view study/edit mode
 
 - Split `LessonView` into two modes instead of always showing full notes/cards
