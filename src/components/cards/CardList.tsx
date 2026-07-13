@@ -36,9 +36,12 @@ import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useIsTouchMode } from '../../state/inputMode';
 import { useVirtualList } from '../../hooks/useVirtualList';
+import { sequenceForItemId } from '../../db/sequenceGeneration';
+import { SequenceCardGroup } from './SequenceCardGroup';
+import { SequenceBadge } from './SequenceBadge';
 import type { ParsedCard } from '../../db/import';
 import { importApkgResult, type ApkgImportResult } from '../../db/apkgImport';
-import type { Card, Deck } from '../../db/types';
+import type { Card, Deck, Sequence } from '../../db/types';
 
 /** A lesson a card can be bulk-assigned to, offered in the "Assign to lesson…" panel. */
 interface AssignableLesson {
@@ -64,9 +67,18 @@ interface CardListProps {
    */
   assignableLessons?: AssignableLesson[];
   courseId?: string;
+  /**
+   * Sequences in scope for these cards (same course/lesson). When supplied, generated
+   * cards (`card.sequenceItemId != null`) are grouped under a header naming their owning
+   * sequence rather than listed loosely; a generated card whose sequence cannot be
+   * resolved (e.g. omitted here by mistake) still renders inline, badged and read-only.
+   */
+  sequences?: Sequence[];
+  /** Navigates to the sequence editor for a generated-card group's "Edit sequence" affordance. */
+  onEditSequence?: (sequenceId: string) => void;
 }
 
-export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEditCard, hideHeader = false, assignableLessons, courseId }: CardListProps) {
+export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEditCard, hideHeader = false, assignableLessons, courseId, sequences, onEditSequence }: CardListProps) {
   const { notify } = useToast();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -100,6 +112,39 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
     return [...set].sort();
   }, [cards]);
 
+  // Generated cards (Card.sequenceItemId != null) are managed exclusively from their
+  // owning sequence: they never take part in bulk selection (Tag/Suspend/Move/Delete/…),
+  // since content edits and deletes would desync or fight with the next regeneration.
+  // Grouping them under a sequence header is purely presentational — every card still
+  // flows through the same CardListBody/CardRow, which independently enforces the
+  // read-only treatment (no checkbox, no delete) from `card.sequenceItemId` itself.
+  const sequenceGroups = useMemo(() => {
+    const bySequence = new Map<string, { sequence: Sequence; cards: Card[] }>();
+    for (const card of cards) {
+      if (card.sequenceItemId == null) continue;
+      const sequence = sequences ? sequenceForItemId(sequences, card.sequenceItemId) : undefined;
+      if (!sequence) continue;
+      const group = bySequence.get(sequence.id) ?? { sequence, cards: [] };
+      group.cards.push(card);
+      bySequence.set(sequence.id, group);
+    }
+    return [...bySequence.values()];
+  }, [cards, sequences]);
+
+  const groupedCardIds = useMemo(
+    () => new Set(sequenceGroups.flatMap((g) => g.cards.map((c) => c.id))),
+    [sequenceGroups],
+  );
+  // Every card not shown under a sequence group heading: ordinary cards plus any
+  // generated card whose owning sequence could not be resolved (defensive fallback —
+  // still badged/read-only via CardRow, just without a group header to sit under).
+  const looseCards = useMemo(
+    () => cards.filter((c) => !groupedCardIds.has(c.id)),
+    [cards, groupedCardIds],
+  );
+  // Bulk selection only ever applies to ordinary (non-generated) cards.
+  const selectableCards = useMemo(() => cards.filter((c) => c.sequenceItemId == null), [cards]);
+
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -114,8 +159,8 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
 
   function toggleAll() {
     setSelected((prev) => {
-      if (cards.length > 0 && cards.every((c) => prev.has(c.id))) return new Set();
-      return new Set(cards.map((c) => c.id));
+      if (selectableCards.length > 0 && selectableCards.every((c) => prev.has(c.id))) return new Set();
+      return new Set(selectableCards.map((c) => c.id));
     });
   }
 
@@ -338,7 +383,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
           </h2>
         )}
         <div className={cn('flex gap-2', !hideHeader && 'ml-auto')}>
-          {cards.length > 0 && (
+          {selectableCards.length > 0 && (
             <Button
               variant={selectMode ? 'primary' : 'secondary'}
               size="sm"
@@ -409,22 +454,22 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
             <button
               type="button"
               onClick={toggleAll}
-              aria-pressed={cards.length > 0 && cards.every((c) => selected.has(c.id))}
+              aria-pressed={selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id))}
               className="flex items-center gap-2 text-sm text-ink-soft transition-colors hover:text-ink"
             >
               <span
                 className={cn(
                   'grid h-5 w-5 place-items-center rounded-full border transition-colors',
-                  cards.length > 0 && cards.every((c) => selected.has(c.id))
+                  selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id))
                     ? 'border-accent bg-accent text-accent-fg'
                     : 'border-line-strong',
                 )}
               >
-                {cards.length > 0 && cards.every((c) => selected.has(c.id)) && (
+                {selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id)) && (
                   <CheckIcon width={12} height={12} />
                 )}
               </span>
-              {cards.length > 0 && cards.every((c) => selected.has(c.id)) ? 'Deselect all' : 'Select all'}
+              {selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id)) ? 'Deselect all' : 'Select all'}
             </button>
             <span className="text-sm text-ink-faint">{selected.size} selected</span>
             <div className="ml-auto flex flex-wrap gap-2">
@@ -711,20 +756,37 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
           </div>
         </div>
       ) : (
-        <CardListBody
-          cards={cards}
-          deck={deck}
-          selectMode={selectMode}
-          selected={selected}
-          expandedCardId={expandedCardId}
-          onToggle={toggle}
-          onToggleExpand={setExpandedCardId}
-          onEditCard={onEditCard}
-          onResume={handleResume}
-          onDelete={handleDeleteOne}
-          onToggleFlag={handleToggleFlag}
-          motionMultiplier={m}
-        />
+        <>
+          {sequenceGroups.map((group) => (
+            <SequenceCardGroup
+              key={group.sequence.id}
+              sequence={group.sequence}
+              cards={group.cards}
+              deck={deck}
+              onEditCard={onEditCard}
+              onEditSequence={onEditSequence}
+              onResume={handleResume}
+              onToggleFlag={handleToggleFlag}
+              motionMultiplier={m}
+            />
+          ))}
+          {looseCards.length > 0 && (
+            <CardListBody
+              cards={looseCards}
+              deck={deck}
+              selectMode={selectMode}
+              selected={selected}
+              expandedCardId={expandedCardId}
+              onToggle={toggle}
+              onToggleExpand={setExpandedCardId}
+              onEditCard={onEditCard}
+              onResume={handleResume}
+              onDelete={handleDeleteOne}
+              onToggleFlag={handleToggleFlag}
+              motionMultiplier={m}
+            />
+          )}
+        </>
       )}
     </div>
   );
@@ -733,8 +795,10 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
 const VIRTUAL_THRESHOLD = 50;
 
 /** Renders the card list either as a simple grid (small decks) or a virtualised
- *  absolute-positioned list (large decks) to keep performance constant. */
-function CardListBody({
+ *  absolute-positioned list (large decks) to keep performance constant. Exported for
+ *  reuse by {@link SequenceCardGroup}, which renders a sequence's own generated cards
+ *  through the same CardRow (and so gets its read-only treatment for free). */
+export function CardListBody({
   cards,
   deck,
   selectMode,
@@ -887,6 +951,10 @@ const CardRow = React.memo(function CardRow({
   const buried = card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > Date.now();
   const leech = isLeech(card);
   const flagged = card.flagged === true;
+  // Generated cards are owned by their Sequence: content edits and deletes happen there,
+  // never here, so selection and deletion are suppressed regardless of selectMode/hover.
+  // Scheduling actions (flag/suspend/bury/reschedule/resume) stay fully available.
+  const generated = card.sequenceItemId != null;
 
   // Swipe-to-reveal state — multi-directional in touch mode.
   const [trayOpen, setTrayOpen] = useState(false);
@@ -1018,7 +1086,7 @@ const CardRow = React.memo(function CardRow({
       justHandledTap.current = false;
       return;
     }
-    if (selectMode) {
+    if (selectMode && !generated) {
       onToggle();
     } else if (trayOpenRef.current) {
       setTrayOpen(false);
@@ -1026,18 +1094,18 @@ const CardRow = React.memo(function CardRow({
     } else {
       onToggleExpand();
     }
-  }, [selectMode, onToggle, onToggleExpand, dragX]);
+  }, [selectMode, generated, onToggle, onToggleExpand, dragX]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (selectMode) {
+      if (selectMode && !generated) {
         onToggle();
       } else {
         onToggleExpand();
       }
     }
-  }, [selectMode, onToggle, onToggleExpand]);
+  }, [selectMode, generated, onToggle, onToggleExpand]);
 
   const handleMouseEnter = useCallback(() => {
     if (!selectMode) setHovered(true);
@@ -1118,15 +1186,18 @@ const CardRow = React.memo(function CardRow({
             <EditIcon width={18} height={18} />
             Edit
           </button>
-          <button
-            type="button"
-            aria-label="Delete card"
-            onClick={handleDeleteClick}
-            className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-negative/10 text-xs text-negative transition-colors hover:bg-negative/20"
-          >
-            <TrashIcon width={18} height={18} />
-            Delete
-          </button>
+          {/* Generated cards are deleted only by editing (or deleting) their sequence. */}
+          {!generated && (
+            <button
+              type="button"
+              aria-label="Delete card"
+              onClick={handleDeleteClick}
+              className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-negative/10 text-xs text-negative transition-colors hover:bg-negative/20"
+            >
+              <TrashIcon width={18} height={18} />
+              Delete
+            </button>
+          )}
         </div>
       </div>
 
@@ -1154,7 +1225,7 @@ const CardRow = React.memo(function CardRow({
         )}
       >
         <div className="flex items-start gap-4">
-          {selectMode && (
+          {selectMode && !generated && (
             <span
               className={cn(
                 'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors',
@@ -1201,6 +1272,7 @@ const CardRow = React.memo(function CardRow({
                 </span>
               )}
               {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
+              {generated && <SequenceBadge />}
             </div>
             <div className="relative max-h-24 overflow-hidden text-sm text-ink-soft [mask-image:linear-gradient(to_bottom,black_60%,transparent)]">
               <AnimatePresence mode="wait" initial={false}>
@@ -1268,6 +1340,7 @@ const CardRow = React.memo(function CardRow({
               >
                 <EditIcon width={16} height={16} />
               </motion.button>
+              {!generated && (
               <motion.button
                 type="button"
                 onClick={handleDeleteClick}
@@ -1278,6 +1351,7 @@ const CardRow = React.memo(function CardRow({
               >
                 <TrashIcon width={16} height={16} />
               </motion.button>
+              )}
             </div>
           )}
         </div>
