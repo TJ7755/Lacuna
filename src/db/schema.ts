@@ -15,6 +15,7 @@ import type {
   Note,
   LessonCardLink,
   PracticeNode,
+  Sequence,
 } from './types';
 import {
   migrateCardRecord,
@@ -46,6 +47,7 @@ class LacunaDatabase extends Dexie {
   lessonCards!: Table<LessonCardLink, string>;
   practiceNodes!: Table<PracticeNode, string>;
   courseExamDates!: Table<CourseExamDate, string>;
+  sequences!: Table<Sequence, string>;
 
   constructor() {
     super('lacuna');
@@ -297,10 +299,31 @@ class LacunaDatabase extends Dexie {
       practiceNodes: 'id, courseId, position, createdAt',
       courseExamDates: 'id, courseId, examDate, createdAt',
     });
+
+    // Version 11: add sequences for overlapping-cloze sequence learning. A
+    // sequence generates ordinary FSRS cards, each anchored to a SequenceItem
+    // via cards.sequenceItemId. Additive only — no upgrade() needed.
+    this.version(11).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
+      sessionHistory: '++id, deckId, courseId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+      courses: 'id, createdAt, examDate',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      practiceNodes: 'id, courseId, position, createdAt',
+      courseExamDates: 'id, courseId, examDate, createdAt',
+      sequences: 'id, courseId, primaryLessonId, createdAt',
+    });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 10;
+const CURRENT_SCHEMA_VERSION = 11;
 
 export const db = new LacunaDatabase();
 
@@ -469,6 +492,7 @@ export async function readAllDataFromVersion(
     lessonCards: (raw.data['lessonCards'] ?? []) as LessonCardLink[],
     practiceNodes: (raw.data['practiceNodes'] ?? []) as PracticeNode[],
     courseExamDates: (raw.data['courseExamDates'] ?? []) as CourseExamDate[],
+    sequences: (raw.data['sequences'] ?? []) as Sequence[],
   };
 }
 
