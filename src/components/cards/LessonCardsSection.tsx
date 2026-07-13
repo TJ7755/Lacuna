@@ -5,6 +5,7 @@
 import { CardList } from './CardList';
 import { Button } from '../ui/Button';
 import { PlusIcon } from '../ui/icons';
+import { useSequences } from '../../state/useCourseData';
 import type { Card, Deck } from '../../db/types';
 
 interface LessonCardsSectionProps {
@@ -24,6 +25,7 @@ export function LessonCardsSection({
   onNavigate,
   className,
 }: LessonCardsSectionProps) {
+  const sequences = useSequences(courseId);
   return (
     <section className={className}>
       <h2 className="mb-4 font-display text-xl text-ink-soft">
@@ -59,6 +61,8 @@ export function LessonCardsSection({
           onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
           onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
           onEditCard={(card) => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)}
+          sequences={sequences}
+          onEditSequence={(sequenceId) => onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
         />
       ) : (
         // Deck is still resolving; show a brief skeleton rather than blocking the page.

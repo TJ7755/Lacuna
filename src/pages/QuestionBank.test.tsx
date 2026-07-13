@@ -2,16 +2,18 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QuestionBank } from './QuestionBank';
-import type { Card, Course, Deck, Lesson } from '../db/types';
+import type { Card, Course, Deck, Lesson, Sequence } from '../db/types';
 
 let mockCourse: Course | undefined;
 let mockLessons: Lesson[] | undefined;
 let mockCards: Card[] | undefined;
+let mockSequences: Sequence[] | undefined = [];
 
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
   useLessons: () => mockLessons,
   useCourseCards: () => mockCards,
+  useSequences: () => mockSequences,
 }));
 
 const mockDeck: Deck = {
@@ -148,6 +150,7 @@ beforeEach(() => {
   mockCourse = undefined;
   mockLessons = undefined;
   mockCards = undefined;
+  mockSequences = [];
 });
 
 describe('QuestionBank', () => {

@@ -33,6 +33,7 @@ vi.mock('../state/useCourseData', () => ({
   useCourseExamDates: () => mockExamDates,
   useNotes: () => mockNotes,
   useLessonCards: () => mockLessonCards,
+  useSequences: () => [],
 }));
 
 vi.mock('../state/useData', () => ({

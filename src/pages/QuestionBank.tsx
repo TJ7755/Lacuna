@@ -5,12 +5,12 @@
 
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useCourse, useLessons, useCourseCards } from '../state/useCourseData';
+import { useCourse, useLessons, useCourseCards, useSequences } from '../state/useCourseData';
 import { useDeck } from '../state/useData';
 import { CardList } from '../components/cards/CardList';
 import { Button } from '../components/ui/Button';
 import { ChevronLeftIcon, PlusIcon, SearchIcon } from '../components/ui/icons';
-import type { Card, Lesson } from '../db/types';
+import type { Card, Lesson, Sequence } from '../db/types';
 
 export function QuestionBank() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -20,8 +20,9 @@ export function QuestionBank() {
   const course = useCourse(courseId);
   const lessons = useLessons(courseId);
   const cards = useCourseCards(courseId);
+  const sequences = useSequences(courseId);
 
-  if (course === undefined || lessons === undefined || cards === undefined) {
+  if (course === undefined || lessons === undefined || cards === undefined || sequences === undefined) {
     return <QuestionBankSkeleton />;
   }
 
@@ -126,6 +127,7 @@ export function QuestionBank() {
               lesson={lesson}
               cards={byLesson.get(lesson.id) ?? []}
               assignableLessons={assignableLessons}
+              sequences={sequences.filter((s) => s.primaryLessonId === lesson.id)}
             />
           ))}
           {unassigned.length > 0 && (
@@ -133,6 +135,7 @@ export function QuestionBank() {
               courseId={courseId!}
               cards={unassigned}
               assignableLessons={assignableLessons}
+              sequences={sequences.filter((s) => s.primaryLessonId === null)}
             />
           )}
         </div>
@@ -151,11 +154,13 @@ function LessonBucket({
   lesson,
   cards,
   assignableLessons,
+  sequences,
 }: {
   courseId: string;
   lesson: Lesson;
   cards: Card[];
   assignableLessons: AssignableLesson[];
+  sequences: Sequence[];
 }) {
   const navigate = useNavigate();
   // Invariant (assignCardsToLesson): every card assigned to a lesson shares that
@@ -197,6 +202,8 @@ function LessonBucket({
           onEditCard={(card) =>
             navigate(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`)
           }
+          sequences={sequences}
+          onEditSequence={(sequenceId) => navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
         />
       )}
     </section>
@@ -207,10 +214,12 @@ function UnassignedBucket({
   courseId,
   cards,
   assignableLessons,
+  sequences,
 }: {
   courseId: string;
   cards: Card[];
   assignableLessons: AssignableLesson[];
+  sequences: Sequence[];
 }) {
   const navigate = useNavigate();
   // Invariant (assignCardsToLesson): unassigned cards all share the course's lazy
@@ -246,6 +255,8 @@ function UnassignedBucket({
           onNewCard={() => navigate(`/course/${courseId}/cards/new`)}
           onNewSequence={() => navigate(`/course/${courseId}/sequence/new`)}
           onEditCard={(card) => navigate(`/course/${courseId}/cards/${card.id}/edit`)}
+          sequences={sequences}
+          onEditSequence={(sequenceId) => navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
         />
       )}
     </section>
