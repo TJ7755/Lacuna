@@ -2,7 +2,7 @@
 // Route: /course/:courseId
 // British English throughout.
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
@@ -47,6 +47,8 @@ import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { updateCourse } from '../db/repository';
 import { resolveLessonViewMode } from '../course/lessonViewMode';
 import { formatDate } from '../utils/datetime';
+import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
+import { useToast } from '../components/ui/Toast';
 import type {
   Card,
   Course,
@@ -88,6 +90,7 @@ function courseMeanReviewSeconds(cards: Card[], deckSeconds: Map<string, number>
 export function CoursePath() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const { notify } = useToast();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   // State for the manual practice-node editor modal (see PracticeNodeEditor):
@@ -140,6 +143,18 @@ export function CoursePath() {
     () => (deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : []),
     [deckIds.join(',')],
   );
+  const lessonViewMode = course ? resolveLessonViewMode(course) : 'study';
+  const authoring = lessonViewMode === 'edit';
+  const notifyReorderError = useCallback(
+    (message: string) => notify(message, 'negative'),
+    [notify],
+  );
+  const lessonReorder = useLessonPathReorder({
+    courseId: courseId ?? '',
+    lessons: lessons ?? [],
+    enabled: authoring,
+    onError: notifyReorderError,
+  });
 
   const dataLoaded =
     course !== undefined &&
@@ -383,7 +398,7 @@ export function CoursePath() {
             Question bank
           </Link>
           <LessonViewModeToggle
-            mode={resolveLessonViewMode(course)}
+            mode={lessonViewMode}
             onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
           />
           <Link
@@ -465,6 +480,13 @@ export function CoursePath() {
       {/* Curriculum — the ordered path with practice nodes, unlock rules and
           insertion points. */}
       <h2 className="mb-6 font-display text-2xl">Curriculum</h2>
+      <p id="lesson-path-reorder-instructions" className="sr-only">
+        In Edit mode, hold this lesson and drag it to reorder. Alternatively, press Alt and the
+        up or down arrow key.
+      </p>
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {lessonReorder.announcement}
+      </div>
       {nodes.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-line-strong py-16 text-center">
           <p className="text-sm text-ink-soft">This course has no lessons yet.</p>
@@ -509,6 +531,12 @@ export function CoursePath() {
               }
               onInsertOnLine={(position) =>
                 setEditorState({ mode: 'new', defaultPosition: position })
+              }
+              authoring={authoring}
+              lessonReorder={
+                node.nodeType === 'lesson'
+                  ? lessonReorder.interactionFor(node.lesson.id)
+                  : undefined
               }
             />
           ))}

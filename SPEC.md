@@ -359,6 +359,16 @@ FSRS retention, shown as a ring rather than a bar) and from due-today (a live co
 session would serve right now), computed via `src/course/path.ts`'s `nearestExamDate` and the
 same `fsrs/eligibility.ts` due-card logic the path itself uses.
 
+Curriculum locking controls study progression, not authoring. In Read mode, locked lesson
+nodes remain inert; in Edit mode, they retain their locked appearance and status but open the
+ordinary lesson authoring view. Edit mode also enables direct path reordering: hold a lesson
+node for 350 ms, then drag it to a lesson boundary and release. Moving before the hold cancels
+the gesture, as do Escape and pointer cancellation. `Alt+ArrowUp`/`Alt+ArrowDown` provides the
+keyboard equivalent with live announcements. Reordering persists through the same
+`reorderLessons` repository operation used by Course Settings; checkpoints and automatic
+Practice nodes therefore follow their existing derived placement rules, while manual
+Practice positions and one-way lesson unlock ratchets are deliberately left unchanged.
+
 The course header has one **Study now** action. It examines the next available path node:
 an available lesson opens the lesson-study flow (notes, then Simple-mode cards), while a
 Practice node opens the ordinary Learn Mode engine over that node's practice pool. This

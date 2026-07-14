@@ -63,6 +63,11 @@ the design; the v2 lines-mode slice is not part of this release.
 
 ## Unreleased — Lesson view study/edit mode
 
+- Locked curriculum lessons now remain locked for study but can be opened for
+  authoring while the course is in Edit mode. In Edit mode, lessons can also be
+  reordered directly on the course path by holding and dragging a lesson node;
+  `Alt+ArrowUp`/`Alt+ArrowDown` provides the keyboard equivalent, while the
+  existing Course Settings controls remain available.
 - Split `LessonView` into two modes instead of always showing full notes/cards
   CRUD: **study** (the new default) renders notes read-only and shows a cards
   summary (count, due count, mastery %); **edit** is the previous full-CRUD

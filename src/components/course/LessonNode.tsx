@@ -13,6 +13,7 @@ import { CheckIcon, SparklesIcon } from '../ui/icons';
 import { MiniRing } from '../ui/MiniRing';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import type { LessonReorderInteraction } from './useLessonPathReorder';
 
 /** Hover-revealed lesson stats — see CoursePath's detailForLesson. Mastery is
  *  shown as a small MiniRing alongside its percentage. */
@@ -32,6 +33,10 @@ interface LessonNodeProps {
   lockHint?: string;
   /** When provided, hovering/focusing the circle expands it into a detail squircle. */
   detail?: LessonNodeDetail;
+  /** Allows a curriculum-locked lesson to open for authoring without changing its status. */
+  authoring?: boolean;
+  /** Edit-mode path reordering handlers. Course Settings remains the fallback. */
+  reorder?: LessonReorderInteraction;
 }
 
 /** Per-status styling for the circular node. */
@@ -45,19 +50,28 @@ const circleByStatus: Record<LessonStatus, string> = {
   locked: 'bg-surface text-ink-faint border-line',
 };
 
-export function LessonNode({ lesson, status, onClick, current, lockHint, detail }: LessonNodeProps) {
+export function LessonNode({
+  lesson,
+  status,
+  onClick,
+  current,
+  lockHint,
+  detail,
+  authoring = false,
+  reorder,
+}: LessonNodeProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
   const locked = status === 'locked';
-  const interactive = !locked && onClick !== undefined;
+  const interactive = (!locked || authoring) && onClick !== undefined;
   const isExtension = lesson.isExtension;
   const here = current && status === 'available';
 
   // Hover/focus morphs the circle into a detail squircle (locked nodes stay
   // inert circles — their hint lives in the title tooltip instead).
   const [hovered, setHovered] = useState(false);
-  const expanded = hovered && !locked && detail !== undefined;
+  const expanded = hovered && interactive && detail !== undefined && !reorder?.lifted;
 
   // Replay a short settle-in whenever the status itself changes after mount
   // (most notably locked → available or available → completed), so a lesson
@@ -84,13 +98,29 @@ export function LessonNode({ lesson, status, onClick, current, lockHint, detail 
           shoving the path about; the button itself morphs within it. */}
       <div className="relative h-14 w-14">
         <motion.button
+          ref={reorder?.registerElement}
           key={settleKey}
           type="button"
           onClick={interactive ? onClick : undefined}
           disabled={!interactive}
-          aria-disabled={locked || undefined}
-          aria-label={lesson.name}
-          title={locked ? lockHint : undefined}
+          aria-disabled={(locked && !authoring) || undefined}
+          aria-label={locked && authoring ? `${lesson.name}, locked for study` : lesson.name}
+          aria-describedby={reorder?.enabled ? 'lesson-path-reorder-instructions' : undefined}
+          aria-keyshortcuts={reorder?.enabled ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
+          aria-roledescription={reorder?.enabled ? 'sortable lesson' : undefined}
+          title={
+            locked
+              ? authoring
+                ? 'Locked for study; open to edit'
+                : lockHint
+              : undefined
+          }
+          onPointerDown={reorder?.onPointerDown}
+          onPointerMove={reorder?.onPointerMove}
+          onPointerUp={reorder?.onPointerUp}
+          onPointerCancel={reorder?.onPointerCancel}
+          onClickCapture={reorder?.onClickCapture}
+          onKeyDown={reorder?.onKeyDown}
           onHoverStart={() => setHovered(true)}
           onHoverEnd={() => setHovered(false)}
           onFocus={() => setHovered(true)}
@@ -114,6 +144,8 @@ export function LessonNode({ lesson, status, onClick, current, lockHint, detail 
             'transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2',
             'focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
             interactive ? 'cursor-pointer' : 'cursor-default',
+            reorder?.enabled && 'touch-none select-none',
+            reorder?.lifted && 'z-20 cursor-grabbing opacity-70 shadow-lg shadow-accent/20',
             expanded && 'z-10 shadow-lg shadow-black/10',
             // Extension nodes use a dashed border to read as off-path enrichment.
             isExtension && !locked && 'border-dashed',

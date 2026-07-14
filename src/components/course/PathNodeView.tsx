@@ -12,6 +12,7 @@ import type { PathNode, PracticePathNode } from '../../course/path';
 import { LessonNode, type LessonNodeDetail } from './LessonNode';
 import { CheckpointNode } from './CheckpointNode';
 import { PracticeNode } from './PracticeNode';
+import type { LessonReorderInteraction } from './useLessonPathReorder';
 
 interface PathNodeViewProps {
   node: PathNode;
@@ -26,6 +27,8 @@ interface PathNodeViewProps {
   /** Hover-revealed stats for lesson nodes — see LessonNode's detail squircle. */
   lessonDetail?: LessonNodeDetail;
   practiceProgress?: { fraction: number; completed: boolean };
+  authoring?: boolean;
+  lessonReorder?: LessonReorderInteraction;
 }
 
 /** A neutral placeholder for node types this build does not recognise. */
@@ -55,6 +58,8 @@ export function PathNodeView({
   lockHint,
   lessonDetail,
   practiceProgress,
+  authoring,
+  lessonReorder,
 }: PathNodeViewProps) {
   switch (node.nodeType) {
     case 'lesson':
@@ -65,6 +70,8 @@ export function PathNodeView({
           current={current}
           lockHint={lockHint}
           detail={lessonDetail}
+          authoring={authoring}
+          reorder={lessonReorder}
           onClick={onLessonClick ? () => onLessonClick(node.lesson.id) : undefined}
         />
       );

@@ -14,6 +14,7 @@ import { PathLine } from './PathLine';
 import { PlusIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { formatDate } from '../../utils/datetime';
+import type { LessonReorderInteraction } from './useLessonPathReorder';
 
 /** Whether the line/gap right after `nodes[i]` should offer a practice-node insertion point. */
 export interface LineInsert {
@@ -97,6 +98,8 @@ export function PathNodeWithLine({
   onPracticeClick,
   onPracticeEdit,
   onInsertOnLine,
+  authoring,
+  lessonReorder,
 }: {
   node: PathNode;
   index: number;
@@ -110,6 +113,8 @@ export function PathNodeWithLine({
   onPracticeClick: (node: PracticePathNode) => void;
   onPracticeEdit: (node: PracticePathNode) => void;
   onInsertOnLine: (position: number | undefined) => void;
+  authoring: boolean;
+  lessonReorder?: LessonReorderInteraction;
 }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -120,7 +125,7 @@ export function PathNodeWithLine({
 
   return (
     <motion.div
-      className="flex flex-col items-center"
+      className="relative flex flex-col items-center"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
@@ -142,7 +147,18 @@ export function PathNodeWithLine({
             : undefined
         }
         onPracticeEdit={onPracticeEdit}
+        authoring={authoring}
+        lessonReorder={lessonReorder}
       />
+      {lessonReorder?.dropMarker && (
+        <div
+          aria-hidden="true"
+          className={
+            'pointer-events-none absolute left-1/2 z-30 h-1 w-24 -translate-x-1/2 rounded-full bg-accent shadow-sm shadow-accent/30 ' +
+            (lessonReorder.dropMarker === 'before' ? '-top-3' : 'top-[5.75rem]')
+          }
+        />
+      )}
       {!isLast && (
         <div className="relative">
           <PathLine completed={segmentCompleted} revealDelay={revealDelay + NODE_REVEAL_STEP_MS} />
