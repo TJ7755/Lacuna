@@ -1,13 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import type { Card, LessonCardExposure } from '../db/types';
 import { lessonTaught, nextLessonUnlockCondition } from './unlock';
-import type { Card } from '../db/types';
 
-// ---------------------------------------------------------------------------
-// Fixture helpers (mirroring path.test.ts)
-// ---------------------------------------------------------------------------
-
-function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card {
+function makeCard(id: string): Card {
   return {
+    id,
+    deckId: 'd1',
     type: 'front_back',
     front: '',
     back: '',
@@ -22,88 +20,49 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
     learningSteps: 0,
     history: [],
     createdAt: 0,
-    ...overrides,
   };
 }
 
-// ---------------------------------------------------------------------------
-// lessonTaught
-// ---------------------------------------------------------------------------
+const exposure = (lessonId: string, cardId: string): LessonCardExposure => ({
+  lessonId,
+  cardId,
+  taughtAt: 1,
+});
 
 describe('lessonTaught', () => {
-  it('is taught when there are no cards', () => {
-    expect(lessonTaught([])).toBe(true);
+  it('requires explicit completion for a cardless lesson', () => {
+    expect(lessonTaught('l1', [], [], [])).toBe(false);
+    expect(lessonTaught('l1', [], [], [{ lessonId: 'l1', completedAt: 1 }])).toBe(true);
   });
 
-  it('is not taught when every card is still New', () => {
-    const cards = [
-      makeCard({ id: 'c1', deckId: 'd1', state: 0 }),
-      makeCard({ id: 'c2', deckId: 'd1', state: 0 }),
-    ];
-    expect(lessonTaught(cards)).toBe(false);
-  });
-
-  it('is not taught when only some cards have been served', () => {
-    const cards = [
-      makeCard({ id: 'c1', deckId: 'd1', state: 1 }),
-      makeCard({ id: 'c2', deckId: 'd1', state: 0 }),
-    ];
-    expect(lessonTaught(cards)).toBe(false);
-  });
-
-  it('is taught when every card has been served, regardless of grade/state value', () => {
-    const cards = [
-      makeCard({ id: 'c1', deckId: 'd1', state: 1 }),
-      makeCard({ id: 'c2', deckId: 'd1', state: 3 }),
-    ];
-    expect(lessonTaught(cards)).toBe(true);
+  it('requires an exposure in this lesson for every member card', () => {
+    const cards = [makeCard('a'), makeCard('b')];
+    expect(lessonTaught('l1', cards, [exposure('l1', 'a')], [])).toBe(false);
+    expect(lessonTaught('l1', cards, [exposure('other', 'a'), exposure('l1', 'b')], [])).toBe(
+      false,
+    );
+    expect(lessonTaught('l1', cards, [exposure('l1', 'a'), exposure('l1', 'b')], [])).toBe(true);
   });
 });
 
-// ---------------------------------------------------------------------------
-// nextLessonUnlockCondition
-// ---------------------------------------------------------------------------
-
 describe('nextLessonUnlockCondition', () => {
-  it('gates on lessonTaught alone when no practice node is present', () => {
-    const untaught = [makeCard({ id: 'c1', deckId: 'd1', state: 0 })];
-    const taught = [makeCard({ id: 'c1', deckId: 'd1', state: 2 })];
+  const cards = [makeCard('a')];
+  const taught = [exposure('l1', 'a')];
 
-    expect(nextLessonUnlockCondition(untaught, undefined)).toBe(false);
-    expect(nextLessonUnlockCondition(taught, undefined)).toBe(true);
+  it('gates on lesson teaching alone when no practice node is present', () => {
+    expect(nextLessonUnlockCondition('l1', cards, [], [], undefined)).toBe(false);
+    expect(nextLessonUnlockCondition('l1', cards, taught, [], undefined)).toBe(true);
   });
 
-  it('unlocks when taught and the practice node reached its objective', () => {
-    const taught = [makeCard({ id: 'c1', deckId: 'd1', state: 2 })];
-    expect(nextLessonUnlockCondition(taught, true)).toBe(true);
+  it('also requires completion when a practice node gates the slot', () => {
+    expect(nextLessonUnlockCondition('l1', cards, taught, [], false)).toBe(false);
+    expect(nextLessonUnlockCondition('l1', cards, taught, [], true)).toBe(true);
+    expect(nextLessonUnlockCondition('l1', cards, [], [], true)).toBe(false);
   });
 
-  it('stays locked when taught but the practice node has not reached its objective', () => {
-    const taught = [makeCard({ id: 'c1', deckId: 'd1', state: 2 })];
-    expect(nextLessonUnlockCondition(taught, false)).toBe(false);
-  });
-
-  it('stays locked when untaught even if the practice node reached its objective', () => {
-    const untaught = [makeCard({ id: 'c1', deckId: 'd1', state: 0 })];
-    expect(nextLessonUnlockCondition(untaught, true)).toBe(false);
-  });
-
-  it('treats an all-New lesson as locked regardless of practice state', () => {
-    const allNew = [
-      makeCard({ id: 'c1', deckId: 'd1', state: 0 }),
-      makeCard({ id: 'c2', deckId: 'd1', state: 0 }),
-    ];
-    expect(nextLessonUnlockCondition(allNew, undefined)).toBe(false);
-    expect(nextLessonUnlockCondition(allNew, false)).toBe(false);
-    expect(nextLessonUnlockCondition(allNew, true)).toBe(false);
-  });
-
-  it('unlocks a zero-card lesson when there is no practice node', () => {
-    expect(nextLessonUnlockCondition([], undefined)).toBe(true);
-  });
-
-  it('gates a zero-card lesson on the practice node when one is present', () => {
-    expect(nextLessonUnlockCondition([], true)).toBe(true);
-    expect(nextLessonUnlockCondition([], false)).toBe(false);
+  it('supports a completed cardless lesson', () => {
+    const completions = [{ lessonId: 'l1', completedAt: 1 }];
+    expect(nextLessonUnlockCondition('l1', [], [], completions, undefined)).toBe(true);
+    expect(nextLessonUnlockCondition('l1', [], [], completions, false)).toBe(false);
   });
 });

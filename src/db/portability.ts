@@ -15,9 +15,12 @@ import type {
   Deck,
   Folder,
   Lesson,
+  LessonCardExposure,
   LessonCardLink,
+  LessonCompletion,
   Note,
   PracticeNode,
+  PracticeMilestone,
   Sequence,
   SessionHistoryEntry,
   UserPerformance,
@@ -30,7 +33,7 @@ import {
   referencedAssetHashesInCards,
 } from './assets';
 
-export const BACKUP_VERSION = 5;
+export const BACKUP_VERSION = 6;
 
 /** Gather the whole database into a single backup object. */
 export async function exportDatabase(): Promise<BackupFile> {
@@ -44,7 +47,10 @@ export async function exportDatabase(): Promise<BackupFile> {
     lessons,
     notes,
     lessonCards,
+    lessonCardExposures,
+    lessonCompletions,
     practiceNodes,
+    practiceMilestones,
     courseExamDates,
     sequences,
   ] = await Promise.all([
@@ -57,7 +63,10 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.lessons.toArray(),
     db.notes.toArray(),
     db.lessonCards.toArray(),
+    db.lessonCardExposures.toArray(),
+    db.lessonCompletions.toArray(),
     db.practiceNodes.toArray(),
+    db.practiceMilestones.toArray(),
     db.courseExamDates.toArray(),
     db.sequences.toArray(),
   ]);
@@ -76,7 +85,10 @@ export async function exportDatabase(): Promise<BackupFile> {
     lessons,
     notes,
     lessonCards,
+    lessonCardExposures,
+    lessonCompletions,
     practiceNodes,
+    practiceMilestones,
     courseExamDates,
     sequences,
   };
@@ -154,7 +166,8 @@ export async function importBackup(
   const importedAssets = [
     ...assets.map(backupAssetToImageAsset),
     ...extractedAssets,
-  ];      await db.transaction(
+  ];
+  await db.transaction(
     'rw',
     [
       db.decks,
@@ -166,8 +179,12 @@ export async function importBackup(
       db.courses,
       db.lessons,
       db.notes,
+      db.noteAnnotations,
       db.lessonCards,
+      db.lessonCardExposures,
+      db.lessonCompletions,
       db.practiceNodes,
+      db.practiceMilestones,
       db.courseExamDates,
       db.sequences,
     ],
@@ -187,8 +204,12 @@ export async function importBackup(
           db.courses.clear(),
           db.lessons.clear(),
           db.notes.clear(),
+          db.noteAnnotations.clear(),
           db.lessonCards.clear(),
+          db.lessonCardExposures.clear(),
+          db.lessonCompletions.clear(),
           db.practiceNodes.clear(),
+          db.practiceMilestones.clear(),
           db.courseExamDates.clear(),
           db.sequences.clear(),
         ]);
@@ -217,8 +238,17 @@ export async function importBackup(
         if (backup.lessonCards && backup.lessonCards.length > 0) {
           await db.lessonCards.bulkAdd(backup.lessonCards);
         }
+        if (backup.lessonCardExposures && backup.lessonCardExposures.length > 0) {
+          await db.lessonCardExposures.bulkAdd(backup.lessonCardExposures);
+        }
+        if (backup.lessonCompletions && backup.lessonCompletions.length > 0) {
+          await db.lessonCompletions.bulkAdd(backup.lessonCompletions);
+        }
         if (backup.practiceNodes && backup.practiceNodes.length > 0) {
           await db.practiceNodes.bulkAdd(backup.practiceNodes);
+        }
+        if (backup.practiceMilestones && backup.practiceMilestones.length > 0) {
+          await db.practiceMilestones.bulkAdd(backup.practiceMilestones);
         }
         if (backup.courseExamDates && backup.courseExamDates.length > 0) {
           await db.courseExamDates.bulkAdd(backup.courseExamDates);
@@ -348,6 +378,35 @@ export async function importBackup(
         await db.lessonCards.bulkPut(mergedLessonCards);
       }
 
+      if (backup.lessonCardExposures && backup.lessonCardExposures.length > 0) {
+        const existingExposures = new Map(
+          (await db.lessonCardExposures.toArray()).map((exposure) => [
+            `${exposure.lessonId}\0${exposure.cardId}`,
+            exposure,
+          ]),
+        );
+        const mergedExposures: LessonCardExposure[] = backup.lessonCardExposures.map(
+          (incoming) => {
+            const existing = existingExposures.get(`${incoming.lessonId}\0${incoming.cardId}`);
+            if (!existing) return incoming;
+            return incoming.taughtAt < existing.taughtAt ? incoming : existing;
+          },
+        );
+        await db.lessonCardExposures.bulkPut(mergedExposures);
+      }
+
+      if (backup.lessonCompletions && backup.lessonCompletions.length > 0) {
+        const existingCompletions = new Map(
+          (await db.lessonCompletions.toArray()).map((completion) => [completion.lessonId, completion]),
+        );
+        const mergedCompletions: LessonCompletion[] = backup.lessonCompletions.map((incoming) => {
+          const existing = existingCompletions.get(incoming.lessonId);
+          if (!existing) return incoming;
+          return incoming.completedAt < existing.completedAt ? incoming : existing;
+        });
+        await db.lessonCompletions.bulkPut(mergedCompletions);
+      }
+
       if (backup.practiceNodes && backup.practiceNodes.length > 0) {
         const existingPracticeNodes = new Map(
           (await db.practiceNodes.toArray()).map((p) => [p.id, p]),
@@ -364,6 +423,18 @@ export async function importBackup(
           }
         }
         await db.practiceNodes.bulkPut(mergedPracticeNodes);
+      }
+
+      if (backup.practiceMilestones && backup.practiceMilestones.length > 0) {
+        const existingMilestones = new Map(
+          (await db.practiceMilestones.toArray()).map((milestone) => [milestone.nodeKey, milestone]),
+        );
+        const mergedMilestones: PracticeMilestone[] = backup.practiceMilestones.map((incoming) => {
+          const existing = existingMilestones.get(incoming.nodeKey);
+          if (!existing) return incoming;
+          return incoming.updatedAt > existing.updatedAt ? incoming : existing;
+        });
+        await db.practiceMilestones.bulkPut(mergedMilestones);
       }
 
       if (backup.courseExamDates && backup.courseExamDates.length > 0) {

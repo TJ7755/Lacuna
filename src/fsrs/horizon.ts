@@ -14,7 +14,8 @@
 // same objective) survives the exam passing.
 
 import { MS_PER_DAY } from './params';
-import type { SchedulerConfig } from '../db/types';
+import { resolveCardExamDate, type ExamDateContext } from './examDate';
+import type { Card, SchedulerConfig } from '../db/types';
 
 /**
  * How many days ahead a passed-exam deck schedules against when the user keeps
@@ -38,4 +39,22 @@ export function examHasPassed(deck: SchedulerConfig, now: number = Date.now()): 
 export function schedulingHorizon(deck: SchedulerConfig, now: number = Date.now()): number {
   if (deck.examDate >= now) return deck.examDate;
   return now + MAINTENANCE_HORIZON_DAYS * MS_PER_DAY;
+}
+
+/**
+ * The scheduling horizon for one card. Course callers may provide an exam-date
+ * context so lesson overrides and applicable checkpoints determine the target;
+ * legacy deck callers omit it and retain the deck-wide horizon.
+ */
+export function cardSchedulingHorizon(
+  card: Card,
+  deck: SchedulerConfig,
+  examDateContext?: ExamDateContext,
+  now: number = Date.now(),
+): number {
+  if (!examDateContext) return schedulingHorizon(deck, now);
+  const examDate = resolveCardExamDate(card, examDateContext, now);
+  return examDate >= now
+    ? examDate
+    : now + MAINTENANCE_HORIZON_DAYS * MS_PER_DAY;
 }

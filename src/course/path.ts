@@ -7,9 +7,19 @@
 //
 // British English throughout.
 
-import type { Card, Course, CourseExamDate, Lesson, PracticeNode } from '../db/types';
+import type {
+  Card,
+  Course,
+  CourseExamDate,
+  Lesson,
+  LessonCardExposure,
+  LessonCompletion,
+  PracticeMilestone,
+  PracticeNode,
+} from '../db/types';
 import { MS_PER_DAY } from '../fsrs/params';
 import { shouldInsertPractice } from '../fsrs/practice';
+import { practiceNodeKey } from './studyPools';
 
 // ---------------------------------------------------------------------------
 // Node type registry (addendum K).
@@ -19,7 +29,12 @@ import { shouldInsertPractice } from '../fsrs/practice';
 // ---------------------------------------------------------------------------
 
 /** The set of node types this build knows how to render. */
-export const KNOWN_NODE_TYPES = ['lesson', 'checkpoint', 'practice-auto', 'practice-manual'] as const;
+export const KNOWN_NODE_TYPES = [
+  'lesson',
+  'checkpoint',
+  'practice-auto',
+  'practice-manual',
+] as const;
 
 // ---------------------------------------------------------------------------
 // View-model types
@@ -71,6 +86,10 @@ export interface PracticePathNode {
    * precedes every lesson (mirrors CheckpointPathNode.afterLessonId).
    */
   afterLessonId: string | null;
+  /** Stable persistence identity; auto keys do not depend on insertion sequence. */
+  nodeKey: string;
+  /** Last persisted milestone measurement, when one exists for this node. */
+  milestone?: PracticeMilestone;
 }
 
 /** A discriminated union of every path-node view model this build defines. */
@@ -199,30 +218,47 @@ export function isLessonUnlocked(
 // ---------------------------------------------------------------------------
 
 /**
- * Derives the display status of a lesson from its unlock state and card history.
+ * Derives the display status of a lesson from lesson-scoped teaching progress.
  *
  *  - `locked`: the lesson is not yet unlocked.
- *  - `completed`: unlocked, and every card in the lesson has been served at
- *    least once (FSRS state moved off `New` = 0), regardless of grade.
+ *  - `completed`: unlocked, and every member card has an exposure for this
+ *    lesson, or a cardless lesson has an explicit completion record.
  *  - `available`: unlocked but not yet completed.
  *
- * A lesson with **zero cards** returns `available`, not `completed` — an empty
- * lesson has nothing to complete.
- *
- * `lessonCards` should contain only the primary-lesson cards for the specific
- * lesson being evaluated. The caller is responsible for filtering.
+ * `lessonCards` must include both primary cards and explicitly linked cards.
  */
 export function lessonStatus(
   unlocked: boolean,
+  lessonId: string,
   lessonCards: Card[],
+  exposures: LessonCardExposure[],
+  completions: LessonCompletion[],
 ): LessonStatus {
   if (!unlocked) return 'locked';
-  // Zero cards: the lesson has no material yet; show as available.
-  if (lessonCards.length === 0) return 'available';
-  // A card is 'served' when its FSRS state is no longer New (state !== 0).
-  const allServed = lessonCards.every((c) => c.state !== 0);
-  return allServed ? 'completed' : 'available';
+  if (lessonCards.length === 0) {
+    return completions.some((completion) => completion.lessonId === lessonId)
+      ? 'completed'
+      : 'available';
+  }
+  const exposedIds = new Set(
+    exposures
+      .filter((exposure) => exposure.lessonId === lessonId)
+      .map((exposure) => exposure.cardId),
+  );
+  return lessonCards.every((card) => exposedIds.has(card.id)) ? 'completed' : 'available';
 }
+
+export interface PathProgress {
+  exposures: LessonCardExposure[];
+  lessonCompletions: LessonCompletion[];
+  practiceMilestones: PracticeMilestone[];
+}
+
+const EMPTY_PATH_PROGRESS: PathProgress = {
+  exposures: [],
+  lessonCompletions: [],
+  practiceMilestones: [],
+};
 
 /**
  * Finds the index, within `sortedLessons` (already sorted ascending by
@@ -298,14 +334,13 @@ export function buildPath(
   dueCardCount: number = 0,
   meanReviewSeconds: number = 0,
   now: number = Date.now(),
+  progress: PathProgress = EMPTY_PATH_PROGRESS,
 ): PathNode[] {
   const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
 
   // Map lessonId → orderIndex for fast checkpoint-placement lookups.
-  const orderByLessonId = new Map<string, number>(
-    sorted.map((l) => [l.id, l.orderIndex]),
-  );
+  const orderByLessonId = new Map<string, number>(sorted.map((l) => [l.id, l.orderIndex]));
 
   // Build lesson nodes in path order.
   const lessonNodes: LessonPathNode[] = sorted.map((lesson) => {
@@ -315,7 +350,13 @@ export function buildPath(
       id: lesson.id,
       nodeType: 'lesson',
       lesson,
-      status: lessonStatus(unlocked, cards),
+      status: lessonStatus(
+        unlocked,
+        lesson.id,
+        cards,
+        progress.exposures,
+        progress.lessonCompletions,
+      ),
     };
   });
 
@@ -363,6 +404,7 @@ export function buildPath(
     .map((pn) => {
       const afterIndex = lessonIndexAtOrBeforePosition(sorted, pn.position);
       const afterLesson = lessonNodes[afterIndex];
+      const nodeKey = practiceNodeKey(course.id, pn, afterLesson?.lesson.id ?? null);
       return {
         afterIndex,
         node: {
@@ -370,6 +412,8 @@ export function buildPath(
           nodeType: 'practice-manual',
           practiceNode: pn,
           afterLessonId: afterLesson?.lesson.id ?? null,
+          nodeKey,
+          milestone: progress.practiceMilestones.find((milestone) => milestone.nodeKey === nodeKey),
         },
       };
     });
@@ -394,7 +438,6 @@ export function buildPath(
     const resetIndices = new Set(manualPlacements.map((p) => p.afterIndex));
     let lessonsSinceLastPractice = 0;
     let volumeTriggerSuppressed = false;
-    let autoSeq = 0;
     for (let i = 0; i < lessonNodes.length; i++) {
       lessonsSinceLastPractice++;
       if (resetIndices.has(i)) {
@@ -405,14 +448,26 @@ export function buildPath(
       const gapElapsed = lessonsSinceLastPractice >= course.practiceMaxGap;
       const insert = volumeTriggerSuppressed
         ? gapElapsed
-        : shouldInsertPractice(course, dueCardCount, lessonsSinceLastPractice, meanReviewSeconds, now);
+        : shouldInsertPractice(
+            course,
+            dueCardCount,
+            lessonsSinceLastPractice,
+            meanReviewSeconds,
+            now,
+          );
       if (insert) {
+        const afterLessonId = lessonNodes[i].lesson.id;
+        const nodeKey = practiceNodeKey(course.id, undefined, afterLessonId);
         autoPlacements.push({
           afterIndex: i,
           node: {
-            id: `practice-auto-${lessonNodes[i].lesson.id}-${autoSeq++}`,
+            id: nodeKey,
             nodeType: 'practice-auto',
-            afterLessonId: lessonNodes[i].lesson.id,
+            afterLessonId,
+            nodeKey,
+            milestone: progress.practiceMilestones.find(
+              (milestone) => milestone.nodeKey === nodeKey,
+            ),
           },
         });
         lessonsSinceLastPractice = 0;
@@ -424,11 +479,7 @@ export function buildPath(
   // Sort placements so we can weave them in a single forward pass. Checkpoints,
   // manual, then auto placements are pushed in that order for a stable tie-break
   // when multiple nodes share a slot (Array.prototype.sort is stable).
-  const placements: Placement[] = [
-    ...checkpointPlacements,
-    ...manualPlacements,
-    ...autoPlacements,
-  ];
+  const placements: Placement[] = [...checkpointPlacements, ...manualPlacements, ...autoPlacements];
   placements.sort((a, b) => a.afterIndex - b.afterIndex);
 
   // Weave lesson, checkpoint and practice nodes together.

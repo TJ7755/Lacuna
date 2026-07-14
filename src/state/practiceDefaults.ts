@@ -17,10 +17,10 @@ export interface PracticeDefaults {
 
 const FALLBACK: PracticeDefaults = {
   autoPractice: true,
-  practiceThresholdMinutesFar: 12,
-  practiceThresholdMinutesNear: 6,
+  practiceThresholdMinutesFar: 8,
+  practiceThresholdMinutesNear: 4,
   practiceUrgentWindowDays: 7,
-  practiceMaxGap: 3,
+  practiceMaxGap: 2,
 };
 
 export function readPracticeDefaults(): PracticeDefaults {

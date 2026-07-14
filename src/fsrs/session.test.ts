@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Deck, SchedulerConfig } from '../db/types';
-import { defaultFsrsParameters } from './params';
+import { defaultFsrsParameters, MS_PER_DAY } from './params';
 import {
   makeSessionContext,
   selectNext,
@@ -82,6 +82,69 @@ describe('multi-deck session normalisation', () => {
 });
 
 describe('course/lesson-scoped sessions', () => {
+  it('uses a course exam-date context for scoring, completion and progress', () => {
+    const c = { ...course('course-1', 7), examObjective: 'securedTopics' as const };
+    const near = card('near', 'shadow-deck', {
+      courseId: c.id,
+      primaryLessonId: 'near-lesson',
+      stability: 10,
+      difficulty: 5,
+      lastReviewed: NOW,
+      reps: 1,
+      state: 2,
+    });
+    const far = card('far', 'shadow-deck', {
+      courseId: c.id,
+      primaryLessonId: 'far-lesson',
+      stability: 10,
+      difficulty: 5,
+      lastReviewed: NOW,
+      reps: 1,
+      state: 2,
+    });
+    const examDateContext = {
+      courseExamDate: c.examDate,
+      lessonsById: new Map([
+        [
+          'near-lesson',
+          {
+            id: 'near-lesson',
+            courseId: c.id,
+            name: 'Near',
+            orderIndex: 0,
+            createdAt: NOW,
+            isExtension: false,
+            examDate: NOW + 2 * MS_PER_DAY,
+          },
+        ],
+        [
+          'far-lesson',
+          {
+            id: 'far-lesson',
+            courseId: c.id,
+            name: 'Far',
+            orderIndex: 1,
+            createdAt: NOW,
+            isExtension: false,
+            examDate: NOW + 30 * MS_PER_DAY,
+          },
+        ],
+      ]),
+      courseExamDates: [],
+    };
+    const unit: SessionUnit = {
+      config: c,
+      scope: { kind: 'course', courseId: c.id },
+      examDateContext,
+    };
+    const ctx = makeSessionContext([unit]);
+
+    expect(selectNext([near, far], ctx, new Map(), NOW)?.id).toBe('far');
+    expect(sessionComplete([near], ctx, NOW)).toBe(true);
+    expect(sessionComplete([far], ctx, NOW)).toBe(false);
+    expect(sessionProgress([near, far], ctx, NOW)).toBe(0.5);
+  });
+
   it('course scope serves cards by courseId regardless of their backing shadow deck', () => {
     const c = course('course-1', 10);
     const unit: SessionUnit = { config: c, scope: { kind: 'course', courseId: c.id } };

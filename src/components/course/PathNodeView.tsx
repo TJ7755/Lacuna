@@ -25,6 +25,7 @@ interface PathNodeViewProps {
   lockHint?: string;
   /** Hover-revealed stats for lesson nodes — see LessonNode's detail squircle. */
   lessonDetail?: LessonNodeDetail;
+  practiceProgress?: { fraction: number; completed: boolean };
 }
 
 /** A neutral placeholder for node types this build does not recognise. */
@@ -53,6 +54,7 @@ export function PathNodeView({
   current,
   lockHint,
   lessonDetail,
+  practiceProgress,
 }: PathNodeViewProps) {
   switch (node.nodeType) {
     case 'lesson':
@@ -63,9 +65,7 @@ export function PathNodeView({
           current={current}
           lockHint={lockHint}
           detail={lessonDetail}
-          onClick={
-            onLessonClick ? () => onLessonClick(node.lesson.id) : undefined
-          }
+          onClick={onLessonClick ? () => onLessonClick(node.lesson.id) : undefined}
         />
       );
     case 'checkpoint':
@@ -76,6 +76,7 @@ export function PathNodeView({
         <PracticeNode
           node={node}
           onClick={onPracticeClick}
+          progress={practiceProgress}
           onEdit={
             node.nodeType === 'practice-manual' && onPracticeEdit
               ? () => onPracticeEdit(node)

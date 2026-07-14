@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
+import remarkBreaks from 'remark-breaks';
 import rehypeKatex from 'rehype-katex';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
@@ -30,7 +31,10 @@ interface MarkdownViewProps {
 
 // Stable plugin references so the unified pipeline isn't rebuilt on every call.
 type MarkdownProps = ComponentProps<typeof ReactMarkdown>;
-const REMARK_PLUGINS: MarkdownProps['remarkPlugins'] = [remarkGfm, remarkMath];
+// remarkBreaks turns single newlines into hard line breaks (<br>) instead of the
+// CommonMark default of merging them into the same line — this matches how users
+// expect notes and cards to render when they press Enter without a blank line.
+const REMARK_PLUGINS: MarkdownProps['remarkPlugins'] = [remarkGfm, remarkMath, remarkBreaks];
 
 /** Restricted schema that only allows the specific className patterns needed by
  *  remark-math ($...$ markers) and fenced code blocks. KaTeX and highlight.js

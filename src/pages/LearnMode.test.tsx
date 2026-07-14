@@ -10,6 +10,7 @@ import {
   createLessonCard,
   createPracticeNode,
   linkCardToLesson,
+  upsertLessonCardExposure,
 } from '../db/repository';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
@@ -41,6 +42,10 @@ async function answerYes() {
   fireEvent.click(await screen.findByRole('button', { name: /^yes$/i }));
 }
 
+async function continueFromNotes() {
+  fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
+}
+
 describe('LearnMode course/lesson scope', () => {
   beforeEach(async () => {
     await Promise.all([
@@ -51,40 +56,42 @@ describe('LearnMode course/lesson scope', () => {
       db.sessionHistory.clear(),
       db.userPerformance.clear(),
       db.lessonCards.clear(),
+      db.lessonCardExposures.clear(),
+      db.lessonCompletions.clear(),
       db.practiceNodes.clear(),
+      db.practiceMilestones.clear(),
+      db.noteAnnotations.clear(),
     ]);
     localStorage.clear();
   });
 
-  it('studies a lesson session over its new cards, recorded against the course', async () => {
+  it('teaches a lesson in Simple mode and records only lesson-scoped exposure', async () => {
     const course = await createCourse('Chemistry');
     const lesson = await createLesson(course.id, 'Atomic structure');
     await createLessonCard(course.id, lesson.id, 'front_back', 'Q1', 'A1');
 
     render(
       <ThemeProvider>
-      <ToastProvider>
-        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-          <Routes>
-            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
       </ThemeProvider>,
     );
 
     // Header shows the lesson's own name (not the course name).
-    expect(await screen.findByText(/Atomic structure/)).toBeInTheDocument();
-
+    expect(await screen.findByRole('heading', { name: 'Atomic structure' })).toBeInTheDocument();
+    await continueFromNotes();
     await answerYes();
 
     await waitFor(async () => {
-      const updatedCourse = await db.courses.get(course.id);
-      expect(updatedCourse?.lastInteractedAt).toBeDefined();
+      expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(1);
     });
-    // Course-keyed review: sessionHistory carries courseId, not just deckId.
-    const history = await db.sessionHistory.toArray();
-    expect(history.some((h) => h.courseId === course.id)).toBe(true);
+    expect(await db.sessionHistory.count()).toBe(0);
+    expect((await db.cards.toArray())[0].state).toBe(0);
   });
 
   it('ratchets the next lesson unlock under semi-linear mode once the studied lesson is taught', async () => {
@@ -97,17 +104,18 @@ describe('LearnMode course/lesson scope', () => {
 
     render(
       <ThemeProvider>
-      <ToastProvider>
-        <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
-          <Routes>
-            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
       </ThemeProvider>,
     );
 
-    await screen.findByText(/Cells/);
+    await screen.findByRole('heading', { name: 'Cells' });
+    await continueFromNotes();
     await answerYes();
 
     await waitFor(async () => {
@@ -121,26 +129,30 @@ describe('LearnMode course/lesson scope', () => {
     const lesson2 = await createLesson(course.id, 'Dynamics');
     await createLessonCard(course.id, lesson1.id, 'front_back', 'Q1', 'A1');
     // A manual practice node placed right after lesson1 (orderIndex 0) gates the slot.
-    await createPracticeNode(course.id, { type: 'manual', name: 'Checkpoint practice', position: 0 });
+    await createPracticeNode(course.id, {
+      type: 'manual',
+      name: 'Checkpoint practice',
+      position: 0,
+    });
 
     render(
       <ThemeProvider>
-      <ToastProvider>
-        <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
-          <Routes>
-            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
       </ThemeProvider>,
     );
 
-    await screen.findByText(/Kinematics/);
+    await screen.findByRole('heading', { name: 'Kinematics' });
+    await continueFromNotes();
     await answerYes();
 
     await waitFor(async () => {
-      const updatedCourse = await db.courses.get(course.id);
-      expect(updatedCourse?.lastInteractedAt).toBeDefined();
+      expect(await db.lessonCardExposures.where('lessonId').equals(lesson1.id).count()).toBe(1);
     });
     // Give any (incorrect) ratchet write a chance to land before asserting it didn't.
     await new Promise((r) => setTimeout(r, 50));
@@ -151,103 +163,134 @@ describe('LearnMode course/lesson scope', () => {
     const course = await createCourse('Maths');
     const lessonA = await createLesson(course.id, 'Algebra');
     const lessonB = await createLesson(course.id, 'Geometry');
-    const card = await createLessonCard(course.id, lessonA.id, 'front_back', 'Shared Q', 'Shared A');
+    const card = await createLessonCard(
+      course.id,
+      lessonA.id,
+      'front_back',
+      'Shared Q',
+      'Shared A',
+    );
     await linkCardToLesson(lessonB.id, card.id);
 
     render(
       <ThemeProvider>
-      <ToastProvider>
-        <MemoryRouter initialEntries={[`/lesson/${lessonB.id}/learn`]}>
-          <Routes>
-            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lessonB.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
       </ThemeProvider>,
     );
 
+    await continueFromNotes();
     expect(await screen.findByText(/Shared Q/)).toBeInTheDocument();
   });
 
   it('excludes already-reviewed (non-new) cards from a lesson session', async () => {
     const course = await createCourse('English');
     const lesson = await createLesson(course.id, 'Poetry');
-    const reviewedCard = await createLessonCard(course.id, lesson.id, 'front_back', 'Reviewed Q', 'A');
+    const reviewedCard = await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'Reviewed Q',
+      'A',
+    );
     await db.cards.update(reviewedCard.id, { state: 1 });
+    await upsertLessonCardExposure(lesson.id, reviewedCard.id);
     await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
 
     render(
       <ThemeProvider>
-      <ToastProvider>
-        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-          <Routes>
-            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
       </ThemeProvider>,
     );
 
+    await continueFromNotes();
     expect(await screen.findByText(/New Q/)).toBeInTheDocument();
     expect(screen.queryByText(/Reviewed Q/)).not.toBeInTheDocument();
   });
 
-  it("studies only due cards when the lesson's session filter is 'due'", async () => {
+  it('ignores the legacy due filter because lessons teach every unexposed member', async () => {
     const course = await createCourse('History');
     const lesson = await createLesson(course.id, 'Empires', { sessionFilter: 'due' });
     const dueCard = await createLessonCard(course.id, lesson.id, 'front_back', 'Due Q', 'A');
     await db.cards.update(dueCard.id, { state: 1, due: Date.now() - 1000 });
-    const notYetDueCard = await createLessonCard(course.id, lesson.id, 'front_back', 'Not Due Q', 'A');
+    const notYetDueCard = await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'Not Due Q',
+      'A',
+    );
     await db.cards.update(notYetDueCard.id, { state: 1, due: Date.now() + 1000 * 60 * 60 * 24 });
     await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
 
     render(
       <ThemeProvider>
-      <ToastProvider>
-        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-          <Routes>
-            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
       </ThemeProvider>,
     );
 
-    expect(await screen.findByText(/Due Q/)).toBeInTheDocument();
-    expect(screen.queryByText(/Not Due Q/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/New Q/)).not.toBeInTheDocument();
+    await continueFromNotes();
+    const seen = new Set<string>();
+    for (let index = 0; index < 3; index++) {
+      const card = await screen.findByText(/^(Due Q|Not Due Q|New Q)$/);
+      seen.add(card.textContent ?? '');
+      if (index < 2) await answerYes();
+    }
+    expect(seen).toEqual(new Set(['Due Q', 'Not Due Q', 'New Q']));
   });
 
-  it("studies both new and due cards when the lesson's session filter is 'mixed'", async () => {
+  it('ignores the legacy mixed filter and still teaches future-scheduled unexposed cards', async () => {
     const course = await createCourse('Geography');
     const lesson = await createLesson(course.id, 'Rivers', { sessionFilter: 'mixed' });
     const dueCard = await createLessonCard(course.id, lesson.id, 'front_back', 'Due Q', 'A');
     await db.cards.update(dueCard.id, { state: 1, due: Date.now() - 1000 });
-    const notYetDueCard = await createLessonCard(course.id, lesson.id, 'front_back', 'Not Due Q', 'A');
+    const notYetDueCard = await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'Not Due Q',
+      'A',
+    );
     await db.cards.update(notYetDueCard.id, { state: 1, due: Date.now() + 1000 * 60 * 60 * 24 });
     await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
 
     render(
       <ThemeProvider>
-      <ToastProvider>
-        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-          <Routes>
-            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
       </ThemeProvider>,
     );
 
-    // The session serves the due and new cards but never the not-yet-due one.
-    // Drive through the first card and require the other category to follow,
-    // proving BOTH the new card and the due card are in the session's set.
-    const first = await screen.findByText(/^(Due Q|New Q)$/);
-    const other = first.textContent === 'Due Q' ? /^New Q$/ : /^Due Q$/;
-    expect(screen.queryByText(/Not Due Q/)).not.toBeInTheDocument();
-    await answerYes();
-    expect(await screen.findByText(other)).toBeInTheDocument();
-    expect(screen.queryByText(/Not Due Q/)).not.toBeInTheDocument();
+    await continueFromNotes();
+    const seen = new Set<string>();
+    for (let index = 0; index < 3; index++) {
+      const card = await screen.findByText(/^(Due Q|Not Due Q|New Q)$/);
+      seen.add(card.textContent ?? '');
+      if (index < 2) await answerYes();
+    }
+    expect(seen).toEqual(new Set(['Due Q', 'Not Due Q', 'New Q']));
   });
 
   it('sweeps every taught-but-unratcheted lesson pair from one course-scoped completion', async () => {
@@ -256,27 +299,13 @@ describe('LearnMode course/lesson scope', () => {
     const lesson2 = await createLesson(course.id, 'B');
     const lesson3 = await createLesson(course.id, 'C');
     const lesson4 = await createLesson(course.id, 'D');
-    // Both (1,2) and (3,4) are taught-but-unratcheted pairs. lesson1 and lesson3's
-    // cards are marked served with a future due date directly (bypassing a
-    // per-lesson LearnMode session, which would ratchet its own pair immediately)
-    // so both pairs remain unratcheted until the course-scoped sweep below.
-    const farFuture = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    // Both (1,2) and (3,4) are taught-but-unratcheted pairs. Their exposure rows
+    // are inserted directly, bypassing lesson completion so both ratchets remain
+    // pending until the course-scoped Practice completion below.
     const c1 = await createLessonCard(course.id, lesson1.id, 'front_back', 'Q1', 'A1');
-    await db.cards.update(c1.id, {
-      state: 2,
-      stability: 5,
-      difficulty: 5,
-      lastReviewed: Date.now(),
-      due: farFuture,
-    });
+    await upsertLessonCardExposure(lesson1.id, c1.id);
     const c3 = await createLessonCard(course.id, lesson3.id, 'front_back', 'Q3', 'A3');
-    await db.cards.update(c3.id, {
-      state: 2,
-      stability: 5,
-      difficulty: 5,
-      lastReviewed: Date.now(),
-      due: farFuture,
-    });
+    await upsertLessonCardExposure(lesson3.id, c3.id);
     // The course-scoped practice session itself needs a due new card to serve.
     await createLessonCard(course.id, lesson2.id, 'front_back', 'Q2', 'A2');
 
@@ -285,17 +314,16 @@ describe('LearnMode course/lesson scope', () => {
 
     render(
       <ThemeProvider>
-      <ToastProvider>
-        <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
-          <Routes>
-            <Route path="/course/:courseId/learn" element={<LearnMode />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
+            <Routes>
+              <Route path="/course/:courseId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
       </ThemeProvider>,
     );
 
-    await screen.findByText(/Chemistry II/);
     await answerYes();
 
     await waitFor(async () => {
@@ -306,11 +334,7 @@ describe('LearnMode course/lesson scope', () => {
 
   it('never writes unlockedAt under open or linear unlock modes', async () => {
     for (const unlockMode of ['open', 'linear'] as const) {
-      await Promise.all([
-        db.courses.clear(),
-        db.lessons.clear(),
-        db.cards.clear(),
-      ]);
+      await Promise.all([db.courses.clear(), db.lessons.clear(), db.cards.clear()]);
       const course = await createCourse(`Mode ${unlockMode}`, { unlockMode });
       const lesson1 = await createLesson(course.id, 'First');
       const lesson2 = await createLesson(course.id, 'Second');
@@ -318,22 +342,22 @@ describe('LearnMode course/lesson scope', () => {
 
       const { unmount } = render(
         <ThemeProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
+              <Routes>
+                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
         </ThemeProvider>,
       );
 
-      await screen.findByText(/First/);
+      await screen.findByRole('heading', { name: 'First' });
+      await continueFromNotes();
       await answerYes();
 
       await waitFor(async () => {
-        const updatedCourse = await db.courses.get(course.id);
-        expect(updatedCourse?.lastInteractedAt).toBeDefined();
+        expect(await db.lessonCardExposures.where('lessonId').equals(lesson1.id).count()).toBe(1);
       });
       await new Promise((r) => setTimeout(r, 50));
       expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
@@ -344,17 +368,18 @@ describe('LearnMode course/lesson scope', () => {
   it('studies a course-wide practice session over all due course cards', async () => {
     const course = await createCourse('History');
     const lesson = await createLesson(course.id, 'Ancient Rome');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'Q1', 'A1');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q1', 'A1');
+    await upsertLessonCardExposure(lesson.id, card.id);
 
     render(
       <ThemeProvider>
-      <ToastProvider>
-        <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
-          <Routes>
-            <Route path="/course/:courseId/learn" element={<LearnMode />} />
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
+            <Routes>
+              <Route path="/course/:courseId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
       </ThemeProvider>,
     );
 

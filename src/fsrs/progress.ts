@@ -4,8 +4,9 @@
 
 import { rAtExam } from './forwardSim';
 import { decayOf } from './fsrs';
-import { schedulingHorizon } from './horizon';
+import { cardSchedulingHorizon } from './horizon';
 import { MASTERY_R } from './params';
+import type { ExamDateContext } from './examDate';
 import type { Card, SchedulerConfig } from '../db/types';
 
 /** The deck's forgetting-curve decay exponent (= -w20).
@@ -19,12 +20,18 @@ export function masteryFraction(
   cards: Card[],
   deck: SchedulerConfig,
   now: number = Date.now(),
+  examDateContext?: ExamDateContext,
 ): number {
   if (cards.length === 0) return 1;
   const decay = deckDecay(deck);
-  const horizon = schedulingHorizon(deck, now);
   const mastered = cards.filter(
-    (c) => rAtExam(c, horizon, now, decay) >= MASTERY_R,
+    (card) =>
+      rAtExam(
+        card,
+        cardSchedulingHorizon(card, deck, examDateContext, now),
+        now,
+        decay,
+      ) >= MASTERY_R,
   ).length;
   return mastered / cards.length;
 }
@@ -34,12 +41,19 @@ export function averagePredictedRetrievability(
   cards: Card[],
   deck: SchedulerConfig,
   now: number = Date.now(),
+  examDateContext?: ExamDateContext,
 ): number {
   if (cards.length === 0) return 1;
   const decay = deckDecay(deck);
-  const horizon = schedulingHorizon(deck, now);
   const total = cards.reduce(
-    (sum, c) => sum + rAtExam(c, horizon, now, decay),
+    (sum, card) =>
+      sum +
+      rAtExam(
+        card,
+        cardSchedulingHorizon(card, deck, examDateContext, now),
+        now,
+        decay,
+      ),
     0,
   );
   return total / cards.length;

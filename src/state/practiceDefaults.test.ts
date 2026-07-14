@@ -11,10 +11,10 @@ const KEY = 'lacuna.practiceDefaults';
 
 const FALLBACK: PracticeDefaults = {
   autoPractice: true,
-  practiceThresholdMinutesFar: 12,
-  practiceThresholdMinutesNear: 6,
+  practiceThresholdMinutesFar: 8,
+  practiceThresholdMinutesNear: 4,
   practiceUrgentWindowDays: 7,
-  practiceMaxGap: 3,
+  practiceMaxGap: 2,
 };
 
 beforeEach(() => {
@@ -29,6 +29,18 @@ describe('readPracticeDefaults', () => {
   it('returns stored values merged over the fallback', () => {
     localStorage.setItem(KEY, JSON.stringify({ practiceMaxGap: 10 }));
     expect(readPracticeDefaults()).toEqual({ ...FALLBACK, practiceMaxGap: 10 });
+  });
+
+  it('preserves a complete set of previously stored defaults', () => {
+    const stored: PracticeDefaults = {
+      autoPractice: false,
+      practiceThresholdMinutesFar: 12,
+      practiceThresholdMinutesNear: 6,
+      practiceUrgentWindowDays: 14,
+      practiceMaxGap: 3,
+    };
+    localStorage.setItem(KEY, JSON.stringify(stored));
+    expect(readPracticeDefaults()).toEqual(stored);
   });
 
   it('falls back to defaults on invalid JSON', () => {

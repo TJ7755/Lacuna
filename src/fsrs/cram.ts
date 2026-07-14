@@ -17,7 +17,7 @@
 // already-finished cards pushed to the back.
 
 import { rAtExam } from './forwardSim';
-import { schedulingHorizon } from './horizon';
+import { cardSchedulingHorizon } from './horizon';
 import { MASTERY_R } from './params';
 import type { ObjectiveContext } from './objective';
 import type { Card, SchedulerConfig } from '../db/types';
@@ -44,7 +44,7 @@ export function cramScore(
   oc: ObjectiveContext,
   now: number = Date.now(),
 ): number {
-  const horizon = schedulingHorizon(oc.deck, now);
+  const horizon = cardSchedulingHorizon(card, oc.deck, oc.examDateContext, now);
   const rNo = rAtExam(card, horizon, now, oc.ctx.decay);
 
   const finished =

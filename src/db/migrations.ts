@@ -7,7 +7,7 @@
 // migration unit test and also run inside the Dexie upgrade hook (see schema.ts).
 
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import type { Card, Deck } from './types';
+import type { Card, Deck, LessonCardExposure } from './types';
 
 /** A deck as stored before FSRS-6: the new fields may be absent. */
 export type LegacyDeck = Omit<
@@ -84,4 +84,21 @@ export function migrateCardRecord(card: LegacyCard): Card {
     suspended: card.suspended ?? false,
     buriedUntil: card.buriedUntil ?? null,
   };
+}
+
+/**
+ * Preserve pre-v12 lesson completion by exposing reviewed cards in their primary
+ * lesson only. A display link is not evidence that the learner met the card there.
+ */
+export function buildLessonCardExposureBackfill(
+  cards: Pick<Card, 'id' | 'primaryLessonId' | 'state' | 'lastReviewed' | 'createdAt'>[],
+): LessonCardExposure[] {
+  return cards.flatMap((card) => {
+    if (card.state === 0 || typeof card.primaryLessonId !== 'string') return [];
+    return [{
+      lessonId: card.primaryLessonId,
+      cardId: card.id,
+      taughtAt: card.lastReviewed ?? card.createdAt,
+    }];
+  });
 }

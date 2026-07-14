@@ -33,15 +33,27 @@ function RouterWithQuotaWarning() {
 // and pulls no heavy dependencies, so lazy-loading it only added a needless chunk
 // round-trip and Suspense flash when switching tabs.
 const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default: m.LearnMode })));
-const CardEditor = lazy(() => import('./pages/CardEditor').then((m) => ({ default: m.CardEditor })));
+const CardEditor = lazy(() =>
+  import('./pages/CardEditor').then((m) => ({ default: m.CardEditor })),
+);
 const SequenceEditor = lazy(() =>
   import('./pages/SequenceEditor').then((m) => ({ default: m.SequenceEditor })),
 );
-const CourseSettings = lazy(() => import('./pages/CourseSettings').then((m) => ({ default: m.CourseSettings })));
-const CourseAnalytics = lazy(() => import('./pages/CourseAnalytics').then((m) => ({ default: m.CourseAnalytics })));
-const CoursePath = lazy(() => import('./pages/CoursePath').then((m) => ({ default: m.CoursePath })));
-const LessonView = lazy(() => import('./pages/LessonView').then((m) => ({ default: m.LessonView })));
-const QuestionBank = lazy(() => import('./pages/QuestionBank').then((m) => ({ default: m.QuestionBank })));
+const CourseSettings = lazy(() =>
+  import('./pages/CourseSettings').then((m) => ({ default: m.CourseSettings })),
+);
+const CourseAnalytics = lazy(() =>
+  import('./pages/CourseAnalytics').then((m) => ({ default: m.CourseAnalytics })),
+);
+const CoursePath = lazy(() =>
+  import('./pages/CoursePath').then((m) => ({ default: m.CoursePath })),
+);
+const LessonView = lazy(() =>
+  import('./pages/LessonView').then((m) => ({ default: m.LessonView })),
+);
+const QuestionBank = lazy(() =>
+  import('./pages/QuestionBank').then((m) => ({ default: m.QuestionBank })),
+);
 const Welcome = lazy(() => import('./pages/Welcome').then((m) => ({ default: m.Welcome })));
 
 function RouteFallback() {
@@ -195,7 +207,7 @@ const router = createHashRouter([
     ),
   },
   {
-    // A practice session over every due card in the course.
+    // A course Practice session selected by the curricular objective engine.
     path: '/course/:courseId/learn',
     element: (
       <ErrorBoundary label="the Learn session">
@@ -206,7 +218,7 @@ const router = createHashRouter([
     ),
   },
   {
-    // A lesson study session (new cards for that lesson).
+    // A Simple lesson session for cards not yet exposed in that lesson.
     path: '/lesson/:lessonId/learn',
     element: (
       <ErrorBoundary label="the Learn session">

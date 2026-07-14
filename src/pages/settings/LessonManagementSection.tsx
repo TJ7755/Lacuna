@@ -4,18 +4,10 @@ import { AddLessonControl } from '../../components/course/AddLessonControl';
 import { ChevronDownIcon, TrashIcon, EditIcon } from '../../components/ui/icons';
 import { useLessons } from '../../state/useCourseData';
 import { updateLesson, deleteLesson, reorderLessons } from '../../db/repository';
-import type { Lesson } from '../../db/types';
 
 export interface LessonManagementSectionProps {
   courseId: string;
 }
-
-/** Plain-language options for what a lesson's `/learn` session studies. */
-const SESSION_FILTER_OPTIONS: { value: NonNullable<Lesson['sessionFilter']>; label: string; description: string }[] = [
-  { value: 'new', label: 'New material', description: "Cards the student hasn't seen yet" },
-  { value: 'due', label: 'Revision', description: 'Cards the memory schedule says are due' },
-  { value: 'mixed', label: 'Both', description: 'Both new material and due revision' },
-];
 
 /**
  * Course-only lesson management: rename, reorder and delete lessons on the course
@@ -51,12 +43,9 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
   }
 
   async function remove(id: string, name: string) {
-    if (!window.confirm(`Delete '${name}'? Its notes will be removed and its cards unassigned.`)) return;
+    if (!window.confirm(`Delete '${name}'? Its notes will be removed and its cards unassigned.`))
+      return;
     await deleteLesson(id);
-  }
-
-  async function setSessionFilter(id: string, value: NonNullable<Lesson['sessionFilter']>) {
-    await updateLesson(id, { sessionFilter: value === 'new' ? undefined : value });
   }
 
   return (
@@ -115,21 +104,6 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <select
-              value={lesson.sessionFilter ?? 'new'}
-              onChange={(e) =>
-                void setSessionFilter(lesson.id, e.target.value as NonNullable<Lesson['sessionFilter']>)
-              }
-              aria-label={`Session type for ${lesson.name}`}
-              title="What this lesson's study session covers"
-              className="rounded-lg border border-line-strong bg-surface px-2 py-1.5 text-xs text-ink outline-none focus:border-accent"
-            >
-              {SESSION_FILTER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label} — {opt.description}
-                </option>
-              ))}
-            </select>
             <Button
               variant="ghost"
               size="sm"

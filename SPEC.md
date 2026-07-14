@@ -327,7 +327,7 @@ exists in the course UI yet).
 ```
 < All courses                          Question bank   [chart]  [gear]
 Exam 14 Jun 2026, 23:59
-Organic Chemistry
+Organic Chemistry                                      [Study now]
 [path] Lesson 4 of 9   [ring] Mastery 68%   [clock] Due today 12 cards
 
   (o) Lesson 1 -- completed
@@ -336,7 +336,7 @@ Organic Chemistry
    |
   [!] Checkpoint -- exam date marker
    |
-  (o) Practice -- due cards from lessons so far
+  (o) Practice -- unsecured cards from lessons reached so far
    |
   (*) Lesson 4 -- available
    |
@@ -344,9 +344,12 @@ Organic Chemistry
 ```
 
 An ordered path of lesson nodes, checkpoint markers (informational, never block progress)
-and practice nodes (gather due cards from lessons studied so far), built by
-`src/course/path.ts`. A course with exactly one lesson skips the path entirely and renders
-that lesson directly (no one-node path). The header is the shared `CourseHeader` cockpit
+and practice nodes, built by `src/course/path.ts`. Practice gathers cards from lessons
+reached so far whose predicted retrievability remains below the mastery threshold at each
+card's applicable exam horizon; this is not the narrower `card.due` timestamp concept.
+Primary and explicitly linked cards count as lesson members, deduplicated by card id. A
+course with exactly one lesson skips the path entirely and renders that lesson directly
+(no one-node path). The header is the shared `CourseHeader` cockpit
 (`src/components/course/CourseHeader.tsx`, with stat primitives in `CourseHeaderStat.tsx`
 and `MasteryRing.tsx`): exam eyebrow (pulses when the exam is within three days, via the
 `exam-pulse` animation), serif title, and a row of stat blocks each carrying a plain-language
@@ -356,12 +359,31 @@ FSRS retention, shown as a ring rather than a bar) and from due-today (a live co
 session would serve right now), computed via `src/course/path.ts`'s `nearestExamDate` and the
 same `fsrs/eligibility.ts` due-card logic the path itself uses.
 
+The course header has one **Study now** action. It examines the next available path node:
+an available lesson opens the lesson-study flow (notes, then Simple-mode cards), while a
+Practice node opens the ordinary Learn Mode engine over that node's practice pool. This
+dispatcher exists only at course level; lesson rows do not duplicate it. Dynamic analytics
+inside the dispatcher are out of scope. Curricular Practice milestones complete once and are
+then skipped by the dispatcher; after all curricular nodes are complete, Study now provides
+a recurring end-of-course Practice fallback.
+
+Each Practice diamond has a perimeter indicator showing the current secured-card proportion
+across that node's full scope. A separate glow means its persisted milestone is complete.
+These signals are deliberately distinct: current readiness can decay, while completing a
+curricular milestone remains a fact about the learner's path progress.
+
+Lessons are intentionally authored as short teaching passes. Practice is correspondingly
+more frequent, using the existing `practiceMaxGap`, `practiceThresholdMinutesFar` and
+`practiceThresholdMinutesNear` insertion controls rather than another cadence mechanism.
+The fixture-tested defaults are 8 minutes far from the exam, 4 minutes near it and a maximum
+gap of 2 lessons. Existing courses retain their saved values when defaults change.
+
 **Lesson view** (`/course/:courseId/lesson/:lessonId`, `src/pages/LessonView.tsx`):
 
 ```
 < Course path
 Exam 14 Jun 2026, 23:59
-Lesson name                                 [> Study  •3]
+Lesson name
 [ring] Mastery 71%   [clock] Due today 3 cards   3 cards due today.
 ──────────────────────────────────────────
 Notes                                      [+ Add note]
@@ -372,11 +394,8 @@ Cards (12)
 
 The lesson header adopts the same `CourseHeader` cockpit, scoped to the lesson's own cards
 (mastery and due-today only — no curriculum-position stat, since a single lesson has no
-pacing sequence of its own). A prominent "Study" button sits beside the header as the page's
-primary action, carrying a due-count badge and routing to `/lesson/:lessonId/learn`. It stays
-enabled even when nothing is due (the learn route falls back to unseen cards per the lesson's
-`sessionFilter`, so studying ahead is always possible) and disables only when the lesson has
-no cards at all. Notes and cards sit below a divider as a visually quieter section (smaller
+pacing sequence of its own). Study dispatch is course-level rather than duplicated here.
+Notes and cards sit below a divider as a visually quieter section (smaller
 headings, subtle entrance animation respecting `useMotionSpeed`), which renders in one of two
 modes resolved by `src/course/lessonViewMode.ts`:
 
@@ -469,6 +488,38 @@ create/edit/delete flow as a list (§15's Course settings section). Both surface
 `practiceNodeDraft.ts`'s draft helpers. Filters (`CardFilter[]`) are supported in storage
 but intentionally left out of both forms — there is no existing filter-builder UI to reuse.
 
+`LessonCardExposure { lessonId, cardId, taughtAt }` records that one card has been
+introduced successfully in one lesson. The `(lessonId, cardId)` pair is unique. This is
+separate from FSRS memory state because Simple mode is teaching, not a scheduled review, and
+because a linked card may be introduced independently in several lessons. Lesson completion
+and semi-linear unlocking require exposure records for every primary and linked card currently
+included in the lesson. Exposure rows are included in backups and restore points, excluded
+from course share codes, and cascade with their lesson, card or link.
+
+`LessonCompletion { lessonId, completedAt }` records explicit completion of a cardless
+lesson when the learner presses **Continue** after its notes. It is learner progress, so it
+is included in backups and restore points but excluded from course share codes.
+
+`NoteAnnotation { id, noteId, startOffset, endOffset, selectedText, body?, createdAt,
+updatedAt }` stores a text highlight and its optional free-text annotation. Offsets address
+the note's Markdown source; `selectedText` validates the anchor after edits so a stale anchor
+is shown as detached rather than applied to unrelated text. Annotations are deliberately
+device-local: they are excluded from manual exports, automatic restore points, backups and
+course share codes, and are deleted with their note. The first version accepts a selection
+only within one ordinary text block; code, maths, embeds and cross-block selections are
+rejected.
+
+`PracticeMilestone { nodeKey, courseId, scopeVersion, securedCardCount, totalCardCount,
+updatedAt, completedAt? }` stores resumable progress and persistent completion for a manual
+or deterministically keyed automatic Practice node. `scopeVersion` prevents stale completion
+from being applied to a changed card scope. Milestones are included in backups and restore
+points, excluded from course share codes, and are separate from the live readiness value.
+
+Schema **v12** adds `lessonCardExposures`, `lessonCompletions`, `noteAnnotations` and
+`practiceMilestones`. Existing reviewed cards are backfilled only for their primary lesson.
+Linked rows are not backfilled because the old display-only link proves nothing about where
+the card was taught.
+
 ### Sequences — overlapping-cloze sequence learning (schema v11)
 Schema **v11** adds `sequences: 'id, courseId, primaryLessonId, createdAt'` (additive; no
 `upgrade()` needed) and one optional indexed field on `cards`: `sequenceItemId`. A `Sequence`
@@ -544,6 +595,8 @@ sequenceItemId?, due|null, scheduledDays, learningSteps, history[], createdAt`
   `state in {0 New, 1 Learning, 2 Review, 3 Relearning}`.
 - `history[]` is an append-only array of `ReviewLog` (timestamp, grade, responseTimeSec,
   distracted, stability/difficulty before+after, retrievabilityAtReview|null).
+- Teaching state is intentionally absent from `Card`; it is lesson-specific and lives in
+  `LessonCardExposure`.
 
 ### SessionHistoryEntry
 `{ id?, timestamp, deckId, averagePredictedRetrievability }` — written **per answered
@@ -575,7 +628,9 @@ the invisible grader.
   has a fallback (§13).
 - `BackupFile { app:'lacuna', version, exportedAt, decks, cards, assets, sessionHistory,
   userPerformance, folders?, courses?, lessons?, notes?, lessonCards?, practiceNodes?,
-  courseExamDates? }` — the shape of both manual exports and snapshot payloads; `assets`
+  courseExamDates?, lessonCardExposures?, lessonCompletions?, practiceMilestones? }` — the
+  shape of both manual exports and snapshot payloads; `noteAnnotations` is deliberately
+  absent. `assets`
   carries the referenced images. The course-architecture arrays are optional so older
   backups still import cleanly.
 - `AppStateEntry { key, value }` — small persistent app state (e.g. the backup folder
@@ -687,19 +742,41 @@ and the progress-bar value are derived, so they can never disagree.
 Helper copy (`progressNoun`, `progressHeading`, `progressDescription`) phrases the same
 number appropriately ("predicted score" vs "secured").
 
-### The scheduling horizon (`src/fsrs/horizon.ts`)
-Every function above aims cards at a **single horizon date**, read through
-`schedulingHorizon(deck)` rather than `deck.examDate` directly, so the scheduler and
-progress bar stay pinned together even once the exam date moves into the past:
-- while `examDate >= now` -> the horizon **is** `examDate`;
-- once `examDate < now` -> the horizon falls back to a rolling
-  `now + MAINTENANCE_HORIZON_DAYS` (7 days). This is the "keep revising" fallback: it
-  stops `daysRemaining` clamping to 0 (which would make every card read R = 1 and pin
-  the bar to a bogus 100%) and instead has the deck maintain its target retention
-  against a moving horizon.
+### The scheduling horizon (`src/fsrs/horizon.ts`, `src/fsrs/examDate.ts`)
+A card's horizon is resolved **per card**, not shared uniformly across a whole unit,
+because a course can carry several `CourseExamDate` checkpoints (each optionally scoped
+to a subset of lessons) as well as a per-lesson `Lesson.examDate` override.
+`resolveCardExamDate` (`src/fsrs/examDate.ts`) picks the effective exam date for one
+card in strict order:
+1. **Lesson override** — if the card's primary lesson has an `examDate`, use it
+   outright, even if it is in the past and even if a sooner checkpoint exists.
+2. **Nearest applicable future checkpoint** — among the course's `CourseExamDate` rows
+   that apply to the card (respecting `lessonIds` scoping and `excludedCardIds`), the
+   soonest one still `>= now`. A passed checkpoint is ignored, so the next-nearest
+   checkpoint (or the course default) naturally takes over.
+3. **Course default** — the course's own `examDate`.
 
-`urgency` (multi-deck blending, §10) likewise uses the horizon, so a passed exam no
-longer reads as permanently maximally urgent.
+`cardSchedulingHorizon` then applies the same "keep revising" fallback
+`schedulingHorizon` has always had: once the resolved date is in the past, the horizon
+rolls forward to `now + MAINTENANCE_HORIZON_DAYS` (7 days) rather than letting
+`daysRemaining` clamp to 0 (which would read every card as R = 1 and pin the bar to a
+bogus 100%).
+
+Per-card resolution is used wherever a specific card is being scored or counted:
+`scoreCard`/`isObjectiveComplete` (`objective.ts`), `masteryFraction`/
+`averagePredictedRetrievability` (`progress.ts`), and cram's weakest-first ranking
+(`cram.ts`). `ObjectiveContext` carries the resolution context (`examDateCtx`) when
+built for a Course unit (its lessons and `courseExamDates` loaded alongside it); it is
+absent for legacy Deck-scoped/global sessions, which keep resolving against the single
+`deck.examDate` exactly as before, via the plain `schedulingHorizon`.
+
+A few consumers deliberately stay unit-level rather than per-card, because they weight
+or gate a whole unit rather than score one card: `urgency` (multi-deck blending, §10)
+and the auto-practice insertion threshold (`shouldInsertPractice`, `src/fsrs/
+practice.ts`) both still read the coarser `schedulingHorizon`, so a passed exam no
+longer reads as permanently maximally urgent — without claiming the per-lesson
+precision they don't need. The live Course session, path and progress callers supply
+`ExamDateContext`; legacy Deck callers continue to use the unit-level fallback.
 
 ### 8.1 Parameter optimisation (`src/fsrs/optimise.ts`, Web Worker)
 The default weights are a starting point; most of FSRS's efficiency comes from fitting
@@ -762,13 +839,29 @@ when cards are withheld.
   it does **not** change the dashboard denominator, so the deck's exam-day trajectory
   stays honest while a session paces new material.
 
+Course-path study applies two additional, explicit pools:
+
+- **Lesson pool:** cards included in that lesson through either `primaryLessonId` or
+  `LessonCardLink`, deduplicated by card id, for which no `(lessonId, cardId)` exposure
+  exists. FSRS `state` is irrelevant here: a card may be scheduled elsewhere but still be
+  unseen in this lesson.
+- **Practice pool:** available cards belonging to at least one reached (`available` or
+  `completed`) lesson, again including links and deduplicating by card id, which have been
+  exposed in at least one lesson and whose predicted retrievability at their per-card
+  scheduling horizon is below `MASTERY_R`. The exposure requirement prevents Practice from
+  leaking unseen material. A link affects reachability but not horizon resolution, which
+  remains anchored to the card's primary lesson and single shared FSRS memory state.
+
+The existing `isDue`/`dueCards` helpers retain their narrower timestamp-based job for
+"due today" display counts. They do not define Practice eligibility.
+
 ---
 
 ## 10. Learn mode (`src/pages/LearnMode.tsx`, `src/fsrs/session.ts`, `cooldown.ts`)
 
-A Learn session may study a **single deck** or **every deck at once** (the global
-"Today" session). Both run through one engine so ordering and progress stay
-objective-derived.
+A Learn session may study a lesson, a course Practice node, a **single deck**, or **every
+deck at once** (the global "Today" session). FSRS-backed sessions run through one engine so
+ordering and progress stay objective-derived; lesson teaching uses the Simple-mode loop.
 
 ### Session lifecycle
 1. **Load** a static snapshot of the deck(s) and their cards (an optional `?tag=`
@@ -777,6 +870,15 @@ objective-derived.
 2. If there is nothing to study or the objective is already met, go straight to the
    **report**.
 3. Otherwise **serve** cards one at a time until the objective is met or the user exits.
+
+For a lesson selected by **Study now**, the lifecycle starts with its notes in order. The
+learner may highlight source text and attach optional free-text annotations before moving to
+the card loop. Highlights and annotations persist on this device but are excluded from every
+portability format. The card loop then contains only lesson members without an exposure for
+that lesson, including both primary and explicitly linked cards.
+If the lesson has no cards, **Continue** records `LessonCompletion` and advances the path.
+Lesson authoring should favour fewer cards per pass and more lesson units where necessary;
+the aim is lower working-memory load, not less course content.
 
 ### Card selection (`selectNext`)
 - **Single deck:** exactly the per-deck objective order (`sortByObjective`) with
@@ -826,11 +928,13 @@ Two modes, chosen in Settings (default **silent**):
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):
 - **FSRS (default):** the full spaced-repetition scheduler with all memory-state tracking,
   review logging, and objective-driven ordering.
-- **Simple:** an algorithm-free study loop with no FSRS scheduling, no DB writes, and
-  only YES/NO grading. Wrong cards are re-queued at the end of the deck; the session loops
-  until every card has been marked correct. A live pill UI (Wrong / Remaining / Right)
-  updates on every answer. The SessionReport omits the grade-distribution chart since
-  grades are not meaningful in this mode.
+- **Simple:** an algorithm-free study loop with no FSRS scheduling or memory-state write,
+  and only YES/NO grading. Wrong cards are re-queued at the end of the pool; the session
+  loops until every card has been marked correct. In a lesson-scoped session, the first
+  correct answer upserts that lesson's `LessonCardExposure`; it writes no `ReviewLog`,
+  `SessionHistoryEntry`, stability, difficulty, due date or FSRS state. A live pill UI
+  (Wrong / Remaining / Right) updates on every answer. The SessionReport omits the
+  grade-distribution chart since grades are not meaningful in this mode.
 
 ### The invisible timer & grading (`src/fsrs/grading.ts`, silent mode)
 - The response timer **starts on reveal** ("Show answer") and **stops when the answer
@@ -1017,9 +1121,9 @@ ordinary `front_back` cards to the scheduler.
   (recent, ready to study, mastery, exam date, name, or created; §4.3).
 - **Course path** (`/course/:courseId`) is the primary navigation surface within a course:
   an ordered sequence of lesson nodes, checkpoints and practice nodes (§4.3, §14).
-- **Lesson view** (`/course/:courseId/lesson/:lessonId`) is study-first: a prominent
-  "Study this lesson" call-to-action starts a lesson-scoped session, with the lesson's
-  notes and cards stacked in sections below it.
+- **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
+  cards. The course-level **Study now** dispatcher owns session entry and routes to this
+  lesson's notes-first teaching flow when it is the next available path node.
 - **Question bank** (`/course/:courseId/bank`) lists every card in a course in one flat list
   regardless of lesson, sharing `CardList` with the lesson view's card section.
 - **Card list** (`CardList`) supports per-card edit, suspend/flag, and **long-press to
@@ -1142,9 +1246,8 @@ never one person's scheduling progress or review history.
 
 - **What a code contains (current, v2 payload):** course metadata (name, exam objective,
   date created, date due, target retention, new-card cap), its ordered lessons each with
-  their notes and cards (type, front, back, tags), any extra `CourseExamDate` checkpoints,
-  and each lesson's teacher-configured `sessionFilter` (`sf`), when set to `'due'` or
-  `'mixed'` — `'new'` is the default and is omitted from the payload. **Sequences**
+  their notes and cards (type, front, back, tags), and any extra `CourseExamDate`
+  checkpoints. **Sequences**
   (§5) ride along as an additive optional field: each `Sequence` and its `SequenceItem`s
   travel inline, and on import every sequence/item id is remapped fresh alongside its
   generated cards' `sequenceItemId` (including the `::label` suffix for label cards), so a
@@ -1156,7 +1259,12 @@ never one person's scheduling progress or review history.
   deliberately out of scope — a shared course carries only the taught material, not its
   practice-path configuration.
 - **What it omits:** FSRS memory state, review history, and suspended/buried/flag state.
-  Imported cards always start with clean scheduling for their new owner.
+  Imported cards always start with clean scheduling for their new owner. Lesson exposures,
+  cardless-lesson completions and Practice milestones are learner progress and are likewise
+  omitted. Note annotations are device-local and are excluded from share codes as well as
+  every other portability format. Older payloads may still contain the legacy compact `sf`
+  lesson-filter field; it is accepted for import compatibility but does not configure live
+  lesson study.
 - **Legacy v1 payload:** the original shape — a flat list of decks, each becoming its own
   single-lesson course on import — is still read for backward compatibility with codes
   generated before the course model shipped (`next_plan.md` §0.3 keeps this support in
@@ -1349,19 +1457,16 @@ session time limit), `UnlockModeSection` (semi-linear vs linear lesson unlocking
 linear cadence fields), `PracticeSettingsSection` (auto-practice toggle and the four
 threshold/window/gap fields feeding `shouldInsertPractice`, §-linked to
 `src/fsrs/practice.ts`), `ExamDatesSection` (per-course exam-date list),
-`LessonManagementSection` (reorder/rename/delete lessons, plus a per-lesson **session
-type** select — New material / Revision / Both, backed by `Lesson.sessionFilter`; see
-below) and `PracticeNodesSection` (list/create/edit/delete teacher-authored manual
+`LessonManagementSection` (reorder/rename/delete lessons) and `PracticeNodesSection`
+(list/create/edit/delete teacher-authored manual
 practice nodes; see §5's Course architecture section), plus the `OptimisationPanel`
 (§8.1): a per-course on/off override for scheduling optimisation, a review-count gate,
 and an **Optimise now** action that runs in a Web Worker with a progress bar, then shows
 the before/after log loss; applying takes a restore-point snapshot first and **Reset to
 defaults** is always available.
-- **Lesson session filter:** a lesson's `/learn` session defaults to new (unseen) cards
-  only. A teacher can instead set it to **Revision** (only cards `isDue`/`dueCards` say are
-  due, `src/fsrs/eligibility.ts`) or **Both**, per lesson, from `LessonManagementSection`.
-  Un-set (`undefined`) behaves identically to `'new'` and is the default for every
-  existing lesson. Round-trips through v2 share codes as `sf` (§13).
+- **Legacy lesson session filter:** `Lesson.sessionFilter` is retained only so old imports
+  remain readable. It has no settings control and does not alter live lesson study, which
+  always serves unseen lesson members in Simple mode.
 - Once the **exam date has passed** (§8.2), the course offers set-new-date / archive /
   keep-revising.
 - **Danger zone:** course deletion uses the same snapshot + undo-toast pattern as deck

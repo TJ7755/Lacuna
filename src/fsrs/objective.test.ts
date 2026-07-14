@@ -3,6 +3,7 @@ import {
   progressValue,
   scoreCard,
   makeObjectiveContext,
+  isObjectiveComplete,
 } from './objective';
 import { forgettingCurve } from './forwardSim';
 import { defaultFsrsParameters, MASTERY_R, MS_PER_DAY } from './params';
@@ -22,7 +23,7 @@ function makeDeck(objective: ExamObjective): Deck {
   };
 }
 
-function reviewedCard(id: string, stability: number): Card {
+function reviewedCard(id: string, stability: number, overrides: Partial<Card> = {}): Card {
   return {
     id,
     deckId: 'd1',
@@ -40,6 +41,7 @@ function reviewedCard(id: string, stability: number): Card {
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    ...overrides,
   };
 }
 
@@ -107,6 +109,50 @@ describe('objective consistency: the bar matches the objective', () => {
     const secured = progressValue(cards, makeDeck('securedTopics'), 0);
     expect(meanR).not.toBeCloseTo(secured, 2);
   });
+
+  it('uses each card\'s resolved exam horizon when course context is provided', () => {
+    const deck = makeDeck('expectedMarks');
+    const nearDate = 2 * MS_PER_DAY;
+    const farDate = 30 * MS_PER_DAY;
+    const near = reviewedCard('near', 10, { primaryLessonId: 'nearLesson' });
+    const far = reviewedCard('far', 10, { primaryLessonId: 'farLesson' });
+    const examDateContext = {
+      courseExamDate: deck.examDate,
+      lessonsById: new Map([
+        [
+          'nearLesson',
+          {
+            id: 'nearLesson',
+            courseId: 'course1',
+            name: 'Near',
+            orderIndex: 0,
+            createdAt: 0,
+            isExtension: false,
+            examDate: nearDate,
+          },
+        ],
+        [
+          'farLesson',
+          {
+            id: 'farLesson',
+            courseId: 'course1',
+            name: 'Far',
+            orderIndex: 1,
+            createdAt: 0,
+            isExtension: false,
+            examDate: farDate,
+          },
+        ],
+      ]),
+      courseExamDates: [],
+    };
+    const expected =
+      (forgettingCurve(nearDate / MS_PER_DAY, 10, DECAY) +
+        forgettingCurve(farDate / MS_PER_DAY, 10, DECAY)) /
+      2;
+
+    expect(progressValue([near, far], deck, 0, examDateContext)).toBeCloseTo(expected, 12);
+  });
 });
 
 describe('scheduler scoring follows the objective', () => {
@@ -125,5 +171,33 @@ describe('scheduler scoring follows the objective', () => {
     // Already-secured cards score -1 (nothing to gain); securable cards score > 1.
     expect(secScore).toBe(-1);
     expect(lowScore).toBeGreaterThan(1);
+  });
+
+  it('uses resolved card horizons to determine securedTopics completion', () => {
+    const deck = makeDeck('securedTopics');
+    const card = reviewedCard('card', 10, { primaryLessonId: 'lesson1' });
+    const examDateContext = {
+      courseExamDate: deck.examDate,
+      lessonsById: new Map([
+        [
+          'lesson1',
+          {
+            id: 'lesson1',
+            courseId: 'course1',
+            name: 'Lesson',
+            orderIndex: 0,
+            createdAt: 0,
+            isExtension: false,
+            examDate: 30 * MS_PER_DAY,
+          },
+        ],
+      ]),
+      courseExamDates: [],
+    };
+
+    expect(isObjectiveComplete([card], makeObjectiveContext(deck), 0)).toBe(true);
+    expect(
+      isObjectiveComplete([card], makeObjectiveContext(deck, examDateContext), 0),
+    ).toBe(false);
   });
 });

@@ -10,8 +10,12 @@ import type {
   Deck,
   Grade,
   Lesson,
+  LessonCardExposure,
   LessonCardLink,
+  LessonCompletion,
   Note,
+  NoteAnnotation,
+  PracticeMilestone,
   PracticeNode,
   ReviewLog,
   SchedulerConfig,
@@ -83,11 +87,20 @@ export async function updateDeck(id: string, changes: Partial<Deck>): Promise<vo
 export async function deleteDeck(id: string): Promise<void> {
   await db.transaction(
     'rw',
-    db.decks,
-    db.cards,
-    db.sessionHistory,
-    db.userPerformance,
+    [
+      db.decks,
+      db.cards,
+      db.lessonCards,
+      db.lessonCardExposures,
+      db.sessionHistory,
+      db.userPerformance,
+    ],
     async () => {
+      const cardIds = await db.cards.where('deckId').equals(id).primaryKeys();
+      if (cardIds.length > 0) {
+        await db.lessonCards.where('cardId').anyOf(cardIds).delete();
+        await db.lessonCardExposures.where('cardId').anyOf(cardIds).delete();
+      }
       await db.cards.where('deckId').equals(id).delete();
       await db.sessionHistory.where('deckId').equals(id).delete();
       await db.userPerformance.delete(id);
@@ -406,7 +419,17 @@ export async function assignCardsToLesson(
   const deckId = lessonId
     ? await ensureLessonDeck(courseId, lessonId)
     : await ensureCourseBankDeck(courseId);
-  await db.transaction('rw', db.cards, async () => {
+  await db.transaction('rw', db.cards, db.lessonCardExposures, async () => {
+    const cards = await db.cards.where('id').anyOf(ids).toArray();
+    const removedPrimaryExposures = cards
+      .filter(
+        (card) =>
+          typeof card.primaryLessonId === 'string' && card.primaryLessonId !== lessonId,
+      )
+      .map((card) => [card.primaryLessonId as string, card.id] as [string, string]);
+    if (removedPrimaryExposures.length > 0) {
+      await db.lessonCardExposures.bulkDelete(removedPrimaryExposures);
+    }
     await db.cards.where('id').anyOf(ids).modify({ primaryLessonId: lessonId, deckId });
   });
 }
@@ -423,19 +446,38 @@ export async function updateCard(id: string, changes: Partial<Card>): Promise<vo
 }
 
 export async function deleteCards(ids: string[]): Promise<void> {
-  await db.cards.bulkDelete(ids);
+  if (ids.length === 0) return;
+  await db.transaction('rw', db.cards, db.lessonCards, db.lessonCardExposures, async () => {
+    await db.lessonCards.where('cardId').anyOf(ids).delete();
+    await db.lessonCardExposures.where('cardId').anyOf(ids).delete();
+    await db.cards.bulkDelete(ids);
+  });
   scheduleAssetGc();
 }
 
-/** Capture card rows before deletion so the action can be offered with an "Undo". */
-export async function snapshotCards(ids: string[]): Promise<Card[]> {
-  return db.cards.where('id').anyOf(ids).toArray();
+export type CardSnapshot = Card[] & {
+  lessonCards: LessonCardLink[];
+  lessonCardExposures: LessonCardExposure[];
+};
+
+/** Capture card rows and dependent lesson progress before an undoable mutation. */
+export async function snapshotCards(ids: string[]): Promise<CardSnapshot> {
+  const [cards, lessonCards, lessonCardExposures] = await Promise.all([
+    db.cards.where('id').anyOf(ids).toArray(),
+    db.lessonCards.where('cardId').anyOf(ids).toArray(),
+    db.lessonCardExposures.where('cardId').anyOf(ids).toArray(),
+  ]);
+  return Object.assign(cards, { lessonCards, lessonCardExposures });
 }
 
 /** Re-insert previously captured cards (the inverse of deleteCards). */
-export async function restoreCards(cards: Card[]): Promise<void> {
+export async function restoreCards(cards: CardSnapshot): Promise<void> {
   try {
-    await db.cards.bulkPut(cards);
+    await db.transaction('rw', db.cards, db.lessonCards, db.lessonCardExposures, async () => {
+      await db.cards.bulkPut(cards);
+      await db.lessonCards.bulkPut(cards.lessonCards);
+      await db.lessonCardExposures.bulkPut(cards.lessonCardExposures);
+    });
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -820,8 +862,12 @@ export async function deleteCourse(id: string): Promise<void> {
       db.courses,
       db.lessons,
       db.notes,
+      db.noteAnnotations,
       db.lessonCards,
+      db.lessonCardExposures,
+      db.lessonCompletions,
       db.practiceNodes,
+      db.practiceMilestones,
       db.courseExamDates,
       db.cards,
       db.decks,
@@ -831,8 +877,14 @@ export async function deleteCourse(id: string): Promise<void> {
     async () => {
       const lessonIds = await db.lessons.where('courseId').equals(id).primaryKeys();
       if (lessonIds.length > 0) {
+        const noteIds = await db.notes.where('lessonId').anyOf(lessonIds).primaryKeys();
+        if (noteIds.length > 0) {
+          await db.noteAnnotations.where('noteId').anyOf(noteIds).delete();
+        }
         await db.notes.where('lessonId').anyOf(lessonIds).delete();
         await db.lessonCards.where('lessonId').anyOf(lessonIds).delete();
+        await db.lessonCardExposures.where('lessonId').anyOf(lessonIds).delete();
+        await db.lessonCompletions.where('lessonId').anyOf(lessonIds).delete();
       }
       // Every course card has a hidden backing deck (see ensureLessonDeck /
       // ensureCourseBankDeck); nothing else can reference those decks, so they and
@@ -842,6 +894,7 @@ export async function deleteCourse(id: string): Promise<void> {
       ];
       await db.lessons.where('courseId').equals(id).delete();
       await db.practiceNodes.where('courseId').equals(id).delete();
+      await db.practiceMilestones.where('courseId').equals(id).delete();
       await db.courseExamDates.where('courseId').equals(id).delete();
       await db.cards.where('courseId').equals(id).delete();
       if (deckIds.length > 0) {
@@ -868,7 +921,10 @@ export interface CourseSnapshot {
   lessons: Lesson[];
   notes: Note[];
   lessonCards: LessonCardLink[];
+  lessonCardExposures: LessonCardExposure[];
+  lessonCompletions: LessonCompletion[];
   practiceNodes: PracticeNode[];
+  practiceMilestones: PracticeMilestone[];
   courseExamDates: CourseExamDate[];
   cards: Card[];
   decks: Deck[];
@@ -887,9 +943,10 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
   const course = await db.courses.get(id);
   if (!course) return null;
 
-  const [lessons, practiceNodes, courseExamDates, cards, coursePerf] = await Promise.all([
+  const [lessons, practiceNodes, practiceMilestones, courseExamDates, cards, coursePerf] = await Promise.all([
     db.lessons.where('courseId').equals(id).toArray(),
     db.practiceNodes.where('courseId').equals(id).toArray(),
+    db.practiceMilestones.where('courseId').equals(id).toArray(),
     db.courseExamDates.where('courseId').equals(id).toArray(),
     db.cards.where('courseId').equals(id).toArray(),
     db.userPerformance.get(id),
@@ -897,10 +954,12 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
   const lessonIds = lessons.map((l) => l.id);
   const deckIds = [...new Set(cards.map((c) => c.deckId))];
 
-  const [notes, lessonCards, decks, deckSessionHistory, courseSessionHistory, deckPerf] =
+  const [notes, lessonCards, lessonCardExposures, lessonCompletions, decks, deckSessionHistory, courseSessionHistory, deckPerf] =
     await Promise.all([
       lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
       lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+      lessonIds.length > 0 ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray() : [],
+      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
       deckIds.length > 0 ? db.decks.where('id').anyOf(deckIds).toArray() : [],
       deckIds.length > 0 ? db.sessionHistory.where('deckId').anyOf(deckIds).toArray() : [],
       db.sessionHistory.where('courseId').equals(id).toArray(),
@@ -917,7 +976,10 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     lessons,
     notes,
     lessonCards,
+    lessonCardExposures,
+    lessonCompletions,
     practiceNodes,
+    practiceMilestones,
     courseExamDates,
     cards,
     decks,
@@ -936,7 +998,10 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.lessons,
         db.notes,
         db.lessonCards,
+        db.lessonCardExposures,
+        db.lessonCompletions,
         db.practiceNodes,
+        db.practiceMilestones,
         db.courseExamDates,
         db.cards,
         db.decks,
@@ -949,7 +1014,10 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.lessons.bulkPut(snapshot.lessons),
           db.notes.bulkPut(snapshot.notes),
           db.lessonCards.bulkPut(snapshot.lessonCards),
+          db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures),
+          db.lessonCompletions.bulkPut(snapshot.lessonCompletions),
           db.practiceNodes.bulkPut(snapshot.practiceNodes),
+          db.practiceMilestones.bulkPut(snapshot.practiceMilestones),
           db.courseExamDates.bulkPut(snapshot.courseExamDates),
           db.cards.bulkPut(snapshot.cards),
           db.decks.bulkPut(snapshot.decks),
@@ -1026,12 +1094,30 @@ export async function ratchetLessonUnlock(lessonId: string, now: number = Date.n
  * lessons are not renumbered.
  */
 export async function deleteLesson(id: string): Promise<void> {
-  await db.transaction('rw', db.lessons, db.notes, db.lessonCards, db.cards, async () => {
-    await db.notes.where('lessonId').equals(id).delete();
-    await db.lessonCards.where('lessonId').equals(id).delete();
-    await db.cards.where('primaryLessonId').equals(id).modify({ primaryLessonId: null });
-    await db.lessons.delete(id);
-  });
+  await db.transaction(
+    'rw',
+    [
+      db.lessons,
+      db.notes,
+      db.noteAnnotations,
+      db.lessonCards,
+      db.lessonCardExposures,
+      db.lessonCompletions,
+      db.cards,
+    ],
+    async () => {
+      const noteIds = await db.notes.where('lessonId').equals(id).primaryKeys();
+      if (noteIds.length > 0) {
+        await db.noteAnnotations.where('noteId').anyOf(noteIds).delete();
+      }
+      await db.notes.where('lessonId').equals(id).delete();
+      await db.lessonCards.where('lessonId').equals(id).delete();
+      await db.lessonCardExposures.where('lessonId').equals(id).delete();
+      await db.lessonCompletions.delete(id);
+      await db.cards.where('primaryLessonId').equals(id).modify({ primaryLessonId: null });
+      await db.lessons.delete(id);
+    },
+  );
 }
 
 /** All lessons for a course, ordered by orderIndex ascending. */
@@ -1089,7 +1175,10 @@ export async function updateNote(id: string, changes: Partial<Note>): Promise<vo
 }
 
 export async function deleteNote(id: string): Promise<void> {
-  await db.notes.delete(id);
+  await db.transaction('rw', db.notes, db.noteAnnotations, async () => {
+    await db.noteAnnotations.where('noteId').equals(id).delete();
+    await db.notes.delete(id);
+  });
 }
 
 /** All notes for a lesson, ordered by orderIndex ascending. */
@@ -1104,6 +1193,50 @@ export async function reorderNotes(_lessonId: string, orderedNoteIds: string[]):
       await db.notes.update(orderedNoteIds[i], { orderIndex: i });
     }
   });
+}
+
+// ---------------------------------------------------------------------------
+// Device-local note annotations
+// ---------------------------------------------------------------------------
+
+export async function createNoteAnnotation(
+  noteId: string,
+  startOffset: number,
+  endOffset: number,
+  selectedText: string,
+  body?: string,
+): Promise<NoteAnnotation> {
+  if (startOffset < 0 || endOffset <= startOffset) {
+    throw new Error('Annotation offsets must describe a non-empty source range.');
+  }
+  const now = Date.now();
+  const annotation: NoteAnnotation = {
+    id: makeId(),
+    noteId,
+    startOffset,
+    endOffset,
+    selectedText,
+    ...(body?.trim() ? { body: body.trim() } : {}),
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.noteAnnotations.add(annotation);
+  return annotation;
+}
+
+export async function updateNoteAnnotation(
+  id: string,
+  changes: Pick<Partial<NoteAnnotation>, 'body' | 'startOffset' | 'endOffset' | 'selectedText'>,
+): Promise<void> {
+  await db.noteAnnotations.update(id, { ...changes, updatedAt: Date.now() });
+}
+
+export async function deleteNoteAnnotation(id: string): Promise<void> {
+  await db.noteAnnotations.delete(id);
+}
+
+export async function listNoteAnnotations(noteId: string): Promise<NoteAnnotation[]> {
+  return db.noteAnnotations.where('noteId').equals(noteId).sortBy('startOffset');
 }
 
 // ---------------------------------------------------------------------------
@@ -1137,6 +1270,53 @@ export async function linkCardToLesson(lessonId: string, cardId: string): Promis
 
 export async function listLessonCardLinks(lessonId: string): Promise<LessonCardLink[]> {
   return db.lessonCards.where('lessonId').equals(lessonId).toArray();
+}
+
+/** Remove a display link and the teaching progress specific to that link. */
+export async function unlinkCardFromLesson(lessonId: string, cardId: string): Promise<void> {
+  await db.transaction('rw', db.lessonCards, db.lessonCardExposures, async () => {
+    await db.lessonCards
+      .where('lessonId')
+      .equals(lessonId)
+      .filter((link) => link.cardId === cardId)
+      .delete();
+    await db.lessonCardExposures.delete([lessonId, cardId]);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Lesson progress
+// ---------------------------------------------------------------------------
+
+export async function upsertLessonCardExposure(
+  lessonId: string,
+  cardId: string,
+  taughtAt: number = Date.now(),
+): Promise<LessonCardExposure> {
+  const existing = await db.lessonCardExposures.get([lessonId, cardId]);
+  if (existing) return existing;
+  const exposure = { lessonId, cardId, taughtAt };
+  await db.lessonCardExposures.add(exposure);
+  return exposure;
+}
+
+export async function listLessonCardExposures(lessonId: string): Promise<LessonCardExposure[]> {
+  return db.lessonCardExposures.where('lessonId').equals(lessonId).toArray();
+}
+
+export async function markLessonComplete(
+  lessonId: string,
+  completedAt: number = Date.now(),
+): Promise<LessonCompletion> {
+  const existing = await db.lessonCompletions.get(lessonId);
+  if (existing) return existing;
+  const completion = { lessonId, completedAt };
+  await db.lessonCompletions.add(completion);
+  return completion;
+}
+
+export async function getLessonCompletion(lessonId: string): Promise<LessonCompletion | undefined> {
+  return db.lessonCompletions.get(lessonId);
 }
 
 // ---------------------------------------------------------------------------
@@ -1173,11 +1353,53 @@ export async function updatePracticeNode(
 }
 
 export async function deletePracticeNode(id: string): Promise<void> {
-  await db.practiceNodes.delete(id);
+  await db.transaction('rw', db.practiceNodes, db.practiceMilestones, async () => {
+    await db.practiceMilestones.delete(id);
+    await db.practiceNodes.delete(id);
+  });
 }
 
 export async function listPracticeNodes(courseId: string): Promise<PracticeNode[]> {
   return db.practiceNodes.where('courseId').equals(courseId).toArray();
+}
+
+/**
+ * Persist the last measured progress for a path node. Changing scopeVersion
+ * atomically replaces stale progress for an older effective card scope.
+ */
+export async function savePracticeMilestoneProgress(
+  nodeKey: string,
+  courseId: string,
+  scopeVersion: string,
+  securedCardCount: number,
+  totalCardCount: number,
+  completed: boolean = false,
+  now: number = Date.now(),
+): Promise<PracticeMilestone> {
+  const existing = await db.practiceMilestones.get(nodeKey);
+  const sameScope = existing?.scopeVersion === scopeVersion;
+  const milestone: PracticeMilestone = {
+    nodeKey,
+    courseId,
+    scopeVersion,
+    securedCardCount: Math.max(0, Math.min(securedCardCount, totalCardCount)),
+    totalCardCount: Math.max(0, totalCardCount),
+    updatedAt: now,
+    ...((completed || (sameScope && existing.completedAt !== undefined))
+      ? { completedAt: sameScope && existing?.completedAt !== undefined ? existing.completedAt : now }
+      : {}),
+  };
+  await db.practiceMilestones.put(milestone);
+  return milestone;
+}
+
+/** Return progress only when it belongs to the caller's current effective scope. */
+export async function getPracticeMilestone(
+  nodeKey: string,
+  scopeVersion: string,
+): Promise<PracticeMilestone | undefined> {
+  const milestone = await db.practiceMilestones.get(nodeKey);
+  return milestone?.scopeVersion === scopeVersion ? milestone : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -1330,7 +1552,16 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
   try {
     await db.transaction(
       'rw',
-      [db.sequences, db.cards, db.decks, db.userPerformance, db.courses, db.lessons],
+      [
+        db.sequences,
+        db.cards,
+        db.lessonCards,
+        db.lessonCardExposures,
+        db.decks,
+        db.userPerformance,
+        db.courses,
+        db.lessons,
+      ],
       async () => {
         const previous = await db.sequences.get(sequence.id);
         const existingCards = previous ? await cardsForSequence(previous) : [];
@@ -1339,6 +1570,8 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
         await db.sequences.put(sequence);
 
         if (diff.deletes.length > 0) {
+          await db.lessonCards.where('cardId').anyOf(diff.deletes).delete();
+          await db.lessonCardExposures.where('cardId').anyOf(diff.deletes).delete();
           await db.cards.bulkDelete(diff.deletes);
         }
         for (const update of diff.updates) {
@@ -1366,11 +1599,16 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
 
 /** Delete a sequence and every card it generated, in one transaction. */
 export async function deleteSequence(id: string): Promise<void> {
-  await db.transaction('rw', db.sequences, db.cards, async () => {
+  await db.transaction('rw', [db.sequences, db.cards, db.lessonCards, db.lessonCardExposures], async () => {
     const sequence = await db.sequences.get(id);
     if (!sequence) return;
     const keys = sequenceItemKeys(sequence);
     if (keys.length > 0) {
+      const cardIds = await db.cards.where('sequenceItemId').anyOf(keys).primaryKeys();
+      if (cardIds.length > 0) {
+        await db.lessonCards.where('cardId').anyOf(cardIds).delete();
+        await db.lessonCardExposures.where('cardId').anyOf(cardIds).delete();
+      }
       await db.cards.where('sequenceItemId').anyOf(keys).delete();
     }
     await db.sequences.delete(id);
@@ -1387,6 +1625,8 @@ export async function listSequences(courseId: string): Promise<Sequence[]> {
 export interface SequenceSnapshot {
   sequence: Sequence;
   cards: Card[];
+  lessonCards: LessonCardLink[];
+  lessonCardExposures: LessonCardExposure[];
 }
 
 /** Capture a sequence and its generated cards before deletion/regeneration, so the
@@ -1395,15 +1635,24 @@ export async function snapshotSequence(id: string): Promise<SequenceSnapshot | n
   const sequence = await db.sequences.get(id);
   if (!sequence) return null;
   const cards = await cardsForSequence(sequence);
-  return { sequence, cards };
+  const cardIds = cards.map((card) => card.id);
+  const [lessonCards, lessonCardExposures] = cardIds.length > 0
+    ? await Promise.all([
+        db.lessonCards.where('cardId').anyOf(cardIds).toArray(),
+        db.lessonCardExposures.where('cardId').anyOf(cardIds).toArray(),
+      ])
+    : [[], []];
+  return { sequence, cards, lessonCards, lessonCardExposures };
 }
 
 /** Re-insert a previously captured SequenceSnapshot (the inverse of deleteSequence/updateSequence). */
 export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void> {
   try {
-    await db.transaction('rw', db.sequences, db.cards, async () => {
+    await db.transaction('rw', [db.sequences, db.cards, db.lessonCards, db.lessonCardExposures], async () => {
       await db.sequences.put(snapshot.sequence);
       await db.cards.bulkPut(snapshot.cards);
+      await db.lessonCards.bulkPut(snapshot.lessonCards);
+      await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
     });
   } catch (err) {
     throw friendlyDbError(err);

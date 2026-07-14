@@ -68,10 +68,10 @@ describe('createCourse', () => {
     expect(course.examObjective).toBe('expectedMarks');
     expect(course.unlockMode).toBe('open');
     expect(course.autoPractice).toBe(true);
-    expect(course.practiceThresholdMinutesFar).toBe(12);
-    expect(course.practiceThresholdMinutesNear).toBe(6);
+    expect(course.practiceThresholdMinutesFar).toBe(8);
+    expect(course.practiceThresholdMinutesNear).toBe(4);
     expect(course.practiceUrgentWindowDays).toBe(7);
-    expect(course.practiceMaxGap).toBe(3);
+    expect(course.practiceMaxGap).toBe(2);
     // New courses default to edit mode (see src/course/lessonViewMode.ts).
     expect(course.lessonViewMode).toBe('edit');
     // examDate is 7 days ahead of createdAt at 23:59 local time.

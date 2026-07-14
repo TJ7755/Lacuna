@@ -29,7 +29,7 @@ import { Button } from '../components/ui/Button';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
-import { fieldStandfirst } from '../components/course/memoryFieldMath';
+import { HeaderStats } from '../components/course/HeaderStats';
 import { courseHeaderStats } from '../course/headerStats';
 import { resolveLessonViewMode } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
@@ -48,9 +48,15 @@ interface LessonViewProps {
   courseId?: string;
   /** Same precedence rule as courseId above. */
   lessonId?: string;
+  /** The single course-level Study now action for the inline one-lesson course. */
+  showStudyNow?: boolean;
 }
 
-export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: LessonViewProps) {
+export function LessonView({
+  courseId: courseIdProp,
+  lessonId: lessonIdProp,
+  showStudyNow = false,
+}: LessonViewProps) {
   const params = useParams<{ courseId: string; lessonId: string }>();
   // Props take precedence over route params (single-lesson inline branch).
   const courseId = courseIdProp ?? params.courseId;
@@ -65,10 +71,7 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
   // Use a null-sentinel to distinguish loading (undefined) from not found (null).
   // When lessonId is absent the query resolves immediately to null.
   const lesson = useLiveQuery<Lesson | null>(
-    () =>
-      lessonId
-        ? db.lessons.get(lessonId).then((l) => l ?? null)
-        : Promise.resolve(null),
+    () => (lessonId ? db.lessons.get(lessonId).then((l) => l ?? null) : Promise.resolve(null)),
     [lessonId],
   );
   const course = useCourse(courseId);
@@ -106,10 +109,7 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
         <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
         <div className="relative">
           <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
-          <Link
-            to={courseId ? `/course/${courseId}` : '/'}
-            className="text-accent underline"
-          >
+          <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
             {courseId ? 'Back to course' : 'Back to dashboard'}
           </Link>
         </div>
@@ -127,13 +127,11 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
   // fsrs/eligibility.ts, fsrs/objective.ts).
   const now = Date.now();
   const lessonMastery = progressValue(lessonCards, course, now);
-  const { nearestExam, examUrgent, dueCardCount: lessonDueCount } = courseHeaderStats(
-    course,
-    examDates,
-    lessonCards,
-    lessonMastery,
-    now,
-  );
+  const {
+    nearestExam,
+    examUrgent,
+    dueCardCount: lessonDueCount,
+  } = courseHeaderStats(course, examDates, lessonCards, lessonMastery, now);
   const viewMode = resolveLessonViewMode(course);
 
   return (
@@ -173,8 +171,8 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
         )}
       </div>
 
-      {/* Header — title, a one-sentence editorial standfirst, and the Study
-          action. */}
+      {/* Header — title, a row of labelled stat pills (HeaderStats), and the
+          Study action. */}
       <CourseHeader
         className="mb-8"
         eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
@@ -182,44 +180,37 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
         title={lesson.name}
       >
         <div>
-          <p className="max-w-prose text-sm text-ink-soft">
-            {fieldStandfirst({
-              dueCount: lessonDueCount,
-              masteryPct: Math.round(lessonMastery * 100),
-              daysToExam: Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0),
-              totalCards: lessonCards.length,
-              unseenCount: lessonCards.filter((c) => c.lastReviewed === null || c.state === 0)
-                .length,
-            })}
-          </p>
-          <div className="mt-6 flex flex-wrap items-center gap-4">
-            <Button
-              variant="primary"
-              size="lg"
-              disabled={lessonCards.length === 0}
-              onClick={() => navigate(`/lesson/${lessonId}/learn`)}
-            >
-              <PlayIcon width={18} height={18} />
-              Study
-              {lessonDueCount > 0 && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-fg/20 px-1.5 text-xs font-semibold tabular-nums">
-                  {lessonDueCount}
-                </span>
+          <HeaderStats
+            dueCount={lessonDueCount}
+            masteryPct={Math.round(lessonMastery * 100)}
+            daysToExam={Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0)}
+            totalCards={lessonCards.length}
+            unseenCount={lessonCards.filter((c) => c.lastReviewed === null || c.state === 0).length}
+          />
+          {showStudyNow && (
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={() => navigate(`/lesson/${lessonId}/learn?mode=simple`)}
+              >
+                <PlayIcon width={18} height={18} />
+                Study now
+              </Button>
+              {/* The due count already leads the stat pills above, so this line
+                only speaks when there is something the pills don't say. */}
+              {(lessonCards.length === 0 || lessonDueCount === 0) && (
+                <p className="text-sm text-ink-faint">
+                  {lessonCards.length === 0
+                    ? 'Add cards to begin studying.'
+                    : 'Nothing due — study ahead.'}
+                </p>
               )}
-            </Button>
-            <p className="text-sm text-ink-faint">
-              {lessonCards.length === 0
-                ? 'Add cards to begin studying.'
-                : lessonDueCount > 0
-                  ? `${lessonDueCount} card${lessonDueCount === 1 ? '' : 's'} ready for review.`
-                  : 'Nothing due — study ahead.'}
-            </p>
-          </div>
+            </div>
+          )}
         </div>
       </CourseHeader>
-      {lesson.description && (
-        <p className="mb-8 text-sm text-ink-soft">{lesson.description}</p>
-      )}
+      {lesson.description && <p className="mb-8 text-sm text-ink-soft">{lesson.description}</p>}
 
       {/* ------------------------------------------------------------------ */}
       {/* Notes and cards. Demoted below the study CTA: a quieter, smaller-   */}

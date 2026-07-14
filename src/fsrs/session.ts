@@ -27,6 +27,7 @@ import { selectNextCard, type CooldownMap } from './cooldown';
 import { studyPool, availableCards } from './eligibility';
 import { schedulingHorizon } from './horizon';
 import { cramScore } from './cram';
+import type { ExamDateContext } from './examDate';
 import { daysUntil } from '../utils/datetime';
 import type { Card, Deck, SchedulerConfig } from '../db/types';
 
@@ -50,6 +51,8 @@ type SessionUnitScope =
 export interface SessionUnit {
   config: SchedulerConfig;
   scope: SessionUnitScope;
+  /** Per-card course exam dates. Omitted for legacy Deck scheduling. */
+  examDateContext?: ExamDateContext;
 }
 
 function unitKey(scope: SessionUnitScope): string {
@@ -104,7 +107,7 @@ export function makeSessionContext(
     map.set(unitKey(unit.scope), {
       deck: unit.config,
       scope: unit.scope,
-      oc: makeObjectiveContext(unit.config),
+      oc: makeObjectiveContext(unit.config, unit.examDateContext),
     });
   }
   return { decks: map, mode };
@@ -332,10 +335,10 @@ export function sessionProgress(
   const unitCache = new Map<string, Card[]>();
   let total = 0;
   let acc = 0;
-  for (const { deck, scope } of ctx.decks.values()) {
+  for (const { deck, scope, oc } of ctx.decks.values()) {
     const available = availableCards(getUnitCards(cards, scope, unitCache), now);
     if (available.length === 0) continue;
-    acc += progressValue(available, deck, now) * available.length;
+    acc += progressValue(available, deck, now, oc.examDateContext) * available.length;
     total += available.length;
   }
   return total ? acc / total : 1;

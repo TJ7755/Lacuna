@@ -3,35 +3,44 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { hapticLight, hapticMedium } from '../utils/haptic';
 import { db } from '../db/schema';
-import type { Card, Course, Deck, Grade, Lesson, UserPerformance } from '../db/types';
+import type { Card, Course, Deck, Grade, Lesson, Note, UserPerformance } from '../db/types';
 import {
   buryCard,
+  listNotes,
+  markLessonComplete,
   ratchetLessonUnlock,
   recordReview,
+  savePracticeMilestoneProgress,
   setCardFlag,
   suspendCard,
   undoReview,
+  upsertLessonCardExposure,
 } from '../db/repository';
 import type { ReviewUndo } from '../db/repository';
 import { nextLessonUnlockCondition } from '../course/unlock';
-import { practiceGateAfterLesson } from '../course/path';
+import {
+  isLessonUnlocked,
+  lessonEffectiveReleaseDates,
+  practiceGateAfterLesson,
+} from '../course/path';
+import {
+  eligiblePracticePool,
+  lessonCardMembership,
+  lessonStudyPool,
+  practiceCardScope,
+  practiceReadiness,
+  practiceScopeVersion,
+} from '../course/studyPools';
 import { emptyPerformance, gradeFromResponse, updatePerformance } from '../fsrs/grading';
-import {
-  applyCooldown,
-  decrementCooldowns,
-} from '../fsrs/cooldown';
+import { applyCooldown, decrementCooldowns } from '../fsrs/cooldown';
 import type { CooldownMap } from '../fsrs/cooldown';
-import { dueCards } from '../fsrs/eligibility';
 import { progressHeading } from '../fsrs/objective';
-import {
-  makeSessionContext,
-  selectNext,
-  sessionComplete,
-  sessionProgress,
-} from '../fsrs/session';
+import { makeExamDateContext, type ExamDateContext } from '../fsrs/examDate';
+import { makeSessionContext, selectNext, sessionComplete, sessionProgress } from '../fsrs/session';
 import type { SessionContext, SessionUnit } from '../fsrs/session';
 import { startOfDay } from '../utils/datetime';
 import { MS_PER_DAY } from '../fsrs/params';
+import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
 import { CardContent } from '../components/cards/CardContent';
 import { CardEditOverlay } from '../components/cards/CardEditOverlay';
 import { KeyHints } from '../components/ui/KeyHints';
@@ -63,7 +72,13 @@ import { useToast } from '../components/ui/Toast';
 import type { CardFilter } from '../db/search';
 import { cn } from '../components/ui/cn';
 
-type Phase = 'loading' | 'question' | 'answer' | 'finished';
+type Phase = 'loading' | 'notes' | 'question' | 'answer' | 'finished';
+
+/** The lesson notes shown before cards begin on a first-ever study of a lesson. */
+interface LessonNotesScreen {
+  lessonName: string;
+  notes: Note[];
+}
 
 /**
  * The scheduling unit a session studies: a legacy Deck, or a Course (both the
@@ -74,7 +89,16 @@ type Phase = 'loading' | 'question' | 'answer' | 'finished';
 type StudyUnit = Deck | Course;
 
 /** The distinct visual identity of the current learn session. */
-type LearnModeType = 'fsrs' | 'simple' | 'cram' | 'filtered' | 'filtered-due' | 'filtered-new' | 'filtered-leech' | 'filtered-flagged' | 'filtered-suspended';
+type LearnModeType =
+  | 'fsrs'
+  | 'simple'
+  | 'cram'
+  | 'filtered'
+  | 'filtered-due'
+  | 'filtered-new'
+  | 'filtered-leech'
+  | 'filtered-flagged'
+  | 'filtered-suspended';
 
 const FILTER_LABELS: Record<string, string> = {
   due: 'due cards',
@@ -100,10 +124,8 @@ export function LearnMode() {
   const tagFilter = searchParams.get('tag');
   const cramMode = searchParams.get('mode') === 'cram';
   const simpleModeParam = searchParams.get('mode') === 'simple';
-  const filterParams = useMemo(
-    () => searchParams.getAll('filter') as CardFilter[],
-    [searchParams],
-  );
+  const practiceNodeKeyParam = searchParams.get('practiceNode');
+  const filterParams = useMemo(() => searchParams.getAll('filter') as CardFilter[], [searchParams]);
   const navigate = useNavigate();
   const distraction = useDistraction();
   const [gradingMode] = useGradingMode();
@@ -113,7 +135,9 @@ export function LearnMode() {
   const isTouchMode = useIsTouchMode();
   const { notify } = useToast();
   const [studyMode] = useStudyMode();
-  const isSimpleMode = studyMode === 'simple' || simpleModeParam;
+  // Course lessons always use the teaching loop; the global preference remains
+  // available for ad-hoc deck/global sessions.
+  const isSimpleMode = !!lessonId || studyMode === 'simple' || simpleModeParam;
 
   const mode: LearnModeType = useMemo(() => {
     if (isSimpleMode) return 'simple';
@@ -149,6 +173,10 @@ export function LearnMode() {
   // route for /course/:courseId/learn; resolved from the lesson for /lesson/:lessonId/learn
   // (that route carries no courseId param). Used for exitTo and the unlock ratchet.
   const [resolvedCourseId, setResolvedCourseId] = useState<string | null>(null);
+  // Set for a course/lesson-scoped session opening on a lesson that has never
+  // been studied before (see the loading effect) — shown as a 'notes' phase
+  // ahead of the first card, with a continue action that starts serving cards.
+  const [lessonNotesScreen, setLessonNotesScreen] = useState<LessonNotesScreen | null>(null);
   const [current, setCurrent] = useState<Card | null>(null);
   const [progress, setProgress] = useState(0);
   // Cache sessionProgress so repeated calls while the card pool is unchanged don't recompute.
@@ -197,6 +225,16 @@ export function LearnMode() {
   // evaluate (course/practice-scope completion instead sweeps every lesson).
   const ratchetLessonIdRef = useRef<string | null>(null);
   const cardsRef = useRef<Card[]>([]);
+  const lessonExposureIdRef = useRef<string | null>(null);
+  const lessonHasMembersRef = useRef(false);
+  const practiceSessionRef = useRef<{
+    nodeKey: string;
+    courseId: string;
+    scopeVersion: string;
+    scopeCards: Card[];
+    course: Course;
+    examDateContext: ExamDateContext;
+  } | null>(null);
   const timerStart = useRef(0);
   const responseTime = useRef(0);
   // Elapsed thinking time captured when the edit overlay opens during the question
@@ -269,21 +307,41 @@ export function LearnMode() {
     if (!cId) return;
     const course = await db.courses.get(cId);
     if (!course || course.unlockMode !== 'semi-linear') return;
-    const coreLessons = (await db.lessons.where('courseId').equals(cId).sortBy('orderIndex'))
-      .filter((l) => !l.isExtension);
+    const coreLessons = (
+      await db.lessons.where('courseId').equals(cId).sortBy('orderIndex')
+    ).filter((l) => !l.isExtension);
     const lId = ratchetLessonIdRef.current;
     const now = Date.now();
-    const practiceNodes = lId ? await db.practiceNodes.where('courseId').equals(cId).toArray() : [];
+    const lessonIds = coreLessons.map((lesson) => lesson.id);
+    const [courseCards, links, exposures, completions, practiceNodes] = await Promise.all([
+      db.cards.where('courseId').equals(cId).toArray(),
+      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+      lessonIds.length > 0
+        ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
+        : [],
+      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
+      lId ? db.practiceNodes.where('courseId').equals(cId).toArray() : [],
+    ]);
     for (let i = 0; i < coreLessons.length - 1; i++) {
       const lessonN = coreLessons[i];
       const lessonN1 = coreLessons[i + 1];
       if (lessonN1.unlockedAt !== undefined) continue;
       if (lId && lessonN.id !== lId) continue;
-      const lessonNCards = await db.cards.where('primaryLessonId').equals(lessonN.id).toArray();
+      const lessonNCards = lessonCardMembership(lessonN.id, courseCards, links);
       const practiceGoalReached = lId
-        ? (practiceGateAfterLesson(coreLessons, practiceNodes, lessonN.id) ? false : undefined)
+        ? practiceGateAfterLesson(coreLessons, practiceNodes, lessonN.id)
+          ? false
+          : undefined
         : true;
-      if (nextLessonUnlockCondition(lessonNCards, practiceGoalReached)) {
+      if (
+        nextLessonUnlockCondition(
+          lessonN.id,
+          lessonNCards,
+          exposures,
+          completions,
+          practiceGoalReached,
+        )
+      ) {
         await ratchetLessonUnlock(lessonN1.id, now);
       }
     }
@@ -297,15 +355,34 @@ export function LearnMode() {
     const value = sessionProgress(cards, ctx);
     progressCacheRef.current = { dirty: false, value };
     return value;
-  }, []);    const finish = useCallback(
+  }, []);
+
+  const persistPracticeMilestone = useCallback(
+    async (cards: Card[], completed: boolean): Promise<void> => {
+      const practice = practiceSessionRef.current;
+      if (!practice) return;
+      const cardsById = new Map(cards.map((card) => [card.id, card]));
+      const currentScope = practice.scopeCards.map((card) => cardsById.get(card.id) ?? card);
+      const readiness = practiceReadiness(currentScope, practice.course, practice.examDateContext);
+      await savePracticeMilestoneProgress(
+        practice.nodeKey,
+        practice.courseId,
+        practice.scopeVersion,
+        readiness.securedCardCount,
+        readiness.totalCardCount,
+        completed,
+      );
+    },
+    [],
+  );
+
+  const finish = useCallback(
     (reachedGoal: boolean, limitReached = false, timeLimitReached = false) => {
       if (!mountedRef.current) return;
       const ctx = ctxRef.current;
       const total = distraction.sessionMs();
       const focus =
-        total <= 0
-          ? 1
-          : Math.max(0, Math.min(1, (total - distraction.blurredMs()) / total));
+        total <= 0 ? 1 : Math.max(0, Math.min(1, (total - distraction.blurredMs()) / total));
       const masteryAfter = ctx
         ? cachedSessionProgress(cardsRef.current, ctx)
         : progressBefore.current;
@@ -325,9 +402,20 @@ export function LearnMode() {
       lastAnswer.current = null;
       if (!mountedRef.current) return;
       setPhase('finished');
+      if (practiceSessionRef.current) {
+        void persistPracticeMilestone(cardsRef.current, reachedGoal);
+      }
       if (ratchetCourseIdRef.current) void ratchetUnlocks(reachedGoal);
     },
-    [objectiveLabel, distraction, cachedSessionProgress, isSimpleMode, mode, ratchetUnlocks],
+    [
+      objectiveLabel,
+      distraction,
+      cachedSessionProgress,
+      isSimpleMode,
+      mode,
+      persistPracticeMilestone,
+      ratchetUnlocks,
+    ],
   );
 
   /** Present the next eligible card, or finish if the goal has been reached. */
@@ -399,6 +487,9 @@ export function LearnMode() {
     decksRef.current = new Map();
     ctxRef.current = null;
     cardsRef.current = [];
+    lessonExposureIdRef.current = null;
+    lessonHasMembersRef.current = false;
+    practiceSessionRef.current = null;
     setCanUndo(false);
     setSummary(null);
     setEditing(false);
@@ -415,10 +506,14 @@ export function LearnMode() {
     ratchetLessonIdRef.current = null;
     setUnitDisplayName(null);
     setResolvedCourseId(null);
+    setLessonNotesScreen(null);
     void (async () => {
       let units: StudyUnit[];
       let sessionUnits: Deck[] | SessionUnit[];
       let cards: Card[];
+      // Set for lesson sessions so notes always precede the Simple-mode pass.
+      let firstStudyLessonId: string | undefined;
+      let firstStudyLessonName: string | undefined;
 
       if (lessonId) {
         const lesson: Lesson | undefined = await db.lessons.get(lessonId);
@@ -432,56 +527,97 @@ export function LearnMode() {
           return;
         }
         setResolvedCourseId(course.id);
-        const links = await db.lessonCards.where('lessonId').equals(lessonId).toArray();
-        const linkedCardIds = new Set(links.map((l) => l.cardId));
-        const primaryCards = await db.cards.where('primaryLessonId').equals(lessonId).toArray();
-        const linkedCards =
-          linkedCardIds.size > 0
-            ? await db.cards.where('id').anyOf([...linkedCardIds]).toArray()
-            : [];
-        const seen = new Set<string>();
-        const merged: Card[] = [];
-        for (const c of [...primaryCards, ...linkedCards]) {
-          if (!seen.has(c.id)) {
-            seen.add(c.id);
-            merged.push(c);
-          }
-        }
-        // Teacher-configured filter selects which of the lesson's cards a session
-        // serves: 'new' (default) is unseen cards only, 'due' is cards the FSRS
-        // schedule says are due, 'mixed' is both.
-        switch (lesson.sessionFilter) {
-          case 'due':
-            cards = dueCards(merged);
-            break;
-          case 'mixed': {
-            const due = new Set(dueCards(merged).map((c) => c.id));
-            cards = merged.filter((c) => c.state === 0 || due.has(c.id));
-            break;
-          }
-          default:
-            cards = merged.filter((c) => c.state === 0);
-        }
+        const [courseLessons, examDates, links, allCourseCards, lessonExposures] =
+          await Promise.all([
+            db.lessons.where('courseId').equals(course.id).toArray(),
+            db.courseExamDates.where('courseId').equals(course.id).toArray(),
+            db.lessonCards.where('lessonId').equals(lessonId).toArray(),
+            db.cards.where('courseId').equals(course.id).toArray(),
+            db.lessonCardExposures.where('lessonId').equals(lessonId).toArray(),
+          ]);
+        const linkedCardIds = new Set(links.map((link) => link.cardId));
+        const membership = lessonCardMembership(lessonId, allCourseCards, links);
+        cards = lessonStudyPool(lessonId, allCourseCards, links, lessonExposures);
+        lessonHasMembersRef.current = membership.length > 0;
+        const examDateContext = makeExamDateContext(course, courseLessons, examDates);
         units = [course];
         sessionUnits = [
-          { config: course, scope: { kind: 'lesson', courseId: course.id, lessonId, linkedCardIds } },
+          {
+            config: course,
+            scope: { kind: 'lesson', courseId: course.id, lessonId, linkedCardIds },
+            examDateContext,
+          },
         ];
         reviewKindRef.current = 'course';
         ratchetCourseIdRef.current = course.id;
         ratchetLessonIdRef.current = lessonId;
+        lessonExposureIdRef.current = lessonId;
         setUnitDisplayName(lesson.name);
+        firstStudyLessonId = lessonId;
+        firstStudyLessonName = lesson.name;
       } else if (courseId) {
         const course = await db.courses.get(courseId);
         if (!course) {
           navigate('/');
           return;
         }
-        cards = await db.cards.where('courseId').equals(courseId).toArray();
+        const [allCards, courseLessons, examDates, manualNodes] = await Promise.all([
+          db.cards.where('courseId').equals(courseId).toArray(),
+          db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
+          db.courseExamDates.where('courseId').equals(courseId).toArray(),
+          db.practiceNodes.where('courseId').equals(courseId).toArray(),
+        ]);
+        const courseLessonIds = courseLessons.map((lesson) => lesson.id);
+        const [courseLinks, courseExposures] = await Promise.all([
+          courseLessonIds.length > 0
+            ? db.lessonCards.where('lessonId').anyOf(courseLessonIds).toArray()
+            : [],
+          courseLessonIds.length > 0
+            ? db.lessonCardExposures.where('lessonId').anyOf(courseLessonIds).toArray()
+            : [],
+        ]);
+        const effectiveDates = lessonEffectiveReleaseDates(course, courseLessons);
+        const reachedLessonIds = new Set(
+          courseLessons
+            .filter((lesson) => isLessonUnlocked(course, lesson, effectiveDates, courseLessons))
+            .map((lesson) => lesson.id),
+        );
+        const practiceNode = practiceNodeKeyParam
+          ? manualNodes.find((node) => node.id === practiceNodeKeyParam)
+          : undefined;
+        const fullScope = practiceCardScope(
+          allCards,
+          courseLinks,
+          courseExposures,
+          { reachedLessonIds, practiceNode },
+          Date.now(),
+          course.leechThreshold,
+        );
+        const examDateContext = makeExamDateContext(course, courseLessons, examDates);
+        cards = eligiblePracticePool(fullScope, course, examDateContext);
+        const practiceCourse: Course = { ...course, newCardsPerDay: undefined };
         units = [course];
-        sessionUnits = [{ config: course, scope: { kind: 'course', courseId } }];
+        sessionUnits = [
+          {
+            config: practiceCourse,
+            scope: { kind: 'course', courseId },
+            examDateContext,
+          },
+        ];
         reviewKindRef.current = 'course';
         ratchetCourseIdRef.current = course.id;
         setUnitDisplayName(course.name);
+        if (practiceNodeKeyParam) {
+          const scopeVersion = practiceScopeVersion(fullScope);
+          practiceSessionRef.current = {
+            nodeKey: practiceNodeKeyParam,
+            courseId,
+            scopeVersion,
+            scopeCards: fullScope,
+            course,
+            examDateContext,
+          };
+        }
       } else {
         const decks = await db.decks.toArray();
         units = decks;
@@ -506,17 +642,38 @@ export function LearnMode() {
         return next;
       });
 
+      if (isSimpleMode) {
+        simpleQueue.current = [...cards];
+        simpleMastered.current = new Set();
+        simpleWrong.current = new Set();
+        setProgress(0);
+      }
+
+      // A lesson always opens with its notes, including a cardless lesson. The
+      // Continue action owns cardless completion; card sessions continue into
+      // the Simple-mode queue below.
+      if (firstStudyLessonId && firstStudyLessonName) {
+        const lessonNotes = await listNotes(firstStudyLessonId);
+        if (cancelled) return;
+        setLessonNotesScreen({ lessonName: firstStudyLessonName, notes: lessonNotes });
+        setPhase('notes');
+        return;
+      }
+
       if (units.length === 0 || cards.length === 0) {
         if (cancelled) return;
+        const practiceAlreadySecured =
+          (practiceSessionRef.current?.scopeCards.length ?? 0) > 0 && cards.length === 0;
+        if (practiceAlreadySecured) {
+          await persistPracticeMilestone(cards, true);
+        }
         // Show an empty-state screen instead of navigating away so the user
         // understands what happened and can choose what to do next.
         progressBefore.current = sessionProgress(cards, ctx);
         const isFiltered = filterParams.length > 0 || tagFilter !== null;
         const filterParts = [
           ...(tagFilter ? [`tag "${tagFilter}"`] : []),
-          ...(filterParams.length > 0
-            ? filterParams.map((f) => FILTER_LABELS[f] ?? f)
-            : []),
+          ...(filterParams.length > 0 ? filterParams.map((f) => FILTER_LABELS[f] ?? f) : []),
         ];
         const filterLabel = filterParts.join(' or ');
         setSummary({
@@ -529,23 +686,19 @@ export function LearnMode() {
               ? progressHeading(units[0])
               : 'Predicted readiness across all courses',
           focusFraction: 1,
-          reachedGoal: false,
+          reachedGoal: practiceAlreadySecured,
           limitReached: false,
           mode,
         });
         setPhase('finished');
+        if (practiceAlreadySecured) void ratchetUnlocks(true);
         return;
       }
 
       progressBefore.current = sessionProgress(cards, ctx);
       setProgress(progressBefore.current);
 
-      if (isSimpleMode) {
-        simpleQueue.current = [...cards];
-        simpleMastered.current = new Set();
-        simpleWrong.current = new Set();
-        setProgress(0);
-      } else {
+      if (!isSimpleMode) {
         setProgress(progressBefore.current);
       }
 
@@ -554,7 +707,9 @@ export function LearnMode() {
           events: [],
           masteryBefore: progressBefore.current,
           masteryAfter: progressBefore.current,
-          objectiveLabel: !isGlobal ? progressHeading(units[0]) : 'Predicted readiness across all courses',
+          objectiveLabel: !isGlobal
+            ? progressHeading(units[0])
+            : 'Predicted readiness across all courses',
           focusFraction: 1,
           reachedGoal: true,
           limitReached: false,
@@ -571,7 +726,20 @@ export function LearnMode() {
     return () => {
       cancelled = true;
     };
-  }, [courseId, lessonId, tagFilter, cramMode, filterParams, navigate, isSimpleMode, mode, isGlobal, ratchetUnlocks]);
+  }, [
+    courseId,
+    lessonId,
+    tagFilter,
+    cramMode,
+    filterParams,
+    navigate,
+    isSimpleMode,
+    mode,
+    isGlobal,
+    practiceNodeKeyParam,
+    persistPracticeMilestone,
+    ratchetUnlocks,
+  ]);
 
   const reveal = useCallback(() => {
     setPhase((p) => {
@@ -607,7 +775,13 @@ export function LearnMode() {
         if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current);
         setFeedbackSource(source);
         setFeedback(correct ? 'right' : 'left');
-        feedbackTimer.current = window.setTimeout(() => { setFeedback(null); setFeedbackSource(null); }, Math.round(400 * m));
+        feedbackTimer.current = window.setTimeout(
+          () => {
+            setFeedback(null);
+            setFeedbackSource(null);
+          },
+          Math.round(400 * m),
+        );
 
         const t = responseTime.current;
         const distracted = distraction.wasDistracted();
@@ -617,15 +791,23 @@ export function LearnMode() {
           events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
 
           if (correct) {
+            if (lessonExposureIdRef.current) {
+              await upsertLessonCardExposure(lessonExposureIdRef.current, cardNow.id);
+            }
             simpleMastered.current.add(cardNow.id);
             simpleWrong.current.delete(cardNow.id);
           } else {
             simpleWrong.current.add(cardNow.id);
             // Re-queue the card at the end so it comes back later.
-            simpleQueue.current = [...simpleQueue.current.filter((c) => c.id !== cardNow.id), cardNow];
+            simpleQueue.current = [
+              ...simpleQueue.current.filter((c) => c.id !== cardNow.id),
+              cardNow,
+            ];
           }
 
-          const remaining = simpleQueue.current.filter((c) => !simpleMastered.current.has(c.id)).length;
+          const remaining = simpleQueue.current.filter(
+            (c) => !simpleMastered.current.has(c.id),
+          ).length;
           const mastered = simpleMastered.current.size;
           const total = mastered + remaining;
           setProgress(total > 0 ? mastered / total : 1);
@@ -660,7 +842,12 @@ export function LearnMode() {
         const progressSnapshot = cachedSessionProgress(cardsRef.current, ctx);
         const perfBefore = perf ?? null;
 
-        const { card: updated, sessionHistoryId, kind, lastInteractedAtBefore } = await recordReview({
+        const {
+          card: updated,
+          sessionHistoryId,
+          kind,
+          lastInteractedAtBefore,
+        } = await recordReview({
           card: cardNow,
           deck,
           kind: reviewKindRef.current,
@@ -676,6 +863,9 @@ export function LearnMode() {
 
         const nextCards = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
         cardsRef.current = nextCards;
+        if (practiceSessionRef.current) {
+          await persistPracticeMilestone(nextCards, false);
+        }
 
         if (grade === 1) {
           // Global sessions span several decks, so size the cooldown to just this
@@ -694,7 +884,14 @@ export function LearnMode() {
         reviewsByDeck.current.set(deck.id, deckReviews);
 
         lastAnswer.current = {
-          undo: { cardBefore: cardNow, perfBefore, sessionHistoryId, deckId: deck.id, kind, lastInteractedAtBefore },
+          undo: {
+            cardBefore: cardNow,
+            perfBefore,
+            sessionHistoryId,
+            deckId: deck.id,
+            kind,
+            lastInteractedAtBefore,
+          },
           cooldowns: cooldownsSnapshot,
           progressBefore: progressSnapshot,
           eventsLen,
@@ -733,7 +930,18 @@ export function LearnMode() {
         submitting.current = false;
       }
     },
-    [distraction, finish, serveNext, cachedSessionProgress, limitOverride, timeLimitOverride, m, isSimpleMode, isGlobal],
+    [
+      distraction,
+      finish,
+      serveNext,
+      cachedSessionProgress,
+      limitOverride,
+      timeLimitOverride,
+      m,
+      isSimpleMode,
+      isGlobal,
+      persistPracticeMilestone,
+    ],
   );
 
   const undoLast = useCallback(async () => {
@@ -877,12 +1085,14 @@ export function LearnMode() {
       const target = e.target as HTMLElement | null;
       if (
         target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
       ) {
         // Allow Enter in the typing input to submit the answer.
-        if (target.tagName === 'INPUT' && e.key === 'Enter' && currentRef.current?.type === 'typing') {
+        if (
+          target.tagName === 'INPUT' &&
+          e.key === 'Enter' &&
+          currentRef.current?.type === 'typing'
+        ) {
           e.preventDefault();
           reveal();
           return;
@@ -919,7 +1129,7 @@ export function LearnMode() {
       if (
         keyMatches(e, bindings.edit) &&
         current &&
-        current.sequenceItemId == null &&
+        current.sequenceItemId === undefined &&
         (phase === 'question' || phase === 'answer')
       ) {
         e.preventDefault();
@@ -941,10 +1151,19 @@ export function LearnMode() {
           return;
         }
         if (gradingMode === 'manual') {
-          if (keyMatches(e, bindings.again)) { e.preventDefault(); void answer(1); }
-          else if (keyMatches(e, bindings.hard)) { e.preventDefault(); void answer(2); }
-          else if (keyMatches(e, bindings.good)) { e.preventDefault(); void answer(3); }
-          else if (keyMatches(e, bindings.easy)) { e.preventDefault(); void answer(4); }
+          if (keyMatches(e, bindings.again)) {
+            e.preventDefault();
+            void answer(1);
+          } else if (keyMatches(e, bindings.hard)) {
+            e.preventDefault();
+            void answer(2);
+          } else if (keyMatches(e, bindings.good)) {
+            e.preventDefault();
+            void answer(3);
+          } else if (keyMatches(e, bindings.easy)) {
+            e.preventDefault();
+            void answer(4);
+          }
         } else if (keyMatches(e, bindings.yes) || e.code === 'ArrowRight') {
           e.preventDefault();
           void answer(true);
@@ -956,7 +1175,22 @@ export function LearnMode() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase, reveal, hide, answer, canUndo, undoLast, navOpen, editing, current, openEdit, hintsOpen, gradingMode, bindings, m]);
+  }, [
+    phase,
+    reveal,
+    hide,
+    answer,
+    canUndo,
+    undoLast,
+    navOpen,
+    editing,
+    current,
+    openEdit,
+    hintsOpen,
+    gradingMode,
+    bindings,
+    m,
+  ]);
 
   // Clear any pending feedback timer if the session unmounts mid-flash.
   useEffect(
@@ -981,6 +1215,29 @@ export function LearnMode() {
     return <LearnSkeleton mode={mode} />;
   }
 
+  if (phase === 'notes' && lessonNotesScreen) {
+    return (
+      <LessonNotesIntro
+        lessonName={lessonNotesScreen.lessonName}
+        notes={lessonNotesScreen.notes}
+        onExit={backOut}
+        onContinue={() => {
+          void (async () => {
+            if (lessonId && cardsRef.current.length === 0 && !lessonHasMembersRef.current) {
+              await markLessonComplete(lessonId);
+              setLessonNotesScreen(null);
+              finish(true);
+              return;
+            }
+            setLessonNotesScreen(null);
+            serveNextRef.current();
+          })();
+        }}
+        motionMultiplier={m}
+      />
+    );
+  }
+
   const isTypingCard = current?.type === 'typing';
 
   return (
@@ -999,8 +1256,12 @@ export function LearnMode() {
               summary={summary}
               onReturn={backOut}
               onContinue={
-                summary.reachedGoal && !summary.limitReached && !summary.timeLimitReached && !summary.simpleMode
-                  ? undefined                    : summary.simpleMode
+                summary.reachedGoal &&
+                !summary.limitReached &&
+                !summary.timeLimitReached &&
+                !summary.simpleMode
+                  ? undefined
+                  : summary.simpleMode
                     ? () => {
                         // Restart simple mode: reset all simple state and begin again.
                         simpleMastered.current = new Set();
@@ -1037,280 +1298,317 @@ export function LearnMode() {
             transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
             className="flex min-h-screen flex-col"
           >
-      {/* Grading feedback: a directional glow that sweeps in from the side the user
+            {/* Grading feedback: a directional glow that sweeps in from the side the user
           swiped — left for No, right for Yes — plus a radial ring that pulses outward.
           Purely decorative and never intercepts input. */}
-      <AnimatePresence>
-        {feedback && (
-          <>
-            {feedbackSource === 'touch' ? (
-              <motion.div
-                key={`${feedback}-glow`}
-                aria-hidden
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 * m }}
-                className={
-                  'pointer-events-none fixed inset-y-0 z-30 w-56 ' +
-                  (feedback === 'right'
-                    ? 'right-0 bg-gradient-to-l from-positive/25 to-transparent'
-                    : 'left-0 bg-gradient-to-r from-negative/20 to-transparent')
-                }
-              />
-            ) : (
-              <motion.div
-                key={`${feedback}-glow`}
-                aria-hidden
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.18 * m }}
-                className={
-                  'pointer-events-none fixed inset-x-0 bottom-0 z-30 h-40 ' +
-                  (feedback === 'right'
-                    ? 'bg-gradient-to-t from-positive/25 to-transparent'
-                    : 'bg-gradient-to-t from-negative/20 to-transparent')
-                }
-              />
-            )}
-            <motion.div
-              key={`${feedback}-ring`}
-              aria-hidden
-              className="pointer-events-none fixed inset-0 z-30 flex items-center justify-center"
-              initial={{ opacity: 0.6 }}
-              animate={{ opacity: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.5 * m, ease: 'easeOut' }}
-            >
-              <motion.div
-                initial={{ scale: 0.6, opacity: 0.5 }}
-                animate={{ scale: 2.5, opacity: 0 }}
-                transition={{ duration: 0.55 * m, ease: [0.16, 1, 0.3, 1] }}
-                className={
-                  'h-96 w-96 rounded-full ' +
-                  (feedback === 'right'
-                    ? 'bg-positive/15 ring-4 ring-positive/20'
-                    : 'bg-negative/10 ring-4 ring-negative/15')
-                }
-              />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* In-session card editor: fixes a card without leaving the session (timer paused). */}
-      <AnimatePresence>
-        {editing && current && (
-          <CardEditOverlay
-            card={current}
-            tagSuggestions={[
-              ...new Set(
-                cardsRef.current
-                  .filter((c) => c.deckId === current.deckId)
-                  .flatMap((c) => c.tags ?? []),
-              ),
-            ].sort()}
-            onSaved={handleEdited}
-            onCancel={cancelEdit}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Navigation drawer: hidden by default, slides in for quick navigation away. */}
-      <NavSidebar open={navOpen} onClose={() => setNavOpen(false)} />
-
-      {/* Help overlay (opened with ?) */}
-      <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
-
-      {/* Focus mode: a single quiet affordance to leave, keeping the card uncluttered. */}
-      {focusMode && (
-        <button
-          type="button"
-          onClick={() => setFocusMode(false)}
-          title="Exit focus mode (F)"
-          className="fixed right-4 top-4 z-20 min-h-11 rounded-lg px-3 py-1.5 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-        >
-          Exit focus (F)
-        </button>
-      )}
-
-      {/* Top bar: mode-aware header, progress, and actions */}
-      {!focusMode && (
-        <LearnHeader
-          mode={mode}
-          singleDeck={singleDeck}
-          unitDisplayName={unitDisplayName}
-          progress={progress}
-          filterParams={filterParams}
-          tagFilter={tagFilter}
-          onOpenNav={() => setNavOpen(true)}
-          onExit={() => finish(false)}
-          menuOpen={menuOpen}
-          setMenuOpen={setMenuOpen}
-          current={current}
-          isTouchMode={isTouchMode}
-          onEdit={openEdit}
-          onToggleFlag={toggleFlagCurrent}
-          onBury={buryCurrent}
-          onSuspend={suspendCurrent}
-          onShowShortcuts={() => { setMenuOpen(false); setHintsOpen(true); }}
-          m={m}
-          simpleWrong={simpleWrong.current.size}
-          simpleRemaining={simpleQueue.current.filter((c) => !simpleMastered.current.has(c.id)).length}
-          simpleMastered={simpleMastered.current.size}
-          isSimpleMode={isSimpleMode}
-          phase={phase}
-          
-        />
-      )}      {/* Card — mode-aware border accent */}
-      <main className={`mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-8 ${isTouchMode ? 'pb-40' : ''}`}>
-        {current && (
-          <FlipCard
-            card={current}
-            revealed={phase === 'answer'}
-            motionSpeed={motionSpeed}
-            phase={phase}
-            isTouchMode={isTouchMode}
-            menuOpen={menuOpen}
-            editing={editing}
-            navOpen={navOpen}
-            hintsOpen={hintsOpen}
-            onReveal={reveal}
-            onHide={hide}
-            onAnswer={answer}
-            typedAnswer={typedAnswer}
-            mode={mode}
-          />
-        )}
-
-        {/* Typing input for typing cards in question phase */}
-        {isTypingCard && phase === 'question' && (
-          <div className="mx-auto mt-6 w-full max-w-md">
-            <input
-              ref={typingInputRef}
-              type="text"
-              value={typedAnswer}
-              onChange={(e) => setTypedAnswer(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  reveal();
-                }
-              }}
-              placeholder="Type your answer…"
-              className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent"
-              autoFocus
-            />
-            <div className="mt-3 flex justify-center">
-              <Button variant="primary" size="lg" className="w-full" onClick={reveal}>
-                Check answer
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Controls */}
-        {isTouchMode ? (
-          <TouchBottomSheet
-            phase={phase}
-            gradingMode={gradingMode}
-            onReveal={reveal}
-            onHide={hide}
-            onAnswer={answer}
-            m={m}
-            isTypingCard={isTypingCard}
-          />
-        ) : (
-          <div className="mt-8">
-            <AnimatePresence mode="wait">
-              {phase === 'question' ? (
-                <motion.div
-                  key="show"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                  className="flex flex-col items-center gap-2"
-                >
-                  {!isTypingCard && (
-                    <Button variant="primary" size="lg" className="w-full max-w-sm" onClick={reveal}>
-                      Show answer
-                    </Button>
-                  )}
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="grade"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                  className="flex flex-col items-center gap-3"
-                >
-                  {gradingMode === 'manual' ? (
+            <AnimatePresence>
+              {feedback && (
+                <>
+                  {feedbackSource === 'touch' ? (
                     <motion.div
-                      className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4"
-                      initial="hidden"
-                      animate="visible"
-                      variants={{
-                        hidden: {},
-                        visible: { transition: { staggerChildren: 0.04 } },
-                      }}
-                    >
-                      <motion.div variants={buttonReveal(m)}>
-                        <Button variant="danger" size="lg" className="w-full" onClick={() => void answer(1, 'keyboard')}>
-                          <CloseIcon width={18} height={18} />
-                          Again
-                        </Button>
-                      </motion.div>
-                      <motion.div variants={buttonReveal(m)}>
-                        <Button variant="secondary" size="lg" className="w-full" onClick={() => void answer(2, 'keyboard')}>
-                          Hard
-                        </Button>
-                      </motion.div>
-                      <motion.div variants={buttonReveal(m)}>
-                        <Button variant="secondary" size="lg" className="w-full" onClick={() => void answer(3, 'keyboard')}>
-                          Good
-                        </Button>
-                      </motion.div>
-                      <motion.div variants={buttonReveal(m)}>
-                        <Button variant="primary" size="lg" className="w-full" onClick={() => void answer(4, 'keyboard')}>
-                          <CheckIcon width={18} height={18} />
-                          Easy
-                        </Button>
-                      </motion.div>
-                    </motion.div>
+                      key={`${feedback}-glow`}
+                      aria-hidden
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.18 * m }}
+                      className={
+                        'pointer-events-none fixed inset-y-0 z-30 w-56 ' +
+                        (feedback === 'right'
+                          ? 'right-0 bg-gradient-to-l from-positive/25 to-transparent'
+                          : 'left-0 bg-gradient-to-r from-negative/20 to-transparent')
+                      }
+                    />
                   ) : (
                     <motion.div
-                      className="flex w-full max-w-md gap-3"
-                      initial="hidden"
-                      animate="visible"
-                      variants={{
-                        hidden: {},
-                        visible: { transition: { staggerChildren: 0.05 } },
-                      }}
-                    >
-                      <motion.div variants={buttonReveal(m)} className="flex-1">
-                        <Button variant="danger" size="lg" className="w-full" onClick={() => void answer(false, 'keyboard')}>
-                          <CloseIcon width={18} height={18} />
-                          No
-                        </Button>
-                      </motion.div>
-                      <motion.div variants={buttonReveal(m)} className="flex-1">
-                        <Button variant="primary" size="lg" className="w-full" onClick={() => void answer(true, 'keyboard')}>
-                          <CheckIcon width={18} height={18} />
-                          Yes
-                        </Button>
-                      </motion.div>
-                    </motion.div>
+                      key={`${feedback}-glow`}
+                      aria-hidden
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.18 * m }}
+                      className={
+                        'pointer-events-none fixed inset-x-0 bottom-0 z-30 h-40 ' +
+                        (feedback === 'right'
+                          ? 'bg-gradient-to-t from-positive/25 to-transparent'
+                          : 'bg-gradient-to-t from-negative/20 to-transparent')
+                      }
+                    />
                   )}
-                </motion.div>
+                  <motion.div
+                    key={`${feedback}-ring`}
+                    aria-hidden
+                    className="pointer-events-none fixed inset-0 z-30 flex items-center justify-center"
+                    initial={{ opacity: 0.6 }}
+                    animate={{ opacity: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5 * m, ease: 'easeOut' }}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.6, opacity: 0.5 }}
+                      animate={{ scale: 2.5, opacity: 0 }}
+                      transition={{ duration: 0.55 * m, ease: [0.16, 1, 0.3, 1] }}
+                      className={
+                        'h-96 w-96 rounded-full ' +
+                        (feedback === 'right'
+                          ? 'bg-positive/15 ring-4 ring-positive/20'
+                          : 'bg-negative/10 ring-4 ring-negative/15')
+                      }
+                    />
+                  </motion.div>
+                </>
               )}
             </AnimatePresence>
-          </div>
-        )}
-      </main>
+            {/* In-session card editor: fixes a card without leaving the session (timer paused). */}
+            <AnimatePresence>
+              {editing && current && (
+                <CardEditOverlay
+                  card={current}
+                  tagSuggestions={[
+                    ...new Set(
+                      cardsRef.current
+                        .filter((c) => c.deckId === current.deckId)
+                        .flatMap((c) => c.tags ?? []),
+                    ),
+                  ].sort()}
+                  onSaved={handleEdited}
+                  onCancel={cancelEdit}
+                />
+              )}
+            </AnimatePresence>
+            {/* Navigation drawer: hidden by default, slides in for quick navigation away. */}
+            <NavSidebar open={navOpen} onClose={() => setNavOpen(false)} />
+            {/* Help overlay (opened with ?) */}
+            <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
+            {/* Focus mode: a single quiet affordance to leave, keeping the card uncluttered. */}
+            {focusMode && (
+              <button
+                type="button"
+                onClick={() => setFocusMode(false)}
+                title="Exit focus mode (F)"
+                className="fixed right-4 top-4 z-20 min-h-11 rounded-lg px-3 py-1.5 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+              >
+                Exit focus (F)
+              </button>
+            )}
+            {/* Top bar: mode-aware header, progress, and actions */}
+            {!focusMode && (
+              <LearnHeader
+                mode={mode}
+                singleDeck={singleDeck}
+                unitDisplayName={unitDisplayName}
+                progress={progress}
+                filterParams={filterParams}
+                tagFilter={tagFilter}
+                onOpenNav={() => setNavOpen(true)}
+                onExit={() => finish(false)}
+                menuOpen={menuOpen}
+                setMenuOpen={setMenuOpen}
+                current={current}
+                isTouchMode={isTouchMode}
+                onEdit={openEdit}
+                onToggleFlag={toggleFlagCurrent}
+                onBury={buryCurrent}
+                onSuspend={suspendCurrent}
+                onShowShortcuts={() => {
+                  setMenuOpen(false);
+                  setHintsOpen(true);
+                }}
+                m={m}
+                simpleWrong={simpleWrong.current.size}
+                simpleRemaining={
+                  simpleQueue.current.filter((c) => !simpleMastered.current.has(c.id)).length
+                }
+                simpleMastered={simpleMastered.current.size}
+                isSimpleMode={isSimpleMode}
+                phase={phase}
+              />
+            )}{' '}
+            {/* Card — mode-aware border accent */}
+            <main
+              className={`mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-8 ${isTouchMode ? 'pb-40' : ''}`}
+            >
+              {current && (
+                <FlipCard
+                  card={current}
+                  revealed={phase === 'answer'}
+                  motionSpeed={motionSpeed}
+                  phase={phase}
+                  isTouchMode={isTouchMode}
+                  menuOpen={menuOpen}
+                  editing={editing}
+                  navOpen={navOpen}
+                  hintsOpen={hintsOpen}
+                  onReveal={reveal}
+                  onHide={hide}
+                  onAnswer={answer}
+                  typedAnswer={typedAnswer}
+                  mode={mode}
+                />
+              )}
+
+              {/* Typing input for typing cards in question phase */}
+              {isTypingCard && phase === 'question' && (
+                <div className="mx-auto mt-6 w-full max-w-md">
+                  <input
+                    ref={typingInputRef}
+                    type="text"
+                    value={typedAnswer}
+                    onChange={(e) => setTypedAnswer(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        reveal();
+                      }
+                    }}
+                    placeholder="Type your answer…"
+                    className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent"
+                    autoFocus
+                  />
+                  <div className="mt-3 flex justify-center">
+                    <Button variant="primary" size="lg" className="w-full" onClick={reveal}>
+                      Check answer
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Controls */}
+              {isTouchMode ? (
+                <TouchBottomSheet
+                  phase={phase}
+                  gradingMode={gradingMode}
+                  onReveal={reveal}
+                  onHide={hide}
+                  onAnswer={answer}
+                  m={m}
+                  isTypingCard={isTypingCard}
+                />
+              ) : (
+                <div className="mt-8">
+                  <AnimatePresence mode="wait">
+                    {phase === 'question' ? (
+                      <motion.div
+                        key="show"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+                        className="flex flex-col items-center gap-2"
+                      >
+                        {!isTypingCard && (
+                          <Button
+                            variant="primary"
+                            size="lg"
+                            className="w-full max-w-sm"
+                            onClick={reveal}
+                          >
+                            Show answer
+                          </Button>
+                        )}
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="grade"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+                        className="flex flex-col items-center gap-3"
+                      >
+                        {gradingMode === 'manual' ? (
+                          <motion.div
+                            className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4"
+                            initial="hidden"
+                            animate="visible"
+                            variants={{
+                              hidden: {},
+                              visible: { transition: { staggerChildren: 0.04 } },
+                            }}
+                          >
+                            <motion.div variants={buttonReveal(m)}>
+                              <Button
+                                variant="danger"
+                                size="lg"
+                                className="w-full"
+                                onClick={() => void answer(1, 'keyboard')}
+                              >
+                                <CloseIcon width={18} height={18} />
+                                Again
+                              </Button>
+                            </motion.div>
+                            <motion.div variants={buttonReveal(m)}>
+                              <Button
+                                variant="secondary"
+                                size="lg"
+                                className="w-full"
+                                onClick={() => void answer(2, 'keyboard')}
+                              >
+                                Hard
+                              </Button>
+                            </motion.div>
+                            <motion.div variants={buttonReveal(m)}>
+                              <Button
+                                variant="secondary"
+                                size="lg"
+                                className="w-full"
+                                onClick={() => void answer(3, 'keyboard')}
+                              >
+                                Good
+                              </Button>
+                            </motion.div>
+                            <motion.div variants={buttonReveal(m)}>
+                              <Button
+                                variant="primary"
+                                size="lg"
+                                className="w-full"
+                                onClick={() => void answer(4, 'keyboard')}
+                              >
+                                <CheckIcon width={18} height={18} />
+                                Easy
+                              </Button>
+                            </motion.div>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            className="flex w-full max-w-md gap-3"
+                            initial="hidden"
+                            animate="visible"
+                            variants={{
+                              hidden: {},
+                              visible: { transition: { staggerChildren: 0.05 } },
+                            }}
+                          >
+                            <motion.div variants={buttonReveal(m)} className="flex-1">
+                              <Button
+                                variant="danger"
+                                size="lg"
+                                className="w-full"
+                                onClick={() => void answer(false, 'keyboard')}
+                              >
+                                <CloseIcon width={18} height={18} />
+                                No
+                              </Button>
+                            </motion.div>
+                            <motion.div variants={buttonReveal(m)} className="flex-1">
+                              <Button
+                                variant="primary"
+                                size="lg"
+                                className="w-full"
+                                onClick={() => void answer(true, 'keyboard')}
+                              >
+                                <CheckIcon width={18} height={18} />
+                                Yes
+                              </Button>
+                            </motion.div>
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
+            </main>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1323,24 +1621,37 @@ export function LearnMode() {
 function modeBorderClass(mode: LearnModeType, revealed: boolean): string {
   if (!revealed) return 'border-line shadow-xl shadow-black/5';
   switch (mode) {
-    case 'cram': return 'border-amber-500/40 shadow-2xl shadow-amber-500/10';
-    case 'simple': return 'border-positive/40 shadow-2xl shadow-positive/10';
-    case 'filtered-leech': return 'border-negative/40 shadow-2xl shadow-negative/10';
-    case 'filtered-flagged': return 'border-amber-500/40 shadow-2xl shadow-amber-500/10';
-    case 'filtered': return 'border-accent/40 shadow-2xl shadow-accent/10';
-    default: return 'border-accent/40 shadow-2xl shadow-accent/10';
+    case 'cram':
+      return 'border-amber-500/40 shadow-2xl shadow-amber-500/10';
+    case 'simple':
+      return 'border-positive/40 shadow-2xl shadow-positive/10';
+    case 'filtered-leech':
+      return 'border-negative/40 shadow-2xl shadow-negative/10';
+    case 'filtered-flagged':
+      return 'border-amber-500/40 shadow-2xl shadow-amber-500/10';
+    case 'filtered':
+      return 'border-accent/40 shadow-2xl shadow-accent/10';
+    default:
+      return 'border-accent/40 shadow-2xl shadow-accent/10';
   }
 }
 
 function modeProgressVariant(mode: LearnModeType): ProgressVariant {
   switch (mode) {
-    case 'cram': return 'amber';
-    case 'simple': return 'simple';
-    case 'filtered-leech': return 'negative';
-    case 'filtered-flagged': return 'amber';
-    case 'filtered-suspended': return 'negative';
-    case 'filtered': return 'accent';
-    default: return 'accent';
+    case 'cram':
+      return 'amber';
+    case 'simple':
+      return 'simple';
+    case 'filtered-leech':
+      return 'negative';
+    case 'filtered-flagged':
+      return 'amber';
+    case 'filtered-suspended':
+      return 'negative';
+    case 'filtered':
+      return 'accent';
+    default:
+      return 'accent';
   }
 }
 
@@ -1491,7 +1802,16 @@ function LearnHeader({
 
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex items-center gap-2 text-xs">
-              <span className={cn('font-medium uppercase tracking-[0.14em] truncate', mode === 'cram' && 'text-amber-600', mode === 'simple' && 'text-positive', mode === 'filtered-leech' && 'text-negative', mode === 'filtered-flagged' && 'text-amber-600', 'text-ink-faint')}>
+              <span
+                className={cn(
+                  'font-medium uppercase tracking-[0.14em] truncate',
+                  mode === 'cram' && 'text-amber-600',
+                  mode === 'simple' && 'text-positive',
+                  mode === 'filtered-leech' && 'text-negative',
+                  mode === 'filtered-flagged' && 'text-amber-600',
+                  'text-ink-faint',
+                )}
+              >
                 {info.title}
               </span>
             </div>
@@ -1514,8 +1834,9 @@ function LearnHeader({
               <MoreIcon width={18} height={18} />
             </button>
             <AnimatePresence>
-              {menuOpen && current && (
-                isTouchMode ? (
+              {menuOpen &&
+                current &&
+                (isTouchMode ? (
                   <TouchMenuSheet
                     current={current}
                     onEdit={onEdit}
@@ -1534,17 +1855,36 @@ function LearnHeader({
                     transition={{ duration: 0.12 * m }}
                     className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
                   >
-                    {current.sequenceItemId == null && (
-                      <MenuItem icon={<EditIcon width={16} height={16} />} label="Edit card" onClick={onEdit} />
+                    {current.sequenceItemId === undefined && (
+                      <MenuItem
+                        icon={<EditIcon width={16} height={16} />}
+                        label="Edit card"
+                        onClick={onEdit}
+                      />
                     )}
-                    <MenuItem icon={<FlagIcon width={16} height={16} />} label={current.flagged ? 'Remove flag' : 'Flag card'} onClick={onToggleFlag} />
-                    <MenuItem icon={<ClockIcon width={16} height={16} />} label="Bury until tomorrow" onClick={onBury} />
-                    <MenuItem icon={<PauseIcon width={16} height={16} />} label="Suspend card" onClick={onSuspend} />
+                    <MenuItem
+                      icon={<FlagIcon width={16} height={16} />}
+                      label={current.flagged ? 'Remove flag' : 'Flag card'}
+                      onClick={onToggleFlag}
+                    />
+                    <MenuItem
+                      icon={<ClockIcon width={16} height={16} />}
+                      label="Bury until tomorrow"
+                      onClick={onBury}
+                    />
+                    <MenuItem
+                      icon={<PauseIcon width={16} height={16} />}
+                      label="Suspend card"
+                      onClick={onSuspend}
+                    />
                     <div className="border-t border-line" />
-                    <MenuItem icon={<KeyboardIcon width={16} height={16} />} label="Keyboard shortcuts" onClick={onShowShortcuts} />
+                    <MenuItem
+                      icon={<KeyboardIcon width={16} height={16} />}
+                      label="Keyboard shortcuts"
+                      onClick={onShowShortcuts}
+                    />
                   </motion.div>
-                )
-              )}
+                ))}
             </AnimatePresence>
           </div>
 
@@ -1568,7 +1908,12 @@ function LearnHeader({
 }
 
 export function LearnSkeleton({ mode }: { mode?: LearnModeType }) {
-  const borderClass = mode === 'cram' ? 'border-amber-500/30' : mode === 'simple' ? 'border-positive/30' : 'border-line';
+  const borderClass =
+    mode === 'cram'
+      ? 'border-amber-500/30'
+      : mode === 'simple'
+        ? 'border-positive/30'
+        : 'border-line';
   return (
     <div className="flex min-h-screen flex-col bg-paper">
       <header className={cn('sticky top-0 z-10 border-b bg-paper/85 backdrop-blur', borderClass)}>
@@ -1600,7 +1945,12 @@ export function LearnSkeleton({ mode }: { mode?: LearnModeType }) {
 function buttonReveal(m: number) {
   return {
     hidden: { opacity: 0, y: 12, scale: 0.96 },
-    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] } },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] },
+    },
   };
 }
 
@@ -1619,10 +1969,7 @@ function NavSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={onClose}
-          />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
           <motion.div
             className="absolute inset-y-0 left-0"
             initial={{ x: -280 }}
@@ -1694,26 +2041,32 @@ function TouchMenuSheet({
     sheetRef.current?.setPointerCapture(e.pointerId);
   }, []);
 
-  const handleDragHandleMove = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current) return;
-    const dy = e.clientY - dragStartY.current;
-    if (dy > 0) dragY.set(dy);
-  }, [dragY]);
+  const handleDragHandleMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging.current) return;
+      const dy = e.clientY - dragStartY.current;
+      if (dy > 0) dragY.set(dy);
+    },
+    [dragY],
+  );
 
-  const handleDragHandleUp = useCallback((e: React.PointerEvent) => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-    sheetRef.current?.releasePointerCapture(e.pointerId);
-    const dy = dragY.get();
-    const elapsed = performance.now() - dragStartTime.current;
-    // Flick or drag past threshold closes the sheet.
-    if (dy > 80 || (dy > 20 && elapsed < 200)) {
-      dragY.set(0);
-      onClose();
-    } else {
-      dragY.set(0);
-    }
-  }, [dragY, onClose]);
+  const handleDragHandleUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      sheetRef.current?.releasePointerCapture(e.pointerId);
+      const dy = dragY.get();
+      const elapsed = performance.now() - dragStartTime.current;
+      // Flick or drag past threshold closes the sheet.
+      if (dy > 80 || (dy > 20 && elapsed < 200)) {
+        dragY.set(0);
+        onClose();
+      } else {
+        dragY.set(0);
+      }
+    },
+    [dragY, onClose],
+  );
 
   return (
     <motion.div
@@ -1737,61 +2090,80 @@ function TouchMenuSheet({
         exit={{ y: 120, opacity: 0 }}
         transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
         className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-line-strong bg-surface px-6 py-6 shadow-2xl shadow-black/20"
-        onClick={(e) => e.stopPropagation()}            onPointerMove={handleDragHandleMove}
-            onPointerUp={handleDragHandleUp}
-            onPointerCancel={handleDragHandleUp}
+        onClick={(e) => e.stopPropagation()}
+        onPointerMove={handleDragHandleMove}
+        onPointerUp={handleDragHandleUp}
+        onPointerCancel={handleDragHandleUp}
+      >
+        {/* Drag handle — wide touch target, springy drag-to-close. */}
+        <div className="mb-5 flex justify-center">
+          <div
+            className="flex h-8 w-20 cursor-grab items-center justify-center active:cursor-grabbing"
+            onPointerDown={handleDragHandleDown}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                hapticLight();
+                onClose();
+              }
+            }}
+            role="button"
+            aria-label="Drag to close"
+            tabIndex={0}
           >
-            {/* Drag handle — wide touch target, springy drag-to-close. */}
-            <div className="mb-5 flex justify-center">
-              <div
-                className="flex h-8 w-20 cursor-grab items-center justify-center active:cursor-grabbing"
-                onPointerDown={handleDragHandleDown}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    hapticLight();
-                    onClose();
-                  }
-                }}
-                role="button"
-                aria-label="Drag to close"
-                tabIndex={0}
-              >
-                <div className="h-1.5 w-12 rounded-full bg-ink/15 transition-colors active:bg-ink/25" />
-              </div>
-            </div>
+            <div className="h-1.5 w-12 rounded-full bg-ink/15 transition-colors active:bg-ink/25" />
+          </div>
+        </div>
         <div className="mx-auto flex max-w-3xl flex-col gap-1">
-          {current.sequenceItemId == null && (
+          {current.sequenceItemId === undefined && (
             <TouchMenuButton
               icon={<EditIcon width={22} height={22} />}
               label="Edit card"
-              onClick={() => { hapticLight(); onEdit(); }}
+              onClick={() => {
+                hapticLight();
+                onEdit();
+              }}
             />
           )}
           <TouchMenuButton
             icon={<FlagIcon width={22} height={22} />}
             label={current.flagged ? 'Remove flag' : 'Flag card'}
-            onClick={() => { hapticLight(); onToggleFlag(); }}
+            onClick={() => {
+              hapticLight();
+              onToggleFlag();
+            }}
           />
           <TouchMenuButton
             icon={<ClockIcon width={22} height={22} />}
             label="Bury until tomorrow"
-            onClick={() => { hapticLight(); onBury(); }}
+            onClick={() => {
+              hapticLight();
+              onBury();
+            }}
           />
           <TouchMenuButton
             icon={<PauseIcon width={22} height={22} />}
             label="Suspend card"
-            onClick={() => { hapticLight(); onSuspend(); }}
+            onClick={() => {
+              hapticLight();
+              onSuspend();
+            }}
           />
           <div className="my-2 border-t border-line" />
           <TouchMenuButton
             icon={<KeyboardIcon width={22} height={22} />}
             label="Keyboard shortcuts"
-            onClick={() => { hapticLight(); onShowShortcuts(); }}
+            onClick={() => {
+              hapticLight();
+              onShowShortcuts();
+            }}
           />
           <button
             type="button"
-            onClick={() => { hapticLight(); onClose(); }}
+            onClick={() => {
+              hapticLight();
+              onClose();
+            }}
             className="mt-2 flex h-14 w-full items-center justify-center rounded-xl bg-ink/5 text-sm font-medium text-ink-soft transition-colors active:bg-ink/10"
           >
             Cancel
@@ -1851,14 +2223,7 @@ function SimpleModeStats({
       {/* Circular progress ring */}
       <div className="relative flex h-11 w-11 shrink-0 items-center justify-center">
         <svg width="44" height="44" viewBox="0 0 44 44" className="absolute inset-0">
-          <circle
-            cx="22"
-            cy="22"
-            r={r}
-            fill="none"
-            className="stroke-ink/10"
-            strokeWidth="3"
-          />
+          <circle cx="22" cy="22" r={r} fill="none" className="stroke-ink/10" strokeWidth="3" />
           <motion.circle
             cx="22"
             cy="22"
@@ -1969,7 +2334,15 @@ function TouchBottomSheet({
               <p className="text-sm text-ink-faint">Tap the card to reveal</p>
             )}
             {!isTypingCard && (
-              <Button variant="primary" size="lg" className="w-full" onClick={() => { hapticLight(); onReveal(); }}>
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={() => {
+                  hapticLight();
+                  onReveal();
+                }}
+              >
                 Show answer
               </Button>
             )}
@@ -1987,28 +2360,76 @@ function TouchBottomSheet({
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
             {gradingMode === 'manual' ? (
               <div className="grid w-full grid-cols-2 gap-3">
-                <Button variant="danger" size="lg" className="h-14 w-full" onClick={() => { hapticMedium(); void onAnswer(1, 'touch'); }}>
+                <Button
+                  variant="danger"
+                  size="lg"
+                  className="h-14 w-full"
+                  onClick={() => {
+                    hapticMedium();
+                    void onAnswer(1, 'touch');
+                  }}
+                >
                   <CloseIcon width={20} height={20} />
                   Again
                 </Button>
-                <Button variant="secondary" size="lg" className="h-14 w-full" onClick={() => { hapticLight(); void onAnswer(2, 'touch'); }}>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="h-14 w-full"
+                  onClick={() => {
+                    hapticLight();
+                    void onAnswer(2, 'touch');
+                  }}
+                >
                   Hard
                 </Button>
-                <Button variant="secondary" size="lg" className="h-14 w-full" onClick={() => { hapticLight(); void onAnswer(3, 'touch'); }}>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="h-14 w-full"
+                  onClick={() => {
+                    hapticLight();
+                    void onAnswer(3, 'touch');
+                  }}
+                >
                   Good
                 </Button>
-                <Button variant="primary" size="lg" className="h-14 w-full" onClick={() => { hapticMedium(); void onAnswer(4, 'touch'); }}>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="h-14 w-full"
+                  onClick={() => {
+                    hapticMedium();
+                    void onAnswer(4, 'touch');
+                  }}
+                >
                   <CheckIcon width={20} height={20} />
                   Easy
                 </Button>
               </div>
             ) : (
               <div className="flex w-full gap-3">
-                <Button variant="danger" size="lg" className="h-14 flex-1" onClick={() => { hapticMedium(); void onAnswer(false, 'touch'); }}>
+                <Button
+                  variant="danger"
+                  size="lg"
+                  className="h-14 flex-1"
+                  onClick={() => {
+                    hapticMedium();
+                    void onAnswer(false, 'touch');
+                  }}
+                >
                   <CloseIcon width={20} height={20} />
                   No
                 </Button>
-                <Button variant="primary" size="lg" className="h-14 flex-1" onClick={() => { hapticMedium(); void onAnswer(true, 'touch'); }}>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="h-14 flex-1"
+                  onClick={() => {
+                    hapticMedium();
+                    void onAnswer(true, 'touch');
+                  }}
+                >
                   <CheckIcon width={20} height={20} />
                   Yes
                 </Button>
@@ -2081,103 +2502,127 @@ function FlipCard({
   const swipeXMotion = useMotionValue(0);
   const swipeXSpring = useSpring(swipeXMotion, { stiffness: 480, damping: 32, mass: 0.9 });
 
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (swipeRef.current.dragging) return;
-    // Ignore swipes when any overlay is open.
-    if (menuOpen || editing || navOpen || hintsOpen) return;
-    swipeRef.current = {
-      x: 0,
-      startX: e.clientX,
-      startY: e.clientY,
-      dragging: true,
-      isSwipe: false,
-    };
-    selectionLenRef.current = window.getSelection()?.toString().length ?? 0;
-    containerRef.current?.setPointerCapture?.(e.pointerId);
-    setSwipe({ x: 0, hint: null });
-  }, [menuOpen, editing, navOpen, hintsOpen]);
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (swipeRef.current.dragging) return;
+      // Ignore swipes when any overlay is open.
+      if (menuOpen || editing || navOpen || hintsOpen) return;
+      swipeRef.current = {
+        x: 0,
+        startX: e.clientX,
+        startY: e.clientY,
+        dragging: true,
+        isSwipe: false,
+      };
+      selectionLenRef.current = window.getSelection()?.toString().length ?? 0;
+      containerRef.current?.setPointerCapture?.(e.pointerId);
+      setSwipe({ x: 0, hint: null });
+    },
+    [menuOpen, editing, navOpen, hintsOpen],
+  );
 
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!swipeRef.current.dragging) return;
-    const dx = e.clientX - swipeRef.current.startX;
-    const dy = e.clientY - swipeRef.current.startY;
-    // Decide whether this is a horizontal swipe or a vertical scroll.
-    // Swipe-to-grade is only enabled during the answer phase, matching keyboard shortcuts.
-    if (!swipeRef.current.isSwipe && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
-      if (phase === 'answer') {
-        swipeRef.current.isSwipe = true;
-      }
-    }
-    if (!swipeRef.current.isSwipe) return;
-    // Clamp the visual drag so the card never flies off-screen.
-    const clamped = Math.max(-maxDrag, Math.min(maxDrag, dx));
-    swipeRef.current.x = clamped;
-    swipeXMotion.set(clamped);
-    const hint: 'left' | 'right' | null = clamped < -swipeThreshold / 2 ? 'left' : clamped > swipeThreshold / 2 ? 'right' : null;
-    setSwipe({ x: clamped, hint });
-  }, [phase, swipeXMotion]);
-
-  const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (!swipeRef.current.dragging) return;
-    containerRef.current?.releasePointerCapture?.(e.pointerId);
-    swipeRef.current.dragging = false;
-    const dx = swipeRef.current.x;
-    const wasSwipe = swipeRef.current.isSwipe;
-    swipeRef.current.isSwipe = false;
-    if (wasSwipe) {
-      if (dx < -swipeThreshold) {
-        // Swipe left = No
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!swipeRef.current.dragging) return;
+      const dx = e.clientX - swipeRef.current.startX;
+      const dy = e.clientY - swipeRef.current.startY;
+      // Decide whether this is a horizontal swipe or a vertical scroll.
+      // Swipe-to-grade is only enabled during the answer phase, matching keyboard shortcuts.
+      if (!swipeRef.current.isSwipe && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
         if (phase === 'answer') {
-          hapticMedium();
-          setHasSwiped(true);
-          try { localStorage.setItem('lacuna.learnHints', '1'); } catch { /* ignore */ }
-          swipeXMotion.set(0);
-          setSwipe({ x: 0, hint: null });
-          void onAnswer(false, 'touch');
-        } else {
-          // Snap back if not in answer phase.
-          swipeXMotion.set(0);
-          setSwipe({ x: 0, hint: null });
+          swipeRef.current.isSwipe = true;
         }
-      } else if (dx > swipeThreshold) {
-        // Swipe right = Yes
-        if (phase === 'answer') {
-          hapticMedium();
-          setHasSwiped(true);
-          try { localStorage.setItem('lacuna.learnHints', '1'); } catch { /* ignore */ }
-          swipeXMotion.set(0);
-          setSwipe({ x: 0, hint: null });
-          void onAnswer(true, 'touch');
+      }
+      if (!swipeRef.current.isSwipe) return;
+      // Clamp the visual drag so the card never flies off-screen.
+      const clamped = Math.max(-maxDrag, Math.min(maxDrag, dx));
+      swipeRef.current.x = clamped;
+      swipeXMotion.set(clamped);
+      const hint: 'left' | 'right' | null =
+        clamped < -swipeThreshold / 2 ? 'left' : clamped > swipeThreshold / 2 ? 'right' : null;
+      setSwipe({ x: clamped, hint });
+    },
+    [phase, swipeXMotion],
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!swipeRef.current.dragging) return;
+      containerRef.current?.releasePointerCapture?.(e.pointerId);
+      swipeRef.current.dragging = false;
+      const dx = swipeRef.current.x;
+      const wasSwipe = swipeRef.current.isSwipe;
+      swipeRef.current.isSwipe = false;
+      if (wasSwipe) {
+        if (dx < -swipeThreshold) {
+          // Swipe left = No
+          if (phase === 'answer') {
+            hapticMedium();
+            setHasSwiped(true);
+            try {
+              localStorage.setItem('lacuna.learnHints', '1');
+            } catch {
+              /* ignore */
+            }
+            swipeXMotion.set(0);
+            setSwipe({ x: 0, hint: null });
+            void onAnswer(false, 'touch');
+          } else {
+            // Snap back if not in answer phase.
+            swipeXMotion.set(0);
+            setSwipe({ x: 0, hint: null });
+          }
+        } else if (dx > swipeThreshold) {
+          // Swipe right = Yes
+          if (phase === 'answer') {
+            hapticMedium();
+            setHasSwiped(true);
+            try {
+              localStorage.setItem('lacuna.learnHints', '1');
+            } catch {
+              /* ignore */
+            }
+            swipeXMotion.set(0);
+            setSwipe({ x: 0, hint: null });
+            void onAnswer(true, 'touch');
+          } else {
+            swipeXMotion.set(0);
+            setSwipe({ x: 0, hint: null });
+          }
         } else {
+          // Not far enough — spring back.
           swipeXMotion.set(0);
           setSwipe({ x: 0, hint: null });
         }
       } else {
-        // Not far enough — spring back.
-        swipeXMotion.set(0);
+        // It was a tap/click — flip the card unless the user selected text.
+        const selection = window.getSelection();
+        const selectionNow = selection?.toString().length ?? 0;
+        const selectionGrew = selectionNow > selectionLenRef.current;
+        const isInsideCard =
+          selection && containerRef.current
+            ? containerRef.current.contains(selection.anchorNode)
+            : false;
         setSwipe({ x: 0, hint: null });
+        if (!selectionGrew || !isInsideCard) {
+          if (phase === 'question') onReveal();
+          else if (phase === 'answer') onHide();
+        }
       }
-    } else {
-      // It was a tap/click — flip the card unless the user selected text.
-      const selection = window.getSelection();
-      const selectionNow = selection?.toString().length ?? 0;
-      const selectionGrew = selectionNow > selectionLenRef.current;
-      const isInsideCard = selection && containerRef.current ? containerRef.current.contains(selection.anchorNode) : false;
-      setSwipe({ x: 0, hint: null });
-      if (!selectionGrew || !isInsideCard) {
-        if (phase === 'question') onReveal();
-        else if (phase === 'answer') onHide();
-      }
-    }
-  }, [phase, onReveal, onHide, onAnswer, swipeXMotion]);
+    },
+    [phase, onReveal, onHide, onAnswer, swipeXMotion],
+  );
 
-  const handlePointerCancel = useCallback((e: React.PointerEvent) => {
-    containerRef.current?.releasePointerCapture?.(e.pointerId);
-    swipeRef.current.dragging = false;
-    swipeRef.current.isSwipe = false;
-    swipeXMotion.set(0);
-    setSwipe({ x: 0, hint: null });
-  }, [swipeXMotion]);
+  const handlePointerCancel = useCallback(
+    (e: React.PointerEvent) => {
+      containerRef.current?.releasePointerCapture?.(e.pointerId);
+      swipeRef.current.dragging = false;
+      swipeRef.current.isSwipe = false;
+      swipeXMotion.set(0);
+      setSwipe({ x: 0, hint: null });
+    },
+    [swipeXMotion],
+  );
 
   // Safety net: clear any lingering swipe state when the card flips back to question.
   useEffect(() => {
@@ -2188,10 +2633,7 @@ function FlipCard({
   }, [phase, swipeXMotion]);
 
   return (
-    <div
-      className="flex flex-1 items-center justify-center"
-      style={{ perspective: '1600px' }}
-    >
+    <div className="flex flex-1 items-center justify-center" style={{ perspective: '1600px' }}>
       <div
         ref={containerRef}
         role="button"
@@ -2225,36 +2667,43 @@ function FlipCard({
         </AnimatePresence>
 
         {/* Touch swipe indicators — persistent hints that show the available gestures. */}
-        {isTouchMode && phase === 'answer' && !hasSwiped && !swipe.hint && !menuOpen && !editing && !navOpen && !hintsOpen && (
-          <>
-            <motion.div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 left-0 z-20 flex items-center"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 0.5, x: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ delay: 0.6, duration: 0.35 * m, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <div className="flex flex-col items-center gap-1 rounded-r-lg bg-negative/10 px-2 py-3">
-                <CloseIcon width={16} height={16} className="text-negative" />
-                <span className="text-[10px] text-negative">Swipe left</span>
-              </div>
-            </motion.div>
-            <motion.div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-center"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 0.5, x: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ delay: 0.6, duration: 0.35 * m, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <div className="flex flex-col items-center gap-1 rounded-l-lg bg-positive/10 px-2 py-3">
-                <CheckIcon width={16} height={16} className="text-positive" />
-                <span className="text-[10px] text-positive">Swipe right</span>
-              </div>
-            </motion.div>
-          </>
-        )}
+        {isTouchMode &&
+          phase === 'answer' &&
+          !hasSwiped &&
+          !swipe.hint &&
+          !menuOpen &&
+          !editing &&
+          !navOpen &&
+          !hintsOpen && (
+            <>
+              <motion.div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 left-0 z-20 flex items-center"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 0.5, x: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ delay: 0.6, duration: 0.35 * m, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <div className="flex flex-col items-center gap-1 rounded-r-lg bg-negative/10 px-2 py-3">
+                  <CloseIcon width={16} height={16} className="text-negative" />
+                  <span className="text-[10px] text-negative">Swipe left</span>
+                </div>
+              </motion.div>
+              <motion.div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-center"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 0.5, x: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ delay: 0.6, duration: 0.35 * m, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <div className="flex flex-col items-center gap-1 rounded-l-lg bg-positive/10 px-2 py-3">
+                  <CheckIcon width={16} height={16} className="text-positive" />
+                  <span className="text-[10px] text-positive">Swipe right</span>
+                </div>
+              </motion.div>
+            </>
+          )}
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.div

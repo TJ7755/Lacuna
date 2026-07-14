@@ -17,9 +17,18 @@ import {
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { DEFAULT_REVIEW_SECONDS, buildDeckSecondsMap } from '../fsrs/stats';
 import { progressValue } from '../fsrs/objective';
+import { makeExamDateContext } from '../fsrs/examDate';
 import { MS_PER_DAY } from '../fsrs/params';
 import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
+import {
+  eligiblePracticePool,
+  lessonCardMembership,
+  practiceCardScope,
+  practiceReadiness,
+  practiceScopeVersion,
+} from '../course/studyPools';
 import { courseHeaderStats } from '../course/headerStats';
+import { nextStudyTarget } from '../course/studyNow';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import {
@@ -30,20 +39,30 @@ import {
 } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
-import { fieldStandfirst } from '../components/course/memoryFieldMath';
+import { HeaderStats } from '../components/course/HeaderStats';
 import { LessonView } from './LessonView';
 import { Button } from '../components/ui/Button';
-import {
-  ChartIcon,
-  ChevronLeftIcon,
-  PlayIcon,
-  SettingsIcon,
-} from '../components/ui/icons';
+import { ChartIcon, ChevronLeftIcon, PlayIcon, SettingsIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { updateCourse } from '../db/repository';
 import { resolveLessonViewMode } from '../course/lessonViewMode';
 import { formatDate } from '../utils/datetime';
-import type { Card, Course, PracticeNode } from '../db/types';
+import type {
+  Card,
+  Course,
+  LessonCardExposure,
+  LessonCardLink,
+  LessonCompletion,
+  PracticeMilestone,
+  PracticeNode,
+} from '../db/types';
+
+interface PracticeNodeProgress {
+  fraction: number;
+  eligibleCount: number;
+  completed: boolean;
+  scopeVersion: string;
+}
 
 /**
  * Course-wide mean seconds per review, re-scoped from the existing per-deck
@@ -81,10 +100,7 @@ export function CoursePath() {
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found" (null).
   // When courseId is absent the query resolves immediately to null.
   const course = useLiveQuery<Course | null>(
-    () =>
-      courseId
-        ? db.courses.get(courseId).then((c) => c ?? null)
-        : Promise.resolve(null),
+    () => (courseId ? db.courses.get(courseId).then((c) => c ?? null) : Promise.resolve(null)),
     [courseId],
   );
   const lessons = useLessons(courseId);
@@ -92,6 +108,28 @@ export function CoursePath() {
   const courseCards = useCourseCards(courseId);
   const summary = useCourseSummary(courseId);
   const practiceNodes = usePracticeNodes(courseId);
+  const lessonIds = useMemo(() => (lessons ?? []).map((lesson) => lesson.id), [lessons]);
+  const lessonIdsKey = lessonIds.join(',');
+  const lessonLinks = useLiveQuery<LessonCardLink[]>(
+    () => (lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : []),
+    [lessonIdsKey],
+  );
+  const exposures = useLiveQuery<LessonCardExposure[]>(
+    () =>
+      lessonIds.length > 0
+        ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
+        : [],
+    [lessonIdsKey],
+  );
+  const lessonCompletions = useLiveQuery<LessonCompletion[]>(
+    () =>
+      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
+    [lessonIdsKey],
+  );
+  const practiceMilestones = useLiveQuery<PracticeMilestone[]>(
+    () => (courseId ? db.practiceMilestones.where('courseId').equals(courseId).toArray() : []),
+    [courseId],
+  );
   // Per-deck response-time calibration for the decks backing this course's cards,
   // re-scoped into a single course-wide mean (see courseMeanReviewSeconds above).
   const deckIds = useMemo(
@@ -110,30 +148,33 @@ export function CoursePath() {
     courseCards !== undefined &&
     summary !== undefined &&
     practiceNodes !== undefined &&
+    lessonLinks !== undefined &&
+    exposures !== undefined &&
+    lessonCompletions !== undefined &&
+    practiceMilestones !== undefined &&
     perf !== undefined;
 
-  // Build lessonCardsById: group course cards by primaryLessonId.
+  // Complete lesson membership includes both primary and explicitly linked cards.
   // Hooks below must run unconditionally (Rules of Hooks), so they tolerate
   // not-yet-loaded data via fallbacks and are only consumed once `dataLoaded`.
   const lessonCardsById = useMemo(() => {
     const map = new Map<string, Card[]>();
-    for (const card of courseCards ?? []) {
-      if (card.primaryLessonId) {
-        const bucket = map.get(card.primaryLessonId) ?? [];
-        bucket.push(card);
-        map.set(card.primaryLessonId, bucket);
-      }
+    for (const lesson of lessons ?? []) {
+      map.set(lesson.id, lessonCardMembership(lesson.id, courseCards ?? [], lessonLinks ?? []));
     }
     return map;
-  }, [courseCards]);
+  }, [courseCards, lessonLinks, lessons]);
 
-  // Live due-card count and mean review time, feeding shouldInsertPractice (addendum 2 §H).
+  // Live review-due count and mean review time, feeding shouldInsertPractice
+  // (addendum 2 §H). Deliberately review-only (dueCards): practice-node pacing
+  // is about FSRS review pressure, unlike the header's dueCardCount which also
+  // admits new cards (see courseHeaderStats).
   const now = Date.now();
-  const { dueCardCount, meanReviewSeconds } = useMemo(() => {
-    const dueCardCount = dueCards(availableCards(courseCards ?? [], now), now).length;
+  const { reviewDueCount, meanReviewSeconds } = useMemo(() => {
+    const reviewDueCount = dueCards(availableCards(courseCards ?? [], now), now).length;
     const deckSeconds = buildDeckSecondsMap(perf ?? []);
     const meanReviewSeconds = courseMeanReviewSeconds(courseCards ?? [], deckSeconds);
-    return { dueCardCount, meanReviewSeconds };
+    return { reviewDueCount, meanReviewSeconds };
     // `now` is deliberately excluded: recomputation is scoped to data changes
     // (cards/perf), not wall-clock drift, and live-query updates re-render anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -148,15 +189,105 @@ export function CoursePath() {
             examDates,
             lessonCardsById,
             practiceNodes,
-            dueCardCount,
+            reviewDueCount,
             meanReviewSeconds,
             now,
+            {
+              exposures: exposures ?? [],
+              lessonCompletions: lessonCompletions ?? [],
+              practiceMilestones: practiceMilestones ?? [],
+            },
           )
         : [],
     // `now` is deliberately excluded: recomputation is scoped to data changes,
     // not wall-clock drift, and live-query updates re-render anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [course, lessons, examDates, lessonCardsById, practiceNodes, dueCardCount, meanReviewSeconds],
+    [
+      course,
+      lessons,
+      examDates,
+      lessonCardsById,
+      practiceNodes,
+      reviewDueCount,
+      meanReviewSeconds,
+      exposures,
+      lessonCompletions,
+      practiceMilestones,
+    ],
+  );
+
+  const examDateContext = useMemo(
+    () =>
+      course && lessons && examDates ? makeExamDateContext(course, lessons, examDates) : undefined,
+    [course, lessons, examDates],
+  );
+
+  const reachedLessonIds = useMemo(
+    () =>
+      new Set(
+        nodes
+          .filter((node) => node.nodeType === 'lesson' && node.status !== 'locked')
+          .map((node) => node.id),
+      ),
+    [nodes],
+  );
+
+  const practiceProgressByKey = useMemo(() => {
+    const result = new Map<string, PracticeNodeProgress>();
+    if (!course || !examDateContext) return result;
+    for (const node of nodes) {
+      if (node.nodeType !== 'practice-auto' && node.nodeType !== 'practice-manual') continue;
+      const scope = practiceCardScope(
+        courseCards ?? [],
+        lessonLinks ?? [],
+        exposures ?? [],
+        { reachedLessonIds, practiceNode: node.practiceNode },
+        now,
+        course.leechThreshold,
+      );
+      const scopeVersion = practiceScopeVersion(scope);
+      const readiness = practiceReadiness(scope, course, examDateContext, now);
+      const eligibleCount = eligiblePracticePool(scope, course, examDateContext, now).length;
+      const milestone = (practiceMilestones ?? []).find(
+        (candidate) =>
+          candidate.nodeKey === node.nodeKey && candidate.scopeVersion === scopeVersion,
+      );
+      result.set(node.nodeKey, {
+        fraction: readiness.fraction,
+        eligibleCount,
+        completed: milestone?.completedAt !== undefined,
+        scopeVersion,
+      });
+    }
+    return result;
+  }, [
+    course,
+    courseCards,
+    examDateContext,
+    exposures,
+    lessonLinks,
+    nodes,
+    practiceMilestones,
+    reachedLessonIds,
+    now,
+  ]);
+
+  const endPracticeEligible = useMemo(() => {
+    if (!course || !examDateContext) return false;
+    const endScope = practiceCardScope(
+      courseCards ?? [],
+      lessonLinks ?? [],
+      exposures ?? [],
+      { reachedLessonIds },
+      now,
+      course.leechThreshold,
+    );
+    return eligiblePracticePool(endScope, course, examDateContext, now).length > 0;
+  }, [course, courseCards, examDateContext, exposures, lessonLinks, reachedLessonIds, now]);
+
+  const studyTarget = useMemo(
+    () => nextStudyTarget(nodes, practiceProgressByKey, endPracticeEligible),
+    [endPracticeEligible, nodes, practiceProgressByKey],
   );
 
   // Loading state — a skeleton while course/lesson data resolves.
@@ -187,7 +318,7 @@ export function CoursePath() {
   // Single-lesson branch (addendum E): render the lesson view directly rather than
   // showing a one-item path. No redirect — this is a rendering branch.
   if (lessons.length === 1) {
-    return <LessonView courseId={courseId} lessonId={lessons[0].id} />;
+    return <LessonView courseId={courseId} lessonId={lessons[0].id} showStudyNow />;
   }
 
   // Precomputed for the manual practice-node insertion affordances (see InsertGap/
@@ -199,20 +330,21 @@ export function CoursePath() {
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
   // The single next-up lesson gets the "you are here" halo (see LessonNode):
   // the first lesson node on the path still in 'available' status.
-  const currentNodeId = nodes.find(
-    (n) => n.nodeType === 'lesson' && n.status === 'available',
-  )?.id;
+  const currentLessonNode = nodes.find((n) => n.nodeType === 'lesson' && n.status === 'available');
+  const currentNodeId = currentLessonNode?.id;
+  const nextStudyLabel = studyTarget?.label;
   const lastLessonOrderIndex = lessons[lessons.length - 1]?.orderIndex;
 
   // Curriculum position (addendum J): counts non-extension lessons reached.
   // This is pacing — it has nothing to do with mastery or FSRS retention.
   const { reached, total } = pathPosition(nodes);
 
-  // Header stats: nearest exam + urgency use the same maths as LessonView's
-  // (see courseHeaderStats); mastery is passed in from the course-level summary
-  // (extension-lesson cards already excluded there), and dueCardCount reuses
-  // the value already computed above for buildPath rather than recomputing it.
-  const { nearestExam, examUrgent, mastery } = courseHeaderStats(
+  // Header stats: nearest exam + urgency + dueCardCount use the same maths as
+  // LessonView's (see courseHeaderStats — due here means overdue reviews plus
+  // admissible new cards, matching what Study serves); mastery is passed in
+  // from the course-level summary (extension-lesson cards already excluded
+  // there).
+  const { nearestExam, examUrgent, mastery, dueCardCount } = courseHeaderStats(
     course,
     examDates,
     courseCards,
@@ -227,12 +359,10 @@ export function CoursePath() {
     return {
       cardCount: cards.length,
       dueCount: dueCards(availableCards(cards, now), now).length,
-      masteryPct: Math.round(progressValue(cards, course, now) * 100),
+      masteryPct: Math.round(progressValue(cards, course, now, examDateContext) * 100),
     };
   };
-  const unseenCount = courseCards.filter(
-    (c) => c.lastReviewed === null || c.state === 0,
-  ).length;
+  const unseenCount = courseCards.filter((c) => c.lastReviewed === null || c.state === 0).length;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
@@ -275,8 +405,8 @@ export function CoursePath() {
         </div>
       </div>
 
-      {/* Header — title, a one-sentence editorial standfirst, and the Study
-          action. */}
+      {/* Header — title, a row of labelled stat pills (HeaderStats), and the
+          Study action. */}
       <CourseHeader
         className="mb-12"
         eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
@@ -284,39 +414,51 @@ export function CoursePath() {
         title={course.name}
       >
         <div>
-          <p className="max-w-prose text-sm text-ink-soft">
-            {fieldStandfirst({
-              dueCount: dueCardCount,
-              masteryPct,
-              daysToExam: Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0),
-              totalCards: courseCards.length,
-              unseenCount,
-            })}{' '}
-            Lesson {reached} of {total} reached.
-          </p>
+          <HeaderStats
+            dueCount={dueCardCount}
+            masteryPct={masteryPct}
+            daysToExam={Math.max(Math.ceil((nearestExam - now) / MS_PER_DAY), 0)}
+            totalCards={courseCards.length}
+            unseenCount={unseenCount}
+            lessonProgress={{ reached, total }}
+          />
           <div className="mt-6 flex flex-wrap items-center gap-4">
             <Button
               variant="primary"
               size="lg"
-              disabled={courseCards.length === 0}
-              onClick={() => navigate(`/course/${courseId}/learn`)}
+              disabled={!studyTarget}
+              onClick={() => {
+                if (!studyTarget) return;
+                if (studyTarget.kind === 'lesson') {
+                  navigate(`/lesson/${studyTarget.lessonId}/learn?mode=simple`);
+                } else if (studyTarget.kind === 'practice') {
+                  navigate(
+                    `/course/${courseId}/learn?practiceNode=${encodeURIComponent(studyTarget.nodeKey)}`,
+                  );
+                } else {
+                  navigate(`/course/${courseId}/learn?practice=end`);
+                }
+              }}
             >
               <PlayIcon width={18} height={18} />
-              Study
-              {dueCardCount > 0 && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-fg/20 px-1.5 text-xs font-semibold tabular-nums">
-                  {dueCardCount}
-                </span>
-              )}
+              Study now
             </Button>
-            <p className="text-sm text-ink-faint">
-              {courseCards.length === 0
-                ? 'Add cards to begin studying.'
-                : dueCardCount > 0
-                  ? `${dueCardCount} card${dueCardCount === 1 ? '' : 's'} ready for review.`
+            {/* The due count already leads the stat pills above, so this line
+                only speaks when there is something the pills don't say. */}
+            {(courseCards.length === 0 || dueCardCount === 0) && (
+              <p className="text-sm text-ink-faint">
+                {courseCards.length === 0
+                  ? 'Add cards to begin studying.'
                   : 'Nothing due — study ahead.'}
-            </p>
+              </p>
+            )}
           </div>
+          {/* Quiet pointer to where Study will draw from — the "you are here"
+              lesson (currentLessonNode), reusing the same node the path
+              highlights below rather than recomputing it. */}
+          {nextStudyLabel && (
+            <p className="mt-1.5 text-xs text-ink-faint">Next: {nextStudyLabel}</p>
+          )}
         </div>
       </CourseHeader>
 
@@ -351,14 +493,23 @@ export function CoursePath() {
               lessonDetail={
                 node.nodeType === 'lesson' ? detailForLesson(node.lesson.id) : undefined
               }
-              onLessonClick={(lessonId) =>
-                navigate(`/course/${courseId}/lesson/${lessonId}`)
+              onLessonClick={(lessonId) => navigate(`/course/${courseId}/lesson/${lessonId}`)}
+              practiceProgress={
+                node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual'
+                  ? practiceProgressByKey.get(node.nodeKey)
+                  : undefined
               }
-              onPracticeClick={() => navigate(`/course/${courseId}/learn`)}
+              onPracticeClick={(practiceNode) =>
+                navigate(
+                  `/course/${courseId}/learn?practiceNode=${encodeURIComponent(practiceNode.nodeKey)}`,
+                )
+              }
               onPracticeEdit={(pn) =>
                 pn.practiceNode && setEditorState({ mode: 'edit', node: pn.practiceNode })
               }
-              onInsertOnLine={(position) => setEditorState({ mode: 'new', defaultPosition: position })}
+              onInsertOnLine={(position) =>
+                setEditorState({ mode: 'new', defaultPosition: position })
+              }
             />
           ))}
           <InsertGap

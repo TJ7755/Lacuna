@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { m as motion } from 'motion/react';
-import { MarkdownView } from '../markdown/MarkdownView';
+import { AnnotatedNoteContent } from './AnnotatedNoteContent';
 import { ChevronDownIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import type { Note } from '../../db/types';
@@ -72,7 +72,7 @@ export function LessonNotesStudyView({ notes, className }: LessonNotesStudyViewP
                     transition={{ duration: 0.12 * m }}
                     className="border-t border-line px-5 py-4"
                   >
-                    <MarkdownView source={note.content} allowEmbeds />
+                    <AnnotatedNoteContent note={note} />
                   </motion.div>
                 )}
               </div>

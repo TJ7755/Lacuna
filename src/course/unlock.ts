@@ -10,27 +10,38 @@
 //
 // British English throughout.
 
-import type { Card } from '../db/types';
+import type { Card, LessonCardExposure, LessonCompletion } from '../db/types';
 
 // ---------------------------------------------------------------------------
 // 1. lessonTaught
 // ---------------------------------------------------------------------------
 
 /**
- * Whether a lesson has been "taught": every card whose `primaryLessonId` is
- * this lesson has been served at least once (FSRS state moved off `New` = 0),
- * regardless of grade. Mirrors the "served" rule in `lessonStatus` (path.ts).
+ * Whether a lesson has been taught: every primary or linked member card has a
+ * successful exposure in this lesson. Cardless lessons require an explicit
+ * completion record from their Continue action.
  *
- * A lesson with **zero cards** counts as taught — there is nothing left to
- * serve, so it cannot block the gate (mirrors `lessonStatus`'s empty-lesson
- * handling in path.ts).
+ * A lesson with zero cards is taught only after its Continue action has written
+ * a completion record.
  *
- * `lessonCards` should contain only the primary-lesson cards for the specific
- * lesson being evaluated. The caller is responsible for filtering.
+ * `lessonCards` must contain primary and explicitly linked membership for the
+ * specific lesson. The caller is responsible for constructing that set.
  */
-export function lessonTaught(lessonCards: Card[]): boolean {
-  if (lessonCards.length === 0) return true;
-  return lessonCards.every((c) => c.state !== 0);
+export function lessonTaught(
+  lessonId: string,
+  lessonCards: Card[],
+  exposures: LessonCardExposure[],
+  completions: LessonCompletion[],
+): boolean {
+  if (lessonCards.length === 0) {
+    return completions.some((completion) => completion.lessonId === lessonId);
+  }
+  const exposedIds = new Set(
+    exposures
+      .filter((exposure) => exposure.lessonId === lessonId)
+      .map((exposure) => exposure.cardId),
+  );
+  return lessonCards.every((card) => exposedIds.has(card.id));
 }
 
 // ---------------------------------------------------------------------------
@@ -42,7 +53,7 @@ export function lessonTaught(lessonCards: Card[]): boolean {
  * that follows Lesson N on the path:
  *
  *  1. Lesson N is taught (see `lessonTaught`) — AND
- *  2. if a Practice node was auto-inserted in the path slot immediately after
+ *  2. if a Practice node gates the path slot immediately after
  *     Lesson N, that practice session has been completed by reaching its
  *     objective (the SessionReport's goal-reached state, e.g.
  *     `isObjectiveComplete` in src/fsrs/objective.ts). A manual exit does NOT
@@ -73,10 +84,13 @@ export function lessonTaught(lessonCards: Card[]): boolean {
  * ratchet — addendum §I).
  */
 export function nextLessonUnlockCondition(
+  lessonId: string,
   lessonCards: Card[],
+  exposures: LessonCardExposure[],
+  completions: LessonCompletion[],
   practiceGoalReached: boolean | undefined,
 ): boolean {
-  if (!lessonTaught(lessonCards)) return false;
+  if (!lessonTaught(lessonId, lessonCards, exposures, completions)) return false;
   // No practice node in the slot: condition 1 alone is sufficient.
   if (practiceGoalReached === undefined) return true;
   // A practice node is present: it must have reached its objective.

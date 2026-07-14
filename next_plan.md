@@ -9,12 +9,13 @@ that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in ord
 2. **Arc 1 — Sequence learning** (detailed; ordered lists first, lines mode as v2)
 3. **Arc 2 — MCP server / agent surface** (outline; to be planned in full when reached)
 4. **Arc 3 — Cram-mode overhaul** (outline; the document owed by Addendum 2 §G/§M)
+5. **Arc 4 — Lesson/Practice split, checkpoint-aware horizon & Study Now** (detailed)
 
 Plugins and sync/collaboration are explicitly parked. Arc 2's design doubles as the
 plugin-compatibility groundwork: the MCP tool surface over the repository layer is the
 first — and for now only — extension point.
 
-Detail rots (the Course plan needed two addenda), so only the arc currently being built
+Detail rots (the Course plan needed two addenda), so only the most recently delivered arc
 carries full detail. Outline arcs are scoped, not specified.
 
 ---
@@ -52,8 +53,9 @@ paid-down deferrals, and accurate documentation.
 
 1. **Manual practice-node authoring UI** — teacher-facing creation/placement of manual
    `PracticeNode` records (rendering and unlock-gating logic already exist).
-2. **Teacher-configured lesson session filters** — `/lesson/:lessonId/learn` currently
-   serves new cards only; add the configured-filter path (due-only, mixed, custom).
+2. **Lesson session filters** — superseded by Arc 4. Lesson study now has one deliberate
+   contract: unseen lesson members in Simple mode. `Lesson.sessionFilter` remains only for
+   legacy import compatibility and is not a user-configurable setting.
 3. **Course deletion undo** — replace the plain `confirm()` with the undo-toast pattern
    `DangerZoneSection` already implements for decks.
 4. **`undoReview` and `lastInteractedAt`** — use the `ReviewUndo.kind` discriminator
@@ -249,6 +251,207 @@ blocks users). Scope decided so far:
 - Respect checkpoint `lessonIds`/`excludedCardIds` scoping when building the cram pool.
 - Course-scoped cram entry points (path checkpoint node, course settings) replacing the
   deck-scoped study-dropdown origin.
+
+---
+
+# Arc 4 — Lesson/Practice Split, Checkpoint-Aware Horizon & Study Now
+
+> **Status (July 2026): delivered.** Schema v12, the Lesson/Practice split, live per-card
+> exam horizons, denser Practice cadence, the course-level Study now dispatcher, persistent
+> Practice milestones, node progress treatment and local note annotations are implemented.
+> The sections below record the shipped contract rather than a future design.
+
+## 4.1 Motivation and approach
+
+Lesson and Practice sessions share Learn Mode infrastructure but now have deliberately
+different contracts. `Lesson.sessionFilter` is ignored by live lesson study and retained
+only for legacy import compatibility; Practice no longer pulls every course card. The two
+session types are:
+
+- **Lesson** — first exposure only. New/unseen cards included in that specific lesson,
+  including cards the teacher explicitly linked in through `LessonCardLink`, studied
+  in a single Simple-mode pass: Yes/No, wrong cards requeue until every card has been
+  answered correctly once, with no FSRS memory write. This is deliberately massed
+  practice — grounded in the
+  successive-relearning literature (Rawson & Dunlosky, 2022): a low-stakes massed first
+  exposure followed by genuinely spaced retrieval later produces more durable retention
+  than either a single massed session or spaced retrieval with no prior exposure at
+  all. Lessons should be authored short (few cards per pass), per cognitive-load/
+  chunking evidence — this is a "make each teaching pass smaller" instruction, not a
+  "reduce the number of lesson units" one.
+- **Practice** — spaced retrieval over everything reachable so far. Pool = cards from
+  lessons already reached on the path that have been exposed in at least one lesson,
+  filtered to cards not yet "secured" against whichever exam date actually applies to
+  *that card* (§4.3). Requiring prior exposure prevents Practice from leaking unseen
+  material. Ordering and session mechanics are the existing, unchanged Learn Mode engine
+  (`selectNext`/`scoreCard`/cooldown) — no separate algorithm for Practice.
+- **Study Now** — one course-level dispatcher button (not a per-lesson control) that
+   reads the next reachable path node and routes to the lesson-study screen or an
+   ordinary practice session accordingly. Auto curricular Practice milestones are
+   one-time; once the curriculum has no unfinished node, Study now falls back to recurring
+   end-of-course Practice.
+
+## 4.2 "Taught" without a full FSRS write (Lesson / Simple mode)
+
+**Problem addressed.** `lessonStatus` and `lessonTaught` formerly keyed entirely on
+`card.state !== 0`, while Simple mode wrote no FSRS state. That made completion impossible
+without corrupting the meaning of the FSRS record. A `Card.taughtAt` field was also
+insufficient because a linked card can be taught separately in several lessons.
+
+**Shipped fix.** `LessonCardExposure` is keyed by the unique `(lessonId, cardId)`
+pair, with `taughtAt`. On a card's first correct answer in a lesson-scoped Simple-mode
+session, upsert that pair without changing the card's FSRS state, memory fields or
+review history. Primary and linked cards use the same representation. Lesson status
+and the semi-linear unlock ratchet consider a lesson taught only when every card
+currently included in it has an exposure record. Removing a link removes its exposure;
+adding a new card or link makes the lesson incomplete until that pair is taught.
+
+This is learner progress: it is included in full backups and restore-point payloads, but
+excluded from course share codes, which distribute authored material rather than the
+sender's study history. Repository helpers upsert, query and cascade-delete exposures.
+The v12 migration creates exposure rows for existing reviewed cards in their primary
+lesson only, preserving existing path completion without falsely claiming that a card
+was taught through every display-only link. Existing linked cards therefore make their
+linked lesson incomplete until they are actually introduced there.
+
+Cardless lessons use a separate lesson-scoped `LessonCompletion` row, written by the
+notes screen's **Continue** action. Completion is represented directly rather than by a
+fictional exposure row.
+
+## 4.3 Checkpoint-aware horizon (the "due" fix)
+
+The existing, unit-tested `resolveCardExamDate` (`src/fsrs/examDate.ts`) is integrated
+through the shared horizon and objective layers. Practice did not gain a second scheduler.
+
+**Resolution order:**
+
+1. **Lesson override** — if the card's primary lesson has an `examDate`, use it
+   outright, even if it is in the past and even if a sooner checkpoint exists.
+2. **Nearest applicable future checkpoint** — among the course's `CourseExamDate` rows
+   that apply to the card (respecting `lessonIds` scoping and `excludedCardIds`), the
+   soonest one still `>= now`. A passed checkpoint is ignored, so the next-nearest
+   checkpoint (or the course default) naturally takes over.
+3. **Course default** — the course's own `examDate`.
+
+`cardSchedulingHorizon(card, schedulerConfig, examDateContext, now)` applies the same
+"keep revising" fallback
+`schedulingHorizon` already has — once the resolved date is in the past, roll forward
+to `now + MAINTENANCE_HORIZON_DAYS` — to `resolveCardExamDate`'s result instead of to
+`deck.examDate` directly.
+
+This is a horizon-layer correction used by the shared objective engine. Practice does not
+gain a special scheduler or a forked scoring path.
+
+**Live per-card call sites:**
+
+- `objective.ts`: `scoreCard` and `isObjectiveComplete`'s `expectedMarks` branch resolve
+  the calling card's horizon rather than reusing one unit horizon.
+- `progress.ts`: `masteryFraction` and `averagePredictedRetrievability` resolve horizons
+  inside their per-card loops.
+- `cram.ts`: `cramScore` — same per-card treatment for the weakest-first ranking. The
+  48-hour exam-eve *window gate* (`examEveAvailable`) stays whole-course; that's a
+  deliberate "is this unit in its final push" decision, not a per-card one.
+- `ObjectiveContext` (`objective.ts`) carries an optional `examDateCtx?: ExamDateContext`,
+  populated by `makeObjectiveContext` when building context for a Course unit (its
+  lessons and `courseExamDates` loaded alongside it at session-start). Left `undefined`
+  for legacy Deck-scoped/global sessions, which keep resolving against the single
+  `deck.examDate` exactly as today — zero behaviour change there.
+
+**Call sites that deliberately stay whole-unit** (a unit-level approximation is
+correct here, not a shortcut): `session.ts`'s cross-course `urgency()` blending in the
+global "Today" session, and `practice.ts`'s `shouldInsertPractice` near/far threshold
+gate. Both could later converge on "nearest across the unit's own checkpoints" (i.e.
+what `path.ts`'s `nearestExamDate` already computes) as a polish pass, but that isn't
+required for this arc.
+
+`eligibility.ts`'s `isDue`/`dueCards` are untouched — they keep their existing, narrower
+job (the cosmetic "due today" badge count) and must not be conflated with the new
+practice-pool test, which is "not secured against the card's own resolved horizon," a
+different concept entirely.
+
+## 4.4 Practice pool scope
+
+The course-scoped load intersects course cards with lessons reached so far: lessons whose
+`lessonStatus` is `completed` or `available` (not `locked`), using the same status
+`path.ts` computes for path rendering.
+
+Membership includes both primary cards and `LessonCardLink` rows, then deduplicates by
+card id. A link can therefore make a card eligible earlier, but it does not change that
+card's scheduling identity: per-card horizon resolution continues to use its primary
+lesson, because the card has one shared FSRS memory state.
+
+Combined with §4.3: a card is served by Practice only if (a) at least one lesson that
+contains it has been reached, (b) it has a `LessonCardExposure` in at least one lesson, and
+(c)
+`rAtExam(card, cardSchedulingHorizon(card, examDateCtx, now), ...) < MASTERY_R` — i.e.
+it is not yet secured against whichever exam date actually applies to it.
+
+Practice nodes occur more often between deliberately shorter lesson passes through the
+existing insertion system. Fixture-tested defaults are `practiceThresholdMinutesFar = 8`,
+`practiceThresholdMinutesNear = 4`, and `practiceMaxGap = 2`. Small, medium, large and
+near-exam fixtures cover the cadence. Existing courses retain saved values; the new defaults
+apply to newly created courses and the global practice defaults UI.
+
+## 4.5 Study Now dispatcher
+
+One button on `CoursePath`, course-scoped only, reads `buildPath` for the next available
+lesson or unfinished Practice milestone and routes:
+
+- **Next node is a lesson** → a dedicated lesson-study screen: notes first — this
+  extends the existing `LessonNotesScreen`/`LessonNotesIntro` first-study flow already
+  in `LearnMode.tsx` rather than a parallel build — gaining text selection highlights
+  with optional free-text annotations. Store these in a separate local
+  `NoteAnnotation` table, anchored by source offsets plus the selected text so stale
+  anchors can be detected after note edits. The first version restricts selection to one
+  ordinary text block; code, maths, embeds and cross-block selections are rejected.
+  Annotations are **device-local only** and excluded from exports, backups, restore points
+  and share codes. After the notes, Simple mode serves the lesson's unseen primary and
+  linked cards. A cardless lesson persists completion when **Continue** is pressed.
+- **Next node is a practice node** → an ordinary practice session per §4.3/§4.4,
+  unchanged engine. `PracticeMilestone` stores resumable progress and completed state,
+  keyed to a stable node identity and scope version. The diamond perimeter shows the
+  current secured proportion across the node's full scope; a distinct glow marks persisted
+  milestone completion. Completion therefore does not disappear merely because retention
+  later decays.
+- **No unfinished curricular node** → recurring end-of-course Practice. This fallback is
+  deliberately not persisted as a one-time milestone.
+- **Dynamic analytics**: explicitly out of scope for this arc. No hooks added
+  speculatively; revisit only once there's a concrete requirement.
+
+## 4.6 Risks
+
+- Per-card horizon resolution inside `masteryFraction`/`averagePredictedRetrievability`'s
+  loops is one extra map lookup per card per call — fine at course scale, worth a quick
+  benchmark if the course analytics page calls these over unusually large card sets.
+- Exposure rows must remain lesson-scoped throughout repository queries; collapsing
+  them to a card-level boolean would mark linked material taught in lessons where it
+  has never been introduced.
+- Note edits can invalidate offset-based annotation anchors. Preserve the selected
+  source text for validation and surface an annotation as detached rather than
+  silently highlighting the wrong text.
+- `Lesson.examDate`'s "wins outright even if in the past" behaviour is live and tested.
+  A stale forgotten lesson override can therefore pin a lesson's cards to maintenance
+  scheduling after a passed date. A later Course Settings surface to audit or clear stale
+  overrides remains sensible polish, not an Arc 4 omission.
+
+## 4.7 Success criteria
+
+1. A lesson session serves only unseen cards included in that lesson, including explicit
+   links; completing a card writes only its lesson-scoped exposure and leaves FSRS state
+   untouched. Cardless lessons complete explicitly through Continue.
+2. A practice session's pool is exactly {previously exposed cards in reached lessons} ∩
+   {not secured against their own resolved exam date}, ordered by the unchanged Learn Mode
+   engine.
+3. New courses receive a denser, fixture-tested practice cadence through the existing
+   three insertion controls, with no parallel insertion mechanism.
+4. `resolveCardExamDate`/`examDate.ts` is called by the live scheduler for the first
+   time; existing deck-scoped/global-session tests keep passing unchanged.
+5. Study Now on CoursePath correctly dispatches lesson vs practice per path state,
+   reusing the existing notes-intro flow rather than a parallel screen; highlights and
+   free-text annotations persist locally but appear in no portability format. Curricular
+   Practice milestones resume, complete once and retain their completion glow, while the
+   perimeter continues to show live full-scope readiness and end-of-course Practice recurs.
+6. `tsc -b` clean, all tests pass, SPEC.md kept in sync with what's actually shipped.
 
 ---
 

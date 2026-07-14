@@ -1,7 +1,11 @@
-// Standfirst copy for the course/lesson headers (CoursePath, LessonView):
-// one editorial sentence summarising what is fading, how memory is holding,
-// and how long remains until the exam. Pure — no React, no database, same
-// testable-pure convention as src/course/path.ts.
+// Formerly the standfirst copy for the course/lesson headers (CoursePath,
+// LessonView): one editorial sentence summarising what is fading, how
+// memory is holding, and how long remains until the exam. Superseded by
+// HeaderStats (src/components/course/HeaderStats.tsx), which renders the
+// same inputs as a row of labelled stat pills. Kept here as a pure,
+// independently testable function — no React, no database, same
+// testable-pure convention as src/course/path.ts — in case sentence-form
+// copy is wanted again.
 // British English throughout.
 
 export interface StandfirstInput {

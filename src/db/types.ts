@@ -65,7 +65,6 @@ export interface ReviewLog {
   retrievabilityAtReview: number | null;
 }
 
-
 /**
  * The structural subset of scheduling fields the FSRS engine reads. Both Deck
  * and Course satisfy it, so the engine can schedule either without caring which
@@ -324,12 +323,7 @@ export interface Lesson {
    * counted in core progress, and excluded from the study pool until opted into.
    */
   isExtension: boolean;
-  /**
-   * Which cards a lesson session serves. Undefined (or 'new') preserves the
-   * original behaviour: new (unseen) cards only. 'due' studies cards the FSRS
-   * schedule has come round to; 'mixed' studies both. Un-indexed — a teacher
-   * preference, not something queried on.
-   */
+  /** Legacy import field. Arc 4 lesson sessions always teach unexposed members. */
   sessionFilter?: 'new' | 'due' | 'mixed';
 }
 
@@ -352,6 +346,34 @@ export interface LessonCardLink {
   createdAt: number;
 }
 
+/** Records that a card has been successfully introduced in one specific lesson. */
+export interface LessonCardExposure {
+  lessonId: string;
+  cardId: string;
+  taughtAt: number;
+}
+
+/** Explicit completion for a lesson with no cards to expose. */
+export interface LessonCompletion {
+  lessonId: string;
+  completedAt: number;
+}
+
+/**
+ * Device-local highlight or annotation anchored to a Note's Markdown source.
+ * This table is deliberately absent from every portability format.
+ */
+export interface NoteAnnotation {
+  id: string;
+  noteId: string;
+  startOffset: number;
+  endOffset: number;
+  selectedText: string;
+  body?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 /**
  * A practice node on the path. `auto` nodes are positioned dynamically at render
  * time and never persist a position; `manual` nodes are teacher-authored.
@@ -370,6 +392,21 @@ export interface PracticeNode {
   cardCount?: number;
   randomize?: boolean;
   createdAt: number;
+}
+
+/** Persisted progress for one stable practice path node and its current card scope. */
+export interface PracticeMilestone {
+  /** The PathNode id: authored node id for manual nodes, deterministic id for auto nodes. */
+  nodeKey: string;
+  courseId: string;
+  /** Caller-derived fingerprint/version of the node's effective card scope. */
+  scopeVersion: string;
+  /** Last measured secured-card count for the current scope. */
+  securedCardCount: number;
+  totalCardCount: number;
+  updatedAt: number;
+  /** Set once this scope's practice objective is reached; retained if readiness later decays. */
+  completedAt?: number;
 }
 
 export interface Card {
@@ -510,7 +547,10 @@ export interface BackupFile {
   lessons?: Lesson[];
   notes?: Note[];
   lessonCards?: LessonCardLink[];
+  lessonCardExposures?: LessonCardExposure[];
+  lessonCompletions?: LessonCompletion[];
   practiceNodes?: PracticeNode[];
+  practiceMilestones?: PracticeMilestone[];
   courseExamDates?: CourseExamDate[];
   // Overlapping-cloze sequences. Optional so older backups still import cleanly.
   sequences?: Sequence[];

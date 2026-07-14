@@ -92,6 +92,7 @@ export function PathNodeWithLine({
   current,
   lockHint,
   lessonDetail,
+  practiceProgress,
   onLessonClick,
   onPracticeClick,
   onPracticeEdit,
@@ -104,8 +105,9 @@ export function PathNodeWithLine({
   current: boolean;
   lockHint?: string;
   lessonDetail?: LessonNodeDetail;
+  practiceProgress?: { fraction: number; completed: boolean };
   onLessonClick: (lessonId: string) => void;
-  onPracticeClick: () => void;
+  onPracticeClick: (node: PracticePathNode) => void;
   onPracticeEdit: (node: PracticePathNode) => void;
   onInsertOnLine: (position: number | undefined) => void;
 }) {
@@ -113,8 +115,7 @@ export function PathNodeWithLine({
   const m = speedMultiplier(motionSpeed);
   // A segment is completed when the node it trails is a completed lesson.
   // Checkpoints and available/locked lessons leave the segment neutral.
-  const segmentCompleted =
-    !isLast && node.nodeType === 'lesson' && node.status === 'completed';
+  const segmentCompleted = !isLast && node.nodeType === 'lesson' && node.status === 'completed';
   const revealDelay = index * NODE_REVEAL_STEP_MS;
 
   return (
@@ -133,8 +134,13 @@ export function PathNodeWithLine({
         current={current}
         lockHint={lockHint}
         lessonDetail={lessonDetail}
+        practiceProgress={practiceProgress}
         onLessonClick={onLessonClick}
-        onPracticeClick={onPracticeClick}
+        onPracticeClick={
+          node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual'
+            ? () => onPracticeClick(node)
+            : undefined
+        }
         onPracticeEdit={onPracticeEdit}
       />
       {!isLast && (

@@ -15,6 +15,7 @@ import type {
   SessionHistoryEntry,
 } from '../db/types';
 import { progressValue } from '../fsrs/objective';
+import { makeExamDateContext } from '../fsrs/examDate';
 import { availableCards, studyPool } from '../fsrs/eligibility';
 import { computeStudyStats, buildDeckSecondsMap, type StudyStats } from '../fsrs/stats';
 
@@ -186,12 +187,15 @@ export interface CourseSummary {
  * are included. Mirrors computeDeckSummaries (including the orphaned-card-set guard).
  *
  * Pure — accepts only already-loaded arrays so it can be reused by combined hooks
- * and called in tests without a database.
+ * and called in tests without a database. Exam dates are optional for backwards-
+ * compatible callers; lesson overrides still apply when lessons provide them.
  */
 export function computeCourseSummaries(
   courses: Course[],
   lessons: Lesson[],
   cards: Card[],
+  examDates: CourseExamDate[] = [],
+  now: number = Date.now(),
 ): Record<string, CourseSummary> {
   const courseById = new Map(courses.map((c) => [c.id, c]));
 
@@ -214,6 +218,16 @@ export function computeCourseSummaries(
     if (card.courseId) (byCourse[card.courseId] ??= []).push(card);
   }
 
+  const lessonsByCourse: Record<string, Lesson[]> = {};
+  for (const lesson of lessons) {
+    (lessonsByCourse[lesson.courseId] ??= []).push(lesson);
+  }
+
+  const examDatesByCourse: Record<string, CourseExamDate[]> = {};
+  for (const examDate of examDates) {
+    (examDatesByCourse[examDate.courseId] ??= []).push(examDate);
+  }
+
   const summaries: Record<string, CourseSummary> = {};
   for (const course of courses) {
     const courseCards = byCourse[course.id] ?? [];
@@ -225,13 +239,18 @@ export function computeCourseSummaries(
         c.primaryLessonId === undefined ||
         !extensionLessonIds.has(c.primaryLessonId),
     );
-    const available = availableCards(coreCards);
+    const available = availableCards(coreCards, now);
+    const examDateContext = makeExamDateContext(
+      course,
+      lessonsByCourse[course.id] ?? [],
+      examDatesByCourse[course.id] ?? [],
+    );
     summaries[course.id] = {
       lessonCount: coreLessonCount[course.id] ?? 0,
       cardCount: coreCards.length,
-      mastery: progressValue(available, course),
+      mastery: progressValue(available, course, now, examDateContext),
       unreviewed: available.filter((c) => c.lastReviewed === null).length,
-      eligible: studyPool(coreCards, course).length,
+      eligible: studyPool(coreCards, course, now).length,
     };
   }
 
@@ -252,16 +271,17 @@ export function computeCourseSummaries(
 
 /**
  * Per-course summary statistics for the dashboard, recomputed reactively as
- * courses, lessons or cards change.
+ * courses, lessons, cards or exam dates change.
  */
 export function useCourseSummaries(): Record<string, CourseSummary> | undefined {
   return useLiveQuery(async () => {
-    const [courses, lessons, cards] = await Promise.all([
+    const [courses, lessons, cards, examDates] = await Promise.all([
       db.courses.toArray(),
       db.lessons.toArray(),
       db.cards.toArray(),
+      db.courseExamDates.toArray(),
     ]);
-    return computeCourseSummaries(courses, lessons, cards);
+    return computeCourseSummaries(courses, lessons, cards, examDates);
   }, []);
 }
 
@@ -274,13 +294,14 @@ export function useCourseSummaries(): Record<string, CourseSummary> | undefined 
 export function useCourseSummary(courseId: string | undefined): CourseSummary | undefined {
   return useLiveQuery(async () => {
     if (!courseId) return undefined;
-    const [course, lessons, cards] = await Promise.all([
+    const [course, lessons, cards, examDates] = await Promise.all([
       db.courses.get(courseId),
       db.lessons.where('courseId').equals(courseId).toArray(),
       db.cards.where('courseId').equals(courseId).toArray(),
+      db.courseExamDates.where('courseId').equals(courseId).toArray(),
     ]);
     if (!course) return undefined;
-    return computeCourseSummaries([course], lessons, cards)[courseId];
+    return computeCourseSummaries([course], lessons, cards, examDates)[courseId];
   }, [courseId]);
 }
 
@@ -303,13 +324,14 @@ export function useCourseDashboardData():
     }
   | undefined {
   return useLiveQuery(async () => {
-    const [courses, lessons, cards, perf] = await Promise.all([
+    const [courses, lessons, cards, examDates, perf] = await Promise.all([
       db.courses.toArray(),
       db.lessons.toArray(),
       db.cards.toArray(),
+      db.courseExamDates.toArray(),
       db.userPerformance.toArray(),
     ]);
-    const summaries = computeCourseSummaries(courses, lessons, cards);
+    const summaries = computeCourseSummaries(courses, lessons, cards, examDates);
     const deckSeconds = buildDeckSecondsMap(perf);
     const stats = computeStudyStats(cards, deckSeconds);
     return { courses, lessons, allCards: cards, summaries, stats };

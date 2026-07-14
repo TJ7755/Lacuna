@@ -267,30 +267,55 @@ describe('isLessonUnlocked', () => {
 
 describe('lessonStatus', () => {
   it('returns locked when not unlocked', () => {
-    expect(lessonStatus(false, [])).toBe('locked');
-    expect(
-      lessonStatus(false, [makeCard({ id: 'a', deckId: 'd', state: 2 })]),
-    ).toBe('locked');
+    expect(lessonStatus(false, 'l1', [], [], [])).toBe('locked');
+    expect(lessonStatus(false, 'l1', [makeCard({ id: 'a', deckId: 'd', state: 2 })], [], [])).toBe(
+      'locked',
+    );
   });
 
-  it('returns available for an unlocked lesson with zero cards', () => {
-    expect(lessonStatus(true, [])).toBe('available');
+  it('requires explicit completion for an unlocked lesson with zero cards', () => {
+    expect(lessonStatus(true, 'l1', [], [], [])).toBe('available');
+    expect(lessonStatus(true, 'l1', [], [], [{ lessonId: 'l1', completedAt: 1 }])).toBe(
+      'completed',
+    );
   });
 
-  it('returns completed when every card has been served (state off New)', () => {
+  it('returns completed when every member card has a lesson-scoped exposure', () => {
     const cards = [
-      makeCard({ id: 'a', deckId: 'd', state: 2 }),
-      makeCard({ id: 'b', deckId: 'd', state: 1 }),
-    ];
-    expect(lessonStatus(true, cards)).toBe('completed');
-  });
-
-  it('returns available when at least one card is still New', () => {
-    const cards = [
-      makeCard({ id: 'a', deckId: 'd', state: 2 }),
+      makeCard({ id: 'a', deckId: 'd', state: 0 }),
       makeCard({ id: 'b', deckId: 'd', state: 0 }),
     ];
-    expect(lessonStatus(true, cards)).toBe('available');
+    expect(
+      lessonStatus(
+        true,
+        'l1',
+        cards,
+        [
+          { lessonId: 'l1', cardId: 'a', taughtAt: 1 },
+          { lessonId: 'l1', cardId: 'b', taughtAt: 1 },
+        ],
+        [],
+      ),
+    ).toBe('completed');
+  });
+
+  it('returns available when at least one member lacks an exposure in this lesson', () => {
+    const cards = [
+      makeCard({ id: 'a', deckId: 'd', state: 2 }),
+      makeCard({ id: 'b', deckId: 'd', state: 2 }),
+    ];
+    expect(
+      lessonStatus(
+        true,
+        'l1',
+        cards,
+        [
+          { lessonId: 'other', cardId: 'a', taughtAt: 1 },
+          { lessonId: 'l1', cardId: 'b', taughtAt: 1 },
+        ],
+        [],
+      ),
+    ).toBe('available');
   });
 });
 
@@ -354,16 +379,20 @@ describe('buildPath', () => {
     }
   });
 
-  it('computes lesson status from supplied cards', () => {
+  it('computes lesson status from supplied membership and exposure progress', () => {
     const course = makeCourse({ id: 'c1', unlockMode: 'semi-linear' });
     const l1 = makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 });
     const l2 = makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 });
     const lessons = [l1, l2];
     const cardsById = new Map<string, Card[]>([
-      ['l1', [makeCard({ id: 'a', deckId: 'd', state: 2 })]], // served -> completed
+      ['l1', [makeCard({ id: 'a', deckId: 'd', state: 0 })]],
       ['l2', [makeCard({ id: 'b', deckId: 'd', state: 0 })]], // locked anyway
     ]);
-    const nodes = buildPath(course, lessons, [], cardsById);
+    const nodes = buildPath(course, lessons, [], cardsById, [], 0, 0, Date.now(), {
+      exposures: [{ lessonId: 'l1', cardId: 'a', taughtAt: 1 }],
+      lessonCompletions: [],
+      practiceMilestones: [],
+    });
     const n1 = nodes.find((n) => n.id === 'l1');
     const n2 = nodes.find((n) => n.id === 'l2');
     if (n1?.nodeType === 'lesson') expect(n1.status).toBe('completed');
@@ -463,6 +492,30 @@ describe('buildPath — practice nodes', () => {
     expect(autoNodes[0].afterLessonId).toBe('l3');
   });
 
+  it('gives auto practice a stable key and attaches its persisted milestone', () => {
+    const course = makeCourse({ id: 'c1', autoPractice: true, practiceMaxGap: 1 });
+    const oneLesson = [makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 })];
+    const milestone = {
+      nodeKey: 'practice-auto-c1-l1',
+      courseId: 'c1',
+      scopeVersion: 'v1',
+      securedCardCount: 1,
+      totalCardCount: 2,
+      updatedAt: 1,
+    };
+    const nodes = buildPath(course, oneLesson, [], new Map(), [], 0, 0, 0, {
+      exposures: [],
+      lessonCompletions: [],
+      practiceMilestones: [milestone],
+    });
+    const practice = nodes.find(
+      (node): node is PracticePathNode => node.nodeType === 'practice-auto',
+    );
+    expect(practice?.id).toBe('practice-auto-c1-l1');
+    expect(practice?.nodeKey).toBe('practice-auto-c1-l1');
+    expect(practice?.milestone).toEqual(milestone);
+  });
+
   it('yields periodic auto-practice nodes (not one per lesson) under a sustained large backlog', () => {
     const now = 0;
     const manyLessons = Array.from({ length: 10 }, (_, i) =>
@@ -537,6 +590,77 @@ describe('buildPath — practice nodes', () => {
     expect(autoNodes.length).toBe(1);
     expect(autoNodes[0].afterLessonId).toBe('l3');
   });
+
+  describe('denser defaults with short lesson fixtures', () => {
+    const denserDefaults = {
+      practiceThresholdMinutesFar: 8,
+      practiceThresholdMinutesNear: 4,
+      practiceMaxGap: 2,
+    } as const;
+
+    function autoPracticeAfterLessons(
+      lessonCount: number,
+      cardsPerLesson: number,
+      examDaysAway: number,
+    ): string[] {
+      const now = 0;
+      const fixtureLessons = Array.from({ length: lessonCount }, (_, index) =>
+        makeLesson({ id: `short-${index + 1}`, courseId: 'c1', orderIndex: index }),
+      );
+      const course = makeCourse({
+        id: 'c1',
+        autoPractice: true,
+        examDate: examDaysAway * MS_PER_DAY,
+        ...denserDefaults,
+      });
+      const dueCardCount = lessonCount * cardsPerLesson;
+      const nodes = buildPath(course, fixtureLessons, [], new Map(), [], dueCardCount, 8, now);
+      return nodes
+        .filter((node): node is PracticePathNode => node.nodeType === 'practice-auto')
+        .map((node) => node.afterLessonId)
+        .filter((lessonId): lessonId is string => lessonId !== null);
+    }
+
+    it('consolidates a small course after two short lessons without interrupting the first', () => {
+      expect(autoPracticeAfterLessons(3, 4, 30)).toEqual(['short-2']);
+    });
+
+    it('spaces practice every two lessons through a medium course below the far workload threshold', () => {
+      // 8 lessons x 5 cards x 8 seconds = 5.3 minutes, below the 8-minute far threshold.
+      expect(autoPracticeAfterLessons(8, 5, 30)).toEqual([
+        'short-2',
+        'short-4',
+        'short-6',
+        'short-8',
+      ]);
+    });
+
+    it('responds immediately to a large course backlog, then returns to the two-lesson cadence', () => {
+      // 18 lessons x 8 cards x 8 seconds = 19.2 minutes, above the far threshold.
+      expect(autoPracticeAfterLessons(18, 8, 30)).toEqual([
+        'short-1',
+        'short-3',
+        'short-5',
+        'short-7',
+        'short-9',
+        'short-11',
+        'short-13',
+        'short-15',
+        'short-17',
+      ]);
+    });
+
+    it('uses the lower near-exam threshold for a medium course backlog', () => {
+      // The same 5.3-minute medium workload is below the far threshold but above the
+      // 4-minute near threshold, so the first consolidation point moves forwards.
+      expect(autoPracticeAfterLessons(8, 5, 3)).toEqual([
+        'short-1',
+        'short-3',
+        'short-5',
+        'short-7',
+      ]);
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -599,7 +723,11 @@ describe('pathPosition', () => {
     const cardsById = new Map<string, Card[]>([
       ['l1', [makeCard({ id: 'a', deckId: 'd', state: 2 })]], // completed
     ]);
-    const nodes = buildPath(course, lessons, [], cardsById);
+    const nodes = buildPath(course, lessons, [], cardsById, [], 0, 0, Date.now(), {
+      exposures: [{ lessonId: 'l1', cardId: 'a', taughtAt: 1 }],
+      lessonCompletions: [],
+      practiceMilestones: [],
+    });
     const pos = pathPosition(nodes);
     expect(pos.total).toBe(3);
     expect(pos.reached).toBe(2); // l1 completed + l2 available; l3 locked

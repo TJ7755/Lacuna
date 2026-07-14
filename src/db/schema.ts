@@ -14,12 +14,17 @@ import type {
   Lesson,
   Note,
   LessonCardLink,
+  LessonCardExposure,
+  LessonCompletion,
+  NoteAnnotation,
   PracticeNode,
+  PracticeMilestone,
   Sequence,
 } from './types';
 import {
   migrateCardRecord,
   migrateDeckRecord,
+  buildLessonCardExposureBackfill,
   type LegacyCard,
   type LegacyDeck,
 } from './migrations';
@@ -45,7 +50,11 @@ class LacunaDatabase extends Dexie {
   lessons!: Table<Lesson, string>;
   notes!: Table<Note, string>;
   lessonCards!: Table<LessonCardLink, string>;
+  lessonCardExposures!: Table<LessonCardExposure, [string, string]>;
+  lessonCompletions!: Table<LessonCompletion, string>;
+  noteAnnotations!: Table<NoteAnnotation, string>;
   practiceNodes!: Table<PracticeNode, string>;
+  practiceMilestones!: Table<PracticeMilestone, string>;
   courseExamDates!: Table<CourseExamDate, string>;
   sequences!: Table<Sequence, string>;
 
@@ -320,10 +329,46 @@ class LacunaDatabase extends Dexie {
       courseExamDates: 'id, courseId, examDate, createdAt',
       sequences: 'id, courseId, primaryLessonId, createdAt',
     });
+
+    // Version 12: lesson teaching progress is lesson-scoped rather than inferred
+    // from a card's FSRS state. Reviewed cards are backfilled for their primary
+    // lesson only; display links do not prove that a card was taught there.
+    // Note annotations are stored separately because they are device-local and
+    // deliberately excluded from every backup/export format.
+    this.version(12)
+      .stores({
+        decks: 'id, createdAt, examDate, folderId',
+        cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
+        sessionHistory: '++id, deckId, courseId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        folders: 'id, parentId, createdAt',
+        courses: 'id, createdAt, examDate',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+        lessonCompletions: 'lessonId, completedAt',
+        noteAnnotations: 'id, noteId, createdAt, updatedAt',
+        practiceNodes: 'id, courseId, position, createdAt',
+        practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+        courseExamDates: 'id, courseId, examDate, createdAt',
+        sequences: 'id, courseId, primaryLessonId, createdAt',
+      })
+      .upgrade(async (tx) => {
+        const exposures = buildLessonCardExposureBackfill(
+          (await tx.table('cards').toArray()) as Card[],
+        );
+        if (exposures.length > 0) {
+          await tx.table('lessonCardExposures').bulkPut(exposures);
+        }
+      });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 11;
+const CURRENT_SCHEMA_VERSION = 12;
 
 export const db = new LacunaDatabase();
 
@@ -490,7 +535,10 @@ export async function readAllDataFromVersion(
     lessons: (raw.data['lessons'] ?? []) as Lesson[],
     notes: (raw.data['notes'] ?? []) as Note[],
     lessonCards: (raw.data['lessonCards'] ?? []) as LessonCardLink[],
+    lessonCardExposures: (raw.data['lessonCardExposures'] ?? []) as LessonCardExposure[],
+    lessonCompletions: (raw.data['lessonCompletions'] ?? []) as LessonCompletion[],
     practiceNodes: (raw.data['practiceNodes'] ?? []) as PracticeNode[],
+    practiceMilestones: (raw.data['practiceMilestones'] ?? []) as PracticeMilestone[],
     courseExamDates: (raw.data['courseExamDates'] ?? []) as CourseExamDate[],
     sequences: (raw.data['sequences'] ?? []) as Sequence[],
   };

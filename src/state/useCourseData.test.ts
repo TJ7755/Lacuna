@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { computeCourseSummaries } from './useCourseData';
-import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import type { Card, Course, Lesson } from '../db/types';
+import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
+import { progressValue } from '../fsrs/objective';
+import { makeExamDateContext } from '../fsrs/examDate';
+import type { Card, Course, CourseExamDate, Lesson } from '../db/types';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -127,5 +129,89 @@ describe('computeCourseSummaries', () => {
     expect(summaries['c-orphan']).toBeUndefined();
     expect(summaries['c1']).toBeDefined();
     expect(summaries['c1'].cardCount).toBe(1);
+  });
+
+  it('uses each card\'s applicable exam date for dashboard mastery', () => {
+    const now = 20 * MS_PER_DAY;
+    const course = makeCourse({
+      id: 'c1',
+      examDate: now + 30 * MS_PER_DAY,
+      examObjective: 'expectedMarks',
+    });
+    const nearLesson = makeLesson({ id: 'near', courseId: 'c1' });
+    const farLesson = makeLesson({ id: 'far', courseId: 'c1' });
+    const cards = [
+      makeCard({
+        id: 'near-card',
+        deckId: 'd1',
+        courseId: 'c1',
+        primaryLessonId: 'near',
+        stability: 10,
+        difficulty: 5,
+        lastReviewed: 0,
+        reps: 1,
+        state: 2,
+        due: now,
+      }),
+      makeCard({
+        id: 'far-card',
+        deckId: 'd1',
+        courseId: 'c1',
+        primaryLessonId: 'far',
+        stability: 10,
+        difficulty: 5,
+        lastReviewed: 0,
+        reps: 1,
+        state: 2,
+        due: now,
+      }),
+    ];
+    const examDates: CourseExamDate[] = [
+      {
+        id: 'near-exam',
+        courseId: 'c1',
+        name: 'Near checkpoint',
+        examDate: now + 2 * MS_PER_DAY,
+        lessonIds: ['near'],
+        createdAt: 0,
+      },
+    ];
+    const context = makeExamDateContext(course, [nearLesson, farLesson], examDates);
+
+    const summary = computeCourseSummaries(
+      [course],
+      [nearLesson, farLesson],
+      cards,
+      examDates,
+      now,
+    )['c1'];
+
+    expect(summary.mastery).toBeCloseTo(
+      progressValue(cards, course, now, context),
+      12,
+    );
+    expect(summary.mastery).not.toBeCloseTo(progressValue(cards, course, now), 6);
+  });
+
+  it('preserves the course-wide horizon when there are no exam-date overrides', () => {
+    const now = 20 * MS_PER_DAY;
+    const course = makeCourse({ id: 'c1', examDate: now + 7 * MS_PER_DAY });
+    const lesson = makeLesson({ id: 'l1', courseId: 'c1' });
+    const card = makeCard({
+      id: 'card1',
+      deckId: 'd1',
+      courseId: 'c1',
+      primaryLessonId: 'l1',
+      stability: 10,
+      difficulty: 5,
+      lastReviewed: 0,
+      reps: 1,
+      state: 2,
+      due: now,
+    });
+
+    const summary = computeCourseSummaries([course], [lesson], [card], [], now)['c1'];
+
+    expect(summary.mastery).toBeCloseTo(progressValue([card], course, now), 12);
   });
 });

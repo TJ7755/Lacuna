@@ -1,7 +1,11 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
 import Dexie from 'dexie';
-import { migrateDeckRecord, migrateCardRecord } from './migrations';
+import {
+  buildLessonCardExposureBackfill,
+  migrateDeckRecord,
+  migrateCardRecord,
+} from './migrations';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import type { ReviewLog } from './types';
 import { getPreMigrationSnapshot, savePreMigrationSnapshot } from './preMigrationSnapshots';
@@ -105,6 +109,38 @@ describe('migrateCardRecord', () => {
     expect(migrated.reps).toBe(0);
     expect(migrated.lapses).toBe(0);
     expect(migrated.due).toBe(null);
+  });
+});
+
+describe('buildLessonCardExposureBackfill', () => {
+  it('backfills reviewed cards for their primary lesson only', () => {
+    const rows = buildLessonCardExposureBackfill([
+      {
+        id: 'reviewed',
+        primaryLessonId: 'primary',
+        state: 2,
+        lastReviewed: 200,
+        createdAt: 100,
+      },
+      {
+        id: 'new',
+        primaryLessonId: 'primary',
+        state: 0,
+        lastReviewed: null,
+        createdAt: 100,
+      },
+      {
+        id: 'unassigned',
+        primaryLessonId: null,
+        state: 2,
+        lastReviewed: 300,
+        createdAt: 100,
+      },
+    ]);
+
+    expect(rows).toEqual([
+      { lessonId: 'primary', cardId: 'reviewed', taughtAt: 200 },
+    ]);
   });
 });
 
