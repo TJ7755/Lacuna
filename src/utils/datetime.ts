@@ -202,7 +202,7 @@ export function getComponentsInZone(ms: number, timeZone?: string) {
   };
 }
 
-/** Start-of-day epoch for grouping (midnight in the given time zone). */
+/** Start-of-day epoch for grouping (the first valid instant in the given time zone). */
 export function startOfDay(ms: number, timeZone?: string): number {
   const d = new Date(ms);
   if (timeZone) {
@@ -214,10 +214,40 @@ export function startOfDay(ms: number, timeZone?: string): number {
     }).formatToParts(d);
     const getPart = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
     const pad = (value: number) => String(value).padStart(2, '0');
-    return fromDateTimeLocalValue(
+    const year = getPart('year');
+    const month = getPart('month');
+    const day = getPart('day');
+    const midnight = fromDateTimeLocalValue(
       `${getPart('year')}-${pad(getPart('month'))}-${pad(getPart('day'))}T00:00`,
       timeZone,
     );
+    if (Number.isFinite(midnight)) return midnight;
+
+    // Some zones advance their clocks at midnight, so 00:00 is not a valid
+    // wall-clock time. Find the first instant whose zoned date is this day.
+    const dateFormatter = new Intl.DateTimeFormat('en-GB', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      timeZone,
+    });
+    const targetDay = year * 10_000 + month * 100 + day;
+    const zonedDay = (instant: number) => {
+      const dateParts = dateFormatter.formatToParts(new Date(instant));
+      const part = (type: string) =>
+        Number(dateParts.find((candidate) => candidate.type === type)?.value ?? 0);
+      return part('year') * 10_000 + part('month') * 100 + part('day');
+    };
+
+    const utcDay = Date.UTC(year, month - 1, day);
+    let lower = utcDay - 2 * MS_PER_DAY;
+    let upper = utcDay + 2 * MS_PER_DAY;
+    while (lower < upper) {
+      const middle = Math.floor((lower + upper) / 2);
+      if (zonedDay(middle) < targetDay) lower = middle + 1;
+      else upper = middle;
+    }
+    return lower;
   }
   d.setHours(0, 0, 0, 0);
   return d.getTime();

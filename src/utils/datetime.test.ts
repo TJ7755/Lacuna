@@ -76,4 +76,15 @@ describe('date helpers', () => {
     );
     expect(relativeExam(Date.parse('2026-03-06T17:00:00Z'), now, 'America/New_York')).toBe('past');
   });
+
+  it('uses the first valid instant when daylight saving skips midnight', () => {
+    const timeZone = 'America/Havana';
+    const instant = Date.parse('2026-03-08T16:00:00Z');
+    const dayStart = startOfDay(instant, timeZone);
+
+    expect(fromDateTimeLocalValue('2026-03-08T00:00', timeZone)).toBeNaN();
+    expect(Number.isFinite(dayStart)).toBe(true);
+    expect(dayStart).toBe(Date.parse('2026-03-08T05:00:00Z'));
+    expect(relativeExam(instant, Date.parse('2026-03-07T16:00:00Z'), timeZone)).toBe('tomorrow');
+  });
 });
