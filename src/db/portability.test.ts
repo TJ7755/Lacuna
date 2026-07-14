@@ -11,6 +11,10 @@ import {
   createPracticeNode,
   createCourseExamDate,
   createSequence,
+  createNoteAnnotation,
+  markLessonComplete,
+  savePracticeMilestoneProgress,
+  upsertLessonCardExposure,
 } from './repository';
 
 async function reset() {
@@ -24,8 +28,12 @@ async function reset() {
     db.courses.clear(),
     db.lessons.clear(),
     db.notes.clear(),
+    db.noteAnnotations.clear(),
     db.lessonCards.clear(),
+    db.lessonCardExposures.clear(),
+    db.lessonCompletions.clear(),
     db.practiceNodes.clear(),
+    db.practiceMilestones.clear(),
     db.courseExamDates.clear(),
     db.sequences.clear(),
   ]);
@@ -292,12 +300,38 @@ describe('importBackup', () => {
     const deck = await createDeck('Legacy');
     await createCard(deck.id, 'front_back', 'Q1', 'A1');
     const backup = await exportDatabase();
-    const { sequences: _sequences, ...legacyBackup } = backup;
+    const legacyBackup = { ...backup };
+    delete legacyBackup.sequences;
 
     await importBackup(legacyBackup, 'replace');
 
     expect(await db.sequences.count()).toBe(0);
     const decks = await db.decks.toArray();
     expect(decks).toHaveLength(1);
+  });
+
+  it('clears newer optional tables omitted by a legacy backup in replace mode', async () => {
+    const course = await createCourse('Legacy Course');
+    const lesson = await createLesson(course.id, 'Legacy Lesson');
+    const note = await createNote(lesson.id, 'Legacy Note', 'Cell membrane');
+    const deck = await createDeck('Legacy Deck');
+    const card = await createCard(deck.id, 'front_back', 'Q1', 'A1');
+    const backup = await exportDatabase();
+    const legacyBackup = { ...backup };
+    delete legacyBackup.lessonCardExposures;
+    delete legacyBackup.lessonCompletions;
+    delete legacyBackup.practiceMilestones;
+
+    await upsertLessonCardExposure(lesson.id, card.id, 100);
+    await markLessonComplete(lesson.id, 200);
+    await savePracticeMilestoneProgress('practice-legacy', course.id, 'scope-a', 1, 1, true, 300);
+    await createNoteAnnotation(note.id, 0, 4, 'Cell');
+
+    await importBackup(legacyBackup, 'replace');
+
+    expect(await db.lessonCardExposures.count()).toBe(0);
+    expect(await db.lessonCompletions.count()).toBe(0);
+    expect(await db.practiceMilestones.count()).toBe(0);
+    expect(await db.noteAnnotations.count()).toBe(0);
   });
 });
