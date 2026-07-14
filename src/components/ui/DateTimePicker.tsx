@@ -1,18 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ClockIcon,
-  CalendarIcon,
-} from './icons';
+import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, CalendarIcon } from './icons';
 import { cn } from './cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { getComponentsInZone, fromDateTimeLocalValue } from '../../utils/datetime';
@@ -24,14 +12,34 @@ interface DateTimePickerProps {
   timeZone?: string;
 }
 
+interface CalendarView {
+  year: number;
+  month: number;
+}
+
 const DAYS: string[] = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const MONTHS: string[] = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 function pad(n: number) {
   return String(n).padStart(2, '0');
+}
+
+function shiftMonth(view: CalendarView, offset: number): CalendarView {
+  const shifted = new Date(Date.UTC(view.year, view.month + offset, 1));
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() };
 }
 
 /** Build a calendar month grid: { day: number, currentMonth: boolean }[]. */
@@ -78,28 +86,38 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
   const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dayRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const focusCalendarRef = useRef(false);
+  const labelId = useId();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
-  // View state: which month the calendar is displaying (always in local time for internal use)
-  const [viewDate, setViewDate] = useState(() => new Date(value));
+  const selected = useMemo(() => getComponentsInZone(value, timeZone), [value, timeZone]);
+
+  // A calendar month is not an instant. Keeping it as year/month avoids invalid
+  // midnight values in time zones whose daylight-saving transition skips midnight.
+  const [view, setView] = useState<CalendarView>(() => ({
+    year: selected.year,
+    month: selected.month,
+  }));
   // Direction for month slide animation: -1 = prev, 1 = next
   const [slideDir, setSlideDir] = useState(0);
   // Month/year picker mode
   const [pickerMode, setPickerMode] = useState<'days' | 'months' | 'years'>('days');
   // Keyboard focus: index into the cells array
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
+  const [hourDraft, setHourDraft] = useState(() => pad(selected.hours));
+  const [minuteDraft, setMinuteDraft] = useState(() => pad(selected.minutes));
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Extract selected-date components in the target time zone
-  const selected = useMemo(() => getComponentsInZone(value, timeZone), [value, timeZone]);
   const selectedDay = selected.day;
   const selectedMonth = selected.month;
   const selectedYear = selected.year;
   const hours = selected.hours;
   const minutes = selected.minutes;
 
-  // Extract view-date components in the target time zone
-  const view = useMemo(() => getComponentsInZone(viewDate.getTime(), timeZone), [viewDate, timeZone]);
   const year = view.year;
   const month = view.month;
 
@@ -115,230 +133,170 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
   const initialFocusIndex = useMemo(() => {
     const idx = cells.findIndex(
       (c) =>
-        c.currentMonth &&
-        c.day === selectedDay &&
-        month === selectedMonth &&
-        year === selectedYear,
+        c.currentMonth && c.day === selectedDay && month === selectedMonth && year === selectedYear,
     );
     if (idx >= 0) return idx;
     const todayIdx = cells.findIndex(
-      (c) =>
-        c.currentMonth &&
-        c.day === todayDay &&
-        month === todayMonth &&
-        year === todayYear,
+      (c) => c.currentMonth && c.day === todayDay && month === todayMonth && year === todayYear,
     );
-    return todayIdx >= 0 ? todayIdx : 0;
-  }, [cells, selectedDay, selectedMonth, selectedYear, month, year, todayDay, todayMonth, todayYear]);
+    if (todayIdx >= 0) return todayIdx;
+    const firstCurrentMonthDay = cells.findIndex((cell) => cell.currentMonth);
+    return firstCurrentMonthDay >= 0 ? firstCurrentMonthDay : 0;
+  }, [
+    cells,
+    selectedDay,
+    selectedMonth,
+    selectedYear,
+    month,
+    year,
+    todayDay,
+    todayMonth,
+    todayYear,
+  ]);
 
   const display = `${pad(selectedDay)} ${MONTHS[selectedMonth].slice(0, 3)} ${selectedYear} · ${pad(hours)}:${pad(minutes)}`;
+
+  const closePicker = useCallback((restoreFocus: boolean) => {
+    setOpen(false);
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => triggerRef.current?.focus());
+    }
+  }, []);
 
   // Close on Escape / click outside.
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        closePicker(false);
       }
     };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      closePicker(true);
+    };
     window.addEventListener('pointerdown', onPointerDown);
-    return () => window.removeEventListener('pointerdown', onPointerDown);
-  }, [open]);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [closePicker, open]);
 
-  // Keyboard handler for the calendar
-  const handleKeyDown = useCallback(
+  // Keyboard handling belongs to the day grid. Attaching it to the whole dialog
+  // hijacks arrows and Enter from the month controls and time fields.
+  const handleDayKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (!open) return;
+      const current = focusIndex ?? initialFocusIndex;
+      let next = current;
 
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setOpen(false);
-        return;
+      switch (e.key) {
+        case 'ArrowLeft':
+          next = current - 1;
+          break;
+        case 'ArrowRight':
+          next = current + 1;
+          break;
+        case 'ArrowUp':
+          next = current - 7;
+          break;
+        case 'ArrowDown':
+          next = current + 7;
+          break;
+        case 'Home':
+          next = Math.floor(current / 7) * 7;
+          break;
+        case 'End':
+          next = Math.min(Math.floor(current / 7) * 7 + 6, cells.length - 1);
+          break;
+        case 'PageUp':
+          e.preventDefault();
+          setSlideDir(-1);
+          focusCalendarRef.current = true;
+          setView((currentView) => shiftMonth(currentView, -1));
+          return;
+        case 'PageDown':
+          e.preventDefault();
+          setSlideDir(1);
+          focusCalendarRef.current = true;
+          setView((currentView) => shiftMonth(currentView, 1));
+          return;
+        default:
+          return;
       }
-
-      if (pickerMode === 'days') {
-        const current = focusIndex ?? initialFocusIndex;
-        let next = current;
-
-        switch (e.key) {
-          case 'ArrowLeft':
-            e.preventDefault();
-            next = current - 1;
-            break;
-          case 'ArrowRight':
-            e.preventDefault();
-            next = current + 1;
-            break;
-          case 'ArrowUp':
-            e.preventDefault();
-            next = current - 7;
-            break;
-          case 'ArrowDown':
-            e.preventDefault();
-            next = current + 7;
-            break;
-          case 'Home': {
-            e.preventDefault();
-            const rowStart = Math.floor(current / 7) * 7;
-            next = rowStart;
-            break;
-          }
-          case 'End': {
-            e.preventDefault();
-            const rowEnd = Math.floor(current / 7) * 7 + 6;
-            next = Math.min(rowEnd, cells.length - 1);
-            break;
-          }
-          case 'PageUp': {
-            e.preventDefault();              setSlideDir(-1);
-              setViewDate(new Date(fromDateTimeLocalValue(`${year}-${pad(month)}-01T00:00`, timeZone)));
-              return;
-          }
-          case 'PageDown': {
-            e.preventDefault();
-            setSlideDir(1);
-            setViewDate(new Date(fromDateTimeLocalValue(`${year}-${pad(month + 2)}-01T00:00`, timeZone)));
-            return;
-          }
-          case 'Enter':
-          case ' ': {
-            e.preventDefault();
-            const cell = cells[current];
-            if (cell) {
-              const { y, m } = resolveAdjacentMonth(
-                cell.day,
-                cell.currentMonth,
-                year,
-                month,
-              );
-              const ms = fromDateTimeLocalValue(`${y}-${pad(m + 1)}-${pad(cell.day)}T${pad(hours)}:${pad(minutes)}`, timeZone);
-              onChange(ms);
-              setViewDate(new Date(ms));
-              setOpen(false);
-            }
-            return;
-          }
-          default:
-            return;
-        }
-
-        next = Math.max(0, Math.min(cells.length - 1, next));
-        setFocusIndex(next);
-      } else if (pickerMode === 'months') {
-        let nextMonth = month;
-        switch (e.key) {
-          case 'ArrowLeft':
-            e.preventDefault();
-            nextMonth = month - 1;
-            break;
-          case 'ArrowRight':
-            e.preventDefault();
-            nextMonth = month + 1;
-            break;
-          case 'ArrowUp':
-            e.preventDefault();
-            nextMonth = month - 3;
-            break;
-          case 'ArrowDown':
-            e.preventDefault();
-            nextMonth = month + 3;
-            break;
-          case 'Enter':
-          case ' ':
-            e.preventDefault();
-            setPickerMode('days');
-            setFocusIndex(initialFocusIndex);
-            return;
-          case 'Escape':
-            e.preventDefault();
-            setPickerMode('days');
-            setFocusIndex(initialFocusIndex);
-            return;
-          default:
-            return;
-        }
-        nextMonth = Math.max(0, Math.min(11, nextMonth));              setViewDate(new Date(fromDateTimeLocalValue(`${year}-${pad(nextMonth + 1)}-01T00:00`, timeZone)));
-      } else if (pickerMode === 'years') {
-        let nextYear = year;
-        switch (e.key) {
-          case 'ArrowLeft':
-            e.preventDefault();
-            nextYear = year - 1;
-            break;
-          case 'ArrowRight':
-            e.preventDefault();
-            nextYear = year + 1;
-            break;
-          case 'ArrowUp':
-            e.preventDefault();
-            nextYear = year - 3;
-            break;
-          case 'ArrowDown':
-            e.preventDefault();
-            nextYear = year + 3;
-            break;
-          case 'Enter':
-          case ' ':
-            e.preventDefault();
-            setPickerMode('months');
-            return;
-          case 'Escape':
-            e.preventDefault();
-            setPickerMode('days');
-            setFocusIndex(initialFocusIndex);
-            return;
-          default:
-            return;
-        }
-        setViewDate(new Date(fromDateTimeLocalValue(`${nextYear}-${pad(month + 1)}-01T00:00`, timeZone)));
-      }
+      e.preventDefault();
+      next = Math.max(0, Math.min(cells.length - 1, next));
+      setFocusIndex(next);
+      dayRefs.current[next]?.focus();
     },
-    [
-      open,
-      pickerMode,
-      focusIndex,
-      initialFocusIndex,
-      cells,
-      year,
-      month,
-      hours,
-      minutes,
-      onChange,
-      timeZone,
-    ],
+    [cells.length, focusIndex, initialFocusIndex],
   );
 
   const selectDay = useCallback(
     (day: number, currentMonth: boolean) => {
       const { y, m } = resolveAdjacentMonth(day, currentMonth, year, month);
-      const ms = fromDateTimeLocalValue(`${y}-${pad(m + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}`, timeZone);
+      const ms = fromDateTimeLocalValue(
+        `${y}-${pad(m + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}`,
+        timeZone,
+      );
+      if (!Number.isFinite(ms)) {
+        setValidationError('That local date and time does not exist. Choose another time.');
+        return;
+      }
+      setValidationError(null);
       onChange(ms);
-      setViewDate(new Date(ms));
-      setOpen(false);
+      if (!currentMonth) focusCalendarRef.current = true;
+      setView({ year: y, month: m });
     },
     [year, month, hours, minutes, onChange, timeZone],
   );
 
   const setTime = useCallback(
     (h: number, m: number) => {
-      const ms = fromDateTimeLocalValue(`${selectedYear}-${pad(selectedMonth + 1)}-${pad(selectedDay)}T${pad(h)}:${pad(m)}`, timeZone);
+      const ms = fromDateTimeLocalValue(
+        `${selectedYear}-${pad(selectedMonth + 1)}-${pad(selectedDay)}T${pad(h)}:${pad(m)}`,
+        timeZone,
+      );
+      if (!Number.isFinite(ms)) {
+        setValidationError('That local date and time does not exist. Choose another time.');
+        return false;
+      }
+      setValidationError(null);
       onChange(ms);
+      return true;
     },
     [selectedYear, selectedMonth, selectedDay, onChange, timeZone],
   );
 
-  // When the picker opens, reset focus and slide direction, and snap viewDate to the selected date
-  useEffect(() => {
-    if (open) {
-      setFocusIndex(initialFocusIndex);
-      setSlideDir(0);
-      setPickerMode('days');
-      setViewDate(new Date(value));
+  const commitTimeDrafts = useCallback(() => {
+    const h = /^\d{1,2}$/.test(hourDraft) ? Number(hourDraft) : Number.NaN;
+    const min = /^\d{1,2}$/.test(minuteDraft) ? Number(minuteDraft) : Number.NaN;
+    if (!Number.isInteger(h) || h < 0 || h > 23 || !Number.isInteger(min) || min < 0 || min > 59) {
+      setValidationError('Enter a valid 24-hour time.');
+      return false;
     }
-  }, [open, initialFocusIndex, value]);
+    const committed = setTime(h, min);
+    if (committed) {
+      setHourDraft(pad(h));
+      setMinuteDraft(pad(min));
+    }
+    return committed;
+  }, [hourDraft, minuteDraft, setTime]);
+
+  // Keep the editable fields in sync when a date, quick action or external value changes.
+  useEffect(() => {
+    setHourDraft(pad(selected.hours));
+    setMinuteDraft(pad(selected.minutes));
+  }, [selected.hours, selected.minutes]);
+
+  useLayoutEffect(() => {
+    if (!open || pickerMode !== 'days' || !focusCalendarRef.current) return;
+    const next = initialFocusIndex;
+    setFocusIndex(next);
+    focusCalendarRef.current = false;
+    dayRefs.current[next]?.focus();
+  }, [cells, initialFocusIndex, open, pickerMode]);
 
   // Measure available space and flip the dropdown if it would be clipped.
   useLayoutEffect(() => {
@@ -357,10 +315,13 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
     };
     compute();
     window.addEventListener('resize', compute);
-    window.addEventListener('scroll', compute, { passive: true } as AddEventListenerOptions);
+    const scrollContainer = containerRef.current.closest('main');
+    window.addEventListener('scroll', compute, { passive: true });
+    scrollContainer?.addEventListener('scroll', compute, { passive: true });
     return () => {
       window.removeEventListener('resize', compute);
-      window.removeEventListener('scroll', compute, { passive: true } as AddEventListenerOptions);
+      window.removeEventListener('scroll', compute);
+      scrollContainer?.removeEventListener('scroll', compute);
     };
   }, [open]);
 
@@ -381,11 +342,29 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
   return (
     <div ref={containerRef} className="relative">
       {label && (
-        <label className="mb-2 block text-sm text-ink-soft">{label}</label>
+        <span id={labelId} className="mb-2 block text-sm text-ink-soft">
+          {label}
+        </span>
       )}
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (open) {
+            closePicker(true);
+            return;
+          }
+          setView({ year: selectedYear, month: selectedMonth });
+          setPickerMode('days');
+          setSlideDir(0);
+          setHourDraft(pad(selected.hours));
+          setMinuteDraft(pad(selected.minutes));
+          setValidationError(null);
+          focusCalendarRef.current = true;
+          setOpen(true);
+        }}
+        aria-labelledby={label ? labelId : undefined}
+        aria-label={label ? undefined : 'Choose date and time'}
         aria-expanded={open}
         aria-haspopup="dialog"
         className={cn(
@@ -395,11 +374,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
             : 'border-line-strong hover:border-line-strong',
         )}
       >
-        <CalendarIcon
-          width={16}
-          height={16}
-          className="shrink-0 text-ink-faint"
-        />
+        <CalendarIcon width={16} height={16} className="shrink-0 text-ink-faint" />
         <span className="tabular">{display}</span>
       </button>
 
@@ -414,10 +389,9 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
             exit={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
             transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
-              'absolute left-0 z-50 w-80 overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-xl shadow-black/10',
+              'absolute left-0 z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-xl shadow-black/10',
               placement === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2',
             )}
-            onKeyDown={handleKeyDown}
           >
             {/* Header: month navigation */}
             <div className="flex items-center justify-between px-4 py-3">
@@ -425,7 +399,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                 type="button"
                 onClick={() => {
                   setSlideDir(-1);
-                  setViewDate(new Date(fromDateTimeLocalValue(`${year}-${pad(month)}-01T00:00`, timeZone)));
+                  setView((currentView) => shiftMonth(currentView, -1));
                 }}
                 className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
                 aria-label="Previous month"
@@ -434,9 +408,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setPickerMode((m) => (m === 'days' ? 'months' : 'days'))
-                }
+                onClick={() => setPickerMode((m) => (m === 'days' ? 'months' : 'days'))}
                 className="flex min-h-11 items-center justify-center rounded-lg px-3 py-1 text-sm font-medium text-ink transition-colors hover:bg-ink/5 active:bg-ink/5"
                 aria-label="Open month and year selector"
               >
@@ -446,7 +418,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                 type="button"
                 onClick={() => {
                   setSlideDir(1);
-                  setViewDate(new Date(fromDateTimeLocalValue(`${year}-${pad(month + 2)}-01T00:00`, timeZone)));
+                  setView((currentView) => shiftMonth(currentView, 1));
                 }}
                 className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
                 aria-label="Next month"
@@ -459,11 +431,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
               {pickerMode === 'days' && (
                 <motion.div
                   key={`days-${year}-${month}`}
-                  initial={
-                    slideDir !== 0
-                      ? { x: slideDir * 40, opacity: 0 }
-                      : { x: 0, opacity: 1 }
-                  }
+                  initial={slideDir !== 0 ? { x: slideDir * 40, opacity: 0 } : { x: 0, opacity: 1 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: slideDir * -40, opacity: 0 }}
                   transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
@@ -481,7 +449,12 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                   </div>
 
                   {/* Calendar grid */}
-                  <div className="grid grid-cols-7 px-3 pb-3">
+                  <div
+                    role="group"
+                    aria-label={`${MONTHS[month]} ${year}`}
+                    className="grid grid-cols-7 px-3 pb-3"
+                    onKeyDown={handleDayKeyDown}
+                  >
                     {cells.map((cell, i) => {
                       const isSelected =
                         cell.currentMonth &&
@@ -498,26 +471,25 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                       return (
                         <button
                           key={i}
+                          ref={(element) => {
+                            dayRefs.current[i] = element;
+                          }}
                           type="button"
-                          tabIndex={-1}
+                          tabIndex={isFocused ? 0 : -1}
+                          aria-label={`${cell.day} ${MONTHS[resolveAdjacentMonth(cell.day, cell.currentMonth, year, month).m]} ${resolveAdjacentMonth(cell.day, cell.currentMonth, year, month).y}`}
+                          aria-current={isSelected ? 'date' : undefined}
+                          onFocus={() => setFocusIndex(i)}
                           onClick={() => selectDay(cell.day, cell.currentMonth)}
                           className={cn(
                             'relative mx-auto my-0.5 flex h-9 w-9 items-center justify-center rounded-full text-sm outline-none transition-colors',
-                            cell.currentMonth
-                              ? 'text-ink'
-                              : 'text-ink-faint/60',
-                            isSelected &&
-                              'bg-accent font-medium text-accent-fg hover:bg-accent',
-                            !isSelected &&
-                              isToday &&
-                              'ring-1 ring-inset ring-accent/40',
+                            cell.currentMonth ? 'text-ink' : 'text-ink-faint/60',
+                            isSelected && 'bg-accent font-medium text-accent-fg hover:bg-accent',
+                            !isSelected && isToday && 'ring-1 ring-inset ring-accent/40',
                             !isSelected &&
                               !isToday &&
                               cell.currentMonth &&
                               'hover:bg-ink/5 active:bg-ink/5',
-                            isFocused &&
-                              !isSelected &&
-                              'ring-2 ring-inset ring-accent/50',
+                            isFocused && !isSelected && 'ring-2 ring-inset ring-accent/50',
                           )}
                         >
                           {cell.day}
@@ -552,22 +524,21 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                   <div className="grid grid-cols-3 gap-2">
                     {MONTHS.map((m, i) => {
                       const isCurrent = i === month;
-                      const isSelected =
-                        i === selectedMonth && year === selectedYear;
+                      const isSelected = i === selectedMonth && year === selectedYear;
                       return (
                         <button
                           key={m}
                           type="button"
                           onClick={() => {
-                            setViewDate(new Date(fromDateTimeLocalValue(`${year}-${pad(i + 1)}-01T00:00`, timeZone)));
+                            setView({ year, month: i });
                             setPickerMode('days');
-                            setFocusIndex(initialFocusIndex);
+                            focusCalendarRef.current = true;
                           }}
                           className={cn(
                             'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors',
                             isSelected
                               ? 'bg-accent text-accent-fg'
-                              :                              isCurrent
+                              : isCurrent
                                 ? 'bg-accent-soft text-accent'
                                 : 'text-ink-soft hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink',
                           )}
@@ -598,14 +569,14 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                           key={y}
                           type="button"
                           onClick={() => {
-                            setViewDate(new Date(fromDateTimeLocalValue(`${y}-${pad(month + 1)}-01T00:00`, timeZone)));
+                            setView({ year: y, month });
                             setPickerMode('months');
                           }}
                           className={cn(
                             'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors',
                             isSelected
                               ? 'bg-accent text-accent-fg'
-                              :                              isCurrent
+                              : isCurrent
                                 ? 'bg-accent-soft text-accent'
                                 : 'text-ink-soft hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink',
                           )}
@@ -630,15 +601,21 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                   <input
                     type="text"
                     inputMode="numeric"
-                    min={0}
-                    max={23}
-                    value={pad(hours)}
+                    aria-label="Hour"
+                    maxLength={2}
+                    value={hourDraft}
                     onChange={(e) => {
-                      const v = Math.min(
-                        23,
-                        Math.max(0, Number(e.target.value)),
-                      );
-                      if (!Number.isNaN(v)) setTime(v, minutes);
+                      if (/^\d{0,2}$/.test(e.target.value)) setHourDraft(e.target.value);
+                      setValidationError(null);
+                    }}
+                    onBlur={() => {
+                      commitTimeDrafts();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        commitTimeDrafts();
+                      }
                     }}
                     className="h-8 w-12 rounded-lg border border-line-strong bg-paper text-center text-sm text-ink outline-none focus:border-accent tabular"
                   />
@@ -646,20 +623,31 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                   <input
                     type="text"
                     inputMode="numeric"
-                    min={0}
-                    max={59}
-                    value={pad(minutes)}
+                    aria-label="Minute"
+                    maxLength={2}
+                    value={minuteDraft}
                     onChange={(e) => {
-                      const v = Math.min(
-                        59,
-                        Math.max(0, Number(e.target.value)),
-                      );
-                      if (!Number.isNaN(v)) setTime(hours, v);
+                      if (/^\d{0,2}$/.test(e.target.value)) setMinuteDraft(e.target.value);
+                      setValidationError(null);
+                    }}
+                    onBlur={() => {
+                      commitTimeDrafts();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        commitTimeDrafts();
+                      }
                     }}
                     className="h-8 w-12 rounded-lg border border-line-strong bg-paper text-center text-sm text-ink outline-none focus:border-accent tabular"
                   />
                 </div>
               </div>
+              {validationError && (
+                <p role="alert" className="mt-2 text-xs text-negative">
+                  {validationError}
+                </p>
+              )}
             </div>
 
             {/* Footer: quick actions */}
@@ -673,8 +661,10 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                     `${nowComponents.year}-${pad(nowComponents.month + 1)}-${pad(nowComponents.day)}T${pad(hours)}:${pad(minutes)}`,
                     timeZone,
                   );
+                  if (!Number.isFinite(ms)) return;
+                  setValidationError(null);
                   onChange(ms);
-                  setViewDate(new Date(ms));
+                  setView({ year: nowComponents.year, month: nowComponents.month });
                 }}
                 className="text-xs font-medium text-accent transition-opacity hover:opacity-80 active:opacity-80"
               >
@@ -689,12 +679,23 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                     `${nowComponents.year}-${pad(nowComponents.month + 1)}-${pad(nowComponents.day)}T${pad(nowComponents.hours)}:${pad(nowComponents.minutes)}`,
                     timeZone,
                   );
+                  if (!Number.isFinite(ms)) return;
+                  setValidationError(null);
                   onChange(ms);
-                  setViewDate(new Date(ms));
+                  setView({ year: nowComponents.year, month: nowComponents.month });
                 }}
                 className="text-xs font-medium text-ink-soft transition-opacity hover:text-ink active:text-ink"
               >
                 Now
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (commitTimeDrafts()) closePicker(true);
+                }}
+                className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition-opacity hover:opacity-90 active:opacity-80"
+              >
+                Done
               </button>
             </div>
           </motion.div>

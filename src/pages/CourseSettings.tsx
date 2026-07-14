@@ -291,7 +291,11 @@ export function CourseSettings() {
               />
               {timeZone && (
                 <span className="text-xs text-ink-faint">
-                  {formatDateTime(course.examDate, timeZone)} ({timeZone})
+                  {formatDateTime(
+                    fromDateTimeLocalValue(examValue, timeZone) || course.examDate,
+                    timeZone,
+                  )}{' '}
+                  ({timeZone})
                 </span>
               )}
 

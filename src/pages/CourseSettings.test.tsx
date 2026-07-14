@@ -139,6 +139,21 @@ describe('CourseSettings', () => {
     expect(screen.getByDisplayValue('Original course')).toBeInTheDocument();
   });
 
+  it('shows the draft exam date before it is saved', () => {
+    mockCourse = {
+      ...course,
+      examDate: Date.UTC(2026, 5, 10, 14, 30),
+      timeZone: 'UTC',
+    };
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Exam date and time' }));
+    fireEvent.click(screen.getByRole('button', { name: '20 June 2026' }));
+
+    expect(screen.getByText(/20 June 2026.*14:30.*UTC/)).toBeInTheDocument();
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+  });
+
   it('saves edits by calling updateCourse with unlockMode, linearCadence and practice fields', () => {
     renderPage();
     const nameInput = screen.getByDisplayValue('Original course');
