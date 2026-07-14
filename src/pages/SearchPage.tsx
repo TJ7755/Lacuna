@@ -269,7 +269,8 @@ export function SearchPage() {
                       {hit.card.tags!.join(', ')}
                     </span>
                   )}
-                  {hit.card.sequenceItemId != null && <SequenceBadge />}
+                  {hit.card.sequenceItemId !== null &&
+                    hit.card.sequenceItemId !== undefined && <SequenceBadge />}
                 </span>
               </motion.button>
             ))}

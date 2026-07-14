@@ -69,7 +69,7 @@ interface CardListProps {
   courseId?: string;
   /**
    * Sequences in scope for these cards (same course/lesson). When supplied, generated
-   * cards (`card.sequenceItemId != null`) are grouped under a header naming their owning
+   * cards with a sequence item ID are grouped under a header naming their owning
    * sequence rather than listed loosely; a generated card whose sequence cannot be
    * resolved (e.g. omitted here by mistake) still renders inline, badged and read-only.
    */
@@ -112,7 +112,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
     return [...set].sort();
   }, [cards]);
 
-  // Generated cards (Card.sequenceItemId != null) are managed exclusively from their
+  // Generated cards with a sequence item ID are managed exclusively from their
   // owning sequence: they never take part in bulk selection (Tag/Suspend/Move/Delete/…),
   // since content edits and deletes would desync or fight with the next regeneration.
   // Grouping them under a sequence header is purely presentational — every card still
@@ -121,7 +121,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
   const sequenceGroups = useMemo(() => {
     const bySequence = new Map<string, { sequence: Sequence; cards: Card[] }>();
     for (const card of cards) {
-      if (card.sequenceItemId == null) continue;
+      if (card.sequenceItemId === null || card.sequenceItemId === undefined) continue;
       const sequence = sequences ? sequenceForItemId(sequences, card.sequenceItemId) : undefined;
       if (!sequence) continue;
       const group = bySequence.get(sequence.id) ?? { sequence, cards: [] };
@@ -143,7 +143,10 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
     [cards, groupedCardIds],
   );
   // Bulk selection only ever applies to ordinary (non-generated) cards.
-  const selectableCards = useMemo(() => cards.filter((c) => c.sequenceItemId == null), [cards]);
+  const selectableCards = useMemo(
+    () => cards.filter((c) => c.sequenceItemId === null || c.sequenceItemId === undefined),
+    [cards],
+  );
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -954,7 +957,7 @@ const CardRow = React.memo(function CardRow({
   // Generated cards are owned by their Sequence: content edits and deletes happen there,
   // never here, so selection and deletion are suppressed regardless of selectMode/hover.
   // Scheduling actions (flag/suspend/bury/reschedule/resume) stay fully available.
-  const generated = card.sequenceItemId != null;
+  const generated = card.sequenceItemId !== null && card.sequenceItemId !== undefined;
 
   // Swipe-to-reveal state — multi-directional in touch mode.
   const [trayOpen, setTrayOpen] = useState(false);

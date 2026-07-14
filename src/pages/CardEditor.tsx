@@ -258,7 +258,12 @@ export function CardEditor() {
   // Generated cards are owned by their Sequence: content, front/back, and deletion are
   // all managed there (edits here would be silently reverted on the sequence's next
   // regeneration), so this page shows a static preview and a link back instead of a form.
-  if (editing && card && card.sequenceItemId != null) {
+  if (
+    editing &&
+    card &&
+    card.sequenceItemId !== null &&
+    card.sequenceItemId !== undefined
+  ) {
     const owningSequence = sequences ? sequenceForItemId(sequences, card.sequenceItemId) : undefined;
     return (
       <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
