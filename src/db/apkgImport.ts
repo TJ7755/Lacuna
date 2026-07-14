@@ -634,7 +634,7 @@ export async function importApkgResult(
     for (let i = 0; i < created.length; i++) {
       const draft = cards[i];
       const card = created[i];
-      await db.cards.update(card.id, {
+      const scheduling = {
         stability: draft.stability,
         difficulty: draft.difficulty,
         lastReviewed: draft.lastReviewed,
@@ -646,7 +646,9 @@ export async function importApkgResult(
         learningSteps: draft.learningSteps,
         history: draft.history,
         suspended: draft.suspended,
-      });
+      };
+      await db.cards.update(card.id, scheduling);
+      Object.assign(card, scheduling);
     }
   });
 
@@ -671,6 +673,8 @@ export async function importApkgResult(
         const newBack = replaceMediaRefs(card.back, mediaHashMap);
         if (newFront !== card.front || newBack !== card.back) {
           await db.cards.update(card.id, { front: newFront, back: newBack });
+          card.front = newFront;
+          card.back = newBack;
         }
       }
     });
