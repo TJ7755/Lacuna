@@ -1123,7 +1123,12 @@ ordinary `front_back` cards to the scheduler.
   an ordered sequence of lesson nodes, checkpoints and practice nodes (§4.3, §14).
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
   cards. The course-level **Study now** dispatcher owns session entry and routes to this
-  lesson's notes-first teaching flow when it is the next available path node.
+  lesson's notes-first teaching flow when it is the next available path node. In edit mode,
+  **Link existing cards** opens a searchable course-card picker and adds selected cards as
+  `LessonCardLink` memberships without moving their primary lesson or duplicating their FSRS
+  state. Linked rows are labelled, excluded from destructive bulk selection, and use
+  **Remove from lesson** instead of deleting the underlying shared card; removal also clears
+  that lesson's exposure record.
 - **Question bank** (`/course/:courseId/bank`) lists every card in a course in one flat list
   regardless of lesson, sharing `CardList` with the lesson view's card section.
 - **Card list** (`CardList`) supports per-card edit, suspend/flag, and **long-press to

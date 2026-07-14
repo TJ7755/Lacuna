@@ -97,6 +97,10 @@ describe('Arc 4 persistence', () => {
 
     expect(await db.lessonCards.where('lessonId').equals(linked.id).count()).toBe(0);
     expect(await listLessonCardExposures(linked.id)).toEqual([]);
+    expect(await db.cards.get(card.id)).toMatchObject({
+      id: card.id,
+      primaryLessonId: primary.id,
+    });
   });
 
   it('removes links and exposures when their card is deleted', async () => {

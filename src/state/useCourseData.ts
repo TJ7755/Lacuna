@@ -9,6 +9,7 @@ import type {
   Course,
   CourseExamDate,
   Lesson,
+  LessonCardLink,
   Note,
   PracticeNode,
   Sequence,
@@ -126,6 +127,14 @@ export function useLessonCards(lessonId: string | undefined): Card[] | undefined
       }
       return result;
     },
+    [lessonId],
+  );
+}
+
+/** Explicit display links for one lesson, kept separate from primary card membership. */
+export function useLessonCardLinks(lessonId: string | undefined): LessonCardLink[] | undefined {
+  return useLiveQuery(
+    () => (lessonId ? db.lessonCards.where('lessonId').equals(lessonId).toArray() : []),
     [lessonId],
   );
 }

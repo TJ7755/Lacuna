@@ -39,6 +39,7 @@ vi.mock('../../fsrs/leech', () => ({
 
 vi.mock('../ui/icons', () => ({
   CheckIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="check-icon" {...props} />,
+  CloseIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="close-icon" {...props} />,
   EditIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="edit-icon" {...props} />,
   FlagIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="flag-icon" {...props} />,
   PathIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="path-icon" {...props} />,
@@ -233,6 +234,42 @@ describe('CardList', () => {
     );
     fireEvent.click(screen.getByText('New card'));
     expect(onNewCard).toHaveBeenCalledOnce();
+  });
+
+  it('offers the lesson action for linking existing cards', () => {
+    const onLinkExisting = vi.fn();
+    render(
+      <CardList
+        cards={[mockCard]}
+        deck={mockDeck}
+        allDecks={[mockDeck]}
+        onEditCard={vi.fn()}
+        onLinkExisting={onLinkExisting}
+      />,
+    );
+    fireEvent.click(screen.getByText('Link existing cards'));
+    expect(onLinkExisting).toHaveBeenCalledOnce();
+  });
+
+  it('marks linked cards and removes their lesson link instead of deleting the card', async () => {
+    const { deleteCards } = await import('../../db/repository');
+    const onUnlinkCard = vi.fn();
+    render(
+      <CardList
+        cards={[mockCard]}
+        deck={mockDeck}
+        allDecks={[mockDeck]}
+        onEditCard={vi.fn()}
+        linkedCardIds={new Set([mockCard.id])}
+        onUnlinkCard={onUnlinkCard}
+      />,
+    );
+
+    expect(screen.getByText('Linked')).toBeInTheDocument();
+    fireEvent.click(screen.getByTitle('Remove from lesson'));
+    expect(onUnlinkCard).toHaveBeenCalledWith(mockCard);
+    expect(deleteCards).not.toHaveBeenCalled();
+    expect(screen.queryByText('Select')).not.toBeInTheDocument();
   });
 
   it('does not show "Assign to lesson…" without assignableLessons/courseId', () => {

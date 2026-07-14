@@ -17,6 +17,8 @@ interface SequenceCardGroupProps {
   onEditSequence?: (sequenceId: string) => void;
   onResume: (card: Card) => void;
   onToggleFlag: (card: Card) => void;
+  linkedCardIds?: ReadonlySet<string>;
+  onUnlinkCard?: (card: Card) => void;
   motionMultiplier: number;
 }
 
@@ -28,6 +30,8 @@ export function SequenceCardGroup({
   onEditSequence,
   onResume,
   onToggleFlag,
+  linkedCardIds,
+  onUnlinkCard,
   motionMultiplier,
 }: SequenceCardGroupProps) {
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
@@ -65,6 +69,8 @@ export function SequenceCardGroup({
           onResume={onResume}
           onDelete={NOOP}
           onToggleFlag={onToggleFlag}
+          linkedCardIds={linkedCardIds}
+          onUnlinkCard={onUnlinkCard}
           motionMultiplier={motionMultiplier}
         />
       </div>

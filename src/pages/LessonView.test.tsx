@@ -33,6 +33,8 @@ vi.mock('../state/useCourseData', () => ({
   useCourseExamDates: () => mockExamDates,
   useNotes: () => mockNotes,
   useLessonCards: () => mockLessonCards,
+  useLessonCardLinks: () => [],
+  useCourseCards: () => mockLessonCards,
   useSequences: () => [],
 }));
 
@@ -104,9 +106,11 @@ function makeCard(id: string): Card {
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={['/course/course-1/lesson/lesson-1']}>
-      <Routes>
-        <Route path="/course/:courseId/lesson/:lessonId" element={<LessonView />} />
-      </Routes>
+      <ToastProvider>
+        <Routes>
+          <Route path="/course/:courseId/lesson/:lessonId" element={<LessonView />} />
+        </Routes>
+      </ToastProvider>
     </MemoryRouter>,
   );
 }

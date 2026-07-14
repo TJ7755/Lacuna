@@ -25,6 +25,7 @@ import {
 import { isLeech } from '../../fsrs/leech';
 import {
   CheckIcon,
+  CloseIcon,
   EditIcon,
   FlagIcon,
   PlusIcon,
@@ -56,6 +57,8 @@ interface CardListProps {
   onNewCard?: () => void;
   /** Sibling to onNewCard: offers "New sequence" alongside "New card" when supplied. */
   onNewSequence?: () => void;
+  /** Opens a picker for adding existing course cards to this lesson without moving them. */
+  onLinkExisting?: () => void;
   onEditCard: (card: Card) => void;
   /** When true, suppresses the internal "Cards (N)" heading row. Use when the
    *  parent already renders its own heading for the cards section. */
@@ -76,9 +79,13 @@ interface CardListProps {
   sequences?: Sequence[];
   /** Navigates to the sequence editor for a generated-card group's "Edit sequence" affordance. */
   onEditSequence?: (sequenceId: string) => void;
+  /** Cards linked into the current lesson rather than owned by it. */
+  linkedCardIds?: ReadonlySet<string>;
+  /** Removes one linked membership while preserving the underlying card. */
+  onUnlinkCard?: (card: Card) => void;
 }
 
-export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEditCard, hideHeader = false, assignableLessons, courseId, sequences, onEditSequence }: CardListProps) {
+export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLinkExisting, onEditCard, hideHeader = false, assignableLessons, courseId, sequences, onEditSequence, linkedCardIds, onUnlinkCard }: CardListProps) {
   const { notify } = useToast();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -144,8 +151,13 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
   );
   // Bulk selection only ever applies to ordinary (non-generated) cards.
   const selectableCards = useMemo(
-    () => cards.filter((c) => c.sequenceItemId === null || c.sequenceItemId === undefined),
-    [cards],
+    () =>
+      cards.filter(
+        (c) =>
+          (c.sequenceItemId === null || c.sequenceItemId === undefined) &&
+          !linkedCardIds?.has(c.id),
+      ),
+    [cards, linkedCardIds],
   );
 
   function toggle(id: string) {
@@ -416,6 +428,12 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
             <Button variant="secondary" size="sm" onClick={onNewSequence}>
               <PlusIcon width={16} height={16} />
               New sequence
+            </Button>
+          )}
+          {onLinkExisting && (
+            <Button variant="secondary" size="sm" onClick={onLinkExisting}>
+              <PlusIcon width={16} height={16} />
+              Link existing cards
             </Button>
           )}
           {onNewCard && (
@@ -770,6 +788,8 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
               onEditSequence={onEditSequence}
               onResume={handleResume}
               onToggleFlag={handleToggleFlag}
+              linkedCardIds={linkedCardIds}
+              onUnlinkCard={onUnlinkCard}
               motionMultiplier={m}
             />
           ))}
@@ -786,6 +806,8 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onEd
               onResume={handleResume}
               onDelete={handleDeleteOne}
               onToggleFlag={handleToggleFlag}
+              linkedCardIds={linkedCardIds}
+              onUnlinkCard={onUnlinkCard}
               motionMultiplier={m}
             />
           )}
@@ -813,6 +835,8 @@ export function CardListBody({
   onResume,
   onDelete,
   onToggleFlag,
+  linkedCardIds,
+  onUnlinkCard,
   motionMultiplier,
 }: {
   cards: Card[];
@@ -826,6 +850,8 @@ export function CardListBody({
   onResume: (card: Card) => void;
   onDelete: (id: string) => void;
   onToggleFlag: (card: Card) => void;
+  linkedCardIds?: ReadonlySet<string>;
+  onUnlinkCard?: (card: Card) => void;
   motionMultiplier: number;
 }) {
   const enabled = cards.length > VIRTUAL_THRESHOLD;
@@ -864,6 +890,8 @@ export function CardListBody({
             onEdit={() => onEditCard(card)}
             onResume={() => onResume(card)}
             onDelete={() => onDelete(card.id)}
+            linked={linkedCardIds?.has(card.id) === true}
+            onUnlink={() => onUnlinkCard?.(card)}
             onToggleFlag={onToggleFlag}
             motionMultiplier={motionMultiplier}
           />
@@ -899,6 +927,8 @@ export function CardListBody({
               onEdit={() => onEditCard(card)}
               onResume={() => onResume(card)}
               onDelete={() => onDelete(card.id)}
+              linked={linkedCardIds?.has(card.id) === true}
+              onUnlink={() => onUnlinkCard?.(card)}
               onToggleFlag={onToggleFlag}
               motionMultiplier={motionMultiplier}
               skipAnimation={hasMounted && !isFirstRender.current}
@@ -922,6 +952,8 @@ const CardRow = React.memo(function CardRow({
   onEdit,
   onResume,
   onDelete,
+  linked,
+  onUnlink,
   onToggleFlag,
   motionMultiplier,
   skipAnimation,
@@ -937,6 +969,8 @@ const CardRow = React.memo(function CardRow({
   onEdit: () => void;
   onResume: () => void;
   onDelete: () => void;
+  linked: boolean;
+  onUnlink: () => void;
   onToggleFlag: (card: Card) => void;
   motionMultiplier?: number;
   skipAnimation?: boolean;
@@ -958,6 +992,7 @@ const CardRow = React.memo(function CardRow({
   // never here, so selection and deletion are suppressed regardless of selectMode/hover.
   // Scheduling actions (flag/suspend/bury/reschedule/resume) stay fully available.
   const generated = card.sequenceItemId !== null && card.sequenceItemId !== undefined;
+  const removable = linked || !generated;
 
   // Swipe-to-reveal state — multi-directional in touch mode.
   const [trayOpen, setTrayOpen] = useState(false);
@@ -1089,7 +1124,7 @@ const CardRow = React.memo(function CardRow({
       justHandledTap.current = false;
       return;
     }
-    if (selectMode && !generated) {
+    if (selectMode && !generated && !linked) {
       onToggle();
     } else if (trayOpenRef.current) {
       setTrayOpen(false);
@@ -1097,18 +1132,18 @@ const CardRow = React.memo(function CardRow({
     } else {
       onToggleExpand();
     }
-  }, [selectMode, generated, onToggle, onToggleExpand, dragX]);
+  }, [selectMode, generated, linked, onToggle, onToggleExpand, dragX]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (selectMode && !generated) {
+      if (selectMode && !generated && !linked) {
         onToggle();
       } else {
         onToggleExpand();
       }
     }
-  }, [selectMode, generated, onToggle, onToggleExpand]);
+  }, [selectMode, generated, linked, onToggle, onToggleExpand]);
 
   const handleMouseEnter = useCallback(() => {
     if (!selectMode) setHovered(true);
@@ -1135,6 +1170,12 @@ const CardRow = React.memo(function CardRow({
     hapticMedium();
     onDelete();
   }, [onDelete]);
+
+  const handleUnlinkClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticLight();
+    onUnlink();
+  }, [onUnlink]);
 
   const handleResumeClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1189,16 +1230,20 @@ const CardRow = React.memo(function CardRow({
             <EditIcon width={18} height={18} />
             Edit
           </button>
-          {/* Generated cards are deleted only by editing (or deleting) their sequence. */}
-          {!generated && (
+          {removable && (
             <button
               type="button"
-              aria-label="Delete card"
-              onClick={handleDeleteClick}
-              className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-negative/10 text-xs text-negative transition-colors hover:bg-negative/20"
+              aria-label={linked ? 'Remove card from lesson' : 'Delete card'}
+              onClick={linked ? handleUnlinkClick : handleDeleteClick}
+              className={cn(
+                'flex h-full flex-1 flex-col items-center justify-center gap-1 text-xs transition-colors',
+                linked
+                  ? 'bg-ink/[0.03] text-ink-soft hover:bg-ink/5 hover:text-ink'
+                  : 'bg-negative/10 text-negative hover:bg-negative/20',
+              )}
             >
-              <TrashIcon width={18} height={18} />
-              Delete
+              {linked ? <CloseIcon width={18} height={18} /> : <TrashIcon width={18} height={18} />}
+              {linked ? 'Remove' : 'Delete'}
             </button>
           )}
         </div>
@@ -1228,7 +1273,7 @@ const CardRow = React.memo(function CardRow({
         )}
       >
         <div className="flex items-start gap-4">
-          {selectMode && !generated && (
+          {selectMode && !generated && !linked && (
             <span
               className={cn(
                 'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors',
@@ -1276,6 +1321,11 @@ const CardRow = React.memo(function CardRow({
               )}
               {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
               {generated && <SequenceBadge />}
+              {linked && (
+                <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+                  Linked
+                </span>
+              )}
             </div>
             <div className="relative max-h-24 overflow-hidden text-sm text-ink-soft [mask-image:linear-gradient(to_bottom,black_60%,transparent)]">
               <AnimatePresence mode="wait" initial={false}>
@@ -1343,16 +1393,21 @@ const CardRow = React.memo(function CardRow({
               >
                 <EditIcon width={16} height={16} />
               </motion.button>
-              {!generated && (
+              {removable && (
               <motion.button
                 type="button"
-                onClick={handleDeleteClick}
-                title="Delete card"
+                onClick={linked ? handleUnlinkClick : handleDeleteClick}
+                title={linked ? 'Remove from lesson' : 'Delete card'}
                 whileTap={{ scale: 0.85 }}
                 whileHover={{ scale: 1.08 }}
-                className="min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-negative/10 hover:text-negative focus-visible:opacity-100 group-hover:opacity-100 touch-visible"
+                className={cn(
+                  'min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 touch-visible',
+                  linked
+                    ? 'hover:bg-ink/5 hover:text-ink'
+                    : 'hover:bg-negative/10 hover:text-negative',
+                )}
               >
-                <TrashIcon width={16} height={16} />
+                {linked ? <CloseIcon width={16} height={16} /> : <TrashIcon width={16} height={16} />}
               </motion.button>
               )}
             </div>

@@ -29,6 +29,11 @@ table, a timeline, a chain of steps) generates a full set of ordinary FSRS cards
 cueing recall from a configurable window of preceding items. See `next_plan.md` Arc 1 for
 the design; the v2 lines-mode slice is not part of this release.
 
+- Added lesson edit-mode authoring for `LessonCardLink`: teachers can search and link
+  existing course cards without moving or duplicating them. Linked cards are visibly marked,
+  excluded from destructive bulk actions, and can be removed from the lesson without deleting
+  the shared card.
+
 - Added `Sequence`/`SequenceItem` types (`src/db/types.ts`) and one optional field on
   `Card`, `sequenceItemId`, present iff the card was generated from a sequence item.
 - Added schema **v11** (`sequences: 'id, courseId, primaryLessonId, createdAt'`, plus a
