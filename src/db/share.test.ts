@@ -318,6 +318,9 @@ describe('course share codes (v2)', () => {
     const imported = importedCourses.find((c) => c.id !== course.id)!;
     expect(imported.name).toBe('Biology');
     expect(imported.unlockMode).toBe('semi-linear');
+    // Imported courses default to study (read-only) mode, regardless of the
+    // sharer's own lessonViewMode — the share payload never packs it.
+    expect(imported.lessonViewMode).toBe('study');
 
     const importedLessons = await db.lessons.where('courseId').equals(imported.id).sortBy('orderIndex');
     expect(importedLessons.map((l) => l.name)).toEqual(['Cells', 'Genetics']);

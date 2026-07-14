@@ -763,6 +763,9 @@ export async function createCourse(name: string, opts?: Partial<Course>): Promis
       fsrsParameters: defaultFsrsParameters(),
       examObjective: 'expectedMarks',
       unlockMode: 'open',
+      // New courses default to edit mode (see src/course/lessonViewMode.ts).
+      // Share-code import (src/db/share.ts) overrides this to 'study' via opts.
+      lessonViewMode: 'edit',
       ...practiceDefaults,
       ...opts,
     };

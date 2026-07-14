@@ -71,6 +71,8 @@ describe('createCourse', () => {
     expect(course.practiceThresholdMinutesNear).toBe(6);
     expect(course.practiceUrgentWindowDays).toBe(7);
     expect(course.practiceMaxGap).toBe(3);
+    // New courses default to edit mode (see src/course/lessonViewMode.ts).
+    expect(course.lessonViewMode).toBe('edit');
     // examDate is 7 days ahead of createdAt at 23:59 local time.
     expect(course.examDate).toBeGreaterThan(course.createdAt);
     // id is generated.

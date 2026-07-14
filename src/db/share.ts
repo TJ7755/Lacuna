@@ -970,6 +970,9 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         ...(payload.course.p && payload.course.p > 0 ? { newCardsPerDay: payload.course.p } : {}),
         ...(payload.course.l ? { colour: payload.course.l } : {}),
         unlockMode: payload.course.um,
+        // Imported courses default to study (read-only) mode regardless of the
+        // sharer's own setting — the share payload never packs lessonViewMode.
+        lessonViewMode: 'study',
       });
 
       const lessonIds: string[] = [];
