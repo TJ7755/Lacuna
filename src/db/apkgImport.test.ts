@@ -87,8 +87,10 @@ describe('importApkgResult', () => {
       scheduledDays: 12,
       learningSteps: 3,
       history: result.cards[0].history,
+      createdAt: 1_699_000_000_000,
       suspended: true,
     });
+    expect(persisted?.createdAt).toBe(1_699_000_000_000);
     expect(persisted).toEqual(returned);
   });
 

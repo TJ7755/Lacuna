@@ -645,6 +645,7 @@ export async function importApkgResult(
         scheduledDays: draft.scheduledDays,
         learningSteps: draft.learningSteps,
         history: draft.history,
+        createdAt: draft.createdAt,
         suspended: draft.suspended,
       };
       await db.cards.update(card.id, scheduling);
