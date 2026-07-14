@@ -5,7 +5,11 @@
 // rendered as "[...]" (or its hint, in brackets). On the back, the hidden text is
 // revealed and highlighted inline within the full sentence.
 
-const CLOZE_PATTERN = /\{\{c(\d+)::(.*?)(?:::(.*?))?\}\}/gs;
+const CLOZE_PATTERN_SOURCE = String.raw`\{\{c(\d+)::(.*?)(?:::(.*?))?\}\}`;
+
+function clozePattern(): RegExp {
+  return new RegExp(CLOZE_PATTERN_SOURCE, 'gs');
+}
 
 interface ClozeSpan {
   index: number;
@@ -16,7 +20,7 @@ interface ClozeSpan {
 /** Extract all cloze spans from a source string. */
 function parseClozes(source: string): ClozeSpan[] {
   const spans: ClozeSpan[] = [];
-  for (const match of source.matchAll(CLOZE_PATTERN)) {
+  for (const match of source.matchAll(clozePattern())) {
     spans.push({
       index: Number(match[1]),
       answer: match[2],
@@ -28,8 +32,7 @@ function parseClozes(source: string): ClozeSpan[] {
 
 /** Whether a source string contains any cloze notation. */
 export function hasCloze(source: string): boolean {
-  CLOZE_PATTERN.lastIndex = 0;
-  return CLOZE_PATTERN.test(source);
+  return clozePattern().test(source);
 }
 
 /**
@@ -38,7 +41,7 @@ export function hasCloze(source: string): boolean {
  * The blank is wrapped in an HTML span so the markdown renderer can style it.
  */
 export function renderClozeFront(source: string): string {
-  return source.replace(CLOZE_PATTERN, (_full, _idx, _answer, hint) => {
+  return source.replace(clozePattern(), (_full, _idx, _answer, hint) => {
     const label = hint ? `[${hint}]` : '[...]';
     return `<span class="cloze-blank">${escapeHtml(label)}</span>`;
   });
@@ -49,7 +52,7 @@ export function renderClozeFront(source: string): string {
  * highlight span so the revealed text stands out inline within the sentence.
  */
 export function renderClozeBack(source: string): string {
-  return source.replace(CLOZE_PATTERN, (_full, _idx, answer) => {
+  return source.replace(clozePattern(), (_full, _idx, answer) => {
     return `<span class="cloze-reveal">${escapeHtml(answer)}</span>`;
   });
 }
@@ -62,8 +65,5 @@ export function nextClozeIndex(source: string): number {
 }
 
 function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

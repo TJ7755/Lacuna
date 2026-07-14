@@ -63,4 +63,13 @@ describe('nextClozeIndex', () => {
   it('uses one above the highest index for multiple non-sequential clozes', () => {
     expect(nextClozeIndex('{{c2::two}} {{c7::seven}} {{c3::three}}')).toBe(8);
   });
+
+  it('parses from the start after hasCloze checks the same source', () => {
+    const source = '{{c7::seven}}';
+
+    expect(hasCloze(source)).toBe(true);
+    expect(nextClozeIndex(source)).toBe(8);
+    expect(hasCloze(source)).toBe(true);
+    expect(nextClozeIndex(source)).toBe(8);
+  });
 });
