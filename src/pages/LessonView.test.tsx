@@ -14,7 +14,6 @@ let mockLessons: Lesson[] | undefined;
 let mockExamDates: unknown[] | undefined;
 let mockNotes: Note[] | undefined;
 let mockLessonCards: Card[] | undefined;
-let mockGlobalLessonViewMode: 'study' | 'edit' = 'study';
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
@@ -44,10 +43,6 @@ vi.mock('../state/useData', () => ({
 vi.mock('../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast'],
   speedMultiplier: () => 1,
-}));
-
-vi.mock('../state/lessonViewMode', () => ({
-  useLessonViewMode: () => [mockGlobalLessonViewMode, vi.fn()],
 }));
 
 const course: Course = {
@@ -133,7 +128,6 @@ beforeEach(() => {
   mockExamDates = [];
   mockNotes = [note];
   mockLessonCards = [makeCard('card-1')];
-  mockGlobalLessonViewMode = 'study';
   mockNavigate.mockClear();
 });
 
@@ -171,7 +165,7 @@ describe('LessonView inline (single-lesson course) rendering', () => {
 
 describe('LessonView edit mode', () => {
   beforeEach(() => {
-    mockGlobalLessonViewMode = 'edit';
+    mockCourse = { ...course, lessonViewMode: 'edit' };
   });
 
   it('renders the full notes CRUD section', () => {
@@ -184,11 +178,5 @@ describe('LessonView edit mode', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: /Cards/ })).toBeInTheDocument();
     expect(screen.queryByText('Total')).not.toBeInTheDocument();
-  });
-
-  it('a course override takes priority over the global default', () => {
-    mockCourse = { ...course, lessonViewMode: 'study' };
-    renderPage();
-    expect(screen.queryByText('Add note')).not.toBeInTheDocument();
   });
 });

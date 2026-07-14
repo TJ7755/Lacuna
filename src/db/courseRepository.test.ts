@@ -32,6 +32,7 @@ import {
   reorderLessons,
   restoreCourse,
   snapshotCourse,
+  stampMissingLessonViewModes,
 } from './repository';
 import { FSRS_VERSION } from '../fsrs/params';
 
@@ -685,5 +686,31 @@ describe('assignCardsToLesson', () => {
     expect(updatedA?.primaryLessonId).toBe(lessonB.id);
     expect(updatedB?.primaryLessonId).toBe(lessonB.id);
     expect(updatedA?.deckId).toBe(updatedB?.deckId);
+  });
+});
+
+describe('stampMissingLessonViewModes', () => {
+  beforeEach(reset);
+
+  it('stamps courses with no explicit mode using the retired global default', async () => {
+    localStorage.setItem('lacuna.lessonViewMode', 'edit');
+    const unstamped = await createCourse('Unstamped');
+    await db.courses.update(unstamped.id, { lessonViewMode: undefined });
+
+    await stampMissingLessonViewModes();
+
+    const updated = await db.courses.get(unstamped.id);
+    expect(updated?.lessonViewMode).toBe('edit');
+  });
+
+  it('leaves courses that already have an explicit mode untouched', async () => {
+    localStorage.setItem('lacuna.lessonViewMode', 'edit');
+    const alreadyStudy = await createCourse('Already study');
+    await db.courses.update(alreadyStudy.id, { lessonViewMode: 'study' });
+
+    await stampMissingLessonViewModes();
+
+    const updated = await db.courses.get(alreadyStudy.id);
+    expect(updated?.lessonViewMode).toBe('study');
   });
 });

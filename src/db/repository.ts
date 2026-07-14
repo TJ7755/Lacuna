@@ -27,6 +27,7 @@ import { isLeech } from '../fsrs/leech';
 import { averagePredictedRetrievability } from '../fsrs/progress';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import { readPracticeDefaults } from '../state/practiceDefaults';
+import { readLessonViewMode } from '../state/lessonViewMode';
 import { scheduleAssetGc } from './assets';
 import {
   diffRegeneration,
@@ -774,6 +775,27 @@ export async function createCourse(name: string, opts?: Partial<Course>): Promis
   } catch (err) {
     throw friendlyDbError(err);
   }
+}
+
+/**
+ * One-shot migration (see App.tsx, guarded by a localStorage flag): stamps
+ * every course that predates the mandatory Course.lessonViewMode field with
+ * the retired global default's last value, so existing users see no change
+ * in behaviour. New courses and share-code imports already set this
+ * explicitly (see createCourse/importCourseFromShare), so only old rows are
+ * touched. Not a Dexie schema upgrade because the value being migrated lives
+ * in localStorage, not IndexedDB — an upgrade() callback cannot depend on it
+ * reliably (e.g. across origins/devices with mismatched localStorage).
+ */
+export async function stampMissingLessonViewModes(): Promise<void> {
+  const globalDefault = readLessonViewMode();
+  // lessonViewMode is not an indexed field, so this is a full-table filter
+  // rather than a where() query — acceptable for a one-off migration.
+  const unstamped = await db.courses.filter((c) => c.lessonViewMode === undefined).toArray();
+  if (unstamped.length === 0) return;
+  await db.courses.bulkUpdate(
+    unstamped.map((c) => ({ key: c.id, changes: { lessonViewMode: globalDefault } })),
+  );
 }
 
 export async function updateCourse(id: string, changes: Partial<Course>): Promise<void> {

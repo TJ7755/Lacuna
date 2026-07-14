@@ -388,15 +388,20 @@ modes resolved by `src/course/lessonViewMode.ts`:
   (`src/components/notes/`) and `LessonCardsSection` (`src/components/cards/`) so the page
   component stays a thin layout/data shell.
 
-The mode is a persisted global default (`src/state/lessonViewMode.ts`, `usePracticeDefaults`-
-style localStorage + custom event) that any course can override via `Course.lessonViewMode`
-(`src/db/types.ts`) — set globally on the Settings page and per course on Course Settings
-(`LessonViewModeSection`, `src/pages/settings/`). `resolveLessonViewMode` combines the two, and
-a single `canEditLessons(course)` gate (currently always `true`, since there is no locked-course
-concept yet) is the one place that will later decide whether edit mode is available at all —
-every call site goes through it rather than reading the mode fields directly. When CoursePath
-renders this page inline for a single-lesson course, it gets the same full header/CTA
-treatment, including exam context via `nearestExamDate`.
+Every course carries its own explicit `Course.lessonViewMode` (`src/db/types.ts`) — no more
+site-wide default. It is set directly via a compact Read/Edit segmented control
+(`LessonViewModeToggle`, `src/components/course/`) in the CoursePath and inline LessonView
+headers, next to the settings link, and via a plain Read/Edit choice on Course Settings
+(`LessonViewModeSection`, `src/pages/settings/`). `resolveLessonViewMode(course)`
+(`src/course/lessonViewMode.ts`) falls back to `'study'` only for courses that predate the
+mandatory field (e.g. an old backup restored later); a one-shot startup migration in `App.tsx`
+(`stampMissingLessonViewModes`, `src/db/repository.ts`) stamps any such course with the retired
+global default's last value so existing users see no behaviour change. A single
+`canEditLessons(course)` gate (currently always `true`, since there is no locked-course concept
+yet) is the one place that will later decide whether edit mode is available at all — every call
+site goes through it rather than reading the mode field directly. When CoursePath renders this
+page inline for a single-lesson course, it gets the same full header/CTA treatment, including
+exam context via `nearestExamDate`.
 
 **Learn session** (full screen, outside the shell):
 

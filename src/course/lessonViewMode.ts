@@ -1,7 +1,10 @@
 // Resolution logic for LessonView's study/edit mode, plus the single gate
-// that decides whether edit mode is available at all. See
-// src/state/lessonViewMode.ts for the persisted global default and
-// Course.lessonViewMode (src/db/types.ts) for the per-course override.
+// that decides whether edit mode is available at all. Every course carries
+// its own explicit lessonViewMode (see Course.lessonViewMode, db/types.ts);
+// the 'study' fallback here only covers courses that predate the field
+// (e.g. an old backup restored later) — see the one-shot migration in App.tsx
+// that stamps every existing course with the (now-removed) global default's
+// last value on first run after this change.
 
 import type { Course } from '../db/types';
 import type { LessonViewMode } from '../state/lessonViewMode';
@@ -21,14 +24,12 @@ export function canEditLessons(course: Course): boolean {
 }
 
 /**
- * Resolve the effective study/edit mode for a course: the course's own
- * override if set, otherwise the global default. Forced to 'study' when
- * canEditLessons() returns false, regardless of either toggle.
+ * Resolve the effective study/edit mode for a course. Forced to 'study' when
+ * canEditLessons() returns false, regardless of the course's own setting.
+ * Falls back to 'study' for courses without an explicit lessonViewMode
+ * (e.g. an old backup restored after this field became mandatory).
  */
-export function resolveLessonViewMode(
-  course: Course,
-  globalDefault: LessonViewMode,
-): LessonViewMode {
+export function resolveLessonViewMode(course: Course): LessonViewMode {
   if (!canEditLessons(course)) return 'study';
-  return course.lessonViewMode ?? globalDefault;
+  return course.lessonViewMode ?? 'study';
 }

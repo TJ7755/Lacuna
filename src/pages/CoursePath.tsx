@@ -29,6 +29,7 @@ import {
   lockHintFor,
 } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
+import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { fieldStandfirst } from '../components/course/memoryFieldMath';
 import { LessonView } from './LessonView';
 import { Button } from '../components/ui/Button';
@@ -39,6 +40,8 @@ import {
   SettingsIcon,
 } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { updateCourse } from '../db/repository';
+import { resolveLessonViewMode } from '../course/lessonViewMode';
 import { formatDate } from '../utils/datetime';
 import type { Card, Course, PracticeNode } from '../db/types';
 
@@ -249,6 +252,10 @@ export function CoursePath() {
           >
             Question bank
           </Link>
+          <LessonViewModeToggle
+            mode={resolveLessonViewMode(course)}
+            onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
+          />
           <Link
             to={`/course/${courseId}/analytics`}
             aria-label="Course analytics"

@@ -1,8 +1,8 @@
 // Lesson view page — a study destination first, notes/cards second. The
 // second half renders in one of two modes, resolved by
 // src/course/lessonViewMode.ts: study (read-only notes, a cards summary) or
-// edit (full notes/cards CRUD). See src/state/lessonViewMode.ts for the
-// global default and Course.lessonViewMode for the per-course override.
+// edit (full notes/cards CRUD), driven by the course's own
+// Course.lessonViewMode.
 // Route: /course/:courseId/lesson/:lessonId
 // Also renderable inline by CoursePath when a course has exactly one lesson
 // (via optional courseId/lessonId props that take precedence over route params).
@@ -28,13 +28,14 @@ import { ChevronLeftIcon, PlayIcon, SettingsIcon } from '../components/ui/icons'
 import { Button } from '../components/ui/Button';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { CourseHeader } from '../components/course/CourseHeader';
+import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { fieldStandfirst } from '../components/course/memoryFieldMath';
 import { courseHeaderStats } from '../course/headerStats';
 import { resolveLessonViewMode } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { useLessonViewMode } from '../state/lessonViewMode';
+import { updateCourse } from '../db/repository';
 import { formatDate } from '../utils/datetime';
 import type { Lesson } from '../db/types';
 
@@ -60,7 +61,6 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
   const navigate = useNavigate();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const [globalLessonViewMode] = useLessonViewMode();
 
   // Use a null-sentinel to distinguish loading (undefined) from not found (null).
   // When lessonId is absent the query resolves immediately to null.
@@ -134,7 +134,7 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
     lessonMastery,
     now,
   );
-  const viewMode = resolveLessonViewMode(course, globalLessonViewMode);
+  const viewMode = resolveLessonViewMode(course);
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
@@ -153,6 +153,10 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
               courseId={courseId}
               lessonCount={lessons.length}
               onCreated={() => navigate(`/course/${courseId}`)}
+            />
+            <LessonViewModeToggle
+              mode={viewMode}
+              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
             />
             {/* Single-lesson courses skip CoursePath's header entirely (see
                 CoursePath.tsx's single-lesson branch), so this is the only

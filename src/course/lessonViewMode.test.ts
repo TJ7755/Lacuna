@@ -35,17 +35,16 @@ describe('canEditLessons', () => {
 });
 
 describe('resolveLessonViewMode', () => {
-  it('inherits the global default when the course has no override', () => {
+  it('falls back to study when the course has no explicit mode', () => {
     const course = makeCourse({ id: 'c1' });
-    expect(resolveLessonViewMode(course, 'study')).toBe('study');
-    expect(resolveLessonViewMode(course, 'edit')).toBe('edit');
+    expect(resolveLessonViewMode(course)).toBe('study');
   });
 
-  it('prefers the course override over the global default', () => {
-    const course = makeCourse({ id: 'c1', lessonViewMode: 'edit' });
-    expect(resolveLessonViewMode(course, 'study')).toBe('edit');
+  it('uses the course’s own explicit mode', () => {
+    const editCourse = makeCourse({ id: 'c1', lessonViewMode: 'edit' });
+    expect(resolveLessonViewMode(editCourse)).toBe('edit');
 
-    const studyOverride = makeCourse({ id: 'c2', lessonViewMode: 'study' });
-    expect(resolveLessonViewMode(studyOverride, 'edit')).toBe('study');
+    const studyCourse = makeCourse({ id: 'c2', lessonViewMode: 'study' });
+    expect(resolveLessonViewMode(studyCourse)).toBe('study');
   });
 });

@@ -17,6 +17,7 @@ import { HelpPage } from './pages/HelpPage';
 import { isFirstRun, seedIfFirstRun } from './db/seed';
 import { autoBackupIfStale } from './db/backups';
 import { ensurePreMigrationSnapshot, openDatabase } from './db/schema';
+import { stampMissingLessonViewModes } from './db/repository';
 import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
@@ -251,6 +252,22 @@ export function App() {
         } catch {
           // localStorage may be unavailable in private browsing or with storage
           // restrictions; the app should still initialise without persistence.
+        }
+
+        // One-shot migration: the site-wide "open lessons in edit mode" default
+        // (formerly in Settings) has been removed in favour of a per-course
+        // setting only. Stamp any course that predates this with the old
+        // global default's last value so behaviour does not change for
+        // existing users — see stampMissingLessonViewModes and
+        // src/course/lessonViewMode.ts.
+        try {
+          if (!localStorage.getItem('lacuna-lesson-view-mode-migrated')) {
+            await stampMissingLessonViewModes();
+            localStorage.setItem('lacuna-lesson-view-mode-migrated', '1');
+          }
+        } catch {
+          // Best-effort — courses without an explicit mode fall back to
+          // 'study' via resolveLessonViewMode() regardless.
         }
 
         // A genuinely fresh browser opens on the landing page; anyone with

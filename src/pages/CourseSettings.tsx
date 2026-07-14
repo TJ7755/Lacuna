@@ -80,7 +80,7 @@ export function CourseSettings() {
   const [practiceThresholdMinutesNear, setPracticeThresholdMinutesNear] = useState('');
   const [practiceUrgentWindowDays, setPracticeUrgentWindowDays] = useState('');
   const [practiceMaxGap, setPracticeMaxGap] = useState('');
-  const [lessonViewMode, setLessonViewMode] = useState<LessonViewMode | undefined>(undefined);
+  const [lessonViewMode, setLessonViewMode] = useState<LessonViewMode>('study');
   const [loaded, setLoaded] = useState(false);
 
   // Re-arm the loaded latch whenever the course changes so back/forward navigation
@@ -115,7 +115,7 @@ export function CourseSettings() {
     setPracticeThresholdMinutesNear(String(course.practiceThresholdMinutesNear));
     setPracticeUrgentWindowDays(String(course.practiceUrgentWindowDays));
     setPracticeMaxGap(String(course.practiceMaxGap));
-    setLessonViewMode(course.lessonViewMode);
+    setLessonViewMode(course.lessonViewMode ?? 'study');
     setLoaded(true);
   }, [course, loaded]);
 
