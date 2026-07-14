@@ -1,5 +1,5 @@
 import { useState, useMemo, memo } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useTheme } from '../../state/ThemeContext';
 import { useStudyStats } from '../../state/useData';
@@ -176,6 +176,7 @@ const CourseRow = memo(function CourseRow({
   m: number;
 }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const isMultiLesson = lessons.length > 1;
   const isExpanded = expanded.has(courseId);
   const isCourseActive =
@@ -253,40 +254,57 @@ const CourseRow = memo(function CourseRow({
     <div>
       <div
         className={cn(
-          'group flex w-full min-h-11 cursor-pointer items-center gap-3 rounded-lg transition-all duration-150',
-          compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
+          'group flex w-full min-h-11 items-center gap-1 rounded-lg transition-all duration-150',
+          compact ? 'pr-3 py-1.5 text-xs' : 'pr-3 py-2 text-sm',
           'hover:translate-x-0.5',
           isCourseActive
             ? 'bg-accent-soft text-accent'
             : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
         )}
-        onClick={() => onToggle(courseId)}
-        role="button"
-        aria-expanded={isExpanded}
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onToggle(courseId);
-          }
-        }}
       >
-        <motion.span
-          animate={{ rotate: isExpanded ? 0 : -90 }}
-          transition={{ duration: 0.15 * m }}
-          className="shrink-0 text-ink-faint"
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle(courseId);
+          }}
+          aria-expanded={isExpanded}
+          aria-label={isExpanded ? `Collapse ${courseName}` : `Expand ${courseName}`}
+          className={cn(
+            'flex shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-ink/10 hover:text-ink',
+            compact ? 'ml-1.5 h-6 w-6' : 'ml-2 h-7 w-7',
+          )}
         >
-          <ChevronDownIcon width={12} height={12} />
-        </motion.span>
-        <CardsIcon
-          width={compact ? 14 : 16}
-          height={compact ? 14 : 16}
-          className="shrink-0"
-        />
-        <span className="flex flex-1 items-center gap-2 min-w-0">
-          <span className="truncate">{courseName}</span>
-          {eligibleBadge}
-        </span>
+          <motion.span
+            animate={{ rotate: isExpanded ? 0 : -90 }}
+            transition={{ duration: 0.15 * m }}
+            className="shrink-0"
+          >
+            <ChevronDownIcon width={12} height={12} />
+          </motion.span>
+        </button>
+        <div
+          role="link"
+          tabIndex={0}
+          onClick={() => navigate(`/course/${courseId}`)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              navigate(`/course/${courseId}`);
+            }
+          }}
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-0"
+        >
+          <CardsIcon
+            width={compact ? 14 : 16}
+            height={compact ? 14 : 16}
+            className="shrink-0"
+          />
+          <span className="flex flex-1 items-center gap-2 min-w-0">
+            <span className="truncate">{courseName}</span>
+            {eligibleBadge}
+          </span>
+        </div>
       </div>
 
       <AnimatePresence>
