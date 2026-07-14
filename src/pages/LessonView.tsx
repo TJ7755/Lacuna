@@ -24,7 +24,7 @@ import { LessonNotesSection } from '../components/notes/LessonNotesSection';
 import { LessonNotesStudyView } from '../components/notes/LessonNotesStudyView';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsSummary } from '../components/cards/LessonCardsSummary';
-import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
+import { ChevronLeftIcon, PlayIcon, SettingsIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { CourseHeader } from '../components/course/CourseHeader';
@@ -148,11 +148,24 @@ export function LessonView({ courseId: courseIdProp, lessonId: lessonIdProp }: L
           {backLabel}
         </Link>
         {isInline && courseId && (
-          <AddLessonControl
-            courseId={courseId}
-            lessonCount={lessons.length}
-            onCreated={() => navigate(`/course/${courseId}`)}
-          />
+          <div className="flex items-center gap-4">
+            <AddLessonControl
+              courseId={courseId}
+              lessonCount={lessons.length}
+              onCreated={() => navigate(`/course/${courseId}`)}
+            />
+            {/* Single-lesson courses skip CoursePath's header entirely (see
+                CoursePath.tsx's single-lesson branch), so this is the only
+                route to Course settings for them — mirror CoursePath's link. */}
+            <Link
+              to={`/course/${courseId}/settings`}
+              aria-label="Course settings"
+              title="Course settings"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center text-ink-faint transition-colors hover:text-ink active:text-ink"
+            >
+              <SettingsIcon width={18} height={18} />
+            </Link>
+          </div>
         )}
       </div>
 

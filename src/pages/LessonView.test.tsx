@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { LessonView } from './LessonView';
+import { ToastProvider } from '../components/ui/Toast';
 import type { Card, Course, Lesson, Note } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 
@@ -115,6 +116,16 @@ function renderPage() {
   );
 }
 
+function renderInline() {
+  return render(
+    <MemoryRouter initialEntries={['/']}>
+      <ToastProvider>
+        <LessonView courseId="course-1" lessonId="lesson-1" />
+      </ToastProvider>
+    </MemoryRouter>,
+  );
+}
+
 beforeEach(() => {
   mockLesson = lesson;
   mockCourse = course;
@@ -135,6 +146,11 @@ describe('LessonView study mode', () => {
     expect(screen.queryByTitle('Delete note')).not.toBeInTheDocument();
   });
 
+  it('does not show a Course settings link when rendered via the normal route', () => {
+    renderPage();
+    expect(screen.queryByLabelText('Course settings')).not.toBeInTheDocument();
+  });
+
   it('shows a cards summary instead of the editable card list', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: /Cards/ })).toBeInTheDocument();
@@ -142,6 +158,14 @@ describe('LessonView study mode', () => {
     expect(screen.getByText('Due')).toBeInTheDocument();
     expect(screen.getByText('Mastery')).toBeInTheDocument();
     expect(screen.queryByText('Add your first card')).not.toBeInTheDocument();
+  });
+});
+
+describe('LessonView inline (single-lesson course) rendering', () => {
+  it('shows a Course settings link pointing at the course settings route', () => {
+    renderInline();
+    const link = screen.getByLabelText('Course settings');
+    expect(link).toHaveAttribute('href', '/course/course-1/settings');
   });
 });
 
