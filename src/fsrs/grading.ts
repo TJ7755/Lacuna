@@ -29,21 +29,8 @@ export function gradeFromResponse(
   const totalCorrect = perf?.totalCorrectReviews ?? 0;
 
   if (totalCorrect < CALIBRATION_THRESHOLD) {
-    if (totalCorrect <= 1) {
-      // No meaningful data yet (zero or one correct review): fall back to absolute
-      // thresholds. With a single observation the running mean equals that first
-      // response time and the variance is zero, which would make all subsequent
-      // responses fall into the "slow" band. Fixed thresholds are more reliable here.
-      if (responseTimeSec < FAST_SECONDS) return 4;
-      if (responseTimeSec > SLOW_SECONDS) return 2;
-      return 3;
-    }
-    // Warm-up: use the running mean and a minimum sigma so the bands are usable
-    // even with very few observations.
-    const mu = perf!.runningMeanResponseTime;
-    const sigma = Math.max(perf!.runningStdDevResponseTime, mu * 0.2, 0.5);
-    if (responseTimeSec < mu - SIGMA_FACTOR * sigma) return 4;
-    if (responseTimeSec > mu + SIGMA_FACTOR * sigma) return 2;
+    if (responseTimeSec < FAST_SECONDS) return 4;
+    if (responseTimeSec > SLOW_SECONDS) return 2;
     return 3;
   }
 
@@ -71,10 +58,7 @@ export function emptyPerformance(deckId: string): UserPerformance {
  * This is a biased sample on high-failure decks because slow failures are excluded;
  * the prediction-accuracy analytics use review outcomes to make that bias visible.
  */
-export function updatePerformance(
-  perf: UserPerformance,
-  responseTimeSec: number,
-): UserPerformance {
+export function updatePerformance(perf: UserPerformance, responseTimeSec: number): UserPerformance {
   const n = perf.totalCorrectReviews + 1;
   const delta = responseTimeSec - perf.runningMeanResponseTime;
   const mean = perf.runningMeanResponseTime + delta / n;
