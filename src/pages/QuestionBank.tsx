@@ -8,6 +8,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCourse, useLessons, useCourseCards, useSequences } from '../state/useCourseData';
 import { useDeck } from '../state/useData';
 import { CardList } from '../components/cards/CardList';
+import { FadeInView } from '../components/ui/FadeInView';
 import { Button } from '../components/ui/Button';
 import { ChevronLeftIcon, PlusIcon, SearchIcon } from '../components/ui/icons';
 import type { Card, Lesson, Sequence } from '../db/types';
@@ -120,23 +121,26 @@ export function QuestionBank() {
         </div>
       ) : (
         <div className="flex flex-col gap-10">
-          {lessonsWithCards.map((lesson) => (
-            <LessonBucket
-              key={lesson.id}
-              courseId={courseId!}
-              lesson={lesson}
-              cards={byLesson.get(lesson.id) ?? []}
-              assignableLessons={assignableLessons}
-              sequences={sequences.filter((s) => s.primaryLessonId === lesson.id)}
-            />
+          {lessonsWithCards.map((lesson, index) => (
+            <FadeInView key={lesson.id} delay={index * 0.04} y={12}>
+              <LessonBucket
+                courseId={courseId!}
+                lesson={lesson}
+                cards={byLesson.get(lesson.id) ?? []}
+                assignableLessons={assignableLessons}
+                sequences={sequences.filter((s) => s.primaryLessonId === lesson.id)}
+              />
+            </FadeInView>
           ))}
           {unassigned.length > 0 && (
-            <UnassignedBucket
-              courseId={courseId!}
-              cards={unassigned}
-              assignableLessons={assignableLessons}
-              sequences={sequences.filter((s) => s.primaryLessonId === null)}
-            />
+            <FadeInView delay={lessonsWithCards.length * 0.04} y={12}>
+              <UnassignedBucket
+                courseId={courseId!}
+                cards={unassigned}
+                assignableLessons={assignableLessons}
+                sequences={sequences.filter((s) => s.primaryLessonId === null)}
+              />
+            </FadeInView>
           )}
         </div>
       )}
