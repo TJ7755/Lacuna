@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { m as motion } from 'motion/react';
+import { m as motion, AnimatePresence } from 'motion/react';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -333,24 +333,35 @@ export function SequenceEditor() {
               </p>
             ) : (
               <div className="flex flex-col gap-2">
-                {chunkLabels.map((label, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={label}
-                      onChange={(e) => renameChunkLabel(i, e.target.value)}
-                      className="flex-1 rounded-lg border border-line bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-accent"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => deleteChunkLabel(i)}
-                      title="Delete chunk"
-                      className="rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+                <AnimatePresence initial={false}>
+                  {chunkLabels.map((label, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+                      className="overflow-hidden"
                     >
-                      Delete
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={label}
+                          onChange={(e) => renameChunkLabel(i, e.target.value)}
+                          className="flex-1 rounded-lg border border-line bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-accent"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => deleteChunkLabel(i)}
+                          title="Delete chunk"
+                          className="rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             )}
           </div>
@@ -391,26 +402,37 @@ export function SequenceEditor() {
               <span className="text-xs text-ink-faint">Ctrl/Cmd+Enter adds the next item</span>
             </div>
             <div className="flex flex-col gap-3">
-              {items.map((item, i) => (
-                <SequenceItemRow
-                  key={item.id}
-                  item={item}
-                  index={i}
-                  isFirst={i === 0}
-                  isLast={i === items.length - 1}
-                  chunkLabels={chunkLabels}
-                  onChange={(patch) => updateItem(item.id, patch)}
-                  onDelete={() => deleteItem(item.id)}
-                  onMoveUp={() => moveItem(item.id, 'up')}
-                  onMoveDown={() => moveItem(item.id, 'down')}
-                  onAddAfter={() => addItem(item.id)}
-                  invalid={invalidItems.has(item.id)}
-                  inputRef={(input) => {
-                    if (input) itemInputs.current.set(item.id, input);
-                    else itemInputs.current.delete(item.id);
-                  }}
-                />
-              ))}
+              <AnimatePresence initial={false}>
+                {items.map((item, i) => (
+                  <motion.div
+                    key={item.id}
+                    layout={reduceMotion ? undefined : 'position'}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <SequenceItemRow
+                      item={item}
+                      index={i}
+                      isFirst={i === 0}
+                      isLast={i === items.length - 1}
+                      chunkLabels={chunkLabels}
+                      onChange={(patch) => updateItem(item.id, patch)}
+                      onDelete={() => deleteItem(item.id)}
+                      onMoveUp={() => moveItem(item.id, 'up')}
+                      onMoveDown={() => moveItem(item.id, 'down')}
+                      onAddAfter={() => addItem(item.id)}
+                      invalid={invalidItems.has(item.id)}
+                      inputRef={(input) => {
+                        if (input) itemInputs.current.set(item.id, input);
+                        else itemInputs.current.delete(item.id);
+                      }}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
               <Button
                 type="button"
                 variant="ghost"
