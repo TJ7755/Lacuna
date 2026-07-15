@@ -1,13 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { useCard, useCards, useDeck } from '../state/useData';
+import { useCard } from '../state/useData';
+import { useCourse, useCourseCards, useLesson, useLessonCards, useSequences } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
 import { TagInput } from '../components/ui/TagInput';
 import { useToast } from '../components/ui/Toast';
-import { checkDuplicate, createCard, createCardWithReverse, createBasicReversedPair, updateCard } from '../db/repository';
+import {
+  checkDuplicate,
+  createLessonCard,
+  createLessonCardWithReverse,
+  createLessonBasicReversedPair,
+  createCourseCard,
+  createCourseCardWithReverse,
+  createCourseBasicReversedPair,
+  updateCard,
+} from '../db/repository';
 import { hasCloze } from '../components/markdown/cloze';
+import { sequenceForItemId } from '../db/sequenceGeneration';
+import { CardContent } from '../components/cards/CardContent';
+import { SequenceBadge } from '../components/cards/SequenceBadge';
 import { ChevronLeftIcon, CheckIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -22,14 +35,36 @@ import type { Card, CardType } from '../db/types';
  * decides the mode.
  */
 export function CardEditor() {
-  const { deckId, cardId } = useParams<{ deckId: string; cardId?: string }>();
+  const { cardId, courseId, lessonId } = useParams<{
+    cardId?: string;
+    courseId?: string;
+    lessonId?: string;
+  }>();
+  // Lesson-scoped route (course/:courseId/lesson/:lessonId/cards/...) vs the
+  // course-scoped "question bank" route (course/:courseId/cards/..., no lessonId).
+  const lessonMode = Boolean(lessonId);
+  const bankMode = !lessonMode;
   const navigate = useNavigate();
   const { notify } = useToast();
 
-  const deck = useDeck(deckId);
+  const course = useCourse(courseId);
+  const lesson = useLesson(lessonId);
+  const lessonCards = useLessonCards(lessonId);
+  // All cards in a migrated lesson share one backing deck; undefined until the
+  // lesson's first card is created.
+  const lessonDeckId = lessonCards?.[0]?.deckId;
+  // Course cards with no lesson share one "question bank" backing deck (bank mode only).
+  const courseCards = useCourseCards(bankMode ? courseId : undefined);
+  const bankCards = useMemo(
+    () => courseCards?.filter((c) => !c.primaryLessonId) ?? [],
+    [courseCards],
+  );
+  const bankDeckId = bankCards[0]?.deckId;
   const editing = Boolean(cardId);
   const card = useCard(cardId);
-  const deckCards = useCards(deckId);
+  // Only fetched for the read-only branch below (a generated card resolves its owning
+  // sequence here to link back to the sequence editor). Harmless to call unconditionally.
+  const sequences = useSequences(courseId);
 
   const [type, setType] = useState<CardType>('front_back');
   const [front, setFront] = useState('');
@@ -41,7 +76,7 @@ export function CardEditor() {
   const [loaded, setLoaded] = useState(false);
   // Whether a stored draft was found and is offered for restoration.
   const [draftPrompt, setDraftPrompt] = useState(false);
-  const draftKeyRef = useRef(draftKey(deckId ?? '', cardId ?? 'new'));
+  const draftKeyRef = useRef(draftKey(lessonId ?? `bank:${courseId}`, cardId ?? 'new'));
   const draftTimer = useRef<number>();
 
   // Re-arm the loaded latch whenever the card being edited changes so direct
@@ -83,12 +118,15 @@ export function CardEditor() {
   }
   useEffect(() => () => window.clearTimeout(savedTimer.current), []);
 
-  // Existing tags across the deck, offered as suggestions in the tag input.
+  // Existing tags across the lesson or bank, offered as suggestions in the tag input.
   const tagSuggestions = useMemo(() => {
     const set = new Set<string>();
-    for (const c of deckCards ?? []) for (const t of c.tags ?? []) set.add(t);
+    const source = lessonMode ? lessonCards : bankCards;
+    for (const c of source ?? []) {
+      for (const t of c.tags ?? []) set.add(t);
+    }
     return [...set].sort();
-  }, [deckCards]);
+  }, [lessonMode, lessonCards, bankCards]);
 
   // Seed the form from the card being edited once it has loaded (new cards start blank).
   // If a draft exists, offer it instead of the persisted state.
@@ -156,9 +194,11 @@ export function CardEditor() {
     return () => window.clearTimeout(draftTimer.current);
   }, [loaded, type, front, back, tags, alsoReverse]);
 
-  // Check for duplicate cards whenever front/back/type changes.
+  // Check for duplicate cards whenever front/back/type changes. A fresh, empty lesson
+  // or bank has no backing deck yet, so there is nothing to check against.
+  const duplicateCheckDeckId = lessonMode ? lessonDeckId : bankDeckId;
   useEffect(() => {
-    if (!loaded || !deckId) return;
+    if (!loaded || !duplicateCheckDeckId) return;
     if (editing && !card) return;
     window.clearTimeout(duplicateTimer.current);
     duplicateTimer.current = window.setTimeout(async () => {
@@ -167,27 +207,35 @@ export function CardEditor() {
         setDuplicateWarning(null);
         return;
       }
-      const dup = await checkDuplicate(deckId, type, front, backValue, card?.id);
+      const dup = await checkDuplicate(duplicateCheckDeckId, type, front, backValue, card?.id);
       setDuplicateWarning(dup ?? null);
     }, 600);
     return () => window.clearTimeout(duplicateTimer.current);
-  }, [loaded, deckId, type, front, back, editing, card]);
+  }, [loaded, duplicateCheckDeckId, type, front, back, editing, card]);
 
-  const deckPath = `/deck/${deckId}`;
+  const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
+  const bankPath = `/course/${courseId}/bank`;
+  // Where Cancel, post-save navigation and the breadcrumb "back" target all point.
+  const backPath = lessonMode ? lessonPath : bankPath;
 
-  if (deck === undefined || (editing && card === undefined && !loaded)) {
+  if (
+    (lessonMode
+      ? course === undefined || lesson === undefined || lessonCards === undefined
+      : course === undefined) ||
+    (editing && card === undefined && !loaded)
+  ) {
     return <CardEditorSkeleton />;
   }
-  if (deck === null) {
+  if (lessonMode && lesson === null) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         className="p-10"
       >
-        <p className="mb-4 text-ink-soft">This deck could not be found.</p>
-        <Link to="/" className="text-accent underline">
-          Back to dashboard
+        <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
+        <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
+          {courseId ? 'Back to course' : 'Back to dashboard'}
         </Link>
       </motion.div>
     );
@@ -200,10 +248,117 @@ export function CardEditor() {
         className="p-10"
       >
         <p className="mb-4 text-ink-soft">This card could not be found.</p>
-        <Link to={deckPath} className="text-accent underline">
-          Back to {deck.name}
+        <Link to={backPath} className="text-accent underline">
+          Back to {lessonMode ? lesson?.name : 'Question bank'}
         </Link>
       </motion.div>
+    );
+  }
+
+  // Generated cards are owned by their Sequence: content, front/back, and deletion are
+  // all managed there (edits here would be silently reverted on the sequence's next
+  // regeneration), so this page shows a static preview and a link back instead of a form.
+  if (
+    editing &&
+    card &&
+    card.sequenceItemId !== null &&
+    card.sequenceItemId !== undefined
+  ) {
+    const owningSequence = sequences ? sequenceForItemId(sequences, card.sequenceItemId) : undefined;
+    return (
+      <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
+        <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
+          {lessonMode ? (
+            <>
+              <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
+                {course?.name}
+              </Link>
+              <ChevronRight />
+              <Link to={backPath} className="transition-colors hover:text-ink">
+                {lesson?.name}
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
+                {course?.name}
+              </Link>
+              <ChevronRight />
+              <Link to={backPath} className="transition-colors hover:text-ink">
+                Question bank
+              </Link>
+            </>
+          )}
+          <ChevronRight />
+          <span className="text-ink-soft">Card</span>
+        </nav>
+
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>
+          <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
+            <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
+            <div className="relative">
+              <Link
+                to={backPath}
+                className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
+              >
+                <ChevronLeftIcon width={16} height={16} />
+                Back
+              </Link>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="font-display text-4xl tracking-tight md:text-5xl">Card</h1>
+                <SequenceBadge />
+              </div>
+            </div>
+          </header>
+
+          <div className="mb-5 flex items-center gap-3 rounded-xl border border-accent/20 bg-accent-soft px-4 py-3">
+            <span className="text-sm text-accent">
+              This card is generated from {owningSequence ? `the sequence “${owningSequence.name}”` : 'a sequence'}.
+              Edit its content, order or cue window there — changes here would be lost the next time it regenerates.
+            </span>
+            {owningSequence && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="ml-auto shrink-0"
+                onClick={() => navigate(`/course/${courseId}/sequence/${owningSequence.id}/edit`)}
+              >
+                Edit sequence
+              </Button>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-5">
+            <div className="rounded-xl border border-line bg-surface p-5">
+              <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Front</div>
+              <div className="text-ink-soft">
+                <CardContent card={card} side="front" />
+              </div>
+            </div>
+            <div className="rounded-xl border border-line bg-surface p-5">
+              <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Back</div>
+              <div className="text-ink">
+                <CardContent card={card} side="back" />
+              </div>
+            </div>
+            {(card.tags ?? []).length > 0 && (
+              <div>
+                <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {(card.tags ?? []).map((t) => (
+                    <span
+                      key={t}
+                      className="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-soft"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </div>
     );
   }
 
@@ -216,7 +371,8 @@ export function CardEditor() {
   const canSave = frontValid && backValid && clozeValid;
 
   async function handleSave(andAnother = false) {
-    if (!canSave || !deckId) {
+    const missingOwner = lessonMode ? !courseId || !lessonId : !courseId;
+    if (!canSave || missingOwner) {
       // Shake the first invalid field to give the user tactile feedback on why save is blocked.
       if (!frontValid) setShakeField('front');
       else if (!backValid) setShakeField('back');
@@ -238,18 +394,26 @@ export function CardEditor() {
       // Let the confirmation flourish play briefly before leaving the page.
       window.setTimeout(() => {
         notify('Card updated.', 'positive');
-        navigate(deckPath);
+        navigate(backPath);
       }, 450);
       return;
     }
 
     const reversed = !isCloze && !isTyping && !isBasicReversed && alsoReverse;
-    if (isBasicReversed) {
-      await createBasicReversedPair(deckId, front, backValue, tags);
+    if (lessonMode) {
+      if (isBasicReversed) {
+        await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags);
+      } else if (reversed) {
+        await createLessonCardWithReverse(courseId!, lessonId!, front, backValue, tags);
+      } else {
+        await createLessonCard(courseId!, lessonId!, type, front, backValue, tags);
+      }
+    } else if (isBasicReversed) {
+      await createCourseBasicReversedPair(courseId!, front, backValue, tags);
     } else if (reversed) {
-      await createCardWithReverse(deckId, front, backValue, tags);
+      await createCourseCardWithReverse(courseId!, front, backValue, tags);
     } else {
-      await createCard(deckId, type, front, backValue, tags);
+      await createCourseCard(courseId!, type, front, backValue, tags);
     }
     clearDraft(draftKeyRef.current);
     if (andAnother) {
@@ -264,7 +428,7 @@ export function CardEditor() {
       flashSaved();
       window.setTimeout(() => {
         notify(reversed ? 'Card and its reverse added.' : 'Card added.', 'positive');
-        navigate(deckPath);
+        navigate(backPath);
       }, 450);
     }
   }
@@ -282,13 +446,27 @@ export function CardEditor() {
     >
       {/* Breadcrumb */}
       <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-        <Link to="/" className="transition-colors hover:text-ink">
-          All decks
-        </Link>
-        <ChevronRight />
-        <Link to={deckPath} className="transition-colors hover:text-ink">
-          {deck.name}
-        </Link>
+        {lessonMode ? (
+          <>
+            <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
+              {course?.name}
+            </Link>
+            <ChevronRight />
+            <Link to={backPath} className="transition-colors hover:text-ink">
+              {lesson?.name}
+            </Link>
+          </>
+        ) : (
+          <>
+            <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
+              {course?.name}
+            </Link>
+            <ChevronRight />
+            <Link to={backPath} className="transition-colors hover:text-ink">
+              Question bank
+            </Link>
+          </>
+        )}
         <ChevronRight />
         <span className="text-ink-soft">{editing ? 'Edit card' : 'New card'}</span>
       </nav>
@@ -302,7 +480,7 @@ export function CardEditor() {
           <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
           <div className="relative">
             <Link
-              to={deckPath}
+              to={backPath}
               className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
             >
               <ChevronLeftIcon width={16} height={16} />
@@ -568,7 +746,7 @@ export function CardEditor() {
             )}
           </AnimatePresence>
           <div className="ml-auto flex items-center gap-3">
-            <Button variant="ghost" onClick={() => navigate(deckPath)}>
+            <Button variant="ghost" onClick={() => navigate(backPath)}>
               {!editing && addedCount > 0 ? 'Done' : 'Cancel'}
             </Button>
             {!editing && (

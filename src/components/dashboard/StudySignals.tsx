@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';
 import type { StudyStats, DayForecast } from '../../fsrs/stats';
-import type { Deck } from '../../db/types';
+import type { Course } from '../../db/types';
 import { FlameIcon, CalendarIcon, SparklesIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -89,7 +89,7 @@ function dayLabel(dayStart: number, index: number): string {
 
 interface StudySignalsProps {
   stats: StudyStats;
-  decks?: Deck[];
+  courses?: Course[];
 }
 
 /**
@@ -97,7 +97,7 @@ interface StudySignalsProps {
  * forecast of how many *minutes* of study lie ahead (estimated from each deck's measured
  * pace). All values are read-only aggregates over data already stored.
  */
-export function StudySignals({ stats, decks }: StudySignalsProps) {
+export function StudySignals({ stats, courses }: StudySignalsProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const { streak, reviewedToday, forecast } = stats;
@@ -128,11 +128,11 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
 
   const resetDetail = () => setDetailDay(defaultDetail);
 
-  const deckMap = useMemo(() => {
-    const map = new Map<string, Deck>();
-    for (const d of decks ?? []) map.set(d.id, d);
+  const courseMap = useMemo(() => {
+    const map = new Map<string, Course>();
+    for (const c of courses ?? []) map.set(c.id, c);
     return map;
-  }, [decks]);
+  }, [courses]);
 
   const allClear = totalCards === 0;
 
@@ -302,16 +302,16 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
                       ) : (
                         <div className="flex w-full flex-col-reverse rounded-md overflow-hidden">
                           {[...day.byDeck]
-                            .sort((a, b) => a.deckId.localeCompare(b.deckId))
+                            .sort((a, b) => a.sourceId.localeCompare(b.sourceId))
                             .map((slice, si) => {
-                            const deck = deckMap.get(slice.deckId);
-                            const colour = deck?.colour;
+                            const course = courseMap.get(slice.sourceId);
+                            const colour = course?.colour;
                             const sliceHeight = (slice.minutes / maxMinutes) * 100;
                             const pct = Math.max(sliceHeight, 1);
 
                             return (
                               <motion.div
-                                key={slice.deckId}
+                                key={slice.sourceId}
                                 initial={{ height: 0 }}
                                 animate={{ height: `${pct}%` }}
                                 transition={{
@@ -367,7 +367,7 @@ export function StudySignals({ stats, decks }: StudySignalsProps) {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.35 * m, ease: [0.4, 0, 0.2, 1] }}
                 >
-                  <DayDetail day={forecast[detailDay]} deckMap={deckMap} index={detailDay} motionMultiplier={m} />
+                  <DayDetail day={forecast[detailDay]} courseMap={courseMap} index={detailDay} motionMultiplier={m} />
                 </motion.div>
               </AnimatePresence>
             </motion.div>
@@ -407,12 +407,12 @@ function EmptyForecast({ motionMultiplier }: { motionMultiplier?: number }) {
 
 function DayDetail({
   day,
-  deckMap,
+  courseMap,
   index,
   motionMultiplier,
 }: {
   day: DayForecast;
-  deckMap: Map<string, Deck>;
+  courseMap: Map<string, Course>;
   index: number;
   motionMultiplier?: number;
 }) {
@@ -433,19 +433,19 @@ function DayDetail({
           .filter((d) => d.dueCount > 0 || d.newCount > 0)
           .sort((a, b) => b.dueCount + b.newCount - (a.dueCount + a.newCount))
           .map((slice, si) => {
-            const deck = deckMap.get(slice.deckId);
-            const colour = deck?.colour;
+            const course = courseMap.get(slice.sourceId);
+            const colour = course?.colour;
             const sliceTotal = slice.dueCount + slice.newCount;
             const barPct = total > 0 ? (sliceTotal / total) * 100 : 0;
             return (
-              <div key={slice.deckId} className="flex flex-col gap-1">
+              <div key={slice.sourceId} className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <span
                     className={cn('h-2 w-2 shrink-0 rounded-full', !colour && 'bg-accent')}
                     style={colour ? { backgroundColor: colour } : undefined}
                   />
                   <span className="flex-1 text-xs text-ink-soft truncate">
-                    {deck?.name ?? 'Unknown deck'}
+                    {course?.name ?? 'Unknown course'}
                   </span>
                   <span className="text-[11px] tabular text-ink-faint">
                     {sliceTotal}
@@ -457,7 +457,7 @@ function DayDetail({
                 {/* Deck proportion bar */}
                 <div className="h-1 w-full rounded-full bg-ink/5 overflow-hidden">
                   <motion.div
-                    key={`${slice.deckId}-${sliceTotal}`}
+                    key={`${slice.sourceId}-${sliceTotal}`}
                     className={cn('h-full rounded-full', !colour && 'bg-accent/60')}
                     style={colour ? { backgroundColor: colour, opacity: 0.6 } : undefined}
                     initial={{ width: 0 }}

@@ -22,10 +22,11 @@ import {
   type SimContext,
 } from './forwardSim';
 import { averagePredictedRetrievability, masteryFraction } from './progress';
-import { schedulingHorizon } from './horizon';
+import { cardSchedulingHorizon } from './horizon';
 import { availableCards } from './eligibility';
 import { MASTERY_R } from './params';
-import type { Card, Deck, ExamObjective } from '../db/types';
+import type { ExamDateContext } from './examDate';
+import type { Card, SchedulerConfig, ExamObjective } from '../db/types';
 
 /**
  * Below this Delta-R, a further review is deemed to add no meaningful marks, so
@@ -36,16 +37,24 @@ const EXPECTED_MARKS_EPSILON = 5e-3;
 /** Pre-built scoring context for a deck (engine + decay + objective). */
 export interface ObjectiveContext {
   objective: ExamObjective;
-  deck: Deck;
+  // Any SchedulerConfig (a Deck or a Course).
+  deck: SchedulerConfig;
   ctx: SimContext;
+  /** Per-card course exam dates. Omitted for legacy Deck scheduling. */
+  examDateContext?: ExamDateContext;
 }
 
-/** Build a scoring context once per session/render (one FSRS engine per deck). */
-export function makeObjectiveContext(deck: Deck): ObjectiveContext {
+/** Build a scoring context once per session/render (one FSRS engine per deck).
+ *  Accepts any SchedulerConfig (a Deck or a Course). */
+export function makeObjectiveContext(
+  deck: SchedulerConfig,
+  examDateContext?: ExamDateContext,
+): ObjectiveContext {
   return {
     objective: deck.examObjective,
     deck,
     ctx: simContext(deck, makeEngine(deck.fsrsParameters)),
+    examDateContext,
   };
 }
 
@@ -55,29 +64,30 @@ export function makeObjectiveContext(deck: Deck): ObjectiveContext {
  */
 export function progressValue(
   cards: Card[],
-  deck: Deck,
+  deck: SchedulerConfig,
   now: number = Date.now(),
+  examDateContext?: ExamDateContext,
 ): number {
   const available = availableCards(cards, now);
   return deck.examObjective === 'securedTopics'
-    ? masteryFraction(available, deck, now)
-    : averagePredictedRetrievability(available, deck, now);
+    ? masteryFraction(available, deck, now, examDateContext)
+    : averagePredictedRetrievability(available, deck, now, examDateContext);
 }
 
 /** A short noun for compact headers, e.g. "62% predicted score" / "62% secured". */
-export function progressNoun(deck: Deck): string {
+export function progressNoun(deck: SchedulerConfig): string {
   return deck.examObjective === 'securedTopics' ? 'secured' : 'predicted score';
 }
 
 /** A heading for the deck/summary panels. */
-export function progressHeading(deck: Deck): string {
+export function progressHeading(deck: SchedulerConfig): string {
   return deck.examObjective === 'securedTopics'
     ? 'Predicted mastery on exam day'
     : 'Predicted exam score';
 }
 
 /** A one-line description of exactly what the progress value measures. */
-export function progressDescription(deck: Deck): string {
+export function progressDescription(deck: SchedulerConfig): string {
   return deck.examObjective === 'securedTopics'
     ? 'Proportion of cards predicted to be recalled with 90% or higher retrievability when your exam arrives.'
     : 'Mean predicted retrievability across the deck on your exam day.';
@@ -92,7 +102,7 @@ export function scoreCard(
   now: number = Date.now(),
 ): number {
   const { deck, ctx } = oc;
-  const horizon = schedulingHorizon(deck, now);
+  const horizon = cardSchedulingHorizon(card, deck, oc.examDateContext, now);
 
   if (oc.objective === 'expectedMarks') {
     // Greedy maximisation of Sigma R: serve the largest expected lift first.
@@ -142,11 +152,19 @@ export function isObjectiveComplete(
 ): boolean {
   if (cards.length === 0) return true;
   if (oc.objective === 'securedTopics') {
-    return masteryFraction(cards, oc.deck, now) >= 1;
+    return masteryFraction(cards, oc.deck, now, oc.examDateContext) >= 1;
   }
-  const horizon = schedulingHorizon(oc.deck, now);
   const bestGain = cards.reduce(
-    (best, card) => Math.max(best, deltaR(card, horizon, now, oc.ctx)),
+    (best, card) =>
+      Math.max(
+        best,
+        deltaR(
+          card,
+          cardSchedulingHorizon(card, oc.deck, oc.examDateContext, now),
+          now,
+          oc.ctx,
+        ),
+      ),
     0,
   );
   return bestGain < EXPECTED_MARKS_EPSILON;

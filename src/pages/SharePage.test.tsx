@@ -1,16 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SharePage } from './SharePage';
-import type { Deck, Card } from '../db/types';
+import type { Card, Course } from '../db/types';
+import type { CourseSummary } from '../state/useCourseData';
 
 const mockNotify = vi.fn();
 
-let mockDecks: Deck[] | undefined = undefined;
-let mockAllCards: Card[] | undefined = undefined;
+let mockCourses: Course[] | undefined = undefined;
+let mockSummaries: Record<string, CourseSummary> | undefined = undefined;
+let mockCourseCards: Card[] = [];
 
-vi.mock('../state/useData', () => ({
-  useDecks: () => mockDecks,
-  useAllCards: () => mockAllCards,
+vi.mock('../state/useCourseData', () => ({
+  useCourses: () => mockCourses,
+  useCourseSummaries: () => mockSummaries,
+  useCourseCards: () => mockCourseCards,
 }));
 
 vi.mock('../components/ui/Toast', () => ({
@@ -24,21 +27,20 @@ vi.mock('../state/motionSpeed', () => ({
 }));
 
 vi.mock('../db/share', () => ({
-  buildShareCode: vi.fn(() => Promise.resolve('LAC2-test-code')),
-  buildShareCodeQR: vi.fn(() => Promise.resolve('LAC2-qr-code')),
+  buildCourseShareCode: vi.fn(() => Promise.resolve('LAC2-test-code')),
+  buildCourseShareCodeQR: vi.fn(() => Promise.resolve('LAC2-qr-code')),
   decodeShare: vi.fn(() => Promise.resolve({})),
-  importSharePayload: vi.fn(() => Promise.resolve({ decks: 1, cards: 2 })),
+  importSharePayload: vi.fn(() => Promise.resolve({ courses: 1, lessons: 1, cards: 2 })),
   summariseShare: vi.fn(() => ({
+    kind: 'course' as const,
     deckCount: 1,
     cardCount: 2,
     exportedAt: Date.now(),
-    deckNames: ['Test Deck'],
+    deckNames: ['Test Lesson'],
     omittedImages: false,
+    courseName: 'Test Course',
+    lessonCount: 1,
   })),
-}));
-
-vi.mock('../db/assets', () => ({
-  referencedAssetHashesInCards: vi.fn(() => []),
 }));
 
 vi.mock('../db/export', () => ({
@@ -69,90 +71,111 @@ vi.mock('react-qr-code', () => ({
   default: () => <div data-testid="qr-code">QR Code</div>,
 }));
 
-const mockDeck: Deck = {
-  id: 'deck-1',
-  name: 'Test Deck',
+const mockCourse: Course = {
+  id: 'course-1',
+  name: 'Test Course',
+  description: '',
+  createdAt: Date.now(),
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
-  createdAt: Date.now(),
   fsrsVersion: 6,
   fsrsParameters: { requestRetention: 0.9, w: Array(21).fill(0), enable_fuzz: true, maximum_interval: 36500, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] },
   examObjective: 'expectedMarks',
-  lastInteractedAt: Date.now(),
+  unlockMode: 'linear',
+  autoPractice: false,
+  practiceThresholdMinutesFar: 12,
+  practiceThresholdMinutesNear: 6,
+  practiceUrgentWindowDays: 7,
+  practiceMaxGap: 3,
 };
 
-const mockCard: Card = {
-  id: 'card-1',
-  deckId: 'deck-1',
-  type: 'front_back',
-  front: 'Front',
-  back: 'Back',
-  stability: null,
-  difficulty: null,
-  lastReviewed: null,
-  reps: 0,
-  lapses: 0,
-  state: 0,
-  due: null,
-  scheduledDays: 0,
-  learningSteps: 0,
-  history: [],
-  createdAt: Date.now(),
-  tags: [],
-  suspended: false,
-  buriedUntil: null,
+const mockSummary: CourseSummary = {
+  lessonCount: 1,
+  cardCount: 1,
+  mastery: 0,
+  unreviewed: 1,
+  eligible: 1,
 };
 
 beforeEach(() => {
   mockNotify.mockClear();
-  mockDecks = undefined;
-  mockAllCards = undefined;
+  mockCourses = undefined;
+  mockSummaries = undefined;
+  mockCourseCards = [];
 });
 
 describe('SharePage', () => {
-  it('renders loading skeleton when decks are loading', () => {
+  it('renders loading skeleton when courses are loading', () => {
     render(<SharePage />);
     expect(screen.getByTestId('download-icon')).toBeInTheDocument();
   });
 
-  it('renders empty state when no decks exist', () => {
-    mockDecks = [];
-    mockAllCards = [];
+  it('renders empty state when no courses exist', () => {
+    mockCourses = [];
+    mockSummaries = {};
     render(<SharePage />);
-    expect(screen.getByText('No decks yet')).toBeInTheDocument();
-    expect(screen.getByText('Create a deck first, then come back here to share it with others.')).toBeInTheDocument();
+    expect(screen.getByText('No courses yet')).toBeInTheDocument();
+    expect(screen.getByText('Create a course first, then come back here to share it with others.')).toBeInTheDocument();
   });
 
-  it('renders deck list when decks exist', () => {
-    mockDecks = [mockDeck];
-    mockAllCards = [mockCard];
+  it('renders course list when courses exist', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
     render(<SharePage />);
-    expect(screen.getByText('Test Deck')).toBeInTheDocument();
-    expect(screen.getByText('1 cards')).toBeInTheDocument();
+    expect(screen.getByText('Test Course')).toBeInTheDocument();
+    expect(screen.getByText('1 lesson · 1 card')).toBeInTheDocument();
   });
 
-  it('toggles deck selection when clicked', () => {
-    mockDecks = [mockDeck];
-    mockAllCards = [mockCard];
+  it('selects a course when clicked', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
     render(<SharePage />);
-    const deckBtn = screen.getByText('Test Deck');
-    fireEvent.click(deckBtn);
-    expect(screen.getByText('1 deck · 1 card')).toBeInTheDocument();
+    const courseBtn = screen.getByText('Test Course');
+    fireEvent.click(courseBtn);
+    const generateBtn = screen.getByText('Generate share code');
+    expect(generateBtn).not.toBeDisabled();
   });
 
-  it('disables generate button when no decks are selected', () => {
-    mockDecks = [mockDeck];
-    mockAllCards = [mockCard];
+  it('disables generate button when no course is selected', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
     render(<SharePage />);
     const generateBtn = screen.getByText('Generate share code');
     expect(generateBtn).toBeDisabled();
   });
 
-  it('shows import section with textarea', () => {
-    mockDecks = [mockDeck];
-    mockAllCards = [mockCard];
+  it('shows an image-placeholder warning when the selected course has images', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockCourseCards = [
+      {
+        front: 'What is shown? lacuna-asset://' + 'a'.repeat(64),
+        back: 'Answer',
+      } as Card,
+    ];
     render(<SharePage />);
-    expect(screen.getByText('Import a shared deck')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(
+      screen.getByText(/This course contains images\. The share code will replace them/),
+    ).toBeInTheDocument();
+  });
+
+  it('does not show the image-placeholder warning when the selected course has no images', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockCourseCards = [{ front: 'Plain text', back: 'Answer' } as Card];
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(
+      screen.queryByText(/This course contains images\. The share code will replace them/),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows import section with textarea', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    render(<SharePage />);
+    expect(screen.getByText('Import a shared course')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...')).toBeInTheDocument();
   });
 });

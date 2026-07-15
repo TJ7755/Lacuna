@@ -4,12 +4,12 @@ export type StudyMode = 'fsrs' | 'simple';
 
 const KEY = 'lacuna.studyMode';
 
-export function readStudyMode(): StudyMode {
+function readStudyMode(): StudyMode {
   const raw = localStorage.getItem(KEY);
   return raw === 'simple' ? 'simple' : 'fsrs';
 }
 
-export function writeStudyMode(mode: StudyMode): void {
+function writeStudyMode(mode: StudyMode): void {
   localStorage.setItem(KEY, mode);
   window.dispatchEvent(new CustomEvent('lacuna:study-mode', { detail: mode }));
 }

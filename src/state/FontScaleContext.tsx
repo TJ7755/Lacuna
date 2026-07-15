@@ -11,11 +11,11 @@ import {
 // every rem-based size in the app grows or shrinks together. Mirrors ThemeContext.
 
 const STORAGE_KEY = 'lacuna-font-scale';
-export const FONT_SCALE_USER_SET_KEY = 'lacuna-font-scale-user-set';
+const FONT_SCALE_USER_SET_KEY = 'lacuna-font-scale-user-set';
 
-export const FONT_SCALE_MIN = 0.85;
-export const FONT_SCALE_MAX = 1.35;
-export const FONT_SCALE_DEFAULT = 1;
+const FONT_SCALE_MIN = 0.85;
+const FONT_SCALE_MAX = 1.35;
+const FONT_SCALE_DEFAULT = 1;
 
 /** Named steps offered in Settings. */
 export const FONT_SCALE_STEPS = [

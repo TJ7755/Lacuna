@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CardList } from './CardList';
-import type { Card, Deck } from '../../db/types';
+import type { Card, Deck, Sequence } from '../../db/types';
 
 const mockNotify = vi.fn();
 
@@ -21,6 +21,7 @@ vi.mock('../../state/inputMode', () => ({
 
 vi.mock('../../db/repository', () => ({
   addTagToCards: vi.fn(),
+  assignCardsToLesson: vi.fn(),
   createCards: vi.fn(),
   deleteCards: vi.fn(),
   moveCards: vi.fn(),
@@ -38,8 +39,10 @@ vi.mock('../../fsrs/leech', () => ({
 
 vi.mock('../ui/icons', () => ({
   CheckIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="check-icon" {...props} />,
+  CloseIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="close-icon" {...props} />,
   EditIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="edit-icon" {...props} />,
   FlagIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="flag-icon" {...props} />,
+  PathIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="path-icon" {...props} />,
   PlusIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="plus-icon" {...props} />,
   TagIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="tag-icon" {...props} />,
   TrashIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="trash-icon" {...props} />,
@@ -125,7 +128,7 @@ describe('CardList', () => {
         onEditCard={onEditCard}
       />
     );
-    expect(screen.getByText('This deck has no cards yet.')).toBeInTheDocument();
+    expect(screen.getByText('No cards yet.')).toBeInTheDocument();
     expect(screen.getByText('Add your first card')).toBeInTheDocument();
   });
 
@@ -231,5 +234,172 @@ describe('CardList', () => {
     );
     fireEvent.click(screen.getByText('New card'));
     expect(onNewCard).toHaveBeenCalledOnce();
+  });
+
+  it('offers the lesson action for linking existing cards', () => {
+    const onLinkExisting = vi.fn();
+    render(
+      <CardList
+        cards={[mockCard]}
+        deck={mockDeck}
+        allDecks={[mockDeck]}
+        onEditCard={vi.fn()}
+        onLinkExisting={onLinkExisting}
+      />,
+    );
+    fireEvent.click(screen.getByText('Link existing cards'));
+    expect(onLinkExisting).toHaveBeenCalledOnce();
+  });
+
+  it('marks linked cards and removes their lesson link instead of deleting the card', async () => {
+    const { deleteCards } = await import('../../db/repository');
+    const onUnlinkCard = vi.fn();
+    render(
+      <CardList
+        cards={[mockCard]}
+        deck={mockDeck}
+        allDecks={[mockDeck]}
+        onEditCard={vi.fn()}
+        linkedCardIds={new Set([mockCard.id])}
+        onUnlinkCard={onUnlinkCard}
+      />,
+    );
+
+    expect(screen.getByText('Linked')).toBeInTheDocument();
+    fireEvent.click(screen.getByTitle('Remove from lesson'));
+    expect(onUnlinkCard).toHaveBeenCalledWith(mockCard);
+    expect(deleteCards).not.toHaveBeenCalled();
+    expect(screen.queryByText('Select')).not.toBeInTheDocument();
+  });
+
+  it('does not show "Assign to lesson…" without assignableLessons/courseId', () => {
+    render(
+      <CardList
+        cards={[mockCard, mockCard2]}
+        deck={mockDeck}
+        allDecks={[mockDeck]}
+        onNewCard={vi.fn()}
+        onEditCard={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('Select'));
+    expect(screen.queryByText('Assign to lesson…')).not.toBeInTheDocument();
+  });
+
+  it('bulk-assigns selected cards to a lesson', async () => {
+    const { assignCardsToLesson } = await import('../../db/repository');
+    render(
+      <CardList
+        cards={[mockCard, mockCard2]}
+        deck={mockDeck}
+        allDecks={[mockDeck]}
+        onNewCard={vi.fn()}
+        onEditCard={vi.fn()}
+        courseId="course-1"
+        assignableLessons={[{ id: 'lesson-1', name: 'Lesson 1' }]}
+      />
+    );
+    fireEvent.click(screen.getByText('Select'));
+    fireEvent.click(screen.getByText('Select all'));
+    fireEvent.click(screen.getByText('Assign to lesson…'));
+    fireEvent.click(screen.getByText('Assign'));
+
+    await waitFor(() =>
+      expect(assignCardsToLesson).toHaveBeenCalledWith(['card-1', 'card-2'], 'course-1', 'lesson-1'),
+    );
+  });
+
+  it('unassigns selected cards when the Unassigned option is chosen', async () => {
+    const { assignCardsToLesson } = await import('../../db/repository');
+    render(
+      <CardList
+        cards={[mockCard]}
+        deck={mockDeck}
+        allDecks={[mockDeck]}
+        onNewCard={vi.fn()}
+        onEditCard={vi.fn()}
+        courseId="course-1"
+        assignableLessons={[{ id: 'lesson-1', name: 'Lesson 1' }]}
+      />
+    );
+    fireEvent.click(screen.getByText('Select'));
+    fireEvent.click(screen.getByText('Select all'));
+    fireEvent.click(screen.getByText('Assign to lesson…'));
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } });
+    fireEvent.click(screen.getByText('Assign'));
+
+    await waitFor(() =>
+      expect(assignCardsToLesson).toHaveBeenCalledWith(['card-1'], 'course-1', null),
+    );
+  });
+
+  describe('generated cards', () => {
+    const sequence: Sequence = {
+      id: 'sequence-1',
+      courseId: 'course-1',
+      primaryLessonId: null,
+      name: 'The alkali metals',
+      items: [{ id: 'item-1', value: 'Sodium' }],
+      cueWindow: 2,
+      createdAt: Date.now(),
+    };
+    const generatedCard: Card = {
+      ...mockCard,
+      id: 'card-3',
+      front: '**The alkali metals**\n\nFirst item?',
+      back: 'Sodium',
+      sequenceItemId: 'item-1',
+    };
+
+    it('groups a generated card under a sequence header with a card count', () => {
+      render(
+        <CardList
+          cards={[mockCard, generatedCard]}
+          deck={mockDeck}
+          allDecks={[mockDeck]}
+          onEditCard={vi.fn()}
+          sequences={[sequence]}
+        />,
+      );
+      expect(screen.getByText('The alkali metals')).toBeInTheDocument();
+      expect(screen.getByText('1 card')).toBeInTheDocument();
+      // The ordinary card still renders in the loose list underneath.
+      expect(screen.getByText('What is the capital of France?')).toBeInTheDocument();
+    });
+
+    it('shows an "Edit sequence" link that calls onEditSequence with the sequence id', () => {
+      const onEditSequence = vi.fn();
+      render(
+        <CardList
+          cards={[generatedCard]}
+          deck={mockDeck}
+          allDecks={[mockDeck]}
+          onEditCard={vi.fn()}
+          sequences={[sequence]}
+          onEditSequence={onEditSequence}
+        />,
+      );
+      fireEvent.click(screen.getByText('Edit sequence'));
+      expect(onEditSequence).toHaveBeenCalledWith('sequence-1');
+    });
+
+    it('badges a generated card and hides its select checkbox and delete action', () => {
+      render(
+        <CardList
+          cards={[mockCard, generatedCard]}
+          deck={mockDeck}
+          allDecks={[mockDeck]}
+          onNewCard={vi.fn()}
+          onEditCard={vi.fn()}
+          sequences={[sequence]}
+        />,
+      );
+      expect(screen.getByText('Sequence')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Select'));
+      // Only the ordinary card is selectable: "Select all" only ever selects it.
+      fireEvent.click(screen.getByText('Select all'));
+      expect(screen.getByText('1 selected')).toBeInTheDocument();
+    });
   });
 });

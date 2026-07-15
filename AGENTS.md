@@ -1,49 +1,45 @@
-# Lacuna AGENTS.md instructions
-## These instructions apply unless explicitly overridden by the prompt.
+# Lacuna AGENTS.md
 
-## Terminology:
-- "Agent" refers to you, the AI, who is being given instructions on how to respond to prompts.
-- "Prompter" refers to the person who is giving you instructions and prompts to respond
+## Terminology
+- **Agent** — you, the AI receiving these instructions.
+- **Prompter** — the person giving you prompts.
 
-## Instructions:
-The instructions are as follows. These instructions are strict, which means they apply in all circumstances; later you shall see that there are some instructions that are just guidelines, which means they apply in most circumstances, but can be overridden by the agent (you) if you think it is necessary to do so. If you have any questions about these instructions, please ask the prompter for clarification.
+## How to read this file
+**Strict** instructions always apply. **Guidelines** apply by default but may be overridden by the agent where justified, or by an explicit prompt. If anything here is unclear, ask the prompter.
 
-### Compulsory Instructions:
-1. Always write in British English. Never write in American English. This means that you should use British spellings, such as "colour" instead of "color", "favour" instead of "favor", and so on. This does NOT apply to code identifiers, which would mean that if the syntax of the programming language you are using requires American English, then you should use American English for code identifiers. However, for all other writing, such as comments, documentation, and user-facing text, you should use British English. This will help to ensure consistency in the language used throughout the codebase, and will also help to maintain a professional and polished appearance for the codebase.
-2. Never use emojis. Emojis are a drag on the codebase, and makes things look less, rather than more, professional. If you want to express an emotion, use words to do so instead of emojis.
-3. Always fix any bugs you incidentally find in the codebase, even if it takes longer to complete the task. This is because it is important to maintain a high quality codebase, and fixing bugs as you find them helps to achieve that goal. Please mention the bugs you fix, and commit them separately to the main task (no code review needed; simply add the files and commit them, and provide a summary at the end.)
-4. Always write in a clear and concise manner. Avoid using unnecessary words or phrases, and get straight to the point. This will help to ensure that your responses are easy to understand and follow.
-5. Before writing a plan, you should first both read the codebase, and also ask the user substantially detailed questions about any ambiguities in the task at hand if ambiguities exist. You must not ask gratuitous, obvious questions, but questions with genuine ambiguity that you need to resolve before you can write a plan. This will help to ensure that your plans are well-informed and effective, and that you have a clear understanding of the task at hand before you begin writing a plan.
-6. Before implementing new functionality or giving the user bug reports or feature suggestions, search the codebase as well as the web when applicable to determine whether similar functionality already exists.
-7. Prefer extending existing systems over creating parallel ones.
-8. Follow existing naming conventions, file organisation, and coding style. Do not introduce a different architectural pattern unless there is a strong reason.
-9. When multiple reasonable solutions exist, briefly explain the trade-offs and always ask the user which they prefer before proceeding unless there is a clearly superior option; in that case, tell the user and proceed. This will help to ensure that you are making informed decisions about how to implement new functionality, and that you are taking the user's preferences into account when making those decisions.
-10. Do not implement features that were not requested. Avoid speculative improvements. If you think a feature would be a good idea, you can suggest it to the user, but you should not implement it without the user's explicit approval. This will help to ensure that you are focusing on the tasks that the user has requested, and that you are not wasting time implementing features that may not be useful or desired by the user.
-11. Avoid modifying unrelated files. Minimise the size of changes whenever practical. This will reduce merge conflicts.
-12. Do not remove comments unless they are incorrect, obsolete, or replaced by better documentation; if you do see an outdated comment, you should update it. Comments are an important part of the codebase, and they help to explain the purpose and functionality of different parts of the code. Removing comments can make the codebase more difficult to understand, and can lead to confusion for other developers who may be working with the code in the future.
-13. Never add TODO implementations, placeholder functions, mock data, or stub behaviour unless explicitly requested.
-14. Inspect the surrounding code before changing behaviour. Do not assume APIs, types, or files exist without checking.
-15. Always update SPEC.md, the README.md or any other applicable documentation after any meaningful changes to reflect changes.
-16. Anything you do to change the user facing interface, you must make sure it's beautifully implemented, seamless and looks native rather than bolted on as a side project. This means that if you are making changes to the user interface, you should take the time to ensure that those changes are well-designed and well-implemented, and that they fit seamlessly into the existing user interface. This will help to ensure that the user experience remains smooth and enjoyable, and that any changes you make do not feel out of place or jarring to the user. If your changes involve UI, read the frontend-design.md file and follow the principles outlined in it.
-17. Never add cringe comments to the user-facing interface, such as design comments. The UI should feel minimal and intentional, and minimising the unnecessary text is essential to achieving that.
+---
 
-#### Quick fire rules:
+## Strict instructions
 
-- Prefer modifying existing files over creating new ones unless a new file improves organisation.
-- Keep changes as small and local as possible.
-- Avoid unnecessary dependencies.
-- Do not refactor unrelated code.
-- Explain trade-offs when there are multiple reasonable approaches.
-- Preserve existing style and conventions.
-- Search the codebase before assuming functionality does not already exist.
-- Avoid placeholder implementations.
+1. **British English** in all writing (comments, docs, user-facing text). Use American English only where a language's syntax forces it for code identifiers.
+2. **No emojis**, anywhere. Express tone in words, unless explicitly allowed by the user. If there are existing emojis in the codebase, do NOT proactively remove them unless asked or confirmed by user.
+3. **Before writing a plan**, read the codebase *and* always ask the prompter about any genuine ambiguities. Do not ask gratuitous or obvious questions.
+4. **Before implementing, reporting bugs, or suggesting features**, search the codebase (and the web where applicable) to check whether the functionality already exists.
+5. **Extend existing systems** rather than building parallel ones. **Follow existing conventions** — naming, file organisation, coding style. Do not introduce a different architectural pattern without strong reason.
+6. **Do not implement unrequested features** or speculative improvements. Suggest them instead; implement only with explicit approval.
+7. **Do not touch unrelated files.** Keep changes as small and local as possible.
+8. **Inspect surrounding code before changing behaviour.** Do not assume APIs, types, or files exist without checking.
+9. **No TODOs, placeholders, mock data, or stubs** unless explicitly requested.
+10. **Do not remove comments** unless incorrect, obsolete, or superseded. Update outdated comments rather than deleting them.
+11. **Fix incidental bugs** you find, even if it costs time. Mention each one, and commit it separately from the main task.
+12. **Update documentation** (SPEC.md, README.md, etc.) after any meaningful change. If the relevant documentation does not exist, ignore this.
+13. **UI changes must look native** — beautiful, seamless, never bolted on. Use the frontend-design skill and its principles. Keep user-facing text minimal and intentional; no cringe or design-commentary copy.
+14. **Avoid unnecessary dependencies.**
 
-### Guidelines:
-1. You should aim to make the codebase readable and as concise as possible. This means making surgical changes to the codebase, rather than making large, sweeping changes that may be difficult to understand. You should follow the typical developer mantra of being incredibly lazy, and writing as little code as you can to achieve the functionality, as well as reducing future pain in maintainance. I would be more appreciative if you managed to make a change by reducing the amount of code rather than increasing it.
-2. When the tasks are numbered (e.g., there are a sequence of tasks that need to be completed, whether related or not), you should complete the tasks in order, as well as committing changes after each task. Before committing any changes, you MUST run a code review subagent, and you MUST fix any suggestions (however minor, even if the code is fine and it's a minor complaint about formatting or something like that) before committing. This will help to ensure that the codebase remains high quality, and that any changes you make are thoroughly reviewed and tested before being committed.
-3. You must complete the ENTIRE list of tasks (if exists rather than a single, minor task) in ONE GO, except for asking questions. Do not stop after completing only the first task in a numbered list. Aim to complete the full list before handing back control, unless blocked by ambiguity or errors.
-4. Prioritise performance over aesthetics; though make the trade-off clear to the prompter. This means that if there is a trade-off between making the codebase more performant, or making it more aesthetically pleasing, you should prioritise performance. However, if the performance trade-off is negligible, then you ought to prioritise aesthetics. If you incidentally find any performance issues in the codebase, you should fix them, even if they are not related to the task at hand. This will help to ensure that the codebase remains performant and efficient, and that any performance issues are addressed in a timely manner.
+---
 
-### Miscellaneous:
-This codebase is an alpha project, and there does not exist a production version. Therefore, when asked for suggestions to improve the codebase, you should not be afraid to make large, sweeping changes that may be difficult to understand, if you think that they will significantly improve the codebase. This is because the codebase is still in its early stages, and it is more important to focus on improving the codebase than it is to maintain a high level of readability at this stage.
+## Guidelines
 
+1. **Be surgical.** Prefer the least code that achieves the functionality with the least future maintenance. Reducing code beats adding it. Fix incidental performance issues you find.
+2. **When multiple reasonable solutions exist**, explain the trade-offs and ask the prompter which they prefer — unless one is clearly superior, in which case say so and proceed.
+3. **Prioritise performance over aesthetics**, and make the trade-off explicit. If the performance difference is negligible, prefer aesthetics.
+4. **Complete the entire task list in one go** (where a list exists), except for asking questions. Do not stop after the first task unless blocked by ambiguity or errors.
+5. **Extract rather than append.** When a change would push a file past ~500 lines, or adds a concern distinct from the file's main responsibility (e.g. gesture handling inside a page component), extract it into a new module instead of appending. Extending existing *systems* does not mean extending existing *files*.
+6. For Anthropic Claude models only: for any task touching more than ~5 files, or needing a multi-step research → plan → implement → review loop, follow the **subagent-orchestration** skill. OpenAI and Codex models must use their native collaboration workflow instead.
+
+---
+
+## Project Context
+Lacuna is a prototype alpha project. Suggest sweeping changes that affect the codebase optimised for long-term stability and performance as well as features.
+
+## Imported Claude Cowork project instructions

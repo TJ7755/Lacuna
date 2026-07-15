@@ -11,6 +11,7 @@ const CHECK_INTERVAL_MS = 60_000;
 export function useStorageQuotaWarning() {
   const { notify } = useToast();
   const warnedRef = useRef(false);
+  const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (
@@ -39,10 +40,21 @@ export function useStorageQuotaWarning() {
       }
     }
 
+    // Clear any existing interval before setting a new one
+    if (intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+    }
+
     void check();
-    const id = window.setInterval(() => {
+    intervalRef.current = window.setInterval(() => {
       void check();
     }, CHECK_INTERVAL_MS);
-    return () => window.clearInterval(id);
+
+    return () => {
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
   }, [notify]);
 }

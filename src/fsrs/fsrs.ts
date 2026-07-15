@@ -70,7 +70,7 @@ export function toTsCard(card: Card, now: number): TsCard {
 }
 
 /** The memory-state fields produced by a review, mapped back to Lacuna's shape. */
-export interface MemoryUpdate {
+interface MemoryUpdate {
   stability: number;
   difficulty: number;
   lastReviewed: number;
@@ -83,7 +83,7 @@ export interface MemoryUpdate {
 }
 
 /** Map a ts-fsrs Card back to Lacuna's persisted memory fields. */
-export function fromTsCard(ts: TsCard, now: number): MemoryUpdate {
+function fromTsCard(ts: TsCard, now: number): MemoryUpdate {
   return {
     stability: ts.stability,
     difficulty: ts.difficulty,

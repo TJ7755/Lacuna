@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { examHasPassed, schedulingHorizon, MAINTENANCE_HORIZON_DAYS } from './horizon';
+import {
+  cardSchedulingHorizon,
+  examHasPassed,
+  schedulingHorizon,
+  MAINTENANCE_HORIZON_DAYS,
+} from './horizon';
 import { studyPool } from './eligibility';
 import { progressValue } from './objective';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from './params';
@@ -69,6 +74,63 @@ describe('schedulingHorizon', () => {
     expect(Number.isNaN(value)).toBe(false);
     expect(value).toBeLessThan(1);
     expect(value).toBeGreaterThan(0);
+  });
+});
+
+describe('cardSchedulingHorizon', () => {
+  it('uses the card exam date resolved from its primary lesson', () => {
+    const now = Date.now();
+    const lessonExamDate = now + 2 * MS_PER_DAY;
+    const deck = makeDeck({ examDate: now + 30 * MS_PER_DAY });
+    const card = makeCard({ primaryLessonId: 'lesson1' });
+    const examDateContext = {
+      courseExamDate: deck.examDate,
+      lessonsById: new Map([
+        [
+          'lesson1',
+          {
+            id: 'lesson1',
+            courseId: 'course1',
+            name: 'Lesson',
+            orderIndex: 0,
+            createdAt: now,
+            isExtension: false,
+            examDate: lessonExamDate,
+          },
+        ],
+      ]),
+      courseExamDates: [],
+    };
+
+    expect(cardSchedulingHorizon(card, deck, examDateContext, now)).toBe(lessonExamDate);
+  });
+
+  it('uses the rolling maintenance horizon when the resolved card date has passed', () => {
+    const now = Date.now();
+    const deck = makeDeck({ examDate: now + 30 * MS_PER_DAY });
+    const card = makeCard({ primaryLessonId: 'lesson1' });
+    const examDateContext = {
+      courseExamDate: deck.examDate,
+      lessonsById: new Map([
+        [
+          'lesson1',
+          {
+            id: 'lesson1',
+            courseId: 'course1',
+            name: 'Lesson',
+            orderIndex: 0,
+            createdAt: now,
+            isExtension: false,
+            examDate: now - MS_PER_DAY,
+          },
+        ],
+      ]),
+      courseExamDates: [],
+    };
+
+    expect(cardSchedulingHorizon(card, deck, examDateContext, now)).toBe(
+      now + MAINTENANCE_HORIZON_DAYS * MS_PER_DAY,
+    );
   });
 });
 

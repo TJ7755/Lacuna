@@ -8,7 +8,7 @@
 import { Rating, type FSRS, type Grade as TsGrade } from 'ts-fsrs';
 import { toTsCard, decayOf } from './fsrs';
 import { MS_PER_DAY } from './params';
-import type { Card, Deck, Grade } from '../db/types';
+import type { Card, SchedulerConfig, Grade } from '../db/types';
 
 /**
  * Curve factor for the FSRS-6 power-law forgetting curve.
@@ -51,8 +51,9 @@ export interface SimContext {
   expectedGrade: Grade;
 }
 
-/** Build a forward-simulation context from a deck's persisted parameters. */
-export function simContext(deck: Deck, engine: FSRS): SimContext {
+/** Build a forward-simulation context from a deck's persisted parameters.
+ *  Accepts any SchedulerConfig (a Deck or a Course); only fsrsParameters is read. */
+export function simContext(deck: SchedulerConfig, engine: FSRS): SimContext {
   return {
     fsrs: engine,
     decay: decayOf(deck.fsrsParameters),

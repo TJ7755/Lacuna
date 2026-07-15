@@ -127,12 +127,6 @@ export const CloseIcon = (p: IconProps) => (
   </Icon>
 );
 
-export const MergeIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M6 3v6a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3M12 15v6" />
-  </Icon>
-);
-
 export const ImageIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -186,13 +180,6 @@ export const ClockIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="9" />
     <path d="M12 7v5l3 2" />
-  </Icon>
-);
-
-export const UndoIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M9 14L4 9l5-5" />
-    <path d="M4 9h11a5 5 0 0 1 5 5v0a5 5 0 0 1-5 5H9" />
   </Icon>
 );
 
@@ -286,12 +273,6 @@ export const ChevronDownIcon = (p: IconProps) => (
   </Icon>
 );
 
-export const ReplaceIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M14 4h6v6M10 20H4v-6M4 14l16-10" />
-  </Icon>
-);
-
 export const QrCodeIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -320,6 +301,60 @@ export const GridIcon = (p: IconProps) => (
 export const ArchiveIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M21 8v13H3V8M23 3H1v5h22zM10 12h4" />
+  </Icon>
+);
+
+export const HourglassIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6.5 3h11M6.5 21h11" />
+    <path d="M8 3v3.5a4 4 0 0 0 1.6 3.2L12 12l-2.4 2.3A4 4 0 0 0 8 17.5V21" />
+    <path d="M16 3v3.5a4 4 0 0 1-1.6 3.2L12 12l2.4 2.3a4 4 0 0 1 1.6 3.2V21" />
+    <path d="M10.2 18.5h3.6" />
+  </Icon>
+);
+
+export const CompassIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M15.8 8.2l-2.1 5.5-5.5 2.1 2.1-5.5z" />
+    <line x1="12" y1="3" x2="12" y2="4.6" />
+  </Icon>
+);
+
+export const GaugeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 18a9 9 0 1 1 16 0" />
+    <path d="M12 15l3.5-4.5" />
+    <circle cx="12" cy="15" r="1.2" />
+  </Icon>
+);
+
+export const CalendarClockIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M21 11V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+    <circle cx="17.5" cy="17.5" r="4.5" />
+    <path d="M17.5 15.5v2l1.5 1" />
+  </Icon>
+);
+
+export const MilestoneIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 3v2M12 13v8M9 21h6" />
+    <path d="M6 5h11.5L20 9l-2.5 4H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+  </Icon>
+);
+
+export const PathIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="6" cy="6" r="2.5" />
+    <circle cx="6" cy="18" r="2.5" />
+    <circle cx="18" cy="12" r="2.5" />
+    <path d="M6 8.5v7" strokeDasharray="2 2" />
+    <path d="M8.5 6.5L16 11" strokeDasharray="2 2" />
+    <path d="M8.5 17.5L16 13" strokeDasharray="2 2" />
   </Icon>
 );
 

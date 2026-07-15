@@ -6,7 +6,13 @@ import {
   buryCards,
   createCard,
   createCardWithReverse,
+  createCourse,
   createDeck,
+  createLesson,
+  createLessonCard,
+  deleteCards,
+  moveCards,
+  ratchetLessonUnlock,
   recordReview,
   removeTagFromCards,
   rescheduleCards,
@@ -31,8 +37,9 @@ describe('undoReview', () => {
 
     const cardBefore = (await db.cards.get(card.id))!;
     const perfBefore = (await db.userPerformance.get(deck.id)) ?? null;
+    const deckLastInteractedAtBefore = (await db.decks.get(deck.id))!.lastInteractedAt;
 
-    const { card: updated, sessionHistoryId } = await recordReview({
+    const { card: updated, sessionHistoryId, lastInteractedAtBefore } = await recordReview({
       card,
       deck,
       grade: 3,
@@ -45,8 +52,17 @@ describe('undoReview', () => {
     expect(updated.reps).toBe(1);
     expect(await db.sessionHistory.count()).toBe(1);
     expect((await db.userPerformance.get(deck.id))!.totalCorrectReviews).toBe(1);
+    expect(lastInteractedAtBefore).toBe(deckLastInteractedAtBefore);
+    expect((await db.decks.get(deck.id))!.lastInteractedAt).not.toBe(deckLastInteractedAtBefore);
 
-    await undoReview({ cardBefore, perfBefore, sessionHistoryId, deckId: deck.id });
+    await undoReview({
+      cardBefore,
+      perfBefore,
+      sessionHistoryId,
+      deckId: deck.id,
+      kind: 'deck',
+      lastInteractedAtBefore,
+    });
 
     const restored = (await db.cards.get(card.id))!;
     expect(restored.reps).toBe(0);
@@ -54,6 +70,94 @@ describe('undoReview', () => {
     expect(restored.lastReviewed).toBeNull();
     expect(await db.sessionHistory.count()).toBe(0);
     expect((await db.userPerformance.get(deck.id))!.totalCorrectReviews).toBe(0);
+    expect((await db.decks.get(deck.id))!.lastInteractedAt).toBe(deckLastInteractedAtBefore);
+  });
+
+  it('course-keyed review updates Course.lastInteractedAt, courseId-keyed userPerformance, and sessionHistory.courseId', async () => {
+    await Promise.all([db.courses.clear(), db.lessons.clear()]);
+
+    const c = await createCourse('Test course');
+    const lesson = await createLesson(c.id, 'Lesson 1');
+    const card = await createLessonCard(c.id, lesson.id, 'front_back', 'q', 'a');
+
+    const cardBefore = (await db.cards.get(card.id))!;
+    const perfBefore = (await db.userPerformance.get(c.id)) ?? null;
+    const courseLastInteractedAtBefore = (await db.courses.get(c.id))!.lastInteractedAt;
+
+    const { card: updated, sessionHistoryId, lastInteractedAtBefore } = await recordReview({
+      card,
+      deck: c,
+      kind: 'course',
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+    });
+
+    expect(updated.reps).toBe(1);
+
+    const historyRow = await db.sessionHistory.get(sessionHistoryId);
+    expect(historyRow?.courseId).toBe(c.id);
+    expect(historyRow?.deckId).toBe(card.deckId);
+
+    const perf = await db.userPerformance.get(c.id);
+    expect(perf?.totalCorrectReviews).toBe(1);
+
+    const updatedCourse = await db.courses.get(c.id);
+    expect(updatedCourse?.lastInteractedAt).toBeDefined();
+    expect(lastInteractedAtBefore).toBe(courseLastInteractedAtBefore);
+    expect(updatedCourse?.lastInteractedAt).not.toBe(courseLastInteractedAtBefore);
+
+    // The card's own shadow deck (created empty by ensureLessonDeck) is untouched
+    // by the course-keyed review: its calibration row stays at zero reviews.
+    expect((await db.userPerformance.get(card.deckId))?.totalCorrectReviews).toBe(0);
+
+    await undoReview({
+      cardBefore,
+      perfBefore,
+      sessionHistoryId,
+      deckId: c.id,
+      kind: 'course',
+      lastInteractedAtBefore,
+    });
+
+    const restored = (await db.cards.get(card.id))!;
+    expect(restored.reps).toBe(0);
+    expect(await db.sessionHistory.get(sessionHistoryId)).toBeUndefined();
+    expect(await db.userPerformance.get(c.id)).toBeUndefined();
+    expect((await db.courses.get(c.id))!.lastInteractedAt).toBe(courseLastInteractedAtBefore);
+  });
+});
+
+describe('ratchetLessonUnlock', () => {
+  beforeEach(async () => {
+    await Promise.all([db.courses.clear(), db.lessons.clear()]);
+  });
+
+  it('sets unlockedAt the first time it is called', async () => {
+    const course = await createCourse('Test course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    expect((await db.lessons.get(lesson.id))?.unlockedAt).toBeUndefined();
+
+    const now = Date.now();
+    await ratchetLessonUnlock(lesson.id, now);
+
+    expect((await db.lessons.get(lesson.id))?.unlockedAt).toBe(now);
+  });
+
+  it('never re-sets or clears an already-ratcheted lesson (one-way)', async () => {
+    const course = await createCourse('Test course');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+
+    const first = Date.now();
+    await ratchetLessonUnlock(lesson.id, first);
+    await ratchetLessonUnlock(lesson.id, first + 10_000);
+
+    expect((await db.lessons.get(lesson.id))?.unlockedAt).toBe(first);
+  });
+
+  it('no-ops for a non-existent lesson', async () => {
+    await expect(ratchetLessonUnlock('missing-lesson-id')).resolves.toBeUndefined();
   });
 });
 
@@ -173,5 +277,34 @@ describe('bulk card actions', () => {
     await expect(rescheduleCards([a.id], {})).rejects.toThrow(
       'Reschedule requires either reset: true or a due date.',
     );
+  });
+
+  it('deletes and moves ordinary cards', async () => {
+    const deck = await createDeck('Bulk');
+    const other = await createDeck('Other');
+    const a = await createCard(deck.id, 'front_back', 'a', '1');
+    const b = await createCard(deck.id, 'front_back', 'b', '2');
+
+    await moveCards([a.id], other.id);
+    expect((await db.cards.get(a.id))!.deckId).toBe(other.id);
+
+    await deleteCards([b.id]);
+    expect(await db.cards.get(b.id)).toBeUndefined();
+  });
+
+  it('refuses to delete or move sequence-generated cards', async () => {
+    const deck = await createDeck('Bulk');
+    const other = await createDeck('Other');
+    const a = await createCard(deck.id, 'front_back', 'a', '1');
+    await db.cards.update(a.id, { sequenceItemId: 'seq-item-1' });
+
+    await expect(deleteCards([a.id])).rejects.toThrow(
+      'One or more cards were generated by a sequence and can only be deleted or moved via that sequence.',
+    );
+    await expect(moveCards([a.id], other.id)).rejects.toThrow(
+      'One or more cards were generated by a sequence and can only be deleted or moved via that sequence.',
+    );
+    expect(await db.cards.get(a.id)).toBeDefined();
+    expect((await db.cards.get(a.id))!.deckId).toBe(deck.id);
   });
 });

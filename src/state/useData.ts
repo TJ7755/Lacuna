@@ -7,9 +7,7 @@ import type {
   BackupSnapshot,
   Card,
   Deck,
-  Folder,
   SessionHistoryEntry,
-  UserPerformance,
 } from '../db/types';
 import { progressValue } from '../fsrs/objective';
 import { availableCards, studyPool } from '../fsrs/eligibility';
@@ -17,17 +15,6 @@ import { computeStudyStats, type StudyStats } from '../fsrs/stats';
 
 export function useDecks(): Deck[] | undefined {
   return useLiveQuery(() => db.decks.orderBy('createdAt').toArray(), []);
-}
-
-export function useFolders(): Folder[] | undefined {
-  return useLiveQuery(() => db.folders.orderBy('createdAt').toArray(), []);
-}
-
-export function useFolder(folderId: string | undefined): Folder | undefined {
-  return useLiveQuery(
-    () => (folderId ? db.folders.get(folderId) : undefined),
-    [folderId],
-  );
 }
 
 export function useDeck(deckId: string | undefined): Deck | undefined {
@@ -44,13 +31,6 @@ export function useCard(cardId: string | undefined): Card | undefined {
   );
 }
 
-export function useCards(deckId: string | undefined): Card[] | undefined {
-  return useLiveQuery(
-    () => (deckId ? db.cards.where('deckId').equals(deckId).toArray() : []),
-    [deckId],
-  );
-}
-
 /** Every card across all decks, for global search. */
 export function useAllCards(): Card[] | undefined {
   return useLiveQuery(() => db.cards.toArray(), []);
@@ -59,27 +39,6 @@ export function useAllCards(): Card[] | undefined {
 /** Automatic-backup restore points, newest first. */
 export function useBackups(): BackupSnapshot[] | undefined {
   return useLiveQuery(() => db.backups.orderBy('createdAt').reverse().toArray(), []);
-}
-
-export function useDeckPerformance(
-  deckId: string | undefined,
-): UserPerformance | undefined {
-  return useLiveQuery(
-    () => (deckId ? db.userPerformance.get(deckId) : undefined),
-    [deckId],
-  );
-}
-
-export function useSessionHistory(
-  deckId: string | undefined,
-): SessionHistoryEntry[] | undefined {
-  return useLiveQuery(
-    () =>
-      deckId
-        ? db.sessionHistory.where('deckId').equals(deckId).sortBy('timestamp')
-        : [],
-    [deckId],
-  );
 }
 
 /** All session-history entries across every deck, sorted by timestamp. */
@@ -108,7 +67,7 @@ export function useStudyStats(): StudyStats | undefined {
   }, []);
 }
 
-export interface DeckSummary {
+interface DeckSummary {
   count: number;
   /** Objective-aware progress (0..1): mean predicted R, or fraction secured. */
   mastery: number;
@@ -118,21 +77,7 @@ export interface DeckSummary {
   eligible: number;
 }
 
-/**
- * Per-deck summary statistics for the dashboard: card count, mastery fraction and
- * how many cards remain unreviewed. Recomputed reactively as cards or decks change.
- */
-export function useDeckSummaries(): Record<string, DeckSummary> | undefined {
-  return useLiveQuery(async () => {
-    const [decks, cards] = await Promise.all([
-      db.decks.toArray(),
-      db.cards.toArray(),
-    ]);
-    return computeDeckSummaries(decks, cards);
-  }, []);
-}
-
-/** Pure computation behind useDeckSummaries so it can be reused by combined hooks. */
+/** Pure computation shared by combined hooks such as useDashboardData. */
 export function computeDeckSummaries(
   decks: Deck[],
   cards: Card[],

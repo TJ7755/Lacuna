@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type PomodoroPhase = 'idle' | 'focus' | 'shortBreak' | 'longBreak';
+export type PomodoroBreakPhase = 'shortBreak' | 'longBreak';
 
 export interface PomodoroSettings {
   workMinutes: number;
@@ -17,6 +18,14 @@ const DEFAULT_SETTINGS: PomodoroSettings = {
 };
 
 const STORAGE_KEY = 'lacuna-pomodoro-settings';
+const RUNTIME_STORAGE_KEY = 'lacuna-pomodoro-runtime';
+
+interface PomodoroRuntime {
+  phase: PomodoroPhase;
+  secondsLeft: number;
+  sessionsCompleted: number;
+  pendingBreakPhase: PomodoroBreakPhase | null;
+}
 
 function toNumber(value: unknown, fallback: number): number {
   const n = Number(value);
@@ -29,10 +38,22 @@ export function loadPomodoroSettings(): PomodoroSettings {
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<PomodoroSettings>;
       return {
-        workMinutes: Math.max(1, Math.min(120, toNumber(parsed.workMinutes, DEFAULT_SETTINGS.workMinutes))),
-        shortBreakMinutes: Math.max(1, Math.min(60, toNumber(parsed.shortBreakMinutes, DEFAULT_SETTINGS.shortBreakMinutes))),
-        longBreakMinutes: Math.max(1, Math.min(60, toNumber(parsed.longBreakMinutes, DEFAULT_SETTINGS.longBreakMinutes))),
-        autoStartBreaks: typeof parsed.autoStartBreaks === 'boolean' ? parsed.autoStartBreaks : DEFAULT_SETTINGS.autoStartBreaks,
+        workMinutes: Math.max(
+          1,
+          Math.min(120, toNumber(parsed.workMinutes, DEFAULT_SETTINGS.workMinutes)),
+        ),
+        shortBreakMinutes: Math.max(
+          1,
+          Math.min(60, toNumber(parsed.shortBreakMinutes, DEFAULT_SETTINGS.shortBreakMinutes)),
+        ),
+        longBreakMinutes: Math.max(
+          1,
+          Math.min(60, toNumber(parsed.longBreakMinutes, DEFAULT_SETTINGS.longBreakMinutes)),
+        ),
+        autoStartBreaks:
+          typeof parsed.autoStartBreaks === 'boolean'
+            ? parsed.autoStartBreaks
+            : DEFAULT_SETTINGS.autoStartBreaks,
       };
     }
   } catch {
@@ -54,6 +75,36 @@ function phaseDuration(p: PomodoroPhase, s: PomodoroSettings): number {
   }
 }
 
+function loadPomodoroRuntime(): PomodoroRuntime {
+  const fallback: PomodoroRuntime = {
+    phase: 'idle',
+    secondsLeft: 0,
+    sessionsCompleted: 0,
+    pendingBreakPhase: null,
+  };
+  try {
+    const raw = localStorage.getItem(RUNTIME_STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<PomodoroRuntime>;
+    const phase: PomodoroPhase =
+      parsed.phase === 'focus' || parsed.phase === 'shortBreak' || parsed.phase === 'longBreak'
+        ? parsed.phase
+        : 'idle';
+    const pendingBreakPhase: PomodoroBreakPhase | null =
+      parsed.pendingBreakPhase === 'shortBreak' || parsed.pendingBreakPhase === 'longBreak'
+        ? parsed.pendingBreakPhase
+        : null;
+    return {
+      phase,
+      secondsLeft: Math.max(0, Math.floor(toNumber(parsed.secondsLeft, 0))),
+      sessionsCompleted: Math.max(0, Math.floor(toNumber(parsed.sessionsCompleted, 0))),
+      pendingBreakPhase,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 export function savePomodoroSettings(settings: Partial<PomodoroSettings>): void {
   try {
     const current = loadPomodoroSettings();
@@ -65,10 +116,19 @@ export function savePomodoroSettings(settings: Partial<PomodoroSettings>): void 
 }
 
 export function usePomodoro() {
+  const initialRuntime = useRef<PomodoroRuntime | null>(null);
+  if (initialRuntime.current === null) initialRuntime.current = loadPomodoroRuntime();
   const [settings, setSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
-  const [phase, setPhase] = useState<PomodoroPhase>('idle');
-  const [secondsLeft, setSecondsLeft] = useState(0);
-  const [sessionsCompleted, setSessionsCompleted] = useState(0);
+  const [phase, setPhase] = useState<PomodoroPhase>(initialRuntime.current.phase);
+  const [secondsLeft, setSecondsLeft] = useState(initialRuntime.current.secondsLeft);
+  const [sessionsCompleted, setSessionsCompleted] = useState(
+    initialRuntime.current.sessionsCompleted,
+  );
+  const [pendingBreakPhase, setPendingBreakPhase] = useState<PomodoroBreakPhase | null>(
+    initialRuntime.current.pendingBreakPhase,
+  );
+  // Runtime restored after an app close is deliberately paused. Resuming must
+  // always be an explicit action rather than a surprise countdown in the background.
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<number | null>(null);
   const secondsLeftRef = useRef(secondsLeft);
@@ -83,6 +143,20 @@ export function usePomodoro() {
   useEffect(() => {
     secondsLeftRef.current = secondsLeft;
   }, [secondsLeft]);
+
+  useEffect(() => {
+    try {
+      const runtime: PomodoroRuntime = {
+        phase,
+        secondsLeft,
+        sessionsCompleted,
+        pendingBreakPhase,
+      };
+      localStorage.setItem(RUNTIME_STORAGE_KEY, JSON.stringify(runtime));
+    } catch {
+      // Runtime persistence is optional; the timer still works without storage.
+    }
+  }, [pendingBreakPhase, phase, secondsLeft, sessionsCompleted]);
 
   // Sync settings when they change in another tab.
   useEffect(() => {
@@ -122,17 +196,14 @@ export function usePomodoro() {
       const nextSessions = sessionsCompleted + 1;
       setSessionsCompleted(nextSessions);
       const nextPhase = nextSessions % 4 === 0 ? 'longBreak' : 'shortBreak';
-      setPhase(nextPhase);
-      const nextDuration = durationForPhase(nextPhase);
-      setSecondsLeft(nextDuration);
-      if (settings.autoStartBreaks) {
-        setIsRunning(true);
-      }
+      // A focus period may end halfway through a card. Record the break as
+      // pending and let the study flow offer it at its next safe boundary.
+      setPendingBreakPhase(nextPhase);
     } else {
       setPhase('idle');
       setSecondsLeft(0);
     }
-  }, [secondsLeft, isRunning, phase, sessionsCompleted, settings.autoStartBreaks, durationForPhase, clearTick]);
+  }, [secondsLeft, isRunning, phase, sessionsCompleted, clearTick]);
 
   const startFocus = useCallback(() => {
     clearTick();
@@ -140,6 +211,7 @@ export function usePomodoro() {
     setSettings(fresh);
     setPhase('focus');
     setSecondsLeft(phaseDuration('focus', fresh));
+    setPendingBreakPhase(null);
     setIsRunning(true);
   }, [clearTick]);
 
@@ -149,28 +221,46 @@ export function usePomodoro() {
   }, [clearTick]);
 
   const resume = useCallback(() => {
-    if (phase === 'idle') return;
+    if (phase === 'idle' || pendingBreakPhase) return;
     if (secondsLeft === 0) {
       // Phase completed while paused; restart the same phase.
       setSecondsLeft(phaseDuration(phase, settings));
     }
     setIsRunning(true);
-  }, [secondsLeft, phase, settings]);
+  }, [secondsLeft, phase, settings, pendingBreakPhase]);
+
+  const acceptBreak = useCallback(() => {
+    if (!pendingBreakPhase) return;
+    clearTick();
+    setPhase(pendingBreakPhase);
+    setSecondsLeft(durationForPhase(pendingBreakPhase));
+    setPendingBreakPhase(null);
+    setIsRunning(true);
+  }, [clearTick, durationForPhase, pendingBreakPhase]);
+
+  const deferBreak = useCallback(() => {
+    if (!pendingBreakPhase) return;
+    clearTick();
+    setPendingBreakPhase(null);
+    setPhase('idle');
+    setSecondsLeft(0);
+    setIsRunning(false);
+  }, [clearTick, pendingBreakPhase]);
 
   const reset = useCallback(() => {
     clearTick();
     setPhase('idle');
     setSecondsLeft(0);
+    setPendingBreakPhase(null);
     setIsRunning(false);
   }, [clearTick]);
 
   const progress =
-    phase === 'idle' || secondsLeft === 0
-      ? 0
-      : 1 - secondsLeft / durationForPhase(phase);
+    phase === 'idle' || secondsLeft === 0 ? 0 : 1 - secondsLeft / durationForPhase(phase);
 
-  const formattedTime =
-    `${Math.floor(secondsLeft / 60).toString().padStart(2, '0')}:${(secondsLeft % 60).toString().padStart(2, '0')}`;
+  const formattedTime = `${Math.floor(secondsLeft / 60)
+    .toString()
+    .padStart(2, '0')}:${(secondsLeft % 60).toString().padStart(2, '0')}`;
 
   return {
     phase,
@@ -183,6 +273,10 @@ export function usePomodoro() {
     pause,
     resume,
     reset,
+    breakPending: pendingBreakPhase !== null,
+    pendingBreakPhase,
+    acceptBreak,
+    deferBreak,
     settings,
   };
 }

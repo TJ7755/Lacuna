@@ -34,10 +34,11 @@ import type { BackupFile } from '../db/types';
 import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
+import { usePracticeDefaults } from '../state/practiceDefaults';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
+import { useCourseCardDetail } from '../state/courseCardDetail';
 import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
 import { useInputMode, type InputMode } from '../state/inputMode';
-import { useGestureSettings, type SwipeAction } from '../state/gestureSettings';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { MIN_OPTIMISE_REVIEWS } from '../fsrs/optimise';
 import {
@@ -74,9 +75,10 @@ export function Settings() {
   const { notify } = useToast();
   const [gradingMode, setGradingMode] = useGradingMode();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
+  const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
+  const [cardDetail, setCardDetail] = useCourseCardDetail();
   const [inputMode, setInputMode] = useInputMode();
-  const [gestureSettings, setGestureSettings] = useGestureSettings();
   const [pomoSettings, setPomoSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
   const backups = useBackups();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -390,25 +392,6 @@ export function Settings() {
             );
           })}
         </div>
-
-        <div className="mt-6 border-t border-line pt-5">
-          <div className="mb-1 text-sm">Touch gestures</div>
-          <p className="mb-4 text-sm text-ink-soft">
-            Customise what happens when you swipe a deck card on the dashboard.
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            <GestureActionPicker
-              label="Swipe right"
-              value={gestureSettings.rightSwipe}
-              onChange={(action) => setGestureSettings({ ...gestureSettings, rightSwipe: action })}
-            />
-            <GestureActionPicker
-              label="Swipe left"
-              value={gestureSettings.leftSwipe}
-              onChange={(action) => setGestureSettings({ ...gestureSettings, leftSwipe: action })}
-            />
-          </div>
-        </div>
       </motion.section>
 
       {/* Sidebar */}
@@ -430,8 +413,8 @@ export function Settings() {
           <div className="min-w-0">
             <div className="text-sm">Show due card counts</div>
             <p className="mt-1 text-sm text-ink-soft">
-              Display the number of cards ready for review next to each deck name in the
-              sidebar, so you can see which decks need attention at a glance.
+              Display the number of cards ready for review next to each course name in the
+              sidebar, so you can see which courses need attention at a glance.
             </p>
           </div>
           <Toggle
@@ -441,9 +424,9 @@ export function Settings() {
         </div>
         <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
           <div className="min-w-0">
-            <div className="text-sm">Show archived decks</div>
+            <div className="text-sm">Show archived courses</div>
             <p className="mt-1 text-sm text-ink-soft">
-              Include archived decks in the sidebar deck list. Archived decks are hidden
+              Include archived courses in the sidebar list. Archived courses are hidden
               from the dashboard by default but can still be accessed via the sidebar.
             </p>
           </div>
@@ -559,7 +542,7 @@ export function Settings() {
           <h2 className="font-display text-xl">Dashboard</h2>
         </div>
         <p className="mb-5 text-sm text-ink-soft">
-          Choose how decks are ordered on the dashboard. The top three active decks are shown.
+          Choose how courses are ordered on the dashboard. The top three active courses are shown.
         </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {(
@@ -590,6 +573,34 @@ export function Settings() {
               </button>
             );
           })}
+        </div>
+
+        {/* Card hover detail modules */}
+        <div className="mt-6 border-t border-line pt-5">
+          <h3 className="mb-1 text-sm font-medium text-ink">Card hover detail</h3>
+          <p className="mb-4 text-sm text-ink-soft">
+            Choose what a course card reveals when you hover over it.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Toggle
+              id="card-detail-next-due"
+              label="Next review time"
+              checked={cardDetail.nextDue}
+              onChange={(checked) => setCardDetail({ nextDue: checked })}
+            />
+            <Toggle
+              id="card-detail-breakdown"
+              label="New, learnt and due breakdown"
+              checked={cardDetail.breakdown}
+              onChange={(checked) => setCardDetail({ breakdown: checked })}
+            />
+            <Toggle
+              id="card-detail-activity"
+              label="Recent review activity"
+              checked={cardDetail.activity}
+              onChange={(checked) => setCardDetail({ activity: checked })}
+            />
+          </div>
         </div>
       </motion.section>
 
@@ -628,16 +639,87 @@ export function Settings() {
           <div className="min-w-0">
             <div className="text-sm">Optimise scheduling</div>
             <p className="mt-1 text-sm text-ink-soft">
-              Fit each deck&apos;s FSRS weights to your own review history, which is where most of
-              FSRS&apos;s efficiency comes from. On by default. Optimisation only runs once a deck
+              Fit each course&apos;s FSRS weights to your own review history, which is where most of
+              FSRS&apos;s efficiency comes from. On by default. Optimisation only runs once a course
               has at least {MIN_OPTIMISE_REVIEWS} reviews, and new weights are never applied
-              without your confirmation. You can override this per deck in its settings.
+              without your confirmation. You can override this per course in its settings.
             </p>
           </div>
           <Toggle
             checked={autoOptimise}
             onChange={setAutoOptimise}
           />
+        </div>
+
+        <div className="mt-6 border-t border-line pt-5">
+          <h3 className="font-display text-base">Course defaults</h3>
+          <p className="mt-1 mb-4 text-sm text-ink-soft">
+            Starting point for practice nodes on new courses. Any course can override
+            these in its own settings, which always take priority.
+          </p>
+
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-sm">Auto-insert practice nodes</div>
+              <p className="mt-1 text-sm text-ink-soft">
+                Automatically add practice nodes between lessons on the course path.
+              </p>
+            </div>
+            <Toggle
+              checked={practiceDefaults.autoPractice}
+              onChange={(checked) =>
+                setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })
+              }
+            />
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <NumberField
+              label="Threshold (far)"
+              value={practiceDefaults.practiceThresholdMinutesFar}
+              suffix="min"
+              min={1}
+              max={999}
+              onChange={(v) =>
+                setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesFar: v })
+              }
+            />
+            <NumberField
+              label="Threshold (near)"
+              value={practiceDefaults.practiceThresholdMinutesNear}
+              suffix="min"
+              min={1}
+              max={999}
+              onChange={(v) =>
+                setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesNear: v })
+              }
+            />
+            <NumberField
+              label="Revision period"
+              value={practiceDefaults.practiceUrgentWindowDays}
+              suffix="days"
+              min={0}
+              max={365}
+              onChange={(v) =>
+                setPracticeDefaults({ ...practiceDefaults, practiceUrgentWindowDays: v })
+              }
+            />
+            <NumberField
+              label="Max gap"
+              value={practiceDefaults.practiceMaxGap}
+              suffix="lessons"
+              min={1}
+              max={99}
+              onChange={(v) =>
+                setPracticeDefaults({ ...practiceDefaults, practiceMaxGap: v })
+              }
+            />
+          </div>
+          <p className="mt-3 text-xs text-ink-faint">
+            The near threshold applies once an exam is within the revision period; the
+            far threshold applies otherwise. Max gap forces a practice node after this
+            many lessons without one.
+          </p>
         </div>
       </motion.section>
 
@@ -850,7 +932,7 @@ export function Settings() {
                 <div className="text-sm text-ink-soft">
                   <p className="mb-3">
                     This backup contains{' '}
-                    <strong className="text-ink">{pending.decks.length}</strong> decks and{' '}
+                    <strong className="text-ink">{pending.decks.length}</strong> lessons and{' '}
                     <strong className="text-ink">{pending.cards.length}</strong> cards,
                     exported on {formatDate(pending.exportedAt)}.
                   </p>
@@ -994,7 +1076,7 @@ export function Settings() {
                 <div className="min-w-0">
                   <div className="text-sm text-ink">{formatDateTime(b.createdAt)}</div>
                   <div className="text-xs text-ink-faint">
-                    {b.deckCount} deck{b.deckCount === 1 ? '' : 's'} · {b.cardCount} card
+                    {b.deckCount} lesson{b.deckCount === 1 ? '' : 's'} · {b.cardCount} card
                     {b.cardCount === 1 ? '' : 's'}
                   </div>
                 </div>
@@ -1324,34 +1406,39 @@ function DurationInput({
   );
 }
 
-function GestureActionPicker({
+function NumberField({
   label,
   value,
+  suffix,
+  min,
+  max,
   onChange,
 }: {
   label: string;
-  value: SwipeAction;
-  onChange: (action: SwipeAction) => void;
+  value: number;
+  suffix: string;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
 }) {
-  const options: { key: SwipeAction; label: string }[] = [
-    { key: 'study', label: 'Study deck' },
-    { key: 'archive', label: 'Archive deck' },
-    { key: 'none', label: 'No action' },
-  ];
   return (
     <label className="block text-sm text-ink-soft">
       {label}
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as SwipeAction)}
-        className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
-      >
-        {options.map((o) => (
-          <option key={o.key} value={o.key}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            if (!Number.isNaN(n)) onChange(Math.max(min, Math.min(max, n)));
+          }}
+          className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-ink outline-none transition-colors focus:border-accent"
+        />
+        <span className="shrink-0 text-xs text-ink-faint">{suffix}</span>
+      </div>
     </label>
   );
 }
+

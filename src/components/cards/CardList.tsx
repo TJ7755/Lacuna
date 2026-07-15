@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { CardContent } from './CardContent';
@@ -9,6 +9,7 @@ import { UnifiedImportPanel } from '../import/UnifiedImportPanel';
 import { CardAnalytics } from './CardAnalytics';
 import {
   addTagToCards,
+  assignCardsToLesson,
   buryCards,
   createCards,
   deleteCards,
@@ -24,6 +25,7 @@ import {
 import { isLeech } from '../../fsrs/leech';
 import {
   CheckIcon,
+  CloseIcon,
   EditIcon,
   FlagIcon,
   PlusIcon,
@@ -35,19 +37,55 @@ import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useIsTouchMode } from '../../state/inputMode';
 import { useVirtualList } from '../../hooks/useVirtualList';
+import { sequenceForItemId } from '../../db/sequenceGeneration';
+import { SequenceCardGroup } from './SequenceCardGroup';
+import { SequenceBadge } from './SequenceBadge';
 import type { ParsedCard } from '../../db/import';
 import { importApkgResult, type ApkgImportResult } from '../../db/apkgImport';
-import type { Card, Deck } from '../../db/types';
+import type { Card, Deck, Sequence } from '../../db/types';
+
+/** A lesson a card can be bulk-assigned to, offered in the "Assign to lesson…" panel. */
+interface AssignableLesson {
+  id: string;
+  name: string;
+}
 
 interface CardListProps {
   cards: Card[];
   deck: Deck;
   allDecks: Deck[];
-  onNewCard: () => void;
+  onNewCard?: () => void;
+  /** Sibling to onNewCard: offers "New sequence" alongside "New card" when supplied. */
+  onNewSequence?: () => void;
+  /** Opens a picker for adding existing course cards to this lesson without moving them. */
+  onLinkExisting?: () => void;
   onEditCard: (card: Card) => void;
+  /** When true, suppresses the internal "Cards (N)" heading row. Use when the
+   *  parent already renders its own heading for the cards section. */
+  hideHeader?: boolean;
+  /**
+   * When supplied together with courseId, the bulk toolbar gains an "Assign to
+   * lesson…" action that reassigns selected cards' primaryLessonId (and moves
+   * them to that lesson's backing deck). Used by the course Question Bank.
+   */
+  assignableLessons?: AssignableLesson[];
+  courseId?: string;
+  /**
+   * Sequences in scope for these cards (same course/lesson). When supplied, generated
+   * cards with a sequence item ID are grouped under a header naming their owning
+   * sequence rather than listed loosely; a generated card whose sequence cannot be
+   * resolved (e.g. omitted here by mistake) still renders inline, badged and read-only.
+   */
+  sequences?: Sequence[];
+  /** Navigates to the sequence editor for a generated-card group's "Edit sequence" affordance. */
+  onEditSequence?: (sequenceId: string) => void;
+  /** Cards linked into the current lesson rather than owned by it. */
+  linkedCardIds?: ReadonlySet<string>;
+  /** Removes one linked membership while preserving the underlying card. */
+  onUnlinkCard?: (card: Card) => void;
 }
 
-export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardListProps) {
+export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLinkExisting, onEditCard, hideHeader = false, assignableLessons, courseId, sequences, onEditSequence, linkedCardIds, onUnlinkCard }: CardListProps) {
   const { notify } = useToast();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -57,6 +95,9 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
   const [tagValue, setTagValue] = useState('');
   const [rescheduling, setRescheduling] = useState(false);
   const [rescheduleMode, setRescheduleMode] = useState<'new' | 'dueNow'>('new');
+  const [assigningLesson, setAssigningLesson] = useState(false);
+  // Sentinel '' means "Unassigned" (primaryLessonId null); otherwise a lesson id.
+  const [assignTarget, setAssignTarget] = useState<string>('');
   const [importing, setImporting] = useState(false);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
@@ -78,6 +119,47 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
     return [...set].sort();
   }, [cards]);
 
+  // Generated cards with a sequence item ID are managed exclusively from their
+  // owning sequence: they never take part in bulk selection (Tag/Suspend/Move/Delete/…),
+  // since content edits and deletes would desync or fight with the next regeneration.
+  // Grouping them under a sequence header is purely presentational — every card still
+  // flows through the same CardListBody/CardRow, which independently enforces the
+  // read-only treatment (no checkbox, no delete) from `card.sequenceItemId` itself.
+  const sequenceGroups = useMemo(() => {
+    const bySequence = new Map<string, { sequence: Sequence; cards: Card[] }>();
+    for (const card of cards) {
+      if (card.sequenceItemId === null || card.sequenceItemId === undefined) continue;
+      const sequence = sequences ? sequenceForItemId(sequences, card.sequenceItemId) : undefined;
+      if (!sequence) continue;
+      const group = bySequence.get(sequence.id) ?? { sequence, cards: [] };
+      group.cards.push(card);
+      bySequence.set(sequence.id, group);
+    }
+    return [...bySequence.values()];
+  }, [cards, sequences]);
+
+  const groupedCardIds = useMemo(
+    () => new Set(sequenceGroups.flatMap((g) => g.cards.map((c) => c.id))),
+    [sequenceGroups],
+  );
+  // Every card not shown under a sequence group heading: ordinary cards plus any
+  // generated card whose owning sequence could not be resolved (defensive fallback —
+  // still badged/read-only via CardRow, just without a group header to sit under).
+  const looseCards = useMemo(
+    () => cards.filter((c) => !groupedCardIds.has(c.id)),
+    [cards, groupedCardIds],
+  );
+  // Bulk selection only ever applies to ordinary (non-generated) cards.
+  const selectableCards = useMemo(
+    () =>
+      cards.filter(
+        (c) =>
+          (c.sequenceItemId === null || c.sequenceItemId === undefined) &&
+          !linkedCardIds?.has(c.id),
+      ),
+    [cards, linkedCardIds],
+  );
+
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -92,8 +174,8 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
 
   function toggleAll() {
     setSelected((prev) => {
-      if (cards.length > 0 && cards.every((c) => prev.has(c.id))) return new Set();
-      return new Set(cards.map((c) => c.id));
+      if (selectableCards.length > 0 && selectableCards.every((c) => prev.has(c.id))) return new Set();
+      return new Set(selectableCards.map((c) => c.id));
     });
   }
 
@@ -106,6 +188,8 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
     setTagValue('');
     setRescheduling(false);
     setRescheduleMode('new');
+    setAssigningLesson(false);
+    setAssignTarget('');
   }
 
   /** Apply a reversible bulk change to the selected cards, with an Undo toast. */
@@ -172,6 +256,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
   function startMove() {
     setTagging(false);
     setRescheduling(false);
+    setAssigningLesson(false);
     setMoveTarget(otherDecks[0]?.id ?? '');
     setMoving(true);
   }
@@ -179,13 +264,42 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
   function startTag() {
     setMoving(false);
     setRescheduling(false);
+    setAssigningLesson(false);
     setTagging(true);
   }
 
   function startReschedule() {
     setMoving(false);
     setTagging(false);
+    setAssigningLesson(false);
     setRescheduling(true);
+  }
+
+  function startAssignLesson() {
+    setMoving(false);
+    setTagging(false);
+    setRescheduling(false);
+    setAssignTarget(assignableLessons?.[0]?.id ?? '');
+    setAssigningLesson(true);
+  }
+
+  async function handleAssignLesson() {
+    if (!courseId) return;
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    const snapshot = await snapshotCards(ids);
+    const lessonId = assignTarget || null;
+    await assignCardsToLesson(ids, courseId, lessonId);
+    exitSelect();
+    const lessonName = lessonId
+      ? assignableLessons?.find((l) => l.id === lessonId)?.name ?? 'lesson'
+      : 'Unassigned';
+    notify(`${ids.length} card${ids.length === 1 ? '' : 's'} assigned to ${lessonName}.`, 'neutral', {
+      actionLabel: 'Undo',
+      onAction: () => {
+        void restoreCards(snapshot);
+      },
+    });
   }
 
   async function handleBury() {
@@ -277,12 +391,14 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <h2 className="font-display text-2xl">
-          Cards <span className="text-ink-faint">({cards.length})</span>
-        </h2>
-        <div className="ml-auto flex gap-2">
-          {cards.length > 0 && (
+      <div className={cn('mb-4 flex flex-wrap items-center gap-2', hideHeader && 'justify-end')}>
+        {!hideHeader && (
+          <h2 className="font-display text-2xl">
+            Cards <span className="text-ink-faint">({cards.length})</span>
+          </h2>
+        )}
+        <div className={cn('flex gap-2', !hideHeader && 'ml-auto')}>
+          {selectableCards.length > 0 && (
             <Button
               variant={selectMode ? 'primary' : 'secondary'}
               size="sm"
@@ -308,10 +424,24 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
               Import
             </Button>
           )}
-          <Button variant="primary" size="sm" onClick={onNewCard}>
-            <PlusIcon width={16} height={16} />
-            New card
-          </Button>
+          {onNewSequence && (
+            <Button variant="secondary" size="sm" onClick={onNewSequence}>
+              <PlusIcon width={16} height={16} />
+              New sequence
+            </Button>
+          )}
+          {onLinkExisting && (
+            <Button variant="secondary" size="sm" onClick={onLinkExisting}>
+              <PlusIcon width={16} height={16} />
+              Link existing cards
+            </Button>
+          )}
+          {onNewCard && (
+            <Button variant="primary" size="sm" onClick={onNewCard}>
+              <PlusIcon width={16} height={16} />
+              New card
+            </Button>
+          )}
         </div>
       </div>
 
@@ -345,22 +475,22 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
             <button
               type="button"
               onClick={toggleAll}
-              aria-pressed={cards.length > 0 && cards.every((c) => selected.has(c.id))}
+              aria-pressed={selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id))}
               className="flex items-center gap-2 text-sm text-ink-soft transition-colors hover:text-ink"
             >
               <span
                 className={cn(
                   'grid h-5 w-5 place-items-center rounded-full border transition-colors',
-                  cards.length > 0 && cards.every((c) => selected.has(c.id))
+                  selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id))
                     ? 'border-accent bg-accent text-accent-fg'
                     : 'border-line-strong',
                 )}
               >
-                {cards.length > 0 && cards.every((c) => selected.has(c.id)) && (
+                {selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id)) && (
                   <CheckIcon width={12} height={12} />
                 )}
               </span>
-              {cards.length > 0 && cards.every((c) => selected.has(c.id)) ? 'Deselect all' : 'Select all'}
+              {selectableCards.length > 0 && selectableCards.every((c) => selected.has(c.id)) ? 'Deselect all' : 'Select all'}
             </button>
             <span className="text-sm text-ink-faint">{selected.size} selected</span>
             <div className="ml-auto flex flex-wrap gap-2">
@@ -412,6 +542,16 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
               >
                 Move to…
               </Button>
+              {assignableLessons && courseId && (
+                <Button
+                  size="sm"
+                  variant={assigningLesson ? 'primary' : 'secondary'}
+                  disabled={selected.size === 0}
+                  onClick={() => (assigningLesson ? setAssigningLesson(false) : startAssignLesson())}
+                >
+                  Assign to lesson…
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="danger"
@@ -574,32 +714,104 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Inline lesson assignment chooser */}
+          <AnimatePresence>
+            {assigningLesson && selected.size > 0 && assignableLessons && courseId && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="border-t border-line pt-3">
+                  <label className="block text-sm text-ink-soft">
+                    Assign {selected.size} card{selected.size === 1 ? '' : 's'} to
+                    <select
+                      value={assignTarget}
+                      onChange={(e) => setAssignTarget(e.target.value)}
+                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+                    >
+                      <option value="">Unassigned</option>
+                      {assignableLessons.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <div className="mt-4 flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => setAssigningLesson(false)}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" variant="primary" onClick={handleAssignLesson}>
+                      Assign
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
       {cards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
-          <p className="mb-4 text-ink-soft">This deck has no cards yet.</p>
-          <Button variant="primary" onClick={onNewCard}>
-            <PlusIcon width={18} height={18} />
-            Add your first card
-          </Button>
+          <p className={onNewCard || onNewSequence ? 'mb-4 text-ink-soft' : 'text-ink-soft'}>
+            No cards yet.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {onNewCard && (
+              <Button variant="primary" onClick={onNewCard}>
+                <PlusIcon width={18} height={18} />
+                Add your first card
+              </Button>
+            )}
+            {onNewSequence && (
+              <Button variant="secondary" onClick={onNewSequence}>
+                <PlusIcon width={18} height={18} />
+                Add a sequence
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
-        <CardListBody
-          cards={cards}
-          deck={deck}
-          selectMode={selectMode}
-          selected={selected}
-          expandedCardId={expandedCardId}
-          onToggle={toggle}
-          onToggleExpand={setExpandedCardId}
-          onEditCard={onEditCard}
-          onResume={handleResume}
-          onDelete={handleDeleteOne}
-          onToggleFlag={handleToggleFlag}
-          motionMultiplier={m}
-        />
+        <>
+          {sequenceGroups.map((group) => (
+            <SequenceCardGroup
+              key={group.sequence.id}
+              sequence={group.sequence}
+              cards={group.cards}
+              deck={deck}
+              onEditCard={onEditCard}
+              onEditSequence={onEditSequence}
+              onResume={handleResume}
+              onToggleFlag={handleToggleFlag}
+              linkedCardIds={linkedCardIds}
+              onUnlinkCard={onUnlinkCard}
+              motionMultiplier={m}
+            />
+          ))}
+          {looseCards.length > 0 && (
+            <CardListBody
+              cards={looseCards}
+              deck={deck}
+              selectMode={selectMode}
+              selected={selected}
+              expandedCardId={expandedCardId}
+              onToggle={toggle}
+              onToggleExpand={setExpandedCardId}
+              onEditCard={onEditCard}
+              onResume={handleResume}
+              onDelete={handleDeleteOne}
+              onToggleFlag={handleToggleFlag}
+              linkedCardIds={linkedCardIds}
+              onUnlinkCard={onUnlinkCard}
+              motionMultiplier={m}
+            />
+          )}
+        </>
       )}
     </div>
   );
@@ -608,8 +820,10 @@ export function CardList({ cards, deck, allDecks, onNewCard, onEditCard }: CardL
 const VIRTUAL_THRESHOLD = 50;
 
 /** Renders the card list either as a simple grid (small decks) or a virtualised
- *  absolute-positioned list (large decks) to keep performance constant. */
-function CardListBody({
+ *  absolute-positioned list (large decks) to keep performance constant. Exported for
+ *  reuse by {@link SequenceCardGroup}, which renders a sequence's own generated cards
+ *  through the same CardRow (and so gets its read-only treatment for free). */
+export function CardListBody({
   cards,
   deck,
   selectMode,
@@ -621,6 +835,8 @@ function CardListBody({
   onResume,
   onDelete,
   onToggleFlag,
+  linkedCardIds,
+  onUnlinkCard,
   motionMultiplier,
 }: {
   cards: Card[];
@@ -634,6 +850,8 @@ function CardListBody({
   onResume: (card: Card) => void;
   onDelete: (id: string) => void;
   onToggleFlag: (card: Card) => void;
+  linkedCardIds?: ReadonlySet<string>;
+  onUnlinkCard?: (card: Card) => void;
   motionMultiplier: number;
 }) {
   const enabled = cards.length > VIRTUAL_THRESHOLD;
@@ -672,6 +890,8 @@ function CardListBody({
             onEdit={() => onEditCard(card)}
             onResume={() => onResume(card)}
             onDelete={() => onDelete(card.id)}
+            linked={linkedCardIds?.has(card.id) === true}
+            onUnlink={() => onUnlinkCard?.(card)}
             onToggleFlag={onToggleFlag}
             motionMultiplier={motionMultiplier}
           />
@@ -707,6 +927,8 @@ function CardListBody({
               onEdit={() => onEditCard(card)}
               onResume={() => onResume(card)}
               onDelete={() => onDelete(card.id)}
+              linked={linkedCardIds?.has(card.id) === true}
+              onUnlink={() => onUnlinkCard?.(card)}
               onToggleFlag={onToggleFlag}
               motionMultiplier={motionMultiplier}
               skipAnimation={hasMounted && !isFirstRender.current}
@@ -718,7 +940,7 @@ function CardListBody({
   );
 }
 
-function CardRow({
+const CardRow = React.memo(function CardRow({
   card,
   deck,
   index,
@@ -730,6 +952,8 @@ function CardRow({
   onEdit,
   onResume,
   onDelete,
+  linked,
+  onUnlink,
   onToggleFlag,
   motionMultiplier,
   skipAnimation,
@@ -745,6 +969,8 @@ function CardRow({
   onEdit: () => void;
   onResume: () => void;
   onDelete: () => void;
+  linked: boolean;
+  onUnlink: () => void;
   onToggleFlag: (card: Card) => void;
   motionMultiplier?: number;
   skipAnimation?: boolean;
@@ -762,6 +988,11 @@ function CardRow({
   const buried = card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > Date.now();
   const leech = isLeech(card);
   const flagged = card.flagged === true;
+  // Generated cards are owned by their Sequence: content edits and deletes happen there,
+  // never here, so selection and deletion are suppressed regardless of selectMode/hover.
+  // Scheduling actions (flag/suspend/bury/reschedule/resume) stay fully available.
+  const generated = card.sequenceItemId !== null && card.sequenceItemId !== undefined;
+  const removable = linked || !generated;
 
   // Swipe-to-reveal state — multi-directional in touch mode.
   const [trayOpen, setTrayOpen] = useState(false);
@@ -785,6 +1016,16 @@ function CardRow({
   const swipeThreshold = 40;
   const MAX_DRAG = 120;
 
+  // Refs for stable callback dependencies
+  const trayOpenRef = useRef(trayOpen);
+  const cardRefForCallback = useRef(card);
+  useEffect(() => {
+    trayOpenRef.current = trayOpen;
+  }, [trayOpen]);
+  useEffect(() => {
+    cardRefForCallback.current = card;
+  }, [card]);
+
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (selectMode || expanded) return;
     if (e.button !== 0) return;
@@ -796,10 +1037,10 @@ function CardRow({
       startX: e.clientX,
       startY: e.clientY,
       isSwipe: false,
-      openBeforeDrag: trayOpen,
+      openBeforeDrag: trayOpenRef.current,
     };
     cardRef.current?.setPointerCapture(e.pointerId);
-  }, [selectMode, expanded, trayOpen]);
+  }, [selectMode, expanded]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!swipeState.current.dragging) return;
@@ -854,55 +1095,101 @@ function CardRow({
           // Drag right — quick flag (touch mode only)
           hapticLight();
           dragX.set(0);
-          onToggleFlag(card);
+          onToggleFlag(cardRefForCallback.current);
         } else {
           setTrayOpen(false);
           dragX.set(0);
         }
       }
     } else {        // It was a tap — close the tray if it is open; suppress the subsequent click.
-      if (trayOpen) {
+      if (trayOpenRef.current) {
         hapticLight();
         justHandledTap.current = true;
         setTrayOpen(false);
         dragX.set(0);
       }
     }
-  }, [dragX, trayOpen, isTouchMode, onToggleFlag, card]);
+  }, [dragX, isTouchMode, onToggleFlag]);
 
   const handlePointerCancel = useCallback((e: React.PointerEvent) => {
     e.stopPropagation();
     cardRef.current?.releasePointerCapture(e.pointerId);
     swipeState.current.dragging = false;
     swipeState.current.isSwipe = false;
-    dragX.set(trayOpen ? -trayWidth : 0);
-  }, [dragX, trayOpen]);
+    dragX.set(trayOpenRef.current ? -trayWidth : 0);
+  }, [dragX]);
 
-  function handleClick() {
+  const handleClick = useCallback(() => {
     if (justHandledTap.current) {
       justHandledTap.current = false;
       return;
     }
-    if (selectMode) {
+    if (selectMode && !generated && !linked) {
       onToggle();
-    } else if (trayOpen) {
+    } else if (trayOpenRef.current) {
       setTrayOpen(false);
       dragX.set(0);
     } else {
       onToggleExpand();
     }
-  }
+  }, [selectMode, generated, linked, onToggle, onToggleExpand, dragX]);
 
-  function handleKeyDown(e: React.KeyboardEvent) {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      if (selectMode) {
+      if (selectMode && !generated && !linked) {
         onToggle();
       } else {
         onToggleExpand();
       }
     }
-  }
+  }, [selectMode, generated, linked, onToggle, onToggleExpand]);
+
+  const handleMouseEnter = useCallback(() => {
+    if (!selectMode) setHovered(true);
+  }, [selectMode]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (!selectMode) setHovered(false);
+  }, [selectMode]);
+
+  const handleFlagClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticLight();
+    onToggleFlag(cardRefForCallback.current);
+  }, [onToggleFlag]);
+
+  const handleEditClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticLight();
+    onEdit();
+  }, [onEdit]);
+
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticMedium();
+    onDelete();
+  }, [onDelete]);
+
+  const handleUnlinkClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticLight();
+    onUnlink();
+  }, [onUnlink]);
+
+  const handleResumeClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onResume();
+  }, [onResume]);
+
+  const handleFlagHoverClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleFlag(cardRefForCallback.current);
+  }, [onToggleFlag]);
+
+  const handleExpandedClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
 
   return (
     <div
@@ -921,8 +1208,9 @@ function CardRow({
         <div className="flex h-full w-full items-center">
           <button
             type="button"
+            aria-label={flagged ? 'Remove flag from card' : 'Flag card'}
             aria-pressed={flagged}
-            onClick={(e) => { e.stopPropagation(); hapticLight(); onToggleFlag(card); }}
+            onClick={handleFlagClick}
             className={cn(
               'flex h-full flex-1 flex-col items-center justify-center gap-1 text-xs transition-colors',
               flagged
@@ -935,20 +1223,29 @@ function CardRow({
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); hapticLight(); onEdit(); }}
+            aria-label="Edit card"
+            onClick={handleEditClick}
             className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-ink/[0.03] text-xs text-ink-soft transition-colors hover:bg-accent/10 hover:text-accent"
           >
             <EditIcon width={18} height={18} />
             Edit
           </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); hapticMedium(); onDelete(); }}
-            className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-negative/10 text-xs text-negative transition-colors hover:bg-negative/20"
-          >
-            <TrashIcon width={18} height={18} />
-            Delete
-          </button>
+          {removable && (
+            <button
+              type="button"
+              aria-label={linked ? 'Remove card from lesson' : 'Delete card'}
+              onClick={linked ? handleUnlinkClick : handleDeleteClick}
+              className={cn(
+                'flex h-full flex-1 flex-col items-center justify-center gap-1 text-xs transition-colors',
+                linked
+                  ? 'bg-ink/[0.03] text-ink-soft hover:bg-ink/5 hover:text-ink'
+                  : 'bg-negative/10 text-negative hover:bg-negative/20',
+              )}
+            >
+              {linked ? <CloseIcon width={18} height={18} /> : <TrashIcon width={18} height={18} />}
+              {linked ? 'Remove' : 'Delete'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -960,8 +1257,8 @@ function CardRow({
         transition={{ duration: skipAnimation ? 0 : 0.16 * m, delay: Math.min(index * 0.03, 0.25) * m }}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
-        onMouseEnter={() => !selectMode && setHovered(true)}
-        onMouseLeave={() => !selectMode && setHovered(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -976,7 +1273,7 @@ function CardRow({
         )}
       >
         <div className="flex items-start gap-4">
-          {selectMode && (
+          {selectMode && !generated && !linked && (
             <span
               className={cn(
                 'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors',
@@ -1023,6 +1320,12 @@ function CardRow({
                 </span>
               )}
               {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
+              {generated && <SequenceBadge />}
+              {linked && (
+                <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+                  Linked
+                </span>
+              )}
             </div>
             <div className="relative max-h-24 overflow-hidden text-sm text-ink-soft [mask-image:linear-gradient(to_bottom,black_60%,transparent)]">
               <AnimatePresence mode="wait" initial={false}>
@@ -1057,7 +1360,7 @@ function CardRow({
               {card.suspended && (
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); onResume(); }}
+                  onClick={handleResumeClick}
                   title="Resume card"
                   className="min-h-11 rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
                 >
@@ -1066,7 +1369,7 @@ function CardRow({
               )}
               <motion.button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onToggleFlag(card); }}
+                onClick={handleFlagHoverClick}
                 title={flagged ? 'Remove flag' : 'Flag card'}
                 aria-pressed={flagged}
                 whileTap={{ scale: 0.85 }}
@@ -1082,7 +1385,7 @@ function CardRow({
               </motion.button>
               <motion.button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                onClick={handleEditClick}
                 title="Edit card"
                 whileTap={{ scale: 0.85 }}
                 whileHover={{ scale: 1.08 }}
@@ -1090,16 +1393,23 @@ function CardRow({
               >
                 <EditIcon width={16} height={16} />
               </motion.button>
+              {removable && (
               <motion.button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                title="Delete card"
+                onClick={linked ? handleUnlinkClick : handleDeleteClick}
+                title={linked ? 'Remove from lesson' : 'Delete card'}
                 whileTap={{ scale: 0.85 }}
                 whileHover={{ scale: 1.08 }}
-                className="min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity hover:bg-negative/10 hover:text-negative focus-visible:opacity-100 group-hover:opacity-100 touch-visible"
+                className={cn(
+                  'min-h-11 rounded-lg p-2 text-ink-faint opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 touch-visible',
+                  linked
+                    ? 'hover:bg-ink/5 hover:text-ink'
+                    : 'hover:bg-negative/10 hover:text-negative',
+                )}
               >
-                <TrashIcon width={16} height={16} />
+                {linked ? <CloseIcon width={16} height={16} /> : <TrashIcon width={16} height={16} />}
               </motion.button>
+              )}
             </div>
           )}
         </div>
@@ -1111,7 +1421,7 @@ function CardRow({
               exit={{ opacity: 0, height: 0, marginTop: 0 }}
               transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
+              onClick={handleExpandedClick}
             >
               <div className="border-t border-line pt-4">
                 <CardAnalytics card={card} deck={deck} motionMultiplier={m} />
@@ -1122,4 +1432,4 @@ function CardRow({
       </motion.div>
     </div>
   );
-}
+});

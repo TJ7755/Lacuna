@@ -2,7 +2,7 @@
  * Safe wrapper around navigator.vibrate for tactile feedback during gestures.
  * Falls back silently on devices that do not support the API.
  */
-export function haptic(pattern: number | number[] = 10) {
+function haptic(pattern: number | number[] = 10) {
   try {
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(pattern);

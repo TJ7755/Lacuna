@@ -178,6 +178,13 @@
     background-clip: content-box;
   }
 
+  /* Glide, don't jump, on in-page anchors (landing page syllabus link). */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
   /* Consistent, theme-aware focus rings for keyboard navigation. */
   :focus-visible {
     outline: none;
@@ -206,9 +213,6 @@
   .will-change-transform {
     will-change: transform;
   }
-  .will-change-opacity {
-    will-change: opacity;
-  }
   .will-change-transform-opacity {
     will-change: transform, opacity;
   }
@@ -236,15 +240,6 @@
     .touch-visible {
       opacity: 1 !important;
     }
-  }
-
-  /* Hide scrollbar for touch-friendly horizontally scrollable toolbars. */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
   }
 
   /* Paper-like offset shadow for physical card illusion. */
@@ -283,6 +278,114 @@
     20%, 80% { transform: translateX(2px); }
     30%, 50%, 70% { transform: translateX(-3px); }
     40%, 60% { transform: translateX(3px); }
+  }
+
+  /* ——— Landing page (Welcome) animation kit ——— */
+
+  /* Scroll reveal: elements start lowered and transparent, rise when marked.
+     Deliberately unhurried — the page should feel like it takes its time. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity 1100ms ease, transform 1100ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Hero entrance: staggered rise on first paint. */
+  .hero-rise {
+    animation: hero-rise 1200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes hero-rise {
+    from { opacity: 0; transform: translateY(26px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Pulsing exam-day marker on the retrievability sketch. */
+  .exam-pulse {
+    animation: exam-pulse 2.4s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  @keyframes exam-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.55; }
+  }
+
+  /* Grading demo: faces flip in as the card state changes. */
+  .animate-demo-flip {
+    animation: demo-flip 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes demo-flip {
+    from { opacity: 0; transform: rotateX(-35deg) translateY(8px); }
+    to { opacity: 1; transform: rotateX(0) translateY(0); }
+  }
+
+  /* Gentle beckoning nudge for the scroll hint beneath the hero.
+     Horizontal centring is on the element (-translate-x-1/2); only Y is animated
+     so reduced-motion (animation: none) still keeps the label centred. */
+  .scroll-hint {
+    animation: scroll-hint 2.2s ease-in-out infinite;
+  }
+  @keyframes scroll-hint {
+    0%, 100% { transform: translate(-50%, 0); }
+    50% { transform: translate(-50%, 6px); }
+  }
+
+  /* Landing path spine: slight ink bleed so the drawn line feels hand-ruled. */
+  .path-spine {
+    box-shadow: 0 0 0.5px hsl(var(--accent) / 0.5), 1px 0 0 hsl(var(--accent) / 0.12);
+  }
+
+  /* "You are here": a quiet breathing halo on the course path's next lesson.
+     Distinct from .exam-pulse (which scales an icon for urgency) — this stays
+     still and lets a soft ring expand outward, reading as a gentle beacon
+     rather than an alarm. */
+  .path-here-glow {
+    animation: path-here-glow 2.6s ease-in-out infinite;
+  }
+  @keyframes path-here-glow {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--accent) / 0.35); }
+    50% { box-shadow: 0 0 0 7px hsl(var(--accent) / 0); }
+  }
+
+  /* Checkpoint card: a light dog-ear on the top-right corner. */
+  .checkpoint-card {
+    position: relative;
+  }
+  .checkpoint-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    border-style: solid;
+    border-width: 0 18px 18px 0;
+    border-color: transparent hsl(var(--accent) / 0.22) transparent transparent;
+    border-bottom-left-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-rise {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+    .scroll-hint {
+      animation: none;
+    }
+    .exam-pulse {
+      animation: none;
+    }
+    .path-here-glow {
+      animation: none;
+    }
+    .reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
   }
 }
 

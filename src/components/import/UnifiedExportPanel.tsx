@@ -50,7 +50,7 @@ const EXPORT_FORMATS: ExportFormatDef[] = [
   {
     id: 'json-backup',
     label: 'Full backup',
-    description: 'Complete database snapshot with all decks, cards, review history, and images.',
+    description: 'Complete database snapshot with all courses, cards, review history, and images.',
     extension: 'json',
     mimeType: 'application/json',
     icon: <DownloadIcon width={18} height={18} />,

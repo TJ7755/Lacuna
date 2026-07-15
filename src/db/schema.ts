@@ -9,13 +9,26 @@ import type {
   ImageAsset,
   BackupSnapshot,
   Folder,
+  Course,
+  CourseExamDate,
+  Lesson,
+  Note,
+  LessonCardLink,
+  LessonCardExposure,
+  LessonCompletion,
+  NoteAnnotation,
+  PracticeNode,
+  PracticeMilestone,
+  Sequence,
 } from './types';
 import {
   migrateCardRecord,
   migrateDeckRecord,
+  buildLessonCardExposureBackfill,
   type LegacyCard,
   type LegacyDeck,
 } from './migrations';
+import { buildCourseMigration } from './courseMigration';
 import { savePreMigrationSnapshot } from './preMigrationSnapshots';
 import { blobToArrayBuffer, bytesToBase64 } from './assets';
 
@@ -24,7 +37,7 @@ import { blobToArrayBuffer, bytesToBase64 } from './assets';
  * Indexes are declared in version().stores(); only indexed fields are listed there,
  * other properties are stored implicitly on the record.
  */
-export class LacunaDatabase extends Dexie {
+class LacunaDatabase extends Dexie {
   decks!: Table<Deck, string>;
   cards!: Table<Card, string>;
   sessionHistory!: Table<SessionHistoryEntry, number>;
@@ -33,6 +46,17 @@ export class LacunaDatabase extends Dexie {
   appState!: Table<AppStateEntry, string>;
   assets!: Table<ImageAsset, string>;
   folders!: Table<Folder, string>;
+  courses!: Table<Course, string>;
+  lessons!: Table<Lesson, string>;
+  notes!: Table<Note, string>;
+  lessonCards!: Table<LessonCardLink, string>;
+  lessonCardExposures!: Table<LessonCardExposure, [string, string]>;
+  lessonCompletions!: Table<LessonCompletion, string>;
+  noteAnnotations!: Table<NoteAnnotation, string>;
+  practiceNodes!: Table<PracticeNode, string>;
+  practiceMilestones!: Table<PracticeMilestone, string>;
+  courseExamDates!: Table<CourseExamDate, string>;
+  sequences!: Table<Sequence, string>;
 
   constructor() {
     super('lacuna');
@@ -200,10 +224,151 @@ export class LacunaDatabase extends Dexie {
         assets: 'hash, createdAt',
         folders: 'id, parentId, createdAt',
       });
+
+    // Version 9: introduce the Course -> Lesson model alongside the existing
+    // Deck/Folder model (additive; nothing is deleted). New stores are created
+    // for courses, lessons, notes, lesson-card links, practice nodes and extra
+    // course exam dates. The cards and sessionHistory indexes gain courseId (and
+    // primaryLessonId for cards) so course-scoped queries are fast. The upgrade
+    // folds every standalone deck into a single-lesson course and every folder
+    // into a course whose decks become ordered lessons, then stamps the derived
+    // courseId/primaryLessonId onto cards, session history and performance rows.
+    this.version(9)
+      .stores({
+        decks: 'id, createdAt, examDate, folderId',
+        cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed',
+        sessionHistory: '++id, deckId, courseId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        folders: 'id, parentId, createdAt',
+        courses: 'id, createdAt, examDate',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        practiceNodes: 'id, courseId, position, createdAt',
+        courseExamDates: 'id, courseId, examDate, createdAt',
+      })
+      .upgrade(async (tx) => {
+        const decks = (await tx.table('decks').toArray()) as Deck[];
+        const folders = (await tx.table('folders').toArray()) as Folder[];
+        const { courses, lessons, courseIdByDeckId, lessonIdByDeckId } =
+          buildCourseMigration(decks, folders, makeId);
+
+        await tx.table('courses').bulkPut(courses);
+        await tx.table('lessons').bulkPut(lessons);
+
+        // Stamp the derived courseId/primaryLessonId onto every card.
+        await tx
+          .table('cards')
+          .toCollection()
+          .modify((card) => {
+            const courseId = courseIdByDeckId.get(card.deckId);
+            if (courseId !== undefined) {
+              card.courseId = courseId;
+              card.primaryLessonId = lessonIdByDeckId.get(card.deckId) ?? null;
+            }
+          });
+
+        // Carry the derived courseId onto session history and performance rows.
+        await tx
+          .table('sessionHistory')
+          .toCollection()
+          .modify((entry) => {
+            const courseId = courseIdByDeckId.get(entry.deckId);
+            if (courseId !== undefined) entry.courseId = courseId;
+          });
+        await tx
+          .table('userPerformance')
+          .toCollection()
+          .modify((perf) => {
+            const courseId = courseIdByDeckId.get(perf.deckId);
+            if (courseId !== undefined) perf.courseId = courseId;
+          });
+      });
+
+    // Version 10: add an optional per-course lesson-view-mode override (study
+    // vs edit; see src/state/lessonViewMode.ts and src/course/lessonViewMode.ts).
+    // No index needed — it's a display-only field read by LessonView. Undefined
+    // on existing courses inherits the global default, so no upgrade is needed.
+    this.version(10).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed',
+      sessionHistory: '++id, deckId, courseId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+      courses: 'id, createdAt, examDate',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      practiceNodes: 'id, courseId, position, createdAt',
+      courseExamDates: 'id, courseId, examDate, createdAt',
+    });
+
+    // Version 11: add sequences for overlapping-cloze sequence learning. A
+    // sequence generates ordinary FSRS cards, each anchored to a SequenceItem
+    // via cards.sequenceItemId. Additive only — no upgrade() needed.
+    this.version(11).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
+      sessionHistory: '++id, deckId, courseId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+      courses: 'id, createdAt, examDate',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      practiceNodes: 'id, courseId, position, createdAt',
+      courseExamDates: 'id, courseId, examDate, createdAt',
+      sequences: 'id, courseId, primaryLessonId, createdAt',
+    });
+
+    // Version 12: lesson teaching progress is lesson-scoped rather than inferred
+    // from a card's FSRS state. Reviewed cards are backfilled for their primary
+    // lesson only; display links do not prove that a card was taught there.
+    // Note annotations are stored separately because they are device-local and
+    // deliberately excluded from every backup/export format.
+    this.version(12)
+      .stores({
+        decks: 'id, createdAt, examDate, folderId',
+        cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
+        sessionHistory: '++id, deckId, courseId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        folders: 'id, parentId, createdAt',
+        courses: 'id, createdAt, examDate',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+        lessonCompletions: 'lessonId, completedAt',
+        noteAnnotations: 'id, noteId, createdAt, updatedAt',
+        practiceNodes: 'id, courseId, position, createdAt',
+        practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+        courseExamDates: 'id, courseId, examDate, createdAt',
+        sequences: 'id, courseId, primaryLessonId, createdAt',
+      })
+      .upgrade(async (tx) => {
+        const exposures = buildLessonCardExposureBackfill(
+          (await tx.table('cards').toArray()) as Card[],
+        );
+        if (exposures.length > 0) {
+          await tx.table('lessonCardExposures').bulkPut(exposures);
+        }
+      });
   }
 }
 
-export const CURRENT_SCHEMA_VERSION = 8;
+const CURRENT_SCHEMA_VERSION = 12;
 
 export const db = new LacunaDatabase();
 
@@ -366,6 +531,16 @@ export async function readAllDataFromVersion(
     sessionHistory: (raw.data['sessionHistory'] ?? []) as SessionHistoryEntry[],
     userPerformance: (raw.data['userPerformance'] ?? []) as UserPerformance[],
     folders: (raw.data['folders'] ?? []) as Folder[],
+    courses: (raw.data['courses'] ?? []) as Course[],
+    lessons: (raw.data['lessons'] ?? []) as Lesson[],
+    notes: (raw.data['notes'] ?? []) as Note[],
+    lessonCards: (raw.data['lessonCards'] ?? []) as LessonCardLink[],
+    lessonCardExposures: (raw.data['lessonCardExposures'] ?? []) as LessonCardExposure[],
+    lessonCompletions: (raw.data['lessonCompletions'] ?? []) as LessonCompletion[],
+    practiceNodes: (raw.data['practiceNodes'] ?? []) as PracticeNode[],
+    practiceMilestones: (raw.data['practiceMilestones'] ?? []) as PracticeMilestone[],
+    courseExamDates: (raw.data['courseExamDates'] ?? []) as CourseExamDate[],
+    sequences: (raw.data['sequences'] ?? []) as Sequence[],
   };
 }
 

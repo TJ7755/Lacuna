@@ -208,13 +208,13 @@ export function SessionReport({
         </h1>
         {summary.limitReached && (
           <p className="mb-6 text-sm text-ink-soft">
-            You have reached the daily review limit for this deck. You can continue
+            You have reached the daily review limit. You can continue
             studying if you wish, or come back tomorrow.
           </p>
         )}
         {summary.timeLimitReached && (
           <p className="mb-6 text-sm text-ink-soft">
-            You have reached the session time limit for this deck. You can continue
+            You have reached the session time limit. You can continue
             studying if you wish, or take a break.
           </p>
         )}
@@ -369,7 +369,7 @@ export function SessionReport({
             </Button>
           )}
           <Button variant="primary" size="lg" onClick={onReturn}>
-            Back to deck
+            Done
           </Button>
         </div>
       </motion.div>

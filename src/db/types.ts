@@ -1,6 +1,8 @@
 // Shared domain types for Lacuna's local data model.
 // All persistence is via IndexedDB (see schema.ts). British English throughout.
 
+import type { CardFilter } from './search';
+
 export type CardType = 'front_back' | 'cloze' | 'typing' | 'basic_reversed';
 
 /** FSRS grade: 1 = Again, 2 = Hard, 3 = Good, 4 = Easy. Matches ts-fsrs `Grade`. */
@@ -63,17 +65,27 @@ export interface ReviewLog {
   retrievabilityAtReview: number | null;
 }
 
-/** Predefined deck colours for visual identification. */
-export const DECK_COLOURS = [
-  { key: 'slate',   label: 'Slate',   hex: '#64748b' },
-  { key: 'rose',    label: 'Rose',    hex: '#e11d48' },
-  { key: 'amber',   label: 'Amber',   hex: '#d97706' },
-  { key: 'emerald', label: 'Emerald', hex: '#059669' },
-  { key: 'sky',     label: 'Sky',     hex: '#0284c7' },
-  { key: 'violet',  label: 'Violet',  hex: '#7c3aed' },
-  { key: 'coral',   label: 'Coral',   hex: '#ea580c' },
-  { key: 'teal',    label: 'Teal',    hex: '#0d9488' },
-] as const;
+/**
+ * The structural subset of scheduling fields the FSRS engine reads. Both Deck
+ * and Course satisfy it, so the engine can schedule either without caring which
+ * model it is fed. This is the seam that lets the scheduler become Course-capable
+ * without renaming deckId to courseId across every call site: widen a function
+ * from `Deck` to `SchedulerConfig` and every existing Deck caller still type-checks.
+ *
+ * `examDate` here is the unit-level default; per-card exam dates (lesson overrides
+ * and course checkpoints) are resolved separately in src/fsrs/examDate.ts.
+ */
+export interface SchedulerConfig {
+  id: string;
+  examDate: number;
+  examObjective: ExamObjective;
+  fsrsParameters: FsrsParameters;
+  archived?: boolean;
+  newCardsPerDay?: number;
+  maxReviewsPerDay?: number;
+  leechThreshold?: number;
+  leechAction?: 'suspend' | 'tag' | 'none';
+}
 
 export interface Deck {
   id: string;
@@ -160,9 +172,257 @@ export interface Folder {
   createdAt: number;
 }
 
+// ---------------------------------------------------------------------------
+// Course architecture (Course -> Lesson -> Note + Card).
+//
+// These tables sit alongside the legacy Deck/Folder model during the staged
+// migration: the data layer and FSRS engine become Course-capable first, while
+// the existing Deck-based UI keeps running. Field shapes follow the resolved
+// design in new_features_list.md (main plan plus addenda). British English.
+// ---------------------------------------------------------------------------
+
+/**
+ * How lessons unlock along a course path. Replaces the original `pathMode`.
+ *  - `linear`: lessons are date-gated by a cadence (anchorDate + i * intervalDays),
+ *    with optional per-lesson `releaseDate` overrides that cascade.
+ *  - `semi-linear`: lessons are completion-gated and sequential (see Lesson.unlockedAt).
+ *  - `open`: everything is unlocked immediately; no locking UI.
+ */
+export type UnlockMode = 'linear' | 'semi-linear' | 'open';
+
+/**
+ * A Course is the new scheduling unit, inheriting every scheduling field the old
+ * Deck owned plus course-path configuration. The FSRS engine schedules a course's
+ * cards against the nearest applicable exam date (see src/fsrs/examDate.ts).
+ */
+export interface Course {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: number;
+  colour?: string;
+  // Scheduling (inherited from the old Deck).
+  /** Primary exam date/time as epoch ms in UTC. Fallback when no nearer date applies. */
+  examDate: number;
+  timeZone?: string;
+  /** Set true once the exam-date prompt has been answered or dismissed. */
+  examDatePromptDismissed?: boolean;
+  fsrsVersion: number;
+  fsrsParameters: FsrsParameters;
+  examObjective: ExamObjective;
+  newCardsPerDay?: number;
+  maxReviewsPerDay?: number;
+  archived?: boolean;
+  autoOptimise?: boolean;
+  leechThreshold?: number;
+  leechAction?: 'suspend' | 'tag' | 'none';
+  dailyReviewGoal?: number;
+  sessionTimeLimitMinutes?: number;
+  lastInteractedAt?: number;
+  // Course-path configuration.
+  unlockMode: UnlockMode;
+  /** Cadence for `linear` unlock mode; ignored under other modes. */
+  linearCadence?: { anchorDate: number; intervalDays: number };
+  /** When true, the system auto-inserts practice nodes between lessons. */
+  autoPractice: boolean;
+  /** Minutes-to-clear threshold that triggers practice when the exam is not near. */
+  practiceThresholdMinutesFar: number;
+  /** Minutes-to-clear threshold that triggers practice when the exam is near. */
+  practiceThresholdMinutesNear: number;
+  /** Days-until-exam at or below which the "near" threshold applies. */
+  practiceUrgentWindowDays: number;
+  /** Backstop: force a practice node after this many lessons without one. */
+  practiceMaxGap: number;
+  /**
+   * Per-course override of the global lesson-view-mode default (see
+   * src/state/lessonViewMode.ts). Undefined inherits the global default.
+   * Resolved via src/course/lessonViewMode.ts, which is also the single gate
+   * for whether edit mode is available at all.
+   */
+  lessonViewMode?: 'study' | 'edit';
+}
+
+/**
+ * A dated assessment within a course: an extra exam date or a checkpoint
+ * (mini-exam). The scheduler always targets the nearest applicable date.
+ * A checkpoint is simply a CourseExamDate with a lesson scope.
+ */
+export interface CourseExamDate {
+  id: string;
+  courseId: string;
+  /** e.g. "Mid-term", "Mock exam", "Final". */
+  name: string;
+  /** Required: a checkpoint without a date is not a checkpoint. Epoch ms, UTC. */
+  examDate: number;
+  timeZone?: string;
+  /** Lessons whose cards are in scope. Undefined = all lessons so far. */
+  lessonIds?: string[];
+  /** Card-level exclusions within the scoped lessons; excluded cards fall back to the next date. */
+  excludedCardIds?: string[];
+  createdAt: number;
+}
+
+/**
+ * An overlapping-cloze sequence: an ordered list of small recallable units
+ * (e.g. a numbered list, a chain of steps) from which generation logic
+ * derives ordinary FSRS cards, each cueing on the preceding `cueWindow`
+ * items. Sequences themselves are not studied directly.
+ */
+export interface Sequence {
+  id: string;
+  courseId: string;
+  /** Same semantics as Card.primaryLessonId. */
+  primaryLessonId: string | null;
+  name: string;
+  description?: string;
+  /** Ordered; stored inline as sequences are small. */
+  items: SequenceItem[];
+  /** Preceding items shown as cue. Default 2. */
+  cueWindow: number;
+  /** Optional named chunks; items reference one by index. */
+  chunkLabels?: string[];
+  /** Toggle for label -> value cards. Default off. */
+  generateLabelCards?: boolean;
+  createdAt: number;
+}
+
+/** A single recallable unit within a Sequence. */
+export interface SequenceItem {
+  /** Stable across edits — anchors generated cards. */
+  id: string;
+  /** Markdown; the recallable unit. */
+  value: string;
+  /** Optional display key (e.g. "11" for Sodium). */
+  label?: string;
+  /** Membership of a named chunk. */
+  chunkIndex?: number;
+}
+
+/** A learning unit on the course path: notes plus the cards taught in it. */
+export interface Lesson {
+  id: string;
+  courseId: string;
+  name: string;
+  description?: string;
+  /** Position on the path. */
+  orderIndex: number;
+  createdAt: number;
+  // Optional lesson-level exam-date override (highest scheduling priority).
+  examDate?: number;
+  timeZone?: string;
+  /** Explicit release-date override; only meaningful under `linear` unlock mode. */
+  releaseDate?: number;
+  /**
+   * Set once the unlock condition is met under `semi-linear`; a one-way ratchet
+   * that is never cleared, so a later-materialising practice node cannot re-lock
+   * already-available content. Undefined means not yet unlocked.
+   */
+  unlockedAt?: number;
+  /**
+   * Optional, off-path enrichment. Extension lessons are always unlocked, never
+   * counted in core progress, and excluded from the study pool until opted into.
+   */
+  isExtension: boolean;
+  /** Legacy import field. Arc 4 lesson sessions always teach unexposed members. */
+  sessionFilter?: 'new' | 'due' | 'mixed';
+}
+
+/** A rich Markdown content block within a Lesson. */
+export interface Note {
+  id: string;
+  lessonId: string;
+  name: string;
+  /** Rich Markdown source, rendered with the same engine as cards. */
+  content: string;
+  orderIndex: number;
+  createdAt: number;
+}
+
+/** Links a card into an additional lesson. Governs display/grouping only, never FSRS eligibility. */
+export interface LessonCardLink {
+  id: string;
+  lessonId: string;
+  cardId: string;
+  createdAt: number;
+}
+
+/** Records that a card has been successfully introduced in one specific lesson. */
+export interface LessonCardExposure {
+  lessonId: string;
+  cardId: string;
+  taughtAt: number;
+}
+
+/** Explicit completion for a lesson with no cards to expose. */
+export interface LessonCompletion {
+  lessonId: string;
+  completedAt: number;
+}
+
+/**
+ * Device-local highlight or annotation anchored to a Note's Markdown source.
+ * This table is deliberately absent from every portability format.
+ */
+export interface NoteAnnotation {
+  id: string;
+  noteId: string;
+  startOffset: number;
+  endOffset: number;
+  selectedText: string;
+  body?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * A practice node on the path. `auto` nodes are positioned dynamically at render
+ * time and never persist a position; `manual` nodes are teacher-authored.
+ */
+export interface PracticeNode {
+  id: string;
+  courseId: string;
+  type: 'auto' | 'manual';
+  /** Only meaningful for `manual`; `auto` nodes are positioned at render time. */
+  position?: number;
+  name: string;
+  /** Which lessons' cards to include; undefined = the whole course. */
+  lessonIds?: string[];
+  filters?: CardFilter[];
+  /** Limit the session to N cards. */
+  cardCount?: number;
+  randomize?: boolean;
+  createdAt: number;
+}
+
+/** Persisted progress for one stable practice path node and its current card scope. */
+export interface PracticeMilestone {
+  /** The PathNode id: authored node id for manual nodes, deterministic id for auto nodes. */
+  nodeKey: string;
+  courseId: string;
+  /** Caller-derived fingerprint/version of the node's effective card scope. */
+  scopeVersion: string;
+  /** Last measured secured-card count for the current scope. */
+  securedCardCount: number;
+  totalCardCount: number;
+  updatedAt: number;
+  /** Set once this scope's practice objective is reached; retained if readiness later decays. */
+  completedAt?: number;
+}
+
 export interface Card {
   id: string;
   deckId: string;
+  /**
+   * The Course this card belongs to. Populated during the course migration and
+   * for cards created through the course UI; null/undefined for legacy cards that
+   * have only a deck. The FSRS engine schedules a course's cards by this id.
+   */
+  courseId?: string | null;
+  /**
+   * The Lesson where this card was created. Null when the card is unassigned
+   * (e.g. created in the question bank). Drives exam-date resolution overrides.
+   */
+  primaryLessonId?: string | null;
   type: CardType;
   /** Markdown source. For cloze cards this contains the {{cN::...}} notation. */
   front: string;
@@ -190,6 +450,8 @@ export interface Card {
   buriedUntil?: number | null;
   /** Id of the reverse card in a basic_reversed pair. Only set when type is 'basic_reversed'. */
   reverseCardId?: string | null;
+  /** Id of the SequenceItem this card was generated from. Present iff the card was generated from a sequence item. */
+  sequenceItemId?: string;
   /** Epoch ms of the next scheduled review (= ts-fsrs `due`). Null until first review. */
   due: number | null;
   /** Days ts-fsrs last scheduled this card for (= ts-fsrs `scheduled_days`). */
@@ -205,12 +467,16 @@ export interface SessionHistoryEntry {
   id?: number;
   timestamp: number;
   deckId: string;
+  /** The Course this entry belongs to, once sessions are course-scoped. */
+  courseId?: string;
   averagePredictedRetrievability: number;
 }
 
 /** Per-deck calibration profile for the invisible rating engine (Welford online stats). */
 export interface UserPerformance {
   deckId: string;
+  /** The Course this profile belongs to, once calibration is course-scoped. */
+  courseId?: string;
   runningMeanResponseTime: number;
   /** Running standard deviation (derived from the M2 aggregate). */
   runningStdDevResponseTime: number;
@@ -276,4 +542,16 @@ export interface BackupFile {
   sessionHistory: SessionHistoryEntry[];
   userPerformance: UserPerformance[];
   folders?: Folder[];
+  // Course architecture tables. Optional so older backups still import cleanly.
+  courses?: Course[];
+  lessons?: Lesson[];
+  notes?: Note[];
+  lessonCards?: LessonCardLink[];
+  lessonCardExposures?: LessonCardExposure[];
+  lessonCompletions?: LessonCompletion[];
+  practiceNodes?: PracticeNode[];
+  practiceMilestones?: PracticeMilestone[];
+  courseExamDates?: CourseExamDate[];
+  // Overlapping-cloze sequences. Optional so older backups still import cleanly.
+  sequences?: Sequence[];
 }

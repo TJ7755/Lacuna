@@ -1,21 +1,24 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
-import { createHashRouter, RouterProvider } from 'react-router-dom';
+import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './state/ThemeContext';
 import { AccentProvider } from './state/AccentContext';
 import { FontScaleProvider } from './state/FontScaleContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { AppShell } from './components/layout/AppShell';
+import { LandingTransition } from './components/layout/LandingTransition';
 import { Dashboard } from './pages/Dashboard';
 import { Settings } from './pages/Settings';
 import { SearchPage } from './pages/SearchPage';
 import { SharePage } from './pages/SharePage';
 import { Analytics } from './pages/Analytics';
 import { HelpPage } from './pages/HelpPage';
-import { seedIfFirstRun } from './db/seed';
+import { StudyToday } from './pages/StudyToday';
+import { isFirstRun, seedIfFirstRun } from './db/seed';
 import { autoBackupIfStale } from './db/backups';
 import { ensurePreMigrationSnapshot, openDatabase } from './db/schema';
+import { stampMissingLessonViewModes } from './db/repository';
 import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
@@ -30,10 +33,32 @@ function RouterWithQuotaWarning() {
 // chunks so the dashboard loads quickly. Settings is intentionally eager: it is tiny
 // and pulls no heavy dependencies, so lazy-loading it only added a needless chunk
 // round-trip and Suspense flash when switching tabs.
-const DeckView = lazy(() => import('./pages/DeckView').then((m) => ({ default: m.DeckView })));
 const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default: m.LearnMode })));
-const CardEditor = lazy(() => import('./pages/CardEditor').then((m) => ({ default: m.CardEditor })));
-const DeckSettings = lazy(() => import('./pages/DeckSettings').then((m) => ({ default: m.DeckSettings })));
+const CourseStudyFlow = lazy(() =>
+  import('./pages/CourseStudyFlow').then((m) => ({ default: m.CourseStudyFlow })),
+);
+const CardEditor = lazy(() =>
+  import('./pages/CardEditor').then((m) => ({ default: m.CardEditor })),
+);
+const SequenceEditor = lazy(() =>
+  import('./pages/SequenceEditor').then((m) => ({ default: m.SequenceEditor })),
+);
+const CourseSettings = lazy(() =>
+  import('./pages/CourseSettings').then((m) => ({ default: m.CourseSettings })),
+);
+const CourseAnalytics = lazy(() =>
+  import('./pages/CourseAnalytics').then((m) => ({ default: m.CourseAnalytics })),
+);
+const CoursePath = lazy(() =>
+  import('./pages/CoursePath').then((m) => ({ default: m.CoursePath })),
+);
+const LessonView = lazy(() =>
+  import('./pages/LessonView').then((m) => ({ default: m.LessonView })),
+);
+const QuestionBank = lazy(() =>
+  import('./pages/QuestionBank').then((m) => ({ default: m.QuestionBank })),
+);
+const Welcome = lazy(() => import('./pages/Welcome').then((m) => ({ default: m.Welcome })));
 
 function RouteFallback() {
   return (
@@ -57,27 +82,40 @@ const router = createHashRouter([
       { index: true, element: <Dashboard /> },
       {
         path: 'deck/:deckId',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <DeckView />
-          </Suspense>
-        ),
+        element: <Navigate to="/" replace />,
       },
       { path: 'settings', element: <Settings /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'share', element: <SharePage /> },
       { path: 'analytics', element: <Analytics /> },
       { path: 'help', element: <HelpPage /> },
+      { path: 'study', element: <StudyToday /> },
       {
-        path: 'deck/:deckId/settings',
+        path: 'course/:courseId',
         element: (
           <Suspense fallback={<RouteFallback />}>
-            <DeckSettings />
+            <CoursePath />
           </Suspense>
         ),
       },
       {
-        path: 'deck/:deckId/cards/new',
+        path: 'course/:courseId/lesson/:lessonId',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <LessonView />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/bank',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <QuestionBank />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/cards/new',
         element: (
           <Suspense fallback={<RouteFallback />}>
             <CardEditor />
@@ -85,18 +123,98 @@ const router = createHashRouter([
         ),
       },
       {
-        path: 'deck/:deckId/cards/:cardId/edit',
+        path: 'course/:courseId/cards/:cardId/edit',
         element: (
           <Suspense fallback={<RouteFallback />}>
             <CardEditor />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/settings',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <CourseSettings />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/analytics',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <CourseAnalytics />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/lesson/:lessonId/cards/new',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <CardEditor />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/lesson/:lessonId/cards/:cardId/edit',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <CardEditor />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/sequence/new',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <SequenceEditor />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/sequence/:sequenceId/edit',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <SequenceEditor />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/lesson/:lessonId/sequence/new',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <SequenceEditor />
           </Suspense>
         ),
       },
     ],
   },
   {
-    // Learn mode is a full-screen, focused experience outside the shell.
-    path: '/deck/:deckId/learn',
+    // The landing page is a full-screen editorial experience outside the shell.
+    path: '/welcome',
+    element: (
+      <ErrorBoundary label="the landing page">
+        <Suspense fallback={<RouteFallback />}>
+          <Welcome />
+        </Suspense>
+      </ErrorBoundary>
+    ),
+  },
+  {
+    // Persistent course conductor. It owns lesson/Practice transitions and
+    // remains mounted until the learner explicitly finishes the study period.
+    path: '/course/:courseId/study',
+    element: (
+      <ErrorBoundary label="the course study flow">
+        <Suspense fallback={<RouteFallback />}>
+          <CourseStudyFlow />
+        </Suspense>
+      </ErrorBoundary>
+    ),
+  },
+  {
+    // Learn mode is a full-screen, focused experience outside the shell. The
+    // global, cross-course "Today" session (no deckId param).
+    path: '/learn',
     element: (
       <ErrorBoundary label="the Learn session">
         <Suspense fallback={<RouteFallback />}>
@@ -106,8 +224,19 @@ const router = createHashRouter([
     ),
   },
   {
-    // The global, cross-deck "Today" session (no deckId param).
-    path: '/learn',
+    // A course Practice session selected by the curricular objective engine.
+    path: '/course/:courseId/learn',
+    element: (
+      <ErrorBoundary label="the Learn session">
+        <Suspense fallback={<RouteFallback />}>
+          <LearnMode />
+        </Suspense>
+      </ErrorBoundary>
+    ),
+  },
+  {
+    // A Simple lesson session for cards not yet exposed in that lesson.
+    path: '/lesson/:lessonId/learn',
     element: (
       <ErrorBoundary label="the Learn session">
         <Suspense fallback={<RouteFallback />}>
@@ -154,6 +283,29 @@ export function App() {
           // restrictions; the app should still initialise without persistence.
         }
 
+        // One-shot migration: the site-wide "open lessons in edit mode" default
+        // (formerly in Settings) has been removed in favour of a per-course
+        // setting only. Stamp any course that predates this with the old
+        // global default's last value so behaviour does not change for
+        // existing users — see stampMissingLessonViewModes and
+        // src/course/lessonViewMode.ts.
+        try {
+          if (!localStorage.getItem('lacuna-lesson-view-mode-migrated')) {
+            await stampMissingLessonViewModes();
+            localStorage.setItem('lacuna-lesson-view-mode-migrated', '1');
+          }
+        } catch {
+          // Best-effort — courses without an explicit mode fall back to
+          // 'study' via resolveLessonViewMode() regardless.
+        }
+
+        // A genuinely fresh browser opens on the landing page; anyone with
+        // existing data goes straight to the app they know. Decided before
+        // seeding, because the seed itself creates a course.
+        if ((await isFirstRun()) && !window.location.hash.startsWith('#/welcome')) {
+          window.location.hash = '#/welcome';
+        }
+
         await seedIfFirstRun();
       } catch (error) {
         if (import.meta.env.DEV) {
@@ -172,10 +324,6 @@ export function App() {
       // Take a daily restore point in the background; never blocks the UI.
       void autoBackupIfStale().catch(() => {
         // Background backup failures are non-fatal.
-      });
-      // Warm the DeckView chunk in the background so the first deck click is instant.
-      void import('./pages/DeckView').catch(() => {
-        // Pre-warm failures are non-fatal; the lazy import still works on first use.
       });
     })();
   }, []);
@@ -235,6 +383,7 @@ export function App() {
           <FontScaleProvider>
             <ToastProvider>
               <RouterWithQuotaWarning />
+              <LandingTransition />
             </ToastProvider>
           </FontScaleProvider>
         </AccentProvider>

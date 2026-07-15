@@ -17,9 +17,6 @@ import type { FsrsParameters } from '../db/types';
 /** FSRS algorithm version persisted alongside each deck's parameters. */
 export const FSRS_VERSION = 6;
 
-/** The 21 default FSRS-6 weights (w0..w20); w20 is the trainable decay. */
-export const DEFAULT_FSRS_W: readonly number[] = default_w;
-
 /** Default target retention used by ts-fsrs when scheduling. */
 export const DEFAULT_REQUEST_RETENTION = default_request_retention;
 
@@ -44,10 +41,6 @@ export function defaultFsrsParameters(): FsrsParameters {
     relearning_steps: [...default_relearning_steps],
   };
 }
-
-/** Difficulty is always clamped to [1, 10]. */
-export const D_MIN = 1.0;
-export const D_MAX = 10.0;
 
 /** Retrievability threshold that counts a card as "secured" on exam day. */
 export const MASTERY_R = 0.9;

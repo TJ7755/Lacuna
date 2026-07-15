@@ -5,11 +5,6 @@ export function getLocalTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-/** Elapsed days between two epoch-millisecond instants (fractional, never negative). */
-export function elapsedDays(fromMs: number, toMs: number): number {
-  return Math.max(toMs - fromMs, 0) / MS_PER_DAY;
-}
-
 /** Days from now until a future instant, clamped at zero (past exams read as "today"). */
 export function daysUntil(targetMs: number, nowMs: number = Date.now()): number {
   return Math.max(targetMs - nowMs, 0) / MS_PER_DAY;
@@ -82,14 +77,30 @@ export function toDateTimeLocalValue(ms: number, timeZone?: string): string {
  * zone (e.g. "2026-06-07T23:59" with "America/New_York" means 23:59 in New York).
  */
 export function fromDateTimeLocalValue(value: string, timeZone?: string): number {
-  const [datePart, timePart] = value.split('T');
-  if (!datePart || !timePart) return Number.NaN;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return Number.NaN;
 
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hours, minutes] = timePart.split(':').slice(0, 2).map(Number);
-
+  const [, yearPart, monthPart, dayPart, hoursPart, minutesPart] = match;
+  const [year, month, day, hours, minutes] = [
+    yearPart,
+    monthPart,
+    dayPart,
+    hoursPart,
+    minutesPart,
+  ].map(Number);
+  const calendarCheck = new Date(Date.UTC(year, month - 1, day));
   if (
-    [year, month, day, hours, minutes].some((n) => Number.isNaN(n))
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31 ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59 ||
+    calendarCheck.getUTCFullYear() !== year ||
+    calendarCheck.getUTCMonth() !== month - 1 ||
+    calendarCheck.getUTCDate() !== day
   ) {
     return Number.NaN;
   }
@@ -97,7 +108,17 @@ export function fromDateTimeLocalValue(value: string, timeZone?: string): number
   if (!timeZone) {
     // Use the constructor with explicit local-time components to avoid
     // day-overflow issues that can happen when mutating an existing Date.
-    return new Date(year, month - 1, day, hours, minutes).getTime();
+    const local = new Date(year, month - 1, day, hours, minutes);
+    if (
+      local.getFullYear() !== year ||
+      local.getMonth() !== month - 1 ||
+      local.getDate() !== day ||
+      local.getHours() !== hours ||
+      local.getMinutes() !== minutes
+    ) {
+      return Number.NaN;
+    }
+    return local.getTime();
   }
 
   // Find the UTC ms such that the target time zone shows the given wall-clock time.
@@ -110,10 +131,16 @@ export function fromDateTimeLocalValue(value: string, timeZone?: string): number
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false,
+      hourCycle: 'h23',
     }).formatToParts(new Date(ms));
     const get = (t: string) => parseInt(parts.find((p) => p.type === t)?.value ?? '0', 10);
-    return { year: get('year'), month: get('month'), day: get('day'), hour: get('hour'), minute: get('minute') };
+    return {
+      year: get('year'),
+      month: get('month'),
+      day: get('day'),
+      hour: get('hour'),
+      minute: get('minute'),
+    };
   };
 
   let candidate = Date.UTC(year, month - 1, day, hours, minutes);
@@ -121,15 +148,27 @@ export function fromDateTimeLocalValue(value: string, timeZone?: string): number
 
   for (let i = 0; i < 5; i++) {
     const c = getComponents(candidate);
-    if (c.year === target.year && c.month === target.month && c.day === target.day && c.hour === target.hour && c.minute === target.minute) {
+    if (
+      c.year === target.year &&
+      c.month === target.month &&
+      c.day === target.day &&
+      c.hour === target.hour &&
+      c.minute === target.minute
+    ) {
       return candidate;
     }
-    const diffMs = (target.hour - c.hour) * 3600000 + (target.minute - c.minute) * 60000;
-    const diffDay = (target.year - c.year) * 365 + (target.month - c.month) * 30 + (target.day - c.day);
-    candidate += diffMs + diffDay * 86400000;
+    const targetAsUtc = Date.UTC(
+      target.year,
+      target.month - 1,
+      target.day,
+      target.hour,
+      target.minute,
+    );
+    const candidateAsUtc = Date.UTC(c.year, c.month - 1, c.day, c.hour, c.minute);
+    candidate += targetAsUtc - candidateAsUtc;
   }
 
-  return candidate;
+  return Number.NaN;
 }
 
 /** Extract year, month (0-based), day, hours, minutes from an epoch instant in a given time zone. */
@@ -163,7 +202,7 @@ export function getComponentsInZone(ms: number, timeZone?: string) {
   };
 }
 
-/** Start-of-day epoch for grouping (midnight in the given time zone). */
+/** Start-of-day epoch for grouping (the first valid instant in the given time zone). */
 export function startOfDay(ms: number, timeZone?: string): number {
   const d = new Date(ms);
   if (timeZone) {
@@ -174,14 +213,52 @@ export function startOfDay(ms: number, timeZone?: string): number {
       timeZone,
     }).formatToParts(d);
     const getPart = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
-    return new Date(getPart('year'), getPart('month') - 1, getPart('day')).getTime();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const year = getPart('year');
+    const month = getPart('month');
+    const day = getPart('day');
+    const midnight = fromDateTimeLocalValue(
+      `${getPart('year')}-${pad(getPart('month'))}-${pad(getPart('day'))}T00:00`,
+      timeZone,
+    );
+    if (Number.isFinite(midnight)) return midnight;
+
+    // Some zones advance their clocks at midnight, so 00:00 is not a valid
+    // wall-clock time. Find the first instant whose zoned date is this day.
+    const dateFormatter = new Intl.DateTimeFormat('en-GB', {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      timeZone,
+    });
+    const targetDay = year * 10_000 + month * 100 + day;
+    const zonedDay = (instant: number) => {
+      const dateParts = dateFormatter.formatToParts(new Date(instant));
+      const part = (type: string) =>
+        Number(dateParts.find((candidate) => candidate.type === type)?.value ?? 0);
+      return part('year') * 10_000 + part('month') * 100 + part('day');
+    };
+
+    const utcDay = Date.UTC(year, month - 1, day);
+    let lower = utcDay - 2 * MS_PER_DAY;
+    let upper = utcDay + 2 * MS_PER_DAY;
+    while (lower < upper) {
+      const middle = Math.floor((lower + upper) / 2);
+      if (zonedDay(middle) < targetDay) lower = middle + 1;
+      else upper = middle;
+    }
+    return lower;
   }
   d.setHours(0, 0, 0, 0);
   return d.getTime();
 }
 
 /** A short relative description of a future exam date, e.g. "in 7 days" or "today". */
-export function relativeExam(targetMs: number, nowMs: number = Date.now(), timeZone?: string): string {
+export function relativeExam(
+  targetMs: number,
+  nowMs: number = Date.now(),
+  timeZone?: string,
+): string {
   const targetDay = startOfDay(targetMs, timeZone);
   const today = startOfDay(nowMs, timeZone);
   const days = Math.round((targetDay - today) / MS_PER_DAY);

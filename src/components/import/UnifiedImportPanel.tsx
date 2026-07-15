@@ -41,7 +41,7 @@ interface UnifiedImportPanelProps {
   /** When true, the panel also handles share-code imports (shows a separate tab). */
   showShareImport?: boolean;
   /** Called after a share-code import completes successfully. */
-  onShareImport?: (decks: number, cards: number) => void | Promise<void>;
+  onShareImport?: (courses: number, cards: number) => void | Promise<void>;
   /** When provided, the panel checks parsed cards against existing cards in this deck and warns about duplicates. */
   deckId?: string;
   /** Called when an Anki .apkg file is parsed and confirmed. */
@@ -299,7 +299,7 @@ export function UnifiedImportPanel({
       setShareError(null);
       setText('');
       if (onShareImport) {
-        await onShareImport(result.decks, result.cards);
+        await onShareImport(result.courses, result.cards);
       }
     } catch (err) {
       setShareError(err instanceof Error ? err.message : 'Import failed.');
@@ -790,14 +790,26 @@ function ShareCodeImport({
           >
             <div className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-5 shadow-sm shadow-accent/5">
               <h3 className="mb-2 font-display text-lg font-medium text-ink">Ready to import</h3>
-              <p className="mb-3 text-sm leading-relaxed text-ink-soft">
-                This code contains{' '}
-                <strong className="text-ink">{pending.summary.deckCount}</strong> deck
-                {pending.summary.deckCount === 1 ? '' : 's'} and{' '}
-                <strong className="text-ink">{pending.summary.cardCount}</strong> card
-                {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
-                {formatDate(pending.summary.exportedAt)}.
-              </p>
+              {pending.summary.kind === 'course' ? (
+                <p className="mb-3 text-sm leading-relaxed text-ink-soft">
+                  <strong className="text-ink">{pending.summary.courseName}</strong> —{' '}
+                  <strong className="text-ink">{pending.summary.lessonCount}</strong> lesson
+                  {pending.summary.lessonCount === 1 ? '' : 's'} and{' '}
+                  <strong className="text-ink">{pending.summary.cardCount}</strong> card
+                  {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
+                  {formatDate(pending.summary.exportedAt)}.
+                </p>
+              ) : (
+                <p className="mb-3 text-sm leading-relaxed text-ink-soft">
+                  This code contains{' '}
+                  <strong className="text-ink">{pending.summary.deckCount}</strong> deck
+                  {pending.summary.deckCount === 1 ? '' : 's'} and{' '}
+                  <strong className="text-ink">{pending.summary.cardCount}</strong> card
+                  {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
+                  {formatDate(pending.summary.exportedAt)}. It will be added as a single
+                  imported course.
+                </p>
+              )}
               {pending.summary.deckNames.length > 0 && (
                 <ul className="mb-4 flex flex-wrap gap-1.5">
                   {pending.summary.deckNames.map((name, i) => (
@@ -821,7 +833,7 @@ function ShareCodeImport({
                   Cancel
                 </Button>
                 <Button variant="primary" onClick={() => void onImport()} disabled={importing}>
-                  {importing ? 'Importing…' : 'Add to my decks'}
+                  {importing ? 'Importing…' : 'Add to my courses'}
                 </Button>
               </div>
             </div>

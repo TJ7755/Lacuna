@@ -3,13 +3,19 @@
 // case- and diacritic-insensitive substring over the card front/back, the deck
 // name, and the card's tags.
 
-import type { Card, Deck } from './types';
+import type { Card, Course, Deck, Lesson, Note } from './types';
 import { isLeech } from '../fsrs/leech';
 
 export interface SearchResult {
   card: Card;
   deck: Deck;
 }
+
+/** A course/lesson/note match, ranked alongside card results in the unified search UI. */
+export type CourseContentHit =
+  | { kind: 'course'; course: Course }
+  | { kind: 'lesson'; lesson: Lesson; course: Course }
+  | { kind: 'note'; note: Note; lesson: Lesson; course: Course };
 
 /** Structured, content-independent filters that turn search into deck management. */
 export type CardFilter = 'due' | 'new' | 'leech' | 'flagged' | 'suspended';
@@ -23,7 +29,7 @@ export interface SearchOptions {
   parseQuery?: boolean;
 }
 
-export interface ParsedQuery {
+interface ParsedQuery {
   text: string;
   tags: string[];
   decks: string[];
@@ -38,7 +44,7 @@ export interface ParsedQuery {
  *   is:due|new|leech|flagged|suspended -> structured filter
  * The remaining text is treated as a plain substring query.
  */
-export function parseAdvancedQuery(query: string): ParsedQuery {
+function parseAdvancedQuery(query: string): ParsedQuery {
   const tags: string[] = [];
   const decks: string[] = [];
   const filters: CardFilter[] = [];
@@ -84,7 +90,7 @@ export function parseAdvancedQuery(query: string): ParsedQuery {
 }
 
 /** Whether a single card satisfies one structured filter. */
-export function matchesFilter(card: Card, filter: CardFilter, now: number): boolean {
+function matchesFilter(card: Card, filter: CardFilter, now: number): boolean {
   switch (filter) {
     case 'due':
       return card.due !== null && card.due <= now;
@@ -100,7 +106,7 @@ export function matchesFilter(card: Card, filter: CardFilter, now: number): bool
 }
 
 /** Lower-case and strip accents so "résumé" matches "resume". */
-export function normalise(text: string): string {
+function normalise(text: string): string {
   return text
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
@@ -166,6 +172,77 @@ export function searchCards(
   // With a query, rank by match quality; filter-only results keep their input order.
   ranked.sort((a, b) => a.score - b.score);
   return ranked.map(({ card, deck }) => ({ card, deck }));
+}
+
+/**
+ * Find courses, lessons and notes matching `query` by name/description/content.
+ * A plain substring search over normalised text, ranked by match position the
+ * same way {@link searchCards} ranks its front/back matches — earlier matches
+ * (and matches in the item's own name over its ancestors') rank first.
+ */
+export function searchCourseContent(
+  query: string,
+  courses: Course[],
+  lessons: Lesson[],
+  notes: Note[],
+): CourseContentHit[] {
+  const q = normalise(query.trim());
+  if (!q) return [];
+
+  const courseById = new Map(courses.map((c) => [c.id, c]));
+  const lessonById = new Map(lessons.map((l) => [l.id, l]));
+  const ranked: { hit: CourseContentHit; score: number }[] = [];
+
+  for (const course of courses) {
+    const nameIdx = normalise(course.name).indexOf(q);
+    const haystack = normalise([course.name, course.description].join('  '));
+    const idx = haystack.indexOf(q);
+    if (idx === -1) continue;
+    const score = nameIdx === -1 ? Number.MAX_SAFE_INTEGER / 2 + idx : nameIdx;
+    ranked.push({ hit: { kind: 'course', course }, score });
+  }
+
+  for (const lesson of lessons) {
+    const course = courseById.get(lesson.courseId);
+    if (!course) continue;
+    const nameIdx = normalise(lesson.name).indexOf(q);
+    const haystack = normalise([lesson.name, lesson.description ?? ''].join('  '));
+    const idx = haystack.indexOf(q);
+    if (idx === -1) continue;
+    const score = nameIdx === -1 ? Number.MAX_SAFE_INTEGER / 2 + idx : nameIdx;
+    ranked.push({ hit: { kind: 'lesson', lesson, course }, score });
+  }
+
+  for (const note of notes) {
+    const lesson = lessonById.get(note.lessonId);
+    if (!lesson) continue;
+    const course = courseById.get(lesson.courseId);
+    if (!course) continue;
+    const nameIdx = normalise(note.name).indexOf(q);
+    const haystack = normalise([note.name, note.content].join('  '));
+    const idx = haystack.indexOf(q);
+    if (idx === -1) continue;
+    const score = nameIdx === -1 ? Number.MAX_SAFE_INTEGER / 2 + idx : nameIdx;
+    ranked.push({ hit: { kind: 'note', note, lesson, course }, score });
+  }
+
+  ranked.sort((a, b) => a.score - b.score);
+  return ranked.map((r) => r.hit);
+}
+
+/**
+ * Where a card result should deep-link to: the lesson-scoped editor when the card
+ * belongs to a lesson, or the course question bank otherwise. Every card carries a
+ * courseId (the schema v9 migration stamps one onto every legacy deck's cards), so
+ * this is the only edit route left.
+ */
+export function cardEditPath(card: Card): string {
+  // Orphaned cards (deckId matched no deck at the v9 migration) keep courseId
+  // undefined; deep-linking to /course/undefined/... would 404, so fall back home.
+  if (!card.courseId) return '/';
+  return card.primaryLessonId
+    ? `/course/${card.courseId}/lesson/${card.primaryLessonId}/cards/${card.id}/edit`
+    : `/course/${card.courseId}/cards/${card.id}/edit`;
 }
 
 /** A short, plain-text preview of a card's markdown for result lists. */

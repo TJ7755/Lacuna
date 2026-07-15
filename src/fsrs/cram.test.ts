@@ -19,7 +19,12 @@ function makeDeck(objective: ExamObjective, examDate: number, overrides: Partial
   };
 }
 
-function card(id: string, stability: number, lastReviewed: number): Card {
+function card(
+  id: string,
+  stability: number,
+  lastReviewed: number,
+  overrides: Partial<Card> = {},
+): Card {
   return {
     id,
     deckId: 'd1',
@@ -37,6 +42,7 @@ function card(id: string, stability: number, lastReviewed: number): Card {
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    ...overrides,
   };
 }
 
@@ -80,5 +86,48 @@ describe('cramOrder prioritises the weakest cards', () => {
     expect(order[0]).toBe('weak');
     expect(order.indexOf('weak')).toBeLessThan(order.indexOf('mid'));
     expect(order.indexOf('weak')).toBeLessThan(order.indexOf('strong'));
+  });
+
+  it('orders cards by their resolved per-card exam horizons', () => {
+    const sameStability = 10;
+    const near = card('near', sameStability, now, { primaryLessonId: 'nearLesson' });
+    const far = card('far', sameStability, now, { primaryLessonId: 'farLesson' });
+    const deck = makeDeck('expectedMarks', examDate);
+    const examDateContext = {
+      courseExamDate: deck.examDate,
+      lessonsById: new Map([
+        [
+          'nearLesson',
+          {
+            id: 'nearLesson',
+            courseId: 'course1',
+            name: 'Near',
+            orderIndex: 0,
+            createdAt: now,
+            isExtension: false,
+            examDate: now + HOUR,
+          },
+        ],
+        [
+          'farLesson',
+          {
+            id: 'farLesson',
+            courseId: 'course1',
+            name: 'Far',
+            orderIndex: 1,
+            createdAt: now,
+            isExtension: false,
+            examDate: now + 30 * MS_PER_DAY,
+          },
+        ],
+      ]),
+      courseExamDates: [],
+    };
+    const oc = makeObjectiveContext(deck, examDateContext);
+
+    expect(cramOrder([near, far], oc, now).map((entry) => entry.id)).toEqual([
+      'far',
+      'near',
+    ]);
   });
 });

@@ -1,13 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { usePomodoro } from '../../hooks/usePomodoro';
+import { useOptionalPomodoroContext, type PomodoroController } from '../../hooks/PomodoroContext';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import {
-  ClockIcon,
-  PlayIcon,
-  PauseIcon,
-  CloseIcon,
-} from '../ui/icons';
+import { ClockIcon, PlayIcon, PauseIcon, CloseIcon } from '../ui/icons';
 
 /* ─── geometry ─── */
 const R = 14;
@@ -38,19 +34,36 @@ const stroke = (p: string) => {
   return 'stroke-ink-faint';
 };
 
-/* ─── component ─── */
 export function PomodoroTimer() {
+  const sharedController = useOptionalPomodoroContext();
+  return sharedController ? (
+    <PomodoroTimerView controller={sharedController} />
+  ) : (
+    <StandalonePomodoroTimer />
+  );
+}
+
+function StandalonePomodoroTimer() {
+  const controller = usePomodoro();
+  return <PomodoroTimerView controller={controller} />;
+}
+
+/* ─── component ─── */
+function PomodoroTimerView({ controller: p }: { controller: PomodoroController }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const p = usePomodoro();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   /* close on Esc or outside click */
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    const onPtr = (e: PointerEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    const onPtr = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
     window.addEventListener('keydown', onKey);
     window.addEventListener('pointerdown', onPtr);
     return () => {
@@ -69,6 +82,9 @@ export function PomodoroTimer() {
     pause,
     resume,
     reset,
+    breakPending,
+    acceptBreak,
+    deferBreak,
   } = p;
 
   const active = phase !== 'idle';
@@ -80,10 +96,16 @@ export function PomodoroTimer() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title={active ? `${label(phase)} · ${formattedTime}` : 'Pomodoro timer'}
-        className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+        title={
+          breakPending
+            ? 'Break ready'
+            : active
+              ? `${label(phase)} · ${formattedTime}`
+              : 'Pomodoro timer'
+        }
+        className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
       >
-        <svg width="36" height="36" viewBox="0 0 36 36" className="absolute inset-0">
+        <svg width="36" height="36" viewBox="0 0 36 36" className="absolute inset-0 h-full w-full">
           {/* track */}
           <circle
             cx="18"
@@ -157,7 +179,7 @@ export function PomodoroTimer() {
               {/* header */}
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-xs font-medium uppercase tracking-[0.12em] text-ink-faint">
-                  {label(phase)}
+                  {breakPending ? 'Break ready' : label(phase)}
                 </span>
                 {sessionsCompleted > 0 && (
                   <span className="text-[10px] tabular text-ink-faint">
@@ -220,7 +242,25 @@ export function PomodoroTimer() {
 
               {/* controls */}
               <div className="flex justify-center gap-2">
-                {!active && (
+                {breakPending ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={acceptBreak}
+                      className="flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90"
+                    >
+                      <PauseIcon width={14} height={14} />
+                      Take break
+                    </button>
+                    <button
+                      type="button"
+                      onClick={deferBreak}
+                      className="flex h-8 items-center rounded-lg border border-line px-3 text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+                    >
+                      Not now
+                    </button>
+                  </>
+                ) : !active ? (
                   <button
                     type="button"
                     onClick={startFocus}
@@ -229,8 +269,7 @@ export function PomodoroTimer() {
                     <PlayIcon width={14} height={14} />
                     Start
                   </button>
-                )}
-                {active && (
+                ) : (
                   <>
                     {isRunning ? (
                       <button

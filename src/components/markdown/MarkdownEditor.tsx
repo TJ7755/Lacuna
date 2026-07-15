@@ -13,6 +13,12 @@ interface MarkdownEditorProps {
   placeholder?: string;
   /** Show a Cloze button (only meaningful for cloze cards). */
   allowCloze?: boolean;
+  /**
+   * Opt-in to embed-aware toolbar actions and live-preview. Enables "Collapsible"
+   * and "Video" toolbar buttons, and passes `allowEmbeds` to the preview pane.
+   * Default false leaves card editors unchanged.
+   */
+  allowEmbeds?: boolean;
   minRows?: number;
   label?: string;
   /** Cloze preview mode for the live preview pane. */
@@ -26,6 +32,12 @@ interface MarkdownEditorProps {
   onTabForward?: () => void;
   /** Shift+Tab inside the textarea; preventDefault is applied for you. */
   onTabBackward?: () => void;
+  /** Ctrl/Cmd+Enter inside the textarea; preventDefault is applied for you. */
+  onModEnter?: () => void;
+  /** Accessible name for editors whose surrounding visual label is not a native label. */
+  ariaLabel?: string;
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
 }
 
 type ToolbarAction = {
@@ -71,6 +83,7 @@ export function MarkdownEditor({
   onChange,
   placeholder,
   allowCloze = false,
+  allowEmbeds = false,
   minRows = 6,
   label,
   clozePreview = 'none',
@@ -79,6 +92,10 @@ export function MarkdownEditor({
   inputRef,
   onTabForward,
   onTabBackward,
+  onModEnter,
+  ariaLabel,
+  ariaInvalid,
+  ariaDescribedBy,
 }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -100,26 +117,35 @@ export function MarkdownEditor({
     selStart: number;
     selEnd: number;
   }
-  const historyRef = useRef<HistoryEntry[]>([{ text: value, selStart: 0, selEnd: 0 }]);
+  // Captured once on first render (lazy ref init) so the mount-only effect below can seed
+  // history without depending on the `value` prop, which changes on every keystroke.
+  const initialValueRef = useRef(value);
+  const historyRef = useRef<HistoryEntry[]>([
+    { text: initialValueRef.current, selStart: 0, selEnd: 0 },
+  ]);
   const historyIndexRef = useRef(0);
   const historyTimerRef = useRef<number | null>(null);
-  const lastPushedTextRef = useRef(value);
-  const currentValueRef = useRef(value);
+  const lastPushedTextRef = useRef(initialValueRef.current);
+  const currentValueRef = useRef(initialValueRef.current);
 
   useEffect(() => {
     currentValueRef.current = value;
   }, [value]);
 
   useEffect(() => {
-    // Reset history when the editor is mounted for a new card.
-    historyRef.current = [{ text: value, selStart: 0, selEnd: 0 }];
+    // Reset history when the editor is mounted for a new card. Uses the value captured at
+    // first render (initialValueRef), not the live `value` prop, so this genuinely only
+    // needs to run on mount — no eslint suppression required. Subsequent changes are
+    // handled by pushHistory/scheduleHistoryPush.
+    const initial = initialValueRef.current;
+    historyRef.current = [{ text: initial, selStart: 0, selEnd: 0 }];
     historyIndexRef.current = 0;
-    lastPushedTextRef.current = value;
-    currentValueRef.current = value;
+    lastPushedTextRef.current = initial;
+    currentValueRef.current = initial;
     return () => {
       cancelHistoryTimer();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   function pushHistory() {
     const el = textareaRef.current;
@@ -250,6 +276,36 @@ export function MarkdownEditor({
     },
   };
 
+  // Embed actions — only rendered when allowEmbeds is true.
+  const embedActions: ToolbarAction[] = [
+    {
+      label: 'Collapsible',
+      title: 'Collapsible section',
+      apply: (s) => {
+        const inner = s.selected || 'content';
+        const needsBreak = s.before.length > 0 && !s.before.endsWith('\n');
+        const lead = needsBreak ? '\n' : '';
+        const snippet = `<details><summary>Title</summary>\n\n${inner}\n\n</details>`;
+        const text = s.before + lead + snippet + s.after;
+        const selStart =
+          s.before.length + lead.length + '<details><summary>Title</summary>\n\n'.length;
+        return { text, selStart, selEnd: selStart + inner.length };
+      },
+    },
+    {
+      label: 'Video',
+      title: 'Embed video (YouTube or Vimeo URL on its own line)',
+      apply: (s) => {
+        const placeholder = 'https://www.youtube.com/watch?v=';
+        const needsBreak = s.before.length > 0 && !s.before.endsWith('\n');
+        const lead = needsBreak ? '\n' : '';
+        const text = s.before + lead + placeholder + s.after;
+        const selStart = s.before.length + lead.length;
+        return { text, selStart, selEnd: selStart + placeholder.length };
+      },
+    },
+  ];
+
   async function insertImageFiles(files: FileList | File[]) {
     const images = Array.from(files).filter((f) => f.type.startsWith('image/'));
     if (images.length === 0) return;
@@ -290,7 +346,7 @@ export function MarkdownEditor({
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center gap-1 overflow-x-auto border-b border-line px-2 py-1.5 scrollbar-hide">
+      <div className="flex flex-wrap items-center gap-1 border-b border-line px-2 py-1.5">
         {actions.map((a) => (
           <button
             key={a.title}
@@ -312,6 +368,18 @@ export function MarkdownEditor({
             {clozeAction.label}
           </button>
         )}
+        {allowEmbeds &&
+          embedActions.map((a) => (
+            <button
+              key={a.title}
+              type="button"
+              title={a.title}
+              onClick={() => runAction(a)}
+              className="min-h-11 min-w-11 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+            >
+              {a.label}
+            </button>
+          ))}
         <button
           type="button"
           title="Insert image"
@@ -356,6 +424,11 @@ export function MarkdownEditor({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {
+              if (onModEnter && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                onModEnter();
+                return;
+              }
               if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
                 if (e.shiftKey) {
@@ -389,6 +462,10 @@ export function MarkdownEditor({
             }}
             onDragLeave={() => setDragOver(false)}
             placeholder={placeholder}
+            aria-keyshortcuts={onModEnter ? 'Control+Enter Meta+Enter' : undefined}
+            aria-label={ariaLabel}
+            aria-invalid={ariaInvalid || undefined}
+            aria-describedby={ariaDescribedBy}
             rows={rows}
             spellCheck
             className={cn(
@@ -413,7 +490,7 @@ export function MarkdownEditor({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.12 * m }}
               >
-                <MarkdownView source={value} clozeMode={clozePreview} />
+                <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
               </motion.div>
             ) : (
               <motion.p

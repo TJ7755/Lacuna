@@ -1,15 +1,26 @@
-# Lacuna — Specification (v0.0.3)
+# Lacuna — Specification (v0.1.0)
 
-Lacuna is a local-only, exam-driven spaced-revision application built on FSRS-6. Every card
-in a deck is scheduled to peak in recall on the deck's exam day, and a single "objective"
-setting binds the scheduler and the progress bar to the same goal so they can never disagree.
-All data lives on-device (IndexedDB); there is no server, no account and no network
-dependency. The application runs as a web SPA and packages as an Electron desktop app.
+Lacuna is a local-only, exam-driven spaced-revision application built on FSRS-6. Material is
+organised into **courses**, each made of an ordered path of **lessons** holding **notes** and
+**cards**. Every card is scheduled to peak in recall on its course's exam day, and a single
+"objective" setting binds the scheduler and the progress bar to the same goal so they can
+never disagree. All data lives on-device (IndexedDB); there is no server, no account and no
+network dependency. The application runs as a web SPA and packages as an Electron desktop app.
 
-**Version 0.0.3** adds a Simple learn mode (algorithm-free YES/NO study loop), formal card
-types (Basic, Reversed, Typing-answer), and further touch-first polish (configurable gestures,
-auto font scaling, cleaned-up focus rings). It also fixes share code importing, folder
-deletion, and a number of UI/UX issues (see §20).
+**Course architecture.** The product was originally built around a flatter `Folder -> Deck ->
+Card` model. A staged migration (tracked in `next_plan.md`, Arc 0) introduced `Course ->
+Lesson -> Note + Card` alongside it, then removed every Deck/Folder-facing UI surface once the
+new model covered the same ground. The Deck/Folder tables and the deck-shaped scheduling
+primitives (`Deck`, `SchedulerConfig`) still exist in storage — a lesson is, mechanically, a
+hidden single-lesson deck under a course, which is how the FSRS engine, cooldown, and objective
+modules keep working unchanged — but no route, page or sidebar entry exposes a deck or folder
+directly any more. Where this document says "deck" it means that internal backing structure,
+not a user-facing concept.
+
+**Version 0.1.0** completes the Course Architecture Plan (Arc 0): the product is organised
+around **courses, lessons, notes and cards** end to end, with no user-facing deck or folder
+surfaces. v0.0.3 added Simple learn mode, formal card types and touch-first polish (see §20);
+that work ships inside 0.1.0 on this branch.
 
 British English throughout. No emojis anywhere in the product or its copy.
 
@@ -64,8 +75,9 @@ British English throughout. No emojis anywhere in the product or its copy.
   and `happy-dom` for UI component and hook tests.
 
 Scripts: `dev`/`start` (Vite), `build` (`tsc -b && vite build`), `typecheck`, `test`,
-`test:watch`, `lint`. Heavy routes (Deck view, Learn, Card editor, Deck settings) are
-lazy-loaded as separate chunks; the dashboard, settings and search are eager.
+`test:watch`, `lint`. Heavy routes (Course path, Lesson view, Question bank, Learn, Card
+editor, Course settings, Course analytics) are lazy-loaded as separate chunks; the dashboard,
+settings, search, share, global analytics and help pages are eager.
 
 ---
 
@@ -110,7 +122,8 @@ Shared conventions:
 - Standard easing curve `[0.16, 1, 0.3, 1]` (a soft "ease-out-quint") for entrances.
 - Springs for tactile controls and shared-layout indicators.
 - Staggered list/grid reveals with a small per-item delay, capped so long lists do not crawl.
-- `LayoutGroup` coordinates reflow animations across sibling elements (e.g. the deck grid).
+- `LayoutGroup` coordinates reflow animations across sibling elements (e.g. Settings' and
+  Help's active-tab underline).
 
 Specific motion (current state of the app):
 - **Page transitions:** the routed page fades and lifts in (`y: 12 → 0`) as the previous one
@@ -123,25 +136,29 @@ Specific motion (current state of the app):
 - **Sidebar:** width animates on collapse/expand (spring); the active-item marker is a
   shared-layout element (`layoutId="nav-active"`) that slides between items; items nudge
   right slightly on hover. A collapsible drawer on mobile (§4.1).
-- **Deck cards:** staggered entrance, plus a `whileHover` lift (`y: -4`) with a smooth
-  shadow/border transition. In touch mode, each card supports horizontal **swipe gestures**
-  (right = study, left = archive) with a directional glow that follows the finger and a
-  springy snap-back on release.
+- **Course cards** (dashboard grid): staggered entrance, plus a `whileHover` lift (`y: -4`)
+  with a smooth shadow/border transition; a `whileTap` scale-down confirms the press. They do
+  not carry swipe gestures — that affordance lives on card-list rows instead (below).
+- **Card list rows** (`CardList`): in touch mode, each row supports a horizontal **swipe
+  gesture** — drag left past a threshold to spring open a per-card action tray, drag right
+  to quick-toggle the flag — backed by a `useSpring`-driven `useMotionValue` with a springy
+  snap-back below the threshold.
 - **Learn answer feedback:** the instant a card is graded, a soft full-width glow rises from
   the foot of the screen — green for correct, muted red for incorrect — for ~0.5 s. It is
   purely decorative (`pointer-events-none`), fired independently of the async write so the
   reward always lands on the keypress, and never delays the next card. A radial ring
   pulses outward from centre as a secondary cue.
 - **Flip card:** the question/answer faces swap with a 3-D `rotateX` flip (perspective 1600).
-  Swipe gestures (right = Yes, left = No) share the same spring physics as the deck card
+  Swipe gestures (right = Yes, left = No) share the same spring physics as the card-list row
   swipes; the flip card is the only place in the app that combines rotation with translation.
 - **Touch bottom sheets:** in touch mode, the Learn grading controls live in a fixed
   bottom sheet that springs in and out, with a drag handle that closes the sheet when
   dragged down past a threshold or flicked quickly. The card-actions menu is a similar
   bottom sheet rather than a dropdown.
 - **Session report:** the whole panel rises in; reaching the goal springs in a tick badge and fires a confetti burst; the four stat tiles reveal in sequence with count-up numbers; the progress bar animates from before to after with a delta badge; a grade-distribution bar chart shows the rating breakdown.
-- **Tabs / chips:** the active deck-view tab underline is a shared-layout element
-  (`layoutId="deck-tab"`).
+- **Tabs / chips:** active-tab underlines are shared-layout elements, e.g. Settings'
+  (`layoutId="activePill"`/`"activeBar"`) and Help's (`layoutId="helpActivePill"`/
+  `"helpActiveBar"`).
 - **Toasts:** slide in from the right with a slight scale.
 - **Dashboard streak:** the flame icon gently pulses/rotates while a streak is alight; the
   streak number springs when it changes.
@@ -165,12 +182,13 @@ keyboard shortcuts on keyboard).
 - **Active states.** Touch-interactive elements carry an explicit `active:bg-ink/10` or
   variant-specific `active` colour so the press is visible without relying on a `:hover`
   that never fires on touch.
-- **Swipe gestures** (touch mode only, gated on the resolved input mode). The deck cards
-  swipe right to study and left to archive; the Learn flip card swipes right for Yes and
-  left for No. Swipes are springy (a `useSpring`-backed `useMotionValue`), with a
-  directional glow that follows the finger, a threshold past which the action commits, and
-  a snap-back below the threshold. The first successful Learn swipe hides the persistent
-  swipe hints via a `localStorage` flag (`lacuna.learnHints`).
+- **Swipe gestures** (touch mode only, gated on the resolved input mode). Card-list rows
+  (`CardList`) drag left past a threshold to open a per-card action tray and right to
+  quick-toggle the flag; the Learn flip card swipes right for Yes and left for No. Swipes
+  are springy (a `useSpring`-backed `useMotionValue`), with a directional glow that follows
+  the finger on the flip card, a threshold past which the action commits, and a snap-back
+  below the threshold. The first successful Learn swipe hides the persistent swipe hints
+  via a `localStorage` flag (`lacuna.learnHints`).
 - **Bottom sheets** (touch mode). The Learn grading controls and the per-card actions menu
   render as bottom sheets with a drag handle, a scrim backdrop and a focus-trapped dialog
   role. On keyboard, the same actions live in a dropdown menu.
@@ -187,13 +205,13 @@ keyboard shortcuts on keyboard).
 
 ### 3.5 Layout grid & surfaces
 
-- Content is centred in a max-width column per page (dashboard `max-w-6xl`, deck `max-w-5xl`,
-  editor `max-w-4xl`, learn/report/search `max-w-3xl`, settings/deck-settings `max-w-2xl`)
-  with responsive horizontal padding (`px-6 md:px-10`).
+- Content is centred in a max-width column per page (dashboard `max-w-6xl`, course path/course
+  settings `max-w-2xl`, lesson view `max-w-3xl`, editor `max-w-4xl`, learn/report/search
+  `max-w-3xl`) with responsive horizontal padding (`px-6 md:px-10`).
 - Cards/sections: `rounded-2xl border border-line bg-surface p-5/6`, soft black shadows on
   hover.
 - Pills/chips: `rounded-full border` with accent-soft active state.
-- Sticky action bars (editor, deck settings) pin to the bottom of the content column; the
+- Sticky action bars (editor, course settings) pin to the bottom of the content column; the
   editor's bar fades up from the paper via a gradient so it never sits on a hard slab.
 
 ---
@@ -216,9 +234,11 @@ outside the shell. The shell is a flex row:
 | > Study..|                                            |
 | > Search |                                            |
 | > Share  |                                            |
+| > Analyt.|                                            |
 | > Setting|                                            |
+| > Help   |                                            |
 |          |                                            |
-| DECKS    |                                            |
+| COURSES  |                                            |
 | - Organ..|                                            |
 | - French |                                            |
 |          |                                            |
@@ -227,13 +247,13 @@ outside the shell. The shell is a flex row:
 ```
 
 - **Sidebar** (`Sidebar`): brand; primary nav (Dashboard, Study today, Search, Share,
-  Settings); a live deck list (each with an accent dot when active, an optional due-count
-  badge, and an "Archived" chip on archived decks); a **streak badge** on the Study today
-  item that springs in when a streak is active; footer with a theme toggle and a collapse
-  toggle. Collapsing animates the width to 72 px and hides labels. Active state is a
-  sliding shared-layout marker. State (`collapsed`), compact mode, and whether to show
-  archived decks / due counts are all persisted to `localStorage` via
-  `useSidebarSettings`.
+  Analytics, Settings, Help — each independently hideable); a live course list (each with an
+  accent dot when active and an optional due-count badge); a **streak badge** on the Study
+  today item that springs in when a streak is active; footer with a theme toggle and a
+  collapse toggle. Collapsing animates the width to 72 px and hides labels. Active state is a
+  sliding shared-layout marker. State (`collapsed`), compact mode, due-count visibility, and
+  per-nav-item visibility are all persisted to `localStorage` via `useSidebarSettings`
+  (configured in Settings → Sidebar) and take effect immediately.
 - **Mobile:** the sidebar becomes a drawer opened from a top bar burger; the scrim closes
   it; it auto-closes on navigation. On desktop the sidebar is always visible; on touch
   viewports the burger is the only way to reach it.
@@ -247,16 +267,28 @@ outside the shell. The shell is a flex row:
 
 | Path | Screen | In shell? | Loading |
 |------|--------|-----------|---------|
-| `/` | Dashboard | yes | eager |
-| `/deck/:deckId` | Deck view (Cards / Analytics) | yes | lazy |
-| `/deck/:deckId/settings` | Deck settings | yes | lazy |
-| `/deck/:deckId/cards/new` | Card editor (create) | yes | lazy |
-| `/deck/:deckId/cards/:cardId/edit` | Card editor (edit) | yes | lazy |
+| `/` | Dashboard (course grid) | yes | eager |
+| `/course/:courseId` | Course path (or the single lesson directly, if the course has only one) | yes | lazy |
+| `/course/:courseId/lesson/:lessonId` | Lesson view (notes / cards) | yes | lazy |
+| `/course/:courseId/bank` | Question bank (all cards in the course) | yes | lazy |
+| `/course/:courseId/settings` | Course settings | yes | lazy |
+| `/course/:courseId/analytics` | Course analytics | yes | lazy |
+| `/course/:courseId/cards/new` | Card editor (create, course-scoped) | yes | lazy |
+| `/course/:courseId/cards/:cardId/edit` | Card editor (edit, course-scoped) | yes | lazy |
+| `/course/:courseId/lesson/:lessonId/cards/new` | Card editor (create, lesson-scoped) | yes | lazy |
+| `/course/:courseId/lesson/:lessonId/cards/:cardId/edit` | Card editor (edit, lesson-scoped) | yes | lazy |
 | `/settings` | Settings | yes | eager |
 | `/search` | Search | yes | eager |
 | `/share` | Share (export/import via codes) | yes | eager |
-| `/deck/:deckId/learn` | Learn session (single deck) | **no** | lazy |
-| `/learn` | Learn session (all decks, "Today") | **no** | lazy |
+| `/analytics` | Global (cross-course) analytics | yes | eager |
+| `/help` | Help | yes | eager |
+| `/course/:courseId/learn` | Learn session (practice over every due card in the course) | **no** | lazy |
+| `/lesson/:lessonId/learn` | Learn session (new cards for one lesson) | **no** | lazy |
+| `/learn` | Learn session (every course, "Today") | **no** | lazy |
+| `/deck/:deckId` | Redirects to `/` | yes | eager |
+
+There is no user-facing route for a bare deck or folder; `/deck/:deckId` is kept only as a
+redirect so old bookmarks and share-code links do not dead-end.
 
 ### 4.3 Screen wireframes
 
@@ -264,46 +296,150 @@ outside the shell. The shell is a flex row:
 
 ```
 Your revision
-Decks                                   [ Select ]  [ + New deck ]
+Courses                                              [ + New course ]
 
 + streak ------+ reviewed today + next 7 days mini-spark ----+
 +--------------+---------------+--------------------------------+
 
-+ Study today -----------------------------  [> Study all ] +
-| N cards ready across all your decks...                       |
++ N due across all courses --------------------  [> Study all ] +
 +------------------------------------------------------------+
 
-+ Deck card + + Deck card + + Deck card +
++ Course card + + Course card + + Course card +
 | Exam in 6d| | ...        | | ...        |  (responsive grid)
 | Name      | |            | |            |
-| 42 cards  | |            | |            |
+| N lessons | |            | |            |
 | bar 68%   | |            | |            |
 +-----------+ +------------+ +------------+
 ```
 
-Header with title and New-deck / Select buttons; a motivation strip (`StudySignals`); a
-global "Study today" call-to-action when any card is due; an inline new-deck composer
-(blank or import, animated open/close); a selection action bar in select mode (bulk delete
-with undo, cross-deck merge with target chooser, move-to-folder); folder support (nested
-collapsible groups in the sidebar and the dashboard grid); an "Archived" group at the
-bottom; and a review-activity heatmap for anyone arriving from Anki. Empty state invites
-creating the first deck. All transitions between these regions are coordinated by
-`LayoutGroup` so adding, removing or reordering decks does not stutter.
+Header with title and New-course button; a motivation strip (`StudySignals`); a global
+"Study all" call-to-action when any card across any course is due; an inline new-course
+composer; a course grid ordered by a configurable **sort** (recent, ready to study, mastery,
+exam date, name, or created — Settings → Sidebar has no sort control; the sort lives on the
+dashboard itself and persists to `localStorage`); and a review-activity heatmap for anyone
+arriving from Anki. Empty state invites creating the first course. All transitions between
+these regions are coordinated by `LayoutGroup` so adding or reordering courses does not
+stutter. Archived courses are excluded from the grid entirely (no archived-course affordance
+exists in the course UI yet).
 
-**Deck view** (`/deck/:deckId`):
+**Course path** (`/course/:courseId`):
 
 ```
-< All decks
-Exam in 6 days - 14 Jun 2026, 23:59
-Organic Chemistry                         [s]  [> Study ]
-+ Predicted exam score -------------- 68% +
-| bar ........................                |
-| Mean predicted retrievability on exam day.  |
-+---------------------------------------------+
-[ Cards ]  [ Analytics ]            <- tab underline slides
-tag chips: All . acids . mechanisms ...
-<card list with editor> | <analytics charts>
+< All courses                          Question bank   [chart]  [gear]
+Exam 14 Jun 2026, 23:59
+Organic Chemistry                                      [Study now]
+[path] Lesson 4 of 9   [ring] Mastery 68%   [clock] Due today 12 cards
+
+  (o) Lesson 1 -- completed
+   |
+  (o) Lesson 2 -- completed
+   |
+  [!] Checkpoint -- exam date marker
+   |
+  (o) Practice -- unsecured cards from lessons reached so far
+   |
+  (*) Lesson 4 -- available
+   |
+  ( ) Lesson 5 -- locked
 ```
+
+An ordered path of lesson nodes, checkpoint markers (informational, never block progress)
+and practice nodes, built by `src/course/path.ts`. Practice gathers cards from lessons
+reached so far whose predicted retrievability remains below the mastery threshold at each
+card's applicable exam horizon; this is not the narrower `card.due` timestamp concept.
+Primary and explicitly linked cards count as lesson members, deduplicated by card id. A
+course with exactly one lesson skips the path entirely and renders that lesson directly
+(no one-node path). The header is the shared `CourseHeader` cockpit
+(`src/components/course/CourseHeader.tsx`, with stat primitives in `CourseHeaderStat.tsx`
+and `MasteryRing.tsx`): exam eyebrow (pulses when the exam is within three days, via the
+`exam-pulse` animation), serif title, and a row of stat blocks each carrying a plain-language
+one-line descriptor so distinct metrics can't be conflated. Curriculum position ("Lesson X of
+N") is a pacing metric, kept visually and semantically separate from mastery (mean predicted
+FSRS retention, shown as a ring rather than a bar) and from due-today (a live count of cards a
+session would serve right now), computed via `src/course/path.ts`'s `nearestExamDate` and the
+same `fsrs/eligibility.ts` due-card logic the path itself uses.
+
+Curriculum locking controls study progression, not authoring. In Read mode, locked lesson
+nodes remain inert; in Edit mode, they retain their locked appearance and status but open the
+ordinary lesson authoring view. Edit mode also enables direct path reordering: hold a lesson
+node for 350 ms, then drag it to a lesson boundary and release. Moving before the hold cancels
+the gesture, as do Escape and pointer cancellation. `Alt+ArrowUp`/`Alt+ArrowDown` provides the
+keyboard equivalent with live announcements. Reordering persists through the same
+`reorderLessons` repository operation used by Course Settings; checkpoints and automatic
+Practice nodes therefore follow their existing derived placement rules, while manual
+Practice positions and one-way lesson unlock ratchets are deliberately left unchanged.
+
+The course header has one **Study now** action. It launches the persistent course study
+conductor at `/course/:courseId/study`. The conductor rebuilds its next-step decision from the
+authoritative course state after every completed lesson or Practice step; it never stores a
+fixed queue. Lesson notes, Simple recall, curricular Practice, recurring Practice, transition
+reports and Pomodoro breaks therefore form one continuous study period rather than unrelated
+routes. The learner leaves only through an explicit finish action. The step union reserves an
+`exam-questions` member for a future engine, but this version creates no placeholder questions
+or empty exam UI.
+
+Curricular Practice uses a fixed lesson-prefix scope: only introduced cards from lessons at or
+before the checkpoint are eligible, further narrowed by an authored lesson selection. Later
+lessons therefore cannot revive an earlier milestone. Manual Practice checkpoints are
+conditional. In Study mode they appear and gate progression only when they have eligible work
+whose estimated review time crosses the course's near/far threshold, or when the checkpoint is
+the last relevant opportunity inside the urgent exam window. Zero-eligible and low-workload
+nodes remain latent and non-gating; they remain visible in Edit mode. Completed manual
+checkpoints remain visible as curriculum history. Automatic Practice is conductor scheduling
+machinery and is not rendered as a separate path diamond.
+
+**Review due cards** is a separate ad-hoc course-wide action. It creates no path node or
+milestone, may be launched at any time, and returns to the same conductor afterwards.
+
+Lessons are intentionally authored as short teaching passes. Practice is correspondingly
+more frequent, using the existing `practiceMaxGap`, `practiceThresholdMinutesFar` and
+`practiceThresholdMinutesNear` insertion controls rather than another cadence mechanism.
+The fixture-tested defaults are 8 minutes far from the exam, 4 minutes near it and a maximum
+gap of 2 lessons. Existing courses retain their saved values when defaults change.
+
+**Lesson view** (`/course/:courseId/lesson/:lessonId`, `src/pages/LessonView.tsx`):
+
+```
+< Course path
+Exam 14 Jun 2026, 23:59
+Lesson name
+[ring] Mastery 71%   [clock] Due today 3 cards   3 cards due today.
+──────────────────────────────────────────
+Notes                                      [+ Add note]
+<collapsible note list, add/reorder/edit>
+Cards (12)
+<card list with editor>
+```
+
+The lesson header adopts the same `CourseHeader` cockpit, scoped to the lesson's own cards
+(mastery and due-today only — no curriculum-position stat, since a single lesson has no
+pacing sequence of its own). Study dispatch is course-level rather than duplicated here.
+Notes and cards sit below a divider as a visually quieter section (smaller
+headings, subtle entrance animation respecting `useMotionSpeed`), which renders in one of two
+modes resolved by `src/course/lessonViewMode.ts`:
+
+- **Study** (the default): notes render read-only via `LessonNotesStudyView`
+  (`src/components/notes/`, reusing `MarkdownView` for each note's body), and cards show a
+  summary — count, due count, mastery % — via `LessonCardsSummary` (`src/components/cards/`)
+  rather than an editable table.
+- **Edit**: the full notes/cards CRUD, extracted into `LessonNotesSection`
+  (`src/components/notes/`) and `LessonCardsSection` (`src/components/cards/`) so the page
+  component stays a thin layout/data shell.
+
+Every course carries its own explicit `Course.lessonViewMode` (`src/db/types.ts`) — no more
+site-wide default. It is set directly via a compact Read/Edit segmented control
+(`LessonViewModeToggle`, `src/components/course/`) in the CoursePath and inline LessonView
+headers, next to the settings link, and via a plain Read/Edit choice on Course Settings
+(`LessonViewModeSection`, `src/pages/settings/`). `resolveLessonViewMode(course)`
+(`src/course/lessonViewMode.ts`) falls back to `'study'` only for courses that predate the
+mandatory field (e.g. an old backup restored later); a one-shot startup migration in `App.tsx`
+(`stampMissingLessonViewModes`, `src/db/repository.ts`) stamps any such course with the retired
+global default's last value so existing users see no behaviour change. A single
+`canEditLessons(course)` gate (currently always `true`, since there is no locked-course concept
+yet) is the one place that will later decide whether edit mode is available at all — every call
+site goes through it rather than reading the mode field directly. When CoursePath renders this
+page inline for a single-lesson course, it gets the same full header/CTA treatment, including
+exam context via `nearestExamDate`.
 
 **Learn session** (full screen, outside the shell):
 
@@ -329,9 +465,9 @@ foot of the screen with a drag handle, and the flip card accepts left/right swip
 Yes/No equivalent. In keyboard mode, `Y`/`N` (silent) or `1`–`4` (manual) are the grading
 keys, and the bottom controls are still rendered for discoverability.
 
-**Card editor**, **Deck settings**, **Settings**, **Search** follow the same
+**Card editor**, **Course settings**, **Settings**, **Search** follow the same
 centred-column pattern with an eyebrow + display title and `rounded-2xl` sections; the
-editor and deck settings add a sticky bottom action bar.
+editor and course settings add a sticky bottom action bar.
 
 ---
 
@@ -339,34 +475,149 @@ editor and deck settings add a sticky bottom action bar.
 
 All tables are keyed by string `id` unless noted. Types live in `src/db/types.ts`.
 
-### Deck
-`id, name, examDate, createdAt, examDatePromptDismissed?, fsrsVersion, fsrsParameters,
-examObjective, newCardsPerDay?, archived?, autoOptimise?, folderId?, colour?, timeZone?`
-- `examDate` is an epoch-ms instant; **defaults to creation time + 7 days at 23:59 local**.
-- `fsrsVersion` is `6`.
-- `fsrsParameters = { w: number[21], requestRetention: number }` — the 21 FSRS-6 weights
-  (w0..w20; **w20 is the trainable decay**) plus the target retention. The weights may be
-  re-fitted to the deck's own history (see §8.1, optimisation).
-- `examObjective in { 'expectedMarks' (default), 'securedTopics' }`.
-- `newCardsPerDay?` — cap on brand-new cards introduced per day; undefined/0 = unlimited.
-- `archived?` — when true the deck is retained in full but withdrawn from all study, the
-  global "Today" session and the dashboard study totals (one of the explicit post-exam
-  choices, see §8.2).
-- `autoOptimise?` — per-deck override for scheduling optimisation; undefined falls back to
-  the global default (on). Applying optimised weights always still needs explicit consent.
-- `folderId?` — optional pointer to a `Folder` row for sidebar / dashboard grouping.
-- `colour?` — a hex string chosen from the seven swatches; applied to the deck dot and
-  to the top accent bar of the card.
-- `timeZone?` — IANA zone, used to display the exam date in the user's zone.
+### Course architecture (the user-facing model)
+Schema **v9** introduced the `Course -> Lesson -> Note + Card` model. This is the only model
+the UI exposes: every route, sidebar entry and page works in terms of courses, lessons, notes
+and cards. Stores: `courses, lessons, notes, lessonCards, practiceNodes, courseExamDates`
+(shapes in `src/db/types.ts`). The v9 upgrade folded each pre-existing standalone deck into
+one single-lesson course (scheduling fields copied verbatim) and each folder into one course
+whose decks became lessons ordered by `createdAt`; a deck whose exam date differed from the
+course kept it as a per-lesson override. Migration mapping lives in
+`src/db/courseMigration.ts` (pure, with an injected id generator). Cards gained
+`courseId?`/`primaryLessonId?`, and `SessionHistoryEntry`/`UserPerformance` gained
+`courseId?`, all stamped during the upgrade.
 
-### Folder
-`id, name, parentId?, createdAt` — a flat (single-level) grouping of decks. Nested folders
-are read but the UI is single-level.
+`src/db/repository.ts` exposes CRUD functions for every course-architecture table —
+`createCourse`/`updateCourse`/`deleteCourse`/`listCourses`/`getCourse`,
+`createLesson`/`updateLesson`/`deleteLesson`/`listLessons`/`reorderLessons`,
+`createNote`/`updateNote`/`deleteNote`/`listNotes`/`reorderNotes`,
+`linkCardToLesson`/`linkCardsToLesson`/`unlinkCardFromLesson`/`listLessonCardLinks`,
+`createPracticeNode`/`updatePracticeNode`/`deletePracticeNode`/`listPracticeNodes`,
+and `createCourseExamDate`/`updateCourseExamDate`/`deleteCourseExamDate`/`listCourseExamDates`.
+Batch linking validates lesson/card existence, same-course membership and non-primary
+membership in one `lessonCards` write transaction; IndexedDB serialises overlapping writes
+to that store, making the idempotent duplicate check safe without another schema index.
+All functions are independently callable with no UI or React dependency, so future AI
+authoring agents and button handlers can share the same layer without duplication.
+
+`PracticeNode.type` is `'auto'` or `'manual'`. Auto nodes are never persisted — they are
+computed fresh on every path render from the live due-card backlog (§4.3's path diagram).
+Manual nodes are teacher-authored and persisted: a hover-revealed "+" between lesson nodes
+on `CoursePath` inserts one at a specific gap (`position`), and an edit badge on existing
+manual nodes lets a teacher reposition, rename or delete them (`PracticeNodeEditor`,
+`src/components/course/`); `PracticeNodesSection` in course settings mirrors the same
+create/edit/delete flow as a list (§15's Course settings section). Both surfaces share
+`practiceNodeDraft.ts`'s draft helpers. Filters (`CardFilter[]`) are supported in storage
+but intentionally left out of both forms — there is no existing filter-builder UI to reuse.
+
+`LessonCardExposure { lessonId, cardId, taughtAt }` records that one card has been
+introduced successfully in one lesson. The `(lessonId, cardId)` pair is unique. This is
+separate from FSRS memory state because Simple mode is teaching, not a scheduled review, and
+because a linked card may be introduced independently in several lessons. Lesson completion
+and semi-linear unlocking require exposure records for every primary and linked card currently
+included in the lesson. Exposure rows are included in backups and restore points, excluded
+from course share codes, and cascade with their lesson, card or link.
+
+`LessonCompletion { lessonId, completedAt }` records explicit completion of a cardless
+lesson when the learner presses **Continue** after its notes. It is learner progress, so it
+is included in backups and restore points but excluded from course share codes.
+
+`NoteAnnotation { id, noteId, startOffset, endOffset, selectedText, body?, createdAt,
+updatedAt }` stores a text highlight and its optional free-text annotation. Offsets address
+the note's Markdown source; `selectedText` validates the anchor after edits so a stale anchor
+is shown as detached rather than applied to unrelated text. Annotations are deliberately
+device-local: they are excluded from manual exports, automatic restore points, backups and
+course share codes, and are deleted with their note. The first version accepts a selection
+only within one ordinary text block; code, maths, embeds and cross-block selections are
+rejected.
+
+`PracticeMilestone { nodeKey, courseId, scopeVersion, securedCardCount, totalCardCount,
+updatedAt, completedAt? }` stores resumable progress and persistent completion for a manual
+or deterministically keyed automatic Practice node. `scopeVersion` prevents stale completion
+from being applied to a changed card scope. Milestones are included in backups and restore
+points, excluded from course share codes, and are separate from the live readiness value.
+
+Schema **v12** adds `lessonCardExposures`, `lessonCompletions`, `noteAnnotations` and
+`practiceMilestones`. Existing reviewed cards are backfilled only for their primary lesson.
+Linked rows are not backfilled because the old display-only link proves nothing about where
+the card was taught.
+
+### Sequences — overlapping-cloze sequence learning (schema v11)
+Schema **v11** adds `sequences: 'id, courseId, primaryLessonId, createdAt'` (additive; no
+`upgrade()` needed) and one optional indexed field on `cards`: `sequenceItemId`. A `Sequence`
+is an **authoring-time entity only** — it is never itself studied — that generates ordinary
+`front_back` `Card` rows via **overlapping cloze**: for items `i₀ … iₙ` and a configurable
+`cueWindow` (default 2), each generated card's front shows the preceding `min(cueWindow,
+position)` item values (plus the sequence name and, if chunked, the chunk label) and its back
+is the item's own value. The first item is cued by the sequence/chunk name alone. This
+directly targets the serial-position effect (mid-sequence recall is weakest) by giving every
+element a turn as the recall target with local context as the cue.
+
+- `Sequence { id, courseId, primaryLessonId: string | null, name, description?,
+  items: SequenceItem[], cueWindow, chunkLabels?, generateLabelCards?, createdAt }` —
+  `items` is ordered and stored inline (sequences are small); `primaryLessonId` follows the
+  same semantics as `Card.primaryLessonId`. `generateLabelCards` (default off) additionally
+  generates an unordered label -> value card per item that carries a `label` (e.g. "Atomic
+  number 11 -> ?"), alongside the positional card.
+- `SequenceItem { id, value, label?, chunkIndex? }` — `id` is stable across edits and anchors
+  the generated card(s); `value` is Markdown.
+- `Card.sequenceItemId?: string` is present iff the card was generated from a sequence item:
+  the positional card carries the item's own id; the label card (when generated) carries
+  `${item.id}::label` (`LABEL_CARD_SUFFIX`), so the two never collide and `isLabelCardId`/
+  `baseItemId` (`src/db/sequenceGeneration.ts`) can recover the relationship without a
+  second field.
+- **Generation and regeneration** (`src/db/sequenceGeneration.ts`) is a pure, Dexie-free
+  module — deliberately so its correctness (the risk centre of this feature) is covered by
+  exhaustive unit tests ahead of any UI or repository code. `diffRegeneration` compares a
+  previous and edited `Sequence` and produces create/update/delete instructions per card: an
+  edited item updates its card's content in place (memory state kept); an inserted/reordered
+  item regenerates only the affected cue-window fronts (memory state kept, since the recall
+  target is unchanged); a deleted item deletes its card. `sequenceForItemId` resolves which
+  `Sequence` (if any) owns a generated card's `sequenceItemId`, for grouping/badging.
+- **Repository** (`src/db/repository.ts`): `createSequence`/`updateSequence`/
+  `deleteSequence`/`listSequences`, plus `snapshotSequence`/`restoreSequence` for the
+  standard undo pattern (a `SequenceSnapshot` captures the sequence and its generated
+  cards together). `createSequence` and `updateSequence` generate/regenerate cards in the
+  same transaction as the sequence write.
+- **Portability**: sequences ride through backup export/import (replace and merge, by the
+  same per-table semantics as the other course-architecture tables), diagnostics bundles
+  (`sequences` count), and course share codes as an **additive v2 field** (§13) — older v2
+  codes without it still parse.
+- Generated cards are **read-only** in the card editor (edit the sequence instead) and
+  carry a `SequenceBadge` (`src/components/cards/SequenceBadge.tsx`) wherever cards are
+  listed, searched or shown in the command palette; `CardList` additionally groups
+  generated cards under their owning sequence (`SequenceCardGroup`) rather than listing
+  them loose (§12). This is enforced below the UI too: `deleteCards`/`moveCards` (the
+  generic bulk mutations) run an `assertNoGeneratedCards` check and throw if any targeted
+  card has a `sequenceItemId`, while sequence-internal paths (`updateSequence`'s diffing,
+  `deleteSequence`) mutate `db.cards` directly and bypass the guard.
+- **Quick entry:** the add control follows the item list, so it remains beside the current
+  working position, while each row also offers an add-below control. Adding an item focuses
+  it and scrolls it into view without overriding reduced-motion preferences.
+  `Ctrl/Cmd+Enter` from a non-empty item's value editor inserts and focuses the next item
+  directly after it; an empty item is marked invalid instead of creating blank chains. The
+  shortcut is scoped to item content and does not fire from sequence metadata fields.
+
+### Deck and Folder (legacy backing structures, no UI)
+`Deck` (`id, name, examDate, createdAt, examDatePromptDismissed?, fsrsVersion,
+fsrsParameters, examObjective, newCardsPerDay?, archived?, autoOptimise?, folderId?,
+colour?, timeZone?`) and `Folder` (`id, name, parentId?, createdAt`) are the tables the
+original Folder/Deck model was built on. They are **not deleted and not dead** — a course is,
+mechanically, a hidden deck-shaped `SchedulerConfig` (see §5's course section and §8), and
+every lesson is backed by one real `Deck` row so the FSRS engine, cooldown module and
+scheduling optimiser keep working exactly as before against a stable per-lesson scheduling
+context. The Question Bank's course-wide view is similarly backed by a lazily created
+per-course bank deck. No page, route or sidebar entry lets a user see, name or manage a deck
+or folder directly; `fsrsVersion`, `fsrsParameters`, `examObjective`, `newCardsPerDay`,
+`autoOptimise` and `colour` are the fields a lesson/course still reads and writes through this
+backing structure. Dropping these tables and folding the backing mechanism into the course
+tables outright is a deferred, later migration (`next_plan.md` §0.3) — not attempted while the
+course UI is still soaking.
 
 ### Card
 `id, deckId, type('front_back'|'cloze'), front, back, stability|null, difficulty|null,
-lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?, due|null,
-scheduledDays, learningSteps, history[], createdAt`
+lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?,
+sequenceItemId?, due|null, scheduledDays, learningSteps, history[], createdAt`
 - `front`/`back` are Markdown source. **Cloze** source lives entirely in `front`
   (`{{cN::...}}`); `back` is empty.
 - `stability` (days; the interval at which R = 0.90), `difficulty` (in [1,10]),
@@ -375,6 +626,8 @@ scheduledDays, learningSteps, history[], createdAt`
   `state in {0 New, 1 Learning, 2 Review, 3 Relearning}`.
 - `history[]` is an append-only array of `ReviewLog` (timestamp, grade, responseTimeSec,
   distracted, stability/difficulty before+after, retrievabilityAtReview|null).
+- Teaching state is intentionally absent from `Card`; it is lesson-specific and lives in
+  `LessonCardExposure`.
 
 ### SessionHistoryEntry
 `{ id?, timestamp, deckId, averagePredictedRetrievability }` — written **per answered
@@ -405,8 +658,12 @@ the invisible grader.
   upgrade; these are **exempt from daily-snapshot pruning** so a botched migration always
   has a fallback (§13).
 - `BackupFile { app:'lacuna', version, exportedAt, decks, cards, assets, sessionHistory,
-  userPerformance }` — the shape of both manual exports and snapshot payloads; `assets`
-  carries the referenced images.
+  userPerformance, folders?, courses?, lessons?, notes?, lessonCards?, practiceNodes?,
+  courseExamDates?, lessonCardExposures?, lessonCompletions?, practiceMilestones? }` — the
+  shape of both manual exports and snapshot payloads; `noteAnnotations` is deliberately
+  absent. `assets`
+  carries the referenced images. The course-architecture arrays are optional so older
+  backups still import cleanly.
 - `AppStateEntry { key, value }` — small persistent app state (e.g. the backup folder
   handle, sidebar settings, input mode, motion speed).
 
@@ -516,19 +773,41 @@ and the progress-bar value are derived, so they can never disagree.
 Helper copy (`progressNoun`, `progressHeading`, `progressDescription`) phrases the same
 number appropriately ("predicted score" vs "secured").
 
-### The scheduling horizon (`src/fsrs/horizon.ts`)
-Every function above aims cards at a **single horizon date**, read through
-`schedulingHorizon(deck)` rather than `deck.examDate` directly, so the scheduler and
-progress bar stay pinned together even once the exam date moves into the past:
-- while `examDate >= now` -> the horizon **is** `examDate`;
-- once `examDate < now` -> the horizon falls back to a rolling
-  `now + MAINTENANCE_HORIZON_DAYS` (7 days). This is the "keep revising" fallback: it
-  stops `daysRemaining` clamping to 0 (which would make every card read R = 1 and pin
-  the bar to a bogus 100%) and instead has the deck maintain its target retention
-  against a moving horizon.
+### The scheduling horizon (`src/fsrs/horizon.ts`, `src/fsrs/examDate.ts`)
+A card's horizon is resolved **per card**, not shared uniformly across a whole unit,
+because a course can carry several `CourseExamDate` checkpoints (each optionally scoped
+to a subset of lessons) as well as a per-lesson `Lesson.examDate` override.
+`resolveCardExamDate` (`src/fsrs/examDate.ts`) picks the effective exam date for one
+card in strict order:
+1. **Lesson override** — if the card's primary lesson has an `examDate`, use it
+   outright, even if it is in the past and even if a sooner checkpoint exists.
+2. **Nearest applicable future checkpoint** — among the course's `CourseExamDate` rows
+   that apply to the card (respecting `lessonIds` scoping and `excludedCardIds`), the
+   soonest one still `>= now`. A passed checkpoint is ignored, so the next-nearest
+   checkpoint (or the course default) naturally takes over.
+3. **Course default** — the course's own `examDate`.
 
-`urgency` (multi-deck blending, §10) likewise uses the horizon, so a passed exam no
-longer reads as permanently maximally urgent.
+`cardSchedulingHorizon` then applies the same "keep revising" fallback
+`schedulingHorizon` has always had: once the resolved date is in the past, the horizon
+rolls forward to `now + MAINTENANCE_HORIZON_DAYS` (7 days) rather than letting
+`daysRemaining` clamp to 0 (which would read every card as R = 1 and pin the bar to a
+bogus 100%).
+
+Per-card resolution is used wherever a specific card is being scored or counted:
+`scoreCard`/`isObjectiveComplete` (`objective.ts`), `masteryFraction`/
+`averagePredictedRetrievability` (`progress.ts`), and cram's weakest-first ranking
+(`cram.ts`). `ObjectiveContext` carries the resolution context (`examDateCtx`) when
+built for a Course unit (its lessons and `courseExamDates` loaded alongside it); it is
+absent for legacy Deck-scoped/global sessions, which keep resolving against the single
+`deck.examDate` exactly as before, via the plain `schedulingHorizon`.
+
+A few consumers deliberately stay unit-level rather than per-card, because they weight
+or gate a whole unit rather than score one card: `urgency` (multi-deck blending, §10)
+and the auto-practice insertion threshold (`shouldInsertPractice`, `src/fsrs/
+practice.ts`) both still read the coarser `schedulingHorizon`, so a passed exam no
+longer reads as permanently maximally urgent — without claiming the per-lesson
+precision they don't need. The live Course session, path and progress callers supply
+`ExamDateContext`; legacy Deck callers continue to use the unit-level fallback.
 
 ### 8.1 Parameter optimisation (`src/fsrs/optimise.ts`, Web Worker)
 The default weights are a starting point; most of FSRS's efficiency comes from fitting
@@ -557,13 +836,16 @@ the ts-fsrs authors (`@open-spaced-repetition/binding`, fsrs-rs compiled to WASM
   (§15).
 
 ### 8.2 Post-exam state
-A deck whose `examDate` has passed is detected (`examHasPassed`) and surfaced clearly
-rather than silently stopping. The dashboard card reads "Exam date passed" and the deck
-view offers three explicit actions: **set a new exam date**, **archive the deck**
-(`archived = true`; retained but withdrawn from study and totals), or **keep revising**
-against the rolling maintenance horizon above. Archived decks are excluded from the
-study pool (§9), the global "Today" session and the dashboard study denominators, and
-are shown in a separate "Archived" group.
+A course whose `examDate` has passed is detected (`examHasPassed`) and surfaced clearly
+rather than silently stopping: the course card on the dashboard reads "Exam date passed".
+Course Settings lets the exam date be changed (**set a new exam date**), and with no further
+action the course simply keeps revising against the rolling maintenance horizon above. The
+underlying `archived` flag and `archiveDeck`/`unarchiveDeck` repository functions (which
+withdraw a deck from study and totals while retaining its data) still exist — this is how a
+lesson's backing deck could, in principle, be archived — but Course Settings does not yet
+expose an archive action or an "Archived" group in the UI, so a course cannot currently be
+archived from the app. This is a known gap relative to the pre-course deck-settings flow,
+not a deliberate removal.
 
 ---
 
@@ -588,13 +870,31 @@ when cards are withheld.
   it does **not** change the dashboard denominator, so the deck's exam-day trajectory
   stays honest while a session paces new material.
 
+Course-path study applies two additional, explicit pools:
+
+- **Lesson pool:** cards included in that lesson through either `primaryLessonId` or
+  `LessonCardLink`, deduplicated by card id, for which no `(lessonId, cardId)` exposure
+  exists. FSRS `state` is irrelevant here: a card may be scheduled elsewhere but still be
+  unseen in this lesson.
+- **Practice pool:** available cards belonging to at least one reached (`available` or
+  `completed`) lesson, again including links and deduplicating by card id, which have been
+  exposed in at least one lesson and whose predicted retrievability at their per-card
+  scheduling horizon is below `MASTERY_R`. The exposure requirement prevents Practice from
+  leaking unseen material. A link affects reachability but not horizon resolution, which
+  remains anchored to the card's primary lesson and single shared FSRS memory state.
+
+The existing `isDue`/`dueCards` helpers retain their narrower timestamp-based job for
+"due today" display counts. They do not define Practice eligibility.
+
 ---
 
 ## 10. Learn mode (`src/pages/LearnMode.tsx`, `src/fsrs/session.ts`, `cooldown.ts`)
 
-A Learn session may study a **single deck** or **every deck at once** (the global
-"Today" session). Both run through one engine so ordering and progress stay
-objective-derived.
+A Learn session may study a lesson, a course Practice node, a **single deck**, or **every
+deck at once** (the legacy global review session). FSRS-backed sessions run through one engine
+so ordering and progress stay objective-derived; lesson teaching uses the Simple-mode loop.
+Course-guided sessions run inside the persistent conductor, while direct legacy routes remain
+available for standalone entry.
 
 ### Session lifecycle
 1. **Load** a static snapshot of the deck(s) and their cards (an optional `?tag=`
@@ -603,6 +903,15 @@ objective-derived.
 2. If there is nothing to study or the objective is already met, go straight to the
    **report**.
 3. Otherwise **serve** cards one at a time until the objective is met or the user exits.
+
+For a lesson selected by the course conductor, the lifecycle starts with its notes in order. The
+learner may highlight source text and attach optional free-text annotations before moving to
+the card loop. Highlights and annotations persist on this device but are excluded from every
+portability format. The card loop then contains only lesson members without an exposure for
+that lesson, including both primary and explicitly linked cards.
+If the lesson has no cards, **Continue** records `LessonCompletion` and advances the path.
+Lesson authoring should favour fewer cards per pass and more lesson units where necessary;
+the aim is lower working-memory load, not less course content.
 
 ### Card selection (`selectNext`)
 - **Single deck:** exactly the per-deck objective order (`sortByObjective`) with
@@ -652,11 +961,13 @@ Two modes, chosen in Settings (default **silent**):
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):
 - **FSRS (default):** the full spaced-repetition scheduler with all memory-state tracking,
   review logging, and objective-driven ordering.
-- **Simple:** an algorithm-free study loop with no FSRS scheduling, no DB writes, and
-  only YES/NO grading. Wrong cards are re-queued at the end of the deck; the session loops
-  until every card has been marked correct. A live pill UI (Wrong / Remaining / Right)
-  updates on every answer. The SessionReport omits the grade-distribution chart since
-  grades are not meaningful in this mode.
+- **Simple:** an algorithm-free study loop with no FSRS scheduling or memory-state write,
+  and only YES/NO grading. Wrong cards are re-queued at the end of the pool; the session
+  loops until every card has been marked correct. In a lesson-scoped session, the first
+  correct answer upserts that lesson's `LessonCardExposure`; it writes no `ReviewLog`,
+  `SessionHistoryEntry`, stability, difficulty, due date or FSRS state. A live pill UI
+  (Wrong / Remaining / Right) updates on every answer. The SessionReport omits the
+  grade-distribution chart since grades are not meaningful in this mode.
 
 ### The invisible timer & grading (`src/fsrs/grading.ts`, silent mode)
 - The response timer **starts on reveal** ("Show answer") and **stops when the answer
@@ -795,6 +1106,14 @@ the global `::selection` rule (both painted translucent amber), producing a mudd
 double-highlight on selected text inside a revealed cloze. With no element
 background, `::selection` paints cleanly across the cloze mark.
 
+### Sequence-generated cards in Learn mode
+When a card was generated from a Sequence (§5), `CardContent`'s `sequenceCue` prop (set in
+`LearnMode`) parses the front's header/cue-items structure (`parseSequenceFront`) and styles
+the preceding cue items as muted context above the recall prompt, rather than rendering the
+whole front as one undifferentiated block. Label cards (`isLabelCardId`) are excluded, since
+they have no cue window to style. No FSRS or session-flow changes: generated cards are
+ordinary `front_back` cards to the scheduler.
+
 ### Editor (`src/pages/CardEditor.tsx`, full page)
 - Mode is decided by the route (`/cards/new` vs `/cards/:id/edit`).
 - **Card type** selector: Basic (front/back), Reversed (back/front), Cloze, or Typing-answer.
@@ -827,25 +1146,44 @@ background, `::selection` paints cleanly across the cloze mark.
 
 ---
 
-## 12. Navigation, decks & card management
+## 12. Navigation, courses & card management
 
-- **Dashboard** lists decks in a responsive grid, each showing exam proximity, card
-  count and the objective progress bar; a global "Study today" entry point appears
-  when cards are due.
-- **Folders** (v0.0.2): decks can optionally belong to a `Folder`. Folders are
-  collapsible groups in the sidebar and the dashboard grid; they are single-level
-  (nested folders are read but the UI is flat). Each folder has a name, an
-  optional `parentId`, and creation time.
-- **Multi-select** mode supports **bulk delete** (with an Undo toast that restores
-  a snapshot), **cross-deck merge** (keeps the chosen target's name, exam date and
-  performance history; concatenates the others' cards and session history into it),
-  and **move to folder**.
-- **Card list** (`CardList`, in the Deck view) supports per-card edit, suspend/flag,
-  **move** between decks, and **long-press to bulk-select** (touch mode); a
-  tag-filter row scopes both the list and the study session. Clicking a card row
-  expands it in-place to show a **per-card forgetting curve** and **vital
-  statistics** (see §14, Per-card analysis).
-- Deck creation can **start blank** or **import** cards immediately (see §13).
+- **Dashboard** lists courses in a responsive grid, each showing exam proximity, lesson
+  count and the objective progress bar; a global **Review all** entry point appears when
+  cards are due across any course. Course order is a configurable dashboard setting
+  (recent, ready to study, mastery, exam date, name, or created; §4.3).
+- **Study today** (`/study`) always asks which active course to study, shows due and curriculum
+  context, and launches that course's conductor directly. An interrupted conductor stores only
+  its course identity and timestamps, so resume always recalculates the next step from current
+  course state rather than trusting stale session data.
+- **Course path** (`/course/:courseId`) is the primary navigation surface within a course:
+  an ordered sequence of lesson nodes, checkpoints and practice nodes (§4.3, §14).
+- **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
+  cards. The course-level conductor owns guided session entry and embeds this lesson's
+  notes-first teaching flow when it is the next available path step. In edit mode,
+  **Link existing cards** opens a searchable course-card picker and adds selected ordinary
+  cards (sequence-generated cards are excluded) as
+  `LessonCardLink` memberships without moving their primary lesson or duplicating their FSRS
+  state. Linked rows are labelled, excluded from destructive bulk selection, and use
+  **Remove from lesson** instead of deleting the underlying shared card; removal also clears
+  that lesson's exposure record.
+- **Question bank** (`/course/:courseId/bank`) lists every card in a course in one flat list
+  regardless of lesson, sharing `CardList` with the lesson view's card section.
+- **Card list** (`CardList`) supports per-card edit, suspend/flag, and **long-press to
+  bulk-select** (touch mode); a tag-filter row scopes both the list and the study session.
+  In multi-select mode the bulk toolbar offers **delete** (with an Undo toast that restores
+  a snapshot), **move** to another lesson within the same course context, and
+  **"Assign to lesson…"** (reassigns selected cards' `primaryLessonId`, only offered where
+  the list is passed a `courseId`). Clicking a card row expands it in-place to show a
+  **per-card forgetting curve** and **vital statistics** (see §14, Per-card analysis).
+- Course creation can **start blank** or **import** material immediately (see §13).
+- **Sequences** (§5) have their own editor (`/course/:courseId/sequence/new`,
+  `/course/:courseId/sequence/:sequenceId/edit`, and a lesson-scoped
+  `/course/:courseId/lesson/:lessonId/sequence/new`), reached via "New sequence" entry
+  points alongside "Add card" in both Lesson View (`LessonCardsSection`) and the Question
+  Bank. `CardList` groups a sequence's generated cards under its name (`SequenceCardGroup`)
+  and excludes them from bulk-select, since they can only be edited or deleted through the
+  sequence.
 
 ---
 
@@ -904,16 +1242,24 @@ A single, reusable export UI offering multiple output formats:
 
 ### Backup file import/export
 - **Export:** versioned JSON of the whole database (`BackupFile`: decks, cards,
-  **referenced image assets**, session history, user performance). Backups are
-  the route that carries images between machines (share codes deliberately do
-  not, §13).
+  **referenced image assets**, session history, user performance, folders, the six
+  course-architecture tables — courses, lessons, notes, lessonCards, practiceNodes,
+  courseExamDates — and `sequences`, schema v11). Backups are the route that carries
+  images between machines (share codes deliberately do not, §13). Older backups that
+  pre-date the course tables or sequences still import cleanly: all these arrays are
+  optional in `BackupFile`.
 - **Import modes:**
-  - **Replace all** — wipe then restore exactly.
+  - **Replace all** — wipe then restore exactly. All thirteen data tables (including the
+    six course tables and `sequences`) are cleared before the backup is written; each is
+    restored only if the backup contains it.
   - **Merge** — fold in by id. Before committing, a **visible diff** summarises
     what will be **added, changed and overwritten** (counts at minimum) and
     requires **explicit confirmation**; only on confirm are changes applied
-    (newest `lastReviewed`/`createdAt` wins per conflicting record). This
-    replaces the previous silent "most-recent-wins" merge, which was a
+    (newest `lastReviewed`/`createdAt` wins per conflicting record). The course
+    tables and `sequences` follow the same per-table merge semantics as folders: incoming
+    rows that do not exist locally are added; where both sides share an id, the newer
+    record (by `createdAt`) wins. Existing local rows absent from the backup are never
+    deleted. This replaces the previous silent "most-recent-wins" merge, which was a
     data-loss footgun.
 
 ### Automatic restore points & migration safety
@@ -934,48 +1280,60 @@ A single, reusable export UI offering multiple output formats:
   can also be written to a chosen folder so it survives clearing browser data.
   Where unsupported, the UI explains this and points to manual export.
 
-### Deck sharing — share codes (`src/db/share.ts`, `SharePage`, `/share`)
+### Course sharing — share codes (`src/db/share.ts`, `SharePage`, `/share`)
 
-A dedicated **Share** tab in the sidebar turns deck content into a single,
-compact, copy-and-paste **code** and rebuilds decks from one. It is distinct from
-backup export: a share code carries only the **material**, never one person's
-scheduling or history.
+A dedicated **Share** tab in the sidebar turns a whole course into a single, compact,
+copy-and-paste (or scannable) **code** and rebuilds a course from one. It is distinct from
+backup export: a share code carries only the **material** needed to recreate the course,
+never one person's scheduling progress or review history.
 
-- **What a code contains:** for each deck — name, exam objective, date created
-  and **date due** (`examDate`), target retention and any new-card cap — and for
-  each card its type, front, back and tags. A `by` (creator) field is reserved for
-  future attribution and is currently null.
-- **What it omits:** FSRS memory state, review history, suspended/buried/flag
-  state — **and images**. Image references are stripped to a text placeholder.
-  DEFLATE does almost nothing to already-compressed image bytes, so embedding
-  them produced multi-megabyte "codes" that defeated the copy-and-paste premise.
-  When a selected deck contains images the export UI says so before generating
-  and points to the full **backup export** as the route for transferring images;
-  on import, stripped images render as the placeholder and the preview notes
-  they were not included. Imported cards always start with clean scheduling for
-  their new owner.
+- **What a code contains (current, v2 payload):** course metadata (name, exam objective,
+  date created, date due, target retention, new-card cap), its ordered lessons each with
+  their notes and cards (type, front, back, tags), and any extra `CourseExamDate`
+  checkpoints. **Sequences**
+  (§5) ride along as an additive optional field: each `Sequence` and its `SequenceItem`s
+  travel inline, and on import every sequence/item id is remapped fresh alongside its
+  generated cards' `sequenceItemId` (including the `::label` suffix for label cards), so a
+  shared sequence never collides with one already present locally. Older v2 codes without
+  a `sequences` field still parse.
+  Images ride along inline inside card/note Markdown as base64 data URIs rather than being
+  stripped, so a shared course renders faithfully; DEFLATE still compresses the payload
+  overall. `LessonCardLink` (display-only cross-lesson linking) and `PracticeNode` are
+  deliberately out of scope — a shared course carries only the taught material, not its
+  practice-path configuration.
+- **What it omits:** FSRS memory state, review history, and suspended/buried/flag state.
+  Imported cards always start with clean scheduling for their new owner. Lesson exposures,
+  cardless-lesson completions and Practice milestones are learner progress and are likewise
+  omitted. Note annotations are device-local and are excluded from share codes as well as
+  every other portability format. Older payloads may still contain the legacy compact `sf`
+  lesson-filter field; it is accepted for import compatibility but does not configure live
+  lesson study.
+- **Legacy v1 payload:** the original shape — a flat list of decks, each becoming its own
+  single-lesson course on import — is still read for backward compatibility with codes
+  generated before the course model shipped (`next_plan.md` §0.3 keeps this support in
+  scope).
 - **Compression**, in order of impact:
-  1. **Reverse-pair folding** — a front/back card and its exact mirror (one's
-     front = the other's back and vice versa) are detected and stored **once**
-     as a single "reversible" entry (`k:2`), then expanded back into two
-     independent cards on import (the same shape `createCardWithReverse`
-     produces). This directly exploits the reverse-cards feature.
+  1. **Reverse-pair folding** — a front/back card and its exact mirror (one's front = the
+     other's back and vice versa) are detected and stored **once** as a single "reversible"
+     entry (`k:2`), then expanded back into two independent cards on import (the same shape
+     `createCardWithReverse` produces).
   2. Compact single-letter JSON keys.
-  3. **DEFLATE** via the native `CompressionStream('deflate-raw')` when
-     available, then base64.
-- **Format:** a short scheme tag (`LAC1` = compressed, `LAC0` = plain fallback
-  when the browser lacks compression) followed by base64 — i.e. just letters,
-  digits and base64 punctuation. A version field inside the payload guards
-  forward compatibility; an unknown or corrupted code yields a readable error.
-- **Export UI:** a multi-select list of decks (with per-deck card counts and a
-  select-all), a "Generate share code" action, then the code shown in a
-  read-only monospace box with a one-click **Copy** and a character count.
-- **Import UI:** a styled paste box (accent focus ring); "Read code" decodes and
-  shows an inline confirmation preview (deck and card counts, the share date,
-  and the deck names as chips) before "Add to my decks" commits. Importing
-  always **creates new decks** — it never overwrites existing data.
-- Round-trip behaviour (content, cloze, reverse-pair expansion, multi-deck
-  bundling, date due preservation, clean scheduling state, and rejection of
+  3. **DEFLATE** via the native `CompressionStream('deflate-raw')` when available.
+- **Format:** a short scheme tag followed by the encoded payload — `LAC1` (DEFLATE + base64,
+  the default for copy-paste text), `LAC0` (plain base64, legacy uncompressed fallback),
+  `LAC2` (DEFLATE + Base45, densest for QR codes), `LAC3` (plain Base45, legacy uncompressed
+  fallback). Base45 (RFC 9285) maps directly to the QR Alphanumeric mode for ~30% more
+  capacity than Base64. A payload version field (`v1`/`v2`, distinct from the `LACn` prefix)
+  guards forward compatibility; an unknown or corrupted code yields a readable error.
+- **Export UI:** select one course, then "Generate share code" — the code is shown in a
+  read-only monospace box with a one-click **Copy**, a character count, and (where the
+  payload fits a single QR symbol, up to `MAX_QR_ALPHANUMERIC_CHARS`) a scannable **QR code**.
+- **Import UI:** a styled paste box, or a camera-driven **QR scanner** (`html5-qrcode`);
+  "Read code" decodes and shows an inline confirmation preview (lesson/card counts, the share
+  date, lesson names as chips) before committing. Importing always **creates a new course**
+  — it never overwrites existing data.
+- Round-trip behaviour (content, cloze, reverse-pair expansion, v1 legacy decks becoming
+  single-lesson courses, date-due preservation, clean scheduling state, and rejection of
   non-codes) is covered by `src/db/share.test.ts`.
 
 ---
@@ -983,18 +1341,24 @@ scheduling or history.
 ## 14. Search & analytics
 
 ### Search (`src/db/search.ts`, `SearchPage`, `CommandPalette`)
-- A pure, offline, case- and diacritic-insensitive substring search over a card's
-  front, back, its deck name and its tags.
-- **Ranking:** front matches rank above back/deck/tag matches; earlier match
-  positions rank first.
-- **Structured filters** (AND-combined, usable without a query): **due, new,
-  leech, flagged, suspended**. These turn search into deck management ("show me
-  all leeches").
-- The full-page Search and the `Ctrl/Cmd+K` command palette share the same core;
-  results link straight to the card editor. `plainPreview` strips
-  Markdown/cloze/images for previews.
-- **Leech** = a card with `lapses >= 8` (`src/fsrs/leech.ts`); surfaced via a
-  badge and the search filter, but scheduling is never changed automatically.
+- **Card search** (`searchCards`) is a pure, offline, case- and diacritic-insensitive
+  substring search over a card's front, back, its (backing-deck) name and its tags.
+  **Ranking:** front matches rank above back/deck/tag matches; earlier match positions
+  rank first.
+- **Course content search** (`searchCourseContent`) separately searches course names,
+  lesson names, and note names/content, returning ranked `CourseContentHit`s
+  (`kind: 'course' | 'lesson' | 'note'`) that deep-link to `/course/:courseId`,
+  `/course/:courseId/lesson/:lessonId`, or the same lesson route for a note. The two
+  search cores run side by side so a single query surfaces both structural results
+  (courses/lessons/notes) and card results.
+- **Structured filters** (AND-combined, usable without a query, cards only): **due, new,
+  leech, flagged, suspended**. These turn search into course-wide card management ("show
+  me all leeches").
+- The full-page Search and the `Ctrl/Cmd+K` command palette share the same core; card
+  results link straight to the card editor, course/lesson/note results to their page.
+  `plainPreview` strips Markdown/cloze/images for previews.
+- **Leech** = a card with `lapses >= 8` (`src/fsrs/leech.ts`); surfaced via a badge and
+  the search filter, but scheduling is never changed automatically.
 
 ### Dashboard signals (`src/fsrs/stats.ts`, `StudySignals`)
 Pure aggregates over stored history, in local time:
@@ -1016,8 +1380,8 @@ Pure aggregates over stored history, in local time:
   cells.
 
 ### Per-card analysis (`CardAnalytics`)
-Each card in the deck card list can be expanded in-place to reveal a
-**forgetting curve** and **vital statistics** for that individual card:
+Each card in a course's card list (lesson view or question bank) can be expanded in-place
+to reveal a **forgetting curve** and **vital statistics** for that individual card:
 - **Forgetting curve** — an `AreaChart` projecting retrievability from the
   card's most recent review forward to `examDate + 14 days`, with historical
   review moments overlaid as grade-coloured dots. Vertical reference lines mark
@@ -1033,42 +1397,41 @@ Each card in the deck card list can be expanded in-place to reveal a
   panel captures click events so interacting with the chart does not collapse
   the view. The row is keyboard-accessible (`Enter`/`Space` toggles expansion).
 
-### Deck analytics (`DeckAnalytics`)
-Theme-aware Recharts panels:
-- **Predicted exam-day score** over time (area chart of the daily
-  `SessionHistory` trajectory).
-- **Prediction accuracy** (`src/fsrs/calibration.ts`): the silent grader made
-  measurable. From `history[]` (which logs grade, response time and
-  `retrievabilityAtReview`) it compares predicted retrievability at review
-  against the actual recall outcome (a **Brier/log-loss** calibration metric,
-  bucketed over time; lower is better), with a one-line plain-English
-  explanation. A developer-facing `gradeQualitySummary` (exposed on `window` and
-  console-exportable) reports how the inferred grades distribute and whether
-  faster responses really correlate with higher subsequent recall, so the
-  response-time thresholds can be validated rather than assumed.
-- **Card stability profile** (histogram of cards by stability range; new cards
-  distinct).
+### Course analytics (`/course/:courseId/analytics`, `src/components/analytics/CourseAnalytics.tsx`)
+Theme-aware Recharts panels scoped to one course's **deduplicated card set** — the same
+pool `progressValue` and the course path's mastery figure use (a card shared across
+lessons is counted once):
+- **Predicted exam-day score** over time (area chart of the daily `SessionHistory`
+  trajectory).
+- **Lesson breakdown** — a bar chart of mastery and completion percentage per lesson, with
+  card count overlaid as a line.
+- **Card stability profile** (histogram of cards by stability range; new cards distinct).
 - **Review volume** (reviews per day over the last 30 days).
 
+Prediction accuracy calibration (`src/fsrs/calibration.ts`) — comparing predicted
+retrievability at review against actual recall outcome via a Brier/log-loss metric, plus
+the developer-facing `gradeQualitySummary` — remains available at the global level below;
+it has not yet been added to the course-scoped view.
+
 ### Global analytics (`/analytics`)
-A cross-deck view, sharing the same Recharts primitives as `DeckAnalytics` but
-aggregating across every deck:
-- **Deck comparison** — select any two decks and see their statistics side by
+A cross-course view, sharing the same Recharts primitives as course analytics but
+aggregating across every course:
+- **Course comparison** — select any two courses and see their statistics side by
   side (cards, predicted score, mastery fraction, cards reviewed, total reviews,
   reviews today, leeches, mean stability, mean difficulty). Each metric renders
-  as **two stacked rows** — one per deck — with a colour swatch, a percentage
+  as **two stacked rows** — one per course — with a colour swatch, a percentage
   bar, and a right-aligned value, so the values can never overlap or fight the
   winner badge.
 - **Forecast** — cards due and new cards scheduled per day for the next 30
   days.
 - **Predicted exam-day score** — average predicted retrievability across all
-  decks over time.
+  courses over time.
 - **Prediction accuracy** — Brier score for predicted vs actual recall.
 - **Review volume** and **Study time** — daily counts and minutes over the past
   30 days.
 - **Retention by age** — recall rate grouped by how long each card has been in
   review.
-- **Leech count by deck** — horizontal bar chart of leeches per deck.
+- **Leech count by course** — horizontal bar chart of leeches per course.
 - **Stability profile** — distribution of cards by stability range.
 
 Charts are wrapped in `ChartCard` (a consistent titled frame with an empty
@@ -1100,12 +1463,15 @@ charts below the fold are never invisible. Each chart container is `h-64` with
 - **Study & scheduling:** **Manual four-point grading** toggle (off by default ->
   silent grader, §10) and the global **Optimise scheduling** default (on -> fit
   FSRS weights to your own history, §8.1; gated at `MIN_OPTIMISE_REVIEWS`,
-  overridable per deck, applied only on confirmation).
-- **Sidebar** (v0.0.2): show due counts (on by default), show archived decks
-  (on by default), compact mode (off by default), and per-nav-item visibility
-  toggles. Persisted to `localStorage`.
-- **Gesture settings** (v0.0.3): the swipe-left and swipe-right actions on dashboard
-  deck cards can be customised (study / archive). Persisted to `localStorage`.
+  overridable per course, applied only on confirmation).
+- **Sidebar:** show due counts (on by default), show archived courses (on by default,
+  though the current course UI has no archived-course affordance to reveal), compact
+  mode (off by default), and per-nav-item visibility toggles for every primary nav
+  entry (Dashboard, Study today, Search, Share, Analytics, Settings, Help). Persisted
+  to `localStorage` and applied immediately (`src/state/sidebarSettings.ts`). The
+  dashboard's own course-ordering control (recent / ready to study / mastery / exam
+  date / name / created) is a separate, dashboard-local setting
+  (`src/state/dashboardSort.ts`; §4.3), not part of this section.
 - **Import & export:** export all data; import from file with the inline
   Merge / Replace-all chooser described in §13.
 - **Persistent storage:** the app requests `navigator.storage.persist()` on
@@ -1121,19 +1487,42 @@ charts below the fold are never invisible. Each chart container is `h-64` with
 - **Install** (where supported): a panel of platform-specific install
   instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`.
 
-### Deck settings (`src/pages/DeckSettings.tsx`)
-Rename; exam date and time; **exam objective** toggle (Expected marks <-> Secure
-topics, with live explanatory copy); **new cards per day** cap; **target
-retention** slider (0.80–0.97, with Relaxed/Balanced/Thorough presets and
-adaptive guidance copy); deck colour swatch; deck time zone.
-- **Scheduling optimisation** (§8.1): a per-deck on/off override, a review-count
-  gate, and an **Optimise now** action that runs in a Web Worker with a progress
-  bar, then shows the before/after log loss. Applying takes a restore-point
-  snapshot first; **Reset to defaults** is always available.
-- Once the **exam date has passed** (§8.2), the deck view offers set-new-date /
-  archive / keep-revising; an archived deck shows a restore action.
-- A "Danger zone" deletes the deck immediately with an Undo toast (no blocking
-  dialog). Sticky Save/Cancel bar.
+### Course settings (`src/pages/CourseSettings.tsx`)
+The only exam/scheduling settings surface in the app — there is no deck-level settings
+page any more. Composed from extracted, reusable section components (originally factored
+out of the now-deleted deck-settings page so the same form primitives serve both models
+while the deck UI still existed; only the course-facing composition remains):
+`SchedulingFieldsSection` (rename, exam date and time, exam objective toggle — Expected
+marks <-> Secure topics with live explanatory copy, new cards per day, target retention
+slider with Relaxed/Balanced/Thorough presets and adaptive guidance copy, max
+reviews/interval, learning/relearning steps, leech threshold/action, daily review goal,
+session time limit), `UnlockModeSection` (semi-linear vs linear lesson unlocking, with
+linear cadence fields), `PracticeSettingsSection` (auto-practice toggle and the four
+threshold/window/gap fields feeding `shouldInsertPractice`, §-linked to
+`src/fsrs/practice.ts`), `ExamDatesSection` (per-course exam-date list),
+`LessonManagementSection` (reorder/rename/delete lessons) and `PracticeNodesSection`
+(list/create/edit/delete teacher-authored manual
+practice nodes; see §5's Course architecture section), plus the `OptimisationPanel`
+(§8.1): a per-course on/off override for scheduling optimisation, a review-count gate,
+and an **Optimise now** action that runs in a Web Worker with a progress bar, then shows
+the before/after log loss; applying takes a restore-point snapshot first and **Reset to
+defaults** is always available.
+- **Legacy lesson session filter:** `Lesson.sessionFilter` is retained only so old imports
+  remain readable. It has no settings control and does not alter live lesson study, which
+  always serves unseen lesson members in Simple mode.
+- Once the **exam date has passed** (§8.2), the course offers set-new-date / archive /
+  keep-revising.
+- **Danger zone:** course deletion uses the same snapshot + undo-toast pattern as deck
+  deletion (`DangerZoneSection`) rather than a blocking confirmation — deleting is
+  immediate, with an "Undo" toast that restores everything from a `CourseSnapshot`
+  (`snapshotCourse`/`restoreCourse`, `src/db/repository.ts`): the course, its lessons,
+  notes, lesson-card links, practice nodes, exam dates, cards, their hidden backing decks
+  (§5, Deck and Folder), and the session history/calibration profiles keyed to either the
+  course or those decks. Sticky Save/Cancel bar.
+- **Not-found handling:** the course is resolved via a null-sentinel
+  `useLiveQuery` (missing row mapped to `null`, matching `CoursePath`) so a
+  stale or deleted `courseId` reaches a genuine not-found state instead of
+  hanging on the loading skeleton.
 
 ---
 
@@ -1141,16 +1530,18 @@ adaptive guidance copy); deck colour swatch; deck time zone.
 
 - All reads use Dexie `useLiveQuery` hooks (`src/state/useData.ts`) so the UI
   reacts to writes automatically.
-- On first run a **demo deck** is seeded (`seedIfFirstRun`).
+- On first run a small, deletable **demo course** (with lessons, notes and cards) is
+  seeded (`seedIfFirstRun`, `src/db/seed.ts`).
 - A daily restore point is taken in the background after seeding.
 - **Error boundaries** at the app, page and Learn-session levels keep a failure
   in one area from blanking the whole app. Their fallback offers a **local-only
   diagnostic bundle** (`src/db/diagnostics.ts`): "Copy diagnostic details" /
   "Download diagnostic bundle" assemble the error and stack, app version
-  (`__APP_VERSION__`), browser/UA, and deck/card/review/backup counts. Card
-  content is **excluded by default**; including a small sample is a separate,
-  explicit opt-in. Nothing is transmitted — the bundle is the user's to paste
-  into a bug report.
+  (`__APP_VERSION__`), browser/UA, and deck/card/review/backup counts, plus
+  course/lesson/note/lessonCard/practiceNode/courseExamDate counts when the
+  course tables contain data. Card content is **excluded by default**; including
+  a small sample is a separate, explicit opt-in. Nothing is transmitted — the
+  bundle is the user's to paste into a bug report.
 - **Storage-quota warning** (v0.0.2, `src/hooks/useStorageQuotaWarning.ts`):
   polls the Storage API on a long interval and surfaces a non-blocking toast
   when the database is approaching its quota, with a "Back up now" action that
@@ -1186,6 +1577,7 @@ adaptive guidance copy); deck colour swatch; deck time zone.
 | Deck view | `N` | New card |
 | Card editor | `Ctrl/Cmd+Enter` | Save (and add another, for new cards) |
 | Card editor | `Tab` | Front -> Back -> Save-and-add -> Save |
+| Sequence item editor | `Ctrl/Cmd+Enter` | Insert and focus the next item |
 | Learn | `Space` / `Up` | Show answer |
 | Learn | `Down` | Hide answer |
 | Learn (silent grading) | `Y` / `J` / `Right` | Yes (correct) |
@@ -1227,8 +1619,8 @@ modifying the renderer source.
   Releases; checks for updates shortly after launch and notifies the renderer.
 
 ### Scripts
-- `npm run electron:dev` — runs Vite dev server and Electron in parallel.
-- `npm run electron:build:win` — compiles the Electron TypeScript, builds the
+- `bun run electron:dev` — runs Vite dev server and Electron in parallel.
+- `bun run electron:build:win` — compiles the Electron TypeScript, builds the
   Vite SPA with `--base ./`, and packages via electron-builder (NSIS
   installer).
 

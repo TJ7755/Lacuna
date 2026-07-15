@@ -81,7 +81,7 @@ export function countReviews(cards: Card[]): number {
 }
 
 /** Per-weight min/max bounds used by `clipParameters` (FSRS valid ranges). */
-export function fsrsWeightBounds(
+function fsrsWeightBounds(
   numRelearningSteps: number = NUM_RELEARNING_STEPS,
 ): Array<[number, number]> {
   let w17w18Ceiling = W17_W18_Ceiling;
@@ -228,14 +228,14 @@ export function evaluateParameters(
   return { logLoss: scored > 0 ? loss / scored : NaN, scored };
 }
 
-export interface ComputeParametersOptions {
+interface ComputeParametersOptions {
   enableShortTerm: boolean;
   numRelearningSteps: number;
   progress?: (current: number, total: number) => boolean | void | undefined;
 }
 
 /** Trainer entry point (injected so tests can use the native binding in Node). */
-export type ComputeParametersFn = (
+type ComputeParametersFn = (
   trainSet: FSRSBindingItem[],
   options: ComputeParametersOptions,
 ) => Promise<number[]>;
@@ -320,6 +320,6 @@ export async function optimiseParameters(
 }
 
 /** Clip a weight set to the FSRS valid ranges (always returns a fresh 21-length array). */
-export function clip(w: number[]): number[] {
+function clip(w: number[]): number[] {
   return clipParameters(w, NUM_RELEARNING_STEPS);
 }
