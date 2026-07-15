@@ -144,7 +144,7 @@ export function LessonNode({
             'transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2',
             'focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper',
             interactive ? 'cursor-pointer' : 'cursor-default',
-            reorder?.enabled && 'touch-none select-none',
+            reorder?.enabled && 'select-none',
             reorder?.lifted && 'z-20 cursor-grabbing opacity-70 shadow-lg shadow-accent/20',
             expanded && 'z-10 shadow-lg shadow-black/10',
             // Extension nodes use a dashed border to read as off-path enrichment.

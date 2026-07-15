@@ -33,3 +33,8 @@ export function resolveLessonViewMode(course: Course): LessonViewMode {
   if (!canEditLessons(course)) return 'study';
   return course.lessonViewMode ?? 'study';
 }
+
+/** Whether course-path lesson nodes should expose authoring and reordering controls. */
+export function isLessonAuthoringMode(course: Course): boolean {
+  return resolveLessonViewMode(course) === 'edit';
+}

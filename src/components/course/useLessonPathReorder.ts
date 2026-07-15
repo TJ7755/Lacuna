@@ -27,7 +27,8 @@ export interface LessonReorderInteraction {
 
 interface DragSession {
   lessonId: string;
-  pointerId: number;
+  inputId: number;
+  inputType: 'pointer' | 'touch';
   startX: number;
   startY: number;
   element: HTMLButtonElement;
@@ -82,6 +83,7 @@ export function useLessonPathReorder({
     [orderedLessons],
   );
   const elementsRef = useRef(new Map<string, HTMLButtonElement>());
+  const touchCleanupRef = useRef(new Map<string, () => void>());
   const sessionRef = useRef<DragSession | null>(null);
   const suppressClickRef = useRef<{ lessonId: string; until: number } | null>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
@@ -92,14 +94,25 @@ export function useLessonPathReorder({
     const session = sessionRef.current;
     if (!session) return;
     window.clearTimeout(session.timer);
-    if (releaseCapture && session.element.hasPointerCapture?.(session.pointerId)) {
-      session.element.releasePointerCapture(session.pointerId);
+    if (
+      releaseCapture &&
+      session.inputType === 'pointer' &&
+      session.element.hasPointerCapture?.(session.inputId)
+    ) {
+      session.element.releasePointerCapture(session.inputId);
     }
     sessionRef.current = null;
     setDragState(null);
   }, []);
 
-  useEffect(() => () => clearSession(true), [clearSession]);
+  useEffect(
+    () => () => {
+      clearSession(true);
+      for (const cleanup of touchCleanupRef.current.values()) cleanup();
+      touchCleanupRef.current.clear();
+    },
+    [clearSession],
+  );
 
   useEffect(() => {
     if (enabled) return;
@@ -180,21 +193,138 @@ export function useLessonPathReorder({
         lifted: dragState?.lessonId === lessonId,
         dropMarker: dropMarkerByLessonId.get(lessonId),
         registerElement: (element) => {
-          if (element) elementsRef.current.set(lessonId, element);
-          else elementsRef.current.delete(lessonId);
+          touchCleanupRef.current.get(lessonId)?.();
+          touchCleanupRef.current.delete(lessonId);
+          if (!element) {
+            elementsRef.current.delete(lessonId);
+            return;
+          }
+          elementsRef.current.set(lessonId, element);
+
+          const touchFor = (touches: TouchList, inputId: number): Touch | undefined => {
+            for (let index = 0; index < touches.length; index++) {
+              const touch = touches[index];
+              if (touch?.identifier === inputId) return touch;
+            }
+            return undefined;
+          };
+          const startTouch = (event: TouchEvent) => {
+            if (!interactionEnabled || event.touches.length !== 1 || sessionRef.current) return;
+            const touch = event.touches[0];
+            if (!touch) return;
+            // A new physical gesture cannot be the synthetic click belonging to
+            // the preceding drop, so it must never inherit that suppression.
+            suppressClickRef.current = null;
+            const inputId = touch.identifier;
+            const timer = window.setTimeout(() => {
+              const session = sessionRef.current;
+              if (
+                !session ||
+                session.inputType !== 'touch' ||
+                session.inputId !== inputId
+              )
+                return;
+              session.active = true;
+              const originalIndex = orderedIds.indexOf(lessonId);
+              session.targetIndex = Math.max(originalIndex, 0);
+              setDragState({ lessonId, targetIndex: session.targetIndex });
+              setAnnouncement(
+                `${lessonNames.get(lessonId) ?? 'Lesson'} lifted. Drag to a new position, then release.`,
+              );
+              hapticStrong();
+            }, HOLD_DELAY_MS);
+            sessionRef.current = {
+              lessonId,
+              inputId,
+              inputType: 'touch',
+              startX: touch.clientX,
+              startY: touch.clientY,
+              element,
+              timer,
+              active: false,
+              targetIndex: 0,
+            };
+          };
+          const moveTouch = (event: TouchEvent) => {
+            const session = sessionRef.current;
+            if (!session || session.inputType !== 'touch' || session.lessonId !== lessonId) return;
+            const touch = touchFor(event.touches, session.inputId);
+            if (!touch) return;
+            if (!session.active) {
+              const distance = Math.hypot(
+                touch.clientX - session.startX,
+                touch.clientY - session.startY,
+              );
+              if (distance > EARLY_MOVE_LIMIT_PX) clearSession(false);
+              // Deliberately do not preventDefault: movement before the hold is
+              // an ordinary vertical scroll, not a failed drag.
+              return;
+            }
+            event.preventDefault();
+            session.targetIndex = targetIndexForY(lessonId, touch.clientY);
+            setDragState({ lessonId, targetIndex: session.targetIndex });
+          };
+          const endTouch = (event: TouchEvent) => {
+            const session = sessionRef.current;
+            if (!session || session.inputType !== 'touch' || session.lessonId !== lessonId) return;
+            if (!touchFor(event.changedTouches, session.inputId)) return;
+            const targetIndex = session.targetIndex;
+            const active = session.active;
+            if (active) event.preventDefault();
+            clearSession(false);
+            if (!active) return;
+            // Suppress only the compatibility click generated by this completed
+            // drag. The timeout is measured from drop, so a long drag cannot
+            // outlive it; any new pointer/touch start clears it immediately.
+            suppressClickRef.current = { lessonId, until: Date.now() + 750 };
+            void persistOrder(lessonId, targetIndex);
+          };
+          const cancelTouch = (event: TouchEvent) => {
+            const session = sessionRef.current;
+            if (!session || session.inputType !== 'touch' || session.lessonId !== lessonId) return;
+            if (!touchFor(event.changedTouches, session.inputId)) return;
+            const wasActive = session.active;
+            clearSession(false);
+            suppressClickRef.current = null;
+            if (wasActive) {
+              setAnnouncement(`${lessonNames.get(lessonId) ?? 'Lesson'} move cancelled.`);
+            }
+          };
+          element.addEventListener('touchstart', startTouch, { passive: true });
+          element.addEventListener('touchmove', moveTouch, { passive: false });
+          element.addEventListener('touchend', endTouch, { passive: false });
+          element.addEventListener('touchcancel', cancelTouch, { passive: true });
+          const cleanup = () => {
+            element.removeEventListener('touchstart', startTouch);
+            element.removeEventListener('touchmove', moveTouch);
+            element.removeEventListener('touchend', endTouch);
+            element.removeEventListener('touchcancel', cancelTouch);
+          };
+          touchCleanupRef.current.set(lessonId, cleanup);
         },
         onPointerDown: (event) => {
-          if (!interactionEnabled || event.button !== 0 || sessionRef.current) return;
+          if (
+            !interactionEnabled ||
+            event.pointerType === 'touch' ||
+            event.button !== 0 ||
+            sessionRef.current
+          )
+            return;
           const element = event.currentTarget;
-          const pointerId = event.pointerId;
+          suppressClickRef.current = null;
+          const inputId = event.pointerId;
           const startX = event.clientX;
           const startY = event.clientY;
           const timer = window.setTimeout(() => {
             const session = sessionRef.current;
-            if (!session || session.pointerId !== pointerId) return;
+            if (
+              !session ||
+              session.inputType !== 'pointer' ||
+              session.inputId !== inputId
+            )
+              return;
             session.active = true;
-            suppressClickRef.current = { lessonId, until: Date.now() + 750 };
-            element.setPointerCapture?.(pointerId);
+            element.setPointerCapture?.(inputId);
             const originalIndex = orderedIds.indexOf(lessonId);
             session.targetIndex = Math.max(originalIndex, 0);
             setDragState({ lessonId, targetIndex: session.targetIndex });
@@ -205,7 +335,8 @@ export function useLessonPathReorder({
           }, HOLD_DELAY_MS);
           sessionRef.current = {
             lessonId,
-            pointerId,
+            inputId,
+            inputType: 'pointer',
             startX,
             startY,
             element,
@@ -216,7 +347,12 @@ export function useLessonPathReorder({
         },
         onPointerMove: (event) => {
           const session = sessionRef.current;
-          if (!session || session.pointerId !== event.pointerId || session.lessonId !== lessonId)
+          if (
+            !session ||
+            session.inputType !== 'pointer' ||
+            session.inputId !== event.pointerId ||
+            session.lessonId !== lessonId
+          )
             return;
           if (!session.active) {
             const distance = Math.hypot(
@@ -232,19 +368,33 @@ export function useLessonPathReorder({
         },
         onPointerUp: (event) => {
           const session = sessionRef.current;
-          if (!session || session.pointerId !== event.pointerId || session.lessonId !== lessonId)
+          if (
+            !session ||
+            session.inputType !== 'pointer' ||
+            session.inputId !== event.pointerId ||
+            session.lessonId !== lessonId
+          )
             return;
           const targetIndex = session.targetIndex;
           const active = session.active;
           clearSession(true);
-          if (active) void persistOrder(lessonId, targetIndex);
+          if (active) {
+            suppressClickRef.current = { lessonId, until: Date.now() + 750 };
+            void persistOrder(lessonId, targetIndex);
+          }
         },
         onPointerCancel: (event) => {
           const session = sessionRef.current;
-          if (!session || session.pointerId !== event.pointerId || session.lessonId !== lessonId)
+          if (
+            !session ||
+            session.inputType !== 'pointer' ||
+            session.inputId !== event.pointerId ||
+            session.lessonId !== lessonId
+          )
             return;
           const wasActive = session.active;
           clearSession(true);
+          suppressClickRef.current = null;
           if (wasActive) {
             setAnnouncement(`${lessonNames.get(lessonId) ?? 'Lesson'} move cancelled.`);
           }

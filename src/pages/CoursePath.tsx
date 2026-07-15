@@ -45,7 +45,7 @@ import { Button } from '../components/ui/Button';
 import { ChartIcon, ChevronLeftIcon, PlayIcon, SettingsIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { updateCourse } from '../db/repository';
-import { resolveLessonViewMode } from '../course/lessonViewMode';
+import { isLessonAuthoringMode, resolveLessonViewMode } from '../course/lessonViewMode';
 import { formatDate } from '../utils/datetime';
 import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
 import { useToast } from '../components/ui/Toast';
@@ -144,7 +144,7 @@ export function CoursePath() {
     [deckIds.join(',')],
   );
   const lessonViewMode = course ? resolveLessonViewMode(course) : 'study';
-  const authoring = lessonViewMode === 'edit';
+  const authoring = course ? isLessonAuthoringMode(course) : false;
   const notifyReorderError = useCallback(
     (message: string) => notify(message, 'negative'),
     [notify],

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canEditLessons, resolveLessonViewMode } from './lessonViewMode';
+import { canEditLessons, isLessonAuthoringMode, resolveLessonViewMode } from './lessonViewMode';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import type { Course } from '../db/types';
 
@@ -46,5 +46,13 @@ describe('resolveLessonViewMode', () => {
 
     const studyCourse = makeCourse({ id: 'c2', lessonViewMode: 'study' });
     expect(resolveLessonViewMode(studyCourse)).toBe('study');
+  });
+});
+
+describe('isLessonAuthoringMode', () => {
+  it('enables path authoring only for the resolved Edit mode', () => {
+    expect(isLessonAuthoringMode(makeCourse({ id: 'c1', lessonViewMode: 'edit' }))).toBe(true);
+    expect(isLessonAuthoringMode(makeCourse({ id: 'c2', lessonViewMode: 'study' }))).toBe(false);
+    expect(isLessonAuthoringMode(makeCourse({ id: 'c3' }))).toBe(false);
   });
 });

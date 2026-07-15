@@ -24,6 +24,23 @@ const lessons: Lesson[] = ['One', 'Two', 'Three'].map((name, index) => ({
   createdAt: 1,
 }));
 
+function touch(target: EventTarget, identifier: number, clientX: number, clientY: number): Touch {
+  return { identifier, clientX, clientY, target } as Touch;
+}
+
+function touchEvent(
+  type: 'touchstart' | 'touchmove' | 'touchend' | 'touchcancel',
+  touches: Touch[],
+  changedTouches: Touch[] = touches,
+): TouchEvent {
+  return new TouchEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    touches,
+    changedTouches,
+  });
+}
+
 function Harness({
   enabled = true,
   onError = vi.fn(),
@@ -123,7 +140,7 @@ describe('useLessonPathReorder', () => {
     expect(reorderLessons).not.toHaveBeenCalled();
   });
 
-  it('clears lifted state on Escape and suppresses the long-press click', async () => {
+  it('clears lifted state on Escape without suppressing the next intentional click', async () => {
     const onOpen = vi.fn();
     render(<Harness onOpen={onOpen} />);
     const first = screen.getByRole('button', { name: 'One' });
@@ -131,17 +148,76 @@ describe('useLessonPathReorder', () => {
     await act(async () => vi.advanceTimersByTime(350));
 
     expect(first).toHaveAttribute('data-lifted', 'true');
-    fireEvent.click(first);
-    expect(onOpen).not.toHaveBeenCalled();
     fireEvent.keyDown(window, { key: 'Escape' });
 
     expect(first).not.toHaveAttribute('data-lifted');
     expect(screen.getByText('One move cancelled.')).toBeInTheDocument();
     expect(reorderLessons).not.toHaveBeenCalled();
+    fireEvent.click(first);
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('suppresses the compatibility click even after a long activated drag', async () => {
+    const onOpen = vi.fn();
+    render(<Harness onOpen={onOpen} />);
+    const first = screen.getByRole('button', { name: 'One' });
+    fireEvent.pointerDown(first, { button: 0, pointerId: 12, clientX: 0, clientY: 0 });
+    await act(async () => vi.advanceTimersByTime(350));
+    await act(async () => vi.advanceTimersByTime(5_000));
+    await act(async () => {
+      fireEvent.pointerMove(first, { pointerId: 12, clientX: 0, clientY: 100 });
+      fireEvent.pointerUp(first, { pointerId: 12, clientX: 0, clientY: 100 });
+      await Promise.resolve();
+    });
+
+    fireEvent.click(first);
+    expect(onOpen).not.toHaveBeenCalled();
+
+    // A new physical click sequence is intentional, not the compatibility
+    // click from the drop, so it clears the one-shot suppression.
+    fireEvent.pointerDown(first, { button: 0, pointerId: 13, clientX: 0, clientY: 0 });
+    fireEvent.pointerUp(first, { pointerId: 13, clientX: 0, clientY: 0 });
+    fireEvent.click(first);
+    expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('leaves pre-activation touch movement available for vertical scrolling', async () => {
+    render(<Harness />);
+    const first = screen.getByRole('button', { name: 'One' });
+    const startTouch = touch(first, 20, 0, 0);
+    first.dispatchEvent(touchEvent('touchstart', [startTouch]));
+    const scrollMove = touchEvent('touchmove', [touch(first, 20, 0, 20)]);
+    first.dispatchEvent(scrollMove);
+
+    expect(scrollMove.defaultPrevented).toBe(false);
+    await act(async () => vi.advanceTimersByTime(350));
+    expect(hapticStrong).not.toHaveBeenCalled();
+  });
+
+  it('claims touch movement only after the long-press activates dragging', async () => {
+    render(<Harness />);
+    const first = screen.getByRole('button', { name: 'One' });
+    first.dispatchEvent(touchEvent('touchstart', [touch(first, 21, 0, 0)]));
+    await act(async () => vi.advanceTimersByTime(350));
+    const dragMove = touchEvent('touchmove', [touch(first, 21, 0, 100)]);
+    await act(async () => {
+      first.dispatchEvent(dragMove);
+      first.dispatchEvent(touchEvent('touchend', [], [touch(first, 21, 0, 100)]));
+      await Promise.resolve();
+    });
+
+    expect(dragMove.defaultPrevented).toBe(true);
+    expect(hapticStrong).toHaveBeenCalledOnce();
+    expect(reorderLessons).toHaveBeenCalledWith('course-1', [
+      'lesson-2',
+      'lesson-3',
+      'lesson-1',
+    ]);
   });
 
   it('clears lifted and drop state on pointer cancellation', async () => {
-    render(<Harness />);
+    const onOpen = vi.fn();
+    render(<Harness onOpen={onOpen} />);
     const first = screen.getByRole('button', { name: 'One' });
     const third = screen.getByRole('button', { name: 'Three' });
     fireEvent.pointerDown(first, { button: 0, pointerId: 11, clientX: 0, clientY: 0 });
@@ -154,6 +230,8 @@ describe('useLessonPathReorder', () => {
     expect(first).not.toHaveAttribute('data-lifted');
     expect(third).not.toHaveAttribute('data-drop-marker');
     expect(reorderLessons).not.toHaveBeenCalled();
+    fireEvent.click(first);
+    expect(onOpen).toHaveBeenCalledOnce();
   });
 
   it('supports Alt+Arrow keyboard moves and announces the result', async () => {
