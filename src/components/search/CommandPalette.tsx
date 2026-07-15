@@ -14,6 +14,7 @@ import {
 import { SearchIcon, GridIcon, FolderIcon, FileTextIcon } from '../ui/icons';
 import { SequenceBadge } from '../cards/SequenceBadge';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 /** A single, ordered list mixing course/lesson/note hits ahead of card hits. */
 type PaletteHit = ({ kind: 'card' } & SearchResult) | CourseContentHit;
@@ -74,6 +75,11 @@ function escapeRegExp(s: string) {
 
 /** A keyboard-summoned (Ctrl/Cmd+K) overlay for searching every card. */
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return <CommandPaletteDialog onClose={onClose} />;
+}
+
+function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const decks = useDecks();
@@ -83,6 +89,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const notes = useAllNotes();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const trapRef = useFocusTrap(true, { autoFocusSelector: 'input' });
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -111,14 +118,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     return [...courseHits, ...cardHits].slice(0, MAX_RESULTS);
   }, [debouncedQuery, cards, decks, courses, lessons, notes]);
 
-  // Reset and focus whenever the palette opens.
+  // Reset and focus when the palette mounts.
   useEffect(() => {
-    if (open) {
-      setQuery('');
-      setActive(0);
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
-  }, [open]);
+    setQuery('');
+    setActive(0);
+    const id = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => setActive(results.length > 0 ? 0 : -1), [results.length, query]);
 
@@ -146,8 +152,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 
   return (
     <AnimatePresence>
-      {open && (
+      {(
         <motion.div
+          ref={trapRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Search"
           className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

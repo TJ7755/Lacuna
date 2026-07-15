@@ -6,9 +6,10 @@ import { Titlebar } from './Titlebar';
 import { ErrorBoundary } from './ErrorBoundary';
 import { CommandPalette } from '../search/CommandPalette';
 import { KeyHints } from '../ui/KeyHints';
-import { FlaskIcon } from '../ui/icons';
+import { CloseIcon, FlaskIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { consumeLandingArrival } from './LandingTransition';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 
@@ -34,6 +35,15 @@ export function AppShell() {
   const navigate = useNavigate();
   const outlet = useOutlet();
   const mainRef = useRef<HTMLElement>(null);
+  const appContentRef = useRef<HTMLDivElement>(null);
+  const titlebarRef = useRef<HTMLDivElement>(null);
+  const shellBodyRef = useRef<HTMLDivElement>(null);
+  const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileWasOpenRef = useRef(false);
+  const mobileDrawerRef = useFocusTrap(mobileOpen, {
+    autoFocusSelector: '[data-mobile-close]',
+    returnFocus: false,
+  });
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const [arrivedFromLanding] = useState(() => consumeLandingArrival());
@@ -56,6 +66,34 @@ export function AppShell() {
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  // Keep the page behind the modal drawer out of both keyboard navigation and
+  // the accessibility tree until the drawer closes.
+  useEffect(() => {
+    const content = appContentRef.current;
+    if (!content || !mobileOpen) return;
+    content.setAttribute('inert', '');
+    return () => content.removeAttribute('inert');
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    if (!paletteOpen) return;
+    const background = [titlebarRef.current, shellBodyRef.current].filter(
+      (element): element is HTMLDivElement => element !== null,
+    );
+    background.forEach((element) => element.setAttribute('inert', ''));
+    return () => background.forEach((element) => element.removeAttribute('inert'));
+  }, [paletteOpen]);
+
+  // Restore focus after the inert attribute has been removed. Returning it from
+  // the trap cleanup is too early: browsers correctly refuse to focus an inert
+  // trigger.
+  useEffect(() => {
+    if (mobileWasOpenRef.current && !mobileOpen) {
+      mobileTriggerRef.current?.focus();
+    }
+    mobileWasOpenRef.current = mobileOpen;
+  }, [mobileOpen]);
 
   // Global shortcuts within the shell: Ctrl/Cmd+K (palette), / (search), ? (help).
   // Single-key shortcuts stay inert while typing so they never hijack a text field.
@@ -91,8 +129,10 @@ export function AppShell() {
       transition={{ duration: 0.7 * m, delay: 0.3 * m, ease: [0.16, 1, 0.3, 1] }}
       className="flex h-screen overflow-hidden flex-col"
     >
-      <Titlebar />
-      <div className="flex flex-1 overflow-hidden">
+      <div ref={titlebarRef} className="shrink-0">
+        <Titlebar />
+      </div>
+      <div ref={shellBodyRef} className="flex flex-1 overflow-hidden">
       {/* Desktop sidebar */}
       <div className="hidden md:block">
         <Sidebar
@@ -115,22 +155,51 @@ export function AppShell() {
               onClick={() => setMobileOpen(false)}
             />
             <motion.div
+              ref={mobileDrawerRef}
               className="absolute inset-y-0 left-0"
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setMobileOpen(false);
+                }
+              }}
             >
-              <Sidebar collapsed={false} onToggleCollapsed={() => setMobileOpen(false)} />
+              <button
+                type="button"
+                data-mobile-close
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close navigation"
+                title="Close navigation (Esc)"
+                className="absolute right-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+              >
+                <CloseIcon width={18} height={18} />
+              </button>
+              <Sidebar
+                collapsed={false}
+                onToggleCollapsed={() => setMobileOpen(false)}
+                toggleLabel="Close navigation"
+              />
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        ref={appContentRef}
+        aria-hidden={mobileOpen || undefined}
+        className="flex min-w-0 flex-1 flex-col"
+      >
         {/* Mobile top bar */}
         <div className="flex items-center gap-3 border-b border-line bg-surface/80 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
           <button
+            ref={mobileTriggerRef}
             onClick={() => setMobileOpen(true)}
             aria-label="Open navigation"
             className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft hover:bg-ink/5 active:bg-ink/10"
@@ -166,9 +235,9 @@ export function AppShell() {
         </main>
       </div>
 
+      </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
-      </div>
     </motion.div>
   );
 }

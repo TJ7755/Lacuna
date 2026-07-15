@@ -31,6 +31,7 @@ import type { Lesson } from '../../db/types';
 interface SidebarProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  toggleLabel?: string;
 }
 
 function NavItem({
@@ -306,7 +307,7 @@ const CourseRow = memo(function CourseRow({
 // Main Sidebar component
 // ---------------------------------------------------------------------------
 
-export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
+export function Sidebar({ collapsed, onToggleCollapsed, toggleLabel }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const courses = useCourses();
   const summaries = useCourseSummaries();
@@ -547,8 +548,8 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
         <button
           type="button"
           onClick={onToggleCollapsed}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+          aria-label={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
           className={cn(
             'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
             sidebarSettings.compactMode ? 'min-h-11 min-w-11' : 'min-h-11 min-w-11',
