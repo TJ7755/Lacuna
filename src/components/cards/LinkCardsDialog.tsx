@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { linkCardToLesson } from '../../db/repository';
+import { linkCardsToLesson } from '../../db/repository';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { CheckIcon, CloseIcon, SearchIcon } from '../ui/icons';
@@ -25,7 +25,7 @@ export function LinkCardsDialog({
   onCancel,
 }: LinkCardsDialogProps) {
   const { notify } = useToast();
-  const trapRef = useFocusTrap(true);
+  const trapRef = useFocusTrap(true, { autoFocusSelector: '[data-link-card-search]' });
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
@@ -58,7 +58,7 @@ export function LinkCardsDialog({
     if (selected.size === 0) return;
     setSaving(true);
     try {
-      await Promise.all([...selected].map((cardId) => linkCardToLesson(lessonId, cardId)));
+      await linkCardsToLesson(lessonId, [...selected]);
       notify(
         `${selected.size} card${selected.size === 1 ? '' : 's'} linked to this lesson.`,
         'positive',
@@ -122,7 +122,7 @@ export function LinkCardsDialog({
               className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
             />
             <input
-              autoFocus
+              data-link-card-search
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}

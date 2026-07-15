@@ -44,7 +44,11 @@ export function LessonCardsSection({
   const links = useLessonCardLinks(lessonId);
   const linkedCardIds = new Set((links ?? []).map((link) => link.cardId));
   const lessonCardIds = new Set(lessonCards.map((card) => card.id));
-  const linkCandidates = (courseCards ?? []).filter((card) => !lessonCardIds.has(card.id));
+  const linkCandidates = (courseCards ?? []).filter(
+    (card) =>
+      !lessonCardIds.has(card.id) &&
+      (card.sequenceItemId === null || card.sequenceItemId === undefined),
+  );
 
   async function handleUnlink(card: Card) {
     const exposure = await db.lessonCardExposures.get([lessonId, card.id]);
@@ -94,7 +98,15 @@ export function LessonCardsSection({
             </Button>
           </div>
         </div>
-      ) : lessonDeck ? (
+      ) : links === undefined || !lessonDeck ? (
+        // Membership determines whether a row may delete the underlying card. Never
+        // render destructive controls until that membership query has resolved.
+        <div className="space-y-3" aria-label="Loading lesson cards">
+          {Array.from({ length: Math.min(lessonCards.length, 3) }).map((_, i) => (
+            <div key={i} className="h-14 animate-pulse rounded-xl border border-line bg-ink/5" />
+          ))}
+        </div>
+      ) : (
         <CardList
           cards={lessonCards}
           deck={lessonDeck}
@@ -109,13 +121,6 @@ export function LessonCardsSection({
           sequences={sequences}
           onEditSequence={(sequenceId) => onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
         />
-      ) : (
-        // Deck is still resolving; show a brief skeleton rather than blocking the page.
-        <div className="space-y-3">
-          {Array.from({ length: Math.min(lessonCards.length, 3) }).map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-xl border border-line bg-ink/5" />
-          ))}
-        </div>
       )}
       <AnimatePresence>
         {linking && courseCards && lessons && (

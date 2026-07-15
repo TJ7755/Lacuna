@@ -482,9 +482,12 @@ course kept it as a per-lesson override. Migration mapping lives in
 `createCourse`/`updateCourse`/`deleteCourse`/`listCourses`/`getCourse`,
 `createLesson`/`updateLesson`/`deleteLesson`/`listLessons`/`reorderLessons`,
 `createNote`/`updateNote`/`deleteNote`/`listNotes`/`reorderNotes`,
-`linkCardToLesson`/`unlinkCardFromLesson`/`listLessonCardLinks`,
+`linkCardToLesson`/`linkCardsToLesson`/`unlinkCardFromLesson`/`listLessonCardLinks`,
 `createPracticeNode`/`updatePracticeNode`/`deletePracticeNode`/`listPracticeNodes`,
 and `createCourseExamDate`/`updateCourseExamDate`/`deleteCourseExamDate`/`listCourseExamDates`.
+Batch linking validates lesson/card existence, same-course membership and non-primary
+membership in one `lessonCards` write transaction; IndexedDB serialises overlapping writes
+to that store, making the idempotent duplicate check safe without another schema index.
 All functions are independently callable with no UI or React dependency, so future AI
 authoring agents and button handlers can share the same layer without duplication.
 
@@ -1134,7 +1137,8 @@ ordinary `front_back` cards to the scheduler.
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
   cards. The course-level **Study now** dispatcher owns session entry and routes to this
   lesson's notes-first teaching flow when it is the next available path node. In edit mode,
-  **Link existing cards** opens a searchable course-card picker and adds selected cards as
+  **Link existing cards** opens a searchable course-card picker and adds selected ordinary
+  cards (sequence-generated cards are excluded) as
   `LessonCardLink` memberships without moving their primary lesson or duplicating their FSRS
   state. Linked rows are labelled, excluded from destructive bulk selection, and use
   **Remove from lesson** instead of deleting the underlying shared card; removal also clears

@@ -22,6 +22,7 @@ import {
   createCourseCardWithReverse,
   createCourseBasicReversedPair,
   assignCardsToLesson,
+  linkCardsToLesson,
   linkCardToLesson,
   listCourseExamDates,
   listLessonCardLinks,
@@ -160,8 +161,7 @@ describe('deleteCourse cascade', () => {
     await createNote(lesson2.id, 'Note B');
 
     // Create a deck and card that belongs to this course.
-    const deck = await createDeck('Test deck');
-    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    const card = await createCourseCard(course.id, 'front_back', 'q', 'a');
     await db.cards.update(card.id, { courseId: course.id });
 
     // Link the card to lesson1.
@@ -303,8 +303,7 @@ describe('deleteLesson', () => {
     await createNote(lesson.id, 'Note A');
     await createNote(lesson.id, 'Note B');
 
-    const deck = await createDeck('Test deck');
-    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    const card = await createCourseCard(course.id, 'front_back', 'q', 'a');
     await linkCardToLesson(lesson.id, card.id);
 
     expect(await db.notes.where('lessonId').equals(lesson.id).count()).toBe(2);
@@ -343,8 +342,8 @@ describe('linkCardToLesson idempotency', () => {
   it('returns the existing link without creating a duplicate on a second call', async () => {
     const course = await createCourse('Link test');
     const lesson = await createLesson(course.id, 'L1');
-    const deck = await createDeck('Test deck');
-    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    const source = await createLesson(course.id, 'Source');
+    const card = await createLessonCard(course.id, source.id, 'front_back', 'q', 'a');
 
     const first = await linkCardToLesson(lesson.id, card.id);
     const second = await linkCardToLesson(lesson.id, card.id);
@@ -356,15 +355,67 @@ describe('linkCardToLesson idempotency', () => {
   it('creates distinct links for different cards in the same lesson', async () => {
     const course = await createCourse('Link test');
     const lesson = await createLesson(course.id, 'L1');
-    const deck = await createDeck('Test deck');
-    const c1 = await createCard(deck.id, 'front_back', 'q1', 'a1');
-    const c2 = await createCard(deck.id, 'front_back', 'q2', 'a2');
+    const source = await createLesson(course.id, 'Source');
+    const c1 = await createLessonCard(course.id, source.id, 'front_back', 'q1', 'a1');
+    const c2 = await createLessonCard(course.id, source.id, 'front_back', 'q2', 'a2');
 
     await linkCardToLesson(lesson.id, c1.id);
     await linkCardToLesson(lesson.id, c2.id);
 
     const links = await listLessonCardLinks(lesson.id);
     expect(links).toHaveLength(2);
+  });
+
+  it('rejects a missing lesson or card', async () => {
+    const course = await createCourse('Link test');
+    const lesson = await createLesson(course.id, 'Target');
+    const card = await createCourseCard(course.id, 'front_back', 'q', 'a');
+
+    await expect(linkCardToLesson('missing', card.id)).rejects.toThrow('lesson could not be found');
+    await expect(linkCardToLesson(lesson.id, 'missing')).rejects.toThrow('could not be found');
+    expect(await db.lessonCards.count()).toBe(0);
+  });
+
+  it('rejects cross-course and redundant primary-lesson links', async () => {
+    const courseA = await createCourse('Course A');
+    const courseB = await createCourse('Course B');
+    const target = await createLesson(courseA.id, 'Target');
+    const primary = await createLesson(courseA.id, 'Primary');
+    const crossCourseCard = await createCourseCard(courseB.id, 'front_back', 'q', 'a');
+    const primaryCard = await createLessonCard(courseA.id, primary.id, 'front_back', 'q2', 'a2');
+
+    await expect(linkCardToLesson(target.id, crossCourseCard.id)).rejects.toThrow('same course');
+    await expect(linkCardToLesson(primary.id, primaryCard.id)).rejects.toThrow(
+      'already belonging to this lesson',
+    );
+    expect(await db.lessonCards.count()).toBe(0);
+  });
+
+  it('rolls back the whole batch when any card is invalid', async () => {
+    const course = await createCourse('Link test');
+    const target = await createLesson(course.id, 'Target');
+    const source = await createLesson(course.id, 'Source');
+    const valid = await createLessonCard(course.id, source.id, 'front_back', 'q', 'a');
+
+    await expect(linkCardsToLesson(target.id, [valid.id, 'missing'])).rejects.toThrow(
+      'could not be found',
+    );
+    expect(await db.lessonCards.count()).toBe(0);
+  });
+
+  it('serialises concurrent duplicate requests through the lessonCards write transaction', async () => {
+    const course = await createCourse('Link test');
+    const target = await createLesson(course.id, 'Target');
+    const source = await createLesson(course.id, 'Source');
+    const card = await createLessonCard(course.id, source.id, 'front_back', 'q', 'a');
+
+    const [first, second] = await Promise.all([
+      linkCardToLesson(target.id, card.id),
+      linkCardToLesson(target.id, card.id),
+    ]);
+
+    expect(first.id).toBe(second.id);
+    expect(await db.lessonCards.count()).toBe(1);
   });
 });
 

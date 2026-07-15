@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import { createCard, createCourse, createCourseCard, createDeck, createLesson, linkCardToLesson } from './repository';
+import { createCard, createCourse, createCourseCard, createDeck, createLesson } from './repository';
 import {
   exportCardsCsv,
   exportCardsJson,
@@ -54,7 +54,6 @@ describe('card exporters: course/lesson naming', () => {
     const lesson = await createLesson(course.id, 'Cells');
     const card = await createCourseCard(course.id, 'front_back', 'Q', 'A');
     await db.cards.update(card.id, { primaryLessonId: lesson.id });
-    await linkCardToLesson(lesson.id, card.id);
 
     const csv = await exportCardsCsv();
     expect(csv).toContain('Biology — Cells');

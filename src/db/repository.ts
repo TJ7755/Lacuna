@@ -1244,28 +1244,59 @@ export async function listNoteAnnotations(noteId: string): Promise<NoteAnnotatio
 // ---------------------------------------------------------------------------
 
 /**
- * Link a card into a lesson for display/grouping purposes. Idempotent: if a link
- * for the (lessonId, cardId) pair already exists, it is returned unchanged.
+ * Link cards into a lesson for display/grouping purposes as one atomic operation.
+ *
+ * The read-before-write duplicate check is concurrency-safe without a compound unique
+ * index: every caller opens a read-write IndexedDB transaction containing `lessonCards`,
+ * and overlapping write transactions on that object store are serialised. A later caller
+ * therefore cannot read until the earlier caller has committed its inserted links.
  */
-export async function linkCardToLesson(lessonId: string, cardId: string): Promise<LessonCardLink> {
+export async function linkCardsToLesson(
+  lessonId: string,
+  cardIds: string[],
+): Promise<LessonCardLink[]> {
+  const uniqueCardIds = [...new Set(cardIds)];
+  if (uniqueCardIds.length === 0) return [];
+
   try {
-    const existing = await db.lessonCards
-      .where('lessonId')
-      .equals(lessonId)
-      .filter((lc) => lc.cardId === cardId)
-      .first();
-    if (existing) return existing;
-    const link: LessonCardLink = {
-      id: makeId(),
-      lessonId,
-      cardId,
-      createdAt: Date.now(),
-    };
-    await db.lessonCards.add(link);
-    return link;
+    return await db.transaction('rw', db.lessons, db.cards, db.lessonCards, async () => {
+      const lesson = await db.lessons.get(lessonId);
+      if (!lesson) throw new Error('The lesson could not be found.');
+
+      const cards = await db.cards.bulkGet(uniqueCardIds);
+      const missingIndex = cards.findIndex((card) => card === undefined);
+      if (missingIndex !== -1) {
+        throw new Error(`Card ${uniqueCardIds[missingIndex]} could not be found.`);
+      }
+
+      for (const card of cards as Card[]) {
+        if (card.courseId !== lesson.courseId) {
+          throw new Error('Cards can only be linked within the same course.');
+        }
+        if (card.primaryLessonId === lessonId) {
+          throw new Error('A card already belonging to this lesson cannot also be linked to it.');
+        }
+      }
+
+      const existing = await db.lessonCards.where('lessonId').equals(lessonId).toArray();
+      const existingByCardId = new Map(existing.map((link) => [link.cardId, link]));
+      const now = Date.now();
+      const created = uniqueCardIds
+        .filter((cardId) => !existingByCardId.has(cardId))
+        .map((cardId) => ({ id: makeId(), lessonId, cardId, createdAt: now }));
+      if (created.length > 0) await db.lessonCards.bulkAdd(created);
+      for (const link of created) existingByCardId.set(link.cardId, link);
+      return uniqueCardIds.map((cardId) => existingByCardId.get(cardId)!);
+    });
   } catch (err) {
     throw friendlyDbError(err);
   }
+}
+
+/** Idempotent single-card convenience wrapper around {@link linkCardsToLesson}. */
+export async function linkCardToLesson(lessonId: string, cardId: string): Promise<LessonCardLink> {
+  const [link] = await linkCardsToLesson(lessonId, [cardId]);
+  return link;
 }
 
 export async function listLessonCardLinks(lessonId: string): Promise<LessonCardLink[]> {

@@ -3,12 +3,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LessonCardsSection } from './LessonCardsSection';
 import type { Card, Deck, LessonCardLink } from '../../db/types';
 
-let mockLinks: LessonCardLink[] = [];
+let mockLinks: LessonCardLink[] | undefined = [];
+let mockCourseCards: Card[] = [];
 const mockUnlink = vi.fn();
 const mockGetExposure = vi.fn();
 
 vi.mock('../../state/useCourseData', () => ({
-  useCourseCards: () => [card],
+  useCourseCards: () => mockCourseCards,
   useLessonCardLinks: () => mockLinks,
   useLessons: () => [lesson],
   useSequences: () => [],
@@ -30,7 +31,12 @@ vi.mock('../ui/Toast', () => ({
 }));
 
 vi.mock('./LinkCardsDialog', () => ({
-  LinkCardsDialog: () => <div role="dialog">Card picker</div>,
+  LinkCardsDialog: ({ cards }: { cards: Card[] }) => (
+    <div role="dialog">
+      Card picker
+      <span data-testid="picker-card-ids">{cards.map((card) => card.id).join(',')}</span>
+    </div>
+  ),
 }));
 
 vi.mock('./CardList', () => ({
@@ -106,6 +112,7 @@ const card: Card = {
 
 beforeEach(() => {
   mockLinks = [];
+  mockCourseCards = [card];
   mockUnlink.mockReset();
   mockUnlink.mockResolvedValue(undefined);
   mockGetExposure.mockReset();
@@ -161,5 +168,41 @@ describe('LessonCardsSection', () => {
     await waitFor(() => expect(confirm).toHaveBeenCalledOnce());
     expect(mockUnlink).not.toHaveBeenCalled();
     confirm.mockRestore();
+  });
+
+  it('withholds card controls until linked membership has loaded', () => {
+    mockLinks = undefined;
+    render(
+      <LessonCardsSection
+        courseId="course-1"
+        lessonId="lesson-1"
+        lessonCards={[card]}
+        lessonDeck={deck}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Loading lesson cards')).toBeInTheDocument();
+    expect(screen.queryByText('Remove linked card')).not.toBeInTheDocument();
+  });
+
+  it('excludes generated sequence cards from linking candidates', () => {
+    mockCourseCards = [
+      card,
+      { ...card, id: 'generated-card', sequenceItemId: 'sequence-item-1' },
+    ];
+    render(
+      <LessonCardsSection
+        courseId="course-1"
+        lessonId="lesson-1"
+        lessonCards={[]}
+        lessonDeck={undefined}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Link existing cards'));
+    expect(screen.getByTestId('picker-card-ids')).toHaveTextContent(card.id);
+    expect(screen.getByTestId('picker-card-ids')).not.toHaveTextContent('generated-card');
   });
 });

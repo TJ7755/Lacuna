@@ -1,21 +1,18 @@
+import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LinkCardsDialog } from './LinkCardsDialog';
 import type { Card, Lesson } from '../../db/types';
 
 const mockNotify = vi.fn();
-const mockLinkCardToLesson = vi.fn();
+const mockLinkCardsToLesson = vi.fn();
 
 vi.mock('../../db/repository', () => ({
-  linkCardToLesson: (...args: unknown[]) => mockLinkCardToLesson(...args),
+  linkCardsToLesson: (...args: unknown[]) => mockLinkCardsToLesson(...args),
 }));
 
 vi.mock('../ui/Toast', () => ({
   useToast: () => ({ notify: mockNotify }),
-}));
-
-vi.mock('../../hooks/useFocusTrap', () => ({
-  useFocusTrap: () => ({ current: null }),
 }));
 
 const lessons: Lesson[] = [
@@ -58,8 +55,8 @@ function card(id: string, front: string, back: string, primaryLessonId: string |
 
 beforeEach(() => {
   mockNotify.mockReset();
-  mockLinkCardToLesson.mockReset();
-  mockLinkCardToLesson.mockResolvedValue(undefined);
+  mockLinkCardsToLesson.mockReset();
+  mockLinkCardsToLesson.mockResolvedValue(undefined);
 });
 
 describe('LinkCardsDialog', () => {
@@ -105,9 +102,40 @@ describe('LinkCardsDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Link 2 cards' }));
 
     await waitFor(() => {
-      expect(mockLinkCardToLesson).toHaveBeenCalledWith('lesson-2', 'card-1');
-      expect(mockLinkCardToLesson).toHaveBeenCalledWith('lesson-2', 'card-2');
+      expect(mockLinkCardsToLesson).toHaveBeenCalledOnce();
+      expect(mockLinkCardsToLesson).toHaveBeenCalledWith(
+        'lesson-2',
+        expect.arrayContaining(['card-1', 'card-2']),
+      );
       expect(onLinked).toHaveBeenCalledOnce();
     });
+  });
+
+  it('focuses search first and returns focus to the opener when closed', async () => {
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>Open picker</button>
+          {open && (
+            <LinkCardsDialog
+              lessonId="lesson-2"
+              cards={[card('card-1', 'Cell membrane', 'Controls entry', 'lesson-1')]}
+              lessons={lessons}
+              onLinked={() => setOpen(false)}
+              onCancel={() => setOpen(false)}
+            />
+          )}
+        </>
+      );
+    }
+
+    render(<Harness />);
+    const opener = screen.getByRole('button', { name: 'Open picker' });
+    opener.focus();
+    fireEvent.click(opener);
+    await waitFor(() => expect(screen.getByPlaceholderText('Search cards…')).toHaveFocus());
+    fireEvent.click(screen.getByRole('button', { name: 'Close card picker' }));
+    await waitFor(() => expect(opener).toHaveFocus());
   });
 });
