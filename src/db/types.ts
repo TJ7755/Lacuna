@@ -264,9 +264,9 @@ export interface CourseExamDate {
 
 /**
  * An overlapping-cloze sequence: an ordered list of small recallable units
- * (e.g. a numbered list, a chain of steps) from which generation logic
- * derives ordinary FSRS cards, each cueing on the preceding `cueWindow`
- * items. Sequences themselves are not studied directly.
+ * (e.g. a numbered list, a chain of steps, or a scripted scene) from which
+ * generation logic derives ordinary FSRS cards, each cueing on the preceding
+ * `cueWindow` items. Sequences themselves are not studied directly.
  */
 export interface Sequence {
   id: string;
@@ -275,6 +275,13 @@ export interface Sequence {
   primaryLessonId: string | null;
   name: string;
   description?: string;
+  /**
+   * `list` (default, undefined reads as `list`): every item generates a
+   * positional recall card. `lines`: items are speaker-tagged script lines;
+   * only `mySpeaker`'s lines generate recall cards, and other speakers'
+   * lines serve purely as cue context (see `mySpeaker`).
+   */
+  mode?: 'list' | 'lines';
   /** Ordered; stored inline as sequences are small. */
   items: SequenceItem[];
   /** Preceding items shown as cue. Default 2. */
@@ -283,6 +290,13 @@ export interface Sequence {
   chunkLabels?: string[];
   /** Toggle for label -> value cards. Default off. */
   generateLabelCards?: boolean;
+  /**
+   * `lines` mode only: the speaker whose lines are the recall target. Matched
+   * against `SequenceItem.speaker`. A sequence-level flag rather than a
+   * per-item one, since one speaker is "mine" for the whole scene — consistent
+   * with `cueWindow`/`chunkLabels` already being sequence-level settings.
+   */
+  mySpeaker?: string;
   createdAt: number;
 }
 
@@ -296,6 +310,8 @@ export interface SequenceItem {
   label?: string;
   /** Membership of a named chunk. */
   chunkIndex?: number;
+  /** `lines` mode only: who speaks this line (e.g. a character name). */
+  speaker?: string;
 }
 
 /** A learning unit on the course path: notes plus the cards taught in it. */

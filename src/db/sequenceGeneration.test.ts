@@ -154,6 +154,122 @@ describe('generateCards', () => {
   });
 });
 
+describe('generateCards (lines mode)', () => {
+  function makeScene(overrides: Partial<Sequence> = {}): Sequence {
+    return makeSequence({
+      mode: 'lines',
+      mySpeaker: 'ALICE',
+      items: [
+        item('l1', 'Hello there.', { speaker: 'BOB' }),
+        item('l2', 'General Kenobi.', { speaker: 'ALICE' }),
+        item('l3', 'You are a bold one.', { speaker: 'BOB' }),
+        item('l4', 'Indeed I am.', { speaker: 'ALICE' }),
+      ],
+      cueWindow: 2,
+      ...overrides,
+    });
+  }
+
+  it('generates cards only for mySpeaker lines, not cue-only lines', () => {
+    const payloads = generateCards(makeScene());
+    expect(payloads).toHaveLength(2);
+    expect(payloads.map((p) => p.sequenceItemId)).toEqual(['l2', 'l4']);
+  });
+
+  it('cues with speaker-tagged preceding lines regardless of speaker', () => {
+    const [first, second] = generateCards(makeScene());
+    expect(first.front).toBe('**Noble gases**\n\nBOB: Hello there.');
+    expect(first.back).toBe('General Kenobi.');
+    expect(second.front).toBe('**Noble gases**\n\nALICE: General Kenobi.\n\nBOB: You are a bold one.');
+    expect(second.back).toBe('Indeed I am.');
+  });
+
+  it('cues the first-in-scene mySpeaker line with "First line?" when it has no preceding lines', () => {
+    const scene = makeScene({
+      items: [item('l1', 'Indeed I am.', { speaker: 'ALICE' })],
+    });
+    const [only] = generateCards(scene);
+    expect(only.front).toBe('**Noble gases**\n\nFirst line?');
+  });
+
+  it('generates no cards when mySpeaker is unset', () => {
+    const scene = makeScene({ mySpeaker: undefined });
+    expect(generateCards(scene)).toEqual([]);
+  });
+
+  it('generates no cards when mySpeaker matches no line', () => {
+    const scene = makeScene({ mySpeaker: 'CAROL' });
+    expect(generateCards(scene)).toEqual([]);
+  });
+
+  it('list mode (mode undefined) is unaffected by a stray speaker field', () => {
+    const seq = makeSequence({ items: [item('a', 'Helium', { speaker: 'BOB' })] });
+    const payloads = generateCards(seq);
+    expect(payloads).toHaveLength(1);
+    expect(payloads[0].front).toBe('**Noble gases**\n\nFirst item?');
+  });
+});
+
+describe('diffRegeneration (lines mode)', () => {
+  function makeScene(overrides: Partial<Sequence> = {}): Sequence {
+    return {
+      id: 'seq-1',
+      courseId: 'course-1',
+      primaryLessonId: 'lesson-1',
+      name: 'Noble gases',
+      mode: 'lines',
+      mySpeaker: 'ALICE',
+      items: [
+        item('l1', 'Hello there.', { speaker: 'BOB' }),
+        item('l2', 'General Kenobi.', { speaker: 'ALICE' }),
+        item('l3', 'You are a bold one.', { speaker: 'BOB' }),
+        item('l4', 'Indeed I am.', { speaker: 'ALICE' }),
+      ],
+      cueWindow: 2,
+      createdAt: 0,
+      ...overrides,
+    };
+  }
+
+  it('produces no diff when nothing changed', () => {
+    const scene = makeScene();
+    const existing = generateCards(scene).map((p, i) =>
+      card({ id: `card-${p.sequenceItemId}`, sequenceItemId: p.sequenceItemId, front: p.front, back: p.back, createdAt: i }),
+    );
+    expect(diffRegeneration(scene, existing)).toEqual({ creates: [], updates: [], deletes: [] });
+  });
+
+  it('editing a cue-only line (not mine) regenerates only the follower mySpeaker card, memory state preserved', () => {
+    const scene = makeScene();
+    const existing = generateCards(scene).map((p) =>
+      card({ id: `card-${p.sequenceItemId}`, sequenceItemId: p.sequenceItemId, front: p.front, back: p.back }),
+    );
+    const edited = makeScene({
+      items: [
+        item('l1', 'Well, hello there.' /* edited BOB line */, { speaker: 'BOB' }),
+        item('l2', 'General Kenobi.', { speaker: 'ALICE' }),
+        item('l3', 'You are a bold one.', { speaker: 'BOB' }),
+        item('l4', 'Indeed I am.', { speaker: 'ALICE' }),
+      ],
+    });
+    const diff = diffRegeneration(edited, existing);
+    expect(diff.creates).toEqual([]);
+    expect(diff.deletes).toEqual([]);
+    expect(diff.updates).toEqual([{ id: 'card-l2', front: '**Noble gases**\n\nBOB: Well, hello there.' }]);
+  });
+
+  it('switching mySpeaker deletes the old speaker\'s cards and creates the new speaker\'s', () => {
+    const scene = makeScene();
+    const existing = generateCards(scene).map((p) =>
+      card({ id: `card-${p.sequenceItemId}`, sequenceItemId: p.sequenceItemId, front: p.front, back: p.back }),
+    );
+    const switched = makeScene({ mySpeaker: 'BOB' });
+    const diff = diffRegeneration(switched, existing);
+    expect(diff.deletes.sort()).toEqual(['card-l2', 'card-l4']);
+    expect(diff.creates.map((c) => c.sequenceItemId).sort()).toEqual(['l1', 'l3']);
+  });
+});
+
 describe('diffRegeneration', () => {
   const seq = makeSequence(); // a: Helium, b: Neon, c: Argon; cueWindow 2
 
