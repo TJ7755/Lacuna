@@ -35,7 +35,7 @@
 3. **Prioritise performance over aesthetics**, and make the trade-off explicit. If the performance difference is negligible, prefer aesthetics.
 4. **Complete the entire task list in one go** (where a list exists), except for asking questions. Do not stop after the first task unless blocked by ambiguity or errors.
 5. **Extract rather than append.** When a change would push a file past ~500 lines, or adds a concern distinct from the file's main responsibility (e.g. gesture handling inside a page component), extract it into a new module instead of appending. Extending existing *systems* does not mean extending existing *files*.
-6. For any task touching more than ~5 files, or needing a multi-step research → plan → implement → review loop, follow the **subagent-orchestration** skill.
+6. For Anthropic Claude models only: for any task touching more than ~5 files, or needing a multi-step research → plan → implement → review loop, follow the **subagent-orchestration** skill. OpenAI and Codex models must use their native collaboration workflow instead.
 
 ---
 

@@ -1,9 +1,13 @@
 ---
 name: subagent-orchestration
-description: "Use when a task touches more than roughly 5 files, or needs a multi-step research → plan → implement → review loop. Defines orchestrator hygiene, Sonnet/Opus delegation, per-task commit and review discipline, and the standard spawn workflow. Do NOT use for single-file changes or simple bug fixes — those are faster handled directly without subagents."
+description: "Anthropic Claude models only. Never use this skill with OpenAI or Codex models. For Claude, use when a task touches more than roughly 5 files or needs a multi-step research → plan → implement → review loop; it defines Sonnet/Opus delegation and the standard spawn workflow."
 ---
 
 # Subagent orchestration
+
+## Compatibility guard
+
+Use this skill only when running as an Anthropic Claude model. If you are an OpenAI or Codex model, stop reading and do not apply any instruction in this skill. Use your native collaboration workflow instead.
 
 You are an **orchestrator**. You do not write code. You spawn subagents that do, and you keep the main thread's context clean.
 
