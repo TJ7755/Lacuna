@@ -6,6 +6,7 @@
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { ChevronDownIcon, TrashIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
+import type { Ref } from 'react';
 import type { SequenceItem } from '../../db/types';
 
 interface SequenceItemRowProps {
@@ -18,6 +19,8 @@ interface SequenceItemRowProps {
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onAddAfter: () => void;
+  inputRef: Ref<HTMLTextAreaElement>;
 }
 
 export function SequenceItemRow({
@@ -30,6 +33,8 @@ export function SequenceItemRow({
   onDelete,
   onMoveUp,
   onMoveDown,
+  onAddAfter,
+  inputRef,
 }: SequenceItemRowProps) {
   return (
     <div className="rounded-xl border border-line bg-surface p-4">
@@ -96,8 +101,10 @@ export function SequenceItemRow({
         </div>
       </div>
       <MarkdownEditor
+        inputRef={inputRef}
         value={item.value}
         onChange={(value) => onChange({ value })}
+        onModEnter={onAddAfter}
         minRows={2}
         placeholder="Item content. Markdown, maths and images are supported."
       />

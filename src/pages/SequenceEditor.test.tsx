@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import type { Ref } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SequenceEditor } from './SequenceEditor';
 import type { Course, Sequence } from '../db/types';
@@ -30,8 +31,32 @@ vi.mock('../db/repository', () => ({
 // Stub the Markdown editor: a plain textarea keeps the test fast and focused
 // on SequenceEditor's own wiring, mirroring how QuestionBank.test.tsx stubs CardList.
 vi.mock('../components/markdown/MarkdownEditor', () => ({
-  MarkdownEditor: ({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
-    <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+  MarkdownEditor: ({
+    value,
+    onChange,
+    placeholder,
+    inputRef,
+    onModEnter,
+  }: {
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+    inputRef?: Ref<HTMLTextAreaElement>;
+    onModEnter?: () => void;
+  }) => (
+    <textarea
+      ref={inputRef}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (onModEnter && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          onModEnter();
+        }
+      }}
+      aria-keyshortcuts={onModEnter ? 'Control+Enter Meta+Enter' : undefined}
+      placeholder={placeholder}
+    />
   ),
 }));
 
@@ -43,7 +68,14 @@ const course: Course = {
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   fsrsVersion: 6,
-  fsrsParameters: { requestRetention: 0.9, w: Array(21).fill(0), enable_fuzz: true, maximum_interval: 36500, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] },
+  fsrsParameters: {
+    requestRetention: 0.9,
+    w: Array(21).fill(0),
+    enable_fuzz: true,
+    maximum_interval: 36500,
+    learning_steps: ['1m', '10m'],
+    relearning_steps: ['10m'],
+  },
   examObjective: 'expectedMarks',
   unlockMode: 'linear',
   autoPractice: false,
@@ -56,9 +88,7 @@ const course: Course = {
 // The "Items (N)" label is split across a text node and a child <span>, so
 // match on the combined textContent rather than an exact string.
 function itemsHeading(count: number) {
-  return screen.getByText(
-    (_content, element) => element?.textContent === `Items (${count})`,
-  );
+  return screen.getByText((_content, element) => element?.textContent === `Items (${count})`);
 }
 
 function renderNew() {
@@ -76,6 +106,10 @@ beforeEach(() => {
   mockSequence = undefined;
   createSequence.mockClear();
   updateSequence.mockClear();
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: vi.fn(),
+  });
 });
 
 describe('SequenceEditor', () => {
@@ -92,14 +126,72 @@ describe('SequenceEditor', () => {
     expect(itemsHeading(1)).toBeInTheDocument();
   });
 
-  it('adds an item and reorders it to the top', () => {
+  it('adds an item beside the working position, focuses it and scrolls it into view', () => {
     mockCourse = course;
     renderNew();
 
-    fireEvent.click(screen.getByText('Add item'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
     expect(itemsHeading(2)).toBeInTheDocument();
 
-    const values = screen.getAllByPlaceholderText('Item content. Markdown, maths and images are supported.');
+    const values = screen.getAllByPlaceholderText(
+      'Item content. Markdown, maths and images are supported.',
+    );
+    expect(values[1]).toHaveFocus();
+    expect(values[1].scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  it('adds and focuses consecutive items with Ctrl/Cmd+Enter from the value editor', () => {
+    mockCourse = course;
+    renderNew();
+
+    const first = screen.getByPlaceholderText(
+      'Item content. Markdown, maths and images are supported.',
+    );
+    expect(first).toHaveAttribute('aria-keyshortcuts', 'Control+Enter Meta+Enter');
+    fireEvent.change(first, { target: { value: 'First' } });
+    fireEvent.keyDown(first, { key: 'Enter', ctrlKey: true });
+
+    let values = screen.getAllByPlaceholderText(
+      'Item content. Markdown, maths and images are supported.',
+    );
+    expect(values).toHaveLength(2);
+    expect(values[1]).toHaveFocus();
+    fireEvent.change(values[1], { target: { value: 'Second' } });
+    fireEvent.keyDown(values[1], { key: 'Enter', metaKey: true });
+
+    values = screen.getAllByPlaceholderText(
+      'Item content. Markdown, maths and images are supported.',
+    );
+    expect(values).toHaveLength(3);
+    expect(values[0]).toHaveValue('First');
+    expect(values[1]).toHaveValue('Second');
+    expect(values[2]).toHaveFocus();
+  });
+
+  it('scopes the quick-entry shortcut to item content', () => {
+    mockCourse = course;
+    renderNew();
+
+    fireEvent.keyDown(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
+      key: 'Enter',
+      ctrlKey: true,
+    });
+    fireEvent.keyDown(screen.getByPlaceholderText('Label (optional)'), {
+      key: 'Enter',
+      metaKey: true,
+    });
+
+    expect(itemsHeading(1)).toBeInTheDocument();
+  });
+
+  it('preserves reordering and deletion after quick entry', () => {
+    mockCourse = course;
+    renderNew();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
+    const values = screen.getAllByPlaceholderText(
+      'Item content. Markdown, maths and images are supported.',
+    );
     fireEvent.change(values[0], { target: { value: 'First' } });
     fireEvent.change(values[1], { target: { value: 'Second' } });
 
@@ -107,21 +199,33 @@ describe('SequenceEditor', () => {
     const moveUpButtons = screen.getAllByTitle('Move up');
     fireEvent.click(moveUpButtons[1]);
 
-    const reordered = screen.getAllByPlaceholderText('Item content. Markdown, maths and images are supported.');
+    const reordered = screen.getAllByPlaceholderText(
+      'Item content. Markdown, maths and images are supported.',
+    );
     expect(reordered[0]).toHaveValue('Second');
     expect(reordered[1]).toHaveValue('First');
+
+    fireEvent.click(screen.getAllByTitle('Delete item')[1]);
+    expect(itemsHeading(1)).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('Item content. Markdown, maths and images are supported.'),
+    ).toHaveValue('Second');
   });
 
   it('shows a live preview count that grows as items are added', () => {
     mockCourse = course;
     renderNew();
 
-    const values = screen.getAllByPlaceholderText('Item content. Markdown, maths and images are supported.');
+    const values = screen.getAllByPlaceholderText(
+      'Item content. Markdown, maths and images are supported.',
+    );
     fireEvent.change(values[0], { target: { value: 'First item' } });
     expect(screen.getByText('1 card generated')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Add item'));
-    const updatedValues = screen.getAllByPlaceholderText('Item content. Markdown, maths and images are supported.');
+    fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
+    const updatedValues = screen.getAllByPlaceholderText(
+      'Item content. Markdown, maths and images are supported.',
+    );
     fireEvent.change(updatedValues[1], { target: { value: 'Second item' } });
     expect(screen.getByText('2 cards generated')).toBeInTheDocument();
   });
@@ -133,7 +237,9 @@ describe('SequenceEditor', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
       target: { value: 'My sequence' },
     });
-    const values = screen.getAllByPlaceholderText('Item content. Markdown, maths and images are supported.');
+    const values = screen.getAllByPlaceholderText(
+      'Item content. Markdown, maths and images are supported.',
+    );
     fireEvent.change(values[0], { target: { value: 'First item' } });
 
     fireEvent.click(screen.getByText('Add sequence'));

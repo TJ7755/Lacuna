@@ -6,7 +6,7 @@
 // Route: course/:courseId/sequence/new, course/:courseId/sequence/:sequenceId/edit,
 // and the lesson-scoped course/:courseId/lesson/:lessonId/sequence/new variant.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
@@ -51,6 +51,8 @@ export function SequenceEditor() {
   const [generateLabelCards, setGenerateLabelCards] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const itemInputs = useRef(new Map<string, HTMLTextAreaElement>());
+  const pendingItemFocus = useRef<string | null>(null);
 
   // Seed the form from the sequence being edited once it has loaded (new sequences start
   // with one blank item, since a sequence with zero items generates no cards).
@@ -72,6 +74,18 @@ export function SequenceEditor() {
     }
   }, [editing, sequence, loaded]);
 
+  // Adding an item is a quick-capture operation: keep the author at the working
+  // position, then focus and reveal the new value editor after React mounts it.
+  useEffect(() => {
+    const id = pendingItemFocus.current;
+    if (!id) return;
+    const input = itemInputs.current.get(id);
+    if (!input) return;
+    pendingItemFocus.current = null;
+    input.focus({ preventScroll: true });
+    input.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [items]);
+
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/bank`;
   const backPath = lessonMode ? lessonPath : bankPath;
@@ -90,7 +104,18 @@ export function SequenceEditor() {
       generateLabelCards,
       createdAt: sequence?.createdAt ?? 0,
     });
-  }, [loaded, sequence, courseId, lessonId, name, description, items, cueWindow, chunkLabels, generateLabelCards]);
+  }, [
+    loaded,
+    sequence,
+    courseId,
+    lessonId,
+    name,
+    description,
+    items,
+    cueWindow,
+    chunkLabels,
+    generateLabelCards,
+  ]);
 
   if (
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
@@ -119,14 +144,24 @@ export function SequenceEditor() {
     );
   }
 
-  const canSave = name.trim().length > 0 && items.length > 0 && items.every((i) => i.value.trim().length > 0);
+  const canSave =
+    name.trim().length > 0 && items.length > 0 && items.every((i) => i.value.trim().length > 0);
 
   function updateItem(id: string, patch: Partial<SequenceItem>) {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   }
 
-  function addItem() {
-    setItems((prev) => [...prev, { id: makeId(), value: '' }]);
+  function addItem(afterId?: string) {
+    const item = { id: makeId(), value: '' };
+    pendingItemFocus.current = item.id;
+    setItems((prev) => {
+      if (!afterId) return [...prev, item];
+      const index = prev.findIndex((candidate) => candidate.id === afterId);
+      if (index === -1) return [...prev, item];
+      const next = [...prev];
+      next.splice(index + 1, 0, item);
+      return next;
+    });
   }
 
   function deleteItem(id: string) {
@@ -205,7 +240,11 @@ export function SequenceEditor() {
         <span className="text-ink-soft">{editing ? 'Edit sequence' : 'New sequence'}</span>
       </nav>
 
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.16 }}
+      >
         <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
           <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
           <div className="relative">
@@ -220,7 +259,8 @@ export function SequenceEditor() {
               {editing ? 'Edit sequence' : 'New sequence'}
             </h1>
             <p className="mt-2 max-w-xl text-sm text-ink-soft">
-              An ordered list you memorise in order — each item&rsquo;s card cues on the ones before it.
+              An ordered list you memorise in order — each item&rsquo;s card cues on the ones before
+              it.
             </p>
           </div>
         </header>
@@ -300,7 +340,9 @@ export function SequenceEditor() {
                 onChange={(e) => setCueWindow(Math.max(1, Number(e.target.value) || 1))}
                 className="w-16 rounded-lg border border-line bg-transparent px-2 py-1 text-center outline-none focus:border-accent"
               />
-              <span className="text-ink-faint">preceding item{cueWindow === 1 ? '' : 's'} shown as cue</span>
+              <span className="text-ink-faint">
+                preceding item{cueWindow === 1 ? '' : 's'} shown as cue
+              </span>
             </label>
             <label className="flex items-center gap-2 text-sm text-ink-soft">
               <input
@@ -315,14 +357,11 @@ export function SequenceEditor() {
 
           {/* Items */}
           <div>
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
               <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">
                 Items <span className="text-ink-faint/70">({items.length})</span>
               </div>
-              <Button variant="ghost" size="sm" onClick={addItem}>
-                <PlusIcon width={14} height={14} />
-                Add item
-              </Button>
+              <span className="text-xs text-ink-faint">Ctrl/Cmd+Enter adds the next item</span>
             </div>
             <div className="flex flex-col gap-3">
               {items.map((item, i) => (
@@ -337,8 +376,23 @@ export function SequenceEditor() {
                   onDelete={() => deleteItem(item.id)}
                   onMoveUp={() => moveItem(item.id, 'up')}
                   onMoveDown={() => moveItem(item.id, 'down')}
+                  onAddAfter={() => addItem(item.id)}
+                  inputRef={(input) => {
+                    if (input) itemInputs.current.set(item.id, input);
+                    else itemInputs.current.delete(item.id);
+                  }}
                 />
               ))}
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => addItem()}
+                title="Add another item (Ctrl/Cmd+Enter while editing an item)"
+                className="w-full border border-dashed border-line-strong text-ink-faint hover:border-accent/50 hover:text-accent"
+              >
+                <PlusIcon width={14} height={14} />
+                Add another item
+              </Button>
             </div>
           </div>
 
@@ -349,14 +403,18 @@ export function SequenceEditor() {
               <span
                 className={cn(
                   'rounded-full px-3 py-1 text-sm font-medium',
-                  preview.length > 30 ? 'bg-amber-500/10 text-amber-700' : 'bg-accent-soft text-accent',
+                  preview.length > 30
+                    ? 'bg-amber-500/10 text-amber-700'
+                    : 'bg-accent-soft text-accent',
                 )}
               >
                 {preview.length} card{preview.length === 1 ? '' : 's'} generated
               </span>
             </div>
             {preview.length === 0 ? (
-              <p className="text-sm text-ink-faint">Add items to see the cards this sequence will generate.</p>
+              <p className="text-sm text-ink-faint">
+                Add items to see the cards this sequence will generate.
+              </p>
             ) : (
               <div className="flex flex-col gap-2">
                 {preview.map((payload, i) => (

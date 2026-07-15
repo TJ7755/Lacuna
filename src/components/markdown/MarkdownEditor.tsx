@@ -32,6 +32,8 @@ interface MarkdownEditorProps {
   onTabForward?: () => void;
   /** Shift+Tab inside the textarea; preventDefault is applied for you. */
   onTabBackward?: () => void;
+  /** Ctrl/Cmd+Enter inside the textarea; preventDefault is applied for you. */
+  onModEnter?: () => void;
 }
 
 type ToolbarAction = {
@@ -86,6 +88,7 @@ export function MarkdownEditor({
   inputRef,
   onTabForward,
   onTabBackward,
+  onModEnter,
 }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -110,7 +113,9 @@ export function MarkdownEditor({
   // Captured once on first render (lazy ref init) so the mount-only effect below can seed
   // history without depending on the `value` prop, which changes on every keystroke.
   const initialValueRef = useRef(value);
-  const historyRef = useRef<HistoryEntry[]>([{ text: initialValueRef.current, selStart: 0, selEnd: 0 }]);
+  const historyRef = useRef<HistoryEntry[]>([
+    { text: initialValueRef.current, selStart: 0, selEnd: 0 },
+  ]);
   const historyIndexRef = useRef(0);
   const historyTimerRef = useRef<number | null>(null);
   const lastPushedTextRef = useRef(initialValueRef.current);
@@ -275,7 +280,8 @@ export function MarkdownEditor({
         const lead = needsBreak ? '\n' : '';
         const snippet = `<details><summary>Title</summary>\n\n${inner}\n\n</details>`;
         const text = s.before + lead + snippet + s.after;
-        const selStart = s.before.length + lead.length + '<details><summary>Title</summary>\n\n'.length;
+        const selStart =
+          s.before.length + lead.length + '<details><summary>Title</summary>\n\n'.length;
         return { text, selStart, selEnd: selStart + inner.length };
       },
     },
@@ -411,6 +417,11 @@ export function MarkdownEditor({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {
+              if (onModEnter && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                onModEnter();
+                return;
+              }
               if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
                 if (e.shiftKey) {
@@ -444,6 +455,7 @@ export function MarkdownEditor({
             }}
             onDragLeave={() => setDragOver(false)}
             placeholder={placeholder}
+            aria-keyshortcuts={onModEnter ? 'Control+Enter Meta+Enter' : undefined}
             rows={rows}
             spellCheck
             className={cn(

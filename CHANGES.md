@@ -54,6 +54,9 @@ the design; the v2 lines-mode slice is not part of this release.
   `/course/:courseId/sequence/new`, `/course/:courseId/sequence/:sequenceId/edit`, and a
   lesson-scoped `/course/:courseId/lesson/:lessonId/sequence/new`, with entry points beside
   "Add card" in Lesson View and the Question Bank.
+- Reworked sequence item entry so the add control follows the list, newly added items are
+  focused and scrolled into view, and `Ctrl/Cmd+Enter` inserts the next item directly after
+  the value currently being edited.
 - Grouped and badged generated cards across management surfaces: `CardList` groups a
   sequence's cards under its name (`SequenceCardGroup`) and excludes them from bulk-select;
   a `SequenceBadge` marks generated cards in global search and the command palette; the

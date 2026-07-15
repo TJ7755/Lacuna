@@ -579,6 +579,10 @@ element a turn as the recall target with local context as the cue.
   listed, searched or shown in the command palette; `CardList` additionally groups
   generated cards under their owning sequence (`SequenceCardGroup`) rather than listing
   them loose (§12).
+- **Quick entry:** the add control follows the item list, so it remains beside the current
+  working position. Adding an item focuses it and scrolls it into view. `Ctrl/Cmd+Enter`
+  from an item's value editor inserts and focuses the next item directly after it; the
+  shortcut is scoped to item content and does not fire from sequence metadata fields.
 
 ### Deck and Folder (legacy backing structures, no UI)
 `Deck` (`id, name, examDate, createdAt, examDatePromptDismissed?, fsrsVersion,
@@ -1553,6 +1557,7 @@ defaults** is always available.
 | Deck view | `N` | New card |
 | Card editor | `Ctrl/Cmd+Enter` | Save (and add another, for new cards) |
 | Card editor | `Tab` | Front -> Back -> Save-and-add -> Save |
+| Sequence item editor | `Ctrl/Cmd+Enter` | Insert and focus the next item |
 | Learn | `Space` / `Up` | Show answer |
 | Learn | `Down` | Hide answer |
 | Learn (silent grading) | `Y` / `J` / `Right` | Yes (correct) |
