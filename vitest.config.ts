@@ -9,6 +9,9 @@ export default defineConfig({
     environment: 'happy-dom',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     setupFiles: ['./vitest.setup.ts'],
-    fileParallelism: false,
+    // Bound parallelism so the suite is faster without starving timing-sensitive
+    // component tests on larger CI and developer machines.
+    minWorkers: 1,
+    maxWorkers: 4,
   },
 });
