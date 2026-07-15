@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { bucketReviewsByDay, reviewHeatmap, reviewTimestamps } from './heatmap';
+import { bucketReviewsByDay, reviewTimestamps } from './heatmap';
 import { startOfDay } from '../utils/datetime';
-import { MS_PER_DAY } from './params';
 import type { Card } from '../db/types';
 
 function cardWith(timestamps: number[]): Card {
@@ -57,15 +56,5 @@ describe('review heatmap bucketing', () => {
     const a = cardWith([1000, 2000]);
     const b = cardWith([3000]);
     expect(reviewTimestamps([a, b]).sort((x, y) => x - y)).toEqual([1000, 2000, 3000]);
-  });
-
-  it('produces a contiguous window ending today, with zeros for empty days', () => {
-    const now = new Date(2026, 0, 20, 12, 0).getTime();
-    const twoDaysAgo = startOfDay(now) - 2 * MS_PER_DAY + 5 * 60 * 1000;
-    const series = reviewHeatmap([cardWith([twoDaysAgo, now])], 5, now);
-    expect(series).toHaveLength(5);
-    expect(series[series.length - 1]).toEqual({ day: startOfDay(now), count: 1 });
-    expect(series[2]).toEqual({ day: startOfDay(twoDaysAgo), count: 1 });
-    expect(series[0].count).toBe(0);
   });
 });

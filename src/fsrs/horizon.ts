@@ -24,12 +24,6 @@ import type { Card, SchedulerConfig } from '../db/types';
  */
 export const MAINTENANCE_HORIZON_DAYS = 7;
 
-/** Whether the deck's exam date is now in the past.
- *  Accepts any SchedulerConfig (a Deck or a Course); only examDate is read. */
-export function examHasPassed(deck: SchedulerConfig, now: number = Date.now()): boolean {
-  return deck.examDate < now;
-}
-
 /**
  * The date all scheduling and progress for this deck should target. The future
  * exam date while it is ahead of us; a rolling maintenance horizon once it has

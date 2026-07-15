@@ -6,13 +6,6 @@
 import { startOfDay } from '../utils/datetime';
 import type { Card } from '../db/types';
 
-export interface HeatmapDay {
-  /** Local start-of-day epoch for this cell. */
-  day: number;
-  /** Number of reviews recorded on that local day. */
-  count: number;
-}
-
 /** Every review timestamp across the given cards (one per logged review). */
 export function reviewTimestamps(cards: Card[]): number[] {
   const out: number[] = [];
@@ -35,23 +28,4 @@ export function addDays(dayStart: number, days: number): number {
   const d = new Date(dayStart);
   d.setDate(d.getDate() + days);
   return startOfDay(d.getTime());
-}
-
-/**
- * A contiguous run of daily buckets ending today (oldest first), so the calendar
- * always shows the recent window even on days with no reviews.
- */
-export function reviewHeatmap(
-  cards: Card[],
-  days: number,
-  now: number = Date.now(),
-): HeatmapDay[] {
-  const buckets = bucketReviewsByDay(reviewTimestamps(cards));
-  const today = startOfDay(now);
-  const out: HeatmapDay[] = [];
-  for (let i = days - 1; i >= 0; i -= 1) {
-    const day = addDays(today, -i);
-    out.push({ day, count: buckets.get(day) ?? 0 });
-  }
-  return out;
 }

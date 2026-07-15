@@ -70,11 +70,6 @@ export function sequenceToBindingReviews(seq: ReviewSequence): BindingReviewData
   }));
 }
 
-/** Convert every card's history into binding review data (one array per card). */
-export function cardsToBindingReviewData(cards: Card[]): BindingReviewData[][] {
-  return reviewSequences(cards).map(sequenceToBindingReviews);
-}
-
 /** Total reviews across the given cards. */
 export function countReviews(cards: Card[]): number {
   return cards.reduce((sum, c) => sum + c.history.length, 0);

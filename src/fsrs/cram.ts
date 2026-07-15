@@ -53,15 +53,3 @@ export function cramScore(
   // shifted into a strictly lower band (negative) so they always rank last.
   return finished ? rNo - 2 : 1 - rNo;
 }
-
-/** Cards ordered for cram study: weakest first, finished cards last. */
-export function cramOrder(
-  cards: Card[],
-  oc: ObjectiveContext,
-  now: number = Date.now(),
-): Card[] {
-  return cards
-    .map((card) => ({ card, score: cramScore(card, oc, now) }))
-    .sort((a, b) => b.score - a.score)
-    .map((s) => s.card);
-}

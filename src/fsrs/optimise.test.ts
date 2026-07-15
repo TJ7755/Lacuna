@@ -6,7 +6,6 @@ import {
 } from '@open-spaced-repetition/binding';
 import { checkParameters, default_w } from 'ts-fsrs';
 import {
-  cardsToBindingReviewData,
   chronologicallySplitSequences,
   countReviews,
   evaluateParameters,
@@ -82,16 +81,6 @@ describe('history-to-binding conversion', () => {
     expect(reviews[0]).toEqual({ rating: 3, deltaT: 0 });
     expect(reviews[1]).toEqual({ rating: 4, deltaT: 3 });
     expect(reviews[2]).toEqual({ rating: 2, deltaT: 3 });
-  });
-
-  it('produces one review array per card with history', () => {
-    const cards = syntheticDeck();
-    const data = cardsToBindingReviewData(cards);
-    expect(data).toHaveLength(cards.length);
-    for (const reviews of data) {
-      expect(reviews[0].deltaT).toBe(0);
-      expect(reviews.every((r) => r.rating >= 1 && r.rating <= 4)).toBe(true);
-    }
   });
 });
 

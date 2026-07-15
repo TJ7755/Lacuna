@@ -15,6 +15,21 @@ function deckDecay(deck: SchedulerConfig): number {
   return decayOf(deck.fsrsParameters);
 }
 
+/** Predicted retrievability for one card at its applicable scheduling horizon. */
+export function predictedRetrievabilityAtHorizon(
+  card: Card,
+  deck: SchedulerConfig,
+  now: number = Date.now(),
+  examDateContext?: ExamDateContext,
+): number {
+  return rAtExam(
+    card,
+    cardSchedulingHorizon(card, deck, examDateContext, now),
+    now,
+    deckDecay(deck),
+  );
+}
+
 /** Fraction (0..1) of cards predicted to be at or above the mastery threshold on exam day. */
 export function masteryFraction(
   cards: Card[],
@@ -23,15 +38,8 @@ export function masteryFraction(
   examDateContext?: ExamDateContext,
 ): number {
   if (cards.length === 0) return 1;
-  const decay = deckDecay(deck);
   const mastered = cards.filter(
-    (card) =>
-      rAtExam(
-        card,
-        cardSchedulingHorizon(card, deck, examDateContext, now),
-        now,
-        decay,
-      ) >= MASTERY_R,
+    (card) => predictedRetrievabilityAtHorizon(card, deck, now, examDateContext) >= MASTERY_R,
   ).length;
   return mastered / cards.length;
 }
@@ -44,16 +52,8 @@ export function averagePredictedRetrievability(
   examDateContext?: ExamDateContext,
 ): number {
   if (cards.length === 0) return 1;
-  const decay = deckDecay(deck);
   const total = cards.reduce(
-    (sum, card) =>
-      sum +
-      rAtExam(
-        card,
-        cardSchedulingHorizon(card, deck, examDateContext, now),
-        now,
-        decay,
-      ),
+    (sum, card) => sum + predictedRetrievabilityAtHorizon(card, deck, now, examDateContext),
     0,
   );
   return total / cards.length;

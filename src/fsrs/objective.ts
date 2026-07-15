@@ -86,13 +86,6 @@ export function progressHeading(deck: SchedulerConfig): string {
     : 'Predicted exam score';
 }
 
-/** A one-line description of exactly what the progress value measures. */
-export function progressDescription(deck: SchedulerConfig): string {
-  return deck.examObjective === 'securedTopics'
-    ? 'Proportion of cards predicted to be recalled with 90% or higher retrievability when your exam arrives.'
-    : 'Mean predicted retrievability across the deck on your exam day.';
-}
-
 /**
  * Scheduler sort key for a card under the deck's objective. Higher = serve sooner.
  */

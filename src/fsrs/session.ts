@@ -66,17 +66,6 @@ function unitKey(scope: SessionUnitScope): string {
   }
 }
 
-function cardMatchesScope(card: Card, scope: SessionUnitScope): boolean {
-  switch (scope.kind) {
-    case 'deck':
-      return card.deckId === scope.deckId;
-    case 'course':
-      return card.courseId === scope.courseId;
-    case 'lesson':
-      return card.primaryLessonId === scope.lessonId || scope.linkedCardIds.has(card.id);
-  }
-}
-
 /** Per-unit scoring context held for the life of a session. */
 interface SessionDeckContext {
   /** The unit's scheduling config — a Deck (deck scope) or a Course (lesson/course scope). */
@@ -92,6 +81,11 @@ export interface SessionContext {
   mode: SessionMode;
 }
 
+interface SessionCardIndex {
+  byUnit: Map<string, Card[]>;
+  unitsByCard: Map<string, SessionDeckContext[]>;
+}
+
 /**
  * Build the session context once from the units being studied. Accepts either the
  * legacy `Deck[]` (per-deck route and global "Today" session, unchanged) or an
@@ -103,7 +97,8 @@ export function makeSessionContext(
 ): SessionContext {
   const map = new Map<string, SessionDeckContext>();
   for (const u of units) {
-    const unit: SessionUnit = 'scope' in u ? u : { config: u, scope: { kind: 'deck', deckId: u.id } };
+    const unit: SessionUnit =
+      'scope' in u ? u : { config: u, scope: { kind: 'deck', deckId: u.id } };
     map.set(unitKey(unit.scope), {
       deck: unit.config,
       scope: unit.scope,
@@ -120,35 +115,82 @@ function urgency(deck: SchedulerConfig, now: number = Date.now()): number {
   return 1 / (1 + daysUntil(schedulingHorizon(deck, now), now));
 }
 
-function cardsOfUnit(cards: Card[], scope: SessionUnitScope): Card[] {
-  return cards.filter((c) => cardMatchesScope(c, scope));
+/**
+ * Index card membership once for a session calculation. The previous implementation
+ * filtered the complete card array once per unit, then repeated much of that work
+ * while scoring. Direct indexes keep the common deck/course case linear while still
+ * supporting cards linked into several lesson units.
+ */
+function indexSessionCards(cards: Card[], ctx: SessionContext): SessionCardIndex {
+  const byUnit = new Map<string, Card[]>();
+  const unitsByDeck = new Map<string, SessionDeckContext[]>();
+  const unitsByCourse = new Map<string, SessionDeckContext[]>();
+  const unitsByPrimaryLesson = new Map<string, SessionDeckContext[]>();
+  const unitsByLinkedCard = new Map<string, SessionDeckContext[]>();
+
+  const addUnit = (
+    map: Map<string, SessionDeckContext[]>,
+    key: string,
+    unit: SessionDeckContext,
+  ) => {
+    const entries = map.get(key);
+    if (entries) entries.push(unit);
+    else map.set(key, [unit]);
+  };
+
+  for (const unit of ctx.decks.values()) {
+    byUnit.set(unitKey(unit.scope), []);
+    switch (unit.scope.kind) {
+      case 'deck':
+        addUnit(unitsByDeck, unit.scope.deckId, unit);
+        break;
+      case 'course':
+        addUnit(unitsByCourse, unit.scope.courseId, unit);
+        break;
+      case 'lesson':
+        addUnit(unitsByPrimaryLesson, unit.scope.lessonId, unit);
+        for (const cardId of unit.scope.linkedCardIds) addUnit(unitsByLinkedCard, cardId, unit);
+        break;
+    }
+  }
+
+  const unitsByCard = new Map<string, SessionDeckContext[]>();
+  for (const card of cards) {
+    const matches = new Set<SessionDeckContext>();
+    for (const unit of unitsByDeck.get(card.deckId) ?? []) matches.add(unit);
+    if (card.courseId) {
+      for (const unit of unitsByCourse.get(card.courseId) ?? []) matches.add(unit);
+    }
+    if (card.primaryLessonId) {
+      for (const unit of unitsByPrimaryLesson.get(card.primaryLessonId) ?? []) matches.add(unit);
+    }
+    for (const unit of unitsByLinkedCard.get(card.id) ?? []) matches.add(unit);
+
+    if (matches.size === 0) continue;
+    const matchedUnits = [...matches];
+    unitsByCard.set(card.id, matchedUnits);
+    for (const unit of matchedUnits) byUnit.get(unitKey(unit.scope))!.push(card);
+  }
+
+  return { byUnit, unitsByCard };
 }
 
-/** Lightweight per-call cache so sessionComplete and sessionProgress don't re-filter
- *  the same unit's cards repeatedly when called in quick succession. */
-function getUnitCards(
+/** Apply the eligibility rules for one unit consistently across selection and completion. */
+function unitServePool(
   cards: Card[],
-  scope: SessionUnitScope,
-  cache: Map<string, Card[]>,
+  deck: SchedulerConfig,
+  mode: SessionMode,
+  now: number,
 ): Card[] {
-  const key = unitKey(scope);
-  let result = cache.get(key);
-  if (!result) {
-    result = cardsOfUnit(cards, scope);
-    cache.set(key, result);
-  }
-  return result;
+  if (deck.archived) return [];
+  return mode === 'cram' ? availableCards(cards, now) : studyPool(cards, deck, now);
 }
 
-/** All units whose scope matches a card. Usually a single entry, but a card
- *  linked into another lesson via LessonCardLink matches its own lesson's unit
- *  *and* every lesson unit it's linked into (see cardMatchesScope). */
-function unitsForCard(card: Card, ctx: SessionContext): SessionDeckContext[] {
-  const out: SessionDeckContext[] = [];
-  for (const dc of ctx.decks.values()) {
-    if (cardMatchesScope(card, dc.scope)) out.push(dc);
-  }
-  return out;
+function indexedUnitsForCard(
+  card: Card,
+  index: SessionCardIndex,
+): SessionDeckContext[] {
+  return index.unitsByCard.get(card.id) ?? [];
 }
 
 /** Resolve the single unit that should score a card matching more than one unit:
@@ -168,18 +210,6 @@ function resolveScoringUnit(
   return units.reduce((best, dc) => (scoreFn(dc) > scoreFn(best) ? dc : best));
 }
 
-/** Find the unit a served card belongs to (matched by scope, not deckId, so
- *  course/lesson-scoped units resolve correctly for shadow-decked cards). When
- *  a card matches more than one unit (linked into several lessons), resolves
- *  deterministically via {@link resolveScoringUnit} rather than returning
- *  whichever unit happens to iterate first. */
-function findUnit(card: Card, ctx: SessionContext, now: number = Date.now()): SessionDeckContext | undefined {
-  const units = unitsForCard(card, ctx);
-  if (units.length === 0) return undefined;
-  if (units.length === 1) return units[0];
-  return resolveScoringUnit(card, units, (dc) => cramScore(card, dc.oc, now));
-}
-
 /** The cards a session may serve right now (studyPool per unit, unioned and
  *  deduplicated by card id — a card linked into more than one lesson unit via
  *  LessonCardLink would otherwise be counted once per matching unit).
@@ -189,19 +219,19 @@ export function sessionServePool(
   ctx: SessionContext,
   now: number = Date.now(),
 ): Card[] {
+  return sessionServePoolFromIndex(indexSessionCards(cards, ctx), ctx, now);
+}
+
+function sessionServePoolFromIndex(
+  index: SessionCardIndex,
+  ctx: SessionContext,
+  now: number,
+): Card[] {
   const seen = new Set<string>();
   const pool: Card[] = [];
   for (const { deck, scope } of ctx.decks.values()) {
-    // Archived decks/courses are excluded from all study modes.
-    if (deck.archived) continue;
-    const deckCards = cardsOfUnit(cards, scope);
-    const eligible =
-      ctx.mode === 'cram'
-        ? // Cram serves every available card, ignoring the daily new-card cap.
-          deckCards.filter(
-            (c) => !c.suspended && !(c.buriedUntil !== null && c.buriedUntil !== undefined && c.buriedUntil > now),
-          )
-        : studyPool(deckCards, deck, now);
+    const deckCards = index.byUnit.get(unitKey(scope)) ?? [];
+    const eligible = unitServePool(deckCards, deck, ctx.mode, now);
     for (const c of eligible) {
       if (seen.has(c.id)) continue;
       seen.add(c.id);
@@ -221,7 +251,8 @@ export function selectNext(
   cooldowns: CooldownMap,
   now: number = Date.now(),
 ): Card | null {
-  const pool = sessionServePool(cards, ctx, now);
+  const index = indexSessionCards(cards, ctx);
+  const pool = sessionServePoolFromIndex(index, ctx, now);
   if (pool.length === 0) return null;
 
   if (ctx.mode === 'cram') {
@@ -229,7 +260,11 @@ export function selectNext(
     // the session. Cooldown-eligible cards win; otherwise serve the soonest.
     const cramPriority = new Map<string, number>();
     for (const card of pool) {
-      const dc = findUnit(card, ctx, now);
+      const units = indexedUnitsForCard(card, index);
+      const dc =
+        units.length <= 1
+          ? units[0]
+          : resolveScoringUnit(card, units, (unit) => cramScore(card, unit.oc, now));
       if (dc) cramPriority.set(card.id, cramScore(card, dc.oc, now));
     }
     const ordered = pool
@@ -253,9 +288,12 @@ export function selectNext(
   // shared across units can be resolved deterministically afterwards, instead
   // of last-write-wins over Map iteration order.
   const perUnitPriority = new Map<string, Map<string, number>>();
+  const poolIds = new Set(pool.map((card) => card.id));
   for (const dc of ctx.decks.values()) {
     const { deck, scope, oc } = dc;
-    const deckCards = pool.filter((c) => cardMatchesScope(c, scope));
+    const deckCards = (index.byUnit.get(unitKey(scope)) ?? []).filter((card) =>
+      poolIds.has(card.id),
+    );
     if (deckCards.length === 0) continue;
     const scores = deckCards.map((c) => scoreCard(c, oc, now));
     const min = scores.reduce((a, b) => Math.min(a, b), Infinity);
@@ -273,7 +311,7 @@ export function selectNext(
 
   const priority = new Map<string, number>();
   for (const card of pool) {
-    const units = unitsForCard(card, ctx);
+    const units = indexedUnitsForCard(card, index);
     if (units.length === 0) continue;
     const dc =
       units.length === 1
@@ -286,9 +324,7 @@ export function selectNext(
     priority.set(card.id, perUnitPriority.get(unitKey(dc.scope))?.get(card.id) ?? 0);
   }
 
-  const scored = pool
-    .slice()
-    .sort((a, b) => (priority.get(b.id) ?? 0) - (priority.get(a.id) ?? 0));
+  const scored = pool.slice().sort((a, b) => (priority.get(b.id) ?? 0) - (priority.get(a.id) ?? 0));
 
   const eligible = scored.find((c) => (cooldowns.get(c.id) ?? 0) <= 0);
   if (eligible) return eligible;
@@ -312,10 +348,15 @@ export function sessionComplete(
   ctx: SessionContext,
   now: number = Date.now(),
 ): boolean {
-  const unitCache = new Map<string, Card[]>();
+  const index = indexSessionCards(cards, ctx);
   let anyPoolNonEmpty = false;
   for (const { deck, scope, oc } of ctx.decks.values()) {
-    const served = studyPool(getUnitCards(cards, scope, unitCache), deck, now);
+    const served = unitServePool(
+      index.byUnit.get(unitKey(scope)) ?? [],
+      deck,
+      ctx.mode,
+      now,
+    );
     if (served.length > 0) anyPoolNonEmpty = true;
     if (!isObjectiveComplete(served, oc, now)) return false;
   }
@@ -332,11 +373,11 @@ export function sessionProgress(
   ctx: SessionContext,
   now: number = Date.now(),
 ): number {
-  const unitCache = new Map<string, Card[]>();
+  const index = indexSessionCards(cards, ctx);
   let total = 0;
   let acc = 0;
   for (const { deck, scope, oc } of ctx.decks.values()) {
-    const available = availableCards(getUnitCards(cards, scope, unitCache), now);
+    const available = availableCards(index.byUnit.get(unitKey(scope)) ?? [], now);
     if (available.length === 0) continue;
     acc += progressValue(available, deck, now, oc.examDateContext) * available.length;
     total += available.length;

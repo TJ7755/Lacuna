@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Grade, ReviewLog } from '../db/types';
-import { predictionAccuracySeries, gradeQualitySummary } from './calibration';
+import { predictionAccuracySeries } from './calibration';
 
 const DAY = new Date(2026, 5, 4, 12).getTime();
 
@@ -55,22 +55,5 @@ describe('predictionAccuracySeries', () => {
     expect(series[0].predicted).toBeCloseTo(0.525);
     expect(series[0].actual).toBeCloseTo(0.5);
     expect(series[0].brier).toBeCloseTo(((0.8 - 1) ** 2 + (0.25 - 0) ** 2) / 2);
-  });
-});
-
-describe('gradeQualitySummary', () => {
-  it('reports grade spread and faster-response next-recall lift', () => {
-    const summary = gradeQualitySummary([
-      card([
-        log(4, 0.9, 1),
-        log(3, 0.8, 5),
-        log(2, 0.7, 9),
-        log(1, 0.4, 12),
-      ]),
-    ]);
-
-    expect(summary.gradeCounts).toEqual({ 1: 1, 2: 1, 3: 1, 4: 1 });
-    expect(summary.totalReviews).toBe(4);
-    expect(summary.fasterResponseRecallLift).toBe(0.5);
   });
 });

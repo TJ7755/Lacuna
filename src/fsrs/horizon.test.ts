@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   cardSchedulingHorizon,
-  examHasPassed,
   schedulingHorizon,
   MAINTENANCE_HORIZON_DAYS,
 } from './horizon';
@@ -46,12 +45,6 @@ function makeCard(overrides: Partial<Card> = {}): Card {
 }
 
 describe('schedulingHorizon', () => {
-  it('reports whether the exam has passed', () => {
-    const now = Date.now();
-    expect(examHasPassed(makeDeck({ examDate: now + MS_PER_DAY }), now)).toBe(false);
-    expect(examHasPassed(makeDeck({ examDate: now - MS_PER_DAY }), now)).toBe(true);
-  });
-
   it('targets the exam date while it is in the future', () => {
     const now = Date.now();
     const examDate = now + 3 * MS_PER_DAY;

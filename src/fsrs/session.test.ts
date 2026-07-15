@@ -98,6 +98,50 @@ describe('cram sessions', () => {
     expect(cramPool.map((entry) => entry.id)).toEqual(['first', 'second']);
   });
 
+  it('does not complete after reviewing the first of two new cards when the cap is one', () => {
+    const capped = {
+      ...deck('capped', 1),
+      examObjective: 'securedTopics' as const,
+      newCardsPerDay: 1,
+    };
+    const initialCards = [
+      card('first', capped.id, { createdAt: 1 }),
+      card('second', capped.id, { createdAt: 2 }),
+    ];
+    const afterFirstReview = [
+      {
+        ...initialCards[0],
+        state: 2 as const,
+        stability: 100,
+        difficulty: 5,
+        lastReviewed: NOW,
+        reps: 1,
+        history: [
+          {
+            timestamp: NOW,
+            grade: 3 as const,
+            responseTimeSec: 2,
+            distracted: false,
+            stabilityBefore: null,
+            stabilityAfter: 100,
+            difficultyBefore: null,
+            difficultyAfter: 5,
+            retrievabilityAtReview: null,
+          },
+        ],
+      },
+      initialCards[1],
+    ];
+    const objectiveCtx = makeSessionContext([capped]);
+    const cramCtx = makeSessionContext([capped], 'cram');
+
+    expect(sessionServePool(initialCards, cramCtx, NOW)).toHaveLength(2);
+    expect(sessionServePool(afterFirstReview, objectiveCtx, NOW).map((entry) => entry.id)).toEqual([
+      'first',
+    ]);
+    expect(sessionComplete(afterFirstReview, cramCtx, NOW)).toBe(false);
+  });
+
   it('excludes every card belonging to an archived unit', () => {
     const active = deck('active', 1);
     const archived = { ...deck('archived', 1), archived: true };
@@ -126,8 +170,9 @@ describe('cram sessions', () => {
       state: 2,
     });
 
-    expect(selectNext([strong, weak], makeSessionContext([first, second], 'cram'), new Map(), NOW)?.id)
-      .toBe(weak.id);
+    expect(
+      selectNext([strong, weak], makeSessionContext([first, second], 'cram'), new Map(), NOW)?.id,
+    ).toBe(weak.id);
   });
 
   it('skips the weakest card while it is cooling', () => {
@@ -337,7 +382,12 @@ describe('course/lesson-scoped sessions', () => {
     const cB = course('course-1', 30);
     const lessonA: SessionUnit = {
       config: cA,
-      scope: { kind: 'lesson', courseId: 'course-1', lessonId: 'lesson-a', linkedCardIds: new Set() },
+      scope: {
+        kind: 'lesson',
+        courseId: 'course-1',
+        lessonId: 'lesson-a',
+        linkedCardIds: new Set(),
+      },
     };
     const lessonB: SessionUnit = {
       config: cB,
@@ -365,7 +415,12 @@ describe('course/lesson-scoped sessions', () => {
     const cB = course('course-1', 30);
     const lessonA: SessionUnit = {
       config: cA,
-      scope: { kind: 'lesson', courseId: 'course-1', lessonId: 'lesson-a', linkedCardIds: new Set() },
+      scope: {
+        kind: 'lesson',
+        courseId: 'course-1',
+        lessonId: 'lesson-a',
+        linkedCardIds: new Set(),
+      },
     };
     const lessonB: SessionUnit = {
       config: cB,
