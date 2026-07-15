@@ -15,6 +15,13 @@ Plugins and sync/collaboration are explicitly parked. Arc 2's design doubles as 
 plugin-compatibility groundwork: the MCP tool surface over the repository layer is the
 first — and for now only — extension point.
 
+Also parked: **switching FSRS parameter optimisation to the official binding trainer**.
+An abandoned June 2026 experiment (deleted branch
+`copilot/production-hardening-round-two`, commits `c4fad61` and `8de902b`) attempted
+this against the pre-Course-architecture codebase, touching `src/fsrs/optimise.ts`, the
+optimise worker and Settings. The branch is unmergeable now; if revisited, redo it fresh
+against the current `src/fsrs/optimise.ts` Web Worker design (SPEC.md §8.1).
+
 Detail rots (the Course plan needed two addenda), so only the most recently delivered arc
 carries full detail. Outline arcs are scoped, not specified.
 
