@@ -182,6 +182,30 @@ export function isLessonUnlocked(
   lessons: Lesson[],
   now: number = Date.now(),
 ): boolean {
+  let firstCoreLessonId: string | undefined;
+  let firstCoreOrder = Infinity;
+  for (const candidate of lessons) {
+    if (!candidate.isExtension && candidate.orderIndex < firstCoreOrder) {
+      firstCoreOrder = candidate.orderIndex;
+      firstCoreLessonId = candidate.id;
+    }
+  }
+  return isLessonUnlockedWithFirstCore(
+    course,
+    lesson,
+    effectiveDates,
+    firstCoreLessonId,
+    now,
+  );
+}
+
+function isLessonUnlockedWithFirstCore(
+  course: Course,
+  lesson: Lesson,
+  effectiveDates: Map<string, number | undefined>,
+  firstCoreLessonId: string | undefined,
+  now: number,
+): boolean {
   // Extension lessons are always unlocked (addendum B).
   if (lesson.isExtension) return true;
 
@@ -201,10 +225,7 @@ export function isLessonUnlocked(
       if (lesson.unlockedAt !== undefined) return true;
       // The first core lesson by orderIndex is always available so the student
       // has a starting point even before completing any practice.
-      const coreByOrder = [...lessons]
-        .filter((l) => !l.isExtension)
-        .sort((a, b) => a.orderIndex - b.orderIndex);
-      return coreByOrder.length > 0 && coreByOrder[0].id === lesson.id;
+      return firstCoreLessonId === lesson.id;
     }
 
     default:
@@ -339,24 +360,48 @@ export function buildPath(
   const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
 
+  const firstCoreLessonId = sorted.find((lesson) => !lesson.isExtension)?.id;
+  const exposedCardIdsByLesson = new Map<string, Set<string>>();
+  for (const exposure of progress.exposures) {
+    let cardIds = exposedCardIdsByLesson.get(exposure.lessonId);
+    if (!cardIds) {
+      cardIds = new Set<string>();
+      exposedCardIdsByLesson.set(exposure.lessonId, cardIds);
+    }
+    cardIds.add(exposure.cardId);
+  }
+  const completedLessonIds = new Set(
+    progress.lessonCompletions.map((completion) => completion.lessonId),
+  );
+
   // Map lessonId → orderIndex for fast checkpoint-placement lookups.
   const orderByLessonId = new Map<string, number>(sorted.map((l) => [l.id, l.orderIndex]));
 
   // Build lesson nodes in path order.
   const lessonNodes: LessonPathNode[] = sorted.map((lesson) => {
-    const unlocked = isLessonUnlocked(course, lesson, effectiveDates, lessons, now);
+    const unlocked = isLessonUnlockedWithFirstCore(
+      course,
+      lesson,
+      effectiveDates,
+      firstCoreLessonId,
+      now,
+    );
     const cards = lessonCardsById.get(lesson.id) ?? [];
+    const exposedCardIds = exposedCardIdsByLesson.get(lesson.id);
+    const status: LessonStatus = !unlocked
+      ? 'locked'
+      : cards.length === 0
+        ? completedLessonIds.has(lesson.id)
+          ? 'completed'
+          : 'available'
+        : cards.every((card) => exposedCardIds?.has(card.id))
+          ? 'completed'
+          : 'available';
     return {
       id: lesson.id,
       nodeType: 'lesson',
       lesson,
-      status: lessonStatus(
-        unlocked,
-        lesson.id,
-        cards,
-        progress.exposures,
-        progress.lessonCompletions,
-      ),
+      status,
     };
   });
 
