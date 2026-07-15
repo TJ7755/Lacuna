@@ -38,9 +38,10 @@ function readStoredTheme(): Theme {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(readStoredTheme);
+  const [systemDark, setSystemDark] = useState(systemPrefersDark);
 
   const resolvedTheme: ResolvedTheme = theme === 'auto'
-    ? (systemPrefersDark() ? 'dark' : 'light')
+    ? (systemDark ? 'dark' : 'light')
     : theme;
 
   useEffect(() => {
@@ -62,16 +63,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [theme]);
 
-  // When in auto mode, listen for system preference changes.
+  // Keep the system preference in React state so every consumer, including
+  // charts and browser theme metadata, updates with automatic theme changes.
   useEffect(() => {
-    if (theme !== 'auto') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => {
-      document.documentElement.classList.toggle('dark', mq.matches);
-    };
+    const handler = () => setSystemDark(mq.matches);
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
-  }, [theme]);
+  }, []);
 
   const setTheme = useCallback((next: Theme) => setThemeState(next), []);
   const toggleTheme = useCallback(
