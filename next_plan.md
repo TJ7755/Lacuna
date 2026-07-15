@@ -184,21 +184,34 @@ For a sequence with items `i₀ … iₙ` and `cueWindow = w`:
 
 ## 1.5 v2 (same arc, second slice): lines mode
 
-Scoped now, built after lists ship. Same `Sequence` machinery with a different skin:
+> **Status (July 2026): data layer and editor delivered; study-flow UI open.**
+> `Sequence.mode`/`mySpeaker` and `SequenceItem.speaker` (additive, no schema bump —
+> Dexie doesn't need one for un-indexed optional fields), the `isMyLine`-filtered
+> generation/regeneration logic, the script-paste splitter, and the sequence editor's
+> mode picker/speaker fields/"my speaker" control are implemented and tested
+> (`src/db/sequenceGeneration.ts`, `src/db/scriptSplitter.ts`,
+> `src/pages/SequenceEditor.tsx`, `src/components/sequences/ScriptPasteImport.tsx`;
+> SPEC.md §5). **Open:** the study-flow UI below — first-letter hints and strict grading
+> in Learn mode — is not started.
+
+Same `Sequence` machinery with a different skin:
 
 - Items are lines; a `speaker` field per item; "my lines" marked so only those generate
   recall cards, with other speakers' lines serving purely as cue context (cue lines are
-  the hinges — consistent with the actor-memory literature).
+  the hinges — consistent with the actor-memory literature). **Shipped:** cue lines
+  display speaker names by default (`NAME: line`), resolving the open question below.
 - **First-letter prompt mode**: a graded hint (initial letters of the answer) before full
-  reveal, as a mid-step in the reveal flow.
+  reveal, as a mid-step in the reveal flow. **Not started** — LearnMode is out of scope
+  for the data-layer/editor slice above.
 - **Strict grading**: reuse the typing-answer comparison for verbatim checking; Yes/No
-  self-grade remains the fallback.
+  self-grade remains the fallback. **Not started**, same reason.
 - Script import assist (paste a script, split into speaker-tagged items) is a natural
-  Arc 2 agent task; a basic manual splitter ships here.
+  Arc 2 agent task; a basic manual splitter ships here. **Shipped:** `splitScript`
+  (`src/db/scriptSplitter.ts`) plus the `ScriptPasteImport` preview/correction modal.
 
-Open design questions to resolve before the v2 slice: hint granularity (first letters vs
-first words), how punctuation/case affect strict grading, and whether cue lines display
-speaker names by default.
+Open design questions, now resolved by the shipped slice: cue lines display speaker names
+by default (decided above). Still open for the study-flow slice: hint granularity (first
+letters vs first words) and how punctuation/case affect strict grading.
 
 ## 1.6 Risks
 

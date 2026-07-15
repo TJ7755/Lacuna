@@ -553,14 +553,34 @@ is the item's own value. The first item is cued by the sequence/chunk name alone
 directly targets the serial-position effect (mid-sequence recall is weakest) by giving every
 element a turn as the recall target with local context as the cue.
 
-- `Sequence { id, courseId, primaryLessonId: string | null, name, description?,
-  items: SequenceItem[], cueWindow, chunkLabels?, generateLabelCards?, createdAt }` —
-  `items` is ordered and stored inline (sequences are small); `primaryLessonId` follows the
-  same semantics as `Card.primaryLessonId`. `generateLabelCards` (default off) additionally
-  generates an unordered label -> value card per item that carries a `label` (e.g. "Atomic
-  number 11 -> ?"), alongside the positional card.
-- `SequenceItem { id, value, label?, chunkIndex? }` — `id` is stable across edits and anchors
-  the generated card(s); `value` is Markdown.
+- `Sequence { id, courseId, primaryLessonId: string | null, name, description?, mode?,
+  items: SequenceItem[], cueWindow, chunkLabels?, generateLabelCards?, mySpeaker?,
+  createdAt }` — `items` is ordered and stored inline (sequences are small); `primaryLessonId`
+  follows the same semantics as `Card.primaryLessonId`. `generateLabelCards` (default off)
+  additionally generates an unordered label -> value card per item that carries a `label`
+  (e.g. "Atomic number 11 -> ?"), alongside the positional card. These are additive optional
+  fields — no schema/index change was needed to add lines mode.
+- `SequenceItem { id, value, label?, chunkIndex?, speaker? }` — `id` is stable across edits
+  and anchors the generated card(s); `value` is Markdown.
+- **Lines mode** (`mode: 'lines'`; `mode` undefined/`'list'` is the original ordered-list
+  skin and is unaffected). Items are speaker-tagged script lines (`SequenceItem.speaker`);
+  `Sequence.mySpeaker` names the one speaker whose lines are the recall target — a
+  sequence-level flag (like `cueWindow`/`chunkLabels`) rather than a per-item one, since one
+  speaker is "mine" for the whole scene. Only `mySpeaker`'s lines generate a card
+  (`isMyLine` in `src/db/sequenceGeneration.ts`); other speakers' lines never get their own
+  card but still count towards the cue window, so a generated front reads like a script:
+  cue paragraphs render as `NAME: line` (`cueText`) instead of a bare value, and the
+  first-in-scene prompt reads "First line?" instead of "First item?". Regeneration
+  (`diffRegeneration`) needs no lines-specific logic beyond `generateCards` already
+  filtering by `isMyLine`: switching `mySpeaker` diffs like any other content change —
+  deletes the old speaker's cards, creates the new speaker's.
+- **Script paste import** (`src/db/scriptSplitter.ts`, `splitScript`): a pure parser for the
+  lines-mode editor's paste + auto-split flow. A line matching `NAME: dialogue` starts a new
+  item for that speaker; a following non-matching line is folded in as a wrapped continuation
+  of the same speech; blank lines are separators only and never break a continuing speech.
+  `src/components/sequences/ScriptPasteImport.tsx` wraps it in a paste → preview → correct →
+  confirm modal (mirroring `LinkCardsDialog`'s shell) so the author can fix a misattributed
+  speaker or line before it replaces the editor's item list.
 - `Card.sequenceItemId?: string` is present iff the card was generated from a sequence item:
   the positional card carries the item's own id; the label card (when generated) carries
   `${item.id}::label` (`LABEL_CARD_SUFFIX`), so the two never collide and `isLabelCardId`/
@@ -1295,7 +1315,8 @@ never one person's scheduling progress or review history.
   travel inline, and on import every sequence/item id is remapped fresh alongside its
   generated cards' `sequenceItemId` (including the `::label` suffix for label cards), so a
   shared sequence never collides with one already present locally. Older v2 codes without
-  a `sequences` field still parse.
+  a `sequences` field still parse. Lines mode's `mode`/`mySpeaker` (sequence) and `speaker`
+  (item) travel as further additive optional keys on the same schema.
   Images ride along inline inside card/note Markdown as base64 data URIs rather than being
   stripped, so a shared course renders faithfully; DEFLATE still compresses the payload
   overall. `LessonCardLink` (display-only cross-lesson linking) and `PracticeNode` are
