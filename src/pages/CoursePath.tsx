@@ -5,7 +5,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { m as motion } from 'motion/react';
+import { m as motion, AnimatePresence } from 'motion/react';
 import { db } from '../db/schema';
 import {
   useLessons,
@@ -524,16 +524,18 @@ export function CoursePath() {
         </div>
       )}
 
-      {editorState && (
-        <PracticeNodeEditor
-          courseId={course.id}
-          lessons={lessons}
-          node={editorState.mode === 'edit' ? editorState.node : undefined}
-          defaultPosition={editorState.mode === 'new' ? editorState.defaultPosition : undefined}
-          onSaved={() => setEditorState(null)}
-          onCancel={() => setEditorState(null)}
-        />
-      )}
+      <AnimatePresence>
+        {editorState && (
+          <PracticeNodeEditor
+            courseId={course.id}
+            lessons={lessons}
+            node={editorState.mode === 'edit' ? editorState.node : undefined}
+            defaultPosition={editorState.mode === 'new' ? editorState.defaultPosition : undefined}
+            onSaved={() => setEditorState(null)}
+            onCancel={() => setEditorState(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
