@@ -177,7 +177,9 @@ const SharePayloadSchema = z.discriminatedUnion('v', [SharePayloadV1Schema, Shar
 interface ShareCard {
   /**
    * 0 = front/back, 1 = cloze, 2 = reversible front/back pair (expands to two
-   * cards), 3 = typing (answer stored in `b`, never folded into a reversible pair).
+   * cards). 3 = typing — retired as a card type (see src/state/typingSetting.ts);
+   * still decoded on import for backward compatibility with older share codes,
+   * where it unpacks to a plain front_back card.
    */
   k: 0 | 1 | 2 | 3;
   /** Front (Markdown). For cloze this holds the whole `{{cN::…}}` source. */
@@ -652,14 +654,6 @@ function packCards(cards: Card[]): ShareCard[] {
       continue;
     }
 
-    if (c.type === 'typing') {
-      // Typing cards never fold into a reversible pair — the front/back roles are
-      // not interchangeable (the answer is always typed against the front prompt).
-      out.push({ k: 3, f: front.markdown, b: back.markdown, ...tags, ...imageFlag, ...seqRef });
-      consumed.add(c.id);
-      continue;
-    }
-
     if (c.sequenceItemId) {
       // Cards generated from a sequence item never fold into a reversible pair either —
       // the `si` reference must stay on exactly one, unambiguous card so it can be
@@ -727,7 +721,8 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
       { type: 'front_back', front: back, back: sc.f, ...tags },
     ];
   }
-  if (sc.k === 3) return [{ type: 'typing', front: sc.f, back: sc.b ?? '', ...tags }];
+  // k === 3 (typing) and k === 0 (front/back) both unpack to a plain front_back
+  // card — typing is a retired card type, folded here for older share codes.
   return [{ type: 'front_back', front: sc.f, back: sc.b ?? '', ...tags }];
 }
 

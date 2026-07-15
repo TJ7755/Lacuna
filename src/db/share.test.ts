@@ -204,21 +204,18 @@ describe('share codes', () => {
     expect(cards[0].back).toBe('Back text');
   });
 
-  it('packs a typing card as k:3 and unpacks it back to type typing', async () => {
+  it('unpacks a legacy k:3 (typing) card as front_back for backward compatibility', async () => {
     const deck = await createDeck('Typing deck');
-    await createCard(deck.id, 'typing', 'What is the capital of Japan?', 'Tokyo');
-
     const payload = asV1(await decodeShare(await buildShareCode([deck.id])));
-    expect(payload.decks[0].cards).toHaveLength(1);
-    expect(payload.decks[0].cards[0].k).toBe(3);
-    expect(payload.decks[0].cards[0].f).toBe('What is the capital of Japan?');
-    expect(payload.decks[0].cards[0].b).toBe('Tokyo');
+    payload.decks[0].cards = [
+      { k: 3, f: 'What is the capital of Japan?', b: 'Tokyo' },
+    ];
 
     await importSharePayload(payload);
     const imported = (await db.decks.toArray()).find((d) => d.id !== deck.id)!;
     const cards = await db.cards.where('deckId').equals(imported.id).toArray();
     expect(cards).toHaveLength(1);
-    expect(cards[0].type).toBe('typing');
+    expect(cards[0].type).toBe('front_back');
     expect(cards[0].front).toBe('What is the capital of Japan?');
     expect(cards[0].back).toBe('Tokyo');
   });
@@ -277,7 +274,7 @@ describe('course share codes (v2)', () => {
     await createNote(lessonA.id, 'Overview', 'Cells are the basic unit of life.');
     await createLessonCard(course.id, lessonA.id, 'front_back', 'Front', 'Back');
     await createLessonCard(course.id, lessonA.id, 'cloze', 'The {{c1::mitochondria}} is the powerhouse.', '');
-    await createLessonCard(course.id, lessonA.id, 'typing', 'Name the organelle', 'Nucleus');
+    await createLessonCard(course.id, lessonA.id, 'front_back', 'Name the organelle', 'Nucleus');
 
     await createNote(lessonB.id, 'Notes', 'DNA carries genetic information.');
     await createLessonCard(course.id, lessonB.id, 'front_back', 'chien', 'dog');
@@ -307,7 +304,7 @@ describe('course share codes (v2)', () => {
     expect(summary.kind).toBe('course');
     expect(summary.courseName).toBe('Biology');
     expect(summary.lessonCount).toBe(2);
-    expect(summary.cardCount).toBe(5); // front_back + cloze + typing + reversible pair (2)
+    expect(summary.cardCount).toBe(5); // front_back + cloze + front_back + reversible pair (2)
 
     const result = await importSharePayload(payload);
     expect(result.courses).toBe(1);
@@ -331,7 +328,7 @@ describe('course share codes (v2)', () => {
 
     const cardsA = await db.cards.where('primaryLessonId').equals(importedLessons[0].id).toArray();
     expect(cardsA).toHaveLength(3);
-    expect(cardsA.some((c) => c.type === 'typing' && c.front === 'Name the organelle' && c.back === 'Nucleus')).toBe(true);
+    expect(cardsA.some((c) => c.type === 'front_back' && c.front === 'Name the organelle' && c.back === 'Nucleus')).toBe(true);
 
     const cardsB = await db.cards.where('primaryLessonId').equals(importedLessons[1].id).toArray();
     expect(cardsB).toHaveLength(2);

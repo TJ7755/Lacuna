@@ -3,7 +3,7 @@
 
 import type { CardFilter } from './search';
 
-export type CardType = 'front_back' | 'cloze' | 'typing' | 'basic_reversed';
+export type CardType = 'front_back' | 'cloze' | 'basic_reversed';
 
 /** FSRS grade: 1 = Again, 2 = Hard, 3 = Good, 4 = Easy. Matches ts-fsrs `Grade`. */
 export type Grade = 1 | 2 | 3 | 4;
