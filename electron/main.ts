@@ -42,12 +42,15 @@ function readWindowState(): WindowState {
   }
 }
 
-function writeWindowState(state: WindowState): void {
-  try {
-    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2), 'utf-8');
-  } catch {
-    // State persistence is best-effort; never let it break the app.
-  }
+let windowStateWrite = Promise.resolve();
+
+function writeWindowState(state: WindowState): Promise<void> {
+  windowStateWrite = windowStateWrite
+    .then(() => fs.promises.writeFile(STATE_FILE, JSON.stringify(state), 'utf-8'))
+    .catch(() => {
+      // State persistence is best-effort; never let it break the app.
+    });
+  return windowStateWrite;
 }
 
 function ensureWindowVisible(state: WindowState): WindowState {
@@ -187,11 +190,11 @@ function createWindow(): void {
   });
 
   // Persist window state on resize, move, and close.
-  const saveState = (): void => {
-    if (!mainWindow) return;
+  const saveState = (): Promise<void> => {
+    if (!mainWindow) return Promise.resolve();
     const maximized = mainWindow.isMaximized();
     const bounds = mainWindow.getNormalBounds();
-    writeWindowState({
+    return writeWindowState({
       width: bounds.width,
       height: bounds.height,
       x: bounds.x,
@@ -200,9 +203,22 @@ function createWindow(): void {
     });
   };
 
-  mainWindow.on('resize', saveState);
-  mainWindow.on('move', saveState);
-  mainWindow.on('close', saveState);
+  let saveStateTimer: ReturnType<typeof setTimeout> | null = null;
+  const scheduleSaveState = (): void => {
+    if (saveStateTimer) clearTimeout(saveStateTimer);
+    saveStateTimer = setTimeout(() => {
+      saveStateTimer = null;
+      void saveState();
+    }, 250);
+  };
+
+  mainWindow.on('resize', scheduleSaveState);
+  mainWindow.on('move', scheduleSaveState);
+  mainWindow.on('close', () => {
+    if (saveStateTimer) clearTimeout(saveStateTimer);
+    saveStateTimer = null;
+    void saveState();
+  });
 
   // Notify renderer of maximized changes so the titlebar can update its icon.
   mainWindow.on('maximize', () => {
@@ -215,7 +231,7 @@ function createWindow(): void {
   // Inject local font-face overrides so the app works fully offline.
   mainWindow.webContents.on('did-finish-load', () => {
     try {
-      const baseDir = isDev ? path.join(__dirname, '..') : __dirname;
+      const baseDir = path.join(__dirname, '..');
       const fontsCssPath = path.join(baseDir, 'fonts.css');
       let css = fs.readFileSync(fontsCssPath, 'utf-8');
 
@@ -253,9 +269,9 @@ function createWindow(): void {
   });
 
   if (isDev) {
-    mainWindow.loadURL(VITE_DEV_URL);
+    void mainWindow.loadURL(VITE_DEV_URL);
   } else {
-    mainWindow.loadURL('app://./index.html');
+    void mainWindow.loadURL('app://./index.html');
   }
 }
 
@@ -272,7 +288,7 @@ if (!gotTheLock) {
     }
   });
 
-  app.whenReady().then(() => {
+  void app.whenReady().then(() => {
     installSecurityHeaders();
 
     if (!isDev) {
@@ -282,7 +298,7 @@ if (!gotTheLock) {
     createWindow();
 
     if (!isDev) {
-      initAutoUpdater(mainWindow);
+      initAutoUpdater();
     }
 
     // Window control IPC handlers for the custom titlebar.
