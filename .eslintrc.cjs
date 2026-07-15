@@ -13,7 +13,11 @@ module.exports = {
     ecmaVersion: 'latest',
     sourceType: 'module',
     ecmaFeatures: { jsx: true },
-    project: ['./tsconfig.app.json'],
+    project: [
+      './tsconfig.app.json',
+      './electron/tsconfig.json',
+      './electron/tsconfig.preload.json',
+    ],
   },
   plugins: ['@typescript-eslint', 'react', 'react-hooks'],
   settings: {
