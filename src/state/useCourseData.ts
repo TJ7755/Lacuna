@@ -28,9 +28,9 @@ export function useCourses(): Course[] | undefined {
   return useLiveQuery(() => db.courses.orderBy('createdAt').toArray(), []);
 }
 
-export function useCourse(courseId: string | undefined): Course | undefined {
-  return useLiveQuery(
-    () => (courseId ? db.courses.get(courseId) : undefined),
+export function useCourse(courseId: string | undefined): Course | null | undefined {
+  return useLiveQuery<Course | null>(
+    () => (courseId ? db.courses.get(courseId).then((course) => course ?? null) : null),
     [courseId],
   );
 }
@@ -50,16 +50,16 @@ export function useAllLessons(): Lesson[] | undefined {
   return useLiveQuery(() => db.lessons.orderBy('orderIndex').toArray(), []);
 }
 
-export function useLesson(lessonId: string | undefined): Lesson | undefined {
-  return useLiveQuery(
-    () => (lessonId ? db.lessons.get(lessonId) : undefined),
+export function useLesson(lessonId: string | undefined): Lesson | null | undefined {
+  return useLiveQuery<Lesson | null>(
+    () => (lessonId ? db.lessons.get(lessonId).then((lesson) => lesson ?? null) : null),
     [lessonId],
   );
 }
 
-export function useSequence(sequenceId: string | undefined): Sequence | undefined {
-  return useLiveQuery(
-    () => (sequenceId ? db.sequences.get(sequenceId) : undefined),
+export function useSequence(sequenceId: string | undefined): Sequence | null | undefined {
+  return useLiveQuery<Sequence | null>(
+    () => (sequenceId ? db.sequences.get(sequenceId).then((sequence) => sequence ?? null) : null),
     [sequenceId],
   );
 }
@@ -300,16 +300,18 @@ export function useCourseSummaries(): Record<string, CourseSummary> | undefined 
  * reruns on any write anywhere). Use this wherever only one course's summary is
  * needed, e.g. CoursePath.
  */
-export function useCourseSummary(courseId: string | undefined): CourseSummary | undefined {
-  return useLiveQuery(async () => {
-    if (!courseId) return undefined;
+export function useCourseSummary(
+  courseId: string | undefined,
+): CourseSummary | null | undefined {
+  return useLiveQuery<CourseSummary | null>(async () => {
+    if (!courseId) return null;
     const [course, lessons, cards, examDates] = await Promise.all([
       db.courses.get(courseId),
       db.lessons.where('courseId').equals(courseId).toArray(),
       db.cards.where('courseId').equals(courseId).toArray(),
       db.courseExamDates.where('courseId').equals(courseId).toArray(),
     ]);
-    if (!course) return undefined;
+    if (!course) return null;
     return computeCourseSummaries([course], lessons, cards, examDates)[courseId];
   }, [courseId]);
 }

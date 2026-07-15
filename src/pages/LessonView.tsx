@@ -98,7 +98,7 @@ export function LessonView({
   }
 
   // Not found.
-  if (lesson === null) {
+  if (lesson === null || course === null) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -108,7 +108,9 @@ export function LessonView({
       >
         <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
         <div className="relative">
-          <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
+          <p className="mb-4 text-ink-soft">
+            {lesson === null ? 'This lesson could not be found.' : 'This course could not be found.'}
+          </p>
           <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
             {courseId ? 'Back to course' : 'Back to dashboard'}
           </Link>

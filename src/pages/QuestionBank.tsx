@@ -26,6 +26,14 @@ export function QuestionBank() {
   if (course === undefined || lessons === undefined || cards === undefined || sequences === undefined) {
     return <QuestionBankSkeleton />;
   }
+  if (course === null) {
+    return (
+      <div className="p-10">
+        <p className="mb-4 text-ink-soft">This course could not be found.</p>
+        <Link to="/" className="text-accent underline">Back to dashboard</Link>
+      </div>
+    );
+  }
 
   const query = search.trim().toLowerCase();
   const matches = (card: Card) =>

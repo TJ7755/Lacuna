@@ -279,7 +279,7 @@ export function CoursePath() {
   }
 
   // Course not found.
-  if (course === null) {
+  if (course === null || summary === null) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -352,7 +352,7 @@ export function CoursePath() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
       {/* Breadcrumb */}
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <Link
           to="/"
           className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
@@ -360,7 +360,7 @@ export function CoursePath() {
           <ChevronLeftIcon width={16} height={16} />
           All courses
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex w-full items-center justify-between gap-1 sm:w-auto sm:justify-start sm:gap-4">
           <Link
             to={`/course/${courseId}/bank`}
             className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
@@ -398,7 +398,7 @@ export function CoursePath() {
         examUrgent={examUrgent}
         title={course.name}
       >
-        <div>
+        <div className="min-w-0 max-w-full">
           <HeaderStats
             dueCount={dueCardCount}
             masteryPct={masteryPct}
@@ -443,7 +443,7 @@ export function CoursePath() {
               lesson (currentLessonNode), reusing the same node the path
               highlights below rather than recomputing it. */}
           {nextStudyLabel && (
-            <p className="mt-1.5 text-xs text-ink-faint">Next: {nextStudyLabel}</p>
+            <p className="mt-1.5 break-words text-xs text-ink-faint">Next: {nextStudyLabel}</p>
           )}
         </div>
       </CourseHeader>

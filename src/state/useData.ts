@@ -24,9 +24,9 @@ export function useDeck(deckId: string | undefined): Deck | undefined {
   );
 }
 
-export function useCard(cardId: string | undefined): Card | undefined {
-  return useLiveQuery(
-    () => (cardId ? db.cards.get(cardId) : undefined),
+export function useCard(cardId: string | undefined): Card | null | undefined {
+  return useLiveQuery<Card | null>(
+    () => (cardId ? db.cards.get(cardId).then((card) => card ?? null) : null),
     [cardId],
   );
 }

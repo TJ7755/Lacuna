@@ -128,6 +128,14 @@ export function SequenceEditor() {
   ) {
     return <SequenceEditorSkeleton />;
   }
+  if (course === null) {
+    return (
+      <div className="p-10">
+        <p className="mb-4 text-ink-soft">This course could not be found.</p>
+        <Link to="/" className="text-accent underline">Back to dashboard</Link>
+      </div>
+    );
+  }
   if (lessonMode && lesson === null) {
     return (
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">

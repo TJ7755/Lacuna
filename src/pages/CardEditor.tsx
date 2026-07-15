@@ -226,6 +226,14 @@ export function CardEditor() {
   ) {
     return <CardEditorSkeleton />;
   }
+  if (course === null) {
+    return (
+      <div className="p-10">
+        <p className="mb-4 text-ink-soft">This course could not be found.</p>
+        <Link to="/" className="text-accent underline">Back to dashboard</Link>
+      </div>
+    );
+  }
   if (lessonMode && lesson === null) {
     return (
       <motion.div
