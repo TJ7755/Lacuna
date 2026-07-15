@@ -685,7 +685,7 @@ export function HelpPage() {
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Cue window</h3>
                 <p className="text-sm text-ink-soft">
-                  Each generated card's front shows the preceding item or two (the cue window,
+                  Each generated card’s front shows the preceding item or two (the cue window,
                   two by default) so you recall the next item from local context, rather than the
                   whole list. This targets the point in a list you are most likely to forget: the
                   middle.
@@ -695,7 +695,7 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Chunks</h3>
                 <p className="text-sm text-ink-soft">
                   Long sequences can be split into named chunks. The first item of a chunk is
-                  cued by its chunk name rather than by the previous chunk's items, so chunks
+                  cued by its chunk name rather than by the previous chunk’s items, so chunks
                   study independently of one another.
                 </p>
               </div>
@@ -703,7 +703,7 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Label cards</h3>
                 <p className="text-sm text-ink-soft">
                   Turning on label cards additionally generates an unordered label-to-value card
-                  for each item (for example, "Atomic number 11 &rarr; ?"), for recall that does
+                  for each item (for example, “Atomic number 11 &rarr; ?”), for recall that does
                   not depend on position in the sequence at all.
                 </p>
               </div>
