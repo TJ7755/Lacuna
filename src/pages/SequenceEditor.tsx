@@ -56,7 +56,8 @@ export function SequenceEditor() {
   const itemInputs = useRef(new Map<string, HTMLTextAreaElement>());
   const pendingItemFocus = useRef<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
-  const reduceMotion = speedMultiplier(motionSpeed) === 0;
+  const m = speedMultiplier(motionSpeed);
+  const reduceMotion = m === 0;
 
   // Seed the form from the sequence being edited once it has loaded (new sequences start
   // with one blank item, since a sequence with zero items generates no cards).
@@ -269,7 +270,7 @@ export function SequenceEditor() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16 }}
+        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       >
         <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
           <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
@@ -472,7 +473,7 @@ export function SequenceEditor() {
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.25 }}
+        transition={{ duration: 0.25 * m, ease: [0.16, 1, 0.3, 1] }}
         role="region"
         aria-label="Sequence editor actions"
         className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10"
