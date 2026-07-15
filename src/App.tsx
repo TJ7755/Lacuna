@@ -9,12 +9,6 @@ import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { AppShell } from './components/layout/AppShell';
 import { LandingTransition } from './components/layout/LandingTransition';
 import { Dashboard } from './pages/Dashboard';
-import { Settings } from './pages/Settings';
-import { SearchPage } from './pages/SearchPage';
-import { SharePage } from './pages/SharePage';
-import { Analytics } from './pages/Analytics';
-import { HelpPage } from './pages/HelpPage';
-import { StudyToday } from './pages/StudyToday';
 import { isFirstRun, seedIfFirstRun } from './db/seed';
 import { autoBackupIfStale } from './db/backups';
 import { ensurePreMigrationSnapshot, openDatabase } from './db/schema';
@@ -29,10 +23,23 @@ function RouterWithQuotaWarning() {
   return <RouterProvider router={router} />;
 }
 
-// Heavier routes (Recharts, KaTeX, the markdown editor) are split into their own
-// chunks so the dashboard loads quickly. Settings is intentionally eager: it is tiny
-// and pulls no heavy dependencies, so lazy-loading it only added a needless chunk
-// round-trip and Suspense flash when switching tabs.
+// Keep the dashboard as the only eager page. Every other route is loaded on demand
+// so optional charts, importers, QR tooling and long-form settings/help content do
+// not increase launch parse time.
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const SearchPage = lazy(() =>
+  import('./pages/SearchPage').then((m) => ({ default: m.SearchPage })),
+);
+const SharePage = lazy(() =>
+  import('./pages/SharePage').then((m) => ({ default: m.SharePage })),
+);
+const Analytics = lazy(() =>
+  import('./pages/Analytics').then((m) => ({ default: m.Analytics })),
+);
+const HelpPage = lazy(() => import('./pages/HelpPage').then((m) => ({ default: m.HelpPage })));
+const StudyToday = lazy(() =>
+  import('./pages/StudyToday').then((m) => ({ default: m.StudyToday })),
+);
 const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default: m.LearnMode })));
 const CourseStudyFlow = lazy(() =>
   import('./pages/CourseStudyFlow').then((m) => ({ default: m.CourseStudyFlow })),
@@ -84,12 +91,54 @@ const router = createHashRouter([
         path: 'deck/:deckId',
         element: <Navigate to="/" replace />,
       },
-      { path: 'settings', element: <Settings /> },
-      { path: 'search', element: <SearchPage /> },
-      { path: 'share', element: <SharePage /> },
-      { path: 'analytics', element: <Analytics /> },
-      { path: 'help', element: <HelpPage /> },
-      { path: 'study', element: <StudyToday /> },
+      {
+        path: 'settings',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <Settings />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'search',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <SearchPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'share',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <SharePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'analytics',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <Analytics />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'help',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <HelpPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'study',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <StudyToday />
+          </Suspense>
+        ),
+      },
       {
         path: 'course/:courseId',
         element: (
