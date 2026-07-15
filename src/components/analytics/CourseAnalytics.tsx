@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts';
 import { ChartCard } from './ChartCard';
+import { FadeInView } from '../ui/FadeInView';
 import { useChartColours } from './useChartColours';
 import {
   lessonBreakdown,
@@ -66,7 +67,7 @@ export function CourseAnalytics({ course, lessons, cards, history }: CourseAnaly
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <div className="lg:col-span-2">
+      <FadeInView className="lg:col-span-2" delay={0} y={0}>
         <ChartCard
           title="Predicted exam-day score"
           description="Average predicted retrievability across the course's cards, over time."
@@ -102,9 +103,9 @@ export function CourseAnalytics({ course, lessons, cards, history }: CourseAnaly
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
-      </div>
+      </FadeInView>
 
-      <div className="lg:col-span-2">
+      <FadeInView className="lg:col-span-2" delay={0.06} y={0}>
         <ChartCard
           title="Lesson breakdown"
           description="Mastery and completion per lesson. Line shows card count."
@@ -139,55 +140,59 @@ export function CourseAnalytics({ course, lessons, cards, history }: CourseAnaly
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
-      </div>
+      </FadeInView>
 
-      <ChartCard
-        title="Card stability profile"
-        description="How many cards fall into each stability range."
-        empty={cards.length === 0}
-        emptyMessage="Add cards to see their stability profile."
-        delay={0.12}
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={profile} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-            <CartesianGrid stroke={c.line} vertical={false} />
-            <XAxis dataKey="range" {...axisProps} interval={0} />
-            <YAxis allowDecimals={false} {...axisProps} width={32} />
-            <Tooltip
-              contentStyle={tooltipStyle}
-              cursor={{ fill: c.line, opacity: 0.4 }}
-              formatter={(v: number) => [v, 'Cards']}
-            />
-            <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-              {profile.map((entry, i) => (
-                <Cell key={i} fill={entry.range === 'New' ? c.inkFaint : c.accent} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      <FadeInView delay={0.12} y={0}>
+        <ChartCard
+          title="Card stability profile"
+          description="How many cards fall into each stability range."
+          empty={cards.length === 0}
+          emptyMessage="Add cards to see their stability profile."
+          delay={0.12}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={profile} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+              <CartesianGrid stroke={c.line} vertical={false} />
+              <XAxis dataKey="range" {...axisProps} interval={0} />
+              <YAxis allowDecimals={false} {...axisProps} width={32} />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                cursor={{ fill: c.line, opacity: 0.4 }}
+                formatter={(v: number) => [v, 'Cards']}
+              />
+              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                {profile.map((entry, i) => (
+                  <Cell key={i} fill={entry.range === 'New' ? c.inkFaint : c.accent} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </FadeInView>
 
-      <ChartCard
-        title="Review volume"
-        description="Reviews completed each day over the past 30 days."
-        empty={!hasReviews}
-        emptyMessage="Your daily review counts will appear here."
-        delay={0.18}
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={volume} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-            <CartesianGrid stroke={c.line} vertical={false} />
-            <XAxis dataKey="label" {...axisProps} interval={6} minTickGap={8} />
-            <YAxis allowDecimals={false} {...axisProps} width={32} />
-            <Tooltip
-              contentStyle={tooltipStyle}
-              cursor={{ fill: c.line, opacity: 0.4 }}
-              formatter={(v: number) => [v, 'Reviews']}
-            />
-            <Bar dataKey="reviews" fill={c.positive} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
+      <FadeInView delay={0.18} y={0}>
+        <ChartCard
+          title="Review volume"
+          description="Reviews completed each day over the past 30 days."
+          empty={!hasReviews}
+          emptyMessage="Your daily review counts will appear here."
+          delay={0.18}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={volume} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+              <CartesianGrid stroke={c.line} vertical={false} />
+              <XAxis dataKey="label" {...axisProps} interval={6} minTickGap={8} />
+              <YAxis allowDecimals={false} {...axisProps} width={32} />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                cursor={{ fill: c.line, opacity: 0.4 }}
+                formatter={(v: number) => [v, 'Reviews']}
+              />
+              <Bar dataKey="reviews" fill={c.positive} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </FadeInView>
     </div>
   );
 }

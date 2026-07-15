@@ -98,7 +98,7 @@ export function CourseAnalytics() {
       <motion.header
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28 * m, ease: [0.25, 0.1, 0.25, 1] }}
+        transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
         className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8"
       >
         <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
