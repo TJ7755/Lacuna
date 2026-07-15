@@ -38,7 +38,7 @@ import { usePracticeDefaults } from '../state/practiceDefaults';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { useCourseCardDetail } from '../state/courseCardDetail';
 import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
-import { useInputMode, type InputMode } from '../state/inputMode';
+import { useInputMode, useIsTouchMode, type InputMode } from '../state/inputMode';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import { MIN_OPTIMISE_REVIEWS } from '../fsrs/optimise';
 import {
@@ -1128,24 +1128,28 @@ export function Settings() {
             transition={{ duration: 0.4 * motionMult, ease: [0.16, 1, 0.3, 1] }}
             className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5 backdrop-blur-sm"
           >
-            {/* Ambient top glow that subtly pulses */}
-            <motion.div
-              aria-hidden
-              className="pointer-events-none absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
-              animate={{ opacity: [0.4, 0.8, 0.4] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            {/* Soft radial ambient wash behind the card */}
-            <motion.div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-2xl"
-              style={{
-                background:
-                  'radial-gradient(circle at 50% 0%, hsl(var(--accent) / 0.06), transparent 55%)',
-              }}
-              animate={{ opacity: [0.5, 0.8, 0.5] }}
-              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-            />
+            {/* Ambient top glow that subtly pulses (disabled under reduced motion) */}
+            {motionMult > 0 && (
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
+                animate={{ opacity: [0.4, 0.8, 0.4] }}
+                transition={{ duration: 3 * motionMult, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            )}
+            {/* Soft radial ambient wash behind the card (disabled under reduced motion) */}
+            {motionMult > 0 && (
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-2xl"
+                style={{
+                  background:
+                    'radial-gradient(circle at 50% 0%, hsl(var(--accent) / 0.06), transparent 55%)',
+                }}
+                animate={{ opacity: [0.5, 0.8, 0.5] }}
+                transition={{ duration: 5 * motionMult, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            )}
 
             <div className="relative mb-3 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-ink-faint">
               On this page
@@ -1255,13 +1259,15 @@ function NavItem({
   m: number;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
+  const isTouchMode = useIsTouchMode();
+  const cursorFollowEnabled = m > 0 && !isTouchMode;
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const springX = useSpring(mouseX, { stiffness: 350, damping: 25 });
   const springY = useSpring(mouseY, { stiffness: 350, damping: 25 });
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!ref.current) return;
+    if (!cursorFollowEnabled || !ref.current) return;
     const rect = ref.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
@@ -1283,7 +1289,7 @@ function NavItem({
       onClick={onClick}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      style={{ x: springX, y: springY }}
+      style={{ x: cursorFollowEnabled ? springX : 0, y: cursorFollowEnabled ? springY : 0 }}
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{
@@ -1309,12 +1315,14 @@ function NavItem({
             className="absolute inset-y-0 left-0 w-1 rounded-r-full bg-accent"
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           />
-          <motion.div
-            aria-hidden
-            className="absolute inset-0 rounded-lg bg-gradient-to-r from-accent/10 via-accent/5 to-transparent"
-            animate={{ opacity: [0.3, 0.7, 0.3] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-          />
+          {m > 0 && (
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 rounded-lg bg-gradient-to-r from-accent/10 via-accent/5 to-transparent"
+              animate={{ opacity: [0.3, 0.7, 0.3] }}
+              transition={{ duration: 2.5 * m, repeat: Infinity, ease: 'easeInOut' }}
+            />
+          )}
         </motion.div>
       )}
       <span className="relative z-10 truncate font-medium">{section.label}</span>
