@@ -132,6 +132,7 @@ const ShareSequenceItemSchema = z.object({
   v: z.string(), // value
   l: z.string().optional(), // label
   ci: z.number().optional(), // chunkIndex
+  sp: z.string().optional(), // speaker (lines mode)
 });
 
 /** A whole Sequence (items inline) in a v2 share payload. */
@@ -144,6 +145,8 @@ const ShareSequenceSchema = z.object({
   cl: z.array(z.string()).optional(), // chunkLabels
   lc: z.union([z.literal(0), z.literal(1)]).optional(), // generateLabelCards
   pl: z.number().optional(), // index into the payload's lessons array (primaryLessonId)
+  m: z.literal('lines').optional(), // mode ('list' is the default, so omitted)
+  ms: z.string().optional(), // mySpeaker (lines mode)
 });
 
 const SharePayloadV1Schema = z.object({
@@ -244,6 +247,7 @@ interface ShareSequenceItem {
   v: string; // value
   l?: string; // label
   ci?: number; // chunkIndex
+  sp?: string; // speaker (lines mode)
 }
 
 /** A whole Sequence (items inline) in a v2 share payload. */
@@ -256,6 +260,8 @@ interface ShareSequence {
   cl?: string[]; // chunkLabels
   lc?: 0 | 1; // generateLabelCards
   pl?: number; // index into the payload's lessons array (primaryLessonId)
+  m?: 'lines'; // mode ('list' is the default, so omitted)
+  ms?: string; // mySpeaker (lines mode)
 }
 
 /** The decoded contents of a v1 (flat deck list) share code. */
@@ -804,11 +810,14 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
         v: item.value,
         ...(item.label ? { l: item.label } : {}),
         ...(item.chunkIndex !== undefined ? { ci: item.chunkIndex } : {}),
+        ...(item.speaker ? { sp: item.speaker } : {}),
       })),
       cw: s.cueWindow,
       ...(s.chunkLabels && s.chunkLabels.length ? { cl: s.chunkLabels } : {}),
       ...(s.generateLabelCards ? { lc: 1 as const } : {}),
       ...(pl !== undefined ? { pl } : {}),
+      ...(s.mode === 'lines' ? { m: 'lines' as const } : {}),
+      ...(s.mySpeaker ? { ms: s.mySpeaker } : {}),
     };
   });
 
@@ -1029,6 +1038,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           value: item.v,
           ...(item.l ? { label: item.l } : {}),
           ...(item.ci !== undefined ? { chunkIndex: item.ci } : {}),
+          ...(item.sp ? { speaker: item.sp } : {}),
         }));
         const primaryLessonId =
           typeof shareSeq.pl === 'number' ? (lessonIds[shareSeq.pl] ?? null) : null;
@@ -1042,6 +1052,8 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           cueWindow: shareSeq.cw,
           ...(shareSeq.cl && shareSeq.cl.length ? { chunkLabels: shareSeq.cl } : {}),
           ...(shareSeq.lc === 1 ? { generateLabelCards: true } : {}),
+          ...(shareSeq.m === 'lines' ? { mode: 'lines' as const } : {}),
+          ...(shareSeq.ms ? { mySpeaker: shareSeq.ms } : {}),
           createdAt: Date.now(),
         };
         await db.sequences.add(sequence);
