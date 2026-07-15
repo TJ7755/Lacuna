@@ -406,6 +406,39 @@ describe('course share codes (v2)', () => {
     expect(labelCard!.back).toBe('Lithium');
   });
 
+  it('round-trips a lines-mode sequence with speaker-tagged items and mySpeaker', async () => {
+    const course = await createCourse('Drama');
+    const lesson = await createLesson(course.id, 'Scene one');
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'Scene one',
+      [
+        { id: 'l1', value: 'Hello there.', speaker: 'BOB' },
+        { id: 'l2', value: 'General Kenobi.', speaker: 'ALICE' },
+      ],
+      { mode: 'lines', mySpeaker: 'ALICE' },
+    );
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.sequences).toHaveLength(1);
+    expect(payload.sequences![0].m).toBe('lines');
+    expect(payload.sequences![0].ms).toBe('ALICE');
+    expect(payload.sequences![0].items.map((i) => i.sp)).toEqual(['BOB', 'ALICE']);
+    // Only ALICE's line generates a card.
+    expect(payload.lessons[0].cards).toHaveLength(1);
+
+    await importSharePayload(payload);
+
+    const importedSequences = await db.sequences.toArray();
+    const imported = importedSequences.find((s) => s.id !== sequence.id)!;
+    expect(imported.mode).toBe('lines');
+    expect(imported.mySpeaker).toBe('ALICE');
+    expect(imported.items.map((i) => i.speaker)).toEqual(['BOB', 'ALICE']);
+  });
+
   it('excludes bank-scoped sequences from a course share while lesson-scoped ones still round-trip', async () => {
     const course = await createCourse('Chemistry');
     const lesson = await createLesson(course.id, 'Periodic table');

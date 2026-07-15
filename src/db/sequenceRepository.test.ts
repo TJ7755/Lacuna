@@ -78,6 +78,34 @@ describe('createSequence', () => {
   });
 });
 
+describe('createSequence (lines mode)', () => {
+  beforeEach(reset);
+
+  it('only generates cards for mySpeaker lines, keeping other speakers as cue-only context', async () => {
+    const course = await createCourse('Drama');
+    const lesson = await createLesson(course.id, 'Scene one');
+    const scriptItems: SequenceItem[] = [
+      { id: 'l1', value: 'Hello there.', speaker: 'BOB' },
+      { id: 'l2', value: 'General Kenobi.', speaker: 'ALICE' },
+      { id: 'l3', value: 'You are a bold one.', speaker: 'BOB' },
+      { id: 'l4', value: 'Indeed I am.', speaker: 'ALICE' },
+    ];
+
+    const sequence = await createSequence(course.id, lesson.id, 'Scene one', scriptItems, {
+      mode: 'lines',
+      mySpeaker: 'ALICE',
+    });
+
+    expect(sequence.mode).toBe('lines');
+    expect(sequence.mySpeaker).toBe('ALICE');
+    const cards = await cardsForSequence(sequence);
+    expect(cards.map((c) => c.sequenceItemId).sort()).toEqual(['l2', 'l4']);
+    const kenobiCard = cards.find((c) => c.sequenceItemId === 'l2')!;
+    expect(kenobiCard.front).toBe('**Scene one**\n\nBOB: Hello there.');
+    expect(kenobiCard.back).toBe('General Kenobi.');
+  });
+});
+
 describe('updateSequence', () => {
   beforeEach(reset);
 
@@ -101,6 +129,25 @@ describe('updateSequence', () => {
 
     const oldCards = await db.cards.where('sequenceItemId').equals('item-1').toArray();
     expect(oldCards).toHaveLength(0);
+  });
+
+  it('switching mySpeaker on a lines-mode sequence deletes the old speaker\'s cards and creates the new speaker\'s', async () => {
+    const course = await createCourse('Drama');
+    const scriptItems: SequenceItem[] = [
+      { id: 'l1', value: 'Hello there.', speaker: 'BOB' },
+      { id: 'l2', value: 'General Kenobi.', speaker: 'ALICE' },
+    ];
+    const sequence = await createSequence(course.id, null, 'Scene one', scriptItems, {
+      mode: 'lines',
+      mySpeaker: 'ALICE',
+    });
+    expect((await cardsForSequence(sequence)).map((c) => c.sequenceItemId)).toEqual(['l2']);
+
+    await updateSequence({ ...sequence, mySpeaker: 'BOB' });
+
+    const cards = await cardsForSequence(sequence);
+    expect(cards.map((c) => c.sequenceItemId)).toEqual(['l1']);
+    expect(await db.cards.where('sequenceItemId').equals('l2').toArray()).toHaveLength(0);
   });
 
   it('preserves FSRS state on a card whose front is regenerated', async () => {

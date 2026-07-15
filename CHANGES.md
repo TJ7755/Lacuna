@@ -65,6 +65,40 @@ the design; the v2 lines-mode slice is not part of this release.
 - Styled the cue items distinctly from the recall prompt on generated cards in Learn mode
   (`CardContent`'s `sequenceCue`), with no FSRS or session-flow changes.
 
+## Unreleased — Sequence learning (Arc 1 v2 slice: lines mode data layer and editor)
+
+Adds the **lines mode** skin to the existing overlapping-cloze `Sequence` model, for
+memorising scripted scenes: paste a script, tag each line's speaker, and only "your"
+lines generate recall cards — other speakers' lines are cue-only context. See
+`next_plan.md` §1.5. The study-flow half (first-letter hints, strict grading in Learn
+mode) is a separate, not-yet-started slice.
+
+- Added `Sequence.mode?: 'list' | 'lines'` and `Sequence.mySpeaker?: string`, plus
+  `SequenceItem.speaker?: string` (`src/db/types.ts`). All additive and optional — no
+  schema/index change was needed, and every existing (list-mode) sequence is unaffected.
+- Extended `src/db/sequenceGeneration.ts`: only the item whose `speaker` matches
+  `mySpeaker` generates a card in lines mode (`isMyLine`); other speakers' lines still
+  count towards the cue window and render as `NAME: line` in generated fronts (`cueText`),
+  so a card reads like a script. The first-in-scene prompt reads "First line?" instead of
+  "First item?" in lines mode. Regeneration/diffing needed no new logic: `diffRegeneration`
+  already keys on `sequenceItemId`, so switching `mySpeaker` diffs like any other edit
+  (deletes the old speaker's cards, creates the new speaker's).
+- Added `src/db/scriptSplitter.ts` (`splitScript`): a pure parser that turns pasted script
+  text into speaker-tagged items, recognising `NAME: dialogue` lines and folding
+  non-matching following lines in as wrapped continuations.
+- Added `src/components/sequences/ScriptPasteImport.tsx`: a paste → preview → correct →
+  confirm modal (mirroring `LinkCardsDialog`'s shell) around `splitScript`, so the author
+  can fix a misattributed speaker or line before it replaces the editor's items.
+- Extended the sequence editor (`src/pages/SequenceEditor.tsx`,
+  `src/components/sequences/SequenceItemRow.tsx`): a List/Lines mode picker at creation
+  time (mode is fixed once a sequence exists), a per-item speaker field in lines mode, a
+  "my speaker" picker built from the speakers already entered, and a "Paste script…"
+  entry point for the splitter. Saving is blocked until a speaker is chosen.
+- Extended portability: `sequences`' `mode`/`mySpeaker`/`speaker` ride through backup
+  export/import unchanged (generic per-table copy already round-trips whole `Sequence`
+  objects) and through course share codes as further additive v2 keys (`m`, `ms`, `sp` on
+  `ShareSequence`/`ShareSequenceItem`) — older v2 codes without them still parse.
+
 ## Unreleased — Lesson view study/edit mode
 
 - Locked curriculum lessons now remain locked for study but can be opened for

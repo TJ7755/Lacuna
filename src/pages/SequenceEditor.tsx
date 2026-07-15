@@ -14,6 +14,7 @@ import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { DangerZoneSection } from './settings/DangerZoneSection';
 import { SequenceItemRow } from '../components/sequences/SequenceItemRow';
+import { ScriptPasteImport } from '../components/sequences/ScriptPasteImport';
 import { ChevronLeftIcon, PlusIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
@@ -50,9 +51,13 @@ export function SequenceEditor() {
   const [cueWindow, setCueWindow] = useState(2);
   const [chunkLabels, setChunkLabels] = useState<string[]>([]);
   const [generateLabelCards, setGenerateLabelCards] = useState(false);
+  const [mode, setMode] = useState<'list' | 'lines'>('list');
+  const [mySpeaker, setMySpeaker] = useState('');
+  const [showScriptPaste, setShowScriptPaste] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [invalidItems, setInvalidItems] = useState<Set<string>>(() => new Set());
+  const linesMode = mode === 'lines';
   const itemInputs = useRef(new Map<string, HTMLTextAreaElement>());
   const pendingItemFocus = useRef<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
@@ -75,6 +80,8 @@ export function SequenceEditor() {
       setCueWindow(sequence.cueWindow);
       setChunkLabels(sequence.chunkLabels ?? []);
       setGenerateLabelCards(sequence.generateLabelCards ?? false);
+      setMode(sequence.mode ?? 'list');
+      setMySpeaker(sequence.mySpeaker ?? '');
       setLoaded(true);
     }
   }, [editing, sequence, loaded]);
@@ -95,6 +102,21 @@ export function SequenceEditor() {
   const bankPath = `/course/${courseId}/bank`;
   const backPath = lessonMode ? lessonPath : bankPath;
 
+  // Distinct speakers seen across items, in order of first appearance, for the
+  // "my speaker" picker — populated by whichever items already carry a speaker,
+  // whether typed by hand or produced by the script paste flow.
+  const speakers = useMemo(() => {
+    const seen = new Set<string>();
+    const order: string[] = [];
+    for (const item of items) {
+      if (item.speaker && !seen.has(item.speaker)) {
+        seen.add(item.speaker);
+        order.push(item.speaker);
+      }
+    }
+    return order;
+  }, [items]);
+
   const preview = useMemo(() => {
     if (!loaded) return [];
     return generateCards({
@@ -103,10 +125,12 @@ export function SequenceEditor() {
       primaryLessonId: lessonId ?? null,
       name: name.trim() || 'Untitled sequence',
       description,
+      mode,
       items,
       cueWindow,
       chunkLabels,
       generateLabelCards,
+      mySpeaker: mySpeaker || undefined,
       createdAt: sequence?.createdAt ?? 0,
     });
   }, [
@@ -116,10 +140,12 @@ export function SequenceEditor() {
     lessonId,
     name,
     description,
+    mode,
     items,
     cueWindow,
     chunkLabels,
     generateLabelCards,
+    mySpeaker,
   ]);
 
   if (
@@ -158,7 +184,10 @@ export function SequenceEditor() {
   }
 
   const canSave =
-    name.trim().length > 0 && items.length > 0 && items.every((i) => i.value.trim().length > 0);
+    name.trim().length > 0 &&
+    items.length > 0 &&
+    items.every((i) => i.value.trim().length > 0) &&
+    (!linesMode || mySpeaker.trim().length > 0);
 
   function updateItem(id: string, patch: Partial<SequenceItem>) {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -243,9 +272,11 @@ export function SequenceEditor() {
     try {
       const opts = {
         description: description.trim() || undefined,
+        mode,
         cueWindow,
         chunkLabels: chunkLabels.length > 0 ? chunkLabels : undefined,
         generateLabelCards,
+        mySpeaker: linesMode ? mySpeaker.trim() : undefined,
       };
       if (editing && sequence) {
         await updateSequence({ ...sequence, name: name.trim(), items, ...opts });
@@ -324,6 +355,49 @@ export function SequenceEditor() {
             />
           </div>
 
+          {/* Mode */}
+          {!editing ? (
+            <div>
+              <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Mode</div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMode('list')}
+                  aria-pressed={mode === 'list'}
+                  className={cn(
+                    'flex-1 rounded-xl border p-3 text-left transition-colors',
+                    mode === 'list' ? 'border-accent bg-accent-soft' : 'border-line hover:border-line-strong',
+                  )}
+                >
+                  <div className="text-sm font-medium text-ink">List</div>
+                  <div className="mt-0.5 text-xs text-ink-faint">
+                    An ordered list — each item cues on the ones before it.
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('lines')}
+                  aria-pressed={mode === 'lines'}
+                  className={cn(
+                    'flex-1 rounded-xl border p-3 text-left transition-colors',
+                    mode === 'lines' ? 'border-accent bg-accent-soft' : 'border-line hover:border-line-strong',
+                  )}
+                >
+                  <div className="text-sm font-medium text-ink">Lines</div>
+                  <div className="mt-0.5 text-xs text-ink-faint">
+                    A scripted scene — only your lines are recalled; other speakers cue them.
+                  </div>
+                </button>
+              </div>
+            </div>
+          ) : (
+            linesMode && (
+              <div className="w-fit rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
+                Lines mode
+              </div>
+            )
+          )}
+
           {/* Chunks */}
           <div className="rounded-xl border border-line bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">
@@ -399,6 +473,27 @@ export function SequenceEditor() {
               />
               Also generate label → value cards
             </label>
+            {linesMode && (
+              <label className="flex items-center gap-2 text-sm text-ink-soft">
+                My speaker
+                <select
+                  value={mySpeaker}
+                  onChange={(e) => setMySpeaker(e.target.value)}
+                  className="min-w-[8rem] rounded-lg border border-line bg-transparent px-2 py-1 outline-none focus:border-accent"
+                >
+                  <option value="">Choose…</option>
+                  {speakers.map((speaker) => (
+                    <option key={speaker} value={speaker}>
+                      {speaker}
+                    </option>
+                  ))}
+                  {mySpeaker && !speakers.includes(mySpeaker) && (
+                    <option value={mySpeaker}>{mySpeaker}</option>
+                  )}
+                </select>
+                <span className="text-ink-faint">— only these lines get recall cards</span>
+              </label>
+            )}
           </div>
 
           {/* Items */}
@@ -407,7 +502,14 @@ export function SequenceEditor() {
               <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">
                 Items <span className="text-ink-faint/70">({items.length})</span>
               </div>
-              <span className="text-xs text-ink-faint">Ctrl/Cmd+Enter adds the next item</span>
+              <div className="flex items-center gap-3">
+                {linesMode && (
+                  <Button variant="ghost" size="sm" onClick={() => setShowScriptPaste(true)}>
+                    Paste script&hellip;
+                  </Button>
+                )}
+                <span className="text-xs text-ink-faint">Ctrl/Cmd+Enter adds the next item</span>
+              </div>
             </div>
             <div className="flex flex-col gap-3">
               <AnimatePresence initial={false}>
@@ -427,6 +529,7 @@ export function SequenceEditor() {
                       isFirst={i === 0}
                       isLast={i === items.length - 1}
                       chunkLabels={chunkLabels}
+                      linesMode={linesMode}
                       onChange={(patch) => updateItem(item.id, patch)}
                       onDelete={() => deleteItem(item.id)}
                       onMoveUp={() => moveItem(item.id, 'up')}
@@ -517,6 +620,16 @@ export function SequenceEditor() {
           </Button>
         </div>
       </motion.div>
+
+      {showScriptPaste && (
+        <ScriptPasteImport
+          onImport={(imported) => {
+            setItems(imported);
+            setShowScriptPaste(false);
+          }}
+          onCancel={() => setShowScriptPaste(false)}
+        />
+      )}
     </div>
   );
 }

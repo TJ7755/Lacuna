@@ -308,7 +308,65 @@ describe('SequenceEditor', () => {
       null,
       'My sequence',
       expect.arrayContaining([expect.objectContaining({ value: 'First item' })]),
-      expect.objectContaining({ cueWindow: 2, generateLabelCards: false }),
+      expect.objectContaining({ cueWindow: 2, generateLabelCards: false, mode: 'list' }),
     );
+  });
+
+  describe('lines mode', () => {
+    it('shows a speaker field per item and a "My speaker" picker once Lines is selected', () => {
+      mockCourse = course;
+      renderNew();
+
+      expect(screen.queryByPlaceholderText('Speaker')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Lines/ }));
+
+      expect(screen.getByPlaceholderText('Speaker')).toBeInTheDocument();
+      expect(screen.getByText('My speaker')).toBeInTheDocument();
+    });
+
+    it('disables Add sequence until a speaker matching an item is chosen', () => {
+      mockCourse = course;
+      renderNew();
+      fireEvent.click(screen.getByRole('button', { name: /Lines/ }));
+
+      fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
+        target: { value: 'Scene one' },
+      });
+      fireEvent.change(
+        screen.getByPlaceholderText('Item content. Markdown, maths and images are supported.'),
+        { target: { value: 'Indeed I am.' } },
+      );
+      fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
+
+      expect(screen.getByText('Add sequence')).toBeDisabled();
+
+      fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'ALICE' } });
+      expect(screen.getByText('Add sequence')).not.toBeDisabled();
+    });
+
+    it('saves with mode "lines" and the chosen mySpeaker', () => {
+      mockCourse = course;
+      renderNew();
+      fireEvent.click(screen.getByRole('button', { name: /Lines/ }));
+
+      fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
+        target: { value: 'Scene one' },
+      });
+      fireEvent.change(
+        screen.getByPlaceholderText('Item content. Markdown, maths and images are supported.'),
+        { target: { value: 'Indeed I am.' } },
+      );
+      fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
+      fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'ALICE' } });
+
+      fireEvent.click(screen.getByText('Add sequence'));
+      expect(createSequence).toHaveBeenCalledWith(
+        'course-1',
+        null,
+        'Scene one',
+        expect.arrayContaining([expect.objectContaining({ value: 'Indeed I am.', speaker: 'ALICE' })]),
+        expect.objectContaining({ mode: 'lines', mySpeaker: 'ALICE' }),
+      );
+    });
   });
 });
