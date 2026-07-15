@@ -52,16 +52,19 @@ export** to back up or move your data as a single JSON file.
 
 ## Getting started
 
+Lacuna uses [Bun](https://bun.sh/) rather than Node.js for its JavaScript runtime,
+package manager, and project scripts. Bun is required for the commands below.
+
 ```
 git clone https://github.com/TJ7755/Lacuna.git
 cd Lacuna
 ```
 
 ```bash
-npm install
-npm run dev      # start the dev server
-npm run build    # type-check + production build
-npm run preview  # preview the production build
+bun install
+bun run dev      # start the dev server
+bun run build    # type-check + production build
+bun run preview  # preview the production build
 ```
 
 Open the printed local URL. A small example course is seeded on first run (it can be deleted).
@@ -71,8 +74,8 @@ Open the printed local URL. A small example course is seeded on first run (it ca
 Lacuna can be packaged as a standalone Windows desktop application via Electron.
 
 ```bash
-npm run electron:dev         # run Vite + Electron in parallel (dev mode)
-npm run electron:build:win  # build the Windows NSIS installer
+bun run electron:dev         # run Vite + Electron in parallel (dev mode)
+bun run electron:build:win  # build the Windows NSIS installer
 ```
 
 The Electron layer lives in `electron/` and adds a custom titlebar, local font
@@ -107,4 +110,4 @@ remark-gfm / remark-math / rehype-katex / rehype-highlight.
 
 Vitest with `fake-indexeddb` for database and FSRS layer tests, `@testing-library/react` and
 `happy-dom` for UI component and hook tests. The test suite covers the FSRS engine, forward
-simulation, import/export, asset handling, and UI components. Run `npm test` to execute.
+simulation, import/export, asset handling, and UI components. Run `bun test` to execute.

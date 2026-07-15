@@ -1616,8 +1616,8 @@ modifying the renderer source.
   Releases; checks for updates shortly after launch and notifies the renderer.
 
 ### Scripts
-- `npm run electron:dev` — runs Vite dev server and Electron in parallel.
-- `npm run electron:build:win` — compiles the Electron TypeScript, builds the
+- `bun run electron:dev` — runs Vite dev server and Electron in parallel.
+- `bun run electron:build:win` — compiles the Electron TypeScript, builds the
   Vite SPA with `--base ./`, and packages via electron-builder (NSIS
   installer).
 
