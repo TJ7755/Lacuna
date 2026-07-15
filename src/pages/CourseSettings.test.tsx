@@ -11,6 +11,8 @@ const mockDeleteCourse = vi.fn().mockResolvedValue(undefined);
 const mockSnapshotCourse = vi.fn().mockResolvedValue({ course: 'snapshot' });
 const mockRestoreCourse = vi.fn().mockResolvedValue(undefined);
 const mockNotify = vi.fn();
+const mockOptimiserReset = vi.fn();
+const mockOptimiserRun = vi.fn();
 
 let mockCourse: Course | null | undefined;
 let mockCards: Card[] | undefined;
@@ -65,8 +67,8 @@ vi.mock('../state/useOptimiser', () => ({
     progress: 0,
     result: null,
     error: null,
-    run: vi.fn(),
-    reset: vi.fn(),
+    run: mockOptimiserRun,
+    reset: mockOptimiserReset,
   }),
 }));
 
@@ -119,6 +121,8 @@ beforeEach(() => {
   mockRestoreCourse.mockClear();
   mockNotify.mockClear();
   mockNavigate.mockClear();
+  mockOptimiserReset.mockClear();
+  mockOptimiserRun.mockClear();
 });
 
 describe('CourseSettings', () => {
@@ -137,6 +141,21 @@ describe('CourseSettings', () => {
   it('populates fields from the course', () => {
     renderPage();
     expect(screen.getByDisplayValue('Original course')).toBeInTheDocument();
+  });
+
+  it('does not reset the optimiser when the same course rerenders', () => {
+    const view = renderPage();
+    mockOptimiserReset.mockClear();
+
+    view.rerender(
+      <MemoryRouter initialEntries={['/course/course-1/settings']}>
+        <Routes>
+          <Route path="/course/:courseId/settings" element={<CourseSettings />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(mockOptimiserReset).not.toHaveBeenCalled();
   });
 
   it('shows the draft exam date before it is saved', () => {

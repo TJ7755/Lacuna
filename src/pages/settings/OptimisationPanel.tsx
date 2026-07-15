@@ -44,15 +44,16 @@ export function OptimisationPanel({
   const { notify } = useToast();
   const [globalDefault] = useAutoOptimiseDefault();
   const optimiser = useOptimiser();
+  const resetOptimiser = optimiser.reset;
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
   // Cancel an in-flight optimisation if the user navigates to a different entity.
   useEffect(() => {
     return () => {
-      optimiser.reset();
+      resetOptimiser();
     };
-  }, [entity?.id, optimiser]);
+  }, [entity.id, resetOptimiser]);
 
   const reviews = useMemo(() => countReviews(cards), [cards]);
   const enabled = optimiseEnabledForDeck(entity.autoOptimise, globalDefault);
