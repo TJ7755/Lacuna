@@ -33,8 +33,8 @@ describe('Toggle', () => {
 
   it('has an accessible label via id', () => {
     render(<Toggle checked={false} onChange={vi.fn()} id="test-toggle" label="Airplane mode" />);
-    const switchBtn = screen.getByRole('switch');
+    const switchBtn = screen.getByRole('switch', { name: 'Airplane mode' });
     expect(switchBtn).toHaveAttribute('id', 'test-toggle');
-    expect(screen.getByText('Airplane mode')).toBeInTheDocument();
+    expect(switchBtn).toHaveAttribute('aria-label', 'Airplane mode');
   });
 });
