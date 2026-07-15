@@ -247,7 +247,7 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
           <EmptyForecast motionMultiplier={m} />
         ) : (
           <>
-            <div className="flex h-20 items-end gap-1.5">
+            <div className="flex h-24 items-end gap-1.5">
               {forecast.map((day, i) => {
                 const isToday = i === 0;
                 const isActive = detailDay === i;
@@ -258,9 +258,9 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
                 );
 
                 return (
-                  <div key={day.dayStart} className="flex flex-1 flex-col items-center">
+                  <div key={day.dayStart} className="flex h-full flex-1 flex-col items-center">
                 <div
-                  className="group flex flex-col items-center gap-1 py-3 px-1 w-full cursor-default"
+                  className="group flex h-full flex-col items-center gap-1 py-1 px-1 w-full cursor-default"
                   onMouseEnter={() => setDetailDay(i)}
                 >
                       {/* Card count label */}
@@ -273,7 +273,7 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
                           exit={{ opacity: 0, y: 4 }}
                           transition={{ duration: 0.2 * m, delay: (0.1 + i * 0.04) * m }}
                           className={cn(
-                            'text-[10px] tabular font-medium transition-colors',
+                            'text-xs tabular font-semibold transition-colors',
                             isToday ? 'text-accent' : 'text-ink-soft',
                             isActive && 'text-ink',
                           )}
@@ -285,7 +285,7 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
 
                     {/* Stacked bar */}
                     <div
-                      className="flex w-full flex-1 items-end"
+                      className="flex min-h-0 w-full flex-1 items-end"
                       title={`${minutesLabel(day.minutes)} · ${day.dueCount} due${day.newCount > 0 ? ` · ${day.newCount} new` : ''}`}
                     >
                       {day.byDeck.length === 0 ? (
@@ -300,7 +300,7 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
                           className="w-full rounded-md bg-ink/10"
                         />
                       ) : (
-                        <div className="flex w-full flex-col-reverse rounded-md overflow-hidden">
+                        <div className="flex h-full w-full flex-col-reverse justify-start rounded-md overflow-hidden">
                           {[...day.byDeck]
                             .sort((a, b) => a.sourceId.localeCompare(b.sourceId))
                             .map((slice, si) => {
@@ -331,7 +331,7 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
                     {/* Day label */}
                       <span
                         className={cn(
-                          'text-[10px] transition-colors',
+                          'text-[11px] transition-colors',
                           isToday ? 'text-accent font-medium' : 'text-ink-faint',
                           isActive && 'text-ink',
                         )}
