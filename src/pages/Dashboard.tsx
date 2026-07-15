@@ -5,7 +5,7 @@ import { useCourseDashboardData } from '../state/useCourseData';
 import { StudySignals } from '../components/dashboard/StudySignals';
 import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
 import { Button } from '../components/ui/Button';
-import { FlaskIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
+import { FlaskIcon, PlusIcon } from '../components/ui/icons';
 import { CourseCard } from '../components/course/CourseCard';
 import { NewCourseForm } from '../components/course/NewCourseForm';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -68,12 +68,6 @@ export function Dashboard() {
     return grouped;
   }, [allCards]);
 
-  // Total cards a global session would serve today, across all active courses.
-  const totalEligible = useMemo(
-    () => (activeCourses ?? []).reduce((sum, c) => sum + (summaries?.[c.id]?.eligible ?? 0), 0),
-    [activeCourses, summaries],
-  );
-
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
       {/* Page header */}
@@ -101,37 +95,6 @@ export function Dashboard() {
       {stats && activeCourses && activeCourses.length > 0 && (
         <StudySignals stats={stats} courses={activeCourses} />
       )}
-
-      {/* Deliberately separate from the course conductor: this remains the
-          cross-course due-card review entry point. */}
-      <AnimatePresence>
-        {activeCourses && activeCourses.length > 0 && totalEligible > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 shadow-sm shadow-black/[0.02]"
-          >
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-accent/10 px-2 py-1 text-xs font-medium text-accent">
-                <PlayIcon width={14} height={14} />
-                {totalEligible} due
-              </span>
-              <span className="text-xs text-ink-soft">ready across all courses</span>
-            </div>
-            <Button
-              variant="primary"
-              size="sm"
-              className="ml-auto"
-              onClick={() => navigate('/learn')}
-            >
-              <PlayIcon width={16} height={16} />
-              Review all
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Course grid */}
       {!activeCourses ? (

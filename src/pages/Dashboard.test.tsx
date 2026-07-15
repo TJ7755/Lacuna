@@ -175,7 +175,7 @@ describe('Dashboard', () => {
     expect(screen.getByText('Courses')).toBeInTheDocument();
   });
 
-  it('shows the separate cross-course review entry when eligible cards exist', () => {
+  it('does not show a cross-course review bar even when eligible cards exist', () => {
     mockCourseDashboardData = {
       courses: [mockCourse],
       lessons: [],
@@ -186,10 +186,7 @@ describe('Dashboard', () => {
       stats: { reviewedToday: 0, streak: 0, forecast: [] },
     };
     render(<Dashboard />);
-    expect(screen.getByText('7 due')).toBeInTheDocument();
-    expect(screen.getByText('Review all')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Review all'));
-    expect(mockNavigate).toHaveBeenCalledWith('/learn');
+    expect(screen.queryByText('Review all')).not.toBeInTheDocument();
   });
 
   it('shows review heatmap when any card has history', () => {
