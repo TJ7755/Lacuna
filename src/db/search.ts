@@ -29,6 +29,15 @@ export interface SearchOptions {
   parseQuery?: boolean;
 }
 
+export interface SessionCardPoolOptions {
+  /** Exact tag match, compared case- and diacritic-insensitively. */
+  tag?: string | null;
+  /** A card must match every selected filter (logical AND). */
+  filters?: readonly CardFilter[];
+  /** Reference time for the "due" filter; defaults to now. */
+  now?: number;
+}
+
 interface ParsedQuery {
   text: string;
   tags: string[];
@@ -107,10 +116,29 @@ function matchesFilter(card: Card, filter: CardFilter, now: number): boolean {
 
 /** Lower-case and strip accents so "résumé" matches "resume". */
 function normalise(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+/**
+ * Build the card scope requested by a filtered Learn session. A tag narrows the
+ * scope, and every structured filter must also match (logical AND).
+ *
+ * This function deliberately does not apply generic study availability. In
+ * particular, `suspended` must be able to select suspended cards so the caller
+ * can distinguish an empty filter result from a matching but unavailable pool.
+ */
+export function filterSessionCardPool(cards: Card[], options: SessionCardPoolOptions = {}): Card[] {
+  const now = options.now ?? Date.now();
+  const filters = options.filters ?? [];
+  const tag = options.tag?.trim() ? normalise(options.tag.trim()) : null;
+
+  return cards.filter((card) => {
+    if (tag) {
+      const cardTags = (card.tags ?? []).map(normalise);
+      if (!cardTags.includes(tag)) return false;
+    }
+    return filters.every((filter) => matchesFilter(card, filter, now));
+  });
 }
 
 /**

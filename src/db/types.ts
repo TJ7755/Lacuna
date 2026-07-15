@@ -138,6 +138,13 @@ export interface Deck {
    */
   folderId?: string | null;
   /**
+   * Ownership metadata for an internal course backing deck. These fields are
+   * optional so existing databases and exported backups remain compatible.
+   * `backingLessonId` is null for the course question-bank deck.
+   */
+  backingCourseId?: string;
+  backingLessonId?: string | null;
+  /**
    * Number of lapses at which a card is treated as a leech. When undefined, the
    * global default of 8 is used.
    */

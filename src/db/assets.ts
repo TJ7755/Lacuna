@@ -6,7 +6,8 @@ export const ASSET_PROTOCOL = 'lacuna-asset://';
 const DATA_IMAGE_RE = /data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)/gi;
 const ASSET_RE = /lacuna-asset:\/\/([a-f0-9]{64})/gi;
 
-export function bytesToBase64(bytes: Uint8Array): string {    let binary = '';
+export function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
   const chunk = 0x8000;
   for (let i = 0; i < bytes.length; i += chunk) {
     binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)) as number[]);
@@ -47,7 +48,10 @@ function bytesToBlob(bytes: Uint8Array, mimeType: string): Blob {
 export function toBlob(data: Blob | Uint8Array | ArrayBuffer, mimeType?: string): Blob {
   if (data instanceof Blob) return data;
   if (data instanceof Uint8Array) {
-    const buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+    const buffer = data.buffer.slice(
+      data.byteOffset,
+      data.byteOffset + data.byteLength,
+    ) as ArrayBuffer;
     return new Blob([buffer as unknown as BlobPart], { type: mimeType });
   }
   return new Blob([data as ArrayBuffer], { type: mimeType });
@@ -58,7 +62,9 @@ export function toBlob(data: Blob | Uint8Array | ArrayBuffer, mimeType?: string)
  * ArrayBuffer/TypedArray views, and the custom objects returned by fake-indexeddb
  * which may not be recognised as native Blobs by FileReader.
  */
-export async function blobToArrayBuffer(blob: Blob | ArrayBufferView | ArrayBuffer): Promise<ArrayBuffer> {
+export async function blobToArrayBuffer(
+  blob: Blob | ArrayBufferView | ArrayBuffer,
+): Promise<ArrayBuffer> {
   // If it already is an ArrayBuffer, return it directly.
   if (blob instanceof ArrayBuffer) {
     return blob;
@@ -87,11 +93,6 @@ export async function blobToArrayBuffer(blob: Blob | ArrayBufferView | ArrayBuff
  * Read a Blob (or Blob-like object) as a UTF-8 text string.
  * Works with native Blobs and the non-native objects returned by fake-indexeddb.
  */
-export async function blobToText(blob: Blob | ArrayBufferView | ArrayBuffer): Promise<string> {
-  const buffer = await blobToArrayBuffer(blob);
-  return new TextDecoder().decode(buffer);
-}
-
 function hex(bytes: Uint8Array): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
@@ -274,29 +275,8 @@ export async function extractMarkdownAssets(
   return replacements.reduce((text, r) => text.replaceAll(r.from, r.to), markdown);
 }
 
-const MISSING_ASSET_SVG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZWVlIi8+PHRleHQgeD0iMTIiIHk9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjOTk5Ij5Mb3N0IGltYWdlPC90ZXh0Pjwvc3ZnPg==';
-
-export async function resolveAssetMarkdown(markdown: string): Promise<{
-  markdown: string;
-  objectUrls: string[];
-}> {
-  const replacements: { from: string; to: string }[] = [];
-  const objectUrls: string[] = [];
-  for (const hash of referencedAssetHashes(markdown)) {
-    const asset = await db.assets.get(hash);
-    if (!asset) {
-      replacements.push({ from: assetUrl(hash), to: MISSING_ASSET_SVG });
-      continue;
-    }
-    const url = URL.createObjectURL(toBlob(asset.blob, asset.mimeType));
-    objectUrls.push(url);
-    replacements.push({ from: assetUrl(hash), to: url });
-  }
-  return {
-    markdown: replacements.reduce((text, r) => text.replaceAll(r.from, r.to), markdown),
-    objectUrls,
-  };
-}
+const MISSING_ASSET_SVG =
+  'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZWVlIi8+PHRleHQgeD0iMTIiIHk9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjOTk5Ij5Mb3N0IGltYWdlPC90ZXh0Pjwvc3ZnPg==';
 
 export async function assetsForBackup(hashes: string[]): Promise<BackupAsset[]> {
   if (hashes.length === 0) return [];
@@ -339,19 +319,28 @@ export async function collectOrphanedAssets(): Promise<number> {
   if (gcRunning) return 0;
   gcRunning = true;
   try {
-    // Build the set of referenced hashes by streaming cards in batches
-    // so we never load the entire card table into memory at once.
+    // Build the set of referenced hashes by streaming every persisted Markdown
+    // owner in batches so note-only images are not mistaken for orphans.
     const referenced = new Set<string>();
     const batchSize = 500;
-    let offset = 0;
-  for (;;) {
-    const batch = await db.cards.offset(offset).limit(batchSize).toArray();
-    if (batch.length === 0) break;
-    for (const card of batch) {
-      referencedAssetHashes(`${card.front}\n${card.back}`).forEach((h) => referenced.add(h));
+    let cardOffset = 0;
+    for (;;) {
+      const batch = await db.cards.offset(cardOffset).limit(batchSize).toArray();
+      if (batch.length === 0) break;
+      for (const card of batch) {
+        referencedAssetHashes(`${card.front}\n${card.back}`).forEach((h) => referenced.add(h));
+      }
+      cardOffset += batch.length;
     }
-    offset += batch.length;
-  }
+    let noteOffset = 0;
+    for (;;) {
+      const batch = await db.notes.offset(noteOffset).limit(batchSize).toArray();
+      if (batch.length === 0) break;
+      for (const note of batch) {
+        referencedAssetHashes(note.content).forEach((h) => referenced.add(h));
+      }
+      noteOffset += batch.length;
+    }
 
     // Stream asset keys and collect orphans without loading all keys at once.
     const orphans: string[] = [];

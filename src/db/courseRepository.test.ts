@@ -21,14 +21,11 @@ import {
   createCourseCard,
   createCourseCardWithReverse,
   createCourseBasicReversedPair,
+  createSequence,
   assignCardsToLesson,
   linkCardsToLesson,
   linkCardToLesson,
-  listCourseExamDates,
-  listLessonCardLinks,
-  listLessons,
   listNotes,
-  listPracticeNodes,
   recordReview,
   reorderLessons,
   restoreCourse,
@@ -49,6 +46,7 @@ async function reset() {
     db.decks.clear(),
     db.userPerformance.clear(),
     db.sessionHistory.clear(),
+    db.sequences.clear(),
   ]);
 }
 
@@ -221,6 +219,23 @@ describe('deleteCourse cascade', () => {
     expect(await db.sessionHistory.where('deckId').equals(deckId).count()).toBe(0);
     expect(await db.sessionHistory.where('courseId').equals(course.id).count()).toBe(0);
   });
+
+  it('removes empty owned backing decks and course sequences', async () => {
+    const course = await createCourse('Empty ownership');
+    const lesson = await createLesson(course.id, 'Lesson');
+    const emptyDeckId = await ensureLessonDeck(course.id, lesson.id);
+    await createSequence(course.id, lesson.id, 'Sequence', []);
+
+    expect(await db.cards.where('courseId').equals(course.id).count()).toBe(0);
+    expect(await db.decks.get(emptyDeckId)).toBeDefined();
+    expect(await db.sequences.where('courseId').equals(course.id).count()).toBe(1);
+
+    await deleteCourse(course.id);
+
+    expect(await db.decks.get(emptyDeckId)).toBeUndefined();
+    expect(await db.userPerformance.get(emptyDeckId)).toBeUndefined();
+    expect(await db.sequences.where('courseId').equals(course.id).count()).toBe(0);
+  });
 });
 
 describe('snapshotCourse / restoreCourse', () => {
@@ -240,6 +255,9 @@ describe('snapshotCourse / restoreCourse', () => {
     await linkCardToLesson(lesson2.id, lessonCard.id);
     await createPracticeNode(course.id, { type: 'manual', name: 'Practice 1' });
     await createCourseExamDate(course.id, 'Mid-term', Date.now() + 7 * 86400000);
+    const sequence = await createSequence(course.id, lesson1.id, 'Sequence', [
+      { id: 'sequence-item', value: 'Item' },
+    ]);
     await recordReview({
       card: lessonCard,
       deck: course,
@@ -258,8 +276,9 @@ describe('snapshotCourse / restoreCourse', () => {
     const snapshot = await snapshotCourse(course.id);
     expect(snapshot).not.toBeNull();
     expect(snapshot!.decks).toHaveLength(2); // lesson1's deck + the course's bank deck
-    expect(snapshot!.cards).toHaveLength(2);
+    expect(snapshot!.cards).toHaveLength(3); // two ordinary cards + one sequence card
     expect(snapshot!.sessionHistory).toHaveLength(1);
+    expect(snapshot!.sequences).toEqual([sequence]);
     // Both backing decks' own profiles (lesson + bank) plus the course-level aggregate.
     expect(snapshot!.userPerformance).toHaveLength(3);
 
@@ -276,12 +295,13 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(await db.lessonCards.where('lessonId').equals(lesson2.id).count()).toBe(1);
     expect(await db.practiceNodes.where('courseId').equals(course.id).count()).toBe(1);
     expect(await db.courseExamDates.where('courseId').equals(course.id).count()).toBe(1);
-    expect(await db.cards.where('courseId').equals(course.id).count()).toBe(2);
+    expect(await db.cards.where('courseId').equals(course.id).count()).toBe(3);
     expect(await db.decks.get(lessonCard.deckId)).toBeDefined();
     expect(await db.decks.get(bankCard.deckId)).toBeDefined();
     expect(await db.userPerformance.get(lessonCard.deckId)).toBeDefined();
     expect(await db.userPerformance.get(course.id)).toBeDefined();
     expect(await db.sessionHistory.where('courseId').equals(course.id).count()).toBe(1);
+    expect(await db.sequences.get(sequence.id)).toEqual(sequence);
 
     // Field-level fidelity: the restored card keeps its FSRS memory state and
     // review history exactly, and the restored lesson keeps its unlock ratchet.
@@ -334,6 +354,24 @@ describe('deleteLesson', () => {
     expect(afterDelete).toBeDefined();
     expect(afterDelete?.primaryLessonId).toBeNull();
   });
+
+  it('moves lesson sequences and generated cards to the course bank', async () => {
+    const course = await createCourse('Lesson delete sequence test');
+    const lesson = await createLesson(course.id, 'L1');
+    const sequence = await createSequence(course.id, lesson.id, 'Sequence', [
+      { id: 'item', value: 'Item' },
+    ]);
+    const lessonDeckId = (await db.cards.where('sequenceItemId').equals('item').first())!.deckId;
+
+    await deleteLesson(lesson.id);
+
+    const movedSequence = await db.sequences.get(sequence.id);
+    const movedCard = await db.cards.where('sequenceItemId').equals('item').first();
+    expect(movedSequence?.primaryLessonId).toBeNull();
+    expect(movedCard?.primaryLessonId).toBeNull();
+    expect(movedCard?.deckId).not.toBe(lessonDeckId);
+    expect(await db.decks.get(lessonDeckId)).toBeUndefined();
+  });
 });
 
 describe('linkCardToLesson idempotency', () => {
@@ -362,7 +400,7 @@ describe('linkCardToLesson idempotency', () => {
     await linkCardToLesson(lesson.id, c1.id);
     await linkCardToLesson(lesson.id, c2.id);
 
-    const links = await listLessonCardLinks(lesson.id);
+    const links = await db.lessonCards.where('lessonId').equals(lesson.id).toArray();
     expect(links).toHaveLength(2);
   });
 
@@ -431,7 +469,7 @@ describe('reorderLessons', () => {
     // Reverse the order.
     await reorderLessons(course.id, [l3.id, l2.id, l1.id]);
 
-    const updated = await listLessons(course.id);
+    const updated = await db.lessons.where('courseId').equals(course.id).sortBy('orderIndex');
     expect(updated[0].id).toBe(l3.id);
     expect(updated[0].orderIndex).toBe(0);
     expect(updated[1].id).toBe(l2.id);
@@ -468,7 +506,7 @@ describe('listCourseExamDates ordering', () => {
     const d2 = await createCourseExamDate(course.id, 'Later', t2);
     const d3 = await createCourseExamDate(course.id, 'Soon', t3);
 
-    const dates = await listCourseExamDates(course.id);
+    const dates = await db.courseExamDates.where('courseId').equals(course.id).sortBy('examDate');
     expect(dates.map((d) => d.id)).toEqual([d3.id, d1.id, d2.id]);
   });
 });
@@ -482,8 +520,8 @@ describe('listPracticeNodes', () => {
     await createPracticeNode(c1.id, { type: 'auto', name: 'P1' });
     await createPracticeNode(c2.id, { type: 'manual', name: 'P2' });
 
-    const nodes1 = await listPracticeNodes(c1.id);
-    const nodes2 = await listPracticeNodes(c2.id);
+    const nodes1 = await db.practiceNodes.where('courseId').equals(c1.id).toArray();
+    const nodes2 = await db.practiceNodes.where('courseId').equals(c2.id).toArray();
     expect(nodes1).toHaveLength(1);
     expect(nodes1[0].name).toBe('P1');
     expect(nodes2).toHaveLength(1);
@@ -541,7 +579,10 @@ describe('ensureLessonDeck', () => {
 
     const deckId = await ensureLessonDeck(course.id, lesson.id);
     // Simulate a card already living in this lesson's deck, as createLessonCard would leave behind.
-    await createCard(deckId, 'front_back', 'q', 'a', [], { courseId: course.id, primaryLessonId: lesson.id });
+    await createCard(deckId, 'front_back', 'q', 'a', [], {
+      courseId: course.id,
+      primaryLessonId: lesson.id,
+    });
 
     const deckIdAgain = await ensureLessonDeck(course.id, lesson.id);
 
@@ -643,7 +684,10 @@ describe('ensureCourseBankDeck', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
 
     const deckId = await ensureCourseBankDeck(course.id);
-    await createCard(deckId, 'front_back', 'q2', 'a2', [], { courseId: course.id, primaryLessonId: null });
+    await createCard(deckId, 'front_back', 'q2', 'a2', [], {
+      courseId: course.id,
+      primaryLessonId: null,
+    });
 
     const deckIdAgain = await ensureCourseBankDeck(course.id);
 

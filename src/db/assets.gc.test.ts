@@ -1,11 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import {
-  assetUrl,
-  collectOrphanedAssets,
-  storeImageBlob,
-} from './assets';
+import { assetUrl, collectOrphanedAssets, storeImageBlob } from './assets';
 import { createCard, createDeck, deleteCards, updateCard } from './repository';
 
 async function reset() {
@@ -15,6 +11,7 @@ async function reset() {
     db.assets.clear(),
     db.sessionHistory.clear(),
     db.userPerformance.clear(),
+    db.notes.clear(),
   ]);
 }
 
@@ -50,18 +47,8 @@ describe('asset garbage collection', () => {
       4,
       3,
     );
-    const c1 = await createCard(
-      deck.id,
-      'front_back',
-      `![pic](${assetUrl(asset.hash)})`,
-      'a',
-    );
-    const c2 = await createCard(
-      deck.id,
-      'front_back',
-      `![pic](${assetUrl(asset.hash)})`,
-      'b',
-    );
+    const c1 = await createCard(deck.id, 'front_back', `![pic](${assetUrl(asset.hash)})`, 'a');
+    const c2 = await createCard(deck.id, 'front_back', `![pic](${assetUrl(asset.hash)})`, 'b');
 
     await deleteCards([c1.id]);
     const removed = await collectOrphanedAssets();
@@ -103,17 +90,32 @@ describe('asset garbage collection', () => {
       4,
       3,
     );
-    await createCard(
-      deck.id,
-      'front_back',
-      `![pic](${assetUrl(asset.hash)})`,
-      'answer',
-    );
+    await createCard(deck.id, 'front_back', `![pic](${assetUrl(asset.hash)})`, 'answer');
 
     const { deleteDeck } = await import('./repository');
     await deleteDeck(deck.id);
     const removed = await collectOrphanedAssets();
     expect(removed).toBe(1);
     expect(await db.assets.count()).toBe(0);
+  });
+
+  it('retains an asset referenced only by a note', async () => {
+    const asset = await storeImageBlob(
+      new Blob(['note-only'], { type: 'image/png' }),
+      'image/png',
+      4,
+      3,
+    );
+    await db.notes.put({
+      id: 'note',
+      lessonId: 'lesson',
+      name: 'Note',
+      content: `![pic](${assetUrl(asset.hash)})`,
+      orderIndex: 0,
+      createdAt: 1,
+    });
+
+    expect(await collectOrphanedAssets()).toBe(0);
+    expect(await db.assets.get(asset.hash)).toBeDefined();
   });
 });

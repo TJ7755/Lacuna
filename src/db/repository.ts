@@ -28,7 +28,7 @@ import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { emptyPerformance, updatePerformance } from '../fsrs/grading';
 import { isLeech } from '../fsrs/leech';
-import { averagePredictedRetrievability } from '../fsrs/progress';
+import { predictedRetrievabilityAtHorizon } from '../fsrs/progress';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import { readPracticeDefaults } from '../state/practiceDefaults';
 import { readLessonViewMode } from '../state/lessonViewMode';
@@ -133,7 +133,9 @@ export async function checkDuplicate(
   return existing.find((c) => {
     if (c.type !== type) return false;
     if (excludeId && c.id === excludeId) return false;
-    return normaliseCardText(c.front) === normalisedFront && normaliseCardText(c.back) === normalisedBack;
+    return (
+      normaliseCardText(c.front) === normalisedFront && normaliseCardText(c.back) === normalisedBack
+    );
   });
 }
 
@@ -205,6 +207,7 @@ export async function createCard(
 export async function createCards(
   deckId: string,
   drafts: { type: CardType; front: string; back: string; tags?: string[] }[],
+  opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<Card[]> {
   try {
     const now = Date.now();
@@ -228,6 +231,7 @@ export async function createCards(
       tags: draft.tags ?? [],
       suspended: false,
       buriedUntil: null,
+      ...opts,
     }));
     await db.cards.bulkAdd(cards);
     return cards;
@@ -248,9 +252,11 @@ export async function createCardWithReverse(
   tags: string[] = [],
   opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<{ card: Card; reverse: Card }> {
-  const card = await createCard(deckId, 'front_back', front, back, tags, opts);
-  const reverse = await createCard(deckId, 'front_back', back, front, tags, opts);
-  return { card, reverse };
+  return db.transaction('rw', db.cards, async () => {
+    const card = await createCard(deckId, 'front_back', front, back, tags, opts);
+    const reverse = await createCard(deckId, 'front_back', back, front, tags, opts);
+    return { card, reverse };
+  });
 }
 
 /**
@@ -264,11 +270,27 @@ export async function createBasicReversedPair(
   tags: string[] = [],
   opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<{ card: Card; reverse: Card }> {
-  const reverse = await createCard(deckId, 'front_back', back, front, tags, opts);
-  const card = await createCard(deckId, 'basic_reversed', front, back, tags, opts);
-  await db.cards.update(card.id, { reverseCardId: reverse.id });
-  await db.cards.update(reverse.id, { reverseCardId: card.id });
-  return { card: { ...card, reverseCardId: reverse.id }, reverse: { ...reverse, reverseCardId: card.id } };
+  return db.transaction('rw', db.cards, async () => {
+    const reverse = await createCard(deckId, 'front_back', back, front, tags, opts);
+    const card = await createCard(deckId, 'basic_reversed', front, back, tags, opts);
+    await db.cards.update(card.id, { reverseCardId: reverse.id });
+    await db.cards.update(reverse.id, { reverseCardId: card.id });
+    return {
+      card: { ...card, reverseCardId: reverse.id },
+      reverse: { ...reverse, reverseCardId: card.id },
+    };
+  });
+}
+
+async function ownedBackingDeck(
+  courseId: string,
+  lessonId: string | null,
+): Promise<Deck | undefined> {
+  return db.decks
+    .filter(
+      (deck) => deck.backingCourseId === courseId && (deck.backingLessonId ?? null) === lessonId,
+    )
+    .first();
 }
 
 /**
@@ -279,8 +301,16 @@ export async function createBasicReversedPair(
  * `db.transaction` — only plain table operations.
  */
 export async function ensureLessonDeck(courseId: string, lessonId: string): Promise<string> {
+  const owned = await ownedBackingDeck(courseId, lessonId);
+  if (owned) return owned.id;
   const existing = await db.cards.where('primaryLessonId').equals(lessonId).first();
-  if (existing) return existing.deckId;
+  if (existing) {
+    await db.decks.update(existing.deckId, {
+      backingCourseId: courseId,
+      backingLessonId: lessonId,
+    });
+    return existing.deckId;
+  }
 
   const course = await db.courses.get(courseId);
   const lesson = await db.lessons.get(lessonId);
@@ -295,6 +325,8 @@ export async function ensureLessonDeck(courseId: string, lessonId: string): Prom
     fsrsParameters: course?.fsrsParameters ?? defaultFsrsParameters(),
     examObjective: course?.examObjective ?? 'expectedMarks',
     lastInteractedAt: createdAt,
+    backingCourseId: courseId,
+    backingLessonId: lessonId,
     ...(course?.colour ? { colour: course.colour } : {}),
   };
   await db.decks.add(deck);
@@ -336,7 +368,10 @@ export async function createLessonBasicReversedPair(
   tags: string[] = [],
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureLessonDeck(courseId, lessonId);
-  return createBasicReversedPair(deckId, front, back, tags, { courseId, primaryLessonId: lessonId });
+  return createBasicReversedPair(deckId, front, back, tags, {
+    courseId,
+    primaryLessonId: lessonId,
+  });
 }
 
 /**
@@ -345,12 +380,17 @@ export async function createLessonBasicReversedPair(
  * bank" deck per course and reuses it for every card in that course with no lesson.
  */
 export async function ensureCourseBankDeck(courseId: string): Promise<string> {
+  const owned = await ownedBackingDeck(courseId, null);
+  if (owned) return owned.id;
   const existing = await db.cards
     .where('courseId')
     .equals(courseId)
     .filter((c) => c.primaryLessonId === null || c.primaryLessonId === undefined)
     .first();
-  if (existing) return existing.deckId;
+  if (existing) {
+    await db.decks.update(existing.deckId, { backingCourseId: courseId, backingLessonId: null });
+    return existing.deckId;
+  }
 
   const course = await db.courses.get(courseId);
   const createdAt = Date.now();
@@ -364,6 +404,8 @@ export async function ensureCourseBankDeck(courseId: string): Promise<string> {
     fsrsParameters: course?.fsrsParameters ?? defaultFsrsParameters(),
     examObjective: course?.examObjective ?? 'expectedMarks',
     lastInteractedAt: createdAt,
+    backingCourseId: courseId,
+    backingLessonId: null,
     ...(course?.colour ? { colour: course.colour } : {}),
   };
   await db.decks.add(deck);
@@ -423,8 +465,7 @@ export async function assignCardsToLesson(
     const cards = await db.cards.where('id').anyOf(ids).toArray();
     const removedPrimaryExposures = cards
       .filter(
-        (card) =>
-          typeof card.primaryLessonId === 'string' && card.primaryLessonId !== lessonId,
+        (card) => typeof card.primaryLessonId === 'string' && card.primaryLessonId !== lessonId,
       )
       .map((card) => [card.primaryLessonId as string, card.id] as [string, string]);
     if (removedPrimaryExposures.length > 0) {
@@ -455,7 +496,7 @@ async function assertNoGeneratedCards(ids: string[]): Promise<void> {
   const generatedCount = await db.cards
     .where('id')
     .anyOf(ids)
-    .filter((card) => card.sequenceItemId != null)
+    .filter((card) => card.sequenceItemId !== null && card.sequenceItemId !== undefined)
     .count();
   if (generatedCount > 0) {
     throw new Error(
@@ -532,19 +573,25 @@ export async function addTagToCards(ids: string[], tag: string): Promise<void> {
   const clean = tag.trim();
   if (!clean) return;
   await db.transaction('rw', db.cards, async () => {
-    await db.cards.where('id').anyOf(ids).modify((card) => {
-      const tags = card.tags ?? [];
-      if (!tags.includes(clean)) card.tags = [...tags, clean];
-    });
+    await db.cards
+      .where('id')
+      .anyOf(ids)
+      .modify((card) => {
+        const tags = card.tags ?? [];
+        if (!tags.includes(clean)) card.tags = [...tags, clean];
+      });
   });
 }
 
 /** Remove a tag from many cards at once. */
 export async function removeTagFromCards(ids: string[], tag: string): Promise<void> {
   await db.transaction('rw', db.cards, async () => {
-    await db.cards.where('id').anyOf(ids).modify((card) => {
-      if (card.tags?.length) card.tags = card.tags.filter((t) => t !== tag);
-    });
+    await db.cards
+      .where('id')
+      .anyOf(ids)
+      .modify((card) => {
+        if (card.tags?.length) card.tags = card.tags.filter((t) => t !== tag);
+      });
   });
 }
 
@@ -579,16 +626,19 @@ export async function rescheduleCards(ids: string[], options: RescheduleOptions)
     if (options.due !== undefined) {
       await db.cards.where('id').anyOf(ids).modify({ due: options.due, buriedUntil: null });
     } else if (options.reset) {
-      await db.cards.where('id').anyOf(ids).modify((card) => {
-        card.state = 0;
-        card.stability = null;
-        card.difficulty = null;
-        card.due = null;
-        card.scheduledDays = 0;
-        card.learningSteps = 0;
-        card.lastReviewed = null;
-        card.buriedUntil = null;
-      });
+      await db.cards
+        .where('id')
+        .anyOf(ids)
+        .modify((card) => {
+          card.state = 0;
+          card.stability = null;
+          card.difficulty = null;
+          card.due = null;
+          card.scheduledDays = 0;
+          card.learningSteps = 0;
+          card.lastReviewed = null;
+          card.buriedUntil = null;
+        });
     }
   });
 }
@@ -653,95 +703,97 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
     const kind: ReviewUnitKind = args.kind ?? 'deck';
     const now = args.now ?? Date.now();
 
-  // All FSRS-6 maths is delegated to ts-fsrs via the engine wrapper.
-  const engine = makeEngine(deck.fsrsParameters);
-  const { memory, retrievabilityAtReview } = applyReview(engine, card, grade, now);
+    // All FSRS-6 maths is delegated to ts-fsrs via the engine wrapper.
+    const engine = makeEngine(deck.fsrsParameters);
+    const { memory, retrievabilityAtReview } = applyReview(engine, card, grade, now);
 
-  const log: ReviewLog = {
-    timestamp: now,
-    grade,
-    responseTimeSec,
-    distracted,
-    stabilityBefore: card.stability,
-    stabilityAfter: memory.stability,
-    difficultyBefore: card.difficulty,
-    difficultyAfter: memory.difficulty,
-    retrievabilityAtReview,
-  };
+    const log: ReviewLog = {
+      timestamp: now,
+      grade,
+      responseTimeSec,
+      distracted,
+      stabilityBefore: card.stability,
+      stabilityAfter: memory.stability,
+      difficultyBefore: card.difficulty,
+      difficultyAfter: memory.difficulty,
+      retrievabilityAtReview,
+    };
 
-  const updatedCard: Card = {
-    ...card,
-    stability: memory.stability,
-    difficulty: memory.difficulty,
-    lastReviewed: memory.lastReviewed,
-    due: memory.due,
-    scheduledDays: memory.scheduledDays,
-    learningSteps: memory.learningSteps,
-    reps: memory.reps,
-    lapses: memory.lapses,
-    state: memory.state,
-    history: [...card.history, log],
-  };
+    const updatedCard: Card = {
+      ...card,
+      stability: memory.stability,
+      difficulty: memory.difficulty,
+      lastReviewed: memory.lastReviewed,
+      due: memory.due,
+      scheduledDays: memory.scheduledDays,
+      learningSteps: memory.learningSteps,
+      reps: memory.reps,
+      lapses: memory.lapses,
+      state: memory.state,
+      history: [...card.history, log],
+    };
 
-  // Leech auto-action: if the card just crossed the threshold, act on it.
-  const action = deck.leechAction ?? 'suspend';
-  const threshold = deck.leechThreshold;
-  if (action !== 'none' && isLeech(updatedCard, threshold) && !isLeech(card, threshold)) {
-    if (action === 'suspend') {
-      updatedCard.suspended = true;
-    } else if (action === 'tag') {
-      const tags = updatedCard.tags ?? [];
-      if (!tags.includes('leech')) {
-        updatedCard.tags = [...tags, 'leech'];
+    // Leech auto-action: if the card just crossed the threshold, act on it.
+    const action = deck.leechAction ?? 'suspend';
+    const threshold = deck.leechThreshold;
+    if (action !== 'none' && isLeech(updatedCard, threshold) && !isLeech(card, threshold)) {
+      if (action === 'suspend') {
+        updatedCard.suspended = true;
+      } else if (action === 'tag') {
+        const tags = updatedCard.tags ?? [];
+        if (!tags.includes('leech')) {
+          updatedCard.tags = [...tags, 'leech'];
+        }
       }
     }
-  }
 
-  let lastInteractedAtBefore: number | undefined;
-  const sessionHistoryId = await db.transaction(
-    'rw',
-    [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance],
-    async () => {
-      await db.cards.put(updatedCard);
-      if (kind === 'course') {
-        lastInteractedAtBefore = (await db.courses.get(deck.id))?.lastInteractedAt;
-        await db.courses.update(deck.id, { lastInteractedAt: now });
-      } else {
-        lastInteractedAtBefore = (await db.decks.get(deck.id))?.lastInteractedAt;
-        await db.decks.update(deck.id, { lastInteractedAt: now });
-      }
+    let lastInteractedAtBefore: number | undefined;
+    const sessionHistoryId = await db.transaction(
+      'rw',
+      [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance],
+      async () => {
+        await db.cards.put(updatedCard);
+        if (kind === 'course') {
+          lastInteractedAtBefore = (await db.courses.get(deck.id))?.lastInteractedAt;
+          await db.courses.update(deck.id, { lastInteractedAt: now });
+        } else {
+          lastInteractedAtBefore = (await db.decks.get(deck.id))?.lastInteractedAt;
+          await db.decks.update(deck.id, { lastInteractedAt: now });
+        }
 
-      if (correct) {
-        // Per decision: UserPerformance keeps its existing deckId-named primary key;
-        // for course/lesson-scoped reviews we simply write the courseId string into
-        // that same field (no schema bump).
-        const perf =
-          (await db.userPerformance.get(deck.id)) ?? emptyPerformance(deck.id);
-        await db.userPerformance.put(updatePerformance(perf, responseTimeSec));
-      }
+        if (correct) {
+          // Per decision: UserPerformance keeps its existing deckId-named primary key;
+          // for course/lesson-scoped reviews we simply write the courseId string into
+          // that same field (no schema bump).
+          const perf = (await db.userPerformance.get(deck.id)) ?? emptyPerformance(deck.id);
+          await db.userPerformance.put(updatePerformance(perf, responseTimeSec));
+        }
 
-      // Read the unit's cards inside the transaction so concurrent reviews cannot
-      // race the average predicted retrievability calculation. Deck scope spans the
-      // deck's own cards; course scope spans every card in the course (across lessons).
-      const allUnitCards =
-        kind === 'course'
-          ? await db.cards.where('courseId').equals(deck.id).toArray()
-          : await db.cards.where('deckId').equals(deck.id).toArray();
-      const unitCards = allUnitCards.map((c) =>
-        c.id === updatedCard.id ? updatedCard : c,
-      );
-      const avgRetrievability = averagePredictedRetrievability(unitCards, deck);
+        // Read the unit's cards inside the transaction so concurrent reviews cannot
+        // race the average predicted retrievability calculation. Deck scope spans the
+        // deck's own cards; course scope spans every card in the course (across lessons).
+        let retrievabilityTotal = 0;
+        let cardCount = 0;
+        const unitCards =
+          kind === 'course'
+            ? db.cards.where('courseId').equals(deck.id)
+            : db.cards.where('deckId').equals(deck.id);
+        await unitCards.each((unitCard) => {
+          retrievabilityTotal += predictedRetrievabilityAtHorizon(unitCard, deck, now);
+          cardCount += 1;
+        });
+        const avgRetrievability = cardCount > 0 ? retrievabilityTotal / cardCount : 1;
 
-      return db.sessionHistory.add({
-        timestamp: now,
-        // deckId always identifies the backing (possibly shadow) deck the card lives
-        // in; courseId is populated in addition for course/lesson-scoped reviews.
-        deckId: updatedCard.deckId,
-        ...(kind === 'course' ? { courseId: deck.id } : {}),
-        averagePredictedRetrievability: avgRetrievability,
-      });
-    },
-  );
+        return db.sessionHistory.add({
+          timestamp: now,
+          // deckId always identifies the backing (possibly shadow) deck the card lives
+          // in; courseId is populated in addition for course/lesson-scoped reviews.
+          deckId: updatedCard.deckId,
+          ...(kind === 'course' ? { courseId: deck.id } : {}),
+          averagePredictedRetrievability: avgRetrievability,
+        });
+      },
+    );
 
     return { card: updatedCard, sessionHistoryId, kind, lastInteractedAtBefore };
   } catch (err) {
@@ -894,6 +946,7 @@ export async function deleteCourse(id: string): Promise<void> {
       db.decks,
       db.sessionHistory,
       db.userPerformance,
+      db.sequences,
     ],
     async () => {
       const lessonIds = await db.lessons.where('courseId').equals(id).primaryKeys();
@@ -910,13 +963,18 @@ export async function deleteCourse(id: string): Promise<void> {
       // Every course card has a hidden backing deck (see ensureLessonDeck /
       // ensureCourseBankDeck); nothing else can reference those decks, so they and
       // their per-deck calibration profiles must be swept up alongside the cards.
-      const deckIds = [
-        ...new Set((await db.cards.where('courseId').equals(id).toArray()).map((c) => c.deckId)),
-      ];
+      const cardDeckIds = (await db.cards.where('courseId').equals(id).toArray()).map(
+        (c) => c.deckId,
+      );
+      const ownedDeckIds = await db.decks
+        .filter((deck) => deck.backingCourseId === id)
+        .primaryKeys();
+      const deckIds = [...new Set([...cardDeckIds, ...ownedDeckIds])];
       await db.lessons.where('courseId').equals(id).delete();
       await db.practiceNodes.where('courseId').equals(id).delete();
       await db.practiceMilestones.where('courseId').equals(id).delete();
       await db.courseExamDates.where('courseId').equals(id).delete();
+      await db.sequences.where('courseId').equals(id).delete();
       await db.cards.where('courseId').equals(id).delete();
       if (deckIds.length > 0) {
         await db.decks.where('id').anyOf(deckIds).delete();
@@ -947,6 +1005,7 @@ export interface CourseSnapshot {
   practiceNodes: PracticeNode[];
   practiceMilestones: PracticeMilestone[];
   courseExamDates: CourseExamDate[];
+  sequences: Sequence[];
   cards: Card[];
   decks: Deck[];
   sessionHistory: SessionHistoryEntry[];
@@ -964,28 +1023,46 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
   const course = await db.courses.get(id);
   if (!course) return null;
 
-  const [lessons, practiceNodes, practiceMilestones, courseExamDates, cards, coursePerf] = await Promise.all([
+  const [
+    lessons,
+    practiceNodes,
+    practiceMilestones,
+    courseExamDates,
+    sequences,
+    cards,
+    coursePerf,
+  ] = await Promise.all([
     db.lessons.where('courseId').equals(id).toArray(),
     db.practiceNodes.where('courseId').equals(id).toArray(),
     db.practiceMilestones.where('courseId').equals(id).toArray(),
     db.courseExamDates.where('courseId').equals(id).toArray(),
+    db.sequences.where('courseId').equals(id).toArray(),
     db.cards.where('courseId').equals(id).toArray(),
     db.userPerformance.get(id),
   ]);
   const lessonIds = lessons.map((l) => l.id);
-  const deckIds = [...new Set(cards.map((c) => c.deckId))];
+  const ownedDeckIds = await db.decks.filter((deck) => deck.backingCourseId === id).primaryKeys();
+  const deckIds = [...new Set([...cards.map((c) => c.deckId), ...ownedDeckIds])];
 
-  const [notes, lessonCards, lessonCardExposures, lessonCompletions, decks, deckSessionHistory, courseSessionHistory, deckPerf] =
-    await Promise.all([
-      lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
-      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-      lessonIds.length > 0 ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray() : [],
-      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-      deckIds.length > 0 ? db.decks.where('id').anyOf(deckIds).toArray() : [],
-      deckIds.length > 0 ? db.sessionHistory.where('deckId').anyOf(deckIds).toArray() : [],
-      db.sessionHistory.where('courseId').equals(id).toArray(),
-      deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
-    ]);
+  const [
+    notes,
+    lessonCards,
+    lessonCardExposures,
+    lessonCompletions,
+    decks,
+    deckSessionHistory,
+    courseSessionHistory,
+    deckPerf,
+  ] = await Promise.all([
+    lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
+    lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+    lessonIds.length > 0 ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray() : [],
+    lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
+    deckIds.length > 0 ? db.decks.where('id').anyOf(deckIds).toArray() : [],
+    deckIds.length > 0 ? db.sessionHistory.where('deckId').anyOf(deckIds).toArray() : [],
+    db.sessionHistory.where('courseId').equals(id).toArray(),
+    deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
+  ]);
   // A backing deck's session history is always course-scoped too (see recordReview),
   // so de-duplicate by row id between the deckId and courseId lookups.
   const sessionHistoryById = new Map(
@@ -1002,6 +1079,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     practiceNodes,
     practiceMilestones,
     courseExamDates,
+    sequences,
     cards,
     decks,
     sessionHistory: [...sessionHistoryById.values()],
@@ -1024,6 +1102,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.practiceNodes,
         db.practiceMilestones,
         db.courseExamDates,
+        db.sequences,
         db.cards,
         db.decks,
         db.sessionHistory,
@@ -1040,6 +1119,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.practiceNodes.bulkPut(snapshot.practiceNodes),
           db.practiceMilestones.bulkPut(snapshot.practiceMilestones),
           db.courseExamDates.bulkPut(snapshot.courseExamDates),
+          db.sequences.bulkPut(snapshot.sequences),
           db.cards.bulkPut(snapshot.cards),
           db.decks.bulkPut(snapshot.decks),
           db.userPerformance.bulkPut(snapshot.userPerformance),
@@ -1100,7 +1180,10 @@ export async function updateLesson(id: string, changes: Partial<Lesson>): Promis
  * performs the write, and only under `semi-linear` unlock mode (other modes derive
  * their unlock state at read time in src/course/path.ts and have nothing to write).
  */
-export async function ratchetLessonUnlock(lessonId: string, now: number = Date.now()): Promise<void> {
+export async function ratchetLessonUnlock(
+  lessonId: string,
+  now: number = Date.now(),
+): Promise<void> {
   await db.transaction('rw', db.lessons, async () => {
     const lesson = await db.lessons.get(lessonId);
     if (!lesson || lesson.unlockedAt !== undefined) return;
@@ -1115,6 +1198,14 @@ export async function ratchetLessonUnlock(lessonId: string, now: number = Date.n
  * lessons are not renumbered.
  */
 export async function deleteLesson(id: string): Promise<void> {
+  const lesson = await db.lessons.get(id);
+  if (!lesson) return;
+  const [cardCount, sequenceCount] = await Promise.all([
+    db.cards.where('primaryLessonId').equals(id).count(),
+    db.sequences.where('primaryLessonId').equals(id).count(),
+  ]);
+  const bankDeckId =
+    cardCount > 0 || sequenceCount > 0 ? await ensureCourseBankDeck(lesson.courseId) : null;
   await db.transaction(
     'rw',
     [
@@ -1125,6 +1216,10 @@ export async function deleteLesson(id: string): Promise<void> {
       db.lessonCardExposures,
       db.lessonCompletions,
       db.cards,
+      db.sequences,
+      db.decks,
+      db.sessionHistory,
+      db.userPerformance,
     ],
     async () => {
       const noteIds = await db.notes.where('lessonId').equals(id).primaryKeys();
@@ -1135,15 +1230,25 @@ export async function deleteLesson(id: string): Promise<void> {
       await db.lessonCards.where('lessonId').equals(id).delete();
       await db.lessonCardExposures.where('lessonId').equals(id).delete();
       await db.lessonCompletions.delete(id);
-      await db.cards.where('primaryLessonId').equals(id).modify({ primaryLessonId: null });
+      if (bankDeckId) {
+        await db.cards
+          .where('primaryLessonId')
+          .equals(id)
+          .modify({ primaryLessonId: null, deckId: bankDeckId });
+        await db.sequences.where('primaryLessonId').equals(id).modify({ primaryLessonId: null });
+      }
+      const backingDeckIds = await db.decks
+        .filter((deck) => deck.backingCourseId === lesson.courseId && deck.backingLessonId === id)
+        .primaryKeys();
+      if (backingDeckIds.length > 0) {
+        await db.decks.bulkDelete(backingDeckIds);
+        await db.sessionHistory.where('deckId').anyOf(backingDeckIds).delete();
+        await db.userPerformance.where('deckId').anyOf(backingDeckIds).delete();
+      }
       await db.lessons.delete(id);
     },
   );
-}
-
-/** All lessons for a course, ordered by orderIndex ascending. */
-export async function listLessons(courseId: string): Promise<Lesson[]> {
-  return db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
+  scheduleAssetGc();
 }
 
 /**
@@ -1152,9 +1257,9 @@ export async function listLessons(courseId: string): Promise<Lesson[]> {
  */
 export async function reorderLessons(_courseId: string, orderedLessonIds: string[]): Promise<void> {
   await db.transaction('rw', db.lessons, async () => {
-    for (let i = 0; i < orderedLessonIds.length; i++) {
-      await db.lessons.update(orderedLessonIds[i], { orderIndex: i });
-    }
+    await db.lessons.bulkUpdate(
+      orderedLessonIds.map((id, orderIndex) => ({ key: id, changes: { orderIndex } })),
+    );
   });
 }
 
@@ -1190,6 +1295,7 @@ export async function createNote(
 export async function updateNote(id: string, changes: Partial<Note>): Promise<void> {
   try {
     await db.notes.update(id, changes);
+    if ('content' in changes) scheduleAssetGc();
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -1200,6 +1306,7 @@ export async function deleteNote(id: string): Promise<void> {
     await db.noteAnnotations.where('noteId').equals(id).delete();
     await db.notes.delete(id);
   });
+  scheduleAssetGc();
 }
 
 /** All notes for a lesson, ordered by orderIndex ascending. */
@@ -1210,9 +1317,9 @@ export async function listNotes(lessonId: string): Promise<Note[]> {
 /** Assign a fresh orderIndex to each note based on its position in orderedNoteIds. */
 export async function reorderNotes(_lessonId: string, orderedNoteIds: string[]): Promise<void> {
   await db.transaction('rw', db.notes, async () => {
-    for (let i = 0; i < orderedNoteIds.length; i++) {
-      await db.notes.update(orderedNoteIds[i], { orderIndex: i });
-    }
+    await db.notes.bulkUpdate(
+      orderedNoteIds.map((id, orderIndex) => ({ key: id, changes: { orderIndex } })),
+    );
   });
 }
 
@@ -1320,10 +1427,6 @@ export async function linkCardToLesson(lessonId: string, cardId: string): Promis
   return link;
 }
 
-export async function listLessonCardLinks(lessonId: string): Promise<LessonCardLink[]> {
-  return db.lessonCards.where('lessonId').equals(lessonId).toArray();
-}
-
 /** Remove a display link and the teaching progress specific to that link. */
 export async function unlinkCardFromLesson(lessonId: string, cardId: string): Promise<void> {
   await db.transaction('rw', db.lessonCards, db.lessonCardExposures, async () => {
@@ -1352,10 +1455,6 @@ export async function upsertLessonCardExposure(
   return exposure;
 }
 
-export async function listLessonCardExposures(lessonId: string): Promise<LessonCardExposure[]> {
-  return db.lessonCardExposures.where('lessonId').equals(lessonId).toArray();
-}
-
 export async function markLessonComplete(
   lessonId: string,
   completedAt: number = Date.now(),
@@ -1365,10 +1464,6 @@ export async function markLessonComplete(
   const completion = { lessonId, completedAt };
   await db.lessonCompletions.add(completion);
   return completion;
-}
-
-export async function getLessonCompletion(lessonId: string): Promise<LessonCompletion | undefined> {
-  return db.lessonCompletions.get(lessonId);
 }
 
 // ---------------------------------------------------------------------------
@@ -1411,10 +1506,6 @@ export async function deletePracticeNode(id: string): Promise<void> {
   });
 }
 
-export async function listPracticeNodes(courseId: string): Promise<PracticeNode[]> {
-  return db.practiceNodes.where('courseId').equals(courseId).toArray();
-}
-
 /**
  * Persist the last measured progress for a path node. Changing scopeVersion
  * atomically replaces stale progress for an older effective card scope.
@@ -1437,21 +1528,15 @@ export async function savePracticeMilestoneProgress(
     securedCardCount: Math.max(0, Math.min(securedCardCount, totalCardCount)),
     totalCardCount: Math.max(0, totalCardCount),
     updatedAt: now,
-    ...((completed || (sameScope && existing.completedAt !== undefined))
-      ? { completedAt: sameScope && existing?.completedAt !== undefined ? existing.completedAt : now }
+    ...(completed || (sameScope && existing.completedAt !== undefined)
+      ? {
+          completedAt:
+            sameScope && existing?.completedAt !== undefined ? existing.completedAt : now,
+        }
       : {}),
   };
   await db.practiceMilestones.put(milestone);
   return milestone;
-}
-
-/** Return progress only when it belongs to the caller's current effective scope. */
-export async function getPracticeMilestone(
-  nodeKey: string,
-  scopeVersion: string,
-): Promise<PracticeMilestone | undefined> {
-  const milestone = await db.practiceMilestones.get(nodeKey);
-  return milestone?.scopeVersion === scopeVersion ? milestone : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -1495,11 +1580,6 @@ export async function deleteCourseExamDate(id: string): Promise<void> {
   await db.courseExamDates.delete(id);
 }
 
-/** All exam dates for a course, ordered by examDate ascending. */
-export async function listCourseExamDates(courseId: string): Promise<CourseExamDate[]> {
-  return db.courseExamDates.where('courseId').equals(courseId).sortBy('examDate');
-}
-
 // ---------------------------------------------------------------------------
 // Sequences
 // ---------------------------------------------------------------------------
@@ -1519,7 +1599,11 @@ function sequenceItemKeys(sequence: Sequence): string[] {
 }
 
 /** Turn a generation payload into a full Card row with fresh FSRS defaults (mirrors {@link createCards}). */
-function generatedCardFromPayload(deckId: string, payload: GeneratedCardPayload, createdAt: number): Card {
+function generatedCardFromPayload(
+  deckId: string,
+  payload: GeneratedCardPayload,
+  createdAt: number,
+): Card {
   return {
     id: makeId(),
     deckId,
@@ -1635,7 +1719,9 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
             ? await ensureLessonDeck(sequence.courseId, sequence.primaryLessonId)
             : await ensureCourseBankDeck(sequence.courseId);
           const now = Date.now();
-          const newCards = diff.creates.map((payload, i) => generatedCardFromPayload(deckId, payload, now + i));
+          const newCards = diff.creates.map((payload, i) =>
+            generatedCardFromPayload(deckId, payload, now + i),
+          );
           await db.cards.bulkAdd(newCards);
         }
 
@@ -1651,20 +1737,24 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
 
 /** Delete a sequence and every card it generated, in one transaction. */
 export async function deleteSequence(id: string): Promise<void> {
-  await db.transaction('rw', [db.sequences, db.cards, db.lessonCards, db.lessonCardExposures], async () => {
-    const sequence = await db.sequences.get(id);
-    if (!sequence) return;
-    const keys = sequenceItemKeys(sequence);
-    if (keys.length > 0) {
-      const cardIds = await db.cards.where('sequenceItemId').anyOf(keys).primaryKeys();
-      if (cardIds.length > 0) {
-        await db.lessonCards.where('cardId').anyOf(cardIds).delete();
-        await db.lessonCardExposures.where('cardId').anyOf(cardIds).delete();
+  await db.transaction(
+    'rw',
+    [db.sequences, db.cards, db.lessonCards, db.lessonCardExposures],
+    async () => {
+      const sequence = await db.sequences.get(id);
+      if (!sequence) return;
+      const keys = sequenceItemKeys(sequence);
+      if (keys.length > 0) {
+        const cardIds = await db.cards.where('sequenceItemId').anyOf(keys).primaryKeys();
+        if (cardIds.length > 0) {
+          await db.lessonCards.where('cardId').anyOf(cardIds).delete();
+          await db.lessonCardExposures.where('cardId').anyOf(cardIds).delete();
+        }
+        await db.cards.where('sequenceItemId').anyOf(keys).delete();
       }
-      await db.cards.where('sequenceItemId').anyOf(keys).delete();
-    }
-    await db.sequences.delete(id);
-  });
+      await db.sequences.delete(id);
+    },
+  );
   scheduleAssetGc();
 }
 
@@ -1688,24 +1778,29 @@ export async function snapshotSequence(id: string): Promise<SequenceSnapshot | n
   if (!sequence) return null;
   const cards = await cardsForSequence(sequence);
   const cardIds = cards.map((card) => card.id);
-  const [lessonCards, lessonCardExposures] = cardIds.length > 0
-    ? await Promise.all([
-        db.lessonCards.where('cardId').anyOf(cardIds).toArray(),
-        db.lessonCardExposures.where('cardId').anyOf(cardIds).toArray(),
-      ])
-    : [[], []];
+  const [lessonCards, lessonCardExposures] =
+    cardIds.length > 0
+      ? await Promise.all([
+          db.lessonCards.where('cardId').anyOf(cardIds).toArray(),
+          db.lessonCardExposures.where('cardId').anyOf(cardIds).toArray(),
+        ])
+      : [[], []];
   return { sequence, cards, lessonCards, lessonCardExposures };
 }
 
 /** Re-insert a previously captured SequenceSnapshot (the inverse of deleteSequence/updateSequence). */
 export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void> {
   try {
-    await db.transaction('rw', [db.sequences, db.cards, db.lessonCards, db.lessonCardExposures], async () => {
-      await db.sequences.put(snapshot.sequence);
-      await db.cards.bulkPut(snapshot.cards);
-      await db.lessonCards.bulkPut(snapshot.lessonCards);
-      await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
-    });
+    await db.transaction(
+      'rw',
+      [db.sequences, db.cards, db.lessonCards, db.lessonCardExposures],
+      async () => {
+        await db.sequences.put(snapshot.sequence);
+        await db.cards.bulkPut(snapshot.cards);
+        await db.lessonCards.bulkPut(snapshot.lessonCards);
+        await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
+      },
+    );
   } catch (err) {
     throw friendlyDbError(err);
   }

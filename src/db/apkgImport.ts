@@ -108,13 +108,51 @@ export async function parseApkg(
   options: ApkgParseOptions = {},
 ): Promise<ApkgImportResult> {
   const buffer = await file.arrayBuffer();
+  const wasmUrl =
+    typeof location === 'undefined'
+      ? '/sql-wasm.wasm'
+      : new URL(`${import.meta.env.BASE_URL}sql-wasm.wasm`, location.href).href;
+  if (typeof Worker === 'undefined') return parseApkgBuffer(buffer, options, wasmUrl);
+
+  return new Promise<ApkgImportResult>((resolve, reject) => {
+    const worker = new Worker(new URL('../workers/apkg.worker.ts', import.meta.url), {
+      type: 'module',
+    });
+    const cleanup = () => worker.terminate();
+    worker.onmessage = (event: MessageEvent<
+      | { type: 'done'; result: ApkgImportResult }
+      | { type: 'error'; message: string }
+    >) => {
+      cleanup();
+      if (event.data.type === 'done') resolve(event.data.result);
+      else reject(new Error(event.data.message));
+    };
+    worker.onerror = (event) => {
+      cleanup();
+      reject(new Error(event.message || 'Could not parse that Anki package.'));
+    };
+    worker.onmessageerror = () => {
+      cleanup();
+      reject(new Error('The Anki import worker returned an unreadable response.'));
+    };
+    worker.postMessage({ buffer, options, wasmUrl }, [buffer]);
+  });
+}
+
+/** Worker entry point. Kept separate from {@link parseApkg} so ZIP and SQLite
+ * processing never runs on the UI thread in browsers. */
+export async function parseApkgBuffer(
+  buffer: ArrayBuffer,
+  options: ApkgParseOptions = {},
+  wasmUrl = '/sql-wasm.wasm',
+): Promise<ApkgImportResult> {
   const zip = unzipSync(new Uint8Array(buffer));
 
   // Read media mapping JSON.
   const mediaMap = readMediaMap(zip);
 
   // Load SQLite database.
-  const db = await loadAnkiDatabase(zip);
+  const db = await loadAnkiDatabase(zip, wasmUrl);
 
   try {
     return extractFromDatabase(db, zip, mediaMap, options);
@@ -136,7 +174,7 @@ function readMediaMap(zip: Unzipped): Map<string, string> {
 }
 
 /** Load sql.js and open the collection.anki2 database. */
-async function loadAnkiDatabase(zip: Unzipped): Promise<Database> {
+async function loadAnkiDatabase(zip: Unzipped, wasmUrl: string): Promise<Database> {
   const dbBytes = zip['collection.anki2'];
   if (!dbBytes) {
     throw new Error('This file does not contain a valid Anki collection (collection.anki2 missing).');
@@ -146,7 +184,7 @@ async function loadAnkiDatabase(zip: Unzipped): Promise<Database> {
     locateFile: (file) => {
       // sql.js WASM must be served from public/ or CDN.
       if (file.endsWith('.wasm')) {
-        return '/sql-wasm.wasm';
+        return wasmUrl;
       }
       return file;
     },
@@ -629,12 +667,12 @@ export async function importApkgResult(
     })),
   );
 
-  // Update created cards with scheduling history.
-  await db.transaction('rw', db.cards, async () => {
-    for (let i = 0; i < created.length; i++) {
+  // Persist imported scheduling state in one IndexedDB request rather than one
+  // update per card.
+  const scheduledCards = created.map((card, i) => {
       const draft = cards[i];
-      const card = created[i];
-      const scheduling = {
+      return {
+        ...card,
         stability: draft.stability,
         difficulty: draft.difficulty,
         lastReviewed: draft.lastReviewed,
@@ -648,40 +686,40 @@ export async function importApkgResult(
         createdAt: draft.createdAt,
         suspended: draft.suspended,
       };
-      await db.cards.update(card.id, scheduling);
-      Object.assign(card, scheduling);
-    }
   });
+  if (scheduledCards.length > 0) await db.cards.bulkPut(scheduledCards);
 
   // Ingest media images and build a filename -> hash map.
-  const mediaHashMap = new Map<string, string>();
-  for (const [filename, bytes] of result.media.entries()) {
-    const mime = guessMimeType(filename);
-    if (mime.startsWith('image/')) {
+  const mediaEntries = await Promise.all(
+    [...result.media.entries()].map(async ([filename, bytes]) => {
+      const mime = guessMimeType(filename);
+      if (!mime.startsWith('image/')) return null;
       const blob = new Blob([new Uint8Array(bytes)], { type: mime });
-      const hash = await sha256Blob(blob);
-      mediaHashMap.set(filename, hash);
-      const dims = await getImageDimensions(blob);
+      const [hash, dims] = await Promise.all([sha256Blob(blob), getImageDimensions(blob)]);
       await storeImageBlob(blob, mime, dims?.width ?? 0, dims?.height ?? 0);
-    }
-  }
+      return [filename, hash] as const;
+    }),
+  );
+  const mediaHashMap = new Map(
+    mediaEntries.filter((entry): entry is readonly [string, string] => entry !== null),
+  );
 
   // Replace media references in card text with Lacuna asset references.
   if (mediaHashMap.size > 0) {
-    await db.transaction('rw', db.cards, async () => {
-      for (const card of created) {
+    const rewritten: Card[] = [];
+      for (const card of scheduledCards) {
         const newFront = replaceMediaRefs(card.front, mediaHashMap);
         const newBack = replaceMediaRefs(card.back, mediaHashMap);
         if (newFront !== card.front || newBack !== card.back) {
-          await db.cards.update(card.id, { front: newFront, back: newBack });
           card.front = newFront;
           card.back = newBack;
+          rewritten.push(card);
         }
       }
-    });
+    if (rewritten.length > 0) await db.cards.bulkPut(rewritten);
   }
 
-  return { deck, cards: created };
+  return { deck, cards: scheduledCards };
 }
 
 function guessMimeType(filename: string): string {

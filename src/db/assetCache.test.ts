@@ -5,7 +5,7 @@ import {
   resolveAssetUrl,
   resolveAssetMarkdownCached,
   revokeAllCachedUrls,
-  cacheSize,
+  _cacheSizeForTests,
 } from './assetCache';
 
 describe('asset object URL cache', () => {
@@ -68,10 +68,10 @@ describe('asset object URL cache', () => {
     });
 
     await resolveAssetUrl('h3');
-    expect(cacheSize()).toBe(1);
+    expect(_cacheSizeForTests()).toBe(1);
 
     revokeAllCachedUrls();
-    expect(cacheSize()).toBe(0);
+    expect(_cacheSizeForTests()).toBe(0);
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:xyz');
     revokeObjectURL.mockRestore();
   });

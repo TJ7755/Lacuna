@@ -161,6 +161,39 @@ describe('importBackup', () => {
     expect(notes[0].name).toBe('Cell Structure');
   });
 
+  it('keeps a locally edited note when an incoming backup has the same creation time', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const note = await createNote(lesson.id, 'Cell note', 'Old content');
+    const backup = await exportDatabase();
+
+    await db.notes.update(note.id, { content: 'Local edit' });
+    await importBackup(backup, 'merge');
+
+    expect((await db.notes.get(note.id))?.content).toBe('Local edit');
+  });
+
+  it('uses course interaction time when merging course calibration', async () => {
+    const course = await createCourse('Biology');
+    await db.userPerformance.put({
+      deckId: course.id,
+      runningMeanResponseTime: 10,
+      runningStdDevResponseTime: 0,
+      m2: 0,
+      totalCorrectReviews: 1,
+    });
+    const backup = await exportDatabase();
+
+    await db.courses.update(course.id, { lastInteractedAt: course.createdAt + 1000 });
+    await db.userPerformance.update(course.id, {
+      runningMeanResponseTime: 99,
+      totalCorrectReviews: 2,
+    });
+    await importBackup(backup, 'merge');
+
+    expect((await db.userPerformance.get(course.id))?.runningMeanResponseTime).toBe(99);
+  });
+
   it('adds a missing course in merge mode without clobbering an existing local one', async () => {
     const existing = await createCourse('Local Course');
     const backup = await exportDatabase();

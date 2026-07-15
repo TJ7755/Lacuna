@@ -36,16 +36,23 @@ import { db, makeId } from './schema';
 import {
   createCards,
   createCourse,
-  createCourseExamDate,
-  createLesson,
-  createLessonCard,
-  createNote,
+  ensureLessonDeck,
 } from './repository';
 import { clampRequestRetention, defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { emptyPerformance } from '../fsrs/grading';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import type { ParsedCard } from './import';
-import type { Card, Deck, Folder, Sequence, SequenceItem, UnlockMode } from './types';
+import type {
+  Card,
+  CourseExamDate,
+  Deck,
+  Folder,
+  Lesson,
+  Note,
+  Sequence,
+  SequenceItem,
+  UnlockMode,
+} from './types';
 import { stripAssetImages } from './assets';
 import { bytesToBase45, base45ToBytes } from './base45';
 import { buildCourseMigration } from './courseMigration';
@@ -743,12 +750,31 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
 
   const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
   const lessonIndexById = new Map(lessons.map((l, i) => [l.id, i]));
+  const lessonIds = lessons.map((lesson) => lesson.id);
+  const [notes, cards] = await Promise.all([
+    lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
+    lessonIds.length > 0
+      ? db.cards.where('primaryLessonId').anyOf(lessonIds).toArray()
+      : [],
+  ]);
+  const notesByLesson = new Map<string, Note[]>();
+  for (const note of notes) {
+    const group = notesByLesson.get(note.lessonId);
+    if (group) group.push(note);
+    else notesByLesson.set(note.lessonId, [note]);
+  }
+  const cardsByLesson = new Map<string, Card[]>();
+  for (const card of cards) {
+    if (!card.primaryLessonId) continue;
+    const group = cardsByLesson.get(card.primaryLessonId);
+    if (group) group.push(card);
+    else cardsByLesson.set(card.primaryLessonId, [card]);
+  }
+  for (const group of notesByLesson.values()) group.sort((a, b) => a.orderIndex - b.orderIndex);
+  for (const group of cardsByLesson.values()) group.sort((a, b) => a.createdAt - b.createdAt);
 
-  const shareLessons: ShareLesson[] = [];
-  for (const lesson of lessons) {
-    const notes = await db.notes.where('lessonId').equals(lesson.id).sortBy('orderIndex');
-    const cards = await db.cards.where('primaryLessonId').equals(lesson.id).sortBy('createdAt');
-    shareLessons.push({
+  const shareLessons: ShareLesson[] = lessons.map((lesson) => {
+    return {
       n: lesson.name,
       ...(lesson.description ? { d: lesson.description } : {}),
       ...(lesson.isExtension ? { x: 1 as const } : {}),
@@ -756,10 +782,10 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
       ...(typeof lesson.examDate === 'number' ? { ed: lesson.examDate } : {}),
       ...(lesson.timeZone ? { tz: lesson.timeZone } : {}),
       ...(lesson.sessionFilter && lesson.sessionFilter !== 'new' ? { sf: lesson.sessionFilter } : {}),
-      notes: packNotes(notes),
-      cards: packCards(cards),
-    });
-  }
+      notes: packNotes(notesByLesson.get(lesson.id) ?? []),
+      cards: packCards(cardsByLesson.get(lesson.id) ?? []),
+    };
+  });
 
   const examDates = await db.courseExamDates.where('courseId').equals(courseId).sortBy('examDate');
   const shareExams: ShareExam[] = examDates.map((e) => {
@@ -975,55 +1001,78 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         lessonViewMode: 'study',
       });
 
-      const lessonIds: string[] = [];
-      for (const shareLesson of payload.lessons) {
-        const lesson = await createLesson(course.id, shareLesson.n || 'Untitled lesson', {
+      const importedAt = Date.now();
+      const importedLessons: Lesson[] = payload.lessons.map((shareLesson, orderIndex) => ({
+          id: makeId(),
+          courseId: course.id,
+          name: shareLesson.n.trim() || 'Untitled lesson',
+          orderIndex,
+          createdAt: importedAt + orderIndex,
           ...(shareLesson.d ? { description: shareLesson.d } : {}),
           isExtension: shareLesson.x === 1,
           ...(typeof shareLesson.rd === 'number' ? { releaseDate: shareLesson.rd } : {}),
           ...(typeof shareLesson.ed === 'number' ? { examDate: shareLesson.ed } : {}),
           ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
           ...(shareLesson.sf ? { sessionFilter: shareLesson.sf } : {}),
+        }));
+      if (importedLessons.length > 0) await db.lessons.bulkAdd(importedLessons);
+      const lessonIds = importedLessons.map((lesson) => lesson.id);
+
+      const importedNotes: Note[] = payload.lessons.flatMap((shareLesson, lessonIndex) =>
+        shareLesson.notes.map((shareNote, orderIndex) => ({
+          id: makeId(),
+          lessonId: lessonIds[lessonIndex],
+          name: shareNote.n.trim() || 'Untitled note',
+          content: shareNote.c,
+          orderIndex,
+          createdAt: importedAt + orderIndex,
+        })),
+      );
+      if (importedNotes.length > 0) await db.notes.bulkAdd(importedNotes);
+
+      for (let lessonIndex = 0; lessonIndex < payload.lessons.length; lessonIndex++) {
+        const shareLesson = payload.lessons[lessonIndex];
+        const lessonId = lessonIds[lessonIndex];
+        const drafts = shareLesson.cards.flatMap((shareCard) =>
+          unpackCard(shareCard).map((draft) => ({ draft, sequenceItemId: shareCard.si })),
+        );
+        if (drafts.length === 0) continue;
+        const deckId = await ensureLessonDeck(course.id, lessonId);
+        const created = await createCards(
+          deckId,
+          drafts.map(({ draft }) => draft),
+          { courseId: course.id, primaryLessonId: lessonId },
+        );
+        const generatedCards = created.flatMap((card, index) => {
+          const sequenceItemId = drafts[index].sequenceItemId;
+          if (!sequenceItemId) return [];
+          const remapped = remapSequenceItemId(sequenceItemId);
+          return remapped ? [{ ...card, sequenceItemId: remapped }] : [];
         });
-        lessonIds.push(lesson.id);
-
-        for (const shareNote of shareLesson.notes) {
-          await createNote(lesson.id, shareNote.n || 'Untitled note', shareNote.c);
-        }
-
-        for (const shareCard of shareLesson.cards) {
-          for (const draft of unpackCard(shareCard)) {
-            const card = await createLessonCard(
-              course.id,
-              lesson.id,
-              draft.type,
-              draft.front,
-              draft.back,
-              draft.tags ?? [],
-            );
-            if (shareCard.si) {
-              const remapped = remapSequenceItemId(shareCard.si);
-              if (remapped) await db.cards.update(card.id, { sequenceItemId: remapped });
-            }
-            cardCount += 1;
-          }
-        }
+        if (generatedCards.length > 0) await db.cards.bulkPut(generatedCards);
+        cardCount += created.length;
       }
 
-      for (const shareExam of payload.exams ?? []) {
-        await createCourseExamDate(course.id, shareExam.n || 'Exam', shareExam.e, {
+      const importedExams: CourseExamDate[] = (payload.exams ?? []).map(
+        (shareExam, index) => ({
+          id: makeId(),
+          courseId: course.id,
+          name: shareExam.n || 'Exam',
+          examDate: shareExam.e,
+          createdAt: importedAt + index,
           ...(shareExam.tz ? { timeZone: shareExam.tz } : {}),
           ...(shareExam.ls && shareExam.ls.length
             ? { lessonIds: shareExam.ls.map((i) => lessonIds[i]).filter((id): id is string => !!id) }
             : {}),
-        });
-      }
+        }),
+      );
+      if (importedExams.length > 0) await db.courseExamDates.bulkAdd(importedExams);
 
       // Insert the sequences themselves once lessonIds is complete (for primaryLessonId)
       // and their generated cards already exist with remapped sequenceItemIds. Inserted
       // directly rather than via createSequence, which would generate a duplicate set of
       // cards — the shared cards already carry the sequence's generated content.
-      for (const shareSeq of payload.sequences ?? []) {
+      const importedSequences: Sequence[] = (payload.sequences ?? []).map((shareSeq, index) => {
         const items: SequenceItem[] = shareSeq.items.map((item) => ({
           id: itemIdMap.get(item.id)!,
           value: item.v,
@@ -1032,7 +1081,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         }));
         const primaryLessonId =
           typeof shareSeq.pl === 'number' ? (lessonIds[shareSeq.pl] ?? null) : null;
-        const sequence: Sequence = {
+        return {
           id: makeId(),
           courseId: course.id,
           primaryLessonId,
@@ -1042,10 +1091,10 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           cueWindow: shareSeq.cw,
           ...(shareSeq.cl && shareSeq.cl.length ? { chunkLabels: shareSeq.cl } : {}),
           ...(shareSeq.lc === 1 ? { generateLabelCards: true } : {}),
-          createdAt: Date.now(),
+          createdAt: importedAt + index,
         };
-        await db.sequences.add(sequence);
-      }
+      });
+      if (importedSequences.length > 0) await db.sequences.bulkAdd(importedSequences);
     },
   );
 

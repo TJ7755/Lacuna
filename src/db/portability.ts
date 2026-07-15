@@ -30,6 +30,7 @@ import {
   assetsForBackup,
   backupAssetToImageAsset,
   extractMarkdownAssets,
+  referencedAssetHashes,
   referencedAssetHashesInCards,
 } from './assets';
 
@@ -70,7 +71,11 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.courseExamDates.toArray(),
     db.sequences.toArray(),
   ]);
-  const assets = await assetsForBackup(referencedAssetHashesInCards(cards));
+  const referencedHashes = new Set(referencedAssetHashesInCards(cards));
+  for (const note of notes) {
+    for (const hash of referencedAssetHashes(note.content)) referencedHashes.add(hash);
+  }
+  const assets = await assetsForBackup([...referencedHashes]);
   return {
     app: 'lacuna',
     version: BACKUP_VERSION,
@@ -133,10 +138,7 @@ export type ImportMode = 'replace' | 'merge';
  * records are matched by id and the most recently touched copy wins each conflict.
  * SessionHistory is append-only and de-duplicated by (timestamp, deckId).
  */
-export async function importBackup(
-  backup: BackupFile,
-  mode: ImportMode,
-): Promise<void> {
+export async function importBackup(backup: BackupFile, mode: ImportMode): Promise<void> {
   if (!validateBackup(backup)) {
     throw new Error('Invalid backup file.');
   }
@@ -152,21 +154,39 @@ export async function importBackup(
       const migrated = migrateCardRecord(c as LegacyCard);
       return {
         ...migrated,
-        front: await extractMarkdownAssets(migrated.front, async (asset) => {
-          extractedAssets.push(asset);
-          knownHashes.add(asset.hash.toLowerCase());
-        }, knownHashes),
-        back: await extractMarkdownAssets(migrated.back, async (asset) => {
-          extractedAssets.push(asset);
-          knownHashes.add(asset.hash.toLowerCase());
-        }, knownHashes),
+        front: await extractMarkdownAssets(
+          migrated.front,
+          async (asset) => {
+            extractedAssets.push(asset);
+            knownHashes.add(asset.hash.toLowerCase());
+          },
+          knownHashes,
+        ),
+        back: await extractMarkdownAssets(
+          migrated.back,
+          async (asset) => {
+            extractedAssets.push(asset);
+            knownHashes.add(asset.hash.toLowerCase());
+          },
+          knownHashes,
+        ),
       };
     }),
   );
-  const importedAssets = [
-    ...assets.map(backupAssetToImageAsset),
-    ...extractedAssets,
-  ];
+  const notes = await Promise.all(
+    (backup.notes ?? []).map(async (note) => ({
+      ...note,
+      content: await extractMarkdownAssets(
+        note.content,
+        async (asset) => {
+          extractedAssets.push(asset);
+          knownHashes.add(asset.hash.toLowerCase());
+        },
+        knownHashes,
+      ),
+    })),
+  );
+  const importedAssets = [...assets.map(backupAssetToImageAsset), ...extractedAssets];
   await db.transaction(
     'rw',
     [
@@ -190,9 +210,7 @@ export async function importBackup(
     ],
     async () => {
       // Deduplicate by hash so bulkPut never encounters a constraint conflict.
-      const dedupedAssets = Array.from(
-        new Map(importedAssets.map((a) => [a.hash, a])).values(),
-      );
+      const dedupedAssets = Array.from(new Map(importedAssets.map((a) => [a.hash, a])).values());
       if (mode === 'replace') {
         await Promise.all([
           db.decks.clear(),
@@ -232,8 +250,8 @@ export async function importBackup(
         if (backup.lessons && backup.lessons.length > 0) {
           await db.lessons.bulkAdd(backup.lessons);
         }
-        if (backup.notes && backup.notes.length > 0) {
-          await db.notes.bulkAdd(backup.notes);
+        if (notes.length > 0) {
+          await db.notes.bulkAdd(notes);
         }
         if (backup.lessonCards && backup.lessonCards.length > 0) {
           await db.lessonCards.bulkAdd(backup.lessonCards);
@@ -262,6 +280,8 @@ export async function importBackup(
       // Merge decks field-by-field so local name/colour edits are not clobbered
       // by an incoming backup whose examDate happens to be newer.
       const existingDecks = new Map((await db.decks.toArray()).map((d) => [d.id, d]));
+      const existingCourses = new Map((await db.courses.toArray()).map((c) => [c.id, c]));
+      const incomingCourses = new Map((backup.courses ?? []).map((c) => [c.id, c]));
       const mergedDecks: Deck[] = [];
       for (const incoming of decks) {
         const existing = existingDecks.get(incoming.id);
@@ -286,9 +306,7 @@ export async function importBackup(
 
       // Merge folders: add incoming folders that don't exist locally.
       if (backup.folders && backup.folders.length > 0) {
-        const existingFolders = new Map(
-          (await db.folders.toArray()).map((f) => [f.id, f]),
-        );
+        const existingFolders = new Map((await db.folders.toArray()).map((f) => [f.id, f]));
         const mergedFolders: Folder[] = [];
         for (const incoming of backup.folders) {
           const existing = existingFolders.get(incoming.id);
@@ -296,9 +314,7 @@ export async function importBackup(
             mergedFolders.push(incoming);
           } else {
             // Prefer newer folder (by createdAt) or keep existing on tie.
-            mergedFolders.push(
-              incoming.createdAt >= existing.createdAt ? incoming : existing,
-            );
+            mergedFolders.push(incoming.createdAt > existing.createdAt ? incoming : existing);
           }
         }
         await db.folders.bulkPut(mergedFolders);
@@ -307,54 +323,41 @@ export async function importBackup(
       // Merge course-architecture tables: add incoming rows that don't exist locally,
       // preferring the newer record (by createdAt) when both sides have the same id.
       if (backup.courses && backup.courses.length > 0) {
-        const existingCourses = new Map(
-          (await db.courses.toArray()).map((c) => [c.id, c]),
-        );
         const mergedCourses: Course[] = [];
         for (const incoming of backup.courses) {
           const existing = existingCourses.get(incoming.id);
           if (!existing) {
             mergedCourses.push(incoming);
           } else {
-            mergedCourses.push(
-              incoming.createdAt >= existing.createdAt ? incoming : existing,
-            );
+            mergedCourses.push(incoming.createdAt > existing.createdAt ? incoming : existing);
           }
         }
         await db.courses.bulkPut(mergedCourses);
       }
 
       if (backup.lessons && backup.lessons.length > 0) {
-        const existingLessons = new Map(
-          (await db.lessons.toArray()).map((l) => [l.id, l]),
-        );
+        const existingLessons = new Map((await db.lessons.toArray()).map((l) => [l.id, l]));
         const mergedLessons: Lesson[] = [];
         for (const incoming of backup.lessons) {
           const existing = existingLessons.get(incoming.id);
           if (!existing) {
             mergedLessons.push(incoming);
           } else {
-            mergedLessons.push(
-              incoming.createdAt >= existing.createdAt ? incoming : existing,
-            );
+            mergedLessons.push(incoming.createdAt > existing.createdAt ? incoming : existing);
           }
         }
         await db.lessons.bulkPut(mergedLessons);
       }
 
-      if (backup.notes && backup.notes.length > 0) {
-        const existingNotes = new Map(
-          (await db.notes.toArray()).map((n) => [n.id, n]),
-        );
+      if (notes.length > 0) {
+        const existingNotes = new Map((await db.notes.toArray()).map((n) => [n.id, n]));
         const mergedNotes: Note[] = [];
-        for (const incoming of backup.notes) {
+        for (const incoming of notes) {
           const existing = existingNotes.get(incoming.id);
           if (!existing) {
             mergedNotes.push(incoming);
           } else {
-            mergedNotes.push(
-              incoming.createdAt >= existing.createdAt ? incoming : existing,
-            );
+            mergedNotes.push(incoming.createdAt > existing.createdAt ? incoming : existing);
           }
         }
         await db.notes.bulkPut(mergedNotes);
@@ -370,9 +373,7 @@ export async function importBackup(
           if (!existing) {
             mergedLessonCards.push(incoming);
           } else {
-            mergedLessonCards.push(
-              incoming.createdAt >= existing.createdAt ? incoming : existing,
-            );
+            mergedLessonCards.push(incoming.createdAt > existing.createdAt ? incoming : existing);
           }
         }
         await db.lessonCards.bulkPut(mergedLessonCards);
@@ -385,19 +386,20 @@ export async function importBackup(
             exposure,
           ]),
         );
-        const mergedExposures: LessonCardExposure[] = backup.lessonCardExposures.map(
-          (incoming) => {
-            const existing = existingExposures.get(`${incoming.lessonId}\0${incoming.cardId}`);
-            if (!existing) return incoming;
-            return incoming.taughtAt < existing.taughtAt ? incoming : existing;
-          },
-        );
+        const mergedExposures: LessonCardExposure[] = backup.lessonCardExposures.map((incoming) => {
+          const existing = existingExposures.get(`${incoming.lessonId}\0${incoming.cardId}`);
+          if (!existing) return incoming;
+          return incoming.taughtAt < existing.taughtAt ? incoming : existing;
+        });
         await db.lessonCardExposures.bulkPut(mergedExposures);
       }
 
       if (backup.lessonCompletions && backup.lessonCompletions.length > 0) {
         const existingCompletions = new Map(
-          (await db.lessonCompletions.toArray()).map((completion) => [completion.lessonId, completion]),
+          (await db.lessonCompletions.toArray()).map((completion) => [
+            completion.lessonId,
+            completion,
+          ]),
         );
         const mergedCompletions: LessonCompletion[] = backup.lessonCompletions.map((incoming) => {
           const existing = existingCompletions.get(incoming.lessonId);
@@ -417,9 +419,7 @@ export async function importBackup(
           if (!existing) {
             mergedPracticeNodes.push(incoming);
           } else {
-            mergedPracticeNodes.push(
-              incoming.createdAt >= existing.createdAt ? incoming : existing,
-            );
+            mergedPracticeNodes.push(incoming.createdAt > existing.createdAt ? incoming : existing);
           }
         }
         await db.practiceNodes.bulkPut(mergedPracticeNodes);
@@ -427,7 +427,10 @@ export async function importBackup(
 
       if (backup.practiceMilestones && backup.practiceMilestones.length > 0) {
         const existingMilestones = new Map(
-          (await db.practiceMilestones.toArray()).map((milestone) => [milestone.nodeKey, milestone]),
+          (await db.practiceMilestones.toArray()).map((milestone) => [
+            milestone.nodeKey,
+            milestone,
+          ]),
         );
         const mergedMilestones: PracticeMilestone[] = backup.practiceMilestones.map((incoming) => {
           const existing = existingMilestones.get(incoming.nodeKey);
@@ -448,7 +451,7 @@ export async function importBackup(
             mergedCourseExamDates.push(incoming);
           } else {
             mergedCourseExamDates.push(
-              incoming.createdAt >= existing.createdAt ? incoming : existing,
+              incoming.createdAt > existing.createdAt ? incoming : existing,
             );
           }
         }
@@ -456,18 +459,14 @@ export async function importBackup(
       }
 
       if (backup.sequences && backup.sequences.length > 0) {
-        const existingSequences = new Map(
-          (await db.sequences.toArray()).map((s) => [s.id, s]),
-        );
+        const existingSequences = new Map((await db.sequences.toArray()).map((s) => [s.id, s]));
         const mergedSequences: Sequence[] = [];
         for (const incoming of backup.sequences) {
           const existing = existingSequences.get(incoming.id);
           if (!existing) {
             mergedSequences.push(incoming);
           } else {
-            mergedSequences.push(
-              incoming.createdAt >= existing.createdAt ? incoming : existing,
-            );
+            mergedSequences.push(incoming.createdAt > existing.createdAt ? incoming : existing);
           }
         }
         await db.sequences.bulkPut(mergedSequences);
@@ -493,9 +492,7 @@ export async function importBackup(
       // Merge performance: prefer the profile whose deck has been studied most
       // recently (lastInteractedAt), so a local deck reset (totalCorrectReviews = 0)
       // is not overwritten by a stale backup with high review counts.
-      const existingPerf = new Map(
-        (await db.userPerformance.toArray()).map((p) => [p.deckId, p]),
-      );
+      const existingPerf = new Map((await db.userPerformance.toArray()).map((p) => [p.deckId, p]));
       const mergedPerf: UserPerformance[] = [];
       for (const incoming of backup.userPerformance) {
         const existing = existingPerf.get(incoming.deckId);
@@ -503,20 +500,30 @@ export async function importBackup(
           mergedPerf.push(incoming);
         } else {
           const deck = existingDecks.get(incoming.deckId);
-          const localInteracted = deck?.lastInteractedAt ?? deck?.createdAt ?? 0;
+          const course = existingCourses.get(incoming.deckId);
+          const localInteracted =
+            deck?.lastInteractedAt ??
+            course?.lastInteractedAt ??
+            deck?.createdAt ??
+            course?.createdAt ??
+            0;
           const remoteDeck = decks.find((d) => d.id === incoming.deckId);
-          const remoteInteracted = remoteDeck?.lastInteractedAt ?? remoteDeck?.createdAt ?? 0;
+          const remoteCourse = incomingCourses.get(incoming.deckId);
+          const remoteInteracted =
+            remoteDeck?.lastInteractedAt ??
+            remoteCourse?.lastInteractedAt ??
+            remoteDeck?.createdAt ??
+            remoteCourse?.createdAt ??
+            0;
           // Prefer whichever side has the more recent deck interaction.
-          mergedPerf.push(remoteInteracted >= localInteracted ? incoming : existing);
+          mergedPerf.push(remoteInteracted > localInteracted ? incoming : existing);
         }
       }
       await db.userPerformance.bulkPut(mergedPerf);
 
       // Append session history that we do not already have.
       const existingKeys = new Set(
-        (await db.sessionHistory.toArray()).map(
-          (s) => `${s.timestamp}:${s.deckId}`,
-        ),
+        (await db.sessionHistory.toArray()).map((s) => `${s.timestamp}:${s.deckId}`),
       );
       const toAdd = backup.sessionHistory
         .filter((s) => !existingKeys.has(`${s.timestamp}:${s.deckId}`))

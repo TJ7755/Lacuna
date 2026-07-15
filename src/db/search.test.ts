@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { searchCards } from './search';
+import { filterSessionCardPool, searchCards } from './search';
 import { DEFAULT_LEECH_LAPSE_THRESHOLD } from '../fsrs/leech';
 import type { Card, Deck } from './types';
 
@@ -33,7 +33,14 @@ const deck: Deck = {
   examDate: NOW,
   createdAt: NOW,
   fsrsVersion: 6,
-  fsrsParameters: { w: [], requestRetention: 0.9, enable_fuzz: true, maximum_interval: 36500, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] },
+  fsrsParameters: {
+    w: [],
+    requestRetention: 0.9,
+    enable_fuzz: true,
+    maximum_interval: 36500,
+    learning_steps: ['1m', '10m'],
+    relearning_steps: ['10m'],
+  },
   examObjective: 'expectedMarks',
 };
 
@@ -68,12 +75,12 @@ describe('searchCards', () => {
     expect(searchCards('', cards, [deck], { filters: ['new'] }).map((r) => r.card.id)).toEqual([
       'new',
     ]);
-    expect(
-      searchCards('', cards, [deck], { filters: ['leech'] }).map((r) => r.card.id),
-    ).toEqual(['leech']);
-    expect(
-      searchCards('', cards, [deck], { filters: ['flagged'] }).map((r) => r.card.id),
-    ).toEqual(['flag']);
+    expect(searchCards('', cards, [deck], { filters: ['leech'] }).map((r) => r.card.id)).toEqual([
+      'leech',
+    ]);
+    expect(searchCards('', cards, [deck], { filters: ['flagged'] }).map((r) => r.card.id)).toEqual([
+      'flag',
+    ]);
     expect(
       searchCards('', cards, [deck], { filters: ['suspended'] }).map((r) => r.card.id),
     ).toEqual(['susp']);
@@ -97,5 +104,71 @@ describe('searchCards', () => {
     ];
     const results = searchCards('apple', cards, [deck], { filters: ['flagged'] });
     expect(results.map((r) => r.card.id)).toEqual(['a']);
+  });
+});
+
+describe('filterSessionCardPool', () => {
+  it('returns the supplied pool unchanged without a tag or filter', () => {
+    const cards = [card('a'), card('b')];
+    expect(filterSessionCardPool(cards)).toEqual(cards);
+  });
+
+  it('matches an exact tag without case or diacritic sensitivity', () => {
+    const cards = [
+      card('match', { tags: ['Résumé'] }),
+      card('wrong-tag', { tags: ['résumé-writing'] }),
+      card('untagged'),
+    ];
+
+    expect(filterSessionCardPool(cards, { tag: 'resume' }).map((item) => item.id)).toEqual([
+      'match',
+    ]);
+  });
+
+  it('combines card filters with AND semantics', () => {
+    const cards = [
+      card('due', { due: NOW - 1 }),
+      card('flagged', { flagged: true }),
+      card('both', { due: NOW - 1, flagged: true }),
+      card('neither'),
+    ];
+
+    expect(
+      filterSessionCardPool(cards, { filters: ['due', 'flagged'], now: NOW }).map(
+        (item) => item.id,
+      ),
+    ).toEqual(['both']);
+  });
+
+  it('intersects the tag with every selected filter', () => {
+    const cards = [
+      card('tagged-both', { tags: ['exam'], due: NOW - 1, flagged: true }),
+      card('tagged-due', { tags: ['exam'], due: NOW - 1 }),
+      card('tagged-plain', { tags: ['exam'] }),
+      card('untagged-flagged', { flagged: true }),
+    ];
+
+    expect(
+      filterSessionCardPool(cards, {
+        tag: 'exam',
+        filters: ['due', 'flagged'],
+        now: NOW,
+      }).map((item) => item.id),
+    ).toEqual(['tagged-both']);
+  });
+
+  it('keeps suspended cards when the suspended filter selects them', () => {
+    const cards = [
+      card('suspended', { suspended: true }),
+      card('active'),
+      card('active-flagged', { flagged: true }),
+    ];
+
+    expect(filterSessionCardPool(cards, { filters: ['suspended'] }).map((item) => item.id)).toEqual(
+      ['suspended'],
+    );
+    expect(
+      filterSessionCardPool(cards, { filters: ['suspended', 'flagged'] }).map((item) => item.id),
+    ).toEqual([]);
   });
 });

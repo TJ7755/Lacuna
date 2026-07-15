@@ -119,7 +119,7 @@ export function revokeAllCachedUrls(): void {
   tail = null;
 }
 
-/** Number of cached object URLs. */
-export function cacheSize(): number {
+/** Test-only cache size probe. */
+export function _cacheSizeForTests(): number {
   return cache.size;
 }
