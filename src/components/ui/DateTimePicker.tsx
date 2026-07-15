@@ -17,6 +17,13 @@ interface CalendarView {
   month: number;
 }
 
+type PickerMode = 'days' | 'months' | 'years';
+
+interface PendingGridFocus {
+  mode: PickerMode;
+  index: number | null;
+}
+
 const DAYS: string[] = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const MONTHS: string[] = [
   'January',
@@ -88,7 +95,10 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dayRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const focusCalendarRef = useRef(false);
+  const monthRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const yearRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const pendingGridFocusRef = useRef<PendingGridFocus | null>(null);
+  const latestValueRef = useRef(value);
   const labelId = useId();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -104,9 +114,11 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
   // Direction for month slide animation: -1 = prev, 1 = next
   const [slideDir, setSlideDir] = useState(0);
   // Month/year picker mode
-  const [pickerMode, setPickerMode] = useState<'days' | 'months' | 'years'>('days');
+  const [pickerMode, setPickerMode] = useState<PickerMode>('days');
   // Keyboard focus: index into the cells array
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
+  const [monthFocusIndex, setMonthFocusIndex] = useState(0);
+  const [yearFocusIndex, setYearFocusIndex] = useState(4);
   const [hourDraft, setHourDraft] = useState(() => pad(selected.hours));
   const [minuteDraft, setMinuteDraft] = useState(() => pad(selected.minutes));
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -122,6 +134,10 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
   const month = view.month;
 
   const cells = useMemo(() => buildMonth(year, month), [year, month]);
+  const yearRange = useMemo(() => {
+    const start = year - 4;
+    return Array.from({ length: 9 }, (_, i) => start + i);
+  }, [year]);
 
   // Extract "today" components in the target time zone
   const today = useMemo(() => getComponentsInZone(Date.now(), timeZone), [timeZone]);
@@ -163,27 +179,6 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
     }
   }, []);
 
-  // Close on Escape / click outside.
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        closePicker(false);
-      }
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      closePicker(true);
-    };
-    window.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('keydown', onKeyDown);
-    };
-  }, [closePicker, open]);
-
   // Keyboard handling belongs to the day grid. Attaching it to the whole dialog
   // hijacks arrows and Enter from the month controls and time fields.
   const handleDayKeyDown = useCallback(
@@ -213,13 +208,15 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
         case 'PageUp':
           e.preventDefault();
           setSlideDir(-1);
-          focusCalendarRef.current = true;
+          dayRefs.current = [];
+          pendingGridFocusRef.current = { mode: 'days', index: null };
           setView((currentView) => shiftMonth(currentView, -1));
           return;
         case 'PageDown':
           e.preventDefault();
           setSlideDir(1);
-          focusCalendarRef.current = true;
+          dayRefs.current = [];
+          pendingGridFocusRef.current = { mode: 'days', index: null };
           setView((currentView) => shiftMonth(currentView, 1));
           return;
         default:
@@ -245,8 +242,14 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
         return;
       }
       setValidationError(null);
-      onChange(ms);
-      if (!currentMonth) focusCalendarRef.current = true;
+      if (ms !== latestValueRef.current) {
+        latestValueRef.current = ms;
+        onChange(ms);
+      }
+      if (!currentMonth) {
+        dayRefs.current = [];
+        pendingGridFocusRef.current = { mode: 'days', index: null };
+      }
       setView({ year: y, month: m });
     },
     [year, month, hours, minutes, onChange, timeZone],
@@ -263,7 +266,10 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
         return false;
       }
       setValidationError(null);
-      onChange(ms);
+      if (ms !== latestValueRef.current) {
+        latestValueRef.current = ms;
+        onChange(ms);
+      }
       return true;
     },
     [selectedYear, selectedMonth, selectedDay, onChange, timeZone],
@@ -284,19 +290,168 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
     return committed;
   }, [hourDraft, minuteDraft, setTime]);
 
+  // Outside dismissal commits a valid in-progress time. Invalid drafts keep the
+  // picker open so the error is visible instead of being silently discarded.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!containerRef.current || containerRef.current.contains(e.target as Node)) return;
+      if (commitTimeDrafts()) closePicker(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      closePicker(true);
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [closePicker, commitTimeDrafts, open]);
+
+  const enterMode = useCallback(
+    (mode: PickerMode) => {
+      if (mode === 'days') {
+        dayRefs.current = [];
+        pendingGridFocusRef.current = { mode: 'days', index: null };
+      } else if (mode === 'months') {
+        monthRefs.current = [];
+        setMonthFocusIndex(month);
+        pendingGridFocusRef.current = { mode: 'months', index: month };
+      } else {
+        yearRefs.current = [];
+        const currentYearIndex = yearRange.indexOf(year);
+        const nextIndex = currentYearIndex >= 0 ? currentYearIndex : 4;
+        setYearFocusIndex(nextIndex);
+        pendingGridFocusRef.current = { mode: 'years', index: nextIndex };
+      }
+      setPickerMode(mode);
+    },
+    [month, year, yearRange],
+  );
+
+  const selectMonth = useCallback(
+    (index: number) => {
+      setView({ year, month: index });
+      enterMode('days');
+    },
+    [enterMode, year],
+  );
+
+  const selectYear = useCallback(
+    (index: number) => {
+      const selectedViewYear = yearRange[index];
+      if (selectedViewYear === undefined) return;
+      setView({ year: selectedViewYear, month });
+      enterMode('months');
+    },
+    [enterMode, month, yearRange],
+  );
+
+  const handleMonthKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      let next = monthFocusIndex;
+      switch (e.key) {
+        case 'ArrowLeft':
+          next -= 1;
+          break;
+        case 'ArrowRight':
+          next += 1;
+          break;
+        case 'ArrowUp':
+          next -= 3;
+          break;
+        case 'ArrowDown':
+          next += 3;
+          break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          selectMonth(monthFocusIndex);
+          return;
+        default:
+          return;
+      }
+      e.preventDefault();
+      next = Math.max(0, Math.min(11, next));
+      setMonthFocusIndex(next);
+      monthRefs.current[next]?.focus();
+    },
+    [monthFocusIndex, selectMonth],
+  );
+
+  const handleYearKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      let next = yearFocusIndex;
+      switch (e.key) {
+        case 'ArrowLeft':
+          next -= 1;
+          break;
+        case 'ArrowRight':
+          next += 1;
+          break;
+        case 'ArrowUp':
+          next -= 3;
+          break;
+        case 'ArrowDown':
+          next += 3;
+          break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          selectYear(yearFocusIndex);
+          return;
+        default:
+          return;
+      }
+      e.preventDefault();
+      next = Math.max(0, Math.min(yearRange.length - 1, next));
+      setYearFocusIndex(next);
+      yearRefs.current[next]?.focus();
+    },
+    [selectYear, yearFocusIndex, yearRange.length],
+  );
+
   // Keep the editable fields in sync when a date, quick action or external value changes.
   useEffect(() => {
+    latestValueRef.current = value;
     setHourDraft(pad(selected.hours));
     setMinuteDraft(pad(selected.minutes));
-  }, [selected.hours, selected.minutes]);
+  }, [selected.hours, selected.minutes, value]);
 
   useLayoutEffect(() => {
-    if (!open || pickerMode !== 'days' || !focusCalendarRef.current) return;
+    if (!open || pickerMode !== 'days' || pendingGridFocusRef.current?.mode !== 'days') return;
     const next = initialFocusIndex;
+    pendingGridFocusRef.current = { mode: 'days', index: next };
     setFocusIndex(next);
-    focusCalendarRef.current = false;
-    dayRefs.current[next]?.focus();
   }, [cells, initialFocusIndex, open, pickerMode]);
+
+  useEffect(() => {
+    const pending = pendingGridFocusRef.current;
+    if (!open || !pending || pending.mode !== pickerMode || pending.index === null) return;
+    let cancelled = false;
+    let timeoutId: number | undefined;
+    const focusWhenMounted = () => {
+      if (cancelled) return;
+      const currentPending = pendingGridFocusRef.current;
+      if (currentPending?.mode !== pickerMode || currentPending.index === null) return;
+      const refs = pickerMode === 'days' ? dayRefs : pickerMode === 'months' ? monthRefs : yearRefs;
+      const element = refs.current[currentPending.index];
+      if (element?.isConnected) {
+        pendingGridFocusRef.current = null;
+        element.focus();
+        return;
+      }
+      timeoutId = window.setTimeout(focusWhenMounted, 16);
+    };
+    focusWhenMounted();
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    };
+  }, [focusIndex, monthFocusIndex, open, pickerMode, yearFocusIndex, year, month]);
 
   // Measure available space and flip the dropdown if it would be clipped.
   useLayoutEffect(() => {
@@ -333,11 +488,28 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
     }
   }, [slideDir, year, month]);
 
-  // Generate year range for year picker (centered on current view year)
-  const yearRange = useMemo(() => {
-    const start = year - 4;
-    return Array.from({ length: 9 }, (_, i) => start + i);
-  }, [year]);
+  const headerStep = pickerMode === 'days' ? 1 : pickerMode === 'months' ? 1 : 9;
+  const headerUnit =
+    pickerMode === 'days' ? 'month' : pickerMode === 'months' ? 'year' : 'nine years';
+  const headerText =
+    pickerMode === 'days'
+      ? `${MONTHS[month]} ${year}`
+      : pickerMode === 'months'
+        ? String(year)
+        : `${yearRange[0]}–${yearRange[yearRange.length - 1]}`;
+
+  const navigateHeader = (direction: -1 | 1) => {
+    setSlideDir(direction);
+    if (pickerMode === 'days') {
+      dayRefs.current = [];
+      setView((currentView) => shiftMonth(currentView, direction));
+    } else {
+      setView((currentView) => ({
+        ...currentView,
+        year: currentView.year + direction * headerStep,
+      }));
+    }
+  };
 
   return (
     <div ref={containerRef} className="relative">
@@ -351,7 +523,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
         type="button"
         onClick={() => {
           if (open) {
-            closePicker(true);
+            if (commitTimeDrafts()) closePicker(true);
             return;
           }
           setView({ year: selectedYear, month: selectedMonth });
@@ -360,7 +532,8 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
           setHourDraft(pad(selected.hours));
           setMinuteDraft(pad(selected.minutes));
           setValidationError(null);
-          focusCalendarRef.current = true;
+          dayRefs.current = [];
+          pendingGridFocusRef.current = { mode: 'days', index: null };
           setOpen(true);
         }}
         aria-labelledby={label ? labelId : undefined}
@@ -397,31 +570,35 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
             <div className="flex items-center justify-between px-4 py-3">
               <button
                 type="button"
-                onClick={() => {
-                  setSlideDir(-1);
-                  setView((currentView) => shiftMonth(currentView, -1));
-                }}
+                onClick={() => navigateHeader(-1)}
                 className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
-                aria-label="Previous month"
+                aria-label={`Previous ${headerUnit}`}
               >
                 <ChevronLeftIcon width={16} height={16} />
               </button>
               <button
                 type="button"
-                onClick={() => setPickerMode((m) => (m === 'days' ? 'months' : 'days'))}
+                onClick={() => {
+                  if (pickerMode === 'days') enterMode('months');
+                  else if (pickerMode === 'months') enterMode('years');
+                  else enterMode('months');
+                }}
                 className="flex min-h-11 items-center justify-center rounded-lg px-3 py-1 text-sm font-medium text-ink transition-colors hover:bg-ink/5 active:bg-ink/5"
-                aria-label="Open month and year selector"
+                aria-label={
+                  pickerMode === 'days'
+                    ? 'Open month selector'
+                    : pickerMode === 'months'
+                      ? 'Open year selector'
+                      : 'Return to month selector'
+                }
               >
-                {MONTHS[month]} {year}
+                {headerText}
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setSlideDir(1);
-                  setView((currentView) => shiftMonth(currentView, 1));
-                }}
+                onClick={() => navigateHeader(1)}
                 className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
-                aria-label="Next month"
+                aria-label={`Next ${headerUnit}`}
               >
                 <ChevronRightIcon width={16} height={16} />
               </button>
@@ -512,28 +689,26 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                   transition={{ duration: 0.12 * m }}
                   className="px-3 pb-3"
                 >
-                  <div className="mb-2 flex items-center justify-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPickerMode('years')}
-                      className="text-xs font-medium text-accent transition-opacity hover:opacity-80 active:opacity-80"
-                    >
-                      {year}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div
+                    role="group"
+                    aria-label={`Choose month in ${year}`}
+                    className="grid grid-cols-3 gap-2"
+                    onKeyDown={handleMonthKeyDown}
+                  >
                     {MONTHS.map((m, i) => {
                       const isCurrent = i === month;
                       const isSelected = i === selectedMonth && year === selectedYear;
                       return (
                         <button
                           key={m}
-                          type="button"
-                          onClick={() => {
-                            setView({ year, month: i });
-                            setPickerMode('days');
-                            focusCalendarRef.current = true;
+                          ref={(element) => {
+                            monthRefs.current[i] = element;
                           }}
+                          type="button"
+                          tabIndex={monthFocusIndex === i ? 0 : -1}
+                          aria-label={m}
+                          onFocus={() => setMonthFocusIndex(i)}
+                          onClick={() => selectMonth(i)}
                           className={cn(
                             'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors',
                             isSelected
@@ -560,18 +735,26 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                   transition={{ duration: 0.12 * m }}
                   className="px-3 pb-3"
                 >
-                  <div className="grid grid-cols-3 gap-2">
-                    {yearRange.map((y) => {
+                  <div
+                    role="group"
+                    aria-label={`Choose year from ${yearRange[0]} to ${yearRange[yearRange.length - 1]}`}
+                    className="grid grid-cols-3 gap-2"
+                    onKeyDown={handleYearKeyDown}
+                  >
+                    {yearRange.map((y, i) => {
                       const isCurrent = y === year;
                       const isSelected = y === selectedYear;
                       return (
                         <button
                           key={y}
-                          type="button"
-                          onClick={() => {
-                            setView({ year: y, month });
-                            setPickerMode('months');
+                          ref={(element) => {
+                            yearRefs.current[i] = element;
                           }}
+                          type="button"
+                          tabIndex={yearFocusIndex === i ? 0 : -1}
+                          aria-label={String(y)}
+                          onFocus={() => setYearFocusIndex(i)}
+                          onClick={() => selectYear(i)}
                           className={cn(
                             'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors',
                             isSelected
