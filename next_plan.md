@@ -191,8 +191,9 @@ Scoped now, built after lists ship. Same `Sequence` machinery with a different s
   the hinges — consistent with the actor-memory literature).
 - **First-letter prompt mode**: a graded hint (initial letters of the answer) before full
   reveal, as a mid-step in the reveal flow.
-- **Strict grading**: reuse the typing-answer comparison for verbatim checking; Yes/No
-  self-grade remains the fallback.
+- **Strict grading**: reuse `src/utils/answerComparison.ts` (the "type your answer"
+  comparison, `AnswerComparisonOptions.ignoreCase`/`ignorePunctuation`) for verbatim
+  checking; Yes/No self-grade remains the fallback.
 - Script import assist (paste a script, split into speaker-tagged items) is a natural
   Arc 2 agent task; a basic manual splitter ships here.
 

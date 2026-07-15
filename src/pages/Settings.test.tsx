@@ -31,6 +31,7 @@ vi.mock('../state/useData', () => ({ useBackups: () => [] }));
 vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: vi.fn() }) }));
 vi.mock('../components/import/UnifiedExportPanel', () => ({ UnifiedExportPanel: () => null }));
 vi.mock('../state/gradingMode', () => ({ useGradingMode: () => ['silent', vi.fn()] }));
+vi.mock('../state/typingSetting', () => ({ useTypingSetting: () => ['reveal', vi.fn()] }));
 vi.mock('../state/optimiseSetting', () => ({ useAutoOptimiseDefault: () => [true, vi.fn()] }));
 vi.mock('../state/practiceDefaults', () => ({
   usePracticeDefaults: () => [{

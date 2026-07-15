@@ -957,6 +957,20 @@ Two modes, chosen in Settings (default **silent**):
 - **Manual:** the four FSRS buttons (Again/Hard/Good/Easy) are shown and the user
   grades directly; no inference is applied.
 
+### Typing setting (`src/state/typingSetting.ts`)
+Two modes, chosen in Settings (default **reveal**), mirroring the grading-mode toggle above:
+- **Reveal (default):** the ordinary flip-card flow — tap/press to reveal the answer.
+- **Type:** before reveal, an eligible card (front_back, basic_reversed, or cloze) shows a
+  text input; on reveal, the typed answer is compared against the expected answer
+  (`src/utils/answerComparison.ts`, front_back/basic_reversed use `back`, cloze uses the
+  joined deletion text via `clozeAnswerText`) and shown word-by-word with match/mismatch
+  highlighting. This was previously a dedicated `typing` card type; it is now a global
+  presentation mode that applies to any eligible card, so a course does not need
+  typing-specific cards to use it. Self-grading (Yes/No or the four FSRS buttons) is
+  unchanged — the comparison is feedback only, never an automatic grade. The comparison
+  ignores case and punctuation by default; both are exposed as `AnswerComparisonOptions`
+  so a future per-user strictness setting can require exact matches.
+
 ### Study mode (`src/state/studyMode.ts`)
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):
 - **FSRS (default):** the full spaced-repetition scheduler with all memory-state tracking,
@@ -1123,12 +1137,10 @@ ordinary `front_back` cards to the scheduler.
 
 ### Editor (`src/pages/CardEditor.tsx`, full page)
 - Mode is decided by the route (`/cards/new` vs `/cards/:id/edit`).
-- **Card type** selector: Basic (front/back), Reversed (back/front), Cloze, or Typing-answer.
+- **Card type** selector: Basic (front/back), Reversed (back/front), or Cloze.
   - **Basic:** standard front/back flashcard.
   - **Reversed:** creates an independent card that tests the back as the prompt.
   - **Cloze:** front contains `{{c1::hidden answer}}` deletions; back is empty.
-  - **Typing-answer:** the user types their answer during the question phase; on reveal
-    the typed answer is shown alongside the correct answer for comparison.
 - One or two **Markdown editors** with a live preview; a formatting toolbar (bold,
   italic, heading, lists, code, link, image, cloze auto-index, inline/block maths);
   a cloze editor can preview the revealed answer.
@@ -1140,7 +1152,7 @@ ordinary `front_back` cards to the scheduler.
   them on unmount. This keeps card rows small (base64 inflates payloads ~1/3 and
   dragged full image data through every reactive read) and keeps exports lean.
 - **Validation:** front required; back required for front/back; at least one cloze
-  for cloze; answer required for typing-answer.
+  for cloze.
 - **Quick capture:** "Save & add another" keeps the page open, clears content,
   retains type and tags, refocuses the first field, tallies a per-sitting count,
   and flashes a "Saved" confirmation. A seamless Tab order runs Front -> Back ->
@@ -1468,8 +1480,9 @@ charts below the fold are never invisible. Each chart container is `h-64` with
   `autoStartBreaks`. The Pomodoro timer is otherwise fully usable from the Learn
   header.
 - **Study & scheduling:** **Manual four-point grading** toggle (off by default ->
-  silent grader, §10), **Start Learn sessions in Focus Mode** (off by default), and the
-  global **Optimise scheduling** default (on -> fit
+  silent grader, §10), **Type your answer** toggle (off by default -> flip-to-reveal;
+  see "Typing setting" above), **Start Learn sessions in Focus Mode** (off by default),
+  and the global **Optimise scheduling** default (on -> fit
   FSRS weights to your own history, §8.1; gated at `MIN_OPTIMISE_REVIEWS`,
   overridable per course, applied only on confirmation).
 - **Sidebar:** show due counts (on by default), show archived courses (on by default,

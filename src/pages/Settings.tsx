@@ -33,6 +33,7 @@ import { MoonIcon, SunIcon, UploadIcon, DownloadIcon, KeyboardIcon, MenuIcon, Fl
 import type { BackupFile } from '../db/types';
 import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
+import { useTypingSetting } from '../state/typingSetting';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { usePracticeDefaults } from '../state/practiceDefaults';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
@@ -75,6 +76,7 @@ export function Settings() {
   const { scale, setScale } = useFontScale();
   const { notify } = useToast();
   const [gradingMode, setGradingMode] = useGradingMode();
+  const [typingSetting, setTypingSetting] = useTypingSetting();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
@@ -634,6 +636,21 @@ export function Settings() {
           <Toggle
             checked={gradingMode === 'manual'}
             onChange={(checked) => setGradingMode(checked ? 'manual' : 'silent')}
+          />
+        </div>
+
+        <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
+          <div className="min-w-0">
+            <div className="text-sm">Type your answer</div>
+            <p className="mt-1 text-sm text-ink-soft">
+              Type the answer before reveal instead of just flipping the card. Works for
+              front/back, reversed and cloze cards; the typed answer is compared against
+              the correct one, but you still grade yourself.
+            </p>
+          </div>
+          <Toggle
+            checked={typingSetting === 'type'}
+            onChange={(checked) => setTypingSetting(checked ? 'type' : 'reveal')}
           />
         </div>
 

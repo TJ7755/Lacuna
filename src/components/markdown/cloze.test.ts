@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasCloze, nextClozeIndex, renderClozeBack, renderClozeFront } from './cloze';
+import { clozeAnswerText, hasCloze, nextClozeIndex, renderClozeBack, renderClozeFront } from './cloze';
 
 describe('hasCloze', () => {
   it('detects cloze notation and rejects ordinary or incomplete text', () => {
@@ -71,5 +71,21 @@ describe('nextClozeIndex', () => {
     expect(nextClozeIndex(source)).toBe(8);
     expect(hasCloze(source)).toBe(true);
     expect(nextClozeIndex(source)).toBe(8);
+  });
+});
+
+describe('clozeAnswerText', () => {
+  it('returns a single deletion answer as-is', () => {
+    expect(clozeAnswerText('The {{c1::mitochondria}} is the powerhouse.')).toBe('mitochondria');
+  });
+
+  it('joins multiple deletion answers in source order', () => {
+    expect(clozeAnswerText('{{c1::Paris}} is the capital of {{c2::France}}.')).toBe(
+      'Paris, France',
+    );
+  });
+
+  it('returns an empty string when there are no clozes', () => {
+    expect(clozeAnswerText('No clozes here')).toBe('');
   });
 });
