@@ -587,7 +587,10 @@ element a turn as the recall target with local context as the cue.
   carry a `SequenceBadge` (`src/components/cards/SequenceBadge.tsx`) wherever cards are
   listed, searched or shown in the command palette; `CardList` additionally groups
   generated cards under their owning sequence (`SequenceCardGroup`) rather than listing
-  them loose (§12).
+  them loose (§12). This is enforced below the UI too: `deleteCards`/`moveCards` (the
+  generic bulk mutations) run an `assertNoGeneratedCards` check and throw if any targeted
+  card has a `sequenceItemId`, while sequence-internal paths (`updateSequence`'s diffing,
+  `deleteSequence`) mutate `db.cards` directly and bypass the guard.
 - **Quick entry:** the add control follows the item list, so it remains beside the current
   working position, while each row also offers an add-below control. Adding an item focuses
   it and scrolls it into view without overriding reduced-motion preferences.
