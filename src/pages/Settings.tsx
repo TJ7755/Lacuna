@@ -37,6 +37,7 @@ import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { usePracticeDefaults } from '../state/practiceDefaults';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { useCourseCardDetail } from '../state/courseCardDetail';
+import { useStartInFocusMode } from '../state/focusModePreference';
 import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
 import { useInputMode, useIsTouchMode, type InputMode } from '../state/inputMode';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
@@ -78,6 +79,7 @@ export function Settings() {
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
   const [cardDetail, setCardDetail] = useCourseCardDetail();
+  const [startInFocusMode, setStartInFocusMode] = useStartInFocusMode();
   const [inputMode, setInputMode] = useInputMode();
   const [pomoSettings, setPomoSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
   const backups = useBackups();
@@ -632,6 +634,22 @@ export function Settings() {
           <Toggle
             checked={gradingMode === 'manual'}
             onChange={(checked) => setGradingMode(checked ? 'manual' : 'silent')}
+          />
+        </div>
+
+        <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
+          <div className="min-w-0">
+            <label htmlFor="start-in-focus-mode" className="text-sm">
+              Start Learn sessions in Focus Mode
+            </label>
+            <p className="mt-1 text-sm text-ink-soft">
+              Hide session controls when Learn opens. Press Esc at any time to leave Focus Mode.
+            </p>
+          </div>
+          <Toggle
+            id="start-in-focus-mode"
+            checked={startInFocusMode}
+            onChange={setStartInFocusMode}
           />
         </div>
 
@@ -1449,4 +1467,3 @@ function NumberField({
     </label>
   );
 }
-

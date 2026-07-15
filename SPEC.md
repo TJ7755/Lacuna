@@ -444,9 +444,9 @@ exam context via `nearestExamDate`.
 **Learn session** (full screen, outside the shell):
 
 ```
-+ header (hidden in focus mode) -----------------------+
-| [=] ORGANIC CHEMISTRY               68% predicted   |
-|     bar .....                   (Pomodoro)  [Exit]  |
++ shared header (hidden in Focus Mode) ----------------+
+| [=] ORGANIC CHEMISTRY · MODE progress...  68% (o)  |
+|                 (Pomodoro) [...] [Focus] [Full] Exit |
 +----------------------------------------------------+
 |                                                    |
 |     +-- flip card (rotateX flip on reveal) --+     |
@@ -770,7 +770,7 @@ and the progress-bar value are derived, so they can never disagree.
 - `expectedMarks`: no card offers a meaningful further gain —
   `max(DR) < EXPECTED_MARKS_EPSILON (1e-3)`.
 
-Helper copy (`progressNoun`, `progressHeading`, `progressDescription`) phrases the same
+Helper copy (`progressNoun`, `progressHeading`) phrases the same
 number appropriately ("predicted score" vs "secured").
 
 ### The scheduling horizon (`src/fsrs/horizon.ts`, `src/fsrs/examDate.ts`)
@@ -1000,8 +1000,13 @@ Two modes, chosen per session via the DeckView study dropdown (default **FSRS**)
 - **Undo**: single-step reversal of the last answer — restores the card's prior
   memory state, the `UserPerformance`, the cooldown map, the progress value and the
   events list, and deletes the written `SessionHistory` row.
-- **Focus mode** (F): hides all chrome for distraction-free review, leaving a single
-  quiet "Exit focus" affordance.
+- **Focus Mode** (F): hides the shared Learn header without moving the card. Reaching the
+  top edge reveals the controls temporarily; on touch, the top-edge affordance can be tapped.
+  `Esc` leaves Focus Mode. Settings can make new Learn sessions start focused without changing
+  the per-session `F`/`Esc` behaviour.
+- **Full screen**: the expand-corners control uses the browser Fullscreen API. It is separate
+  from Focus Mode, whose target-style icon describes hiding distractions rather than changing
+  the browser window.
 - **Keyboard shortcuts**: accessible via the "Keyboard shortcuts" item in the 3-dot
   action menu, which opens a modal listing all available shortcuts. The `?` key
   still toggles this overlay from anywhere.
@@ -1022,9 +1027,11 @@ Two modes, chosen per session via the DeckView study dropdown (default **FSRS**)
   mode (amber for cram, green for simple, red for leech filter, etc.), and a label
   pill (Question / Answer / Fill the gap / Type the answer) animates in with the card
   face to orient the user.
-- **Simple mode stat chips:** a circular progress ring and three colour-coded stat
-  pills (Wrong / Remaining / Correct) replace the plain text counters, with a springy
-  entrance and an animated SVG ring that tracks the mastery percentage.
+- **Mode-aware session progress:** Simple Learn uses a segmented strip because its stopping rule is
+  rigid: each card is green after a correct result, red after an incorrect result, accent-outlined
+  while current, and muted while unseen. FSRS, cram and filtered sessions instead show the live
+  objective value from `sessionProgress`, labelled as predicted score or secured progress, so the
+  header and scheduler cannot disagree.
 
 ### Pomodoro timer (v0.0.2, `src/hooks/usePomodoro.ts`,
 `src/components/learn/PomodoroTimer.tsx`)
@@ -1461,7 +1468,8 @@ charts below the fold are never invisible. Each chart container is `h-64` with
   `autoStartBreaks`. The Pomodoro timer is otherwise fully usable from the Learn
   header.
 - **Study & scheduling:** **Manual four-point grading** toggle (off by default ->
-  silent grader, §10) and the global **Optimise scheduling** default (on -> fit
+  silent grader, §10), **Start Learn sessions in Focus Mode** (off by default), and the
+  global **Optimise scheduling** default (on -> fit
   FSRS weights to your own history, §8.1; gated at `MIN_OPTIMISE_REVIEWS`,
   overridable per course, applied only on confirmation).
 - **Sidebar:** show due counts (on by default), show archived courses (on by default,
@@ -1651,13 +1659,12 @@ configuration is at `electron/electron-builder.yml`.
    Settings (study / archive).
 
 ### Visual polish
-1. **Learn mode redesign** — mode-aware header borders, progress bar, and card accents
+1. **Learn mode redesign** — mode-aware progress, header controls, and card accents
    (amber for cram, green for simple, red for leech filter, etc.). A label pill animates
    in with each card face to orient the user (Question / Answer / Fill the gap /
    Type the answer). Swipe hints are styled as directional badges.
-2. **Simple mode stats** — a circular progress ring with an animated SVG stroke and
-   three colour-coded stat chips (Wrong / Remaining / Correct) replace the plain text
-   counters.
+2. **Simple mode progress** — a segmented card strip and circular completion ring track
+   Wrong / Current / Correct state without conflating that loop with FSRS readiness.
 3. **Session report redesign** — confetti burst on goal reached, animated count-up
    stat tiles with icons, a progress bar that animates from before to after with a delta
    badge, and a staggered entrance for all elements.

@@ -37,9 +37,15 @@ import {
 import { emptyPerformance, gradeFromResponse, updatePerformance } from '../fsrs/grading';
 import { applyCooldown, decrementCooldowns } from '../fsrs/cooldown';
 import type { CooldownMap } from '../fsrs/cooldown';
-import { progressHeading } from '../fsrs/objective';
+import { progressHeading, progressNoun } from '../fsrs/objective';
 import { makeExamDateContext, type ExamDateContext } from '../fsrs/examDate';
-import { makeSessionContext, selectNext, sessionComplete, sessionProgress } from '../fsrs/session';
+import {
+  makeSessionContext,
+  selectNext,
+  sessionComplete,
+  sessionProgress,
+  sessionServePool,
+} from '../fsrs/session';
 import type { SessionContext, SessionUnit } from '../fsrs/session';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
@@ -49,7 +55,6 @@ import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
 import { CardContent } from '../components/cards/CardContent';
 import { CardEditOverlay } from '../components/cards/CardEditOverlay';
 import { KeyHints } from '../components/ui/KeyHints';
-import { ProgressBar, type ProgressVariant } from '../components/ui/ProgressBar';
 import { Button } from '../components/ui/Button';
 import { Sidebar } from '../components/layout/Sidebar';
 import { SessionReport } from '../components/learn/SessionReport';
@@ -57,6 +62,7 @@ import { useDistraction } from '../components/learn/useDistraction';
 import type { SessionEvent, SessionSummary } from '../components/learn/types';
 import { useGradingMode } from '../state/gradingMode';
 import { useStudyMode } from '../state/studyMode';
+import { useStartInFocusMode } from '../state/focusModePreference';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useShortcutBindings, keyMatches } from '../state/shortcutBindings';
 import { useMotionSpeed, speedMultiplier, type MotionSpeed } from '../state/motionSpeed';
@@ -67,17 +73,21 @@ import {
   CloseIcon,
   EditIcon,
   FlagIcon,
+  FocusIcon,
+  FullscreenIcon,
   KeyboardIcon,
   MenuIcon,
   MoreIcon,
   PauseIcon,
+  RestoreIcon,
 } from '../components/ui/icons';
 import { PomodoroTimer } from '../components/learn/PomodoroTimer';
 import { useToast } from '../components/ui/Toast';
-import type { CardFilter } from '../db/search';
+import { filterSessionCardPool, type CardFilter } from '../db/search';
 import { cn } from '../components/ui/cn';
 
 type Phase = 'loading' | 'notes' | 'question' | 'answer' | 'finished';
+type SessionCardOutcome = 'correct' | 'wrong';
 
 /** The lesson notes shown before cards begin on a first-ever study of a lesson. */
 interface LessonNotesScreen {
@@ -117,10 +127,10 @@ const FILTER_LABELS: Record<string, string> = {
 interface AnswerSnapshot {
   undo: ReviewUndo;
   cooldowns: CooldownMap;
-  progressBefore: number;
   eventsLen: number;
   deckId: string;
   deckReviews: number;
+  outcomeBefore?: SessionCardOutcome;
 }
 
 export type LearnSessionRequest =
@@ -166,6 +176,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
   const isTouchMode = useIsTouchMode();
   const { notify } = useToast();
   const [studyMode] = useStudyMode();
+  const [startInFocusMode] = useStartInFocusMode();
+  const startInFocusModeRef = useRef(startInFocusMode);
+  useEffect(() => {
+    startInFocusModeRef.current = startInFocusMode;
+  }, [startInFocusMode]);
   // Course lessons always use the teaching loop; the global preference remains
   // available for ad-hoc deck/global sessions.
   const isSimpleMode = !!lessonId || studyMode === 'simple' || simpleModeParam;
@@ -209,7 +224,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
   // ahead of the first card, with a continue action that starts serving cards.
   const [lessonNotesScreen, setLessonNotesScreen] = useState<LessonNotesScreen | null>(null);
   const [current, setCurrent] = useState<Card | null>(null);
-  const [progress, setProgress] = useState(0);
   // Cache sessionProgress so repeated calls while the card pool is unchanged don't recompute.
   const progressCacheRef = useRef<{ dirty: boolean; value: number }>({ dirty: true, value: 0 });
   const [summary, setSummary] = useState<SessionSummary | null>(null);
@@ -220,7 +234,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
   // fixing a card never counts towards the invisible grade.
   const [editing, setEditing] = useState(false);
   // Focus mode hides the surrounding chrome for distraction-free review.
-  const [focusMode, setFocusMode] = useState(false);
+  const [focusMode, setFocusMode] = useState(startInFocusMode);
+  const [focusChromeVisible, setFocusChromeVisible] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   // The keyboard-shortcuts cheatsheet (opened with ?).
   const [hintsOpen, setHintsOpen] = useState(false);
   // Navigation drawer — closed by default to keep Learn mode distraction-free,
@@ -239,6 +255,34 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
   // Typed answer for typing cards.
   const [typedAnswer, setTypedAnswer] = useState('');
   const typingInputRef = useRef<HTMLInputElement>(null);
+  const [sessionCardIds, setSessionCardIds] = useState<string[]>([]);
+  const [sessionCardOutcomes, setSessionCardOutcomes] = useState<Map<string, SessionCardOutcome>>(
+    () => new Map(),
+  );
+  const [schedulerProgress, setSchedulerProgress] = useState(0);
+  const simpleProgress = useMemo(() => {
+    if (sessionCardIds.length === 0) return 0;
+    let completed = 0;
+    sessionCardIds.forEach((id) => {
+      if (sessionCardOutcomes.get(id) === 'correct') completed += 1;
+    });
+    return completed / sessionCardIds.length;
+  }, [sessionCardIds, sessionCardOutcomes]);
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      notify('Full screen is not available.', 'negative');
+    }
+  }, [notify]);
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
 
   // Session-only mutable state held in refs so it never triggers re-renders mid-card
   // and so the stable callbacks below always read current values (no stale closures).
@@ -311,9 +355,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
   }, [navigate, exitTo, onFlowExit]);
 
   const objectiveLabel = useCallback(() => {
+    if (isSimpleMode) return 'Cards correct in this pass';
     if (singleDeck) return progressHeading(singleDeck);
     return 'Predicted readiness across all courses';
-  }, [singleDeck]);
+  }, [isSimpleMode, singleDeck]);
 
   /**
    * Evaluate and, where satisfied, write the semi-linear unlock ratchet (Course
@@ -481,12 +526,17 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       const total = distraction.sessionMs();
       const focus =
         total <= 0 ? 1 : Math.max(0, Math.min(1, (total - distraction.blurredMs()) / total));
-      const masteryAfter = ctx
-        ? cachedSessionProgress(cardsRef.current, ctx)
-        : progressBefore.current;
+      const masteryBefore = isSimpleMode ? 0 : progressBefore.current;
+      const masteryAfter = isSimpleMode
+        ? cardsRef.current.length > 0
+          ? simpleMastered.current.size / cardsRef.current.length
+          : 0
+        : ctx
+          ? cachedSessionProgress(cardsRef.current, ctx)
+          : progressBefore.current;
       finaliseSummary({
         events: events.current,
-        masteryBefore: progressBefore.current,
+        masteryBefore,
         masteryAfter,
         objectiveLabel: objectiveLabel(),
         focusFraction: focus,
@@ -565,6 +615,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     setFeedbackSource(null);
     submitting.current = false;
     progressBefore.current = 0;
+    progressCacheRef.current = { dirty: true, value: 0 };
     perfRef.current = new Map();
     decksRef.current = new Map();
     ctxRef.current = null;
@@ -578,7 +629,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     setMenuOpen(false);
     setHintsOpen(false);
     setNavOpen(false);
-    setFocusMode(false);
+    setFocusMode(startInFocusModeRef.current);
+    setFocusChromeVisible(false);
+    setSessionCardIds([]);
+    setSessionCardOutcomes(new Map());
+    setSchedulerProgress(0);
     setLimitOverride(false);
     setTimeLimitOverride(false);
     sessionStartMs.current = 0;
@@ -713,6 +768,15 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       }
       if (cancelled) return;
 
+      cards = filterSessionCardPool(cards, { tag: tagFilter, filters: filterParams });
+
+      if (isSimpleMode) {
+        const now = Date.now();
+        cards = cards.filter(
+          (card) => !card.suspended && !(card.buriedUntil && card.buriedUntil > now),
+        );
+      }
+
       const perfs = await Promise.all(units.map((u) => db.userPerformance.get(u.id)));
       const perfMap = new Map<string, UserPerformance>();
       units.forEach((u, i) => perfMap.set(u.id, perfs[i] ?? emptyPerformance(u.id)));
@@ -721,6 +785,13 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       const ctx = makeSessionContext(sessionUnits, cramMode ? 'cram' : 'objective');
       ctxRef.current = ctx;
       cardsRef.current = cards;
+      const initialProgress = sessionProgress(cards, ctx);
+      const hasServeableCards = isSimpleMode
+        ? cards.length > 0
+        : sessionServePool(cards, ctx).length > 0;
+      setSchedulerProgress(initialProgress);
+      setSessionCardIds(cards.map((card) => card.id));
+      setSessionCardOutcomes(new Map());
       reviewsByDeck.current = new Map();
       setLimitOverride(false);
       setSingleDeck((prev) => {
@@ -733,7 +804,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         simpleQueue.current = [...cards];
         simpleMastered.current = new Set();
         simpleWrong.current = new Set();
-        setProgress(0);
       }
 
       // A lesson always opens with its notes, including a cardless lesson. The
@@ -747,28 +817,38 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         return;
       }
 
-      if (units.length === 0 || cards.length === 0) {
+      if (units.length === 0 || !hasServeableCards) {
         if (cancelled) return;
+        const isFiltered = filterParams.length > 0 || tagFilter !== null;
         const practiceAlreadySecured =
-          (practiceSessionRef.current?.scopeCards.length ?? 0) > 0 && cards.length === 0;
+          !isFiltered &&
+          (practiceSessionRef.current?.scopeCards.length ?? 0) > 0 &&
+          cards.length === 0;
         // Show an empty-state screen instead of navigating away so the user
         // understands what happened and can choose what to do next.
-        progressBefore.current = sessionProgress(cards, ctx);
-        const isFiltered = filterParams.length > 0 || tagFilter !== null;
+        const reportProgress = isFiltered ? 0 : initialProgress;
+        progressBefore.current = reportProgress;
         const filterParts = [
           ...(tagFilter ? [`tag "${tagFilter}"`] : []),
           ...(filterParams.length > 0 ? filterParams.map((f) => FILTER_LABELS[f] ?? f) : []),
         ];
-        const filterLabel = filterParts.join(' or ');
+        const filterLabel = filterParts.join(' and ');
+        const filteredCardsUnavailable = isFiltered && cards.length > 0;
         finaliseSummary({
           events: [],
-          masteryBefore: progressBefore.current,
-          masteryAfter: progressBefore.current,
+          masteryBefore: reportProgress,
+          masteryAfter: reportProgress,
           objectiveLabel: isFiltered
-            ? `No cards matching ${filterLabel} to study`
+            ? filteredCardsUnavailable
+              ? `No eligible cards matching ${filterLabel} to study`
+              : `No cards matching ${filterLabel} to study`
             : !isGlobal
-              ? progressHeading(units[0])
-              : 'Predicted readiness across all courses',
+              ? cards.length > 0
+                ? 'No cards are currently eligible to study'
+                : progressHeading(units[0])
+              : cards.length > 0
+                ? 'No cards are currently eligible to study'
+                : 'Predicted readiness across all courses',
           focusFraction: 1,
           reachedGoal: practiceAlreadySecured,
           limitReached: false,
@@ -777,13 +857,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         return;
       }
 
-      progressBefore.current = sessionProgress(cards, ctx);
-      setProgress(progressBefore.current);
-
-      if (!isSimpleMode) {
-        setProgress(progressBefore.current);
-      }
-
+      progressBefore.current = initialProgress;
       if (!isSimpleMode && sessionComplete(cards, ctx)) {
         finaliseSummary({
           events: [],
@@ -887,14 +961,15 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
               cardNow,
             ];
           }
+          setSessionCardOutcomes((previous) => {
+            const next = new Map(previous);
+            next.set(cardNow.id, correct ? 'correct' : 'wrong');
+            return next;
+          });
 
           const remaining = simpleQueue.current.filter(
             (c) => !simpleMastered.current.has(c.id),
           ).length;
-          const mastered = simpleMastered.current.size;
-          const total = mastered + remaining;
-          setProgress(total > 0 ? mastered / total : 1);
-
           if (remaining === 0) {
             finish(true);
           } else {
@@ -922,8 +997,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
 
         const cooldownsSnapshot = new Map(cooldowns.current);
         const eventsLen = events.current.length;
-        const progressSnapshot = cachedSessionProgress(cardsRef.current, ctx);
         const perfBefore = perf ?? null;
+        const outcomeBefore = sessionCardOutcomes.get(cardNow.id);
 
         const {
           card: updated,
@@ -946,6 +1021,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
 
         const nextCards = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
         cardsRef.current = nextCards;
+        setSchedulerProgress(sessionProgress(nextCards, ctx));
         if (practiceSessionRef.current) {
           await persistPracticeMilestone(nextCards, false);
         }
@@ -962,6 +1038,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         decrementCooldowns(cooldowns.current, updated.id);
 
         events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
+        setSessionCardOutcomes((previous) => {
+          const next = new Map(previous);
+          next.set(cardNow.id, correct ? 'correct' : 'wrong');
+          return next;
+        });
 
         const deckReviews = (reviewsByDeck.current.get(deck.id) ?? 0) + 1;
         reviewsByDeck.current.set(deck.id, deckReviews);
@@ -976,15 +1057,14 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
             lastInteractedAtBefore,
           },
           cooldowns: cooldownsSnapshot,
-          progressBefore: progressSnapshot,
           eventsLen,
           deckId: deck.id,
           deckReviews,
+          outcomeBefore,
         };
         setCanUndo(true);
 
         progressCacheRef.current.dirty = true;
-        setProgress(cachedSessionProgress(nextCards, ctx));
 
         const limit = deck.maxReviewsPerDay;
         if (!limitOverride && limit && limit > 0 && deckReviews >= limit) {
@@ -1017,13 +1097,13 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       distraction,
       finish,
       serveNext,
-      cachedSessionProgress,
       limitOverride,
       timeLimitOverride,
       m,
       isSimpleMode,
       isGlobal,
       persistPracticeMilestone,
+      sessionCardOutcomes,
     ],
   );
 
@@ -1037,6 +1117,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       cardsRef.current = cardsRef.current.map((c) =>
         c.id === snap.undo.cardBefore.id ? snap.undo.cardBefore : c,
       );
+      setSchedulerProgress(sessionProgress(cardsRef.current, ctx));
       cooldowns.current = snap.cooldowns;
       if (snap.undo.perfBefore) perfRef.current.set(snap.deckId, snap.undo.perfBefore);
       events.current = events.current.slice(0, snap.eventsLen);
@@ -1047,8 +1128,13 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       lastAnswer.current = null;
       setCanUndo(false);
       progressCacheRef.current.dirty = true;
-      setProgress(snap.progressBefore);
       setCurrent(snap.undo.cardBefore);
+      setSessionCardOutcomes((previous) => {
+        const next = new Map(previous);
+        if (snap.outcomeBefore) next.set(snap.undo.cardBefore.id, snap.outcomeBefore);
+        else next.delete(snap.undo.cardBefore.id);
+        return next;
+      });
       setPhase('question');
       setMenuOpen(false);
       timerStart.current = performance.now();
@@ -1066,10 +1152,26 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     setMenuOpen(false);
     setCanUndo(false);
     lastAnswer.current = null;
+    const removedId = currentRef.current?.id;
+    if (removedId) {
+      setSessionCardIds((previous) => previous.filter((id) => id !== removedId));
+      setSessionCardOutcomes((previous) => {
+        const next = new Map(previous);
+        next.delete(removedId);
+        return next;
+      });
+    }
     progressCacheRef.current.dirty = true;
-    setProgress(cachedSessionProgress(cardsRef.current, ctx));
+    setSchedulerProgress(sessionProgress(cardsRef.current, ctx));
+    const hasRemainingCards = isSimpleMode
+      ? simpleQueue.current.some((card) => !simpleMastered.current.has(card.id))
+      : sessionServePool(cardsRef.current, ctx).length > 0;
+    if (!hasRemainingCards) {
+      finish(false);
+      return;
+    }
     serveNext();
-  }, [serveNext, cachedSessionProgress]);
+  }, [finish, isSimpleMode, serveNext]);
 
   const suspendCurrent = useCallback(async () => {
     if (!current) return;
@@ -1199,6 +1301,17 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         if (e.key === 'Escape') setNavOpen(false);
         return;
       }
+      if (menuOpen && e.key === 'Escape') {
+        e.preventDefault();
+        setMenuOpen(false);
+        return;
+      }
+      if (focusMode && e.key === 'Escape') {
+        e.preventDefault();
+        setFocusMode(false);
+        setFocusChromeVisible(false);
+        return;
+      }
       if (e.key === '?') {
         e.preventDefault();
         setHintsOpen(true);
@@ -1266,6 +1379,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     canUndo,
     undoLast,
     navOpen,
+    menuOpen,
     editing,
     current,
     openEdit,
@@ -1273,6 +1387,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     gradingMode,
     bindings,
     m,
+    focusMode,
   ]);
 
   // Clear any pending feedback timer if the session unmounts mid-flash.
@@ -1356,7 +1471,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
                         progressBefore.current = 0;
                         sessionStartMs.current = Date.now();
                         setSummary(null);
-                        setProgress(0);
+                        setSessionCardIds(simpleQueue.current.map((card) => card.id));
+                        setSessionCardOutcomes(new Map());
                         serveNext();
                       }
                     : () => {
@@ -1463,53 +1579,62 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
             <NavSidebar open={navOpen} onClose={() => setNavOpen(false)} />
             {/* Help overlay (opened with ?) */}
             <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
-            {/* Focus mode: a single quiet affordance to leave, keeping the card uncluttered. */}
-            {focusMode && (
+            {focusMode && !focusChromeVisible && !menuOpen && (
               <button
                 type="button"
-                onClick={() => setFocusMode(false)}
-                title="Exit focus mode (F)"
-                className="fixed right-4 top-4 z-20 min-h-11 rounded-lg px-3 py-1.5 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+                aria-label="Show study controls"
+                onPointerEnter={() => setFocusChromeVisible(true)}
+                onClick={() => setFocusChromeVisible(true)}
+                className="fixed inset-x-0 top-0 z-20 h-3 text-transparent focus:h-11 focus:text-ink-faint"
               >
-                Exit focus (F)
+                Show study controls
               </button>
             )}
-            {/* Top bar: mode-aware header, progress, and actions */}
-            {!focusMode && (
-              <LearnHeader
-                mode={mode}
-                singleDeck={singleDeck}
-                unitDisplayName={unitDisplayName}
-                progress={progress}
-                filterParams={filterParams}
-                tagFilter={tagFilter}
-                onOpenNav={() => setNavOpen(true)}
-                onExit={onStepFinished ? backOut : () => finish(false)}
-                menuOpen={menuOpen}
-                setMenuOpen={setMenuOpen}
-                current={current}
-                isTouchMode={isTouchMode}
-                onEdit={openEdit}
-                onToggleFlag={toggleFlagCurrent}
-                onBury={buryCurrent}
-                onSuspend={suspendCurrent}
-                onShowShortcuts={() => {
-                  setMenuOpen(false);
-                  setHintsOpen(true);
-                }}
-                m={m}
-                simpleWrong={simpleWrong.current.size}
-                simpleRemaining={
-                  simpleQueue.current.filter((c) => !simpleMastered.current.has(c.id)).length
-                }
-                simpleMastered={simpleMastered.current.size}
-                isSimpleMode={isSimpleMode}
-                phase={phase}
-              />
-            )}{' '}
+            {/* Shared top bar: hidden in Focus Mode until the top edge is reached. */}
+            <AnimatePresence>
+              {(!focusMode || focusChromeVisible || menuOpen) && (
+                <LearnHeader
+                  key="learn-header"
+                  mode={mode}
+                  singleDeck={singleDeck}
+                  unitDisplayName={unitDisplayName}
+                  sessionProgress={isSimpleMode ? simpleProgress : schedulerProgress}
+                  sessionCardIds={sessionCardIds}
+                  sessionCardOutcomes={sessionCardOutcomes}
+                  filterParams={filterParams}
+                  tagFilter={tagFilter}
+                  onOpenNav={() => setNavOpen(true)}
+                  onExit={onStepFinished ? backOut : () => finish(false)}
+                  focusMode={focusMode}
+                  onToggleFocus={() => {
+                    setFocusMode((value) => !value);
+                    setFocusChromeVisible(false);
+                  }}
+                  onToggleFullscreen={() => void toggleFullscreen()}
+                  isFullscreen={isFullscreen}
+                  onPointerLeave={() => {
+                    if (focusMode && !menuOpen) setFocusChromeVisible(false);
+                  }}
+                  menuOpen={menuOpen}
+                  setMenuOpen={setMenuOpen}
+                  current={current}
+                  isTouchMode={isTouchMode}
+                  onEdit={openEdit}
+                  onToggleFlag={toggleFlagCurrent}
+                  onBury={buryCurrent}
+                  onSuspend={suspendCurrent}
+                  onShowShortcuts={() => {
+                    setMenuOpen(false);
+                    setHintsOpen(true);
+                  }}
+                  m={m}
+                  currentCardId={current?.id ?? null}
+                />
+              )}
+            </AnimatePresence>
             {/* Card — mode-aware border accent */}
             <main
-              className={`mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-8 ${isTouchMode ? 'pb-40' : ''}`}
+              className={`mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-8 md:py-12 ${isTouchMode ? 'pb-40' : ''}`}
             >
               {current && (
                 <FlipCard
@@ -1583,7 +1708,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
                           <Button
                             variant="primary"
                             size="lg"
-                            className="w-full max-w-sm"
+                            className="w-full max-w-[13.5rem] shadow-lg shadow-accent/15"
                             onClick={reveal}
                           >
                             Show answer
@@ -1719,25 +1844,6 @@ function modeBorderClass(mode: LearnModeType, revealed: boolean): string {
   }
 }
 
-function modeProgressVariant(mode: LearnModeType): ProgressVariant {
-  switch (mode) {
-    case 'cram':
-      return 'amber';
-    case 'simple':
-      return 'simple';
-    case 'filtered-leech':
-      return 'negative';
-    case 'filtered-flagged':
-      return 'amber';
-    case 'filtered-suspended':
-      return 'negative';
-    case 'filtered':
-      return 'accent';
-    default:
-      return 'accent';
-  }
-}
-
 function computeHeaderInfo({
   singleDeck,
   unitDisplayName,
@@ -1812,11 +1918,18 @@ function LearnHeader({
   mode,
   singleDeck,
   unitDisplayName,
-  progress,
+  sessionProgress,
+  sessionCardIds,
+  sessionCardOutcomes,
   filterParams,
   tagFilter,
   onOpenNav,
   onExit,
+  focusMode,
+  onToggleFocus,
+  onToggleFullscreen,
+  isFullscreen,
+  onPointerLeave,
   menuOpen,
   setMenuOpen,
   current,
@@ -1827,20 +1940,23 @@ function LearnHeader({
   onSuspend,
   onShowShortcuts,
   m,
-  simpleWrong,
-  simpleRemaining,
-  simpleMastered,
-  isSimpleMode,
-  phase,
+  currentCardId,
 }: {
   mode: LearnModeType;
   singleDeck: StudyUnit | null;
   unitDisplayName: string | null;
-  progress: number;
+  sessionProgress: number;
+  sessionCardIds: string[];
+  sessionCardOutcomes: Map<string, SessionCardOutcome>;
   filterParams: CardFilter[];
   tagFilter: string | null;
   onOpenNav: () => void;
   onExit: () => void;
+  focusMode: boolean;
+  onToggleFocus: () => void;
+  onToggleFullscreen: () => void;
+  isFullscreen: boolean;
+  onPointerLeave: () => void;
   menuOpen: boolean;
   setMenuOpen: (v: boolean) => void;
   current: Card | null;
@@ -1851,142 +1967,271 @@ function LearnHeader({
   onSuspend: () => void;
   onShowShortcuts: () => void;
   m: number;
-  simpleWrong: number;
-  simpleRemaining: number;
-  simpleMastered: number;
-  isSimpleMode: boolean;
-  phase: Phase;
+  currentCardId: string | null;
 }) {
   const info = computeHeaderInfo({ singleDeck, unitDisplayName, mode, filterParams, tagFilter });
-  const progressVariant = modeProgressVariant(mode);
+  const percentage = Math.round(Math.max(0, Math.min(1, sessionProgress)) * 100);
+  const progressName =
+    mode === 'simple'
+      ? 'Session progress'
+      : singleDeck && progressNoun(singleDeck) === 'secured'
+        ? 'Secured progress'
+        : 'Predicted score progress';
+  const compactProgressNoun = progressName.replace(' progress', '').toLowerCase();
 
   return (
-    <>
-      <header
-        className={cn(
-          'sticky top-0 z-10 border-b bg-paper/85 backdrop-blur',
-          mode === 'cram' && 'border-amber-500/30',
-          mode === 'simple' && 'border-positive/30',
-          mode === 'filtered-leech' && 'border-negative/30',
-          mode === 'filtered-flagged' && 'border-amber-500/30',
-          !['cram', 'simple', 'filtered-leech', 'filtered-flagged'].includes(mode) && 'border-line',
-        )}
-      >
-        <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-3">
+    <motion.header
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+      onPointerLeave={onPointerLeave}
+      className={cn(
+        'left-0 right-0 top-0 z-20 border-b border-line bg-paper/92 backdrop-blur-xl',
+        focusMode ? 'fixed shadow-lg shadow-black/5' : 'sticky',
+      )}
+    >
+      <div className="flex min-h-[72px] items-center gap-1 px-2 py-2.5 md:gap-5 md:px-6">
+        <button
+          type="button"
+          onClick={onOpenNav}
+          aria-label="Open navigation"
+          title="Open navigation"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+        >
+          <MenuIcon width={18} height={18} />
+        </button>
+
+        <div className="min-w-10 flex-1 overflow-hidden">
+          <h1
+            className="mb-1 truncate text-xs font-semibold text-ink md:text-sm"
+            title={info.title}
+          >
+            {info.title}
+          </h1>
+          {info.subtitle && (
+            <p className="mb-1 hidden truncate text-xs text-ink-faint md:block">{info.subtitle}</p>
+          )}
+          {mode === 'simple' ? (
+            <SessionSegments
+              cardIds={sessionCardIds}
+              outcomes={sessionCardOutcomes}
+              currentCardId={currentCardId}
+            />
+          ) : (
+            <ObjectiveProgressTrack value={sessionProgress} />
+          )}
+        </div>
+
+        <span className="hidden whitespace-nowrap text-sm tabular text-ink-soft sm:inline">
+          {percentage}%{mode === 'simple' ? '' : ` ${compactProgressNoun}`}
+        </span>
+        <SessionProgressRing value={sessionProgress} label={progressName} />
+
+        <div className="hidden min-[340px]:block">
+          <PomodoroTimer />
+        </div>
+
+        <div className="relative">
           <button
             type="button"
-            onClick={onOpenNav}
-            aria-label="Open navigation"
-            title="Open navigation"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Card actions"
+            title="Card actions"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
           >
-            <MenuIcon width={18} height={18} />
+            <MoreIcon width={18} height={18} />
           </button>
-
-          <div className="min-w-0 flex-1">
-            <div className="mb-2 flex items-center gap-2 text-xs">
-              <span
-                className={cn(
-                  'font-medium uppercase tracking-[0.14em] truncate',
-                  mode === 'cram' && 'text-amber-600',
-                  mode === 'simple' && 'text-positive',
-                  mode === 'filtered-leech' && 'text-negative',
-                  mode === 'filtered-flagged' && 'text-amber-600',
-                  'text-ink-faint',
-                )}
-              >
-                {info.title}
-              </span>
-            </div>
-            <ProgressBar value={progress} height={6} variant={progressVariant} showLabel />
-            {info.subtitle && (
-              <div className="mt-1.5 text-[10px] text-ink-faint">{info.subtitle}</div>
-            )}
-          </div>
-
-          <PomodoroTimer />
-
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-label="Card actions"
-              title="Card actions"
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-            >
-              <MoreIcon width={18} height={18} />
-            </button>
-            <AnimatePresence>
-              {menuOpen &&
-                current &&
-                (isTouchMode ? (
-                  <TouchMenuSheet
-                    current={current}
-                    onEdit={onEdit}
-                    onToggleFlag={onToggleFlag}
-                    onBury={onBury}
-                    onSuspend={onSuspend}
-                    onShowShortcuts={onShowShortcuts}
-                    onClose={() => setMenuOpen(false)}
-                    m={m}
+          <AnimatePresence>
+            {menuOpen &&
+              current &&
+              (isTouchMode ? (
+                <TouchMenuSheet
+                  current={current}
+                  onEdit={onEdit}
+                  onToggleFlag={onToggleFlag}
+                  onBury={onBury}
+                  onSuspend={onSuspend}
+                  onShowShortcuts={onShowShortcuts}
+                  onClose={() => setMenuOpen(false)}
+                  m={m}
+                />
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                  transition={{ duration: 0.12 * m }}
+                  className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
+                >
+                  {current.sequenceItemId === undefined && (
+                    <MenuItem
+                      icon={<EditIcon width={16} height={16} />}
+                      label="Edit card"
+                      onClick={onEdit}
+                    />
+                  )}
+                  <MenuItem
+                    icon={<FlagIcon width={16} height={16} />}
+                    label={current.flagged ? 'Remove flag' : 'Flag card'}
+                    onClick={onToggleFlag}
                   />
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                    transition={{ duration: 0.12 * m }}
-                    className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
-                  >
-                    {current.sequenceItemId === undefined && (
-                      <MenuItem
-                        icon={<EditIcon width={16} height={16} />}
-                        label="Edit card"
-                        onClick={onEdit}
-                      />
-                    )}
-                    <MenuItem
-                      icon={<FlagIcon width={16} height={16} />}
-                      label={current.flagged ? 'Remove flag' : 'Flag card'}
-                      onClick={onToggleFlag}
-                    />
-                    <MenuItem
-                      icon={<ClockIcon width={16} height={16} />}
-                      label="Bury until tomorrow"
-                      onClick={onBury}
-                    />
-                    <MenuItem
-                      icon={<PauseIcon width={16} height={16} />}
-                      label="Suspend card"
-                      onClick={onSuspend}
-                    />
-                    <div className="border-t border-line" />
-                    <MenuItem
-                      icon={<KeyboardIcon width={16} height={16} />}
-                      label="Keyboard shortcuts"
-                      onClick={onShowShortcuts}
-                    />
-                  </motion.div>
-                ))}
-            </AnimatePresence>
-          </div>
-
-          <Button variant="ghost" size="sm" onClick={onExit}>
-            Exit
-          </Button>
+                  <MenuItem
+                    icon={<ClockIcon width={16} height={16} />}
+                    label="Bury until tomorrow"
+                    onClick={onBury}
+                  />
+                  <MenuItem
+                    icon={<PauseIcon width={16} height={16} />}
+                    label="Suspend card"
+                    onClick={onSuspend}
+                  />
+                  <div className="border-t border-line" />
+                  <MenuItem
+                    icon={<KeyboardIcon width={16} height={16} />}
+                    label="Keyboard shortcuts"
+                    onClick={onShowShortcuts}
+                  />
+                </motion.div>
+              ))}
+          </AnimatePresence>
         </div>
-      </header>
 
-      {/* Simple mode: visual progress chips below the header */}
-      {isSimpleMode && phase !== 'finished' && (
-        <SimpleModeStats
-          wrong={simpleWrong}
-          remaining={simpleRemaining}
-          mastered={simpleMastered}
-          m={m}
+        <button
+          type="button"
+          onClick={onToggleFocus}
+          aria-label={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
+          title={focusMode ? 'Exit Focus Mode (F)' : 'Enter Focus Mode (F)'}
+          className={cn(
+            'h-11 w-11 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-ink/5 active:bg-ink/10',
+            focusMode ? 'flex' : 'hidden sm:flex',
+            focusMode ? 'text-accent' : 'text-ink-soft hover:text-ink',
+          )}
+        >
+          <FocusIcon width={19} height={19} />
+        </button>
+
+        <button
+          type="button"
+          onClick={onToggleFullscreen}
+          aria-label={isFullscreen ? 'Leave full screen' : 'Enter full screen'}
+          title={isFullscreen ? 'Leave full screen' : 'Enter full screen'}
+          className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 sm:flex"
+        >
+          {isFullscreen ? (
+            <RestoreIcon width={19} height={19} />
+          ) : (
+            <FullscreenIcon width={19} height={19} />
+          )}
+        </button>
+
+        <Button variant="ghost" size="sm" onClick={onExit}>
+          Exit
+        </Button>
+      </div>
+    </motion.header>
+  );
+}
+
+function ObjectiveProgressTrack({ value }: { value: number }) {
+  const progress = Math.max(0, Math.min(1, value));
+  return (
+    <div className="h-2 w-full overflow-hidden rounded-full bg-ink/10" aria-hidden="true">
+      <div
+        className="h-full rounded-full bg-accent transition-[width] duration-300"
+        style={{ width: `${progress * 100}%` }}
+      />
+    </div>
+  );
+}
+
+function SessionSegments({
+  cardIds,
+  outcomes,
+  currentCardId,
+}: {
+  cardIds: string[];
+  outcomes: Map<string, SessionCardOutcome>;
+  currentCardId: string | null;
+}) {
+  const statusFor = (id: string): SessionCardOutcome | 'current' | 'unseen' => {
+    if (id === currentCardId) return 'current';
+    return outcomes.get(id) ?? 'unseen';
+  };
+  const statuses = cardIds.map(statusFor);
+  const statusSummary = `${statuses.filter((status) => status === 'correct').length} correct, ${statuses.filter((status) => status === 'wrong').length} wrong, ${statuses.filter((status) => status === 'current').length} current, ${statuses.filter((status) => status === 'unseen').length} unseen`;
+  const maxSegments = 120;
+  const groupSize = Math.max(1, Math.ceil(cardIds.length / maxSegments));
+  const groups: string[][] = [];
+  for (let index = 0; index < cardIds.length; index += groupSize) {
+    groups.push(cardIds.slice(index, index + groupSize));
+  }
+
+  return (
+    <div aria-label="Card progress" role="group" title={`${cardIds.length} cards in this session`}>
+      <span className="sr-only" aria-live="polite">
+        {statusSummary}
+      </span>
+      <div className="flex h-2 w-full gap-1" aria-hidden="true">
+        {groups.map((group) => {
+          const current = currentCardId !== null && group.includes(currentCardId);
+          const groupOutcomes = group.map((id) => outcomes.get(id));
+          const status = current
+            ? 'current'
+            : groupOutcomes.some((outcome) => outcome === 'wrong')
+              ? 'wrong'
+              : groupOutcomes.every((outcome) => outcome === 'correct')
+                ? 'correct'
+                : 'unseen';
+          return (
+            <span
+              key={group[0]}
+              data-session-card-status={status}
+              className={cn(
+                'min-w-px flex-1 rounded-full border transition-colors duration-200',
+                status === 'correct' && 'border-positive bg-positive',
+                status === 'wrong' && 'border-negative bg-negative',
+                status === 'current' && 'border-accent bg-accent/10',
+                status === 'unseen' && 'border-transparent bg-ink/10',
+              )}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SessionProgressRing({ value, label }: { value: number; label: string }) {
+  const progress = Math.max(0, Math.min(1, value));
+  const radius = 15;
+  const circumference = 2 * Math.PI * radius;
+  const percentage = Math.round(progress * 100);
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percentage}
+      className="relative flex h-10 w-10 shrink-0 items-center justify-center"
+    >
+      <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden="true">
+        <circle cx="18" cy="18" r={radius} fill="none" className="stroke-ink/10" strokeWidth="3" />
+        <circle
+          cx="18"
+          cy="18"
+          r={radius}
+          fill="none"
+          className="stroke-accent transition-[stroke-dashoffset] duration-300"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - progress)}
         />
-      )}
-    </>
+      </svg>
+      <span className="text-[9px] font-semibold tabular text-ink-soft sm:hidden">{percentage}</span>
+    </div>
   );
 }
 
@@ -2275,110 +2520,6 @@ function TouchMenuButton({
       <span className="shrink-0 text-ink-faint">{icon}</span>
       {label}
     </button>
-  );
-}
-
-/** Beautiful visual stat chips for simple mode — replaces the plain text stats. */
-function SimpleModeStats({
-  wrong,
-  remaining,
-  mastered,
-  m,
-}: {
-  wrong: number;
-  remaining: number;
-  mastered: number;
-  m: number;
-}) {
-  const total = mastered + remaining;
-  const pct = total > 0 ? mastered / total : 0;
-  const r = 18;
-  const c = 2 * Math.PI * r;
-  const dashOffset = c * (1 - pct);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * m, ease: [0.16, 1, 0.3, 1] }}
-      className="mx-auto mt-3 flex w-full max-w-3xl items-center gap-3 px-6"
-    >
-      {/* Circular progress ring */}
-      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center">
-        <svg width="44" height="44" viewBox="0 0 44 44" className="absolute inset-0">
-          <circle cx="22" cy="22" r={r} fill="none" className="stroke-ink/10" strokeWidth="3" />
-          <motion.circle
-            cx="22"
-            cy="22"
-            r={r}
-            fill="none"
-            className="stroke-positive"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeDasharray={c}
-            initial={{ strokeDashoffset: c }}
-            animate={{ strokeDashoffset: dashOffset }}
-            transition={{ duration: 0.6 * m, ease: [0.16, 1, 0.3, 1] }}
-            transform="rotate(-90 22 22)"
-          />
-        </svg>
-        <span className="text-[10px] font-medium tabular text-positive">
-          {Math.round(pct * 100)}%
-        </span>
-      </div>
-
-      {/* Stat chips */}
-      <div className="flex flex-1 items-center gap-2">
-        <StatChip
-          icon={<CloseIcon width={14} height={14} />}
-          value={wrong}
-          label="wrong"
-          colour="negative"
-        />
-        <StatChip
-          icon={<ClockIcon width={14} height={14} />}
-          value={remaining}
-          label="remaining"
-          colour="amber"
-        />
-        <StatChip
-          icon={<CheckIcon width={14} height={14} />}
-          value={mastered}
-          label="correct"
-          colour="positive"
-        />
-      </div>
-    </motion.div>
-  );
-}
-
-function StatChip({
-  icon,
-  value,
-  label,
-  colour,
-}: {
-  icon: React.ReactNode;
-  value: number;
-  label: string;
-  colour: 'negative' | 'amber' | 'positive';
-}) {
-  const colourMap = {
-    negative: 'bg-negative/10 text-negative border-negative/20',
-    amber: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
-    positive: 'bg-positive/10 text-positive border-positive/20',
-  };
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs',
-        colourMap[colour],
-      )}
-    >
-      <span className="shrink-0 opacity-80">{icon}</span>
-      <span className="tabular font-semibold">{value}</span>
-      <span className="opacity-70">{label}</span>
-    </div>
   );
 }
 
@@ -2720,6 +2861,7 @@ function FlipCard({
       <div
         ref={containerRef}
         role="button"
+        tabIndex={0}
         aria-label={revealed ? 'Hide answer' : 'Show answer'}
         className="relative w-full cursor-pointer"
         style={{ transformStyle: 'preserve-3d', touchAction: 'pan-y' }}
@@ -2727,6 +2869,13 @@ function FlipCard({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (phase === 'question') onReveal();
+          else if (phase === 'answer') onHide();
+        }}
       >
         {/* Swipe hint glow — appears during a drag to whisper the outcome.
             Positioned behind the card so the border stays crisp. */}
@@ -2802,7 +2951,7 @@ function FlipCard({
             }}
             style={{ transformOrigin: 'center center', x: swipeXSpring }}
             className={cn(
-              'relative z-10 rounded-3xl border bg-surface px-6 py-10 md:px-10 md:py-12',
+              'relative z-10 flex min-h-[22rem] flex-col items-center justify-center rounded-3xl border bg-surface px-6 py-10 md:min-h-[29rem] md:px-12 md:py-14',
               modeBorderClass(mode, revealed),
             )}
           >
@@ -2810,7 +2959,7 @@ function FlipCard({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24 * m, delay: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto max-w-prose text-center text-lg leading-relaxed md:text-xl"
+              className="mx-auto w-full max-w-prose text-center text-lg leading-relaxed md:text-xl"
             >
               <CardContent card={card} side={revealed ? 'back' : 'front'} sequenceCue />
             </motion.div>

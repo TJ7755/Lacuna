@@ -176,6 +176,26 @@ export const PauseIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const FocusIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M8 4H5a1 1 0 0 0-1 1v3M16 4h3a1 1 0 0 1 1 1v3M8 20H5a1 1 0 0 1-1-1v-3M16 20h3a1 1 0 0 0 1-1v-3" />
+  </Icon>
+);
+
+export const FullscreenIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M8 3H4a1 1 0 0 0-1 1v4M16 3h4a1 1 0 0 1 1 1v4M8 21H4a1 1 0 0 1-1-1v-4M16 21h4a1 1 0 0 0 1-1v-4" />
+  </Icon>
+);
+
+export const RestoreIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M9 4H5a1 1 0 0 0-1 1v4M15 4h4a1 1 0 0 1 1 1v4M9 20H5a1 1 0 0 1-1-1v-4M15 20h4a1 1 0 0 0 1-1v-4" />
+    <path d="M9 9 4 4M15 9l5-5M9 15l-5 5M15 15l5 5" />
+  </Icon>
+);
+
 export const ClockIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="9" />
@@ -357,4 +377,3 @@ export const PathIcon = (p: IconProps) => (
     <path d="M8.5 17.5L16 13" strokeDasharray="2 2" />
   </Icon>
 );
-

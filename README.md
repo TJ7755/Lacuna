@@ -27,7 +27,7 @@ export** to back up or move your data as a single JSON file.
   cards clear 90% on exam day and serves the cheapest card to secure next.
 - **Invisible rating engine** — Yes/No plus a hidden response timer, calibrated per course.
 - **Simple learn mode** — an algorithm-free YES/NO study loop with no FSRS scheduling, no DB writes,
-  and a live pill UI (Wrong / Remaining / Right). Cards loop until every one is marked correct.
+  and shared in-session card progress. Cards loop until every one is marked correct.
 - **Card types** — Basic (front/back), Reversed (back/front), Cloze, and Typing-answer (type the
   answer before revealing, with a comparison on the back).
 - **Sequences** — author an ordered list once (e.g. the periodic table, a timeline, a chain of
@@ -35,8 +35,9 @@ export** to back up or move your data as a single JSON file.
   preceding items; editing the sequence regenerates its cards without losing their scheduling
   progress.
 - **Cooldown slotting** — failed cards are held back briefly to prevent fatigue.
-- **Continuous Learn mode** with a live, objective-aware progress bar that ends automatically once
-  the objective is met, followed by a performance report (including a focus/distraction summary).
+- **Continuous Learn mode** with per-card progress for Simple Learn, scheduler-derived objective
+  progress for FSRS, cram and filtered sessions, optional start-in-Focus-Mode behaviour, and an
+  automatic performance report (including a focus/distraction summary).
 - **Markdown notes and cards** with GitHub-flavoured syntax, code highlighting, **KaTeX maths**,
   **cloze deletions** (`{{c1::answer::hint}}`), collapsible sections and embedded video (notes
   only), and **drag-and-drop images** (downscaled and stored inline).
@@ -52,8 +53,8 @@ export** to back up or move your data as a single JSON file.
 
 ## Getting started
 
-Lacuna uses [Bun](https://bun.sh/) rather than Node.js for its JavaScript runtime,
-package manager, and project scripts. Bun is required for the commands below.
+Lacuna uses [Bun](https://bun.sh/) for its JavaScript runtime, package manager, and
+project scripts. The checked-in `bun.lock` is authoritative; use Bun 1.3.14 or newer.
 
 ```
 git clone https://github.com/TJ7755/Lacuna.git

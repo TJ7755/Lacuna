@@ -1,19 +1,23 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { LearnMode, LearnSkeleton } from './LearnMode';
 import { db } from '../db/schema';
 import {
+  createCard,
   createCourse,
+  createDeck,
   createLesson,
   createLessonCard,
   createPracticeNode,
   linkCardToLesson,
   upsertLessonCardExposure,
 } from '../db/repository';
+import { makeSessionContext, sessionProgress } from '../fsrs/session';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
+import { writeStartInFocusMode } from '../state/focusModePreference';
 
 describe('LearnSkeleton', () => {
   it('renders the skeleton loading screen', () => {
@@ -40,6 +44,12 @@ async function answerYes() {
   const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
   fireEvent.click(revealCandidates.find((el) => el.tagName === 'BUTTON')!);
   fireEvent.click(await screen.findByRole('button', { name: /^yes$/i }));
+}
+
+async function answerNo() {
+  const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
+  fireEvent.click(revealCandidates.find((el) => el.tagName === 'BUTTON')!);
+  fireEvent.click(await screen.findByRole('button', { name: /^no$/i }));
 }
 
 async function continueFromNotes() {
@@ -85,7 +95,12 @@ describe('LearnMode course/lesson scope', () => {
     // Header shows the lesson's own name (not the course name).
     expect(await screen.findByRole('heading', { name: 'Atomic structure' })).toBeInTheDocument();
     await continueFromNotes();
-    await answerYes();
+    const flipCard = (await screen.findAllByRole('button', { name: /show answer/i }))
+      .find((element) => element.tagName === 'DIV')!;
+    expect(flipCard).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(flipCard, { key: 'Enter' });
+    expect(await screen.findByRole('button', { name: /^yes$/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^yes$/i }));
 
     await waitFor(async () => {
       expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(1);
@@ -396,5 +411,345 @@ describe('LearnMode course/lesson scope', () => {
       const updatedCourse = await db.courses.get(course.id);
       expect(updatedCourse?.lastInteractedAt).toBeDefined();
     });
+  });
+
+  it('starts in Focus Mode from the persisted preference and Esc leaves it for this session', async () => {
+    localStorage.setItem('lacuna.startInFocusMode', 'on');
+    const course = await createCourse('Physics');
+    const lesson = await createLesson(course.id, 'Forces');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await continueFromNotes();
+    expect(await screen.findByRole('button', { name: 'Show study controls' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Exit Focus Mode' })).not.toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(await screen.findByRole('button', { name: 'Enter Focus Mode' })).toBeInTheDocument();
+    expect(localStorage.getItem('lacuna.startInFocusMode')).toBe('on');
+  });
+
+  it('tracks current, wrong and correct cards as in-session progress', async () => {
+    const course = await createCourse('Computing');
+    const lesson = await createLesson(course.id, 'Rendering');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Question one', 'Answer one');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Question two', 'Answer two');
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await continueFromNotes();
+    expect(await screen.findByRole('progressbar', { name: 'Session progress' })).toHaveAttribute(
+      'aria-valuenow',
+      '0',
+    );
+    expect(document.querySelectorAll('[data-session-card-status="current"]')).toHaveLength(1);
+
+    await answerNo();
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-session-card-status="wrong"]')).toHaveLength(1);
+      expect(document.querySelectorAll('[data-session-card-status="current"]')).toHaveLength(1);
+    });
+
+    await answerYes();
+    await waitFor(() => {
+      expect(screen.getByRole('progressbar', { name: 'Session progress' })).toHaveAttribute(
+        'aria-valuenow',
+        '50',
+      );
+      expect(document.querySelectorAll('[data-session-card-status="correct"]')).toHaveLength(1);
+    });
+  });
+
+  it('shows scheduler progress instead of latest-answer progress in a global objective session', async () => {
+    const now = Date.now();
+    const deck = await createDeck('Objective deck');
+    await db.decks.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
+    const configuredDeck = (await db.decks.get(deck.id))!;
+    const card = await createCard(deck.id, 'front_back', 'Objective question', 'Answer');
+    await db.cards.update(card.id, {
+      stability: 2,
+      difficulty: 5,
+      lastReviewed: now - 24 * 60 * 60 * 1000,
+      reps: 1,
+      state: 2,
+      due: now - 1,
+    });
+    const configuredCard = (await db.cards.get(card.id))!;
+    const expected = Math.round(
+      sessionProgress([configuredCard], makeSessionContext([configuredDeck]), now) * 100,
+    );
+    expect(expected).toBeGreaterThan(0);
+    expect(expected).toBeLessThan(100);
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(
+      await screen.findByRole('progressbar', { name: 'Predicted score progress' }),
+    ).toHaveAttribute('aria-valuenow', String(expected));
+    expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
+  });
+
+  it('does not create rigid progress slots from unavailable cards outside Simple mode', async () => {
+    const now = Date.now();
+    const deck = await createDeck('Eligibility deck');
+    await db.decks.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
+    const available = await createCard(deck.id, 'front_back', 'Available question', 'Answer');
+    const suspended = await createCard(deck.id, 'front_back', 'Suspended question', 'Answer');
+    await db.cards.update(available.id, {
+      stability: 2,
+      difficulty: 5,
+      lastReviewed: now - 24 * 60 * 60 * 1000,
+      reps: 1,
+      state: 2,
+      due: now - 1,
+    });
+    await db.cards.update(suspended.id, { suspended: true });
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('Available question')).toBeInTheDocument();
+    expect(screen.queryByText('Suspended question')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('[data-session-card-status]')).toHaveLength(0);
+  });
+
+  it('uses the filtered card pool for scheduler-driven sessions', async () => {
+    const now = Date.now();
+    const deck = await createDeck('Filtered deck');
+    await db.decks.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
+    const flagged = await createCard(deck.id, 'front_back', 'Flagged question', 'Answer');
+    const unflagged = await createCard(deck.id, 'front_back', 'Unflagged question', 'Answer');
+    const reviewState = {
+      stability: 2,
+      difficulty: 5,
+      lastReviewed: now - 24 * 60 * 60 * 1000,
+      reps: 1,
+      state: 2 as const,
+      due: now - 1,
+    };
+    await db.cards.update(flagged.id, { ...reviewState, flagged: true });
+    await db.cards.update(unflagged.id, reviewState);
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn?filter=flagged']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('Flagged question')).toBeInTheDocument();
+    expect(screen.queryByText('Unflagged question')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
+  });
+
+  it('does not report a suspended-only filtered pool as completed', async () => {
+    const deck = await createDeck('Suspended deck');
+    const suspended = await createCard(deck.id, 'front_back', 'Suspended question', 'Answer');
+    await db.cards.update(suspended.id, { suspended: true });
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn?filter=suspended']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(
+      await screen.findByText('No eligible cards matching suspended cards to study'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Progress' })).toHaveAttribute(
+      'aria-valuenow',
+      '0',
+    );
+    expect(screen.queryByText('Suspended question')).not.toBeInTheDocument();
+  });
+
+  it.each(['Bury until tomorrow', 'Suspend card'])(
+    'does not reach the goal or unlock the next lesson when the final card is removed with %s',
+    async (actionLabel) => {
+      const course = await createCourse('Removal course', { unlockMode: 'semi-linear' });
+      const lesson = await createLesson(course.id, 'Current lesson');
+      const nextLesson = await createLesson(course.id, 'Locked lesson');
+      await createLessonCard(course.id, lesson.id, 'front_back', 'Only question', 'Answer');
+
+      render(
+        <ThemeProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+              <Routes>
+                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </ThemeProvider>,
+      );
+
+      await continueFromNotes();
+      fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
+      fireEvent.click(await screen.findByRole('button', { name: actionLabel }));
+
+      expect(await screen.findByText('Session complete')).toBeInTheDocument();
+      expect(screen.queryByText('Goal reached')).not.toBeInTheDocument();
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+      expect((await db.lessons.get(nextLesson.id))?.unlockedAt).toBeUndefined();
+    },
+  );
+
+  it('reports 100% loop progress after every Simple card is learned', async () => {
+    const course = await createCourse('Complete course');
+    const lesson = await createLesson(course.id, 'Complete lesson');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Final question', 'Final answer');
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await continueFromNotes();
+    await answerYes();
+
+    expect(await screen.findByText('Goal reached')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('progressbar', { name: 'Progress' })).toHaveAttribute(
+        'aria-valuenow',
+        '100',
+      );
+    });
+  });
+
+  it('reveals an operable Focus Mode exit control on touch-sized screens', async () => {
+    localStorage.setItem('lacuna.startInFocusMode', 'on');
+    localStorage.setItem('lacuna.inputMode', 'touch');
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    const course = await createCourse('Mobile focus');
+    const lesson = await createLesson(course.id, 'Touch lesson');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Touch question', 'Answer');
+
+    try {
+      render(
+        <ThemeProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+              <Routes>
+                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </ThemeProvider>,
+      );
+
+      await continueFromNotes();
+      fireEvent.click(await screen.findByRole('button', { name: 'Show study controls' }));
+      const exitFocus = await screen.findByRole('button', { name: 'Exit Focus Mode' });
+      expect(exitFocus).not.toHaveClass('hidden');
+
+      fireEvent.click(exitFocus);
+      expect(await screen.findByRole('button', { name: 'Enter Focus Mode' })).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+    }
+  });
+
+  it('does not reset an active session when the default Focus Mode preference changes', async () => {
+    const course = await createCourse('Focus preferences');
+    const lesson = await createLesson(course.id, 'Stable session');
+    await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'Keep this question',
+      'Visible answer',
+    );
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await continueFromNotes();
+    const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
+    fireEvent.click(revealCandidates.find((element) => element.tagName === 'BUTTON')!);
+    expect(await screen.findByText('Visible answer')).toBeInTheDocument();
+
+    await act(async () => {
+      writeStartInFocusMode(true);
+      // Allow the preference event and any accidentally-triggered async reload to settle.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Visible answer')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^yes$/i })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
   });
 });
