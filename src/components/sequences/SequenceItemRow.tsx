@@ -15,6 +15,8 @@ interface SequenceItemRowProps {
   isFirst: boolean;
   isLast: boolean;
   chunkLabels: string[];
+  /** Lines mode shows a speaker field instead of item numbering as the primary label. */
+  linesMode?: boolean;
   onChange: (patch: Partial<SequenceItem>) => void;
   onDelete: () => void;
   onMoveUp: () => void;
@@ -30,6 +32,7 @@ export function SequenceItemRow({
   isFirst,
   isLast,
   chunkLabels,
+  linesMode,
   onChange,
   onDelete,
   onMoveUp,
@@ -97,6 +100,16 @@ export function SequenceItemRow({
         </div>
       </div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
+        {linesMode && (
+          <input
+            type="text"
+            value={item.speaker ?? ''}
+            onChange={(e) => onChange({ speaker: e.target.value || undefined })}
+            placeholder="Speaker"
+            aria-label={`Speaker for item ${index + 1}`}
+            className="min-h-11 min-w-[10rem] flex-1 rounded-lg border border-line bg-transparent px-3 py-2 text-sm font-medium outline-none focus:border-accent sm:flex-none"
+          />
+        )}
         <input
           type="text"
           value={item.label ?? ''}
