@@ -34,6 +34,7 @@ const HELP_SECTIONS = [
   { id: 'touch-gestures', label: 'Touch gestures' },
   { id: 'progress', label: 'Progress & scheduling' },
   { id: 'card-types', label: 'Card types' },
+  { id: 'sequences', label: 'Sequences' },
   { id: 'tips', label: 'Tips & best practice' },
 ];
 
@@ -662,6 +663,57 @@ export function HelpPage() {
                   A sentence with one or more words hidden. You recall the hidden words before
                   revealing them. Useful for context-dependent knowledge and fill-in-the-blank
                   style questions.
+                </p>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: 'sequences',
+        label: 'Sequences',
+        icon: <SparklesIcon width={20} height={20} />,
+        content: (
+          <div className="space-y-4">
+            <p className="text-base text-ink-soft">
+              A sequence is an ordered list you write once — a list of steps, dates, or items in
+              a series — from which Lacuna generates ordinary cards for you. You never study the
+              sequence itself; you study the cards it produces, and editing the sequence keeps
+              them in sync.
+            </p>
+            <div className="space-y-3">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Cue window</h3>
+                <p className="text-sm text-ink-soft">
+                  Each generated card's front shows the preceding item or two (the cue window,
+                  two by default) so you recall the next item from local context, rather than the
+                  whole list. This targets the point in a list you are most likely to forget: the
+                  middle.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Chunks</h3>
+                <p className="text-sm text-ink-soft">
+                  Long sequences can be split into named chunks. The first item of a chunk is
+                  cued by its chunk name rather than by the previous chunk's items, so chunks
+                  study independently of one another.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Label cards</h3>
+                <p className="text-sm text-ink-soft">
+                  Turning on label cards additionally generates an unordered label-to-value card
+                  for each item (for example, "Atomic number 11 &rarr; ?"), for recall that does
+                  not depend on position in the sequence at all.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Editing generated cards</h3>
+                <p className="text-sm text-ink-soft">
+                  Cards generated from a sequence are read-only in the card editor and carry a
+                  sequence badge wherever they appear. To change their content, edit the sequence
+                  itself — Lacuna regenerates the affected cards and keeps their memory state
+                  intact.
                 </p>
               </div>
             </div>
