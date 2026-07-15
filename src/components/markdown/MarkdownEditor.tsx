@@ -34,6 +34,10 @@ interface MarkdownEditorProps {
   onTabBackward?: () => void;
   /** Ctrl/Cmd+Enter inside the textarea; preventDefault is applied for you. */
   onModEnter?: () => void;
+  /** Accessible name for editors whose surrounding visual label is not a native label. */
+  ariaLabel?: string;
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
 }
 
 type ToolbarAction = {
@@ -89,6 +93,9 @@ export function MarkdownEditor({
   onTabForward,
   onTabBackward,
   onModEnter,
+  ariaLabel,
+  ariaInvalid,
+  ariaDescribedBy,
 }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -456,6 +463,9 @@ export function MarkdownEditor({
             onDragLeave={() => setDragOver(false)}
             placeholder={placeholder}
             aria-keyshortcuts={onModEnter ? 'Control+Enter Meta+Enter' : undefined}
+            aria-label={ariaLabel}
+            aria-invalid={ariaInvalid || undefined}
+            aria-describedby={ariaDescribedBy}
             rows={rows}
             spellCheck
             className={cn(

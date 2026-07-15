@@ -580,8 +580,10 @@ element a turn as the recall target with local context as the cue.
   generated cards under their owning sequence (`SequenceCardGroup`) rather than listing
   them loose (§12).
 - **Quick entry:** the add control follows the item list, so it remains beside the current
-  working position. Adding an item focuses it and scrolls it into view. `Ctrl/Cmd+Enter`
-  from an item's value editor inserts and focuses the next item directly after it; the
+  working position, while each row also offers an add-below control. Adding an item focuses
+  it and scrolls it into view without overriding reduced-motion preferences.
+  `Ctrl/Cmd+Enter` from a non-empty item's value editor inserts and focuses the next item
+  directly after it; an empty item is marked invalid instead of creating blank chains. The
   shortcut is scoped to item content and does not fire from sequence metadata fields.
 
 ### Deck and Folder (legacy backing structures, no UI)

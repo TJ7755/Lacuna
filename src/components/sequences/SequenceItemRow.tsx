@@ -4,7 +4,7 @@
 // mirrors the notes list's NoteRow split.
 
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
-import { ChevronDownIcon, TrashIcon } from '../ui/icons';
+import { ChevronDownIcon, PlusIcon, TrashIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import type { Ref } from 'react';
 import type { SequenceItem } from '../../db/types';
@@ -21,6 +21,7 @@ interface SequenceItemRowProps {
   onMoveDown: () => void;
   onAddAfter: () => void;
   inputRef: Ref<HTMLTextAreaElement>;
+  invalid: boolean;
 }
 
 export function SequenceItemRow({
@@ -35,44 +36,39 @@ export function SequenceItemRow({
   onMoveDown,
   onAddAfter,
   inputRef,
+  invalid,
 }: SequenceItemRowProps) {
+  const errorId = `sequence-item-${item.id}-error`;
+
   return (
-    <div className="rounded-xl border border-line bg-surface p-4">
-      <div className="mb-3 flex items-center gap-2">
+    <div
+      className={cn(
+        'rounded-xl border bg-surface p-4',
+        invalid ? 'border-negative/50' : 'border-line',
+      )}
+    >
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-ink/5 px-1.5 text-xs font-medium text-ink-faint">
           {index + 1}
         </span>
-        <input
-          type="text"
-          value={item.label ?? ''}
-          onChange={(e) => onChange({ label: e.target.value || undefined })}
-          placeholder="Label (optional)"
-          className="w-40 rounded-lg border border-line bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-accent"
-        />
-        {chunkLabels.length > 0 && (
-          <select
-            value={item.chunkIndex ?? ''}
-            onChange={(e) =>
-              onChange({ chunkIndex: e.target.value === '' ? undefined : Number(e.target.value) })
-            }
-            className="rounded-lg border border-line bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-accent"
+        <span className="text-sm font-medium text-ink-soft">Item {index + 1}</span>
+        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-0.5">
+          <button
+            type="button"
+            onClick={onAddAfter}
+            title="Add item below"
+            aria-label={`Add item below item ${index + 1}`}
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-accent-soft hover:text-accent"
           >
-            <option value="">No chunk</option>
-            {chunkLabels.map((label, i) => (
-              <option key={i} value={i}>
-                {label}
-              </option>
-            ))}
-          </select>
-        )}
-        <div className="ml-auto flex shrink-0 items-center gap-0.5">
+            <PlusIcon width={15} height={15} />
+          </button>
           <button
             type="button"
             onClick={onMoveUp}
             disabled={isFirst}
             title="Move up"
             className={cn(
-              'flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
+              'flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
               'disabled:pointer-events-none disabled:opacity-30',
             )}
           >
@@ -84,7 +80,7 @@ export function SequenceItemRow({
             disabled={isLast}
             title="Move down"
             className={cn(
-              'flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
+              'flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
               'disabled:pointer-events-none disabled:opacity-30',
             )}
           >
@@ -94,20 +90,54 @@ export function SequenceItemRow({
             type="button"
             onClick={onDelete}
             title="Delete item"
-            className="flex h-9 w-8 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
           >
             <TrashIcon width={14} height={14} />
           </button>
         </div>
       </div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <input
+          type="text"
+          value={item.label ?? ''}
+          onChange={(e) => onChange({ label: e.target.value || undefined })}
+          placeholder="Label (optional)"
+          className="min-h-11 min-w-[10rem] flex-1 rounded-lg border border-line bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+        />
+        {chunkLabels.length > 0 && (
+          <select
+            value={item.chunkIndex ?? ''}
+            onChange={(e) =>
+              onChange({ chunkIndex: e.target.value === '' ? undefined : Number(e.target.value) })
+            }
+            aria-label={`Chunk for item ${index + 1}`}
+            className="min-h-11 min-w-[10rem] flex-1 rounded-lg border border-line bg-transparent px-3 py-2 text-sm outline-none focus:border-accent sm:flex-none"
+          >
+            <option value="">No chunk</option>
+            {chunkLabels.map((label, i) => (
+              <option key={i} value={i}>
+                {label}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
       <MarkdownEditor
         inputRef={inputRef}
+        ariaLabel={`Item ${index + 1} content`}
+        ariaInvalid={invalid}
+        ariaDescribedBy={invalid ? errorId : undefined}
         value={item.value}
         onChange={(value) => onChange({ value })}
         onModEnter={onAddAfter}
         minRows={2}
         placeholder="Item content. Markdown, maths and images are supported."
       />
+      {invalid && (
+        <p id={errorId} role="alert" className="mt-2 text-sm text-negative">
+          Enter item content before adding another.
+        </p>
+      )}
     </div>
   );
 }

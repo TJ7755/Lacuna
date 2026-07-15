@@ -37,12 +37,18 @@ vi.mock('../components/markdown/MarkdownEditor', () => ({
     placeholder,
     inputRef,
     onModEnter,
+    ariaLabel,
+    ariaInvalid,
+    ariaDescribedBy,
   }: {
     value: string;
     onChange: (v: string) => void;
     placeholder?: string;
     inputRef?: Ref<HTMLTextAreaElement>;
     onModEnter?: () => void;
+    ariaLabel?: string;
+    ariaInvalid?: boolean;
+    ariaDescribedBy?: string;
   }) => (
     <textarea
       ref={inputRef}
@@ -55,6 +61,9 @@ vi.mock('../components/markdown/MarkdownEditor', () => ({
         }
       }}
       aria-keyshortcuts={onModEnter ? 'Control+Enter Meta+Enter' : undefined}
+      aria-label={ariaLabel}
+      aria-invalid={ariaInvalid || undefined}
+      aria-describedby={ariaDescribedBy}
       placeholder={placeholder}
     />
   ),
@@ -124,12 +133,16 @@ describe('SequenceEditor', () => {
     expect(screen.getByRole('heading', { name: 'New sequence' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('e.g. The Krebs cycle')).toBeInTheDocument();
     expect(itemsHeading(1)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Item 1 content' })).toBeInTheDocument();
   });
 
   it('adds an item beside the working position, focuses it and scrolls it into view', () => {
     mockCourse = course;
     renderNew();
 
+    fireEvent.change(screen.getByRole('textbox', { name: 'Item 1 content' }), {
+      target: { value: 'First' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
     expect(itemsHeading(2)).toBeInTheDocument();
 
@@ -138,6 +151,29 @@ describe('SequenceEditor', () => {
     );
     expect(values[1]).toHaveFocus();
     expect(values[1].scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'nearest' });
+    expect(values[1]).toHaveAccessibleName('Item 2 content');
+  });
+
+  it('inserts below the selected row with an obvious per-row control', () => {
+    mockCourse = course;
+    renderNew();
+
+    const first = screen.getByRole('textbox', { name: 'Item 1 content' });
+    fireEvent.change(first, { target: { value: 'First' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
+    let values = screen.getAllByPlaceholderText(
+      'Item content. Markdown, maths and images are supported.',
+    );
+    fireEvent.change(values[1], { target: { value: 'Third' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add item below item 1' }));
+    values = screen.getAllByPlaceholderText(
+      'Item content. Markdown, maths and images are supported.',
+    );
+    expect(values).toHaveLength(3);
+    expect(values[0]).toHaveValue('First');
+    expect(values[1]).toHaveFocus();
+    expect(values[2]).toHaveValue('Third');
   });
 
   it('adds and focuses consecutive items with Ctrl/Cmd+Enter from the value editor', () => {
@@ -184,15 +220,39 @@ describe('SequenceEditor', () => {
     expect(itemsHeading(1)).toBeInTheDocument();
   });
 
+  it('marks empty quick entry invalid and does not create blank chains', () => {
+    mockCourse = course;
+    renderNew();
+
+    const first = screen.getByRole('textbox', { name: 'Item 1 content' });
+    fireEvent.keyDown(first, { key: 'Enter', ctrlKey: true });
+    fireEvent.keyDown(first, { key: 'Enter', ctrlKey: true });
+
+    expect(itemsHeading(1)).toBeInTheDocument();
+    expect(first).toHaveFocus();
+    expect(first).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Enter item content before adding another.',
+    );
+
+    fireEvent.change(first, { target: { value: 'Now valid' } });
+    expect(first).not.toHaveAttribute('aria-invalid');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    fireEvent.keyDown(first, { key: 'Enter', metaKey: true });
+    expect(itemsHeading(2)).toBeInTheDocument();
+  });
+
   it('preserves reordering and deletion after quick entry', () => {
     mockCourse = course;
     renderNew();
 
+    fireEvent.change(screen.getByRole('textbox', { name: 'Item 1 content' }), {
+      target: { value: 'First' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Add another item' }));
     const values = screen.getAllByPlaceholderText(
       'Item content. Markdown, maths and images are supported.',
     );
-    fireEvent.change(values[0], { target: { value: 'First' } });
     fireEvent.change(values[1], { target: { value: 'Second' } });
 
     // Move the second item up so it becomes first.

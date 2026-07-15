@@ -16,6 +16,7 @@ import { DangerZoneSection } from './settings/DangerZoneSection';
 import { SequenceItemRow } from '../components/sequences/SequenceItemRow';
 import { ChevronLeftIcon, PlusIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { makeId } from '../db/schema';
 import { generateCards } from '../db/sequenceGeneration';
 import {
@@ -51,8 +52,11 @@ export function SequenceEditor() {
   const [generateLabelCards, setGenerateLabelCards] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [invalidItems, setInvalidItems] = useState<Set<string>>(() => new Set());
   const itemInputs = useRef(new Map<string, HTMLTextAreaElement>());
   const pendingItemFocus = useRef<string | null>(null);
+  const [motionSpeed] = useMotionSpeed();
+  const reduceMotion = speedMultiplier(motionSpeed) === 0;
 
   // Seed the form from the sequence being edited once it has loaded (new sequences start
   // with one blank item, since a sequence with zero items generates no cards).
@@ -83,8 +87,8 @@ export function SequenceEditor() {
     if (!input) return;
     pendingItemFocus.current = null;
     input.focus({ preventScroll: true });
-    input.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [items]);
+    input.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+  }, [items, reduceMotion]);
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/bank`;
@@ -149,9 +153,25 @@ export function SequenceEditor() {
 
   function updateItem(id: string, patch: Partial<SequenceItem>) {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+    if (patch.value?.trim()) {
+      setInvalidItems((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
   }
 
   function addItem(afterId?: string) {
+    const precedingItem = afterId
+      ? items.find((item) => item.id === afterId)
+      : items[items.length - 1];
+    if (precedingItem && !precedingItem.value.trim()) {
+      setInvalidItems((prev) => new Set(prev).add(precedingItem.id));
+      itemInputs.current.get(precedingItem.id)?.focus();
+      return;
+    }
     const item = { id: makeId(), value: '' };
     pendingItemFocus.current = item.id;
     setItems((prev) => {
@@ -166,6 +186,12 @@ export function SequenceEditor() {
 
   function deleteItem(id: string) {
     setItems((prev) => prev.filter((i) => i.id !== id));
+    setInvalidItems((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   }
 
   function moveItem(id: string, direction: 'up' | 'down') {
@@ -377,6 +403,7 @@ export function SequenceEditor() {
                   onMoveUp={() => moveItem(item.id, 'up')}
                   onMoveDown={() => moveItem(item.id, 'down')}
                   onAddAfter={() => addItem(item.id)}
+                  invalid={invalidItems.has(item.id)}
                   inputRef={(input) => {
                     if (input) itemInputs.current.set(item.id, input);
                     else itemInputs.current.delete(item.id);
