@@ -23,6 +23,16 @@ interface UseVirtualListResult {
   scrollToIndex: (index: number) => void;
 }
 
+function scrollParent(element: HTMLElement): HTMLElement | Window {
+  let parent = element.parentElement;
+  while (parent) {
+    const overflowY = getComputedStyle(parent).overflowY;
+    if (overflowY === 'auto' || overflowY === 'scroll') return parent;
+    parent = parent.parentElement;
+  }
+  return window;
+}
+
 /**
  * A lightweight, dependency-free virtual list hook that tracks scroll position
  * and renders only visible items. Items are absolutely positioned with translateY
@@ -39,54 +49,76 @@ export function useVirtualList({
   const itemHeights = useRef<Record<number, number>>({});
   const measureCallbacks = useRef(new Map<number, (el: HTMLElement | null) => void>());
 
-  // Clear cached heights when the item count changes to avoid stale data.
-  useEffect(() => {
-    itemHeights.current = {};
-    measureCallbacks.current.clear();
-  }, [itemCount]);
   const [scrollOffset, setScrollOffset] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
-  const [, setMeasureVersion] = useState(0);
+  const [measureVersion, setMeasureVersion] = useState(0);
 
-  // Track scroll position via window scroll (page-flow virtualisation)
+  // Clear cached heights when the item count changes. Keep the stable ref
+  // callbacks: discarding them here loses their ResizeObservers without giving
+  // React a chance to invoke the old callback with null.
+  useEffect(() => {
+    itemHeights.current = {};
+    setMeasureVersion((version) => version + 1);
+  }, [itemCount]);
+
+  // Track the nearest scrolling ancestor. AppShell scrolls its <main>, not the
+  // window, so listening only on window leaves a large list frozen at its first range.
   useEffect(() => {
     if (!enabled) return;
     const el = containerRef.current;
     if (!el) return;
+    const root = scrollParent(el);
     let raf: number | null = null;
     const onScroll = () => {
       if (raf !== null) return;
       raf = requestAnimationFrame(() => {
         raf = null;
         const rect = el.getBoundingClientRect();
-        const offset = Math.max(0, -rect.top);
+        const rootRect = root instanceof Window
+          ? { top: 0, bottom: window.innerHeight, height: window.innerHeight }
+          : root.getBoundingClientRect();
+        const offset = Math.max(0, rootRect.top - rect.top);
         setScrollOffset(offset);
-        setContainerHeight(window.innerHeight);
+        setContainerHeight(rootRect.height);
       });
     };
-    window.addEventListener('scroll', onScroll, { passive: true });
+    root.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
     onScroll();
     return () => {
-      window.removeEventListener('scroll', onScroll);
+      root.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       if (raf !== null) cancelAnimationFrame(raf);
     };
   }, [enabled]);
 
-  // Measure individual item heights — callbacks are memoised per index so React
-  // does not treat them as new refs on every render, which avoids ref thrashing
-  // and repeated getBoundingClientRect calls.
+  // Measure individual item heights and observe subsequent changes. Cards can
+  // expand and font scaling can reflow them after mount, so a one-shot ref
+  // measurement is insufficient for an absolutely positioned list.
   const measureRef = useCallback(
     (index: number) => {
       if (!measureCallbacks.current.has(index)) {
-        measureCallbacks.current.set(index, (el: HTMLElement | null) => {
-          if (!el) return;
-          const height = el.getBoundingClientRect().height;
+        let observer: ResizeObserver | null = null;
+        let currentElement: HTMLElement | null = null;
+        const updateHeight = (height: number) => {
           const prev = itemHeights.current[index];
-          if (prev !== height) {
-            itemHeights.current[index] = height;
-            setMeasureVersion((v) => v + 1);
+          if (prev === height) return;
+          itemHeights.current[index] = height;
+          setMeasureVersion((v) => v + 1);
+        };
+        measureCallbacks.current.set(index, (el: HTMLElement | null) => {
+          if (el === currentElement) return;
+          observer?.disconnect();
+          observer = null;
+          currentElement = el;
+          if (!el) return;
+          updateHeight(el.getBoundingClientRect().height);
+          if (typeof ResizeObserver !== 'undefined') {
+            observer = new ResizeObserver((entries) => {
+              const entry = entries[0];
+              if (entry) updateHeight(entry.contentRect.height);
+            });
+            observer.observe(el);
           }
         });
       }
@@ -97,6 +129,8 @@ export function useVirtualList({
 
   // Recalculate layout when measurements change
   const { totalHeight, virtualItems } = useMemo(() => {
+    // The version is the reactive counterpart to the height cache held in a ref.
+    void measureVersion;
     if (!enabled) {
       return {
         totalHeight: 0,
@@ -167,7 +201,16 @@ export function useVirtualList({
     }
 
     return { totalHeight: total, virtualItems: items };
-  }, [enabled, itemCount, estimateSize, gap, overscan, scrollOffset, containerHeight]);
+  }, [
+    enabled,
+    itemCount,
+    estimateSize,
+    gap,
+    overscan,
+    scrollOffset,
+    containerHeight,
+    measureVersion,
+  ]);
 
   const scrollToIndex = useCallback(
     (index: number) => {
@@ -178,7 +221,13 @@ export function useVirtualList({
         offset += (itemHeights.current[i] ?? estimateSize) + gap;
       }
       const containerTop = el.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({ top: containerTop + offset, behavior: 'smooth' });
+      const root = scrollParent(el);
+      if (root instanceof Window) {
+        window.scrollTo({ top: containerTop + offset, behavior: 'smooth' });
+      } else {
+        const relativeTop = el.getBoundingClientRect().top - root.getBoundingClientRect().top;
+        root.scrollTo({ top: root.scrollTop + relativeTop + offset, behavior: 'smooth' });
+      }
     },
     [estimateSize, gap],
   );
