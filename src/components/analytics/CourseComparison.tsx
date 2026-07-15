@@ -247,6 +247,7 @@ export function CourseComparison({ courses, cards }: CourseComparisonProps) {
       emptyMessage="Create at least two courses to compare them."
       delay={0}
       className="h-auto"
+      compactEmpty
     >
       <div className="space-y-4">
         <div className="flex flex-wrap gap-3">

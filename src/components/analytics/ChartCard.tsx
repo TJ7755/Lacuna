@@ -12,6 +12,7 @@ export function ChartCard({
   children,
   delay = 0,
   className,
+  compactEmpty = false,
 }: {
   title: string;
   description?: string;
@@ -20,6 +21,8 @@ export function ChartCard({
   children: ReactNode;
   delay?: number;
   className?: string;
+  /** Use for explanatory empty states that do not need to reserve chart height. */
+  compactEmpty?: boolean;
 }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -35,7 +38,11 @@ export function ChartCard({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.24 * m, delay: (d + 0.1) * m }}
-          className={cn('grid h-64 min-h-[14rem] place-items-center text-sm text-ink-faint', className)}
+          className={cn(
+            'grid place-items-center text-sm text-ink-faint',
+            compactEmpty ? 'min-h-24 py-6' : 'h-64 min-h-[14rem]',
+            className,
+          )}
         >
           {emptyMessage ?? 'Not enough data yet.'}
         </motion.div>

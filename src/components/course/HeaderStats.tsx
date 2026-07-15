@@ -1,7 +1,6 @@
 // Stat pills for the course/lesson headers (CoursePath, LessonView),
-// replacing the old fieldStandfirst editorial sentence with a row of
-// small labelled cards. Same inputs as fieldStandfirst, plus optional
-// lesson progress. British English throughout.
+// replacing the old editorial sentence with a row of small labelled cards.
+// Supports optional lesson progress. British English throughout.
 
 import {
   HourglassIcon,
@@ -69,20 +68,20 @@ export function HeaderStats({
   }
 
   // Pill count is always 3-5: due/mastery/days-to-go are permanent, unmapped
-  // and lesson-progress are conditional. Grid columns are keyed to that count
-  // so rows come out full or evenly balanced (e.g. 3+2, not a 4+1 orphan)
-  // rather than left-aligned flex-wrap ragged rows. Columns are max-content,
-  // not fractions, so pills are never squeezed into wrapping their labels.
+  // and lesson-progress are conditional. Small screens wrap naturally because
+  // even three max-content pills cannot reliably fit inside the padded header.
+  // From sm upwards, keyed grid columns keep rows evenly balanced (e.g. 3+2,
+  // not a 4+1 orphan) without squeezing labels.
   const pillCount = 3 + (unseenCount > 0 ? 1 : 0) + (lessonProgress ? 1 : 0);
   const gridColsClass =
     pillCount === 5
-      ? 'grid-cols-[repeat(3,max-content)]'
+      ? 'sm:grid-cols-[repeat(3,max-content)]'
       : pillCount === 4
-        ? 'grid-cols-[repeat(2,max-content)] md:grid-cols-[repeat(4,max-content)]'
-        : 'grid-cols-[repeat(3,max-content)]';
+        ? 'sm:grid-cols-[repeat(2,max-content)] md:grid-cols-[repeat(4,max-content)]'
+        : 'sm:grid-cols-[repeat(3,max-content)]';
 
   return (
-    <div className={cn('grid gap-2', gridColsClass, className)}>
+    <div className={cn('flex max-w-full flex-wrap gap-2 sm:grid', gridColsClass, className)}>
       <Pill
         icon={<HourglassIcon width={15} height={15} />}
         value={dueCount === 0 ? 'Nothing' : String(dueCount)}
