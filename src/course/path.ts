@@ -401,6 +401,7 @@ export function buildPath(
   // is undefined or precedes the first lesson (addendum L §2).
   const manualPlacements: Placement[] = practiceNodes
     .filter((pn) => pn.type === 'manual')
+    .sort((left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id))
     .map((pn) => {
       const afterIndex = lessonIndexAtOrBeforePosition(sorted, pn.position);
       const afterLesson = lessonNodes[afterIndex];
@@ -541,17 +542,52 @@ export function practiceGateAfterLesson(
   lessons: Lesson[],
   practiceNodes: PracticeNode[],
   lessonId: string,
+  activeNodeKeys?: ReadonlySet<string>,
 ): boolean {
-  const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
-  if (!sorted.some((l) => l.id === lessonId)) return false;
+  return manualPracticeGateKeysAfterLesson(lessons, practiceNodes, lessonId).some(
+    (nodeKey) => activeNodeKeys === undefined || activeNodeKeys.has(nodeKey),
+  );
+}
 
-  const manualNodes = practiceNodes.filter((pn) => pn.type === 'manual');
+/** Stable identities of the manual Practice nodes placed directly after a lesson. */
+export function manualPracticeGateKeysAfterLesson(
+  lessons: Lesson[],
+  practiceNodes: PracticeNode[],
+  lessonId: string,
+): string[] {
+  const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
+  if (!sorted.some((l) => l.id === lessonId)) return [];
+
+  const result: string[] = [];
+  const manualNodes = practiceNodes
+    .filter((pn) => pn.type === 'manual')
+    .sort((left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id));
   for (const pn of manualNodes) {
     if (pn.position === undefined) continue;
     const afterIndex = lessonIndexAtOrBeforePosition(sorted, pn.position);
-    if (afterIndex >= 0 && sorted[afterIndex].id === lessonId) return true;
+    if (afterIndex >= 0 && sorted[afterIndex].id === lessonId) result.push(pn.id);
   }
-  return false;
+  return result;
+}
+
+/**
+ * Result for the semi-linear gate after one lesson. `undefined` means there is
+ * no active manual gate; otherwise every active node in the slot must have a
+ * completed milestone. This prevents completing one Practice node from
+ * satisfying unrelated checkpoints elsewhere in the course.
+ */
+export function manualPracticeGateOutcomeAfterLesson(
+  lessons: Lesson[],
+  practiceNodes: PracticeNode[],
+  lessonId: string,
+  activeNodeKeys: ReadonlySet<string>,
+  completedNodeKeys: ReadonlySet<string>,
+): boolean | undefined {
+  const activeGateKeys = manualPracticeGateKeysAfterLesson(lessons, practiceNodes, lessonId).filter(
+    (nodeKey) => activeNodeKeys.has(nodeKey),
+  );
+  if (activeGateKeys.length === 0) return undefined;
+  return activeGateKeys.every((nodeKey) => completedNodeKeys.has(nodeKey));
 }
 
 // ---------------------------------------------------------------------------

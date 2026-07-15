@@ -58,13 +58,7 @@ vi.mock('../components/dashboard/ReviewHeatmap', () => ({
 }));
 
 vi.mock('../components/course/CourseCard', () => ({
-  CourseCard: ({
-    course,
-    onClick,
-  }: {
-    course: Course;
-    onClick: () => void;
-  }) => (
+  CourseCard: ({ course, onClick }: { course: Course; onClick: () => void }) => (
     <button type="button" onClick={onClick} data-testid="course-card">
       {course.name}
     </button>
@@ -181,7 +175,7 @@ describe('Dashboard', () => {
     expect(screen.getByText('Courses')).toBeInTheDocument();
   });
 
-  it('shows study-all strip when eligible cards exist across courses', () => {
+  it('shows the separate cross-course review entry when eligible cards exist', () => {
     mockCourseDashboardData = {
       courses: [mockCourse],
       lessons: [],
@@ -193,11 +187,28 @@ describe('Dashboard', () => {
     };
     render(<Dashboard />);
     expect(screen.getByText('7 due')).toBeInTheDocument();
-    expect(screen.getByText('Study all')).toBeInTheDocument();
+    expect(screen.getByText('Review all')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Review all'));
+    expect(mockNavigate).toHaveBeenCalledWith('/learn');
   });
 
   it('shows review heatmap when any card has history', () => {
-    const cardWithHistory: Card = { ...mockCard, history: [{ timestamp: Date.now(), grade: 3, responseTimeSec: 5, distracted: false, stabilityBefore: null, stabilityAfter: 1, difficultyBefore: null, difficultyAfter: 5, retrievabilityAtReview: null }] };
+    const cardWithHistory: Card = {
+      ...mockCard,
+      history: [
+        {
+          timestamp: Date.now(),
+          grade: 3,
+          responseTimeSec: 5,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 1,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    };
     mockCourseDashboardData = {
       courses: [mockCourse],
       lessons: [],

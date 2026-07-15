@@ -192,11 +192,20 @@ export function LessonView({
               <Button
                 variant="primary"
                 size="lg"
-                onClick={() => navigate(`/lesson/${lessonId}/learn?mode=simple`)}
+                onClick={() => navigate(`/course/${courseId}/study`)}
               >
                 <PlayIcon width={18} height={18} />
                 Study now
               </Button>
+              {lessonDueCount > 0 && (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => navigate(`/course/${courseId}/study?review=due`)}
+                >
+                  Review due cards
+                </Button>
+              )}
               {/* The due count already leads the stat pills above, so this line
                 only speaks when there is something the pills don't say. */}
               {(lessonCards.length === 0 || lessonDueCount === 0) && (

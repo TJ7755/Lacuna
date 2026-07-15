@@ -6,6 +6,8 @@ import {
   buildPath,
   pathPosition,
   practiceGateAfterLesson,
+  manualPracticeGateKeysAfterLesson,
+  manualPracticeGateOutcomeAfterLesson,
   KNOWN_NODE_TYPES,
   nearestExamDate,
   examIsUrgent,
@@ -694,6 +696,50 @@ describe('practiceGateAfterLesson', () => {
   it('returns false for an unknown lesson id', () => {
     const manual = makePracticeNode({ id: 'pn1', courseId: 'c1', type: 'manual', position: 1 });
     expect(practiceGateAfterLesson(lessons, [manual], 'not-a-lesson')).toBe(false);
+  });
+
+  it('does not let one completed node satisfy another manual gate', () => {
+    const first = makePracticeNode({
+      id: 'first',
+      courseId: 'c1',
+      type: 'manual',
+      position: 0,
+    });
+    const second = makePracticeNode({
+      id: 'second',
+      courseId: 'c1',
+      type: 'manual',
+      position: 1,
+    });
+    const active = new Set(['first', 'second']);
+
+    expect(manualPracticeGateKeysAfterLesson(lessons, [first, second], 'l2')).toEqual(['second']);
+    expect(
+      manualPracticeGateOutcomeAfterLesson(
+        lessons,
+        [first, second],
+        'l2',
+        active,
+        new Set(['first']),
+      ),
+    ).toBe(false);
+    expect(
+      manualPracticeGateOutcomeAfterLesson(
+        lessons,
+        [first, second],
+        'l1',
+        active,
+        new Set(['first']),
+      ),
+    ).toBe(true);
+  });
+
+  it('treats latent manual nodes as non-gating', () => {
+    const manual = makePracticeNode({ id: 'pn1', courseId: 'c1', type: 'manual', position: 1 });
+    expect(practiceGateAfterLesson(lessons, [manual], 'l2', new Set())).toBe(false);
+    expect(
+      manualPracticeGateOutcomeAfterLesson(lessons, [manual], 'l2', new Set(), new Set()),
+    ).toBeUndefined();
   });
 });
 

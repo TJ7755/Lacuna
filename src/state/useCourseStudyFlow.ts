@@ -1,0 +1,163 @@
+import { useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/schema';
+import { availableCards, dueCards } from '../fsrs/eligibility';
+import { buildDeckSecondsMap } from '../fsrs/stats';
+import { makeExamDateContext } from '../fsrs/examDate';
+import { buildPath, nearestExamDate } from '../course/path';
+import { lessonCardMembership } from '../course/studyPools';
+import {
+  buildCourseStudyFlowSnapshot,
+  courseMeanReviewSeconds,
+  type CourseStudyFlowSnapshot,
+} from '../course/studyFlowSnapshot';
+import { planNextStudyStep, type StudyFlowDecision } from '../course/studyFlowPlanner';
+import type {
+  Course,
+  Lesson,
+  Card,
+  CourseExamDate,
+  LessonCardLink,
+  LessonCardExposure,
+  LessonCompletion,
+  PracticeNode,
+  PracticeMilestone,
+  UserPerformance,
+} from '../db/types';
+
+interface CourseStudyFlowData {
+  course: Course;
+  snapshot: CourseStudyFlowSnapshot;
+  decision: StudyFlowDecision;
+  generation: number;
+}
+
+interface CourseStudyFlowRecords {
+  course: Course | null;
+  lessons: Lesson[];
+  cards: Card[];
+  examDates: CourseExamDate[];
+  links: LessonCardLink[];
+  exposures: LessonCardExposure[];
+  completions: LessonCompletion[];
+  practiceNodes: PracticeNode[];
+  milestones: PracticeMilestone[];
+  performance: UserPerformance[];
+}
+
+/** Loads one authoritative course snapshot for both preview and conductor decisions. */
+export function useCourseStudyFlow(
+  courseId: string | undefined,
+  refreshKey = 0,
+): CourseStudyFlowData | null | undefined {
+  const records = useLiveQuery<CourseStudyFlowRecords>(async () => {
+    if (!courseId) {
+      return {
+        course: null,
+        lessons: [],
+        cards: [],
+        examDates: [],
+        links: [],
+        exposures: [],
+        completions: [],
+        practiceNodes: [],
+        milestones: [],
+        performance: [],
+      };
+    }
+    const course = (await db.courses.get(courseId)) ?? null;
+    if (!course) {
+      return {
+        course: null,
+        lessons: [],
+        cards: [],
+        examDates: [],
+        links: [],
+        exposures: [],
+        completions: [],
+        practiceNodes: [],
+        milestones: [],
+        performance: [],
+      };
+    }
+    const [lessons, cards, examDates, practiceNodes, milestones] = await Promise.all([
+      db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
+      db.cards.where('courseId').equals(courseId).toArray(),
+      db.courseExamDates.where('courseId').equals(courseId).toArray(),
+      db.practiceNodes.where('courseId').equals(courseId).toArray(),
+      db.practiceMilestones.where('courseId').equals(courseId).toArray(),
+    ]);
+    const lessonIds = lessons.map((lesson) => lesson.id);
+    const deckIds = [...new Set(cards.map((card) => card.deckId))];
+    const [links, exposures, completions, performance] = await Promise.all([
+      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+      lessonIds.length > 0
+        ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
+        : [],
+      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
+      deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
+    ]);
+    return {
+      course,
+      lessons,
+      cards,
+      examDates,
+      links,
+      exposures,
+      completions,
+      practiceNodes,
+      milestones,
+      performance,
+    };
+  }, [courseId, refreshKey]);
+
+  return useMemo(() => {
+    if (records === undefined) return undefined;
+    if (!records.course) return null;
+    const now = Date.now();
+    const lessonCardsById = new Map(
+      records.lessons.map((lesson) => [
+        lesson.id,
+        lessonCardMembership(lesson.id, records.cards, records.links),
+      ]),
+    );
+    const reviewDueCount = dueCards(availableCards(records.cards, now), now).length;
+    const meanReviewSeconds = courseMeanReviewSeconds(
+      records.cards,
+      buildDeckSecondsMap(records.performance),
+    );
+    const nodes = buildPath(
+      records.course,
+      records.lessons,
+      records.examDates,
+      lessonCardsById,
+      records.practiceNodes,
+      reviewDueCount,
+      meanReviewSeconds,
+      now,
+      {
+        exposures: records.exposures,
+        lessonCompletions: records.completions,
+        practiceMilestones: records.milestones,
+      },
+    );
+    const snapshot = buildCourseStudyFlowSnapshot({
+      course: records.course,
+      nodes,
+      cards: records.cards,
+      links: records.links,
+      exposures: records.exposures,
+      examDateContext: makeExamDateContext(records.course, records.lessons, records.examDates),
+      meanReviewSeconds,
+      practiceMilestones: records.milestones,
+      nearestExamDate: nearestExamDate(records.course, records.examDates, now),
+      now,
+    });
+    return {
+      course: records.course,
+      snapshot,
+      decision: planNextStudyStep(snapshot),
+      generation: refreshKey,
+    };
+  }, [records, refreshKey]);
+}

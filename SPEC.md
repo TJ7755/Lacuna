@@ -369,18 +369,27 @@ keyboard equivalent with live announcements. Reordering persists through the sam
 Practice nodes therefore follow their existing derived placement rules, while manual
 Practice positions and one-way lesson unlock ratchets are deliberately left unchanged.
 
-The course header has one **Study now** action. It examines the next available path node:
-an available lesson opens the lesson-study flow (notes, then Simple-mode cards), while a
-Practice node opens the ordinary Learn Mode engine over that node's practice pool. This
-dispatcher exists only at course level; lesson rows do not duplicate it. Dynamic analytics
-inside the dispatcher are out of scope. Curricular Practice milestones complete once and are
-then skipped by the dispatcher; after all curricular nodes are complete, Study now provides
-a recurring end-of-course Practice fallback.
+The course header has one **Study now** action. It launches the persistent course study
+conductor at `/course/:courseId/study`. The conductor rebuilds its next-step decision from the
+authoritative course state after every completed lesson or Practice step; it never stores a
+fixed queue. Lesson notes, Simple recall, curricular Practice, recurring Practice, transition
+reports and Pomodoro breaks therefore form one continuous study period rather than unrelated
+routes. The learner leaves only through an explicit finish action. The step union reserves an
+`exam-questions` member for a future engine, but this version creates no placeholder questions
+or empty exam UI.
 
-Each Practice diamond has a perimeter indicator showing the current secured-card proportion
-across that node's full scope. A separate glow means its persisted milestone is complete.
-These signals are deliberately distinct: current readiness can decay, while completing a
-curricular milestone remains a fact about the learner's path progress.
+Curricular Practice uses a fixed lesson-prefix scope: only introduced cards from lessons at or
+before the checkpoint are eligible, further narrowed by an authored lesson selection. Later
+lessons therefore cannot revive an earlier milestone. Manual Practice checkpoints are
+conditional. In Study mode they appear and gate progression only when they have eligible work
+whose estimated review time crosses the course's near/far threshold, or when the checkpoint is
+the last relevant opportunity inside the urgent exam window. Zero-eligible and low-workload
+nodes remain latent and non-gating; they remain visible in Edit mode. Completed manual
+checkpoints remain visible as curriculum history. Automatic Practice is conductor scheduling
+machinery and is not rendered as a separate path diamond.
+
+**Review due cards** is a separate ad-hoc course-wide action. It creates no path node or
+milestone, may be launched at any time, and returns to the same conductor afterwards.
 
 Lessons are intentionally authored as short teaching passes. Practice is correspondingly
 more frequent, using the existing `practiceMaxGap`, `practiceThresholdMinutesFar` and
@@ -879,8 +888,10 @@ The existing `isDue`/`dueCards` helpers retain their narrower timestamp-based jo
 ## 10. Learn mode (`src/pages/LearnMode.tsx`, `src/fsrs/session.ts`, `cooldown.ts`)
 
 A Learn session may study a lesson, a course Practice node, a **single deck**, or **every
-deck at once** (the global "Today" session). FSRS-backed sessions run through one engine so
-ordering and progress stay objective-derived; lesson teaching uses the Simple-mode loop.
+deck at once** (the legacy global review session). FSRS-backed sessions run through one engine
+so ordering and progress stay objective-derived; lesson teaching uses the Simple-mode loop.
+Course-guided sessions run inside the persistent conductor, while direct legacy routes remain
+available for standalone entry.
 
 ### Session lifecycle
 1. **Load** a static snapshot of the deck(s) and their cards (an optional `?tag=`
@@ -890,7 +901,7 @@ ordering and progress stay objective-derived; lesson teaching uses the Simple-mo
    **report**.
 3. Otherwise **serve** cards one at a time until the objective is met or the user exits.
 
-For a lesson selected by **Study now**, the lifecycle starts with its notes in order. The
+For a lesson selected by the course conductor, the lifecycle starts with its notes in order. The
 learner may highlight source text and attach optional free-text annotations before moving to
 the card loop. Highlights and annotations persist on this device but are excluded from every
 portability format. The card loop then contains only lesson members without an exposure for
@@ -1135,14 +1146,18 @@ ordinary `front_back` cards to the scheduler.
 ## 12. Navigation, courses & card management
 
 - **Dashboard** lists courses in a responsive grid, each showing exam proximity, lesson
-  count and the objective progress bar; a global "Study all" entry point appears when
+  count and the objective progress bar; a global **Review all** entry point appears when
   cards are due across any course. Course order is a configurable dashboard setting
   (recent, ready to study, mastery, exam date, name, or created; §4.3).
+- **Study today** (`/study`) always asks which active course to study, shows due and curriculum
+  context, and launches that course's conductor directly. An interrupted conductor stores only
+  its course identity and timestamps, so resume always recalculates the next step from current
+  course state rather than trusting stale session data.
 - **Course path** (`/course/:courseId`) is the primary navigation surface within a course:
   an ordered sequence of lesson nodes, checkpoints and practice nodes (§4.3, §14).
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
-  cards. The course-level **Study now** dispatcher owns session entry and routes to this
-  lesson's notes-first teaching flow when it is the next available path node. In edit mode,
+  cards. The course-level conductor owns guided session entry and embeds this lesson's
+  notes-first teaching flow when it is the next available path step. In edit mode,
   **Link existing cards** opens a searchable course-card picker and adds selected ordinary
   cards (sequence-generated cards are excluded) as
   `LessonCardLink` memberships without moving their primary lesson or duplicating their FSRS

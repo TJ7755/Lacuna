@@ -19,10 +19,13 @@ import {
 import type { ReviewUndo } from '../db/repository';
 import { nextLessonUnlockCondition } from '../course/unlock';
 import {
+  buildPath,
   isLessonUnlocked,
   lessonEffectiveReleaseDates,
-  practiceGateAfterLesson,
+  manualPracticeGateOutcomeAfterLesson,
+  nearestExamDate,
 } from '../course/path';
+import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
 import {
   eligiblePracticePool,
   lessonCardMembership,
@@ -38,6 +41,8 @@ import { progressHeading } from '../fsrs/objective';
 import { makeExamDateContext, type ExamDateContext } from '../fsrs/examDate';
 import { makeSessionContext, selectNext, sessionComplete, sessionProgress } from '../fsrs/session';
 import type { SessionContext, SessionUnit } from '../fsrs/session';
+import { availableCards, dueCards } from '../fsrs/eligibility';
+import { buildDeckSecondsMap } from '../fsrs/stats';
 import { startOfDay } from '../utils/datetime';
 import { MS_PER_DAY } from '../fsrs/params';
 import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
@@ -118,13 +123,39 @@ interface AnswerSnapshot {
   deckReviews: number;
 }
 
-export function LearnMode() {
-  const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>();
+export type LearnSessionRequest =
+  | { kind: 'lesson'; lessonId: string }
+  | {
+      kind: 'practice';
+      courseId: string;
+      nodeKey?: string;
+      /** Fixed curricular prefix; omitted for recurring and ad-hoc course-wide review. */
+      scopeLessonIds?: string[];
+      mode: 'curricular' | 'recurring' | 'ad-hoc';
+    };
+
+interface LearnModeProps {
+  /** Supplied by CourseStudyFlow; omitted for the existing route-driven sessions. */
+  request?: LearnSessionRequest;
+  /** Emits only after progression writes have completed, so the caller can safely re-plan. */
+  onStepFinished?: (summary: SessionSummary) => void;
+  /** Leaves the whole continuous flow rather than merely ending the current step. */
+  onFlowExit?: () => void;
+}
+
+export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProps = {}) {
+  const routeParams = useParams<{ courseId: string; lessonId: string }>();
+  const courseId = request?.kind === 'practice' ? request.courseId : routeParams.courseId;
+  const lessonId = request?.kind === 'lesson' ? request.lessonId : routeParams.lessonId;
   const [searchParams] = useSearchParams();
   const tagFilter = searchParams.get('tag');
   const cramMode = searchParams.get('mode') === 'cram';
   const simpleModeParam = searchParams.get('mode') === 'simple';
-  const practiceNodeKeyParam = searchParams.get('practiceNode');
+  const practiceNodeKeyParam =
+    request?.kind === 'practice' && request.mode === 'curricular'
+      ? (request.nodeKey ?? null)
+      : searchParams.get('practiceNode');
+  const requestScopeLessonIds = request?.kind === 'practice' ? request.scopeLessonIds : undefined;
   const filterParams = useMemo(() => searchParams.getAll('filter') as CardFilter[], [searchParams]);
   const navigate = useNavigate();
   const distraction = useDistraction();
@@ -274,7 +305,10 @@ export function LearnMode() {
     : isCourseScoped
       ? `/course/${courseId}`
       : '/';
-  const backOut = useCallback(() => navigate(exitTo), [navigate, exitTo]);
+  const backOut = useCallback(() => {
+    if (onFlowExit) onFlowExit();
+    else navigate(exitTo);
+  }, [navigate, exitTo, onFlowExit]);
 
   const objectiveLabel = useCallback(() => {
     if (singleDeck) return progressHeading(singleDeck);
@@ -296,10 +330,9 @@ export function LearnMode() {
    *    when one does — the lesson session itself cannot have satisfied a
    *    practice objective, so the pair stays blocked until a practice session
    *    over that node reaches its goal (the branch below).
-   *  - Course-scoped (practice) completion: sweeps every adjacent lesson pair
-   *    with `practiceGoalReached: true`, ratcheting any successor whose
-   *    predecessor is taught — the "re-evaluate on practice objective reached"
-   *    hook described in nextLessonUnlockCondition's doc comment.
+   *  - Course-scoped completion re-evaluates each slot against the exact active
+   *    manual checkpoints in that slot. Completing one checkpoint can therefore
+   *    never satisfy an unrelated gate elsewhere in the course.
    */
   const ratchetUnlocks = useCallback(async (reachedGoal: boolean) => {
     if (!reachedGoal) return;
@@ -307,32 +340,75 @@ export function LearnMode() {
     if (!cId) return;
     const course = await db.courses.get(cId);
     if (!course || course.unlockMode !== 'semi-linear') return;
-    const coreLessons = (
-      await db.lessons.where('courseId').equals(cId).sortBy('orderIndex')
-    ).filter((l) => !l.isExtension);
+    const lessons = await db.lessons.where('courseId').equals(cId).sortBy('orderIndex');
+    const coreLessons = lessons.filter((lesson) => !lesson.isExtension);
     const lId = ratchetLessonIdRef.current;
     const now = Date.now();
     const lessonIds = coreLessons.map((lesson) => lesson.id);
-    const [courseCards, links, exposures, completions, practiceNodes] = await Promise.all([
-      db.cards.where('courseId').equals(cId).toArray(),
-      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-      lessonIds.length > 0
-        ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
-        : [],
-      lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-      lId ? db.practiceNodes.where('courseId').equals(cId).toArray() : [],
-    ]);
+    const [courseCards, links, exposures, completions, practiceNodes, examDates, milestones] =
+      await Promise.all([
+        db.cards.where('courseId').equals(cId).toArray(),
+        lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+        lessonIds.length > 0
+          ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
+          : [],
+        lessonIds.length > 0
+          ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray()
+          : [],
+        db.practiceNodes.where('courseId').equals(cId).toArray(),
+        db.courseExamDates.where('courseId').equals(cId).toArray(),
+        db.practiceMilestones.where('courseId').equals(cId).toArray(),
+      ]);
+    const deckIds = [...new Set(courseCards.map((card) => card.deckId))];
+    const performance =
+      deckIds.length > 0 ? await db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [];
+    const lessonCardsById = new Map(
+      lessons.map((lesson) => [lesson.id, lessonCardMembership(lesson.id, courseCards, links)]),
+    );
+    const meanReviewSeconds = courseMeanReviewSeconds(
+      courseCards,
+      buildDeckSecondsMap(performance),
+    );
+    const nodes = buildPath(
+      course,
+      lessons,
+      examDates,
+      lessonCardsById,
+      practiceNodes,
+      dueCards(availableCards(courseCards, now), now).length,
+      meanReviewSeconds,
+      now,
+      {
+        exposures,
+        lessonCompletions: completions,
+        practiceMilestones: milestones,
+      },
+    );
+    const snapshot = buildCourseStudyFlowSnapshot({
+      course,
+      nodes,
+      cards: courseCards,
+      links,
+      exposures,
+      examDateContext: makeExamDateContext(course, lessons, examDates),
+      meanReviewSeconds,
+      practiceMilestones: milestones,
+      nearestExamDate: nearestExamDate(course, examDates, now),
+      now,
+    });
     for (let i = 0; i < coreLessons.length - 1; i++) {
       const lessonN = coreLessons[i];
       const lessonN1 = coreLessons[i + 1];
       if (lessonN1.unlockedAt !== undefined) continue;
       if (lId && lessonN.id !== lId) continue;
       const lessonNCards = lessonCardMembership(lessonN.id, courseCards, links);
-      const practiceGoalReached = lId
-        ? practiceGateAfterLesson(coreLessons, practiceNodes, lessonN.id)
-          ? false
-          : undefined
-        : true;
+      const practiceGoalReached = manualPracticeGateOutcomeAfterLesson(
+        coreLessons,
+        practiceNodes,
+        lessonN.id,
+        snapshot.activeManualNodeKeys,
+        snapshot.completedManualNodeKeys,
+      );
       if (
         nextLessonUnlockCondition(
           lessonN.id,
@@ -376,6 +452,28 @@ export function LearnMode() {
     [],
   );
 
+  const finaliseSummary = useCallback(
+    (nextSummary: SessionSummary) => {
+      if (!mountedRef.current) return;
+      setCanUndo(false);
+      lastAnswer.current = null;
+      void (async () => {
+        if (practiceSessionRef.current) {
+          await persistPracticeMilestone(cardsRef.current, nextSummary.reachedGoal);
+        }
+        if (ratchetCourseIdRef.current) await ratchetUnlocks(nextSummary.reachedGoal);
+        if (!mountedRef.current) return;
+        if (onStepFinished) {
+          onStepFinished(nextSummary);
+          return;
+        }
+        setSummary(nextSummary);
+        setPhase('finished');
+      })();
+    },
+    [onStepFinished, persistPracticeMilestone, ratchetUnlocks],
+  );
+
   const finish = useCallback(
     (reachedGoal: boolean, limitReached = false, timeLimitReached = false) => {
       if (!mountedRef.current) return;
@@ -386,7 +484,7 @@ export function LearnMode() {
       const masteryAfter = ctx
         ? cachedSessionProgress(cardsRef.current, ctx)
         : progressBefore.current;
-      setSummary({
+      finaliseSummary({
         events: events.current,
         masteryBefore: progressBefore.current,
         masteryAfter,
@@ -398,24 +496,8 @@ export function LearnMode() {
         simpleMode: isSimpleMode,
         mode,
       });
-      setCanUndo(false);
-      lastAnswer.current = null;
-      if (!mountedRef.current) return;
-      setPhase('finished');
-      if (practiceSessionRef.current) {
-        void persistPracticeMilestone(cardsRef.current, reachedGoal);
-      }
-      if (ratchetCourseIdRef.current) void ratchetUnlocks(reachedGoal);
     },
-    [
-      objectiveLabel,
-      distraction,
-      cachedSessionProgress,
-      isSimpleMode,
-      mode,
-      persistPracticeMilestone,
-      ratchetUnlocks,
-    ],
+    [objectiveLabel, distraction, cachedSessionProgress, isSimpleMode, mode, finaliseSummary],
   );
 
   /** Present the next eligible card, or finish if the goal has been reached. */
@@ -518,12 +600,14 @@ export function LearnMode() {
       if (lessonId) {
         const lesson: Lesson | undefined = await db.lessons.get(lessonId);
         if (!lesson) {
-          navigate('/');
+          if (onFlowExit) onFlowExit();
+          else navigate('/');
           return;
         }
         const course = await db.courses.get(lesson.courseId);
         if (!course) {
-          navigate('/');
+          if (onFlowExit) onFlowExit();
+          else navigate('/');
           return;
         }
         setResolvedCourseId(course.id);
@@ -558,7 +642,8 @@ export function LearnMode() {
       } else if (courseId) {
         const course = await db.courses.get(courseId);
         if (!course) {
-          navigate('/');
+          if (onFlowExit) onFlowExit();
+          else navigate('/');
           return;
         }
         const [allCards, courseLessons, examDates, manualNodes] = await Promise.all([
@@ -577,11 +662,13 @@ export function LearnMode() {
             : [],
         ]);
         const effectiveDates = lessonEffectiveReleaseDates(course, courseLessons);
-        const reachedLessonIds = new Set(
-          courseLessons
-            .filter((lesson) => isLessonUnlocked(course, lesson, effectiveDates, courseLessons))
-            .map((lesson) => lesson.id),
-        );
+        const reachedLessonIds = requestScopeLessonIds
+          ? new Set(requestScopeLessonIds)
+          : new Set(
+              courseLessons
+                .filter((lesson) => isLessonUnlocked(course, lesson, effectiveDates, courseLessons))
+                .map((lesson) => lesson.id),
+            );
         const practiceNode = practiceNodeKeyParam
           ? manualNodes.find((node) => node.id === practiceNodeKeyParam)
           : undefined;
@@ -664,9 +751,6 @@ export function LearnMode() {
         if (cancelled) return;
         const practiceAlreadySecured =
           (practiceSessionRef.current?.scopeCards.length ?? 0) > 0 && cards.length === 0;
-        if (practiceAlreadySecured) {
-          await persistPracticeMilestone(cards, true);
-        }
         // Show an empty-state screen instead of navigating away so the user
         // understands what happened and can choose what to do next.
         progressBefore.current = sessionProgress(cards, ctx);
@@ -676,7 +760,7 @@ export function LearnMode() {
           ...(filterParams.length > 0 ? filterParams.map((f) => FILTER_LABELS[f] ?? f) : []),
         ];
         const filterLabel = filterParts.join(' or ');
-        setSummary({
+        finaliseSummary({
           events: [],
           masteryBefore: progressBefore.current,
           masteryAfter: progressBefore.current,
@@ -690,8 +774,6 @@ export function LearnMode() {
           limitReached: false,
           mode,
         });
-        setPhase('finished');
-        if (practiceAlreadySecured) void ratchetUnlocks(true);
         return;
       }
 
@@ -703,7 +785,7 @@ export function LearnMode() {
       }
 
       if (!isSimpleMode && sessionComplete(cards, ctx)) {
-        setSummary({
+        finaliseSummary({
           events: [],
           masteryBefore: progressBefore.current,
           masteryAfter: progressBefore.current,
@@ -716,8 +798,6 @@ export function LearnMode() {
           timeLimitReached: false,
           mode,
         });
-        setPhase('finished');
-        if (ratchetCourseIdRef.current) void ratchetUnlocks(true);
       } else {
         sessionStartMs.current = Date.now();
         serveNextRef.current();
@@ -733,10 +813,13 @@ export function LearnMode() {
     cramMode,
     filterParams,
     navigate,
+    onFlowExit,
     isSimpleMode,
     mode,
     isGlobal,
     practiceNodeKeyParam,
+    requestScopeLessonIds,
+    finaliseSummary,
     persistPracticeMilestone,
     ratchetUnlocks,
   ]);
@@ -1401,7 +1484,7 @@ export function LearnMode() {
                 filterParams={filterParams}
                 tagFilter={tagFilter}
                 onOpenNav={() => setNavOpen(true)}
-                onExit={() => finish(false)}
+                onExit={onStepFinished ? backOut : () => finish(false)}
                 menuOpen={menuOpen}
                 setMenuOpen={setMenuOpen}
                 current={current}

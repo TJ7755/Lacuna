@@ -62,9 +62,7 @@ function NavItem({
           'group relative flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
           compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
           collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-          isActive
-            ? 'bg-accent-soft text-accent'
-            : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+          isActive ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
         )
       }
     >
@@ -119,13 +117,7 @@ function StudyStreakBadge({ collapsed }: { collapsed: boolean }) {
 // Lesson item (inside an expanded course row)
 // ---------------------------------------------------------------------------
 
-function LessonItem({
-  lesson,
-  compact,
-}: {
-  lesson: Lesson;
-  compact: boolean;
-}) {
+function LessonItem({ lesson, compact }: { lesson: Lesson; compact: boolean }) {
   return (
     <NavLink
       to={`/course/${lesson.courseId}/lesson/${lesson.id}`}
@@ -133,9 +125,7 @@ function LessonItem({
         cn(
           'flex min-h-10 items-center gap-3 rounded-lg transition-all duration-150',
           compact ? 'py-1.5 pl-9 pr-3 text-xs' : 'py-2 pl-10 pr-3 text-sm',
-          isActive
-            ? 'bg-accent-soft text-accent'
-            : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+          isActive ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
         )
       }
     >
@@ -211,11 +201,7 @@ const CourseRow = memo(function CourseRow({
           )
         }
       >
-        <CardsIcon
-          width={compact ? 14 : 16}
-          height={compact ? 14 : 16}
-          className="shrink-0"
-        />
+        <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
       </NavLink>
     );
   }
@@ -230,17 +216,11 @@ const CourseRow = memo(function CourseRow({
             'flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
             compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
             'hover:translate-x-0.5',
-            isActive
-              ? 'bg-accent-soft text-accent'
-              : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+            isActive ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
           )
         }
       >
-        <CardsIcon
-          width={compact ? 14 : 16}
-          height={compact ? 14 : 16}
-          className="shrink-0"
-        />
+        <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
         <span className="flex flex-1 items-center gap-2 min-w-0">
           <span className="truncate">{courseName}</span>
           {eligibleBadge}
@@ -295,11 +275,7 @@ const CourseRow = memo(function CourseRow({
           }}
           className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-0"
         >
-          <CardsIcon
-            width={compact ? 14 : 16}
-            height={compact ? 14 : 16}
-            className="shrink-0"
-          />
+          <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
           <span className="flex flex-1 items-center gap-2 min-w-0">
             <span className="truncate">{courseName}</span>
             {eligibleBadge}
@@ -420,36 +396,38 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       </div>
 
       {/* Primary nav */}
-      <nav
-        className={cn(
-          'flex flex-col gap-1 px-3',
-          sidebarSettings.compactMode && 'gap-0',
-        )}
-      >
+      <nav className={cn('flex flex-col gap-1 px-3', sidebarSettings.compactMode && 'gap-0')}>
         {sidebarSettings.navItems
           .filter((n) => n.visible)
           .map((n) => (
             <NavItem
               key={n.id}
-              to={n.id === 'dashboard' ? '/' : `/${n.id}`}
+              to={n.id === 'dashboard' ? '/' : n.id === 'learn' ? '/study' : `/${n.id}`}
               end={n.id === 'dashboard'}
               icon={
-                n.id === 'dashboard' ? <DashboardIcon /> :
-                n.id === 'learn' ? <PlayIcon /> :
-                n.id === 'search' ? <SearchIcon /> :
-                n.id === 'share' ? <ShareIcon /> :
-                n.id === 'analytics' ? <ChartIcon /> :
-                n.id === 'settings' ? <SettingsIcon /> :
-                n.id === 'help' ? <HelpIcon /> :
-                <DashboardIcon />
+                n.id === 'dashboard' ? (
+                  <DashboardIcon />
+                ) : n.id === 'learn' ? (
+                  <PlayIcon />
+                ) : n.id === 'search' ? (
+                  <SearchIcon />
+                ) : n.id === 'share' ? (
+                  <ShareIcon />
+                ) : n.id === 'analytics' ? (
+                  <ChartIcon />
+                ) : n.id === 'settings' ? (
+                  <SettingsIcon />
+                ) : n.id === 'help' ? (
+                  <HelpIcon />
+                ) : (
+                  <DashboardIcon />
+                )
               }
               label={n.label}
               collapsed={collapsed}
               compact={sidebarSettings.compactMode}
               streakBadge={
-                n.id === 'learn' ? (
-                  <StudyStreakBadge collapsed={collapsed} />
-                ) : undefined
+                n.id === 'learn' ? <StudyStreakBadge collapsed={collapsed} /> : undefined
               }
             />
           ))}
@@ -512,7 +490,9 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                   courseId={course.id}
                   courseName={course.name}
                   lessons={lessonsByCourse.get(course.id) ?? []}
-                  eligible={sidebarSettings.showDueCounts ? summaries?.[course.id]?.eligible ?? 0 : 0}
+                  eligible={
+                    sidebarSettings.showDueCounts ? (summaries?.[course.id]?.eligible ?? 0) : 0
+                  }
                   expanded={expandedCourses}
                   onToggle={toggleCourse}
                   collapsed={collapsed}
@@ -579,9 +559,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       </div>
 
       <AnimatePresence>
-        {creatingCourse && (
-          <NewCourseForm onClose={() => setCreatingCourse(false)} />
-        )}
+        {creatingCourse && <NewCourseForm onClose={() => setCreatingCourse(false)} />}
       </AnimatePresence>
     </aside>
   );

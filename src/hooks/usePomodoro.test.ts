@@ -1,6 +1,11 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { usePomodoro, loadPomodoroSettings, savePomodoroSettings, type PomodoroSettings } from './usePomodoro';
+import {
+  usePomodoro,
+  loadPomodoroSettings,
+  savePomodoroSettings,
+  type PomodoroSettings,
+} from './usePomodoro';
 
 const STORAGE_KEY = 'lacuna-pomodoro-settings';
 
@@ -23,7 +28,11 @@ describe('loadPomodoroSettings', () => {
   });
 
   it('returns clamped values for stored settings', () => {
-    const stored: Partial<PomodoroSettings> = { workMinutes: 200, shortBreakMinutes: 0, longBreakMinutes: 70 };
+    const stored: Partial<PomodoroSettings> = {
+      workMinutes: 200,
+      shortBreakMinutes: 0,
+      longBreakMinutes: 70,
+    };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
     const settings = loadPomodoroSettings();
     expect(settings.workMinutes).toBe(120);
@@ -112,5 +121,63 @@ describe('usePomodoro', () => {
     expect(result.current.phase).toBe('idle');
     expect(result.current.isRunning).toBe(false);
     expect(result.current.formattedTime).toBe('00:00');
+  });
+
+  it('waits at a safe boundary when a focus period expires', () => {
+    savePomodoroSettings({ workMinutes: 1, autoStartBreaks: true });
+    const { result } = renderHook(() => usePomodoro());
+
+    act(() => result.current.startFocus());
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+
+    expect(result.current.phase).toBe('focus');
+    expect(result.current.isRunning).toBe(false);
+    expect(result.current.breakPending).toBe(true);
+    expect(result.current.pendingBreakPhase).toBe('shortBreak');
+  });
+
+  it('starts or defers a pending break explicitly', () => {
+    savePomodoroSettings({ workMinutes: 1, shortBreakMinutes: 2 });
+    const { result } = renderHook(() => usePomodoro());
+
+    act(() => result.current.startFocus());
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    act(() => result.current.acceptBreak());
+
+    expect(result.current.phase).toBe('shortBreak');
+    expect(result.current.formattedTime).toBe('02:00');
+    expect(result.current.isRunning).toBe(true);
+    expect(result.current.breakPending).toBe(false);
+
+    act(() => result.current.reset());
+    act(() => result.current.startFocus());
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+    act(() => result.current.deferBreak());
+
+    expect(result.current.phase).toBe('idle');
+    expect(result.current.isRunning).toBe(false);
+    expect(result.current.breakPending).toBe(false);
+  });
+
+  it('restores persisted runtime in a paused state', () => {
+    savePomodoroSettings({ workMinutes: 1 });
+    const first = renderHook(() => usePomodoro());
+    act(() => first.result.current.startFocus());
+    act(() => {
+      vi.advanceTimersByTime(5_000);
+    });
+    expect(first.result.current.formattedTime).toBe('00:55');
+    first.unmount();
+
+    const restored = renderHook(() => usePomodoro());
+    expect(restored.result.current.phase).toBe('focus');
+    expect(restored.result.current.formattedTime).toBe('00:55');
+    expect(restored.result.current.isRunning).toBe(false);
   });
 });

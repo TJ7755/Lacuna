@@ -15,20 +15,20 @@ import {
   usePracticeNodes,
 } from '../state/useCourseData';
 import { availableCards, dueCards } from '../fsrs/eligibility';
-import { DEFAULT_REVIEW_SECONDS, buildDeckSecondsMap } from '../fsrs/stats';
+import { buildDeckSecondsMap } from '../fsrs/stats';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { MS_PER_DAY } from '../fsrs/params';
-import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
 import {
-  eligiblePracticePool,
-  lessonCardMembership,
-  practiceCardScope,
-  practiceReadiness,
-  practiceScopeVersion,
-} from '../course/studyPools';
+  buildPath,
+  pathPosition,
+  lessonEffectiveReleaseDates,
+  nearestExamDate,
+} from '../course/path';
+import { lessonCardMembership } from '../course/studyPools';
 import { courseHeaderStats } from '../course/headerStats';
-import { nextStudyTarget } from '../course/studyNow';
+import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
+import { planNextStudyStep } from '../course/studyFlowPlanner';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import {
@@ -64,27 +64,6 @@ interface PracticeNodeProgress {
   eligibleCount: number;
   completed: boolean;
   scopeVersion: string;
-}
-
-/**
- * Course-wide mean seconds per review, re-scoped from the existing per-deck
- * response-time calibration (see `src/fsrs/stats.ts`'s `computeStudyStats`) to
- * a Course: an unweighted mean across the distinct decks backing the course's
- * cards, falling back to the same default a single uncalibrated deck would use.
- */
-function courseMeanReviewSeconds(cards: Card[], deckSeconds: Map<string, number>): number {
-  let sum = 0;
-  let count = 0;
-  const seen = new Set<string>();
-  for (const card of cards) {
-    if (seen.has(card.deckId)) continue;
-    seen.add(card.deckId);
-    const seconds = deckSeconds.get(card.deckId);
-    if (seconds === undefined) continue;
-    sum += seconds;
-    count += 1;
-  }
-  return count > 0 ? sum / count : DEFAULT_REVIEW_SECONDS;
 }
 
 export function CoursePath() {
@@ -237,72 +216,61 @@ export function CoursePath() {
     [course, lessons, examDates],
   );
 
-  const reachedLessonIds = useMemo(
+  const studyFlowSnapshot = useMemo(
     () =>
-      new Set(
-        nodes
-          .filter((node) => node.nodeType === 'lesson' && node.status !== 'locked')
-          .map((node) => node.id),
-      ),
-    [nodes],
+      course && examDateContext
+        ? buildCourseStudyFlowSnapshot({
+            course,
+            nodes,
+            cards: courseCards ?? [],
+            links: lessonLinks ?? [],
+            exposures: exposures ?? [],
+            examDateContext,
+            meanReviewSeconds,
+            practiceMilestones: practiceMilestones ?? [],
+            nearestExamDate: nearestExamDate(course, examDates ?? [], now),
+            now,
+          })
+        : null,
+    [
+      course,
+      courseCards,
+      examDateContext,
+      examDates,
+      exposures,
+      lessonLinks,
+      meanReviewSeconds,
+      nodes,
+      practiceMilestones,
+      now,
+    ],
   );
-
+  const studyDecision = useMemo(
+    () => (studyFlowSnapshot ? planNextStudyStep(studyFlowSnapshot) : null),
+    [studyFlowSnapshot],
+  );
   const practiceProgressByKey = useMemo(() => {
     const result = new Map<string, PracticeNodeProgress>();
-    if (!course || !examDateContext) return result;
-    for (const node of nodes) {
-      if (node.nodeType !== 'practice-auto' && node.nodeType !== 'practice-manual') continue;
-      const scope = practiceCardScope(
-        courseCards ?? [],
-        lessonLinks ?? [],
-        exposures ?? [],
-        { reachedLessonIds, practiceNode: node.practiceNode },
-        now,
-        course.leechThreshold,
-      );
-      const scopeVersion = practiceScopeVersion(scope);
-      const readiness = practiceReadiness(scope, course, examDateContext, now);
-      const eligibleCount = eligiblePracticePool(scope, course, examDateContext, now).length;
-      const milestone = (practiceMilestones ?? []).find(
-        (candidate) =>
-          candidate.nodeKey === node.nodeKey && candidate.scopeVersion === scopeVersion,
-      );
-      result.set(node.nodeKey, {
-        fraction: readiness.fraction,
-        eligibleCount,
-        completed: milestone?.completedAt !== undefined,
-        scopeVersion,
+    for (const practice of studyFlowSnapshot?.practiceByKey.values() ?? []) {
+      result.set(practice.nodeKey, {
+        fraction: practice.totalCount > 0 ? practice.securedCount / practice.totalCount : 0,
+        eligibleCount: practice.eligibleCount,
+        completed: practice.completed,
+        scopeVersion: practice.scopeVersion,
       });
     }
     return result;
-  }, [
-    course,
-    courseCards,
-    examDateContext,
-    exposures,
-    lessonLinks,
-    nodes,
-    practiceMilestones,
-    reachedLessonIds,
-    now,
-  ]);
-
-  const endPracticeEligible = useMemo(() => {
-    if (!course || !examDateContext) return false;
-    const endScope = practiceCardScope(
-      courseCards ?? [],
-      lessonLinks ?? [],
-      exposures ?? [],
-      { reachedLessonIds },
-      now,
-      course.leechThreshold,
-    );
-    return eligiblePracticePool(endScope, course, examDateContext, now).length > 0;
-  }, [course, courseCards, examDateContext, exposures, lessonLinks, reachedLessonIds, now]);
-
-  const studyTarget = useMemo(
-    () => nextStudyTarget(nodes, practiceProgressByKey, endPracticeEligible),
-    [endPracticeEligible, nodes, practiceProgressByKey],
+  }, [studyFlowSnapshot]);
+  const studyTarget = studyDecision?.kind === 'step' ? studyDecision.step : null;
+  const visibleNodes = useMemo(
+    () =>
+      nodes.filter((node) => {
+        if (node.nodeType === 'practice-auto') return false;
+        if (node.nodeType !== 'practice-manual') return true;
+        const practice = studyFlowSnapshot?.practiceByKey.get(node.nodeKey);
+        return authoring || practice?.active === true || practice?.completed === true;
+      }),
+    [authoring, nodes, studyFlowSnapshot],
   );
 
   // Loading state — a skeleton while course/lesson data resolves.
@@ -339,20 +307,22 @@ export function CoursePath() {
   // Precomputed for the manual practice-node insertion affordances (see InsertGap/
   // InsertButton below): which lines on the path may host a "+", and the position
   // value ("end of course") the trailing insertion point should seed a new node with.
-  const lineInserts = computeLineInserts(nodes);
+  const lineInserts = computeLineInserts(visibleNodes);
   // Release-date map for the "locked" hint (see lockHintFor below) — only
   // consulted under `linear` unlock mode.
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
   // The single next-up lesson gets the "you are here" halo (see LessonNode):
   // the first lesson node on the path still in 'available' status.
-  const currentLessonNode = nodes.find((n) => n.nodeType === 'lesson' && n.status === 'available');
+  const currentLessonNode = visibleNodes.find(
+    (n) => n.nodeType === 'lesson' && n.status === 'available',
+  );
   const currentNodeId = currentLessonNode?.id;
   const nextStudyLabel = studyTarget?.label;
   const lastLessonOrderIndex = lessons[lessons.length - 1]?.orderIndex;
 
   // Curriculum position (addendum J): counts non-extension lessons reached.
   // This is pacing — it has nothing to do with mastery or FSRS retention.
-  const { reached, total } = pathPosition(nodes);
+  const { reached, total } = pathPosition(visibleNodes);
 
   // Header stats: nearest exam + urgency + dueCardCount use the same maths as
   // LessonView's (see courseHeaderStats — due here means overdue reviews plus
@@ -444,20 +414,21 @@ export function CoursePath() {
               disabled={!studyTarget}
               onClick={() => {
                 if (!studyTarget) return;
-                if (studyTarget.kind === 'lesson') {
-                  navigate(`/lesson/${studyTarget.lessonId}/learn?mode=simple`);
-                } else if (studyTarget.kind === 'practice') {
-                  navigate(
-                    `/course/${courseId}/learn?practiceNode=${encodeURIComponent(studyTarget.nodeKey)}`,
-                  );
-                } else {
-                  navigate(`/course/${courseId}/learn?practice=end`);
-                }
+                navigate(`/course/${courseId}/study`);
               }}
             >
               <PlayIcon width={18} height={18} />
               Study now
             </Button>
+            {(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0 && (
+              <Button
+                variant="secondary"
+                size="lg"
+                onClick={() => navigate(`/course/${courseId}/study?review=due`)}
+              >
+                Review due cards
+              </Button>
+            )}
             {/* The due count already leads the stat pills above, so this line
                 only speaks when there is something the pills don't say. */}
             {(courseCards.length === 0 || dueCardCount === 0) && (
@@ -481,13 +452,13 @@ export function CoursePath() {
           insertion points. */}
       <h2 className="mb-6 font-display text-2xl">Curriculum</h2>
       <p id="lesson-path-reorder-instructions" className="sr-only">
-        In Edit mode, hold this lesson and drag it to reorder. Alternatively, press Alt and the
-        up or down arrow key.
+        In Edit mode, hold this lesson and drag it to reorder. Alternatively, press Alt and the up
+        or down arrow key.
       </p>
       <div aria-live="polite" aria-atomic="true" className="sr-only">
         {lessonReorder.announcement}
       </div>
-      {nodes.length === 0 ? (
+      {visibleNodes.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-line-strong py-16 text-center">
           <p className="text-sm text-ink-soft">This course has no lessons yet.</p>
           <AddLessonControl
@@ -499,12 +470,12 @@ export function CoursePath() {
       ) : (
         <div className="flex flex-col items-center">
           <InsertGap onInsert={() => setEditorState({ mode: 'new', defaultPosition: undefined })} />
-          {nodes.map((node, i) => (
+          {visibleNodes.map((node, i) => (
             <PathNodeWithLine
               key={node.id}
               node={node}
               index={i}
-              isLast={i === nodes.length - 1}
+              isLast={i === visibleNodes.length - 1}
               lineInsert={lineInserts[i]}
               current={node.id === currentNodeId}
               lockHint={
@@ -523,7 +494,7 @@ export function CoursePath() {
               }
               onPracticeClick={(practiceNode) =>
                 navigate(
-                  `/course/${courseId}/learn?practiceNode=${encodeURIComponent(practiceNode.nodeKey)}`,
+                  `/course/${courseId}/study?practiceNode=${encodeURIComponent(practiceNode.nodeKey)}`,
                 )
               }
               onPracticeEdit={(pn) =>

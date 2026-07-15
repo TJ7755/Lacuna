@@ -14,6 +14,7 @@ import { SearchPage } from './pages/SearchPage';
 import { SharePage } from './pages/SharePage';
 import { Analytics } from './pages/Analytics';
 import { HelpPage } from './pages/HelpPage';
+import { StudyToday } from './pages/StudyToday';
 import { isFirstRun, seedIfFirstRun } from './db/seed';
 import { autoBackupIfStale } from './db/backups';
 import { ensurePreMigrationSnapshot, openDatabase } from './db/schema';
@@ -33,6 +34,9 @@ function RouterWithQuotaWarning() {
 // and pulls no heavy dependencies, so lazy-loading it only added a needless chunk
 // round-trip and Suspense flash when switching tabs.
 const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default: m.LearnMode })));
+const CourseStudyFlow = lazy(() =>
+  import('./pages/CourseStudyFlow').then((m) => ({ default: m.CourseStudyFlow })),
+);
 const CardEditor = lazy(() =>
   import('./pages/CardEditor').then((m) => ({ default: m.CardEditor })),
 );
@@ -85,6 +89,7 @@ const router = createHashRouter([
       { path: 'share', element: <SharePage /> },
       { path: 'analytics', element: <Analytics /> },
       { path: 'help', element: <HelpPage /> },
+      { path: 'study', element: <StudyToday /> },
       {
         path: 'course/:courseId',
         element: (
@@ -190,6 +195,18 @@ const router = createHashRouter([
       <ErrorBoundary label="the landing page">
         <Suspense fallback={<RouteFallback />}>
           <Welcome />
+        </Suspense>
+      </ErrorBoundary>
+    ),
+  },
+  {
+    // Persistent course conductor. It owns lesson/Practice transitions and
+    // remains mounted until the learner explicitly finishes the study period.
+    path: '/course/:courseId/study',
+    element: (
+      <ErrorBoundary label="the course study flow">
+        <Suspense fallback={<RouteFallback />}>
+          <CourseStudyFlow />
         </Suspense>
       </ErrorBoundary>
     ),

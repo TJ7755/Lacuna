@@ -31,10 +31,14 @@ export function Dashboard() {
     const sorted = [...active];
     switch (dashboardSort) {
       case 'ready':
-        sorted.sort((a, b) => (summaries?.[b.id]?.eligible ?? 0) - (summaries?.[a.id]?.eligible ?? 0));
+        sorted.sort(
+          (a, b) => (summaries?.[b.id]?.eligible ?? 0) - (summaries?.[a.id]?.eligible ?? 0),
+        );
         break;
       case 'mastery':
-        sorted.sort((a, b) => (summaries?.[a.id]?.mastery ?? 0) - (summaries?.[b.id]?.mastery ?? 0));
+        sorted.sort(
+          (a, b) => (summaries?.[a.id]?.mastery ?? 0) - (summaries?.[b.id]?.mastery ?? 0),
+        );
         break;
       case 'exam':
         sorted.sort((a, b) => a.examDate - b.examDate);
@@ -47,7 +51,9 @@ export function Dashboard() {
         break;
       case 'recent':
       default:
-        sorted.sort((a, b) => (b.lastInteractedAt ?? b.createdAt) - (a.lastInteractedAt ?? a.createdAt));
+        sorted.sort(
+          (a, b) => (b.lastInteractedAt ?? b.createdAt) - (a.lastInteractedAt ?? a.createdAt),
+        );
         break;
     }
     return sorted;
@@ -64,11 +70,7 @@ export function Dashboard() {
 
   // Total cards a global session would serve today, across all active courses.
   const totalEligible = useMemo(
-    () =>
-      (activeCourses ?? []).reduce(
-        (sum, c) => sum + (summaries?.[c.id]?.eligible ?? 0),
-        0,
-      ),
+    () => (activeCourses ?? []).reduce((sum, c) => sum + (summaries?.[c.id]?.eligible ?? 0), 0),
     [activeCourses, summaries],
   );
 
@@ -79,9 +81,7 @@ export function Dashboard() {
         <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
         <div className="relative flex items-end justify-between gap-4">
           <div>
-            <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">
-              Your revision
-            </p>
+            <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Your revision</p>
             <h1 className="font-display text-4xl tracking-tight md:text-6xl">Courses</h1>
           </div>
           {activeCourses && activeCourses.length > 0 && (
@@ -94,9 +94,7 @@ export function Dashboard() {
       </header>
 
       <AnimatePresence>
-        {creatingCourse && (
-          <NewCourseForm onClose={() => setCreatingCourse(false)} />
-        )}
+        {creatingCourse && <NewCourseForm onClose={() => setCreatingCourse(false)} />}
       </AnimatePresence>
 
       {/* Motivation strip: streak, reviews today, seven-day time forecast */}
@@ -104,7 +102,8 @@ export function Dashboard() {
         <StudySignals stats={stats} courses={activeCourses} />
       )}
 
-      {/* Global "study everything" entry point */}
+      {/* Deliberately separate from the course conductor: this remains the
+          cross-course due-card review entry point. */}
       <AnimatePresence>
         {activeCourses && activeCourses.length > 0 && totalEligible > 0 && (
           <motion.div
@@ -119,7 +118,7 @@ export function Dashboard() {
                 <PlayIcon width={14} height={14} />
                 {totalEligible} due
               </span>
-              <span className="text-xs text-ink-soft">across all courses</span>
+              <span className="text-xs text-ink-soft">ready across all courses</span>
             </div>
             <Button
               variant="primary"
@@ -128,7 +127,7 @@ export function Dashboard() {
               onClick={() => navigate('/learn')}
             >
               <PlayIcon width={16} height={16} />
-              Study all
+              Review all
             </Button>
           </motion.div>
         )}

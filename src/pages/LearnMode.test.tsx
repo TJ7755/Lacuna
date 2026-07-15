@@ -123,8 +123,12 @@ describe('LearnMode course/lesson scope', () => {
     });
   });
 
-  it('does not ratchet the next lesson when a manual practice node gates the slot after it', async () => {
-    const course = await createCourse('Physics', { unlockMode: 'semi-linear' });
+  it('does not ratchet the next lesson when an active manual practice node gates the slot after it', async () => {
+    const course = await createCourse('Physics', {
+      unlockMode: 'semi-linear',
+      practiceThresholdMinutesFar: 0,
+      practiceThresholdMinutesNear: 0,
+    });
     const lesson1 = await createLesson(course.id, 'Kinematics');
     const lesson2 = await createLesson(course.id, 'Dynamics');
     await createLessonCard(course.id, lesson1.id, 'front_back', 'Q1', 'A1');
