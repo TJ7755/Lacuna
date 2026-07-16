@@ -34,6 +34,7 @@ import type { BackupFile } from '../db/types';
 import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
 import { useTypingSetting } from '../state/typingSetting';
+import { useAnswerStrictness, type AnswerStrictness } from '../state/answerStrictness';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { usePracticeDefaults } from '../state/practiceDefaults';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
@@ -77,6 +78,7 @@ export function Settings() {
   const { notify } = useToast();
   const [gradingMode, setGradingMode] = useGradingMode();
   const [typingSetting, setTypingSetting] = useTypingSetting();
+  const [answerStrictness, setAnswerStrictness] = useAnswerStrictness();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
@@ -653,6 +655,36 @@ export function Settings() {
             onChange={(checked) => setTypingSetting(checked ? 'type' : 'reveal')}
           />
         </div>
+
+        {typingSetting === 'type' && (
+          <div className="mt-5 flex items-center justify-between gap-3 pl-0">
+            <div className="min-w-0">
+              <div className="text-sm">Grading strictness</div>
+              <p className="mt-1 text-sm text-ink-soft">
+                How closely a typed answer must match. Lenient ignores case and
+                punctuation, standard ignores case only, exact requires both to match.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-1">
+              {(['lenient', 'standard', 'exact'] as AnswerStrictness[]).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setAnswerStrictness(level)}
+                  aria-pressed={answerStrictness === level}
+                  className={cn(
+                    'rounded-lg border px-3 py-1.5 text-xs capitalize transition-colors',
+                    answerStrictness === level
+                      ? 'border-accent bg-accent-soft text-accent'
+                      : 'border-line text-ink-soft hover:border-line-strong',
+                  )}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
           <div className="min-w-0">

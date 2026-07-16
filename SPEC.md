@@ -998,9 +998,12 @@ Two modes, chosen in Settings (default **reveal**), mirroring the grading-mode t
   highlighting. This was previously a dedicated `typing` card type; it is now a global
   presentation mode that applies to any eligible card, so a course does not need
   typing-specific cards to use it. Self-grading (Yes/No or the four FSRS buttons) is
-  unchanged — the comparison is feedback only, never an automatic grade. The comparison
-  ignores case and punctuation by default; both are exposed as `AnswerComparisonOptions`
-  so a future per-user strictness setting can require exact matches.
+  unchanged — the comparison is feedback only, never an automatic grade. How strictly the
+  comparison matches is a separate per-user setting, **grading strictness**
+  (`src/state/answerStrictness.ts`, chosen in Settings next to the typing toggle, default
+  **lenient**): lenient ignores case and punctuation (the original behaviour), standard
+  ignores case only, and exact requires both to match. `answerComparisonOptions` maps the
+  level to `AnswerComparisonOptions` for `compareAnswer`.
 
 ### Study mode (`src/state/studyMode.ts`)
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):

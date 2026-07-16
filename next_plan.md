@@ -218,9 +218,10 @@ Same `Sequence` machinery with a different skin:
   (`src/db/scriptSplitter.ts`) plus the `ScriptPasteImport` preview/correction modal.
 
 Open design questions, all now resolved: cue lines display speaker names by default;
-hint granularity is first letters (punctuation preserved in place); strict grading keeps
-`answerComparison`'s defaults (case and edge punctuation ignored) — a stricter per-user
-option remains possible via `AnswerComparisonOptions` without algorithm changes.
+hint granularity is first letters (punctuation preserved in place); strict grading is a
+per-user **grading strictness** setting (`src/state/answerStrictness.ts`, lenient/
+standard/exact, default lenient) next to the typing toggle in Settings, mapped to
+`AnswerComparisonOptions` with no changes to the comparison algorithm itself.
 
 ## 1.6 Risks
 

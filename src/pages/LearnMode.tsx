@@ -62,6 +62,11 @@ import { useDistraction } from '../components/learn/useDistraction';
 import type { SessionEvent, SessionSummary } from '../components/learn/types';
 import { useGradingMode } from '../state/gradingMode';
 import { useTypingSetting } from '../state/typingSetting';
+import {
+  useAnswerStrictness,
+  answerComparisonOptions,
+  type AnswerStrictness,
+} from '../state/answerStrictness';
 import { useStudyMode } from '../state/studyMode';
 import { compareAnswer } from '../utils/answerComparison';
 import { clozeAnswerText } from '../components/markdown/cloze';
@@ -192,6 +197,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
   const distraction = useDistraction();
   const [gradingMode] = useGradingMode();
   const [typingSetting] = useTypingSetting();
+  const [answerStrictness] = useAnswerStrictness();
   const { bindings } = useShortcutBindings();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -1700,6 +1706,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
                   isLinesModeCard={isLinesModeCard}
                   hintRevealed={hintRevealed}
                   onRevealHint={() => setHintRevealed(true)}
+                  answerStrictness={answerStrictness}
                 />
               )}
 
@@ -2742,6 +2749,7 @@ function FlipCard({
   isLinesModeCard,
   hintRevealed,
   onRevealHint,
+  answerStrictness,
 }: {
   card: Card;
   revealed: boolean;
@@ -2761,6 +2769,7 @@ function FlipCard({
   isLinesModeCard?: boolean;
   hintRevealed?: boolean;
   onRevealHint?: () => void;
+  answerStrictness: AnswerStrictness;
 }) {
   const m = speedMultiplier(motionSpeed);
   const isTyping = Boolean(isTypingCard);
@@ -3043,7 +3052,11 @@ function FlipCard({
               revealed &&
               typedAnswer !== undefined &&
               (() => {
-                const comparison = compareAnswer(typedAnswer, typingExpectedAnswer(card));
+                const comparison = compareAnswer(
+                  typedAnswer,
+                  typingExpectedAnswer(card),
+                  answerComparisonOptions(answerStrictness),
+                );
                 return (
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
