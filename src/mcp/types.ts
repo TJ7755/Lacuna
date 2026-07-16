@@ -31,10 +31,29 @@ export interface ToolContext {
   agentId: string;
 }
 
-/** A tool handler's successful return value, wrapped so future metadata can be added
- * without changing every handler's return type. */
+/**
+ * A tool handler's successful return value, wrapped so future metadata can be added
+ * without changing every handler's return type.
+ *
+ * `undo` is an internal envelope field (Arc 2 §2.3's destructive-tool snapshot/undo
+ * pairing): the destructive tool group (src/mcp/tools/destructive.ts) attaches the
+ * repository snapshot it captured before mutating, so the bridge layer (a later task)
+ * can offer an in-app undo toast identical to the DangerZone pattern. It is deliberately
+ * separate from `data` — `data` is what an MCP client sees; `undo` never crosses the
+ * IPC boundary to the agent, only from the renderer handler to the renderer's own bridge
+ * code, which strips it before replying to the main process.
+ */
 export interface ToolResult<T = unknown> {
   data: T;
+  undo?: ToolUndoPayload;
+}
+
+/** What a destructive tool call captured before mutating, so it can be reversed. */
+export interface ToolUndoPayload {
+  /** Names the repository restore function that reverses this call, e.g. "restoreCards". */
+  kind: 'restoreCards' | 'restoreCourse' | 'restoreSequence';
+  /** The opaque snapshot blob accepted by that restore function. Never exposed to the agent. */
+  snapshot: unknown;
 }
 
 /**

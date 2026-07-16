@@ -7,6 +7,8 @@ import type { McpToolError } from './bridge/protocol';
 import { McpToolException, type ToolContext, type ToolDefinition, type ToolResult } from './types';
 import { READ_TOOLS } from './tools/read';
 import { CONTENT_TOOLS } from './tools/content';
+import { DESTRUCTIVE_TOOLS } from './tools/destructive';
+import { IMPORT_TOOLS } from './tools/import';
 
 /**
  * Versions the *tool contract* (names, input/output shapes), independent of Dexie's
@@ -33,7 +35,12 @@ export const MCP_TOOL_SURFACE_VERSION = 1;
  *   shape; out of scope for this arc.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see src/mcp/tools/read.ts's READ_TOOLS comment.
-export const TOOL_REGISTRY: readonly ToolDefinition<any, any>[] = [...READ_TOOLS, ...CONTENT_TOOLS];
+export const TOOL_REGISTRY: readonly ToolDefinition<any, any>[] = [
+  ...READ_TOOLS,
+  ...CONTENT_TOOLS,
+  ...DESTRUCTIVE_TOOLS,
+  ...IMPORT_TOOLS,
+];
 
 /** Looks up a tool definition by its `lacuna.<verb>_<noun>` name, or undefined if unknown. */
 export function getTool(name: string): ToolDefinition<unknown, unknown> | undefined {

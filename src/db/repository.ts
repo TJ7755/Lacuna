@@ -114,8 +114,10 @@ export async function deleteDeck(id: string): Promise<void> {
 // Cards
 // ---------------------------------------------------------------------------
 
-/** Normalise card text for duplicate comparison: trim, lowercase, collapse whitespace. */
-function normaliseCardText(text: string): string {
+/** Normalise card text for duplicate comparison: trim, lowercase, collapse whitespace.
+ * Exported so src/mcp/diffImport.ts can reuse the exact same semantics rather than
+ * forking them (see checkDuplicatesBatch, which this also backs). */
+export function normaliseCardText(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
