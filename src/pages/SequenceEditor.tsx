@@ -581,7 +581,7 @@ export function SequenceEditor() {
                 className={cn(
                   'rounded-full px-3 py-1 text-sm font-medium',
                   preview.length > 30
-                    ? 'bg-amber-500/10 text-amber-700'
+                    ? 'bg-amber-500/10 text-amber-600'
                     : 'bg-accent-soft text-accent',
                 )}
               >
