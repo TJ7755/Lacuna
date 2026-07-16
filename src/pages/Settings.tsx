@@ -1,61 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, m as motion, useMotionValue, useSpring, LayoutGroup } from 'motion/react';
-import { useMotionSpeed, speedMultiplier, type MotionSpeed } from '../state/motionSpeed';
-import { useTheme, type Theme } from '../state/ThemeContext';
-import { ACCENTS, useAccent } from '../state/AccentContext';
-import { FONT_SCALE_STEPS, useFontScale } from '../state/FontScaleContext';
-import { useBackups } from '../state/useData';
-import { Button } from '../components/ui/Button';
-import { Toggle } from '../components/ui/Toggle';
-import { ConfirmInline } from '../components/ui/ConfirmInline';
+import { LayoutGroup, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { cn } from '../components/ui/cn';
-import { useToast } from '../components/ui/Toast';
-import {
-  importBackup,
-  readBackupFile,
-  type ImportMode,
-} from '../db/portability';
-import {
-  loadPomodoroSettings,
-  savePomodoroSettings,
-  type PomodoroSettings,
-} from '../hooks/usePomodoro';
-import { UnifiedExportPanel } from '../components/import/UnifiedExportPanel';
-import {
-  backupFolderName,
-  chooseBackupFolder,
-  clearBackupFolder,
-  deleteBackup,
-  folderMirrorSupported,
-  restoreBackup,
-  takeAutoBackup,
-} from '../db/backups';
-import { MoonIcon, SunIcon, UploadIcon, DownloadIcon, KeyboardIcon, MenuIcon, FlameIcon, ClockIcon, GridIcon, ArchiveIcon, ChevronDownIcon } from '../components/ui/icons';
-import type { BackupFile } from '../db/types';
-import { formatDate, formatDateTime } from '../utils/datetime';
-import { useGradingMode } from '../state/gradingMode';
-import { useTypingSetting } from '../state/typingSetting';
-import { useAnswerStrictness, type AnswerStrictness } from '../state/answerStrictness';
-import { useAutoOptimiseDefault } from '../state/optimiseSetting';
-import { usePracticeDefaults } from '../state/practiceDefaults';
-import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
-import { useCourseCardDetail } from '../state/courseCardDetail';
-import { useStartInFocusMode } from '../state/focusModePreference';
-import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
-import { useInputMode, useIsTouchMode, type InputMode } from '../state/inputMode';
-import { useInstallPrompt } from '../hooks/useInstallPrompt';
-import { MIN_OPTIMISE_REVIEWS } from '../fsrs/optimise';
-import {
-  requestPersistentStorage,
-  checkPersistentStorage,
-  type StoragePersistenceState,
-} from '../db/persistence';
-import {
-  useShortcutBindings,
-  ACTION_LABELS,
-  formatBinding,
-  type LearnAction,
-} from '../state/shortcutBindings';
+import { useIsTouchMode } from '../state/inputMode';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
+import { AppearanceSection } from './settings/AppearanceSection';
+import { BackupsSection } from './settings/BackupsSection';
+import { DashboardSection } from './settings/DashboardSection';
+import { DataPortabilitySection } from './settings/DataPortabilitySection';
+import { InputModeSection } from './settings/InputModeSection';
+import { InstallSection } from './settings/InstallSection';
+import { McpSection } from './settings/McpSection';
+import { PomodoroSection } from './settings/PomodoroSection';
+import { ShortcutsSection } from './settings/ShortcutsSection';
+import { SidebarSection } from './settings/SidebarSection';
+import { StudySection } from './settings/StudySection';
 
 const SETTINGS_SECTIONS = [
   { id: 'settings-appearance', label: 'Appearance' },
@@ -66,46 +24,18 @@ const SETTINGS_SECTIONS = [
   { id: 'settings-shortcuts', label: 'Keyboard shortcuts' },
   { id: 'settings-pomodoro', label: 'Pomodoro timer' },
   { id: 'settings-install', label: 'Install' },
+  ...(typeof window !== 'undefined' && window.electronAPI?.isElectron
+    ? [{ id: 'settings-mcp', label: 'MCP server' }]
+    : []),
   { id: 'settings-export', label: 'Import & export' },
   { id: 'settings-backups', label: 'Automatic backups' },
 ];
 
 export function Settings() {
-  const [motionSpeed, setMotionSpeed] = useMotionSpeed();
-  const motionMult = speedMultiplier(motionSpeed);
-  const { theme, resolvedTheme, setTheme } = useTheme();
-  const { accent, setAccent } = useAccent();
-  const { scale, setScale } = useFontScale();
-  const { notify } = useToast();
-  const [gradingMode, setGradingMode] = useGradingMode();
-  const [typingSetting, setTypingSetting] = useTypingSetting();
-  const [answerStrictness, setAnswerStrictness] = useAnswerStrictness();
-  const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
-  const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
-  const [dashboardSort, setDashboardSort] = useDashboardSort();
-  const [cardDetail, setCardDetail] = useCourseCardDetail();
-  const [startInFocusMode, setStartInFocusMode] = useStartInFocusMode();
-  const [inputMode, setInputMode] = useInputMode();
-  const [pomoSettings, setPomoSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
-  const backups = useBackups();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [persistence, setPersistence] = useState<StoragePersistenceState | null>(null);
-  const shortcutBindings = useShortcutBindings();
-  const [sidebarSettings, setSidebarSettings] = useSidebarSettings();
-  const [capturingAction, setCapturingAction] = useState<LearnAction | null>(null);
-  const [activeSection, setActiveSection] = useState<string>(SETTINGS_SECTIONS[0].id);
+  const [motionSpeed] = useMotionSpeed();
+  const motionMultiplier = speedMultiplier(motionSpeed);
+  const [activeSection, setActiveSection] = useState(SETTINGS_SECTIONS[0].id);
 
-  const [pending, setPending] = useState<BackupFile | null>(null);
-  const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
-  const [folder, setFolder] = useState<string | null>(null);
-  const mirrorSupported = folderMirrorSupported();
-
-  useEffect(() => {
-    void backupFolderName().then(setFolder);
-    void checkPersistentStorage().then(setPersistence);
-  }, []);
-
-  // Track which settings section is currently visible using IntersectionObserver.
   useEffect(() => {
     const intersecting = new Set<string>();
     const observer = new IntersectionObserver(
@@ -114,1108 +44,68 @@ export function Settings() {
           if (entry.isIntersecting) intersecting.add(entry.target.id);
           else intersecting.delete(entry.target.id);
         });
-        // Pick the topmost intersecting section (earliest in the list).
-        const top = SETTINGS_SECTIONS.find((s) => intersecting.has(s.id));
+        const top = SETTINGS_SECTIONS.find((section) => intersecting.has(section.id));
         if (top) setActiveSection(top.id);
       },
       { rootMargin: '-20% 0px -60% 0px', threshold: 0 },
     );
     SETTINGS_SECTIONS.forEach((section) => {
-      const el = document.getElementById(section.id);
-      if (el) observer.observe(el);
+      const element = document.getElementById(section.id);
+      if (element) observer.observe(element);
     });
     return () => observer.disconnect();
   }, []);
-
-  async function handleBackupNow() {
-    try {
-      await takeAutoBackup();
-      notify('Restore point saved.', 'positive');
-    } catch {
-      notify('Could not save a restore point.', 'negative');
-    }
-  }
-
-  async function handleRestore(id: number) {
-    try {
-      await restoreBackup(id);
-      setConfirmRestore(null);
-      notify('Data restored from the selected point.', 'positive');
-    } catch {
-      notify('Restore failed.', 'negative');
-    }
-  }
-
-  async function handleChooseFolder() {
-    try {
-      const name = await chooseBackupFolder();
-      setFolder(name);
-      if (name) notify('Backups will now mirror to that folder.', 'positive');
-    } catch {
-      // The user cancelling the picker is not an error worth reporting.
-    }
-  }
-
-  async function handleStopMirror() {
-    await clearBackupFolder();
-    setFolder(null);
-    notify('Folder mirroring stopped.', 'neutral');
-  }
-
-  async function handleRequestPersistence() {
-    const state = await requestPersistentStorage();
-    setPersistence(state);
-    if (state.persisted) {
-      notify('Storage is now persisted.', 'positive');
-    } else if (!state.supported) {
-      notify('This browser does not support persistent storage.', 'neutral');
-    } else {
-      notify('Persistent storage was denied.', 'negative');
-    }
-  }
-
-  async function handleFile(file: File) {
-    try {
-      const backup = await readBackupFile(file);
-      setPending(backup);
-    } catch (err) {
-      notify(err instanceof Error ? err.message : 'Invalid file.', 'negative');
-    }
-  }
-
-  async function runImport(mode: ImportMode) {
-    if (!pending) return;
-    try {
-      await importBackup(pending, mode);
-      notify(
-        mode === 'replace' ? 'Data replaced from backup.' : 'Backup merged.',
-        'positive',
-      );
-    } catch {
-      notify('Import failed.', 'negative');
-    } finally {
-      setPending(null);
-    }
-  }
 
   return (
     <div className="mx-auto flex max-w-6xl gap-8 px-6 pb-10 pt-12 md:px-10 md:py-10">
       <div className="min-w-0 flex-1 max-w-2xl">
         <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
-        <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
-        <div className="relative">
-          <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">
-            Preferences
-          </p>
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
-        </div>
-      </header>
-
-      {/* Appearance */}
-      <motion.section
-        id="settings-appearance"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 * motionMult, delay: 0.05 * motionMult, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-8 rounded-2xl border border-line bg-surface p-6"
-      >
-        <div className="mb-1 flex items-center gap-2 text-accent">
-          <MoonIcon width={18} height={18} />
-          <h2 className="font-display text-xl">Appearance</h2>
-        </div>
-        <p className="mb-4 text-sm text-ink-soft">
-          Lacuna defaults to a dark theme. Your choice is remembered on this device.
-        </p>
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2 text-sm">
-            {resolvedTheme === 'dark' ? (
-              <MoonIcon width={18} height={18} />
-            ) : (
-              <SunIcon width={18} height={18} />
-            )}
-            {theme === 'auto'
-              ? `Auto (${resolvedTheme === 'dark' ? 'dark' : 'light'})`
-              : resolvedTheme === 'dark'
-                ? 'Dark mode'
-                : 'Light mode'}
-          </span>
-          <div className="flex gap-1">
-            {(['dark', 'light', 'auto'] as Theme[]).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTheme(t)}
-                aria-pressed={theme === t}
-                className={cn(
-                  'rounded-lg border px-3 py-1.5 text-xs transition-colors',
-                  theme === t
-                    ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-line text-ink-soft hover:border-line-strong',
-                )}
-              >
-                {t === 'dark' && 'Dark'}
-                {t === 'light' && 'Light'}
-                {t === 'auto' && 'Auto'}
-              </button>
-            ))}
+          <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
+          <div className="relative">
+            <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Preferences</p>
+            <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
           </div>
-        </div>
+        </header>
 
-        <div className="mt-6 border-t border-line pt-5">
-          <div className="mb-1 text-sm">Accent colour</div>
-          <p className="mb-3 text-sm text-ink-soft">
-            Sets the highlight colour used across the app. Remembered on this device.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            {ACCENTS.map((option) => {
-              const active = accent === option.key;
-              return (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => setAccent(option.key)}
-                  aria-pressed={active}
-                  title={option.label}
-                  aria-label={option.label}
-                  className="relative h-9 w-9 rounded-full transition-transform duration-150 hover:scale-110 active:scale-[0.88]"
-                  style={{ backgroundColor: option.swatch }}
-                >
-                  {active && (
-                    <span className="absolute inset-[-4px] rounded-full ring-2 ring-ink ring-offset-2 ring-offset-surface" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-6 border-t border-line pt-5">
-          <div className="mb-1 flex items-baseline justify-between">
-            <span className="text-sm">Text size</span>
-            <span className="tabular text-sm text-ink-faint">{Math.round(scale * 100)}%</span>
-          </div>
-          <p className="mb-3 text-sm text-ink-soft">
-            Scales all text across the app. Remembered on this device.
-          </p>
-          <div className="flex gap-2">
-            {FONT_SCALE_STEPS.map((step) => {
-              const active = Math.round(scale * 100) === Math.round(step.value * 100);
-              return (
-                <button
-                  key={step.label}
-                  type="button"
-                  onClick={() => setScale(step.value)}
-                  aria-pressed={active}
-                  className={cn(
-                    'flex-1 rounded-lg border px-3 py-2 text-sm transition-colors',
-                    active
-                      ? 'border-accent bg-accent-soft text-accent'
-                      : 'border-line text-ink-soft hover:border-line-strong',
-                  )}
-                >
-                  <span style={{ fontSize: `${step.value}em` }}>A</span>
-                  <span className="ml-1.5 align-middle text-xs">{step.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-6 border-t border-line pt-5">
-          <div className="mb-1 flex items-baseline justify-between">
-            <span className="text-sm">Animation speed</span>
-            <span className="tabular text-sm text-ink-faint">
-              {motionSpeed === 'slow' ? 'Slow' : motionSpeed === 'fast' ? 'Fast' : 'Normal'}
-            </span>
-          </div>
-          <p className="mb-3 text-sm text-ink-soft">
-            Adjust how quickly decorative animations play across the app.
-            Does not affect functional timers or progress bars.
-          </p>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-ink-faint">Slow</span>
-            <input
-              type="range"
-              min={0}
-              max={2}
-              step={1}
-              value={motionSpeed === 'slow' ? 0 : motionSpeed === 'normal' ? 1 : 2}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                const next: MotionSpeed = val === 0 ? 'slow' : val === 2 ? 'fast' : 'normal';
-                setMotionSpeed(next);
-              }}
-              className="flex-1 accent-accent"
-              aria-label="Animation speed"
-            />
-            <span className="text-xs text-ink-faint">Fast</span>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Input mode */}
-      <motion.section
-        id="settings-input"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 * motionMult, delay: 0.1 * motionMult, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-8 rounded-2xl border border-line bg-surface p-6"
-      >
-        <div className="mb-1 flex items-center gap-2 text-accent">
-          <KeyboardIcon width={18} height={18} />
-          <h2 className="font-display text-xl">Input mode</h2>
-        </div>
-        <p className="mb-4 text-sm text-ink-soft">
-          Choose how Lacuna presents its interface. Keyboard-first keeps the compact,
-          shortcut-driven layout. Touch-first enlarges controls, reveals gesture hints,
-          and opens a bottom-sheet menu for reviewing and editing cards. Both modes
-          stay fully functional — you can switch at any time.
-        </p>
-        <div className="grid grid-cols-3 gap-2">
-          {(
-            [
-              { key: 'keyboard' as InputMode, label: 'Keyboard first', desc: 'Compact layout with shortcuts' },
-              { key: 'touch' as InputMode, label: 'Touch first', desc: 'Large controls and gestures' },
-              { key: 'auto' as InputMode, label: 'Auto', desc: 'Detect from the device' },
-            ] as { key: InputMode; label: string; desc: string }[]
-          ).map((option) => {
-            const active = inputMode === option.key;
-            return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setInputMode(option.key)}
-                aria-pressed={active}
-                className={cn(
-                  'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
-                  active
-                    ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-line text-ink-soft hover:border-line-strong',
-                )}
-              >
-                <div className="font-medium">{option.label}</div>
-                <div className="mt-0.5 text-xs text-ink-faint">{option.desc}</div>
-              </button>
-            );
-          })}
-        </div>
-      </motion.section>
-
-      {/* Sidebar */}
-      <motion.section
-        id="settings-sidebar"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 * motionMult, delay: 0.15 * motionMult, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-8 rounded-2xl border border-line bg-surface p-6"
-      >
-        <div className="mb-1 flex items-center gap-2 text-accent">
-          <MenuIcon width={18} height={18} />
-          <h2 className="font-display text-xl">Sidebar</h2>
-        </div>
-        <p className="mb-5 text-sm text-ink-soft">
-          Control what information appears in the sidebar navigation and how compact it is.
-        </p>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-sm">Show due card counts</div>
-            <p className="mt-1 text-sm text-ink-soft">
-              Display the number of cards ready for review next to each course name in the
-              sidebar, so you can see which courses need attention at a glance.
-            </p>
-          </div>
-          <Toggle
-            checked={sidebarSettings.showDueCounts}
-            onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
-          />
-        </div>
-        <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
-          <div className="min-w-0">
-            <div className="text-sm">Show archived courses</div>
-            <p className="mt-1 text-sm text-ink-soft">
-              Include archived courses in the sidebar list. Archived courses are hidden
-              from the dashboard by default but can still be accessed via the sidebar.
-            </p>
-          </div>
-          <Toggle
-            checked={sidebarSettings.showArchived}
-            onChange={(checked) => setSidebarSettings({ showArchived: checked })}
-          />
-        </div>
-        <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
-          <div className="min-w-0">
-            <div className="text-sm">Compact mode</div>
-            <p className="mt-1 text-sm text-ink-soft">
-              Reduce padding and font sizes throughout the sidebar to fit more items on
-              screen at once.
-            </p>
-          </div>
-          <Toggle
-            checked={sidebarSettings.compactMode}
-            onChange={(checked) => setSidebarSettings({ compactMode: checked })}
-          />
-        </div>
-
-        <div className="mt-6 border-t border-line pt-5">
-          <div className="mb-1 text-sm">Primary navigation</div>
-          <p className="mb-4 text-sm text-ink-soft">
-            Reorder or hide the main nav items in the sidebar. At least one item must remain visible.
-          </p>
-          <div className="flex flex-col gap-2">
-            {(() => {
-              const visibleCount = sidebarSettings.navItems.filter((n) => n.visible).length;
-              return sidebarSettings.navItems.map((item, index) => {
-                const canMoveUp = index > 0;
-                const canMoveDown = index < sidebarSettings.navItems.length - 1;
-                const canHide = item.visible ? visibleCount > 1 : true;
-              return (
-                <div
-                  key={item.id}
-                  className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 transition-colors"
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <button
-                      type="button"
-                      disabled={!canMoveUp}
-                      onClick={() => {
-                        const next = [...sidebarSettings.navItems];
-                        const [removed] = next.splice(index, 1);
-                        next.splice(index - 1, 0, removed);
-                        setSidebarSettings({ navItems: next });
-                      }}
-                      className={cn(
-                        'flex h-5 w-5 items-center justify-center rounded text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent',
-                        canMoveUp ? 'hover:bg-ink/5 hover:text-ink' : 'opacity-30',
-                      )}
-                      aria-label={`Move ${item.label} up`}
-                    >
-                      <ChevronDownIcon width={12} height={12} className="rotate-180" />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!canMoveDown}
-                      onClick={() => {
-                        const next = [...sidebarSettings.navItems];
-                        const [removed] = next.splice(index, 1);
-                        next.splice(index + 1, 0, removed);
-                        setSidebarSettings({ navItems: next });
-                      }}
-                      className={cn(
-                        'flex h-5 w-5 items-center justify-center rounded text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent',
-                        canMoveDown ? 'hover:bg-ink/5 hover:text-ink' : 'opacity-30',
-                      )}
-                      aria-label={`Move ${item.label} down`}
-                    >
-                      <ChevronDownIcon width={12} height={12} />
-                    </button>
-                  </div>
-                  <span className="flex-1 text-sm text-ink">{item.label}</span>                    <Toggle
-                    checked={item.visible}
-                    disabled={!canHide}
-                    onChange={(checked) => {
-                      const next = sidebarSettings.navItems.map((n) =>
-                        n.id === item.id ? { ...n, visible: checked } : n,
-                      );
-                      setSidebarSettings({ navItems: next });
-                    }}
-                  />
-                </div>
-              );
-              });
-            })()}
-          </div>
-          <div className="mt-3 flex justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarSettings({ navItems: DEFAULT_NAV_ITEMS })}
-            >
-              Reset to defaults
-            </Button>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Dashboard */}
-      <motion.section
-        id="settings-dashboard"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 * motionMult, delay: 0.2 * motionMult, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-8 rounded-2xl border border-line bg-surface p-6"
-      >
-        <div className="mb-1 flex items-center gap-2 text-accent">
-          <GridIcon width={18} height={18} />
-          <h2 className="font-display text-xl">Dashboard</h2>
-        </div>
-        <p className="mb-5 text-sm text-ink-soft">
-          Choose how courses are ordered on the dashboard. The top three active courses are shown.
-        </p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {(
-            [
-              { key: 'recent', label: 'Recently studied' },
-              { key: 'ready', label: 'Ready for review' },
-              { key: 'mastery', label: 'Lowest mastery' },
-              { key: 'exam', label: 'Soonest exam' },
-              { key: 'name', label: 'Name A–Z' },
-              { key: 'created', label: 'Created recently' },
-            ] as { key: DashboardSort; label: string }[]
-          ).map((option) => {
-            const active = dashboardSort === option.key;
-            return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setDashboardSort(option.key)}
-                aria-pressed={active}
-                className={cn(
-                  'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
-                  active
-                    ? 'border-accent bg-accent-soft text-accent'
-                    : 'border-line text-ink-soft hover:border-line-strong',
-                )}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Card hover detail modules */}
-        <div className="mt-6 border-t border-line pt-5">
-          <h3 className="mb-1 text-sm font-medium text-ink">Card hover detail</h3>
-          <p className="mb-4 text-sm text-ink-soft">
-            Choose what a course card reveals when you hover over it.
-          </p>
-          <div className="flex flex-col gap-3">
-            <Toggle
-              id="card-detail-next-due"
-              label="Next review time"
-              checked={cardDetail.nextDue}
-              onChange={(checked) => setCardDetail({ nextDue: checked })}
-            />
-            <Toggle
-              id="card-detail-breakdown"
-              label="New, learnt and due breakdown"
-              checked={cardDetail.breakdown}
-              onChange={(checked) => setCardDetail({ breakdown: checked })}
-            />
-            <Toggle
-              id="card-detail-activity"
-              label="Recent review activity"
-              checked={cardDetail.activity}
-              onChange={(checked) => setCardDetail({ activity: checked })}
-            />
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Study and scheduling */}
-      <motion.section
-        id="settings-study"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 * motionMult, delay: 0.25 * motionMult, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-8 rounded-2xl border border-line bg-surface p-6"
-      >
-        <div className="mb-1 flex items-center gap-2 text-accent">
-          <FlameIcon width={18} height={18} />
-          <h2 className="font-display text-xl">Study &amp; scheduling</h2>
-        </div>
-        <p className="mb-5 text-sm text-ink-soft">
-          How grades are decided and how the FSRS schedule adapts to you.
-        </p>
-
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-sm">Manual four-point grading</div>
-            <p className="mt-1 text-sm text-ink-soft">
-              By default Lacuna grades silently from whether you were right and how long you
-              took, so you only press Yes or No. Turn this on to grade each card yourself with
-              the four FSRS buttons (Again, Hard, Good, Easy) and their keyboard shortcuts.
-            </p>
-          </div>
-          <Toggle
-            checked={gradingMode === 'manual'}
-            onChange={(checked) => setGradingMode(checked ? 'manual' : 'silent')}
-          />
-        </div>
-
-        <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
-          <div className="min-w-0">
-            <div className="text-sm">Type your answer</div>
-            <p className="mt-1 text-sm text-ink-soft">
-              Type the answer before reveal instead of just flipping the card. Works for
-              front/back, reversed and cloze cards; the typed answer is compared against
-              the correct one, but you still grade yourself.
-            </p>
-          </div>
-          <Toggle
-            checked={typingSetting === 'type'}
-            onChange={(checked) => setTypingSetting(checked ? 'type' : 'reveal')}
-          />
-        </div>
-
-        {typingSetting === 'type' && (
-          <div className="mt-5 flex items-center justify-between gap-3 pl-0">
-            <div className="min-w-0">
-              <div className="text-sm">Grading strictness</div>
-              <p className="mt-1 text-sm text-ink-soft">
-                How closely a typed answer must match. Lenient ignores case and
-                punctuation, standard ignores case only, exact requires both to match.
-              </p>
-            </div>
-            <div className="flex shrink-0 gap-1">
-              {(['lenient', 'standard', 'exact'] as AnswerStrictness[]).map((level) => (
-                <button
-                  key={level}
-                  type="button"
-                  onClick={() => setAnswerStrictness(level)}
-                  aria-pressed={answerStrictness === level}
-                  className={cn(
-                    'rounded-lg border px-3 py-1.5 text-xs capitalize transition-colors',
-                    answerStrictness === level
-                      ? 'border-accent bg-accent-soft text-accent'
-                      : 'border-line text-ink-soft hover:border-line-strong',
-                  )}
-                >
-                  {level}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
-          <div className="min-w-0">
-            <label htmlFor="start-in-focus-mode" className="text-sm">
-              Start Learn sessions in Focus Mode
-            </label>
-            <p className="mt-1 text-sm text-ink-soft">
-              Hide session controls when Learn opens. Press Esc at any time to leave Focus Mode.
-            </p>
-          </div>
-          <Toggle
-            id="start-in-focus-mode"
-            checked={startInFocusMode}
-            onChange={setStartInFocusMode}
-          />
-        </div>
-
-        <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
-          <div className="min-w-0">
-            <div className="text-sm">Optimise scheduling</div>
-            <p className="mt-1 text-sm text-ink-soft">
-              Fit each course&apos;s FSRS weights to your own review history, which is where most of
-              FSRS&apos;s efficiency comes from. On by default. Optimisation only runs once a course
-              has at least {MIN_OPTIMISE_REVIEWS} reviews, and new weights are never applied
-              without your confirmation. You can override this per course in its settings.
-            </p>
-          </div>
-          <Toggle
-            checked={autoOptimise}
-            onChange={setAutoOptimise}
-          />
-        </div>
-
-        <div className="mt-6 border-t border-line pt-5">
-          <h3 className="font-display text-base">Course defaults</h3>
-          <p className="mt-1 mb-4 text-sm text-ink-soft">
-            Starting point for practice nodes on new courses. Any course can override
-            these in its own settings, which always take priority.
-          </p>
-
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-sm">Auto-insert practice nodes</div>
-              <p className="mt-1 text-sm text-ink-soft">
-                Automatically add practice nodes between lessons on the course path.
-              </p>
-            </div>
-            <Toggle
-              checked={practiceDefaults.autoPractice}
-              onChange={(checked) =>
-                setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })
-              }
-            />
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <NumberField
-              label="Threshold (far)"
-              value={practiceDefaults.practiceThresholdMinutesFar}
-              suffix="min"
-              min={1}
-              max={999}
-              onChange={(v) =>
-                setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesFar: v })
-              }
-            />
-            <NumberField
-              label="Threshold (near)"
-              value={practiceDefaults.practiceThresholdMinutesNear}
-              suffix="min"
-              min={1}
-              max={999}
-              onChange={(v) =>
-                setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesNear: v })
-              }
-            />
-            <NumberField
-              label="Revision period"
-              value={practiceDefaults.practiceUrgentWindowDays}
-              suffix="days"
-              min={0}
-              max={365}
-              onChange={(v) =>
-                setPracticeDefaults({ ...practiceDefaults, practiceUrgentWindowDays: v })
-              }
-            />
-            <NumberField
-              label="Max gap"
-              value={practiceDefaults.practiceMaxGap}
-              suffix="lessons"
-              min={1}
-              max={99}
-              onChange={(v) =>
-                setPracticeDefaults({ ...practiceDefaults, practiceMaxGap: v })
-              }
-            />
-          </div>
-          <p className="mt-3 text-xs text-ink-faint">
-            The near threshold applies once an exam is within the revision period; the
-            far threshold applies otherwise. Max gap forces a practice node after this
-            many lessons without one.
-          </p>
-        </div>
-      </motion.section>
-
-      {/* Keyboard shortcuts */}
-      <motion.section
-        id="settings-shortcuts"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 * motionMult, delay: 0.3 * motionMult, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-8 rounded-2xl border border-line bg-surface p-6"
-      >
-        <div className="mb-1 flex items-center gap-2 text-accent">
-          <KeyboardIcon width={18} height={18} />
-          <h2 className="font-display text-xl">Keyboard shortcuts</h2>
-        </div>
-        <p className="mb-5 text-sm text-ink-soft">
-          Customise the keys used while studying. Click any row then press the key you want
-          to assign. Changes are remembered on this device.
-        </p>
-        <div className="flex flex-col gap-2">
-          {(Object.keys(ACTION_LABELS) as LearnAction[]).map((action) => (
-            <button
-              key={action}
-              type="button"
-              onClick={() => setCapturingAction(action)}
-              className={cn(
-                'flex items-center justify-between rounded-lg border px-4 py-2.5 text-left transition-colors',
-                capturingAction === action
-                  ? 'border-accent bg-accent-soft'
-                  : 'border-line hover:border-line-strong',
-              )}
-            >
-              <span className="text-sm">{ACTION_LABELS[action]}</span>
-              <kbd
-                className={cn(
-                  'rounded border px-2 py-0.5 text-xs',
-                  capturingAction === action
-                    ? 'border-accent bg-accent text-accent-fg'
-                    : 'border-line-strong bg-surface text-ink-faint',
-                )}
-              >
-                {capturingAction === action
-                  ? 'Press a key…'
-                  : formatBinding(shortcutBindings.bindings[action])}
-              </kbd>
-            </button>
-          ))}
-        </div>
-        {capturingAction && (
-          <KeyCaptureOverlay
-            action={capturingAction}
-            onCapture={(key) => {
-              shortcutBindings.setBinding(capturingAction, key);
-              setCapturingAction(null);
-              notify('Shortcut updated.', 'positive');
-            }}
-            onCancel={() => setCapturingAction(null)}
-          />
-        )}
-        <div className="mt-4 flex justify-end">
-          <Button variant="ghost" size="sm" onClick={() => {
-            shortcutBindings.reset();
-            notify('Shortcuts reset to defaults.', 'neutral');
-          }}>
-            Reset to defaults
-          </Button>
-        </div>
-      </motion.section>
-
-      {/* Pomodoro timer */}
-      <motion.section
-        id="settings-pomodoro"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 * motionMult, delay: 0.35 * motionMult, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-8 rounded-2xl border border-line bg-surface p-6"
-      >
-        <div className="mb-1 flex items-center gap-2 text-accent">
-          <ClockIcon width={18} height={18} />
-          <h2 className="font-display text-xl">Pomodoro timer</h2>
-        </div>
-        <p className="mb-5 text-sm text-ink-soft">
-          A built-in focus timer for your study sessions. Customise the durations to match
-          your own rhythm.
-        </p>
-        <div className="grid grid-cols-3 gap-4">
-          <DurationInput
-            label="Focus"
-            value={pomoSettings.workMinutes}
-            onChange={(v) => {
-              const next = { ...pomoSettings, workMinutes: v };
-              setPomoSettings(next);
-              savePomodoroSettings(next);
-            }}
-          />
-          <DurationInput
-            label="Short break"
-            value={pomoSettings.shortBreakMinutes}
-            onChange={(v) => {
-              const next = { ...pomoSettings, shortBreakMinutes: v };
-              setPomoSettings(next);
-              savePomodoroSettings(next);
-            }}
-          />
-          <DurationInput
-            label="Long break"
-            value={pomoSettings.longBreakMinutes}
-            onChange={(v) => {
-              const next = { ...pomoSettings, longBreakMinutes: v };
-              setPomoSettings(next);
-              savePomodoroSettings(next);
-            }}
-          />
-        </div>
-        <div className="mt-5 flex items-start justify-between gap-3 border-t border-line pt-5">
-          <div className="min-w-0">
-            <div className="text-sm">Auto-start breaks</div>
-            <p className="mt-1 text-sm text-ink-soft">
-              Automatically start the break timer when a focus session ends.
-            </p>
-          </div>
-          <Toggle
-            checked={pomoSettings.autoStartBreaks}
-            onChange={(checked) => {
-              const next = { ...pomoSettings, autoStartBreaks: checked };
-              setPomoSettings(next);
-              savePomodoroSettings(next);
-            }}
-          />
-        </div>
-      </motion.section>
-
-      {/* Install */}
-      <motion.section
-        id="settings-install"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 * motionMult, delay: 0.4 * motionMult, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-8 rounded-2xl border border-line bg-surface p-6"
-      >
-        <div className="mb-1 flex items-center gap-2 text-accent">
-          <DownloadIcon width={18} height={18} />
-          <h2 className="font-display text-xl">Install</h2>
-        </div>
-        <p className="mb-5 text-sm text-ink-soft">
-          Add Lacuna to your home screen for quick access and offline use.
-        </p>
-        <InstallPanel />
-      </motion.section>
-
-      {/* Data portability */}
-      <motion.section
-        id="settings-export"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 * motionMult, delay: 0.45 * motionMult, ease: [0.16, 1, 0.3, 1] }}
-        className="rounded-2xl border border-line bg-surface p-6"
-      >
-        <div className="mb-1 flex items-center gap-2 text-accent">
-          <UploadIcon width={18} height={18} />
-          <h2 className="mb-1 font-display text-xl">Import &amp; export</h2>
-        </div>
-        <p className="mb-5 text-sm text-ink-soft">
-          All your data lives locally in this browser. Export it in multiple formats
-          for backup or transfer, and import to restore or merge.
-        </p>
-
-        {/* Unified export panel */}
-        <div className="mb-6">
-          <UnifiedExportPanel heading="Export your data" />
-        </div>
-
-        {/* Import section */}
-        <div className="border-t border-line pt-5">
-          <h3 className="mb-3 font-display text-lg">Import</h3>
-          <p className="mb-4 text-sm text-ink-soft">
-            Import a full backup file (JSON) to restore or merge your data.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-              <UploadIcon width={18} height={18} />
-              Import from file
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleFile(file);
-                e.target.value = '';
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Inline import-mode chooser, revealed once a backup file is read */}
-        <AnimatePresence>
-          {pending && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, marginTop: 0 }}
-              animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
-              exit={{ opacity: 0, height: 0, marginTop: 0 }}
-              transition={{ duration: 0.16 * motionMult, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden"
-            >
-              <div className="rounded-xl border border-line-strong bg-surface-raised p-5">
-                <h3 className="mb-3 font-display text-lg">Import data</h3>
-                <div className="text-sm text-ink-soft">
-                  <p className="mb-3">
-                    This backup contains{' '}
-                    <strong className="text-ink">{pending.decks.length}</strong> lessons and{' '}
-                    <strong className="text-ink">{pending.cards.length}</strong> cards,
-                    exported on {formatDate(pending.exportedAt)}.
-                  </p>
-                  <ul className="space-y-2">
-                    <li>
-                      <strong className="text-ink">Merge</strong> keeps your current data
-                      and folds in the backup, with the most recently updated copy winning
-                      any conflict.
-                    </li>
-                    <li>
-                      <strong className="text-ink">Replace all</strong> deletes everything
-                      currently stored and restores the backup exactly.
-                    </li>
-                  </ul>
-                </div>
-                <div className="mt-5 flex flex-wrap justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setPending(null)}>
-                    Cancel
-                  </Button>
-                  <Button variant="secondary" onClick={() => runImport('merge')}>
-                    Merge
-                  </Button>
-                  <Button variant="primary" onClick={() => runImport('replace')}>
-                    Replace all
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.section>
-
-      {/* Automatic backups */}
-      <motion.section
-        id="settings-backups"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 * motionMult, delay: 0.5 * motionMult, ease: [0.16, 1, 0.3, 1] }}
-        className="mt-8 rounded-2xl border border-line bg-surface p-6"
-      >
-        <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-accent">
-            <ArchiveIcon width={18} height={18} />
-            <h2 className="font-display text-xl">Automatic backups</h2>
-          </div>
-          <Button variant="secondary" size="sm" onClick={handleBackupNow}>
-            Back up now
-          </Button>
-        </div>
-        <p className="mb-5 text-sm text-ink-soft">
-          Lacuna keeps the ten most recent restore points on this device and saves one
-          automatically when you open it (at most once a day). Restoring replaces all
-          current data with that snapshot.
-        </p>
-
-        {/* Persistent storage */}
-        {persistence && (
-          <div
-            className={cn(
-              'mb-5 rounded-xl border p-4',
-              persistence.persisted
-                ? 'border-line bg-surface-raised/40'
-                : 'border-negative bg-negative/5',
-            )}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm text-ink">
-                  {persistence.persisted
-                    ? 'Storage is persisted'
-                    : 'Storage is not persisted'}
-                </div>
-                <p className="text-xs text-ink-faint">
-                  {persistence.supported ? (
-                    <>
-                      {persistence.persisted
-                        ? 'The browser will not delete this data under storage pressure.'
-                        : 'The browser may delete this data under storage pressure. Regular exports or folder mirroring are the safeguard.'}
-                      {persistence.usage !== null && persistence.usage !== undefined && persistence.quota !== null && persistence.quota !== undefined && (
-                        <>
-                          {' '}
-                          Using {Math.round(persistence.usage / 1024 / 1024)} MB of{' '}
-                          {Math.round(persistence.quota / 1024 / 1024)} MB.
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    'This browser does not support persistent storage.'
-                  )}
-                </p>
-              </div>
-              {persistence.supported && !persistence.persisted && (
-                <Button variant="secondary" size="sm" onClick={handleRequestPersistence}>
-                  Request persistence
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Folder mirror */}
-        {mirrorSupported ? (
-          <div className="mb-5 rounded-xl border border-line bg-surface-raised/40 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="text-sm text-ink">Mirror to a folder</div>
-                <p className="text-xs text-ink-faint">
-                  {folder
-                    ? `Backups are also written to “${folder}”. This survives clearing browser data.`
-                    : 'Also write each backup to a folder on your computer, so it survives clearing browser data.'}
-                </p>
-              </div>
-              {folder ? (
-                <Button variant="ghost" size="sm" onClick={handleStopMirror}>
-                  Stop mirroring
-                </Button>
-              ) : (
-                <Button variant="secondary" size="sm" onClick={handleChooseFolder}>
-                  Choose folder
-                </Button>
-              )}
-            </div>
-          </div>
-        ) : (
-          <p className="mb-5 text-xs text-ink-faint">
-            This browser cannot mirror backups to a folder; restore points are kept in the
-            browser only. Use “Export all data” above for an off-device copy.
-          </p>
-        )}
-
-        {/* Restore points */}
-        {!backups || backups.length === 0 ? (
-          <p className="text-sm text-ink-faint">No restore points yet.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {backups.map((b) => (
-              <li
-                key={b.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <div className="text-sm text-ink">{formatDateTime(b.createdAt)}</div>
-                  <div className="text-xs text-ink-faint">
-                    {b.deckCount} lesson{b.deckCount === 1 ? '' : 's'} · {b.cardCount} card
-                    {b.cardCount === 1 ? '' : 's'}
-                  </div>
-                </div>
-                {confirmRestore === b.id ? (
-                  <ConfirmInline
-                    message="Replace all data?"
-                    confirmLabel="Restore"
-                    variant="default"
-                    onCancel={() => setConfirmRestore(null)}
-                    onConfirm={() => b.id !== null && b.id !== undefined && void handleRestore(b.id)}
-                  />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => b.id !== null && b.id !== undefined && void deleteBackup(b.id)}
-                    >
-                      Delete
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setConfirmRestore(b.id !== null && b.id !== undefined ? b.id : null)}
-                    >
-                      Restore
-                    </Button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </motion.section>
+        <AppearanceSection motionMultiplier={motionMultiplier} />
+        <InputModeSection motionMultiplier={motionMultiplier} />
+        <SidebarSection motionMultiplier={motionMultiplier} />
+        <DashboardSection motionMultiplier={motionMultiplier} />
+        <StudySection motionMultiplier={motionMultiplier} />
+        <ShortcutsSection motionMultiplier={motionMultiplier} />
+        <PomodoroSection motionMultiplier={motionMultiplier} />
+        <InstallSection motionMultiplier={motionMultiplier} />
+        {window.electronAPI?.isElectron && <McpSection motionMultiplier={motionMultiplier} />}
+        <DataPortabilitySection motionMultiplier={motionMultiplier} />
+        <BackupsSection motionMultiplier={motionMultiplier} />
       </div>
 
-      {/* Right-side section nav */}
       <aside className="hidden xl:block w-64 shrink-0">
         <div className="sticky top-24">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 * motionMult, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.4 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
             className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5 backdrop-blur-sm"
           >
-            {/* Ambient top glow that subtly pulses (disabled under reduced motion) */}
-            {motionMult > 0 && (
+            {motionMultiplier > 0 && (
               <motion.div
                 aria-hidden
                 className="pointer-events-none absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
                 animate={{ opacity: [0.4, 0.8, 0.4] }}
-                transition={{ duration: 3 * motionMult, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{ duration: 3 * motionMultiplier, repeat: Infinity, ease: 'easeInOut' }}
               />
             )}
-            {/* Soft radial ambient wash behind the card (disabled under reduced motion) */}
-            {motionMult > 0 && (
+            {motionMultiplier > 0 && (
               <motion.div
                 aria-hidden
                 className="pointer-events-none absolute inset-0 rounded-2xl"
-                style={{
-                  background:
-                    'radial-gradient(circle at 50% 0%, hsl(var(--accent) / 0.06), transparent 55%)',
-                }}
+                style={{ background: 'radial-gradient(circle at 50% 0%, hsl(var(--accent) / 0.06), transparent 55%)' }}
                 animate={{ opacity: [0.5, 0.8, 0.5] }}
-                transition={{ duration: 5 * motionMult, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{ duration: 5 * motionMultiplier, repeat: Infinity, ease: 'easeInOut' }}
               />
             )}
-
-            <div className="relative mb-3 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-ink-faint">
-              On this page
-            </div>
+            <div className="relative mb-3 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-ink-faint">On this page</div>
             <LayoutGroup>
               <nav className="relative flex flex-col gap-1">
                 {SETTINGS_SECTIONS.map((section, index) => (
@@ -1223,14 +113,9 @@ export function Settings() {
                     key={section.id}
                     section={section}
                     active={activeSection === section.id}
-                    onClick={() => {
-                      const el = document.getElementById(section.id);
-                      if (el) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    }}
+                    onClick={() => document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                     index={index}
-                    m={motionMult}
+                    motionMultiplier={motionMultiplier}
                   />
                 ))}
               </nav>
@@ -1242,123 +127,40 @@ export function Settings() {
   );
 }
 
-function InstallPanel() {
-  const { isInstallable, isInstalled, promptInstall } = useInstallPrompt();
-  const isWindows = typeof navigator !== 'undefined' && navigator.platform?.startsWith('Win');
-
-  if (isInstalled) {
-    return (
-      <p className="text-sm text-ink-soft">
-        Lacuna is installed on this device and can be used offline.
-      </p>
-    );
-  }
-
-  if (!isInstallable) {
-    return (
-      <div className="space-y-3">
-        <p className="text-sm text-ink-soft">
-          Your browser does not support installing web apps, or Lacuna is already installed.
-        </p>
-        {isWindows && (
-          <p className="text-sm text-ink-soft">
-            On Windows, you can download the desktop app from the{' '}
-            <a
-              href="https://github.com/TJ7755/Lacuna/releases"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent underline"
-            >
-              GitHub releases page
-            </a>
-            .
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-ink-soft">
-          Install Lacuna as a standalone app for offline access and a native-like experience.
-        </p>
-        <Button variant="secondary" onClick={promptInstall}>
-          <DownloadIcon width={18} height={18} />
-          Install
-        </Button>
-      </div>
-      {isWindows && (
-        <p className="text-sm text-ink-soft">
-          On Windows, you can also download the desktop app from the{' '}
-          <a
-            href="https://github.com/TJ7755/Lacuna/releases"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent underline"
-          >
-            GitHub releases page
-          </a>
-          .
-        </p>
-      )}
-    </div>
-  );
-}
-
-function NavItem({
-  section,
-  active,
-  onClick,
-  index,
-  m,
-}: {
+function NavItem({ section, active, onClick, index, motionMultiplier }: {
   section: (typeof SETTINGS_SECTIONS)[number];
   active: boolean;
   onClick: () => void;
   index: number;
-  m: number;
+  motionMultiplier: number;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
   const isTouchMode = useIsTouchMode();
-  const cursorFollowEnabled = m > 0 && !isTouchMode;
+  const cursorFollowEnabled = motionMultiplier > 0 && !isTouchMode;
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const springX = useSpring(mouseX, { stiffness: 350, damping: 25 });
   const springY = useSpring(mouseY, { stiffness: 350, damping: 25 });
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!cursorFollowEnabled || !ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const distX = (e.clientX - centerX) * 0.12;
-    const distY = (e.clientY - centerY) * 0.12;
-    mouseX.set(distX);
-    mouseY.set(distY);
-  };
-
-  const handleMouseLeave = () => {
-    mouseX.set(0);
-    mouseY.set(0);
-  };
 
   return (
     <motion.button
       ref={ref}
       type="button"
       onClick={onClick}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onMouseMove={(event) => {
+        if (!cursorFollowEnabled || !ref.current) return;
+        const rect = ref.current.getBoundingClientRect();
+        mouseX.set((event.clientX - (rect.left + rect.width / 2)) * 0.12);
+        mouseY.set((event.clientY - (rect.top + rect.height / 2)) * 0.12);
+      }}
+      onMouseLeave={() => {
+        mouseX.set(0);
+        mouseY.set(0);
+      }}
       style={{ x: cursorFollowEnabled ? springX : 0, y: cursorFollowEnabled ? springY : 0 }}
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{
-        delay: 0.04 * index * m,
-        duration: 0.35 * m,
-        ease: [0.16, 1, 0.3, 1],
-      }}
+      transition={{ delay: 0.04 * index * motionMultiplier, duration: 0.35 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
       whileHover={{ scale: 1.04 }}
       whileTap={{ scale: 0.96 }}
       className={cn(
@@ -1367,147 +169,19 @@ function NavItem({
       )}
     >
       {active && (
-        <motion.div
-          layoutId="activePill"
-          className="absolute inset-0 rounded-lg bg-accent/10"
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        >
-          <motion.div
-            layoutId="activeBar"
-            className="absolute inset-y-0 left-0 w-1 rounded-r-full bg-accent"
-            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          />
-          {m > 0 && (
+        <motion.div layoutId="activePill" className="absolute inset-0 rounded-lg bg-accent/10" transition={{ type: 'spring', stiffness: 400, damping: 30 }}>
+          <motion.div layoutId="activeBar" className="absolute inset-y-0 left-0 w-1 rounded-r-full bg-accent" transition={{ type: 'spring', stiffness: 400, damping: 30 }} />
+          {motionMultiplier > 0 && (
             <motion.div
               aria-hidden
               className="absolute inset-0 rounded-lg bg-gradient-to-r from-accent/10 via-accent/5 to-transparent"
               animate={{ opacity: [0.3, 0.7, 0.3] }}
-              transition={{ duration: 2.5 * m, repeat: Infinity, ease: 'easeInOut' }}
+              transition={{ duration: 2.5 * motionMultiplier, repeat: Infinity, ease: 'easeInOut' }}
             />
           )}
         </motion.div>
       )}
       <span className="relative z-10 truncate font-medium">{section.label}</span>
     </motion.button>
-  );
-}
-
-function KeyCaptureOverlay({
-  action,
-  onCapture,
-  onCancel,
-}: {
-  action: LearnAction;
-  onCapture: (key: string) => void;
-  onCancel: () => void;
-}) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      e.preventDefault();
-      if (e.key === 'Escape') {
-        onCancel();
-        return;
-      }
-      // Ignore modifier-only keys and navigation keys that should not be bound.
-      if (
-        e.key === 'Shift' ||
-        e.key === 'Control' ||
-        e.key === 'Alt' ||
-        e.key === 'Meta' ||
-        e.key === 'Tab' ||
-        e.key === 'CapsLock' ||
-        e.key === 'Dead'
-      ) {
-        return;
-      }
-      if (e.key === ' ') {
-        onCapture('Space');
-        return;
-      }
-      onCapture(e.key.length === 1 ? e.key.toLowerCase() : e.key);
-    };
-    window.addEventListener('keydown', handler, { capture: true });
-    return () => window.removeEventListener('keydown', handler, { capture: true });
-  }, [action, onCapture, onCancel]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-      onClick={onCancel}
-    >
-      <div
-        className="rounded-2xl border border-line-strong bg-surface px-8 py-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 className="mb-2 font-display text-lg">Set shortcut for {ACTION_LABELS[action]}</h3>
-        <p className="text-sm text-ink-soft">Press the key you want to use. Press Escape or click outside this card to cancel.</p>
-      </div>
-    </div>
-  );
-}
-
-function DurationInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <label className="block text-sm text-ink-soft">
-      {label}
-      <div className="mt-2 flex items-center gap-2">
-        <input
-          type="number"
-          min={1}
-          max={120}
-          value={value}
-          onChange={(e) => {
-            const n = Number(e.target.value);
-            if (!Number.isNaN(n)) onChange(Math.max(1, Math.min(120, n)));
-          }}
-          className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-ink outline-none transition-colors focus:border-accent"
-        />
-        <span className="shrink-0 text-xs text-ink-faint">min</span>
-      </div>
-    </label>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  suffix,
-  min,
-  max,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  suffix: string;
-  min: number;
-  max: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <label className="block text-sm text-ink-soft">
-      {label}
-      <div className="mt-2 flex items-center gap-2">
-        <input
-          type="number"
-          min={min}
-          max={max}
-          value={value}
-          onChange={(e) => {
-            const n = Number(e.target.value);
-            if (!Number.isNaN(n)) onChange(Math.max(min, Math.min(max, n)));
-          }}
-          className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-ink outline-none transition-colors focus:border-accent"
-        />
-        <span className="shrink-0 text-xs text-ink-faint">{suffix}</span>
-      </div>
-    </label>
   );
 }
