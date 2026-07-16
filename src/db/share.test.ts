@@ -442,7 +442,7 @@ describe('course share codes (v2)', () => {
   it('round-trips a speakerless lines-mode sequence, omitting the preset id when it matches the m/ms inference', async () => {
     const course = await createCourse('Poetry');
     const lesson = await createLesson(course.id, 'Sonnets');
-    await createSequence(
+    const sequence = await createSequence(
       course.id,
       lesson.id,
       'Sonnet 18',
@@ -461,14 +461,14 @@ describe('course share codes (v2)', () => {
     expect(payload.sequences![0].pr).toBeUndefined();
 
     await importSharePayload(payload);
-    const imported = (await db.sequences.toArray()).find((s) => s.name === 'Sonnet 18')!;
+    const imported = (await db.sequences.toArray()).find((s) => s.id !== sequence.id)!;
     expect(imported.presetId).toBeUndefined();
   });
 
   it('round-trips the preset id when it cannot be re-inferred from mode/mySpeaker (speech vs. poetry)', async () => {
     const course = await createCourse('Rhetoric');
     const lesson = await createLesson(course.id, 'Gettysburg Address');
-    await createSequence(
+    const sequence = await createSequence(
       course.id,
       lesson.id,
       'Opening lines',
@@ -482,7 +482,7 @@ describe('course share codes (v2)', () => {
     expect(payload.sequences![0].pr).toBe('speech');
 
     await importSharePayload(payload);
-    const imported = (await db.sequences.toArray()).find((s) => s.name === 'Opening lines')!;
+    const imported = (await db.sequences.toArray()).find((s) => s.id !== sequence.id)!;
     expect(imported.presetId).toBe('speech');
   });
 
