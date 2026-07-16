@@ -350,7 +350,13 @@ if (!gotTheLock) {
     mcpModule = mcp;
     await mcp.startMcpServer(() => mainWindow);
 
-    ipcMain.handle('mcp:status', () => mcpModule?.getMcpStatus() ?? { running: false, toolCount: 0, toolSurfaceVersion: 0 });
+    ipcMain.handle('mcp:status', (event) => {
+      if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed() ||
+        event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
+        throw new Error('Untrusted MCP status request.');
+      }
+      return mcpModule?.getMcpStatus() ?? { running: false, toolCount: 0, toolSurfaceVersion: 0 };
+    });
   });
 }
 

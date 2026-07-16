@@ -1004,6 +1004,7 @@ export interface CourseSnapshot {
   course: Course;
   lessons: Lesson[];
   notes: Note[];
+  noteAnnotations: NoteAnnotation[];
   lessonCards: LessonCardLink[];
   lessonCardExposures: LessonCardExposure[];
   lessonCompletions: LessonCompletion[];
@@ -1068,6 +1069,10 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.sessionHistory.where('courseId').equals(id).toArray(),
     deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
   ]);
+  const noteAnnotations =
+    notes.length > 0
+      ? await db.noteAnnotations.where('noteId').anyOf(notes.map((note) => note.id)).toArray()
+      : [];
   // A backing deck's session history is always course-scoped too (see recordReview),
   // so de-duplicate by row id between the deckId and courseId lookups.
   const sessionHistoryById = new Map(
@@ -1078,6 +1083,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     course,
     lessons,
     notes,
+    noteAnnotations,
     lessonCards,
     lessonCardExposures,
     lessonCompletions,
@@ -1101,6 +1107,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.courses,
         db.lessons,
         db.notes,
+        db.noteAnnotations,
         db.lessonCards,
         db.lessonCardExposures,
         db.lessonCompletions,
@@ -1118,6 +1125,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.courses.put(snapshot.course),
           db.lessons.bulkPut(snapshot.lessons),
           db.notes.bulkPut(snapshot.notes),
+          db.noteAnnotations.bulkPut(snapshot.noteAnnotations),
           db.lessonCards.bulkPut(snapshot.lessonCards),
           db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures),
           db.lessonCompletions.bulkPut(snapshot.lessonCompletions),
@@ -1171,6 +1179,105 @@ export async function createLesson(
 export async function updateLesson(id: string, changes: Partial<Lesson>): Promise<void> {
   try {
     await db.lessons.update(id, changes);
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/** Everything {@link deleteLesson} removes or rewrites, captured for undo. */
+export interface LessonSnapshot {
+  lesson: Lesson;
+  notes: Note[];
+  noteAnnotations: NoteAnnotation[];
+  lessonCards: LessonCardLink[];
+  lessonCardExposures: LessonCardExposure[];
+  lessonCompletion?: LessonCompletion;
+  cards: Card[];
+  sequences: Sequence[];
+  decks: Deck[];
+  sessionHistory: SessionHistoryEntry[];
+  userPerformance: UserPerformance[];
+}
+
+/** Capture a lesson and every row {@link deleteLesson} changes before deleting it. */
+export async function snapshotLesson(id: string): Promise<LessonSnapshot | null> {
+  const lesson = await db.lessons.get(id);
+  if (!lesson) return null;
+
+  const [notes, lessonCards, lessonCardExposures, lessonCompletion, cards, sequences, decks] =
+    await Promise.all([
+      db.notes.where('lessonId').equals(id).toArray(),
+      db.lessonCards.where('lessonId').equals(id).toArray(),
+      db.lessonCardExposures.where('lessonId').equals(id).toArray(),
+      db.lessonCompletions.get(id),
+      db.cards.where('primaryLessonId').equals(id).toArray(),
+      db.sequences.where('primaryLessonId').equals(id).toArray(),
+      db.decks
+        .filter(
+          (deck) =>
+            deck.backingCourseId === lesson.courseId && deck.backingLessonId === id,
+        )
+        .toArray(),
+    ]);
+  const noteIds = notes.map((note) => note.id);
+  const deckIds = decks.map((deck) => deck.id);
+  const [noteAnnotations, sessionHistory, userPerformance] = await Promise.all([
+    noteIds.length > 0 ? db.noteAnnotations.where('noteId').anyOf(noteIds).toArray() : [],
+    deckIds.length > 0 ? db.sessionHistory.where('deckId').anyOf(deckIds).toArray() : [],
+    deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
+  ]);
+
+  return {
+    lesson,
+    notes,
+    noteAnnotations,
+    lessonCards,
+    lessonCardExposures,
+    ...(lessonCompletion ? { lessonCompletion } : {}),
+    cards,
+    sequences,
+    decks,
+    sessionHistory,
+    userPerformance,
+  };
+}
+
+/** Restore a lesson snapshot captured immediately before {@link deleteLesson}. */
+export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
+  try {
+    await db.transaction(
+      'rw',
+      [
+        db.lessons,
+        db.notes,
+        db.noteAnnotations,
+        db.lessonCards,
+        db.lessonCardExposures,
+        db.lessonCompletions,
+        db.cards,
+        db.sequences,
+        db.decks,
+        db.sessionHistory,
+        db.userPerformance,
+      ],
+      async () => {
+        await Promise.all([
+          db.lessons.put(snapshot.lesson),
+          db.notes.bulkPut(snapshot.notes),
+          db.noteAnnotations.bulkPut(snapshot.noteAnnotations),
+          db.lessonCards.bulkPut(snapshot.lessonCards),
+          db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures),
+          snapshot.lessonCompletion
+            ? db.lessonCompletions.put(snapshot.lessonCompletion)
+            : Promise.resolve(),
+          db.cards.bulkPut(snapshot.cards),
+          db.sequences.bulkPut(snapshot.sequences),
+          db.decks.bulkPut(snapshot.decks),
+          db.sessionHistory.bulkPut(snapshot.sessionHistory),
+          db.userPerformance.bulkPut(snapshot.userPerformance),
+        ]);
+      },
+    );
   } catch (err) {
     throw friendlyDbError(err);
   }

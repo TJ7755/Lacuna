@@ -6,7 +6,10 @@ import {
   createLesson,
   createLessonCard,
   createSequence,
+  restoreCards,
+  restoreLesson,
 } from '../../db/repository';
+import type { CardSnapshot, LessonSnapshot } from '../../db/repository';
 import type { ToolContext } from '../types';
 import { validateAndRun } from '../registry';
 import * as tools from './destructive';
@@ -70,8 +73,12 @@ describe('mcp destructive tools', () => {
       const lesson = await createLesson(course.id, 'Lesson 1');
       const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
 
-      await tools.suspendCards.handler({ ids: [card.id], suspended: true }, ctx);
+      const result = await tools.suspendCards.handler({ ids: [card.id], suspended: true }, ctx);
       expect((await db.cards.get(card.id))?.suspended).toBe(true);
+      expect(result.undo?.kind).toBe('restoreCards');
+
+      await restoreCards(result.undo!.snapshot as CardSnapshot);
+      expect((await db.cards.get(card.id))?.suspended).toBe(false);
 
       await tools.suspendCards.handler({ ids: [card.id], suspended: false }, ctx);
       expect((await db.cards.get(card.id))?.suspended).toBe(false);
@@ -90,8 +97,12 @@ describe('mcp destructive tools', () => {
       const lesson = await createLesson(course.id, 'Lesson 1');
       const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
 
-      await tools.setCardsFlag.handler({ ids: [card.id], flagged: true }, ctx);
+      const result = await tools.setCardsFlag.handler({ ids: [card.id], flagged: true }, ctx);
       expect((await db.cards.get(card.id))?.flagged).toBe(true);
+      expect(result.undo?.kind).toBe('restoreCards');
+
+      await restoreCards(result.undo!.snapshot as CardSnapshot);
+      expect((await db.cards.get(card.id))?.flagged).not.toBe(true);
 
       await tools.setCardsFlag.handler({ ids: [card.id], flagged: false }, ctx);
       expect((await db.cards.get(card.id))?.flagged).toBe(false);
@@ -105,10 +116,16 @@ describe('mcp destructive tools', () => {
       const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
       await db.cards.update(card.id, { state: 2, stability: 5 });
 
-      await tools.rescheduleCards.handler({ ids: [card.id], reset: true }, ctx);
+      const result = await tools.rescheduleCards.handler({ ids: [card.id], reset: true }, ctx);
       const updated = await db.cards.get(card.id);
       expect(updated?.state).toBe(0);
       expect(updated?.stability).toBeNull();
+      expect(result.undo?.kind).toBe('restoreCards');
+
+      await restoreCards(result.undo!.snapshot as CardSnapshot);
+      const restored = await db.cards.get(card.id);
+      expect(restored?.state).toBe(2);
+      expect(restored?.stability).toBe(5);
     });
 
     it('sets a specific due date', async () => {
@@ -129,13 +146,20 @@ describe('mcp destructive tools', () => {
   });
 
   describe('lacuna.delete_lesson', () => {
-    it('deletes a lesson', async () => {
+    it('deletes a lesson and returns a snapshot that restores its affected rows', async () => {
       const course = await createCourse('Course A');
       const lesson = await createLesson(course.id, 'Lesson 1');
+      const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
 
       const res = await tools.deleteLesson.handler({ lessonId: lesson.id }, ctx);
       expect(res.data.id).toBe(lesson.id);
+      expect(res.undo?.kind).toBe('restoreLesson');
       expect(await db.lessons.get(lesson.id)).toBeUndefined();
+      expect((await db.cards.get(card.id))?.primaryLessonId).toBeNull();
+
+      await restoreLesson(res.undo!.snapshot as LessonSnapshot);
+      expect(await db.lessons.get(lesson.id)).toEqual(lesson);
+      expect((await db.cards.get(card.id))?.primaryLessonId).toBe(lesson.id);
     });
 
     it('rejects an unknown lessonId with not_found', async () => {

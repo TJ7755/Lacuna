@@ -3,7 +3,7 @@ import { InvokeDispatcher, RENDERER_NOT_READY_MESSAGE } from './dispatcher';
 import type { McpInvokeRequest } from './protocol';
 
 function makeRequest(id = 'req-1'): McpInvokeRequest {
-  return { id, tool: 'lacuna.list_courses', input: {}, agentId: 'agent-1' };
+  return { id, tool: 'lacuna.list_courses', input: {}, agentId: 'agent-1', grant: { courseId: '__global__', scope: 'read', grantedAt: 1 } };
 }
 
 describe('InvokeDispatcher', () => {

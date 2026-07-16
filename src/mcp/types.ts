@@ -51,7 +51,7 @@ export interface ToolResult<T = unknown> {
 /** What a destructive tool call captured before mutating, so it can be reversed. */
 export interface ToolUndoPayload {
   /** Names the repository restore function that reverses this call, e.g. "restoreCards". */
-  kind: 'restoreCards' | 'restoreCourse' | 'restoreSequence';
+  kind: 'restoreCards' | 'restoreCourse' | 'restoreLesson' | 'restoreSequence';
   /** The opaque snapshot blob accepted by that restore function. Never exposed to the agent. */
   snapshot: unknown;
 }

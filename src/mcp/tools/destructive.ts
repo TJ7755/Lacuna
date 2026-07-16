@@ -16,6 +16,7 @@ import {
   deleteCards,
   snapshotCards,
   deleteLesson as repoDeleteLesson,
+  snapshotLesson,
   deleteCourse as repoDeleteCourse,
   snapshotCourse,
   deleteSequence as repoDeleteSequence,
@@ -79,8 +80,9 @@ const suspendCards: ToolDefinition<z.infer<typeof suspendCardsSchema>, { updated
   requiredScope: 'destructive',
   async handler({ ids, suspended }) {
     await requireCards(ids);
+    const snapshot = await snapshotCards(ids);
     await setCardsSuspended(ids, suspended);
-    return ok({ updatedCount: ids.length });
+    return ok({ updatedCount: ids.length }, { kind: 'restoreCards', snapshot });
   },
 };
 
@@ -95,8 +97,9 @@ const setCardsFlagTool: ToolDefinition<z.infer<typeof setCardsFlagSchema>, { upd
   requiredScope: 'destructive',
   async handler({ ids, flagged }) {
     await requireCards(ids);
+    const snapshot = await snapshotCards(ids);
     await Promise.all(ids.map((id) => setCardFlag(id, flagged)));
-    return ok({ updatedCount: ids.length });
+    return ok({ updatedCount: ids.length }, { kind: 'restoreCards', snapshot });
   },
 };
 
@@ -118,8 +121,9 @@ const rescheduleCardsTool: ToolDefinition<z.infer<typeof rescheduleCardsSchema>,
   requiredScope: 'destructive',
   async handler({ ids, reset, due }) {
     await requireCards(ids);
+    const snapshot = await snapshotCards(ids);
     await repoRescheduleCards(ids, reset !== undefined ? { reset, due } : { due });
-    return ok({ updatedCount: ids.length });
+    return ok({ updatedCount: ids.length }, { kind: 'restoreCards', snapshot });
   },
 };
 
@@ -136,9 +140,10 @@ const deleteLessonTool: ToolDefinition<z.infer<typeof deleteLessonSchema>, { id:
   inputSchema: deleteLessonSchema,
   requiredScope: 'destructive',
   async handler({ lessonId }) {
-    if (!(await read.getLesson(lessonId))) notFound('Lesson', lessonId);
+    const snapshot = await snapshotLesson(lessonId);
+    if (!snapshot) notFound('Lesson', lessonId);
     await repoDeleteLesson(lessonId);
-    return ok({ id: lessonId });
+    return ok({ id: lessonId }, { kind: 'restoreLesson', snapshot });
   },
 };
 

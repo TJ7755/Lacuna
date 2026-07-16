@@ -29,7 +29,9 @@ import {
   recordReview,
   reorderLessons,
   restoreCourse,
+  restoreLesson,
   snapshotCourse,
+  snapshotLesson,
   stampMissingLessonViewModes,
 } from './repository';
 import { FSRS_VERSION } from '../fsrs/params';
@@ -39,7 +41,10 @@ async function reset() {
     db.courses.clear(),
     db.lessons.clear(),
     db.notes.clear(),
+    db.noteAnnotations.clear(),
     db.lessonCards.clear(),
+    db.lessonCardExposures.clear(),
+    db.lessonCompletions.clear(),
     db.practiceNodes.clear(),
     db.courseExamDates.clear(),
     db.cards.clear(),
@@ -249,7 +254,16 @@ describe('snapshotCourse / restoreCourse', () => {
     const course = await createCourse('Undo test');
     const lesson1 = await createLesson(course.id, 'L1');
     const lesson2 = await createLesson(course.id, 'L2');
-    await createNote(lesson1.id, 'Note A');
+    const note = await createNote(lesson1.id, 'Note A');
+    await db.noteAnnotations.add({
+      id: 'course-annotation-1',
+      noteId: note.id,
+      startOffset: 0,
+      endOffset: 4,
+      selectedText: 'Note',
+      createdAt: 1,
+      updatedAt: 1,
+    });
     const lessonCard = await createLessonCard(course.id, lesson1.id, 'front_back', 'q', 'a');
     const bankCard = await createCourseCard(course.id, 'front_back', 'q2', 'a2');
     await linkCardToLesson(lesson2.id, lessonCard.id);
@@ -292,6 +306,7 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(await db.courses.get(course.id)).toBeDefined();
     expect(await db.lessons.where('courseId').equals(course.id).count()).toBe(2);
     expect(await db.notes.where('lessonId').equals(lesson1.id).count()).toBe(1);
+    expect(await db.noteAnnotations.get('course-annotation-1')).toBeDefined();
     expect(await db.lessonCards.where('lessonId').equals(lesson2.id).count()).toBe(1);
     expect(await db.practiceNodes.where('courseId').equals(course.id).count()).toBe(1);
     expect(await db.courseExamDates.where('courseId').equals(course.id).count()).toBe(1);
@@ -371,6 +386,44 @@ describe('deleteLesson', () => {
     expect(movedCard?.primaryLessonId).toBeNull();
     expect(movedCard?.deckId).not.toBe(lessonDeckId);
     expect(await db.decks.get(lessonDeckId)).toBeUndefined();
+  });
+
+  it('restores every row deleted or rewritten by a lesson deletion', async () => {
+    const course = await createCourse('Lesson undo test');
+    const lesson = await createLesson(course.id, 'L1');
+    const note = await createNote(lesson.id, 'Note', 'Body');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+    const sequence = await createSequence(course.id, lesson.id, 'Sequence', [
+      { id: 'item', value: 'Item' },
+    ]);
+    const deckId = card.deckId;
+    await db.noteAnnotations.add({
+      id: 'annotation-1',
+      noteId: note.id,
+      startOffset: 0,
+      endOffset: 4,
+      selectedText: 'Body',
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    await db.lessonCompletions.put({ lessonId: lesson.id, completedAt: 2 });
+
+    const snapshot = await snapshotLesson(lesson.id);
+    expect(snapshot).not.toBeNull();
+    await deleteLesson(lesson.id);
+    await restoreLesson(snapshot!);
+
+    expect(await db.lessons.get(lesson.id)).toEqual(lesson);
+    expect(await db.notes.get(note.id)).toEqual(note);
+    expect(await db.noteAnnotations.get('annotation-1')).toBeDefined();
+    expect(await db.lessonCompletions.get(lesson.id)).toEqual({
+      lessonId: lesson.id,
+      completedAt: 2,
+    });
+    expect((await db.cards.get(card.id))?.primaryLessonId).toBe(lesson.id);
+    expect((await db.sequences.get(sequence.id))?.primaryLessonId).toBe(lesson.id);
+    expect(await db.decks.get(deckId)).toBeDefined();
+    expect(await db.userPerformance.get(deckId)).toBeDefined();
   });
 });
 
