@@ -12,6 +12,7 @@ import { m as motion, AnimatePresence } from 'motion/react';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { ConfirmInline } from '../components/ui/ConfirmInline';
+import { Select } from '../components/ui/Select';
 import { useToast } from '../components/ui/Toast';
 import { DangerZoneSection } from './settings/DangerZoneSection';
 import { SequenceItemRow } from '../components/sequences/SequenceItemRow';
@@ -494,10 +495,10 @@ export function SequenceEditor() {
             {usesSpeakers && (
               <label className="flex items-center gap-2 text-sm text-ink-soft">
                 My speaker
-                <select
+                <Select
                   value={mySpeaker}
                   onChange={(e) => setMySpeaker(e.target.value)}
-                  className="min-w-[8rem] rounded-lg border border-line bg-transparent px-2 py-1 outline-none focus:border-accent"
+                  className="min-w-[8rem]"
                 >
                   <option value="">Choose…</option>
                   {speakers.map((speaker) => (
@@ -508,7 +509,7 @@ export function SequenceEditor() {
                   {mySpeaker && !speakers.includes(mySpeaker) && (
                     <option value={mySpeaker}>{mySpeaker}</option>
                   )}
-                </select>
+                </Select>
                 <span className="text-ink-faint">— only these lines get recall cards</span>
               </label>
             )}

@@ -11,6 +11,7 @@
 // British English throughout.
 
 import { Toggle } from '../ui/Toggle';
+import { Select } from '../ui/Select';
 import { cn } from '../ui/cn';
 import type { Lesson } from '../../db/types';
 import type { PracticeNodeDraft } from './practiceNodeDraft';
@@ -49,7 +50,7 @@ export function PracticeNodeFields({ draft, onChange, lessons }: PracticeNodeFie
       {sortedLessons.length > 0 && (
         <label className="block text-sm text-ink-soft">
           Position on the path
-          <select
+          <Select
             value={draft.position ?? ''}
             onChange={(e) =>
               onChange((d) => ({
@@ -57,7 +58,7 @@ export function PracticeNodeFields({ draft, onChange, lessons }: PracticeNodeFie
                 position: e.target.value === '' ? undefined : Number(e.target.value),
               }))
             }
-            className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+            className="mt-2 w-full"
           >
             <option value="">Start of course</option>
             {sortedLessons.map((lesson) => (
@@ -65,7 +66,7 @@ export function PracticeNodeFields({ draft, onChange, lessons }: PracticeNodeFie
                 After &ldquo;{lesson.name}&rdquo;
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
 

@@ -3,6 +3,7 @@ import { m as motion, AnimatePresence } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useChartColours } from './useChartColours';
 import { ChartCard } from './ChartCard';
+import { Select } from '../ui/Select';
 import type { Course, Card } from '../../db/types';
 import {
   averagePredictedRetrievability,
@@ -251,10 +252,10 @@ export function CourseComparison({ courses, cards }: CourseComparisonProps) {
     >
       <div className="space-y-4">
         <div className="flex flex-wrap gap-3">
-          <select
+          <Select
             value={courseAId}
             onChange={(e) => setCourseAId(e.target.value)}
-            className="min-w-[10rem] rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
+            className="min-w-[10rem]"
             aria-label="First course"
           >
             <option value="">Select a course…</option>
@@ -263,12 +264,12 @@ export function CourseComparison({ courses, cards }: CourseComparisonProps) {
                 {course.name}
               </option>
             ))}
-          </select>
+          </Select>
           <span className="self-center text-sm text-ink-faint">vs</span>
-          <select
+          <Select
             value={courseBId}
             onChange={(e) => setCourseBId(e.target.value)}
-            className="min-w-[10rem] rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
+            className="min-w-[10rem]"
             aria-label="Second course"
           >
             <option value="">Select a course…</option>
@@ -277,7 +278,7 @@ export function CourseComparison({ courses, cards }: CourseComparisonProps) {
                 {course.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <AnimatePresence mode="wait">
