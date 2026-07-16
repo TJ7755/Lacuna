@@ -17,6 +17,7 @@ import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
 import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
+import { attachMcpBridge } from './mcp/bridge/renderer';
 
 function RouterWithQuotaWarning() {
   useStorageQuotaWarning();
@@ -385,6 +386,14 @@ export function App() {
       window.removeEventListener('beforeunload', handler);
       window.removeEventListener('pagehide', handler);
     };
+  }, []);
+
+  // Only present under Electron (electron/preload.ts's electronAPI.mcp); a no-op on the
+  // web build. Starts answering tool calls forwarded from the main process's stdio MCP
+  // server (Arc 2, Task 9) as soon as the renderer is ready to run them.
+  useEffect(() => {
+    if (!window.electronAPI?.isElectron) return;
+    return attachMcpBridge();
   }, []);
 
   if (initError) {
