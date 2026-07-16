@@ -43,6 +43,17 @@ describe('McpSection', () => {
     fireEvent.click(withinRow(biologyRow, 'Revoke'));
     await waitFor(() => expect(revoke).toHaveBeenCalledWith('course-1'));
   });
+
+  it('allows an existing grant to be stepped down', async () => {
+    getGrants.mockResolvedValue([
+      { courseId: 'course-1', scope: 'destructive', grantedAt: 1, label: 'Biology' },
+    ]);
+    render(<McpSection motionMultiplier={0} />);
+    await screen.findByText('destructive access');
+    const biologyRow = screen.getByText('Biology').closest('div.flex.flex-wrap')!;
+    fireEvent.click(withinRow(biologyRow, 'Downgrade to write'));
+    await waitFor(() => expect(grant).toHaveBeenCalledWith('course-1', 'write', 'Biology'));
+  });
 });
 
 function withinRow(row: Element, label: string): HTMLElement {

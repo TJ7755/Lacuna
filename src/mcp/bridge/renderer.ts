@@ -53,6 +53,9 @@ export async function handleInvoke(
       return;
     }
 
+    // The main process resolved this scope against the live database before consent.
+    // A course move before this second check may be rejected spuriously; that race
+    // deliberately fails closed.
     const scopes = await resolveToolScopes(request.input);
     if (!scopes.ok) {
       reply({ id: request.id, ok: false, error: scopes.error });

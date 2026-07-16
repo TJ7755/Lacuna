@@ -64,6 +64,19 @@ describe('GrantStore', () => {
     expect(store.get('course-1')).toBe(upgraded);
   });
 
+  it('sets an exact lower scope when changed from Settings', () => {
+    const store = new GrantStore();
+    store.grant('course-1', 'destructive');
+    const downgraded = store.setScope('course-1', 'write', 'Course One');
+    expect(downgraded).toEqual({
+      courseId: 'course-1',
+      scope: 'write',
+      grantedAt: expect.any(Number),
+      label: 'Course One',
+    });
+    expect(store.get('course-1')).toBe(downgraded);
+  });
+
   it('revoke removes the grant; revoking an unknown course is a no-op', () => {
     const store = new GrantStore();
     store.grant('course-1', 'write');
@@ -94,8 +107,8 @@ describe('GrantStore', () => {
 describe('resolveGrant', () => {
   it('returns ok when the store already satisfies the required scope', () => {
     const store = new GrantStore();
-    store.grant('course-1', 'destructive');
-    expect(resolveGrant(store, 'write', 'course-1')).toEqual({ ok: true });
+    const grant = store.grant('course-1', 'destructive');
+    expect(resolveGrant(store, 'write', 'course-1')).toEqual({ ok: true, grant });
   });
 
   it('returns a forbidden McpToolError naming the missing scope and course', () => {
@@ -119,8 +132,8 @@ describe('resolveGrant', () => {
 
   it('is satisfied once a lower-tier requirement is granted at a higher tier', () => {
     const store = new GrantStore();
-    store.grant('course-1', 'destructive');
-    expect(resolveGrant(store, 'read', 'course-1')).toEqual({ ok: true });
-    expect(resolveGrant(store, 'destructive', 'course-1')).toEqual({ ok: true });
+    const grant = store.grant('course-1', 'destructive');
+    expect(resolveGrant(store, 'read', 'course-1')).toEqual({ ok: true, grant });
+    expect(resolveGrant(store, 'destructive', 'course-1')).toEqual({ ok: true, grant });
   });
 });

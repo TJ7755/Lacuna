@@ -70,6 +70,11 @@ export class GrantStore {
     if (existing && SCOPE_ORDER[existing.scope] >= SCOPE_ORDER[scope]) {
       return existing;
     }
+    return this.setScope(courseId, scope, label);
+  }
+
+  /** Replaces a grant with an exact scope. Used by the trusted Settings controls. */
+  setScope(courseId: string, scope: McpScope, label?: string): McpGrant {
     const next: McpGrant = { courseId, scope, grantedAt: Date.now(), label };
     this.grants.set(courseId, next);
     return next;
@@ -121,9 +126,10 @@ export function resolveGrant(
   store: GrantStore,
   requiredScope: McpScope,
   courseId: string,
-): { ok: true } | { ok: false; error: McpToolError } {
-  if (store.hasScope(courseId, requiredScope)) {
-    return { ok: true };
+): { ok: true; grant: McpGrant } | { ok: false; error: McpToolError } {
+  const grant = store.get(courseId);
+  if (grant && scopeSatisfies(grant.scope, requiredScope)) {
+    return { ok: true, grant };
   }
   const courseLabel = courseId === GLOBAL_SCOPE_KEY ? 'the whole database' : `course "${courseId}"`;
   return {

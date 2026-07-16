@@ -1596,7 +1596,8 @@ rendered sections.
   instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`.
 - **MCP server** (Electron only): live stdio-server status, tool-surface version and tool
   count, followed by process-scoped read/write/destructive grants for the whole database
-  and each course. Grants can be raised or revoked and are discarded when Lacuna closes.
+  and each course. Grants can be raised, lowered or revoked and are discarded when Lacuna
+  closes.
 
 ### Course settings (`src/pages/CourseSettings.tsx`)
 The only exam/scheduling settings surface in the app — there is no deck-level settings

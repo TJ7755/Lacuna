@@ -8,6 +8,11 @@ import type { McpGrant } from '../../mcp/types';
 import { useCourses } from '../../state/useCourseData';
 
 interface McpStatus { running: boolean; toolCount: number; toolSurfaceVersion: number }
+const SCOPES = ['read', 'write', 'destructive'] as const;
+const LOWER_SCOPE: Partial<Record<McpGrant['scope'], McpGrant['scope']>> = {
+  write: 'read',
+  destructive: 'write',
+};
 
 export function McpSection({ motionMultiplier }: { motionMultiplier: number }) {
   const mcp = window.electronAPI?.mcp;
@@ -52,10 +57,13 @@ export function McpSection({ motionMultiplier }: { motionMultiplier: number }) {
       <div className="space-y-2">
         {rows.map((row) => {
           const current = grants.find((entry) => entry.courseId === row.id);
+          const lowerScope = current ? LOWER_SCOPE[current.scope] : undefined;
+          const higherScopes = current ? SCOPES.slice(SCOPES.indexOf(current.scope) + 1) : SCOPES;
           return <div key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line px-4 py-3">
             <div className="min-w-0"><div className="truncate text-sm text-ink">{row.name}</div><div className="text-xs text-ink-faint">{current ? `${current.scope} access` : 'No access'}</div></div>
             <div className="flex flex-wrap gap-1">
-              {(['read', 'write', 'destructive'] as const).map((scope) => <Button key={scope} variant="ghost" size="sm" onClick={() => void setGrant(row.id, scope, row.name)}>{scope[0].toUpperCase() + scope.slice(1)}</Button>)}
+              {higherScopes.map((scope) => <Button key={scope} variant="ghost" size="sm" onClick={() => void setGrant(row.id, scope, row.name)}>{scope[0].toUpperCase() + scope.slice(1)}</Button>)}
+              {lowerScope && <Button variant="ghost" size="sm" onClick={() => void setGrant(row.id, lowerScope, row.name)}>Downgrade to {lowerScope}</Button>}
               {current && <Button variant="secondary" size="sm" onClick={() => void revoke(row.id)}>Revoke</Button>}
             </div>
           </div>;

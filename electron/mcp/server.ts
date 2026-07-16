@@ -120,7 +120,7 @@ async function ensureGrant(
     return { ok: true, grant };
   }
   const outcome = resolveGrant(store, tool.requiredScope, courseId);
-  if (outcome.ok) return { ok: true, grant: store.get(courseId)! };
+  if (outcome.ok) return outcome;
 
   const window = getWindow();
   if (!window || window.webContents.isDestroyed()) return { ok: false, error: outcome.error };
@@ -145,10 +145,9 @@ async function ensureGrant(
 }
 
 function errorToCallToolResult(error: McpToolError): CallToolResult {
-  // Never leaks a raw stack trace — `error.message` is already one of the curated
-  // McpToolError messages from src/mcp/registry.ts's validateAndRun or a tool handler's
-  // McpToolException (src/mcp/types.ts). The `kind` is folded into the text since
-  // CallToolResult has no separate machine-readable error-code field.
+  // Never leaks internal state or a raw stack trace. Validation messages may echo the
+  // caller's own input. The `kind` is folded into the text since CallToolResult has no
+  // separate machine-readable error-code field.
   return {
     isError: true,
     content: [{ type: 'text', text: `[${error.kind}] ${error.message}` }],
@@ -181,6 +180,9 @@ function registerBridgedTool(server: McpServer, tool: ToolDefinition, store: Gra
 
       const scopes = await resolveScopes(tool, parsed.data, getWindow);
       if (!scopes.ok) return errorToCallToolResult(scopes.error);
+      // The renderer resolves against the live database here and again before execution.
+      // A course move between checks may be rejected spuriously; that race deliberately
+      // fails closed.
       if (scopes.targets.length !== 1) {
         return errorToCallToolResult({ kind: 'conflict', message: 'A single MCP tool call must resolve to exactly one permission scope.' });
       }
@@ -285,7 +287,7 @@ export async function startMcpServer(getWindow: () => BrowserWindow | null): Pro
       (label !== undefined && typeof label !== 'string')) {
       throw new Error('Invalid MCP grant request.');
     }
-    return grantStore.grant(courseId, scope, label);
+    return grantStore.setScope(courseId, scope, label);
   });
   ipcMain.handle('mcp:grants:revoke', (event, courseId: unknown) => {
     if (!isActiveRendererEvent(event, getWindow)) throw new Error('Untrusted MCP revoke request.');
