@@ -17,7 +17,7 @@ import {
   useNotes,
   useLessonCards,
   useLessons,
-  useCourseExamDates,
+  useCourseAssessments,
 } from '../state/useCourseData';
 import { useDeck } from '../state/useData';
 import { LessonNotesSection } from '../components/notes/LessonNotesSection';
@@ -76,7 +76,7 @@ export function LessonView({
   );
   const course = useCourse(courseId);
   const lessons = useLessons(courseId);
-  const examDates = useCourseExamDates(courseId);
+  const examDates = useCourseAssessments(courseId);
   const notes = useNotes(lessonId);
   const lessonCards = useLessonCards(lessonId);
 
@@ -109,7 +109,9 @@ export function LessonView({
         <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
         <div className="relative">
           <p className="mb-4 text-ink-soft">
-            {lesson === null ? 'This lesson could not be found.' : 'This course could not be found.'}
+            {lesson === null
+              ? 'This lesson could not be found.'
+              : 'This course could not be found.'}
           </p>
           <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
             {courseId ? 'Back to course' : 'Back to dashboard'}

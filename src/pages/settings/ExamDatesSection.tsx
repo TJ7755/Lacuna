@@ -4,11 +4,11 @@ import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { TrashIcon, EditIcon, PlusIcon } from '../../components/ui/icons';
 import { formatDateTime } from '../../utils/datetime';
-import { useCourseExamDates, useLessons } from '../../state/useCourseData';
+import { useCourseAssessments, useLessons } from '../../state/useCourseData';
 import {
-  createCourseExamDate,
-  updateCourseExamDate,
-  deleteCourseExamDate,
+  createCourseAssessment,
+  updateCourseAssessment,
+  deleteCourseAssessment,
 } from '../../db/repository';
 
 export interface ExamDatesSectionProps {
@@ -26,12 +26,13 @@ const EMPTY_DRAFT = (): DraftExamDate => ({ name: '', examDate: Date.now(), less
 
 /**
  * Course-only exam-date management: the extra assessment dates and lesson-scoped
- * checkpoints (`CourseExamDate[]`) the FSRS scheduler targets alongside the course's
- * primary exam date. Reads via `useCourseExamDates`/`useLessons`, writes directly to
+ * checkpoint assessments the FSRS scheduler targets alongside the course's final.
+ * Reads via `useCourseAssessments`/`useLessons`, writes directly to
  * the repository (no data lives in this component's own state beyond the add/edit form).
  */
 export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) {
-  const examDates = useCourseExamDates(courseId);
+  const assessments = useCourseAssessments(courseId);
+  const examDates = assessments?.filter((assessment) => assessment.kind === 'checkpoint');
   const lessons = useLessons(courseId);
   const [editingId, setEditingId] = useState<string | 'new' | null>(null);
   const [draft, setDraft] = useState<DraftExamDate>(EMPTY_DRAFT());
@@ -57,19 +58,26 @@ export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) 
   async function save() {
     const name = draft.name.trim() || 'Untitled date';
     if (editingId === 'new') {
-      await createCourseExamDate(courseId, name, draft.examDate, { lessonIds: draft.lessonIds });
+      await createCourseAssessment(
+        courseId,
+        name,
+        draft.examDate,
+        draft.lessonIds ? { coverageMode: 'custom', lessonIds: draft.lessonIds } : undefined,
+      );
     } else if (editingId) {
-      await updateCourseExamDate(editingId, {
+      await updateCourseAssessment(editingId, {
         name,
         examDate: draft.examDate,
-        lessonIds: draft.lessonIds,
+        ...(draft.lessonIds
+          ? { coverageMode: 'custom' as const, lessonIds: draft.lessonIds }
+          : { coverageMode: 'prefix' as const, lessonIds: undefined }),
       });
     }
     cancel();
   }
 
   async function remove(id: string) {
-    await deleteCourseExamDate(id);
+    await deleteCourseAssessment(id);
     if (editingId === id) cancel();
     setConfirmDeleteId(null);
   }
@@ -87,9 +95,9 @@ export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) 
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-ink-faint">
-        Extra assessment dates the scheduler can target instead of the primary exam date.
-        Scope one to specific lessons to create a checkpoint (e.g. a mock exam covering
-        only the lessons taught so far); leave it unscoped to cover every lesson to date.
+        Extra assessment dates the scheduler can target instead of the primary exam date. Scope one
+        to specific lessons to create a checkpoint (e.g. a mock exam covering only the lessons
+        taught so far); leave it unscoped to cover every lesson to date.
       </p>
 
       {examDates?.map((entry) => (
@@ -115,7 +123,12 @@ export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) 
               />
             ) : (
               <>
-                <Button variant="ghost" size="sm" onClick={() => startEdit(entry.id)} aria-label={`Edit ${entry.name}`}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => startEdit(entry.id)}
+                  aria-label={`Edit ${entry.name}`}
+                >
                   <EditIcon width={16} height={16} />
                 </Button>
                 <Button

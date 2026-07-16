@@ -9,7 +9,8 @@ import { m as motion, AnimatePresence } from 'motion/react';
 import { db } from '../db/schema';
 import {
   useLessons,
-  useCourseExamDates,
+  useCourse,
+  useCourseAssessments,
   useCourseCards,
   useCourseSummary,
   usePracticeNodes,
@@ -51,7 +52,6 @@ import { useLessonPathReorder } from '../components/course/useLessonPathReorder'
 import { useToast } from '../components/ui/Toast';
 import type {
   Card,
-  Course,
   LessonCardExposure,
   LessonCardLink,
   LessonCompletion,
@@ -81,12 +81,9 @@ export function CoursePath() {
 
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found" (null).
   // When courseId is absent the query resolves immediately to null.
-  const course = useLiveQuery<Course | null>(
-    () => (courseId ? db.courses.get(courseId).then((c) => c ?? null) : Promise.resolve(null)),
-    [courseId],
-  );
+  const course = useCourse(courseId);
   const lessons = useLessons(courseId);
-  const examDates = useCourseExamDates(courseId);
+  const assessments = useCourseAssessments(courseId);
   const courseCards = useCourseCards(courseId);
   const summary = useCourseSummary(courseId);
   const practiceNodes = usePracticeNodes(courseId);
@@ -138,7 +135,7 @@ export function CoursePath() {
   const dataLoaded =
     course !== undefined &&
     lessons !== undefined &&
-    examDates !== undefined &&
+    assessments !== undefined &&
     courseCards !== undefined &&
     summary !== undefined &&
     practiceNodes !== undefined &&
@@ -176,11 +173,11 @@ export function CoursePath() {
 
   const nodes = useMemo(
     () =>
-      course && lessons && examDates && practiceNodes
+      course && lessons && assessments && practiceNodes
         ? buildPath(
             course,
             lessons,
-            examDates,
+            assessments,
             lessonCardsById,
             practiceNodes,
             reviewDueCount,
@@ -199,7 +196,7 @@ export function CoursePath() {
     [
       course,
       lessons,
-      examDates,
+      assessments,
       lessonCardsById,
       practiceNodes,
       reviewDueCount,
@@ -212,8 +209,10 @@ export function CoursePath() {
 
   const examDateContext = useMemo(
     () =>
-      course && lessons && examDates ? makeExamDateContext(course, lessons, examDates) : undefined,
-    [course, lessons, examDates],
+      course && lessons && assessments
+        ? makeExamDateContext(course, lessons, assessments)
+        : undefined,
+    [course, lessons, assessments],
   );
 
   const studyFlowSnapshot = useMemo(
@@ -228,7 +227,7 @@ export function CoursePath() {
             examDateContext,
             meanReviewSeconds,
             practiceMilestones: practiceMilestones ?? [],
-            nearestExamDate: nearestExamDate(course, examDates ?? [], now),
+            nearestExamDate: nearestExamDate(course, assessments ?? [], now),
             now,
           })
         : null,
@@ -236,7 +235,7 @@ export function CoursePath() {
       course,
       courseCards,
       examDateContext,
-      examDates,
+      assessments,
       exposures,
       lessonLinks,
       meanReviewSeconds,
@@ -331,7 +330,7 @@ export function CoursePath() {
   // there).
   const { nearestExam, examUrgent, mastery, dueCardCount } = courseHeaderStats(
     course,
-    examDates,
+    assessments,
     courseCards,
     summary?.mastery ?? 0,
     now,

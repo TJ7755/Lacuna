@@ -10,7 +10,8 @@ import type {
   BackupSnapshot,
   Folder,
   Course,
-  CourseExamDate,
+  CourseRecord,
+  CourseAssessment,
   Lesson,
   Note,
   LessonCardLink,
@@ -31,6 +32,11 @@ import {
 import { buildCourseMigration } from './courseMigration';
 import { savePreMigrationSnapshot } from './preMigrationSnapshots';
 import { blobToArrayBuffer, bytesToBase64 } from './assets';
+import {
+  buildCourseAssessmentMigration,
+  type LegacyAssessmentRecord,
+  type LegacyCourseRecord,
+} from './assessmentMigration';
 
 /**
  * Lacuna's IndexedDB database. A single Dexie instance owns every store.
@@ -46,7 +52,7 @@ class LacunaDatabase extends Dexie {
   appState!: Table<AppStateEntry, string>;
   assets!: Table<ImageAsset, string>;
   folders!: Table<Folder, string>;
-  courses!: Table<Course, string>;
+  courses!: Table<CourseRecord, string>;
   lessons!: Table<Lesson, string>;
   notes!: Table<Note, string>;
   lessonCards!: Table<LessonCardLink, string>;
@@ -55,7 +61,7 @@ class LacunaDatabase extends Dexie {
   noteAnnotations!: Table<NoteAnnotation, string>;
   practiceNodes!: Table<PracticeNode, string>;
   practiceMilestones!: Table<PracticeMilestone, string>;
-  courseExamDates!: Table<CourseExamDate, string>;
+  courseAssessments!: Table<CourseAssessment, string>;
   sequences!: Table<Sequence, string>;
 
   constructor() {
@@ -155,32 +161,30 @@ class LacunaDatabase extends Dexie {
     // Version 5: add folders for hierarchical deck grouping. Folders are nested
     // via parentId. Decks gain a folderId that links them into a folder.
     // New indexes are added on the decks table for fast folder-scoped queries.
-    this.version(5)
-      .stores({
-        decks: 'id, createdAt, examDate, folderId',
-        cards: 'id, deckId, type, lastReviewed',
-        sessionHistory: '++id, deckId, timestamp',
-        userPerformance: 'deckId',
-        backups: '++id, createdAt',
-        appState: 'key',
-        assets: 'hash, createdAt',
-        folders: 'id, parentId, createdAt',
-      });
+    this.version(5).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, type, lastReviewed',
+      sessionHistory: '++id, deckId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+    });
 
     // Version 6: add explicit time zone tracking to decks so exam dates are
     // displayed in the original time zone even when the user moves between zones.
     // No index needed — timeZone is a display-only field.
-    this.version(6)
-      .stores({
-        decks: 'id, createdAt, examDate, folderId',
-        cards: 'id, deckId, type, lastReviewed',
-        sessionHistory: '++id, deckId, timestamp',
-        userPerformance: 'deckId',
-        backups: '++id, createdAt',
-        appState: 'key',
-        assets: 'hash, createdAt',
-        folders: 'id, parentId, createdAt',
-      });
+    this.version(6).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, type, lastReviewed',
+      sessionHistory: '++id, deckId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+    });
 
     // Version 7: add advanced FSRS scheduling controls (enable_fuzz, maximum_interval,
     // learning_steps, relearning_steps) and leech settings (leechThreshold, leechAction).
@@ -213,17 +217,16 @@ class LacunaDatabase extends Dexie {
 
     // Version 8: add daily review goal and session time limit per deck.
     // No new indexes needed; the fields are optional numeric values on the deck record.
-    this.version(8)
-      .stores({
-        decks: 'id, createdAt, examDate, folderId',
-        cards: 'id, deckId, type, lastReviewed',
-        sessionHistory: '++id, deckId, timestamp',
-        userPerformance: 'deckId',
-        backups: '++id, createdAt',
-        appState: 'key',
-        assets: 'hash, createdAt',
-        folders: 'id, parentId, createdAt',
-      });
+    this.version(8).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, type, lastReviewed',
+      sessionHistory: '++id, deckId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+    });
 
     // Version 9: introduce the Course -> Lesson model alongside the existing
     // Deck/Folder model (additive; nothing is deleted). New stores are created
@@ -253,8 +256,11 @@ class LacunaDatabase extends Dexie {
       .upgrade(async (tx) => {
         const decks = (await tx.table('decks').toArray()) as Deck[];
         const folders = (await tx.table('folders').toArray()) as Folder[];
-        const { courses, lessons, courseIdByDeckId, lessonIdByDeckId } =
-          buildCourseMigration(decks, folders, makeId);
+        const { courses, lessons, courseIdByDeckId, lessonIdByDeckId } = buildCourseMigration(
+          decks,
+          folders,
+          makeId,
+        );
 
         await tx.table('courses').bulkPut(courses);
         await tx.table('lessons').bulkPut(lessons);
@@ -401,10 +407,74 @@ class LacunaDatabase extends Dexie {
             card.type = 'front_back';
           });
       });
+
+    // Version 14: unify the primary final exam and intermediate exam-date rows
+    // as CourseAssessment records. Keep the old store for this one upgrade step
+    // so its rows can be copied safely before version 15 removes it.
+    this.version(14)
+      .stores({
+        decks: 'id, createdAt, examDate, folderId',
+        cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
+        sessionHistory: '++id, deckId, courseId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        folders: 'id, parentId, createdAt',
+        courses: 'id, createdAt',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+        lessonCompletions: 'lessonId, completedAt',
+        noteAnnotations: 'id, noteId, createdAt, updatedAt',
+        practiceNodes: 'id, courseId, position, createdAt',
+        practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+        courseExamDates: 'id, courseId, examDate, createdAt',
+        courseAssessments: 'id, courseId, kind, examDate, createdAt',
+        sequences: 'id, courseId, primaryLessonId, createdAt',
+      })
+      .upgrade(async (tx) => {
+        const migration = buildCourseAssessmentMigration(
+          (await tx.table('courses').toArray()) as LegacyCourseRecord[],
+          (await tx.table('lessons').toArray()) as Lesson[],
+          (await tx.table('courseExamDates').toArray()) as LegacyAssessmentRecord[],
+          makeId,
+        );
+        await tx.table('courses').bulkPut(migration.courses);
+        if (migration.assessments.length > 0) {
+          await tx.table('courseAssessments').bulkPut(migration.assessments);
+        }
+      });
+
+    // Version 15: remove the retired course exam-date store after v14 has copied
+    // every row. No application code reads or writes the old representation.
+    this.version(15).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
+      sessionHistory: '++id, deckId, courseId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+      courses: 'id, createdAt',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+      lessonCompletions: 'lessonId, completedAt',
+      noteAnnotations: 'id, noteId, createdAt, updatedAt',
+      practiceNodes: 'id, courseId, position, createdAt',
+      practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+      courseExamDates: null,
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      sequences: 'id, courseId, primaryLessonId, createdAt',
+    });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 13;
+const CURRENT_SCHEMA_VERSION = 15;
 
 export const db = new LacunaDatabase();
 
@@ -537,9 +607,7 @@ export async function readAllDataFromVersion(
   });
 
   if (expectedVersion !== undefined && raw.version !== expectedVersion) {
-    throw new Error(
-      `Database version mismatch: expected ${expectedVersion}, found ${raw.version}`,
-    );
+    throw new Error(`Database version mismatch: expected ${expectedVersion}, found ${raw.version}`);
   }
 
   const assetsRaw = (raw.data['assets'] ?? []) as ImageAsset[];
@@ -557,7 +625,7 @@ export async function readAllDataFromVersion(
     }),
   );
 
-  return {
+  const payload: BackupFile = {
     app: 'lacuna',
     version: raw.version,
     exportedAt: Date.now(),
@@ -575,9 +643,17 @@ export async function readAllDataFromVersion(
     lessonCompletions: (raw.data['lessonCompletions'] ?? []) as LessonCompletion[],
     practiceNodes: (raw.data['practiceNodes'] ?? []) as PracticeNode[],
     practiceMilestones: (raw.data['practiceMilestones'] ?? []) as PracticeMilestone[],
-    courseExamDates: (raw.data['courseExamDates'] ?? []) as CourseExamDate[],
     sequences: (raw.data['sequences'] ?? []) as Sequence[],
   };
+
+  // A v13 pre-migration snapshot must retain the retired store byte-for-byte.
+  // It remains an extra legacy property until the later portability task owns
+  // explicit old-backup import semantics.
+  const legacyAssessments = (raw.data['courseExamDates'] ?? []) as LegacyAssessmentRecord[];
+  if (legacyAssessments.length > 0) {
+    payload.courseExamDates = legacyAssessments;
+  }
+  return payload;
 }
 
 // Cache the in-flight snapshot promise so concurrent calls await the same

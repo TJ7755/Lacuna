@@ -12,7 +12,7 @@
 //
 // British English throughout.
 
-import type { Card, Course, CourseExamDate } from '../db/types';
+import type { Card, Course, CourseAssessment } from '../db/types';
 import { dueCards, studyPool } from '../fsrs/eligibility';
 import { nearestExamDate, examIsUrgent } from './path';
 
@@ -30,12 +30,12 @@ export interface CourseHeaderStats {
  */
 export function courseHeaderStats(
   course: Course,
-  examDates: CourseExamDate[],
+  assessments: CourseAssessment[],
   cards: Card[],
   mastery: number,
   now: number = Date.now(),
 ): CourseHeaderStats {
-  const nearestExam = nearestExamDate(course, examDates, now);
+  const nearestExam = nearestExamDate(course, assessments, now);
   // "Due now" = overdue reviews plus the brand-new cards a session would
   // admit today (studyPool rations state-0 cards by newCardsPerDay). Raw
   // dueCards() alone excludes new cards entirely (they have no due date),
@@ -47,7 +47,6 @@ export function courseHeaderStats(
     nearestExam,
     examUrgent: examIsUrgent(nearestExam, now),
     mastery,
-    dueCardCount:
-      dueCards(pool, now).length + pool.filter((c) => c.state === 0).length,
+    dueCardCount: dueCards(pool, now).length + pool.filter((c) => c.state === 0).length,
   };
 }

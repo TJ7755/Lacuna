@@ -9,7 +9,7 @@ import {
   createLesson,
   createNote,
   createPracticeNode,
-  createCourseExamDate,
+  createCourseAssessment,
   createSequence,
   createNoteAnnotation,
   markLessonComplete,
@@ -35,7 +35,7 @@ async function reset() {
     db.lessonCompletions.clear(),
     db.practiceNodes.clear(),
     db.practiceMilestones.clear(),
-    db.courseExamDates.clear(),
+    db.courseAssessments.clear(),
     db.sequences.clear(),
   ]);
 }
@@ -56,6 +56,39 @@ describe('exportDatabase', () => {
     expect(backup.decks[0].name).toBe('Biology');
     expect(backup.cards).toHaveLength(1);
     expect(backup.cards[0].front).toBe('Q1');
+  });
+
+  it('keeps the version 6 course-date shape while reading from unified assessments', async () => {
+    const course = await createCourse('Chemistry', { examDate: 1_900_000_000_000 });
+    const lesson = await createLesson(course.id, 'Bonding');
+    await createCourseAssessment(course.id, 'Paper 1', 1_800_000_000_000, {
+      afterLessonId: lesson.id,
+      coverageMode: 'custom',
+      lessonIds: [lesson.id],
+      excludedCardIds: ['card-1'],
+    });
+
+    const backup = (await exportDatabase()) as unknown as {
+      version: number;
+      courses: Array<{ id: string; examDate: number }>;
+      courseExamDates: Array<{
+        name: string;
+        lessonIds?: string[];
+        excludedCardIds?: string[];
+      }>;
+      courseAssessments?: unknown;
+    };
+
+    expect(backup.version).toBe(6);
+    expect(backup.courses[0].examDate).toBe(1_900_000_000_000);
+    expect(backup.courseExamDates).toEqual([
+      expect.objectContaining({
+        name: 'Paper 1',
+        lessonIds: [lesson.id],
+        excludedCardIds: ['card-1'],
+      }),
+    ]);
+    expect(backup.courseAssessments).toBeUndefined();
   });
 
   it('round-trips ReviewLog.hintUsed through export and import', async () => {
@@ -267,34 +300,34 @@ describe('importBackup', () => {
     expect(updated!.name).toBe('New Name'); // local wins because more recently created/edited
   });
 
-  it('adds a missing course exam date in merge mode', async () => {
+  it('adds a missing checkpoint in merge mode', async () => {
     const course = await createCourse('Chemistry');
-    const examDate = await createCourseExamDate(course.id, 'Paper 1', Date.now() + 86400000);
+    const assessment = await createCourseAssessment(course.id, 'Paper 1', Date.now() + 86400000);
     const backup = await exportDatabase();
 
-    await db.courseExamDates.delete(examDate.id);
-    expect(await db.courseExamDates.count()).toBe(0);
+    await db.courseAssessments.delete(assessment.id);
+    expect(await db.courseAssessments.count()).toBe(1);
 
     await importBackup(backup, 'merge');
 
-    const examDates = await db.courseExamDates.toArray();
-    expect(examDates).toHaveLength(1);
-    expect(examDates[0].name).toBe('Paper 1');
+    const assessments = await db.courseAssessments.toArray();
+    expect(assessments).toHaveLength(2);
+    expect(assessments.find((entry) => entry.kind === 'checkpoint')?.name).toBe('Paper 1');
   });
 
-  it('resolves a course exam date id collision by newer createdAt in merge mode', async () => {
+  it('resolves a checkpoint id collision by newer createdAt in merge mode', async () => {
     const course = await createCourse('Chemistry');
-    const examDate = await createCourseExamDate(course.id, 'Paper 1', Date.now() + 86400000);
+    const assessment = await createCourseAssessment(course.id, 'Paper 1', Date.now() + 86400000);
     const backup = await exportDatabase();
 
     // Local copy is edited after the backup was taken, so its createdAt is newer.
-    await db.courseExamDates.update(examDate.id, {
+    await db.courseAssessments.update(assessment.id, {
       name: 'Paper 1 (Resit)',
-      createdAt: examDate.createdAt + 1000,
+      createdAt: assessment.createdAt + 1000,
     });
     await importBackup(backup, 'merge');
 
-    const updated = await db.courseExamDates.get(examDate.id);
+    const updated = await db.courseAssessments.get(assessment.id);
     expect(updated!.name).toBe('Paper 1 (Resit)'); // local wins because more recently created/edited
   });
 

@@ -3,9 +3,8 @@
 
 import { Link, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/schema';
 import {
+  useCourse,
   useLessons,
   useCourseCards,
   useCourseSessionHistory,
@@ -13,7 +12,6 @@ import {
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
 import { ChevronLeftIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import type { Course } from '../db/types';
 
 function CourseAnalyticsSkeleton() {
   return (
@@ -25,10 +23,7 @@ function CourseAnalyticsSkeleton() {
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className={i < 2 ? 'lg:col-span-2' : undefined}
-          >
+          <div key={i} className={i < 2 ? 'lg:col-span-2' : undefined}>
             <div className="rounded-2xl border border-line bg-surface p-5">
               <div className="mb-4 space-y-2">
                 <div className="h-7 w-36 animate-pulse rounded-lg bg-ink/5" />
@@ -50,13 +45,7 @@ export function CourseAnalytics() {
 
   // Null-sentinel to distinguish "loading" from "not found", matching CoursePath
   // and CourseSettings.
-  const course = useLiveQuery<Course | null>(
-    () =>
-      courseId
-        ? db.courses.get(courseId).then((c) => c ?? null)
-        : Promise.resolve(null),
-    [courseId],
-  );
+  const course = useCourse(courseId);
   const lessons = useLessons(courseId);
   const cards = useCourseCards(courseId);
   const history = useCourseSessionHistory(courseId);

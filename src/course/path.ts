@@ -10,7 +10,7 @@
 import type {
   Card,
   Course,
-  CourseExamDate,
+  CourseAssessment,
   Lesson,
   LessonCardExposure,
   LessonCompletion,
@@ -52,13 +52,13 @@ interface LessonPathNode {
 }
 
 /**
- * A checkpoint (CourseExamDate) rendered as a path node.
+ * A checkpoint assessment rendered as a path node.
  * Checkpoints are informational and never gate progression (addendum G).
  */
 interface CheckpointPathNode {
   id: string;
   nodeType: 'checkpoint';
-  examDate: CourseExamDate;
+  examDate: CourseAssessment;
   /**
    * ID of the lesson immediately before this checkpoint on the path, or null
    * when the checkpoint follows an empty lesson list.
@@ -190,13 +190,7 @@ export function isLessonUnlocked(
       firstCoreLessonId = candidate.id;
     }
   }
-  return isLessonUnlockedWithFirstCore(
-    course,
-    lesson,
-    effectiveDates,
-    firstCoreLessonId,
-    now,
-  );
+  return isLessonUnlockedWithFirstCore(course, lesson, effectiveDates, firstCoreLessonId, now);
 }
 
 function isLessonUnlockedWithFirstCore(
@@ -313,7 +307,7 @@ function lessonIndexAtOrBeforePosition(
  * computed correctly (always unlocked per addendum B), but excluded from
  * `pathPosition` totals.
  *
- * **Checkpoint placement (addendum G):** each `CourseExamDate` renders
+ * **Checkpoint placement (addendum G):** each checkpoint assessment renders
  * immediately after the lesson with the highest `orderIndex` among its
  * `lessonIds`. When `lessonIds` is absent or empty, the checkpoint follows the
  * last lesson. Checkpoints never gate progression under any unlock mode.
@@ -349,7 +343,7 @@ function lessonIndexAtOrBeforePosition(
 export function buildPath(
   course: Course,
   lessons: Lesson[],
-  examDates: CourseExamDate[],
+  assessments: CourseAssessment[],
   lessonCardsById: Map<string, Card[]>,
   practiceNodes: PracticeNode[] = [],
   dueCardCount: number = 0,
@@ -412,34 +406,39 @@ export function buildPath(
     node: CheckpointPathNode | PracticePathNode;
   }
 
-  const checkpointPlacements: Placement[] = examDates.map((ed) => {
-    // Default: after the last lesson.
-    let afterIndex = lessonNodes.length - 1;
+  const checkpointPlacements: Placement[] = assessments
+    .filter((assessment) => assessment.kind === 'checkpoint')
+    .map((ed) => {
+      // Task 1 compatibility: preserve the old coverage-derived display position.
+      // The pure placement resolver in Arc 3 Task 2 will switch this consumer to
+      // the independently persisted afterLessonId and handle stale anchors.
+      // Default: after the last lesson.
+      let afterIndex = lessonNodes.length - 1;
 
-    if (ed.lessonIds && ed.lessonIds.length > 0) {
-      // Find the lesson with the highest orderIndex among the scoped lesson ids.
-      let maxOrder = -Infinity;
-      for (const lid of ed.lessonIds) {
-        const order = orderByLessonId.get(lid);
-        if (order !== undefined && order > maxOrder) maxOrder = order;
+      if (ed.lessonIds && ed.lessonIds.length > 0) {
+        // Find the lesson with the highest orderIndex among the scoped lesson ids.
+        let maxOrder = -Infinity;
+        for (const lid of ed.lessonIds) {
+          const order = orderByLessonId.get(lid);
+          if (order !== undefined && order > maxOrder) maxOrder = order;
+        }
+        if (isFinite(maxOrder)) {
+          const idx = lessonNodes.findIndex((n) => n.lesson.orderIndex === maxOrder);
+          if (idx >= 0) afterIndex = idx;
+        }
       }
-      if (isFinite(maxOrder)) {
-        const idx = lessonNodes.findIndex((n) => n.lesson.orderIndex === maxOrder);
-        if (idx >= 0) afterIndex = idx;
-      }
-    }
 
-    const afterLesson = lessonNodes[afterIndex];
-    return {
-      afterIndex,
-      node: {
-        id: ed.id,
-        nodeType: 'checkpoint',
-        examDate: ed,
-        afterLessonId: afterLesson?.lesson.id ?? null,
-      },
-    };
-  });
+      const afterLesson = lessonNodes[afterIndex];
+      return {
+        afterIndex,
+        node: {
+          id: ed.id,
+          nodeType: 'checkpoint',
+          examDate: ed,
+          afterLessonId: afterLesson?.lesson.id ?? null,
+        },
+      };
+    });
 
   // Manual practice nodes: placed after the highest-orderIndex lesson at or
   // before the node's stored `position`, or before every lesson when `position`
@@ -665,19 +664,22 @@ export function pathPosition(nodes: PathNode[]): { reached: number; total: numbe
 
 /**
  * Nearest upcoming exam date for a course: considers `course.examDate` and all
- * explicit `CourseExamDate` checkpoints, and returns the soonest one still in
+ * explicit checkpoint assessments, and returns the soonest one still in
  * the future. Falls back to `course.examDate` even if it has already passed,
  * so the header always has something to show. Shared by CoursePath and
  * LessonView so both headers agree on "the" exam date.
  */
 export function nearestExamDate(
   course: Course,
-  examDates: CourseExamDate[],
+  assessments: CourseAssessment[],
   now: number = Date.now(),
 ): number {
-  const futureDates = [course.examDate, ...examDates.map((ed) => ed.examDate)].filter(
-    (d) => d > now,
-  );
+  const futureDates = [
+    course.examDate,
+    ...assessments
+      .filter((assessment) => assessment.kind === 'checkpoint')
+      .map((assessment) => assessment.examDate),
+  ].filter((d) => d > now);
   return futureDates.length > 0 ? Math.min(...futureDates) : course.examDate;
 }
 

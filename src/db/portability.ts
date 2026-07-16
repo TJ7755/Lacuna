@@ -1,6 +1,6 @@
 // Import/Export: the entire database serialises to a single JSON file and back.
 
-import { db } from './schema';
+import { db, makeId } from './schema';
 import {
   migrateCardRecord,
   migrateDeckRecord,
@@ -10,8 +10,8 @@ import {
 import type {
   BackupFile,
   Card,
-  Course,
-  CourseExamDate,
+  CourseAssessment,
+  CourseRecord,
   Deck,
   Folder,
   Lesson,
@@ -26,6 +26,13 @@ import type {
   UserPerformance,
   ImageAsset,
 } from './types';
+import {
+  buildCourseAssessmentMigration,
+  finalAssessmentForCourse,
+  hydrateCourse,
+  type LegacyAssessmentRecord,
+  type LegacyCourseRecord,
+} from './assessmentMigration';
 import {
   assetsForBackup,
   backupAssetToImageAsset,
@@ -52,7 +59,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     lessonCompletions,
     practiceNodes,
     practiceMilestones,
-    courseExamDates,
+    courseAssessments,
     sequences,
   ] = await Promise.all([
     db.decks.toArray(),
@@ -68,7 +75,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.lessonCompletions.toArray(),
     db.practiceNodes.toArray(),
     db.practiceMilestones.toArray(),
-    db.courseExamDates.toArray(),
+    db.courseAssessments.toArray(),
     db.sequences.toArray(),
   ]);
   const referencedHashes = new Set(referencedAssetHashesInCards(cards));
@@ -76,6 +83,26 @@ export async function exportDatabase(): Promise<BackupFile> {
     for (const hash of referencedAssetHashes(note.content)) referencedHashes.add(hash);
   }
   const assets = await assetsForBackup([...referencedHashes]);
+  const exportedCourses: LegacyCourseRecord[] = courses.map((course) => {
+    const hydrated = hydrateCourse(course, finalAssessmentForCourse(course.id, courseAssessments));
+    return {
+      ...course,
+      examDate: hydrated.examDate,
+      ...(hydrated.timeZone ? { timeZone: hydrated.timeZone } : {}),
+    };
+  });
+  const exportedCheckpoints: LegacyAssessmentRecord[] = courseAssessments
+    .filter((assessment) => assessment.kind === 'checkpoint')
+    .map((assessment) => ({
+      id: assessment.id,
+      courseId: assessment.courseId,
+      name: assessment.name,
+      examDate: assessment.examDate,
+      ...(assessment.timeZone ? { timeZone: assessment.timeZone } : {}),
+      ...(assessment.coverageMode === 'custom' ? { lessonIds: [...assessment.lessonIds] } : {}),
+      excludedCardIds: [...assessment.excludedCardIds],
+      createdAt: assessment.createdAt,
+    }));
   return {
     app: 'lacuna',
     version: BACKUP_VERSION,
@@ -86,7 +113,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     sessionHistory,
     userPerformance,
     folders,
-    courses,
+    courses: exportedCourses,
     lessons,
     notes,
     lessonCards,
@@ -94,7 +121,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     lessonCompletions,
     practiceNodes,
     practiceMilestones,
-    courseExamDates,
+    courseExamDates: exportedCheckpoints,
     sequences,
   };
 }
@@ -187,6 +214,14 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     })),
   );
   const importedAssets = [...assets.map(backupAssetToImageAsset), ...extractedAssets];
+  const assessmentMigration = buildCourseAssessmentMigration(
+    backup.courses ?? [],
+    backup.lessons ?? [],
+    backup.courseExamDates ?? [],
+    makeId,
+  );
+  const courses = assessmentMigration.courses;
+  const courseAssessments = assessmentMigration.assessments;
   await db.transaction(
     'rw',
     [
@@ -205,7 +240,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       db.lessonCompletions,
       db.practiceNodes,
       db.practiceMilestones,
-      db.courseExamDates,
+      db.courseAssessments,
       db.sequences,
     ],
     async () => {
@@ -228,7 +263,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           db.lessonCompletions.clear(),
           db.practiceNodes.clear(),
           db.practiceMilestones.clear(),
-          db.courseExamDates.clear(),
+          db.courseAssessments.clear(),
           db.sequences.clear(),
         ]);
         await db.decks.bulkAdd(decks);
@@ -244,8 +279,8 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           await db.folders.bulkAdd(backup.folders);
         }
         // Restore course-architecture tables if present in the backup.
-        if (backup.courses && backup.courses.length > 0) {
-          await db.courses.bulkAdd(backup.courses);
+        if (courses.length > 0) {
+          await db.courses.bulkAdd(courses);
         }
         if (backup.lessons && backup.lessons.length > 0) {
           await db.lessons.bulkAdd(backup.lessons);
@@ -268,8 +303,8 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         if (backup.practiceMilestones && backup.practiceMilestones.length > 0) {
           await db.practiceMilestones.bulkAdd(backup.practiceMilestones);
         }
-        if (backup.courseExamDates && backup.courseExamDates.length > 0) {
-          await db.courseExamDates.bulkAdd(backup.courseExamDates);
+        if (courseAssessments.length > 0) {
+          await db.courseAssessments.bulkAdd(courseAssessments);
         }
         if (backup.sequences && backup.sequences.length > 0) {
           await db.sequences.bulkAdd(backup.sequences);
@@ -281,7 +316,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       // by an incoming backup whose examDate happens to be newer.
       const existingDecks = new Map((await db.decks.toArray()).map((d) => [d.id, d]));
       const existingCourses = new Map((await db.courses.toArray()).map((c) => [c.id, c]));
-      const incomingCourses = new Map((backup.courses ?? []).map((c) => [c.id, c]));
+      const incomingCourses = new Map(courses.map((c) => [c.id, c]));
       const mergedDecks: Deck[] = [];
       for (const incoming of decks) {
         const existing = existingDecks.get(incoming.id);
@@ -322,9 +357,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
 
       // Merge course-architecture tables: add incoming rows that don't exist locally,
       // preferring the newer record (by createdAt) when both sides have the same id.
-      if (backup.courses && backup.courses.length > 0) {
-        const mergedCourses: Course[] = [];
-        for (const incoming of backup.courses) {
+      if (courses.length > 0) {
+        const mergedCourses: CourseRecord[] = [];
+        for (const incoming of courses) {
           const existing = existingCourses.get(incoming.id);
           if (!existing) {
             mergedCourses.push(incoming);
@@ -440,22 +475,32 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         await db.practiceMilestones.bulkPut(mergedMilestones);
       }
 
-      if (backup.courseExamDates && backup.courseExamDates.length > 0) {
-        const existingCourseExamDates = new Map(
-          (await db.courseExamDates.toArray()).map((ced) => [ced.id, ced]),
+      if (courseAssessments.length > 0) {
+        const localAssessments = await db.courseAssessments.toArray();
+        const existingCourseAssessments = new Map(
+          localAssessments.map((assessment) => [assessment.id, assessment]),
         );
-        const mergedCourseExamDates: CourseExamDate[] = [];
-        for (const incoming of backup.courseExamDates) {
-          const existing = existingCourseExamDates.get(incoming.id);
+        const existingFinalsByCourse = new Map(
+          localAssessments
+            .filter((assessment) => assessment.kind === 'final')
+            .map((assessment) => [assessment.courseId, assessment]),
+        );
+        const mergedCourseAssessments: CourseAssessment[] = [];
+        for (const incoming of courseAssessments) {
+          const existing =
+            incoming.kind === 'final'
+              ? existingFinalsByCourse.get(incoming.courseId)
+              : existingCourseAssessments.get(incoming.id);
           if (!existing) {
-            mergedCourseExamDates.push(incoming);
+            mergedCourseAssessments.push(incoming);
           } else {
-            mergedCourseExamDates.push(
-              incoming.createdAt > existing.createdAt ? incoming : existing,
+            const newer = incoming.createdAt > existing.createdAt ? incoming : existing;
+            mergedCourseAssessments.push(
+              incoming.kind === 'final' ? { ...newer, id: existing.id } : newer,
             );
           }
         }
-        await db.courseExamDates.bulkPut(mergedCourseExamDates);
+        await db.courseAssessments.bulkPut(mergedCourseAssessments);
       }
 
       if (backup.sequences && backup.sequences.length > 0) {

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
+import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
@@ -16,7 +17,7 @@ import type {
   Course,
   Lesson,
   Card,
-  CourseExamDate,
+  CourseAssessment,
   LessonCardLink,
   LessonCardExposure,
   LessonCompletion,
@@ -36,7 +37,7 @@ interface CourseStudyFlowRecords {
   course: Course | null;
   lessons: Lesson[];
   cards: Card[];
-  examDates: CourseExamDate[];
+  assessments: CourseAssessment[];
   links: LessonCardLink[];
   exposures: LessonCardExposure[];
   completions: LessonCompletion[];
@@ -56,7 +57,7 @@ export function useCourseStudyFlow(
         course: null,
         lessons: [],
         cards: [],
-        examDates: [],
+        assessments: [],
         links: [],
         exposures: [],
         completions: [],
@@ -65,13 +66,16 @@ export function useCourseStudyFlow(
         performance: [],
       };
     }
-    const course = (await db.courses.get(courseId)) ?? null;
-    if (!course) {
+    const [courseRecord, assessments] = await Promise.all([
+      db.courses.get(courseId),
+      db.courseAssessments.where('courseId').equals(courseId).toArray(),
+    ]);
+    if (!courseRecord) {
       return {
         course: null,
         lessons: [],
         cards: [],
-        examDates: [],
+        assessments: [],
         links: [],
         exposures: [],
         completions: [],
@@ -80,10 +84,10 @@ export function useCourseStudyFlow(
         performance: [],
       };
     }
-    const [lessons, cards, examDates, practiceNodes, milestones] = await Promise.all([
+    const course = hydrateCourse(courseRecord, finalAssessmentForCourse(courseId, assessments));
+    const [lessons, cards, practiceNodes, milestones] = await Promise.all([
       db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
       db.cards.where('courseId').equals(courseId).toArray(),
-      db.courseExamDates.where('courseId').equals(courseId).toArray(),
       db.practiceNodes.where('courseId').equals(courseId).toArray(),
       db.practiceMilestones.where('courseId').equals(courseId).toArray(),
     ]);
@@ -101,7 +105,7 @@ export function useCourseStudyFlow(
       course,
       lessons,
       cards,
-      examDates,
+      assessments,
       links,
       exposures,
       completions,
@@ -129,7 +133,7 @@ export function useCourseStudyFlow(
     const nodes = buildPath(
       records.course,
       records.lessons,
-      records.examDates,
+      records.assessments,
       lessonCardsById,
       records.practiceNodes,
       reviewDueCount,
@@ -147,10 +151,10 @@ export function useCourseStudyFlow(
       cards: records.cards,
       links: records.links,
       exposures: records.exposures,
-      examDateContext: makeExamDateContext(records.course, records.lessons, records.examDates),
+      examDateContext: makeExamDateContext(records.course, records.lessons, records.assessments),
       meanReviewSeconds,
       practiceMilestones: records.milestones,
-      nearestExamDate: nearestExamDate(records.course, records.examDates, now),
+      nearestExamDate: nearestExamDate(records.course, records.assessments, now),
       now,
     });
     return {

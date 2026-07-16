@@ -6,7 +6,7 @@ import {
   createCard,
   createCardWithReverse,
   createCourse,
-  createCourseExamDate,
+  createCourseAssessment,
   createDeck,
   createLesson,
   createLessonBasicReversedPair,
@@ -15,6 +15,7 @@ import {
   createNote,
   createPracticeNode,
   deleteCourse,
+  deleteCourseAssessment,
   deleteLesson,
   ensureLessonDeck,
   ensureCourseBankDeck,
@@ -33,6 +34,8 @@ import {
   snapshotCourse,
   snapshotLesson,
   stampMissingLessonViewModes,
+  updateCourse,
+  updateCourseAssessment,
 } from './repository';
 import { FSRS_VERSION } from '../fsrs/params';
 
@@ -46,7 +49,7 @@ async function reset() {
     db.lessonCardExposures.clear(),
     db.lessonCompletions.clear(),
     db.practiceNodes.clear(),
-    db.courseExamDates.clear(),
+    db.courseAssessments.clear(),
     db.cards.clear(),
     db.decks.clear(),
     db.userPerformance.clear(),
@@ -83,8 +86,21 @@ describe('createCourse', () => {
     // id is generated.
     expect(typeof course.id).toBe('string');
     expect(course.id.length).toBeGreaterThan(0);
-    // Persisted.
-    expect(await db.courses.get(course.id)).toBeDefined();
+    // The compatibility date is derived from the separately persisted final assessment.
+    const stored = await db.courses.get(course.id);
+    expect(stored).toBeDefined();
+    expect(stored).not.toHaveProperty('examDate');
+    expect(stored).not.toHaveProperty('timeZone');
+    const assessments = await db.courseAssessments.where('courseId').equals(course.id).toArray();
+    expect(assessments).toHaveLength(1);
+    expect(assessments[0]).toMatchObject({
+      kind: 'final',
+      examDate: course.examDate,
+      timeZone: course.timeZone,
+      afterLessonId: null,
+      coverageMode: 'prefix',
+      excludedCardIds: [],
+    });
   });
 
   it('opts override defaults', async () => {
@@ -117,6 +133,49 @@ describe('createCourse', () => {
   it('falls back to "Untitled course" for a blank name', async () => {
     const course = await createCourse('   ');
     expect(course.name).toBe('Untitled course');
+  });
+
+  it('keeps compatibility fields out of course writes and updates the final explicitly', async () => {
+    const course = await createCourse('Biology');
+    const movedDate = course.examDate + 86_400_000;
+    const final = await db.courseAssessments
+      .where('courseId')
+      .equals(course.id)
+      .filter((assessment) => assessment.kind === 'final')
+      .first();
+
+    await updateCourse(course.id, { name: 'Advanced Biology' });
+    await updateCourseAssessment(final!.id, {
+      examDate: movedDate,
+      timeZone: 'Europe/Paris',
+    });
+
+    expect(await db.courses.get(course.id)).toMatchObject({ name: 'Advanced Biology' });
+    expect(await db.courses.get(course.id)).not.toHaveProperty('examDate');
+    expect(await db.courses.get(course.id)).not.toHaveProperty('timeZone');
+    expect(await db.courseAssessments.get(final!.id)).toMatchObject({
+      examDate: movedDate,
+      timeZone: 'Europe/Paris',
+    });
+  });
+
+  it('rejects compatibility date fields at the course repository boundary', async () => {
+    const course = await createCourse('Biology');
+    await expect(
+      updateCourse(
+        course.id,
+        { examDate: course.examDate + 1 } as Parameters<typeof updateCourse>[1],
+      ),
+    ).rejects.toThrow('derived, read-only assessment values');
+    expect(await db.courses.get(course.id)).not.toHaveProperty('examDate');
+  });
+
+  it('rejects a non-finite final date when creating a course', async () => {
+    await expect(createCourse('Invalid', { examDate: Number.NaN })).rejects.toThrow(
+      'finite timestamp',
+    );
+    expect(await db.courses.count()).toBe(0);
+    expect(await db.courseAssessments.count()).toBe(0);
   });
 });
 
@@ -156,7 +215,7 @@ describe('createLesson orderIndex', () => {
 describe('deleteCourse cascade', () => {
   beforeEach(reset);
 
-  it('removes the course, all its lessons, notes, links, practiceNodes, examDates, and its cards', async () => {
+  it('removes the course, all its lessons, notes, links, practice nodes, assessments, and cards', async () => {
     const course = await createCourse('Cascade test');
     const lesson1 = await createLesson(course.id, 'L1');
     const lesson2 = await createLesson(course.id, 'L2');
@@ -173,15 +232,15 @@ describe('deleteCourse cascade', () => {
     // Add a practice node.
     await createPracticeNode(course.id, { type: 'manual', name: 'Practice 1' });
 
-    // Add an exam date.
-    await createCourseExamDate(course.id, 'Mid-term', Date.now() + 7 * 86400000);
+    // Add a checkpoint alongside the course's final assessment.
+    await createCourseAssessment(course.id, 'Mid-term', Date.now() + 7 * 86400000);
 
     // Verify rows exist.
     expect(await db.lessons.where('courseId').equals(course.id).count()).toBe(2);
     expect(await db.notes.count()).toBe(2);
     expect(await db.lessonCards.count()).toBe(1);
     expect(await db.practiceNodes.where('courseId').equals(course.id).count()).toBe(1);
-    expect(await db.courseExamDates.where('courseId').equals(course.id).count()).toBe(1);
+    expect(await db.courseAssessments.where('courseId').equals(course.id).count()).toBe(2);
     expect(await db.cards.where('courseId').equals(course.id).count()).toBe(1);
 
     await deleteCourse(course.id);
@@ -191,7 +250,7 @@ describe('deleteCourse cascade', () => {
     expect(await db.notes.count()).toBe(0);
     expect(await db.lessonCards.count()).toBe(0);
     expect(await db.practiceNodes.where('courseId').equals(course.id).count()).toBe(0);
-    expect(await db.courseExamDates.where('courseId').equals(course.id).count()).toBe(0);
+    expect(await db.courseAssessments.where('courseId').equals(course.id).count()).toBe(0);
     expect(await db.cards.where('courseId').equals(course.id).count()).toBe(0);
   });
 
@@ -268,7 +327,7 @@ describe('snapshotCourse / restoreCourse', () => {
     const bankCard = await createCourseCard(course.id, 'front_back', 'q2', 'a2');
     await linkCardToLesson(lesson2.id, lessonCard.id);
     await createPracticeNode(course.id, { type: 'manual', name: 'Practice 1' });
-    await createCourseExamDate(course.id, 'Mid-term', Date.now() + 7 * 86400000);
+    await createCourseAssessment(course.id, 'Mid-term', Date.now() + 7 * 86400000);
     const sequence = await createSequence(course.id, lesson1.id, 'Sequence', [
       { id: 'sequence-item', value: 'Item' },
     ]);
@@ -309,7 +368,7 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(await db.noteAnnotations.get('course-annotation-1')).toBeDefined();
     expect(await db.lessonCards.where('lessonId').equals(lesson2.id).count()).toBe(1);
     expect(await db.practiceNodes.where('courseId').equals(course.id).count()).toBe(1);
-    expect(await db.courseExamDates.where('courseId').equals(course.id).count()).toBe(1);
+    expect(await db.courseAssessments.where('courseId').equals(course.id).count()).toBe(2);
     expect(await db.cards.where('courseId').equals(course.id).count()).toBe(3);
     expect(await db.decks.get(lessonCard.deckId)).toBeDefined();
     expect(await db.decks.get(bankCard.deckId)).toBeDefined();
@@ -547,20 +606,137 @@ describe('listNotes ordering', () => {
   });
 });
 
-describe('listCourseExamDates ordering', () => {
+describe('course assessment repository', () => {
   beforeEach(reset);
 
-  it('returns exam dates ordered by examDate ascending', async () => {
-    const course = await createCourse('Exam dates test');
+  it('stores checkpoints that can be ordered by examDate', async () => {
+    const course = await createCourse('Assessments test');
     const t1 = Date.now() + 10 * 86400000;
     const t2 = Date.now() + 30 * 86400000;
     const t3 = Date.now() + 5 * 86400000;
-    const d1 = await createCourseExamDate(course.id, 'Late', t1);
-    const d2 = await createCourseExamDate(course.id, 'Later', t2);
-    const d3 = await createCourseExamDate(course.id, 'Soon', t3);
+    const d1 = await createCourseAssessment(course.id, 'Late', t1);
+    const d2 = await createCourseAssessment(course.id, 'Later', t2);
+    const d3 = await createCourseAssessment(course.id, 'Soon', t3);
 
-    const dates = await db.courseExamDates.where('courseId').equals(course.id).sortBy('examDate');
+    const dates = await db.courseAssessments
+      .where('courseId')
+      .equals(course.id)
+      .filter((assessment) => assessment.kind === 'checkpoint')
+      .sortBy('examDate');
     expect(dates.map((d) => d.id)).toEqual([d3.id, d1.id, d2.id]);
+  });
+
+  it('defaults checkpoints to explicit prefix coverage', async () => {
+    const course = await createCourse('Assessments test');
+    const checkpoint = await createCourseAssessment(course.id, 'Mock', Date.now() + 86_400_000);
+
+    expect(checkpoint).toMatchObject({
+      kind: 'checkpoint',
+      afterLessonId: null,
+      coverageMode: 'prefix',
+      excludedCardIds: [],
+    });
+    expect(checkpoint).not.toHaveProperty('lessonIds');
+  });
+
+  it('stores independent custom coverage, placement and exclusions', async () => {
+    const course = await createCourse('Assessments test');
+    const lesson1 = await createLesson(course.id, 'L1');
+    const lesson2 = await createLesson(course.id, 'L2');
+    const checkpoint = await createCourseAssessment(course.id, 'Mock', Date.now() + 86_400_000, {
+      afterLessonId: lesson2.id,
+      coverageMode: 'custom',
+      lessonIds: [lesson1.id],
+      excludedCardIds: ['card-1'],
+    });
+
+    expect(checkpoint).toMatchObject({
+      afterLessonId: lesson2.id,
+      coverageMode: 'custom',
+      lessonIds: [lesson1.id],
+      excludedCardIds: ['card-1'],
+    });
+  });
+
+  it('infers compatible placement without conflating it with coverage', async () => {
+    const course = await createCourse('Assessments test');
+    const lesson1 = await createLesson(course.id, 'L1');
+    const lesson2 = await createLesson(course.id, 'L2');
+    const lesson3 = await createLesson(course.id, 'L3');
+
+    const prefix = await createCourseAssessment(course.id, 'Prefix', Date.now() + 86_400_000);
+    const custom = await createCourseAssessment(course.id, 'Custom', Date.now() + 172_800_000, {
+      coverageMode: 'custom',
+      lessonIds: [lesson1.id, lesson2.id],
+    });
+
+    expect(prefix).toMatchObject({ coverageMode: 'prefix', afterLessonId: lesson3.id });
+    expect(custom).toMatchObject({
+      coverageMode: 'custom',
+      lessonIds: [lesson1.id, lesson2.id],
+      afterLessonId: lesson2.id,
+    });
+  });
+
+  it('rejects structurally ambiguous or duplicate coverage', async () => {
+    const course = await createCourse('Assessments test');
+
+    await expect(
+      createCourseAssessment(course.id, 'Bad prefix', Date.now(), {
+        coverageMode: 'prefix',
+        lessonIds: ['lesson-1'],
+      } as never),
+    ).rejects.toThrow('Prefix assessment coverage cannot store lesson ids');
+    await expect(
+      createCourseAssessment(course.id, 'Empty custom', Date.now(), {
+        coverageMode: 'custom',
+        lessonIds: [],
+      }),
+    ).rejects.toThrow('requires an explicit lesson-id array');
+    await expect(
+      createCourseAssessment(course.id, 'Duplicate custom', Date.now(), {
+        coverageMode: 'custom',
+        lessonIds: ['lesson-1', 'lesson-1'],
+      }),
+    ).rejects.toThrow('cannot contain duplicate lesson ids');
+  });
+
+  it('preserves exactly one final assessment', async () => {
+    const course = await createCourse('Assessments test');
+    const final = (await db.courseAssessments.where('courseId').equals(course.id).toArray()).find(
+      (assessment) => assessment.kind === 'final',
+    )!;
+    const checkpoint = await createCourseAssessment(course.id, 'Mock', Date.now() + 86_400_000);
+
+    await expect(
+      createCourseAssessment(course.id, 'Second final', Date.now() + 172_800_000, {
+        kind: 'final',
+      }),
+    ).rejects.toThrow('exactly one final assessment');
+    await expect(updateCourseAssessment(final.id, { kind: 'checkpoint' })).rejects.toThrow(
+      'cannot be demoted',
+    );
+    await expect(updateCourseAssessment(checkpoint.id, { kind: 'final' })).rejects.toThrow(
+      'exactly one final assessment',
+    );
+    await expect(deleteCourseAssessment(final.id)).rejects.toThrow('cannot be deleted');
+
+    const assessments = await db.courseAssessments.where('courseId').equals(course.id).toArray();
+    expect(assessments.filter((assessment) => assessment.kind === 'final')).toEqual([final]);
+    expect(assessments.filter((assessment) => assessment.kind === 'checkpoint')).toEqual([
+      checkpoint,
+    ]);
+  });
+
+  it('allows deleting a checkpoint without touching the final', async () => {
+    const course = await createCourse('Assessments test');
+    const checkpoint = await createCourseAssessment(course.id, 'Mock', Date.now() + 86_400_000);
+
+    await deleteCourseAssessment(checkpoint.id);
+
+    const remaining = await db.courseAssessments.where('courseId').equals(course.id).toArray();
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].kind).toBe('final');
   });
 });
 

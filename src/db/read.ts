@@ -15,16 +15,15 @@
 // ensureCourseBankDeck in repository.ts) and are irrelevant to read-side queries.
 
 import { db } from './schema';
-import type { Card, Course, CourseExamDate, Lesson, PracticeNode, Sequence } from './types';
+import type { Card, Course, CourseAssessment, Lesson, PracticeNode, Sequence } from './types';
+import { finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 import { gatherCounts, type DiagnosticBundle } from './diagnostics';
-import { listNotes as repositoryListNotes, listSequences as repositoryListSequences } from './repository';
-import { availableCards, dueCards, studyPool } from '../fsrs/eligibility';
 import {
-  makeObjectiveContext,
-  progressValue,
-  scoreCard,
-  sortByObjective,
-} from '../fsrs/objective';
+  listNotes as repositoryListNotes,
+  listSequences as repositoryListSequences,
+} from './repository';
+import { availableCards, dueCards, studyPool } from '../fsrs/eligibility';
+import { makeObjectiveContext, progressValue, scoreCard, sortByObjective } from '../fsrs/objective';
 import { isLeech } from '../fsrs/leech';
 import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
@@ -36,12 +35,22 @@ import { courseHeaderStats, type CourseHeaderStats } from '../course/headerStats
 
 /** Every course, ordered by creation time (mirrors useCourses). */
 export async function listCourses(): Promise<Course[]> {
-  return db.courses.orderBy('createdAt').toArray();
+  const [records, assessments] = await Promise.all([
+    db.courses.orderBy('createdAt').toArray(),
+    db.courseAssessments.toArray(),
+  ]);
+  return records.map((record) =>
+    hydrateCourse(record, finalAssessmentForCourse(record.id, assessments)),
+  );
 }
 
 /** A single course, or null if it does not exist. */
 export async function getCourse(courseId: string): Promise<Course | null> {
-  return (await db.courses.get(courseId)) ?? null;
+  const [record, assessments] = await Promise.all([
+    db.courses.get(courseId),
+    db.courseAssessments.where('courseId').equals(courseId).toArray(),
+  ]);
+  return record ? hydrateCourse(record, finalAssessmentForCourse(courseId, assessments)) : null;
 }
 
 /** A course's lessons, ordered by path position (mirrors useLessons). */
@@ -105,14 +114,14 @@ export async function listDueCards(
 ): Promise<Card[]> {
   const course = await getCourse(courseId);
   if (!course) return [];
-  const [cards, lessons, examDates] = await Promise.all([
+  const [cards, lessons, assessments] = await Promise.all([
     listCardsForCourse(courseId),
     listLessons(courseId),
-    listCourseExamDates(courseId),
+    listCourseAssessments(courseId),
   ]);
   const pool = studyPool(cards, course, now);
   const servable = dueCards(pool, now).concat(pool.filter((c) => c.state === 0));
-  const examDateContext = makeExamDateContext(course, lessons, examDates);
+  const examDateContext = makeExamDateContext(course, lessons, assessments);
   const oc = makeObjectiveContext(course, examDateContext);
   const sorted = sortByObjective(servable, oc, now).map((s) => s.card);
   return typeof limit === 'number' ? sorted.slice(0, limit) : sorted;
@@ -139,12 +148,12 @@ export async function getWeakCards(
 ): Promise<WeakCard[]> {
   const course = await getCourse(courseId);
   if (!course) return [];
-  const [cards, lessons, examDates] = await Promise.all([
+  const [cards, lessons, assessments] = await Promise.all([
     listCardsForCourse(courseId),
     listLessons(courseId),
-    listCourseExamDates(courseId),
+    listCourseAssessments(courseId),
   ]);
-  const examDateContext = makeExamDateContext(course, lessons, examDates);
+  const examDateContext = makeExamDateContext(course, lessons, assessments);
   const oc = makeObjectiveContext(course, examDateContext);
   const scored: WeakCard[] = availableCards(cards, now).map((card) => ({
     card,
@@ -182,15 +191,15 @@ export async function getCourseStats(
 ): Promise<CourseStats | null> {
   const course = await getCourse(courseId);
   if (!course) return null;
-  const [lessons, cards, examDates, perf] = await Promise.all([
+  const [lessons, cards, assessments, perf] = await Promise.all([
     listLessons(courseId),
     listCardsForCourse(courseId),
-    listCourseExamDates(courseId),
+    listCourseAssessments(courseId),
     db.userPerformance.toArray(),
   ]);
-  const examDateContext = makeExamDateContext(course, lessons, examDates);
+  const examDateContext = makeExamDateContext(course, lessons, assessments);
   const mastery = progressValue(availableCards(cards, now), course, now, examDateContext);
-  const header = courseHeaderStats(course, examDates, cards, mastery, now);
+  const header = courseHeaderStats(course, assessments, cards, mastery, now);
   const deckSeconds = buildDeckSecondsMap(perf);
   const studyStats = computeStudyStats(cards, deckSeconds, now);
   return { header, lessonCount: lessons.length, cardCount: cards.length, studyStats };
@@ -212,7 +221,7 @@ export async function getSequence(sequenceId: string): Promise<Sequence | null> 
 export const listNotes = repositoryListNotes;
 
 // ---------------------------------------------------------------------------
-// Practice / exam dates
+// Practice / assessments
 // ---------------------------------------------------------------------------
 
 /** All practice nodes for a course (manual and auto). */
@@ -220,9 +229,9 @@ export async function listPracticeNodes(courseId: string): Promise<PracticeNode[
   return db.practiceNodes.where('courseId').equals(courseId).toArray();
 }
 
-/** All exam dates/checkpoints for a course, ordered by date ascending (mirrors useCourseExamDates). */
-export async function listCourseExamDates(courseId: string): Promise<CourseExamDate[]> {
-  return db.courseExamDates.where('courseId').equals(courseId).sortBy('examDate');
+/** All assessments for a course, ordered by date ascending (mirrors useCourseAssessments). */
+export async function listCourseAssessments(courseId: string): Promise<CourseAssessment[]> {
+  return db.courseAssessments.where('courseId').equals(courseId).sortBy('examDate');
 }
 
 // ---------------------------------------------------------------------------
@@ -237,7 +246,7 @@ export interface CourseDiagnosticsSummary {
   notes: number;
   lessonCards: number;
   practiceNodes: number;
-  courseExamDates: number;
+  courseAssessments: number;
   sequences: number;
 }
 
@@ -253,13 +262,13 @@ export async function diagnosticsSummary(
 
   const lessons = await listLessons(courseId);
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [cards, notesCounts, lessonCardsCounts, practiceNodes, courseExamDates, sequences] =
+  const [cards, notesCounts, lessonCardsCounts, practiceNodes, courseAssessments, sequences] =
     await Promise.all([
       listCardsForCourse(courseId),
       Promise.all(lessonIds.map((id) => db.notes.where('lessonId').equals(id).count())),
       Promise.all(lessonIds.map((id) => db.lessonCards.where('lessonId').equals(id).count())),
       db.practiceNodes.where('courseId').equals(courseId).count(),
-      db.courseExamDates.where('courseId').equals(courseId).count(),
+      db.courseAssessments.where('courseId').equals(courseId).count(),
       db.sequences.where('courseId').equals(courseId).count(),
     ]);
 
@@ -270,7 +279,7 @@ export async function diagnosticsSummary(
     notes: notesCounts.reduce((sum, count) => sum + count, 0),
     lessonCards: lessonCardsCounts.reduce((sum, count) => sum + count, 0),
     practiceNodes,
-    courseExamDates,
+    courseAssessments,
     sequences,
   };
 }

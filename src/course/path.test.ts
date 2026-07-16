@@ -16,7 +16,7 @@ import {
   type PracticePathNode,
 } from './path';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
-import type { Card, Course, CourseExamDate, Lesson, PracticeNode } from '../db/types';
+import type { Card, Course, CourseAssessment, Lesson, PracticeNode } from '../db/types';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers (mirroring useCourseData.test.ts)
@@ -82,14 +82,21 @@ function makePracticeNode(
 }
 
 function makeExamDate(
-  overrides: Partial<CourseExamDate> & Pick<CourseExamDate, 'id' | 'courseId'>,
-): CourseExamDate {
+  overrides: Partial<CourseAssessment> & Pick<CourseAssessment, 'id' | 'courseId'>,
+): CourseAssessment {
+  const coverage = overrides.lessonIds
+    ? { coverageMode: 'custom' as const, lessonIds: overrides.lessonIds }
+    : { coverageMode: 'prefix' as const };
   return {
     name: 'Checkpoint',
+    kind: 'checkpoint',
     examDate: 10 * MS_PER_DAY,
+    ...coverage,
+    afterLessonId: null,
+    excludedCardIds: [],
     createdAt: 0,
     ...overrides,
-  };
+  } as CourseAssessment;
 }
 
 // ---------------------------------------------------------------------------

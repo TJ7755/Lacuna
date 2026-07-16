@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/schema';
-import { useCourseCards } from '../state/useCourseData';
-import type { Course } from '../db/types';
+import { useCourse, useCourseAssessments, useCourseCards } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Button } from '../components/ui/Button';
 import { Toggle } from '../components/ui/Toggle';
 import { useToast } from '../components/ui/Toast';
-import { deleteCourse, snapshotCourse, restoreCourse, updateCourse } from '../db/repository';
+import {
+  deleteCourse,
+  snapshotCourse,
+  restoreCourse,
+  updateCourse,
+  updateCourseAssessment,
+} from '../db/repository';
 import type { CourseSnapshot } from '../db/repository';
 import {
   fromDateTimeLocalValue,
@@ -49,13 +52,8 @@ export function CourseSettings() {
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found"
   // (null), matching CoursePath's pattern — Dexie's .get() resolves to
   // undefined for a missing row, so useCourse alone cannot signal not-found.
-  const course = useLiveQuery<Course | null>(
-    () =>
-      courseId
-        ? db.courses.get(courseId).then((c) => c ?? null)
-        : Promise.resolve(null),
-    [courseId],
-  );
+  const course = useCourse(courseId);
+  const assessments = useCourseAssessments(courseId);
   const cards = useCourseCards(courseId);
 
   const [name, setName] = useState('');
@@ -107,7 +105,9 @@ export function CourseSettings() {
     setLeechThreshold(course.leechThreshold ? String(course.leechThreshold) : '');
     setLeechAction(course.leechAction ?? 'suspend');
     setDailyReviewGoal(course.dailyReviewGoal ? String(course.dailyReviewGoal) : '');
-    setSessionTimeLimit(course.sessionTimeLimitMinutes ? String(course.sessionTimeLimitMinutes) : '');
+    setSessionTimeLimit(
+      course.sessionTimeLimitMinutes ? String(course.sessionTimeLimitMinutes) : '',
+    );
     setUnlockMode(course.unlockMode);
     setLinearCadence(course.linearCadence ?? { anchorDate: Date.now(), intervalDays: 7 });
     setAutoPractice(course.autoPractice);
@@ -167,7 +167,9 @@ export function CourseSettings() {
         : parsedMaxInterval;
     const parsedLeechThreshold = Math.floor(Number(leechThreshold));
     const leechThresholdValue =
-      leechThreshold.trim() === '' || !Number.isFinite(parsedLeechThreshold) || parsedLeechThreshold <= 0
+      leechThreshold.trim() === '' ||
+      !Number.isFinite(parsedLeechThreshold) ||
+      parsedLeechThreshold <= 0
         ? undefined
         : parsedLeechThreshold;
     const parsedDailyGoal = Math.floor(Number(dailyReviewGoal));
@@ -190,48 +192,57 @@ export function CourseSettings() {
       notify('Invalid relearning steps format. Use values like 1m, 10m, 1d.', 'negative');
       return;
     }
-    await updateCourse(course.id, {
-      name: name.trim() || course.name,
-      examDate: Number.isNaN(ms) ? course.examDate : ms,
-      timeZone: timeZone ?? getLocalTimeZone(),
-      examObjective: objective,
-      newCardsPerDay,
-      maxReviewsPerDay: maxReviewsPerDayValue,
-      leechThreshold: leechThresholdValue,
-      leechAction,
-      dailyReviewGoal: dailyReviewGoalValue,
-      sessionTimeLimitMinutes: sessionTimeLimitValue,
-      fsrsParameters: {
-        ...course.fsrsParameters,
-        requestRetention: clampRequestRetention(retention),
-        enable_fuzz: enableFuzz,
-        maximum_interval: maxIntervalValue,
-        learning_steps: learningStepsValue ?? course.fsrsParameters.learning_steps,
-        relearning_steps: relearningStepsValue ?? course.fsrsParameters.relearning_steps,
-      },
-      unlockMode,
-      linearCadence,
-      autoPractice,
-      practiceThresholdMinutesFar: parsePositiveIntOr(
-        practiceThresholdMinutesFar,
-        course.practiceThresholdMinutesFar,
-        true,
-      ),
-      practiceThresholdMinutesNear: parsePositiveIntOr(
-        practiceThresholdMinutesNear,
-        course.practiceThresholdMinutesNear,
-        true,
-      ),
-      practiceUrgentWindowDays: parsePositiveIntOr(
-        practiceUrgentWindowDays,
-        course.practiceUrgentWindowDays,
-        true,
-      ),
-      // Maximum lesson gap is a backstop count of lessons; the input's min={1}
-      // (PracticeSettingsSection) reflects that zero has no meaningful gap semantics.
-      practiceMaxGap: parsePositiveIntOr(practiceMaxGap, course.practiceMaxGap),
-      lessonViewMode,
-    });
+    const finalAssessment = assessments?.find((assessment) => assessment.kind === 'final');
+    if (!finalAssessment) {
+      notify('The final assessment could not be found.', 'negative');
+      return;
+    }
+    await Promise.all([
+      updateCourseAssessment(finalAssessment.id, {
+        examDate: Number.isNaN(ms) ? course.examDate : ms,
+        timeZone: timeZone ?? getLocalTimeZone(),
+      }),
+      updateCourse(course.id, {
+        name: name.trim() || course.name,
+        examObjective: objective,
+        newCardsPerDay,
+        maxReviewsPerDay: maxReviewsPerDayValue,
+        leechThreshold: leechThresholdValue,
+        leechAction,
+        dailyReviewGoal: dailyReviewGoalValue,
+        sessionTimeLimitMinutes: sessionTimeLimitValue,
+        fsrsParameters: {
+          ...course.fsrsParameters,
+          requestRetention: clampRequestRetention(retention),
+          enable_fuzz: enableFuzz,
+          maximum_interval: maxIntervalValue,
+          learning_steps: learningStepsValue ?? course.fsrsParameters.learning_steps,
+          relearning_steps: relearningStepsValue ?? course.fsrsParameters.relearning_steps,
+        },
+        unlockMode,
+        linearCadence,
+        autoPractice,
+        practiceThresholdMinutesFar: parsePositiveIntOr(
+          practiceThresholdMinutesFar,
+          course.practiceThresholdMinutesFar,
+          true,
+        ),
+        practiceThresholdMinutesNear: parsePositiveIntOr(
+          practiceThresholdMinutesNear,
+          course.practiceThresholdMinutesNear,
+          true,
+        ),
+        practiceUrgentWindowDays: parsePositiveIntOr(
+          practiceUrgentWindowDays,
+          course.practiceUrgentWindowDays,
+          true,
+        ),
+        // Maximum lesson gap is a backstop count of lessons; the input's min={1}
+        // (PracticeSettingsSection) reflects that zero has no meaningful gap semantics.
+        practiceMaxGap: parsePositiveIntOr(practiceMaxGap, course.practiceMaxGap),
+        lessonViewMode,
+      }),
+    ]);
     notify('Course updated.', 'positive');
     navigate(coursePath);
   }
@@ -259,9 +270,7 @@ export function CourseSettings() {
         >
           <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
           <div className="relative">
-            <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">
-              Course
-            </p>
+            <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Course</p>
             <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
           </div>
         </motion.header>

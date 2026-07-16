@@ -23,7 +23,7 @@ async function clearAll(): Promise<void> {
     db.notes.clear(),
     db.lessonCards.clear(),
     db.practiceNodes.clear(),
-    db.courseExamDates.clear(),
+    db.courseAssessments.clear(),
     db.sequences.clear(),
     db.userPerformance.clear(),
   ]);
@@ -56,7 +56,9 @@ describe('mcp destructive tools', () => {
     it('refuses to delete a sequence-generated card, surfacing a conflict error', async () => {
       const course = await createCourse('Course A');
       const lesson = await createLesson(course.id, 'Lesson 1');
-      await createSequence(course.id, lesson.id, 'Sequence 1', [{ id: 'item-1', value: 'first thing' }]);
+      await createSequence(course.id, lesson.id, 'Sequence 1', [
+        { id: 'item-1', value: 'first thing' },
+      ]);
       const generatedCard = await db.cards.where('courseId').equals(course.id).first();
       expect(generatedCard).toBeDefined();
 
@@ -85,7 +87,11 @@ describe('mcp destructive tools', () => {
     });
 
     it('rejects an unknown card id with not_found', async () => {
-      const result = await validateAndRun(tools.suspendCards, { ids: ['missing'], suspended: true }, ctx);
+      const result = await validateAndRun(
+        tools.suspendCards,
+        { ids: ['missing'], suspended: true },
+        ctx,
+      );
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('not_found');
     });
@@ -190,7 +196,9 @@ describe('mcp destructive tools', () => {
     it('deletes a sequence and returns an undo snapshot', async () => {
       const course = await createCourse('Course A');
       const lesson = await createLesson(course.id, 'Lesson 1');
-      const sequence = await createSequence(course.id, lesson.id, 'Sequence 1', [{ id: 'a', value: 'one' }]);
+      const sequence = await createSequence(course.id, lesson.id, 'Sequence 1', [
+        { id: 'a', value: 'one' },
+      ]);
 
       const res = await tools.deleteSequence.handler({ sequenceId: sequence.id }, ctx);
       expect(res.data.id).toBe(sequence.id);

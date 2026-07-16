@@ -15,7 +15,7 @@ async function clearAll(): Promise<void> {
     db.notes.clear(),
     db.lessonCards.clear(),
     db.practiceNodes.clear(),
-    db.courseExamDates.clear(),
+    db.courseAssessments.clear(),
     db.sequences.clear(),
     db.userPerformance.clear(),
   ]);
@@ -60,7 +60,11 @@ describe('mcp content tools', () => {
     });
 
     it('rejects an unknown courseId with not_found', async () => {
-      const result = await validateAndRun(tools.createLesson, { courseId: 'missing', name: 'x' }, ctx);
+      const result = await validateAndRun(
+        tools.createLesson,
+        { courseId: 'missing', name: 'x' },
+        ctx,
+      );
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('not_found');
     });
@@ -84,12 +88,19 @@ describe('mcp content tools', () => {
     it('creates a note', async () => {
       const course = await createCourse('Course A');
       const lesson = await createLesson(course.id, 'Lesson 1');
-      const res = await tools.createNote.handler({ lessonId: lesson.id, name: 'Note 1', content: 'hi' }, ctx);
+      const res = await tools.createNote.handler(
+        { lessonId: lesson.id, name: 'Note 1', content: 'hi' },
+        ctx,
+      );
       expect(res.data.content).toBe('hi');
     });
 
     it('rejects an unknown lessonId with not_found', async () => {
-      const result = await validateAndRun(tools.createNote, { lessonId: 'missing', name: 'x' }, ctx);
+      const result = await validateAndRun(
+        tools.createNote,
+        { lessonId: 'missing', name: 'x' },
+        ctx,
+      );
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('not_found');
     });
@@ -144,7 +155,10 @@ describe('mcp content tools', () => {
       const course = await createCourse('Course A');
       const lesson = await createLesson(course.id, 'Lesson 1');
       const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
-      const res = await tools.updateCard.handler({ cardId: card.id, front: 'q2', flagged: true }, ctx);
+      const res = await tools.updateCard.handler(
+        { cardId: card.id, front: 'q2', flagged: true },
+        ctx,
+      );
       expect(res.data.id).toBe(card.id);
       const updated = await db.cards.get(card.id);
       expect(updated?.front).toBe('q2');
@@ -164,7 +178,11 @@ describe('mcp content tools', () => {
       const generated = await db.cards.where('sequenceItemId').equals('item-1').first();
       expect(generated).toBeDefined();
 
-      const result = await validateAndRun(tools.updateCard, { cardId: generated!.id, front: 'edited' }, ctx);
+      const result = await validateAndRun(
+        tools.updateCard,
+        { cardId: generated!.id, front: 'edited' },
+        ctx,
+      );
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('conflict');
     });
@@ -177,7 +195,10 @@ describe('mcp content tools', () => {
       const lesson2 = await createLesson(course.id, 'Lesson 2');
       const card = await createLessonCard(course.id, lesson1.id, 'front_back', 'q', 'a');
 
-      const res = await tools.linkCardToLesson.handler({ lessonId: lesson2.id, cardId: card.id }, ctx);
+      const res = await tools.linkCardToLesson.handler(
+        { lessonId: lesson2.id, cardId: card.id },
+        ctx,
+      );
       expect(res.data.lessonId).toBe(lesson2.id);
       expect(res.data.cardId).toBe(card.id);
     });
@@ -188,8 +209,14 @@ describe('mcp content tools', () => {
       const lesson2 = await createLesson(course.id, 'Lesson 2');
       const card = await createLessonCard(course.id, lesson1.id, 'front_back', 'q', 'a');
 
-      const first = await tools.linkCardToLesson.handler({ lessonId: lesson2.id, cardId: card.id }, ctx);
-      const second = await tools.linkCardToLesson.handler({ lessonId: lesson2.id, cardId: card.id }, ctx);
+      const first = await tools.linkCardToLesson.handler(
+        { lessonId: lesson2.id, cardId: card.id },
+        ctx,
+      );
+      const second = await tools.linkCardToLesson.handler(
+        { lessonId: lesson2.id, cardId: card.id },
+        ctx,
+      );
       expect(second.data.id).toBe(first.data.id);
 
       const links = await db.lessonCards.where('lessonId').equals(lesson2.id).toArray();
@@ -201,11 +228,19 @@ describe('mcp content tools', () => {
       const lesson = await createLesson(course.id, 'Lesson 1');
       const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
 
-      const missingLesson = await validateAndRun(tools.linkCardToLesson, { lessonId: 'missing', cardId: card.id }, ctx);
+      const missingLesson = await validateAndRun(
+        tools.linkCardToLesson,
+        { lessonId: 'missing', cardId: card.id },
+        ctx,
+      );
       expect(missingLesson.ok).toBe(false);
       if (!missingLesson.ok) expect(missingLesson.error.kind).toBe('not_found');
 
-      const missingCard = await validateAndRun(tools.linkCardToLesson, { lessonId: lesson.id, cardId: 'missing' }, ctx);
+      const missingCard = await validateAndRun(
+        tools.linkCardToLesson,
+        { lessonId: lesson.id, cardId: 'missing' },
+        ctx,
+      );
       expect(missingCard.ok).toBe(false);
       if (!missingCard.ok) expect(missingCard.error.kind).toBe('not_found');
     });
@@ -216,7 +251,12 @@ describe('mcp content tools', () => {
       const course = await createCourse('Course A');
       const lesson = await createLesson(course.id, 'Lesson 1');
       const res = await tools.createSequence.handler(
-        { courseId: course.id, lessonId: lesson.id, name: 'Sequence 1', items: [{ id: 'a', value: 'one' }] },
+        {
+          courseId: course.id,
+          lessonId: lesson.id,
+          name: 'Sequence 1',
+          items: [{ id: 'a', value: 'one' }],
+        },
         ctx,
       );
       expect(res.data.name).toBe('Sequence 1');
@@ -237,10 +277,18 @@ describe('mcp content tools', () => {
     it('updates a sequence, regenerating its cards', async () => {
       const course = await createCourse('Course A');
       const lesson = await createLesson(course.id, 'Lesson 1');
-      const sequence = await createSequence(course.id, lesson.id, 'Sequence 1', [{ id: 'a', value: 'one' }]);
+      const sequence = await createSequence(course.id, lesson.id, 'Sequence 1', [
+        { id: 'a', value: 'one' },
+      ]);
 
       const res = await tools.updateSequence.handler(
-        { sequenceId: sequence.id, items: [{ id: 'a', value: 'one' }, { id: 'b', value: 'two' }] },
+        {
+          sequenceId: sequence.id,
+          items: [
+            { id: 'a', value: 'one' },
+            { id: 'b', value: 'two' },
+          ],
+        },
         ctx,
       );
       expect(res.data.id).toBe(sequence.id);
@@ -258,7 +306,7 @@ describe('mcp content tools', () => {
   describe('lacuna.create_course_exam_date / lacuna.update_course_exam_date', () => {
     it('creates a course exam date', async () => {
       const course = await createCourse('Course A');
-      const res = await tools.createCourseExamDate.handler(
+      const res = await tools.createCourseAssessment.handler(
         { courseId: course.id, name: 'Mid-term', examDate: Date.now() + 1000 },
         ctx,
       );
@@ -267,7 +315,7 @@ describe('mcp content tools', () => {
 
     it('rejects an unknown courseId with not_found', async () => {
       const result = await validateAndRun(
-        tools.createCourseExamDate,
+        tools.createCourseAssessment,
         { courseId: 'missing', name: 'x', examDate: Date.now() },
         ctx,
       );
@@ -277,20 +325,24 @@ describe('mcp content tools', () => {
 
     it('updates a course exam date', async () => {
       const course = await createCourse('Course A');
-      const examDate = await tools.createCourseExamDate.handler(
+      const examDate = await tools.createCourseAssessment.handler(
         { courseId: course.id, name: 'Mid-term', examDate: Date.now() + 1000 },
         ctx,
       );
-      const res = await tools.updateCourseExamDate.handler(
+      const res = await tools.updateCourseAssessment.handler(
         { courseExamDateId: examDate.data.id, name: 'Final' },
         ctx,
       );
       expect(res.data.id).toBe(examDate.data.id);
-      expect((await db.courseExamDates.get(examDate.data.id))?.name).toBe('Final');
+      expect((await db.courseAssessments.get(examDate.data.id))?.name).toBe('Final');
     });
 
     it('rejects an unknown courseExamDateId with not_found', async () => {
-      const result = await validateAndRun(tools.updateCourseExamDate, { courseExamDateId: 'missing' }, ctx);
+      const result = await validateAndRun(
+        tools.updateCourseAssessment,
+        { courseExamDateId: 'missing' },
+        ctx,
+      );
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('not_found');
     });

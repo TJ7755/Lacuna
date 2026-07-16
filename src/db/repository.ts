@@ -6,7 +6,8 @@ import type {
   Card,
   CardType,
   Course,
-  CourseExamDate,
+  CourseAssessment,
+  CourseRecord,
   Deck,
   Grade,
   Lesson,
@@ -24,6 +25,7 @@ import type {
   SessionHistoryEntry,
   UserPerformance,
 } from './types';
+import { courseToRecord, finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { emptyPerformance, updatePerformance } from '../fsrs/grading';
@@ -295,6 +297,15 @@ async function ownedBackingDeck(
     .first();
 }
 
+async function hydratedCourseById(courseId: string): Promise<Course | undefined> {
+  const [record, assessments] = await Promise.all([
+    db.courses.get(courseId),
+    db.courseAssessments.where('courseId').equals(courseId).toArray(),
+  ]);
+  if (!record) return undefined;
+  return hydrateCourse(record, finalAssessmentForCourse(courseId, assessments));
+}
+
 /**
  * Every course card still needs a real backing Deck (recordReview and userPerformance
  * both key off deckId). This lazily creates one hidden deck per lesson, inheriting the
@@ -314,7 +325,7 @@ export async function ensureLessonDeck(courseId: string, lessonId: string): Prom
     return existing.deckId;
   }
 
-  const course = await db.courses.get(courseId);
+  const course = await hydratedCourseById(courseId);
   const lesson = await db.lessons.get(lessonId);
   const createdAt = Date.now();
   const deck: Deck = {
@@ -394,7 +405,7 @@ export async function ensureCourseBankDeck(courseId: string): Promise<string> {
     return existing.deckId;
   }
 
-  const course = await db.courses.get(courseId);
+  const course = await hydratedCourseById(courseId);
   const createdAt = Date.now();
   const deck: Deck = {
     id: makeId(),
@@ -869,7 +880,12 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
 // Courses
 // ---------------------------------------------------------------------------
 
-export async function createCourse(name: string, opts?: Partial<Course>): Promise<Course> {
+export type CreateCourseOptions = Partial<CourseRecord> & {
+  examDate?: number;
+  timeZone?: string;
+};
+
+export async function createCourse(name: string, opts?: CreateCourseOptions): Promise<Course> {
   try {
     const createdAt = Date.now();
     const practiceDefaults = readPracticeDefaults();
@@ -890,8 +906,25 @@ export async function createCourse(name: string, opts?: Partial<Course>): Promis
       ...practiceDefaults,
       ...opts,
     };
-    await db.courses.add(course);
-    return course;
+    const record = courseToRecord(course);
+    const finalAssessment: CourseAssessment = {
+      id: makeId(),
+      courseId: record.id,
+      name: 'Final exam',
+      kind: 'final',
+      examDate: course.examDate,
+      ...(course.timeZone !== undefined ? { timeZone: course.timeZone } : {}),
+      afterLessonId: null,
+      coverageMode: 'prefix',
+      excludedCardIds: [],
+      createdAt: record.createdAt,
+    };
+    validateAssessmentStructure(finalAssessment);
+    await db.transaction('rw', db.courses, db.courseAssessments, async () => {
+      await db.courses.add(record);
+      await db.courseAssessments.add(finalAssessment);
+    });
+    return hydrateCourse(record, finalAssessment);
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -918,8 +951,15 @@ export async function stampMissingLessonViewModes(): Promise<void> {
   );
 }
 
-export async function updateCourse(id: string, changes: Partial<Course>): Promise<void> {
+export async function updateCourse(id: string, changes: Partial<CourseRecord>): Promise<void> {
   try {
+    const compatibilityChanges = changes as Partial<Course>;
+    if (
+      Object.prototype.hasOwnProperty.call(compatibilityChanges, 'examDate') ||
+      Object.prototype.hasOwnProperty.call(compatibilityChanges, 'timeZone')
+    ) {
+      throw new Error('Course examDate and timeZone are derived, read-only assessment values.');
+    }
     await db.courses.update(id, changes);
   } catch (err) {
     throw friendlyDbError(err);
@@ -929,7 +969,7 @@ export async function updateCourse(id: string, changes: Partial<Course>): Promis
 /**
  * Delete a course and cascade to all dependent rows in one transaction:
  * notes and lessonCard links belonging to the course's lessons, the lessons
- * themselves, practice nodes, course exam dates, and cards whose courseId
+ * themselves, practice nodes, course assessments, and cards whose courseId
  * matches. Cards are deleted (not unassigned) because they were created for
  * this course; the cascade mirrors deleteDeck deleting its cards.
  */
@@ -946,7 +986,7 @@ export async function deleteCourse(id: string): Promise<void> {
       db.lessonCompletions,
       db.practiceNodes,
       db.practiceMilestones,
-      db.courseExamDates,
+      db.courseAssessments,
       db.cards,
       db.decks,
       db.sessionHistory,
@@ -978,7 +1018,7 @@ export async function deleteCourse(id: string): Promise<void> {
       await db.lessons.where('courseId').equals(id).delete();
       await db.practiceNodes.where('courseId').equals(id).delete();
       await db.practiceMilestones.where('courseId').equals(id).delete();
-      await db.courseExamDates.where('courseId').equals(id).delete();
+      await db.courseAssessments.where('courseId').equals(id).delete();
       await db.sequences.where('courseId').equals(id).delete();
       await db.cards.where('courseId').equals(id).delete();
       if (deckIds.length > 0) {
@@ -998,10 +1038,10 @@ export async function deleteCourse(id: string): Promise<void> {
 }
 
 /** A complete copy of a course and everything that hangs off it: lessons, notes,
- * lesson-card links, practice nodes, exam dates, cards and their hidden backing decks
+ * lesson-card links, practice nodes, assessments, cards and their hidden backing decks
  * (plus the session history and calibration profiles keyed to either). */
 export interface CourseSnapshot {
-  course: Course;
+  course: CourseRecord;
   lessons: Lesson[];
   notes: Note[];
   noteAnnotations: NoteAnnotation[];
@@ -1010,7 +1050,7 @@ export interface CourseSnapshot {
   lessonCompletions: LessonCompletion[];
   practiceNodes: PracticeNode[];
   practiceMilestones: PracticeMilestone[];
-  courseExamDates: CourseExamDate[];
+  courseAssessments: CourseAssessment[];
   sequences: Sequence[];
   cards: Card[];
   decks: Deck[];
@@ -1033,7 +1073,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     lessons,
     practiceNodes,
     practiceMilestones,
-    courseExamDates,
+    courseAssessments,
     sequences,
     cards,
     coursePerf,
@@ -1041,7 +1081,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.lessons.where('courseId').equals(id).toArray(),
     db.practiceNodes.where('courseId').equals(id).toArray(),
     db.practiceMilestones.where('courseId').equals(id).toArray(),
-    db.courseExamDates.where('courseId').equals(id).toArray(),
+    db.courseAssessments.where('courseId').equals(id).toArray(),
     db.sequences.where('courseId').equals(id).toArray(),
     db.cards.where('courseId').equals(id).toArray(),
     db.userPerformance.get(id),
@@ -1071,7 +1111,10 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
   ]);
   const noteAnnotations =
     notes.length > 0
-      ? await db.noteAnnotations.where('noteId').anyOf(notes.map((note) => note.id)).toArray()
+      ? await db.noteAnnotations
+          .where('noteId')
+          .anyOf(notes.map((note) => note.id))
+          .toArray()
       : [];
   // A backing deck's session history is always course-scoped too (see recordReview),
   // so de-duplicate by row id between the deckId and courseId lookups.
@@ -1089,7 +1132,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     lessonCompletions,
     practiceNodes,
     practiceMilestones,
-    courseExamDates,
+    courseAssessments,
     sequences,
     cards,
     decks,
@@ -1101,6 +1144,13 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
 /** Re-insert a previously captured CourseSnapshot (the inverse of deleteCourse). */
 export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
   try {
+    finalAssessmentForCourse(snapshot.course.id, snapshot.courseAssessments);
+    for (const assessment of snapshot.courseAssessments) {
+      if (assessment.courseId !== snapshot.course.id) {
+        throw new Error('A course snapshot cannot contain assessments from another course.');
+      }
+      validateAssessmentStructure(assessment);
+    }
     await db.transaction(
       'rw',
       [
@@ -1113,7 +1163,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.lessonCompletions,
         db.practiceNodes,
         db.practiceMilestones,
-        db.courseExamDates,
+        db.courseAssessments,
         db.sequences,
         db.cards,
         db.decks,
@@ -1131,7 +1181,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.lessonCompletions.bulkPut(snapshot.lessonCompletions),
           db.practiceNodes.bulkPut(snapshot.practiceNodes),
           db.practiceMilestones.bulkPut(snapshot.practiceMilestones),
-          db.courseExamDates.bulkPut(snapshot.courseExamDates),
+          db.courseAssessments.bulkPut(snapshot.courseAssessments),
           db.sequences.bulkPut(snapshot.sequences),
           db.cards.bulkPut(snapshot.cards),
           db.decks.bulkPut(snapshot.decks),
@@ -1213,10 +1263,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
       db.cards.where('primaryLessonId').equals(id).toArray(),
       db.sequences.where('primaryLessonId').equals(id).toArray(),
       db.decks
-        .filter(
-          (deck) =>
-            deck.backingCourseId === lesson.courseId && deck.backingLessonId === id,
-        )
+        .filter((deck) => deck.backingCourseId === lesson.courseId && deck.backingLessonId === id)
         .toArray(),
     ]);
   const noteIds = notes.map((note) => note.id);
@@ -1652,44 +1699,156 @@ export async function savePracticeMilestoneProgress(
 }
 
 // ---------------------------------------------------------------------------
-// Course exam dates
+// Course assessments
 // ---------------------------------------------------------------------------
 
-export async function createCourseExamDate(
+function validateAssessmentStructure(assessment: CourseAssessment): void {
+  if (assessment.kind !== 'final' && assessment.kind !== 'checkpoint') {
+    throw new Error('Assessment kind must be final or checkpoint.');
+  }
+  if (
+    assessment.afterLessonId !== null &&
+    (typeof assessment.afterLessonId !== 'string' || assessment.afterLessonId.length === 0)
+  ) {
+    throw new Error('An assessment path position must be a lesson id or null.');
+  }
+  if (!Number.isFinite(assessment.examDate)) {
+    throw new Error('An assessment date must be a finite timestamp.');
+  }
+  if (!Array.isArray(assessment.excludedCardIds)) {
+    throw new Error('Assessment exclusions must be an explicit card-id array.');
+  }
+  if (
+    assessment.excludedCardIds.some((cardId) => typeof cardId !== 'string' || cardId.length === 0)
+  ) {
+    throw new Error('Assessment exclusions must contain valid card ids.');
+  }
+  if (new Set(assessment.excludedCardIds).size !== assessment.excludedCardIds.length) {
+    throw new Error('Assessment exclusions cannot contain duplicate card ids.');
+  }
+  if (assessment.coverageMode === 'prefix') {
+    if (assessment.lessonIds !== undefined) {
+      throw new Error('Prefix assessment coverage cannot store lesson ids.');
+    }
+    return;
+  }
+  if (assessment.coverageMode === 'custom') {
+    if (!Array.isArray(assessment.lessonIds) || assessment.lessonIds.length === 0) {
+      throw new Error('Custom assessment coverage requires an explicit lesson-id array.');
+    }
+    if (
+      assessment.lessonIds.some((lessonId) => typeof lessonId !== 'string' || lessonId.length === 0)
+    ) {
+      throw new Error('Custom assessment coverage must contain valid lesson ids.');
+    }
+    if (new Set(assessment.lessonIds).size !== assessment.lessonIds.length) {
+      throw new Error('Custom assessment coverage cannot contain duplicate lesson ids.');
+    }
+    return;
+  }
+  throw new Error('Assessment coverage mode must be prefix or custom.');
+}
+
+export async function createCourseAssessment(
   courseId: string,
   name: string,
   examDate: number,
-  opts?: Partial<CourseExamDate>,
-): Promise<CourseExamDate> {
+  opts?: Partial<CourseAssessment>,
+): Promise<CourseAssessment> {
   try {
-    const entry: CourseExamDate = {
-      id: makeId(),
-      courseId,
-      name,
-      examDate,
-      createdAt: Date.now(),
-      ...opts,
-    };
-    await db.courseExamDates.add(entry);
-    return entry;
+    let entry: CourseAssessment | undefined;
+    await db.transaction('rw', db.courses, db.lessons, db.courseAssessments, async () => {
+      if (!(await db.courses.get(courseId))) throw new Error('The course could not be found.');
+      const existing = await db.courseAssessments.where('courseId').equals(courseId).toArray();
+      finalAssessmentForCourse(courseId, existing);
+      const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
+      const coverageMode =
+        opts?.coverageMode ??
+        (Array.isArray(opts?.lessonIds) && opts.lessonIds.length > 0 ? 'custom' : 'prefix');
+      const coveredLessonIds = new Set(coverageMode === 'custom' ? (opts?.lessonIds ?? []) : []);
+      const inferredAnchor =
+        [...lessons]
+          .reverse()
+          .find((lesson) => coverageMode === 'prefix' || coveredLessonIds.has(lesson.id))?.id ??
+        null;
+      const afterLessonId =
+        opts !== undefined && Object.prototype.hasOwnProperty.call(opts, 'afterLessonId')
+          ? opts.afterLessonId!
+          : inferredAnchor;
+      entry = {
+        kind: 'checkpoint',
+        excludedCardIds: [],
+        ...opts,
+        id: makeId(),
+        courseId,
+        name,
+        examDate,
+        afterLessonId,
+        coverageMode,
+        createdAt: Date.now(),
+      } as CourseAssessment;
+      validateAssessmentStructure(entry);
+      if (entry.kind === 'final') {
+        throw new Error('A course must have exactly one final assessment.');
+      }
+      await db.courseAssessments.add(entry);
+    });
+    return entry!;
   } catch (err) {
     throw friendlyDbError(err);
   }
 }
 
-export async function updateCourseExamDate(
+export async function updateCourseAssessment(
   id: string,
-  changes: Partial<CourseExamDate>,
+  changes: Partial<CourseAssessment>,
 ): Promise<void> {
   try {
-    await db.courseExamDates.update(id, changes);
+    await db.transaction('rw', db.courseAssessments, async () => {
+      const existing = await db.courseAssessments.get(id);
+      if (!existing) throw new Error('The assessment could not be found.');
+      if (changes.courseId !== undefined && changes.courseId !== existing.courseId) {
+        throw new Error('An assessment cannot move to another course.');
+      }
+      const updated = {
+        ...existing,
+        ...changes,
+        id: existing.id,
+        courseId: existing.courseId,
+        createdAt: existing.createdAt,
+      } as CourseAssessment;
+      validateAssessmentStructure(updated);
+      const assessments = await db.courseAssessments
+        .where('courseId')
+        .equals(existing.courseId)
+        .toArray();
+      const finalAssessment = finalAssessmentForCourse(existing.courseId, assessments);
+      if (existing.kind === 'final' && updated.kind !== 'final') {
+        throw new Error('The sole final assessment cannot be demoted.');
+      }
+      if (existing.kind !== 'final' && updated.kind === 'final' && finalAssessment.id !== id) {
+        throw new Error('A course must have exactly one final assessment.');
+      }
+      await db.courseAssessments.put(updated);
+    });
   } catch (err) {
     throw friendlyDbError(err);
   }
 }
 
-export async function deleteCourseExamDate(id: string): Promise<void> {
-  await db.courseExamDates.delete(id);
+export async function deleteCourseAssessment(id: string): Promise<void> {
+  try {
+    await db.transaction('rw', db.courseAssessments, async () => {
+      const assessment = await db.courseAssessments.get(id);
+      if (!assessment) return;
+      if (assessment.kind === 'final') {
+        throw new Error('The sole final assessment cannot be deleted.');
+      }
+      await db.courseAssessments.delete(id);
+    });
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,8 @@
 // First-run seed data: one small, deletable example course so the app is never empty.
 
 import { db, makeId } from './schema';
-import type { Card, Course, Lesson, Note, Deck } from './types';
+import type { Card, Course, CourseAssessment, Lesson, Note, Deck } from './types';
+import { courseToRecord } from './assessmentMigration';
 import { emptyPerformance } from '../fsrs/grading';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { defaultExamDate } from '../utils/datetime';
@@ -146,7 +147,9 @@ export async function seedIfFirstRun(): Promise<void> {
     const existingCourseCount = await db.courses.count();
     if (existingCourseCount > 0) {
       // Best-effort sync of the localStorage flag so future starts are cheaper.
-      try { localStorage.setItem(FLAG_KEY, '1'); } catch {
+      try {
+        localStorage.setItem(FLAG_KEY, '1');
+      } catch {
         // localStorage may be unavailable; next start will retry the check.
       }
       return;
@@ -206,6 +209,17 @@ export async function seedIfFirstRun(): Promise<void> {
       3,
     );
     const seedLessons = [lessonCore, lessonScheduling, lessonLearn, lessonAdvanced];
+    const finalAssessment: CourseAssessment = {
+      id: makeId(),
+      courseId: course.id,
+      name: 'Final exam',
+      kind: 'final',
+      examDate: course.examDate,
+      afterLessonId: lessonAdvanced.lesson.id,
+      coverageMode: 'prefix',
+      excludedCardIds: [],
+      createdAt,
+    };
 
     const notes: Note[] = [
       {
@@ -216,7 +230,7 @@ export async function seedIfFirstRun(): Promise<void> {
           'Every card you study has a **retrievability** — the probability you could recall it right now — ' +
           'which decays over time since your last review. Lacuna schedules each review to catch that decay ' +
           'just before it costs you the card, using the FSRS-6 model for stability and difficulty.\n\n' +
-          'Notes like this one live alongside a lesson\'s cards. Write explanations or source material here, ' +
+          "Notes like this one live alongside a lesson's cards. Write explanations or source material here, " +
           'then generate or add cards for the parts you actually need to be quizzed on.',
         orderIndex: 0,
         createdAt: Date.now() + 4,
@@ -398,7 +412,7 @@ export async function seedIfFirstRun(): Promise<void> {
         lessonAdvanced.lesson.id,
         'front_back',
         'How can you share a course with someone else?',
-        'Go to the **Share** page, select a course, and generate a compact **share code**. It carries the course\'s lessons, notes and cards, but not review history or images. The recipient pastes the code to add it as a new course of their own.',
+        "Go to the **Share** page, select a course, and generate a compact **share code**. It carries the course's lessons, notes and cards, but not review history or images. The recipient pastes the code to add it as a new course of their own.",
         ['share', 'export'],
         25,
       ),
@@ -428,7 +442,7 @@ export async function seedIfFirstRun(): Promise<void> {
         lessonAdvanced.lesson.id,
         'front_back',
         'Did you know: FSRS parameters can be personalised?',
-        'Lacuna can **optimise** a course\'s FSRS weights by training them on your own review history. Run it manually from **Course Settings → Scheduling optimisation**, or enable automatic optimisation in Settings. It only applies after confirming an improvement in prediction accuracy.',
+        "Lacuna can **optimise** a course's FSRS weights by training them on your own review history. Run it manually from **Course Settings → Scheduling optimisation**, or enable automatic optimisation in Settings. It only applies after confirming an improvement in prediction accuracy.",
         ['optimisation', 'advanced'],
         28,
       ),
@@ -488,7 +502,7 @@ export async function seedIfFirstRun(): Promise<void> {
         lessonAdvanced.lesson.id,
         'front_back',
         'Did you know: you can import cards from a spreadsheet?',
-        'From a lesson or the question bank, choose **Import**. Lacuna accepts **CSV** or **TSV** files (and Anki\'s plain-text export) with front, back, and optional tags. Cloze notation in a single column is recognised automatically.',
+        "From a lesson or the question bank, choose **Import**. Lacuna accepts **CSV** or **TSV** files (and Anki's plain-text export) with front, back, and optional tags. Cloze notation in a single column is recognised automatically.",
         ['import', 'data'],
         34,
       ),
@@ -546,11 +560,21 @@ export async function seedIfFirstRun(): Promise<void> {
 
     await db.transaction(
       'rw',
-      [db.courses, db.lessons, db.notes, db.decks, db.cards, db.userPerformance, db.assets],
+      [
+        db.courses,
+        db.courseAssessments,
+        db.lessons,
+        db.notes,
+        db.decks,
+        db.cards,
+        db.userPerformance,
+        db.assets,
+      ],
       async () => {
         const courseCount = await db.courses.count();
         if (courseCount > 0) return;
-        await db.courses.add(course);
+        await db.courses.add(courseToRecord(course));
+        await db.courseAssessments.add(finalAssessment);
         await db.lessons.bulkAdd(seedLessons.map((s) => s.lesson));
         await db.notes.bulkAdd(notes);
         await db.decks.bulkAdd(seedLessons.map((s) => s.deck));
@@ -561,7 +585,9 @@ export async function seedIfFirstRun(): Promise<void> {
     );
 
     // Only set the flag after a successful commit so a failed seed is retried.
-    try { localStorage.setItem(FLAG_KEY, '1'); } catch {
+    try {
+      localStorage.setItem(FLAG_KEY, '1');
+    } catch {
       // localStorage may be unavailable; the next start will retry the check.
     }
   } finally {

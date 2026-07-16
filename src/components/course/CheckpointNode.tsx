@@ -1,4 +1,4 @@
-// A distinct diamond-shaped marker for a checkpoint (a CourseExamDate) on the path.
+// A distinct diamond-shaped marker for a checkpoint assessment on the path.
 //
 // Checkpoints are informational assessment events: they never gate progression
 // (addendum G). Presentational only — shows the checkpoint name and its date.
@@ -8,13 +8,13 @@
 // British English throughout.
 
 import { m as motion } from 'motion/react';
-import type { CourseExamDate } from '../../db/types';
+import type { CourseAssessment } from '../../db/types';
 import { FlagIcon } from '../ui/icons';
 import { formatDate } from '../../utils/datetime';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 
 interface CheckpointNodeProps {
-  examDate: CourseExamDate;
+  examDate: CourseAssessment;
 }
 
 export function CheckpointNode({ examDate }: CheckpointNodeProps) {

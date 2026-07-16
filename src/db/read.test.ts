@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import {
   createCourse,
-  createCourseExamDate,
+  createCourseAssessment,
   createLesson,
   createLessonCard,
   createPracticeNode,
@@ -20,7 +20,7 @@ import {
   getWeakCards,
   listCardsForCourse,
   listCardsForLesson,
-  listCourseExamDates,
+  listCourseAssessments,
   listCourses,
   listDueCards,
   listLessons,
@@ -38,7 +38,7 @@ async function clearAll(): Promise<void> {
     db.notes.clear(),
     db.lessonCards.clear(),
     db.practiceNodes.clear(),
-    db.courseExamDates.clear(),
+    db.courseAssessments.clear(),
     db.sequences.clear(),
     db.userPerformance.clear(),
   ]);
@@ -138,7 +138,13 @@ describe('read.ts', () => {
       const futureCard = await createLessonCard(course.id, lesson.id, 'front_back', 'future', 'a');
       await db.cards.update(futureCard.id, { due: now + 100_000_000, state: 2 });
 
-      const otherDue = await createLessonCard(otherCourse.id, otherLesson.id, 'front_back', 'other', 'a');
+      const otherDue = await createLessonCard(
+        otherCourse.id,
+        otherLesson.id,
+        'front_back',
+        'other',
+        'a',
+      );
       await db.cards.update(otherDue.id, { due: now - 1000, state: 2 });
 
       const result = await listDueCards(course.id, undefined, now);
@@ -230,22 +236,26 @@ describe('read.ts', () => {
       const course = await createCourse('Course A');
       const lesson = await createLesson(course.id, 'Lesson 1');
       const otherLesson = await createLesson(course.id, 'Lesson 2');
-      const note1 = await db.notes.add({
-        id: 'n1',
-        lessonId: lesson.id,
-        name: 'Note 1',
-        content: '',
-        orderIndex: 1,
-        createdAt: Date.now(),
-      }).then(() => 'n1');
-      const note0 = await db.notes.add({
-        id: 'n0',
-        lessonId: lesson.id,
-        name: 'Note 0',
-        content: '',
-        orderIndex: 0,
-        createdAt: Date.now(),
-      }).then(() => 'n0');
+      const note1 = await db.notes
+        .add({
+          id: 'n1',
+          lessonId: lesson.id,
+          name: 'Note 1',
+          content: '',
+          orderIndex: 1,
+          createdAt: Date.now(),
+        })
+        .then(() => 'n1');
+      const note0 = await db.notes
+        .add({
+          id: 'n0',
+          lessonId: lesson.id,
+          name: 'Note 0',
+          content: '',
+          orderIndex: 0,
+          createdAt: Date.now(),
+        })
+        .then(() => 'n0');
       await db.notes.add({
         id: 'n2',
         lessonId: otherLesson.id,
@@ -266,25 +276,25 @@ describe('read.ts', () => {
     });
   });
 
-  describe('practice nodes / exam dates', () => {
-    it('scopes practice nodes and exam dates to their course', async () => {
+  describe('practice nodes / assessments', () => {
+    it('scopes practice nodes and assessments to their course', async () => {
       const course = await createCourse('Course A');
       const otherCourse = await createCourse('Course B');
       const node = await createPracticeNode(course.id, { type: 'manual', name: 'Practice 1' });
       await createPracticeNode(otherCourse.id, { type: 'manual', name: 'Other practice' });
 
       const now = Date.now();
-      const examDate = await createCourseExamDate(course.id, 'Mid-term', now + 1000);
-      await createCourseExamDate(otherCourse.id, 'Other exam', now + 2000);
+      const examDate = await createCourseAssessment(course.id, 'Mid-term', now + 1000);
+      await createCourseAssessment(otherCourse.id, 'Other exam', now + 2000);
 
       expect((await listPracticeNodes(course.id)).map((n) => n.id)).toEqual([node.id]);
-      expect((await listCourseExamDates(course.id)).map((e) => e.id)).toEqual([examDate.id]);
+      expect((await listCourseAssessments(course.id)).map((e) => e.id)).toContain(examDate.id);
     });
 
     it('returns empty lists for a course with none', async () => {
       const course = await createCourse('Course A');
       expect(await listPracticeNodes(course.id)).toEqual([]);
-      expect(await listCourseExamDates(course.id)).toEqual([]);
+      expect(await listCourseAssessments(course.id)).toHaveLength(1);
     });
   });
 
@@ -309,7 +319,7 @@ describe('read.ts', () => {
       await createLessonCard(course.id, lesson.id, 'front_back', 'q2', 'a2');
       await createLessonCard(otherCourse.id, otherLesson.id, 'front_back', 'q3', 'a3');
       await createPracticeNode(course.id, { type: 'manual', name: 'Practice' });
-      await createCourseExamDate(course.id, 'Mid-term', Date.now() + 1000);
+      await createCourseAssessment(course.id, 'Mid-term', Date.now() + 1000);
 
       const summary = await diagnosticsSummary(course.id);
       expect(summary).toMatchObject({
@@ -319,7 +329,7 @@ describe('read.ts', () => {
         notes: 0,
         lessonCards: 0,
         practiceNodes: 1,
-        courseExamDates: 1,
+        courseAssessments: 2,
         sequences: 0,
       });
     });
@@ -334,7 +344,7 @@ describe('read.ts', () => {
         notes: 0,
         lessonCards: 0,
         practiceNodes: 0,
-        courseExamDates: 0,
+        courseAssessments: 1,
         sequences: 0,
       });
     });

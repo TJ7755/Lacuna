@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, Course, CourseExamDate, ReviewLog } from '../db/types';
+import type { Card, Course, CourseAssessment, ReviewLog } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import { courseHeaderStats } from './headerStats';
 
@@ -25,8 +25,18 @@ function makeCourse(overrides: Partial<Course> = {}): Course {
   };
 }
 
-function makeExamDate(id: string, examDate: number): CourseExamDate {
-  return { id, courseId: 'course', name: id, examDate, createdAt: 0 };
+function makeExamDate(id: string, examDate: number): CourseAssessment {
+  return {
+    id,
+    courseId: 'course',
+    name: id,
+    kind: 'checkpoint',
+    examDate,
+    coverageMode: 'prefix',
+    afterLessonId: null,
+    excludedCardIds: [],
+    createdAt: 0,
+  };
 }
 
 function makeCard(id: string, overrides: Partial<Card> = {}): Card {

@@ -33,18 +33,14 @@
 
 import { z } from 'zod';
 import { db, makeId } from './schema';
-import {
-  createCards,
-  createCourse,
-  ensureLessonDeck,
-} from './repository';
+import { createCards, createCourse, ensureLessonDeck } from './repository';
 import { clampRequestRetention, defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { emptyPerformance } from '../fsrs/grading';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import type { ParsedCard } from './import';
 import type {
   Card,
-  CourseExamDate,
+  CourseAssessment,
   Deck,
   Folder,
   Lesson,
@@ -54,6 +50,7 @@ import type {
   SequencePresetId,
   UnlockMode,
 } from './types';
+import { courseToRecord, finalAssessmentForCourse } from './assessmentMigration';
 import { stripAssetImages } from './assets';
 import { bytesToBase45, base45ToBytes } from './base45';
 import { buildCourseMigration } from './courseMigration';
@@ -124,7 +121,7 @@ const ShareCourseSchema = z.object({
 });
 
 /**
- * An extra CourseExamDate (beyond the course's primary exam date) in a v2 payload.
+ * An extra checkpoint (beyond the course's final assessment) in a v2 payload.
  * `excludedCardIds` is deliberately omitted: per-card checkpoint exclusions are a
  * lossy detail that does not survive a share round-trip.
  */
@@ -248,7 +245,7 @@ interface ShareCourse {
   um: UnlockMode;
 }
 
-/** An extra CourseExamDate in a v2 share payload. */
+/** An extra checkpoint in a v2 share payload. */
 interface ShareExam {
   n: string; // name
   e: number; // examDate
@@ -418,11 +415,7 @@ export async function decodeShareDirect(code: string): Promise<SharePayload> {
     if (compressed.length > MAX_SHARE_BYTES) {
       throw new Error('Share code is too large to decode safely.');
     }
-    bytes = await pipeThrough(
-      compressed,
-      new DecompressionStream('deflate-raw'),
-      MAX_SHARE_BYTES,
-    );
+    bytes = await pipeThrough(compressed, new DecompressionStream('deflate-raw'), MAX_SHARE_BYTES);
   } else if (trimmed.startsWith(PREFIX_BASE45_PLAIN)) {
     const encoded = trimmed.slice(PREFIX_BASE45_PLAIN.length);
     bytes = base45ToBytes(encoded);
@@ -488,10 +481,9 @@ let shareJobId = 0;
 
 function getShareWorker(): Worker {
   if (!shareWorker) {
-    shareWorker = new Worker(
-      new URL('../workers/share.worker.ts', import.meta.url),
-      { type: 'module' },
-    );
+    shareWorker = new Worker(new URL('../workers/share.worker.ts', import.meta.url), {
+      type: 'module',
+    });
   }
   return shareWorker;
 }
@@ -761,9 +753,7 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
   const lessonIds = lessons.map((lesson) => lesson.id);
   const [notes, cards] = await Promise.all([
     lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
-    lessonIds.length > 0
-      ? db.cards.where('primaryLessonId').anyOf(lessonIds).toArray()
-      : [],
+    lessonIds.length > 0 ? db.cards.where('primaryLessonId').anyOf(lessonIds).toArray() : [],
   ]);
   const notesByLesson = new Map<string, Note[]>();
   for (const note of notes) {
@@ -789,31 +779,39 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
       ...(typeof lesson.releaseDate === 'number' ? { rd: lesson.releaseDate } : {}),
       ...(typeof lesson.examDate === 'number' ? { ed: lesson.examDate } : {}),
       ...(lesson.timeZone ? { tz: lesson.timeZone } : {}),
-      ...(lesson.sessionFilter && lesson.sessionFilter !== 'new' ? { sf: lesson.sessionFilter } : {}),
+      ...(lesson.sessionFilter && lesson.sessionFilter !== 'new'
+        ? { sf: lesson.sessionFilter }
+        : {}),
       notes: packNotes(notesByLesson.get(lesson.id) ?? []),
       cards: packCards(cardsByLesson.get(lesson.id) ?? []),
     };
   });
 
-  const examDates = await db.courseExamDates.where('courseId').equals(courseId).sortBy('examDate');
-  const shareExams: ShareExam[] = examDates.map((e) => {
-    const ls = (e.lessonIds ?? [])
-      .map((id) => lessonIndexById.get(id))
-      .filter((i): i is number => i !== undefined);
-    return {
-      n: e.name,
-      e: e.examDate,
-      ...(e.timeZone ? { tz: e.timeZone } : {}),
-      ...(e.lessonIds && e.lessonIds.length ? { ls } : {}),
-    };
-  });
+  const assessments = await db.courseAssessments
+    .where('courseId')
+    .equals(courseId)
+    .sortBy('examDate');
+  const finalAssessment = finalAssessmentForCourse(courseId, assessments);
+  const shareExams: ShareExam[] = assessments
+    .filter((assessment) => assessment.kind === 'checkpoint')
+    .map((assessment) => {
+      const ls = (assessment.coverageMode === 'custom' ? assessment.lessonIds : [])
+        .map((id) => lessonIndexById.get(id))
+        .filter((i): i is number => i !== undefined);
+      return {
+        n: assessment.name,
+        e: assessment.examDate,
+        ...(assessment.timeZone ? { tz: assessment.timeZone } : {}),
+        ...(assessment.coverageMode === 'custom' && ls.length ? { ls } : {}),
+      };
+    });
 
   const shareCourse: ShareCourse = {
     n: course.name,
     ...(course.description ? { d: course.description } : {}),
     o: course.examObjective === 'securedTopics' ? 1 : 0,
     c: course.createdAt,
-    e: course.examDate,
+    e: finalAssessment.examDate,
     r: course.fsrsParameters.requestRetention,
     ...(course.newCardsPerDay ? { p: course.newCardsPerDay } : {}),
     ...(course.colour ? { l: course.colour } : {}),
@@ -824,9 +822,9 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
   // per-lesson `cards` query above, which only covers lesson-scoped cards. Excluding
   // them here keeps the payload internally consistent, mirroring the exclusion of
   // bank cards from shares.
-  const sequences = (await db.sequences.where('courseId').equals(courseId).sortBy('createdAt')).filter(
-    (s) => s.primaryLessonId !== null
-  );
+  const sequences = (
+    await db.sequences.where('courseId').equals(courseId).sortBy('createdAt')
+  ).filter((s) => s.primaryLessonId !== null);
   const shareSequences: ShareSequence[] = sequences.map((s) => {
     const pl = s.primaryLessonId ? lessonIndexById.get(s.primaryLessonId) : undefined;
     return {
@@ -848,7 +846,8 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
       ...(s.mySpeaker ? { ms: s.mySpeaker } : {}),
       // Only spend payload space on the preset id when the receiving end couldn't
       // re-derive it from m/ms alone (see presetForSequence) — e.g. poetry vs. speech.
-      ...(s.presetId && s.presetId !== presetForSequence({ mode: s.mode, mySpeaker: s.mySpeaker }).id
+      ...(s.presetId &&
+      s.presetId !== presetForSequence({ mode: s.mode, mySpeaker: s.mySpeaker }).id
         ? { pr: s.presetId }
         : {}),
     };
@@ -930,7 +929,15 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
 
   await db.transaction(
     'rw',
-    [db.decks, db.cards, db.userPerformance, db.assets, db.courses, db.lessons],
+    [
+      db.decks,
+      db.cards,
+      db.userPerformance,
+      db.assets,
+      db.courses,
+      db.lessons,
+      db.courseAssessments,
+    ],
     async () => {
       for (let i = 0; i < decks.length; i++) {
         const deck = decks[i];
@@ -948,8 +955,24 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
         }
         cardCount += cards.length;
       }
-      await db.courses.bulkAdd(migration.courses);
+      await db.courses.bulkAdd(migration.courses.map(courseToRecord));
       await db.lessons.bulkAdd(migration.lessons);
+      const finalAssessments: CourseAssessment[] = migration.courses.map((course) => ({
+        id: makeId(),
+        courseId: course.id,
+        name: 'Final exam',
+        kind: 'final',
+        examDate: course.examDate,
+        ...(course.timeZone ? { timeZone: course.timeZone } : {}),
+        afterLessonId:
+          migration.lessons
+            .filter((lesson) => lesson.courseId === course.id)
+            .sort((a, b) => b.orderIndex - a.orderIndex)[0]?.id ?? null,
+        coverageMode: 'prefix',
+        excludedCardIds: [],
+        createdAt: course.createdAt,
+      }));
+      await db.courseAssessments.bulkAdd(finalAssessments);
     },
   );
 
@@ -978,7 +1001,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
       db.cards,
       db.userPerformance,
       db.assets,
-      db.courseExamDates,
+      db.courseAssessments,
       db.sequences,
     ],
     async () => {
@@ -1019,18 +1042,18 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
 
       const importedAt = Date.now();
       const importedLessons: Lesson[] = payload.lessons.map((shareLesson, orderIndex) => ({
-          id: makeId(),
-          courseId: course.id,
-          name: shareLesson.n.trim() || 'Untitled lesson',
-          orderIndex,
-          createdAt: importedAt + orderIndex,
-          ...(shareLesson.d ? { description: shareLesson.d } : {}),
-          isExtension: shareLesson.x === 1,
-          ...(typeof shareLesson.rd === 'number' ? { releaseDate: shareLesson.rd } : {}),
-          ...(typeof shareLesson.ed === 'number' ? { examDate: shareLesson.ed } : {}),
-          ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
-          ...(shareLesson.sf ? { sessionFilter: shareLesson.sf } : {}),
-        }));
+        id: makeId(),
+        courseId: course.id,
+        name: shareLesson.n.trim() || 'Untitled lesson',
+        orderIndex,
+        createdAt: importedAt + orderIndex,
+        ...(shareLesson.d ? { description: shareLesson.d } : {}),
+        isExtension: shareLesson.x === 1,
+        ...(typeof shareLesson.rd === 'number' ? { releaseDate: shareLesson.rd } : {}),
+        ...(typeof shareLesson.ed === 'number' ? { examDate: shareLesson.ed } : {}),
+        ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
+        ...(shareLesson.sf ? { sessionFilter: shareLesson.sf } : {}),
+      }));
       if (importedLessons.length > 0) await db.lessons.bulkAdd(importedLessons);
       const lessonIds = importedLessons.map((lesson) => lesson.id);
 
@@ -1069,20 +1092,36 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         cardCount += created.length;
       }
 
-      const importedExams: CourseExamDate[] = (payload.exams ?? []).map(
-        (shareExam, index) => ({
-          id: makeId(),
-          courseId: course.id,
-          name: shareExam.n || 'Exam',
-          examDate: shareExam.e,
-          createdAt: importedAt + index,
-          ...(shareExam.tz ? { timeZone: shareExam.tz } : {}),
-          ...(shareExam.ls && shareExam.ls.length
-            ? { lessonIds: shareExam.ls.map((i) => lessonIds[i]).filter((id): id is string => !!id) }
-            : {}),
-        }),
+      const importedAssessments: CourseAssessment[] = (payload.exams ?? []).map(
+        (shareExam, index) => {
+          const coveredLessonIds = (shareExam.ls ?? [])
+            .map((lessonIndex) => lessonIds[lessonIndex])
+            .filter((id): id is string => !!id);
+          const afterLessonId =
+            coveredLessonIds.length > 0
+              ? ([...importedLessons]
+                  .reverse()
+                  .find((lesson) => coveredLessonIds.includes(lesson.id))?.id ?? null)
+              : (lessonIds[lessonIds.length - 1] ?? null);
+          return {
+            id: makeId(),
+            courseId: course.id,
+            name: shareExam.n || 'Exam',
+            kind: 'checkpoint',
+            examDate: shareExam.e,
+            createdAt: importedAt + index,
+            afterLessonId,
+            excludedCardIds: [],
+            ...(shareExam.tz ? { timeZone: shareExam.tz } : {}),
+            ...(coveredLessonIds.length > 0
+              ? { coverageMode: 'custom' as const, lessonIds: coveredLessonIds }
+              : { coverageMode: 'prefix' as const }),
+          };
+        },
       );
-      if (importedExams.length > 0) await db.courseExamDates.bulkAdd(importedExams);
+      if (importedAssessments.length > 0) {
+        await db.courseAssessments.bulkAdd(importedAssessments);
+      }
 
       // Insert the sequences themselves once lessonIds is complete (for primaryLessonId)
       // and their generated cards already exist with remapped sequenceItemIds. Inserted
@@ -1113,9 +1152,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           // `pr` only travels when it diverges from the m/ms inference (see the export
           // side above); resolve it through getPreset so an unrecognised id degrades to
           // 'list' rather than sticking around as an invalid presetId.
-          ...(shareSeq.pr
-            ? { presetId: getPreset(shareSeq.pr as SequencePresetId).id }
-            : {}),
+          ...(shareSeq.pr ? { presetId: getPreset(shareSeq.pr as SequencePresetId).id } : {}),
           createdAt: importedAt + index,
         };
       });

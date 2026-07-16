@@ -15,7 +15,7 @@ async function clearAll(): Promise<void> {
     db.notes.clear(),
     db.lessonCards.clear(),
     db.practiceNodes.clear(),
-    db.courseExamDates.clear(),
+    db.courseAssessments.clear(),
     db.sequences.clear(),
     db.userPerformance.clear(),
   ]);
@@ -118,7 +118,11 @@ describe('mcp read tools', () => {
 
     it('rejects a non-positive limit', async () => {
       const course = await createCourse('Course A');
-      const result = await validateAndRun(tools.listDueCards, { courseId: course.id, limit: 0 }, ctx);
+      const result = await validateAndRun(
+        tools.listDueCards,
+        { courseId: course.id, limit: 0 },
+        ctx,
+      );
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('validation');
     });

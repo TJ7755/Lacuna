@@ -49,7 +49,7 @@ describe('buildDiagnostics', () => {
         notes: 10,
         lessonCards: 3,
         practiceNodes: 1,
-        courseExamDates: 4,
+        courseAssessments: 4,
       },
     });
     expect(bundle.data.courses).toBe(2);
@@ -57,7 +57,7 @@ describe('buildDiagnostics', () => {
     expect(bundle.data.notes).toBe(10);
     expect(bundle.data.lessonCards).toBe(3);
     expect(bundle.data.practiceNodes).toBe(1);
-    expect(bundle.data.courseExamDates).toBe(4);
+    expect(bundle.data.courseAssessments).toBe(4);
   });
 
   it('includes a content sample only when one is supplied', () => {
@@ -100,7 +100,7 @@ describe('buildDiagnostics', () => {
           notes: 9,
           lessonCards: 2,
           practiceNodes: 1,
-          courseExamDates: 4,
+          courseAssessments: 4,
         },
         now: 0,
       }),
@@ -123,7 +123,7 @@ describe('gatherCounts', () => {
       db.notes.clear(),
       db.lessonCards.clear(),
       db.practiceNodes.clear(),
-      db.courseExamDates.clear(),
+      db.courseAssessments.clear(),
     ]);
   });
 

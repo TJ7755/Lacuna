@@ -19,7 +19,7 @@ async function reset() {
     db.notes.clear(),
     db.lessonCards.clear(),
     db.practiceNodes.clear(),
-    db.courseExamDates.clear(),
+    db.courseAssessments.clear(),
     db.cards.clear(),
     db.decks.clear(),
   ]);

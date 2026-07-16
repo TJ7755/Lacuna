@@ -15,7 +15,7 @@ async function clearAll(): Promise<void> {
     db.notes.clear(),
     db.lessonCards.clear(),
     db.practiceNodes.clear(),
-    db.courseExamDates.clear(),
+    db.courseAssessments.clear(),
     db.sequences.clear(),
     db.userPerformance.clear(),
   ]);
@@ -38,7 +38,11 @@ describe('mcp import tools', () => {
     });
 
     it('rejects an unknown courseId with not_found', async () => {
-      const result = await validateAndRun(tools.diffImportPreview, { courseId: 'missing', items: [] }, ctx);
+      const result = await validateAndRun(
+        tools.diffImportPreview,
+        { courseId: 'missing', items: [] },
+        ctx,
+      );
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('not_found');
     });
@@ -59,7 +63,13 @@ describe('mcp import tools', () => {
     it('creates new cards into the course question bank', async () => {
       const course = await createCourse('Course A');
       const res = await tools.importCards.handler(
-        { courseId: course.id, items: [{ front: 'Q1', back: 'A1' }, { front: 'Q2', back: 'A2' }] },
+        {
+          courseId: course.id,
+          items: [
+            { front: 'Q1', back: 'A1' },
+            { front: 'Q2', back: 'A2' },
+          ],
+        },
         ctx,
       );
       expect(res.data.createdCount).toBe(2);
@@ -81,7 +91,10 @@ describe('mcp import tools', () => {
 
     it('reports toUpdate candidates without applying them', async () => {
       const course = await createCourse('Course A');
-      await tools.importCards.handler({ courseId: course.id, items: [{ front: 'Q1', back: 'A1' }] }, ctx);
+      await tools.importCards.handler(
+        { courseId: course.id, items: [{ front: 'Q1', back: 'A1' }] },
+        ctx,
+      );
 
       const res = await tools.importCards.handler(
         { courseId: course.id, items: [{ front: 'Q1', back: 'A1 revised' }] },
@@ -97,7 +110,10 @@ describe('mcp import tools', () => {
 
     it('is idempotent: re-running the same payload creates nothing new the second time', async () => {
       const course = await createCourse('Course A');
-      const items = [{ front: 'Q1', back: 'A1' }, { front: 'Q2', back: 'A2' }];
+      const items = [
+        { front: 'Q1', back: 'A1' },
+        { front: 'Q2', back: 'A2' },
+      ];
 
       const first = await tools.importCards.handler({ courseId: course.id, items }, ctx);
       expect(first.data.createdCount).toBe(2);
@@ -109,7 +125,11 @@ describe('mcp import tools', () => {
     });
 
     it('rejects an unknown courseId with not_found', async () => {
-      const result = await validateAndRun(tools.importCards, { courseId: 'missing', items: [] }, ctx);
+      const result = await validateAndRun(
+        tools.importCards,
+        { courseId: 'missing', items: [] },
+        ctx,
+      );
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('not_found');
     });

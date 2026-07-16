@@ -3,7 +3,7 @@ import { computeCourseSummaries } from './useCourseData';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
-import type { Card, Course, CourseExamDate, Lesson } from '../db/types';
+import type { Card, Course, CourseAssessment, Lesson } from '../db/types';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -131,7 +131,7 @@ describe('computeCourseSummaries', () => {
     expect(summaries['c1'].cardCount).toBe(1);
   });
 
-  it('uses each card\'s applicable exam date for dashboard mastery', () => {
+  it("uses each card's applicable exam date for dashboard mastery", () => {
     const now = 20 * MS_PER_DAY;
     const course = makeCourse({
       id: 'c1',
@@ -166,13 +166,17 @@ describe('computeCourseSummaries', () => {
         due: now,
       }),
     ];
-    const examDates: CourseExamDate[] = [
+    const examDates: CourseAssessment[] = [
       {
         id: 'near-exam',
         courseId: 'c1',
         name: 'Near checkpoint',
+        kind: 'checkpoint',
         examDate: now + 2 * MS_PER_DAY,
+        coverageMode: 'custom',
         lessonIds: ['near'],
+        afterLessonId: 'near',
+        excludedCardIds: [],
         createdAt: 0,
       },
     ];
@@ -186,10 +190,7 @@ describe('computeCourseSummaries', () => {
       now,
     )['c1'];
 
-    expect(summary.mastery).toBeCloseTo(
-      progressValue(cards, course, now, context),
-      12,
-    );
+    expect(summary.mastery).toBeCloseTo(progressValue(cards, course, now, context), 12);
     expect(summary.mastery).not.toBeCloseTo(progressValue(cards, course, now), 6);
   });
 

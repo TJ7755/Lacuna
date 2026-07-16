@@ -312,7 +312,7 @@ describe('course/lesson-scoped sessions', () => {
           },
         ],
       ]),
-      courseExamDates: [],
+      courseAssessments: [],
     };
     const unit: SessionUnit = {
       config: c,

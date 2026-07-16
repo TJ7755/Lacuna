@@ -210,16 +210,13 @@ export type UnlockMode = 'linear' | 'semi-linear' | 'open';
  * Deck owned plus course-path configuration. The FSRS engine schedules a course's
  * cards against the nearest applicable exam date (see src/fsrs/examDate.ts).
  */
-export interface Course {
+export interface CourseRecord {
   id: string;
   name: string;
   description: string;
   createdAt: number;
   colour?: string;
   // Scheduling (inherited from the old Deck).
-  /** Primary exam date/time as epoch ms in UTC. Fallback when no nearer date applies. */
-  examDate: number;
-  timeZone?: string;
   /** Set true once the exam-date prompt has been answered or dismissed. */
   examDatePromptDismissed?: boolean;
   fsrsVersion: number;
@@ -258,21 +255,50 @@ export interface Course {
 }
 
 /**
- * A dated assessment within a course: an extra exam date or a checkpoint
- * (mini-exam). The scheduler always targets the nearest applicable date.
- * A checkpoint is simply a CourseExamDate with a lesson scope.
+ * Hydrated course view used by existing scheduling consumers during the assessment
+ * migration. The compatibility date fields are derived from the course's one final
+ * assessment and are never persisted on the course row.
  */
-export interface CourseExamDate {
+export interface Course extends CourseRecord {
+  readonly examDate: number;
+  readonly timeZone?: string;
+}
+
+export type AssessmentKind = 'final' | 'checkpoint';
+
+interface CourseAssessmentBase {
   id: string;
   courseId: string;
-  /** e.g. "Mid-term", "Mock exam", "Final". */
   name: string;
-  /** Required: a checkpoint without a date is not a checkpoint. Epoch ms, UTC. */
+  kind: AssessmentKind;
+  /** Assessment date/time as epoch milliseconds in UTC. */
   examDate: number;
   timeZone?: string;
-  /** Lessons whose cards are in scope. Undefined = all lessons so far. */
+  /** Stable path anchor, independent of which lessons the assessment covers. */
+  afterLessonId: string | null;
+  /** Cards omitted from this assessment without changing lesson membership. */
+  excludedCardIds: string[];
+  createdAt: number;
+}
+
+/**
+ * A final assessment or intermediate checkpoint. Prefix coverage expands through
+ * `afterLessonId`; custom coverage stores an explicit, non-contiguous lesson set.
+ */
+export type CourseAssessment = CourseAssessmentBase &
+  ({ coverageMode: 'prefix'; lessonIds?: never } | { coverageMode: 'custom'; lessonIds: string[] });
+
+/**
+ * Temporary v6-backup projection for checkpoint rows. The live database never
+ * stores this shape; backup migration moves it into CourseAssessment.
+ */
+export interface AssessmentDateCompatibility {
+  id: string;
+  courseId: string;
+  name: string;
+  examDate: number;
+  timeZone?: string;
   lessonIds?: string[];
-  /** Card-level exclusions within the scoped lessons; excluded cards fall back to the next date. */
   excludedCardIds?: string[];
   createdAt: number;
 }
@@ -597,7 +623,7 @@ export interface BackupFile {
   lessonCompletions?: LessonCompletion[];
   practiceNodes?: PracticeNode[];
   practiceMilestones?: PracticeMilestone[];
-  courseExamDates?: CourseExamDate[];
+  courseExamDates?: AssessmentDateCompatibility[];
   // Overlapping-cloze sequences. Optional so older backups still import cleanly.
   sequences?: Sequence[];
 }

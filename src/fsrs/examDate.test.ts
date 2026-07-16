@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeExamDateContext, resolveCardExamDate } from './examDate';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from './params';
-import type { Card, Course, Lesson, CourseExamDate } from '../db/types';
+import type { Card, Course, CourseAssessment, Lesson } from '../db/types';
 
 const NOW = 1_000_000_000_000;
 
@@ -61,15 +61,22 @@ function makeCard(overrides: Partial<Card> = {}): Card {
   };
 }
 
-function makeExamDate(overrides: Partial<CourseExamDate> = {}): CourseExamDate {
+function makeExamDate(overrides: Partial<CourseAssessment> = {}): CourseAssessment {
+  const coverage = overrides.lessonIds
+    ? { coverageMode: 'custom' as const, lessonIds: overrides.lessonIds }
+    : { coverageMode: 'prefix' as const };
   return {
     id: 'ed1',
     courseId: 'course1',
     name: 'Checkpoint',
+    kind: 'checkpoint',
     examDate: NOW + 50 * MS_PER_DAY,
+    ...coverage,
+    afterLessonId: null,
+    excludedCardIds: [],
     createdAt: NOW,
     ...overrides,
-  };
+  } as CourseAssessment;
 }
 
 describe('resolveCardExamDate', () => {
@@ -151,10 +158,11 @@ describe('resolveCardExamDate', () => {
       examDate: NOW + 5 * MS_PER_DAY,
       lessonIds: ['lesson1'],
     });
-    const ctx = makeExamDateContext(course, [makeLesson({ examDate: NOW + 1 })], [
-      lessonScoped,
-      unscoped,
-    ]);
+    const ctx = makeExamDateContext(
+      course,
+      [makeLesson({ examDate: NOW + 1 })],
+      [lessonScoped, unscoped],
+    );
     const card = makeCard({ primaryLessonId: null });
     // Lesson override skipped; lesson-scoped checkpoint skipped; unscoped wins.
     expect(resolveCardExamDate(card, ctx, NOW)).toBe(unscoped.examDate);

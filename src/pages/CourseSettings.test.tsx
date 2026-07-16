@@ -7,6 +7,7 @@ import type { Card, Course } from '../db/types';
 
 const mockNavigate = vi.fn();
 const mockUpdateCourse = vi.fn().mockResolvedValue(undefined);
+const mockUpdateCourseAssessment = vi.fn().mockResolvedValue(undefined);
 const mockDeleteCourse = vi.fn().mockResolvedValue(undefined);
 const mockSnapshotCourse = vi.fn().mockResolvedValue({ course: 'snapshot' });
 const mockRestoreCourse = vi.fn().mockResolvedValue(undefined);
@@ -26,17 +27,26 @@ vi.mock('react-router-dom', async () => {
 });
 
 vi.mock('../state/useCourseData', () => ({
+  useCourse: () => mockCourse,
   useCourseCards: () => mockCards,
-  useCourseExamDates: () => [],
+  useCourseAssessments: () =>
+    mockCourse
+      ? [
+          {
+            id: 'final-1',
+            courseId: mockCourse.id,
+            name: 'Final exam',
+            kind: 'final',
+            examDate: mockCourse.examDate,
+            afterLessonId: null,
+            coverageMode: 'prefix',
+            excludedCardIds: [],
+            createdAt: mockCourse.createdAt,
+          },
+        ]
+      : [],
   useLessons: () => [],
   usePracticeNodes: () => [],
-}));
-
-// CourseSettings resolves the course itself via useLiveQuery + db.courses.get
-// (mapping a missing row to null, matching CoursePath's reachable not-found
-// pattern), rather than the useCourse hook — see the finding this test now covers.
-vi.mock('dexie-react-hooks', () => ({
-  useLiveQuery: () => mockCourse,
 }));
 
 vi.mock('../state/motionSpeed', () => ({
@@ -49,9 +59,10 @@ vi.mock('../db/repository', () => ({
   deleteCourse: (id: string) => mockDeleteCourse(id),
   snapshotCourse: (id: string) => mockSnapshotCourse(id),
   restoreCourse: (snapshot: unknown) => mockRestoreCourse(snapshot),
-  createCourseExamDate: vi.fn().mockResolvedValue(undefined),
-  updateCourseExamDate: vi.fn().mockResolvedValue(undefined),
-  deleteCourseExamDate: vi.fn().mockResolvedValue(undefined),
+  createCourseAssessment: vi.fn().mockResolvedValue(undefined),
+  updateCourseAssessment: (id: string, changes: Record<string, unknown>) =>
+    mockUpdateCourseAssessment(id, changes),
+  deleteCourseAssessment: vi.fn().mockResolvedValue(undefined),
   updateLesson: vi.fn().mockResolvedValue(undefined),
   deleteLesson: vi.fn().mockResolvedValue(undefined),
   reorderLessons: vi.fn().mockResolvedValue(undefined),
@@ -116,6 +127,7 @@ beforeEach(() => {
   mockCourse = course;
   mockCards = [];
   mockUpdateCourse.mockClear();
+  mockUpdateCourseAssessment.mockClear();
   mockDeleteCourse.mockClear();
   mockSnapshotCourse.mockClear();
   mockRestoreCourse.mockClear();
@@ -190,6 +202,10 @@ describe('CourseSettings', () => {
         practiceUrgentWindowDays: 7,
         practiceMaxGap: 5,
       }),
+    );
+    expect(mockUpdateCourseAssessment).toHaveBeenCalledWith(
+      'final-1',
+      expect.objectContaining({ examDate: expect.any(Number) }),
     );
   });
 
@@ -298,8 +314,6 @@ describe('CourseSettings', () => {
     await vi.waitFor(() => expect(mockDeleteCourse).toHaveBeenCalledWith('course-1'));
     const [, , options] = mockNotify.mock.calls[mockNotify.mock.calls.length - 1];
     options.onAction();
-    await vi.waitFor(() =>
-      expect(mockRestoreCourse).toHaveBeenCalledWith({ course: 'snapshot' }),
-    );
+    await vi.waitFor(() => expect(mockRestoreCourse).toHaveBeenCalledWith({ course: 'snapshot' }));
   });
 });

@@ -3,7 +3,17 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { hapticLight, hapticMedium } from '../utils/haptic';
 import { db } from '../db/schema';
-import type { Card, Course, Deck, Grade, Lesson, Note, Sequence, UserPerformance } from '../db/types';
+import { getCourse, listCourseAssessments } from '../db/read';
+import type {
+  Card,
+  Course,
+  Deck,
+  Grade,
+  Lesson,
+  Note,
+  Sequence,
+  UserPerformance,
+} from '../db/types';
 import {
   buryCard,
   listNotes,
@@ -431,7 +441,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     if (!reachedGoal) return;
     const cId = ratchetCourseIdRef.current;
     if (!cId) return;
-    const course = await db.courses.get(cId);
+    const course = await getCourse(cId);
     if (!course || course.unlockMode !== 'semi-linear') return;
     const lessons = await db.lessons.where('courseId').equals(cId).sortBy('orderIndex');
     const coreLessons = lessons.filter((lesson) => !lesson.isExtension);
@@ -449,7 +459,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
           ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray()
           : [],
         db.practiceNodes.where('courseId').equals(cId).toArray(),
-        db.courseExamDates.where('courseId').equals(cId).toArray(),
+        listCourseAssessments(cId),
         db.practiceMilestones.where('courseId').equals(cId).toArray(),
       ]);
     const deckIds = [...new Set(courseCards.map((card) => card.deckId))];
@@ -710,7 +720,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
           else navigate('/');
           return;
         }
-        const course = await db.courses.get(lesson.courseId);
+        const course = await getCourse(lesson.courseId);
         if (!course) {
           if (onFlowExit) onFlowExit();
           else navigate('/');
@@ -720,7 +730,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         const [courseLessons, examDates, links, allCourseCards, lessonExposures] =
           await Promise.all([
             db.lessons.where('courseId').equals(course.id).toArray(),
-            db.courseExamDates.where('courseId').equals(course.id).toArray(),
+            listCourseAssessments(course.id),
             db.lessonCards.where('lessonId').equals(lessonId).toArray(),
             db.cards.where('courseId').equals(course.id).toArray(),
             db.lessonCardExposures.where('lessonId').equals(lessonId).toArray(),
@@ -746,7 +756,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         firstStudyLessonId = lessonId;
         firstStudyLessonName = lesson.name;
       } else if (courseId) {
-        const course = await db.courses.get(courseId);
+        const course = await getCourse(courseId);
         if (!course) {
           if (onFlowExit) onFlowExit();
           else navigate('/');
@@ -755,7 +765,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         const [allCards, courseLessons, examDates, manualNodes] = await Promise.all([
           db.cards.where('courseId').equals(courseId).toArray(),
           db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
-          db.courseExamDates.where('courseId').equals(courseId).toArray(),
+          listCourseAssessments(courseId),
           db.practiceNodes.where('courseId').equals(courseId).toArray(),
         ]);
         const courseLessonIds = courseLessons.map((lesson) => lesson.id);
@@ -3062,7 +3072,10 @@ function FlipCard({
                   />
                 )}
                 {(hintStep ?? 0) < 2 && (
-                  <LineHintButton step={(hintStep ?? 0) as 0 | 1} onReveal={() => onRevealHint?.()} />
+                  <LineHintButton
+                    step={(hintStep ?? 0) as 0 | 1}
+                    onReveal={() => onRevealHint?.()}
+                  />
                 )}
               </div>
             )}
