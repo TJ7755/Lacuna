@@ -27,6 +27,7 @@
   "dependencies": {
     "@napi-rs/wasm-runtime": "1.1.0",
     "@open-spaced-repetition/binding": "^0.4.0",
+    "@vercel/analytics": "^2.0.1",
     "dexie": "^4.0.10",
     "dexie-react-hooks": "^1.1.7",
     "electron-log": "^5.4.4",
