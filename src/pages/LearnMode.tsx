@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { hapticLight, hapticMedium } from '../utils/haptic';
 import { db } from '../db/schema';
-import type { Card, Course, Deck, Grade, Lesson, Note, UserPerformance } from '../db/types';
+import type { Card, Course, Deck, Grade, Lesson, Note, Sequence, UserPerformance } from '../db/types';
 import {
   buryCard,
   listNotes,
@@ -68,6 +68,8 @@ import { clozeAnswerText } from '../components/markdown/cloze';
 import { useStartInFocusMode } from '../state/focusModePreference';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useShortcutBindings, keyMatches } from '../state/shortcutBindings';
+import { linesModeSequencesByCard } from '../db/linesModeCards';
+import { LineHintButton, LineHintDisplay } from '../components/learn/LineHint';
 import { useMotionSpeed, speedMultiplier, type MotionSpeed } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import {
@@ -244,7 +246,16 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
   // ahead of the first card, with a continue action that starts serving cards.
   const [lessonNotesScreen, setLessonNotesScreen] = useState<LessonNotesScreen | null>(null);
   const [current, setCurrent] = useState<Card | null>(null);
+  // Cards in this session's pool generated from a lines-mode Sequence, mapped to their
+  // owning Sequence — loaded once alongside the card pool (see linesModeCards.ts). Drives
+  // the first-letter hint step, which only applies to lines-mode recall cards.
+  const linesModeMapRef = useRef<Map<string, Sequence>>(new Map());
+  // Whether the current card's first-letter hint has been requested; reset per card.
+  const [hintRevealed, setHintRevealed] = useState(false);
   const isTypingCard = typingSetting === 'type' && current !== null && isTypingEligible(current);
+  // Whether the current card was generated from a lines-mode Sequence (see
+  // linesModeCards.ts) — drives the optional first-letter hint step in the question phase.
+  const isLinesModeCard = current !== null && linesModeMapRef.current.has(current.id);
   // Cache sessionProgress so repeated calls while the card pool is unchanged don't recompute.
   const progressCacheRef = useRef<{ dirty: boolean; value: number }>({ dirty: true, value: 0 });
   const [summary, setSummary] = useState<SessionSummary | null>(null);
@@ -588,6 +599,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       setPhase('question');
       setMenuOpen(false);
       setTypedAnswer('');
+      setHintRevealed(false);
       timerStart.current = performance.now();
       distraction.beginCard();
       distraction.setAnswerVisible(false);
@@ -611,6 +623,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     setPhase('question');
     setMenuOpen(false);
     setTypedAnswer('');
+    setHintRevealed(false);
     timerStart.current = performance.now();
     distraction.beginCard();
     distraction.setAnswerVisible(false);
@@ -641,6 +654,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     decksRef.current = new Map();
     ctxRef.current = null;
     cardsRef.current = [];
+    linesModeMapRef.current = new Map();
     lessonExposureIdRef.current = null;
     lessonHasMembersRef.current = false;
     practiceSessionRef.current = null;
@@ -806,6 +820,13 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       const ctx = makeSessionContext(sessionUnits, cramMode ? 'cram' : 'objective');
       ctxRef.current = ctx;
       cardsRef.current = cards;
+      linesModeSequencesByCard(cards)
+        .then((map) => {
+          if (!cancelled) linesModeMapRef.current = map;
+        })
+        .catch(() => {
+          /* Hint step is a non-critical enhancement; a failed lookup just disables it. */
+        });
       const initialProgress = sessionProgress(cards, ctx);
       const hasServeableCards = isSimpleMode
         ? cards.length > 0
@@ -1334,6 +1355,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         setHintsOpen(true);
         return;
       }
+      if (e.key === 'h' && phase === 'question' && isLinesModeCard && !hintRevealed) {
+        e.preventDefault();
+        setHintRevealed(true);
+        return;
+      }
       if (keyMatches(e, bindings.focus)) {
         e.preventDefault();
         setFocusMode((v) => !v);
@@ -1394,6 +1420,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     hide,
     answer,
     canUndo,
+    isLinesModeCard,
+    hintRevealed,
     undoLast,
     navOpen,
     menuOpen,
@@ -1669,6 +1697,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
                   typedAnswer={typedAnswer}
                   isTypingCard={isTypingCard}
                   mode={mode}
+                  isLinesModeCard={isLinesModeCard}
+                  hintRevealed={hintRevealed}
+                  onRevealHint={() => setHintRevealed(true)}
                 />
               )}
 
@@ -2708,6 +2739,9 @@ function FlipCard({
   typedAnswer,
   isTypingCard,
   mode,
+  isLinesModeCard,
+  hintRevealed,
+  onRevealHint,
 }: {
   card: Card;
   revealed: boolean;
@@ -2724,6 +2758,9 @@ function FlipCard({
   typedAnswer?: string;
   isTypingCard?: boolean;
   mode: LearnModeType;
+  isLinesModeCard?: boolean;
+  hintRevealed?: boolean;
+  onRevealHint?: () => void;
 }) {
   const m = speedMultiplier(motionSpeed);
   const isTyping = Boolean(isTypingCard);
@@ -2982,6 +3019,23 @@ function FlipCard({
             >
               <CardContent card={card} side={revealed ? 'back' : 'front'} sequenceCue />
             </motion.div>
+            {/* First-letter hint step for lines-mode sequence cards: an optional, ungraded
+                mid-point between question and reveal (see next_plan.md §1.5). Clicking the
+                button must not flip the card, hence the pointer/click guards. */}
+            {isLinesModeCard && !revealed && phase === 'question' && (
+              <div
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                {hintRevealed ? (
+                  <LineHintDisplay answer={typingExpectedAnswer(card)} m={m} />
+                ) : (
+                  <LineHintButton onReveal={() => onRevealHint?.()} />
+                )}
+              </div>
+            )}
             {/* In "type your answer" mode, show the typed answer against the correct one on
                 reveal, with per-word match/mismatch highlighting (see answerComparison.ts).
                 This is feedback only — grading below is still the learner's own call. */}
