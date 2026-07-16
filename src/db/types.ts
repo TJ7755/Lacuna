@@ -57,6 +57,14 @@ export interface ReviewLog {
   responseTimeSec: number;
   /** Whether the user lost focus while the answer was pending (report only; no grade effect). */
   distracted: boolean;
+  /**
+   * Whether a lines-mode hint (see src/components/learn/LineHint.tsx) was used before
+   * this review. Optional and additive so existing history entries and backups remain
+   * valid without a migration. Drives the silent-mode grading penalty (see
+   * HINT_TIME_PENALTY_SEC in src/fsrs/grading.ts) and is logged alongside the true,
+   * unpenalised `responseTimeSec` so the penalty can later be fitted from real data.
+   */
+  hintUsed?: boolean;
   stabilityBefore: number | null;
   stabilityAfter: number;
   difficultyBefore: number | null;

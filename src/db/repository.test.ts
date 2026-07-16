@@ -73,6 +73,33 @@ describe('undoReview', () => {
     expect((await db.decks.get(deck.id))!.lastInteractedAt).toBe(deckLastInteractedAtBefore);
   });
 
+  it('records hintUsed on the review log, defaulting to false when omitted', async () => {
+    const deck = await createDeck('Test deck');
+    const cardWithHint = await createCard(deck.id, 'front_back', 'q1', 'a1');
+    const cardWithoutHint = await createCard(deck.id, 'front_back', 'q2', 'a2');
+
+    await recordReview({
+      card: cardWithHint,
+      deck,
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      hintUsed: true,
+      correct: true,
+    });
+    await recordReview({
+      card: cardWithoutHint,
+      deck,
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+    });
+
+    expect((await db.cards.get(cardWithHint.id))!.history[0].hintUsed).toBe(true);
+    expect((await db.cards.get(cardWithoutHint.id))!.history[0].hintUsed).toBe(false);
+  });
+
   it('course-keyed review updates Course.lastInteractedAt, courseId-keyed userPerformance, and sessionHistory.courseId', async () => {
     await Promise.all([db.courses.clear(), db.lessons.clear()]);
 
