@@ -25,6 +25,7 @@
     "deploy": "bun run build && wrangler deploy"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
     "@napi-rs/wasm-runtime": "1.1.0",
     "@open-spaced-repetition/binding": "^0.4.0",
     "dexie": "^4.0.10",
