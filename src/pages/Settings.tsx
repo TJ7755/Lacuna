@@ -30,7 +30,7 @@ import {
   restoreBackup,
   takeAutoBackup,
 } from '../db/backups';
-import { MoonIcon, SunIcon, UploadIcon, DownloadIcon, KeyboardIcon, MenuIcon, FlameIcon, ClockIcon, GridIcon, ArchiveIcon } from '../components/ui/icons';
+import { MoonIcon, SunIcon, UploadIcon, DownloadIcon, KeyboardIcon, MenuIcon, FlameIcon, ClockIcon, GridIcon, ArchiveIcon, ChevronDownIcon } from '../components/ui/icons';
 import type { BackupFile } from '../db/types';
 import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
@@ -489,7 +489,7 @@ export function Settings() {
                       )}
                       aria-label={`Move ${item.label} up`}
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+                      <ChevronDownIcon width={12} height={12} className="rotate-180" />
                     </button>
                     <button
                       type="button"
@@ -506,7 +506,7 @@ export function Settings() {
                       )}
                       aria-label={`Move ${item.label} down`}
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                      <ChevronDownIcon width={12} height={12} />
                     </button>
                   </div>
                   <span className="flex-1 text-sm text-ink">{item.label}</span>                    <Toggle
