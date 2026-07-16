@@ -3,7 +3,7 @@ import { computeCourseSummaries } from './useCourseData';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
-import type { Card, Course, CourseExamDate, Lesson } from '../db/types';
+import type { Card, Course, CourseExamDate, Lesson, ReviewLog } from '../db/types';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -55,6 +55,20 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
     history: [],
     createdAt: 0,
     ...overrides,
+  };
+}
+
+function makeReview(timestamp: number): ReviewLog {
+  return {
+    timestamp,
+    grade: 3,
+    responseTimeSec: 5,
+    distracted: false,
+    stabilityBefore: null,
+    stabilityAfter: 1,
+    difficultyBefore: null,
+    difficultyAfter: 5,
+    retrievabilityAtReview: null,
   };
 }
 
@@ -131,7 +145,7 @@ describe('computeCourseSummaries', () => {
     expect(summaries['c1'].cardCount).toBe(1);
   });
 
-  it('uses each card\'s applicable exam date for dashboard mastery', () => {
+  it("uses each card's applicable exam date for dashboard mastery", () => {
     const now = 20 * MS_PER_DAY;
     const course = makeCourse({
       id: 'c1',
@@ -186,10 +200,7 @@ describe('computeCourseSummaries', () => {
       now,
     )['c1'];
 
-    expect(summary.mastery).toBeCloseTo(
-      progressValue(cards, course, now, context),
-      12,
-    );
+    expect(summary.mastery).toBeCloseTo(progressValue(cards, course, now, context), 12);
     expect(summary.mastery).not.toBeCloseTo(progressValue(cards, course, now), 6);
   });
 
@@ -213,5 +224,84 @@ describe('computeCourseSummaries', () => {
     const summary = computeCourseSummaries([course], [lesson], [card], [], now)['c1'];
 
     expect(summary.mastery).toBeCloseTo(progressValue([card], course, now), 12);
+  });
+
+  it('counts only due reviews and admitted new cards as ready now', () => {
+    const now = 20 * MS_PER_DAY;
+    const course = makeCourse({ id: 'c1' });
+    const lesson = makeLesson({ id: 'l1', courseId: 'c1' });
+    const cards = [
+      makeCard({
+        id: 'overdue',
+        deckId: 'd1',
+        courseId: 'c1',
+        primaryLessonId: 'l1',
+        state: 2,
+        lastReviewed: now - MS_PER_DAY,
+        due: now - 1,
+      }),
+      makeCard({
+        id: 'future',
+        deckId: 'd1',
+        courseId: 'c1',
+        primaryLessonId: 'l1',
+        state: 2,
+        lastReviewed: now - MS_PER_DAY,
+        due: now + MS_PER_DAY,
+      }),
+      makeCard({ id: 'new', deckId: 'd1', courseId: 'c1', primaryLessonId: 'l1' }),
+    ];
+
+    const summary = computeCourseSummaries([course], [lesson], cards, [], now)['c1'];
+
+    expect(summary.eligible).toBe(2);
+  });
+
+  it('derives completed core lessons and card activity from authoritative records', () => {
+    const now = 20 * MS_PER_DAY + 12 * 60 * 60 * 1000;
+    const course = makeCourse({ id: 'c1', timeZone: 'Europe/London' });
+    const lessons = [
+      makeLesson({ id: 'cards', courseId: 'c1' }),
+      makeLesson({ id: 'cardless', courseId: 'c1', orderIndex: 1 }),
+      makeLesson({ id: 'extension', courseId: 'c1', orderIndex: 2, isExtension: true }),
+    ];
+    const cards = [
+      makeCard({
+        id: 'primary',
+        deckId: 'd1',
+        courseId: 'c1',
+        primaryLessonId: 'cards',
+        lastReviewed: now - 1,
+        state: 2,
+        history: [makeReview(now - 1)],
+      }),
+      makeCard({
+        id: 'linked',
+        deckId: 'd1',
+        courseId: 'c1',
+        primaryLessonId: null,
+      }),
+      makeCard({
+        id: 'extension-card',
+        deckId: 'd1',
+        courseId: 'c1',
+        primaryLessonId: 'extension',
+        lastReviewed: now - 1,
+        history: [makeReview(now - 1)],
+      }),
+    ];
+
+    const summary = computeCourseSummaries([course], lessons, cards, [], now, {
+      links: [{ id: 'link', lessonId: 'cards', cardId: 'linked', createdAt: 0 }],
+      exposures: [
+        { lessonId: 'cards', cardId: 'primary', taughtAt: now },
+        { lessonId: 'cards', cardId: 'linked', taughtAt: now },
+      ],
+      completions: [{ lessonId: 'cardless', completedAt: now }],
+    })['c1'];
+
+    expect(summary.completedLessonCount).toBe(2);
+    expect(summary.reviewedCardCount).toBe(1);
+    expect(summary.reviewedTodayCount).toBe(1);
   });
 });

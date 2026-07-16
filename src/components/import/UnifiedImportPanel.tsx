@@ -41,7 +41,9 @@ interface UnifiedImportPanelProps {
   /** When true, the panel also handles share-code imports (shows a separate tab). */
   showShareImport?: boolean;
   /** Called after a share-code import completes successfully. */
-  onShareImport?: (courses: number, cards: number) => void | Promise<void>;
+  onShareImport?: (courses: number, cards: number, courseIds: string[]) => void | Promise<void>;
+  /** Show only the share-code workflow, without the general import mode toggle. */
+  shareOnly?: boolean;
   /** When provided, the panel checks parsed cards against existing cards in this deck and warns about duplicates. */
   deckId?: string;
   /** Called when an Anki .apkg file is parsed and confirmed. */
@@ -88,6 +90,7 @@ export function UnifiedImportPanel({
   importLabel = 'Import cards',
   showShareImport = false,
   onShareImport,
+  shareOnly = false,
   deckId,
   onApkgImport,
 }: UnifiedImportPanelProps) {
@@ -101,7 +104,7 @@ export function UnifiedImportPanel({
   const m = speedMultiplier(motionSpeed);
 
   // Share code state.
-  const [shareMode, setShareMode] = useState(false);
+  const [shareMode, setShareMode] = useState(shareOnly);
   const [sharePending, setSharePending] = useState<{
     summary: ShareSummary;
     raw: string;
@@ -299,7 +302,7 @@ export function UnifiedImportPanel({
       setShareError(null);
       setText('');
       if (onShareImport) {
-        await onShareImport(result.courses, result.cards);
+        await onShareImport(result.courses, result.cards, result.courseIds);
       }
     } catch (err) {
       setShareError(err instanceof Error ? err.message : 'Import failed.');
@@ -368,7 +371,7 @@ export function UnifiedImportPanel({
       </AnimatePresence>
 
       {/* Share code import mode toggle — pill style per SPEC §3.4 */}
-      {showShareImport && (
+      {showShareImport && !shareOnly && (
         <div className="flex gap-2">
           <button
             type="button"
@@ -707,7 +710,11 @@ export function UnifiedImportPanel({
       {/* Action buttons */}
       <div className="flex justify-end gap-2 pt-1">
         {onCancel && (
-          <Button variant="ghost" onClick={onCancel} disabled={busy || apkgImporting}>
+          <Button
+            variant="ghost"
+            onClick={onCancel}
+            disabled={busy || apkgImporting || shareImporting}
+          >
             Cancel
           </Button>
         )}
@@ -743,6 +750,22 @@ export function UnifiedImportPanel({
   );
 }
 
+/** Share-code-only entry point backed by the unified import workflow. */
+export function ShareCodeImportPanel({
+  onCancel,
+  onShareImport,
+}: Pick<UnifiedImportPanelProps, 'onCancel' | 'onShareImport'>) {
+  return (
+    <UnifiedImportPanel
+      onImport={() => undefined}
+      onCancel={onCancel}
+      showShareImport
+      shareOnly
+      onShareImport={onShareImport}
+    />
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Share code sub-panel
 // ---------------------------------------------------------------------------
@@ -774,6 +797,7 @@ function ShareCodeImport({
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={4}
+          autoFocus
           placeholder="Paste a Lacuna share code here (it starts with LAC)..."
           className="w-full resize-none break-all rounded-xl border border-line bg-surface-raised/30 px-4 py-3 font-mono text-xs text-ink outline-none transition-all focus:border-accent/40 placeholder:text-ink-faint"
         />

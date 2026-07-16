@@ -116,7 +116,7 @@ export function StudyToday() {
                       {course.name}
                     </span>
                     <span className="mt-1 block text-sm text-ink-soft">
-                      {eligible > 0 ? `${eligible} due` : 'Continue learning'}
+                      {eligible > 0 ? `${eligible} ready` : 'Continue learning'}
                       {' · '}
                       {lessonCount} lesson{lessonCount === 1 ? '' : 's'}
                       {' · '}

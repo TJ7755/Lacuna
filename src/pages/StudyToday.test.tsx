@@ -61,12 +61,21 @@ describe('StudyToday', () => {
     mockData = {
       courses: [course('course-1', 'Chemistry'), course('course-2', 'Archived', true)],
       summaries: {
-        'course-1': { lessonCount: 4, cardCount: 28, mastery: 0.5, unreviewed: 3, eligible: 7 },
+        'course-1': {
+          lessonCount: 4,
+          cardCount: 28,
+          mastery: 0.5,
+          unreviewed: 3,
+          eligible: 7,
+          completedLessonCount: 1,
+          reviewedCardCount: 25,
+          reviewedTodayCount: 4,
+        },
       },
     };
     render(<StudyToday />);
     expect(screen.getByText('Chemistry')).toBeInTheDocument();
-    expect(screen.getByText('7 due · 4 lessons · 28 cards')).toBeInTheDocument();
+    expect(screen.getByText('7 ready · 4 lessons · 28 cards')).toBeInTheDocument();
     expect(screen.queryByText('Archived')).not.toBeInTheDocument();
   });
 
@@ -74,7 +83,16 @@ describe('StudyToday', () => {
     mockData = {
       courses: [course('course-1', 'Chemistry')],
       summaries: {
-        'course-1': { lessonCount: 1, cardCount: 5, mastery: 0, unreviewed: 5, eligible: 0 },
+        'course-1': {
+          lessonCount: 1,
+          cardCount: 5,
+          mastery: 0,
+          unreviewed: 5,
+          eligible: 0,
+          completedLessonCount: 0,
+          reviewedCardCount: 0,
+          reviewedTodayCount: 0,
+        },
       },
     };
     render(<StudyToday />);

@@ -10,6 +10,17 @@
 - Updated Help text to match the current course picker, course-settings ownership and
   configurable lesson unlocking, and removed the nonexistent automatic Cram dropdown.
 - Added accessible names to previously unnamed settings and practice-node switches.
+- Applied the interrupted forgetting-curve logo consistently across the app and package icon.
+- Added pasted LAC share-code import to the New Course flow, with preview and safe copy import.
+- Replaced the dashboard's deck-era predicted-score rail with a selectable course-card
+  metric: completed curriculum lessons, reviewed-card coverage or today's workload. Ready
+  counts now exclude future-scheduled reviews.
+- Course and lesson header pills now use the dashboard's count-up animation, including the
+  configured motion speed and reduced-motion behaviour.
+- Added a right-click and keyboard context menu to dashboard course cards. Its confirmed Archive
+  action preserves all course data, removes the course from active study and offers reliable Undo.
+- Added consistent transitions between the app shell, welcome page and full-screen study routes,
+  including practice-session exits, animation-speed settings and reduced-motion handling.
 
 > **GitHub Release Note for v0.1.0**
 >
@@ -18,6 +29,7 @@
 > surfaces are gone; scheduling, sharing, search, analytics and settings are course-aware.
 >
 > **What's new**
+>
 > - **Course model** — courses with ordered lesson paths, notes, practice nodes, exam
 >   checkpoints, question bank, course settings and course-scoped learn sessions.
 > - **Migration** — existing decks and folders upgrade automatically to courses and lessons
@@ -439,12 +451,14 @@ deck/folder surfaces are removed. Internal backing decks remain in storage only.
 > This patch release expands test coverage to page-level flows, adds virtualisation for large card lists, and polishes mobile gesture interactions.
 >
 > **What's new**
+>
 > - Page-level integration tests for CardList, Dashboard, SharePage, SessionReport, and LearnSkeleton.
 > - Lightweight dependency-free virtual card list for decks with more than 50 cards.
 > - Haptic feedback on all major mobile gestures (swipe, long-press, grade, tray actions).
 > - Spring physics on card swipe snap-back and bottom-sheet drag handles.
 >
 > **Bug fixes**
+>
 > - Fixed image-asset handling in `fake-indexeddb` test environments (continued from v0.0.2).
 > - Fixed pre-existing `touchstart` type error in Dashboard.
 > - Fixed DeckSearchOverlay props destructuring bug.
@@ -478,10 +492,12 @@ deck/folder surfaces are removed. Internal backing decks remain in storage only.
 > This patch release focuses on reliability, test coverage, and visual polish.
 >
 > **What's new**
+>
 > - Smoother page transitions and toast animations throughout the app.
 > - Added a comprehensive unit-test suite covering UI components, hooks, and state modules.
 >
 > **Bug fixes**
+>
 > - Fixed image-asset round-trip handling in test environments (`fake-indexeddb`) by storing assets as `Uint8Array` and converting back to `Blob` on demand.
 > - Fixed `usePomodoro` settings parsing so `0` is handled correctly.
 > - Fixed a typo in the Dashboard copy ("examotion" → "exam").
@@ -599,7 +615,7 @@ operations.
 ## Task 6 — Object URL session cache
 
 **Outcome:** Image object URLs are cached per hash for the app lifetime, eliminating the
-  create/revoke churn on every card flip in a fast Learn session.
+create/revoke churn on every card flip in a fast Learn session.
 
 - `src/db/assetCache.ts`: `resolveAssetUrl` caches one object URL per hash; subsequent
   renders return the same URL. `resolveAssetMarkdownCached` replaces all asset references

@@ -188,17 +188,19 @@
   /* Consistent, theme-aware focus rings for keyboard navigation. */
   :focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px hsl(var(--paper)), 0 0 0 4px hsl(var(--accent) / 0.5);
+    box-shadow: 0 0 0 2px hsl(var(--accent) / 0.5);
     border-radius: 6px;
   }
   button:focus-visible,
   [role="button"]:focus-visible {
     border-radius: 10px;
   }
-  input:focus-visible,
-  textarea:focus-visible,
-  select:focus-visible {
-    border-color: hsl(var(--accent));
+  /* A focus-within wrapper owns the outer indicator; suppressing the nested
+     control's shadow avoids the double ring without removing keyboard focus. */
+  [class*='focus-within:ring-'] > input:focus-visible,
+  [class*='focus-within:ring-'] > textarea:focus-visible,
+  [class*='focus-within:ring-'] > select:focus-visible {
+    box-shadow: none;
   }
 }
 

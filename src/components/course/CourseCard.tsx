@@ -1,11 +1,11 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import { ProgressBar } from '../ui/ProgressBar';
 import { relativeExam, startOfDay } from '../../utils/datetime';
-import { progressNoun } from '../../fsrs/objective';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useCourseCardDetail } from '../../state/courseCardDetail';
+import { useCourseCardMetric } from '../../state/courseCardMetric';
 import type { Card, Course } from '../../db/types';
 import type { CourseSummary } from '../../state/useCourseData';
 
@@ -15,6 +15,7 @@ export interface CourseCardProps {
   /** The course's cards, used by the hover detail modules. */
   cards?: Card[];
   onClick: () => void;
+  onArchiveMenu?: (position: { x: number; y: number }, trigger: HTMLButtonElement) => void;
 }
 
 const DAY_MS = 86_400_000;
@@ -37,7 +38,8 @@ function relativeDue(dueMs: number, nowMs: number): string {
 
 /**
  * Dashboard card for a single Course: colour accent bar, exam-date label, course
- * name, lesson/card counts, mastery progress bar, and a "due today" hint. The
+ * name, lesson/card counts, the selected course-progress metric, and a
+ * ready-now hint. The
  * entire card is a button that calls onClick.
  *
  * Hovering or focusing the card grows it downward to reveal detail modules
@@ -48,14 +50,29 @@ function relativeDue(dueMs: number, nowMs: number): string {
  * height follows the single animated detail wrapper — only that wrapper
  * animates, so there are no competing height springs.
  */
-export function CourseCard({ course, summary, cards, onClick }: CourseCardProps) {
+export function CourseCard({ course, summary, cards, onClick, onArchiveMenu }: CourseCardProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const [detailSettings] = useCourseCardDetail();
+  const [metric] = useCourseCardMetric();
   const [expanded, setExpanded] = useState(false);
   // Keep the card stacked above its neighbours until the collapse finishes,
   // so it never drops behind them mid-animation.
   const [lifted, setLifted] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  function openArchiveMenu(
+    event: MouseEvent<HTMLButtonElement> | KeyboardEvent<HTMLButtonElement>,
+  ) {
+    if (!onArchiveMenu || !buttonRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = buttonRef.current.getBoundingClientRect();
+    const position = 'clientX' in event && (event.clientX !== 0 || event.clientY !== 0)
+      ? { x: event.clientX, y: event.clientY }
+      : { x: rect.left + 12, y: rect.top + 12 };
+    onArchiveMenu(position, buttonRef.current);
+  }
 
   const examPassed = course.examDate < Date.now();
   const examLabel = examPassed
@@ -66,8 +83,10 @@ export function CourseCard({ course, summary, cards, onClick }: CourseCardProps)
   const cardCount = summary?.cardCount ?? 0;
   const eligible = summary?.eligible ?? 0;
   const unreviewed = summary?.unreviewed ?? 0;
-  const mastery = summary?.mastery ?? 0;
-  const learnt = Math.max(cardCount - unreviewed - eligible, 0);
+  const completedLessonCount = summary?.completedLessonCount ?? 0;
+  const reviewedCardCount = summary?.reviewedCardCount ?? 0;
+  const reviewedTodayCount = summary?.reviewedTodayCount ?? 0;
+  const learnt = reviewedCardCount;
 
   // Earliest scheduled review across the course's active cards.
   const nextDueLabel = useMemo(() => {
@@ -121,7 +140,7 @@ export function CourseCard({ course, summary, cards, onClick }: CourseCardProps)
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-          {eligible} due
+          {eligible} ready
         </span>
       </div>,
     );
@@ -133,10 +152,7 @@ export function CourseCard({ course, summary, cards, onClick }: CourseCardProps)
           {activity.counts.map((count, i) => (
             <span
               key={i}
-              className={cn(
-                'w-1 rounded-full',
-                count > 0 ? 'bg-accent/70' : 'bg-ink/10',
-              )}
+              className={cn('w-1 rounded-full', count > 0 ? 'bg-accent/70' : 'bg-ink/10')}
               style={{
                 height: count > 0 ? `${25 + (count / activity.max) * 75}%` : '3px',
               }}
@@ -166,26 +182,68 @@ export function CourseCard({ course, summary, cards, onClick }: CourseCardProps)
       </div>
 
       {/* Course name */}
-      <h3 className="mb-4 font-display text-2xl leading-tight tracking-tight">
-        {course.name}
-      </h3>
+      <h3 className="mb-4 font-display text-2xl leading-tight tracking-tight">{course.name}</h3>
 
-      {/* Stats and progress */}
+      {/* Stats and selected course metric */}
       <div className="mt-auto">
         <div className="mb-2 flex items-center justify-between text-sm text-ink-soft">
           <span>
-            {lessonCount} lesson{lessonCount === 1 ? '' : 's'} · {cardCount} card{cardCount === 1 ? '' : 's'}
+            {lessonCount} lesson{lessonCount === 1 ? '' : 's'} · {cardCount} card
+            {cardCount === 1 ? '' : 's'}
           </span>
           <span className="tabular-nums">
-            {Math.round(mastery * 100)}% {progressNoun(course)}
+            {metric === 'curriculum'
+              ? `${completedLessonCount} of ${lessonCount} complete`
+              : metric === 'coverage'
+                ? `${reviewedCardCount} of ${cardCount} reviewed`
+                : `${reviewedTodayCount} reviewed today`}
           </span>
         </div>
-        <ProgressBar value={mastery} height={8} />
-        {eligible > 0 && (
-          <div className="mt-2 text-xs text-accent">
-            {eligible} due today
+        {metric === 'curriculum' && lessonCount > 0 ? (
+          <div
+            className="flex h-2 gap-1"
+            role="progressbar"
+            aria-label="Curriculum progress"
+            aria-valuenow={completedLessonCount}
+            aria-valuemin={0}
+            aria-valuemax={lessonCount}
+          >
+            {Array.from({ length: lessonCount }, (_, index) => (
+              <span
+                key={index}
+                className={cn(
+                  'min-w-0 flex-1 rounded-full',
+                  index < completedLessonCount ? 'bg-accent' : 'bg-ink/10',
+                )}
+              />
+            ))}
           </div>
+        ) : (
+          <ProgressBar
+            value={
+              metric === 'curriculum'
+                ? 0
+                : metric === 'coverage'
+                  ? cardCount > 0
+                    ? reviewedCardCount / cardCount
+                    : 0
+                  : reviewedTodayCount + eligible > 0
+                    ? reviewedTodayCount / (reviewedTodayCount + eligible)
+                    : 0
+            }
+            height={8}
+            label={
+              metric === 'curriculum'
+                ? 'Curriculum progress'
+                : metric === 'coverage'
+                  ? 'Card coverage'
+                  : "Today's workload"
+            }
+          />
         )}
+        <div className={cn('mt-2 text-xs', eligible > 0 ? 'text-accent' : 'text-ink-faint')}>
+          {eligible > 0 ? `${eligible} ready now` : 'Caught up for today'}
+        </div>
       </div>
     </>
   );
@@ -196,15 +254,19 @@ export function CourseCard({ course, summary, cards, onClick }: CourseCardProps)
     // were in flow and never reflows while the expanding card overlays
     // neighbours from this footprint.
     <div className="group relative h-full w-full">
-      <div
-        className="invisible flex h-full flex-col rounded-2xl border p-5"
-        aria-hidden="true"
-      >
+      <div className="invisible flex h-full flex-col rounded-2xl border p-5" aria-hidden="true">
         {face}
       </div>
       <motion.button
+        ref={buttonRef}
         type="button"
         onClick={onClick}
+        onContextMenu={openArchiveMenu}
+        onKeyDown={(event) => {
+          if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+            openArchiveMenu(event);
+          }
+        }}
         onMouseEnter={() => {
           setExpanded(true);
           setLifted(true);

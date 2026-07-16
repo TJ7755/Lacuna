@@ -319,8 +319,9 @@ exam date, name, or created — Settings → Sidebar has no sort control; the so
 dashboard itself and persists to `localStorage`); and a review-activity heatmap for anyone
 arriving from Anki. Empty state invites creating the first course. All transitions between
 these regions are coordinated by `LayoutGroup` so adding or reordering courses does not
-stutter. Archived courses are excluded from the grid entirely (no archived-course affordance
-exists in the course UI yet).
+stutter. Archived courses are excluded from the grid. A course card's context menu (right-click,
+keyboard Context Menu key or Shift+F10) offers a confirmed **Archive** action which retains every
+lesson, card and review; the completion toast offers Undo by clearing the same `archived` flag.
 
 **Course path** (`/course/:courseId`):
 
@@ -902,12 +903,11 @@ A course whose `examDate` has passed is detected (`examHasPassed`) and surfaced 
 rather than silently stopping: the course card on the dashboard reads "Exam date passed".
 Course Settings lets the exam date be changed (**set a new exam date**), and with no further
 action the course simply keeps revising against the rolling maintenance horizon above. The
-underlying `archived` flag and `archiveDeck`/`unarchiveDeck` repository functions (which
-withdraw a deck from study and totals while retaining its data) still exist — this is how a
-lesson's backing deck could, in principle, be archived — but Course Settings does not yet
-expose an archive action or an "Archived" group in the UI, so a course cannot currently be
-archived from the app. This is a known gap relative to the pre-course deck-settings flow,
-not a deliberate removal.
+underlying `archived` flag withdraws the course from active study and dashboard totals while
+retaining its data. The dashboard course-card context menu exposes this through a confirmation
+dialog, with a reversible Undo toast. Course Settings still does not expose an archive action or
+an "Archived" group in the main course UI; restoration is currently available immediately after
+archiving through Undo.
 
 ---
 
@@ -1566,8 +1566,8 @@ charts below the fold are never invisible. Each chart container is `h-64` with
   and the global **Optimise scheduling** default (on -> fit
   FSRS weights to your own history, §8.1; gated at `MIN_OPTIMISE_REVIEWS`,
   overridable per course, applied only on confirmation).
-- **Sidebar:** show due counts (on by default), show archived courses (on by default,
-  though the current course UI has no archived-course affordance to reveal), compact
+- **Sidebar:** show due counts (on by default), show archived courses (on by default;
+  courses can be archived from the dashboard card context menu), compact
   mode (off by default), and per-nav-item visibility toggles for every primary nav
   entry (Dashboard, Study today, Search, Share, Analytics, Settings, Help). Persisted
   to `localStorage` and applied immediately (`src/state/sidebarSettings.ts`). The

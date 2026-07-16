@@ -95,6 +95,9 @@ const mockSummary: CourseSummary = {
   mastery: 0,
   unreviewed: 1,
   eligible: 1,
+  completedLessonCount: 0,
+  reviewedCardCount: 0,
+  reviewedTodayCount: 0,
 };
 
 beforeEach(() => {

@@ -89,6 +89,11 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
 
   const active = phase !== 'idle';
   const dashOffset = C * (1 - progress);
+  const compactLabel = breakPending
+    ? 'Break ready'
+    : active
+      ? `${label(phase)} · ${formattedTime}`
+      : 'Pomodoro timer';
 
   return (
     <div ref={ref} className="relative">
@@ -96,13 +101,8 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title={
-          breakPending
-            ? 'Break ready'
-            : active
-              ? `${label(phase)} · ${formattedTime}`
-              : 'Pomodoro timer'
-        }
+        title={compactLabel}
+        aria-label={compactLabel}
         className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
       >
         <svg width="36" height="36" viewBox="0 0 36 36" className="absolute inset-0 h-full w-full">
@@ -150,7 +150,8 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
               textAnchor="middle"
               dominantBaseline="central"
               fill="currentColor"
-              className={`text-[10px] font-medium tabular ${colour(phase)}`}
+              fontSize={formattedTime.length > 5 ? 7 : 8}
+              className={`font-medium tabular ${colour(phase)}`}
             >
               {formattedTime}
             </text>

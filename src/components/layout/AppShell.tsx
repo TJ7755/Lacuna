@@ -6,12 +6,13 @@ import { Titlebar } from './Titlebar';
 import { ErrorBoundary } from './ErrorBoundary';
 import { CommandPalette } from '../search/CommandPalette';
 import { KeyHints } from '../ui/KeyHints';
-import { CloseIcon, FlaskIcon } from '../ui/icons';
+import { CloseIcon, LacunaIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { consumeLandingArrival } from './LandingTransition';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
+const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
 
 export function AppShell() {
   const [collapsed, setCollapsed] = useState(
@@ -29,6 +30,9 @@ export function AppShell() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [wideDesktop, setWideDesktop] = useState(
+    () => window.matchMedia?.(WIDE_DESKTOP_QUERY).matches ?? true,
+  );
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [hintsOpen, setHintsOpen] = useState(false);
   const location = useLocation();
@@ -47,6 +51,18 @@ export function AppShell() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const [arrivedFromLanding] = useState(() => consumeLandingArrival());
+
+  // Keep an icon rail visible on narrower desktop windows instead of spending a
+  // quarter of the viewport on the full sidebar. The user's preference resumes
+  // once there is enough room for the expanded navigation.
+  useEffect(() => {
+    const query = window.matchMedia?.(WIDE_DESKTOP_QUERY);
+    if (!query) return;
+    const onChange = (event: MediaQueryListEvent) => setWideDesktop(event.matches);
+    setWideDesktop(query.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, []);
 
   // Debounce sidebar collapse writes so rapid toggles / drag-resize don't hammer localStorage.
   useEffect(() => {
@@ -136,8 +152,9 @@ export function AppShell() {
       {/* Desktop sidebar */}
       <div className="hidden md:block">
         <Sidebar
-          collapsed={collapsed}
+          collapsed={!wideDesktop || collapsed}
           onToggleCollapsed={() => setCollapsed((c) => !c)}
+          collapseControl={wideDesktop}
         />
       </div>
 
@@ -211,7 +228,7 @@ export function AppShell() {
             </span>
           </button>
           <span className="flex items-center gap-2 font-display text-lg">
-            <FlaskIcon width={18} height={18} className="text-accent" />
+            <LacunaIcon width={18} height={18} className="text-accent" />
             Lacuna
           </span>
         </div>

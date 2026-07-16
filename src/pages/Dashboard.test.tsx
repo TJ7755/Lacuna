@@ -1,9 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Dashboard } from './Dashboard';
 import type { Course, Card } from '../db/types';
 
 const mockNavigate = vi.fn();
+const { mockUpdateCourse, mockNotify } = vi.hoisted(() => ({
+  mockUpdateCourse: vi.fn(),
+  mockNotify: vi.fn(),
+}));
+
+vi.mock('../db/repository', () => ({ updateCourse: mockUpdateCourse }));
+vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: mockNotify }) }));
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
@@ -24,7 +31,7 @@ vi.mock('../state/motionSpeed', () => ({
 }));
 
 vi.mock('../components/ui/icons', () => ({
-  FlaskIcon: () => <svg data-testid="flask-icon" />,
+  LacunaIcon: () => <svg data-testid="lacuna-icon" />,
   PlayIcon: () => <svg data-testid="play-icon" />,
   PlusIcon: () => <svg data-testid="plus-icon" />,
 }));
@@ -38,12 +45,14 @@ vi.mock('../components/ui/Button', () => ({
     children,
     onClick,
     disabled,
+    ...rest
   }: {
     children: React.ReactNode;
     onClick?: () => void;
     disabled?: boolean;
+    [key: string]: unknown;
   }) => (
-    <button type="button" onClick={onClick} disabled={disabled} data-testid="button">
+    <button type="button" onClick={onClick} disabled={disabled} {...rest}>
       {children}
     </button>
   ),
@@ -58,8 +67,30 @@ vi.mock('../components/dashboard/ReviewHeatmap', () => ({
 }));
 
 vi.mock('../components/course/CourseCard', () => ({
-  CourseCard: ({ course, onClick }: { course: Course; onClick: () => void }) => (
-    <button type="button" onClick={onClick} data-testid="course-card">
+  CourseCard: ({
+    course,
+    onClick,
+    onArchiveMenu,
+  }: {
+    course: Course;
+    onClick: () => void;
+    onArchiveMenu?: (position: { x: number; y: number }, trigger: HTMLButtonElement) => void;
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onArchiveMenu?.({ x: event.clientX, y: event.clientY }, event.currentTarget);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+          event.preventDefault();
+          onArchiveMenu?.({ x: 10, y: 10 }, event.currentTarget);
+        }
+      }}
+      data-testid="course-card"
+    >
       {course.name}
     </button>
   ),
@@ -114,8 +145,21 @@ const mockCard: Card = {
 
 beforeEach(() => {
   mockNavigate.mockClear();
+  mockUpdateCourse.mockReset();
+  mockUpdateCourse.mockResolvedValue(undefined);
+  mockNotify.mockReset();
   mockCourseDashboardData = undefined;
 });
+
+function setCourseData(courses: Course[] = [mockCourse]) {
+  mockCourseDashboardData = {
+    courses,
+    lessons: [],
+    allCards: [],
+    summaries: {},
+    stats: { reviewedToday: 0, streak: 0, forecast: [] },
+  };
+}
 
 describe('Dashboard', () => {
   it('renders skeleton when data is loading', () => {
@@ -215,5 +259,83 @@ describe('Dashboard', () => {
     };
     render(<Dashboard />);
     expect(screen.getByTestId('review-heatmap')).toBeInTheDocument();
+  });
+
+  it('opens the course menu with a right click without navigating, then dismisses it', () => {
+    setCourseData();
+    render(<Dashboard />);
+
+    fireEvent.contextMenu(screen.getByTestId('course-card'), { clientX: 120, clientY: 80 });
+    expect(screen.getByRole('menu', { name: 'Actions for Test Course' })).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('opens the course menu from the keyboard and closes it with Escape', () => {
+    setCourseData();
+    render(<Dashboard />);
+    const card = screen.getByTestId('course-card');
+
+    fireEvent.keyDown(card, { key: 'F10', shiftKey: true });
+    const menu = screen.getByRole('menu');
+    expect(menu).toBeInTheDocument();
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(card).toHaveFocus();
+  });
+
+  it('cancels archiving from the confirmation dialog', () => {
+    setCourseData();
+    render(<Dashboard />);
+
+    fireEvent.contextMenu(screen.getByTestId('course-card'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Archive' }));
+    expect(screen.getByRole('dialog', { name: 'Archive Test Course?' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+  });
+
+  it('archives a course, allows Undo and excludes archived courses from the grid', async () => {
+    setCourseData();
+    const { rerender } = render(<Dashboard />);
+
+    fireEvent.contextMenu(screen.getByTestId('course-card'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Archive' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Archive course' }));
+
+    await waitFor(() => expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: true }));
+    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith(
+      'Test Course archived',
+      'positive',
+      expect.objectContaining({ actionLabel: 'Undo' }),
+    ));
+
+    setCourseData([{ ...mockCourse, archived: true }]);
+    rerender(<Dashboard />);
+    expect(screen.queryByTestId('course-card')).not.toBeInTheDocument();
+
+    const options = mockNotify.mock.calls[0][2] as { onAction: () => void };
+    options.onAction();
+    await waitFor(() => expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: false }));
+  });
+
+  it('keeps the confirmation open and reports an archive failure', async () => {
+    mockUpdateCourse.mockRejectedValueOnce(new Error('database unavailable'));
+    setCourseData();
+    render(<Dashboard />);
+
+    fireEvent.contextMenu(screen.getByTestId('course-card'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Archive' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Archive course' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The course could not be archived. Nothing was changed.',
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(mockNotify).not.toHaveBeenCalled();
   });
 });

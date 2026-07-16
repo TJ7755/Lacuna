@@ -3,13 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Settings } from './Settings';
 
 const setStartInFocusMode = vi.fn();
+const setCourseCardMetric = vi.fn();
+const setMotionSpeed = vi.fn();
 
 vi.mock('../state/focusModePreference', () => ({
   useStartInFocusMode: () => [false, setStartInFocusMode],
 }));
 
 vi.mock('../state/motionSpeed', () => ({
-  useMotionSpeed: () => ['fast', vi.fn()],
+  useMotionSpeed: () => ['fast', setMotionSpeed],
   speedMultiplier: () => 1,
 }));
 
@@ -45,6 +47,9 @@ vi.mock('../state/practiceDefaults', () => ({
 vi.mock('../state/dashboardSort', () => ({ useDashboardSort: () => ['recent', vi.fn()] }));
 vi.mock('../state/courseCardDetail', () => ({
   useCourseCardDetail: () => [{ nextDue: true, breakdown: true, activity: true }, vi.fn()],
+}));
+vi.mock('../state/courseCardMetric', () => ({
+  useCourseCardMetric: () => ['curriculum', setCourseCardMetric],
 }));
 vi.mock('../state/inputMode', () => ({
   useInputMode: () => ['auto', vi.fn()],
@@ -92,7 +97,11 @@ Object.defineProperty(globalThis, 'IntersectionObserver', {
 });
 
 describe('Settings', () => {
-  beforeEach(() => setStartInFocusMode.mockClear());
+  beforeEach(() => {
+    setStartInFocusMode.mockClear();
+    setCourseCardMetric.mockClear();
+    setMotionSpeed.mockClear();
+  });
 
   it('updates the default Focus Mode preference', () => {
     render(<Settings />);
@@ -108,10 +117,54 @@ describe('Settings', () => {
     expect(screen.getByRole('switch', { name: 'Type your answer' })).toBeInTheDocument();
   });
 
+  it('selects the course card progress metric', () => {
+    render(<Settings />);
+
+    expect(screen.getByRole('button', { name: 'Curriculum progress' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: "Today's workload" }));
+
+    expect(setCourseCardMetric).toHaveBeenCalledWith('today');
+  });
+
+  it('presents animation speed as three explicit choices', () => {
+    render(<Settings />);
+
+    const group = screen.getByRole('radiogroup', { name: 'Animation speed' });
+    const choices = Array.from(group.querySelectorAll('[role="radio"]'));
+    expect(choices).toHaveLength(3);
+    expect(screen.getByRole('radio', { name: 'Fast' })).toHaveAttribute('aria-checked', 'true');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Slow' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Normal' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Fast' }));
+
+    expect(setMotionSpeed.mock.calls).toEqual([['slow'], ['normal'], ['fast']]);
+  });
+
+  it('supports standard keyboard navigation for animation speed', () => {
+    render(<Settings />);
+
+    const fast = screen.getByRole('radio', { name: 'Fast' });
+    fireEvent.keyDown(fast, { key: 'ArrowLeft' });
+    expect(setMotionSpeed).toHaveBeenLastCalledWith('normal');
+    expect(screen.getByRole('radio', { name: 'Normal' })).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByRole('radio', { name: 'Normal' }), { key: 'Home' });
+    expect(setMotionSpeed).toHaveBeenLastCalledWith('slow');
+    expect(screen.getByRole('radio', { name: 'Slow' })).toHaveFocus();
+
+    fireEvent.keyDown(screen.getByRole('radio', { name: 'Slow' }), { key: 'End' });
+    expect(setMotionSpeed).toHaveBeenLastCalledWith('fast');
+    expect(fast).toHaveFocus();
+  });
+
   it('labels switches whose visible descriptions sit outside the control', () => {
     render(<Settings />);
 
-    expect(screen.getByRole('switch', { name: 'Show due card counts' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Show ready card counts' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Show archived courses' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Compact mode' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Manual four-point grading' })).toBeInTheDocument();

@@ -14,7 +14,7 @@ import {
   ChevronRightIcon,
   DashboardIcon,
   FlameIcon,
-  FlaskIcon,
+  LacunaIcon,
   HelpIcon,
   MoonIcon,
   PlayIcon,
@@ -32,6 +32,7 @@ interface SidebarProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   toggleLabel?: string;
+  collapseControl?: boolean;
 }
 
 function NavItem({
@@ -307,7 +308,12 @@ const CourseRow = memo(function CourseRow({
 // Main Sidebar component
 // ---------------------------------------------------------------------------
 
-export function Sidebar({ collapsed, onToggleCollapsed, toggleLabel }: SidebarProps) {
+export function Sidebar({
+  collapsed,
+  onToggleCollapsed,
+  toggleLabel,
+  collapseControl = true,
+}: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const courses = useCourses();
   const summaries = useCourseSummaries();
@@ -374,7 +380,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, toggleLabel }: SidebarPr
             sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
           )}
         >
-          <FlaskIcon
+          <LacunaIcon
             width={sidebarSettings.compactMode ? 18 : 20}
             height={sidebarSettings.compactMode ? 18 : 20}
           />
@@ -545,18 +551,20 @@ export function Sidebar({ collapsed, onToggleCollapsed, toggleLabel }: SidebarPr
             {resolvedTheme === 'dark' ? 'Dark mode' : 'Light mode'}
           </span>
         )}
-        <button
-          type="button"
-          onClick={onToggleCollapsed}
-          title={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
-          aria-label={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
-          className={cn(
-            'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
-            sidebarSettings.compactMode ? 'min-h-11 min-w-11' : 'min-h-11 min-w-11',
-          )}
-        >
-          {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-        </button>
+        {collapseControl && (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            title={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+            aria-label={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+            className={cn(
+              'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
+              sidebarSettings.compactMode ? 'min-h-11 min-w-11' : 'min-h-11 min-w-11',
+            )}
+          >
+            {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+          </button>
+        )}
       </div>
 
       <AnimatePresence>

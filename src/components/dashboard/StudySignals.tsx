@@ -1,43 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';
 import type { StudyStats, DayForecast } from '../../fsrs/stats';
 import type { Course } from '../../db/types';
 import { FlameIcon, CalendarIcon, SparklesIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-
-/** A simple spring-driven count-up hook that animates a number from 0 to target. */
-function useCountUp(target: number, durationMs = 1200, delayMs = 0) {
-  const [value, setValue] = useState(0);
-  const raf = useRef<number | null>(null);
-  const startTime = useRef<number | null>(null);
-
-  useEffect(() => {
-    setValue(0);
-    startTime.current = null;
-    const delayId = window.setTimeout(() => {
-      const tick = (now: number) => {
-        if (startTime.current === null) startTime.current = now;
-        const elapsed = now - startTime.current;
-        const progress = Math.min(elapsed / durationMs, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const next = Math.round(eased * target);
-        setValue((prev) => (next !== prev ? next : prev));
-        if (progress < 1) {
-          raf.current = requestAnimationFrame(tick);
-        }
-      };
-      raf.current = requestAnimationFrame(tick);
-    }, delayMs);
-
-    return () => {
-      window.clearTimeout(delayId);
-      if (raf.current) cancelAnimationFrame(raf.current);
-    };
-  }, [target, durationMs, delayMs]);
-
-  return value;
-}
+import { useCountUp } from '../../hooks/useCountUp';
 
 /** A thin horizontal animated bar used for streak and reviewed-today metrics. */
 function MetricBar({
@@ -107,8 +75,8 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
   const lit = streak > 0;
 
   // Count-up numbers for a satisfying entrance animation.
-  const countStreak = useCountUp(streak, 1000, 300);
-  const countReviewed = useCountUp(reviewedToday, 1000, 450);
+  const countStreak = useCountUp(streak, 1000, 300, m);
+  const countReviewed = useCountUp(reviewedToday, 1000, 450, m);
 
   // Milestone celebration: subtle sparkles when streak hits a notable number.
   const milestone = streak > 0 && (streak === 7 || streak === 14 || streak === 30 || streak === 60 || streak === 100);

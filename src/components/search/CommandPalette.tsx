@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useAllCards, useDecks } from '../../state/useData';
@@ -92,31 +92,24 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   const trapRef = useFocusTrap(true, { autoFocusSelector: 'input' });
 
   const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const [active, setActive] = useState(0);
 
-  // Debounce the search query so expensive full-text search does not run on
-  // every keystroke. 150ms keeps the UI feeling responsive while avoiding
-  // redundant work during rapid typing.
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), 150);
-    return () => clearTimeout(timer);
-  }, [query]);
-
   // Course/lesson/note hits are listed ahead of card hits, then both are capped
-  // together so the palette never grows unbounded on a broad query.
+  // together so the palette never grows unbounded on a broad query. Deferring
+  // the search keeps input updates urgent without imposing a fixed delay.
   const results = useMemo((): PaletteHit[] => {
     const courseHits = searchCourseContent(
-      debouncedQuery,
+      deferredQuery,
       courses ?? [],
       lessons ?? [],
       notes ?? [],
     );
-    const cardHits = searchCards(debouncedQuery, cards ?? [], decks ?? []).map(
+    const cardHits = searchCards(deferredQuery, cards ?? [], decks ?? []).map(
       (r): PaletteHit => ({ kind: 'card', ...r }),
     );
     return [...courseHits, ...cardHits].slice(0, MAX_RESULTS);
-  }, [debouncedQuery, cards, decks, courses, lessons, notes]);
+  }, [deferredQuery, cards, decks, courses, lessons, notes]);
 
   // Reset and focus when the palette mounts.
   useEffect(() => {
@@ -159,9 +152,6 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
           aria-modal="true"
           aria-label="Search"
           className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
         >
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -211,7 +201,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                     transition={{ duration: 0.12 * m }}
                     className="px-4 py-6 text-center text-sm text-ink-faint"
                   >
-                    Nothing matches &ldquo;{debouncedQuery}&rdquo;.
+                    Nothing matches &ldquo;{deferredQuery}&rdquo;.
                   </motion.p>
                 ) : (
                   <motion.ul

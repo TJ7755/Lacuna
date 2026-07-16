@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, useMotionValue, useSpring, LayoutGroup } from 'motion/react';
-import { useMotionSpeed, speedMultiplier, type MotionSpeed } from '../state/motionSpeed';
+import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useTheme, type Theme } from '../state/ThemeContext';
 import { ACCENTS, useAccent } from '../state/AccentContext';
 import { FONT_SCALE_STEPS, useFontScale } from '../state/FontScaleContext';
@@ -39,6 +39,7 @@ import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { usePracticeDefaults } from '../state/practiceDefaults';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
 import { useCourseCardDetail } from '../state/courseCardDetail';
+import { useCourseCardMetric, type CourseCardMetric } from '../state/courseCardMetric';
 import { useStartInFocusMode } from '../state/focusModePreference';
 import { useSidebarSettings, DEFAULT_NAV_ITEMS } from '../state/sidebarSettings';
 import { useInputMode, useIsTouchMode, type InputMode } from '../state/inputMode';
@@ -55,6 +56,7 @@ import {
   formatBinding,
   type LearnAction,
 } from '../state/shortcutBindings';
+import { MotionSpeedControl } from './settings/MotionSpeedControl';
 
 const SETTINGS_SECTIONS = [
   { id: 'settings-appearance', label: 'Appearance' },
@@ -83,6 +85,7 @@ export function Settings() {
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
   const [cardDetail, setCardDetail] = useCourseCardDetail();
+  const [courseCardMetric, setCourseCardMetric] = useCourseCardMetric();
   const [startInFocusMode, setStartInFocusMode] = useStartInFocusMode();
   const [inputMode, setInputMode] = useInputMode();
   const [pomoSettings, setPomoSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
@@ -323,32 +326,19 @@ export function Settings() {
         <div className="mt-6 border-t border-line pt-5">
           <div className="mb-1 flex items-baseline justify-between">
             <span className="text-sm">Animation speed</span>
-            <span className="tabular text-sm text-ink-faint">
+            <span aria-live="polite" aria-atomic="true" className="tabular text-sm text-ink-faint">
               {motionSpeed === 'slow' ? 'Slow' : motionSpeed === 'fast' ? 'Fast' : 'Normal'}
             </span>
           </div>
-          <p className="mb-3 text-sm text-ink-soft">
+          <p id="animation-speed-description" className="mb-2 text-sm text-ink-soft">
             Adjust how quickly decorative animations play across the app.
             Does not affect functional timers or progress bars.
           </p>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-ink-faint">Slow</span>
-            <input
-              type="range"
-              min={0}
-              max={2}
-              step={1}
-              value={motionSpeed === 'slow' ? 0 : motionSpeed === 'normal' ? 1 : 2}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                const next: MotionSpeed = val === 0 ? 'slow' : val === 2 ? 'fast' : 'normal';
-                setMotionSpeed(next);
-              }}
-              className="flex-1 accent-accent"
-              aria-label="Animation speed"
-            />
-            <span className="text-xs text-ink-faint">Fast</span>
-          </div>
+          <MotionSpeedControl
+            value={motionSpeed}
+            onChange={setMotionSpeed}
+            describedBy="animation-speed-description"
+          />
         </div>
       </motion.section>
 
@@ -417,14 +407,14 @@ export function Settings() {
         </p>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-sm">Show due card counts</div>
+            <div className="text-sm">Show ready card counts</div>
             <p className="mt-1 text-sm text-ink-soft">
               Display the number of cards ready for review next to each course name in the
               sidebar, so you can see which courses need attention at a glance.
             </p>
           </div>
           <Toggle
-            ariaLabel="Show due card counts"
+            ariaLabel="Show ready card counts"
             checked={sidebarSettings.showDueCounts}
             onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
           />
@@ -585,6 +575,40 @@ export function Settings() {
           })}
         </div>
 
+        <div className="mt-6 border-t border-line pt-5">
+          <h3 className="mb-1 text-sm font-medium text-ink">Course card progress</h3>
+          <p className="mb-4 text-sm text-ink-soft">
+            Choose what the progress rail on each course card represents.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {(
+              [
+                { key: 'curriculum', label: 'Curriculum progress' },
+                { key: 'coverage', label: 'Card coverage' },
+                { key: 'today', label: "Today's workload" },
+              ] as { key: CourseCardMetric; label: string }[]
+            ).map((option) => {
+              const active = courseCardMetric === option.key;
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setCourseCardMetric(option.key)}
+                  aria-pressed={active}
+                  className={cn(
+                    'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
+                    active
+                      ? 'border-accent bg-accent-soft text-accent'
+                      : 'border-line text-ink-soft hover:border-line-strong',
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Card hover detail modules */}
         <div className="mt-6 border-t border-line pt-5">
           <h3 className="mb-1 text-sm font-medium text-ink">Card hover detail</h3>
@@ -600,7 +624,7 @@ export function Settings() {
             />
             <Toggle
               id="card-detail-breakdown"
-              label="New, learnt and due breakdown"
+              label="New, learnt and ready breakdown"
               checked={cardDetail.breakdown}
               onChange={(checked) => setCardDetail({ breakdown: checked })}
             />

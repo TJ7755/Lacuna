@@ -7,6 +7,7 @@ import { FontScaleProvider } from './state/FontScaleContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { AppShell } from './components/layout/AppShell';
+import { RouteTransition } from './components/layout/RouteTransition';
 import { LandingTransition } from './components/layout/LandingTransition';
 import { Dashboard } from './pages/Dashboard';
 import { isFirstRun, seedIfFirstRun } from './db/seed';
@@ -83,216 +84,221 @@ function RouteFallback() {
 // Hash routing keeps the app deployable as plain static files with no server rewrites.
 const router = createHashRouter([
   {
-    path: '/',
-    element: <AppShell />,
+    element: <RouteTransition />,
     children: [
-      { index: true, element: <Dashboard /> },
       {
-        path: 'deck/:deckId',
-        element: <Navigate to="/" replace />,
+        path: '/',
+        element: <AppShell />,
+        children: [
+          { index: true, element: <Dashboard /> },
+          {
+            path: 'deck/:deckId',
+            element: <Navigate to="/" replace />,
+          },
+          {
+            path: 'settings',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <Settings />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'search',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <SearchPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'share',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <SharePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'analytics',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <Analytics />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'help',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <HelpPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'study',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <StudyToday />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <CoursePath />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/lesson/:lessonId',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <LessonView />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/bank',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <QuestionBank />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/cards/new',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <CardEditor />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/cards/:cardId/edit',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <CardEditor />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/settings',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <CourseSettings />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/analytics',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <CourseAnalytics />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/lesson/:lessonId/cards/new',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <CardEditor />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/lesson/:lessonId/cards/:cardId/edit',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <CardEditor />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/sequence/new',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <SequenceEditor />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/sequence/:sequenceId/edit',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <SequenceEditor />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/lesson/:lessonId/sequence/new',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <SequenceEditor />
+              </Suspense>
+            ),
+          },
+        ],
       },
       {
-        path: 'settings',
+        // The landing page is a full-screen editorial experience outside the shell.
+        path: '/welcome',
         element: (
-          <Suspense fallback={<RouteFallback />}>
-            <Settings />
-          </Suspense>
+          <ErrorBoundary label="the landing page">
+            <Suspense fallback={<RouteFallback />}>
+              <Welcome />
+            </Suspense>
+          </ErrorBoundary>
         ),
       },
       {
-        path: 'search',
+        // Persistent course conductor. It owns lesson/Practice transitions and
+        // remains mounted until the learner explicitly finishes the study period.
+        path: '/course/:courseId/study',
         element: (
-          <Suspense fallback={<RouteFallback />}>
-            <SearchPage />
-          </Suspense>
+          <ErrorBoundary label="the course study flow">
+            <Suspense fallback={<RouteFallback />}>
+              <CourseStudyFlow />
+            </Suspense>
+          </ErrorBoundary>
         ),
       },
       {
-        path: 'share',
+        // Learn mode is a full-screen, focused experience outside the shell. The
+        // global, cross-course "Today" session (no deckId param).
+        path: '/learn',
         element: (
-          <Suspense fallback={<RouteFallback />}>
-            <SharePage />
-          </Suspense>
+          <ErrorBoundary label="the Learn session">
+            <Suspense fallback={<RouteFallback />}>
+              <LearnMode />
+            </Suspense>
+          </ErrorBoundary>
         ),
       },
       {
-        path: 'analytics',
+        // A course Practice session selected by the curricular objective engine.
+        path: '/course/:courseId/learn',
         element: (
-          <Suspense fallback={<RouteFallback />}>
-            <Analytics />
-          </Suspense>
+          <ErrorBoundary label="the Learn session">
+            <Suspense fallback={<RouteFallback />}>
+              <LearnMode />
+            </Suspense>
+          </ErrorBoundary>
         ),
       },
       {
-        path: 'help',
+        // A Simple lesson session for cards not yet exposed in that lesson.
+        path: '/lesson/:lessonId/learn',
         element: (
-          <Suspense fallback={<RouteFallback />}>
-            <HelpPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'study',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <StudyToday />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <CoursePath />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId/lesson/:lessonId',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <LessonView />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId/bank',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <QuestionBank />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId/cards/new',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <CardEditor />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId/cards/:cardId/edit',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <CardEditor />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId/settings',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <CourseSettings />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId/analytics',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <CourseAnalytics />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId/lesson/:lessonId/cards/new',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <CardEditor />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId/lesson/:lessonId/cards/:cardId/edit',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <CardEditor />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId/sequence/new',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <SequenceEditor />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId/sequence/:sequenceId/edit',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <SequenceEditor />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'course/:courseId/lesson/:lessonId/sequence/new',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <SequenceEditor />
-          </Suspense>
+          <ErrorBoundary label="the Learn session">
+            <Suspense fallback={<RouteFallback />}>
+              <LearnMode />
+            </Suspense>
+          </ErrorBoundary>
         ),
       },
     ],
-  },
-  {
-    // The landing page is a full-screen editorial experience outside the shell.
-    path: '/welcome',
-    element: (
-      <ErrorBoundary label="the landing page">
-        <Suspense fallback={<RouteFallback />}>
-          <Welcome />
-        </Suspense>
-      </ErrorBoundary>
-    ),
-  },
-  {
-    // Persistent course conductor. It owns lesson/Practice transitions and
-    // remains mounted until the learner explicitly finishes the study period.
-    path: '/course/:courseId/study',
-    element: (
-      <ErrorBoundary label="the course study flow">
-        <Suspense fallback={<RouteFallback />}>
-          <CourseStudyFlow />
-        </Suspense>
-      </ErrorBoundary>
-    ),
-  },
-  {
-    // Learn mode is a full-screen, focused experience outside the shell. The
-    // global, cross-course "Today" session (no deckId param).
-    path: '/learn',
-    element: (
-      <ErrorBoundary label="the Learn session">
-        <Suspense fallback={<RouteFallback />}>
-          <LearnMode />
-        </Suspense>
-      </ErrorBoundary>
-    ),
-  },
-  {
-    // A course Practice session selected by the curricular objective engine.
-    path: '/course/:courseId/learn',
-    element: (
-      <ErrorBoundary label="the Learn session">
-        <Suspense fallback={<RouteFallback />}>
-          <LearnMode />
-        </Suspense>
-      </ErrorBoundary>
-    ),
-  },
-  {
-    // A Simple lesson session for cards not yet exposed in that lesson.
-    path: '/lesson/:lessonId/learn',
-    element: (
-      <ErrorBoundary label="the Learn session">
-        <Suspense fallback={<RouteFallback />}>
-          <LearnMode />
-        </Suspense>
-      </ErrorBoundary>
-    ),
   },
 ]);
 

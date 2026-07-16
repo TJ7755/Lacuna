@@ -233,6 +233,7 @@ describe('share codes', () => {
     const courses = await db.courses.toArray();
     expect(courses).toHaveLength(1);
     expect(courses[0].name).toBe('Standalone');
+    expect(result.courseIds).toEqual([courses[0].id]);
 
     const lessons = await db.lessons.where('courseId').equals(courses[0].id).toArray();
     expect(lessons).toHaveLength(1);
@@ -313,6 +314,7 @@ describe('course share codes (v2)', () => {
 
     const importedCourses = await db.courses.toArray();
     const imported = importedCourses.find((c) => c.id !== course.id)!;
+    expect(result.courseIds).toEqual([imported.id]);
     expect(imported.name).toBe('Biology');
     expect(imported.unlockMode).toBe('semi-linear');
     // Imported courses default to study (read-only) mode, regardless of the

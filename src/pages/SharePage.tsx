@@ -127,6 +127,8 @@ export function SharePage() {
   async function handleGenerateQR() {
     if (!selectedCourseId) return;
     setQrGenerating(true);
+    setQrCode('');
+    setShowQR(false);
     try {
       const result = await buildCourseShareCodeQR(selectedCourseId);
       if (result.length > MAX_QR_ALPHANUMERIC_CHARS) {
@@ -134,8 +136,6 @@ export function SharePage() {
           'This course is too large for a single QR code. Use the text share code instead.',
           'negative',
         );
-        setQrCode('');
-        setShowQR(false);
         return;
       }
       setQrCode(result);
