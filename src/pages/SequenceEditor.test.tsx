@@ -110,6 +110,16 @@ function renderNew() {
   );
 }
 
+function renderEdit() {
+  return render(
+    <MemoryRouter initialEntries={['/course/course-1/sequence/seq-1/edit']}>
+      <Routes>
+        <Route path="/course/:courseId/sequence/:sequenceId/edit" element={<SequenceEditor />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 beforeEach(() => {
   mockCourse = undefined;
   mockSequence = undefined;
@@ -367,6 +377,47 @@ describe('SequenceEditor', () => {
         expect.arrayContaining([expect.objectContaining({ value: 'Indeed I am.', speaker: 'ALICE' })]),
         expect.objectContaining({ mode: 'lines', mySpeaker: 'ALICE' }),
       );
+    });
+  });
+
+  describe('re-pasting a script while editing', () => {
+    const editingSequence: Sequence = {
+      id: 'seq-1',
+      courseId: 'course-1',
+      primaryLessonId: null,
+      name: 'Scene one',
+      mode: 'lines',
+      items: [{ id: 'item-1', value: 'Indeed I am.', speaker: 'ALICE' }],
+      cueWindow: 2,
+      mySpeaker: 'ALICE',
+      createdAt: Date.now(),
+    };
+
+    it('warns before opening the paste modal when the sequence already has items, and cancelling keeps it closed', () => {
+      mockCourse = course;
+      mockSequence = editingSequence;
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      renderEdit();
+
+      fireEvent.click(screen.getByText('Paste script…'));
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/reset study progress/i),
+      );
+      expect(screen.queryByLabelText('Paste script')).not.toBeInTheDocument();
+      confirmSpy.mockRestore();
+    });
+
+    it('opens the paste modal once the warning is confirmed', () => {
+      mockCourse = course;
+      mockSequence = editingSequence;
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      renderEdit();
+
+      fireEvent.click(screen.getByText('Paste script…'));
+
+      expect(screen.getByLabelText('Paste script')).toBeInTheDocument();
+      confirmSpy.mockRestore();
     });
   });
 });

@@ -266,6 +266,22 @@ export function SequenceEditor() {
     );
   }
 
+  function handlePasteScriptClick() {
+    // Re-pasting a script while editing replaces the whole item list with fresh
+    // ids, so saving treats every existing card as delete+create and wipes its
+    // FSRS study progress. Warn before opening the modal when that's at stake.
+    if (
+      editing &&
+      items.length > 0 &&
+      !window.confirm(
+        'Replacing the script will reset study progress for this sequence’s cards. Continue?',
+      )
+    ) {
+      return;
+    }
+    setShowScriptPaste(true);
+  }
+
   async function handleSave() {
     if (!canSave || !courseId) return;
     setSaving(true);
@@ -504,7 +520,7 @@ export function SequenceEditor() {
               </div>
               <div className="flex items-center gap-3">
                 {linesMode && (
-                  <Button variant="ghost" size="sm" onClick={() => setShowScriptPaste(true)}>
+                  <Button variant="ghost" size="sm" onClick={handlePasteScriptClick}>
                     Paste script&hellip;
                   </Button>
                 )}
