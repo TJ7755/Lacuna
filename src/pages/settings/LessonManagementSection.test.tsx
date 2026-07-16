@@ -56,7 +56,6 @@ describe('LessonManagementSection', () => {
     deleteLesson.mockClear();
     reorderLessons.mockClear();
     createLesson.mockClear();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('lists lessons in order', () => {
@@ -74,6 +73,8 @@ describe('LessonManagementSection', () => {
   it('deletes a lesson after confirmation', () => {
     render(<LessonManagementSection courseId="course-1" />);
     fireEvent.click(screen.getByLabelText('Delete Lesson one'));
+    expect(deleteLesson).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Yes'));
     expect(deleteLesson).toHaveBeenCalledWith('lesson-1');
   });
 

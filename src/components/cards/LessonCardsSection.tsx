@@ -7,6 +7,7 @@ import { AnimatePresence } from 'motion/react';
 import { CardList } from './CardList';
 import { LinkCardsDialog } from './LinkCardsDialog';
 import { Button } from '../ui/Button';
+import { ConfirmInline } from '../ui/ConfirmInline';
 import { PlusIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
 import {
@@ -38,6 +39,9 @@ export function LessonCardsSection({
 }: LessonCardsSectionProps) {
   const { notify } = useToast();
   const [linking, setLinking] = useState(false);
+  // A card pending unlink confirmation — only set when it has lesson-specific
+  // teaching progress that unlinking would reset (see handleUnlink below).
+  const [pendingUnlink, setPendingUnlink] = useState<Card | null>(null);
   const sequences = useSequences(courseId);
   const courseCards = useCourseCards(courseId);
   const lessons = useLessons(courseId);
@@ -52,19 +56,21 @@ export function LessonCardsSection({
 
   async function handleUnlink(card: Card) {
     const exposure = await db.lessonCardExposures.get([lessonId, card.id]);
-    if (
-      exposure &&
-      !window.confirm(
-        'Remove this card from the lesson? Its teaching progress in this lesson will be reset.',
-      )
-    ) {
+    if (exposure) {
+      setPendingUnlink(card);
       return;
     }
+    await doUnlink(card);
+  }
+
+  async function doUnlink(card: Card) {
     try {
       await unlinkCardFromLesson(lessonId, card.id);
       notify('Card removed from this lesson.', 'neutral');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not remove the card.', 'negative');
+    } finally {
+      setPendingUnlink(null);
     }
   }
 
@@ -73,6 +79,18 @@ export function LessonCardsSection({
       <h2 className="mb-4 font-display text-xl text-ink-soft">
         Cards <span className="text-ink-faint">({lessonCards.length})</span>
       </h2>
+
+      {pendingUnlink && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2.5">
+          <span className="text-sm text-ink-soft">Remove card from this lesson?</span>
+          <ConfirmInline
+            message="Its teaching progress here will be reset."
+            confirmLabel="Remove"
+            onConfirm={() => void doUnlink(pendingUnlink)}
+            onCancel={() => setPendingUnlink(null)}
+          />
+        </div>
+      )}
 
       {lessonCards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-12 text-center">

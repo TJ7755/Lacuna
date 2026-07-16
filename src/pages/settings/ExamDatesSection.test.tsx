@@ -45,7 +45,6 @@ describe('ExamDatesSection', () => {
     createCourseExamDate.mockClear();
     updateCourseExamDate.mockClear();
     deleteCourseExamDate.mockClear();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   it('lists existing exam dates', () => {
@@ -56,6 +55,8 @@ describe('ExamDatesSection', () => {
   it('deletes an exam date after confirmation', () => {
     render(<ExamDatesSection courseId="course-1" />);
     fireEvent.click(screen.getByLabelText('Delete Mock exam'));
+    expect(deleteCourseExamDate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Yes'));
     expect(deleteCourseExamDate).toHaveBeenCalledWith('exam-1');
   });
 

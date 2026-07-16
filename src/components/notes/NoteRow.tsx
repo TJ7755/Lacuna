@@ -7,6 +7,7 @@ import { m as motion } from 'motion/react';
 import { LessonNoteEditor } from './LessonNoteEditor';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { ChevronDownIcon, EditIcon, TrashIcon } from '../ui/icons';
+import { ConfirmInline } from '../ui/ConfirmInline';
 import { cn } from '../ui/cn';
 import type { Note } from '../../db/types';
 
@@ -86,24 +87,7 @@ export function NoteRow({
         {/* Controls */}
         <div className="flex shrink-0 items-center gap-0.5">
           {confirmingDelete ? (
-            // Inline two-step deletion confirm — no window.confirm() needed.
-            <>
-              <span className="mr-1 text-xs text-ink-soft">Delete?</span>
-              <button
-                type="button"
-                onClick={onDeleteConfirm}
-                className="min-h-9 rounded-lg px-2.5 py-1 text-xs font-medium text-negative transition-colors hover:bg-negative/10"
-              >
-                Yes
-              </button>
-              <button
-                type="button"
-                onClick={onDeleteCancel}
-                className="min-h-9 rounded-lg px-2.5 py-1 text-xs text-ink-soft transition-colors hover:bg-ink/5"
-              >
-                Cancel
-              </button>
-            </>
+            <ConfirmInline message="Delete?" onConfirm={onDeleteConfirm} onCancel={onDeleteCancel} />
           ) : (
             <>
               <button

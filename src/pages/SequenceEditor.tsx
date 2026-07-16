@@ -11,6 +11,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
+import { ConfirmInline } from '../components/ui/ConfirmInline';
 import { useToast } from '../components/ui/Toast';
 import { DangerZoneSection } from './settings/DangerZoneSection';
 import { SequenceItemRow } from '../components/sequences/SequenceItemRow';
@@ -55,6 +56,7 @@ export function SequenceEditor() {
   const [presetId, setPresetId] = useState<SequencePresetId>('list');
   const [mySpeaker, setMySpeaker] = useState('');
   const [showScriptPaste, setShowScriptPaste] = useState(false);
+  const [confirmingPasteScript, setConfirmingPasteScript] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [invalidItems, setInvalidItems] = useState<Set<string>>(() => new Set());
@@ -281,15 +283,15 @@ export function SequenceEditor() {
     // Re-pasting a script while editing replaces the whole item list with fresh
     // ids, so saving treats every existing card as delete+create and wipes its
     // FSRS study progress. Warn before opening the modal when that's at stake.
-    if (
-      editing &&
-      items.length > 0 &&
-      !window.confirm(
-        'Replacing the script will reset study progress for this sequence’s cards. Continue?',
-      )
-    ) {
+    if (editing && items.length > 0) {
+      setConfirmingPasteScript(true);
       return;
     }
+    setShowScriptPaste(true);
+  }
+
+  function confirmPasteScript() {
+    setConfirmingPasteScript(false);
     setShowScriptPaste(true);
   }
 
@@ -519,11 +521,19 @@ export function SequenceEditor() {
                 {preset.terminology.itemPlural} <span className="text-ink-faint/70">({items.length})</span>
               </div>
               <div className="flex items-center gap-3">
-                {usesSpeakers && (
-                  <Button variant="ghost" size="sm" onClick={handlePasteScriptClick}>
-                    Paste script&hellip;
-                  </Button>
-                )}
+                {usesSpeakers &&
+                  (confirmingPasteScript ? (
+                    <ConfirmInline
+                      message="Reset study progress?"
+                      confirmLabel="Replace"
+                      onConfirm={confirmPasteScript}
+                      onCancel={() => setConfirmingPasteScript(false)}
+                    />
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={handlePasteScriptClick}>
+                      Paste script&hellip;
+                    </Button>
+                  ))}
                 <span className="text-xs text-ink-faint">
                   Ctrl/Cmd+Enter adds the next {preset.terminology.item}
                 </span>

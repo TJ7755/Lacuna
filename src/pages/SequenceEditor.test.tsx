@@ -396,28 +396,27 @@ describe('SequenceEditor', () => {
     it('warns before opening the paste modal when the sequence already has items, and cancelling keeps it closed', () => {
       mockCourse = course;
       mockSequence = editingSequence;
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
       renderEdit();
 
       fireEvent.click(screen.getByText('Paste script…'));
 
-      expect(confirmSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/reset study progress/i),
-      );
+      const warning = screen.getByText(/reset study progress/i);
+      expect(warning).toBeInTheDocument();
       expect(screen.queryByLabelText('Paste script')).not.toBeInTheDocument();
-      confirmSpy.mockRestore();
+
+      fireEvent.click(warning.parentElement!.querySelector('button:last-of-type')!);
+      expect(screen.getByText('Paste script…')).toBeInTheDocument();
     });
 
     it('opens the paste modal once the warning is confirmed', () => {
       mockCourse = course;
       mockSequence = editingSequence;
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       renderEdit();
 
       fireEvent.click(screen.getByText('Paste script…'));
+      fireEvent.click(screen.getByText('Replace'));
 
       expect(screen.getByLabelText('Paste script')).toBeInTheDocument();
-      confirmSpy.mockRestore();
     });
   });
 });

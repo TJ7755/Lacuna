@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
+import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { TrashIcon, EditIcon, PlusIcon } from '../../components/ui/icons';
 import { formatDateTime } from '../../utils/datetime';
@@ -34,6 +35,7 @@ export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) 
   const lessons = useLessons(courseId);
   const [editingId, setEditingId] = useState<string | 'new' | null>(null);
   const [draft, setDraft] = useState<DraftExamDate>(EMPTY_DRAFT());
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   function startAdd() {
     setDraft(EMPTY_DRAFT());
@@ -66,10 +68,10 @@ export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) 
     cancel();
   }
 
-  async function remove(id: string, name: string) {
-    if (!window.confirm(`Delete '${name}'? This cannot be undone.`)) return;
+  async function remove(id: string) {
     await deleteCourseExamDate(id);
     if (editingId === id) cancel();
+    setConfirmDeleteId(null);
   }
 
   function toggleLesson(lessonId: string) {
@@ -105,12 +107,27 @@ export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) 
             </div>
           </div>
           <div className="flex shrink-0 gap-1">
-            <Button variant="ghost" size="sm" onClick={() => startEdit(entry.id)} aria-label={`Edit ${entry.name}`}>
-              <EditIcon width={16} height={16} />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => void remove(entry.id, entry.name)} aria-label={`Delete ${entry.name}`}>
-              <TrashIcon width={16} height={16} />
-            </Button>
+            {confirmDeleteId === entry.id ? (
+              <ConfirmInline
+                message="Delete?"
+                onConfirm={() => void remove(entry.id)}
+                onCancel={() => setConfirmDeleteId(null)}
+              />
+            ) : (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => startEdit(entry.id)} aria-label={`Edit ${entry.name}`}>
+                  <EditIcon width={16} height={16} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmDeleteId(entry.id)}
+                  aria-label={`Delete ${entry.name}`}
+                >
+                  <TrashIcon width={16} height={16} />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       ))}

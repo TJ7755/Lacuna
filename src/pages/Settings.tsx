@@ -7,6 +7,7 @@ import { FONT_SCALE_STEPS, useFontScale } from '../state/FontScaleContext';
 import { useBackups } from '../state/useData';
 import { Button } from '../components/ui/Button';
 import { Toggle } from '../components/ui/Toggle';
+import { ConfirmInline } from '../components/ui/ConfirmInline';
 import { cn } from '../components/ui/cn';
 import { useToast } from '../components/ui/Toast';
 import {
@@ -1148,19 +1149,13 @@ export function Settings() {
                   </div>
                 </div>
                 {confirmRestore === b.id ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-ink-soft">Replace all data?</span>
-                    <Button variant="ghost" size="sm" onClick={() => setConfirmRestore(null)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => b.id !== null && b.id !== undefined && void handleRestore(b.id)}
-                    >
-                      Restore
-                    </Button>
-                  </div>
+                  <ConfirmInline
+                    message="Replace all data?"
+                    confirmLabel="Restore"
+                    variant="default"
+                    onCancel={() => setConfirmRestore(null)}
+                    onConfirm={() => b.id !== null && b.id !== undefined && void handleRestore(b.id)}
+                  />
                 ) : (
                   <div className="flex items-center gap-2">
                     <Button
