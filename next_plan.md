@@ -263,11 +263,29 @@ To be planned in full after Arc 1. Scope decided so far:
 - **This is the plugin-compatibility groundwork.** The MCP tool surface is the first
   extension point; a future plugin API should be shaped by what this surface turns out to
   need (auth/consent, tool granularity, schema versioning), not designed speculatively.
+  **Decision rule:** ship the MCP surface first; a plugin extension point is nominated only
+  by a concrete pain point agents cannot achieve through pure data manipulation. No
+  speculative extension points — each is a permanent API contract, and none ships until at
+  least one concrete use case cannot be served any other way.
+- **Candidate plugin extension points**, in predicted order of need: custom card
+  types/renderers (audio, image occlusion, code, chemistry) and import/export formats
+  first — both are "data in, but Lacuna cannot display/ingest it" problems MCP cannot
+  solve; then custom grading/answer-comparison strategies (e.g. maths-expression
+  equivalence) and hint providers. Study-session hooks (post-session triggers that can fire
+  an MCP-connected agent) are a promising composition of the two systems. **Firm
+  exclusion:** scheduler variants are not a plugin surface — FSRS is the product's spine,
+  and swapping it multiplies support surface for near-zero benefit.
 - Headline use cases: agent-generated courses from pasted source material; script-to-lines
-  sequence generation; bulk card authoring and review-queue triage.
-- Key questions for the full plan: consent/confirmation UX for destructive tools; IPC
-  bridge design and write-conflict handling with a live UI; how much of analytics to
-  expose read-only; versioning the tool schema against future plugin types.
+  sequence generation; bulk card authoring and review-queue triage. Agent-side
+  script-to-sequence generation will supersede the shipped manual script splitter (§1.5) as
+  the primary import path once this arc lands.
+- Key questions for the full plan: consent/confirmation UX for destructive tools,
+  including scoping — per-agent permissions of the form "this agent may touch course X
+  only"; IPC bridge design and write-conflict handling with a live UI; how much of
+  analytics to expose read-only; versioning the tool schema against future plugin types.
+- **Tool design requirement:** tools should be idempotent and diff-friendly, so
+  cross-source agent workflows (e.g. diff lecture notes against an existing course, add
+  only what is missing) are safe to re-run.
 
 ---
 
