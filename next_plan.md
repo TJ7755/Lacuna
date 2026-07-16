@@ -193,10 +193,16 @@ For a sequence with items `i₀ … iₙ` and `cueWindow = w`:
 > mode picker/speaker fields/"my speaker" control are implemented and tested
 > (`src/db/sequenceGeneration.ts`, `src/db/scriptSplitter.ts`,
 > `src/pages/SequenceEditor.tsx`, `src/components/sequences/ScriptPasteImport.tsx`;
-> SPEC.md §5). The study-flow UI is also shipped: the first-letter hint step
-> (`src/utils/firstLetterHint.ts`, `src/components/learn/LineHint.tsx`, wired into
-> `src/pages/LearnMode.tsx` with an `h` shortcut) and strict typed grading via the
-> global typing mode, with lines-mode detection in `src/db/linesModeCards.ts`.
+> SPEC.md §5). The study-flow UI is also shipped: a two-step hint ladder — first letters
+> (`src/utils/firstLetterHint.ts`) then first words of each clause
+> (`src/utils/firstWordsHint.ts`), both in `src/components/learn/LineHint.tsx`, wired into
+> `src/pages/LearnMode.tsx` with an `h` shortcut that advances the ladder — and strict
+> typed grading via the global typing mode, with lines-mode detection in
+> `src/db/linesModeCards.ts`. Hint usage is recorded as `ReviewLog.hintUsed` (additive,
+> optional, no schema bump) and nudges the invisible silent-mode grade by a small tunable
+> constant (`HINT_TIME_PENALTY_SEC`, `src/fsrs/grading.ts`) applied only to the value fed
+> into `gradeFromResponse` — the persisted `responseTimeSec` and per-deck calibration both
+> stay the true, unpenalised time.
 
 Same `Sequence` machinery with a different skin:
 
@@ -205,9 +211,14 @@ Same `Sequence` machinery with a different skin:
   the hinges — consistent with the actor-memory literature). **Shipped:** cue lines
   display speaker names by default (`NAME: line`), resolving the open question below.
 - **First-letter prompt mode**: a graded hint (initial letters of the answer) before full
-  reveal, as a mid-step in the reveal flow. **Shipped:** a Hint button (keyboard `h`) on
-  the card front for lines-mode cards, showing `firstLetterHint`'s reduction
-  ("To be, or not to be" -> "T b, o n t b"); ungraded and reset per card.
+  reveal, as a mid-step in the reveal flow. **Shipped, and extended into a two-step
+  ladder:** a Hint button (keyboard `h`) on the card front for lines-mode cards, first
+  showing `firstLetterHint`'s reduction ("To be, or not to be" -> "T b, o n t b"), then
+  (button relabels to "More hint") `firstWordsHint`'s coarser reduction ("To be, or not
+  to be, that is the question" -> "To…, or…, that…"); both steps ungraded, reset per
+  card, capped at two steps (full reveal is a separate, existing action). Using either
+  step sets `ReviewLog.hintUsed`, which nudges the silent-mode grade by
+  `HINT_TIME_PENALTY_SEC` (1.5s) — see SPEC.md §10.
 - **Strict grading**: reuse `src/utils/answerComparison.ts` (the "type your answer"
   comparison, `AnswerComparisonOptions.ignoreCase`/`ignorePunctuation`) for verbatim
   checking; Yes/No self-grade remains the fallback. **Shipped** via the global typing

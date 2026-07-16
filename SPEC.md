@@ -575,16 +575,26 @@ element a turn as the recall target with local context as the cue.
   filtering by `isMyLine`: switching `mySpeaker` diffs like any other content change —
   deletes the old speaker's cards, creates the new speaker's.
 - **Lines-mode study flow** (Learn mode): cards generated from a `lines`-mode sequence get
-  an optional **first-letter hint** step between question and reveal — a Hint button on the
-  card front (keyboard: `h`) that shows the answer reduced to each word's initial letter
-  (`firstLetterHint` in `src/utils/firstLetterHint.ts`, e.g. "To be, or not to be" ->
-  "T b, o n t b"; punctuation kept in place, whitespace normalised). The hint is ungraded
-  and resets per card. LearnMode resolves which pool cards are lines-mode once per session
-  via `linesModeSequencesByCard` (`src/db/linesModeCards.ts`), which batches one
+  an optional two-step **hint ladder** between question and reveal — a Hint button on the
+  card front (keyboard: `h`) that advances no hint -> first letters -> first words:
+  - Step 1, first letters: the answer reduced to each word's initial letter
+    (`firstLetterHint` in `src/utils/firstLetterHint.ts`, e.g. "To be, or not to be" ->
+    "T b, o n t b"; punctuation kept in place, whitespace normalised).
+  - Step 2, first words: the answer reduced to the first word of each clause/sentence
+    chunk (`firstWordsHint` in `src/utils/firstWordsHint.ts`, e.g. "To be, or not to be,
+    that is the question" -> "To…, or…, that…"; boundary punctuation kept in place).
+  The button label reflects the next step ("Hint" then "More hint"); both steps are
+  rendered by `LineHintButton`/`LineHintDisplay` (`src/components/learn/LineHint.tsx`).
+  The ladder is ungraded and resets per card; full reveal remains the existing, separate
+  flip action. LearnMode resolves which pool cards are lines-mode once per session via
+  `linesModeSequencesByCard` (`src/db/linesModeCards.ts`), which batches one
   `listSequences` per distinct courseId among the pool's generated cards. Strict grading
   reuses the global typed-answer mode: with the typing setting on 'type', a lines-mode card
   is typed against verbatim and diffed word-by-word via `compareAnswer`
   (`src/utils/answerComparison.ts`) — feedback only; Yes/No self-grading remains the grade.
+  Using any hint step is recorded as `ReviewLog.hintUsed` and nudges the invisible
+  silent-mode grade (see "The invisible timer & grading" below); manual grading is
+  unaffected.
 - **Script paste import** (`src/db/scriptSplitter.ts`, `splitScript`): a pure parser for the
   lines-mode editor's paste + auto-split flow. A line matching `NAME: dialogue` starts a new
   item for that speaker; a following non-matching line is folded in as a wrapped continuation
@@ -1038,6 +1048,21 @@ Two modes, chosen per session via the DeckView study dropdown (default **FSRS**)
   Note: calibrating on **correct reviews only** is a biased sample on high-failure
   decks; the prediction-accuracy metric (§14) exists partly to surface when that
   bias is hurting scheduling.
+- **Hint time penalty** (`HINT_TIME_PENALTY_SEC`, 1.5s): when the current card used a
+  lines-mode hint (see the hint ladder above), the silent-mode grade is computed from
+  `responseTimeSec + HINT_TIME_PENALTY_SEC` instead of the raw time — a hint-assisted
+  answer should grade slightly worse than the same speed unaided. This is a Lacuna-layer
+  adjustment, not an FSRS one: ts-fsrs's weights model grades and resulting intervals and
+  never see response time at all, so there is nowhere inside FSRS for a "used a hint"
+  signal to live; it is applied only in `src/pages/LearnMode.tsx`'s `answer()` callback,
+  purely to the value passed into `gradeFromResponse`. The **true, unpenalised**
+  `responseTimeSec` is still what is written to `ReviewLog` and folded into
+  `updatePerformance`'s Welford calibration — the penalty never distorts the deck's speed
+  baseline. `ReviewLog.hintUsed` (optional, additive field; no Dexie schema bump needed —
+  `history` is an embedded array, not an indexed column) is logged alongside the true
+  time specifically so the constant can later be replaced with a value fitted from real
+  review history rather than a guess. Manual grading mode is unaffected — the penalty only
+  ever feeds `gradeFromResponse`, which manual mode bypasses entirely.
 
 ### Per-card actions & state
 - **Edit**: opens an in-session overlay (`CardEditOverlay`) that pauses/rebases the
