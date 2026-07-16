@@ -39,5 +39,11 @@
 
 ---
 
+## Agent mailbox
+
+Use `.agent-mail/` for coordination between task agents and the orchestrator. Follow the naming and lifecycle protocol in `.agent-mail/README.md`; runtime mailbox files are temporary and must not be committed.
+
+---
+
 ## Project Context
 Lacuna is a prototype alpha project. Suggest sweeping changes that affect the codebase optimised for long-term stability and performance as well as features.
