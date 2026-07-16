@@ -41,7 +41,9 @@
 
 ## Agent mailbox
 
-Use `.agent-mail/` for coordination between task agents and the orchestrator. Follow the naming and lifecycle protocol in `.agent-mail/README.md`; runtime mailbox files are temporary and must not be committed.
+Every task agent must adopt the `.agent-mail/` protocol without prompting. Derive a stable kebab-case slug from the task, write `<slug>-status.md` heartbeats, and finish with `<slug>-done.md` containing a summary and commit hash. When genuinely blocked, write `<slug>-question.md`, stop work, and poll for `<slug>-answer.md` rather than guessing or giving up early.
+
+The orchestrator polls the mailbox roughly every 20 seconds, so questions will be seen and answered quickly. It deletes consumed files; a status or completion file vanishing is normal. Runtime mailbox files are temporary, ignored by Git, and must not be committed. See `.agent-mail/README.md` for the full protocol.
 
 ---
 
