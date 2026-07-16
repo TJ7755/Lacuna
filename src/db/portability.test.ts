@@ -13,6 +13,7 @@ import {
   createSequence,
   createNoteAnnotation,
   markLessonComplete,
+  recordReview,
   savePracticeMilestoneProgress,
   upsertLessonCardExposure,
 } from './repository';
@@ -55,6 +56,30 @@ describe('exportDatabase', () => {
     expect(backup.decks[0].name).toBe('Biology');
     expect(backup.cards).toHaveLength(1);
     expect(backup.cards[0].front).toBe('Q1');
+  });
+
+  it('round-trips ReviewLog.hintUsed through export and import', async () => {
+    const deck = await createDeck('Biology');
+    const card = await createCard(deck.id, 'front_back', 'Q1', 'A1');
+    await recordReview({
+      card,
+      deck,
+      grade: 3,
+      responseTimeSec: 4,
+      distracted: false,
+      hintUsed: true,
+      correct: true,
+    });
+
+    const backup = await exportDatabase();
+    expect(backup.cards[0].history[0].hintUsed).toBe(true);
+
+    await db.cards.clear();
+    await db.decks.clear();
+    await importBackup(backup, 'replace');
+
+    const restored = await db.cards.toArray();
+    expect(restored[0].history[0].hintUsed).toBe(true);
   });
 });
 

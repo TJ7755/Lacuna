@@ -14,6 +14,22 @@ const SLOW_SECONDS = 8.0;
 const SIGMA_FACTOR = 0.75;
 
 /**
+ * Fixed time penalty (seconds) added to the response time used for silent-mode grading
+ * only, when the learner used a hint before answering (lines-mode cards; see
+ * src/components/learn/LineHint.tsx). ts-fsrs's own weights model grades and the
+ * resulting intervals — they never see response time — so there is nowhere inside FSRS
+ * for a "used a hint" adjustment to live; it belongs entirely in Lacuna's own invisible
+ * grading layer, as a named, tunable constant rather than a magic number at the call
+ * site. Callers apply this to the responseTimeSec passed into gradeFromResponse only;
+ * the true, unpenalised responseTimeSec is still what's persisted on the ReviewLog and
+ * folded into updatePerformance's calibration (see recordReview in db/repository.ts and
+ * the answer() callback in pages/LearnMode.tsx). Both hintUsed and the true response
+ * time are logged specifically so this constant can later be replaced with a value
+ * fitted from real review history, rather than left as a guess.
+ */
+export const HINT_TIME_PENALTY_SEC = 1.5;
+
+/**
  * Map a "Yes/No" answer and response time to an FSRS grade.
  *  - "No" always maps to g = 1 (Again).
  *  - "Yes" maps to Easy/Good/Hard by speed, using fixed thresholds during calibration

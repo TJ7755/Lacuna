@@ -3,7 +3,7 @@
 
 import type { CardFilter } from './search';
 
-export type CardType = 'front_back' | 'cloze' | 'typing' | 'basic_reversed';
+export type CardType = 'front_back' | 'cloze' | 'basic_reversed';
 
 /** FSRS grade: 1 = Again, 2 = Hard, 3 = Good, 4 = Easy. Matches ts-fsrs `Grade`. */
 export type Grade = 1 | 2 | 3 | 4;
@@ -57,6 +57,14 @@ export interface ReviewLog {
   responseTimeSec: number;
   /** Whether the user lost focus while the answer was pending (report only; no grade effect). */
   distracted: boolean;
+  /**
+   * Whether a lines-mode hint (see src/components/learn/LineHint.tsx) was used before
+   * this review. Optional and additive so existing history entries and backups remain
+   * valid without a migration. Drives the silent-mode grading penalty (see
+   * HINT_TIME_PENALTY_SEC in src/fsrs/grading.ts) and is logged alongside the true,
+   * unpenalised `responseTimeSec` so the penalty can later be fitted from real data.
+   */
+  hintUsed?: boolean;
   stabilityBefore: number | null;
   stabilityAfter: number;
   difficultyBefore: number | null;
@@ -270,10 +278,17 @@ export interface CourseExamDate {
 }
 
 /**
+ * Named preset identifiers offered by the sequence editor (`src/db/sequencePresets.ts`).
+ * Kept here, rather than on the presets module, so `Sequence.presetId` doesn't create a
+ * types <-> sequencePresets import cycle.
+ */
+export type SequencePresetId = 'list' | 'poetry' | 'script' | 'speech' | 'procedure' | 'timeline';
+
+/**
  * An overlapping-cloze sequence: an ordered list of small recallable units
- * (e.g. a numbered list, a chain of steps) from which generation logic
- * derives ordinary FSRS cards, each cueing on the preceding `cueWindow`
- * items. Sequences themselves are not studied directly.
+ * (e.g. a numbered list, a chain of steps, or a scripted scene) from which
+ * generation logic derives ordinary FSRS cards, each cueing on the preceding
+ * `cueWindow` items. Sequences themselves are not studied directly.
  */
 export interface Sequence {
   id: string;
@@ -282,6 +297,13 @@ export interface Sequence {
   primaryLessonId: string | null;
   name: string;
   description?: string;
+  /**
+   * `list` (default, undefined reads as `list`): every item generates a
+   * positional recall card. `lines`: items are speaker-tagged script lines;
+   * only `mySpeaker`'s lines generate recall cards, and other speakers'
+   * lines serve purely as cue context (see `mySpeaker`).
+   */
+  mode?: 'list' | 'lines';
   /** Ordered; stored inline as sequences are small. */
   items: SequenceItem[];
   /** Preceding items shown as cue. Default 2. */
@@ -290,6 +312,21 @@ export interface Sequence {
   chunkLabels?: string[];
   /** Toggle for label -> value cards. Default off. */
   generateLabelCards?: boolean;
+  /**
+   * `lines` mode only: the speaker whose lines are the recall target. Matched
+   * against `SequenceItem.speaker`. A sequence-level flag rather than a
+   * per-item one, since one speaker is "mine" for the whole scene — consistent
+   * with `cueWindow`/`chunkLabels` already being sequence-level settings.
+   */
+  mySpeaker?: string;
+  /**
+   * Which named preset (`src/db/sequencePresets.ts`) the author picked at creation —
+   * data-only, purely for redisplaying the right terminology/picker state when editing;
+   * `mode`/`cueWindow`/`mySpeaker` above remain the fields generation actually reads.
+   * Undefined for sequences created before presets existed, or if a future preset is
+   * removed; falls back to inferring from `mode` (see `presetForSequence`).
+   */
+  presetId?: SequencePresetId;
   createdAt: number;
 }
 
@@ -303,6 +340,8 @@ export interface SequenceItem {
   label?: string;
   /** Membership of a named chunk. */
   chunkIndex?: number;
+  /** `lines` mode only: who speaks this line (e.g. a character name). */
+  speaker?: string;
 }
 
 /** A learning unit on the course path: notes plus the cards taught in it. */

@@ -51,12 +51,14 @@ import type {
   Note,
   Sequence,
   SequenceItem,
+  SequencePresetId,
   UnlockMode,
 } from './types';
 import { stripAssetImages } from './assets';
 import { bytesToBase45, base45ToBytes } from './base45';
 import { buildCourseMigration } from './courseMigration';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
+import { getPreset, presetForSequence } from './sequencePresets';
 
 const PREFIX_BASE45_COMPRESSED = 'LAC2';
 const PREFIX_BASE45_PLAIN = 'LAC3';
@@ -139,6 +141,7 @@ const ShareSequenceItemSchema = z.object({
   v: z.string(), // value
   l: z.string().optional(), // label
   ci: z.number().optional(), // chunkIndex
+  sp: z.string().optional(), // speaker (lines mode)
 });
 
 /** A whole Sequence (items inline) in a v2 share payload. */
@@ -151,6 +154,12 @@ const ShareSequenceSchema = z.object({
   cl: z.array(z.string()).optional(), // chunkLabels
   lc: z.union([z.literal(0), z.literal(1)]).optional(), // generateLabelCards
   pl: z.number().optional(), // index into the payload's lessons array (primaryLessonId)
+  m: z.literal('lines').optional(), // mode ('list' is the default, so omitted)
+  ms: z.string().optional(), // mySpeaker (lines mode)
+  // presetId (sequencePresets.ts), only present when it can't be re-inferred from m/ms
+  // alone (see presetForSequence) — e.g. distinguishing poetry from speech, or
+  // procedure/timeline from a plain list.
+  pr: z.string().optional(),
 });
 
 const SharePayloadV1Schema = z.object({
@@ -177,7 +186,9 @@ const SharePayloadSchema = z.discriminatedUnion('v', [SharePayloadV1Schema, Shar
 interface ShareCard {
   /**
    * 0 = front/back, 1 = cloze, 2 = reversible front/back pair (expands to two
-   * cards), 3 = typing (answer stored in `b`, never folded into a reversible pair).
+   * cards). 3 = typing — retired as a card type (see src/state/typingSetting.ts);
+   * still decoded on import for backward compatibility with older share codes,
+   * where it unpacks to a plain front_back card.
    */
   k: 0 | 1 | 2 | 3;
   /** Front (Markdown). For cloze this holds the whole `{{cN::…}}` source. */
@@ -251,6 +262,7 @@ interface ShareSequenceItem {
   v: string; // value
   l?: string; // label
   ci?: number; // chunkIndex
+  sp?: string; // speaker (lines mode)
 }
 
 /** A whole Sequence (items inline) in a v2 share payload. */
@@ -263,6 +275,9 @@ interface ShareSequence {
   cl?: string[]; // chunkLabels
   lc?: 0 | 1; // generateLabelCards
   pl?: number; // index into the payload's lessons array (primaryLessonId)
+  m?: 'lines'; // mode ('list' is the default, so omitted)
+  ms?: string; // mySpeaker (lines mode)
+  pr?: string; // presetId, only when it diverges from what m/ms alone would infer
 }
 
 /** The decoded contents of a v1 (flat deck list) share code. */
@@ -652,14 +667,6 @@ function packCards(cards: Card[]): ShareCard[] {
       continue;
     }
 
-    if (c.type === 'typing') {
-      // Typing cards never fold into a reversible pair — the front/back roles are
-      // not interchangeable (the answer is always typed against the front prompt).
-      out.push({ k: 3, f: front.markdown, b: back.markdown, ...tags, ...imageFlag, ...seqRef });
-      consumed.add(c.id);
-      continue;
-    }
-
     if (c.sequenceItemId) {
       // Cards generated from a sequence item never fold into a reversible pair either —
       // the `si` reference must stay on exactly one, unambiguous card so it can be
@@ -727,7 +734,8 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
       { type: 'front_back', front: back, back: sc.f, ...tags },
     ];
   }
-  if (sc.k === 3) return [{ type: 'typing', front: sc.f, back: sc.b ?? '', ...tags }];
+  // k === 3 (typing) and k === 0 (front/back) both unpack to a plain front_back
+  // card — typing is a retired card type, folded here for older share codes.
   return [{ type: 'front_back', front: sc.f, back: sc.b ?? '', ...tags }];
 }
 
@@ -830,11 +838,19 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
         v: item.value,
         ...(item.label ? { l: item.label } : {}),
         ...(item.chunkIndex !== undefined ? { ci: item.chunkIndex } : {}),
+        ...(item.speaker ? { sp: item.speaker } : {}),
       })),
       cw: s.cueWindow,
       ...(s.chunkLabels && s.chunkLabels.length ? { cl: s.chunkLabels } : {}),
       ...(s.generateLabelCards ? { lc: 1 as const } : {}),
       ...(pl !== undefined ? { pl } : {}),
+      ...(s.mode === 'lines' ? { m: 'lines' as const } : {}),
+      ...(s.mySpeaker ? { ms: s.mySpeaker } : {}),
+      // Only spend payload space on the preset id when the receiving end couldn't
+      // re-derive it from m/ms alone (see presetForSequence) — e.g. poetry vs. speech.
+      ...(s.presetId && s.presetId !== presetForSequence({ mode: s.mode, mySpeaker: s.mySpeaker }).id
+        ? { pr: s.presetId }
+        : {}),
     };
   });
 
@@ -1078,6 +1094,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           value: item.v,
           ...(item.l ? { label: item.l } : {}),
           ...(item.ci !== undefined ? { chunkIndex: item.ci } : {}),
+          ...(item.sp ? { speaker: item.sp } : {}),
         }));
         const primaryLessonId =
           typeof shareSeq.pl === 'number' ? (lessonIds[shareSeq.pl] ?? null) : null;
@@ -1091,6 +1108,14 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           cueWindow: shareSeq.cw,
           ...(shareSeq.cl && shareSeq.cl.length ? { chunkLabels: shareSeq.cl } : {}),
           ...(shareSeq.lc === 1 ? { generateLabelCards: true } : {}),
+          ...(shareSeq.m === 'lines' ? { mode: 'lines' as const } : {}),
+          ...(shareSeq.ms ? { mySpeaker: shareSeq.ms } : {}),
+          // `pr` only travels when it diverges from the m/ms inference (see the export
+          // side above); resolve it through getPreset so an unrecognised id degrades to
+          // 'list' rather than sticking around as an invalid presetId.
+          ...(shareSeq.pr
+            ? { presetId: getPreset(shareSeq.pr as SequencePresetId).id }
+            : {}),
           createdAt: importedAt + index,
         };
       });

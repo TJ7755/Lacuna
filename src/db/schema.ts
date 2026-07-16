@@ -365,10 +365,46 @@ class LacunaDatabase extends Dexie {
           await tx.table('lessonCardExposures').bulkPut(exposures);
         }
       });
+
+    // Version 13: retire the 'typing' card type. Typed answering is now a global
+    // Learn-mode presentation mode (src/state/typingSetting.ts) that applies to any
+    // eligible card, rather than a dedicated card type. Existing 'typing' cards fold
+    // into 'front_back' — no other field changes, so no data is lost.
+    this.version(13)
+      .stores({
+        decks: 'id, createdAt, examDate, folderId',
+        cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
+        sessionHistory: '++id, deckId, courseId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        folders: 'id, parentId, createdAt',
+        courses: 'id, createdAt, examDate',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+        lessonCompletions: 'lessonId, completedAt',
+        noteAnnotations: 'id, noteId, createdAt, updatedAt',
+        practiceNodes: 'id, courseId, position, createdAt',
+        practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+        courseExamDates: 'id, courseId, examDate, createdAt',
+        sequences: 'id, courseId, primaryLessonId, createdAt',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('cards')
+          .where('type')
+          .equals('typing')
+          .modify((card) => {
+            card.type = 'front_back';
+          });
+      });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 12;
+const CURRENT_SCHEMA_VERSION = 13;
 
 export const db = new LacunaDatabase();
 

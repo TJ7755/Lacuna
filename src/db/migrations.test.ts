@@ -110,6 +110,40 @@ describe('migrateCardRecord', () => {
     expect(migrated.lapses).toBe(0);
     expect(migrated.due).toBe(null);
   });
+
+  it('folds a legacy typing card into front_back', () => {
+    const migrated = migrateCardRecord({
+      id: 'c3',
+      deckId: 'd1',
+      type: 'typing',
+      front: 'Capital of Japan?',
+      back: 'Tokyo',
+      stability: null,
+      difficulty: null,
+      lastReviewed: null,
+      history: [],
+      createdAt: 0,
+    });
+    expect(migrated.type).toBe('front_back');
+    expect(migrated.front).toBe('Capital of Japan?');
+    expect(migrated.back).toBe('Tokyo');
+  });
+
+  it('leaves non-typing types untouched', () => {
+    const migrated = migrateCardRecord({
+      id: 'c4',
+      deckId: 'd1',
+      type: 'basic_reversed',
+      front: 'q',
+      back: 'a',
+      stability: null,
+      difficulty: null,
+      lastReviewed: null,
+      history: [],
+      createdAt: 0,
+    });
+    expect(migrated.type).toBe('basic_reversed');
+  });
 });
 
 describe('buildLessonCardExposureBackfill', () => {
@@ -343,5 +377,67 @@ describe('pre-migration snapshot ordering', () => {
     expect(snapshot).toBeUndefined();
 
     v4.close();
+  });
+});
+
+describe('Dexie upgrade to v13: retire the typing card type', () => {
+  it('folds an existing typing card into front_back on open', async () => {
+    const { db } = await import('./schema');
+    await db.delete();
+
+    const legacy = new Dexie('lacuna');
+    legacy.version(12).stores({
+      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
+    });
+    await legacy.open();
+    await legacy.table('cards').add({
+      id: 'typing-card',
+      deckId: 'd1',
+      type: 'typing',
+      front: 'Capital of Japan?',
+      back: 'Tokyo',
+      stability: null,
+      difficulty: null,
+      lastReviewed: null,
+      reps: 0,
+      lapses: 0,
+      state: 0,
+      due: null,
+      scheduledDays: 0,
+      learningSteps: 0,
+      history: [],
+      createdAt: 0,
+    });
+    await legacy.table('cards').add({
+      id: 'front-back-card',
+      deckId: 'd1',
+      type: 'front_back',
+      front: 'q',
+      back: 'a',
+      stability: null,
+      difficulty: null,
+      lastReviewed: null,
+      reps: 0,
+      lapses: 0,
+      state: 0,
+      due: null,
+      scheduledDays: 0,
+      learningSteps: 0,
+      history: [],
+      createdAt: 0,
+    });
+    legacy.close();
+
+    await db.open();
+
+    const typingCard = await db.cards.get('typing-card');
+    expect(typingCard?.type).toBe('front_back');
+    expect(typingCard?.front).toBe('Capital of Japan?');
+    expect(typingCard?.back).toBe('Tokyo');
+
+    const untouched = await db.cards.get('front-back-card');
+    expect(untouched?.type).toBe('front_back');
+
+    await db.delete();
   });
 });

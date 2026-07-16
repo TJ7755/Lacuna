@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { UserPerformance } from '../db/types';
-import { emptyPerformance, gradeFromResponse, updatePerformance } from './grading';
+import {
+  emptyPerformance,
+  gradeFromResponse,
+  HINT_TIME_PENALTY_SEC,
+  updatePerformance,
+} from './grading';
 
 function performance(
   totalCorrectReviews: number,
@@ -46,6 +51,33 @@ describe('gradeFromResponse', () => {
     ] as const)('grades a response at %s seconds as %i', (responseTimeSec, expected) => {
       expect(gradeFromResponse(true, responseTimeSec, calibratedPerformance)).toBe(expected);
     });
+  });
+});
+
+describe('HINT_TIME_PENALTY_SEC', () => {
+  it('is a small, fixed, tunable penalty in seconds', () => {
+    expect(HINT_TIME_PENALTY_SEC).toBe(1.5);
+  });
+
+  // gradeFromResponse itself has no notion of hints — it always grades exactly the
+  // responseTimeSec it is given. The penalty is applied by the caller (see the answer()
+  // callback in src/pages/LearnMode.tsx) only to the value passed into this function for
+  // silent-mode grading; ReviewLog.responseTimeSec and updatePerformance's calibration
+  // input both stay the true, unpenalised time. These tests exercise that call pattern.
+  it('nudges a borderline response past a grade boundary when a hint was used', () => {
+    const perf = performance(20, 10, 4); // mu=10, sigma=4 -> Easy below 7, Hard above 13.
+    const trueResponseTime = 6.6; // Comfortably Easy on its own.
+
+    expect(gradeFromResponse(true, trueResponseTime, perf)).toBe(4);
+    expect(gradeFromResponse(true, trueResponseTime + HINT_TIME_PENALTY_SEC, perf)).toBe(3);
+  });
+
+  it('leaves a fast response unaffected if the penalty does not cross a boundary', () => {
+    const perf = performance(20, 10, 4);
+    const trueResponseTime = 2;
+
+    expect(gradeFromResponse(true, trueResponseTime, perf)).toBe(4);
+    expect(gradeFromResponse(true, trueResponseTime + HINT_TIME_PENALTY_SEC, perf)).toBe(4);
   });
 });
 

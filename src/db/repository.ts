@@ -669,6 +669,8 @@ export interface RecordReviewArgs {
   grade: Grade;
   responseTimeSec: number;
   distracted: boolean;
+  /** Whether a lines-mode hint was used before this review (see ReviewLog.hintUsed). */
+  hintUsed?: boolean;
   /** Whether the answer was correct (grade > 1); drives per-deck calibration stats. */
   correct: boolean;
   now?: number;
@@ -699,7 +701,7 @@ export interface RecordReviewResult {
  */
 export async function recordReview(args: RecordReviewArgs): Promise<RecordReviewResult> {
   try {
-    const { card, deck, grade, responseTimeSec, distracted, correct } = args;
+    const { card, deck, grade, responseTimeSec, distracted, hintUsed, correct } = args;
     const kind: ReviewUnitKind = args.kind ?? 'deck';
     const now = args.now ?? Date.now();
 
@@ -712,6 +714,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
       grade,
       responseTimeSec,
       distracted,
+      hintUsed: hintUsed ?? false,
       stabilityBefore: card.stability,
       stabilityAfter: memory.stability,
       difficultyBefore: card.difficulty,

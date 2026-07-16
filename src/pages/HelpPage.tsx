@@ -256,8 +256,9 @@ export function HelpPage() {
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">The course path</h3>
                 <p className="text-sm text-ink-soft">
-                  The path is an ordered sequence of lessons. Completing a lesson unlocks the
-                  next one. Alongside lessons, the path can show:
+                  The path is an ordered sequence of lessons. Course settings determine whether
+                  every lesson is open, each lesson unlocks after the previous one is completed,
+                  or lessons unlock on scheduled dates. Alongside lessons, the path can show:
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
                   <li>
@@ -295,7 +296,9 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Course settings</h3>
                 <p className="text-sm text-ink-soft">
                   Course Settings holds the exam date(s), study objective, scheduling
-                  optimisation, import/export and course deletion. Open it from the path page.
+                  limits, lesson behaviour, practice configuration, optimisation and course
+                  deletion. Open it from the path page. Import and export live in global
+                  Settings.
                 </p>
               </div>
             </div>
@@ -311,7 +314,7 @@ export function HelpPage() {
             <p className="text-base text-ink-soft">
               Lacuna offers several ways to study your cards. Each mode is designed for a
               different purpose. You can start a session from a lesson, from the course path,
-              or from the global &lsquo;Today&rsquo; review across every course.
+              or by choosing a course from Study today.
             </p>
             <div className="grid gap-3">
               <ModeCard
@@ -324,16 +327,9 @@ export function HelpPage() {
               <ModeCard
                 title="Simple learn"
                 description="A stripped-back mode with no algorithm. You simply mark each card as correct or incorrect, and it loops until you have answered every card correctly."
-                whatItDoes="Shows every card in the course. If you answer correctly, the card is marked as mastered. If you answer incorrectly, the card is sent to the back of the queue and reappears later. The session ends only when every card has been marked correct."
+                whatItDoes="Shows every card in the selected lesson or session. If you answer correctly, the card is marked as mastered. If you answer incorrectly, the card is sent to the back of the queue and reappears later. The session ends only when every card has been marked correct."
                 whenToUse="Use this when you want to learn a set of cards for the first time, or when you want to drill through every card without any algorithmic scheduling."
                 tip="The progress bar at the top shows how many cards are wrong, remaining, and mastered. Try to turn them all correct before you finish."
-              />
-              <ModeCard
-                title="Cram mode"
-                description="Exam-eve emergency mode. Reorders cards so the weakest ones appear first, bypassing normal scheduling limits."
-                whatItDoes="Serves every card in the course, ignoring the daily new-card cap. Cards are ordered by their predicted exam-day retrievability, weakest first. Already-secured cards are pushed to the back."
-                whenToUse="Use this only in the final 48 hours before an exam. It trades long-term retention for short-term coverage."
-                tip="Cram mode appears automatically in the study dropdown when your exam is within 48 hours. It is not recommended for regular studying."
               />
             </div>
           </div>

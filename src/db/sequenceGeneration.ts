@@ -27,6 +27,20 @@
 // change to the Card shape. `back` is always the item's own value.
 //
 // -----------------------------------------------------------------------------
+// Lines mode
+// -----------------------------------------------------------------------------
+// Same machinery, different skin: `sequence.mode === 'lines'` marks items as lines
+// rather than a plain ordered list. Items are speaker-tagged (a scripted scene) or not
+// (a poem, a solo speech — see `src/db/sequencePresets.ts`). Only the item whose
+// `speaker` matches `sequence.mySpeaker` generates a card when it *has* a speaker;
+// speakerless items are always mine, since there's no other speaker to disambiguate
+// them from. Non-mine speaker-tagged lines never get their own card but still count
+// towards the cue window, so a scene reads like a script: cue paragraphs render as
+// `NAME: line` (see `cueText`) when the item has a speaker, or bare values otherwise.
+// The first-item prompt reads "First line?" instead of "First item?".
+// Everything else — chunking, label cards, regeneration/diffing — is unchanged.
+//
+// -----------------------------------------------------------------------------
 // Card identity
 // -----------------------------------------------------------------------------
 // Positional cards use `Card.sequenceItemId = item.id` directly.
@@ -103,15 +117,38 @@ function headerFor(sequence: Sequence, item: SequenceItem): string {
   return label ? `**${sequence.name} — ${label}**` : `**${sequence.name}**`;
 }
 
+/** Whether an item is "mine" and therefore generates a recall card. In `list` mode
+ *  (the default) every item is mine; in `lines` mode a speakerless item (no `speaker`
+ *  set at all — poetry/verse, a solo speech, or an unattributed line) is always mine,
+ *  since there is no other speaker to disambiguate it from. Only a speaker-tagged item
+ *  is filtered against `sequence.mySpeaker` — other speakers' lines are cue-only context. */
+function isMyLine(sequence: Sequence, item: SequenceItem): boolean {
+  if (sequence.mode !== 'lines') return true;
+  if (item.speaker === undefined) return true;
+  return item.speaker === sequence.mySpeaker;
+}
+
+const firstItemPrompt = (sequence: Sequence) => (sequence.mode === 'lines' ? 'First line?' : 'First item?');
+
+/** Render one cue item's text. In `lines` mode a speaker-tagged item reads like a
+ *  script line ("NAME: line"), matching how cue lines display by default. */
+function cueText(sequence: Sequence, item: SequenceItem): string {
+  if (sequence.mode === 'lines' && item.speaker) {
+    return `${item.speaker}: ${item.value}`;
+  }
+  return item.value;
+}
+
 /** Build the front for one positional card at `position` (0-indexed) in `sequence.items`. */
 function positionalFront(sequence: Sequence, items: SequenceItem[], position: number): string {
   const header = headerFor(sequence, items[position]);
+  const prompt = firstItemPrompt(sequence);
   if (position === 0) {
-    return `${header}\n\nFirst item?`;
+    return `${header}\n\n${prompt}`;
   }
   const windowSize = Math.min(sequence.cueWindow, position);
-  const cueItems = items.slice(position - windowSize, position).map((i) => i.value);
-  const body = cueItems.length > 0 ? cueItems.join('\n\n') : 'First item?';
+  const cueItems = items.slice(position - windowSize, position).map((i) => cueText(sequence, i));
+  const body = cueItems.length > 0 ? cueItems.join('\n\n') : prompt;
   return `${header}\n\n${body}`;
 }
 
@@ -138,6 +175,8 @@ export function generateCards(sequence: Sequence): GeneratedCardPayload[] {
   const payloads: GeneratedCardPayload[] = [];
 
   items.forEach((item, position) => {
+    if (!isMyLine(sequence, item)) return;
+
     payloads.push({
       type: GENERATED_CARD_TYPE,
       front: positionalFront(sequence, items, position),

@@ -93,7 +93,8 @@ paid-down deferrals, and accurate documentation.
 > documented (§5, §12–13 of `SPEC.md`; see `CHANGES.md`). **Schema correction:** §1.2 below
 > still says v10 as originally planned, but v10 was taken in the meantime by
 > `Course.lessonViewMode` (an unrelated change landed first), so sequences shipped at
-> schema **v11** instead. §1.5's **v2 lines-mode slice remains open** — not started.
+> schema **v11** instead. §1.5's **v2 lines-mode slice is now implemented** (data layer,
+> editor, and study flow) pending a human end-to-end pass.
 
 ## 1.1 Motivation and approach
 
@@ -184,21 +185,67 @@ For a sequence with items `i₀ … iₙ` and `cueWindow = w`:
 
 ## 1.5 v2 (same arc, second slice): lines mode
 
-Scoped now, built after lists ship. Same `Sequence` machinery with a different skin:
+> **Status (July 2026): fully delivered — data layer, editor, and study flow.**
+> Only a human end-to-end pass on a real script scene remains.
+> `Sequence.mode`/`mySpeaker` and `SequenceItem.speaker` (additive, no schema bump —
+> Dexie doesn't need one for un-indexed optional fields), the `isMyLine`-filtered
+> generation/regeneration logic, the script-paste splitter, and the sequence editor's
+> mode picker/speaker fields/"my speaker" control are implemented and tested
+> (`src/db/sequenceGeneration.ts`, `src/db/scriptSplitter.ts`,
+> `src/pages/SequenceEditor.tsx`, `src/components/sequences/ScriptPasteImport.tsx`;
+> SPEC.md §5). The study-flow UI is also shipped: a two-step hint ladder — first letters
+> (`src/utils/firstLetterHint.ts`) then first words of each clause
+> (`src/utils/firstWordsHint.ts`), both in `src/components/learn/LineHint.tsx`, wired into
+> `src/pages/LearnMode.tsx` with an `h` shortcut that advances the ladder — and strict
+> typed grading via the global typing mode, with lines-mode detection in
+> `src/db/linesModeCards.ts`. Hint usage is recorded as `ReviewLog.hintUsed` (additive,
+> optional, no schema bump) and nudges the invisible silent-mode grade by a small tunable
+> constant (`HINT_TIME_PENALTY_SEC`, `src/fsrs/grading.ts`) applied only to the value fed
+> into `gradeFromResponse` — the persisted `responseTimeSec` and per-deck calibration both
+> stay the true, unpenalised time.
+>
+> **Presets, shipped as a follow-up data layer** (`src/db/sequencePresets.ts`): six named
+> presets (Ordered list, Poetry / verse, Script / dialogue, Speech / presentation,
+> Procedure / checklist, Timeline) sit over the same two modes — no new generation path.
+> This required making lines mode's speaker filtering optional: `isMyLine` now treats a
+> speakerless item as always "mine", so poetry/speech reuse lines mode with zero speaker
+> configuration; only script-preset items are filtered by `mySpeaker`. Poetry and speech
+> are mechanically identical (same mode/cueWindow/no speakers) and ship as two rows only
+> because the preset table makes that free — differentiated by name/description alone.
+> `Sequence.presetId` (additive optional) persists the choice for redisplay when editing;
+> `presetForSequence` infers a preset for pre-existing sequences from `mode`/`mySpeaker`.
+> The sequence editor's mode picker became a preset picker; share codes carry `presetId`
+> as an additive `pr` field, only when it can't be re-inferred from `m`/`ms`.
+
+Same `Sequence` machinery with a different skin:
 
 - Items are lines; a `speaker` field per item; "my lines" marked so only those generate
   recall cards, with other speakers' lines serving purely as cue context (cue lines are
-  the hinges — consistent with the actor-memory literature).
+  the hinges — consistent with the actor-memory literature). **Shipped:** cue lines
+  display speaker names by default (`NAME: line`), resolving the open question below.
 - **First-letter prompt mode**: a graded hint (initial letters of the answer) before full
-  reveal, as a mid-step in the reveal flow.
-- **Strict grading**: reuse the typing-answer comparison for verbatim checking; Yes/No
-  self-grade remains the fallback.
+  reveal, as a mid-step in the reveal flow. **Shipped, and extended into a two-step
+  ladder:** a Hint button (keyboard `h`) on the card front for lines-mode cards, first
+  showing `firstLetterHint`'s reduction ("To be, or not to be" -> "T b, o n t b"), then
+  (button relabels to "More hint") `firstWordsHint`'s coarser reduction ("To be, or not
+  to be, that is the question" -> "To…, or…, that…"); both steps ungraded, reset per
+  card, capped at two steps (full reveal is a separate, existing action). Using either
+  step sets `ReviewLog.hintUsed`, which nudges the silent-mode grade by
+  `HINT_TIME_PENALTY_SEC` (1.5s) — see SPEC.md §10.
+- **Strict grading**: reuse `src/utils/answerComparison.ts` (the "type your answer"
+  comparison, `AnswerComparisonOptions.ignoreCase`/`ignorePunctuation`) for verbatim
+  checking; Yes/No self-grade remains the fallback. **Shipped** via the global typing
+  mode: lines-mode cards are plain `front_back` cards, so with the setting on 'type' the
+  typed answer is diffed word-by-word against the line on reveal, feedback only.
 - Script import assist (paste a script, split into speaker-tagged items) is a natural
-  Arc 2 agent task; a basic manual splitter ships here.
+  Arc 2 agent task; a basic manual splitter ships here. **Shipped:** `splitScript`
+  (`src/db/scriptSplitter.ts`) plus the `ScriptPasteImport` preview/correction modal.
 
-Open design questions to resolve before the v2 slice: hint granularity (first letters vs
-first words), how punctuation/case affect strict grading, and whether cue lines display
-speaker names by default.
+Open design questions, all now resolved: cue lines display speaker names by default;
+hint granularity is first letters (punctuation preserved in place); strict grading is a
+per-user **grading strictness** setting (`src/state/answerStrictness.ts`, lenient/
+standard/exact, default lenient) next to the typing toggle in Settings, mapped to
+`AnswerComparisonOptions` with no changes to the comparison algorithm itself.
 
 ## 1.6 Risks
 
@@ -240,11 +287,29 @@ To be planned in full after Arc 1. Scope decided so far:
 - **This is the plugin-compatibility groundwork.** The MCP tool surface is the first
   extension point; a future plugin API should be shaped by what this surface turns out to
   need (auth/consent, tool granularity, schema versioning), not designed speculatively.
+  **Decision rule:** ship the MCP surface first; a plugin extension point is nominated only
+  by a concrete pain point agents cannot achieve through pure data manipulation. No
+  speculative extension points — each is a permanent API contract, and none ships until at
+  least one concrete use case cannot be served any other way.
+- **Candidate plugin extension points**, in predicted order of need: custom card
+  types/renderers (audio, image occlusion, code, chemistry) and import/export formats
+  first — both are "data in, but Lacuna cannot display/ingest it" problems MCP cannot
+  solve; then custom grading/answer-comparison strategies (e.g. maths-expression
+  equivalence) and hint providers. Study-session hooks (post-session triggers that can fire
+  an MCP-connected agent) are a promising composition of the two systems. **Firm
+  exclusion:** scheduler variants are not a plugin surface — FSRS is the product's spine,
+  and swapping it multiplies support surface for near-zero benefit.
 - Headline use cases: agent-generated courses from pasted source material; script-to-lines
-  sequence generation; bulk card authoring and review-queue triage.
-- Key questions for the full plan: consent/confirmation UX for destructive tools; IPC
-  bridge design and write-conflict handling with a live UI; how much of analytics to
-  expose read-only; versioning the tool schema against future plugin types.
+  sequence generation; bulk card authoring and review-queue triage. Agent-side
+  script-to-sequence generation will supersede the shipped manual script splitter (§1.5) as
+  the primary import path once this arc lands.
+- Key questions for the full plan: consent/confirmation UX for destructive tools,
+  including scoping — per-agent permissions of the form "this agent may touch course X
+  only"; IPC bridge design and write-conflict handling with a live UI; how much of
+  analytics to expose read-only; versioning the tool schema against future plugin types.
+- **Tool design requirement:** tools should be idempotent and diff-friendly, so
+  cross-source agent workflows (e.g. diff lecture notes against an existing course, add
+  only what is missing) are safe to re-run.
 
 ---
 

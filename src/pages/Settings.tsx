@@ -33,6 +33,8 @@ import { MoonIcon, SunIcon, UploadIcon, DownloadIcon, KeyboardIcon, MenuIcon, Fl
 import type { BackupFile } from '../db/types';
 import { formatDate, formatDateTime } from '../utils/datetime';
 import { useGradingMode } from '../state/gradingMode';
+import { useTypingSetting } from '../state/typingSetting';
+import { useAnswerStrictness, type AnswerStrictness } from '../state/answerStrictness';
 import { useAutoOptimiseDefault } from '../state/optimiseSetting';
 import { usePracticeDefaults } from '../state/practiceDefaults';
 import { useDashboardSort, type DashboardSort } from '../state/dashboardSort';
@@ -75,6 +77,8 @@ export function Settings() {
   const { scale, setScale } = useFontScale();
   const { notify } = useToast();
   const [gradingMode, setGradingMode] = useGradingMode();
+  const [typingSetting, setTypingSetting] = useTypingSetting();
+  const [answerStrictness, setAnswerStrictness] = useAnswerStrictness();
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [dashboardSort, setDashboardSort] = useDashboardSort();
@@ -420,6 +424,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Show due card counts"
             checked={sidebarSettings.showDueCounts}
             onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
           />
@@ -433,6 +438,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Show archived courses"
             checked={sidebarSettings.showArchived}
             onChange={(checked) => setSidebarSettings({ showArchived: checked })}
           />
@@ -446,6 +452,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Compact mode"
             checked={sidebarSettings.compactMode}
             onChange={(checked) => setSidebarSettings({ compactMode: checked })}
           />
@@ -505,6 +512,7 @@ export function Settings() {
                     </button>
                   </div>
                   <span className="flex-1 text-sm text-ink">{item.label}</span>                    <Toggle
+                    ariaLabel={`Show ${item.label} in primary navigation`}
                     checked={item.visible}
                     disabled={!canHide}
                     onChange={(checked) => {
@@ -632,10 +640,59 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Manual four-point grading"
             checked={gradingMode === 'manual'}
             onChange={(checked) => setGradingMode(checked ? 'manual' : 'silent')}
           />
         </div>
+
+        <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
+          <div className="min-w-0">
+            <label htmlFor="type-your-answer" className="text-sm">
+              Type your answer
+            </label>
+            <p className="mt-1 text-sm text-ink-soft">
+              Type the answer before reveal instead of just flipping the card. Works for
+              front/back, reversed and cloze cards; the typed answer is compared against
+              the correct one, but you still grade yourself.
+            </p>
+          </div>
+          <Toggle
+            id="type-your-answer"
+            checked={typingSetting === 'type'}
+            onChange={(checked) => setTypingSetting(checked ? 'type' : 'reveal')}
+          />
+        </div>
+
+        {typingSetting === 'type' && (
+          <div className="mt-5 flex items-center justify-between gap-3 pl-0">
+            <div className="min-w-0">
+              <div className="text-sm">Grading strictness</div>
+              <p className="mt-1 text-sm text-ink-soft">
+                How closely a typed answer must match. Lenient ignores case and
+                punctuation, standard ignores case only, exact requires both to match.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-1">
+              {(['lenient', 'standard', 'exact'] as AnswerStrictness[]).map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => setAnswerStrictness(level)}
+                  aria-pressed={answerStrictness === level}
+                  className={cn(
+                    'rounded-lg border px-3 py-1.5 text-xs capitalize transition-colors',
+                    answerStrictness === level
+                      ? 'border-accent bg-accent-soft text-accent'
+                      : 'border-line text-ink-soft hover:border-line-strong',
+                  )}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
           <div className="min-w-0">
@@ -664,6 +721,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Optimise scheduling"
             checked={autoOptimise}
             onChange={setAutoOptimise}
           />
@@ -684,6 +742,7 @@ export function Settings() {
               </p>
             </div>
             <Toggle
+              ariaLabel="Auto-insert practice nodes"
               checked={practiceDefaults.autoPractice}
               onChange={(checked) =>
                 setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })
@@ -860,6 +919,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Auto-start breaks"
             checked={pomoSettings.autoStartBreaks}
             onChange={(checked) => {
               const next = { ...pomoSettings, autoStartBreaks: checked };

@@ -371,7 +371,6 @@ export function CardEditor() {
   }
 
   const isCloze = type === 'cloze';
-  const isTyping = type === 'typing';
   const isBasicReversed = type === 'basic_reversed';
   const clozeValid = !isCloze || hasCloze(front);
   const frontValid = front.trim().length > 0;
@@ -407,7 +406,7 @@ export function CardEditor() {
       return;
     }
 
-    const reversed = !isCloze && !isTyping && !isBasicReversed && alsoReverse;
+    const reversed = !isCloze && !isBasicReversed && alsoReverse;
     if (lessonMode) {
       if (isBasicReversed) {
         await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags);
@@ -565,7 +564,6 @@ export function CardEditor() {
             <div className={cn('flex gap-2', isTouchMode && 'gap-3')}>
               {([
                 { key: 'front_back' as const, label: 'Front / Back' },
-                { key: 'typing' as const, label: 'Typing answer' },
                 { key: 'cloze' as const, label: 'Cloze deletion' },
                 { key: 'basic_reversed' as const, label: 'Basic (reversed)' },
               ]).map((t) => (
@@ -688,7 +686,7 @@ export function CardEditor() {
         )}
       >
         <div className={cn('pointer-events-auto flex flex-wrap items-center gap-3', isTouchMode && 'max-w-3xl mx-auto')}>
-          {!editing && !isCloze && !isTyping && !isBasicReversed && (
+          {!editing && !isCloze && !isBasicReversed && (
             <motion.button
               type="button"
               onClick={() => setAlsoReverse((v) => !v)}

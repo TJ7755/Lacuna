@@ -7,7 +7,7 @@
 // migration unit test and also run inside the Dexie upgrade hook (see schema.ts).
 
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import type { Card, Deck, LessonCardExposure } from './types';
+import type { Card, CardType, Deck, LessonCardExposure } from './types';
 
 /** A deck as stored before FSRS-6: the new fields may be absent. */
 export type LegacyDeck = Omit<
@@ -16,17 +16,22 @@ export type LegacyDeck = Omit<
 > &
   Partial<Pick<Deck, 'fsrsVersion' | 'fsrsParameters' | 'examObjective'>>;
 
-/** A card as stored before FSRS-6: the new memory fields may be absent. */
+/**
+ * A card as stored before FSRS-6: the new memory fields may be absent. `type` is
+ * widened to also accept the retired `'typing'` card type (see migrateCardRecord),
+ * which schema v13 folds into `'front_back'` — typing became a global answer-input
+ * mode (src/state/typingSetting.ts) rather than a card type.
+ */
 export type LegacyCard = Omit<
   Card,
-  'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps'
+  'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps' | 'type'
 > &
   Partial<
     Pick<
       Card,
       'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps'
     >
-  >;
+  > & { type: Card['type'] | 'typing' };
 
 /**
  * Bring a deck record up to the FSRS-6 schema. Decks tagged below FSRS-6 (or
@@ -65,8 +70,14 @@ export function migrateCardRecord(card: LegacyCard): Card {
     card.lapses ?? card.history.filter((log) => log.grade === 1).length;
   // New cards are State.New (0); previously reviewed cards are treated as Review (2).
   const state = card.state ?? (card.lastReviewed === null ? 0 : 2);
+  // The 'typing' card type was retired in schema v13: typed answering is now the
+  // global 'type' presentation mode (src/state/typingSetting.ts), not a card type.
+  // A pre-v13 'typing' card is just a front_back card that happened to be answered
+  // by typing, so it folds cleanly into front_back with no data loss.
+  const type: CardType = card.type === 'typing' ? 'front_back' : (card.type as CardType);
   return {
     ...card,
+    type,
     reps,
     lapses,
     state,

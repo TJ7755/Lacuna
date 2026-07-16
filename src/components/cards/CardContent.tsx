@@ -9,7 +9,6 @@ type Side = 'front' | 'back';
  * Render one side of a card, handling all card types:
  *  - front_back: the front or back Markdown directly.
  *  - cloze: the same source, shown with blanks (front) or revealed answers (back).
- *  - typing: same as front_back — the prompt is front, the correct answer is back.
  *  - basic_reversed: same as front_back — the primary card's front/back are rendered.
  *
  * Memoised so a parent re-render (e.g. toggling select mode in the card list) doesn't
@@ -20,6 +19,7 @@ export const CardContent = memo(function CardContent({
   side,
   className,
   sequenceCue = false,
+  sequenceMode = 'list',
 }: {
   card: Card;
   side: Side;
@@ -35,6 +35,8 @@ export const CardContent = memo(function CardContent({
    * preview — should leave this off so they keep rendering the stored Markdown as-is.
    */
   sequenceCue?: boolean;
+  /** The owning sequence's mode, used to choose item- or line-specific recall wording. */
+  sequenceMode?: 'list' | 'lines';
 }) {
   if (card.type === 'cloze') {
     return (
@@ -49,8 +51,11 @@ export const CardContent = memo(function CardContent({
   if (sequenceCue && side === 'front' && card.sequenceItemId !== undefined && !isLabelCardId(card.sequenceItemId)) {
     const { header, body } = parseSequenceFront(card.front);
     const headerText = header.replace(/^\*\*/, '').replace(/\*\*$/, '');
-    const isFirstItem = body === 'First item?';
-    const cueParagraphs = isFirstItem ? [] : body.split('\n\n');
+    const isLinesMode = sequenceMode === 'lines' || body === 'First line?';
+    const firstPrompt = isLinesMode ? 'First line?' : 'First item?';
+    const nextPrompt = isLinesMode ? 'Next line?' : 'Next item?';
+    const isFirst = body === firstPrompt;
+    const cueParagraphs = isFirst ? [] : body.split('\n\n');
     return (
       <div className={className}>
         <div className="mb-3 text-[11px] uppercase tracking-[0.2em] text-ink-faint">{headerText}</div>
@@ -61,11 +66,11 @@ export const CardContent = memo(function CardContent({
             ))}
           </div>
         )}
-        <div className="text-ink">{isFirstItem ? 'First item?' : 'Next item?'}</div>
+        <div className="text-ink">{isFirst ? firstPrompt : nextPrompt}</div>
       </div>
     );
   }
 
-  // typing, basic_reversed, and front_back all render the same way: front or back.
+  // basic_reversed and front_back both render the same way: front or back.
   return <MarkdownView source={side === 'front' ? card.front : card.back} className={className} />;
 });

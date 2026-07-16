@@ -31,6 +31,7 @@ vi.mock('../state/useData', () => ({ useBackups: () => [] }));
 vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: vi.fn() }) }));
 vi.mock('../components/import/UnifiedExportPanel', () => ({ UnifiedExportPanel: () => null }));
 vi.mock('../state/gradingMode', () => ({ useGradingMode: () => ['silent', vi.fn()] }));
+vi.mock('../state/typingSetting', () => ({ useTypingSetting: () => ['reveal', vi.fn()] }));
 vi.mock('../state/optimiseSetting', () => ({ useAutoOptimiseDefault: () => [true, vi.fn()] }));
 vi.mock('../state/practiceDefaults', () => ({
   usePracticeDefaults: () => [{
@@ -99,5 +100,23 @@ describe('Settings', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Start Learn sessions in Focus Mode' }));
 
     expect(setStartInFocusMode).toHaveBeenCalledWith(true);
+  });
+
+  it('labels the typing setting switch', () => {
+    render(<Settings />);
+
+    expect(screen.getByRole('switch', { name: 'Type your answer' })).toBeInTheDocument();
+  });
+
+  it('labels switches whose visible descriptions sit outside the control', () => {
+    render(<Settings />);
+
+    expect(screen.getByRole('switch', { name: 'Show due card counts' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Show archived courses' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Compact mode' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Manual four-point grading' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Optimise scheduling' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Auto-insert practice nodes' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Auto-start breaks' })).toBeInTheDocument();
   });
 });

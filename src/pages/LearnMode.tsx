@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { hapticLight, hapticMedium } from '../utils/haptic';
 import { db } from '../db/schema';
-import type { Card, Course, Deck, Grade, Lesson, Note, UserPerformance } from '../db/types';
+import type { Card, Course, Deck, Grade, Lesson, Note, Sequence, UserPerformance } from '../db/types';
 import {
   buryCard,
   listNotes,
@@ -34,7 +34,12 @@ import {
   practiceReadiness,
   practiceScopeVersion,
 } from '../course/studyPools';
-import { emptyPerformance, gradeFromResponse, updatePerformance } from '../fsrs/grading';
+import {
+  emptyPerformance,
+  gradeFromResponse,
+  HINT_TIME_PENALTY_SEC,
+  updatePerformance,
+} from '../fsrs/grading';
 import { applyCooldown, decrementCooldowns } from '../fsrs/cooldown';
 import type { CooldownMap } from '../fsrs/cooldown';
 import { progressHeading, progressNoun } from '../fsrs/objective';
@@ -61,10 +66,20 @@ import { SessionReport } from '../components/learn/SessionReport';
 import { useDistraction } from '../components/learn/useDistraction';
 import type { SessionEvent, SessionSummary } from '../components/learn/types';
 import { useGradingMode } from '../state/gradingMode';
+import { useTypingSetting } from '../state/typingSetting';
+import {
+  useAnswerStrictness,
+  answerComparisonOptions,
+  type AnswerStrictness,
+} from '../state/answerStrictness';
 import { useStudyMode } from '../state/studyMode';
+import { compareAnswer } from '../utils/answerComparison';
+import { clozeAnswerText } from '../components/markdown/cloze';
 import { useStartInFocusMode } from '../state/focusModePreference';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useShortcutBindings, keyMatches } from '../state/shortcutBindings';
+import { linesModeSequencesByCard } from '../db/linesModeCards';
+import { LineHintButton, LineHintDisplay } from '../components/learn/LineHint';
 import { useMotionSpeed, speedMultiplier, type MotionSpeed } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import {
@@ -88,6 +103,22 @@ import { cn } from '../components/ui/cn';
 
 type Phase = 'loading' | 'notes' | 'question' | 'answer' | 'finished';
 type SessionCardOutcome = 'correct' | 'wrong';
+
+/**
+ * Whether a card can be answered by typing under the 'type' typing setting (see
+ * src/state/typingSetting.ts). front_back and basic_reversed are answered against
+ * their back; cloze is answered against its deletion text. Typing was previously
+ * its own card type ('typing') — it is now a presentation mode that applies to
+ * any of these card types.
+ */
+function isTypingEligible(card: Pick<Card, 'type'>): boolean {
+  return card.type === 'front_back' || card.type === 'basic_reversed' || card.type === 'cloze';
+}
+
+/** The expected answer text a typed answer is compared against (see compareAnswer). */
+function typingExpectedAnswer(card: Pick<Card, 'type' | 'front' | 'back'>): string {
+  return card.type === 'cloze' ? clozeAnswerText(card.front) : card.back;
+}
 
 /** The lesson notes shown before cards begin on a first-ever study of a lesson. */
 interface LessonNotesScreen {
@@ -170,6 +201,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
   const navigate = useNavigate();
   const distraction = useDistraction();
   const [gradingMode] = useGradingMode();
+  const [typingSetting] = useTypingSetting();
+  const [answerStrictness] = useAnswerStrictness();
   const { bindings } = useShortcutBindings();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -224,6 +257,19 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
   // ahead of the first card, with a continue action that starts serving cards.
   const [lessonNotesScreen, setLessonNotesScreen] = useState<LessonNotesScreen | null>(null);
   const [current, setCurrent] = useState<Card | null>(null);
+  // Cards in this session's pool generated from a lines-mode Sequence, mapped to their
+  // owning Sequence — loaded once alongside the card pool (see linesModeCards.ts). Drives
+  // the first-letter hint step, which only applies to lines-mode recall cards.
+  const linesModeMapRef = useRef<Map<string, Sequence>>(new Map());
+  // The lines-mode hint ladder step the learner has reached for the current card: 0 = no
+  // hint requested, 1 = first-letter hint, 2 = first-words hint. Reset per card. See
+  // src/components/learn/LineHint.tsx for the two steps and src/utils/firstLetterHint.ts /
+  // firstWordsHint.ts for the pure hint builders.
+  const [hintStep, setHintStep] = useState<0 | 1 | 2>(0);
+  const isTypingCard = typingSetting === 'type' && current !== null && isTypingEligible(current);
+  // Whether the current card was generated from a lines-mode Sequence (see
+  // linesModeCards.ts) — drives the optional first-letter hint step in the question phase.
+  const isLinesModeCard = current !== null && linesModeMapRef.current.has(current.id);
   // Cache sessionProgress so repeated calls while the card pool is unchanged don't recompute.
   const progressCacheRef = useRef<{ dirty: boolean; value: number }>({ dirty: true, value: 0 });
   const [summary, setSummary] = useState<SessionSummary | null>(null);
@@ -334,6 +380,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
   phaseRef.current = phase;
   const currentRef = useRef<Card | null>(current);
   currentRef.current = current;
+  const hintStepRef = useRef<0 | 1 | 2>(hintStep);
+  hintStepRef.current = hintStep;
   // Guards against state updates on an unmounted component after async work.
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -567,6 +615,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       setPhase('question');
       setMenuOpen(false);
       setTypedAnswer('');
+      setHintStep(0);
       timerStart.current = performance.now();
       distraction.beginCard();
       distraction.setAnswerVisible(false);
@@ -590,6 +639,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     setPhase('question');
     setMenuOpen(false);
     setTypedAnswer('');
+    setHintStep(0);
     timerStart.current = performance.now();
     distraction.beginCard();
     distraction.setAnswerVisible(false);
@@ -620,6 +670,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     decksRef.current = new Map();
     ctxRef.current = null;
     cardsRef.current = [];
+    linesModeMapRef.current = new Map();
     lessonExposureIdRef.current = null;
     lessonHasMembersRef.current = false;
     practiceSessionRef.current = null;
@@ -785,6 +836,12 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       const ctx = makeSessionContext(sessionUnits, cramMode ? 'cram' : 'objective');
       ctxRef.current = ctx;
       cardsRef.current = cards;
+      try {
+        linesModeMapRef.current = await linesModeSequencesByCard(cards);
+      } catch {
+        // Line-specific prompts and hints are non-critical; a failed lookup disables them.
+      }
+      if (cancelled) return;
       const initialProgress = sessionProgress(cards, ctx);
       const hasServeableCards = isSimpleMode
         ? cards.length > 0
@@ -993,7 +1050,12 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
 
         const manualGrade: Grade | null = typeof input === 'number' ? input : null;
         const perf = perfRef.current.get(deck.id);
-        const grade: Grade = manualGrade ?? gradeFromResponse(correct, t, perf);
+        // Hint usage only ever nudges the silent-mode grade (see HINT_TIME_PENALTY_SEC);
+        // the true, unpenalised response time is still what's persisted and calibrated on
+        // below (recordReview's responseTimeSec and updatePerformance).
+        const hintUsed = hintStepRef.current > 0;
+        const grade: Grade =
+          manualGrade ?? gradeFromResponse(correct, hintUsed ? t + HINT_TIME_PENALTY_SEC : t, perf);
 
         const cooldownsSnapshot = new Map(cooldowns.current);
         const eventsLen = events.current.length;
@@ -1012,6 +1074,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
           grade,
           responseTimeSec: t,
           distracted,
+          hintUsed,
           correct,
         });
 
@@ -1273,11 +1336,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
       ) {
         // Allow Enter in the typing input to submit the answer.
-        if (
-          target.tagName === 'INPUT' &&
-          e.key === 'Enter' &&
-          currentRef.current?.type === 'typing'
-        ) {
+        if (target.tagName === 'INPUT' && e.key === 'Enter' && isTypingCard) {
           e.preventDefault();
           reveal();
           return;
@@ -1315,6 +1374,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       if (e.key === '?') {
         e.preventDefault();
         setHintsOpen(true);
+        return;
+      }
+      if (e.key === 'h' && phase === 'question' && isLinesModeCard && hintStep < 2) {
+        e.preventDefault();
+        setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s));
         return;
       }
       if (keyMatches(e, bindings.focus)) {
@@ -1377,11 +1441,14 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     hide,
     answer,
     canUndo,
+    isLinesModeCard,
+    hintStep,
     undoLast,
     navOpen,
     menuOpen,
     editing,
     current,
+    isTypingCard,
     openEdit,
     hintsOpen,
     gradingMode,
@@ -1435,8 +1502,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       />
     );
   }
-
-  const isTypingCard = current?.type === 'typing';
 
   return (
     <div className="min-h-screen bg-paper">
@@ -1651,7 +1716,12 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
                   onHide={hide}
                   onAnswer={answer}
                   typedAnswer={typedAnswer}
+                  isTypingCard={isTypingCard}
                   mode={mode}
+                  isLinesModeCard={isLinesModeCard}
+                  hintStep={hintStep}
+                  onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
+                  answerStrictness={answerStrictness}
                 />
               )}
 
@@ -2689,7 +2759,12 @@ function FlipCard({
   onHide,
   onAnswer,
   typedAnswer,
+  isTypingCard,
   mode,
+  isLinesModeCard,
+  hintStep,
+  onRevealHint,
+  answerStrictness,
 }: {
   card: Card;
   revealed: boolean;
@@ -2704,10 +2779,15 @@ function FlipCard({
   onHide: () => void;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
   typedAnswer?: string;
+  isTypingCard?: boolean;
   mode: LearnModeType;
+  isLinesModeCard?: boolean;
+  hintStep?: 0 | 1 | 2;
+  onRevealHint?: () => void;
+  answerStrictness: AnswerStrictness;
 }) {
   const m = speedMultiplier(motionSpeed);
-  const isTyping = card.type === 'typing';
+  const isTyping = Boolean(isTypingCard);
   const [swipe, setSwipe] = useState({ x: 0, hint: null as 'left' | 'right' | null });
   const [hasSwiped, setHasSwiped] = useState(() => {
     try {
@@ -2961,30 +3041,81 @@ function FlipCard({
               transition={{ duration: 0.24 * m, delay: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
               className="mx-auto w-full max-w-prose text-center text-lg leading-relaxed md:text-xl"
             >
-              <CardContent card={card} side={revealed ? 'back' : 'front'} sequenceCue />
+              <CardContent
+                card={card}
+                side={revealed ? 'back' : 'front'}
+                sequenceCue
+                sequenceMode={isLinesModeCard ? 'lines' : 'list'}
+              />
             </motion.div>
-            {/* For typing cards in answer phase, show the typed answer and correct answer */}
-            {isTyping && revealed && typedAnswer !== undefined && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 * m, delay: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="mx-auto mt-6 max-w-prose border-t border-line pt-6 text-center"
+            {/* Hint ladder for lines-mode sequence cards: two optional, ungraded steps
+                between question and reveal (see next_plan.md §1.5). Clicking the button
+                must not flip the card, hence the pointer/click guards. */}
+            {isLinesModeCard && !revealed && phase === 'question' && (
+              <div
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
               >
-                <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-ink-faint">
-                  Your answer
-                </div>
-                <div className="mb-4 text-lg text-ink">
-                  {typedAnswer.trim() || <span className="italic text-ink-faint">(empty)</span>}
-                </div>
-                <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-accent">
-                  Correct answer
-                </div>
-                <div className="text-lg text-accent">
-                  <CardContent card={card} side="back" />
-                </div>
-              </motion.div>
+                {(hintStep ?? 0) > 0 && (
+                  <LineHintDisplay
+                    answer={typingExpectedAnswer(card)}
+                    step={hintStep as 1 | 2}
+                    m={m}
+                  />
+                )}
+                {(hintStep ?? 0) < 2 && (
+                  <LineHintButton step={(hintStep ?? 0) as 0 | 1} onReveal={() => onRevealHint?.()} />
+                )}
+              </div>
             )}
+            {/* In "type your answer" mode, show the typed answer against the correct one on
+                reveal, with per-word match/mismatch highlighting (see answerComparison.ts).
+                This is feedback only — grading below is still the learner's own call. */}
+            {isTyping &&
+              revealed &&
+              typedAnswer !== undefined &&
+              (() => {
+                const comparison = compareAnswer(
+                  typedAnswer,
+                  typingExpectedAnswer(card),
+                  answerComparisonOptions(answerStrictness),
+                );
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 * m, delay: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
+                    className="mx-auto mt-6 max-w-prose border-t border-line pt-6 text-center"
+                  >
+                    <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-ink-faint">
+                      Your answer
+                    </div>
+                    <div className="mb-4 text-lg text-ink">
+                      {typedAnswer.trim() || <span className="italic text-ink-faint">(empty)</span>}
+                    </div>
+                    <div className="mb-2 text-[11px] uppercase tracking-[0.2em] text-accent">
+                      Correct answer
+                    </div>
+                    <div className="text-lg">
+                      {comparison.words.map((word, i) => (
+                        <span
+                          key={i}
+                          className={
+                            word.matched
+                              ? 'text-positive'
+                              : 'text-negative underline decoration-negative/50'
+                          }
+                        >
+                          {word.text}
+                          {i < comparison.words.length - 1 ? ' ' : ''}
+                        </span>
+                      ))}
+                    </div>
+                  </motion.div>
+                );
+              })()}
           </motion.div>
         </AnimatePresence>
       </div>

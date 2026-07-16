@@ -553,14 +553,73 @@ is the item's own value. The first item is cued by the sequence/chunk name alone
 directly targets the serial-position effect (mid-sequence recall is weakest) by giving every
 element a turn as the recall target with local context as the cue.
 
-- `Sequence { id, courseId, primaryLessonId: string | null, name, description?,
-  items: SequenceItem[], cueWindow, chunkLabels?, generateLabelCards?, createdAt }` —
-  `items` is ordered and stored inline (sequences are small); `primaryLessonId` follows the
-  same semantics as `Card.primaryLessonId`. `generateLabelCards` (default off) additionally
-  generates an unordered label -> value card per item that carries a `label` (e.g. "Atomic
-  number 11 -> ?"), alongside the positional card.
-- `SequenceItem { id, value, label?, chunkIndex? }` — `id` is stable across edits and anchors
-  the generated card(s); `value` is Markdown.
+- `Sequence { id, courseId, primaryLessonId: string | null, name, description?, mode?,
+  items: SequenceItem[], cueWindow, chunkLabels?, generateLabelCards?, mySpeaker?, presetId?,
+  createdAt }` — `items` is ordered and stored inline (sequences are small); `primaryLessonId`
+  follows the same semantics as `Card.primaryLessonId`. `generateLabelCards` (default off)
+  additionally generates an unordered label -> value card per item that carries a `label`
+  (e.g. "Atomic number 11 -> ?"), alongside the positional card. These are additive optional
+  fields — no schema/index change was needed to add lines mode or presets.
+- `SequenceItem { id, value, label?, chunkIndex?, speaker? }` — `id` is stable across edits
+  and anchors the generated card(s); `value` is Markdown. `speaker` is optional even in lines
+  mode: a speakerless item is always "mine" (see below).
+- **Lines mode** (`mode: 'lines'`; `mode` undefined/`'list'` is the original ordered-list
+  skin and is unaffected). Items are lines, optionally speaker-tagged
+  (`SequenceItem.speaker`) for a scripted scene; `Sequence.mySpeaker` names the one speaker
+  whose lines are the recall target — a sequence-level flag (like `cueWindow`/`chunkLabels`)
+  rather than a per-item one, since one speaker is "mine" for the whole scene. An item with a
+  `speaker` generates a card only if it matches `mySpeaker`; a **speakerless item always
+  generates a card**, since there is no other speaker to disambiguate it from — this is what
+  lets poetry/verse and a solo speech reuse lines mode with no speaker configuration at all
+  (`isMyLine` in `src/db/sequenceGeneration.ts`). Non-mine speaker-tagged lines never get
+  their own card but still count towards the cue window, so a generated front reads like a
+  script: cue paragraphs render as `NAME: line` (`cueText`) when the cue item has a speaker,
+  or a bare value otherwise, and the first-in-scene prompt reads "First line?" instead of
+  "First item?". Regeneration (`diffRegeneration`) needs no lines-specific logic beyond
+  `generateCards` already filtering by `isMyLine`: switching `mySpeaker` diffs like any other
+  content change — deletes the old speaker's cards, creates the new speaker's.
+- **Presets** (`src/db/sequencePresets.ts`): a thin, data-only layer over the two modes above
+  — no separate generation path. `SEQUENCE_PRESETS` bundles, per named scenario, a `mode`, a
+  `defaultCueWindow`, whether the editor should offer speaker tagging (`usesSpeakers`), and
+  editor terminology (item/chunk nouns). The sequence editor's picker renders this table
+  directly; picking a preset just seeds `mode`/`cueWindow` and relabels the editor. Six
+  presets ship: **Ordered list** (`list` mode, the plain default), **Poetry / verse** and
+  **Speech / presentation** (`lines` mode, no speakers — mechanically identical once
+  speakerless lines are always "mine", kept as two rows purely for name/description since the
+  table makes that free), **Script / dialogue** (`lines` mode, `usesSpeakers: true` — the
+  original lines-mode behaviour), and **Procedure / checklist** and **Timeline** (`list`
+  mode, step/era terminology). `Sequence.presetId` persists which preset was picked, purely
+  so editing later redisplays the same terminology; `presetForSequence` falls back to
+  inferring a preset from `mode`/`mySpeaker` for sequences created before presets existed (or
+  if a preset id no longer resolves), defaulting speakerless `lines` mode to poetry.
+- **Lines-mode study flow** (Learn mode): cards generated from a `lines`-mode sequence get
+  an optional two-step **hint ladder** between question and reveal — a Hint button on the
+  card front (keyboard: `h`) that advances no hint -> first letters -> first words:
+  - Step 1, first letters: the answer reduced to each word's initial letter
+    (`firstLetterHint` in `src/utils/firstLetterHint.ts`, e.g. "To be, or not to be" ->
+    "T b, o n t b"; punctuation kept in place, whitespace normalised).
+  - Step 2, first words: the answer reduced to the first word of each clause/sentence
+    chunk (`firstWordsHint` in `src/utils/firstWordsHint.ts`, e.g. "To be, or not to be,
+    that is the question" -> "To…, or…, that…"; boundary punctuation kept in place).
+  The button label reflects the next step ("Hint" then "More hint"); both steps are
+  rendered by `LineHintButton`/`LineHintDisplay` (`src/components/learn/LineHint.tsx`).
+  The ladder is ungraded and resets per card; full reveal remains the existing, separate
+  flip action. LearnMode resolves which pool cards are lines-mode once per session via
+  `linesModeSequencesByCard` (`src/db/linesModeCards.ts`), which batches one
+  `listSequences` per distinct courseId among the pool's generated cards. Strict grading
+  reuses the global typed-answer mode: with the typing setting on 'type', a lines-mode card
+  is typed against verbatim and diffed word-by-word via `compareAnswer`
+  (`src/utils/answerComparison.ts`) — feedback only; Yes/No self-grading remains the grade.
+  Using any hint step is recorded as `ReviewLog.hintUsed` and nudges the invisible
+  silent-mode grade (see "The invisible timer & grading" below); manual grading is
+  unaffected.
+- **Script paste import** (`src/db/scriptSplitter.ts`, `splitScript`): a pure parser for the
+  lines-mode editor's paste + auto-split flow. A line matching `NAME: dialogue` starts a new
+  item for that speaker; a following non-matching line is folded in as a wrapped continuation
+  of the same speech; blank lines are separators only and never break a continuing speech.
+  `src/components/sequences/ScriptPasteImport.tsx` wraps it in a paste → preview → correct →
+  confirm modal (mirroring `LinkCardsDialog`'s shell) so the author can fix a misattributed
+  speaker or line before it replaces the editor's item list.
 - `Card.sequenceItemId?: string` is present iff the card was generated from a sequence item:
   the positional card carries the item's own id; the label card (when generated) carries
   `${item.id}::label` (`LABEL_CARD_SUFFIX`), so the two never collide and `isLabelCardId`/
@@ -582,7 +641,10 @@ element a turn as the recall target with local context as the cue.
 - **Portability**: sequences ride through backup export/import (replace and merge, by the
   same per-table semantics as the other course-architecture tables), diagnostics bundles
   (`sequences` count), and course share codes as an **additive v2 field** (§13) — older v2
-  codes without it still parse.
+  codes without it still parse. `presetId` travels as share code field `pr`, but only when it
+  can't be re-derived from `m`/`ms` alone (i.e. only to distinguish poetry from speech, or
+  procedure/timeline from a plain list) — `presetForSequence` on both ends keeps the common
+  case free of payload cost.
 - Generated cards are **read-only** in the card editor (edit the sequence instead) and
   carry a `SequenceBadge` (`src/components/cards/SequenceBadge.tsx`) wherever cards are
   listed, searched or shown in the command palette; `CardList` additionally groups
@@ -957,6 +1019,23 @@ Two modes, chosen in Settings (default **silent**):
 - **Manual:** the four FSRS buttons (Again/Hard/Good/Easy) are shown and the user
   grades directly; no inference is applied.
 
+### Typing setting (`src/state/typingSetting.ts`)
+Two modes, chosen in Settings (default **reveal**), mirroring the grading-mode toggle above:
+- **Reveal (default):** the ordinary flip-card flow — tap/press to reveal the answer.
+- **Type:** before reveal, an eligible card (front_back, basic_reversed, or cloze) shows a
+  text input; on reveal, the typed answer is compared against the expected answer
+  (`src/utils/answerComparison.ts`, front_back/basic_reversed use `back`, cloze uses the
+  joined deletion text via `clozeAnswerText`) and shown word-by-word with match/mismatch
+  highlighting. This was previously a dedicated `typing` card type; it is now a global
+  presentation mode that applies to any eligible card, so a course does not need
+  typing-specific cards to use it. Self-grading (Yes/No or the four FSRS buttons) is
+  unchanged — the comparison is feedback only, never an automatic grade. How strictly the
+  comparison matches is a separate per-user setting, **grading strictness**
+  (`src/state/answerStrictness.ts`, chosen in Settings next to the typing toggle, default
+  **lenient**): lenient ignores case and punctuation (the original behaviour), standard
+  ignores case only, and exact requires both to match. `answerComparisonOptions` maps the
+  level to `AnswerComparisonOptions` for `compareAnswer`.
+
 ### Study mode (`src/state/studyMode.ts`)
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):
 - **FSRS (default):** the full spaced-repetition scheduler with all memory-state tracking,
@@ -990,6 +1069,21 @@ Two modes, chosen per session via the DeckView study dropdown (default **FSRS**)
   Note: calibrating on **correct reviews only** is a biased sample on high-failure
   decks; the prediction-accuracy metric (§14) exists partly to surface when that
   bias is hurting scheduling.
+- **Hint time penalty** (`HINT_TIME_PENALTY_SEC`, 1.5s): when the current card used a
+  lines-mode hint (see the hint ladder above), the silent-mode grade is computed from
+  `responseTimeSec + HINT_TIME_PENALTY_SEC` instead of the raw time — a hint-assisted
+  answer should grade slightly worse than the same speed unaided. This is a Lacuna-layer
+  adjustment, not an FSRS one: ts-fsrs's weights model grades and resulting intervals and
+  never see response time at all, so there is nowhere inside FSRS for a "used a hint"
+  signal to live; it is applied only in `src/pages/LearnMode.tsx`'s `answer()` callback,
+  purely to the value passed into `gradeFromResponse`. The **true, unpenalised**
+  `responseTimeSec` is still what is written to `ReviewLog` and folded into
+  `updatePerformance`'s Welford calibration — the penalty never distorts the deck's speed
+  baseline. `ReviewLog.hintUsed` (optional, additive field; no Dexie schema bump needed —
+  `history` is an embedded array, not an indexed column) is logged alongside the true
+  time specifically so the constant can later be replaced with a value fitted from real
+  review history rather than a guess. Manual grading mode is unaffected — the penalty only
+  ever feeds `gradeFromResponse`, which manual mode bypasses entirely.
 
 ### Per-card actions & state
 - **Edit**: opens an in-session overlay (`CardEditOverlay`) that pauses/rebases the
@@ -1123,12 +1217,10 @@ ordinary `front_back` cards to the scheduler.
 
 ### Editor (`src/pages/CardEditor.tsx`, full page)
 - Mode is decided by the route (`/cards/new` vs `/cards/:id/edit`).
-- **Card type** selector: Basic (front/back), Reversed (back/front), Cloze, or Typing-answer.
+- **Card type** selector: Basic (front/back), Reversed (back/front), or Cloze.
   - **Basic:** standard front/back flashcard.
   - **Reversed:** creates an independent card that tests the back as the prompt.
   - **Cloze:** front contains `{{c1::hidden answer}}` deletions; back is empty.
-  - **Typing-answer:** the user types their answer during the question phase; on reveal
-    the typed answer is shown alongside the correct answer for comparison.
 - One or two **Markdown editors** with a live preview; a formatting toolbar (bold,
   italic, heading, lists, code, link, image, cloze auto-index, inline/block maths);
   a cloze editor can preview the revealed answer.
@@ -1140,7 +1232,7 @@ ordinary `front_back` cards to the scheduler.
   them on unmount. This keeps card rows small (base64 inflates payloads ~1/3 and
   dragged full image data through every reactive read) and keeps exports lean.
 - **Validation:** front required; back required for front/back; at least one cloze
-  for cloze; answer required for typing-answer.
+  for cloze.
 - **Quick capture:** "Save & add another" keeps the page open, clears content,
   retains type and tags, refocuses the first field, tallies a per-sitting count,
   and flashes a "Saved" confirmation. A seamless Tab order runs Front -> Back ->
@@ -1302,7 +1394,8 @@ never one person's scheduling progress or review history.
   travel inline, and on import every sequence/item id is remapped fresh alongside its
   generated cards' `sequenceItemId` (including the `::label` suffix for label cards), so a
   shared sequence never collides with one already present locally. Older v2 codes without
-  a `sequences` field still parse.
+  a `sequences` field still parse. Lines mode's `mode`/`mySpeaker` (sequence) and `speaker`
+  (item) travel as further additive optional keys on the same schema.
   Images ride along inline inside card/note Markdown as base64 data URIs rather than being
   stripped, so a shared course renders faithfully; DEFLATE still compresses the payload
   overall. `LessonCardLink` (display-only cross-lesson linking) and `PracticeNode` are
@@ -1468,8 +1561,9 @@ charts below the fold are never invisible. Each chart container is `h-64` with
   `autoStartBreaks`. The Pomodoro timer is otherwise fully usable from the Learn
   header.
 - **Study & scheduling:** **Manual four-point grading** toggle (off by default ->
-  silent grader, §10), **Start Learn sessions in Focus Mode** (off by default), and the
-  global **Optimise scheduling** default (on -> fit
+  silent grader, §10), **Type your answer** toggle (off by default -> flip-to-reveal;
+  see "Typing setting" above), **Start Learn sessions in Focus Mode** (off by default),
+  and the global **Optimise scheduling** default (on -> fit
   FSRS weights to your own history, §8.1; gated at `MIN_OPTIMISE_REVIEWS`,
   overridable per course, applied only on confirmation).
 - **Sidebar:** show due counts (on by default), show archived courses (on by default,

@@ -204,21 +204,18 @@ describe('share codes', () => {
     expect(cards[0].back).toBe('Back text');
   });
 
-  it('packs a typing card as k:3 and unpacks it back to type typing', async () => {
+  it('unpacks a legacy k:3 (typing) card as front_back for backward compatibility', async () => {
     const deck = await createDeck('Typing deck');
-    await createCard(deck.id, 'typing', 'What is the capital of Japan?', 'Tokyo');
-
     const payload = asV1(await decodeShare(await buildShareCode([deck.id])));
-    expect(payload.decks[0].cards).toHaveLength(1);
-    expect(payload.decks[0].cards[0].k).toBe(3);
-    expect(payload.decks[0].cards[0].f).toBe('What is the capital of Japan?');
-    expect(payload.decks[0].cards[0].b).toBe('Tokyo');
+    payload.decks[0].cards = [
+      { k: 3, f: 'What is the capital of Japan?', b: 'Tokyo' },
+    ];
 
     await importSharePayload(payload);
     const imported = (await db.decks.toArray()).find((d) => d.id !== deck.id)!;
     const cards = await db.cards.where('deckId').equals(imported.id).toArray();
     expect(cards).toHaveLength(1);
-    expect(cards[0].type).toBe('typing');
+    expect(cards[0].type).toBe('front_back');
     expect(cards[0].front).toBe('What is the capital of Japan?');
     expect(cards[0].back).toBe('Tokyo');
   });
@@ -277,7 +274,7 @@ describe('course share codes (v2)', () => {
     await createNote(lessonA.id, 'Overview', 'Cells are the basic unit of life.');
     await createLessonCard(course.id, lessonA.id, 'front_back', 'Front', 'Back');
     await createLessonCard(course.id, lessonA.id, 'cloze', 'The {{c1::mitochondria}} is the powerhouse.', '');
-    await createLessonCard(course.id, lessonA.id, 'typing', 'Name the organelle', 'Nucleus');
+    await createLessonCard(course.id, lessonA.id, 'front_back', 'Name the organelle', 'Nucleus');
 
     await createNote(lessonB.id, 'Notes', 'DNA carries genetic information.');
     await createLessonCard(course.id, lessonB.id, 'front_back', 'chien', 'dog');
@@ -307,7 +304,7 @@ describe('course share codes (v2)', () => {
     expect(summary.kind).toBe('course');
     expect(summary.courseName).toBe('Biology');
     expect(summary.lessonCount).toBe(2);
-    expect(summary.cardCount).toBe(5); // front_back + cloze + typing + reversible pair (2)
+    expect(summary.cardCount).toBe(5); // front_back + cloze + front_back + reversible pair (2)
 
     const result = await importSharePayload(payload);
     expect(result.courses).toBe(1);
@@ -331,7 +328,7 @@ describe('course share codes (v2)', () => {
 
     const cardsA = await db.cards.where('primaryLessonId').equals(importedLessons[0].id).toArray();
     expect(cardsA).toHaveLength(3);
-    expect(cardsA.some((c) => c.type === 'typing' && c.front === 'Name the organelle' && c.back === 'Nucleus')).toBe(true);
+    expect(cardsA.some((c) => c.type === 'front_back' && c.front === 'Name the organelle' && c.back === 'Nucleus')).toBe(true);
 
     const cardsB = await db.cards.where('primaryLessonId').equals(importedLessons[1].id).toArray();
     expect(cardsB).toHaveLength(2);
@@ -407,6 +404,86 @@ describe('course share codes (v2)', () => {
     expect(labelCard).toBeDefined();
     expect(positional!.back).toBe('Lithium');
     expect(labelCard!.back).toBe('Lithium');
+  });
+
+  it('round-trips a lines-mode sequence with speaker-tagged items and mySpeaker', async () => {
+    const course = await createCourse('Drama');
+    const lesson = await createLesson(course.id, 'Scene one');
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'Scene one',
+      [
+        { id: 'l1', value: 'Hello there.', speaker: 'BOB' },
+        { id: 'l2', value: 'General Kenobi.', speaker: 'ALICE' },
+      ],
+      { mode: 'lines', mySpeaker: 'ALICE' },
+    );
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.sequences).toHaveLength(1);
+    expect(payload.sequences![0].m).toBe('lines');
+    expect(payload.sequences![0].ms).toBe('ALICE');
+    expect(payload.sequences![0].items.map((i) => i.sp)).toEqual(['BOB', 'ALICE']);
+    // Only ALICE's line generates a card.
+    expect(payload.lessons[0].cards).toHaveLength(1);
+
+    await importSharePayload(payload);
+
+    const importedSequences = await db.sequences.toArray();
+    const imported = importedSequences.find((s) => s.id !== sequence.id)!;
+    expect(imported.mode).toBe('lines');
+    expect(imported.mySpeaker).toBe('ALICE');
+    expect(imported.items.map((i) => i.speaker)).toEqual(['BOB', 'ALICE']);
+  });
+
+  it('round-trips a speakerless lines-mode sequence, omitting the preset id when it matches the m/ms inference', async () => {
+    const course = await createCourse('Poetry');
+    const lesson = await createLesson(course.id, 'Sonnets');
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'Sonnet 18',
+      [{ id: 'l1', value: 'Shall I compare thee to a summer’s day?' }],
+      { mode: 'lines', presetId: 'poetry' },
+    );
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.sequences).toHaveLength(1);
+    expect(payload.sequences![0].m).toBe('lines');
+    expect(payload.sequences![0].ms).toBeUndefined();
+    // presetForSequence already infers 'poetry' from mode 'lines' + no mySpeaker, so
+    // the id itself doesn't need to travel.
+    expect(payload.sequences![0].pr).toBeUndefined();
+
+    await importSharePayload(payload);
+    const imported = (await db.sequences.toArray()).find((s) => s.id !== sequence.id)!;
+    expect(imported.presetId).toBeUndefined();
+  });
+
+  it('round-trips the preset id when it cannot be re-inferred from mode/mySpeaker (speech vs. poetry)', async () => {
+    const course = await createCourse('Rhetoric');
+    const lesson = await createLesson(course.id, 'Gettysburg Address');
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'Opening lines',
+      [{ id: 'l1', value: 'Four score and seven years ago…' }],
+      { mode: 'lines', presetId: 'speech' },
+    );
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.sequences![0].pr).toBe('speech');
+
+    await importSharePayload(payload);
+    const imported = (await db.sequences.toArray()).find((s) => s.id !== sequence.id)!;
+    expect(imported.presetId).toBe('speech');
   });
 
   it('excludes bank-scoped sequences from a course share while lesson-scoped ones still round-trip', async () => {

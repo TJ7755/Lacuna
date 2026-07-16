@@ -110,6 +110,16 @@ function renderNew() {
   );
 }
 
+function renderEdit() {
+  return render(
+    <MemoryRouter initialEntries={['/course/course-1/sequence/seq-1/edit']}>
+      <Routes>
+        <Route path="/course/:courseId/sequence/:sequenceId/edit" element={<SequenceEditor />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 beforeEach(() => {
   mockCourse = undefined;
   mockSequence = undefined;
@@ -308,7 +318,159 @@ describe('SequenceEditor', () => {
       null,
       'My sequence',
       expect.arrayContaining([expect.objectContaining({ value: 'First item' })]),
-      expect.objectContaining({ cueWindow: 2, generateLabelCards: false }),
+      expect.objectContaining({ cueWindow: 2, generateLabelCards: false, mode: 'list' }),
     );
+  });
+
+  describe('lines mode', () => {
+    it('shows a speaker field per item and a "My speaker" picker once Script / dialogue is selected', () => {
+      mockCourse = course;
+      renderNew();
+
+      expect(screen.queryByPlaceholderText('Speaker')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
+
+      expect(screen.getByPlaceholderText('Speaker')).toBeInTheDocument();
+      expect(screen.getByText('My speaker')).toBeInTheDocument();
+    });
+
+    it('disables Add sequence until a speaker matching an item is chosen', () => {
+      mockCourse = course;
+      renderNew();
+      fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
+
+      fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
+        target: { value: 'Scene one' },
+      });
+      fireEvent.change(
+        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
+        { target: { value: 'Indeed I am.' } },
+      );
+      fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
+
+      expect(screen.getByText('Add sequence')).toBeDisabled();
+
+      fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'ALICE' } });
+      expect(screen.getByText('Add sequence')).not.toBeDisabled();
+    });
+
+    it('saves with mode "lines" and the chosen mySpeaker', () => {
+      mockCourse = course;
+      renderNew();
+      fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
+
+      fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
+        target: { value: 'Scene one' },
+      });
+      fireEvent.change(
+        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
+        { target: { value: 'Indeed I am.' } },
+      );
+      fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
+      fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'ALICE' } });
+
+      fireEvent.click(screen.getByText('Add sequence'));
+      expect(createSequence).toHaveBeenCalledWith(
+        'course-1',
+        null,
+        'Scene one',
+        expect.arrayContaining([expect.objectContaining({ value: 'Indeed I am.', speaker: 'ALICE' })]),
+        expect.objectContaining({ mode: 'lines', mySpeaker: 'ALICE' }),
+      );
+    });
+
+    it.each([
+      ['Poetry / verse', 'poetry'],
+      ['Speech / presentation', 'speech'],
+    ] as const)('clears hidden speaker metadata when switching from Script to %s', (presetName, presetId) => {
+      mockCourse = course;
+      renderNew();
+      fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
+
+      fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
+        target: { value: 'Sonnet 18' },
+      });
+      fireEvent.change(
+        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
+        { target: { value: 'Shall I compare thee to a summer’s day?' } },
+      );
+      fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'NARRATOR' } });
+      fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'NARRATOR' } });
+
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(presetName.replace('/', '\\/')) }));
+
+      expect(screen.queryByPlaceholderText('Speaker')).not.toBeInTheDocument();
+      expect(screen.getByText('1 card generated')).toBeInTheDocument();
+      expect(screen.getByText('Add sequence')).not.toBeDisabled();
+      fireEvent.click(screen.getByText('Add sequence'));
+      expect(createSequence).toHaveBeenCalledWith(
+        'course-1',
+        null,
+        'Sonnet 18',
+        [expect.objectContaining({ value: 'Shall I compare thee to a summer’s day?' })],
+        expect.objectContaining({ mode: 'lines', presetId, mySpeaker: undefined }),
+      );
+      expect(createSequence.mock.calls[0][3][0]).not.toHaveProperty('speaker');
+    });
+
+    it('disables saving when the selected speaker would generate no cards', () => {
+      mockCourse = course;
+      renderNew();
+      fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
+      fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
+        target: { value: 'Scene one' },
+      });
+      fireEvent.change(
+        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
+        { target: { value: 'Indeed I am.' } },
+      );
+      fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
+      fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'ALICE' } });
+      fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'BOB' } });
+
+      expect(screen.getByText('0 cards generated')).toBeInTheDocument();
+      expect(screen.getByText('Add sequence')).toBeDisabled();
+    });
+  });
+
+  describe('re-pasting a script while editing', () => {
+    const editingSequence: Sequence = {
+      id: 'seq-1',
+      courseId: 'course-1',
+      primaryLessonId: null,
+      name: 'Scene one',
+      mode: 'lines',
+      items: [{ id: 'item-1', value: 'Indeed I am.', speaker: 'ALICE' }],
+      cueWindow: 2,
+      mySpeaker: 'ALICE',
+      createdAt: Date.now(),
+    };
+
+    it('warns before opening the paste modal when the sequence already has items, and cancelling keeps it closed', () => {
+      mockCourse = course;
+      mockSequence = editingSequence;
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      renderEdit();
+
+      fireEvent.click(screen.getByText('Paste script…'));
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/reset study progress/i),
+      );
+      expect(screen.queryByLabelText('Paste script')).not.toBeInTheDocument();
+      confirmSpy.mockRestore();
+    });
+
+    it('opens the paste modal once the warning is confirmed', () => {
+      mockCourse = course;
+      mockSequence = editingSequence;
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      renderEdit();
+
+      fireEvent.click(screen.getByText('Paste script…'));
+
+      expect(screen.getByLabelText('Paste script')).toBeInTheDocument();
+      confirmSpy.mockRestore();
+    });
   });
 });
