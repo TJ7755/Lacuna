@@ -20,6 +20,7 @@ import { cn } from '../components/ui/cn';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { makeId } from '../db/schema';
 import { generateCards } from '../db/sequenceGeneration';
+import { SEQUENCE_PRESETS, getPreset, presetForSequence } from '../db/sequencePresets';
 import {
   createSequence,
   deleteSequence,
@@ -28,7 +29,7 @@ import {
   updateSequence,
   type SequenceSnapshot,
 } from '../db/repository';
-import type { SequenceItem } from '../db/types';
+import type { SequenceItem, SequencePresetId } from '../db/types';
 
 export function SequenceEditor() {
   const { sequenceId, courseId, lessonId } = useParams<{
@@ -51,13 +52,15 @@ export function SequenceEditor() {
   const [cueWindow, setCueWindow] = useState(2);
   const [chunkLabels, setChunkLabels] = useState<string[]>([]);
   const [generateLabelCards, setGenerateLabelCards] = useState(false);
-  const [mode, setMode] = useState<'list' | 'lines'>('list');
+  const [presetId, setPresetId] = useState<SequencePresetId>('list');
   const [mySpeaker, setMySpeaker] = useState('');
   const [showScriptPaste, setShowScriptPaste] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [invalidItems, setInvalidItems] = useState<Set<string>>(() => new Set());
-  const linesMode = mode === 'lines';
+  const preset = getPreset(presetId);
+  const mode = preset.mode;
+  const usesSpeakers = preset.usesSpeakers;
   const itemInputs = useRef(new Map<string, HTMLTextAreaElement>());
   const pendingItemFocus = useRef<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
@@ -80,7 +83,7 @@ export function SequenceEditor() {
       setCueWindow(sequence.cueWindow);
       setChunkLabels(sequence.chunkLabels ?? []);
       setGenerateLabelCards(sequence.generateLabelCards ?? false);
-      setMode(sequence.mode ?? 'list');
+      setPresetId(presetForSequence(sequence).id);
       setMySpeaker(sequence.mySpeaker ?? '');
       setLoaded(true);
     }
@@ -130,7 +133,7 @@ export function SequenceEditor() {
       cueWindow,
       chunkLabels,
       generateLabelCards,
-      mySpeaker: mySpeaker || undefined,
+      mySpeaker: usesSpeakers ? mySpeaker || undefined : undefined,
       createdAt: sequence?.createdAt ?? 0,
     });
   }, [
@@ -146,7 +149,15 @@ export function SequenceEditor() {
     chunkLabels,
     generateLabelCards,
     mySpeaker,
+    usesSpeakers,
   ]);
+
+  // Selecting a preset (new sequences only) seeds its default cue window so the field
+  // isn't left at whatever an earlier preset choice happened to leave it at.
+  function selectPreset(id: SequencePresetId) {
+    setPresetId(id);
+    setCueWindow(getPreset(id).defaultCueWindow);
+  }
 
   if (
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
@@ -187,7 +198,7 @@ export function SequenceEditor() {
     name.trim().length > 0 &&
     items.length > 0 &&
     items.every((i) => i.value.trim().length > 0) &&
-    (!linesMode || mySpeaker.trim().length > 0);
+    (!usesSpeakers || mySpeaker.trim().length > 0);
 
   function updateItem(id: string, patch: Partial<SequenceItem>) {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
@@ -245,7 +256,7 @@ export function SequenceEditor() {
   }
 
   function addChunkLabel() {
-    setChunkLabels((prev) => [...prev, `Chunk ${prev.length + 1}`]);
+    setChunkLabels((prev) => [...prev, `${preset.terminology.chunkLabel} ${prev.length + 1}`]);
   }
 
   function renameChunkLabel(index: number, label: string) {
@@ -289,10 +300,11 @@ export function SequenceEditor() {
       const opts = {
         description: description.trim() || undefined,
         mode,
+        presetId,
         cueWindow,
         chunkLabels: chunkLabels.length > 0 ? chunkLabels : undefined,
         generateLabelCards,
-        mySpeaker: linesMode ? mySpeaker.trim() : undefined,
+        mySpeaker: usesSpeakers ? mySpeaker.trim() : undefined,
       };
       if (editing && sequence) {
         await updateSequence({ ...sequence, name: name.trim(), items, ...opts });
@@ -371,63 +383,50 @@ export function SequenceEditor() {
             />
           </div>
 
-          {/* Mode */}
+          {/* Preset */}
           {!editing ? (
             <div>
-              <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Mode</div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMode('list')}
-                  aria-pressed={mode === 'list'}
-                  className={cn(
-                    'flex-1 rounded-xl border p-3 text-left transition-colors',
-                    mode === 'list' ? 'border-accent bg-accent-soft' : 'border-line hover:border-line-strong',
-                  )}
-                >
-                  <div className="text-sm font-medium text-ink">List</div>
-                  <div className="mt-0.5 text-xs text-ink-faint">
-                    An ordered list — each item cues on the ones before it.
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('lines')}
-                  aria-pressed={mode === 'lines'}
-                  className={cn(
-                    'flex-1 rounded-xl border p-3 text-left transition-colors',
-                    mode === 'lines' ? 'border-accent bg-accent-soft' : 'border-line hover:border-line-strong',
-                  )}
-                >
-                  <div className="text-sm font-medium text-ink">Lines</div>
-                  <div className="mt-0.5 text-xs text-ink-faint">
-                    A scripted scene — only your lines are recalled; other speakers cue them.
-                  </div>
-                </button>
+              <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Type</div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {SEQUENCE_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => selectPreset(p.id)}
+                    aria-pressed={presetId === p.id}
+                    className={cn(
+                      'rounded-xl border p-3 text-left transition-colors',
+                      presetId === p.id ? 'border-accent bg-accent-soft' : 'border-line hover:border-line-strong',
+                    )}
+                  >
+                    <div className="text-sm font-medium text-ink">{p.name}</div>
+                    <div className="mt-0.5 text-xs text-ink-faint">{p.description}</div>
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
-            linesMode && (
-              <div className="w-fit rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
-                Lines mode
-              </div>
-            )
+            <div className="w-fit rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
+              {preset.name}
+            </div>
           )}
 
           {/* Chunks */}
           <div className="rounded-xl border border-line bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">
               <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-                Chunks <span className="normal-case text-ink-faint/70">(optional)</span>
+                {preset.terminology.chunkLabel}s{' '}
+                <span className="normal-case text-ink-faint/70">(optional)</span>
               </div>
               <Button variant="ghost" size="sm" onClick={addChunkLabel}>
                 <PlusIcon width={14} height={14} />
-                Add chunk
+                Add {preset.terminology.chunkLabel.toLowerCase()}
               </Button>
             </div>
             {chunkLabels.length === 0 ? (
               <p className="text-sm text-ink-faint">
-                Group items into named chunks (e.g. verses, stages) to label their cards.
+                Group {preset.terminology.itemPlural.toLowerCase()} into named{' '}
+                {preset.terminology.chunkLabel.toLowerCase()}s to label their cards.
               </p>
             ) : (
               <div className="flex flex-col gap-2">
@@ -477,7 +476,8 @@ export function SequenceEditor() {
                 className="w-16 rounded-lg border border-line bg-transparent px-2 py-1 text-center outline-none focus:border-accent"
               />
               <span className="text-ink-faint">
-                preceding item{cueWindow === 1 ? '' : 's'} shown as cue
+                preceding {cueWindow === 1 ? preset.terminology.item : preset.terminology.itemPlural.toLowerCase()}{' '}
+                shown as cue
               </span>
             </label>
             <label className="flex items-center gap-2 text-sm text-ink-soft">
@@ -489,7 +489,7 @@ export function SequenceEditor() {
               />
               Also generate label → value cards
             </label>
-            {linesMode && (
+            {usesSpeakers && (
               <label className="flex items-center gap-2 text-sm text-ink-soft">
                 My speaker
                 <select
@@ -516,15 +516,17 @@ export function SequenceEditor() {
           <div>
             <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
               <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-                Items <span className="text-ink-faint/70">({items.length})</span>
+                {preset.terminology.itemPlural} <span className="text-ink-faint/70">({items.length})</span>
               </div>
               <div className="flex items-center gap-3">
-                {linesMode && (
+                {usesSpeakers && (
                   <Button variant="ghost" size="sm" onClick={handlePasteScriptClick}>
                     Paste script&hellip;
                   </Button>
                 )}
-                <span className="text-xs text-ink-faint">Ctrl/Cmd+Enter adds the next item</span>
+                <span className="text-xs text-ink-faint">
+                  Ctrl/Cmd+Enter adds the next {preset.terminology.item}
+                </span>
               </div>
             </div>
             <div className="flex flex-col gap-3">
@@ -545,7 +547,8 @@ export function SequenceEditor() {
                       isFirst={i === 0}
                       isLast={i === items.length - 1}
                       chunkLabels={chunkLabels}
-                      linesMode={linesMode}
+                      showSpeaker={usesSpeakers}
+                      itemTerm={preset.terminology.item}
                       onChange={(patch) => updateItem(item.id, patch)}
                       onDelete={() => deleteItem(item.id)}
                       onMoveUp={() => moveItem(item.id, 'up')}
@@ -564,11 +567,11 @@ export function SequenceEditor() {
                 type="button"
                 variant="ghost"
                 onClick={() => addItem()}
-                title="Add another item (Ctrl/Cmd+Enter while editing an item)"
+                title={`Add another ${preset.terminology.item} (Ctrl/Cmd+Enter while editing an item)`}
                 className="w-full border border-dashed border-line-strong text-ink-faint hover:border-accent/50 hover:text-accent"
               >
                 <PlusIcon width={14} height={14} />
-                Add another item
+                Add another {preset.terminology.item}
               </Button>
             </div>
           </div>

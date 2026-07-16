@@ -210,6 +210,43 @@ describe('generateCards (lines mode)', () => {
   });
 });
 
+describe('generateCards (lines mode, speakerless — poetry/speech presets)', () => {
+  it('generates a card for every line when no item carries a speaker', () => {
+    const poem = makeSequence({
+      mode: 'lines',
+      items: [
+        item('l1', 'Roses are red,'),
+        item('l2', 'Violets are blue,'),
+        item('l3', 'Sugar is sweet,'),
+      ],
+      cueWindow: 2,
+    });
+    const payloads = generateCards(poem);
+    expect(payloads.map((p) => p.sequenceItemId)).toEqual(['l1', 'l2', 'l3']);
+    expect(payloads[0].front).toBe('**Noble gases**\n\nFirst line?');
+    expect(payloads[2].front).toBe('**Noble gases**\n\nRoses are red,\n\nViolets are blue,');
+  });
+
+  it('cues plainly (no "NAME:" prefix) since speakerless lines have nothing to prefix', () => {
+    const poem = makeSequence({
+      mode: 'lines',
+      items: [item('l1', 'First line.'), item('l2', 'Second line.')],
+      cueWindow: 2,
+    });
+    const [, second] = generateCards(poem);
+    expect(second.front).toBe('**Noble gases**\n\nFirst line.');
+  });
+
+  it('is unaffected by mySpeaker being unset, unlike a speaker-tagged scene', () => {
+    const poem = makeSequence({
+      mode: 'lines',
+      mySpeaker: undefined,
+      items: [item('l1', 'Solo line one.'), item('l2', 'Solo line two.')],
+    });
+    expect(generateCards(poem)).toHaveLength(2);
+  });
+});
+
 describe('diffRegeneration (lines mode)', () => {
   function makeScene(overrides: Partial<Sequence> = {}): Sequence {
     return {

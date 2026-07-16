@@ -51,12 +51,14 @@ import type {
   Note,
   Sequence,
   SequenceItem,
+  SequencePresetId,
   UnlockMode,
 } from './types';
 import { stripAssetImages } from './assets';
 import { bytesToBase45, base45ToBytes } from './base45';
 import { buildCourseMigration } from './courseMigration';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
+import { getPreset, presetForSequence } from './sequencePresets';
 
 const PREFIX_BASE45_COMPRESSED = 'LAC2';
 const PREFIX_BASE45_PLAIN = 'LAC3';
@@ -154,6 +156,10 @@ const ShareSequenceSchema = z.object({
   pl: z.number().optional(), // index into the payload's lessons array (primaryLessonId)
   m: z.literal('lines').optional(), // mode ('list' is the default, so omitted)
   ms: z.string().optional(), // mySpeaker (lines mode)
+  // presetId (sequencePresets.ts), only present when it can't be re-inferred from m/ms
+  // alone (see presetForSequence) — e.g. distinguishing poetry from speech, or
+  // procedure/timeline from a plain list.
+  pr: z.string().optional(),
 });
 
 const SharePayloadV1Schema = z.object({
@@ -271,6 +277,7 @@ interface ShareSequence {
   pl?: number; // index into the payload's lessons array (primaryLessonId)
   m?: 'lines'; // mode ('list' is the default, so omitted)
   ms?: string; // mySpeaker (lines mode)
+  pr?: string; // presetId, only when it diverges from what m/ms alone would infer
 }
 
 /** The decoded contents of a v1 (flat deck list) share code. */
@@ -839,6 +846,11 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
       ...(pl !== undefined ? { pl } : {}),
       ...(s.mode === 'lines' ? { m: 'lines' as const } : {}),
       ...(s.mySpeaker ? { ms: s.mySpeaker } : {}),
+      // Only spend payload space on the preset id when the receiving end couldn't
+      // re-derive it from m/ms alone (see presetForSequence) — e.g. poetry vs. speech.
+      ...(s.presetId && s.presetId !== presetForSequence({ mode: s.mode, mySpeaker: s.mySpeaker }).id
+        ? { pr: s.presetId }
+        : {}),
     };
   });
 
@@ -1098,6 +1110,12 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           ...(shareSeq.lc === 1 ? { generateLabelCards: true } : {}),
           ...(shareSeq.m === 'lines' ? { mode: 'lines' as const } : {}),
           ...(shareSeq.ms ? { mySpeaker: shareSeq.ms } : {}),
+          // `pr` only travels when it diverges from the m/ms inference (see the export
+          // side above); resolve it through getPreset so an unrecognised id degrades to
+          // 'list' rather than sticking around as an invalid presetId.
+          ...(shareSeq.pr
+            ? { presetId: getPreset(shareSeq.pr as SequencePresetId).id }
+            : {}),
           createdAt: importedAt + index,
         };
       });

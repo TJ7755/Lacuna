@@ -203,6 +203,19 @@ For a sequence with items `i₀ … iₙ` and `cueWindow = w`:
 > constant (`HINT_TIME_PENALTY_SEC`, `src/fsrs/grading.ts`) applied only to the value fed
 > into `gradeFromResponse` — the persisted `responseTimeSec` and per-deck calibration both
 > stay the true, unpenalised time.
+>
+> **Presets, shipped as a follow-up data layer** (`src/db/sequencePresets.ts`): six named
+> presets (Ordered list, Poetry / verse, Script / dialogue, Speech / presentation,
+> Procedure / checklist, Timeline) sit over the same two modes — no new generation path.
+> This required making lines mode's speaker filtering optional: `isMyLine` now treats a
+> speakerless item as always "mine", so poetry/speech reuse lines mode with zero speaker
+> configuration; only script-preset items are filtered by `mySpeaker`. Poetry and speech
+> are mechanically identical (same mode/cueWindow/no speakers) and ship as two rows only
+> because the preset table makes that free — differentiated by name/description alone.
+> `Sequence.presetId` (additive optional) persists the choice for redisplay when editing;
+> `presetForSequence` infers a preset for pre-existing sequences from `mode`/`mySpeaker`.
+> The sequence editor's mode picker became a preset picker; share codes carry `presetId`
+> as an additive `pr` field, only when it can't be re-inferred from `m`/`ms`.
 
 Same `Sequence` machinery with a different skin:
 

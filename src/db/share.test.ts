@@ -439,6 +439,53 @@ describe('course share codes (v2)', () => {
     expect(imported.items.map((i) => i.speaker)).toEqual(['BOB', 'ALICE']);
   });
 
+  it('round-trips a speakerless lines-mode sequence, omitting the preset id when it matches the m/ms inference', async () => {
+    const course = await createCourse('Poetry');
+    const lesson = await createLesson(course.id, 'Sonnets');
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'Sonnet 18',
+      [{ id: 'l1', value: 'Shall I compare thee to a summer’s day?' }],
+      { mode: 'lines', presetId: 'poetry' },
+    );
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.sequences).toHaveLength(1);
+    expect(payload.sequences![0].m).toBe('lines');
+    expect(payload.sequences![0].ms).toBeUndefined();
+    // presetForSequence already infers 'poetry' from mode 'lines' + no mySpeaker, so
+    // the id itself doesn't need to travel.
+    expect(payload.sequences![0].pr).toBeUndefined();
+
+    await importSharePayload(payload);
+    const imported = (await db.sequences.toArray()).find((s) => s.id !== sequence.id)!;
+    expect(imported.presetId).toBeUndefined();
+  });
+
+  it('round-trips the preset id when it cannot be re-inferred from mode/mySpeaker (speech vs. poetry)', async () => {
+    const course = await createCourse('Rhetoric');
+    const lesson = await createLesson(course.id, 'Gettysburg Address');
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'Opening lines',
+      [{ id: 'l1', value: 'Four score and seven years ago…' }],
+      { mode: 'lines', presetId: 'speech' },
+    );
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.sequences![0].pr).toBe('speech');
+
+    await importSharePayload(payload);
+    const imported = (await db.sequences.toArray()).find((s) => s.id !== sequence.id)!;
+    expect(imported.presetId).toBe('speech');
+  });
+
   it('excludes bank-scoped sequences from a course share while lesson-scoped ones still round-trip', async () => {
     const course = await createCourse('Chemistry');
     const lesson = await createLesson(course.id, 'Periodic table');

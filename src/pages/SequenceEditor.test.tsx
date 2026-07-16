@@ -323,12 +323,12 @@ describe('SequenceEditor', () => {
   });
 
   describe('lines mode', () => {
-    it('shows a speaker field per item and a "My speaker" picker once Lines is selected', () => {
+    it('shows a speaker field per item and a "My speaker" picker once Script / dialogue is selected', () => {
       mockCourse = course;
       renderNew();
 
       expect(screen.queryByPlaceholderText('Speaker')).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: /Lines/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
 
       expect(screen.getByPlaceholderText('Speaker')).toBeInTheDocument();
       expect(screen.getByText('My speaker')).toBeInTheDocument();
@@ -337,13 +337,13 @@ describe('SequenceEditor', () => {
     it('disables Add sequence until a speaker matching an item is chosen', () => {
       mockCourse = course;
       renderNew();
-      fireEvent.click(screen.getByRole('button', { name: /Lines/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
 
       fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
         target: { value: 'Scene one' },
       });
       fireEvent.change(
-        screen.getByPlaceholderText('Item content. Markdown, maths and images are supported.'),
+        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
         { target: { value: 'Indeed I am.' } },
       );
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
@@ -357,13 +357,13 @@ describe('SequenceEditor', () => {
     it('saves with mode "lines" and the chosen mySpeaker', () => {
       mockCourse = course;
       renderNew();
-      fireEvent.click(screen.getByRole('button', { name: /Lines/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
 
       fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
         target: { value: 'Scene one' },
       });
       fireEvent.change(
-        screen.getByPlaceholderText('Item content. Markdown, maths and images are supported.'),
+        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
         { target: { value: 'Indeed I am.' } },
       );
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });

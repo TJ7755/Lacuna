@@ -554,26 +554,44 @@ directly targets the serial-position effect (mid-sequence recall is weakest) by 
 element a turn as the recall target with local context as the cue.
 
 - `Sequence { id, courseId, primaryLessonId: string | null, name, description?, mode?,
-  items: SequenceItem[], cueWindow, chunkLabels?, generateLabelCards?, mySpeaker?,
+  items: SequenceItem[], cueWindow, chunkLabels?, generateLabelCards?, mySpeaker?, presetId?,
   createdAt }` — `items` is ordered and stored inline (sequences are small); `primaryLessonId`
   follows the same semantics as `Card.primaryLessonId`. `generateLabelCards` (default off)
   additionally generates an unordered label -> value card per item that carries a `label`
   (e.g. "Atomic number 11 -> ?"), alongside the positional card. These are additive optional
-  fields — no schema/index change was needed to add lines mode.
+  fields — no schema/index change was needed to add lines mode or presets.
 - `SequenceItem { id, value, label?, chunkIndex?, speaker? }` — `id` is stable across edits
-  and anchors the generated card(s); `value` is Markdown.
+  and anchors the generated card(s); `value` is Markdown. `speaker` is optional even in lines
+  mode: a speakerless item is always "mine" (see below).
 - **Lines mode** (`mode: 'lines'`; `mode` undefined/`'list'` is the original ordered-list
-  skin and is unaffected). Items are speaker-tagged script lines (`SequenceItem.speaker`);
-  `Sequence.mySpeaker` names the one speaker whose lines are the recall target — a
-  sequence-level flag (like `cueWindow`/`chunkLabels`) rather than a per-item one, since one
-  speaker is "mine" for the whole scene. Only `mySpeaker`'s lines generate a card
-  (`isMyLine` in `src/db/sequenceGeneration.ts`); other speakers' lines never get their own
-  card but still count towards the cue window, so a generated front reads like a script:
-  cue paragraphs render as `NAME: line` (`cueText`) instead of a bare value, and the
-  first-in-scene prompt reads "First line?" instead of "First item?". Regeneration
-  (`diffRegeneration`) needs no lines-specific logic beyond `generateCards` already
-  filtering by `isMyLine`: switching `mySpeaker` diffs like any other content change —
-  deletes the old speaker's cards, creates the new speaker's.
+  skin and is unaffected). Items are lines, optionally speaker-tagged
+  (`SequenceItem.speaker`) for a scripted scene; `Sequence.mySpeaker` names the one speaker
+  whose lines are the recall target — a sequence-level flag (like `cueWindow`/`chunkLabels`)
+  rather than a per-item one, since one speaker is "mine" for the whole scene. An item with a
+  `speaker` generates a card only if it matches `mySpeaker`; a **speakerless item always
+  generates a card**, since there is no other speaker to disambiguate it from — this is what
+  lets poetry/verse and a solo speech reuse lines mode with no speaker configuration at all
+  (`isMyLine` in `src/db/sequenceGeneration.ts`). Non-mine speaker-tagged lines never get
+  their own card but still count towards the cue window, so a generated front reads like a
+  script: cue paragraphs render as `NAME: line` (`cueText`) when the cue item has a speaker,
+  or a bare value otherwise, and the first-in-scene prompt reads "First line?" instead of
+  "First item?". Regeneration (`diffRegeneration`) needs no lines-specific logic beyond
+  `generateCards` already filtering by `isMyLine`: switching `mySpeaker` diffs like any other
+  content change — deletes the old speaker's cards, creates the new speaker's.
+- **Presets** (`src/db/sequencePresets.ts`): a thin, data-only layer over the two modes above
+  — no separate generation path. `SEQUENCE_PRESETS` bundles, per named scenario, a `mode`, a
+  `defaultCueWindow`, whether the editor should offer speaker tagging (`usesSpeakers`), and
+  editor terminology (item/chunk nouns). The sequence editor's picker renders this table
+  directly; picking a preset just seeds `mode`/`cueWindow` and relabels the editor. Six
+  presets ship: **Ordered list** (`list` mode, the plain default), **Poetry / verse** and
+  **Speech / presentation** (`lines` mode, no speakers — mechanically identical once
+  speakerless lines are always "mine", kept as two rows purely for name/description since the
+  table makes that free), **Script / dialogue** (`lines` mode, `usesSpeakers: true` — the
+  original lines-mode behaviour), and **Procedure / checklist** and **Timeline** (`list`
+  mode, step/era terminology). `Sequence.presetId` persists which preset was picked, purely
+  so editing later redisplays the same terminology; `presetForSequence` falls back to
+  inferring a preset from `mode`/`mySpeaker` for sequences created before presets existed (or
+  if a preset id no longer resolves), defaulting speakerless `lines` mode to poetry.
 - **Lines-mode study flow** (Learn mode): cards generated from a `lines`-mode sequence get
   an optional two-step **hint ladder** between question and reveal — a Hint button on the
   card front (keyboard: `h`) that advances no hint -> first letters -> first words:
@@ -623,7 +641,10 @@ element a turn as the recall target with local context as the cue.
 - **Portability**: sequences ride through backup export/import (replace and merge, by the
   same per-table semantics as the other course-architecture tables), diagnostics bundles
   (`sequences` count), and course share codes as an **additive v2 field** (§13) — older v2
-  codes without it still parse.
+  codes without it still parse. `presetId` travels as share code field `pr`, but only when it
+  can't be re-derived from `m`/`ms` alone (i.e. only to distinguish poetry from speech, or
+  procedure/timeline from a plain list) — `presetForSequence` on both ends keeps the common
+  case free of payload cost.
 - Generated cards are **read-only** in the card editor (edit the sequence instead) and
   carry a `SequenceBadge` (`src/components/cards/SequenceBadge.tsx`) wherever cards are
   listed, searched or shown in the command palette; `CardList` additionally groups
