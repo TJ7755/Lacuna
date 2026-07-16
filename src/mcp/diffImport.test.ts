@@ -56,13 +56,54 @@ describe('diffImport', () => {
     expect(result.toSkip).toHaveLength(1);
   });
 
-  it('de-duplicates identical items within the same proposed batch', () => {
+  it.each([
+    { name: 'same front, same back (exact duplicate)', second: { front: 'Q1', back: 'A1' } },
+    { name: 'same front, different back', second: { front: 'Q1', back: 'A2' } },
+    {
+      name: 'same front, same back, different tags',
+      second: { front: 'Q1', back: 'A1', tags: ['other'] },
+    },
+  ])('de-duplicates within the same proposed batch: $name', ({ second }) => {
     const result = diffImport(
       [],
-      [item({ front: 'Q1', back: 'A1' }), item({ front: 'Q1', back: 'A1' })],
+      [item({ front: 'Q1', back: 'A1' }), item(second)],
     );
     expect(result.toCreate).toHaveLength(1);
+    expect(result.toCreate[0].back).toBe('A1');
     expect(result.toSkip).toHaveLength(1);
+    expect(result.toUpdate).toHaveLength(0);
+  });
+
+  it('does not skip within-batch items with genuinely different fronts', () => {
+    const result = diffImport(
+      [],
+      [item({ front: 'Q1', back: 'A1' }), item({ front: 'Q2', back: 'A2' })],
+    );
+    expect(result.toCreate).toHaveLength(2);
+    expect(result.toSkip).toHaveLength(0);
+  });
+
+  it('is idempotent across two runs for within-batch same-front-different-back conflicts', () => {
+    const proposed = [item({ front: 'Q1', back: 'A1' }), item({ front: 'Q1', back: 'A2' })];
+    const first = diffImport([], proposed);
+    expect(first.toCreate).toHaveLength(1);
+    expect(first.toCreate[0].back).toBe('A1');
+    expect(first.toSkip).toHaveLength(1);
+
+    const afterCreate = first.toCreate.map((created, i) => ({
+      id: `new-${i}`,
+      front: created.front,
+      back: created.back,
+      tags: created.tags,
+    }));
+    const second = diffImport(afterCreate, proposed);
+    expect(second.toCreate).toHaveLength(0);
+    // The first item is now an exact match against the existing card (toSkip); the
+    // second still conflicts on front with a different back, so it's reported as
+    // toUpdate against the now-existing card rather than silently dropped.
+    expect(second.toSkip).toHaveLength(1);
+    expect(second.toUpdate).toHaveLength(1);
+    expect(second.toUpdate[0]).toMatchObject({ existingCardId: 'new-0', backChanged: true });
   });
 
   it('is idempotent: re-running diffImport against the previous toCreate output plus the original existing set yields no further creates', () => {
