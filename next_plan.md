@@ -319,6 +319,354 @@ To be planned in full after Arc 1. Scope decided so far:
 
 ---
 
+# Arc 2 (detailed) — MCP Server / Agent Surface, with Arc 5 interleaved
+
+> Supersedes the Arc 2 outline above for implementation purposes. Arc 5's five items are
+> folded in as warm-up/interstitial tasks between Arc 2 phases — they are independent of
+> the MCP work, so they are spaced out rather than batched at the start.
+
+## 2.1 Architectural decisions
+
+**Package choice.** `@modelcontextprotocol/sdk` (the official TypeScript SDK) as a
+dependency of the **Electron main process only** — it must not appear in the Vite/renderer
+bundle or the Cloudflare web build, since neither hosts a server. `zod` is already a
+dependency and is the SDK's expected schema library, so tool input schemas are written as
+`z.object(...)` and passed straight to `server.registerTool`. No new schema-validation
+library is introduced.
+
+**Transport.** stdio only for this arc. Streamable HTTP is deferred (see Open Questions):
+stdio has zero attack surface (no listening socket, no port conflicts, no CORS/CSP
+interaction with the renderer's `connect-src 'self'`), matches how Claude Code/Codex/most
+MCP clients discover local servers (a launched subprocess), and sidesteps agent-identity
+entirely, since a stdio server has exactly one client per process by construction. The
+transport-agnostic requirement from the outline is satisfied by keeping the tool-surface
+core (§2.2) ignorant of transport; adding a Streamable HTTP transport later is additive in
+`electron/mcp/server.ts` only, not a rewrite.
+
+**Where tool handlers execute.** The renderer, always — it is the only process with
+IndexedDB. The MCP server itself runs in the Electron **main** process (Node, so it can
+own stdio), and every tool handler is a thin wrapper that round-trips a request to the
+renderer over `ipcMain.handle`/`webContents.send` and awaits a correlated response. This
+mirrors the existing worker-message-envelope precedent (`src/workers/*.worker.ts`) rather
+than inventing a new RPC shape.
+
+**Core module split** (all under `src/mcp/`, imported by both renderer and, via a thin
+Node-side shim, `electron/mcp/`):
+
+- `src/mcp/tools/*.ts` — pure tool **definitions**: name, description, zod input schema,
+  and a handler typed as `(input, ctx: ToolContext) => Promise<ToolResult>`, where
+  `ToolContext` carries the calling agent's grant (§2.4) and nothing transport-specific.
+  These handlers run **inside the renderer** and call `src/db/repository.ts` /
+  `src/db/read.ts` directly — same functions the UI calls, per the outline's "no parallel
+  code path" requirement.
+- `src/mcp/registry.ts` — the ordered tool list plus the versioned manifest (§2.5).
+- `src/mcp/bridge/protocol.ts` — the IPC envelope shared by both processes: request
+  `{ id: string; tool: string; input: unknown; agentId: string }`, response
+  `{ id: string; ok: true; result: unknown } | { id: string; ok: false; error: McpToolError }`.
+  `McpToolError` is a small discriminated union (`not_found | validation | forbidden |
+  conflict | internal`) so the main-process side can map errors to proper MCP error
+  results instead of leaking stack traces.
+- `electron/mcp/server.ts` (Node-only, new tsconfig target) — constructs the SDK `Server`,
+  registers every tool from `src/mcp/registry.ts` with a handler that dispatches over IPC
+  (a one-shot reply channel keyed by the envelope's `id`), and owns the stdio transport
+  lifecycle.
+- Renderer side: `src/mcp/bridge/renderer.ts`, wired from `electron/preload.ts`'s
+  `electronAPI`, listens for `mcp:invoke`, looks up the tool by name in
+  `src/mcp/registry.ts`, executes it, and sends `mcp:invoke:reply`.
+  **Renderer-not-ready handling:** the main process applies a fixed timeout (10s,
+  configurable), returning an `internal` error with a "Lacuna window is not open or still
+  loading" message if the renderer hasn't attached its listener yet — surfaced to the
+  agent as a normal tool error, not a crash. The main process registers the MCP server and
+  its tool list immediately at startup (tool listing doesn't need the renderer); only tool
+  *execution* requires the window to be ready.
+
+**Why not run the repository layer directly in main against a second Dexie instance?**
+IndexedDB does not exist in Node; running Dexie there would mean a second storage engine
+with its own copy of the data — a sync nightmare. Bridging to the single renderer-side
+database is the only option consistent with "local-only, one source of truth."
+
+## 2.2 Read-side module (new)
+
+`src/db/read.ts` (new file) provides plain async functions with zero React dependency,
+built directly on Dexie and the existing pure analytics modules (`src/fsrs/eligibility.ts`,
+`src/fsrs/objective.ts`, `src/fsrs/leech.ts`, `src/fsrs/stats.ts`,
+`src/course/headerStats.ts`, `src/course/studyPools.ts`, with `src/db/diagnostics.ts` as
+the template for touching Dexie without a hook). This is the non-React counterpart to
+`src/state/useData.ts`/`useCourseData.ts`, not a replacement — the hooks keep using
+`useLiveQuery` as today; `read.ts` is purely for MCP (and incidentally usable by future
+non-React callers).
+
+Planned functions (grouped, not exhaustive — finalised in Task 2):
+`listCourses`, `getCourse`, `listLessons(courseId)`, `getLesson`, `listCardsForCourse`,
+`listCardsForLesson`, `getCard`, `listDueCards(courseId, limit?)` (wraps
+`dueCards`/`studyPool`), `getWeakCards(courseId, limit?)` (wraps `scoreCard`/leech
+detection), `getCourseStats(courseId)` (wraps `computeStudyStats`/`headerStats`),
+`listSequences(courseId)`, `getSequence`, `listNotes(lessonId)`, `listPracticeNodes`,
+`listCourseExamDates`, `diagnosticsSummary(courseId?)` (thin wrapper on
+`gatherCounts`-style logic scoped to a course rather than the whole DB).
+
+## 2.3 Tool inventory
+
+Tools are grouped by risk tier, which drives the consent model (§2.4). Every tool name is
+`lacuna.<verb>_<noun>` (snake_case noun, matching MCP convention).
+
+**Read/query tools (no consent gate beyond course scope; see §2.4 for the implicit read
+grant):**
+`lacuna.list_courses`, `lacuna.get_course`, `lacuna.list_lessons`, `lacuna.list_cards`,
+`lacuna.get_card`, `lacuna.list_due_cards`, `lacuna.get_weak_cards`,
+`lacuna.get_course_stats`, `lacuna.list_sequences`, `lacuna.get_sequence`,
+`lacuna.list_notes`, `lacuna.diagnostics_summary`.
+
+**Content CRUD tools (create/update; consent-gated per course, snapshot+undo not
+required since these are additive or idempotent by construction):**
+`lacuna.create_course`, `lacuna.update_course`, `lacuna.create_lesson`,
+`lacuna.update_lesson`, `lacuna.create_note`, `lacuna.update_note`,
+`lacuna.create_card` (wraps `createCourseCard`/`createLessonCard` selected by an optional
+`lessonId` input), `lacuna.update_card`, `lacuna.link_card_to_lesson` (wraps the
+already-idempotent `linkCardToLesson`), `lacuna.create_sequence`, `lacuna.update_sequence`,
+`lacuna.create_course_exam_date`, `lacuna.update_course_exam_date`.
+
+**Destructive/bulk tools (consent-gated, always paired with the repository's existing
+snapshot/undo primitives so the renderer can offer an in-app undo toast identical to the
+DangerZone pattern, even though the caller is an agent):**
+`lacuna.delete_card` (single/bulk via `ids: string[]`, uses `snapshotCards`/`deleteCards`),
+`lacuna.delete_lesson`, `lacuna.delete_course` (uses `snapshotCourse`/`deleteCourse`),
+`lacuna.delete_sequence` (uses `snapshotSequence`), `lacuna.suspend_cards`,
+`lacuna.set_cards_flag`, `lacuna.reschedule_cards`.
+
+**Diff/preview tool (new, not a thin repository wrapper — the diff-friendliness
+requirement from the outline):**
+`lacuna.diff_import_preview(courseId, items: {front, back, lessonId?}[])` — pure function
+(new `src/mcp/diffImport.ts`, tested standalone) that compares proposed cards against
+existing ones via the same duplicate-detection logic `checkDuplicatesBatch` already uses,
+returning `{toCreate, toSkip, toUpdate}` without writing anything. `lacuna.import_cards`
+then takes the same shape and actually writes, skipping items already present — the
+"re-run safely" tool the script-to-sequence and lecture-notes-diff use cases need.
+
+**Explicitly excluded from the tool surface (documented in `src/mcp/registry.ts` as a
+comment, not just an absence):**
+- `noteAnnotations` CRUD — device-local by design, no agent use case yet.
+- Raw FSRS state writes (`state`, `stability`, `difficulty`, `due`) — `update_card`
+  accepts only content fields (`front`, `back`, `tags`, `flagged`); scheduling stays the
+  engine's exclusive write path. `reschedule_cards` exposes the existing bounded
+  `rescheduleCards` helper instead of raw field writes.
+- `recordReview`/`undoReview` — an agent grading the user's recall on their behalf would
+  corrupt the memory model; review recording stays a human-only, in-app action.
+- Practice-node/milestone mutation beyond exam dates — path/curriculum structure is judged
+  too consequential for v1; revisit once usage data exists.
+- Backup/restore/share-code tools — already have a full UI flow; not a natural agent
+  shape; out of scope for this arc.
+
+## 2.4 Consent / permissions model
+
+**Agent identity.** stdio has no built-in identity, and client-supplied `clientInfo.name`
+is spoofable, so it is not a security boundary worth building on. Grants are therefore
+**per Lacuna-launched MCP server process**, scoped by course, and expire when the server
+process exits (re-launching the client's MCP connection re-prompts). Deliberately
+conservative for v1; durable multi-agent identity is flagged as a v2 decision (Open
+Questions).
+
+**Data model.** `interface McpGrant { courseId: string; scope: 'read' | 'write' |
+'destructive'; grantedAt: number; label?: string }`. `'destructive'` implies `'write'`
+implies `'read'` (ordinal, not a set of booleans, since the tiers are strictly nested per
+§2.3). Grants are process-scoped, so they live in an in-memory main-process `Map`
+(`electron/mcp/grants.ts`), not Dexie — they must not survive relaunch. (If Task 11's UI
+design finds session-persistence is actually wanted, that is a within-task decision, not a
+re-plan.)
+
+**Gating.** Every tool handler receives `ctx.grant` resolved from the tool's target
+`courseId` (every tool takes an explicit `courseId`, or a `cardId`/`lessonId` the handler
+resolves to one). If no grant at the required tier exists, the handler returns a
+`forbidden` `McpToolError` whose message names the missing scope and course — so a
+well-behaved agent can tell the user "I need write access to course X, please grant it in
+Lacuna" and retry rather than looping.
+
+**Renderer UI surface (Task 11).** A new Settings section, `settings/McpSection.tsx`,
+following the existing extraction pattern, shown only when `window.electronAPI?.isElectron`.
+It shows server status (`electronAPI.mcp.getStatus()`), the current process's grants
+(course name + scope), and grant/revoke controls. Because a tool call can arrive before
+the user has visited Settings, the *first* write/destructive call for an ungranted course
+triggers a **blocking consent prompt in the renderer** (new `McpConsentPrompt` component,
+reusing `ConfirmInline` from Task 1), and the IPC round-trip awaits the user's decision
+(bounded by the same timeout, after which it fails closed as `forbidden`). **Write and
+destructive tools block on synchronous human consent the first time per course per
+process; read tools do not prompt at all** — read access is granted implicitly on first
+read-tool call with a lighter, non-blocking toast, since blocking every read would make
+the agent unusable. Destructive tools additionally always produce an in-app undo toast
+after execution, so even a consented destructive call remains one click from reversal.
+
+## 2.5 Schema/versioning
+
+`src/mcp/registry.ts` exports `MCP_TOOL_SURFACE_VERSION = 1` (integer, independent of
+`CURRENT_SCHEMA_VERSION` — this versions the *tool contract*, not the Dexie schema),
+returned by a `lacuna.get_server_info` tool (name, app version, tool-surface version) so
+an agent can detect a stale cached tool list. Bumped only on a breaking change to an
+existing tool's shape or removal of a tool; additive new tools do not bump it. No
+dual-version serving — MCP clients re-fetch the tool list every connection and there is
+exactly one server instance per install.
+
+## 2.6 Electron wiring
+
+- New `electron/mcp/` directory, built by its own `tsc -p electron/tsconfig.mcp.json` step
+  (NodeNext, matching `electron/tsconfig.json`, but a separate project so the SDK's types
+  don't leak into the preload's CJS build).
+- `package.json`: `@modelcontextprotocol/sdk` under `dependencies` (it must ship in the
+  packaged app); `typecheck`/`electron:dev`/`electron:build*` scripts gain the
+  `tsc -p electron/tsconfig.mcp.json` step alongside the existing two `tsc` calls.
+- `electron/main.ts` starts the MCP server after `app.whenReady()` and window creation
+  (needs `mainWindow.webContents` for the bridge), guarded by the existing single-instance
+  lock so at most one stdio server ever runs. No change to `installSecurityHeaders` — the
+  MCP server is Node-side and never touches the renderer's `connect-src`.
+- `electron/preload.ts` gains an `mcp` namespace on `electronAPI` (`getStatus`, `onInvoke`,
+  `reply`, `onGrantRequest`, `respondToGrantRequest`), keeping the existing narrow-surface
+  pattern (no raw `ipcRenderer` passthrough).
+- The web (Cloudflare) build is untouched: nothing under `src/` imports
+  `electron/mcp/server.ts`, so Vite never sees the SDK. Verify with a web build after
+  Task 9 as a regression check.
+
+## 2.7 Testing strategy
+
+- **`src/db/read.ts`** — Vitest + `fake-indexeddb/auto`, same harness as
+  `repository.test.ts`, seeding via existing repository functions.
+- **`src/mcp/tools/*.ts`** — unit tests calling handlers directly with a stub
+  `ToolContext` against the fake-IndexedDB repository layer — no IPC, no SDK, no Electron.
+  This is the bulk of coverage and runs in the normal Vitest suite.
+- **`src/mcp/diffImport.ts`** — pure-function, table-driven tests (create/skip/update
+  cases) — same "exhaustive tests before any UI" principle as Arc 1's regeneration module.
+- **`electron/mcp/*`** — not meaningfully unit-testable without a real MCP client; covered
+  by the manual smoke-test task (Task 13), consistent with the existing treatment of
+  `electron/` (no test files exist there today).
+- **Consent flow** — `McpConsentPrompt`/`McpSection` get component tests with mocked
+  `electronAPI.mcp`, colocated per convention.
+
+## 2.8 Out of scope for this arc
+
+- The `npx lacuna-mcp` WebSocket companion process for web/browser users — the core stays
+  transport-agnostic so this remains additive later, but it is not built now.
+- Streamable HTTP transport (see Open Questions).
+- Durable multi-agent identity (distinguishing Claude Code from Codex across sessions).
+- Any plugin extension point — per the outline's decision rule.
+- Study-session hooks (post-session agent triggers).
+- Any change to `src/fsrs/` scheduling logic.
+
+## 2.9 Task list
+
+Each task is scoped for one subagent, ends in one commit, and (except pure-refactor Arc 5
+tasks) includes its own tests. Arc 5 items are interleaved as noted.
+
+1. **[Arc 5.1] Shared `ConfirmInline` component.** Extract the two-step inline confirm
+   from `src/components/notes/NoteRow.tsx` (~88) and `src/pages/Settings.tsx`
+   (`confirmRestore`, ~1150) into `src/components/ui/ConfirmInline.tsx` (props: `label`,
+   `confirmLabel`, `onConfirm`, `onCancel`, `variant?: 'default' | 'destructive'`), with a
+   colocated test. Replace the two originals and the six `window.confirm()` sites
+   (`SequenceEditor.tsx:287`, `settings/LessonManagementSection.tsx:46`,
+   `settings/ExamDatesSection.tsx:70`, `course/PracticeNodeEditor.tsx:74`,
+   `settings/PracticeNodesSection.tsx:74`, `cards/LessonCardsSection.tsx:57`). Also used
+   later by `McpConsentPrompt` (Task 11), so doing it first avoids rework.
+
+2. **`src/db/read.ts` — read-side query module.** Implement §2.2's function list. No
+   MCP/Electron dependency — must run in plain Vitest. Full unit-test coverage with
+   `fake-indexeddb/auto`.
+
+3. **Read/query tool definitions + registry skeleton.** Add `@modelcontextprotocol/sdk`
+   (pinned, no `^` range); create `src/mcp/registry.ts`, `src/mcp/bridge/protocol.ts`
+   (envelope types only), and `src/mcp/tools/read.ts` implementing the read/query group as
+   thin wrappers over Task 2's `read.ts`. `ToolContext`/`McpToolError` types land here.
+   Unit tests call handlers directly with a stub context.
+
+4. **Content CRUD tool definitions.** The create/update group from §2.3 as thin wrappers
+   over `repository.ts`. Unit tests per tool, including one asserting
+   `link_card_to_lesson` stays idempotent.
+
+5. **[Arc 5.2] Warning colour tokens.** Add `--warning`/`--warning-fg` to `src/index.css`
+   (light block, dark block, `@theme` alias) following the `--positive` pattern. Replace
+   all 14 `amber-*` literals across the nine files (`ProgressBar.tsx:10`,
+   `CourseCard.tsx:162`, `StudySignals.tsx:205`, `UnifiedImportPanel.tsx:585,862`,
+   `ScriptPasteImport.tsx:117`, `CardEditor.tsx:543,545`, `HelpPage.tsx:58`,
+   `LearnMode.tsx:1904,1910,2312`, `SequenceEditor.tsx:587`). Spot-check light and dark.
+
+6. **Destructive/bulk tools + diff/preview tool.** `src/mcp/diffImport.ts` (pure,
+   table-driven-tested against `checkDuplicatesBatch`'s logic),
+   `lacuna.diff_import_preview`/`lacuna.import_cards`, then the destructive group, each
+   wired to its matching snapshot/restore pair. `ctx.grant` is threaded through every
+   handler signature now (checked against a stub in tests) even though the real grant
+   store lands in Task 7 — avoids re-touching every handler twice.
+
+7. **Grant store + gating logic.** `electron/mcp/grants.ts` (`McpGrant`/scope-ordinal
+   type, in-memory `Map`), plus pure grant-resolution logic and unit tests (ordinal scope
+   comparison, unknown course = no grant), kept transport-independent so it is testable
+   without Electron.
+
+8. **[Arc 5.4] Shared reorder chevrons.** Replace the inline SVGs at `Settings.tsx:491`
+   and `:508` with `ChevronDownIcon` (`src/components/ui/icons.tsx:290`, `rotate-180`
+   convention per `SequenceItemRow.tsx:85`).
+
+9. **IPC bridge (main ⇄ renderer) + Electron wiring.** `electron/mcp/server.ts` (SDK
+   `Server`, tool registration, stdio transport), the correlation-id round-trip,
+   renderer-not-ready timeout, `electron/preload.ts`'s `mcp` namespace,
+   `src/mcp/bridge/renderer.ts`, `electron/tsconfig.mcp.json` + `package.json` script
+   changes, and `lacuna.get_server_info`. No consent UI yet — grants default to a
+   permissive stub so the transport can be smoke-tested end to end; Task 11 swaps the
+   stub for the real blocking prompt. Verify the web build is unaffected.
+
+10. **[Arc 5.5] Shared `Select` wrapper.** `src/components/ui/Select.tsx` following
+    `Toggle.tsx`/`Button.tsx` conventions (typed props, `cn()`, token-backed classes),
+    colocated test. Adopt at all seven sites: `SequenceEditor.tsx:495`,
+    `course/PracticeNodeFields.tsx:52`, `cards/CardList.tsx:688,731`,
+    `sequences/SequenceItemRow.tsx:128`, `analytics/CourseComparison.tsx:254,268`.
+
+11. **Consent UI: `McpConsentPrompt` + `settings/McpSection.tsx`.** The blocking
+    write/destructive consent prompt wired into the Task 9 bridge, replacing the
+    permissive stub; the non-blocking read-grant toast; the new Settings section (added
+    to `SETTINGS_SECTIONS`) with server status and per-course grant/revoke controls.
+    Component tests with mocked `electronAPI.mcp`.
+
+12. **[Arc 5.3] Split `Settings.tsx`.** With `McpSection.tsx` (Task 11) as one more
+    precedent, extract the remaining inline sections of `Settings.tsx` (1,518 lines) into
+    `src/pages/settings/`, preserving `SETTINGS_SECTIONS` and the IntersectionObserver
+    scrollspy exactly. Deliberately after Task 11 — doing it earlier would make
+    `Settings.tsx` a merge-conflict-prone moving target for the new section.
+
+13. **Manual end-to-end smoke test + documentation.** Build the app, connect a real MCP
+    client (`claude mcp add` pointing at the stdio command) and drive a scripted pass:
+    list tools; read tool with no grant (expect implicit allow + toast); write tool with
+    no grant (expect blocking prompt); grant; retry; destructive tool (expect prompt +
+    undo toast); `diff_import_preview`/`import_cards` twice with the same payload (expect
+    the second call to report everything as `toSkip`); cold-start case (tool call before
+    window ready). Update `SPEC.md`/`CHANGES.md`; flip this section's header to
+    "Status: delivered" per the Arc 1/Arc 4 precedent, noting deferrals (HTTP transport,
+    companion process, durable identity).
+
+## 2.10 Risks
+
+- **Renderer-not-ready races** (medium): an agent's first tool call can arrive before the
+  window has loaded or after it has been closed. Mitigated by the bounded timeout and
+  explicit `internal` error; Task 13 must include a cold-start case.
+- **Consent fatigue** (medium): aggressive agent retries on `forbidden` could train the
+  user to reflexively approve. Mitigated by per-course scoping and process-scoped expiry,
+  which keeps prompts infrequent enough to stay meaningful.
+- **Bridge deadlock** (low): an unanswered request if the renderer handler throws outside
+  the wrapper. Mitigated by wrapping every tool's execution centrally in
+  `src/mcp/bridge/renderer.ts`, plus the main-process timeout as a backstop.
+- **SDK version churn** (low): the MCP wire protocol has changed shape before. Pin to a
+  specific version (recorded here once chosen in Task 3); no `^` ranges — same pin
+  discipline as `ts-fsrs`.
+
+## 2.11 Success criteria
+
+1. Claude Code (or any MCP stdio client) connects to a locally built Lacuna and lists the
+   full tool set.
+2. An agent can read course/lesson/card/analytics data without any prompt, create and
+   update content after a single one-time write grant per course, and only ever performs
+   a destructive action after an explicit prompt plus an in-app undo path.
+3. `diff_import_preview`/`import_cards` are safely re-runnable with no duplicate creation,
+   verified by both a unit test and the manual smoke pass.
+4. The web (Cloudflare) build is unaffected: no MCP SDK code reaches the browser bundle.
+5. All five Arc 5 items shipped and verified in light and dark mode, with no regression to
+   Settings' scrollspy behaviour.
+
+---
+
 # Arc 3 — Cram-Mode Overhaul (outline)
 
 The document Addendum 2 §G and §M promised. To be planned after Arc 2 (or earlier if it
