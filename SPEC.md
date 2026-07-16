@@ -574,6 +574,17 @@ element a turn as the recall target with local context as the cue.
   (`diffRegeneration`) needs no lines-specific logic beyond `generateCards` already
   filtering by `isMyLine`: switching `mySpeaker` diffs like any other content change —
   deletes the old speaker's cards, creates the new speaker's.
+- **Lines-mode study flow** (Learn mode): cards generated from a `lines`-mode sequence get
+  an optional **first-letter hint** step between question and reveal — a Hint button on the
+  card front (keyboard: `h`) that shows the answer reduced to each word's initial letter
+  (`firstLetterHint` in `src/utils/firstLetterHint.ts`, e.g. "To be, or not to be" ->
+  "T b, o n t b"; punctuation kept in place, whitespace normalised). The hint is ungraded
+  and resets per card. LearnMode resolves which pool cards are lines-mode once per session
+  via `linesModeSequencesByCard` (`src/db/linesModeCards.ts`), which batches one
+  `listSequences` per distinct courseId among the pool's generated cards. Strict grading
+  reuses the global typed-answer mode: with the typing setting on 'type', a lines-mode card
+  is typed against verbatim and diffed word-by-word via `compareAnswer`
+  (`src/utils/answerComparison.ts`) — feedback only; Yes/No self-grading remains the grade.
 - **Script paste import** (`src/db/scriptSplitter.ts`, `splitScript`): a pure parser for the
   lines-mode editor's paste + auto-split flow. A line matching `NAME: dialogue` starts a new
   item for that speaker; a following non-matching line is folded in as a wrapped continuation

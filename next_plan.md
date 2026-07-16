@@ -93,7 +93,8 @@ paid-down deferrals, and accurate documentation.
 > documented (§5, §12–13 of `SPEC.md`; see `CHANGES.md`). **Schema correction:** §1.2 below
 > still says v10 as originally planned, but v10 was taken in the meantime by
 > `Course.lessonViewMode` (an unrelated change landed first), so sequences shipped at
-> schema **v11** instead. §1.5's **v2 lines-mode slice remains open** — not started.
+> schema **v11** instead. §1.5's **v2 lines-mode slice is now implemented** (data layer,
+> editor, and study flow) pending a human end-to-end pass.
 
 ## 1.1 Motivation and approach
 
@@ -184,15 +185,18 @@ For a sequence with items `i₀ … iₙ` and `cueWindow = w`:
 
 ## 1.5 v2 (same arc, second slice): lines mode
 
-> **Status (July 2026): data layer and editor delivered; study-flow UI open.**
+> **Status (July 2026): fully delivered — data layer, editor, and study flow.**
+> Only a human end-to-end pass on a real script scene remains.
 > `Sequence.mode`/`mySpeaker` and `SequenceItem.speaker` (additive, no schema bump —
 > Dexie doesn't need one for un-indexed optional fields), the `isMyLine`-filtered
 > generation/regeneration logic, the script-paste splitter, and the sequence editor's
 > mode picker/speaker fields/"my speaker" control are implemented and tested
 > (`src/db/sequenceGeneration.ts`, `src/db/scriptSplitter.ts`,
 > `src/pages/SequenceEditor.tsx`, `src/components/sequences/ScriptPasteImport.tsx`;
-> SPEC.md §5). **Open:** the study-flow UI below — first-letter hints and strict grading
-> in Learn mode — is not started.
+> SPEC.md §5). The study-flow UI is also shipped: the first-letter hint step
+> (`src/utils/firstLetterHint.ts`, `src/components/learn/LineHint.tsx`, wired into
+> `src/pages/LearnMode.tsx` with an `h` shortcut) and strict typed grading via the
+> global typing mode, with lines-mode detection in `src/db/linesModeCards.ts`.
 
 Same `Sequence` machinery with a different skin:
 
@@ -201,18 +205,22 @@ Same `Sequence` machinery with a different skin:
   the hinges — consistent with the actor-memory literature). **Shipped:** cue lines
   display speaker names by default (`NAME: line`), resolving the open question below.
 - **First-letter prompt mode**: a graded hint (initial letters of the answer) before full
-  reveal, as a mid-step in the reveal flow. **Not started** — LearnMode is out of scope
-  for the data-layer/editor slice above.
+  reveal, as a mid-step in the reveal flow. **Shipped:** a Hint button (keyboard `h`) on
+  the card front for lines-mode cards, showing `firstLetterHint`'s reduction
+  ("To be, or not to be" -> "T b, o n t b"); ungraded and reset per card.
 - **Strict grading**: reuse `src/utils/answerComparison.ts` (the "type your answer"
   comparison, `AnswerComparisonOptions.ignoreCase`/`ignorePunctuation`) for verbatim
-  checking; Yes/No self-grade remains the fallback. **Not started**, same reason.
+  checking; Yes/No self-grade remains the fallback. **Shipped** via the global typing
+  mode: lines-mode cards are plain `front_back` cards, so with the setting on 'type' the
+  typed answer is diffed word-by-word against the line on reveal, feedback only.
 - Script import assist (paste a script, split into speaker-tagged items) is a natural
   Arc 2 agent task; a basic manual splitter ships here. **Shipped:** `splitScript`
   (`src/db/scriptSplitter.ts`) plus the `ScriptPasteImport` preview/correction modal.
 
-Open design questions, now resolved by the shipped slice: cue lines display speaker names
-by default (decided above). Still open for the study-flow slice: hint granularity (first
-letters vs first words) and how punctuation/case affect strict grading.
+Open design questions, all now resolved: cue lines display speaker names by default;
+hint granularity is first letters (punctuation preserved in place); strict grading keeps
+`answerComparison`'s defaults (case and edge punctuation ignored) — a stricter per-user
+option remains possible via `AnswerComparisonOptions` without algorithm changes.
 
 ## 1.6 Risks
 
