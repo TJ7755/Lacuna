@@ -270,6 +270,13 @@ export interface CourseExamDate {
 }
 
 /**
+ * Named preset identifiers offered by the sequence editor (`src/db/sequencePresets.ts`).
+ * Kept here, rather than on the presets module, so `Sequence.presetId` doesn't create a
+ * types <-> sequencePresets import cycle.
+ */
+export type SequencePresetId = 'list' | 'poetry' | 'script' | 'speech' | 'procedure' | 'timeline';
+
+/**
  * An overlapping-cloze sequence: an ordered list of small recallable units
  * (e.g. a numbered list, a chain of steps, or a scripted scene) from which
  * generation logic derives ordinary FSRS cards, each cueing on the preceding
@@ -304,6 +311,14 @@ export interface Sequence {
    * with `cueWindow`/`chunkLabels` already being sequence-level settings.
    */
   mySpeaker?: string;
+  /**
+   * Which named preset (`src/db/sequencePresets.ts`) the author picked at creation —
+   * data-only, purely for redisplaying the right terminology/picker state when editing;
+   * `mode`/`cueWindow`/`mySpeaker` above remain the fields generation actually reads.
+   * Undefined for sequences created before presets existed, or if a future preset is
+   * removed; falls back to inferring from `mode` (see `presetForSequence`).
+   */
+  presetId?: SequencePresetId;
   createdAt: number;
 }
 
