@@ -7,20 +7,26 @@ that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in ord
 
 1. **Arc 0 — Course architecture close-out** (detailed)
 2. **Arc 1 — Sequence learning** (detailed; ordered lists first, lines mode as v2)
-3. **Arc 2 — MCP server / agent surface** (outline; to be planned in full when reached)
+3. **Arc 2 — MCP server / agent surface** (outline; the next detailed build)
 4. **Arc 3 — Cram-mode overhaul** (outline; the document owed by Addendum 2 §G/§M)
 5. **Arc 4 — Lesson/Practice split, checkpoint-aware horizon & Study Now** (detailed)
+6. **Arc 5 — UI consistency pass** (outline; cheap, may interleave at any point)
+7. **Arc 6 — Media card types: audio and image occlusion** (outline)
+8. **Arc 7 — Classroom distribution: versioned courses and re-import merge** (outline;
+   depends on Arc 2)
+9. **Arc 8 — Multi-device sync** (outline; design decision first)
+10. **Arc 9 — Mobile experience and due-card reminders** (outline)
 
-Plugins and sync/collaboration are explicitly parked. Arc 2's design doubles as the
-plugin-compatibility groundwork: the MCP tool surface over the repository layer is the
-first — and for now only — extension point.
+Plugins remain speculative pending a concrete pain point (see Arc 2). Sync/collaboration
+is no longer parked outright: Arc 8 un-parks it as a design question to be settled before
+any build.
 
-Also parked: **switching FSRS parameter optimisation to the official binding trainer**.
-An abandoned June 2026 experiment (deleted branch
-`copilot/production-hardening-round-two`, commits `c4fad61` and `8de902b`) attempted
-this against the pre-Course-architecture codebase, touching `src/fsrs/optimise.ts`, the
-optimise worker and Settings. The branch is unmergeable now; if revisited, redo it fresh
-against the current `src/fsrs/optimise.ts` Web Worker design (SPEC.md §8.1).
+FSRS parameter optimisation already uses the official binding trainer.
+`src/fsrs/optimise.ts` fits weights via `@open-spaced-repetition/binding`'s
+`computeParameters()` (fsrs-rs via WASM in a Web Worker, `src/workers/optimise.worker.ts`),
+validated against FSRS ranges before being applied; see SPEC.md §8.1. An earlier June 2026
+attempt at this on a deleted branch (`copilot/production-hardening-round-two`) predates
+the current implementation and is superseded — no further action needed here.
 
 Detail rots (the Course plan needed two addenda), so only the most recently delivered arc
 carries full detail. Outline arcs are scoped, not specified.
@@ -527,12 +533,121 @@ lesson or unfinished Practice milestone and routes:
 
 ---
 
+# Arc 5 — UI Consistency Pass (outline)
+
+Cheap, no dependency on the other arcs; may run any time, including interleaved between
+them. Five items:
+
+1. **Shared inline confirm.** `NoteRow.tsx` (~line 89, `confirmingDelete` prop) and the
+   `Settings.tsx` backup-restore section (`confirmRestore` state, ~line 1150) each hand-roll
+   an inline two-step confirm. Extract a shared `ConfirmInline` component and replace the
+   six remaining `window.confirm()` call sites: `SequenceEditor.tsx:287`,
+   `settings/LessonManagementSection.tsx:46`, `settings/ExamDatesSection.tsx:70`,
+   `course/PracticeNodeEditor.tsx:74`, `settings/PracticeNodesSection.tsx:74`,
+   `cards/LessonCardsSection.tsx:57`.
+2. **Warning colour tokens.** Add `--warning`/`--warning-fg` HSL tokens to `src/index.css`
+   alongside the existing `--accent`/`--positive`/`--negative` tokens, plus a Tailwind
+   alias, replacing hardcoded `amber-*` literals across the nine files that use them:
+   `CourseCard.tsx`, `StudySignals.tsx`, `UnifiedImportPanel.tsx`, `ScriptPasteImport.tsx`,
+   `ProgressBar.tsx`, `CardEditor.tsx`, `HelpPage.tsx`, `LearnMode.tsx`, `SequenceEditor.tsx`.
+3. **Split `Settings.tsx`.** At 1,518 lines it is the largest page in the app. Split into
+   per-section files under `src/pages/settings/`, following the existing extraction
+   precedent (`ExamDatesSection.tsx` etc.), keeping the single-page scrollspy UX unchanged.
+4. **Shared reorder chevrons.** Settings' reorder controls hand-roll inline SVG chevrons
+   (`src/pages/Settings.tsx:491` and `:508`) instead of the shared `ChevronDownIcon`
+   (`src/components/ui/icons.tsx:290`). Replace with that icon or a small shared
+   `ReorderControls` component.
+5. **Shared `Select` wrapper.** A thin styled wrapper over native `<select>` using existing
+   tokens, adopted at the five current native-select sites: `SequenceEditor.tsx:495`,
+   `course/PracticeNodeFields.tsx:52`, `cards/CardList.tsx:688,731`,
+   `sequences/SequenceItemRow.tsx:128`, `analytics/CourseComparison.tsx:254,268`.
+
+---
+
+# Arc 6 — Media Card Types: Audio and Image Occlusion (outline)
+
+To be planned after Arc 2, since Arc 2's plugin-extension-point decision (custom card
+types are the first predicted plugin surface) should inform whether these ship native or
+via a plugin API. This arc builds the two highest-demand types natively regardless, and
+the experience feeds back into that decision. Scope decided so far:
+
+- **Audio.** A new card mechanic reusing the assets pipeline (`src/db/assets.ts`, currently
+  image-only) with a player renderer. Decide at planning time between a new `CardType`
+  and a Markdown audio embed — the choice affects the assets schema and the card
+  renderer's dispatch.
+- **Image occlusion.** Follow the Sequence precedent (§1): an authoring-time entity that
+  generates read-only `Card`s anchored by stable region ids, so editing a region's shape or
+  label regenerates that card's front while preserving its FSRS memory state. Needs a
+  masking editor UI (draw/label regions over an uploaded image).
+- Both types must respect the generated-card conventions already established for
+  sequences: read-only in the card editor, badged, deletable only via their source entity.
+
+---
+
+# Arc 7 — Classroom Distribution: Versioned Courses and Re-import Merge (outline)
+
+Sequenced after Arc 2 deliberately — this arc depends on Arc 2's idempotent, diff-friendly
+repository tools (§Arc 2, "tool design requirement"). Scope decided so far:
+
+- **Problem.** Share codes today are one-shot snapshots (Addendum 2 §E). A course revision
+  forces students to either lose progress on re-import or never receive the update.
+- Share codes carry a course lineage/version id.
+- Re-importing an updated code diffs against the existing course: adds new material,
+  flags edited or removed items, and preserves learner state — FSRS memory,
+  `LessonCardExposure` (§4.2) — via stable-id anchoring, generalising the
+  `SequenceItem.id` pattern (§1.2) to lessons, notes and cards generally.
+- Explicitly not in scope: bidirectional sync between teacher and student copies (see
+  Arc 8) — this is one-way redistribution of authored material only.
+
+---
+
+# Arc 8 — Multi-Device Sync (design decision first) (outline)
+
+Un-parked as a direction, but the first deliverable of this arc is a design document
+choosing among the options below, not code. The values fork must be settled before any
+build begins:
+
+1. **User-supplied sync target** — extend the existing File System Access folder mirror
+   (`src/db/backups.ts`) from one-way backup to bidirectional sync.
+2. **CRDT layer under Dexie** for content, with review logs merged as append-only event
+   logs and FSRS state recomputed from the merged log.
+3. **Self-hostable companion process**, architecturally adjacent to Arc 2's Electron-hosted
+   MCP endpoint (a local companion a browser tab can connect out to).
+
+No Lacuna-run cloud service in any option — that remains against the product's
+local-only identity. Whichever option is chosen must preserve that.
+
+---
+
+# Arc 9 — Mobile Experience and Due-Card Reminders (outline)
+
+Scope decided so far:
+
+- **PWA polish.** `public/manifest.json` is thin today: one SVG icon (no maskable-safe
+  raster set), no `screenshots` field, no install-prompt handling in the app. Add an icon
+  set, screenshots, and capture the `beforeinstallprompt` event for an in-app install
+  affordance.
+- **Due-card reminders.** No notification mechanism exists anywhere in the codebase today
+  (`Toast.tsx` and `UnifiedImportPanel.tsx`'s "Notification" hits are in-app toasts, not
+  push/OS notifications). Scope local due-card reminder notifications where the platform
+  permits (Notification API / service worker), no server component.
+- **Capacitor fork.** Assess wrapping the PWA in Capacitor (real push notifications,
+  app-store distribution) as an explicit fork against staying PWA+Electron only, since it
+  adds a second native build pipeline to maintain.
+
+---
+
 # Cross-arc notes
 
 - All arcs follow existing conventions: additive schema migrations with pre-migration
   snapshots, pure logic modules with tests before UI, British English, no emojis.
 - Arc ordering is deliberate: Arc 0 gives one data model, Arc 1 stabilises the repository
-  API that Arc 2 exposes, Arc 3 is self-contained.
+  API that Arc 2 exposes, Arc 3 is self-contained. Arc 2 (MCP) is the next detailed build.
+  Arc 5 (UI consistency pass) is cheap and carries no dependency on the others — it may
+  interleave at any point, including between other arcs. Arc 7 depends on Arc 2's
+  repository-tool work and is sequenced after it deliberately. Arc 8 (sync) is un-parked
+  as a design question, not yet an implementation commitment; Arc 9 and Arc 6 are
+  independent of each other and of Arc 8.
 - Each arc gets its own detailed plan (or addendum here) before implementation begins;
   outline sections above are scope agreements, not specifications.
 
