@@ -53,6 +53,27 @@ describe('CardContent', () => {
     expect(screen.getByText('First item?')).toBeInTheDocument();
   });
 
+  it('renders the literal first-line prompt without treating it as cue text', () => {
+    const card = makeCard({
+      front: '**Hamlet**\n\nFirst line?',
+      sequenceItemId: 'line-1',
+    });
+    render(<CardContent card={card} side="front" sequenceCue sequenceMode="lines" />);
+    expect(screen.getByText('First line?')).toBeInTheDocument();
+    expect(screen.queryByText('Next line?')).not.toBeInTheDocument();
+  });
+
+  it('uses line-specific wording after a lines-mode cue block', () => {
+    const card = makeCard({
+      front: '**Hamlet**\n\nTo be, or not to be',
+      sequenceItemId: 'line-2',
+    });
+    render(<CardContent card={card} side="front" sequenceCue sequenceMode="lines" />);
+    expect(screen.getByText('To be, or not to be')).toBeInTheDocument();
+    expect(screen.getByText('Next line?')).toBeInTheDocument();
+    expect(screen.queryByText('Next item?')).not.toBeInTheDocument();
+  });
+
   it('does not apply cue styling to a label card front', () => {
     const card = makeCard({
       front: 'Olfactory → ?',

@@ -1,5 +1,16 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Browser QA
+
+- Completed a desktop and mobile in-app-browser audit across every application route and
+  recorded the coverage, reproduction steps and verification results in
+  `BROWSER_QA_AUDIT.md`.
+- Corrected Share guidance that confused `LAC0–LAC3` encoding prefixes with share-payload
+  versions.
+- Updated Help text to match the current course picker, course-settings ownership and
+  configurable lesson unlocking, and removed the nonexistent automatic Cram dropdown.
+- Added accessible names to previously unnamed settings and practice-node switches.
+
 > **GitHub Release Note for v0.1.0**
 >
 > This release completes the Course Architecture Plan: Lacuna is now organised around

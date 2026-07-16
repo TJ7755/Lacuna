@@ -378,6 +378,59 @@ describe('SequenceEditor', () => {
         expect.objectContaining({ mode: 'lines', mySpeaker: 'ALICE' }),
       );
     });
+
+    it.each([
+      ['Poetry / verse', 'poetry'],
+      ['Speech / presentation', 'speech'],
+    ] as const)('clears hidden speaker metadata when switching from Script to %s', (presetName, presetId) => {
+      mockCourse = course;
+      renderNew();
+      fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
+
+      fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
+        target: { value: 'Sonnet 18' },
+      });
+      fireEvent.change(
+        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
+        { target: { value: 'Shall I compare thee to a summer’s day?' } },
+      );
+      fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'NARRATOR' } });
+      fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'NARRATOR' } });
+
+      fireEvent.click(screen.getByRole('button', { name: new RegExp(presetName.replace('/', '\\/')) }));
+
+      expect(screen.queryByPlaceholderText('Speaker')).not.toBeInTheDocument();
+      expect(screen.getByText('1 card generated')).toBeInTheDocument();
+      expect(screen.getByText('Add sequence')).not.toBeDisabled();
+      fireEvent.click(screen.getByText('Add sequence'));
+      expect(createSequence).toHaveBeenCalledWith(
+        'course-1',
+        null,
+        'Sonnet 18',
+        [expect.objectContaining({ value: 'Shall I compare thee to a summer’s day?' })],
+        expect.objectContaining({ mode: 'lines', presetId, mySpeaker: undefined }),
+      );
+      expect(createSequence.mock.calls[0][3][0]).not.toHaveProperty('speaker');
+    });
+
+    it('disables saving when the selected speaker would generate no cards', () => {
+      mockCourse = course;
+      renderNew();
+      fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
+      fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
+        target: { value: 'Scene one' },
+      });
+      fireEvent.change(
+        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
+        { target: { value: 'Indeed I am.' } },
+      );
+      fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
+      fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'ALICE' } });
+      fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'BOB' } });
+
+      expect(screen.getByText('0 cards generated')).toBeInTheDocument();
+      expect(screen.getByText('Add sequence')).toBeDisabled();
+    });
   });
 
   describe('re-pasting a script while editing', () => {

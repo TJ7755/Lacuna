@@ -23,7 +23,7 @@ export default defineConfig({
       workbox: {
         // Precache only the application shell. Lazy routes and their large optional
         // assets are cached when visited instead of all being downloaded on install.
-        globPatterns: ['**/*.{html,css,ico,png,svg}', 'assets/app-*.js'],
+        globPatterns: ['**/*.{html,css,ico,png,svg}', 'assets/{app,vendor}-*.js'],
         runtimeCaching: [
           {
             urlPattern: ({ request }) =>
@@ -103,8 +103,8 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Give the sole eager application entry a distinct name so Workbox can
-        // precache it without also downloading every lazy JavaScript chunk.
+        // Give the eager application entry a distinct name so Workbox can precache
+        // it and its vendor dependency without downloading every lazy JavaScript chunk.
         entryFileNames: 'assets/app-[hash].js',
         // Keep production chunks sensible: framework, charts and the markdown/maths
         // stack each get their own chunk so a page that needs none of them stays light.

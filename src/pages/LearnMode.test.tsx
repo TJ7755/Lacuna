@@ -1,19 +1,22 @@
 import 'fake-indexeddb/auto';
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { LearnMode, LearnSkeleton } from './LearnMode';
 import { db } from '../db/schema';
 import {
+  cardsForSequence,
   createCard,
   createCourse,
   createDeck,
   createLesson,
   createLessonCard,
   createPracticeNode,
+  createSequence,
   linkCardToLesson,
   upsertLessonCardExposure,
 } from '../db/repository';
+import * as linesModeCards from '../db/linesModeCards';
 import { makeSessionContext, sessionProgress } from '../fsrs/session';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
@@ -71,8 +74,61 @@ describe('LearnMode course/lesson scope', () => {
       db.practiceNodes.clear(),
       db.practiceMilestones.clear(),
       db.noteAnnotations.clear(),
+      db.sequences.clear(),
     ]);
     localStorage.clear();
+  });
+
+  it('waits for line-sequence classification before serving a line-specific prompt', async () => {
+    const course = await createCourse('Drama');
+    const lesson = await createLesson(course.id, 'Scene one');
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'Scene one',
+      [
+        { id: 'line-1', value: 'Where are you?' },
+        { id: 'line-2', value: 'I am here.' },
+      ],
+      { mode: 'lines' },
+    );
+    const sequenceCards = await cardsForSequence(sequence);
+    const firstCard = sequenceCards.find((card) => card.sequenceItemId === 'line-1');
+    expect(firstCard).toBeDefined();
+    await db.cards.delete(firstCard!.id);
+
+    const lineMap = await linesModeCards.linesModeSequencesByCard(
+      sequenceCards.filter((card) => card.id !== firstCard!.id),
+    );
+    let resolveLineMap!: (map: Map<string, typeof sequence>) => void;
+    const delayedLineMap = new Promise<Map<string, typeof sequence>>((resolve) => {
+      resolveLineMap = resolve;
+    });
+    const lookup = vi
+      .spyOn(linesModeCards, 'linesModeSequencesByCard')
+      .mockReturnValue(delayedLineMap);
+
+    try {
+      render(
+        <ThemeProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+              <Routes>
+                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </ThemeProvider>,
+      );
+
+      expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
+      await act(async () => resolveLineMap(lineMap));
+      await continueFromNotes();
+      expect(await screen.findByText('Next line?')).toBeInTheDocument();
+      expect(screen.queryByText('Next item?')).not.toBeInTheDocument();
+    } finally {
+      lookup.mockRestore();
+    }
   });
 
   it('teaches a lesson in Simple mode and records only lesson-scoped exposure', async () => {

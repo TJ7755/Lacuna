@@ -176,6 +176,9 @@ describe('SharePage', () => {
     mockSummaries = { [mockCourse.id]: mockSummary };
     render(<SharePage />);
     expect(screen.getByText('Import a shared course')).toBeInTheDocument();
+    expect(
+      screen.getByText(/All Lacuna share-code encodings \(LAC0–LAC3\) are supported/),
+    ).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...')).toBeInTheDocument();
   });
 });

@@ -155,8 +155,13 @@ export function SequenceEditor() {
   // Selecting a preset (new sequences only) seeds its default cue window so the field
   // isn't left at whatever an earlier preset choice happened to leave it at.
   function selectPreset(id: SequencePresetId) {
+    const nextPreset = getPreset(id);
     setPresetId(id);
-    setCueWindow(getPreset(id).defaultCueWindow);
+    setCueWindow(nextPreset.defaultCueWindow);
+    if (!nextPreset.usesSpeakers) {
+      setItems((prev) => prev.map(({ speaker: _speaker, ...item }) => item));
+      setMySpeaker('');
+    }
   }
 
   if (
@@ -198,7 +203,8 @@ export function SequenceEditor() {
     name.trim().length > 0 &&
     items.length > 0 &&
     items.every((i) => i.value.trim().length > 0) &&
-    (!usesSpeakers || mySpeaker.trim().length > 0);
+    (!usesSpeakers || mySpeaker.trim().length > 0) &&
+    preview.length > 0;
 
   function updateItem(id: string, patch: Partial<SequenceItem>) {
     setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));

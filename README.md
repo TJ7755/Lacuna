@@ -111,4 +111,4 @@ remark-gfm / remark-math / rehype-katex / rehype-highlight.
 
 Vitest with `fake-indexeddb` for database and FSRS layer tests, `@testing-library/react` and
 `happy-dom` for UI component and hook tests. The test suite covers the FSRS engine, forward
-simulation, import/export, asset handling, and UI components. Run `bun test` to execute.
+simulation, import/export, asset handling, and UI components. Run `bun run test` to execute.

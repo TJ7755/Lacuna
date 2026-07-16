@@ -424,6 +424,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Show due card counts"
             checked={sidebarSettings.showDueCounts}
             onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
           />
@@ -437,6 +438,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Show archived courses"
             checked={sidebarSettings.showArchived}
             onChange={(checked) => setSidebarSettings({ showArchived: checked })}
           />
@@ -450,6 +452,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Compact mode"
             checked={sidebarSettings.compactMode}
             onChange={(checked) => setSidebarSettings({ compactMode: checked })}
           />
@@ -509,6 +512,7 @@ export function Settings() {
                     </button>
                   </div>
                   <span className="flex-1 text-sm text-ink">{item.label}</span>                    <Toggle
+                    ariaLabel={`Show ${item.label} in primary navigation`}
                     checked={item.visible}
                     disabled={!canHide}
                     onChange={(checked) => {
@@ -636,6 +640,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Manual four-point grading"
             checked={gradingMode === 'manual'}
             onChange={(checked) => setGradingMode(checked ? 'manual' : 'silent')}
           />
@@ -643,7 +648,9 @@ export function Settings() {
 
         <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
           <div className="min-w-0">
-            <div className="text-sm">Type your answer</div>
+            <label htmlFor="type-your-answer" className="text-sm">
+              Type your answer
+            </label>
             <p className="mt-1 text-sm text-ink-soft">
               Type the answer before reveal instead of just flipping the card. Works for
               front/back, reversed and cloze cards; the typed answer is compared against
@@ -651,6 +658,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            id="type-your-answer"
             checked={typingSetting === 'type'}
             onChange={(checked) => setTypingSetting(checked ? 'type' : 'reveal')}
           />
@@ -713,6 +721,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Optimise scheduling"
             checked={autoOptimise}
             onChange={setAutoOptimise}
           />
@@ -733,6 +742,7 @@ export function Settings() {
               </p>
             </div>
             <Toggle
+              ariaLabel="Auto-insert practice nodes"
               checked={practiceDefaults.autoPractice}
               onChange={(checked) =>
                 setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })
@@ -909,6 +919,7 @@ export function Settings() {
             </p>
           </div>
           <Toggle
+            ariaLabel="Auto-start breaks"
             checked={pomoSettings.autoStartBreaks}
             onChange={(checked) => {
               const next = { ...pomoSettings, autoStartBreaks: checked };

@@ -546,8 +546,8 @@ export function SharePage() {
         </div>
         <p className="mb-5 text-sm text-ink-soft">
           Paste a share code below to add it as a new course of your own. This never
-          overwrites your existing courses. Legacy deck codes (LAC0, LAC1) and current
-          course codes (LAC2, LAC3) are both supported.
+          overwrites your existing courses. All Lacuna share-code encodings (LAC0–LAC3)
+          are supported, including legacy deck exports and current course exports.
         </p>
 
         <div className="rounded-xl border border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">

@@ -117,6 +117,7 @@ export function PracticeNodeFields({ draft, onChange, lessons }: PracticeNodeFie
           <p className="text-xs text-ink-faint">Shuffle the cards instead of following lesson order.</p>
         </div>
         <Toggle
+          ariaLabel="Randomise order"
           checked={draft.randomize}
           onChange={(checked) => onChange((d) => ({ ...d, randomize: checked }))}
         />
