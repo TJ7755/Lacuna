@@ -208,7 +208,6 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
                       fill="none"
                       className={stroke(phase)}
                       strokeWidth="6"
-                      strokeLinecap="round"
                       strokeDasharray={BIG_C}
                       initial={{ strokeDashoffset: BIG_C }}
                       animate={{ strokeDashoffset: BIG_C * (1 - progress) }}
