@@ -6,6 +6,7 @@
 import type { McpToolError } from './bridge/protocol';
 import { McpToolException, type ToolContext, type ToolDefinition, type ToolResult } from './types';
 import { READ_TOOLS } from './tools/read';
+import { CONTENT_TOOLS } from './tools/content';
 
 /**
  * Versions the *tool contract* (names, input/output shapes), independent of Dexie's
@@ -21,9 +22,9 @@ export const MCP_TOOL_SURFACE_VERSION = 1;
  *
  * - `noteAnnotations` CRUD — device-local by design, no agent use case yet.
  * - Raw FSRS state writes (`state`, `stability`, `difficulty`, `due`) — `update_card`
- *   (a later task) accepts only content fields; scheduling stays the engine's exclusive
- *   write path. `reschedule_cards` exposes the existing bounded `rescheduleCards` helper
- *   instead of raw field writes.
+ *   accepts only content fields (front/back/tags/flagged); scheduling stays the engine's
+ *   exclusive write path. `reschedule_cards` exposes the existing bounded `rescheduleCards`
+ *   helper instead of raw field writes.
  * - `recordReview`/`undoReview` — an agent grading the user's recall on their behalf
  *   would corrupt the memory model; review recording stays a human-only, in-app action.
  * - Practice-node/milestone mutation beyond exam dates — path/curriculum structure is
@@ -32,7 +33,7 @@ export const MCP_TOOL_SURFACE_VERSION = 1;
  *   shape; out of scope for this arc.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- see src/mcp/tools/read.ts's READ_TOOLS comment.
-export const TOOL_REGISTRY: readonly ToolDefinition<any, any>[] = [...READ_TOOLS];
+export const TOOL_REGISTRY: readonly ToolDefinition<any, any>[] = [...READ_TOOLS, ...CONTENT_TOOLS];
 
 /** Looks up a tool definition by its `lacuna.<verb>_<noun>` name, or undefined if unknown. */
 export function getTool(name: string): ToolDefinition<unknown, unknown> | undefined {
