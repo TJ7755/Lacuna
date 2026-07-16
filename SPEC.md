@@ -42,8 +42,9 @@ British English throughout. No emojis anywhere in the product or its copy.
    predicted vs actual recall (§14). A Settings toggle switches to manual four-point grading
    (Again/Hard/Good/Easy with keyboard shortcuts) for users who prefer to grade themselves.
 4. **Local and private.** Everything is stored on-device. Export, import, automatic restore
-   points and optional folder mirroring are the backup story; nothing leaves the machine
-   unless the user exports it.
+   points and optional folder mirroring are the backup story. The Electron MCP surface can
+   expose authorised data to a local client process, but Lacuna itself has no remote server
+   or account and grants expire with the desktop process.
 5. **Touch-first, keyboard-equivalent.** Every interaction is designed for touch from the
    ground up (44px minimum targets, swipe gestures, bottom sheets, active states) and is
    mirrored by keyboard shortcuts so the app is fast on either input mode.
@@ -1544,6 +1545,11 @@ charts below the fold are never invisible. Each chart container is `h-64` with
 
 ## 15. Settings (`src/pages/Settings.tsx`)
 
+`Settings.tsx` is a thin page composition; the ten independent setting groups live under
+`src/pages/settings/`. Section ids and ordering remain centralised in the page so the
+single-page IntersectionObserver scrollspy and right-hand navigation cannot drift from the
+rendered sections.
+
 - **Appearance:** theme toggle (defaults to **dark**); **accent colour** swatches
   (7 choices); **text size** steps that scale all text. All three persist to
   `localStorage` (via `ThemeContext`, `AccentContext`, `FontScaleContext`).
@@ -1588,6 +1594,9 @@ charts below the fold are never invisible. Each chart container is `h-64` with
   Delete and a two-step Restore confirmation.
 - **Install** (where supported): a panel of platform-specific install
   instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`.
+- **MCP server** (Electron only): live stdio-server status, tool-surface version and tool
+  count, followed by process-scoped read/write/destructive grants for the whole database
+  and each course. Grants can be raised or revoked and are discarded when Lacuna closes.
 
 ### Course settings (`src/pages/CourseSettings.tsx`)
 The only exam/scheduling settings surface in the app — there is no deck-level settings
@@ -1708,7 +1717,7 @@ modifying the renderer source.
   trainer, registers a custom `app://` protocol for production builds, and
   manages window lifecycle (single-instance lock, close/minimise/maximise).
 - **Preload** (`electron/preload.ts`): exposes a minimal `electronAPI` via
-  `contextBridge` for platform detection and window controls.
+  `contextBridge` for platform detection, window controls and the narrow MCP IPC surface.
 - **Titlebar** (`src/components/layout/Titlebar.tsx`): a custom React component
   that renders window controls (minimise, maximise/restore, close) when running
   inside Electron. Only mounts when `window.electronAPI.isElectron` is truthy,
@@ -1719,6 +1728,41 @@ modifying the renderer source.
   offline.
 - **Auto-updater** (`electron/updater.ts`): uses `electron-updater` with GitHub
   Releases; checks for updates shortly after launch and notifies the renderer.
+
+### Model Context Protocol server
+
+The Electron main process hosts a local MCP server over **stdio** using the pinned official
+TypeScript SDK. There is no listening socket, HTTP endpoint or browser MCP server. An MCP
+client launches the installed Lacuna executable as its server command; the normal renderer
+window must remain open because it owns IndexedDB.
+
+The tool contract is transport-independent and versioned separately from the Dexie schema
+(`MCP_TOOL_SURFACE_VERSION = 1`). It exposes:
+
+- read/query tools for courses, lessons, cards, due and weak cards, statistics, sequences,
+  notes and diagnostics;
+- content tools for course, lesson, note, card, sequence and exam-date creation/update;
+- destructive or bulk tools for cards, lessons, courses and sequences, plus suspension,
+  flags and bounded rescheduling; and
+- idempotent card-import preview/import tools that classify items as create, skip or
+  update candidates before writing.
+
+Tool definitions and handlers live under `src/mcp/` and reuse `src/db/read.ts` and the
+existing repository functions. The main process owns the SDK transport and sends correlated
+requests over the preload bridge to the renderer; a ten-second timeout turns a missing or
+not-ready renderer into a normal tool error. Tool inputs are resolved to their owning course
+before permission checks, and a call spanning more than one course is rejected.
+
+Permissions are process-scoped and ordinal: destructive implies write, which implies read.
+The first read for a course is allowed with a non-blocking notice. The first write or
+destructive call blocks on an in-app consent prompt and fails closed if no decision arrives.
+Settings shows the current grants and can grant or revoke them manually. Destructive and
+bulk handlers capture repository snapshots; their internal undo payload never reaches the
+client, but drives an in-app undo toast after the action completes.
+
+The v1 surface deliberately excludes raw FSRS-state writes, review recording, backup/share
+operations, note annotations and most curriculum-structure mutation. Streamable HTTP, a web
+companion process, durable client identity and plugin extension points remain deferred.
 
 ### Scripts
 - `bun run electron:dev` — runs Vite dev server and Electron in parallel.

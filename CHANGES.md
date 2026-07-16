@@ -22,6 +22,33 @@
 >
 > **Full changelog below**
 
+## Unreleased — MCP server and shared UI foundations (Arc 2 / Arc 5)
+
+The Electron implementation now contains the Arc 2 MCP surface. A real MCP-client
+end-to-end smoke pass has completed: tool listing, implicit read grants, blocking
+write/destructive consent, destructive-with-undo, idempotent import preview/import, and
+the cold-start renderer-not-ready case all behaved as designed.
+
+- Added a versioned MCP tool registry backed by the existing repository/read layers: course,
+  lesson, note, card, sequence and exam-date reads and writes; analytics-style summaries;
+  destructive/bulk operations; and idempotent card-import preview/import.
+- Added the Electron-only stdio server using the pinned official MCP SDK. The main process
+  owns the transport while correlated IPC calls execute handlers in the renderer, where
+  IndexedDB lives. Calls time out cleanly when the renderer is unavailable, and the web
+  bundle does not import the SDK.
+- Added per-process, course-scoped permissions. Reads are granted implicitly with an in-app
+  notice; first-time write/destructive calls block on human consent. The Electron-only MCP
+  Settings section reports server status and lets the user grant or revoke read, write and
+  destructive access. Grants disappear when Lacuna closes.
+- Added renderer-side scope resolution for ID-only inputs, rejecting missing entities,
+  mismatched ownership and multi-course calls before consent. Destructive/bulk actions keep
+  their repository snapshots inside the renderer and expose an in-app Undo action without
+  leaking the snapshot to the MCP client.
+- Added the shared `ConfirmInline`, warning colour tokens, reorder-chevron reuse and a typed,
+  token-backed `Select` component. The shared select is adopted by sequence, practice-node,
+  card-list and course-comparison controls. Split the former 1,519-line Settings page into a
+  thin composition over ten section modules while preserving its scrollspy and navigation.
+
 ## Unreleased — Sequence learning (Arc 1 v1 slice)
 
 Adds overlapping-cloze **sequence learning**: authoring an ordered list once (the periodic

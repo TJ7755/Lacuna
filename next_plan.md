@@ -8,7 +8,8 @@ that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in ord
 1. **Arc 0 — Course architecture close-out** (detailed)
 2. **Arc 1 — Sequence learning** (detailed; ordered lists first, lines mode as v2)
 3. **Arc 2 — MCP server / agent surface** (outline; the next detailed build)
-4. **Arc 3 — Cram-mode overhaul** (outline; the document owed by Addendum 2 §G/§M)
+4. **Arc 3 — Assessment-aware revision planning and Cram** (detailed; the document owed
+   by Addendum 2 §G/§M)
 5. **Arc 4 — Lesson/Practice split, checkpoint-aware horizon & Study Now** (detailed)
 6. **Arc 5 — UI consistency pass** (outline; cheap, may interleave at any point)
 7. **Arc 6 — Media card types: audio and image occlusion** (outline)
@@ -35,10 +36,9 @@ carries full detail. Outline arcs are scoped, not specified.
 
 # Arc 0 — Course Architecture Close-out
 
-> **Status (July 2026): complete.** All Phase 8 items, deferred debts and the add-lesson
-> UI gap are implemented. The only remaining checklist item is the manual end-to-end pass
-> (§0.1 item 6), which must be run by a human in the browser. Schema removal of the
-> internal `decks`/`folders` tables remains explicitly out of scope (§0.3).
+> **Status (July 2026): complete.** All Phase 8 items, deferred debts, the add-lesson
+> UI gap and the manual end-to-end pass are complete. Schema removal of the internal
+> `decks`/`folders` tables remains explicitly out of scope (§0.3).
 
 Finish what the Course plan started. No new features; the goal is one data model in the UI,
 paid-down deferrals, and accurate documentation.
@@ -58,9 +58,9 @@ paid-down deferrals, and accurate documentation.
    now (see 0.3) — this arc removes UI surfaces, not storage.
 5. **Documentation** — `README.md` and `SPEC.md` still describe the deck world (folders,
    deck management, deck-scoped highlights). Rewrite for courses. Update `CHANGES.md`.
-6. **End-to-end pass** — manual walkthrough of the full student journey (dashboard → path →
-   lesson → notes → lesson learn → practice → checkpoint) plus import of a v1 share code
-   and a pre-v9 backup.
+6. **End-to-end pass — complete (July 2026).** Manually walked through the full student
+   journey (dashboard → path → lesson → notes → lesson learn → practice → checkpoint),
+   including import of a v1 share code and a pre-v9 backup.
 
 ## 0.2 Deferred debts to pay (from Addendum 2 §O and Phase 7 notes)
 
@@ -320,6 +320,16 @@ To be planned in full after Arc 1. Scope decided so far:
 ---
 
 # Arc 2 (detailed) — MCP Server / Agent Surface, with Arc 5 interleaved
+
+> **Status (July 2026): delivered.** All 13 tasks are implemented and the real-client
+> smoke pass (Task 13) has completed: tool listing, implicit read grants, blocking
+> write/destructive consent prompts, destructive-with-undo, idempotent
+> `diff_import_preview`/`import_cards`, and the cold-start renderer-not-ready case all
+> behaved as designed. Deferred: Streamable HTTP transport, the `npx lacuna-mcp`
+> companion process, durable multi-agent identity, plugin extension points, and
+> study-session hooks (see §2.1 and the Arc 2 outline above). Remaining human item: visual
+> confirmation of the read-grant toast and destructive-undo toast styling in light and dark
+> mode.
 
 > Supersedes the Arc 2 outline above for implementation purposes. Arc 5's five items are
 > folded in as warm-up/interstitial tasks between Arc 2 phases — they are independent of
@@ -592,10 +602,11 @@ tasks) includes its own tests. Arc 5 items are interleaved as noted.
    handler signature now (checked against a stub in tests) even though the real grant
    store lands in Task 7 — avoids re-touching every handler twice.
 
-7. **Grant store + gating logic.** `electron/mcp/grants.ts` (`McpGrant`/scope-ordinal
+7. **Grant store + gating logic.** `src/mcp/grants.ts` (`McpGrant`/scope-ordinal
    type, in-memory `Map`), plus pure grant-resolution logic and unit tests (ordinal scope
    comparison, unknown course = no grant), kept transport-independent so it is testable
-   without Electron.
+   without Electron. (Lives under `src/mcp/`, not `electron/mcp/`, since the resolution
+   logic is transport-independent and shared with the renderer-side bridge.)
 
 8. **[Arc 5.4] Shared reorder chevrons.** Replace the inline SVGs at `Settings.tsx:491`
    and `:508` with `ChevronDownIcon` (`src/components/ui/icons.tsx:290`, `rotate-180`
@@ -609,33 +620,38 @@ tasks) includes its own tests. Arc 5 items are interleaved as noted.
    permissive stub so the transport can be smoke-tested end to end; Task 11 swaps the
    stub for the real blocking prompt. Verify the web build is unaffected.
 
-10. **[Arc 5.5] Shared `Select` wrapper.** `src/components/ui/Select.tsx` following
+10. **[Arc 5.5] Shared `Select` wrapper — implemented (July 2026).**
+    `src/components/ui/Select.tsx` following
     `Toggle.tsx`/`Button.tsx` conventions (typed props, `cn()`, token-backed classes),
-    colocated test. Adopt at all seven sites: `SequenceEditor.tsx:495`,
+    colocated test. Adopt at all five sites: `SequenceEditor.tsx:495`,
     `course/PracticeNodeFields.tsx:52`, `cards/CardList.tsx:688,731`,
     `sequences/SequenceItemRow.tsx:128`, `analytics/CourseComparison.tsx:254,268`.
 
-11. **Consent UI: `McpConsentPrompt` + `settings/McpSection.tsx`.** The blocking
+11. **Consent UI: `McpConsentPrompt` + `settings/McpSection.tsx` — implemented (July
+    2026).** The blocking
     write/destructive consent prompt wired into the Task 9 bridge, replacing the
     permissive stub; the non-blocking read-grant toast; the new Settings section (added
     to `SETTINGS_SECTIONS`) with server status and per-course grant/revoke controls.
     Component tests with mocked `electronAPI.mcp`.
 
-12. **[Arc 5.3] Split `Settings.tsx`.** With `McpSection.tsx` (Task 11) as one more
+12. **[Arc 5.3] Split `Settings.tsx` — implemented (July 2026).** With `McpSection.tsx` (Task 11) as one more
     precedent, extract the remaining inline sections of `Settings.tsx` (1,518 lines) into
     `src/pages/settings/`, preserving `SETTINGS_SECTIONS` and the IntersectionObserver
     scrollspy exactly. Deliberately after Task 11 — doing it earlier would make
     `Settings.tsx` a merge-conflict-prone moving target for the new section.
 
-13. **Manual end-to-end smoke test + documentation.** Build the app, connect a real MCP
-    client (`claude mcp add` pointing at the stdio command) and drive a scripted pass:
-    list tools; read tool with no grant (expect implicit allow + toast); write tool with
-    no grant (expect blocking prompt); grant; retry; destructive tool (expect prompt +
-    undo toast); `diff_import_preview`/`import_cards` twice with the same payload (expect
-    the second call to report everything as `toSkip`); cold-start case (tool call before
-    window ready). Update `SPEC.md`/`CHANGES.md`; flip this section's header to
-    "Status: delivered" per the Arc 1/Arc 4 precedent, noting deferrals (HTTP transport,
-    companion process, durable identity).
+13. **Manual end-to-end smoke test + documentation — implemented (July 2026).** Built the
+    app, connected a real MCP client and drove the scripted pass: 35 tools listed; read
+    tool implicitly allowed with no prompt; write tool blocked on consent then succeeded
+    after approval; destructive `delete_course` prompted then executed with an undo path;
+    `diff_import_preview`/`import_cards` run twice with the second run reporting
+    everything as `toSkip` (`createdCount: 0`, `skippedCount: 1`); cold-start tool call
+    returned a clean curated `internal` error ("Lacuna did not resolve the tool scope in
+    time") rather than a crash. `SPEC.md`/`CHANGES.md` updated; this section's header
+    flipped to "Status: delivered" per the Arc 1/Arc 4 precedent, noting deferrals (HTTP
+    transport, companion process, durable identity, plugin extension points,
+    study-session hooks). Remaining human item: visual confirmation of the read-grant and
+    destructive-undo toast styling.
 
 ## 2.10 Risks
 
@@ -667,16 +683,264 @@ tasks) includes its own tests. Arc 5 items are interleaved as noted.
 
 ---
 
-# Arc 3 — Cram-Mode Overhaul (outline)
+# Arc 3 — Assessment-Aware Revision Planning and Cram (detailed)
 
-The document Addendum 2 §G and §M promised. To be planned after Arc 2 (or earlier if it
-blocks users). Scope decided so far:
+The document Addendum 2 §G and §M promised. Cram is not a course-wide weak-card queue. It
+is a time-budgeted plan for one named assessment, whose authored lesson coverage determines
+the material being optimised. The course is only the owning container.
 
-- Resolve cram's interaction with multiple `CourseExamDate` checkpoints: what "cram for
-  the next assessment" means when several horizons apply to overlapping lesson scopes.
-- Respect checkpoint `lessonIds`/`excludedCardIds` scoping when building the cram pool.
-- Course-scoped cram entry points (path checkpoint node, course settings) replacing the
-  deck-scoped study-dropdown origin.
+Arc 3 replaces the legacy 48-hour, weakest-first URL mode with three connected pieces:
+
+1. one coherent assessment model for intermediate checkpoints and the final exam;
+2. assessment-aware Practice and Study Now routing; and
+3. a persistent multi-day planner that maximises assessment-day recall within the learner's
+   available time, including a validated seconds-resolution short-term memory model.
+
+Changing from ordinary Practice to Cram remains explicit because the optimisation objective
+changes. Direct assessment revision is available whenever that assessment is still in the
+future; automatic offers use the existing per-course `practiceUrgentWindowDays`, not another
+hard-coded definition of "imminent".
+
+## 3.1 Complete assessment authoring and scoping
+
+Arc 3 must finish the partial `CourseExamDate` implementation before building planning on
+top of it. Assessment placement and assessment coverage are separate authored facts; the
+current `lessonIds` field incorrectly serves both purposes.
+
+- Replace the split `Course.examDate`/`CourseExamDate` representation with one
+  `CourseAssessment` entity in a `courseAssessments` table. Migrate every course's primary
+  final exam into a row with `kind: 'final'`; intermediate assessments use
+  `kind: 'checkpoint'`. Each course has exactly one final assessment. Any temporary
+  compatibility field on `Course` is derived/read-only and is removed once all consumers,
+  imports and backups use assessment ids. Do not preserve the misleading
+  `CourseExamDate` name after its semantics expand.
+- Store an explicit path position (`afterLessonId: string | null`) independently of
+  coverage. Reordering lessons preserves the relationship to the anchor lesson. Deleting
+  the anchor retargets the assessment to the nearest surviving preceding lesson and marks
+  it as needing author confirmation; it must not jump silently to the end of the course.
+- Support two coverage modes:
+  - **Prefix:** every lesson through the assessment's path position. This is the normal
+    "everything taught before the exam" case and must be the low-friction default.
+  - **Custom:** an explicit set of lesson ids, independent of path position, for assessments
+    that omit earlier lessons or include a non-contiguous selection.
+- Reject a custom scope containing a lesson positioned after the assessment. An assessment
+  cannot cover curriculum the authored path says has not yet been taught.
+- Expose `excludedCardIds` in the assessment editor, with searchable card selection grouped
+  by covered lesson. Exclusions affect scheduling, readiness and cram; they do not remove
+  cards from lessons.
+- Resolve coverage through effective lesson membership, including `LessonCardLink`, rather
+  than checking only `Card.primaryLessonId`. Deduplicate a card linked into several covered
+  lessons while retaining its single FSRS memory state.
+- Remove the ambiguous "no lessons selected" behaviour. Existing unscoped records migrate
+  explicitly to prefix/all-through-position coverage; `undefined` must not simultaneously
+  mean "all course cards" in scheduling and "lessons taught so far" in the UI.
+- Update Course settings so teachers can choose the path position, switch between prefix
+  and custom coverage, inspect the resolved lesson/card count, manage exclusions and see
+  validation when a referenced lesson or card no longer exists.
+- Make checkpoint nodes interactive: open assessment details and start revision for that
+  exact assessment. Checkpoints remain non-gating curriculum events.
+- Carry the completed representation through repository validation, schema migration,
+  backups, share import/export and MCP content tools. Update `SPEC.md`, Help and authoring
+  copy so every surface describes the same semantics.
+- Add focused tests for independent placement and coverage, prefix expansion, custom
+  non-contiguous scopes, exclusions, linked-card membership, deduplication, lesson reorder
+  and deletion, invalid future-lesson coverage, overlapping assessments, final-exam
+  migration, portability and migration of existing rows.
+
+## 3.2 Cram/Practice assessment resolution
+
+- For each Practice scope, find only future assessments whose resolved lesson coverage
+  intersects that scope. Rank them by date; never use the course-wide nearest date without
+  checking scope overlap.
+- Only the learner's **current active** Practice context offers urgent assessment revision.
+  Auto and recurring Practice sessions use all currently reached and exposed lessons, so a
+  learner who has reached Lesson 5 cannot receive an ordinary current Practice pool ending
+  at Lesson 3. A historical curricular node may retain its fixed prefix solely as its
+  milestone denominator, and an explicitly authored manual Practice may deliberately narrow
+  its session through `lessonIds`; neither exception redefines the learner's general reached
+  scope. A completed older node must not surface as the current revision context.
+- Practice is an entry point, not the authority over a Cram pool. Once the learner selects
+  an assessment, Cram uses that assessment's full covered scope intersected with all lessons
+  the learner has reached and all cards exposed there; it is not truncated to the subset
+  that happened to trigger the offer.
+- Starting cram for an assessment freezes its assessment id, resolved lesson scope and
+  exclusion set for the session. Rebuild and explain the plan if authoring changes invalidate
+  that scope while the session is active.
+- When several imminent assessments overlap, show the alternatives rather than blending
+  their horizons into one meaningless queue. A learner chooses the assessment being
+  optimised.
+- The final exam is an ordinary assessment target under the same prefix/custom coverage
+  rules, not an implicit course-wide special case.
+- When Study Now would ordinarily continue the curriculum but an imminent overlapping
+  assessment has useful revision work, show an explicit choice between the next Lesson or
+  Practice step and revision for the named assessment. Do not silently hijack Study Now in
+  either direction.
+- Replace course-wide urgency in `shouldInsertPractice` and
+  `buildCourseStudyFlowSnapshot` with assessment/scope-aware urgency. An assessment for an
+  unrelated lesson set must not activate or tighten thresholds for this Practice context.
+
+## 3.3 Persistent multi-day revision plans
+
+Starting Cram creates or resumes one persisted plan keyed to the assessment. The plan stores
+the assessment id and coverage version, the assessment time zone/deadline snapshot, daily
+time budgets through the deadline, per-card plan state, completed sessions and the memory-
+model version used to produce its projections. Authoring changes, a moved deadline or a
+changed model version trigger an explained replan; they do not quietly mutate an active
+session under the learner.
+
+- Entry asks how much time is available today, with short preset choices and a custom value.
+  Future days initially inherit today's budget so the common path is one decision; an
+  expandable schedule editor lets the learner change or remove individual days.
+- Convert each daily budget into a planned **window**, not a frozen queue. At the start of
+  every window and after every answer, rebuild priorities from the latest card state,
+  remaining time, response-time calibration and future windows.
+- The eligible pool is:
+  ```
+  resolved assessment lesson coverage
+  ∩ lessons reached by the learner
+  ∩ cards exposed through effective lesson membership
+  − assessment exclusions
+  − unavailable cards
+  ```
+  Untaught or unreached covered lessons are reported separately with a route back to the
+  curriculum; Cram never leaks them as surprise new material.
+- Cards have equal assessment importance in Arc 3. Do not add lesson/card weighting yet.
+- Estimate each candidate's value from the expected improvement in assessment-day recall
+  divided by expected review seconds. Simulate both success and failure from the current
+  long- and short-term memory state rather than sorting by `1 - R`:
+  ```
+  expectedUtility(card) =
+    (P(success now) * gainAfterSuccess
+      + P(failure now) * gainAfterFailureAndFeedback)
+    / expectedReviewSeconds
+  ```
+- Under `expectedMarks`, maximise the sum of predicted assessment-day recall gains. Under
+  `securedTopics`, first maximise the number of cards expected to cross `MASTERY_R`, then
+  use recall gain per minute as the tie-breaker. Never spend the budget repeatedly polishing
+  already-secure cards while useful work remains.
+- A failure always reveals corrective feedback and schedules another attempt at the next
+  productive interval. It does not reappear after an arbitrary fixed card count. Repeatedly
+  unproductive cards are parked for the current window, shown honestly in the summary and
+  reconsidered in a later window; they are not silently discarded.
+- Spread successful retrievals across available windows. Prefer one successful retrieval in
+  several genuinely spaced sessions over several immediate successes, while the short-term
+  model may schedule expanding within-day attempts when the deadline is too close to permit
+  another daily window.
+- A window finishes when its time budget expires or no eligible card has positive expected
+  marginal value. It does not run indefinitely until every card reaches mastery.
+- A plan finishes when no scheduled window remains before the assessment. Its summary shows
+  cards covered, cards improved, work not reached, predicted readiness with uncertainty and
+  the next scheduled window. It must not claim guaranteed marks.
+- Cram reviews update genuine card memory, but completing a Cram window or plan never marks
+  a curricular Practice milestone complete. Ordinary milestone re-evaluation may later find
+  that its full scope is secured; that is a separate fact.
+- Once an assessment passes, archive its plan read-only and let normal per-card horizon
+  resolution retarget subsequent Practice to the next applicable assessment.
+
+## 3.4 Proper short-term memory model
+
+The installed `ts-fsrs` is FSRS-6 with `enable_short_term: true`, but FSRS-6's same-day
+formula primarily improves the next long-term state; it does not provide a calibrated
+seconds-to-hours recall curve suitable for Cram planning. Arc 3 therefore needs a separate
+short-term predictor that composes with FSRS rather than pretending the existing flag solves
+the problem.
+
+This is a research-and-validation task with a hard quality gate:
+
+1. **Data contract.** Extend review history with session/plan provenance and retain exact
+   timestamps, grade/correctness, response time and hint/distraction state for every attempt.
+   Existing history remains valid. Build chronological training examples at elapsed-second
+   resolution without exporting personal data.
+2. **Model contract.** Add a pure model interface that predicts recall at an arbitrary
+   timestamp and simulates the state after each possible grade. Its short-term contribution
+   must decay smoothly into the ordinary FSRS long-term prediction rather than creating a
+   discontinuity at midnight or double-counting the same review.
+3. **Candidate evaluation.** Implement and benchmark at least: the current FSRS-6 treatment
+   as the baseline; a trainable half-life/logistic model using elapsed seconds and recent
+   outcome features; and a multi-trace activation model in the ACT-R/Pavlik-Anderson family.
+   Do not choose a model because its equation looks plausible.
+4. **Fit and personalisation.** Ship conservative global coefficients fitted offline from a
+   documented, licence-compatible review dataset. Adapt locally only after a minimum sample
+   threshold; before that, shrink user estimates towards the global model. No review history
+   leaves the device.
+5. **Validation.** Use chronological hold-out data and report log loss, Brier score and
+   calibration error across lag buckets (`<1m`, `1–10m`, `10–60m`, `1–6h`, `6–24h`,
+   `1–7d`), first-review status and success/failure history. The chosen model must beat the
+   FSRS-6 baseline overall without a material calibration regression in a major bucket.
+6. **Integration.** Every genuine retrieval continues through the normal FSRS transition so
+   long-term scheduling retains the evidence. The short-term model consumes the same event
+   for within-day prediction; the combined predictor and grade simulations own Cram
+   selection. Add invariants preventing duplicate review events and double state updates.
+7. **Fallback.** If coefficients are absent, corrupt or outside their supported feature
+   range, fall back explicitly to ordinary Practice/FSRS ordering. Do not run the Cram
+   planner on invented confidence values.
+
+Keep training/evaluation tooling outside the browser bundle and persist only the compact
+runtime coefficients needed for local inference. Avoid a neural-network runtime dependency
+unless the benchmark proves that a simpler calibrated model cannot meet the quality gate.
+The evidence base and benchmark starting points are the
+[Open Spaced Repetition scheduler benchmark](https://github.com/open-spaced-repetition/srs-benchmark),
+Pavlik and Anderson's
+[model-optimised practice experiment](https://eric.ed.gov/?id=EJ802557), and Settles and
+Meeder's [trainable half-life regression](https://research.duolingo.com/papers/settles.acl16.pdf).
+They justify the candidate families and validation method, not a predetermined winner.
+
+## 3.5 Product surfaces
+
+- Make checkpoint nodes interactive. Their detail sheet shows date/time, resolved covered
+  lessons, exclusions, current predicted readiness, untaught coverage and **Plan revision**.
+- Adapt the existing relevant Practice node rather than inventing a parallel revision-node
+  species. Inside `practiceUrgentWindowDays`, show the named assessment and offer
+  **Prioritise assessment** alongside ordinary Practice.
+- Study Now shows a compact choice when imminent assessment revision competes with the next
+  curriculum step. Remember neither choice as a permanent preference.
+- The plan setup surface shows today's budget first and keeps future-day editing secondary.
+  The active session shows the assessment name, time remaining in this window and the next
+  planned window; it does not expose raw model scores.
+- Preserve Focus Mode, Pomodoro, grading mode, typing mode, hints, undo and distraction
+  reporting through the existing Learn Mode systems. Extend them; do not build a second card
+  player for Cram.
+- Replace Help, Welcome and stale session copy that promises a 48-hour weakest-first mode.
+  Remove the undiscoverable legacy `?mode=cram` entry once all new routes carry an explicit
+  assessment/plan id.
+
+## 3.6 Delivery sequence
+
+1. Unified assessment types, schema migration and compatibility reads.
+2. Pure coverage/placement resolution, validation and deletion fallback.
+3. Assessment editor, checkpoint details, portability/share/MCP propagation and tests.
+4. Scope-aware Practice urgency and Study Now choice, still using ordinary Practice.
+5. Review-event provenance plus the offline short-term model dataset/evaluation harness.
+6. Candidate short-term models, chronological benchmark and documented model selection.
+7. Persisted multi-day plan repository and deterministic replan rules.
+8. Expected-gain-per-minute allocator, outcome simulation and response-time cost model.
+9. Learn Mode integration, failure/retry handling, plan summaries and expired-plan archival.
+10. Full product-surface polish, Help/Welcome/SPEC/CHANGES updates and manual end-to-end pass.
+
+Each task lands with focused unit/integration tests. Tasks 5–6 may reject all candidates; if
+so Arc 3 stops there and records the evidence instead of shipping a planner whose core
+probabilities failed calibration.
+
+## 3.7 Success criteria
+
+1. Teachers can position an assessment independently of prefix/custom lesson coverage,
+   manage exclusions and linked cards, and round-trip the result through every portability
+   and MCP surface.
+2. Final exams and checkpoints use one assessment representation; no caller silently falls
+   back to a course-wide date or pool.
+3. Practice and Study Now offer only assessments overlapping the learner's current relevant
+   scope, and Cram always names one selected assessment.
+4. A learner can create, edit, leave and resume a multi-day plan; every window honours its
+   budget and replans after new evidence without leaking untaught material.
+5. The selected short-term model passes the documented chronological calibration gate and
+   composes with FSRS without duplicate or discontinuous memory updates.
+6. Card allocation uses expected assessment gain per minute, corrective feedback and
+   productive spacing; weakest-first ordering and fixed arbitrary cooldowns no longer drive
+   Cram.
+7. Cram never completes a curricular Practice milestone by itself, and expired assessments
+   archive cleanly while cards retarget the next applicable horizon.
+8. Light/dark, keyboard/touch, Focus Mode, Pomodoro, manual/silent grading and type/reveal
+   presentation complete the assessment-planning smoke pass in both web and Electron builds.
 
 ---
 
@@ -745,6 +1009,10 @@ notes screen's **Continue** action. Completion is represented directly rather th
 fictional exposure row.
 
 ## 4.3 Checkpoint-aware horizon (the "due" fix)
+
+> This section records the Arc 4 implementation as shipped. Arc 3 supersedes its split
+> `Course.examDate`/`CourseExamDate` representation, primary-membership-only assessment
+> resolution, course-wide Practice urgency and 48-hour weakest-first Cram gate.
 
 The existing, unit-tested `resolveCardExamDate` (`src/fsrs/examDate.ts`) is integrated
 through the shared horizon and objective layers. Practice did not gain a second scheduler.
@@ -882,6 +1150,9 @@ lesson or unfinished Practice milestone and routes:
 ---
 
 # Arc 5 — UI Consistency Pass (outline)
+
+> **Status (July 2026): implemented.** All five consistency items shipped as part of
+> the interleaved Arc 2 task sequence.
 
 Cheap, no dependency on the other arcs; may run any time, including interleaved between
 them. Five items:

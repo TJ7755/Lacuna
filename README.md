@@ -8,8 +8,11 @@ made of **lessons** studied in order along a path; every card is scheduled to pe
 course's exam day, you grade yourself with a single **Yes / No**, and an invisible response
 timer infers the real FSRS grade behind the scenes.
 
-All data lives in your browser via **IndexedDB** — nothing is sent anywhere. Use **Settings → Import &
-export** to back up or move your data as a single JSON file.
+All data lives locally in **IndexedDB**. The web app sends none of it to a Lacuna server
+because there is no Lacuna server. In the Electron build, an MCP client can access only the
+data you authorise for that local process; write and destructive access require explicit
+permission. Use **Settings → Import & export** to back up or move your data as a single JSON
+file.
 
 ## Highlights
 
@@ -81,7 +84,22 @@ bun run electron:build:win  # build the Windows NSIS installer
 
 The Electron layer lives in `electron/` and adds a custom titlebar, local font
 bundling, Cross-Origin Isolation headers for WASM, and auto-updates via
-`electron-updater`. The web version is completely unaffected.
+`electron-updater`. It also hosts a local **Model Context Protocol (MCP)** server over
+stdio, allowing an MCP-capable client to work with Lacuna's courses, lessons, notes, cards,
+sequences and summaries. The web version does not host MCP and is otherwise unaffected.
+
+To connect a client, configure a local stdio MCP server whose command is the installed
+Lacuna executable. For example, with Claude Code on macOS:
+
+```bash
+claude mcp add lacuna -- /Applications/Lacuna.app/Contents/MacOS/Lacuna
+```
+
+Use the equivalent installed executable path on Windows. Lacuna must keep its renderer
+window open because IndexedDB is owned by that process. Read access is granted implicitly
+per course with an in-app notice; the first write or destructive call blocks for approval.
+Current grants can be inspected, changed or revoked under **Settings → MCP server**, and all
+grants expire when Lacuna closes.
 
 ## How it works
 
@@ -97,6 +115,7 @@ bundling, Cross-Origin Isolation headers for WASM, and auto-updates via
 | Course/lesson data layer | `src/state/useCourseData.ts`, `src/course/path.ts` |
 | Course path, lesson view, question bank | `src/pages/CoursePath.tsx`, `src/pages/LessonView.tsx`, `src/pages/QuestionBank.tsx` |
 | Sequence generation & editor | `src/db/sequenceGeneration.ts`, `src/pages/SequenceEditor.tsx` |
+| MCP tool surface and Electron bridge | `src/mcp/`, `electron/mcp/` |
 | Learn session | `src/pages/LearnMode.tsx` |
 | Analytics charts | `src/components/analytics/` |
 
