@@ -159,7 +159,7 @@ export function CourseCard({ course, summary, cards, onClick }: CourseCardProps)
       <div
         className={cn(
           'mb-1 text-xs uppercase tracking-[0.14em]',
-          examPassed ? 'text-amber-600' : 'text-ink-faint',
+          examPassed ? 'text-warning-fg' : 'text-ink-faint',
         )}
       >
         {examLabel}

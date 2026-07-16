@@ -582,7 +582,7 @@ export function UnifiedImportPanel({
                     {result.cards.length} card
                     {result.cards.length === 1 ? '' : 's'} ready
                     {duplicateCount > 0 && (
-                      <span className="ml-2 text-amber-600">
+                      <span className="ml-2 text-warning-fg">
                         {duplicateCount} duplicate{duplicateCount === 1 ? '' : 's'}
                       </span>
                     )}
@@ -859,7 +859,7 @@ function FormatBadge({
     confidence >= 0.8
       ? 'border-positive/30 bg-positive/10 text-positive'
       : confidence >= 0.5
-        ? 'border-amber-500/30 bg-amber-500/10 text-amber-600'
+        ? 'border-warning/30 bg-warning/10 text-warning-fg'
         : 'border-line bg-ink/5 text-ink-faint';
 
   return (

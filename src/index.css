@@ -28,6 +28,8 @@
   --accent-fg: 28 60% 14%;
   --positive: 150 45% 38%;
   --negative: 6 62% 48%;
+  --warning: 38 92% 50%;
+  --warning-fg: 32 70% 24%;
   --grain-opacity: 0.025;
 }
 
@@ -45,6 +47,8 @@
   --accent-ink: 36 90% 70%;
   --positive: 150 40% 55%;
   --negative: 6 70% 62%;
+  --warning: 38 92% 56%;
+  --warning-fg: 36 90% 70%;
   --grain-opacity: 0.04;
 }
 
@@ -86,6 +90,8 @@
   --color-accent-fg: hsl(var(--accent-fg));
   --color-positive: hsl(var(--positive));
   --color-negative: hsl(var(--negative));
+  --color-warning: hsl(var(--warning));
+  --color-warning-fg: hsl(var(--warning-fg));
 
   --font-display: 'Fraunces', Georgia, serif;
   --font-body: 'Geist', system-ui, sans-serif;

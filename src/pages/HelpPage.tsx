@@ -47,15 +47,15 @@ function SectionCard({
   icon: React.ReactNode;
   label: string;
   children: React.ReactNode;
-  accent?: 'accent' | 'positive' | 'negative' | 'amber';
+  accent?: 'accent' | 'positive' | 'negative' | 'warning';
 }) {
   const iconBgClass =
     accent === 'positive'
       ? 'bg-positive/10 text-positive'
       : accent === 'negative'
         ? 'bg-negative/10 text-negative'
-        : accent === 'amber'
-          ? 'bg-amber-500/10 text-amber-600'
+        : accent === 'warning'
+          ? 'bg-warning/10 text-warning-fg'
           : 'bg-accent/10 text-accent';
 
   return (

@@ -540,9 +540,9 @@ export function CardEditor() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
                 transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3"
+                className="flex items-center gap-3 rounded-xl border border-warning/20 bg-warning/5 px-4 py-3"
               >
-                <span className="text-sm text-amber-700">
+                <span className="text-sm text-warning-fg">
                   A card with identical content already exists in this deck.
                 </span>
                 <button

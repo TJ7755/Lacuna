@@ -1901,13 +1901,13 @@ function modeBorderClass(mode: LearnModeType, revealed: boolean): string {
   if (!revealed) return 'border-line shadow-xl shadow-black/5';
   switch (mode) {
     case 'cram':
-      return 'border-amber-500/40 shadow-2xl shadow-amber-500/10';
+      return 'border-warning/40 shadow-2xl shadow-warning/10';
     case 'simple':
       return 'border-positive/40 shadow-2xl shadow-positive/10';
     case 'filtered-leech':
       return 'border-negative/40 shadow-2xl shadow-negative/10';
     case 'filtered-flagged':
-      return 'border-amber-500/40 shadow-2xl shadow-amber-500/10';
+      return 'border-warning/40 shadow-2xl shadow-warning/10';
     case 'filtered':
       return 'border-accent/40 shadow-2xl shadow-accent/10';
     default:
@@ -2309,7 +2309,7 @@ function SessionProgressRing({ value, label }: { value: number; label: string })
 export function LearnSkeleton({ mode }: { mode?: LearnModeType }) {
   const borderClass =
     mode === 'cram'
-      ? 'border-amber-500/30'
+      ? 'border-warning/30'
       : mode === 'simple'
         ? 'border-positive/30'
         : 'border-line';

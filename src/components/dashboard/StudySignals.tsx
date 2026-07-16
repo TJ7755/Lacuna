@@ -202,7 +202,7 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
               <span className="text-xs text-ink-soft">day{streak === 1 ? '' : 's'}</span>
             </div>
           </div>
-          <MetricBar value={streak} max={14} colourClass="bg-amber-400/60" title={`${streak} day streak`} motionMultiplier={m} />
+          <MetricBar value={streak} max={14} colourClass="bg-warning/60" title={`${streak} day streak`} motionMultiplier={m} />
           <div className="mt-1 text-[11px] text-ink-faint">study streak</div>
           <AnimatePresence>
             {showMilestone && (
