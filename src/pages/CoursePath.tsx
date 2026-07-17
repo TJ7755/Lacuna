@@ -22,7 +22,10 @@ import { makeExamDateContext } from '../fsrs/examDate';
 import { MS_PER_DAY } from '../fsrs/params';
 import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
 import { lessonCardMembership } from '../course/studyPools';
-import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
+import {
+  currentAssessmentPracticeContext,
+  type AssessmentPracticeOption,
+} from '../course/assessmentPractice';
 import { courseHeaderStats } from '../course/headerStats';
 import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
 import { planNextStudyStep } from '../course/studyFlowPlanner';
@@ -61,6 +64,7 @@ interface PracticeNodeProgress {
   eligibleCount: number;
   completed: boolean;
   scopeVersion: string;
+  assessment?: AssessmentPracticeOption;
 }
 
 export function CoursePath() {
@@ -267,6 +271,7 @@ export function CoursePath() {
         eligibleCount: practice.eligibleCount,
         completed: practice.completed,
         scopeVersion: practice.scopeVersion,
+        assessment: practice.assessmentOptions[0],
       });
     }
     return result;
@@ -503,9 +508,19 @@ export function CoursePath() {
                   ? practiceProgressByKey.get(node.nodeKey)
                   : undefined
               }
+              practiceAssessment={
+                node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual'
+                  ? practiceProgressByKey.get(node.nodeKey)?.assessment
+                  : undefined
+              }
               onPracticeClick={(practiceNode) =>
                 navigate(
                   `/course/${courseId}/study?practiceNode=${encodeURIComponent(practiceNode.nodeKey)}`,
+                )
+              }
+              onPracticeAssessmentClick={(assessmentId) =>
+                navigate(
+                  `/course/${courseId}/study?assessmentId=${encodeURIComponent(assessmentId)}`,
                 )
               }
               onCheckpointClick={setSelectedAssessmentId}

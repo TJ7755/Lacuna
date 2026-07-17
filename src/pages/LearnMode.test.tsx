@@ -418,6 +418,28 @@ describe('LearnMode course/lesson scope', () => {
     });
   });
 
+  it('ignores the retired mode=cram query entry', async () => {
+    const course = await createCourse('Classics');
+    const lesson = await createLesson(course.id, 'Athens');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Agora', 'Market');
+    await upsertLessonCardExposure(lesson.id, card.id);
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/course/${course.id}/learn?mode=cram`]}>
+            <Routes>
+              <Route path="/course/:courseId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText(/Classics/)).toBeInTheDocument();
+    expect(screen.queryByText(/Cram mode|Weakest cards first/)).not.toBeInTheDocument();
+  });
+
   it('uses the selected assessment scope in the ordinary Practice player', async () => {
     const course = await createCourse('History');
     const includedLesson = await createLesson(course.id, 'Revolutions');

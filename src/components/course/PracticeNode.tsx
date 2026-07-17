@@ -9,6 +9,7 @@
 // British English throughout.
 
 import { m as motion } from 'motion/react';
+import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import type { PracticePathNode } from '../../course/path';
 import { CardsIcon, EditIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -17,13 +18,22 @@ interface PracticeNodeProps {
   node: PracticePathNode;
   onClick?: () => void;
   onEdit?: () => void;
+  assessment?: AssessmentPracticeOption;
+  onAssessmentClick?: () => void;
   progress?: {
     fraction: number;
     completed: boolean;
   };
 }
 
-export function PracticeNode({ node, onClick, onEdit, progress }: PracticeNodeProps) {
+export function PracticeNode({
+  node,
+  onClick,
+  onEdit,
+  assessment,
+  onAssessmentClick,
+  progress,
+}: PracticeNodeProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const name = node.practiceNode?.name ?? 'Practice';
@@ -92,6 +102,15 @@ export function PracticeNode({ node, onClick, onEdit, progress }: PracticeNodePr
       <span className="max-w-[7rem] text-center text-xs font-medium leading-tight text-ink-soft">
         {name}
       </span>
+      {assessment && onAssessmentClick && (
+        <button
+          type="button"
+          onClick={onAssessmentClick}
+          className="max-w-[10rem] rounded-full border border-warning/30 bg-warning/5 px-2.5 py-1 text-center text-[0.65rem] font-medium leading-tight text-warning transition-colors hover:border-warning/60 hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/40"
+        >
+          Prioritise {assessment.name}
+        </button>
+      )}
     </div>
   );
 }

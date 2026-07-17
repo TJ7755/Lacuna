@@ -39,8 +39,11 @@ file.
   preceding items; editing the sequence regenerates its cards without losing their scheduling
   progress.
 - **Cooldown slotting** — failed cards are held back briefly to prevent fatigue.
+- **Assessment revision plans** — checkpoints and final assessments have explicit prefix or custom
+  lesson coverage and card exclusions. A named assessment can create one persistent multi-day plan
+  with editable daily budgets, honest window summaries and ordinary Practice ordering.
 - **Continuous Learn mode** with per-card progress for Simple Learn, scheduler-derived objective
-  progress for FSRS, cram and filtered sessions, optional start-in-Focus-Mode behaviour, and an
+  progress for FSRS and filtered sessions, optional start-in-Focus-Mode behaviour, and an
   automatic performance report (including a focus/distraction summary).
 - **Markdown notes and cards** with GitHub-flavoured syntax, code highlighting, **KaTeX maths**,
   **cloze deletions** (`{{c1::answer::hint}}`), collapsible sections and embedded video (notes

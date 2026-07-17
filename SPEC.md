@@ -418,9 +418,10 @@ calendar day through the deadline; individual scheduled days can then be edited 
 The plan persists windows rather than card queues, so later allocation can rebuild priorities
 from current evidence. Coverage, deadline, time-zone, model-version, reached/exposed/available
 scope and review-evidence changes produce deterministic, explained replans. An active window
-keeps its captured revision; triggers wait until it closes. Until a validated short-term model
-is available, the persisted mode is the explicit FSRS-6 ordinary-Practice fallback and stores
-no invented confidence values.
+keeps its captured revision; triggers wait until it closes. `half-life-logistic-v1` passed the
+offline benchmark gate and is selected, but runtime integration is a follow-up. The persisted
+mode therefore remains the explicit FSRS-6 ordinary-Practice fallback and stores no invented
+confidence values.
 
 **Review due cards** is a separate ad-hoc course-wide action. It creates no path node or
 milestone, may be launched at any time, and returns to the same conductor afterwards.
@@ -786,9 +787,10 @@ default); difficulty bounds `[1, 10]`; `MASTERY_R = 0.90`; `MS_PER_DAY = 86_400_
 **On the algorithm version (honesty note).** Lacuna uses FSRS-6 because that is what
 `ts-fsrs` exposes — not because it is the newest FSRS in existence (FSRS-7 exists). Copy
 and comments are pinned to "the version ts-fsrs ships", not to "the newest". Also, FSRS
-has **no short-term memory model**, so repeated same-evening reviews during exam cramming
-are a known limitation; exam-eve cram mode (§10) is the product-level response, but the
-underlying maths still does not model intra-day re-review.
+has **no short-term memory model**, so repeated same-evening reviews remain a known
+limitation. The selected `half-life-logistic-v1` candidate is not yet integrated, so assessment
+revision (§10) falls back explicitly to ordinary Practice ordering and the UI makes no
+short-horizon confidence claim.
 
 ---
 
@@ -891,8 +893,8 @@ bogus 100%).
 
 Per-card resolution is used wherever a specific card is being scored or counted:
 `scoreCard`/`isObjectiveComplete` (`objective.ts`), `masteryFraction`/
-`averagePredictedRetrievability` (`progress.ts`), and cram's weakest-first ranking
-(`cram.ts`). `ObjectiveContext` carries the resolution context (`examDateCtx`) when
+`averagePredictedRetrievability` (`progress.ts`), and assessment revision eligibility.
+`ObjectiveContext` carries the resolution context (`examDateCtx`) when
 built for a Course unit (its lessons and `courseExamDates` loaded alongside it); it is
 absent for legacy Deck-scoped/global sessions, which keep resolving against the single
 `deck.examDate` exactly as before, via the plain `schedulingHorizon`.
@@ -1027,16 +1029,21 @@ the aim is lower working-memory load, not less course content.
   is treated as `1` instead of dividing by zero, so such decks are still served and
   never produce `NaN`.
 
-### Exam-eve cram mode (`src/fsrs/cram.ts`, `SessionMode = 'cram'`)
-An **explicit** mode (entered via `?mode=cram`, never a silent change) for the final
-push before an exam. `examEveAvailable(deck)` gates it to the last
-`EXAM_EVE_WINDOW_HOURS` (48 h) before the deadline. It reorders study
-**weakest-first** (lowest predicted exam-day R first), trading long-term retention for
-getting as many cards over the line as possible. It stays objective-aware: under
-`securedTopics` it drives still-unsecured cards (< 0.90) first and drops
-already-secured cards to the back; under `expectedMarks` it serves the cards with
-the most exam-day headroom first. DeckView shows a clearly-labelled "Exam-eve cram"
-entry inside the window, stating the trade-off.
+### Named assessment revision (`src/course/revisionPlan.ts`, `src/fsrs/cramAllocator.ts`)
+Assessment revision is entered only with an explicit assessment id. Starting it creates or
+resumes that assessment's persisted plan, then starts one explicit plan/window pair in the
+existing Practice player. Scope is frozen from the assessment's resolved coverage intersected
+with reached lessons and exposed cards, minus authored exclusions and unavailable cards; no
+untaught material leaks into revision. Completed windows record reviewed, improved and parked
+card ids plus review-event provenance, never a curricular Practice milestone.
+
+The planner stores daily time budgets rather than a fixed queue. Edits to assessment coverage,
+deadline or time zone, reached/exposed/available scope, review evidence or the selected model
+produce deterministic, explained replans. An active window retains its captured revision until
+completion. Passed assessments archive their plan read-only and ordinary per-card horizon
+resolution moves on to the next applicable assessment. The selected short-term candidate is not
+yet integrated, so allocation uses the persisted ordinary-Practice fallback and exposes no
+invented confidence. The retired `?mode=cram` query has no caller or product behaviour.
 
 ### Cooldown (`src/fsrs/cooldown.ts`)
 In-memory, per session, to stop a just-failed card being shown again immediately:
@@ -1152,12 +1159,12 @@ Two modes, chosen per session via the DeckView study dropdown (default **FSRS**)
   swipe commits "Yes". The first successful swipe hides the persistent swipe hints
   via a `localStorage` flag (`lacuna.learnHints`).
 - **Mode-aware card accents:** each card's border and shadow shift to match the study
-  mode (amber for cram, green for simple, red for leech filter, etc.), and a label
+  mode (amber for assessment revision, green for simple, red for leech filter, etc.), and a label
   pill (Question / Answer / Fill the gap / Type the answer) animates in with the card
   face to orient the user.
 - **Mode-aware session progress:** Simple Learn uses a segmented strip because its stopping rule is
   rigid: each card is green after a correct result, red after an incorrect result, accent-outlined
-  while current, and muted while unseen. FSRS, cram and filtered sessions instead show the live
+  while current, and muted while unseen. FSRS, assessment-revision and filtered sessions instead show the live
   objective value from `sessionProgress`, labelled as predicted score or secured progress, so the
   header and scheduler cannot disagree.
 

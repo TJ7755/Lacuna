@@ -104,10 +104,8 @@ describe('StudyStepTransition', () => {
       />,
     );
 
-    expect(screen.getByText('Next revision window: 2026-07-18')).toBeInTheDocument();
-    expect(
-      screen.getByText('Plan updated because the assessment deadline moved.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Next revision window: Sat 18 Jul')).toBeInTheDocument();
+    expect(screen.getByText('Plan updated: the assessment deadline moved.')).toBeInTheDocument();
     expect(screen.getByText('Not reached')).toBeInTheDocument();
     expect(screen.queryByText(/predicted|readiness|mark/i)).not.toBeInTheDocument();
   });

@@ -229,7 +229,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const lessonId = request?.kind === 'lesson' ? request.lessonId : routeParams.lessonId;
   const [searchParams] = useSearchParams();
   const tagFilter = searchParams.get('tag');
-  const cramMode = searchParams.get('mode') === 'cram';
   const simpleModeParam = searchParams.get('mode') === 'simple';
   const practiceNodeKeyParam =
     request?.kind === 'practice' && request.mode === 'curricular'
@@ -279,7 +278,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
 
   const mode: LearnModeType = useMemo(() => {
     if (isSimpleMode) return 'simple';
-    if (cramMode || plannedRevision) return 'cram';
+    if (plannedRevision) return 'cram';
     if (filterParams.length > 0) {
       if (filterParams.length === 1) {
         const f = filterParams[0];
@@ -292,7 +291,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       return 'filtered';
     }
     return 'fsrs';
-  }, [isSimpleMode, cramMode, filterParams, plannedRevision]);
+  }, [isSimpleMode, filterParams, plannedRevision]);
 
   // Exactly one of courseId/lessonId is set by the matching route (or neither,
   // for the global "Today" session). The lesson route (/lesson/:lessonId/learn)
@@ -1128,7 +1127,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       units.forEach((u, i) => perfMap.set(u.id, perfs[i] ?? emptyPerformance(u.id)));
       perfRef.current = perfMap;
       decksRef.current = new Map(units.map((u) => [u.id, u]));
-      const ctx = makeSessionContext(sessionUnits, cramMode ? 'cram' : 'objective');
+      const ctx = makeSessionContext(sessionUnits, 'objective');
       ctxRef.current = ctx;
       cardsRef.current = cards;
       linesModeSequencesByCard(cards)
@@ -1239,7 +1238,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     courseId,
     lessonId,
     tagFilter,
-    cramMode,
     filterParams,
     navigate,
     onFlowExit,
@@ -2299,7 +2297,6 @@ function computeHeaderInfo({
   mode,
   filterParams,
   tagFilter,
-  plannedRevision,
   revisionNextWindowDay,
 }: {
   singleDeck: StudyUnit | null;
@@ -2307,7 +2304,6 @@ function computeHeaderInfo({
   mode: LearnModeType;
   filterParams: CardFilter[];
   tagFilter: string | null;
-  plannedRevision: boolean;
   revisionNextWindowDay?: string;
 }) {
   // unitDisplayName overrides the unit's own name for lesson scope, whose
@@ -2326,14 +2322,8 @@ function computeHeaderInfo({
       };
     case 'cram':
       return {
-        title: plannedRevision
-          ? `${deckName} · Revision plan`
-          : singleDeck
-            ? `${deckName} · Cram mode`
-            : 'Cram mode · all decks',
-        subtitle: plannedRevision
-          ? `Ordinary Practice ordering${revisionNextWindowDay ? ` · Next ${revisionNextWindowDay}` : ''}`
-          : 'Weakest cards first',
+        title: `${deckName} · Revision plan`,
+        subtitle: `Ordinary Practice ordering${revisionNextWindowDay ? ` · Next ${revisionNextWindowDay}` : ''}`,
       };
     case 'filtered-due':
       return {
@@ -2442,7 +2432,6 @@ function LearnHeader({
     mode,
     filterParams,
     tagFilter,
-    plannedRevision,
     revisionNextWindowDay,
   });
   const displayedProgress = plannedRevision

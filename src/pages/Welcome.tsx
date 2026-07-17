@@ -255,10 +255,6 @@ const PLANNED: Array<{ name: string; detail: string }> = [
     name: 'MCP server',
     detail: 'Let an AI assistant read your courses and write cards for you.',
   },
-  {
-    name: 'Cram mode, rebuilt',
-    detail: 'A proper short-horizon mode for when the exam is days away, not months.',
-  },
 ];
 
 const SMOOTH_SCROLL_KEY = 'lacuna-welcome-smooth-scroll';
@@ -451,7 +447,9 @@ export function Welcome() {
           >
             <p className="mb-4 leading-relaxed text-ink-soft">
               Features as a practice queue — work through what is due, the way a practice node
-              gathers cards from lessons you have already walked.
+              gathers cards from lessons you have already walked. Upcoming assessments can carry
+              their own scope and exclusions; choose one by name to create a persistent,
+              time-budgeted revision plan using ordinary Practice ordering.
             </p>
             <PracticeDeck onComplete={() => setPracticeDone(true)} />
           </PathNode>

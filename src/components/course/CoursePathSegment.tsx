@@ -8,6 +8,7 @@
 import { m as motion } from 'motion/react';
 import type { Course } from '../../db/types';
 import type { PathNode, PracticePathNode } from '../../course/path';
+import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import type { LessonNodeDetail } from './LessonNode';
 import { PathNodeView } from './PathNodeView';
 import { PathLine } from './PathLine';
@@ -94,8 +95,10 @@ export function PathNodeWithLine({
   lockHint,
   lessonDetail,
   practiceProgress,
+  practiceAssessment,
   onLessonClick,
   onPracticeClick,
+  onPracticeAssessmentClick,
   onCheckpointClick,
   onPracticeEdit,
   onInsertOnLine,
@@ -110,8 +113,10 @@ export function PathNodeWithLine({
   lockHint?: string;
   lessonDetail?: LessonNodeDetail;
   practiceProgress?: { fraction: number; completed: boolean };
+  practiceAssessment?: AssessmentPracticeOption;
   onLessonClick: (lessonId: string) => void;
   onPracticeClick: (node: PracticePathNode) => void;
+  onPracticeAssessmentClick: (assessmentId: string) => void;
   onCheckpointClick: (assessmentId: string) => void;
   onPracticeEdit: (node: PracticePathNode) => void;
   onInsertOnLine: (position: number | undefined) => void;
@@ -142,16 +147,20 @@ export function PathNodeWithLine({
         lockHint={lockHint}
         lessonDetail={lessonDetail}
         practiceProgress={practiceProgress}
+        practiceAssessment={practiceAssessment}
         onLessonClick={onLessonClick}
         onPracticeClick={
           node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual'
             ? () => onPracticeClick(node)
             : undefined
         }
-        onCheckpointClick={
-          node.nodeType === 'checkpoint'
-            ? () => onCheckpointClick(node.assessment.id)
+        onPracticeAssessmentClick={
+          practiceAssessment
+            ? () => onPracticeAssessmentClick(practiceAssessment.assessmentId)
             : undefined
+        }
+        onCheckpointClick={
+          node.nodeType === 'checkpoint' ? () => onCheckpointClick(node.assessment.id) : undefined
         }
         onPracticeEdit={onPracticeEdit}
         authoring={authoring}

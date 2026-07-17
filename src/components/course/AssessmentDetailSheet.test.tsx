@@ -69,7 +69,7 @@ describe('checkpoint assessment details', () => {
     expect(screen.getByText('Atoms')).toBeInTheDocument();
     expect(screen.getByText('What is a proton?')).toBeInTheDocument();
     expect(screen.getByText(/1 lesson · 0 cards/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Revise for this assessment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Revise for Paper 1' }));
     expect(onRevise).toHaveBeenCalledOnce();
   });
 });

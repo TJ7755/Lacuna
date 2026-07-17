@@ -22,6 +22,26 @@
 >
 > **Full changelog below**
 
+## Unreleased — Assessment-aware revision planning (Arc 3)
+
+- Unified checkpoint and final assessments under stable `CourseAssessment` ids with independent
+  path placement, prefix or custom lesson coverage, explicit card exclusions, validation and
+  full backup/share/MCP round-trips.
+- Made checkpoint nodes interactive and added exact assessment details. Relevant Practice nodes
+  and Study now offer named assessment revision without silently replacing ordinary curriculum
+  work or mixing overlapping assessment horizons.
+- Added one persistent multi-day plan per assessment with editable daily windows, explicit
+  assessment/plan/window provenance, safe leave-and-resume behaviour, deterministic explained
+  replans, factual completion summaries and read-only archival after the deadline. Revision never
+  completes a curricular Practice milestone or includes untaught, excluded or unavailable cards.
+- Added the expected-gain allocation boundary and a gated short-term evaluation harness.
+  `half-life-logistic-v1` passed the benchmark gate and is selected, but runtime integration is a
+  follow-up; the shipped planner still records and displays the honest ordinary-Practice fallback
+  without invented confidence.
+- Retired the legacy `?mode=cram` entry and its 48-hour weakest-first product claims. Help,
+  Welcome, the seeded example course, README and SPEC now describe the shipped named-assessment
+  flow, local-only privacy, retry, milestone, replan and archival semantics consistently.
+
 ## Unreleased — MCP server and shared UI foundations (Arc 2 / Arc 5)
 
 The Electron implementation now contains the Arc 2 MCP surface. A real MCP-client

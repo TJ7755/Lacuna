@@ -17,6 +17,15 @@ interface StudyStepTransitionProps {
   onFinish: () => void;
 }
 
+function formatPlanDay(day: string): string {
+  return new Date(`${day}T12:00:00Z`).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+}
+
 /** A quiet hand-off between conductor steps; the detailed report remains an end-of-period view. */
 export function StudyStepTransition({
   completedLabel,
@@ -77,7 +86,7 @@ export function StudyStepTransition({
 
         {summary.revision?.replanExplanation && (
           <p className="mt-4 text-sm text-ink-soft">
-            Plan updated because {summary.revision.replanExplanation}.
+            Plan updated: {summary.revision.replanExplanation}.
           </p>
         )}
 
@@ -87,7 +96,7 @@ export function StudyStepTransition({
           </p>
           <p className="font-display text-2xl">
             {summary.revision?.nextWindowDay
-              ? `Next revision window: ${summary.revision.nextWindowDay}`
+              ? `Next revision window: ${formatPlanDay(summary.revision.nextWindowDay)}`
               : incomplete
                 ? completedLabel
                 : (nextLabel ?? 'Nothing else is ready right now')}

@@ -329,11 +329,11 @@ export function HelpPage() {
                 tip="The progress bar at the top shows how many cards are wrong, remaining, and mastered. Try to turn them all correct before you finish."
               />
               <ModeCard
-                title="Cram mode"
-                description="Exam-eve emergency mode. Reorders cards so the weakest ones appear first, bypassing normal scheduling limits."
-                whatItDoes="Serves every card in the course, ignoring the daily new-card cap. Cards are ordered by their predicted exam-day retrievability, weakest first. Already-secured cards are pushed to the back."
-                whenToUse="Use this only in the final 48 hours before an exam. It trades long-term retention for short-term coverage."
-                tip="Cram mode appears automatically in the study dropdown when your exam is within 48 hours. It is not recommended for regular studying."
+                title="Assessment revision"
+                description="A time-budgeted revision plan for one named checkpoint or final assessment."
+                whatItDoes="Uses the assessment’s covered lessons, removes excluded and unavailable cards, and limits revision to material you have reached and studied. Plans persist by day, can be left and resumed, and never complete a curriculum Practice milestone."
+                whenToUse="Choose it from a relevant Practice node, checkpoint details, or Study now when an upcoming assessment overlaps material you have reached."
+                tip="Set today’s time and edit future days before starting. Cards currently use ordinary Practice ordering, and each completed window reports what was covered, improved, parked or not reached."
               />
             </div>
           </div>

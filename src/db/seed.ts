@@ -327,9 +327,9 @@ export async function seedIfFirstRun(): Promise<void> {
         course.id,
         lessonScheduling.lesson.id,
         'front_back',
-        'What is Cram mode?',
-        'An exam-eve emergency mode that appears in the study dropdown once your exam is within 48 hours. It serves every card, ignoring the daily new-card cap, ordered **weakest-first** by predicted exam-day retrievability, so already-secured cards move to the back.',
-        ['scheduling', 'cram'],
+        'How does assessment revision work?',
+        'Choose a named checkpoint or final assessment from the course path or **Study now**. Lacuna creates a persistent, time-budgeted plan over reached and studied cards in that assessment’s coverage, respecting exclusions. Cards currently use ordinary Practice ordering.',
+        ['scheduling', 'revision'],
         17,
       ),
       exampleCard(

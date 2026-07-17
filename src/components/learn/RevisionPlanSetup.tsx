@@ -15,6 +15,15 @@ import { Button } from '../ui/Button';
 
 const PRESETS = [10, 20, 30] as const;
 
+function formatPlanDay(day: string): string {
+  return new Date(`${day}T12:00:00Z`).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+}
+
 export function RevisionPlanSetup({
   assessmentId,
   onStart,
@@ -130,7 +139,7 @@ export function RevisionPlanSetup({
 
       {plan && plan.replans.length > 0 && (
         <p className="mt-5 rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm text-ink-soft">
-          Plan updated because {plan.replans[plan.replans.length - 1].explanation}.
+          Plan updated: {plan.replans[plan.replans.length - 1].explanation}.
         </p>
       )}
 
@@ -223,7 +232,9 @@ export function RevisionPlanSetup({
                           key={window.id}
                           className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3"
                         >
-                          <span className="min-w-0 flex-1 text-sm text-ink">{window.day}</span>
+                          <span className="min-w-0 flex-1 text-sm text-ink">
+                            {formatPlanDay(window.day)}
+                          </span>
                           <input
                             aria-label={`${window.day} minutes`}
                             type="number"
@@ -256,7 +267,9 @@ export function RevisionPlanSetup({
             {activeWindow ? 'Resume revision' : plan ? 'Start today’s window' : 'Create plan'}
           </Button>
           {plan && !activeWindow && !todayWindow && nextWindow && (
-            <p className="mt-3 text-center text-sm text-ink-faint">Next window: {nextWindow.day}</p>
+            <p className="mt-3 text-center text-sm text-ink-faint">
+              Next window: {formatPlanDay(nextWindow.day)}
+            </p>
           )}
         </>
       )}

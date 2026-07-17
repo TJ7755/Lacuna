@@ -9,6 +9,7 @@
 // British English throughout.
 
 import type { PathNode, PracticePathNode } from '../../course/path';
+import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import { LessonNode, type LessonNodeDetail } from './LessonNode';
 import { CheckpointNode } from './CheckpointNode';
 import { PracticeNode } from './PracticeNode';
@@ -18,6 +19,7 @@ interface PathNodeViewProps {
   node: PathNode;
   onLessonClick?: (lessonId: string) => void;
   onPracticeClick?: () => void;
+  onPracticeAssessmentClick?: () => void;
   onCheckpointClick?: () => void;
   /** Only ever invoked for `practice-manual` nodes — see PracticeNode.tsx. */
   onPracticeEdit?: (node: PracticePathNode) => void;
@@ -28,6 +30,7 @@ interface PathNodeViewProps {
   /** Hover-revealed stats for lesson nodes — see LessonNode's detail squircle. */
   lessonDetail?: LessonNodeDetail;
   practiceProgress?: { fraction: number; completed: boolean };
+  practiceAssessment?: AssessmentPracticeOption;
   authoring?: boolean;
   lessonReorder?: LessonReorderInteraction;
 }
@@ -54,12 +57,14 @@ export function PathNodeView({
   node,
   onLessonClick,
   onPracticeClick,
+  onPracticeAssessmentClick,
   onCheckpointClick,
   onPracticeEdit,
   current,
   lockHint,
   lessonDetail,
   practiceProgress,
+  practiceAssessment,
   authoring,
   lessonReorder,
 }: PathNodeViewProps) {
@@ -86,6 +91,8 @@ export function PathNodeView({
           node={node}
           onClick={onPracticeClick}
           progress={practiceProgress}
+          assessment={practiceAssessment}
+          onAssessmentClick={onPracticeAssessmentClick}
           onEdit={
             node.nodeType === 'practice-manual' && onPracticeEdit
               ? () => onPracticeEdit(node)
