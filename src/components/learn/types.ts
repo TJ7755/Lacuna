@@ -40,6 +40,8 @@ export interface SessionSummary {
     cardsImproved: number;
     cardsParked: number;
     workNotReached: number;
+    predictedReadiness?: number;
+    readinessUncertainty?: number;
     nextWindowDay?: string;
     replanExplanation?: string;
   };

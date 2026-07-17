@@ -449,7 +449,8 @@ export function Welcome() {
               Features as a practice queue — work through what is due, the way a practice node
               gathers cards from lessons you have already walked. Upcoming assessments can carry
               their own scope and exclusions; choose one by name to create a persistent,
-              time-budgeted revision plan using ordinary Practice ordering.
+              time-budgeted revision plan ranked by predicted assessment-day value, with ordinary
+              Practice as the explicit fallback.
             </p>
             <PracticeDeck onComplete={() => setPracticeDone(true)} />
           </PathNode>

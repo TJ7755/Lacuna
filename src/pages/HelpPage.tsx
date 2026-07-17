@@ -333,7 +333,7 @@ export function HelpPage() {
                 description="A time-budgeted revision plan for one named checkpoint or final assessment."
                 whatItDoes="Uses the assessment’s covered lessons, removes excluded and unavailable cards, and limits revision to material you have reached and studied. Plans persist by day, can be left and resumed, and never complete a curriculum Practice milestone."
                 whenToUse="Choose it from a relevant Practice node, checkpoint details, or Study now when an upcoming assessment overlaps material you have reached."
-                tip="Set today’s time and edit future days before starting. Cards currently use ordinary Practice ordering, and each completed window reports what was covered, improved, parked or not reached."
+                tip="Set today’s time and edit future days before starting. The plan estimates each review’s assessment-day value and reports what was covered, improved, parked or not reached. If the model is unavailable, it says so and uses ordinary Practice ordering."
               />
             </div>
           </div>

@@ -120,6 +120,11 @@ import { useToast } from '../components/ui/Toast';
 import { filterSessionCardPool, type CardFilter } from '../db/search';
 import { cn } from '../components/ui/cn';
 import { allocateCramReview } from '../fsrs/cramAllocator';
+import {
+  CRAM_SUCCESS_GRADES,
+  createHalfLifeLogisticModel,
+  readinessFromPredictions,
+} from '../fsrs/halfLifeLogisticModel';
 import { revisionProjection } from '../course/revisionProjection';
 
 type Phase = 'loading' | 'notes' | 'question' | 'answer' | 'finished';
@@ -684,6 +689,31 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             updatedPlan.revision > revisionInitialRevision.current
               ? updatedPlan.replans[updatedPlan.replans.length - 1]
               : undefined;
+          const objectiveContext = ctxRef.current?.decks.values().next().value?.oc;
+          const model = objectiveContext
+            ? createHalfLifeLogisticModel(objectiveContext.ctx.decay)
+            : undefined;
+          const readinessCards = cardsRef.current.filter((card) =>
+            updatedPlan.scope.eligibleCardIds.includes(card.id),
+          );
+          const readiness =
+            model &&
+            updatedPlan.input.projection.projectionMode === 'memory-model' &&
+            model.version === updatedPlan.input.projection.memoryModelVersion &&
+            readinessCards.every(
+              (card) =>
+                model.validate({
+                  card,
+                  now: completedAt,
+                  assessmentAt: updatedPlan.input.deadlineAt,
+                }).valid,
+            )
+              ? readinessFromPredictions(
+                  readinessCards.map((card) =>
+                    model.predictRecall({ card, at: updatedPlan.input.deadlineAt }),
+                  ),
+                )
+              : null;
           deliveredSummary = {
             ...nextSummary,
             reachedGoal: true,
@@ -695,6 +725,12 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 0,
                 revisionPlan.scope.eligibleCardIds.length - revisionCovered.current.size,
               ),
+              ...(readiness?.standardDeviation === undefined
+                ? {}
+                : {
+                    predictedReadiness: readiness.probability,
+                    readinessUncertainty: readiness.standardDeviation,
+                  }),
               ...(nextWindow ? { nextWindowDay: nextWindow.day } : {}),
               ...(latestReplan?.explanation ? { replanExplanation: latestReplan.explanation } : {}),
             },
@@ -826,6 +862,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
         currentWindowId: requestWindowId,
         futureWindowStarts: [],
         projection: revisionPlan.input.projection,
+        model: createHalfLifeLogisticModel(objectiveContext.ctx.decay),
+        successGrades: CRAM_SUCCESS_GRADES,
         performanceByDeck: perfRef.current,
       });
       const next =

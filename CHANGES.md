@@ -34,10 +34,13 @@
   assessment/plan/window provenance, safe leave-and-resume behaviour, deterministic explained
   replans, factual completion summaries and read-only archival after the deadline. Revision never
   completes a curricular Practice milestone or includes untaught, excluded or unavailable cards.
-- Added the expected-gain allocation boundary and a gated short-term evaluation harness.
-  `half-life-logistic-v1` passed the benchmark gate and is selected, but runtime integration is a
-  follow-up; the shipped planner still records and displays the honest ordinary-Practice fallback
-  without invented confidence.
+- Integrated the benchmark-selected `half-life-logistic-v1` runtime through the existing
+  expected-gain boundary. Exact-second predictions blend smoothly back into ordinary FSRS-6,
+  simulated outcomes apply one normal FSRS transition, coefficient and feature validation use the
+  typed Practice fallback, model-version changes explain replans, and readiness remains gated on a
+  valid prediction with uncertainty. Successful simulations retain the established deterministic
+  Good convention; local terms use the documented 500-example threshold and 1,000-example
+  shrinkage prior.
 - Retired the legacy `?mode=cram` entry and its 48-hour weakest-first product claims. Help,
   Welcome, the seeded example course, README and SPEC now describe the shipped named-assessment
   flow, local-only privacy, retry, milestone, replan and archival semantics consistently.

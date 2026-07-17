@@ -328,7 +328,7 @@ export async function seedIfFirstRun(): Promise<void> {
         lessonScheduling.lesson.id,
         'front_back',
         'How does assessment revision work?',
-        'Choose a named checkpoint or final assessment from the course path or **Study now**. Lacuna creates a persistent, time-budgeted plan over reached and studied cards in that assessment’s coverage, respecting exclusions. Cards currently use ordinary Practice ordering.',
+        'Choose a named checkpoint or final assessment from the course path or **Study now**. Lacuna creates a persistent, time-budgeted plan over reached and studied cards in that assessment’s coverage, respecting exclusions. Cards are ranked by predicted assessment-day value; invalid model data uses ordinary Practice ordering.',
         ['scheduling', 'revision'],
         17,
       ),

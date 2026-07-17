@@ -41,7 +41,8 @@ file.
 - **Cooldown slotting** — failed cards are held back briefly to prevent fatigue.
 - **Assessment revision plans** — checkpoints and final assessments have explicit prefix or custom
   lesson coverage and card exclusions. A named assessment can create one persistent multi-day plan
-  with editable daily budgets, honest window summaries and ordinary Practice ordering.
+  with editable daily budgets, model-ranked cards, honest window summaries and explicit ordinary
+  Practice fallback when the short-term model cannot run.
 - **Continuous Learn mode** with per-card progress for Simple Learn, scheduler-derived objective
   progress for FSRS and filtered sessions, optional start-in-Focus-Mode behaviour, and an
   automatic performance report (including a focus/distraction summary).

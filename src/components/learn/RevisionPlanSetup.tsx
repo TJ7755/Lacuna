@@ -261,7 +261,11 @@ export function RevisionPlanSetup({
               </section>
             )}
 
-          <p className="mt-6 text-sm text-ink-faint">Cards use ordinary Practice ordering.</p>
+          <p className="mt-6 text-sm text-ink-faint">
+            {revisionProjection.projectionMode === 'memory-model'
+              ? 'Cards are prioritised by predicted assessment-day value when the model supports their history.'
+              : 'The memory model is unavailable. Cards use ordinary Practice ordering.'}
+          </p>
           {error && <p className="mt-3 text-sm text-negative">{error}</p>}
           <Button variant="primary" size="lg" className="mt-6 w-full" onClick={() => void start()}>
             {activeWindow ? 'Resume revision' : plan ? 'Start today’s window' : 'Create plan'}

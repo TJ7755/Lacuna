@@ -404,7 +404,8 @@ and non-gating; they remain visible in Edit mode. Completed manual checkpoints r
 as curriculum history. Automatic Practice is conductor scheduling machinery and is not
 rendered as a separate path diamond.
 
-Assessment revision still uses ordinary Practice and never completes a curricular milestone.
+Assessment revision uses the selected short-term model when its frozen coefficients and card
+features validate, otherwise it explicitly uses ordinary Practice. It never completes a curricular milestone.
 Selecting an assessment expands from the scope that triggered the offer to the assessment's
 full resolved coverage, intersected with reached lessons and exposed cards, then removes
 assessment exclusions and unavailable cards. Its eligibility and session objective use the
@@ -419,9 +420,9 @@ The plan persists windows rather than card queues, so later allocation can rebui
 from current evidence. Coverage, deadline, time-zone, model-version, reached/exposed/available
 scope and review-evidence changes produce deterministic, explained replans. An active window
 keeps its captured revision; triggers wait until it closes. `half-life-logistic-v1` passed the
-offline benchmark gate and is selected, but runtime integration is a follow-up. The persisted
-mode therefore remains the explicit FSRS-6 ordinary-Practice fallback and stores no invented
-confidence values.
+offline benchmark gate and owns short-horizon allocation through the model boundary. The persisted
+projection records its coefficient-derived version; invalid model data records the typed FSRS-6
+ordinary-Practice fallback instead of invented confidence.
 
 **Review due cards** is a separate ad-hoc course-wide action. It creates no path node or
 milestone, may be launched at any time, and returns to the same conductor afterwards.
@@ -787,10 +788,10 @@ default); difficulty bounds `[1, 10]`; `MASTERY_R = 0.90`; `MS_PER_DAY = 86_400_
 **On the algorithm version (honesty note).** Lacuna uses FSRS-6 because that is what
 `ts-fsrs` exposes — not because it is the newest FSRS in existence (FSRS-7 exists). Copy
 and comments are pinned to "the version ts-fsrs ships", not to "the newest". Also, FSRS
-has **no short-term memory model**, so repeated same-evening reviews remain a known
-limitation. The selected `half-life-logistic-v1` candidate is not yet integrated, so assessment
-revision (§10) falls back explicitly to ordinary Practice ordering and the UI makes no
-short-horizon confidence claim.
+has **no short-term memory model** of its own. Lacuna composes the benchmark-selected
+`half-life-logistic-v1` predictor with FSRS-6 for assessment revision (§10); FSRS still owns every
+real long-term state transition. Invalid model data falls back explicitly to ordinary Practice and
+the UI makes no short-horizon confidence claim in fallback.
 
 ---
 
@@ -1041,9 +1042,18 @@ The planner stores daily time budgets rather than a fixed queue. Edits to assess
 deadline or time zone, reached/exposed/available scope, review evidence or the selected model
 produce deterministic, explained replans. An active window retains its captured revision until
 completion. Passed assessments archive their plan read-only and ordinary per-card horizon
-resolution moves on to the next applicable assessment. The selected short-term candidate is not
-yet integrated, so allocation uses the persisted ordinary-Practice fallback and exposes no
-invented confidence. The retired `?mode=cram` query has no caller or product behaviour.
+resolution moves on to the next applicable assessment.
+
+The runtime uses the frozen `half-life-logistic-v1-lag64-count8` global fit for exact-second
+prediction through six days, then smoothsteps its probability into ordinary FSRS-6 through day
+seven. The probabilities are blended rather than added, and every simulated outcome receives
+exactly one normal FSRS transition. Successful branches currently use the scheduler's established
+deterministic Good convention. Personal terms remain global below 500 scored examples; supported
+local intercept and preceding-outcome fits use weight `n / (n + 1000)`. Missing, corrupt or
+unsupported coefficients or card features persist the typed ordinary-Practice fallback and hide
+readiness. Valid plans may report mean predicted assessment-day readiness with outcome uncertainty;
+these are predictions, not promised marks. The retired `?mode=cram` query has no caller or product
+behaviour.
 
 ### Cooldown (`src/fsrs/cooldown.ts`)
 In-memory, per session, to stop a just-failed card being shown again immediately:
