@@ -13,10 +13,18 @@ class AnswerPair:
     kind: str
 
 def _noise(answer: str) -> list[tuple[str, str]]:
-    words = answer.split()
+    # Deliberately no "word-order" variant here, diverging from next_plan.md
+    # Appendix A.1 Step 2 ("word-order shuffles" as deterministic positives).
+    # Reversing word order in a one- to two-sentence answer produces gibberish
+    # (e.g. "The nucleus contains ... the cell." -> "cell. the ... nucleus
+    # The"), yet both the token-overlap feature and embedding cosine
+    # similarity stay high for it, so labelling it a match (label=1) actively
+    # trained the classifier that scrambled word salad is a correct answer.
+    # That works against the asymmetry required elsewhere (a false "match" is
+    # worse than a false "no-match"). Case and punctuation noise stay, since
+    # they model the trivial surface variation that answerStrictness.ts
+    # already normalises.
     variants = [(answer.lower(), "case"), (re.sub(r"[\.,!?;:]+", "", answer), "punctuation")]
-    if len(words) > 1:
-        variants.append((" ".join(reversed(words)), "word-order"))
     return [(text, kind) for text, kind in variants if text != answer]
 
 def expand_pairs(records: list[SourceRecord]) -> list[AnswerPair]:

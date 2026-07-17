@@ -32,7 +32,20 @@ def write_jsonl(path: Path):
 def test_expands_model_and_deterministic_pairs():
     pairs = expand_pairs(__import__("match_harness.schema", fromlist=["SourceRecord"]).validate_record(RECORD, line_number=1, source_file="x")[0:1])
     kinds = [pair.kind for pair in pairs]
-    assert "paraphrase" in kinds and "wrong" in kinds and "word-order" in kinds
+    assert "paraphrase" in kinds and "wrong" in kinds and "case" in kinds
+    assert "word-order" not in kinds
+
+def test_no_matched_pair_is_a_pure_word_order_permutation():
+    records = __import__("match_harness.schema", fromlist=["SourceRecord"]).validate_record(RECORD, line_number=1, source_file="x")[0:1]
+    for pair in expand_pairs(records):
+        if pair.label != 1:
+            continue
+        expected_words = pair.expected.lower().split()
+        typed_words = pair.typed.lower().split()
+        is_reordered_permutation = (
+            sorted(expected_words) == sorted(typed_words) and expected_words != typed_words
+        )
+        assert not is_reordered_permutation, f"matched pair is a word-order permutation: {pair}"
 
 def test_features_are_deterministic_and_injectable():
     assert normalised_edit_similarity("Tokyo", "tokyo") == 1
