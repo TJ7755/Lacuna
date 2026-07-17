@@ -59,7 +59,7 @@ describe('exportDatabase', () => {
     expect(backup.cards[0].front).toBe('Q1');
   });
 
-  it('exports full assessment semantics and stable ids in version 7', async () => {
+  it('exports full assessment semantics and stable ids in version 8', async () => {
     const course = await createCourse('Chemistry', { examDate: 1_900_000_000_000 });
     const lesson = await createLesson(course.id, 'Bonding');
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
@@ -72,7 +72,7 @@ describe('exportDatabase', () => {
 
     const backup = await exportDatabase();
 
-    expect(backup.version).toBe(7);
+    expect(backup.version).toBe(8);
     expect(backup.courses?.[0]).not.toHaveProperty('examDate');
     expect(backup.courseAssessments).toEqual(
       expect.arrayContaining([
@@ -109,11 +109,16 @@ describe('exportDatabase', () => {
     expect(after.find((assessment) => assessment.id === checkpoint.id)).toEqual(checkpoint);
   });
 
-  it('round-trips ReviewLog.hintUsed through export and import', async () => {
+  it('round-trips complete review provenance through export and import', async () => {
     const deck = await createDeck('Biology');
     const card = await createCard(deck.id, 'front_back', 'Q1', 'A1');
     await recordReview({
       card,
+      eventId: 'event-portability',
+      sessionId: 'session-portability',
+      sessionKind: 'deck',
+      revisionPlanId: 'plan-1',
+      revisionWindowId: 'window-1',
       deck,
       grade: 3,
       responseTimeSec: 4,
@@ -123,14 +128,32 @@ describe('exportDatabase', () => {
     });
 
     const backup = await exportDatabase();
-    expect(backup.cards[0].history[0].hintUsed).toBe(true);
+    expect(backup.cards[0].history[0]).toEqual(
+      expect.objectContaining({
+        eventId: 'event-portability',
+        sessionId: 'session-portability',
+        sessionKind: 'deck',
+        revisionPlanId: 'plan-1',
+        revisionWindowId: 'window-1',
+        correct: true,
+        hintUsed: true,
+      }),
+    );
+    expect(backup.sessionHistory[0]).toEqual(
+      expect.objectContaining({
+        eventId: 'event-portability',
+        sessionId: 'session-portability',
+        revisionPlanId: 'plan-1',
+        revisionWindowId: 'window-1',
+      }),
+    );
 
     await db.cards.clear();
     await db.decks.clear();
     await importBackup(backup, 'replace');
 
     const restored = await db.cards.toArray();
-    expect(restored[0].history[0].hintUsed).toBe(true);
+    expect(restored[0].history[0]).toEqual(backup.cards[0].history[0]);
   });
 });
 
@@ -251,6 +274,28 @@ describe('importBackup', () => {
     const history = await db.sessionHistory.toArray();
     expect(history).toHaveLength(2);
     expect(history.map((h) => h.timestamp).sort()).toEqual([1000, 2000]);
+  });
+
+  it('deduplicates replayed event ids within and across merged backups', async () => {
+    const deck = await createDeck('HistoryDeck');
+    const backup = await exportDatabase();
+    const event = {
+      eventId: 'event-merge',
+      sessionId: 'session-merge',
+      timestamp: 1000,
+      deckId: deck.id,
+      averagePredictedRetrievability: 0.5,
+    };
+    const duplicate = {
+      ...event,
+      timestamp: 2000,
+      averagePredictedRetrievability: 0.9,
+    };
+
+    await importBackup({ ...backup, sessionHistory: [event, duplicate] }, 'merge');
+    await importBackup({ ...backup, sessionHistory: [duplicate] }, 'merge');
+
+    expect(await db.sessionHistory.toArray()).toEqual([expect.objectContaining(event)]);
   });
 
   it('round-trips a course, lesson and note in replace mode', async () => {

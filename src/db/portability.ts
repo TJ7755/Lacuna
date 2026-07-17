@@ -40,7 +40,7 @@ import {
   referencedAssetHashesInCards,
 } from './assets';
 
-export const BACKUP_VERSION = 7;
+export const BACKUP_VERSION = 8;
 
 /** Gather the whole database into a single backup object. */
 export async function exportDatabase(): Promise<BackupFile> {
@@ -142,7 +142,8 @@ export type ImportMode = 'replace' | 'merge';
 /**
  * Import a backup. In "replace" mode the database is cleared first; in "merge" mode
  * records are matched by id and the most recently touched copy wins each conflict.
- * SessionHistory is append-only and de-duplicated by (timestamp, deckId).
+ * SessionHistory is append-only and de-duplicated by stable event identity when
+ * available, falling back to (timestamp, deckId) for legacy rows.
  */
 export async function importBackup(backup: BackupFile, mode: ImportMode): Promise<void> {
   if (!validateBackup(backup)) {
@@ -557,11 +558,20 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
 
       // Append session history that we do not already have.
       const existingKeys = new Set(
-        (await db.sessionHistory.toArray()).map((s) => `${s.timestamp}:${s.deckId}`),
+        (await db.sessionHistory.toArray()).map((s) =>
+          s.eventId ? `event:${s.eventId}` : `legacy:${s.timestamp}:${s.deckId}`,
+        ),
       );
-      const toAdd = backup.sessionHistory
-        .filter((s) => !existingKeys.has(`${s.timestamp}:${s.deckId}`))
-        .map(({ id: _id, ...rest }) => rest as SessionHistoryEntry);
+      const toAdd = backup.sessionHistory.flatMap((entry) => {
+        const key = entry.eventId
+          ? `event:${entry.eventId}`
+          : `legacy:${entry.timestamp}:${entry.deckId}`;
+        if (existingKeys.has(key)) return [];
+        existingKeys.add(key);
+        const rest = { ...entry };
+        delete rest.id;
+        return [rest as SessionHistoryEntry];
+      });
       if (toAdd.length) await db.sessionHistory.bulkAdd(toAdd);
     },
   );

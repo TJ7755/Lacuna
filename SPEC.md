@@ -1172,7 +1172,12 @@ studied — but it provides a tactile, visible session for focus.
 Each answer calls `recordReview` which applies the FSRS update, appends a
 `ReviewLog`, and writes a per-card `SessionHistory` snapshot
 (`averagePredictedRetrievability` of the served pool). The progress value is
-recomputed and, if the objective is met, the session finishes.
+recomputed and, if the objective is met, the session finishes. Every persisted
+attempt has a stable event id, a flow-level session id, explicit correctness and
+its deck, lesson, Practice, assessment-revision or revision-plan provenance.
+Revision-plan and window ids are additive. The event id also links the aggregate
+snapshot to its review log and is unique, so replaying a submission cannot apply
+FSRS or calibration twice. Legacy history without provenance remains readable.
 
 ### Completion & the report (`SessionReport`)
 The session **auto-ends** when the objective is met (all cards secured, or no card

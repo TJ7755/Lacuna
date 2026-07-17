@@ -111,4 +111,55 @@ describe('card exporters: course/lesson naming', () => {
     const json = JSON.parse(await exportReviewHistoryJson());
     expect(json[0].deck).toBe('Physics — Mechanics');
   });
+
+  it('review history exporters include the complete non-secret event contract', async () => {
+    const deck = await createDeck('Biology');
+    const card = await createCard(deck.id, 'front_back', 'Q', 'A');
+    await db.cards.update(card.id, {
+      history: [
+        {
+          eventId: 'event-1',
+          sessionId: 'session-1',
+          sessionKind: 'revision-plan',
+          revisionPlanId: 'plan-1',
+          revisionWindowId: 'window-1',
+          timestamp: 1_725_123_456_789,
+          grade: 2,
+          correct: false,
+          responseTimeSec: 1.25,
+          distracted: true,
+          hintUsed: true,
+          stabilityBefore: 1,
+          stabilityAfter: 2,
+          difficultyBefore: 5,
+          difficultyAfter: 5.5,
+          retrievabilityAtReview: 0.75,
+        },
+      ],
+    });
+
+    const csv = await exportReviewHistoryCsv();
+    expect(csv).toContain(
+      'timestamp,event_id,session_id,session_kind,revision_plan_id,revision_window_id',
+    );
+    expect(csv).toContain('1725123456789,event-1,session-1,revision-plan,plan-1,window-1');
+
+    const [json] = JSON.parse(await exportReviewHistoryJson());
+    expect(json).toEqual(
+      expect.objectContaining({
+        eventId: 'event-1',
+        sessionId: 'session-1',
+        sessionKind: 'revision-plan',
+        revisionPlanId: 'plan-1',
+        revisionWindowId: 'window-1',
+        timestamp: 1_725_123_456_789,
+        grade: 2,
+        gradeLabel: 'Hard',
+        correct: false,
+        responseTimeSec: 1.25,
+        distracted: true,
+        hintUsed: true,
+      }),
+    );
+  });
 });

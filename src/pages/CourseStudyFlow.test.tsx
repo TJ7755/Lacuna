@@ -45,13 +45,16 @@ vi.mock('./LearnMode', () => ({
     request,
     onStepFinished,
     onFlowExit,
+    sessionId,
   }: {
     request: unknown;
     onStepFinished: (summary: SessionSummary) => void;
     onFlowExit: () => void;
+    sessionId?: string;
   }) => (
     <div>
       <pre data-testid="learn-request">{JSON.stringify(request)}</pre>
+      <span data-testid="learn-session">{sessionId}</span>
       <button type="button" onClick={() => onStepFinished(summary(true))}>
         Complete step
       </button>
@@ -345,11 +348,14 @@ describe('CourseStudyFlow', () => {
     renderFlow();
     await screen.findByTestId('learn-request');
     expect(request()).toMatchObject({ kind: 'practice', nodeKey: 'manual-1' });
+    const sessionId = screen.getByTestId('learn-session').textContent;
+    expect(sessionId).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Continue$/ }));
 
     await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-2' }));
+    expect(screen.getByTestId('learn-session')).toHaveTextContent(sessionId!);
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

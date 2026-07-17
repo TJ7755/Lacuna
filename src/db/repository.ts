@@ -19,6 +19,7 @@ import type {
   PracticeMilestone,
   PracticeNode,
   ReviewLog,
+  ReviewSessionKind,
   SchedulerConfig,
   Sequence,
   SequenceItem,
@@ -671,6 +672,14 @@ type ReviewUnitKind = 'deck' | 'course';
 
 export interface RecordReviewArgs {
   card: Card;
+  /** Stable caller-owned identity reused if the same submission is retried. */
+  eventId: string;
+  /** Stable identity shared by attempts in the same study session. */
+  sessionId: string;
+  sessionKind: ReviewSessionKind;
+  /** Optional revision provenance for task-planned review windows. */
+  revisionPlanId?: string;
+  revisionWindowId?: string;
   /**
    * The Deck (legacy per-deck/global-Today scope) or Course (course/lesson scope) this
    * review is scheduled and calibrated against. Both satisfy SchedulerConfig, so the
@@ -693,6 +702,10 @@ export interface RecordReviewArgs {
 /** The result of recording a review: the updated card plus undo bookkeeping. */
 export interface RecordReviewResult {
   card: Card;
+  /** The exact persisted state before this transition, used by undo. */
+  cardBefore: Card;
+  /** False when this eventId had already been committed and no state changed. */
+  recorded: boolean;
   /** Id of the SessionHistory row written for this review, so it can be undone. */
   sessionHistoryId: number;
   /** The review kind this was recorded against (see {@link RecordReviewArgs.kind}), so
@@ -715,60 +728,102 @@ export interface RecordReviewResult {
  */
 export async function recordReview(args: RecordReviewArgs): Promise<RecordReviewResult> {
   try {
-    const { card, deck, grade, responseTimeSec, distracted, hintUsed, correct } = args;
-    const kind: ReviewUnitKind = args.kind ?? 'deck';
-    const now = args.now ?? Date.now();
-
-    // All FSRS-6 maths is delegated to ts-fsrs via the engine wrapper.
-    const engine = makeEngine(deck.fsrsParameters);
-    const { memory, retrievabilityAtReview } = applyReview(engine, card, grade, now);
-
-    const log: ReviewLog = {
-      timestamp: now,
+    const {
+      card,
+      deck,
+      eventId,
+      sessionId,
+      sessionKind,
+      revisionPlanId,
+      revisionWindowId,
       grade,
       responseTimeSec,
       distracted,
-      hintUsed: hintUsed ?? false,
-      stabilityBefore: card.stability,
-      stabilityAfter: memory.stability,
-      difficultyBefore: card.difficulty,
-      difficultyAfter: memory.difficulty,
-      retrievabilityAtReview,
-    };
+      hintUsed,
+      correct,
+    } = args;
+    const kind: ReviewUnitKind = args.kind ?? 'deck';
+    const now = args.now ?? Date.now();
 
-    const updatedCard: Card = {
-      ...card,
-      stability: memory.stability,
-      difficulty: memory.difficulty,
-      lastReviewed: memory.lastReviewed,
-      due: memory.due,
-      scheduledDays: memory.scheduledDays,
-      learningSteps: memory.learningSteps,
-      reps: memory.reps,
-      lapses: memory.lapses,
-      state: memory.state,
-      history: [...card.history, log],
-    };
-
-    // Leech auto-action: if the card just crossed the threshold, act on it.
-    const action = deck.leechAction ?? 'suspend';
-    const threshold = deck.leechThreshold;
-    if (action !== 'none' && isLeech(updatedCard, threshold) && !isLeech(card, threshold)) {
-      if (action === 'suspend') {
-        updatedCard.suspended = true;
-      } else if (action === 'tag') {
-        const tags = updatedCard.tags ?? [];
-        if (!tags.includes('leech')) {
-          updatedCard.tags = [...tags, 'leech'];
-        }
-      }
+    if (!eventId.trim() || !sessionId.trim()) {
+      throw new Error('Review eventId and sessionId must be non-empty.');
     }
 
     let lastInteractedAtBefore: number | undefined;
-    const sessionHistoryId = await db.transaction(
+    return await db.transaction(
       'rw',
       [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance],
       async () => {
+        const existingSession = await db.sessionHistory.where('eventId').equals(eventId).first();
+        if (existingSession) {
+          const persistedCard = await db.cards.get(card.id);
+          if (!persistedCard?.history.some((entry) => entry.eventId === eventId)) {
+            throw new Error(`Review event ${eventId} belongs to another attempt.`);
+          }
+          return {
+            card: persistedCard,
+            cardBefore: persistedCard,
+            recorded: false,
+            sessionHistoryId: existingSession.id!,
+            kind,
+            lastInteractedAtBefore: undefined,
+          };
+        }
+
+        const cardBefore = await db.cards.get(card.id);
+        if (!cardBefore) throw new Error('The reviewed card no longer exists.');
+
+        // Compute from the transaction's current card, not the caller's potentially
+        // stale snapshot. Duplicate detection and the one FSRS transition are atomic.
+        const engine = makeEngine(deck.fsrsParameters);
+        const { memory, retrievabilityAtReview } = applyReview(engine, cardBefore, grade, now);
+        const log: ReviewLog = {
+          eventId,
+          sessionId,
+          sessionKind,
+          revisionPlanId,
+          revisionWindowId,
+          timestamp: now,
+          grade,
+          correct,
+          responseTimeSec,
+          distracted,
+          hintUsed: hintUsed ?? false,
+          stabilityBefore: cardBefore.stability,
+          stabilityAfter: memory.stability,
+          difficultyBefore: cardBefore.difficulty,
+          difficultyAfter: memory.difficulty,
+          retrievabilityAtReview,
+        };
+        const updatedCard: Card = {
+          ...cardBefore,
+          stability: memory.stability,
+          difficulty: memory.difficulty,
+          lastReviewed: memory.lastReviewed,
+          due: memory.due,
+          scheduledDays: memory.scheduledDays,
+          learningSteps: memory.learningSteps,
+          reps: memory.reps,
+          lapses: memory.lapses,
+          state: memory.state,
+          history: [...cardBefore.history, log],
+        };
+
+        const action = deck.leechAction ?? 'suspend';
+        const threshold = deck.leechThreshold;
+        if (
+          action !== 'none' &&
+          isLeech(updatedCard, threshold) &&
+          !isLeech(cardBefore, threshold)
+        ) {
+          if (action === 'suspend') {
+            updatedCard.suspended = true;
+          } else if (action === 'tag') {
+            const tags = updatedCard.tags ?? [];
+            if (!tags.includes('leech')) updatedCard.tags = [...tags, 'leech'];
+          }
+        }
+
         await db.cards.put(updatedCard);
         if (kind === 'course') {
           lastInteractedAtBefore = (await db.courses.get(deck.id))?.lastInteractedAt;
@@ -801,7 +856,11 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         });
         const avgRetrievability = cardCount > 0 ? retrievabilityTotal / cardCount : 1;
 
-        return db.sessionHistory.add({
+        const sessionHistoryId = await db.sessionHistory.add({
+          eventId,
+          sessionId,
+          revisionPlanId,
+          revisionWindowId,
           timestamp: now,
           // deckId always identifies the backing (possibly shadow) deck the card lives
           // in; courseId is populated in addition for course/lesson-scoped reviews.
@@ -809,17 +868,42 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           ...(kind === 'course' ? { courseId: deck.id } : {}),
           averagePredictedRetrievability: avgRetrievability,
         });
+
+        return {
+          card: updatedCard,
+          cardBefore,
+          recorded: true,
+          sessionHistoryId,
+          kind,
+          lastInteractedAtBefore,
+        };
       },
     );
-
-    return { card: updatedCard, sessionHistoryId, kind, lastInteractedAtBefore };
   } catch (err) {
+    // A transaction in another tab can win the unique eventId race after this
+    // transaction's initial lookup. Resolve that replay as the same no-op result.
+    const existingSession = await db.sessionHistory.where('eventId').equals(args.eventId).first();
+    if (existingSession) {
+      const persistedCard = await db.cards.get(args.card.id);
+      if (persistedCard?.history.some((entry) => entry.eventId === args.eventId)) {
+        return {
+          card: persistedCard,
+          cardBefore: persistedCard,
+          recorded: false,
+          sessionHistoryId: existingSession.id!,
+          kind: args.kind ?? 'deck',
+          lastInteractedAtBefore: undefined,
+        };
+      }
+    }
     throw friendlyDbError(err);
   }
 }
 
 /** Snapshot needed to reverse a single review (see undoReview). */
 export interface ReviewUndo {
+  /** Stable review identity; makes repeated or stale undo requests harmless. */
+  eventId: string;
   /** The card exactly as it was before the review. */
   cardBefore: Card;
   /** The deck's calibration profile before the review (null if none existed). */
@@ -856,6 +940,11 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
       'rw',
       [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance],
       async () => {
+        const session = await db.sessionHistory.get(undo.sessionHistoryId);
+        if (!session) return;
+        if (session.eventId !== undo.eventId) {
+          throw new Error('The review event no longer matches its session history entry.');
+        }
         await db.cards.put(undo.cardBefore);
         if (undo.perfBefore) {
           await db.userPerformance.put(undo.perfBefore);

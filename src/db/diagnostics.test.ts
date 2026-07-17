@@ -132,6 +132,9 @@ describe('gatherCounts', () => {
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
     await recordReview({
       card,
+      eventId: 'event-diagnostics',
+      sessionId: 'session-diagnostics',
+      sessionKind: 'deck',
       deck,
       grade: 3,
       responseTimeSec: 2,

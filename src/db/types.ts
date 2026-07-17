@@ -49,10 +49,29 @@ export interface FsrsParameters {
  */
 export type ExamObjective = 'expectedMarks' | 'securedTopics';
 
+/** The study context that produced a review event. */
+export type ReviewSessionKind =
+  | 'deck'
+  | 'lesson'
+  | 'practice'
+  | 'assessment-revision'
+  | 'revision-plan';
+
 /** A single review event appended to a card's history. */
 export interface ReviewLog {
+  /** Stable identity for this attempt. Optional only for history written before schema v16. */
+  eventId?: string;
+  /** Stable identity shared by attempts in the same study session. */
+  sessionId?: string;
+  /** The study context that produced the attempt. */
+  sessionKind?: ReviewSessionKind;
+  /** Optional revision provenance populated by the revision-plan flow. */
+  revisionPlanId?: string;
+  revisionWindowId?: string;
   timestamp: number;
   grade: Grade;
+  /** Explicit outcome retained independently of the scheduler grade. */
+  correct?: boolean;
   /** Measured response time in seconds (time from reveal to "Show Answer"). */
   responseTimeSec: number;
   /** Whether the user lost focus while the answer was pending (report only; no grade effect). */
@@ -539,6 +558,11 @@ export interface Card {
 /** A snapshot of a deck's predicted exam-day retrievability, written per answered card. */
 export interface SessionHistoryEntry {
   id?: number;
+  /** Links this aggregate to the ReviewLog without relying on the auto-increment id. */
+  eventId?: string;
+  sessionId?: string;
+  revisionPlanId?: string;
+  revisionWindowId?: string;
   timestamp: number;
   deckId: string;
   /** The Course this entry belongs to, once sessions are course-scoped. */

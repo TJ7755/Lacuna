@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { hapticLight, hapticMedium } from '../utils/haptic';
-import { db } from '../db/schema';
+import { db, makeId } from '../db/schema';
 import { getCourse, listCourseAssessments } from '../db/read';
 import type {
   Card,
@@ -12,6 +12,7 @@ import type {
   Lesson,
   Note,
   Sequence,
+  ReviewSessionKind,
   UserPerformance,
 } from '../db/types';
 import {
@@ -203,9 +204,11 @@ interface LearnModeProps {
   onStepFinished?: (summary: SessionSummary) => void;
   /** Leaves the whole continuous flow rather than merely ending the current step. */
   onFlowExit?: () => void;
+  /** Stable identity for a containing continuous study flow. */
+  sessionId?: string;
 }
 
-export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProps = {}) {
+export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
   const routeParams = useParams<{ courseId: string; lessonId: string }>();
   const courseId = request?.kind === 'practice' ? request.courseId : routeParams.courseId;
   const lessonId = request?.kind === 'lesson' ? request.lessonId : routeParams.lessonId;
@@ -225,6 +228,14 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     request?.kind === 'practice' && request.mode === 'assessment'
       ? request.assessmentId
       : undefined;
+  const reviewSessionIdRef = useRef(sessionId ?? makeId());
+  const reviewSessionKind: ReviewSessionKind = requestAssessmentId
+    ? 'assessment-revision'
+    : lessonId
+      ? 'lesson'
+      : courseId
+        ? 'practice'
+        : 'deck';
   const filterParams = useMemo(() => searchParams.getAll('filter') as CardFilter[], [searchParams]);
   const navigate = useNavigate();
   const distraction = useDistraction();
@@ -394,6 +405,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
   const lastAnswer = useRef<AnswerSnapshot | null>(null);
   // Guards against a double key-press / click submitting the same card twice.
   const submitting = useRef(false);
+  // Retained across a failed submission retry; cleared only when the player advances.
+  const pendingReviewEventId = useRef<string | null>(null);
   // Per-deck review counters for the daily workload cap.
   const reviewsByDeck = useRef<Map<string, number>>(new Map());
   // When the user clicks "Continue anyway" after hitting a daily limit.
@@ -654,6 +667,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       setMenuOpen(false);
       setTypedAnswer('');
       setHintStep(0);
+      pendingReviewEventId.current = null;
       timerStart.current = performance.now();
       distraction.beginCard();
       distraction.setAnswerVisible(false);
@@ -678,6 +692,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     setMenuOpen(false);
     setTypedAnswer('');
     setHintStep(0);
+    pendingReviewEventId.current = null;
     timerStart.current = performance.now();
     distraction.beginCard();
     distraction.setAnswerVisible(false);
@@ -1127,14 +1142,21 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         const eventsLen = events.current.length;
         const perfBefore = perf ?? null;
         const outcomeBefore = sessionCardOutcomes.get(cardNow.id);
+        const eventId = pendingReviewEventId.current ?? makeId();
+        pendingReviewEventId.current = eventId;
 
         const {
           card: updated,
+          cardBefore,
+          recorded,
           sessionHistoryId,
           kind,
           lastInteractedAtBefore,
         } = await recordReview({
           card: cardNow,
+          eventId,
+          sessionId: reviewSessionIdRef.current,
+          sessionKind: reviewSessionKind,
           deck,
           kind: reviewKindRef.current,
           grade,
@@ -1145,7 +1167,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         });
 
         if (correct && perf) {
-          perfRef.current.set(deck.id, updatePerformance(perf, t));
+          const nextPerf = recorded
+            ? updatePerformance(perf, t)
+            : await db.userPerformance.get(deck.id);
+          if (nextPerf) perfRef.current.set(deck.id, nextPerf);
         }
 
         const nextCards = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
@@ -1176,22 +1201,25 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         const deckReviews = (reviewsByDeck.current.get(deck.id) ?? 0) + 1;
         reviewsByDeck.current.set(deck.id, deckReviews);
 
-        lastAnswer.current = {
-          undo: {
-            cardBefore: cardNow,
-            perfBefore,
-            sessionHistoryId,
-            deckId: deck.id,
-            kind,
-            lastInteractedAtBefore,
-          },
-          cooldowns: cooldownsSnapshot,
-          eventsLen,
-          deckId: deck.id,
-          deckReviews,
-          outcomeBefore,
-        };
-        setCanUndo(true);
+        lastAnswer.current = recorded
+          ? {
+              undo: {
+                eventId,
+                cardBefore,
+                perfBefore,
+                sessionHistoryId,
+                deckId: deck.id,
+                kind,
+                lastInteractedAtBefore,
+              },
+              cooldowns: cooldownsSnapshot,
+              eventsLen,
+              deckId: deck.id,
+              deckReviews,
+              outcomeBefore,
+            }
+          : null;
+        setCanUndo(recorded);
 
         progressCacheRef.current.dirty = true;
 
@@ -1233,6 +1261,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       isGlobal,
       persistPracticeMilestone,
       sessionCardOutcomes,
+      reviewSessionKind,
     ],
   );
 
@@ -1265,6 +1294,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         return next;
       });
       setPhase('question');
+      pendingReviewEventId.current = null;
       setMenuOpen(false);
       timerStart.current = performance.now();
       distraction.beginCard();

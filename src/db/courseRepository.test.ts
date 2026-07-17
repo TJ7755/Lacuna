@@ -261,6 +261,9 @@ describe('deleteCourse cascade', () => {
 
     await recordReview({
       card,
+      eventId: 'event-delete-course',
+      sessionId: 'session-delete-course',
+      sessionKind: 'practice',
       deck: course,
       kind: 'course',
       grade: 3,
@@ -332,6 +335,9 @@ describe('snapshotCourse / restoreCourse', () => {
     ]);
     await recordReview({
       card: lessonCard,
+      eventId: 'event-course-snapshot',
+      sessionId: 'session-course-snapshot',
+      sessionKind: 'lesson',
       deck: course,
       kind: 'course',
       grade: 3,

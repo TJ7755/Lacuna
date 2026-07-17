@@ -172,9 +172,7 @@ describe('buildLessonCardExposureBackfill', () => {
       },
     ]);
 
-    expect(rows).toEqual([
-      { lessonId: 'primary', cardId: 'reviewed', taughtAt: 200 },
-    ]);
+    expect(rows).toEqual([{ lessonId: 'primary', cardId: 'reviewed', taughtAt: 200 }]);
   });
 });
 
@@ -213,9 +211,7 @@ describe('Dexie upgrade from the old 17-parameter schema', () => {
     v1.close();
 
     // 2. Reopen at version 2 with the upgrade hook (mirrors src/db/schema.ts).
-    const { migrateCardRecord: mc, migrateDeckRecord: md } = await import(
-      './migrations'
-    );
+    const { migrateCardRecord: mc, migrateDeckRecord: md } = await import('./migrations');
     const v2 = new Dexie(dbName);
     v2.version(1).stores({
       decks: 'id, createdAt, examDate',
@@ -439,5 +435,52 @@ describe('Dexie upgrade to v13: retire the typing card type', () => {
     expect(untouched?.type).toBe('front_back');
 
     await db.delete();
+  });
+});
+
+describe('Dexie upgrade to v16: stable review-event identity', () => {
+  it('keeps legacy aggregates and rejects duplicate new event ids', async () => {
+    const dbName = `lacuna-review-events-${Date.now()}`;
+    const legacy = new Dexie(dbName);
+    legacy.version(15).stores({
+      sessionHistory: '++id, deckId, courseId, timestamp',
+    });
+    await legacy.open();
+    await legacy.table('sessionHistory').add({
+      deckId: 'deck-1',
+      timestamp: 1000,
+      averagePredictedRetrievability: 0.5,
+    });
+    legacy.close();
+
+    const current = new Dexie(dbName);
+    current.version(15).stores({
+      sessionHistory: '++id, deckId, courseId, timestamp',
+    });
+    current.version(16).stores({
+      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
+    });
+    await current.open();
+
+    expect(await current.table('sessionHistory').count()).toBe(1);
+    await current.table('sessionHistory').add({
+      eventId: 'event-1',
+      sessionId: 'session-1',
+      deckId: 'deck-1',
+      timestamp: 2000,
+      averagePredictedRetrievability: 0.6,
+    });
+    await expect(
+      current.table('sessionHistory').add({
+        eventId: 'event-1',
+        sessionId: 'session-1',
+        deckId: 'deck-1',
+        timestamp: 3000,
+        averagePredictedRetrievability: 0.7,
+      }),
+    ).rejects.toThrow();
+
+    current.close();
+    await Dexie.delete(dbName);
   });
 });

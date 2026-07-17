@@ -32,6 +32,7 @@ function CourseStudyFlowInner() {
   const { courseId } = useParams<{ courseId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const [flowIdentity, setFlowIdentity] = useState<ReturnType<typeof readActiveStudyFlow>>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const flow = useCourseStudyFlow(courseId, refreshKey);
   const entryAssessmentId = searchParams.get('assessmentId');
@@ -64,8 +65,11 @@ function CourseStudyFlowInner() {
   useEffect(() => {
     if (!courseId) return;
     const stored = readActiveStudyFlow();
-    if (stored?.courseId === courseId) touchActiveStudyFlow(courseId);
-    else startActiveStudyFlow(courseId);
+    const identity =
+      stored?.courseId === courseId
+        ? touchActiveStudyFlow(courseId)
+        : startActiveStudyFlow(courseId);
+    setFlowIdentity(identity);
   }, [courseId]);
 
   useEffect(() => {
@@ -206,9 +210,14 @@ function CourseStudyFlowInner() {
     );
   }
 
-  if (request && currentStep) {
+  if (request && currentStep && flowIdentity) {
     return (
-      <LearnMode request={request} onStepFinished={handleStepFinished} onFlowExit={finishFlow} />
+      <LearnMode
+        request={request}
+        onStepFinished={handleStepFinished}
+        onFlowExit={finishFlow}
+        sessionId={flowIdentity?.sessionId}
+      />
     );
   }
 

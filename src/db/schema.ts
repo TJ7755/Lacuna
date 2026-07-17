@@ -471,10 +471,35 @@ class LacunaDatabase extends Dexie {
       courseAssessments: 'id, courseId, kind, examDate, createdAt',
       sequences: 'id, courseId, primaryLessonId, createdAt',
     });
+
+    // Version 16: give each new review aggregate a unique stable event identity.
+    // IndexedDB omits legacy rows without eventId from the index, so old session
+    // history remains valid without fabricated provenance.
+    this.version(16).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
+      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+      courses: 'id, createdAt',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+      lessonCompletions: 'lessonId, completedAt',
+      noteAnnotations: 'id, noteId, createdAt, updatedAt',
+      practiceNodes: 'id, courseId, position, createdAt',
+      practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      sequences: 'id, courseId, primaryLessonId, createdAt',
+    });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 15;
+const CURRENT_SCHEMA_VERSION = 16;
 
 export const db = new LacunaDatabase();
 

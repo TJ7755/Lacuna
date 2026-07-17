@@ -454,6 +454,7 @@ describe('LearnMode course/lesson scope', () => {
         <ToastProvider>
           <MemoryRouter>
             <LearnMode
+              sessionId="flow-session-1"
               request={{
                 kind: 'practice',
                 courseId: course.id,
@@ -469,6 +470,25 @@ describe('LearnMode course/lesson scope', () => {
     expect(await screen.findByText('Revolutions paper')).toBeInTheDocument();
     expect(await screen.findByText(/Assessment question/)).toBeInTheDocument();
     expect(screen.queryByText(/Unrelated question/)).not.toBeInTheDocument();
+
+    await answerYes();
+    await waitFor(async () => {
+      const reviewed = await db.cards.get(included.id);
+      expect(reviewed?.history[0]).toEqual(
+        expect.objectContaining({
+          eventId: expect.any(String),
+          sessionId: 'flow-session-1',
+          sessionKind: 'assessment-revision',
+          correct: true,
+        }),
+      );
+      expect(await db.sessionHistory.toArray()).toEqual([
+        expect.objectContaining({
+          eventId: reviewed?.history[0].eventId,
+          sessionId: 'flow-session-1',
+        }),
+      ]);
+    });
   });
 
   it('starts in Focus Mode from the persisted preference and Esc leaves it for this session', async () => {
