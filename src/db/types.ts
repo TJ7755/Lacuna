@@ -617,7 +617,7 @@ export interface BackupFile {
   userPerformance: UserPerformance[];
   folders?: Folder[];
   // Course architecture tables. Optional so older backups still import cleanly.
-  courses?: Course[];
+  courses?: CourseRecord[];
   lessons?: Lesson[];
   notes?: Note[];
   lessonCards?: LessonCardLink[];
@@ -625,6 +625,9 @@ export interface BackupFile {
   lessonCompletions?: LessonCompletion[];
   practiceNodes?: PracticeNode[];
   practiceMilestones?: PracticeMilestone[];
+  /** Full assessment records in current backups. */
+  courseAssessments?: CourseAssessment[];
+  /** Legacy v6-and-earlier import boundary. Never emitted by current exports. */
   courseExamDates?: AssessmentDateCompatibility[];
   // Overlapping-cloze sequences. Optional so older backups still import cleanly.
   sequences?: Sequence[];

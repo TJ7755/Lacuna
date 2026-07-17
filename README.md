@@ -18,7 +18,8 @@ file.
 
 - **Courses, lessons and notes** — a course is the top-level subject; it holds an ordered
   path of lessons, each with its own Markdown notes and cards. Completing a lesson unlocks
-  the next; checkpoints mark exam dates and practice nodes gather up due cards from lessons
+  the next; interactive checkpoints show explicitly placed and scoped assessments, while
+  practice nodes gather up due cards from lessons
   studied so far, whether auto-inserted or placed manually by a teacher. A single-lesson
   course skips the path and opens straight into that lesson. Each lesson's `/learn` session
   defaults to new material, but a teacher can switch it to revision (due cards) or both.

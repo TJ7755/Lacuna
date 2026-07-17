@@ -31,6 +31,7 @@ import { courseHeaderStats } from '../course/headerStats';
 import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
 import { planNextStudyStep } from '../course/studyFlowPlanner';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
+import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import {
   PathNodeWithLine,
@@ -78,6 +79,7 @@ export function CoursePath() {
   const [editorState, setEditorState] = useState<
     { mode: 'new'; defaultPosition?: number } | { mode: 'edit'; node: PracticeNode } | null
   >(null);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
 
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found" (null).
   // When courseId is absent the query resolves immediately to null.
@@ -496,6 +498,7 @@ export function CoursePath() {
                   `/course/${courseId}/study?practiceNode=${encodeURIComponent(practiceNode.nodeKey)}`,
                 )
               }
+              onCheckpointClick={setSelectedAssessmentId}
               onPracticeEdit={(pn) =>
                 pn.practiceNode && setEditorState({ mode: 'edit', node: pn.practiceNode })
               }
@@ -524,6 +527,23 @@ export function CoursePath() {
       )}
 
       <AnimatePresence>
+        {selectedAssessmentId &&
+          assessments.find((assessment) => assessment.id === selectedAssessmentId) && (
+            <AssessmentDetailSheet
+              assessment={assessments.find(
+                (assessment) => assessment.id === selectedAssessmentId,
+              )!}
+              lessons={lessons}
+              cards={courseCards}
+              links={lessonLinks}
+              onClose={() => setSelectedAssessmentId(null)}
+              onRevise={() =>
+                navigate(
+                  `/course/${courseId}/study?assessmentId=${encodeURIComponent(selectedAssessmentId)}`,
+                )
+              }
+            />
+          )}
         {editorState && (
           <PracticeNodeEditor
             courseId={course.id}

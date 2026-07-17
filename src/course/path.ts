@@ -59,7 +59,7 @@ interface LessonPathNode {
 interface CheckpointPathNode {
   id: string;
   nodeType: 'checkpoint';
-  examDate: CourseAssessment;
+  assessment: CourseAssessment;
   /**
    * ID of the lesson immediately before this checkpoint on the path, or null
    * when the checkpoint follows an empty lesson list.
@@ -413,7 +413,7 @@ export function buildPath(
         node: {
           id: assessment.id,
           nodeType: 'checkpoint',
-          examDate: assessment,
+          assessment,
           afterLessonId: afterIndex >= 0 ? sorted[afterIndex].id : null,
         },
       };

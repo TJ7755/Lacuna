@@ -335,7 +335,7 @@ Organic Chemistry                                      [Study now]
    |
   (o) Lesson 2 -- completed
    |
-  [!] Checkpoint -- exam date marker
+  [!] Checkpoint -- assessment marker
    |
   (o) Practice -- unsecured cards from lessons reached so far
    |
@@ -344,7 +344,7 @@ Organic Chemistry                                      [Study now]
   ( ) Lesson 5 -- locked
 ```
 
-An ordered path of lesson nodes, checkpoint markers (informational, never block progress)
+An ordered path of lesson nodes, checkpoint assessments (informational, never block progress)
 and practice nodes, built by `src/course/path.ts`. Practice gathers cards from lessons
 reached so far whose predicted retrievability remains below the mastery threshold at each
 card's applicable exam horizon; this is not the narrower `card.due` timestamp concept.
@@ -376,6 +376,9 @@ set that cannot extend past that anchor. Both modes resolve primary and linked c
 deduplicate cards and then apply exclusions. Deleting an anchor retargets to the nearest
 surviving predecessor and requires author confirmation; deleting a custom-covered lesson
 removes that reference and requires the same confirmation.
+Checkpoint nodes open a detail sheet showing the assessment date, resolved lessons and cards,
+exclusions and validation state. Revision starts with that assessment's stable id; the final
+assessment uses the same authoring and resolution rules, and each course retains exactly one.
 
 The course header has one **Study now** action. It launches the persistent course study
 conductor at `/course/:courseId/study`. The conductor rebuilds its next-step decision from the
@@ -845,14 +848,14 @@ number appropriately ("predicted score" vs "secured").
 
 ### The scheduling horizon (`src/fsrs/horizon.ts`, `src/fsrs/examDate.ts`)
 A card's horizon is resolved **per card**, not shared uniformly across a whole unit,
-because a course can carry several `CourseExamDate` checkpoints (each optionally scoped
+because a course can carry several `CourseAssessment` records (each explicitly placed and scoped)
 to a subset of lessons) as well as a per-lesson `Lesson.examDate` override.
 `resolveCardExamDate` (`src/fsrs/examDate.ts`) picks the effective exam date for one
 card in strict order:
 1. **Lesson override** — if the card's primary lesson has an `examDate`, use it
    outright, even if it is in the past and even if a sooner checkpoint exists.
-2. **Nearest applicable future checkpoint** — among the course's `CourseExamDate` rows
-   that apply to the card (respecting `lessonIds` scoping and `excludedCardIds`), the
+2. **Nearest applicable future assessment** — among the course's `CourseAssessment` rows
+   that apply to the card (respecting resolved coverage and `excludedCardIds`), the
    soonest one still `>= now`. A passed checkpoint is ignored, so the next-nearest
    checkpoint (or the course default) naturally takes over.
 3. **Course default** — the course's own `examDate`.
@@ -1635,7 +1638,7 @@ defaults** is always available.
   deletion (`DangerZoneSection`) rather than a blocking confirmation — deleting is
   immediate, with an "Undo" toast that restores everything from a `CourseSnapshot`
   (`snapshotCourse`/`restoreCourse`, `src/db/repository.ts`): the course, its lessons,
-  notes, lesson-card links, practice nodes, exam dates, cards, their hidden backing decks
+  notes, lesson-card links, practice nodes, assessments, cards, their hidden backing decks
   (§5, Deck and Folder), and the session history/calibration profiles keyed to either the
   course or those decks. Sticky Save/Cancel bar.
 - **Not-found handling:** the course is resolved via a null-sentinel

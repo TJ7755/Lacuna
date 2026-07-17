@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/schema';
 import {
   createCourse,
+  createCourseAssessment,
   createLesson,
   createLessonCard,
   createSequence,
@@ -210,6 +211,42 @@ describe('mcp destructive tools', () => {
       const result = await validateAndRun(tools.deleteSequence, { sequenceId: 'missing' }, ctx);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('not_found');
+    });
+  });
+
+  describe('lacuna.delete_course_assessment', () => {
+    it('deletes a checkpoint with a course snapshot for undo', async () => {
+      const course = await createCourse('Course A');
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      const assessment = await createCourseAssessment(
+        course.id,
+        'Mid-term',
+        Date.now() + 1000,
+        { afterLessonId: lesson.id, coverageMode: 'prefix' },
+      );
+
+      const result = await tools.deleteCourseAssessment.handler(
+        { assessmentId: assessment.id },
+        ctx,
+      );
+      expect(result.data.id).toBe(assessment.id);
+      expect(result.undo?.kind).toBe('restoreCourse');
+      expect(await db.courseAssessments.get(assessment.id)).toBeUndefined();
+    });
+
+    it('refuses to delete the final assessment', async () => {
+      const course = await createCourse('Course A');
+      const final = (await db.courseAssessments
+        .where('courseId')
+        .equals(course.id)
+        .toArray()).find((assessment) => assessment.kind === 'final')!;
+      const result = await validateAndRun(
+        tools.deleteCourseAssessment,
+        { assessmentId: final.id },
+        ctx,
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('conflict');
     });
   });
 });

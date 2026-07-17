@@ -5,11 +5,12 @@
 // offer a one-click "copy" / "download" of a diagnostic bundle the user can paste
 // into a report. Everything stays on the device: nothing here transmits anywhere.
 //
-// Card content is never included by default. The bundle carries only counts and
-// non-sensitive app state; including a content sample is a separate, explicit
-// opt-in (see gatherContentSample).
+// Card content is never included by default. The bundle carries counts and
+// assessment configuration needed to diagnose scope faults; including a card
+// content sample remains a separate, explicit opt-in (see gatherContentSample).
 
 import { db } from './schema';
+import type { CourseAssessment } from './types';
 
 /** Build-time application version, injected by Vite (see vite.config.ts). */
 declare const __APP_VERSION__: string;
@@ -36,6 +37,7 @@ export interface DiagnosticBundle {
     lessonCards?: number;
     practiceNodes?: number;
     courseAssessments?: number;
+    assessments?: CourseAssessment[];
     sequences?: number;
   };
   /** Present only when the user explicitly opts in to including card content. */
@@ -57,6 +59,7 @@ export interface DiagnosticInput {
     lessonCards?: number;
     practiceNodes?: number;
     courseAssessments?: number;
+    assessments?: CourseAssessment[];
     sequences?: number;
   };
   contentSample?: { front: string; back: string }[];
@@ -125,7 +128,7 @@ export function formatDiagnostics(bundle: DiagnosticBundle): string {
   return lines.join('\n');
 }
 
-/** Read non-sensitive record counts from the database for a bundle. */
+/** Read record counts and assessment configuration from the database for a bundle. */
 export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
   const [
     decks,
@@ -137,7 +140,7 @@ export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
     notes,
     lessonCards,
     practiceNodes,
-    courseAssessments,
+    assessments,
     sequences,
   ] = await Promise.all([
     db.decks.count(),
@@ -149,7 +152,7 @@ export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
     db.notes.count(),
     db.lessonCards.count(),
     db.practiceNodes.count(),
-    db.courseAssessments.count(),
+    db.courseAssessments.toArray(),
     db.sequences.count(),
   ]);
   return {
@@ -162,7 +165,8 @@ export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
     notes,
     lessonCards,
     practiceNodes,
-    courseAssessments,
+    courseAssessments: assessments.length,
+    assessments,
     sequences,
   };
 }

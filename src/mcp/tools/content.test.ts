@@ -303,44 +303,75 @@ describe('mcp content tools', () => {
     });
   });
 
-  describe('lacuna.create_course_exam_date / lacuna.update_course_exam_date', () => {
-    it('creates a course exam date', async () => {
+  describe('lacuna.create_course_assessment / lacuna.update_course_assessment', () => {
+    it('creates an assessment with explicit placement, coverage and exclusions', async () => {
       const course = await createCourse('Course A');
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q', 'A');
       const res = await tools.createCourseAssessment.handler(
-        { courseId: course.id, name: 'Mid-term', examDate: Date.now() + 1000 },
+        {
+          courseId: course.id,
+          name: 'Mid-term',
+          examDate: Date.now() + 1000,
+          afterLessonId: lesson.id,
+          coverageMode: 'custom',
+          lessonIds: [lesson.id],
+          excludedCardIds: [card.id],
+        },
         ctx,
       );
       expect(res.data.name).toBe('Mid-term');
+      expect(res.data).toEqual(
+        expect.objectContaining({
+          afterLessonId: lesson.id,
+          coverageMode: 'custom',
+          lessonIds: [lesson.id],
+          excludedCardIds: [card.id],
+        }),
+      );
     });
 
     it('rejects an unknown courseId with not_found', async () => {
       const result = await validateAndRun(
         tools.createCourseAssessment,
-        { courseId: 'missing', name: 'x', examDate: Date.now() },
+        {
+          courseId: 'missing',
+          name: 'x',
+          examDate: Date.now(),
+          afterLessonId: null,
+          coverageMode: 'prefix',
+        },
         ctx,
       );
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('not_found');
     });
 
-    it('updates a course exam date', async () => {
+    it('updates an assessment', async () => {
       const course = await createCourse('Course A');
-      const examDate = await tools.createCourseAssessment.handler(
-        { courseId: course.id, name: 'Mid-term', examDate: Date.now() + 1000 },
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      const assessment = await tools.createCourseAssessment.handler(
+        {
+          courseId: course.id,
+          name: 'Mid-term',
+          examDate: Date.now() + 1000,
+          afterLessonId: lesson.id,
+          coverageMode: 'prefix',
+        },
         ctx,
       );
       const res = await tools.updateCourseAssessment.handler(
-        { courseExamDateId: examDate.data.id, name: 'Final' },
+        { assessmentId: assessment.data.id, name: 'Paper 1' },
         ctx,
       );
-      expect(res.data.id).toBe(examDate.data.id);
-      expect((await db.courseAssessments.get(examDate.data.id))?.name).toBe('Final');
+      expect(res.data.id).toBe(assessment.data.id);
+      expect((await db.courseAssessments.get(assessment.data.id))?.name).toBe('Paper 1');
     });
 
-    it('rejects an unknown courseExamDateId with not_found', async () => {
+    it('rejects an unknown assessmentId with not_found', async () => {
       const result = await validateAndRun(
         tools.updateCourseAssessment,
-        { courseExamDateId: 'missing' },
+        { assessmentId: 'missing' },
         ctx,
       );
       expect(result.ok).toBe(false);

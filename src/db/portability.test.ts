@@ -59,7 +59,7 @@ describe('exportDatabase', () => {
     expect(backup.cards[0].front).toBe('Q1');
   });
 
-  it('keeps the version 6 course-date shape while reading from unified assessments', async () => {
+  it('exports full assessment semantics and stable ids in version 7', async () => {
     const course = await createCourse('Chemistry', { examDate: 1_900_000_000_000 });
     const lesson = await createLesson(course.id, 'Bonding');
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
@@ -70,27 +70,43 @@ describe('exportDatabase', () => {
       excludedCardIds: [card.id],
     });
 
-    const backup = (await exportDatabase()) as unknown as {
-      version: number;
-      courses: Array<{ id: string; examDate: number }>;
-      courseExamDates: Array<{
-        name: string;
-        lessonIds?: string[];
-        excludedCardIds?: string[];
-      }>;
-      courseAssessments?: unknown;
-    };
+    const backup = await exportDatabase();
 
-    expect(backup.version).toBe(6);
-    expect(backup.courses[0].examDate).toBe(1_900_000_000_000);
-    expect(backup.courseExamDates).toEqual([
-      expect.objectContaining({
-        name: 'Paper 1',
-        lessonIds: [lesson.id],
-        excludedCardIds: [card.id],
-      }),
-    ]);
-    expect(backup.courseAssessments).toBeUndefined();
+    expect(backup.version).toBe(7);
+    expect(backup.courses?.[0]).not.toHaveProperty('examDate');
+    expect(backup.courseAssessments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'Paper 1',
+          afterLessonId: lesson.id,
+          coverageMode: 'custom',
+          lessonIds: [lesson.id],
+          excludedCardIds: [card.id],
+        }),
+      ]),
+    );
+    expect(backup.courseExamDates).toBeUndefined();
+  });
+
+  it('preserves final and checkpoint identities through replace restore', async () => {
+    const course = await createCourse('Chemistry');
+    const lesson = await createLesson(course.id, 'Bonding');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q', 'A');
+    const checkpoint = await createCourseAssessment(course.id, 'Paper 1', 1_900_000_000_000, {
+      afterLessonId: lesson.id,
+      coverageMode: 'custom',
+      lessonIds: [lesson.id],
+      excludedCardIds: [card.id],
+      needsAuthorConfirmation: true,
+    });
+    const before = await db.courseAssessments.where('courseId').equals(course.id).toArray();
+    const backup = await exportDatabase();
+
+    await importBackup(backup, 'replace');
+
+    const after = await db.courseAssessments.where('courseId').equals(course.id).toArray();
+    expect(after).toEqual(expect.arrayContaining(before));
+    expect(after.find((assessment) => assessment.id === checkpoint.id)).toEqual(checkpoint);
   });
 
   it('round-trips ReviewLog.hintUsed through export and import', async () => {
@@ -137,6 +153,45 @@ describe('importBackup', () => {
     expect(decks[0].name).toBe('Old');
     expect(cards).toHaveLength(1);
     expect(cards[0].front).toBe('Q1');
+  });
+
+  it('imports the explicit legacy courseExamDates boundary and preserves checkpoint ids', async () => {
+    const course = await createCourse('Legacy course', { examDate: 1_900_000_000_000 });
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    const checkpoint = await createCourseAssessment(course.id, 'Mid-term', 1_800_000_000_000, {
+      afterLessonId: lesson.id,
+      coverageMode: 'custom',
+      lessonIds: [lesson.id],
+    });
+    const current = await exportDatabase();
+    const legacy = {
+      ...current,
+      version: 6,
+      courses: current.courses?.map((record) => ({
+        ...record,
+        examDate: 1_900_000_000_000,
+        timeZone: 'UTC',
+      })),
+      courseExamDates: [
+        {
+          id: checkpoint.id,
+          courseId: course.id,
+          name: checkpoint.name,
+          examDate: checkpoint.examDate,
+          lessonIds: [lesson.id],
+          createdAt: checkpoint.createdAt,
+        },
+      ],
+      courseAssessments: undefined,
+    };
+
+    await importBackup(legacy, 'replace');
+
+    const restored = await db.courseAssessments.where('courseId').equals(course.id).toArray();
+    expect(restored.filter((assessment) => assessment.kind === 'final')).toHaveLength(1);
+    expect(restored.find((assessment) => assessment.id === checkpoint.id)).toEqual(
+      expect.objectContaining({ coverageMode: 'custom', lessonIds: [lesson.id] }),
+    );
   });
 
   it('merges decks by interaction time in merge mode', async () => {

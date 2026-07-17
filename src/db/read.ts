@@ -28,6 +28,7 @@ import { isLeech } from '../fsrs/leech';
 import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { courseHeaderStats, type CourseHeaderStats } from '../course/headerStats';
+import { resolveAssessmentCoverage, type AssessmentValidationIssue } from '../course/assessmentCoverage';
 
 // ---------------------------------------------------------------------------
 // Courses / lessons
@@ -234,6 +235,49 @@ export async function listCourseAssessments(courseId: string): Promise<CourseAss
   return db.courseAssessments.where('courseId').equals(courseId).sortBy('examDate');
 }
 
+export interface CourseAssessmentDetails {
+  assessment: CourseAssessment;
+  placementIndex: number;
+  coveredLessonIds: string[];
+  cardIds: string[];
+  validation: {
+    valid: boolean;
+    needsAuthorConfirmation: boolean;
+    issues: AssessmentValidationIssue[];
+  };
+}
+
+/** Full persisted semantics plus authoritative resolved scope for one assessment. */
+export async function getCourseAssessmentDetails(
+  assessmentId: string,
+): Promise<CourseAssessmentDetails | null> {
+  const assessment = await db.courseAssessments.get(assessmentId);
+  if (!assessment) return null;
+  const [lessons, cards, links] = await Promise.all([
+    listLessons(assessment.courseId),
+    listCardsForCourse(assessment.courseId),
+    db.lessonCards.toArray(),
+  ]);
+  const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links);
+  return {
+    assessment,
+    placementIndex: resolved.placementIndex,
+    coveredLessonIds: resolved.coveredLessons.map((lesson) => lesson.id),
+    cardIds: resolved.cards.map((card) => card.id),
+    validation: resolved.validation,
+  };
+}
+
+/** Every assessment and its resolved scope, ordered by assessment date. */
+export async function listCourseAssessmentDetails(
+  courseId: string,
+): Promise<CourseAssessmentDetails[]> {
+  const assessments = await listCourseAssessments(courseId);
+  return Promise.all(
+    assessments.map(async (assessment) => (await getCourseAssessmentDetails(assessment.id))!),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Diagnostics
 // ---------------------------------------------------------------------------
@@ -247,6 +291,7 @@ export interface CourseDiagnosticsSummary {
   lessonCards: number;
   practiceNodes: number;
   courseAssessments: number;
+  assessments: CourseAssessmentDetails[];
   sequences: number;
 }
 
@@ -262,13 +307,13 @@ export async function diagnosticsSummary(
 
   const lessons = await listLessons(courseId);
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [cards, notesCounts, lessonCardsCounts, practiceNodes, courseAssessments, sequences] =
+  const [cards, notesCounts, lessonCardsCounts, practiceNodes, assessments, sequences] =
     await Promise.all([
       listCardsForCourse(courseId),
       Promise.all(lessonIds.map((id) => db.notes.where('lessonId').equals(id).count())),
       Promise.all(lessonIds.map((id) => db.lessonCards.where('lessonId').equals(id).count())),
       db.practiceNodes.where('courseId').equals(courseId).count(),
-      db.courseAssessments.where('courseId').equals(courseId).count(),
+      listCourseAssessmentDetails(courseId),
       db.sequences.where('courseId').equals(courseId).count(),
     ]);
 
@@ -279,7 +324,8 @@ export async function diagnosticsSummary(
     notes: notesCounts.reduce((sum, count) => sum + count, 0),
     lessonCards: lessonCardsCounts.reduce((sum, count) => sum + count, 0),
     practiceNodes,
-    courseAssessments,
+    courseAssessments: assessments.length,
+    assessments,
     sequences,
   };
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
-import { useCourse, useCourseAssessments, useCourseCards } from '../state/useCourseData';
+import { useCourse, useCourseCards } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Button } from '../components/ui/Button';
 import { Toggle } from '../components/ui/Toggle';
@@ -11,16 +11,8 @@ import {
   snapshotCourse,
   restoreCourse,
   updateCourse,
-  updateCourseAssessment,
 } from '../db/repository';
 import type { CourseSnapshot } from '../db/repository';
-import {
-  fromDateTimeLocalValue,
-  formatDateTime,
-  getLocalTimeZone,
-  toDateTimeLocalValue,
-} from '../utils/datetime';
-import { DateTimePicker } from '../components/ui/DateTimePicker';
 import { clampRequestRetention, DEFAULT_REQUEST_RETENTION } from '../fsrs/params';
 import { ChevronLeftIcon } from '../components/ui/icons';
 import type { ExamObjective, UnlockMode } from '../db/types';
@@ -53,11 +45,9 @@ export function CourseSettings() {
   // (null), matching CoursePath's pattern — Dexie's .get() resolves to
   // undefined for a missing row, so useCourse alone cannot signal not-found.
   const course = useCourse(courseId);
-  const assessments = useCourseAssessments(courseId);
   const cards = useCourseCards(courseId);
 
   const [name, setName] = useState('');
-  const [examValue, setExamValue] = useState('');
   const [timeZone, setTimeZone] = useState<string | undefined>(undefined);
   const [objective, setObjective] = useState<ExamObjective>('expectedMarks');
   const [newPerDay, setNewPerDay] = useState('');
@@ -90,7 +80,6 @@ export function CourseSettings() {
   useEffect(() => {
     if (loaded || !course) return;
     setName(course.name);
-    setExamValue(toDateTimeLocalValue(course.examDate, course.timeZone));
     setTimeZone(course.timeZone);
     setObjective(course.examObjective);
     setNewPerDay(course.newCardsPerDay ? String(course.newCardsPerDay) : '');
@@ -149,7 +138,6 @@ export function CourseSettings() {
 
   async function handleSave() {
     if (!course) return;
-    const ms = fromDateTimeLocalValue(examValue, timeZone);
     const parsedCap = Math.floor(Number(newPerDay));
     const newCardsPerDay =
       newPerDay.trim() === '' || !Number.isFinite(parsedCap) || parsedCap <= 0
@@ -192,17 +180,7 @@ export function CourseSettings() {
       notify('Invalid relearning steps format. Use values like 1m, 10m, 1d.', 'negative');
       return;
     }
-    const finalAssessment = assessments?.find((assessment) => assessment.kind === 'final');
-    if (!finalAssessment) {
-      notify('The final assessment could not be found.', 'negative');
-      return;
-    }
-    await Promise.all([
-      updateCourseAssessment(finalAssessment.id, {
-        examDate: Number.isNaN(ms) ? course.examDate : ms,
-        timeZone: timeZone ?? getLocalTimeZone(),
-      }),
-      updateCourse(course.id, {
+    await updateCourse(course.id, {
         name: name.trim() || course.name,
         examObjective: objective,
         newCardsPerDay,
@@ -241,8 +219,7 @@ export function CourseSettings() {
         // (PracticeSettingsSection) reflects that zero has no meaningful gap semantics.
         practiceMaxGap: parsePositiveIntOr(practiceMaxGap, course.practiceMaxGap),
         lessonViewMode,
-      }),
-    ]);
+    });
     notify('Course updated.', 'positive');
     navigate(coursePath);
   }
@@ -291,22 +268,6 @@ export function CourseSettings() {
                   className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
                 />
               </label>
-
-              <DateTimePicker
-                value={fromDateTimeLocalValue(examValue, timeZone) || course.examDate}
-                onChange={(ms) => setExamValue(toDateTimeLocalValue(ms, timeZone))}
-                timeZone={timeZone}
-                label="Exam date and time"
-              />
-              {timeZone && (
-                <span className="text-xs text-ink-faint">
-                  {formatDateTime(
-                    fromDateTimeLocalValue(examValue, timeZone) || course.examDate,
-                    timeZone,
-                  )}{' '}
-                  ({timeZone})
-                </span>
-              )}
 
               <div className="block text-sm text-ink-soft">
                 <div className="mb-2">Exam objective</div>
@@ -409,7 +370,7 @@ export function CourseSettings() {
             transition={{ duration: 0.24 * m, delay: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
             className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
           >
-            <h2 className="mb-4 font-display text-xl">Exam dates</h2>
+            <h2 className="mb-4 font-display text-xl">Assessments</h2>
             <ExamDatesSection courseId={course.id} timeZone={timeZone} />
           </motion.section>
 

@@ -24,6 +24,7 @@ import {
   setCardsSuspended,
   setCardFlag,
   rescheduleCards as repoRescheduleCards,
+  deleteCourseAssessment as repoDeleteCourseAssessment,
 } from '../../db/repository';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 
@@ -175,6 +176,34 @@ const deleteSequenceTool: ToolDefinition<z.infer<typeof deleteSequenceSchema>, {
   },
 };
 
+const deleteCourseAssessmentSchema = z.object({
+  assessmentId: z.string().describe('The id of the checkpoint assessment to delete.'),
+});
+const deleteCourseAssessmentTool: ToolDefinition<
+  z.infer<typeof deleteCourseAssessmentSchema>,
+  { id: string }
+> = {
+  name: 'lacuna.delete_course_assessment',
+  description: 'Delete a checkpoint assessment. The sole final assessment cannot be deleted.',
+  inputSchema: deleteCourseAssessmentSchema,
+  requiredScope: 'destructive',
+  async handler({ assessmentId }) {
+    const details = await read.getCourseAssessmentDetails(assessmentId);
+    if (!details) notFound('Course assessment', assessmentId);
+    const snapshot = await snapshotCourse(details.assessment.courseId);
+    if (!snapshot) notFound('Course', details.assessment.courseId);
+    try {
+      await repoDeleteCourseAssessment(assessmentId);
+    } catch (error) {
+      throw new McpToolException({
+        kind: 'conflict',
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return ok({ id: assessmentId }, { kind: 'restoreCourse', snapshot });
+  },
+};
+
 /** The destructive/bulk tool group, in the order they appear in Arc 2 §2.3's inventory. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- a heterogeneous tool list is necessarily ToolDefinition<any, any>; each entry above is still checked against its own concrete Input/Output.
 export const DESTRUCTIVE_TOOLS: readonly ToolDefinition<any, any>[] = [
@@ -182,6 +211,7 @@ export const DESTRUCTIVE_TOOLS: readonly ToolDefinition<any, any>[] = [
   deleteLessonTool,
   deleteCourseTool,
   deleteSequenceTool,
+  deleteCourseAssessmentTool,
   suspendCards,
   setCardsFlagTool,
   rescheduleCardsTool,
@@ -193,6 +223,7 @@ export {
   deleteLessonTool as deleteLesson,
   deleteCourseTool as deleteCourse,
   deleteSequenceTool as deleteSequence,
+  deleteCourseAssessmentTool as deleteCourseAssessment,
   suspendCards,
   setCardsFlagTool as setCardsFlag,
   rescheduleCardsTool as rescheduleCards,

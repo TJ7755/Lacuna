@@ -6,10 +6,12 @@ import {
   createCardWithReverse,
   createCourse,
   createCourseAssessment,
+  createCourseCard,
   createDeck,
   createLesson,
   createLessonCard,
   createNote,
+  linkCardToLesson,
   createSequence,
   updateDeck,
 } from './repository';
@@ -38,6 +40,7 @@ async function reset() {
     db.courses.clear(),
     db.lessons.clear(),
     db.notes.clear(),
+    db.lessonCards.clear(),
     db.courseAssessments.clear(),
     db.sequences.clear(),
   ]);
@@ -301,7 +304,7 @@ describe('course share codes (v2)', () => {
 
     await createNote(lessonB.id, 'Notes', 'DNA carries genetic information.');
     await createLessonCard(course.id, lessonB.id, 'front_back', 'chien', 'dog');
-    // Manually add the mirrored card so packCards folds it into a reversible pair.
+    // Mirrored cards stay distinct in course shares so assessment exclusions can target either id.
     await createLessonCard(course.id, lessonB.id, 'front_back', 'dog', 'chien');
 
     await createCourseAssessment(course.id, 'Mid-term', 2_000_000_000_000, {
@@ -321,11 +324,9 @@ describe('course share codes (v2)', () => {
     expect(payload.lessons.map((l) => l.n)).toEqual(['Cells', 'Genetics']);
     expect(payload.lessons[0].notes).toHaveLength(1);
     expect(payload.lessons[0].notes[0].c).toBe('Cells are the basic unit of life.');
-    // The reversible pair in lesson B folds to a single k:2 entry.
-    expect(payload.lessons[1].cards).toHaveLength(1);
-    expect(payload.lessons[1].cards[0].k).toBe(2);
-    expect(payload.exams).toHaveLength(1);
-    expect(payload.exams![0].ls).toEqual([0]);
+    expect(payload.lessons[1].cards).toHaveLength(2);
+    expect(payload.exams).toHaveLength(2);
+    expect(payload.exams!.find((assessment) => assessment.k === 'c')?.ls).toEqual([0]);
 
     const summary = summariseShare(payload);
     expect(summary.kind).toBe('course');
@@ -383,6 +384,74 @@ describe('course share codes (v2)', () => {
       throw new Error('expected custom coverage');
     }
     expect(importedCheckpoint.lessonIds).toEqual([importedLessons[0].id]);
+  });
+
+  it('preserves full assessment semantics and ids through an empty-database round-trip', async () => {
+    const course = await createCourse('Chemistry');
+    const lessonA = await createLesson(course.id, 'Atoms');
+    const lessonB = await createLesson(course.id, 'Bonding');
+    const card = await createLessonCard(course.id, lessonA.id, 'front_back', 'Proton', 'Positive');
+    const checkpoint = await createCourseAssessment(course.id, 'Paper 1', 2_000_000_000_000, {
+      afterLessonId: lessonB.id,
+      coverageMode: 'custom',
+      lessonIds: [lessonA.id],
+      excludedCardIds: [card.id],
+      needsAuthorConfirmation: true,
+    });
+    const originalFinal = (await db.courseAssessments
+      .where('courseId')
+      .equals(course.id)
+      .toArray()).find((assessment) => assessment.kind === 'final')!;
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+
+    await reset();
+    await importSharePayload(payload);
+
+    const assessments = await db.courseAssessments.toArray();
+    const importedCheckpoint = assessments.find((assessment) => assessment.kind === 'checkpoint')!;
+    const importedFinal = assessments.find((assessment) => assessment.kind === 'final')!;
+    const importedLessons = await db.lessons.orderBy('orderIndex').toArray();
+    const importedCard = (await db.cards.toArray()).find((entry) => entry.front === 'Proton')!;
+    expect(importedFinal.id).toBe(originalFinal.id);
+    expect(importedCheckpoint).toEqual(
+      expect.objectContaining({
+        id: checkpoint.id,
+        afterLessonId: importedLessons[1].id,
+        coverageMode: 'custom',
+        lessonIds: [importedLessons[0].id],
+        excludedCardIds: [importedCard.id],
+        needsAuthorConfirmation: true,
+      }),
+    );
+  });
+
+  it('preserves linked bank-card assessment membership and exclusions', async () => {
+    const course = await createCourse('Chemistry');
+    const lesson = await createLesson(course.id, 'Atoms');
+    const bankCard = await createCourseCard(course.id, 'front_back', 'Neutron', 'Neutral');
+    await linkCardToLesson(lesson.id, bankCard.id);
+    await createCourseAssessment(course.id, 'Paper 1', 2_000_000_000_000, {
+      afterLessonId: lesson.id,
+      coverageMode: 'prefix',
+      excludedCardIds: [bankCard.id],
+    });
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+
+    await reset();
+    await importSharePayload(payload);
+
+    const importedLesson = (await db.lessons.toArray())[0];
+    const importedCard = (await db.cards.toArray()).find((card) => card.front === 'Neutron')!;
+    const importedCheckpoint = (await db.courseAssessments.toArray()).find(
+      (assessment) => assessment.kind === 'checkpoint',
+    )!;
+    expect(importedCard.primaryLessonId).toBeNull();
+    expect(await db.lessonCards.where('lessonId').equals(importedLesson.id).first()).toEqual(
+      expect.objectContaining({ cardId: importedCard.id }),
+    );
+    expect(importedCheckpoint.excludedCardIds).toEqual([importedCard.id]);
   });
 
   it('reflects image stripping in both notes and cards via summariseShare', async () => {

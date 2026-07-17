@@ -1,7 +1,13 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/schema';
-import { createCourse, createLesson, createLessonCard, createSequence } from '../../db/repository';
+import {
+  createCourse,
+  createCourseAssessment,
+  createLesson,
+  createLessonCard,
+  createSequence,
+} from '../../db/repository';
 import type { ToolContext } from '../types';
 import { validateAndRun } from '../registry';
 import * as tools from './read';
@@ -61,6 +67,31 @@ describe('mcp read tools', () => {
       const lesson = await createLesson(course.id, 'Lesson 1');
       const res = await tools.listLessons.handler({ courseId: course.id }, ctx);
       expect(res.data.map((l) => l.id)).toEqual([lesson.id]);
+    });
+  });
+
+  describe('lacuna.list_course_assessments / lacuna.get_course_assessment', () => {
+    it('returns full assessment semantics and authoritative resolved scope', async () => {
+      const course = await createCourse('Course A');
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+      const assessment = await createCourseAssessment(course.id, 'Mid-term', Date.now() + 1000, {
+        afterLessonId: lesson.id,
+        coverageMode: 'custom',
+        lessonIds: [lesson.id],
+        excludedCardIds: [card.id],
+      });
+
+      const listed = await tools.listCourseAssessments.handler({ courseId: course.id }, ctx);
+      expect(listed.data).toHaveLength(2);
+      const fetched = await tools.getCourseAssessment.handler(
+        { assessmentId: assessment.id },
+        ctx,
+      );
+      expect(fetched.data.assessment).toEqual(assessment);
+      expect(fetched.data.coveredLessonIds).toEqual([lesson.id]);
+      expect(fetched.data.cardIds).toEqual([]);
+      expect(fetched.data.validation.valid).toBe(true);
     });
   });
 

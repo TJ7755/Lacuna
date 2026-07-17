@@ -15,6 +15,8 @@ const mockNotify = vi.fn();
 const mockOptimiserReset = vi.fn();
 const mockOptimiserRun = vi.fn();
 
+vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => [] }));
+
 let mockCourse: Course | null | undefined;
 let mockCards: Card[] | undefined;
 
@@ -170,7 +172,7 @@ describe('CourseSettings', () => {
     expect(mockOptimiserReset).not.toHaveBeenCalled();
   });
 
-  it('shows the draft exam date before it is saved', () => {
+  it('edits the final date through the shared assessment editor', () => {
     mockCourse = {
       ...course,
       examDate: Date.UTC(2026, 5, 10, 14, 30),
@@ -178,11 +180,12 @@ describe('CourseSettings', () => {
     };
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Exam date and time' }));
+    fireEvent.click(screen.getByLabelText('Edit Final exam'));
+    fireEvent.click(screen.getByRole('button', { name: 'Date and time' }));
     fireEvent.click(screen.getByRole('button', { name: '20 June 2026' }));
 
-    expect(screen.getByText(/20 June 2026.*14:30.*UTC/)).toBeInTheDocument();
-    expect(mockUpdateCourse).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Date and time' })).toHaveTextContent('20 Jun 2026');
+    expect(mockUpdateCourseAssessment).not.toHaveBeenCalled();
   });
 
   it('saves edits by calling updateCourse with unlockMode, linearCadence and practice fields', () => {
@@ -203,10 +206,7 @@ describe('CourseSettings', () => {
         practiceMaxGap: 5,
       }),
     );
-    expect(mockUpdateCourseAssessment).toHaveBeenCalledWith(
-      'final-1',
-      expect.objectContaining({ examDate: expect.any(Number) }),
-    );
+    expect(mockUpdateCourseAssessment).not.toHaveBeenCalled();
   });
 
   it('switching unlock mode shows/hides linear cadence inputs', () => {

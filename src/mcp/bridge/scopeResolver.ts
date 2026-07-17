@@ -85,9 +85,9 @@ export async function resolveToolScopes(input: unknown): Promise<Resolution> {
     const conflict = addOwnedCourse(sequence.courseId);
     if (conflict) return conflict;
   }
-  if (typeof value.courseExamDateId === 'string') {
-    const assessment = await db.courseAssessments.get(value.courseExamDateId);
-    if (!assessment) return missing('Course assessment', value.courseExamDateId);
+  if (typeof value.assessmentId === 'string') {
+    const assessment = await db.courseAssessments.get(value.assessmentId);
+    if (!assessment) return missing('Course assessment', value.assessmentId);
     const conflict = addOwnedCourse(assessment.courseId);
     if (conflict) return conflict;
   }

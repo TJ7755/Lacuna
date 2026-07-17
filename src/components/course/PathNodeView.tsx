@@ -18,6 +18,7 @@ interface PathNodeViewProps {
   node: PathNode;
   onLessonClick?: (lessonId: string) => void;
   onPracticeClick?: () => void;
+  onCheckpointClick?: () => void;
   /** Only ever invoked for `practice-manual` nodes — see PracticeNode.tsx. */
   onPracticeEdit?: (node: PracticePathNode) => void;
   /** True when this is the single next-up lesson on the path — see LessonNode's "you are here" halo. */
@@ -53,6 +54,7 @@ export function PathNodeView({
   node,
   onLessonClick,
   onPracticeClick,
+  onCheckpointClick,
   onPracticeEdit,
   current,
   lockHint,
@@ -76,7 +78,7 @@ export function PathNodeView({
         />
       );
     case 'checkpoint':
-      return <CheckpointNode examDate={node.examDate} />;
+      return <CheckpointNode assessment={node.assessment} onClick={onCheckpointClick} />;
     case 'practice-auto':
     case 'practice-manual':
       return (

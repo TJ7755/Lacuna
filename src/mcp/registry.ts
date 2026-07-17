@@ -16,7 +16,7 @@ import { IMPORT_TOOLS } from './tools/import';
  * a tool's removal; additive new tools do not bump it. Exposed via `lacuna.get_server_info`
  * (a later task) so an agent can detect a stale cached tool list.
  */
-export const MCP_TOOL_SURFACE_VERSION = 1;
+export const MCP_TOOL_SURFACE_VERSION = 2;
 
 /**
  * Deliberate exclusions from the tool surface (Arc 2 §2.3) — documented here, not just
@@ -29,7 +29,7 @@ export const MCP_TOOL_SURFACE_VERSION = 1;
  *   helper instead of raw field writes.
  * - `recordReview`/`undoReview` — an agent grading the user's recall on their behalf
  *   would corrupt the memory model; review recording stays a human-only, in-app action.
- * - Practice-node/milestone mutation beyond exam dates — path/curriculum structure is
+ * - Practice-node/milestone mutation beyond assessments — path/curriculum structure is
  *   judged too consequential for v1; revisit once usage data exists.
  * - Backup/restore/share-code tools — already have a full UI flow; not a natural agent
  *   shape; out of scope for this arc.

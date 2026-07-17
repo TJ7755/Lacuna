@@ -1,7 +1,14 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/schema';
-import { createCourse, createLesson, createLessonCard, createNote, createSequence } from '../../db/repository';
+import {
+  createCourse,
+  createCourseAssessment,
+  createLesson,
+  createLessonCard,
+  createNote,
+  createSequence,
+} from '../../db/repository';
 import { GLOBAL_SCOPE_KEY } from '../grants';
 import { resolveToolScopes } from './scopeResolver';
 
@@ -17,12 +24,17 @@ describe('resolveToolScopes', () => {
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q', 'A');
     const note = await createNote(lesson.id, 'Notes', 'Body');
     const sequence = await createSequence(course.id, lesson.id, 'Order', [{ id: 'one', value: 'One' }]);
+    const assessment = await createCourseAssessment(course.id, 'Paper 1', Date.now() + 1000, {
+      afterLessonId: lesson.id,
+      coverageMode: 'prefix',
+    });
 
     for (const input of [
       { cardId: card.id },
       { lessonId: lesson.id },
       { noteId: note.id },
       { sequenceId: sequence.id },
+      { assessmentId: assessment.id },
     ]) {
       const outcome = await resolveToolScopes(input);
       expect(outcome).toEqual({ ok: true, targets: [{ courseId: course.id, label: 'Biology' }] });

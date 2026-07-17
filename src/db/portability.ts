@@ -28,9 +28,8 @@ import type {
 } from './types';
 import {
   buildCourseAssessmentMigration,
+  courseToRecord,
   finalAssessmentForCourse,
-  hydrateCourse,
-  type LegacyAssessmentRecord,
   type LegacyCourseRecord,
 } from './assessmentMigration';
 import {
@@ -41,7 +40,7 @@ import {
   referencedAssetHashesInCards,
 } from './assets';
 
-export const BACKUP_VERSION = 6;
+export const BACKUP_VERSION = 7;
 
 /** Gather the whole database into a single backup object. */
 export async function exportDatabase(): Promise<BackupFile> {
@@ -83,26 +82,6 @@ export async function exportDatabase(): Promise<BackupFile> {
     for (const hash of referencedAssetHashes(note.content)) referencedHashes.add(hash);
   }
   const assets = await assetsForBackup([...referencedHashes]);
-  const exportedCourses: LegacyCourseRecord[] = courses.map((course) => {
-    const hydrated = hydrateCourse(course, finalAssessmentForCourse(course.id, courseAssessments));
-    return {
-      ...course,
-      examDate: hydrated.examDate,
-      ...(hydrated.timeZone ? { timeZone: hydrated.timeZone } : {}),
-    };
-  });
-  const exportedCheckpoints: LegacyAssessmentRecord[] = courseAssessments
-    .filter((assessment) => assessment.kind === 'checkpoint')
-    .map((assessment) => ({
-      id: assessment.id,
-      courseId: assessment.courseId,
-      name: assessment.name,
-      examDate: assessment.examDate,
-      ...(assessment.timeZone ? { timeZone: assessment.timeZone } : {}),
-      ...(assessment.coverageMode === 'custom' ? { lessonIds: [...assessment.lessonIds] } : {}),
-      excludedCardIds: [...assessment.excludedCardIds],
-      createdAt: assessment.createdAt,
-    }));
   return {
     app: 'lacuna',
     version: BACKUP_VERSION,
@@ -113,7 +92,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     sessionHistory,
     userPerformance,
     folders,
-    courses: exportedCourses,
+    courses,
     lessons,
     notes,
     lessonCards,
@@ -121,7 +100,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     lessonCompletions,
     practiceNodes,
     practiceMilestones,
-    courseExamDates: exportedCheckpoints,
+    courseAssessments,
     sequences,
   };
 }
@@ -214,14 +193,24 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     })),
   );
   const importedAssets = [...assets.map(backupAssetToImageAsset), ...extractedAssets];
-  const assessmentMigration = buildCourseAssessmentMigration(
-    backup.courses ?? [],
-    backup.lessons ?? [],
-    backup.courseExamDates ?? [],
-    makeId,
-  );
+  const rawCourses = backup.courses ?? [];
+  const currentAssessments = backup.courseAssessments;
+  const assessmentMigration = currentAssessments
+    ? {
+        courses: rawCourses.map((course) =>
+          'examDate' in course ? courseToRecord(course as LegacyCourseRecord) : course,
+        ),
+        assessments: currentAssessments,
+      }
+    : buildCourseAssessmentMigration(
+        rawCourses as LegacyCourseRecord[],
+        backup.lessons ?? [],
+        backup.courseExamDates ?? [],
+        makeId,
+      );
   const courses = assessmentMigration.courses;
   const courseAssessments = assessmentMigration.assessments;
+  for (const course of courses) finalAssessmentForCourse(course.id, courseAssessments);
   await db.transaction(
     'rw',
     [

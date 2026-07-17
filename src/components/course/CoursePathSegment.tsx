@@ -96,6 +96,7 @@ export function PathNodeWithLine({
   practiceProgress,
   onLessonClick,
   onPracticeClick,
+  onCheckpointClick,
   onPracticeEdit,
   onInsertOnLine,
   authoring,
@@ -111,6 +112,7 @@ export function PathNodeWithLine({
   practiceProgress?: { fraction: number; completed: boolean };
   onLessonClick: (lessonId: string) => void;
   onPracticeClick: (node: PracticePathNode) => void;
+  onCheckpointClick: (assessmentId: string) => void;
   onPracticeEdit: (node: PracticePathNode) => void;
   onInsertOnLine: (position: number | undefined) => void;
   authoring: boolean;
@@ -144,6 +146,11 @@ export function PathNodeWithLine({
         onPracticeClick={
           node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual'
             ? () => onPracticeClick(node)
+            : undefined
+        }
+        onCheckpointClick={
+          node.nodeType === 'checkpoint'
+            ? () => onCheckpointClick(node.assessment.id)
             : undefined
         }
         onPracticeEdit={onPracticeEdit}

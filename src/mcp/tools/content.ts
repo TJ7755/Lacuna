@@ -11,6 +11,7 @@
 
 import { z } from 'zod';
 import { db } from '../../db/schema';
+import type { CourseAssessment } from '../../db/types';
 import * as read from '../../db/read';
 import {
   createCourse as repoCreateCourse,
@@ -374,71 +375,85 @@ const updateSequence: ToolDefinition<z.infer<typeof updateSequenceSchema>, { id:
 };
 
 // ---------------------------------------------------------------------------
-// Course exam dates
+// Assessments
 // ---------------------------------------------------------------------------
 
-const createCourseAssessmentSchema = z.object({
-  courseId: courseIdSchema,
-  name: z.string().describe('e.g. "Mid-term", "Mock exam", "Final".'),
-  examDate: z.number().describe('The date/time as an epoch millisecond value, in UTC.'),
-  lessonIds: z
-    .array(z.string())
-    .optional()
-    .describe(
-      'Lessons whose cards are in scope for this date. Omit for all lessons so far (a checkpoint).',
-    ),
-});
+const assessmentCoverageSchema = z.discriminatedUnion('coverageMode', [
+  z.object({ coverageMode: z.literal('prefix') }),
+  z.object({ coverageMode: z.literal('custom'), lessonIds: z.array(z.string()).min(1) }),
+]);
+const createCourseAssessmentSchema = z
+  .object({
+    courseId: courseIdSchema,
+    name: z.string().describe('The checkpoint name.'),
+    examDate: z.number().describe('The date/time as an epoch millisecond value, in UTC.'),
+    timeZone: z.string().optional().describe('IANA time zone used to display the date.'),
+    afterLessonId: z.string().nullable().describe('Path anchor; null places it before lesson one.'),
+    excludedCardIds: z.array(z.string()).optional().describe('Covered cards to exclude.'),
+  })
+  .and(assessmentCoverageSchema);
 const createCourseAssessment: ToolDefinition<
   z.infer<typeof createCourseAssessmentSchema>,
   Awaited<ReturnType<typeof repoCreateCourseAssessment>>
 > = {
-  name: 'lacuna.create_course_exam_date',
+  name: 'lacuna.create_course_assessment',
   description:
-    'Add an extra exam date or checkpoint to a course; the scheduler always targets the nearest applicable date.',
+    'Create a checkpoint assessment with explicit path placement, coverage and card exclusions.',
   inputSchema: createCourseAssessmentSchema,
   requiredScope: 'write',
-  async handler({ courseId, name, examDate, lessonIds }) {
+  async handler(input) {
+    const { courseId, name, examDate, ...options } = input;
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
-    return ok(
-      await repoCreateCourseAssessment(
-        courseId,
-        name,
-        examDate,
-        lessonIds !== undefined && lessonIds.length > 0
-          ? { coverageMode: 'custom', lessonIds }
-          : undefined,
-      ),
-    );
+    return ok(await repoCreateCourseAssessment(courseId, name, examDate, options));
   },
 };
 
-const updateCourseAssessmentSchema = z.object({
-  courseExamDateId: z.string().describe('The id of the course exam date to update.'),
-  name: z.string().optional().describe('New name.'),
-  examDate: z.number().optional().describe('New date/time as an epoch millisecond value, in UTC.'),
-  lessonIds: z.array(z.string()).optional().describe('New lesson scope.'),
-});
+const updateCourseAssessmentSchema = z
+  .object({
+    assessmentId: z.string().describe('The id of the assessment to update.'),
+    name: z.string().optional().describe('New name.'),
+    examDate: z.number().optional().describe('New date/time as an epoch millisecond value, in UTC.'),
+    timeZone: z.string().optional().describe('New IANA display time zone.'),
+    afterLessonId: z.string().nullable().optional().describe('New path anchor.'),
+    coverageMode: z.enum(['prefix', 'custom']).optional().describe('New coverage mode.'),
+    lessonIds: z.array(z.string()).min(1).optional().describe('Explicit custom lesson ids.'),
+    excludedCardIds: z.array(z.string()).optional().describe('Replacement excluded card ids.'),
+    needsAuthorConfirmation: z.boolean().optional().describe('Whether an author must review references.'),
+  })
+  .superRefine((value, context) => {
+    if (value.lessonIds !== undefined && value.coverageMode !== 'custom') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['coverageMode'],
+        message: 'lessonIds requires coverageMode "custom".',
+      });
+    }
+    if (value.coverageMode === 'custom' && value.lessonIds === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['lessonIds'],
+        message: 'Custom coverage requires lessonIds.',
+      });
+    }
+  });
 const updateCourseAssessment: ToolDefinition<
   z.infer<typeof updateCourseAssessmentSchema>,
   { id: string }
 > = {
-  name: 'lacuna.update_course_exam_date',
-  description: "Update a course exam date/checkpoint's name, date, and/or lesson scope.",
+  name: 'lacuna.update_course_assessment',
+  description: 'Update an assessment without changing its stable identity or course.',
   inputSchema: updateCourseAssessmentSchema,
   requiredScope: 'write',
-  async handler({ courseExamDateId, ...changes }) {
-    if (!(await db.courseAssessments.get(courseExamDateId)))
-      notFound('Course assessment', courseExamDateId);
-    const { lessonIds, ...fields } = changes;
-    await repoUpdateCourseAssessment(courseExamDateId, {
-      ...fields,
-      ...(lessonIds !== undefined
-        ? lessonIds.length > 0
-          ? { coverageMode: 'custom' as const, lessonIds }
-          : { coverageMode: 'prefix' as const, lessonIds: undefined }
-        : {}),
-    });
-    return ok({ id: courseExamDateId });
+  async handler({ assessmentId, ...changes }) {
+    if (!(await db.courseAssessments.get(assessmentId)))
+      notFound('Course assessment', assessmentId);
+    await repoUpdateCourseAssessment(
+      assessmentId,
+      (changes.coverageMode === 'prefix'
+        ? { ...changes, lessonIds: undefined }
+        : changes) as Partial<CourseAssessment>,
+    );
+    return ok({ id: assessmentId });
   },
 };
 

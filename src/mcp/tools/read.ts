@@ -58,6 +58,38 @@ const listLessons: ToolDefinition<z.infer<typeof listLessonsSchema>, Awaited<Ret
   },
 };
 
+const listCourseAssessmentsSchema = z.object({ courseId: courseIdSchema });
+const listCourseAssessments: ToolDefinition<
+  z.infer<typeof listCourseAssessmentsSchema>,
+  Awaited<ReturnType<typeof read.listCourseAssessmentDetails>>
+> = {
+  name: 'lacuna.list_course_assessments',
+  description: "List a course's assessments with full persisted semantics and resolved scope.",
+  inputSchema: listCourseAssessmentsSchema,
+  requiredScope: 'read',
+  async handler({ courseId }) {
+    return ok(await read.listCourseAssessmentDetails(courseId));
+  },
+};
+
+const getCourseAssessmentSchema = z.object({
+  assessmentId: z.string().describe('The id of the assessment to fetch.'),
+});
+const getCourseAssessment: ToolDefinition<
+  z.infer<typeof getCourseAssessmentSchema>,
+  NonNullable<Awaited<ReturnType<typeof read.getCourseAssessmentDetails>>>
+> = {
+  name: 'lacuna.get_course_assessment',
+  description: 'Fetch one assessment with its exact resolved lessons, cards and validation state.',
+  inputSchema: getCourseAssessmentSchema,
+  requiredScope: 'read',
+  async handler({ assessmentId }) {
+    const assessment = await read.getCourseAssessmentDetails(assessmentId);
+    if (!assessment) notFound('Course assessment', assessmentId);
+    return ok(assessment);
+  },
+};
+
 const listCardsSchema = z.object({
   courseId: courseIdSchema,
   lessonId: z
@@ -190,6 +222,8 @@ const diagnosticsSummary: ToolDefinition<z.infer<typeof diagnosticsSummarySchema
 export const READ_TOOLS: readonly ToolDefinition<any, any>[] = [
   listCourses,
   getCourse,
+  listCourseAssessments,
+  getCourseAssessment,
   listLessons,
   listCards,
   getCard,
@@ -206,6 +240,8 @@ export const READ_TOOLS: readonly ToolDefinition<any, any>[] = [
 export {
   listCourses,
   getCourse,
+  listCourseAssessments,
+  getCourseAssessment,
   listLessons,
   listCards,
   getCard,
