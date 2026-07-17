@@ -14,7 +14,10 @@ The gate was fixed before final comparison:
 - an expected calibration error increase greater than 0.010 in a major bucket is material.
 
 The major buckets were `<1m`, `1-10m`, `10-60m`, `6-24h` and `1-7d`. Neither candidate had a
-material regression in any of them.
+material regression in any of them. (The `1-7d` bucket was later split into seven finer buckets;
+see [Finer lag buckets and crossover location](#finer-lag-buckets-and-crossover-location-validation-phase-1)
+below. Of the finer buckets, `24-36h`, `2-3d` and `3-4d` are major; the historical `1-7d` figures
+above are retained for provenance and were not major-bucket-checked at this resolution.)
 
 ## Dataset and construction
 
@@ -110,6 +113,98 @@ Some small intersections regress despite the overall win. In particular, half-li
 worse than FSRS-6 for the `1-7d` first-review Brier score and for several success-only calibration
 cells. Those are not major lag buckets under the pre-declared rule, so they do not fail the gate;
 they remain explicit limitations rather than being buried in an overall average.
+
+## Finer lag buckets and crossover location (validation phase 1)
+
+The single `1-7d` lag bucket above was replaced in `stm_harness/metrics.py` with seven finer
+buckets — `24-36h`, `36-48h`, `2-3d`, `3-4d`, `4-5d`, `5-6d`, `6-7d` — and all three candidates
+were re-evaluated against the same hold-out. Sub-day buckets are unchanged and repeated here only
+for context. This does not change the selected model; it locates where FSRS-6 starts to catch up,
+for phase 2 (re-routing the handover boundary).
+
+Of the seven new buckets, `24-36h`, `2-3d` and `3-4d` are major (≥5% of the 602,534 scored
+hold-out events); `36-48h`, `4-5d`, `5-6d` and `6-7d` are not.
+
+| Bucket | n | Share | Major? |
+|---|---:|---:|---|
+| `24-36h` | 39,583 | 6.57% | yes |
+| `36-48h` | 20,363 | 3.38% | no |
+| `2-3d` | 36,602 | 6.07% | yes |
+| `3-4d` | 34,857 | 5.79% | yes |
+| `4-5d` | 27,928 | 4.64% | no |
+| `5-6d` | 21,225 | 3.52% | no |
+| `6-7d` | 18,855 | 3.13% | no |
+
+### Plain lag
+
+Lower is better. Each cell is `log loss / Brier / ECE`.
+
+| Slice | n | FSRS-6 | Half-life/logistic | ACT-R multi-trace |
+|---|---:|---:|---:|---:|
+| `<1m` | 35,719 | 6.033819 / 0.291162 / 0.291162 | 0.499929 / 0.169794 / 0.044037 | 0.535743 / 0.184239 / 0.028704 |
+| `1-10m` | 139,391 | 4.703920 / 0.226987 / 0.226987 | 0.427337 / 0.140988 / 0.031864 | 0.450312 / 0.149615 / 0.017713 |
+| `10-60m` | 136,718 | 2.024307 / 0.097683 / 0.097683 | 0.256422 / 0.074579 / 0.044117 | 0.283952 / 0.082407 / 0.059577 |
+| `1-6h` | 22,955 | 2.905139 / 0.140187 / 0.140187 | 0.306404 / 0.094986 / 0.022449 | 0.338323 / 0.103668 / 0.034066 |
+| `6-24h` | 68,338 | 4.368267 / 0.210790 / 0.210790 | 0.448687 / 0.144180 / 0.020616 | 0.484558 / 0.157795 / 0.046093 |
+| `24-36h` | 39,583 | 0.533668 / 0.172797 / 0.086378 | 0.528509 / 0.173759 / 0.054542 | 0.572758 / 0.191622 / 0.088075 |
+| `36-48h` | 20,363 | 0.501560 / 0.156727 / 0.085575 | 0.473812 / 0.152001 / 0.033201 | 0.506117 / 0.163963 / 0.037265 |
+| `2-3d` | 36,602 | **0.478740 / 0.153315** / 0.057743 | 0.491027 / 0.159122 / 0.039123 | 0.533185 / 0.175118 / 0.047734 |
+| `3-4d` | 34,857 | **0.420944 / 0.131618** / 0.021934 | 0.446958 / 0.140897 / 0.022368 | 0.482223 / 0.153134 / 0.023750 |
+| `4-5d` | 27,928 | **0.396632 / 0.122580** / 0.017939 | 0.425334 / 0.132844 / 0.015389 | 0.464393 / 0.145942 / 0.016415 |
+| `5-6d` | 21,225 | **0.407296 / 0.126624** / 0.025749 | 0.440629 / 0.139371 / 0.017825 | 0.481571 / 0.153471 / 0.022118 |
+| `6-7d` | 18,855 | **0.387940 / 0.119608** / 0.025025 | 0.405364 / 0.126429 / 0.023499 | 0.431249 / 0.135912 / 0.033007 |
+
+FSRS-6 first beats half-life/logistic on both log loss and Brier at `2-3d`, and stays ahead on
+both metrics through `6-7d` (bold cells above). Below `24-36h`, half-life/logistic (and ACT-R)
+remain ahead on both metrics, consistent with the whole-`1-7d` aggregate above being a blend of a
+half-life win in the first ~2 days and an FSRS-6 win from day 2 onwards.
+
+### Lag × previous outcome
+
+| Slice | Value | n | FSRS-6 | Half-life/logistic | ACT-R multi-trace |
+|---|---|---:|---:|---:|---:|
+| lag × previous | `<1m` success | 7,062 | 0.390285 / 0.018833 / 0.018833 | 0.099259 / 0.019895 / 0.036588 | 0.110580 / 0.019975 / 0.043916 |
+| lag × previous | `<1m` failure | 28,657 | 7.424565 / 0.358272 / 0.358272 | 0.598667 / 0.206734 / 0.045872 | 0.640517 / 0.224719 / 0.025036 |
+| lag × previous | `1-10m` success | 48,290 | 0.537715 / 0.025947 / 0.025947 | 0.118070 / 0.025387 / 0.027180 | 0.129105 / 0.026003 / 0.032863 |
+| lag × previous | `1-10m` failure | 91,101 | 6.912305 / 0.333553 / 0.333553 | 0.591270 / 0.202265 / 0.034347 | 0.620575 / 0.215137 / 0.009859 |
+| lag × previous | `10-60m` success | 85,532 | 0.552171 / 0.026645 / 0.026645 | 0.118792 / 0.025662 / 0.026170 | 0.134339 / 0.027150 / 0.035184 |
+| lag × previous | `10-60m` failure | 51,186 | 4.484251 / 0.216387 / 0.216387 | 0.486402 / 0.156320 / 0.074157 | 0.533955 / 0.174743 / 0.100339 |
+| lag × previous | `1-6h` success | 14,112 | 0.831163 / 0.040108 / 0.040108 | 0.143135 / 0.034075 / 0.023030 | 0.171024 / 0.038441 / 0.034020 |
+| lag × previous | `1-6h` failure | 8,843 | 6.214871 / 0.299898 / 0.299898 | 0.566957 / 0.192189 / 0.032170 | 0.605305 / 0.207760 / 0.040185 |
+| lag × previous | `6-24h` success | 59,323 | 4.081914 / 0.196973 / 0.196973 | 0.429957 / 0.136598 / 0.031201 | 0.465187 / 0.149713 / 0.048782 |
+| lag × previous | `6-24h` failure | 9,015 | 6.252610 / 0.301719 / 0.301719 | 0.571943 / 0.194077 / 0.051560 | 0.612028 / 0.210977 / 0.054316 |
+| lag × previous | `24-36h` success | 37,005 | 0.528794 / 0.171368 / 0.085020 | 0.526886 / 0.172970 / 0.063131 | 0.571831 / 0.191104 / 0.092777 |
+| lag × previous | `24-36h` failure | 2,578 | 0.603631 / 0.193305 / 0.105871 | 0.551811 / 0.185090 / 0.075830 | 0.586065 / 0.199059 / 0.070743 |
+| lag × previous | `36-48h` success | 19,095 | 0.483830 / 0.150029 / 0.077533 | 0.463836 / 0.147632 / 0.033893 | 0.495045 / 0.158942 / 0.038303 |
+| lag × previous | `36-48h` failure | 1,268 | 0.768561 / 0.257585 / 0.206686 | 0.624050 / 0.217793 / 0.052265 | 0.672850 / 0.239572 / 0.045532 |
+| lag × previous | `2-3d` success | 35,026 | **0.469393 / 0.149701** / 0.053613 | 0.486004 / 0.156901 / 0.039919 | 0.527283 / 0.172390 / 0.048915 |
+| lag × previous | `2-3d` failure | 1,576 | 0.686464 / 0.233626 / 0.149518 | 0.602655 / 0.208490 / 0.046067 | 0.664342 / 0.235757 / 0.039316 |
+| lag × previous | `3-4d` success | 33,980 | **0.414402 / 0.129041** / 0.019148 | 0.442724 / 0.139066 / 0.022856 | 0.477103 / 0.150787 / 0.025871 |
+| lag × previous | `3-4d` failure | 877 | 0.674424 / 0.231471 / 0.154933 | 0.610990 / 0.211849 / 0.057077 | 0.680590 / 0.244064 / 0.093657 |
+| lag × previous | `4-5d` success | 27,474 | **0.391397 / 0.120470** / 0.019131 | 0.421310 / 0.131117 / 0.016222 | 0.460402 / 0.144144 / 0.017973 |
+| lag × previous | `4-5d` failure | 454 | 0.713443 / 0.250263 / 0.146144 | 0.668858 / 0.237364 / 0.069690 | 0.705938 / 0.254763 / 0.094814 |
+| lag × previous | `5-6d` success | 20,795 | **0.401912 / 0.124393** / 0.023531 | 0.435873 / 0.137304 / 0.016528 | 0.474827 / 0.150386 / 0.022840 |
+| lag × previous | `5-6d` failure | 430 | **0.667680 / 0.234544** / 0.185657 | 0.670641 / 0.239300 / 0.163682 | 0.807713 / 0.302671 / 0.221523 |
+| lag × previous | `6-7d` success | 18,481 | **0.381692 / 0.117151** / 0.024711 | 0.399901 / 0.124185 / 0.023065 | 0.426189 / 0.133758 / 0.031801 |
+| lag × previous | `6-7d` failure | 374 | 0.696641 / 0.241039 / 0.147623 | 0.675293 / 0.237316 / 0.125535 | 0.681306 / 0.242371 / 0.128533 |
+
+### Crossover points
+
+- **Overall:** FSRS-6 first beats half-life/logistic on both log loss and Brier at **`2-3d`**
+  (a major bucket), and holds the lead through `6-7d`.
+- **After a previous success:** same as overall — FSRS-6 first wins both metrics at **`2-3d`**,
+  and continues to win through `6-7d`. The success slice dominates each bucket's event count
+  (35,026 of 36,602 at `2-3d`), so it is unsurprising that it tracks the overall crossover.
+- **After a previous failure:** the failure slice is small at this lag range (1,576 events at
+  `2-3d`, falling to 374 by `6-7d`) and the crossover is not clean. Half-life/logistic keeps a
+  clear edge on both metrics from `24-36h` through `4-5d`; FSRS-6 wins both metrics at `5-6d`, but
+  half-life/logistic wins both metrics again at `6-7d`. That reversal, together with the small `n`,
+  reads as sampling noise rather than a genuine failure-side crossover in this range — there is no
+  post-failure bucket in `24-36h`–`6-7d` where FSRS-6 reliably and consistently beats
+  half-life/logistic on both metrics.
+
+These figures feed phase 2 (re-routing the short-term/FSRS-6 handover boundary) and are not
+themselves a change to the selected model or its coefficients.
 
 ## Frozen runtime contract
 
