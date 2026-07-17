@@ -54,6 +54,17 @@ negative-class precision/recall, and the app's real lenient `compareAnswer()` ba
 scored over the same 20% test split as the classifier so the two numbers are comparable.
 The held-out file uses the same source-record JSONL schema and is evaluated separately.
 
+The committed held-out set (`data/held_out/tricky_paraphrases.jsonl`) exists to break the
+circularity of testing GPT-generated pairs against a model trained on GPT-generated pairs:
+it is deliberately adversarial, targeting negation, reversed cause and effect, and
+substituted terms — cases where an answer is maximally similar to the mark scheme and
+flatly wrong. Two caveats travel with any number computed from it. It was drafted by a
+different model rather than hand-written, so it is a second opinion from another model
+family, not the human-judged set Appendix A.1 Step 4 asks for; its labels have not been
+reviewed by a person. And it is a stress test, not a representative sample — every case is
+chosen to be hard, so its error rates are a worst case and not what production traffic
+would look like.
+
 ### Cascade metric
 
 The shipping architecture under consideration is not "classifier instead of
