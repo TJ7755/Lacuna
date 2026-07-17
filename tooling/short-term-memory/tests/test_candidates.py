@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 
 import pyarrow as pa
@@ -9,7 +10,14 @@ from stm_harness.candidates.actr import ActrCandidate
 from stm_harness.candidates.common import routed_short_term_weight
 from stm_harness.candidates.fsrs6 import Fsrs6Candidate, Fsrs6Predictor
 from stm_harness.candidates.half_life import HalfLifeLogisticCandidate
-from stm_harness.candidates.half_life_v2 import HalfLifeLogisticV2Candidate
+from stm_harness.candidates.half_life_frozen import (
+    COEFFICIENTS_PATH,
+    HalfLifeLogisticFrozenCandidate,
+)
+from stm_harness.candidates.half_life_v2 import (
+    FittedHalfLifeLogisticV2,
+    HalfLifeLogisticV2Candidate,
+)
 from stm_harness.contract import Example, PredictionContext
 from stm_harness.io import EXAMPLE_SCHEMA
 
@@ -222,6 +230,46 @@ def test_half_life_v2_fit_matches_v1_coefficients_and_routes_by_previous_outcome
     predictor.observe(training_stream()[1])
     corrupt = replace(training_stream()[2].context, prior_failure_count=-1)
     assert 0 < predictor.predict(corrupt) < 1
+
+
+def test_half_life_frozen_matches_v2_predictions_given_same_coefficients():
+    # VALIDATION_PLAN.md phase 3: the frozen candidate must predict exactly like
+    # half_life_v2 when both use the same coefficients, since it reuses
+    # HalfLifeLogisticV2Predictor unmodified.
+    v2_fitted = HalfLifeLogisticV2Candidate().fit_batches([training_batch()])
+    frozen_fitted = FittedHalfLifeLogisticV2(
+        v2_fitted.coefficients, 0, name="half-life-logistic-frozen-v2"
+    )
+
+    v2_predictor = v2_fitted.new_predictor(1)
+    frozen_predictor = frozen_fitted.new_predictor(1)
+    v2_predictor.observe(training_stream()[0])
+    frozen_predictor.observe(training_stream()[0])
+    for later in training_stream()[1:]:
+        assert v2_predictor.predict(later.context) == pytest.approx(
+            frozen_predictor.predict(later.context)
+        )
+        v2_predictor.observe(later)
+        frozen_predictor.observe(later)
+
+
+def test_half_life_frozen_loads_shipped_artefact_and_consumes_no_training_data():
+    fitted = HalfLifeLogisticFrozenCandidate().fit_batches(_raising_training_batches())
+    payload = json.loads(COEFFICIENTS_PATH.read_text())
+    assert fitted.coefficients == tuple(payload["coefficients"])
+    assert fitted.training_examples == 0
+    assert fitted.name == "half-life-logistic-frozen-v2"
+
+
+def _raising_training_batches():
+    # Any iteration of the training batches (not just consumption of their contents)
+    # would prove the "no training data" contract broken, since fit_batches is only
+    # supposed to read the frozen coefficients file.
+    def generator():
+        raise AssertionError("frozen candidate must not iterate training batches")
+        yield  # pragma: no cover - unreachable, keeps this a generator function
+
+    return generator()
 
 
 def test_actr_fit_is_deterministic_and_transitions_to_fsrs_at_seven_days():
