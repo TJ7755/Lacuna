@@ -25,6 +25,7 @@ import type {
   SessionHistoryEntry,
   UserPerformance,
   ImageAsset,
+  RevisionPlan,
 } from './types';
 import {
   buildCourseAssessmentMigration,
@@ -39,8 +40,9 @@ import {
   referencedAssetHashes,
   referencedAssetHashesInCards,
 } from './assets';
+import { mergeRevisionPlans } from '../course/revisionPlan';
 
-export const BACKUP_VERSION = 8;
+export const BACKUP_VERSION = 9;
 
 /** Gather the whole database into a single backup object. */
 export async function exportDatabase(): Promise<BackupFile> {
@@ -60,6 +62,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     practiceMilestones,
     courseAssessments,
     sequences,
+    revisionPlans,
   ] = await Promise.all([
     db.decks.toArray(),
     db.cards.toArray(),
@@ -76,6 +79,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.practiceMilestones.toArray(),
     db.courseAssessments.toArray(),
     db.sequences.toArray(),
+    db.revisionPlans.toArray(),
   ]);
   const referencedHashes = new Set(referencedAssetHashesInCards(cards));
   for (const note of notes) {
@@ -102,6 +106,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     practiceMilestones,
     courseAssessments,
     sequences,
+    revisionPlans,
   };
 }
 
@@ -232,6 +237,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       db.practiceMilestones,
       db.courseAssessments,
       db.sequences,
+      db.revisionPlans,
     ],
     async () => {
       // Deduplicate by hash so bulkPut never encounters a constraint conflict.
@@ -255,6 +261,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           db.practiceMilestones.clear(),
           db.courseAssessments.clear(),
           db.sequences.clear(),
+          db.revisionPlans.clear(),
         ]);
         await db.decks.bulkAdd(decks);
         await db.cards.bulkAdd(cards);
@@ -298,6 +305,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         }
         if (backup.sequences && backup.sequences.length > 0) {
           await db.sequences.bulkAdd(backup.sequences);
+        }
+        if (backup.revisionPlans && backup.revisionPlans.length > 0) {
+          await db.revisionPlans.bulkAdd(backup.revisionPlans);
         }
         return;
       }
@@ -465,6 +475,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         await db.practiceMilestones.bulkPut(mergedMilestones);
       }
 
+      const assessmentIdRemap = new Map<string, string>();
       if (courseAssessments.length > 0) {
         const localAssessments = await db.courseAssessments.toArray();
         const existingCourseAssessments = new Map(
@@ -485,6 +496,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
             mergedCourseAssessments.push(incoming);
           } else {
             const newer = incoming.createdAt > existing.createdAt ? incoming : existing;
+            if (incoming.kind === 'final') assessmentIdRemap.set(incoming.id, existing.id);
             mergedCourseAssessments.push(
               incoming.kind === 'final' ? { ...newer, id: existing.id } : newer,
             );
@@ -505,6 +517,26 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           }
         }
         await db.sequences.bulkPut(mergedSequences);
+      }
+
+      if (backup.revisionPlans && backup.revisionPlans.length > 0) {
+        const existingPlans = new Map(
+          (await db.revisionPlans.toArray()).map((plan) => [plan.assessmentId, plan]),
+        );
+        const incomingPlans = new Map<string, RevisionPlan>();
+        for (const raw of backup.revisionPlans) {
+          const assessmentId = assessmentIdRemap.get(raw.assessmentId) ?? raw.assessmentId;
+          const incoming = { ...raw, assessmentId };
+          const duplicate = incomingPlans.get(assessmentId);
+          if (!duplicate || incoming.updatedAt > duplicate.updatedAt) {
+            incomingPlans.set(assessmentId, incoming);
+          }
+        }
+        const mergedPlans: RevisionPlan[] = [...incomingPlans.values()].map((incoming) => {
+          const existing = existingPlans.get(incoming.assessmentId);
+          return existing ? mergeRevisionPlans(existing, incoming) : incoming;
+        });
+        await db.revisionPlans.bulkPut(mergedPlans);
       }
 
       // Merge cards (most recent lastReviewed wins, falling back to createdAt).

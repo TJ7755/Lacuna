@@ -17,6 +17,8 @@ import {
   recordReview,
   savePracticeMilestoneProgress,
   upsertLessonCardExposure,
+  createOrResumeRevisionPlan,
+  startRevisionWindow,
 } from './repository';
 
 async function reset() {
@@ -38,6 +40,7 @@ async function reset() {
     db.practiceMilestones.clear(),
     db.courseAssessments.clear(),
     db.sequences.clear(),
+    db.revisionPlans.clear(),
   ]);
 }
 
@@ -59,7 +62,7 @@ describe('exportDatabase', () => {
     expect(backup.cards[0].front).toBe('Q1');
   });
 
-  it('exports full assessment semantics and stable ids in version 8', async () => {
+  it('exports full assessment semantics and stable ids in version 9', async () => {
     const course = await createCourse('Chemistry', { examDate: 1_900_000_000_000 });
     const lesson = await createLesson(course.id, 'Bonding');
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
@@ -72,7 +75,7 @@ describe('exportDatabase', () => {
 
     const backup = await exportDatabase();
 
-    expect(backup.version).toBe(8);
+    expect(backup.version).toBe(9);
     expect(backup.courses?.[0]).not.toHaveProperty('examDate');
     expect(backup.courseAssessments).toEqual(
       expect.arrayContaining([
@@ -154,6 +157,48 @@ describe('exportDatabase', () => {
 
     const restored = await db.cards.toArray();
     expect(restored[0].history[0]).toEqual(backup.cards[0].history[0]);
+  });
+
+  it('round-trips complete revision-plan state through replace restore', async () => {
+    const now = Date.parse('2026-07-17T08:00:00Z');
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q', 'A');
+    await upsertLessonCardExposure(lesson.id, card.id, now - 1);
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Paper 1',
+      Date.parse('2026-07-19T12:00:00Z'),
+      { timeZone: 'UTC', afterLessonId: lesson.id },
+    );
+    const plan = await createOrResumeRevisionPlan(
+      assessment.id,
+      25,
+      {
+        projectionMode: 'fsrs-6-practice-fallback',
+        memoryModelVersion: 'fsrs-6',
+        fallbackReason: 'unsupported',
+      },
+      now,
+    );
+    const backup = await exportDatabase();
+
+    await db.revisionPlans.clear();
+    await importBackup(backup, 'replace');
+    expect(await db.revisionPlans.get(plan.id)).toEqual(plan);
+    expect(backup.revisionPlans?.[0]).toEqual(
+      expect.objectContaining({
+        assessmentId: assessment.id,
+        input: expect.objectContaining({
+          coverageVersion: expect.stringMatching(/^v1-/),
+          deadlineAt: assessment.examDate,
+          timeZone: 'UTC',
+          projection: expect.objectContaining({ memoryModelVersion: 'fsrs-6' }),
+        }),
+        windows: expect.any(Array),
+        cardStates: [{ cardId: card.id, status: 'eligible' }],
+      }),
+    );
   });
 });
 
@@ -501,6 +546,104 @@ describe('importBackup', () => {
     expect(await db.sequences.count()).toBe(0);
     const decks = await db.decks.toArray();
     expect(decks).toHaveLength(1);
+  });
+
+  it('clears plans when a legacy replace backup omits them', async () => {
+    const course = await createCourse('Legacy');
+    const assessment = await createCourseAssessment(course.id, 'Paper', Date.now() + 86_400_000);
+    await createOrResumeRevisionPlan(
+      assessment.id,
+      15,
+      {
+        projectionMode: 'fsrs-6-practice-fallback',
+        memoryModelVersion: 'fsrs-6',
+        fallbackReason: 'missing',
+      },
+    );
+    const backup = await exportDatabase();
+    delete backup.revisionPlans;
+
+    await importBackup(backup, 'replace');
+    expect(await db.revisionPlans.count()).toBe(0);
+  });
+
+  it('merges plans by assessment while preserving local identity, active work and history', async () => {
+    const now = Date.parse('2026-07-17T08:00:00Z');
+    const course = await createCourse('Biology');
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Paper',
+      Date.parse('2026-07-19T12:00:00Z'),
+      { timeZone: 'UTC' },
+    );
+    const plan = await createOrResumeRevisionPlan(
+      assessment.id,
+      15,
+      {
+        projectionMode: 'fsrs-6-practice-fallback',
+        memoryModelVersion: 'fsrs-6',
+        fallbackReason: 'missing',
+      },
+      now,
+    );
+    await startRevisionWindow(plan.id, plan.windows[0].id, now + 1);
+    const backup = await exportDatabase();
+    const incoming = {
+      ...backup.revisionPlans![0],
+      id: 'incoming-plan-id',
+      updatedAt: now + 100,
+      completedSessions: [
+        {
+          id: 'remote-session',
+          windowId: 'remote-window',
+          startedAt: now + 2,
+          completedAt: now + 3,
+          cardIds: [],
+          reviewEventIds: [],
+        },
+      ],
+    };
+    const incomingBackup = { ...backup, revisionPlans: [incoming] };
+
+    await importBackup(incomingBackup, 'merge');
+    await importBackup(incomingBackup, 'merge');
+    const merged = await db.revisionPlans.where('assessmentId').equals(assessment.id).first();
+    expect(merged?.id).toBe(plan.id);
+    expect(merged?.windows.find((window) => window.id === plan.windows[0].id)?.status).toBe(
+      'active',
+    );
+    expect(merged?.completedSessions).toEqual([incoming.completedSessions[0]]);
+    expect(await db.revisionPlans.where('assessmentId').equals(assessment.id).count()).toBe(1);
+  });
+
+  it('remaps a merged final-assessment plan to the retained local assessment id', async () => {
+    const course = await createCourse('Biology');
+    const final = (await db.courseAssessments.where('courseId').equals(course.id).toArray()).find(
+      (assessment) => assessment.kind === 'final',
+    )!;
+    const plan = await createOrResumeRevisionPlan(final.id, 15, {
+      projectionMode: 'fsrs-6-practice-fallback',
+      memoryModelVersion: 'fsrs-6',
+      fallbackReason: 'missing',
+    });
+    const backup = await exportDatabase();
+    const remoteFinalId = 'remote-final-id';
+    const incoming = {
+      ...backup,
+      courseAssessments: backup.courseAssessments?.map((assessment) =>
+        assessment.id === final.id ? { ...assessment, id: remoteFinalId } : assessment,
+      ),
+      revisionPlans: backup.revisionPlans?.map((entry) =>
+        entry.id === plan.id
+          ? { ...entry, id: 'remote-plan-id', assessmentId: remoteFinalId, updatedAt: entry.updatedAt + 1 }
+          : entry,
+      ),
+    };
+
+    await importBackup(incoming, 'merge');
+    const plans = await db.revisionPlans.where('courseId').equals(course.id).toArray();
+    expect(plans).toHaveLength(1);
+    expect(plans[0]).toEqual(expect.objectContaining({ id: plan.id, assessmentId: final.id }));
   });
 
   it('clears newer optional tables omitted by a legacy backup in replace mode', async () => {

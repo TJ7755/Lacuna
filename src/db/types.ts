@@ -309,6 +309,105 @@ interface CourseAssessmentBase {
 export type CourseAssessment = CourseAssessmentBase &
   ({ coverageMode: 'prefix'; lessonIds?: never } | { coverageMode: 'custom'; lessonIds: string[] });
 
+export type RevisionProjection =
+  | {
+      projectionMode: 'memory-model';
+      memoryModelVersion: string;
+    }
+  | {
+      projectionMode: 'fsrs-6-practice-fallback';
+      memoryModelVersion: 'fsrs-6';
+      fallbackReason: 'missing' | 'corrupt' | 'unsupported';
+    };
+
+export type RevisionReplanReason =
+  | 'assessment-coverage-changed'
+  | 'assessment-deadline-changed'
+  | 'assessment-time-zone-changed'
+  | 'memory-model-changed'
+  | 'reached-lessons-changed'
+  | 'card-exposure-changed'
+  | 'card-availability-changed'
+  | 'review-evidence-changed';
+
+export interface RevisionPlanInputSnapshot {
+  coverageVersion: string;
+  deadlineAt: number;
+  timeZone?: string;
+  reachedLessonIds: string[];
+  exposureVersion: string;
+  availabilityVersion: string;
+  reviewEvidenceVersion: string;
+  projection: RevisionProjection;
+}
+
+export interface RevisionPlanScopeSnapshot {
+  coveredLessonIds: string[];
+  excludedCardIds: string[];
+  eligibleCardIds: string[];
+  unavailableCardIds: string[];
+  unreachedLessonIds: string[];
+  untaughtLessonIds: string[];
+}
+
+export interface RevisionPlanCardState {
+  cardId: string;
+  status: 'eligible' | 'unavailable';
+}
+
+export interface RevisionPlanWindow {
+  id: string;
+  day: string;
+  budgetMinutes: number;
+  status: 'scheduled' | 'active' | 'completed';
+  planRevision: number;
+  startedAt?: number;
+  completedAt?: number;
+}
+
+export interface RevisionPlanSession {
+  id: string;
+  windowId: string;
+  startedAt: number;
+  completedAt: number;
+  cardIds: string[];
+  reviewEventIds: string[];
+}
+
+export interface RevisionPlanReplan {
+  id: string;
+  revision: number;
+  reasons: RevisionReplanReason[];
+  explanation: string;
+  appliedAt: number;
+}
+
+export interface RevisionPlanPendingReplan {
+  reasons: RevisionReplanReason[];
+  requestedAt: number;
+  input: RevisionPlanInputSnapshot;
+  scope: RevisionPlanScopeSnapshot;
+  cardStates: RevisionPlanCardState[];
+}
+
+/** One durable multi-day revision plan. Card queues are deliberately never persisted. */
+export interface RevisionPlan {
+  id: string;
+  assessmentId: string;
+  courseId: string;
+  status: 'active' | 'completed';
+  revision: number;
+  input: RevisionPlanInputSnapshot;
+  scope: RevisionPlanScopeSnapshot;
+  cardStates: RevisionPlanCardState[];
+  windows: RevisionPlanWindow[];
+  completedSessions: RevisionPlanSession[];
+  replans: RevisionPlanReplan[];
+  pendingReplan?: RevisionPlanPendingReplan;
+  createdAt: number;
+  updatedAt: number;
+}
+
 /**
  * Temporary v6-backup projection for checkpoint rows. The live database never
  * stores this shape; backup migration moves it into CourseAssessment.
@@ -651,6 +750,7 @@ export interface BackupFile {
   practiceMilestones?: PracticeMilestone[];
   /** Full assessment records in current backups. */
   courseAssessments?: CourseAssessment[];
+  revisionPlans?: RevisionPlan[];
   /** Legacy v6-and-earlier import boundary. Never emitted by current exports. */
   courseExamDates?: AssessmentDateCompatibility[];
   // Overlapping-cloze sequences. Optional so older backups still import cleanly.

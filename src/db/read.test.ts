@@ -9,6 +9,7 @@ import {
   createPracticeNode,
   createSequence,
   linkCardToLesson,
+  createOrResumeRevisionPlan,
 } from './repository';
 import {
   diagnosticsSummary,
@@ -27,6 +28,9 @@ import {
   listNotes,
   listPracticeNodes,
   listSequences,
+  getRevisionPlan,
+  getRevisionPlanForAssessment,
+  listRevisionPlansForCourse,
 } from './read';
 
 async function clearAll(): Promise<void> {
@@ -40,12 +44,31 @@ async function clearAll(): Promise<void> {
     db.practiceNodes.clear(),
     db.courseAssessments.clear(),
     db.sequences.clear(),
+    db.revisionPlans.clear(),
     db.userPerformance.clear(),
   ]);
 }
 
 describe('read.ts', () => {
   beforeEach(clearAll);
+
+  it('reads revision plans by id, assessment and course', async () => {
+    const course = await createCourse('Biology');
+    const assessment = await createCourseAssessment(course.id, 'Paper', Date.now() + 86_400_000);
+    const plan = await createOrResumeRevisionPlan(
+      assessment.id,
+      20,
+      {
+        projectionMode: 'fsrs-6-practice-fallback',
+        memoryModelVersion: 'fsrs-6',
+        fallbackReason: 'missing',
+      },
+    );
+    expect(await getRevisionPlan(plan.id)).toEqual(plan);
+    expect(await getRevisionPlanForAssessment(assessment.id)).toEqual(plan);
+    expect(await listRevisionPlansForCourse(course.id)).toEqual([plan]);
+    expect(await getRevisionPlan('missing')).toBeNull();
+  });
 
   describe('courses / lessons', () => {
     it('lists and gets courses', async () => {

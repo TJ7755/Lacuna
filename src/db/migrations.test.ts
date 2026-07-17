@@ -484,3 +484,89 @@ describe('Dexie upgrade to v16: stable review-event identity', () => {
     await Dexie.delete(dbName);
   });
 });
+
+describe('Dexie upgrade to v17: revision plans', () => {
+  it('keeps v16 data, starts with no plans and enforces one plan per assessment', async () => {
+    const dbName = `lacuna-revision-plans-${Date.now()}`;
+    const legacy = new Dexie(dbName);
+    legacy.version(16).stores({
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+    });
+    await legacy.open();
+    await legacy.table('courseAssessments').add({
+      id: 'assessment-1',
+      courseId: 'course-1',
+      kind: 'checkpoint',
+      examDate: 1_000,
+      createdAt: 1,
+    });
+    legacy.close();
+
+    const current = new Dexie(dbName);
+    current.version(16).stores({
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+    });
+    current.version(17).stores({
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+    });
+    await current.open();
+    expect(await current.table('courseAssessments').count()).toBe(1);
+    expect(await current.table('revisionPlans').count()).toBe(0);
+    await current.table('revisionPlans').add({
+      id: 'plan-1',
+      assessmentId: 'assessment-1',
+      courseId: 'course-1',
+      status: 'active',
+      updatedAt: 1,
+    });
+    await expect(
+      current.table('revisionPlans').add({
+        id: 'plan-2',
+        assessmentId: 'assessment-1',
+        courseId: 'course-1',
+        status: 'active',
+        updatedAt: 2,
+      }),
+    ).rejects.toThrow();
+    current.close();
+    await Dexie.delete(dbName);
+  });
+
+  it('includes assessments and plans in raw pre-migration payloads', async () => {
+    const dbName = `lacuna-revision-snapshot-${Date.now()}`;
+    const raw = new Dexie(dbName);
+    raw.version(17).stores({
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+    });
+    await raw.open();
+    await raw.table('courseAssessments').add({
+      id: 'assessment-1',
+      courseId: 'course-1',
+      name: 'Paper',
+      kind: 'checkpoint',
+      examDate: 2_000,
+      afterLessonId: null,
+      coverageMode: 'prefix',
+      excludedCardIds: [],
+      createdAt: 1,
+    });
+    await raw.table('revisionPlans').add({
+      id: 'plan-1',
+      assessmentId: 'assessment-1',
+      courseId: 'course-1',
+      status: 'active',
+      updatedAt: 1,
+    });
+    raw.close();
+
+    const { readAllDataFromVersion } = await import('./schema');
+    const payload = await readAllDataFromVersion(dbName);
+    expect(payload.courseAssessments?.map((assessment) => assessment.id)).toEqual([
+      'assessment-1',
+    ]);
+    expect(payload.revisionPlans?.map((plan) => plan.id)).toEqual(['plan-1']);
+    await Dexie.delete(dbName);
+  });
+});

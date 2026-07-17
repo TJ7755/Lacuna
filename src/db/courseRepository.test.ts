@@ -36,6 +36,7 @@ import {
   stampMissingLessonViewModes,
   updateCourse,
   updateCourseAssessment,
+  createOrResumeRevisionPlan,
 } from './repository';
 import { FSRS_VERSION } from '../fsrs/params';
 
@@ -55,6 +56,7 @@ async function reset() {
     db.userPerformance.clear(),
     db.sessionHistory.clear(),
     db.sequences.clear(),
+    db.revisionPlans.clear(),
   ]);
 }
 
@@ -232,7 +234,16 @@ describe('deleteCourse cascade', () => {
     await createPracticeNode(course.id, { type: 'manual', name: 'Practice 1' });
 
     // Add a checkpoint alongside the course's final assessment.
-    await createCourseAssessment(course.id, 'Mid-term', Date.now() + 7 * 86400000);
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Mid-term',
+      Date.now() + 7 * 86400000,
+    );
+    const revisionPlan = await createOrResumeRevisionPlan(assessment.id, 20, {
+      projectionMode: 'fsrs-6-practice-fallback',
+      memoryModelVersion: 'fsrs-6',
+      fallbackReason: 'missing',
+    });
 
     // Verify rows exist.
     expect(await db.lessons.where('courseId').equals(course.id).count()).toBe(2);
@@ -240,6 +251,7 @@ describe('deleteCourse cascade', () => {
     expect(await db.lessonCards.count()).toBe(1);
     expect(await db.practiceNodes.where('courseId').equals(course.id).count()).toBe(1);
     expect(await db.courseAssessments.where('courseId').equals(course.id).count()).toBe(2);
+    expect(await db.revisionPlans.get(revisionPlan.id)).toBeDefined();
     expect(await db.cards.where('courseId').equals(course.id).count()).toBe(1);
 
     await deleteCourse(course.id);
@@ -250,6 +262,7 @@ describe('deleteCourse cascade', () => {
     expect(await db.lessonCards.count()).toBe(0);
     expect(await db.practiceNodes.where('courseId').equals(course.id).count()).toBe(0);
     expect(await db.courseAssessments.where('courseId').equals(course.id).count()).toBe(0);
+    expect(await db.revisionPlans.get(revisionPlan.id)).toBeUndefined();
     expect(await db.cards.where('courseId').equals(course.id).count()).toBe(0);
   });
 
@@ -329,7 +342,16 @@ describe('snapshotCourse / restoreCourse', () => {
     const bankCard = await createCourseCard(course.id, 'front_back', 'q2', 'a2');
     await linkCardToLesson(lesson2.id, lessonCard.id);
     await createPracticeNode(course.id, { type: 'manual', name: 'Practice 1' });
-    await createCourseAssessment(course.id, 'Mid-term', Date.now() + 7 * 86400000);
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Mid-term',
+      Date.now() + 7 * 86400000,
+    );
+    const revisionPlan = await createOrResumeRevisionPlan(assessment.id, 20, {
+      projectionMode: 'fsrs-6-practice-fallback',
+      memoryModelVersion: 'fsrs-6',
+      fallbackReason: 'missing',
+    });
     const sequence = await createSequence(course.id, lesson1.id, 'Sequence', [
       { id: 'sequence-item', value: 'Item' },
     ]);
@@ -357,6 +379,7 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(snapshot!.cards).toHaveLength(3); // two ordinary cards + one sequence card
     expect(snapshot!.sessionHistory).toHaveLength(1);
     expect(snapshot!.sequences).toEqual([sequence]);
+    expect(snapshot!.revisionPlans).toEqual([revisionPlan]);
     // Both backing decks' own profiles (lesson + bank) plus the course-level aggregate.
     expect(snapshot!.userPerformance).toHaveLength(3);
 
@@ -381,6 +404,7 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(await db.userPerformance.get(course.id)).toBeDefined();
     expect(await db.sessionHistory.where('courseId').equals(course.id).count()).toBe(1);
     expect(await db.sequences.get(sequence.id)).toEqual(sequence);
+    expect(await db.revisionPlans.get(revisionPlan.id)).toEqual(revisionPlan);
 
     // Field-level fidelity: the restored card keeps its FSRS memory state and
     // review history exactly, and the restored lesson keeps its unlock ratchet.
@@ -841,12 +865,18 @@ describe('course assessment repository', () => {
   it('allows deleting a checkpoint without touching the final', async () => {
     const course = await createCourse('Assessments test');
     const checkpoint = await createCourseAssessment(course.id, 'Mock', Date.now() + 86_400_000);
+    const plan = await createOrResumeRevisionPlan(checkpoint.id, 20, {
+      projectionMode: 'fsrs-6-practice-fallback',
+      memoryModelVersion: 'fsrs-6',
+      fallbackReason: 'missing',
+    });
 
     await deleteCourseAssessment(checkpoint.id);
 
     const remaining = await db.courseAssessments.where('courseId').equals(course.id).toArray();
     expect(remaining).toHaveLength(1);
     expect(remaining[0].kind).toBe('final');
+    expect(await db.revisionPlans.get(plan.id)).toBeUndefined();
   });
 });
 

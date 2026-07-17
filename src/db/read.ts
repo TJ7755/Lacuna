@@ -15,7 +15,15 @@
 // ensureCourseBankDeck in repository.ts) and are irrelevant to read-side queries.
 
 import { db } from './schema';
-import type { Card, Course, CourseAssessment, Lesson, PracticeNode, Sequence } from './types';
+import type {
+  Card,
+  Course,
+  CourseAssessment,
+  Lesson,
+  PracticeNode,
+  RevisionPlan,
+  Sequence,
+} from './types';
 import { finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 import { gatherCounts, type DiagnosticBundle } from './diagnostics';
 import {
@@ -233,6 +241,20 @@ export async function listPracticeNodes(courseId: string): Promise<PracticeNode[
 /** All assessments for a course, ordered by date ascending (mirrors useCourseAssessments). */
 export async function listCourseAssessments(courseId: string): Promise<CourseAssessment[]> {
   return db.courseAssessments.where('courseId').equals(courseId).sortBy('examDate');
+}
+
+export async function getRevisionPlan(planId: string): Promise<RevisionPlan | null> {
+  return (await db.revisionPlans.get(planId)) ?? null;
+}
+
+export async function getRevisionPlanForAssessment(
+  assessmentId: string,
+): Promise<RevisionPlan | null> {
+  return (await db.revisionPlans.where('assessmentId').equals(assessmentId).first()) ?? null;
+}
+
+export async function listRevisionPlansForCourse(courseId: string): Promise<RevisionPlan[]> {
+  return db.revisionPlans.where('courseId').equals(courseId).sortBy('updatedAt');
 }
 
 export interface CourseAssessmentDetails {

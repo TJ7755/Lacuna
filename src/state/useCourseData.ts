@@ -13,6 +13,7 @@ import type {
   LessonCardLink,
   Note,
   PracticeNode,
+  RevisionPlan,
   Sequence,
   SessionHistoryEntry,
 } from '../db/types';
@@ -153,6 +154,29 @@ export function useCourseAssessments(courseId: string | undefined): CourseAssess
   return useLiveQuery(
     () =>
       courseId ? db.courseAssessments.where('courseId').equals(courseId).sortBy('examDate') : [],
+    [courseId],
+  );
+}
+
+export function useRevisionPlan(
+  assessmentId: string | undefined,
+): RevisionPlan | null | undefined {
+  return useLiveQuery<RevisionPlan | null>(
+    () =>
+      assessmentId
+        ? db.revisionPlans
+            .where('assessmentId')
+            .equals(assessmentId)
+            .first()
+            .then((plan) => plan ?? null)
+        : null,
+    [assessmentId],
+  );
+}
+
+export function useCourseRevisionPlans(courseId: string | undefined): RevisionPlan[] | undefined {
+  return useLiveQuery(
+    () => (courseId ? db.revisionPlans.where('courseId').equals(courseId).sortBy('updatedAt') : []),
     [courseId],
   );
 }

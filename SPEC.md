@@ -410,6 +410,18 @@ full resolved coverage, intersected with reached lessons and exposed cards, then
 assessment exclusions and unavailable cards. Its eligibility and session objective use the
 chosen assessment date alone; overlapping assessment horizons are never blended.
 
+Starting multi-day revision creates or resumes one IndexedDB plan keyed uniquely to that
+assessment. The plan freezes its resolved coverage and exclusions, deadline and time zone,
+reached/exposed/available membership, per-card lifecycle state, daily budget windows and
+completed window/session history. Today's budget initially supplies every remaining local
+calendar day through the deadline; individual scheduled days can then be edited or removed.
+The plan persists windows rather than card queues, so later allocation can rebuild priorities
+from current evidence. Coverage, deadline, time-zone, model-version, reached/exposed/available
+scope and review-evidence changes produce deterministic, explained replans. An active window
+keeps its captured revision; triggers wait until it closes. Until a validated short-term model
+is available, the persisted mode is the explicit FSRS-6 ordinary-Practice fallback and stores
+no invented confidence values.
+
 **Review due cards** is a separate ad-hoc course-wide action. It creates no path node or
 milestone, may be launched at any time, and returns to the same conductor afterwards.
 
@@ -1654,7 +1666,7 @@ defaults** is always available.
   deletion (`DangerZoneSection`) rather than a blocking confirmation — deleting is
   immediate, with an "Undo" toast that restores everything from a `CourseSnapshot`
   (`snapshotCourse`/`restoreCourse`, `src/db/repository.ts`): the course, its lessons,
-  notes, lesson-card links, practice nodes, assessments, cards, their hidden backing decks
+  notes, lesson-card links, practice nodes, assessments, revision plans, cards, their hidden backing decks
   (§5, Deck and Folder), and the session history/calibration profiles keyed to either the
   course or those decks. Sticky Save/Cancel bar.
 - **Not-found handling:** the course is resolved via a null-sentinel

@@ -39,6 +39,7 @@ export interface DiagnosticBundle {
     courseAssessments?: number;
     assessments?: CourseAssessment[];
     sequences?: number;
+    revisionPlans?: number;
   };
   /** Present only when the user explicitly opts in to including card content. */
   contentSample?: { front: string; back: string }[];
@@ -61,6 +62,7 @@ export interface DiagnosticInput {
     courseAssessments?: number;
     assessments?: CourseAssessment[];
     sequences?: number;
+    revisionPlans?: number;
   };
   contentSample?: { front: string; back: string }[];
   userAgent?: string;
@@ -119,7 +121,7 @@ export function formatDiagnostics(bundle: DiagnosticBundle): string {
         ? `, ${bundle.data.courses} courses, ${bundle.data.lessons ?? 0} lessons, ` +
           `${bundle.data.notes ?? 0} notes, ${bundle.data.lessonCards ?? 0} lesson card links, ` +
           `${bundle.data.practiceNodes ?? 0} practice nodes, ${bundle.data.courseAssessments ?? 0} course assessments, ` +
-          `${bundle.data.sequences ?? 0} sequences`
+          `${bundle.data.sequences ?? 0} sequences, ${bundle.data.revisionPlans ?? 0} revision plans`
         : ''),
   ];
   if (bundle.contentSample) {
@@ -142,6 +144,7 @@ export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
     practiceNodes,
     assessments,
     sequences,
+    revisionPlans,
   ] = await Promise.all([
     db.decks.count(),
     db.cards.count(),
@@ -154,6 +157,7 @@ export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
     db.practiceNodes.count(),
     db.courseAssessments.toArray(),
     db.sequences.count(),
+    db.revisionPlans.count(),
   ]);
   return {
     decks,
@@ -168,6 +172,7 @@ export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
     courseAssessments: assessments.length,
     assessments,
     sequences,
+    revisionPlans,
   };
 }
 

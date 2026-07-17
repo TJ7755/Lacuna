@@ -21,6 +21,7 @@ import type {
   PracticeNode,
   PracticeMilestone,
   Sequence,
+  RevisionPlan,
 } from './types';
 import {
   migrateCardRecord,
@@ -63,6 +64,7 @@ class LacunaDatabase extends Dexie {
   practiceMilestones!: Table<PracticeMilestone, string>;
   courseAssessments!: Table<CourseAssessment, string>;
   sequences!: Table<Sequence, string>;
+  revisionPlans!: Table<RevisionPlan, string>;
 
   constructor() {
     super('lacuna');
@@ -496,10 +498,34 @@ class LacunaDatabase extends Dexie {
       courseAssessments: 'id, courseId, kind, examDate, createdAt',
       sequences: 'id, courseId, primaryLessonId, createdAt',
     });
+
+    // Version 17: persist one durable multi-day revision plan per assessment.
+    this.version(17).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
+      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+      courses: 'id, createdAt',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+      lessonCompletions: 'lessonId, completedAt',
+      noteAnnotations: 'id, noteId, createdAt, updatedAt',
+      practiceNodes: 'id, courseId, position, createdAt',
+      practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      sequences: 'id, courseId, primaryLessonId, createdAt',
+      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+    });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 16;
+const CURRENT_SCHEMA_VERSION = 17;
 
 export const db = new LacunaDatabase();
 
@@ -668,6 +694,8 @@ export async function readAllDataFromVersion(
     lessonCompletions: (raw.data['lessonCompletions'] ?? []) as LessonCompletion[],
     practiceNodes: (raw.data['practiceNodes'] ?? []) as PracticeNode[],
     practiceMilestones: (raw.data['practiceMilestones'] ?? []) as PracticeMilestone[],
+    courseAssessments: (raw.data['courseAssessments'] ?? []) as CourseAssessment[],
+    revisionPlans: (raw.data['revisionPlans'] ?? []) as RevisionPlan[],
     sequences: (raw.data['sequences'] ?? []) as Sequence[],
   };
 
