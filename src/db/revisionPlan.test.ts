@@ -202,4 +202,22 @@ describe('revision plan lifecycle', () => {
   it('builds no windows at or after an elapsed deadline', () => {
     expect(buildRevisionWindows('plan', 20, 100, 100, 'UTC')).toEqual([]);
   });
+
+  it('archives an elapsed plan and makes its schedule read-only', async () => {
+    const f = await fixture();
+    const plan = await createOrResumeRevisionPlan(f.assessment.id, 20, fallback, f.now);
+    const elapsed = f.assessment.examDate + 1;
+    const archived = await refreshRevisionPlan(plan.id, fallback, elapsed);
+
+    expect(archived.status).toBe('completed');
+    await expect(setRevisionDayBudget(plan.id, '2026-07-18', 30, elapsed)).rejects.toThrow(
+      'read-only',
+    );
+    await expect(startRevisionWindow(plan.id, plan.windows[0].id, elapsed)).rejects.toThrow(
+      'read-only',
+    );
+    expect((await createOrResumeRevisionPlan(f.assessment.id, 45, fallback, elapsed)).status).toBe(
+      'completed',
+    );
+  });
 });

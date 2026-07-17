@@ -12,6 +12,7 @@ import type { StudyFlowStep } from '../course/studyFlowPlanner';
 import type { AssessmentPracticeOption } from '../course/assessmentPractice';
 import type { SessionSummary } from '../components/learn/types';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
+import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
 import { Button } from '../components/ui/Button';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
 
@@ -60,6 +61,10 @@ function CourseStudyFlowInner() {
     searchParams.get('review') === 'due' || entryAssessmentId !== null,
   );
   const [transition, setTransition] = useState<TransitionState | null>(null);
+  const [revisionSession, setRevisionSession] = useState<{
+    planId: string;
+    windowId: string;
+  } | null>(null);
   const pomodoro = usePomodoroContext();
 
   useEffect(() => {
@@ -106,12 +111,14 @@ function CourseStudyFlowInner() {
     }
     if (currentStep.kind === 'practice') {
       if (currentStep.mode === 'assessment') {
-        if (!currentStep.assessmentId) return null;
+        if (!currentStep.assessmentId || !revisionSession) return null;
         return {
           kind: 'practice',
           courseId: courseId ?? '',
           mode: 'assessment',
           assessmentId: currentStep.assessmentId,
+          planId: revisionSession.planId,
+          windowId: revisionSession.windowId,
         };
       }
       const scopeLessonIds =
@@ -130,12 +137,15 @@ function CourseStudyFlowInner() {
       };
     }
     return null;
-  }, [courseId, currentStep, flow?.snapshot.practiceByKey]);
+  }, [courseId, currentStep, flow?.snapshot.practiceByKey, revisionSession]);
 
   const handleStepFinished = useCallback(
     (summary: SessionSummary) => {
       if (!currentStep || !courseId) return;
       touchActiveStudyFlow(courseId);
+      if (currentStep.kind === 'practice' && currentStep.mode === 'assessment') {
+        setRevisionSession(null);
+      }
       setTransition({ summary, completedStep: currentStep });
       setRefreshKey((value) => value + 1);
     },
@@ -206,6 +216,21 @@ function CourseStudyFlowInner() {
         onDeferBreak={pomodoro.deferBreak}
         onReviewDueCards={reviewDueCards}
         onFinish={finishFlow}
+      />
+    );
+  }
+
+  if (
+    currentStep?.kind === 'practice' &&
+    currentStep.mode === 'assessment' &&
+    currentStep.assessmentId &&
+    !revisionSession
+  ) {
+    return (
+      <RevisionPlanSetup
+        assessmentId={currentStep.assessmentId}
+        onStart={(planId, windowId) => setRevisionSession({ planId, windowId })}
+        onExit={finishFlow}
       />
     );
   }

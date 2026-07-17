@@ -372,6 +372,8 @@ export interface RevisionPlanSession {
   completedAt: number;
   cardIds: string[];
   reviewEventIds: string[];
+  improvedCardIds?: string[];
+  parkedCardIds?: string[];
 }
 
 export interface RevisionPlanReplan {

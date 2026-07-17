@@ -13,16 +13,20 @@ import type {
   Note,
   Sequence,
   ReviewSessionKind,
+  RevisionPlan,
   UserPerformance,
 } from '../db/types';
 import {
   buryCard,
+  completeRevisionWindow,
   listNotes,
   markLessonComplete,
   ratchetLessonUnlock,
   recordReview,
+  refreshRevisionPlan,
   savePracticeMilestoneProgress,
   setCardFlag,
+  startRevisionWindow,
   suspendCard,
   undoReview,
   upsertLessonCardExposure,
@@ -115,6 +119,8 @@ import { PomodoroTimer } from '../components/learn/PomodoroTimer';
 import { useToast } from '../components/ui/Toast';
 import { filterSessionCardPool, type CardFilter } from '../db/search';
 import { cn } from '../components/ui/cn';
+import { allocateCramReview } from '../fsrs/cramAllocator';
+import { revisionProjection } from '../course/revisionProjection';
 
 type Phase = 'loading' | 'notes' | 'question' | 'answer' | 'finished';
 type SessionCardOutcome = 'correct' | 'wrong';
@@ -177,6 +183,13 @@ interface AnswerSnapshot {
   deckId: string;
   deckReviews: number;
   outcomeBefore?: SessionCardOutcome;
+  revisionCovered: Set<string>;
+  revisionImproved: Set<string>;
+  revisionParked: Set<string>;
+  revisionCompleted: Set<string>;
+  revisionRetryAt: Map<string, number>;
+  revisionFailures: Map<string, number>;
+  revisionReviewEventIds: string[];
 }
 
 export type LearnSessionRequest =
@@ -195,6 +208,8 @@ export type LearnSessionRequest =
       courseId: string;
       mode: 'assessment';
       assessmentId: string;
+      planId?: string;
+      windowId?: string;
     };
 
 interface LearnModeProps {
@@ -228,6 +243,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     request?.kind === 'practice' && request.mode === 'assessment'
       ? request.assessmentId
       : undefined;
+  const requestPlanId =
+    request?.kind === 'practice' && request.mode === 'assessment' ? request.planId : undefined;
+  const requestWindowId =
+    request?.kind === 'practice' && request.mode === 'assessment' ? request.windowId : undefined;
+  const plannedRevision = Boolean(requestAssessmentId && requestPlanId && requestWindowId);
   const reviewSessionIdRef = useRef(sessionId ?? makeId());
   const reviewSessionKind: ReviewSessionKind = requestAssessmentId
     ? 'assessment-revision'
@@ -259,7 +279,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
 
   const mode: LearnModeType = useMemo(() => {
     if (isSimpleMode) return 'simple';
-    if (cramMode) return 'cram';
+    if (cramMode || plannedRevision) return 'cram';
     if (filterParams.length > 0) {
       if (filterParams.length === 1) {
         const f = filterParams[0];
@@ -272,7 +292,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       return 'filtered';
     }
     return 'fsrs';
-  }, [isSimpleMode, cramMode, filterParams]);
+  }, [isSimpleMode, cramMode, filterParams, plannedRevision]);
 
   // Exactly one of courseId/lessonId is set by the matching route (or neither,
   // for the global "Today" session). The lesson route (/lesson/:lessonId/learn)
@@ -345,6 +365,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     () => new Map(),
   );
   const [schedulerProgress, setSchedulerProgress] = useState(0);
+  const [revisionSecondsRemaining, setRevisionSecondsRemaining] = useState(0);
+  const [revisionWindowBudgetSeconds, setRevisionWindowBudgetSeconds] = useState(0);
+  const [revisionNextWindowDay, setRevisionNextWindowDay] = useState<string | undefined>();
   const simpleProgress = useMemo(() => {
     if (sessionCardIds.length === 0) return 0;
     let completed = 0;
@@ -368,6 +391,20 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     document.addEventListener('fullscreenchange', onFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
+  useEffect(() => {
+    if (!plannedRevision) return;
+    const update = () => {
+      setRevisionSecondsRemaining(
+        Math.max(
+          0,
+          revisionWindowBudgetSeconds - (Date.now() - revisionWindowStartedAt.current) / 1000,
+        ),
+      );
+    };
+    update();
+    const id = window.setInterval(update, 1_000);
+    return () => window.clearInterval(id);
+  }, [plannedRevision, revisionWindowBudgetSeconds]);
 
   // Session-only mutable state held in refs so it never triggers re-renders mid-card
   // and so the stable callbacks below always read current values (no stale closures).
@@ -395,6 +432,16 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     course: Course;
     examDateContext: ExamDateContext;
   } | null>(null);
+  const revisionPlanRef = useRef<RevisionPlan | null>(null);
+  const revisionInitialRevision = useRef(0);
+  const revisionWindowStartedAt = useRef(0);
+  const revisionCovered = useRef<Set<string>>(new Set());
+  const revisionImproved = useRef<Set<string>>(new Set());
+  const revisionParked = useRef<Set<string>>(new Set());
+  const revisionCompleted = useRef<Set<string>>(new Set());
+  const revisionRetryAt = useRef<Map<string, number>>(new Map());
+  const revisionFailures = useRef<Map<string, number>>(new Map());
+  const revisionReviewEventIds = useRef<string[]>([]);
   const timerStart = useRef(0);
   const responseTime = useRef(0);
   // Elapsed thinking time captured when the edit overlay opens during the question
@@ -405,6 +452,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const lastAnswer = useRef<AnswerSnapshot | null>(null);
   // Guards against a double key-press / click submitting the same card twice.
   const submitting = useRef(false);
+  const finalising = useRef(false);
   // Retained across a failed submission retry; cleared only when the player advances.
   const pendingReviewEventId = useRef<string | null>(null);
   // Per-deck review counters for the daily workload cap.
@@ -598,24 +646,83 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
 
   const finaliseSummary = useCallback(
     (nextSummary: SessionSummary) => {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || finalising.current) return;
+      finalising.current = true;
       setCanUndo(false);
       lastAnswer.current = null;
       void (async () => {
-        if (practiceSessionRef.current) {
-          await persistPracticeMilestone(cardsRef.current, nextSummary.reachedGoal);
+        let deliveredSummary = nextSummary;
+        const revisionPlan = revisionPlanRef.current;
+        if (revisionPlan && requestWindowId) {
+          const completedAt = Date.now();
+          const refreshedPlan = await refreshRevisionPlan(
+            revisionPlan.id,
+            revisionPlan.input.projection,
+            completedAt,
+          );
+          const updatedPlan = await completeRevisionWindow(
+            refreshedPlan.id,
+            requestWindowId,
+            {
+              id: reviewSessionIdRef.current,
+              windowId: requestWindowId,
+              startedAt: revisionWindowStartedAt.current,
+              completedAt,
+              cardIds: [...revisionCovered.current],
+              reviewEventIds: revisionReviewEventIds.current,
+              improvedCardIds: [...revisionImproved.current],
+              parkedCardIds: [...revisionParked.current],
+            },
+            completedAt,
+          );
+          revisionPlanRef.current = updatedPlan;
+          const windowDayParts = requestWindowId.split(':');
+          const completedWindowDay = windowDayParts[windowDayParts.length - 1];
+          const nextWindow = updatedPlan.windows.find(
+            (window) => window.status === 'scheduled' && window.day >= completedWindowDay,
+          );
+          const latestReplan =
+            updatedPlan.revision > revisionInitialRevision.current
+              ? updatedPlan.replans[updatedPlan.replans.length - 1]
+              : undefined;
+          deliveredSummary = {
+            ...nextSummary,
+            reachedGoal: true,
+            revision: {
+              cardsCovered: revisionCovered.current.size,
+              cardsImproved: revisionImproved.current.size,
+              cardsParked: revisionParked.current.size,
+              workNotReached: Math.max(
+                0,
+                revisionPlan.scope.eligibleCardIds.length - revisionCovered.current.size,
+              ),
+              ...(nextWindow ? { nextWindowDay: nextWindow.day } : {}),
+              ...(latestReplan?.explanation ? { replanExplanation: latestReplan.explanation } : {}),
+            },
+          };
         }
-        if (ratchetCourseIdRef.current) await ratchetUnlocks(nextSummary.reachedGoal);
+        if (practiceSessionRef.current) {
+          await persistPracticeMilestone(cardsRef.current, deliveredSummary.reachedGoal);
+        }
+        if (!revisionPlan && ratchetCourseIdRef.current) {
+          await ratchetUnlocks(deliveredSummary.reachedGoal);
+        }
         if (!mountedRef.current) return;
         if (onStepFinished) {
-          onStepFinished(nextSummary);
+          onStepFinished(deliveredSummary);
           return;
         }
-        setSummary(nextSummary);
+        setSummary(deliveredSummary);
         setPhase('finished');
-      })();
+      })().catch((cause) => {
+        finalising.current = false;
+        notify(
+          cause instanceof Error ? cause.message : 'Could not finish the study window.',
+          'negative',
+        );
+      });
     },
-    [onStepFinished, persistPracticeMilestone, ratchetUnlocks],
+    [notify, onStepFinished, persistPracticeMilestone, ratchetUnlocks, requestWindowId],
   );
 
   const finish = useCallback(
@@ -649,6 +756,18 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     [objectiveLabel, distraction, cachedSessionProgress, isSimpleMode, mode, finaliseSummary],
   );
 
+  useEffect(() => {
+    if (
+      plannedRevision &&
+      revisionWindowBudgetSeconds > 0 &&
+      revisionSecondsRemaining <= 0 &&
+      phase !== 'loading' &&
+      phase !== 'finished'
+    ) {
+      finish(false, false, true);
+    }
+  }, [finish, phase, plannedRevision, revisionSecondsRemaining, revisionWindowBudgetSeconds]);
+
   /** Present the next eligible card, or finish if the goal has been reached. */
   const serveNext = useCallback(() => {
     if (!mountedRef.current) return;
@@ -676,6 +795,59 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
 
     const ctx = ctxRef.current;
     if (!ctx) return;
+    const revisionPlan = revisionPlanRef.current;
+    if (revisionPlan && requestWindowId) {
+      const window = revisionPlan.windows.find((candidate) => candidate.id === requestWindowId);
+      const now = Date.now();
+      const remainingWindowSeconds = window
+        ? window.budgetMinutes * 60 - (now - revisionWindowStartedAt.current) / 1000
+        : 0;
+      if (!window || remainingWindowSeconds <= 0 || now >= revisionPlan.input.deadlineAt) {
+        for (const cardId of revisionRetryAt.current.keys()) revisionParked.current.add(cardId);
+        finish(false, false, true);
+        return;
+      }
+      const eligibleCardIds = new Set(
+        revisionPlan.scope.eligibleCardIds.filter(
+          (cardId) =>
+            !revisionCompleted.current.has(cardId) &&
+            !revisionParked.current.has(cardId) &&
+            (revisionRetryAt.current.get(cardId) ?? 0) <= now,
+        ),
+      );
+      const objectiveContext = ctx.decks.values().next().value?.oc;
+      if (!objectiveContext) return;
+      const allocation = allocateCramReview({
+        cards: cardsRef.current,
+        eligibleCardIds,
+        context: objectiveContext,
+        assessmentAt: revisionPlan.input.deadlineAt,
+        now,
+        remainingWindowSeconds,
+        currentWindowId: requestWindowId,
+        futureWindowStarts: [],
+        projection: revisionPlan.input.projection,
+        performanceByDeck: perfRef.current,
+      });
+      const next =
+        allocation.mode === 'practice-fallback' ? allocation.cards[0] : allocation.selected?.card;
+      if (!next) {
+        for (const cardId of revisionRetryAt.current.keys()) revisionParked.current.add(cardId);
+        finish(true);
+        return;
+      }
+      setCurrent(next);
+      setPhase('question');
+      setMenuOpen(false);
+      setTypedAnswer('');
+      setHintStep(0);
+      pendingReviewEventId.current = null;
+      timerStart.current = performance.now();
+      distraction.beginCard();
+      distraction.setAnswerVisible(false);
+      progressCacheRef.current.dirty = true;
+      return;
+    }
     if (sessionComplete(cardsRef.current, ctx)) {
       finish(true);
       return;
@@ -698,7 +870,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     distraction.setAnswerVisible(false);
     // Invalidate progress cache when moving to a new card.
     progressCacheRef.current.dirty = true;
-  }, [finish, distraction, isSimpleMode]);
+  }, [finish, distraction, isSimpleMode, requestWindowId]);
 
   // Stable ref so the initial-load effect never re-runs just because serveNext's
   // callback identity changed (which would reset phase and undo reveal/exit).
@@ -717,6 +889,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setFeedback(null);
     setFeedbackSource(null);
     submitting.current = false;
+    finalising.current = false;
     progressBefore.current = 0;
     progressCacheRef.current = { dirty: true, value: 0 };
     perfRef.current = new Map();
@@ -727,6 +900,16 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     lessonExposureIdRef.current = null;
     lessonHasMembersRef.current = false;
     practiceSessionRef.current = null;
+    revisionPlanRef.current = null;
+    revisionInitialRevision.current = 0;
+    revisionWindowStartedAt.current = 0;
+    revisionCovered.current = new Set();
+    revisionImproved.current = new Set();
+    revisionParked.current = new Set();
+    revisionCompleted.current = new Set();
+    revisionRetryAt.current = new Map();
+    revisionFailures.current = new Map();
+    revisionReviewEventIds.current = [];
     setCanUndo(false);
     setSummary(null);
     setEditing(false);
@@ -738,6 +921,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setSessionCardIds([]);
     setSessionCardOutcomes(new Map());
     setSchedulerProgress(0);
+    setRevisionSecondsRemaining(0);
+    setRevisionWindowBudgetSeconds(0);
+    setRevisionNextWindowDay(undefined);
     setLimitOverride(false);
     setTimeLimitOverride(false);
     sessionStartMs.current = 0;
@@ -839,6 +1025,34 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           else navigate(`/course/${courseId}`);
           return;
         }
+        let activeRevisionPlan: RevisionPlan | null = null;
+        if (plannedRevision && requestPlanId && requestWindowId && selectedAssessment) {
+          const refreshed = await refreshRevisionPlan(requestPlanId, revisionProjection);
+          if (
+            refreshed.assessmentId !== selectedAssessment.id ||
+            refreshed.courseId !== course.id ||
+            !refreshed.windows.some((window) => window.id === requestWindowId)
+          ) {
+            throw new Error('The revision plan does not match this assessment window.');
+          }
+          activeRevisionPlan = await startRevisionWindow(requestPlanId, requestWindowId);
+          const activeWindow = activeRevisionPlan.windows.find(
+            (window) => window.id === requestWindowId,
+          );
+          revisionPlanRef.current = activeRevisionPlan;
+          revisionInitialRevision.current = activeRevisionPlan.revision;
+          revisionWindowStartedAt.current = activeWindow?.startedAt ?? Date.now();
+          const budgetSeconds = (activeWindow?.budgetMinutes ?? 0) * 60;
+          setRevisionWindowBudgetSeconds(budgetSeconds);
+          setRevisionSecondsRemaining(
+            Math.max(0, budgetSeconds - (Date.now() - revisionWindowStartedAt.current) / 1000),
+          );
+          setRevisionNextWindowDay(
+            activeRevisionPlan.windows.find(
+              (window) => window.status === 'scheduled' && window.id !== requestWindowId,
+            )?.day,
+          );
+        }
         const fullScope = selectedAssessment
           ? resolveAssessmentCoverage(selectedAssessment, courseLessons, allCards, courseLinks)
               .cards
@@ -858,14 +1072,16 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             }
           : makeExamDateContext(course, courseLessons, examDates);
         cards = selectedAssessment
-          ? assessmentPracticePool(selectedAssessment, {
-              course,
-              lessons: courseLessons,
-              cards: allCards,
-              links: courseLinks,
-              exposures: courseExposures,
-              reachedLessonIds,
-            })
+          ? activeRevisionPlan
+            ? allCards.filter((card) => activeRevisionPlan.scope.eligibleCardIds.includes(card.id))
+            : assessmentPracticePool(selectedAssessment, {
+                course,
+                lessons: courseLessons,
+                cards: allCards,
+                links: courseLinks,
+                exposures: courseExposures,
+                reachedLessonIds,
+              })
           : eligiblePracticePool(fullScope, course, examDateContext);
         const practiceCourse: Course = { ...course, newCardsPerDay: undefined };
         units = [course];
@@ -923,9 +1139,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           /* Hint step is a non-critical enhancement; a failed lookup just disables it. */
         });
       const initialProgress = sessionProgress(cards, ctx);
-      const hasServeableCards = isSimpleMode
+      const hasServeableCards = plannedRevision
         ? cards.length > 0
-        : sessionServePool(cards, ctx).length > 0;
+        : isSimpleMode
+          ? cards.length > 0
+          : sessionServePool(cards, ctx).length > 0;
       setSchedulerProgress(initialProgress);
       setSessionCardIds(cards.map((card) => card.id));
       setSessionCardOutcomes(new Map());
@@ -995,7 +1213,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       }
 
       progressBefore.current = initialProgress;
-      if (!isSimpleMode && sessionComplete(cards, ctx)) {
+      if (!plannedRevision && !isSimpleMode && sessionComplete(cards, ctx)) {
         finaliseSummary({
           events: [],
           masteryBefore: progressBefore.current,
@@ -1010,7 +1228,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           mode,
         });
       } else {
-        sessionStartMs.current = Date.now();
+        sessionStartMs.current = revisionWindowStartedAt.current || Date.now();
         serveNextRef.current();
       }
     })();
@@ -1031,6 +1249,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     practiceNodeKeyParam,
     requestScopeLessonIds,
     requestAssessmentId,
+    requestPlanId,
+    requestWindowId,
+    plannedRevision,
     finaliseSummary,
     persistPracticeMilestone,
     ratchetUnlocks,
@@ -1143,6 +1364,15 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
         const perfBefore = perf ?? null;
         const outcomeBefore = sessionCardOutcomes.get(cardNow.id);
         const eventId = pendingReviewEventId.current ?? makeId();
+        const revisionSnapshot = {
+          revisionCovered: new Set(revisionCovered.current),
+          revisionImproved: new Set(revisionImproved.current),
+          revisionParked: new Set(revisionParked.current),
+          revisionCompleted: new Set(revisionCompleted.current),
+          revisionRetryAt: new Map(revisionRetryAt.current),
+          revisionFailures: new Map(revisionFailures.current),
+          revisionReviewEventIds: [...revisionReviewEventIds.current],
+        };
         pendingReviewEventId.current = eventId;
 
         const {
@@ -1157,6 +1387,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           eventId,
           sessionId: reviewSessionIdRef.current,
           sessionKind: reviewSessionKind,
+          revisionPlanId: revisionPlanRef.current?.id,
+          revisionWindowId: revisionPlanRef.current ? requestWindowId : undefined,
           deck,
           kind: reviewKindRef.current,
           grade,
@@ -1180,7 +1412,31 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           await persistPracticeMilestone(nextCards, false);
         }
 
-        if (grade === 1) {
+        if (revisionPlanRef.current && requestWindowId) {
+          revisionCovered.current.add(updated.id);
+          if (recorded) revisionReviewEventIds.current.push(eventId);
+          if (correct) {
+            revisionImproved.current.add(updated.id);
+            revisionCompleted.current.add(updated.id);
+            revisionRetryAt.current.delete(updated.id);
+          } else {
+            const failures = (revisionFailures.current.get(updated.id) ?? 0) + 1;
+            revisionFailures.current.set(updated.id, failures);
+            const window = revisionPlanRef.current.windows.find(
+              (candidate) => candidate.id === requestWindowId,
+            );
+            const windowEndsAt = window
+              ? revisionWindowStartedAt.current + window.budgetMinutes * 60_000
+              : Date.now();
+            const productiveAt = updated.due ?? Date.now();
+            if (failures >= 2 || productiveAt >= windowEndsAt) {
+              revisionParked.current.add(updated.id);
+              revisionRetryAt.current.delete(updated.id);
+            } else {
+              revisionRetryAt.current.set(updated.id, Math.max(Date.now(), productiveAt));
+            }
+          }
+        } else if (grade === 1) {
           // Global sessions span several decks, so size the cooldown to just this
           // card's deck; course/lesson sessions are already scoped to their own
           // pool (see the loading effect), so the whole pool applies.
@@ -1189,7 +1445,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             : nextCards.length;
           applyCooldown(cooldowns.current, updated.id, deckSize);
         }
-        decrementCooldowns(cooldowns.current, updated.id);
+        if (!revisionPlanRef.current) decrementCooldowns(cooldowns.current, updated.id);
 
         events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
         setSessionCardOutcomes((previous) => {
@@ -1217,6 +1473,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               deckId: deck.id,
               deckReviews,
               outcomeBefore,
+              ...revisionSnapshot,
             }
           : null;
         setCanUndo(recorded);
@@ -1235,6 +1492,19 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           return;
         }
 
+        const revisionPlan = revisionPlanRef.current;
+        const revisionWindow = revisionPlan?.windows.find(
+          (candidate) => candidate.id === requestWindowId,
+        );
+        if (
+          revisionPlan &&
+          revisionWindow &&
+          Date.now() >= revisionWindowStartedAt.current + revisionWindow.budgetMinutes * 60_000
+        ) {
+          finish(false, false, true);
+          return;
+        }
+
         const timeLimit = deck.sessionTimeLimitMinutes;
         if (!timeLimitOverride && timeLimit && timeLimit > 0 && sessionStartMs.current > 0) {
           const elapsedMinutes = (Date.now() - sessionStartMs.current) / 60000;
@@ -1244,7 +1514,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           }
         }
 
-        if (sessionComplete(nextCards, ctx)) finish(true);
+        if (revisionPlanRef.current) serveNext();
+        else if (sessionComplete(nextCards, ctx)) finish(true);
         else serveNext();
       } finally {
         submitting.current = false;
@@ -1262,6 +1533,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       persistPracticeMilestone,
       sessionCardOutcomes,
       reviewSessionKind,
+      requestWindowId,
     ],
   );
 
@@ -1277,6 +1549,13 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       );
       setSchedulerProgress(sessionProgress(cardsRef.current, ctx));
       cooldowns.current = snap.cooldowns;
+      revisionCovered.current = snap.revisionCovered;
+      revisionImproved.current = snap.revisionImproved;
+      revisionParked.current = snap.revisionParked;
+      revisionCompleted.current = snap.revisionCompleted;
+      revisionRetryAt.current = snap.revisionRetryAt;
+      revisionFailures.current = snap.revisionFailures;
+      revisionReviewEventIds.current = snap.revisionReviewEventIds;
       if (snap.undo.perfBefore) perfRef.current.set(snap.deckId, snap.undo.perfBefore);
       events.current = events.current.slice(0, snap.eventsLen);
       // Decrement the per-deck review counter on undo.
@@ -1757,6 +2036,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 <LearnHeader
                   key="learn-header"
                   mode={mode}
+                  plannedRevision={plannedRevision}
+                  revisionSecondsRemaining={revisionSecondsRemaining}
+                  revisionWindowBudgetSeconds={revisionWindowBudgetSeconds}
+                  revisionNextWindowDay={revisionNextWindowDay}
                   singleDeck={singleDeck}
                   unitDisplayName={unitDisplayName}
                   sessionProgress={isSimpleMode ? simpleProgress : schedulerProgress}
@@ -2016,12 +2299,16 @@ function computeHeaderInfo({
   mode,
   filterParams,
   tagFilter,
+  plannedRevision,
+  revisionNextWindowDay,
 }: {
   singleDeck: StudyUnit | null;
   unitDisplayName: string | null;
   mode: LearnModeType;
   filterParams: CardFilter[];
   tagFilter: string | null;
+  plannedRevision: boolean;
+  revisionNextWindowDay?: string;
 }) {
   // unitDisplayName overrides the unit's own name for lesson scope, whose
   // scheduling unit is the parent Course rather than the lesson itself.
@@ -2039,8 +2326,14 @@ function computeHeaderInfo({
       };
     case 'cram':
       return {
-        title: singleDeck ? `${deckName} · Cram mode` : 'Cram mode · all decks',
-        subtitle: 'Weakest cards first',
+        title: plannedRevision
+          ? `${deckName} · Revision plan`
+          : singleDeck
+            ? `${deckName} · Cram mode`
+            : 'Cram mode · all decks',
+        subtitle: plannedRevision
+          ? `Ordinary Practice ordering${revisionNextWindowDay ? ` · Next ${revisionNextWindowDay}` : ''}`
+          : 'Weakest cards first',
       };
     case 'filtered-due':
       return {
@@ -2082,6 +2375,10 @@ function computeHeaderInfo({
 
 function LearnHeader({
   mode,
+  plannedRevision,
+  revisionSecondsRemaining,
+  revisionWindowBudgetSeconds,
+  revisionNextWindowDay,
   singleDeck,
   unitDisplayName,
   sessionProgress,
@@ -2109,6 +2406,10 @@ function LearnHeader({
   currentCardId,
 }: {
   mode: LearnModeType;
+  plannedRevision: boolean;
+  revisionSecondsRemaining: number;
+  revisionWindowBudgetSeconds: number;
+  revisionNextWindowDay?: string;
   singleDeck: StudyUnit | null;
   unitDisplayName: string | null;
   sessionProgress: number;
@@ -2135,8 +2436,21 @@ function LearnHeader({
   m: number;
   currentCardId: string | null;
 }) {
-  const info = computeHeaderInfo({ singleDeck, unitDisplayName, mode, filterParams, tagFilter });
-  const percentage = Math.round(Math.max(0, Math.min(1, sessionProgress)) * 100);
+  const info = computeHeaderInfo({
+    singleDeck,
+    unitDisplayName,
+    mode,
+    filterParams,
+    tagFilter,
+    plannedRevision,
+    revisionNextWindowDay,
+  });
+  const displayedProgress = plannedRevision
+    ? revisionWindowBudgetSeconds > 0
+      ? 1 - revisionSecondsRemaining / revisionWindowBudgetSeconds
+      : 0
+    : sessionProgress;
+  const percentage = Math.round(Math.max(0, Math.min(1, displayedProgress)) * 100);
   const progressName =
     mode === 'simple'
       ? 'Session progress'
@@ -2185,14 +2499,19 @@ function LearnHeader({
               currentCardId={currentCardId}
             />
           ) : (
-            <ObjectiveProgressTrack value={sessionProgress} />
+            <ObjectiveProgressTrack value={displayedProgress} />
           )}
         </div>
 
         <span className="hidden whitespace-nowrap text-sm tabular text-ink-soft sm:inline">
-          {percentage}%{mode === 'simple' ? '' : ` ${compactProgressNoun}`}
+          {plannedRevision
+            ? `${Math.max(0, Math.ceil(revisionSecondsRemaining / 60))} min left`
+            : `${percentage}%${mode === 'simple' ? '' : ` ${compactProgressNoun}`}`}
         </span>
-        <SessionProgressRing value={sessionProgress} label={progressName} />
+        <SessionProgressRing
+          value={displayedProgress}
+          label={plannedRevision ? 'Revision window time' : progressName}
+        />
 
         <div className="hidden min-[340px]:block">
           <PomodoroTimer />

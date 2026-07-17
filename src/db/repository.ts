@@ -2128,8 +2128,12 @@ export async function createOrResumeRevisionPlan(
         );
         if (existing) {
           const refreshed = applyRevisionPlanInput(existing, resolved, now);
-          if (refreshed !== existing) await db.revisionPlans.put(refreshed);
-          return refreshed;
+          const updated =
+            assessment.examDate <= now && refreshed.status !== 'completed'
+              ? { ...refreshed, status: 'completed' as const, updatedAt: now }
+              : refreshed;
+          if (updated !== existing) await db.revisionPlans.put(updated);
+          return updated;
         }
         if (assessment.examDate <= now) {
           throw new Error('A revision plan cannot be created after its assessment deadline.');
@@ -2186,8 +2190,16 @@ export async function refreshRevisionPlan(
       async () => {
         const plan = await db.revisionPlans.get(planId);
         if (!plan) throw new Error('The revision plan could not be found.');
-        const { resolved } = await resolveCurrentRevisionInput(plan.assessmentId, projection, now);
-        const updated = applyRevisionPlanInput(plan, resolved, now);
+        const { assessment, resolved } = await resolveCurrentRevisionInput(
+          plan.assessmentId,
+          projection,
+          now,
+        );
+        const refreshed = applyRevisionPlanInput(plan, resolved, now);
+        const updated =
+          assessment.examDate <= now && refreshed.status !== 'completed'
+            ? { ...refreshed, status: 'completed' as const, updatedAt: now }
+            : refreshed;
         if (updated !== plan) await db.revisionPlans.put(updated);
         return updated;
       },
@@ -2210,6 +2222,7 @@ export async function setRevisionDayBudget(
   return db.transaction('rw', db.revisionPlans, async () => {
     const plan = await db.revisionPlans.get(planId);
     if (!plan) throw new Error('The revision plan could not be found.');
+    if (plan.status === 'completed') throw new Error('A completed revision plan is read-only.');
     if (!revisionPlanDays(now, plan.input.deadlineAt, plan.input.timeZone).includes(day)) {
       throw new Error('The revision day must be between today and the assessment deadline.');
     }
@@ -2246,6 +2259,7 @@ export async function removeRevisionDay(
   return db.transaction('rw', db.revisionPlans, async () => {
     const plan = await db.revisionPlans.get(planId);
     if (!plan) throw new Error('The revision plan could not be found.');
+    if (plan.status === 'completed') throw new Error('A completed revision plan is read-only.');
     const window = plan.windows.find((candidate) => candidate.day === day);
     if (!window) return plan;
     if (window.status !== 'scheduled') {
@@ -2270,10 +2284,14 @@ export async function startRevisionWindow(
   return db.transaction('rw', db.revisionPlans, async () => {
     const plan = await db.revisionPlans.get(planId);
     if (!plan) throw new Error('The revision plan could not be found.');
+    if (plan.status === 'completed' || startedAt >= plan.input.deadlineAt) {
+      throw new Error('A completed revision plan is read-only.');
+    }
     const target = plan.windows.find((window) => window.id === windowId);
     if (!target) throw new Error('The revision window could not be found.');
     if (target.status === 'active') return plan;
-    if (target.status === 'completed') throw new Error('A completed revision window cannot restart.');
+    if (target.status === 'completed')
+      throw new Error('A completed revision window cannot restart.');
     if (plan.windows.some((window) => window.status === 'active')) {
       throw new Error('Another revision window is already active.');
     }

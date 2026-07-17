@@ -66,12 +66,31 @@ export function StudyStepTransition({
           </p>
         )}
 
+        {summary.revision && (
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <RevisionFact label="Covered" value={summary.revision.cardsCovered} />
+            <RevisionFact label="Improved" value={summary.revision.cardsImproved} />
+            <RevisionFact label="Parked" value={summary.revision.cardsParked} />
+            <RevisionFact label="Not reached" value={summary.revision.workNotReached} />
+          </div>
+        )}
+
+        {summary.revision?.replanExplanation && (
+          <p className="mt-4 text-sm text-ink-soft">
+            Plan updated because {summary.revision.replanExplanation}.
+          </p>
+        )}
+
         <div className="mt-10 border-t border-line pt-7">
           <p className="mb-2 text-xs uppercase tracking-[0.16em] text-ink-faint">
             {incomplete ? 'Resume when ready' : nextLabel ? 'Up next' : 'Course status'}
           </p>
           <p className="font-display text-2xl">
-            {incomplete ? completedLabel : (nextLabel ?? 'Nothing else is ready right now')}
+            {summary.revision?.nextWindowDay
+              ? `Next revision window: ${summary.revision.nextWindowDay}`
+              : incomplete
+                ? completedLabel
+                : (nextLabel ?? 'Nothing else is ready right now')}
           </p>
 
           <div className="mt-7 flex flex-wrap gap-3">
@@ -106,6 +125,15 @@ export function StudyStepTransition({
           </div>
         </div>
       </motion.main>
+    </div>
+  );
+}
+
+function RevisionFact({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-line bg-surface px-4 py-3">
+      <p className="font-display text-2xl tabular">{value}</p>
+      <p className="mt-1 text-xs uppercase tracking-wide text-ink-faint">{label}</p>
     </div>
   );
 }

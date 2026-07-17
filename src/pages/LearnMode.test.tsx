@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { LearnMode, LearnSkeleton } from './LearnMode';
@@ -12,6 +12,7 @@ import {
   createLesson,
   createLessonCard,
   createPracticeNode,
+  createOrResumeRevisionPlan,
   linkCardToLesson,
   upsertLessonCardExposure,
 } from '../db/repository';
@@ -72,6 +73,7 @@ describe('LearnMode course/lesson scope', () => {
       db.practiceNodes.clear(),
       db.practiceMilestones.clear(),
       db.courseAssessments.clear(),
+      db.revisionPlans.clear(),
       db.noteAnnotations.clear(),
     ]);
     localStorage.clear();
@@ -489,6 +491,140 @@ describe('LearnMode course/lesson scope', () => {
         }),
       ]);
     });
+  });
+
+  it('runs a persisted assessment window through the existing player with provenance and a factual summary', async () => {
+    const course = await createCourse('Geography');
+    const lesson = await createLesson(course.id, 'Rivers');
+    const card = await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'What is erosion?',
+      'Wear',
+    );
+    await upsertLessonCardExposure(lesson.id, card.id);
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Physical geography',
+      Date.now() + 86_400_000,
+      { afterLessonId: lesson.id, coverageMode: 'prefix' },
+    );
+    const plan = await createOrResumeRevisionPlan(assessment.id, 20, {
+      projectionMode: 'fsrs-6-practice-fallback',
+      memoryModelVersion: 'fsrs-6',
+      fallbackReason: 'missing',
+    });
+    const onStepFinished = vi.fn();
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter>
+            <LearnMode
+              sessionId="revision-session-1"
+              request={{
+                kind: 'practice',
+                courseId: course.id,
+                mode: 'assessment',
+                assessmentId: assessment.id,
+                planId: plan.id,
+                windowId: plan.windows[0].id,
+              }}
+              onStepFinished={onStepFinished}
+            />
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText(/Ordinary Practice ordering/)).toBeInTheDocument();
+    expect(await screen.findByText(/What is erosion/)).toBeInTheDocument();
+    await answerYes();
+
+    await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
+    expect(onStepFinished.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        reachedGoal: true,
+        revision: expect.objectContaining({
+          cardsCovered: 1,
+          cardsImproved: 1,
+          workNotReached: 0,
+        }),
+      }),
+    );
+    const reviewed = await db.cards.get(card.id);
+    expect(reviewed?.history).toHaveLength(1);
+    expect(reviewed?.history[0]).toEqual(
+      expect.objectContaining({
+        sessionId: 'revision-session-1',
+        revisionPlanId: plan.id,
+        revisionWindowId: plan.windows[0].id,
+      }),
+    );
+    const storedPlan = await db.revisionPlans.get(plan.id);
+    expect(storedPlan?.completedSessions[0]).toEqual(
+      expect.objectContaining({
+        cardIds: [card.id],
+        improvedCardIds: [card.id],
+        reviewEventIds: [reviewed?.history[0].eventId],
+      }),
+    );
+    expect(await db.practiceMilestones.count()).toBe(0);
+  });
+
+  it('parks a failed card when its productive FSRS retry falls outside the active window', async () => {
+    const course = await createCourse('French');
+    const lesson = await createLesson(course.id, 'Vocabulary');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'bonjour', 'hello');
+    await upsertLessonCardExposure(lesson.id, card.id);
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Speaking',
+      Date.now() + 86_400_000,
+      {
+        afterLessonId: lesson.id,
+        coverageMode: 'prefix',
+      },
+    );
+    const plan = await createOrResumeRevisionPlan(assessment.id, 0.1, {
+      projectionMode: 'fsrs-6-practice-fallback',
+      memoryModelVersion: 'fsrs-6',
+      fallbackReason: 'missing',
+    });
+    const onStepFinished = vi.fn();
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter>
+            <LearnMode
+              request={{
+                kind: 'practice',
+                courseId: course.id,
+                mode: 'assessment',
+                assessmentId: assessment.id,
+                planId: plan.id,
+                windowId: plan.windows[0].id,
+              }}
+              onStepFinished={onStepFinished}
+            />
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
+    fireEvent.click(revealCandidates.find((element) => element.tagName === 'BUTTON')!);
+    expect(await screen.findByText('hello')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^no$/i }));
+
+    await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
+    expect(onStepFinished.mock.calls[0][0].revision).toEqual(
+      expect.objectContaining({ cardsCovered: 1, cardsImproved: 0, cardsParked: 1 }),
+    );
+    expect((await db.revisionPlans.get(plan.id))?.completedSessions[0].parkedCardIds).toEqual([
+      card.id,
+    ]);
   });
 
   it('starts in Focus Mode from the persisted preference and Esc leaves it for this session', async () => {

@@ -40,6 +40,20 @@ vi.mock('../components/learn/PomodoroTimer', () => ({
   PomodoroTimer: () => <div data-testid="pomodoro" />,
 }));
 
+vi.mock('../components/learn/RevisionPlanSetup', () => ({
+  RevisionPlanSetup: ({
+    assessmentId,
+    onStart,
+  }: {
+    assessmentId: string;
+    onStart: (planId: string, windowId: string) => void;
+  }) => (
+    <button type="button" onClick={() => onStart('plan-1', 'window-1')}>
+      Plan {assessmentId}
+    </button>
+  ),
+}));
+
 vi.mock('./LearnMode', () => ({
   LearnMode: ({
     request,
@@ -256,12 +270,15 @@ describe('CourseStudyFlow', () => {
     mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
     renderFlow('/course/course-1/study?assessmentId=paper-1');
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Plan paper-1' }));
     await screen.findByTestId('learn-request');
     expect(request()).toEqual({
       kind: 'practice',
       courseId: 'course-1',
       mode: 'assessment',
       assessmentId: 'paper-1',
+      planId: 'plan-1',
+      windowId: 'window-1',
     });
   });
 
@@ -306,12 +323,15 @@ describe('CourseStudyFlow', () => {
     renderFlow();
 
     fireEvent.click(await screen.findByRole('button', { name: /Revise for Paper 1/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Plan paper-1' }));
     await waitFor(() =>
       expect(request()).toEqual({
         kind: 'practice',
         courseId: 'course-1',
         mode: 'assessment',
         assessmentId: 'paper-1',
+        planId: 'plan-1',
+        windowId: 'window-1',
       }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
