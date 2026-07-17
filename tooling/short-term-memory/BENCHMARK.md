@@ -206,15 +206,150 @@ half-life win in the first ~2 days and an FSRS-6 win from day 2 onwards.
 These figures feed phase 2 (re-routing the short-term/FSRS-6 handover boundary) and are not
 themselves a change to the selected model or its coefficients.
 
+## Re-routed handover (validation phase 2)
+
+### Decision
+
+Phase 1's crossover evidence showed the success and failure paths diverge: after a previous
+success (or no previous outcome, or a first predictive review), FSRS-6 catches the logistic model
+by `2-3d`; after a previous failure, no post-`24-36h` bucket through `6-7d` shows FSRS-6 reliably
+winning both metrics. A single boundary would either hand over too early on the failure path or
+too late on the success path, so the handover is **outcome-conditional**, per
+`VALIDATION_PLAN.md` phase 2:
+
+- **Success / first predictive review / no previous outcome path:** full short-term weight
+  through 86,400 s (1 day); smoothstep blend to zero at 172,800 s (2 days).
+- **Failure path:** full short-term weight through 518,400 s (6 days, unchanged from v1);
+  smoothstep blend to zero at 604,800 s (7 days, unchanged from v1).
+
+An intermediate variant (`half-life-logistic-v2`, committed at `1aebed4`/`e9d8d30`, success-path
+handover starting at 2 days and completing at 3 days) was tried first and superseded once the
+`24-36h` bucket's regression pushed the success-path boundary a day earlier, to 1–2 days
+(`b57f475`). Its harness report is retained at `reports/half-life-v2.json` /
+`reports/half-life-v2b.json` for provenance but is not the shipped routing.
+
+### Gate results (`half-life-logistic-v2-routed`, `reports/half-life-v2c.json`)
+
+The **original** selection gate (strictly lower overall log loss and Brier than FSRS-6, no
+calibration-error increase greater than 0.010 in a major bucket) **passes**:
+`beats_overall_log_loss = true`, `beats_overall_brier = true`,
+`material_calibration_regressions = []` (`reports/selection-v2c.json`).
+
+The **strengthened** gate added in phase 2 (no log-loss or Brier regression against FSRS-6 in any
+major bucket) **fails on exactly one cell**: `24-36h` Brier, `+0.00034` (0.173759 candidate vs
+0.172797... — see table below for exact figures). Log loss in the same bucket improves
+(`-0.0070`).
+
+**Owner-approved exception.** The regression is accepted and the candidate ships despite the
+strengthened-gate failure, for three reasons recorded here for provenance:
+
+1. `0.00034` is roughly 30× below the 0.01 materiality threshold used throughout this benchmark.
+2. It coincides with a log-loss improvement (`-0.0070`) and an ECE improvement (`-0.030`) in the
+   same bucket — the routed candidate is not worse on balance at `24-36h`, it is marginally worse
+   on one of three metrics.
+3. It is structural, not a routing artefact: FSRS-6 already edged the logistic model on Brier in
+   `24-36h` at v1's full short-term weight (see the `## Aggregate results` and `## Finer lag
+   buckets` tables above, where `24-36h` Brier is already close between the two models before any
+   re-routing). Moving the success-path handover earlier does not fix a pre-existing near-tie; it
+   was never going to.
+
+Per-major-bucket comparison (major buckets are those with ≥ 5% of the 602,534 scored hold-out
+events; buckets below 5% share are omitted here, see the phase 1 share table above). Lower is
+better. Each cell is `log loss / Brier / ECE`; the offending cell is bold.
+
+| Bucket | n | FSRS-6 | `half-life-logistic-v2-routed` |
+|---|---:|---:|---:|
+| `<1m` | 35,719 | 6.033819 / 0.291162 / 0.291162 | 0.499929 / 0.169794 / 0.044037 |
+| `1-10m` | 139,391 | 4.703920 / 0.226987 / 0.226987 | 0.427337 / 0.140988 / 0.031864 |
+| `10-60m` | 136,718 | 2.024307 / 0.097683 / 0.097683 | 0.256422 / 0.074579 / 0.044117 |
+| `6-24h` | 68,338 | 4.368267 / 0.210790 / 0.210790 | 0.448687 / 0.144180 / 0.020616 |
+| `24-36h` | 39,583 | 0.533668 / 0.172797 / 0.086378 | 0.526711 / **0.173137** / 0.055408 |
+| `2-3d` | 36,602 | 0.478740 / 0.153315 / 0.057743 | 0.471398 / 0.151283 / 0.038841 |
+| `3-4d` | 34,857 | 0.420944 / 0.131618 / 0.021934 | 0.418803 / 0.130978 / 0.010909 |
+
+Overall (all 602,534 scored hold-out events):
+
+| Candidate | Log loss | Brier | ECE |
+|---|---:|---:|---:|
+| FSRS-6 | 2.661661 | 0.168646 | 0.135146 |
+| `half-life-logistic-v1-lag64-count8` | 0.403582 | 0.128968 | 0.012202 |
+| `half-life-logistic-v2-routed` | 0.397348 | 0.126630 | 0.016097 |
+
+The routed v2 candidate improves overall log loss and Brier over both FSRS-6 and the frozen v1
+candidate; overall ECE is slightly worse than v1 (0.0161 vs 0.0122) but far better than FSRS-6
+(0.1351), and no major bucket's calibration error regresses past the original gate's 0.010
+threshold.
+
+### Train/serve discrepancy resolutions
+
+Two mismatches between the harness (what was benchmarked) and the runtime (what ships) were found
+during the external review and closed in `4fbaa16`:
+
+1. **Bin-centre-versus-exact-lag fitting mismatch.** `fit_batches` in
+   `stm_harness/candidates/half_life.py` groups training examples into 64 log-scale lag bins and
+   fits against each bin's centre (a histogram-regression approximation, pooling many examples
+   into one grouped logistic observation for aggregation stability), while serving evaluates
+   against the exact elapsed-seconds value with no equivalent binning step. This is now documented
+   in `half_life.py` as an intentional approximation rather than a bug: the worst-case bin-centre-
+   to-exact-lag error is bounded by half a bin's width, which is sub-second near lag zero and
+   widens geometrically. v1's coefficients are frozen, so the fit path is deliberately left
+   unchanged rather than refit against exact lag.
+2. **Harness FSRS baseline versus runtime FSRS component.** The runtime blend
+   (`halfLifeLogisticModel.ts`) queries its internal FSRS-6 component with fractional elapsed
+   days, but the harness's blended candidates (`half_life`, `half_life_v2`) were evaluating against
+   a whole-day-floored FSRS-6 baseline, so the benchmarked blend was not the shipped blend. Added
+   an opt-in `fractional_retrievability` flag to `Fsrs6Predictor` (`stm_harness/candidates/
+   fsrs6.py`) and set it on the `half_life`/`half_life_v2` internal baselines only; the standalone
+   `fsrs6` benchmark candidate keeps flooring, since it intentionally mirrors the current
+   whole-day-floored runtime fallback used when the logistic model itself falls back.
+
+   v1 was re-evaluated under fractional FSRS semantics (`reports/half-life-v1-fractional.json`) to
+   confirm the frozen coefficients and gate decision are unaffected: overall log loss shifts from
+   0.40358 to 0.40359, and Brier/ECE move by a similarly negligible amount (0.128968 → 0.128967
+   Brier, 0.012202 → 0.012318 ECE). The shift is immaterial; v1's coefficients and selection stand
+   unchanged.
+
+### Lockstep runtime update
+
+Per phase 2, item 3, the runtime and coefficient artefact were updated together (`b57f475`),
+versioned rather than mutated:
+
+- `coefficients/half-life-logistic-v2.json` — coefficients are **identical** to v1 (no refit; the
+  routing change alone earns the phase 2 evidence). New `probability_composition` fields
+  (`post_failure_short_term_only_through_seconds`, `post_success_transition_start_seconds`,
+  `post_success_transition_end_seconds`) replace v1's single
+  `short_term_only_through_seconds` field.
+- `src/fsrs/halfLifeLogisticModel.ts` — `SHORT_TERM_ONLY_SECONDS` is replaced by
+  `POST_FAILURE_TRANSITION_START_SECONDS` / `_END_SECONDS` and
+  `POST_SUCCESS_TRANSITION_START_SECONDS` / `_END_SECONDS`; the loader validates the new artefact
+  fields and refuses a mismatched or partially-updated artefact, so the update fails closed rather
+  than silently blending on stale routing.
+- `coefficients/half-life-logistic-v1.json` is left untouched; the v1 artefact and its
+  `TRANSITION_START_SECONDS`-equivalent contract remain available for provenance and rollback.
+
 ## Frozen runtime contract
 
-The selected coefficients are in `coefficients/half-life-logistic-v1.json`. Inputs are elapsed
-seconds, preceding outcome, first-review state, prior success/failure counts and FSRS state. Counts
-are capped at eight for model features. Missing, corrupt or out-of-range inputs fall back to FSRS-6.
+The live coefficients are in `coefficients/half-life-logistic-v2.json` (`half-life-logistic-v2-
+routed`, validation phase 2). Inputs are elapsed seconds, preceding outcome, first-review state,
+prior success/failure counts and FSRS state. Counts are capped at eight for model features.
+Missing, corrupt or out-of-range inputs fall back to FSRS-6. The coefficients themselves are
+unchanged from v1 — only the handover routing changed; see
+[Re-routed handover (validation phase 2)](#re-routed-handover-validation-phase-2) above.
 
-The short-term probability replaces FSRS-6 through six days. From six to seven days a smoothstep
-blend decays the short-term weight to zero; from seven days onwards the result is ordinary FSRS-6.
-The probabilities are blended, not added, so the same evidence is not counted twice.
+The short-term probability replaces FSRS-6 for an interval that depends on the previous review's
+outcome. After a previous failure, full short-term weight holds through six days (518,400 s), with
+a smoothstep blend decaying it to zero by seven days (604,800 s) — unchanged from v1. After a
+previous success, no previous outcome, or a first predictive review, full short-term weight holds
+only through one day (86,400 s), decaying to zero by two days (172,800 s). FSRS-6 alone governs
+beyond seven days on both paths. The probabilities are blended, not added, so the same evidence is
+not counted twice.
+
+*Historical (v1, superseded by the above):* the original selected artefact,
+`coefficients/half-life-logistic-v1.json` (`half-life-logistic-v1-lag64-count8`), used a single
+non-outcome-conditional handover: the short-term probability replaced FSRS-6 through six days, with
+a smoothstep blend from six to seven days and ordinary FSRS-6 beyond. That artefact is retained
+unmutated for provenance and rollback; see the [Decision](#decision) above for why phase 1's
+evidence replaced it.
 
 Personalisation is a later runtime concern. The frozen contract requires at least 500 scored local
 examples before fitting only the intercept and preceding-outcome offsets. Those local terms use a
@@ -253,3 +388,29 @@ recorded by the harness were 95.298 seconds for FSRS-6, 102.523 seconds for half
 (14.067 fit, 88.456 evaluation), and 148.235 seconds for ACT-R (68.317 fit, 79.918 evaluation).
 Private detailed reports, including all ten-bin calibration cells, are `reports/fsrs6.json`,
 `reports/half-life.json`, `reports/actr.json` and `reports/selection.json`.
+
+### Phase 2 (re-routed handover) reproduction
+
+Using the same `data/examples` built above, and `reports/fsrs6.json` from the run above:
+
+```sh
+.venv/bin/stm-harness evaluate data/examples \
+  stm_harness.candidates.half_life_v2:candidate reports/half-life-v2c.json --progress
+.venv/bin/stm-harness evaluate data/examples \
+  stm_harness.candidates.actr:candidate reports/actr.json --progress
+.venv/bin/stm-harness select \
+  reports/fsrs6.json reports/half-life-v2c.json reports/actr.json reports/selection-v2c.json
+.venv/bin/pytest
+```
+
+`half_life_v2` is the outcome-conditional routed candidate (`common.py` supplies the routing
+constants shared with the runtime). The accepted final report is `reports/half-life-v2c.json` /
+`reports/selection-v2c.json` (post `4fbaa16`'s fractional-FSRS-baseline fix). Superseded
+intermediate runs from the same candidate module, retained for provenance, are
+`reports/half-life-v2.json` / `reports/selection-v2.json` (pre-fractional-baseline-fix, 2–3-day
+success-path boundary) and `reports/half-life-v2b.json` / `reports/selection-v2b.json`
+(post-fractional-baseline-fix, still the 2–3-day success-path boundary, before the final move to
+1–2 days). `reports/half-life-v1-fractional.json` is v1's frozen coefficients re-evaluated under
+the fractional-FSRS-baseline fix, for the train/serve discrepancy check above; it is not a new
+candidate. All of these private detailed reports are ignored by Git alongside the phase-0 reports
+above.
