@@ -20,3 +20,4 @@ electron/dist-electron/
 !.dev.vars.example
 .env*
 !.env.example
+!.agent-mail/bin/
