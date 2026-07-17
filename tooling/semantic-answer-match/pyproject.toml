@@ -1,0 +1,29 @@
+[project]
+name = "lacuna-semantic-answer-match"
+version = "0.1.0"
+description = "Exploratory offline harness for a local semantic typed-answer matching prototype (see next_plan.md Appendix A.1). Not a shipped Lacuna feature."
+requires-python = ">=3.12"
+dependencies = [
+  "joblib>=1.4,<2",
+  "numpy>=2,<3",
+  "scikit-learn>=1.5,<2",
+  "sentence-transformers>=3,<6",
+]
+
+[project.scripts]
+match-harness = "match_harness.cli:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8,<10",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["match_harness"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
