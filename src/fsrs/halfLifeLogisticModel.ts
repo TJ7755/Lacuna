@@ -1,4 +1,4 @@
-import frozenCoefficients from '../../tooling/short-term-memory/coefficients/half-life-logistic-v1.json';
+import frozenCoefficients from '../../tooling/short-term-memory/coefficients/half-life-logistic-v2.json';
 import type { Card, ReviewLog, RevisionProjection } from '../db/types';
 import type {
   CramMemoryModel,
@@ -9,7 +9,7 @@ import type {
 import { forgettingCurve } from './forwardSim';
 import { MS_PER_DAY } from './params';
 
-const MODEL_NAME = 'half-life-logistic-v1-lag64-count8';
+const MODEL_NAME = 'half-life-logistic-v2-routed';
 const FEATURE_NAMES = [
   'intercept',
   'log_elapsed_seconds',
@@ -23,8 +23,15 @@ const FEATURE_NAMES = [
   'state_relearning',
 ] as const;
 const COUNT_CAP = 8;
-const SHORT_TERM_ONLY_SECONDS = 518_400;
 const FSRS_ONLY_SECONDS = 604_800;
+// Outcome-conditional handover (VALIDATION_PLAN.md phase 2). After a previous failure, full
+// short-term weight holds through 518,400 s (6 days) and decays to 0 at 604,800 s (7 days),
+// matching v1. After a previous success, no previous outcome, or a first predictive review,
+// weight decays much sooner: full through 86,400 s (1 day), 0 at 172,800 s (2 days).
+const POST_FAILURE_TRANSITION_START_SECONDS = 518_400;
+const POST_FAILURE_TRANSITION_END_SECONDS = FSRS_ONLY_SECONDS;
+const POST_SUCCESS_TRANSITION_START_SECONDS = 86_400;
+const POST_SUCCESS_TRANSITION_END_SECONDS = 172_800;
 const LOCAL_FIT_MINIMUM = 500;
 const LOCAL_FIT_PRIOR = 1_000;
 const PROBABILITY_EPSILON = 1e-9;
@@ -99,8 +106,11 @@ export function loadHalfLifeLogisticCoefficients(raw: unknown): HalfLifeLogistic
     !exactArray(stateRange, [0, 1, 2, 3]) ||
     supported?.previous_recalled !== 'required boolean' ||
     supported?.prior_counts !== 'non-negative; each count is capped at 8 for the model feature' ||
-    composition?.short_term_only_through_seconds !== SHORT_TERM_ONLY_SECONDS ||
     composition?.fsrs_only_from_seconds !== FSRS_ONLY_SECONDS ||
+    composition?.post_failure_short_term_only_through_seconds !==
+      POST_FAILURE_TRANSITION_START_SECONDS ||
+    composition?.post_success_transition_start_seconds !== POST_SUCCESS_TRANSITION_START_SECONDS ||
+    composition?.post_success_transition_end_seconds !== POST_SUCCESS_TRANSITION_END_SECONDS ||
     fallback?.lag_above_seconds !== FSRS_ONLY_SECONDS ||
     fallback?.model !== 'FSRS-6' ||
     personalisation?.global_only_below_local_examples !== LOCAL_FIT_MINIMUM ||
@@ -197,13 +207,38 @@ function prediction(probability: number): RecallPrediction {
   };
 }
 
-function shortTermWeight(elapsedSeconds: number): number {
-  if (elapsedSeconds <= SHORT_TERM_ONLY_SECONDS) return 1;
-  if (elapsedSeconds >= FSRS_ONLY_SECONDS) return 0;
-  const position =
-    (elapsedSeconds - SHORT_TERM_ONLY_SECONDS) / (FSRS_ONLY_SECONDS - SHORT_TERM_ONLY_SECONDS);
+function smoothstepWeight(elapsedSeconds: number, start: number, end: number): number {
+  if (elapsedSeconds <= start) return 1;
+  if (elapsedSeconds >= end) return 0;
+  const position = (elapsedSeconds - start) / (end - start);
   const smoothstep = position * position * (3 - 2 * position);
   return 1 - smoothstep;
+}
+
+/**
+ * Outcome-conditional short-term weight; mirrors `routed_short_term_weight` in
+ * `tooling/short-term-memory/stm_harness/candidates/common.py` exactly. `previousRecalled` is
+ * `null` when there is no previous review at all. A first predictive review is routed onto the
+ * success/no-outcome path unconditionally, even though its seed review's outcome technically
+ * exists — see the routing rationale in `common.py`.
+ */
+function shortTermWeight(
+  elapsedSeconds: number,
+  previousRecalled: boolean | null,
+  isFirstPredictiveReview: boolean,
+): number {
+  if (previousRecalled === false && !isFirstPredictiveReview) {
+    return smoothstepWeight(
+      elapsedSeconds,
+      POST_FAILURE_TRANSITION_START_SECONDS,
+      POST_FAILURE_TRANSITION_END_SECONDS,
+    );
+  }
+  return smoothstepWeight(
+    elapsedSeconds,
+    POST_SUCCESS_TRANSITION_START_SECONDS,
+    POST_SUCCESS_TRANSITION_END_SECONDS,
+  );
 }
 
 function personalisedValues(
@@ -242,8 +277,10 @@ function predict(
 ): RecallPrediction {
   const history = input.card.history;
   const latest = lastReview(input.card);
-  const previous = input.extraOutcome ?? (latest ? outcome(latest) : false);
+  const previousRecalled = input.extraOutcome ?? (latest ? outcome(latest) : null);
+  const previous = previousRecalled ?? false;
   const reviewCount = history.length + (input.extraOutcome === undefined ? 0 : 1);
+  const isFirstPredictiveReview = reviewCount === 1;
   const successes = history.filter(outcome).length + (input.extraOutcome === true ? 1 : 0);
   const failures = reviewCount - successes;
   const lastReviewed = input.lastReviewed ?? input.card.lastReviewed;
@@ -257,7 +294,7 @@ function predict(
     scaledElapsed,
     Number(previous),
     Number(!previous),
-    Number(reviewCount === 1),
+    Number(isFirstPredictiveReview),
     Math.log1p(Math.min(successes, COUNT_CAP)) / Math.log1p(COUNT_CAP),
     Math.log1p(Math.min(failures, COUNT_CAP)) / Math.log1p(COUNT_CAP),
     Number(state === 1),
@@ -268,7 +305,7 @@ function predict(
     coefficients.reduce((total, coefficient, index) => total + coefficient * features[index], 0),
   );
   const fsrs = forgettingCurve(elapsedSeconds / (MS_PER_DAY / 1_000), stability ?? 0, decay);
-  const weight = shortTermWeight(elapsedSeconds);
+  const weight = shortTermWeight(elapsedSeconds, previousRecalled, isFirstPredictiveReview);
   return prediction(weight * shortTerm + (1 - weight) * fsrs);
 }
 

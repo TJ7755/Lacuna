@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import frozenCoefficients from '../../tooling/short-term-memory/coefficients/half-life-logistic-v1.json';
+import frozenCoefficients from '../../tooling/short-term-memory/coefficients/half-life-logistic-v2.json';
+import v1Coefficients from '../../tooling/short-term-memory/coefficients/half-life-logistic-v1.json';
 import { revisionReplanReasons } from '../course/revisionPlan';
 import type { Card, RevisionPlanInputSnapshot } from '../db/types';
 import {
@@ -47,15 +48,20 @@ function card(partial: Partial<Card> = {}): Card {
   };
 }
 
-describe('half-life-logistic-v1 runtime', () => {
+describe('half-life-logistic-v2 runtime', () => {
   it('matches offline reference values and blends smoothly into ordinary FSRS', () => {
     const model = createHalfLifeLogisticModel(-0.5);
     expect(model).toBeDefined();
     if (!model) return;
 
+    // First predictive review (reviewCount === 1) is routed onto the success/no-outcome
+    // path regardless of the seed review's outcome, so this stays within the short-term-only
+    // window (<= 86,400 s) exactly as it did under v1's single boundary.
     expect(
       model.predictRecall({ card: card(), at: REVIEWED_AT + 3_600_000 }).probability,
     ).toBeCloseTo(0.9148754014047971, 12);
+    // simulateOutcome supplies a genuine previous outcome (failure) for a non-first review,
+    // so this is routed onto the post-failure path; still short-term-only at 3,600 s.
     expect(
       model.simulateOutcome({
         card: card(),
@@ -68,9 +74,11 @@ describe('half-life-logistic-v1 runtime', () => {
       }).probability,
     ).toBeCloseTo(0.7652395806630387, 12);
 
+    // Six and a half days is still a first predictive review (reviewCount === 1), so it is
+    // routed onto the success path, where the transition ends at 172,800 s: this is pure FSRS.
     const sixAndHalfDays = REVIEWED_AT + 561_600_000;
     expect(model.predictRecall({ card: card(), at: sixAndHalfDays }).probability).toBeCloseTo(
-      0.8519156674477582,
+      forgettingCurve(6.5, 3, -0.5),
       12,
     );
     expect(
@@ -104,6 +112,129 @@ describe('half-life-logistic-v1 runtime', () => {
       projectionMode: 'fsrs-6-practice-fallback',
       fallbackReason: 'unsupported',
     });
+  });
+
+  it('rejects a v1-shaped probability_composition (missing routed fields)', () => {
+    // v1's artefact also carries the old `candidate` name, so it is rejected earlier
+    // (corrupt) than the composition check; force past that to exercise the composition
+    // validation specifically.
+    const v1WithV2Name = { ...structuredClone(v1Coefficients), candidate: 'half-life-logistic-v2-routed' };
+    expect(loadHalfLifeLogisticCoefficients(v1WithV2Name)).toEqual({
+      valid: false,
+      reason: 'unsupported',
+    });
+  });
+
+  it('routes the short-term weight by previous outcome at the boundary seconds', () => {
+    const model = createHalfLifeLogisticModel(-0.5);
+    expect(model).toBeDefined();
+    if (!model) return;
+
+    // Post-failure path: a second review (not first predictive) after a previous failure.
+    const failureHistory = card({
+      history: [
+        {
+          timestamp: REVIEWED_AT,
+          grade: 1,
+          correct: false,
+          responseTimeSec: 4,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 3,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+        {
+          timestamp: REVIEWED_AT - 1,
+          grade: 1,
+          correct: false,
+          responseTimeSec: 4,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 3,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    });
+    const postFailureAtBoundary = model.predictRecall({
+      card: failureHistory,
+      at: REVIEWED_AT + 518_400_000,
+    }).probability;
+    const postFailureJustPast = model.predictRecall({
+      card: failureHistory,
+      at: REVIEWED_AT + 518_401_000,
+    }).probability;
+    expect(postFailureAtBoundary).toBeGreaterThan(postFailureJustPast);
+    expect(
+      model.predictRecall({ card: failureHistory, at: REVIEWED_AT + 604_800_000 }).probability,
+    ).toBeCloseTo(forgettingCurve(7, 3, -0.5), 12);
+
+    // Post-success path: a second review (not first predictive) after a previous success.
+    const successHistory = card({
+      history: [
+        {
+          timestamp: REVIEWED_AT,
+          grade: 3,
+          correct: true,
+          responseTimeSec: 4,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 3,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+        {
+          timestamp: REVIEWED_AT - 1,
+          grade: 3,
+          correct: true,
+          responseTimeSec: 4,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 3,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    });
+    const postSuccessAtBoundary = model.predictRecall({
+      card: successHistory,
+      at: REVIEWED_AT + 86_400_000,
+    }).probability;
+    const postSuccessJustPast = model.predictRecall({
+      card: successHistory,
+      at: REVIEWED_AT + 86_401_000,
+    }).probability;
+    expect(postSuccessAtBoundary).toBeGreaterThan(postSuccessJustPast);
+    expect(
+      model.predictRecall({ card: successHistory, at: REVIEWED_AT + 172_800_000 }).probability,
+    ).toBeCloseTo(forgettingCurve(2, 3, -0.5), 12);
+
+    // No previous outcome at all (empty history is otherwise invalid; simulate via a fresh
+    // extraOutcome-less first review) is routed onto the success/no-outcome path too.
+    const firstReview = card({
+      history: [
+        {
+          timestamp: REVIEWED_AT,
+          grade: 3,
+          correct: true,
+          responseTimeSec: 4,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 3,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    });
+    expect(
+      model.predictRecall({ card: firstReview, at: REVIEWED_AT + 172_800_000 }).probability,
+    ).toBeCloseTo(forgettingCurve(2, 3, -0.5), 12);
   });
 
   it('uses the global fit below 500 examples and exact shrinkage at the threshold', () => {
