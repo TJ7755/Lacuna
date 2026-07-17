@@ -17,6 +17,7 @@ import type {
   PracticeMilestone,
   PracticeNode,
 } from '../db/types';
+import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { MS_PER_DAY } from '../fsrs/params';
 import { shouldInsertPractice } from '../fsrs/practice';
 import { practiceNodeKey } from './studyPools';
@@ -368,9 +369,6 @@ export function buildPath(
     progress.lessonCompletions.map((completion) => completion.lessonId),
   );
 
-  // Map lessonId → orderIndex for fast checkpoint-placement lookups.
-  const orderByLessonId = new Map<string, number>(sorted.map((l) => [l.id, l.orderIndex]));
-
   // Build lesson nodes in path order.
   const lessonNodes: LessonPathNode[] = sorted.map((lesson) => {
     const unlocked = isLessonUnlockedWithFirstCore(
@@ -408,34 +406,15 @@ export function buildPath(
 
   const checkpointPlacements: Placement[] = assessments
     .filter((assessment) => assessment.kind === 'checkpoint')
-    .map((ed) => {
-      // Task 1 compatibility: preserve the old coverage-derived display position.
-      // The pure placement resolver in Arc 3 Task 2 will switch this consumer to
-      // the independently persisted afterLessonId and handle stale anchors.
-      // Default: after the last lesson.
-      let afterIndex = lessonNodes.length - 1;
-
-      if (ed.lessonIds && ed.lessonIds.length > 0) {
-        // Find the lesson with the highest orderIndex among the scoped lesson ids.
-        let maxOrder = -Infinity;
-        for (const lid of ed.lessonIds) {
-          const order = orderByLessonId.get(lid);
-          if (order !== undefined && order > maxOrder) maxOrder = order;
-        }
-        if (isFinite(maxOrder)) {
-          const idx = lessonNodes.findIndex((n) => n.lesson.orderIndex === maxOrder);
-          if (idx >= 0) afterIndex = idx;
-        }
-      }
-
-      const afterLesson = lessonNodes[afterIndex];
+    .map((assessment) => {
+      const afterIndex = resolveAssessmentCoverage(assessment, sorted, [], []).placementIndex;
       return {
         afterIndex,
         node: {
-          id: ed.id,
+          id: assessment.id,
           nodeType: 'checkpoint',
-          examDate: ed,
-          afterLessonId: afterLesson?.lesson.id ?? null,
+          examDate: assessment,
+          afterLessonId: afterIndex >= 0 ? sorted[afterIndex].id : null,
         },
       };
     });

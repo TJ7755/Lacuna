@@ -162,10 +162,9 @@ describe('createCourse', () => {
   it('rejects compatibility date fields at the course repository boundary', async () => {
     const course = await createCourse('Biology');
     await expect(
-      updateCourse(
-        course.id,
-        { examDate: course.examDate + 1 } as Parameters<typeof updateCourse>[1],
-      ),
+      updateCourse(course.id, { examDate: course.examDate + 1 } as Parameters<
+        typeof updateCourse
+      >[1]),
     ).rejects.toThrow('derived, read-only assessment values');
     expect(await db.courses.get(course.id)).not.toHaveProperty('examDate');
   });
@@ -484,6 +483,68 @@ describe('deleteLesson', () => {
     expect(await db.decks.get(deckId)).toBeDefined();
     expect(await db.userPerformance.get(deckId)).toBeDefined();
   });
+
+  it('retargets assessment placement to the preceding lesson and restores it on undo', async () => {
+    const course = await createCourse('Assessment lesson undo');
+    const first = await createLesson(course.id, 'First');
+    const middle = await createLesson(course.id, 'Middle');
+    const last = await createLesson(course.id, 'Last');
+    const checkpoint = await createCourseAssessment(course.id, 'Checkpoint', Date.now() + 1, {
+      afterLessonId: middle.id,
+      coverageMode: 'custom',
+      lessonIds: [first.id, middle.id],
+    });
+    const snapshot = await snapshotLesson(middle.id);
+
+    await deleteLesson(middle.id);
+
+    expect(await db.courseAssessments.get(checkpoint.id)).toMatchObject({
+      afterLessonId: first.id,
+      coverageMode: 'custom',
+      lessonIds: [first.id],
+      needsAuthorConfirmation: true,
+    });
+    expect((await db.courseAssessments.get(checkpoint.id))?.afterLessonId).not.toBe(last.id);
+
+    await restoreLesson(snapshot!);
+    expect(await db.courseAssessments.get(checkpoint.id)).toEqual(checkpoint);
+  });
+
+  it('retargets a deleted first-lesson anchor to before the course, not its end', async () => {
+    const course = await createCourse('Assessment first lesson delete');
+    const first = await createLesson(course.id, 'First');
+    const last = await createLesson(course.id, 'Last');
+    const checkpoint = await createCourseAssessment(course.id, 'Checkpoint', Date.now() + 1, {
+      afterLessonId: first.id,
+    });
+
+    await deleteLesson(first.id);
+
+    expect(await db.courseAssessments.get(checkpoint.id)).toMatchObject({
+      afterLessonId: null,
+      needsAuthorConfirmation: true,
+    });
+    expect((await db.courseAssessments.get(checkpoint.id))?.afterLessonId).not.toBe(last.id);
+  });
+
+  it('removes the last deleted custom reference and leaves explicit invalid state', async () => {
+    const course = await createCourse('Assessment custom delete');
+    const lesson = await createLesson(course.id, 'Only covered lesson');
+    const checkpoint = await createCourseAssessment(course.id, 'Checkpoint', Date.now() + 1, {
+      afterLessonId: lesson.id,
+      coverageMode: 'custom',
+      lessonIds: [lesson.id],
+    });
+
+    await deleteLesson(lesson.id);
+
+    expect(await db.courseAssessments.get(checkpoint.id)).toMatchObject({
+      afterLessonId: null,
+      coverageMode: 'custom',
+      lessonIds: [],
+      needsAuthorConfirmation: true,
+    });
+  });
 });
 
 describe('linkCardToLesson idempotency', () => {
@@ -643,18 +704,19 @@ describe('course assessment repository', () => {
     const course = await createCourse('Assessments test');
     const lesson1 = await createLesson(course.id, 'L1');
     const lesson2 = await createLesson(course.id, 'L2');
+    const card = await createLessonCard(course.id, lesson1.id, 'front_back', 'q', 'a');
     const checkpoint = await createCourseAssessment(course.id, 'Mock', Date.now() + 86_400_000, {
       afterLessonId: lesson2.id,
       coverageMode: 'custom',
       lessonIds: [lesson1.id],
-      excludedCardIds: ['card-1'],
+      excludedCardIds: [card.id],
     });
 
     expect(checkpoint).toMatchObject({
       afterLessonId: lesson2.id,
       coverageMode: 'custom',
       lessonIds: [lesson1.id],
-      excludedCardIds: ['card-1'],
+      excludedCardIds: [card.id],
     });
   });
 
@@ -699,6 +761,48 @@ describe('course assessment repository', () => {
         lessonIds: ['lesson-1', 'lesson-1'],
       }),
     ).rejects.toThrow('cannot contain duplicate lesson ids');
+  });
+
+  it('rejects missing, cross-course and future lesson references', async () => {
+    const course = await createCourse('Assessment validation');
+    const otherCourse = await createCourse('Other course');
+    const first = await createLesson(course.id, 'First');
+    const second = await createLesson(course.id, 'Second');
+    const foreign = await createLesson(otherCourse.id, 'Foreign');
+
+    await expect(
+      createCourseAssessment(course.id, 'Missing anchor', Date.now(), {
+        afterLessonId: 'missing',
+      }),
+    ).rejects.toThrow('placement lesson missing could not be found');
+    await expect(
+      createCourseAssessment(course.id, 'Foreign lesson', Date.now(), {
+        afterLessonId: first.id,
+        coverageMode: 'custom',
+        lessonIds: [foreign.id],
+      }),
+    ).rejects.toThrow('belongs to another course');
+    await expect(
+      createCourseAssessment(course.id, 'Future lesson', Date.now(), {
+        afterLessonId: first.id,
+        coverageMode: 'custom',
+        lessonIds: [second.id],
+      }),
+    ).rejects.toThrow('positioned after the assessment');
+  });
+
+  it('rejects exclusions that do not resolve to covered cards', async () => {
+    const course = await createCourse('Assessment exclusions');
+    const first = await createLesson(course.id, 'First');
+    const second = await createLesson(course.id, 'Second');
+    const uncovered = await createLessonCard(course.id, second.id, 'front_back', 'q', 'a');
+
+    await expect(
+      createCourseAssessment(course.id, 'Invalid exclusion', Date.now(), {
+        afterLessonId: first.id,
+        excludedCardIds: [uncovered.id],
+      }),
+    ).rejects.toThrow('is not covered by the assessment');
   });
 
   it('preserves exactly one final assessment', async () => {

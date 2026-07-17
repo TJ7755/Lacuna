@@ -72,7 +72,7 @@ function makeExamDate(overrides: Partial<CourseAssessment> = {}): CourseAssessme
     kind: 'checkpoint',
     examDate: NOW + 50 * MS_PER_DAY,
     ...coverage,
-    afterLessonId: null,
+    afterLessonId: 'lesson1',
     excludedCardIds: [],
     createdAt: NOW,
     ...overrides,
@@ -149,23 +149,28 @@ describe('resolveCardExamDate', () => {
     expect(resolveCardExamDate(makeCard(), ctx, NOW)).toBe(scoped.examDate);
   });
 
-  it('skips the lesson override step for a card with no primary lesson', () => {
+  it('uses linked lesson membership for a card with no primary lesson', () => {
     const course = makeCourse();
-    // An unscoped checkpoint (all lessons) still applies to a lessonless card.
-    const unscoped = makeExamDate({ examDate: NOW + 15 * MS_PER_DAY });
-    const lessonScoped = makeExamDate({
-      id: 'scoped',
-      examDate: NOW + 5 * MS_PER_DAY,
-      lessonIds: ['lesson1'],
-    });
+    const checkpoint = makeExamDate({ examDate: NOW + 15 * MS_PER_DAY });
     const ctx = makeExamDateContext(
       course,
       [makeLesson({ examDate: NOW + 1 })],
-      [lessonScoped, unscoped],
+      [checkpoint],
+      [{ id: 'link', lessonId: 'lesson1', cardId: 'c1', createdAt: NOW }],
     );
     const card = makeCard({ primaryLessonId: null });
-    // Lesson override skipped; lesson-scoped checkpoint skipped; unscoped wins.
-    expect(resolveCardExamDate(card, ctx, NOW)).toBe(unscoped.examDate);
+    expect(resolveCardExamDate(card, ctx, NOW)).toBe(checkpoint.examDate);
+  });
+
+  it('does not apply prefix coverage to lessons after the placement anchor', () => {
+    const course = makeCourse();
+    const checkpoint = makeExamDate({ afterLessonId: 'lesson1' });
+    const laterLesson = makeLesson({ id: 'lesson2', orderIndex: 1 });
+    const ctx = makeExamDateContext(course, [makeLesson(), laterLesson], [checkpoint]);
+
+    expect(resolveCardExamDate(makeCard({ primaryLessonId: 'lesson2' }), ctx, NOW)).toBe(
+      course.examDate,
+    );
   });
 
   it('uses the course exam date when there are no checkpoints', () => {

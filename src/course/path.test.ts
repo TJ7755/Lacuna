@@ -345,14 +345,19 @@ describe('buildPath', () => {
     expect(nodes.every((n) => n.nodeType === 'lesson')).toBe(true);
   });
 
-  it('places a checkpoint after the highest-orderIndex scoped lesson', () => {
+  it('places a checkpoint after its independent placement anchor', () => {
     const course = makeCourse({ id: 'c1', unlockMode: 'open' });
     const lessons = [
       makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
       makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
       makeLesson({ id: 'l3', courseId: 'c1', orderIndex: 2 }),
     ];
-    const checkpoint = makeExamDate({ id: 'cp1', courseId: 'c1', lessonIds: ['l1', 'l2'] });
+    const checkpoint = makeExamDate({
+      id: 'cp1',
+      courseId: 'c1',
+      lessonIds: ['l1'],
+      afterLessonId: 'l2',
+    });
     const nodes = buildPath(course, lessons, [checkpoint], new Map());
     expect(nodes.map((n) => n.id)).toEqual(['l1', 'l2', 'cp1', 'l3']);
     const cpNode = nodes.find((n) => n.id === 'cp1');
@@ -362,13 +367,13 @@ describe('buildPath', () => {
     }
   });
 
-  it('places a checkpoint with no lessonIds after the last lesson', () => {
+  it('places prefix coverage after its anchor', () => {
     const course = makeCourse({ id: 'c1', unlockMode: 'open' });
     const lessons = [
       makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
       makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
     ];
-    const checkpoint = makeExamDate({ id: 'cp1', courseId: 'c1' });
+    const checkpoint = makeExamDate({ id: 'cp1', courseId: 'c1', afterLessonId: 'l2' });
     const nodes = buildPath(course, lessons, [checkpoint], new Map());
     expect(nodes.map((n) => n.id)).toEqual(['l1', 'l2', 'cp1']);
     const cpNode = nodes.find((n) => n.id === 'cp1');
@@ -414,8 +419,18 @@ describe('buildPath', () => {
       makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
       makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
     ];
-    const cp1 = makeExamDate({ id: 'cp1', courseId: 'c1', lessonIds: ['l1'] });
-    const cp2 = makeExamDate({ id: 'cp2', courseId: 'c1', lessonIds: ['l1'] });
+    const cp1 = makeExamDate({
+      id: 'cp1',
+      courseId: 'c1',
+      lessonIds: ['l1'],
+      afterLessonId: 'l1',
+    });
+    const cp2 = makeExamDate({
+      id: 'cp2',
+      courseId: 'c1',
+      lessonIds: ['l1'],
+      afterLessonId: 'l1',
+    });
     const nodes = buildPath(course, lessons, [cp1, cp2], new Map());
     expect(nodes.map((n) => n.id)).toEqual(['l1', 'cp1', 'cp2', 'l2']);
   });

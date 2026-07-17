@@ -10,6 +10,7 @@ import {
   createNote,
   createPracticeNode,
   createCourseAssessment,
+  createLessonCard,
   createSequence,
   createNoteAnnotation,
   markLessonComplete,
@@ -61,11 +62,12 @@ describe('exportDatabase', () => {
   it('keeps the version 6 course-date shape while reading from unified assessments', async () => {
     const course = await createCourse('Chemistry', { examDate: 1_900_000_000_000 });
     const lesson = await createLesson(course.id, 'Bonding');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
     await createCourseAssessment(course.id, 'Paper 1', 1_800_000_000_000, {
       afterLessonId: lesson.id,
       coverageMode: 'custom',
       lessonIds: [lesson.id],
-      excludedCardIds: ['card-1'],
+      excludedCardIds: [card.id],
     });
 
     const backup = (await exportDatabase()) as unknown as {
@@ -85,7 +87,7 @@ describe('exportDatabase', () => {
       expect.objectContaining({
         name: 'Paper 1',
         lessonIds: [lesson.id],
-        excludedCardIds: ['card-1'],
+        excludedCardIds: [card.id],
       }),
     ]);
     expect(backup.courseAssessments).toBeUndefined();

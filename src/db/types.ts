@@ -278,6 +278,8 @@ interface CourseAssessmentBase {
   afterLessonId: string | null;
   /** Cards omitted from this assessment without changing lesson membership. */
   excludedCardIds: string[];
+  /** Set when automatic repair after lesson deletion needs an author's review. */
+  needsAuthorConfirmation?: boolean;
   createdAt: number;
 }
 

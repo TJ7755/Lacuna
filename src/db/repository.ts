@@ -35,6 +35,7 @@ import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import { readPracticeDefaults } from '../state/practiceDefaults';
 import { readLessonViewMode } from '../state/lessonViewMode';
 import { scheduleAssetGc } from './assets';
+import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 import {
   diffRegeneration,
   generateCards,
@@ -1247,6 +1248,7 @@ export interface LessonSnapshot {
   decks: Deck[];
   sessionHistory: SessionHistoryEntry[];
   userPerformance: UserPerformance[];
+  courseAssessments: CourseAssessment[];
 }
 
 /** Capture a lesson and every row {@link deleteLesson} changes before deleting it. */
@@ -1254,18 +1256,27 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
   const lesson = await db.lessons.get(id);
   if (!lesson) return null;
 
-  const [notes, lessonCards, lessonCardExposures, lessonCompletion, cards, sequences, decks] =
-    await Promise.all([
-      db.notes.where('lessonId').equals(id).toArray(),
-      db.lessonCards.where('lessonId').equals(id).toArray(),
-      db.lessonCardExposures.where('lessonId').equals(id).toArray(),
-      db.lessonCompletions.get(id),
-      db.cards.where('primaryLessonId').equals(id).toArray(),
-      db.sequences.where('primaryLessonId').equals(id).toArray(),
-      db.decks
-        .filter((deck) => deck.backingCourseId === lesson.courseId && deck.backingLessonId === id)
-        .toArray(),
-    ]);
+  const [
+    notes,
+    lessonCards,
+    lessonCardExposures,
+    lessonCompletion,
+    cards,
+    sequences,
+    decks,
+    courseAssessments,
+  ] = await Promise.all([
+    db.notes.where('lessonId').equals(id).toArray(),
+    db.lessonCards.where('lessonId').equals(id).toArray(),
+    db.lessonCardExposures.where('lessonId').equals(id).toArray(),
+    db.lessonCompletions.get(id),
+    db.cards.where('primaryLessonId').equals(id).toArray(),
+    db.sequences.where('primaryLessonId').equals(id).toArray(),
+    db.decks
+      .filter((deck) => deck.backingCourseId === lesson.courseId && deck.backingLessonId === id)
+      .toArray(),
+    db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
+  ]);
   const noteIds = notes.map((note) => note.id);
   const deckIds = decks.map((deck) => deck.id);
   const [noteAnnotations, sessionHistory, userPerformance] = await Promise.all([
@@ -1286,6 +1297,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     decks,
     sessionHistory,
     userPerformance,
+    courseAssessments,
   };
 }
 
@@ -1306,6 +1318,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
         db.decks,
         db.sessionHistory,
         db.userPerformance,
+        db.courseAssessments,
       ],
       async () => {
         await Promise.all([
@@ -1322,6 +1335,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
           db.decks.bulkPut(snapshot.decks),
           db.sessionHistory.bulkPut(snapshot.sessionHistory),
           db.userPerformance.bulkPut(snapshot.userPerformance),
+          db.courseAssessments.bulkPut(snapshot.courseAssessments),
         ]);
       },
     );
@@ -1359,10 +1373,13 @@ export async function ratchetLessonUnlock(
 export async function deleteLesson(id: string): Promise<void> {
   const lesson = await db.lessons.get(id);
   if (!lesson) return;
-  const [cardCount, sequenceCount] = await Promise.all([
+  const [cardCount, sequenceCount, orderedLessons] = await Promise.all([
     db.cards.where('primaryLessonId').equals(id).count(),
     db.sequences.where('primaryLessonId').equals(id).count(),
+    db.lessons.where('courseId').equals(lesson.courseId).sortBy('orderIndex'),
   ]);
+  const deletedIndex = orderedLessons.findIndex((candidate) => candidate.id === id);
+  const precedingLessonId = deletedIndex > 0 ? orderedLessons[deletedIndex - 1].id : null;
   const bankDeckId =
     cardCount > 0 || sequenceCount > 0 ? await ensureCourseBankDeck(lesson.courseId) : null;
   await db.transaction(
@@ -1379,6 +1396,7 @@ export async function deleteLesson(id: string): Promise<void> {
       db.decks,
       db.sessionHistory,
       db.userPerformance,
+      db.courseAssessments,
     ],
     async () => {
       const noteIds = await db.notes.where('lessonId').equals(id).primaryKeys();
@@ -1405,6 +1423,46 @@ export async function deleteLesson(id: string): Promise<void> {
         await db.userPerformance.where('deckId').anyOf(backingDeckIds).delete();
       }
       await db.lessons.delete(id);
+
+      const [remainingLessons, courseCards, courseLinks, assessments] = await Promise.all([
+        db.lessons.where('courseId').equals(lesson.courseId).toArray(),
+        db.cards.where('courseId').equals(lesson.courseId).toArray(),
+        db.lessonCards.toArray(),
+        db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
+      ]);
+      for (const assessment of assessments) {
+        const lostPlacement = assessment.afterLessonId === id;
+        const lostCustomLesson =
+          assessment.coverageMode === 'custom' && assessment.lessonIds.includes(id);
+        let updated: CourseAssessment = {
+          ...assessment,
+          ...(lostPlacement ? { afterLessonId: precedingLessonId } : {}),
+          ...(lostCustomLesson
+            ? { lessonIds: assessment.lessonIds.filter((lessonId) => lessonId !== id) }
+            : {}),
+          ...(lostPlacement || lostCustomLesson ? { needsAuthorConfirmation: true } : {}),
+        } as CourseAssessment;
+        const withoutExclusions = { ...updated, excludedCardIds: [] } as CourseAssessment;
+        const coveredCardIds = new Set(
+          resolveAssessmentCoverage(
+            withoutExclusions,
+            remainingLessons,
+            courseCards,
+            courseLinks,
+          ).cards.map((card) => card.id),
+        );
+        const excludedCardIds = updated.excludedCardIds.filter((cardId) =>
+          coveredCardIds.has(cardId),
+        );
+        if (excludedCardIds.length !== updated.excludedCardIds.length) {
+          updated = {
+            ...updated,
+            excludedCardIds,
+            needsAuthorConfirmation: true,
+          } as CourseAssessment;
+        }
+        await db.courseAssessments.put(updated);
+      }
     },
   );
   scheduleAssetGc();
@@ -1715,6 +1773,12 @@ function validateAssessmentStructure(assessment: CourseAssessment): void {
   if (!Number.isFinite(assessment.examDate)) {
     throw new Error('An assessment date must be a finite timestamp.');
   }
+  if (
+    assessment.needsAuthorConfirmation !== undefined &&
+    typeof assessment.needsAuthorConfirmation !== 'boolean'
+  ) {
+    throw new Error('Assessment author-confirmation state must be boolean.');
+  }
   if (!Array.isArray(assessment.excludedCardIds)) {
     throw new Error('Assessment exclusions must be an explicit card-id array.');
   }
@@ -1749,6 +1813,16 @@ function validateAssessmentStructure(assessment: CourseAssessment): void {
   throw new Error('Assessment coverage mode must be prefix or custom.');
 }
 
+async function validateAssessmentReferences(assessment: CourseAssessment): Promise<void> {
+  const [lessons, cards, links] = await Promise.all([
+    db.lessons.toArray(),
+    db.cards.toArray(),
+    db.lessonCards.toArray(),
+  ]);
+  const issue = resolveAssessmentCoverage(assessment, lessons, cards, links).validation.issues[0];
+  if (issue) throw new Error(issue.message);
+}
+
 export async function createCourseAssessment(
   courseId: string,
   name: string,
@@ -1757,42 +1831,47 @@ export async function createCourseAssessment(
 ): Promise<CourseAssessment> {
   try {
     let entry: CourseAssessment | undefined;
-    await db.transaction('rw', db.courses, db.lessons, db.courseAssessments, async () => {
-      if (!(await db.courses.get(courseId))) throw new Error('The course could not be found.');
-      const existing = await db.courseAssessments.where('courseId').equals(courseId).toArray();
-      finalAssessmentForCourse(courseId, existing);
-      const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
-      const coverageMode =
-        opts?.coverageMode ??
-        (Array.isArray(opts?.lessonIds) && opts.lessonIds.length > 0 ? 'custom' : 'prefix');
-      const coveredLessonIds = new Set(coverageMode === 'custom' ? (opts?.lessonIds ?? []) : []);
-      const inferredAnchor =
-        [...lessons]
-          .reverse()
-          .find((lesson) => coverageMode === 'prefix' || coveredLessonIds.has(lesson.id))?.id ??
-        null;
-      const afterLessonId =
-        opts !== undefined && Object.prototype.hasOwnProperty.call(opts, 'afterLessonId')
-          ? opts.afterLessonId!
-          : inferredAnchor;
-      entry = {
-        kind: 'checkpoint',
-        excludedCardIds: [],
-        ...opts,
-        id: makeId(),
-        courseId,
-        name,
-        examDate,
-        afterLessonId,
-        coverageMode,
-        createdAt: Date.now(),
-      } as CourseAssessment;
-      validateAssessmentStructure(entry);
-      if (entry.kind === 'final') {
-        throw new Error('A course must have exactly one final assessment.');
-      }
-      await db.courseAssessments.add(entry);
-    });
+    await db.transaction(
+      'rw',
+      [db.courses, db.lessons, db.cards, db.lessonCards, db.courseAssessments],
+      async () => {
+        if (!(await db.courses.get(courseId))) throw new Error('The course could not be found.');
+        const existing = await db.courseAssessments.where('courseId').equals(courseId).toArray();
+        finalAssessmentForCourse(courseId, existing);
+        const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
+        const coverageMode =
+          opts?.coverageMode ??
+          (Array.isArray(opts?.lessonIds) && opts.lessonIds.length > 0 ? 'custom' : 'prefix');
+        const coveredLessonIds = new Set(coverageMode === 'custom' ? (opts?.lessonIds ?? []) : []);
+        const inferredAnchor =
+          [...lessons]
+            .reverse()
+            .find((lesson) => coverageMode === 'prefix' || coveredLessonIds.has(lesson.id))?.id ??
+          null;
+        const afterLessonId =
+          opts !== undefined && Object.prototype.hasOwnProperty.call(opts, 'afterLessonId')
+            ? opts.afterLessonId!
+            : inferredAnchor;
+        entry = {
+          kind: 'checkpoint',
+          excludedCardIds: [],
+          ...opts,
+          id: makeId(),
+          courseId,
+          name,
+          examDate,
+          afterLessonId,
+          coverageMode,
+          createdAt: Date.now(),
+        } as CourseAssessment;
+        validateAssessmentStructure(entry);
+        await validateAssessmentReferences(entry);
+        if (entry.kind === 'final') {
+          throw new Error('A course must have exactly one final assessment.');
+        }
+        await db.courseAssessments.add(entry);
+      },
+    );
     return entry!;
   } catch (err) {
     throw friendlyDbError(err);
@@ -1804,33 +1883,41 @@ export async function updateCourseAssessment(
   changes: Partial<CourseAssessment>,
 ): Promise<void> {
   try {
-    await db.transaction('rw', db.courseAssessments, async () => {
-      const existing = await db.courseAssessments.get(id);
-      if (!existing) throw new Error('The assessment could not be found.');
-      if (changes.courseId !== undefined && changes.courseId !== existing.courseId) {
-        throw new Error('An assessment cannot move to another course.');
-      }
-      const updated = {
-        ...existing,
-        ...changes,
-        id: existing.id,
-        courseId: existing.courseId,
-        createdAt: existing.createdAt,
-      } as CourseAssessment;
-      validateAssessmentStructure(updated);
-      const assessments = await db.courseAssessments
-        .where('courseId')
-        .equals(existing.courseId)
-        .toArray();
-      const finalAssessment = finalAssessmentForCourse(existing.courseId, assessments);
-      if (existing.kind === 'final' && updated.kind !== 'final') {
-        throw new Error('The sole final assessment cannot be demoted.');
-      }
-      if (existing.kind !== 'final' && updated.kind === 'final' && finalAssessment.id !== id) {
-        throw new Error('A course must have exactly one final assessment.');
-      }
-      await db.courseAssessments.put(updated);
-    });
+    await db.transaction(
+      'rw',
+      db.lessons,
+      db.cards,
+      db.lessonCards,
+      db.courseAssessments,
+      async () => {
+        const existing = await db.courseAssessments.get(id);
+        if (!existing) throw new Error('The assessment could not be found.');
+        if (changes.courseId !== undefined && changes.courseId !== existing.courseId) {
+          throw new Error('An assessment cannot move to another course.');
+        }
+        const updated = {
+          ...existing,
+          ...changes,
+          id: existing.id,
+          courseId: existing.courseId,
+          createdAt: existing.createdAt,
+        } as CourseAssessment;
+        validateAssessmentStructure(updated);
+        await validateAssessmentReferences(updated);
+        const assessments = await db.courseAssessments
+          .where('courseId')
+          .equals(existing.courseId)
+          .toArray();
+        const finalAssessment = finalAssessmentForCourse(existing.courseId, assessments);
+        if (existing.kind === 'final' && updated.kind !== 'final') {
+          throw new Error('The sole final assessment cannot be demoted.');
+        }
+        if (existing.kind !== 'final' && updated.kind === 'final' && finalAssessment.id !== id) {
+          throw new Error('A course must have exactly one final assessment.');
+        }
+        await db.courseAssessments.put(updated);
+      },
+    );
   } catch (err) {
     throw friendlyDbError(err);
   }

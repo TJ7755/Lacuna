@@ -366,9 +366,16 @@ ordinary lesson authoring view. Edit mode also enables direct path reordering: h
 node for 350 ms, then drag it to a lesson boundary and release. Moving before the hold cancels
 the gesture, as do Escape and pointer cancellation. `Alt+ArrowUp`/`Alt+ArrowDown` provides the
 keyboard equivalent with live announcements. Reordering persists through the same
-`reorderLessons` repository operation used by Course Settings; checkpoints and automatic
-Practice nodes therefore follow their existing derived placement rules, while manual
-Practice positions and one-way lesson unlock ratchets are deliberately left unchanged.
+`reorderLessons` repository operation used by Course Settings; checkpoint placement remains
+attached to its stable lesson anchor, while manual and automatic Practice positions and
+one-way lesson unlock ratchets are deliberately left unchanged.
+
+Assessment placement and coverage are independent. Prefix coverage includes every ordered
+lesson through the placement anchor; custom coverage is an explicit, non-contiguous lesson
+set that cannot extend past that anchor. Both modes resolve primary and linked card membership,
+deduplicate cards and then apply exclusions. Deleting an anchor retargets to the nearest
+surviving predecessor and requires author confirmation; deleting a custom-covered lesson
+removes that reference and requires the same confirmation.
 
 The course header has one **Study now** action. It launches the persistent course study
 conductor at `/course/:courseId/study`. The conductor rebuilds its next-step decision from the

@@ -18,7 +18,8 @@
 //      nearest-future-applicable, NOT a fixed priority.)
 //   3. Otherwise: the course's primary `examDate`.
 
-import type { Card, Course, CourseAssessment, Lesson } from '../db/types';
+import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import type { Card, Course, CourseAssessment, Lesson, LessonCardLink } from '../db/types';
 
 export interface ExamDateContext {
   /** The Course.examDate default, used when nothing nearer applies. */
@@ -27,6 +28,8 @@ export interface ExamDateContext {
   lessonsById: Map<string, Lesson>;
   /** Checkpoints / extra exam dates for the course. */
   courseAssessments: CourseAssessment[];
+  /** Additional effective lesson memberships for cards. */
+  lessonCardLinks?: LessonCardLink[];
 }
 
 /** Build a resolution context once for a course, reused across its cards. */
@@ -34,23 +37,28 @@ export function makeExamDateContext(
   course: Course,
   lessons: Lesson[],
   assessments: CourseAssessment[],
+  lessonCardLinks: LessonCardLink[] = [],
 ): ExamDateContext {
   return {
     courseExamDate: course.examDate,
     lessonsById: new Map(lessons.map((l) => [l.id, l])),
     courseAssessments: assessments,
+    lessonCardLinks,
   };
 }
 
 /** Whether a checkpoint applies to a card: in-scope lesson and not excluded. */
-function checkpointApplies(assessment: CourseAssessment, card: Card): boolean {
-  if (assessment.excludedCardIds.includes(card.id)) return false;
-  if (assessment.coverageMode === 'prefix') return true;
-  // A card with no primary lesson cannot match a lesson-scoped checkpoint.
-  if (card.primaryLessonId === null || card.primaryLessonId === undefined) {
-    return false;
-  }
-  return assessment.lessonIds.includes(card.primaryLessonId);
+function checkpointApplies(
+  assessment: CourseAssessment,
+  card: Card,
+  ctx: ExamDateContext,
+): boolean {
+  return resolveAssessmentCoverage(
+    assessment,
+    [...ctx.lessonsById.values()],
+    [card],
+    ctx.lessonCardLinks ?? [],
+  ).cards.some((coveredCard) => coveredCard.id === card.id);
 }
 
 /**
@@ -73,7 +81,7 @@ export function resolveCardExamDate(
   let nearest: number | undefined;
   for (const assessment of ctx.courseAssessments) {
     if (assessment.kind !== 'checkpoint' || assessment.examDate < now) continue;
-    if (!checkpointApplies(assessment, card)) continue;
+    if (!checkpointApplies(assessment, card, ctx)) continue;
     if (nearest === undefined || assessment.examDate < nearest) {
       nearest = assessment.examDate;
     }
