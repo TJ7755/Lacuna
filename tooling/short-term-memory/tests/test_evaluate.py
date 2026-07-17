@@ -122,6 +122,18 @@ def test_parquet_to_chronological_evaluation_report(tmp_path: Path):
     assert empty_lag["count"] == 0
     assert empty_lag["brier_score"] is None
 
+    assert report["per_user"] == [
+        {
+            "user_id": 1,
+            "count": 1,
+            "positive_rate": 1.0,
+            "log_loss": overall["log_loss"],
+            "brier_score": overall["brier_score"],
+            "calibration_error": overall["calibration_error"],
+            "calibration_bins": overall["calibration_bins"],
+        }
+    ]
+
     batch_candidate = BatchConstantCandidate()
     evaluate_candidate(batch_candidate, examples)
     assert batch_candidate.training_count == 4

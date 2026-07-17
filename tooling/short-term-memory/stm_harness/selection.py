@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import json
+import random
+import statistics
 from pathlib import Path
 
 
 MAJOR_BUCKET_MINIMUM_FRACTION = 0.05
 MATERIAL_CALIBRATION_INCREASE = 0.01
+
+# Fixed seed so bootstrap confidence intervals are reproducible across runs.
+BOOTSTRAP_SEED = 20260717
+BOOTSTRAP_RESAMPLES = 10_000
 
 
 def read_report(path: Path) -> dict[str, object]:
@@ -53,6 +59,7 @@ def compare_reports(
                 "material_calibration_regressions": regressions,
                 "overall": overall,
                 "overall_delta": _metric_deltas(overall, baseline_overall),
+                "per_user": _per_user_comparison(baseline, candidate),
                 "slice_deltas": [
                     {
                         "dimension": dimension,
@@ -106,6 +113,80 @@ def _slice_index(report: dict[str, object]) -> dict[tuple[str, str], dict[str, o
     return {
         (str(item["dimension"]), str(item["value"])): item
         for item in report["slices"]
+    }
+
+
+def _per_user_index(report: dict[str, object]) -> dict[int, dict[str, object]] | None:
+    per_user = report.get("per_user")
+    if per_user is None:
+        return None
+    return {
+        int(item["user_id"]): item
+        for item in per_user
+        if item.get("count") not in (None, 0)
+    }
+
+
+def _per_user_comparison(
+    baseline: dict[str, object], candidate: dict[str, object]
+) -> dict[str, object] | None:
+    baseline_users = _per_user_index(baseline)
+    candidate_users = _per_user_index(candidate)
+    if baseline_users is None or candidate_users is None:
+        return None
+    common_user_ids = sorted(set(baseline_users) & set(candidate_users))
+    if not common_user_ids:
+        return None
+
+    baseline_log_loss = [float(baseline_users[uid]["log_loss"]) for uid in common_user_ids]
+    candidate_log_loss = [float(candidate_users[uid]["log_loss"]) for uid in common_user_ids]
+    baseline_brier = [float(baseline_users[uid]["brier_score"]) for uid in common_user_ids]
+    candidate_brier = [float(candidate_users[uid]["brier_score"]) for uid in common_user_ids]
+
+    # Positive improvement means the candidate has lower (better) log loss than the baseline.
+    improvements = [b - c for b, c in zip(baseline_log_loss, candidate_log_loss)]
+
+    return {
+        "user_count": len(common_user_ids),
+        "median_log_loss_improvement": statistics.median(improvements),
+        "candidate_win_proportion": sum(1 for value in improvements if value > 0)
+        / len(improvements),
+        "equal_user_weight": {
+            "baseline_log_loss": statistics.fmean(baseline_log_loss),
+            "candidate_log_loss": statistics.fmean(candidate_log_loss),
+            "baseline_brier_score": statistics.fmean(baseline_brier),
+            "candidate_brier_score": statistics.fmean(candidate_brier),
+        },
+        "mean_log_loss_improvement_bootstrap_ci": _bootstrap_mean_ci(improvements),
+    }
+
+
+def _bootstrap_mean_ci(
+    values: list[float],
+    resamples: int = BOOTSTRAP_RESAMPLES,
+    seed: int = BOOTSTRAP_SEED,
+) -> dict[str, object]:
+    """User-cluster bootstrap 95% CI for the mean of `values`.
+
+    Resamples users (not events) with replacement, using a fixed seed so the interval is
+    reproducible across runs. `values` must already be one value per user (e.g. a per-user
+    log-loss difference), since events within a user are correlated.
+    """
+    rng = random.Random(seed)
+    count = len(values)
+    means = []
+    for _ in range(resamples):
+        sample = [values[rng.randrange(count)] for _ in range(count)]
+        means.append(statistics.fmean(sample))
+    means.sort()
+    lower_index = int(0.025 * resamples)
+    upper_index = min(int(0.975 * resamples), resamples - 1)
+    return {
+        "mean": statistics.fmean(values),
+        "lower": means[lower_index],
+        "upper": means[upper_index],
+        "resamples": resamples,
+        "seed": seed,
     }
 
 

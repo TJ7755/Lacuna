@@ -56,6 +56,7 @@ def evaluate_candidate(
     accumulators: dict[tuple[str, str], MetricAccumulator] = defaultdict(MetricAccumulator)
     for key in _empty_slice_keys():
         accumulators[key]
+    per_user_accumulators: dict[int, MetricAccumulator] = defaultdict(MetricAccumulator)
     excluded = {"seed_events": 0, "training_events": 0, "lag_over_7d": 0}
 
     evaluation_started = time.perf_counter()
@@ -78,6 +79,7 @@ def evaluate_candidate(
                 probability = predictor.predict(example.context)
                 for dimension, value in _slice_keys(example, bucket):
                     accumulators[(dimension, value)].add(probability, example.recalled)
+                per_user_accumulators[user_id].add(probability, example.recalled)
             predictor.observe(example)
         if progress is not None:
             progress("evaluate", partition_index, len(paths))
@@ -86,6 +88,10 @@ def evaluate_candidate(
     slices = [
         {"dimension": dimension, "value": value, **accumulator.result()}
         for (dimension, value), accumulator in sorted(accumulators.items())
+    ]
+    per_user = [
+        {"user_id": user_id, **accumulator.result()}
+        for user_id, accumulator in sorted(per_user_accumulators.items())
     ]
     return {
         "candidate": fitted.name,
@@ -103,6 +109,7 @@ def evaluate_candidate(
             "total": fit_seconds + evaluation_seconds,
         },
         "slices": slices,
+        "per_user": per_user,
     }
 
 
