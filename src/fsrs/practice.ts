@@ -7,12 +7,12 @@
 //
 // The rule (new_features_list.md Addendum 2 §H): estimate the minutes it would
 // take to clear the due cards (count x mean review time), and trigger practice
-// once that crosses a threshold. The threshold tightens as the exam nears. A
+// once that crosses a threshold. The threshold tightens only when an urgent
+// assessment intersects the caller's current Practice scope. A
 // maximum-gap backstop forces a session if too many lessons have passed without
 // one, so a course whose due-count never crosses the threshold still gets
 // periodic practice.
 
-import { schedulingHorizon } from './horizon';
 import { daysUntil } from '../utils/datetime';
 import type { Course } from '../db/types';
 
@@ -24,6 +24,8 @@ import type { Course } from '../db/types';
  * @param lessonsSinceLastPractice  lessons elapsed since the last practice node.
  * @param meanReviewSeconds         mean seconds per review (from the course's
  *   calibration; the caller derives it, so no stale value is stored on the course).
+ * @param nearestAssessmentDate     nearest urgent, useful assessment intersecting
+ *   this Practice scope; omitted when no such assessment exists.
  */
 export function shouldInsertPractice(
   course: Course,
@@ -31,11 +33,12 @@ export function shouldInsertPractice(
   lessonsSinceLastPractice: number,
   meanReviewSeconds: number,
   now: number = Date.now(),
+  nearestAssessmentDate?: number,
 ): boolean {
   const minutesToClear = (dueCardCount * meanReviewSeconds) / 60;
-  const daysUntilExam = daysUntil(schedulingHorizon(course, now), now);
   const threshold =
-    daysUntilExam <= course.practiceUrgentWindowDays
+    nearestAssessmentDate !== undefined &&
+    daysUntil(nearestAssessmentDate, now) <= course.practiceUrgentWindowDays
       ? course.practiceThresholdMinutesNear
       : course.practiceThresholdMinutesFar;
 

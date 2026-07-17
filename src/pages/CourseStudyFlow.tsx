@@ -9,6 +9,7 @@ import {
   touchActiveStudyFlow,
 } from '../state/activeStudyFlow';
 import type { StudyFlowStep } from '../course/studyFlowPlanner';
+import type { AssessmentPracticeOption } from '../course/assessmentPractice';
 import type { SessionSummary } from '../components/learn/types';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
 import { Button } from '../components/ui/Button';
@@ -33,18 +34,30 @@ function CourseStudyFlowInner() {
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
   const flow = useCourseStudyFlow(courseId, refreshKey);
-  const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() =>
-    searchParams.get('review') === 'due'
+  const entryAssessmentId = searchParams.get('assessmentId');
+  const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
+    if (searchParams.get('review') === 'due') {
+      return {
+        kind: 'practice',
+        nodeKey: 'ad-hoc',
+        mode: 'recurring',
+        label: 'Review due cards',
+      };
+    }
+    return entryAssessmentId
       ? {
           kind: 'practice',
-          nodeKey: 'ad-hoc',
-          mode: 'recurring',
-          label: 'Review due cards',
+          nodeKey: `assessment-${entryAssessmentId}`,
+          mode: 'assessment',
+          assessmentId: entryAssessmentId,
+          label: 'Assessment revision',
         }
-      : null,
-  );
+      : null;
+  });
   const entryPracticeNodeKey = searchParams.get('practiceNode');
-  const [entryConsumed, setEntryConsumed] = useState(searchParams.get('review') === 'due');
+  const [entryConsumed, setEntryConsumed] = useState(
+    searchParams.get('review') === 'due' || entryAssessmentId !== null,
+  );
   const [transition, setTransition] = useState<TransitionState | null>(null);
   const pomodoro = usePomodoroContext();
 
@@ -88,9 +101,21 @@ function CourseStudyFlowInner() {
       return { kind: 'lesson', lessonId: currentStep.lessonId };
     }
     if (currentStep.kind === 'practice') {
+      if (currentStep.mode === 'assessment') {
+        if (!currentStep.assessmentId) return null;
+        return {
+          kind: 'practice',
+          courseId: courseId ?? '',
+          mode: 'assessment',
+          assessmentId: currentStep.assessmentId,
+        };
+      }
       const scopeLessonIds =
         currentStep.mode === 'curricular'
-          ? [...(flow?.snapshot.practiceByKey.get(currentStep.nodeKey)?.scopeLessonIds ?? [])]
+          ? [
+              ...(flow?.snapshot.practiceByKey.get(currentStep.nodeKey)?.sessionScopeLessonIds ??
+                []),
+            ]
           : undefined;
       return {
         kind: 'practice',
@@ -157,7 +182,10 @@ function CourseStudyFlowInner() {
   }
 
   if (transition) {
-    const nextLabel = flow.decision.kind === 'step' ? flow.decision.step.label : undefined;
+    const nextLabel =
+      flow.decision.kind === 'step' || flow.decision.kind === 'choice'
+        ? flow.decision.step.label
+        : undefined;
     return (
       <StudyStepTransition
         completedLabel={transition.completedStep.label}
@@ -181,6 +209,28 @@ function CourseStudyFlowInner() {
   if (request && currentStep) {
     return (
       <LearnMode request={request} onStepFinished={handleStepFinished} onFlowExit={finishFlow} />
+    );
+  }
+
+  if (flow.decision.kind === 'choice') {
+    const choice = flow.decision;
+    return (
+      <StudyChoice
+        nextStep={choice.step}
+        assessments={choice.assessments}
+        timeZone={flow.course.timeZone}
+        onContinue={() => setCurrentStep(choice.step)}
+        onAssessment={(assessment) =>
+          setCurrentStep({
+            kind: 'practice',
+            nodeKey: `assessment-${assessment.assessmentId}`,
+            mode: 'assessment',
+            assessmentId: assessment.assessmentId,
+            label: assessment.name,
+          })
+        }
+        onExit={finishFlow}
+      />
     );
   }
 
@@ -208,6 +258,61 @@ function CourseStudyFlowInner() {
       }
       onExit={finishFlow}
     />
+  );
+}
+
+function StudyChoice({
+  nextStep,
+  assessments,
+  timeZone,
+  onContinue,
+  onAssessment,
+  onExit,
+}: {
+  nextStep: StudyFlowStep;
+  assessments: AssessmentPracticeOption[];
+  timeZone?: string;
+  onContinue: () => void;
+  onAssessment: (assessment: AssessmentPracticeOption) => void;
+  onExit: () => void;
+}) {
+  return (
+    <div className="min-h-screen bg-paper px-6 py-10">
+      <main className="mx-auto flex min-h-[70vh] max-w-xl flex-col justify-center">
+        <p className="mb-2 text-sm uppercase tracking-[0.18em] text-ink-faint">
+          Choose what to study
+        </p>
+        <h1 className="font-display text-4xl tracking-tight md:text-5xl">Continue or revise</h1>
+        <p className="mt-4 text-ink-soft">
+          An upcoming assessment overlaps material you have reached.
+        </p>
+        <div className="mt-8 flex flex-col gap-3">
+          <Button variant="primary" size="lg" onClick={onContinue}>
+            Continue: {nextStep.label}
+          </Button>
+          {assessments.map((assessment) => (
+            <Button
+              key={assessment.assessmentId}
+              variant="secondary"
+              size="lg"
+              onClick={() => onAssessment(assessment)}
+            >
+              Revise for {assessment.name}
+              <span className="ml-2 text-sm opacity-70">
+                {new Intl.DateTimeFormat('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  timeZone,
+                }).format(assessment.examDate)}
+              </span>
+            </Button>
+          ))}
+          <Button variant="ghost" size="lg" onClick={onExit}>
+            Done
+          </Button>
+        </div>
+      </main>
+    </div>
   );
 }
 

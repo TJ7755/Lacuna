@@ -20,13 +20,9 @@ import { buildDeckSecondsMap } from '../fsrs/stats';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { MS_PER_DAY } from '../fsrs/params';
-import {
-  buildPath,
-  pathPosition,
-  lessonEffectiveReleaseDates,
-  nearestExamDate,
-} from '../course/path';
+import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
 import { lessonCardMembership } from '../course/studyPools';
+import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
 import { courseHeaderStats } from '../course/headerStats';
 import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
 import { planNextStudyStep } from '../course/studyFlowPlanner';
@@ -163,15 +159,28 @@ export function CoursePath() {
   // is about FSRS review pressure, unlike the header's dueCardCount which also
   // admits new cards (see courseHeaderStats).
   const now = Date.now();
-  const { reviewDueCount, meanReviewSeconds } = useMemo(() => {
-    const reviewDueCount = dueCards(availableCards(courseCards ?? [], now), now).length;
+  const { reviewDueCount, meanReviewSeconds, nearestPracticeAssessmentDate } = useMemo(() => {
+    const currentPractice = course
+      ? currentAssessmentPracticeContext({
+          course,
+          assessments: assessments ?? [],
+          lessons: lessons ?? [],
+          cards: courseCards ?? [],
+          links: lessonLinks ?? [],
+          exposures: exposures ?? [],
+          now,
+        })
+      : { scope: [], assessmentOptions: [] };
+    const scope = currentPractice.scope;
+    const reviewDueCount = dueCards(availableCards(scope, now), now).length;
     const deckSeconds = buildDeckSecondsMap(perf ?? []);
     const meanReviewSeconds = courseMeanReviewSeconds(courseCards ?? [], deckSeconds);
-    return { reviewDueCount, meanReviewSeconds };
+    const nearestPracticeAssessmentDate = currentPractice.assessmentOptions[0]?.examDate;
+    return { reviewDueCount, meanReviewSeconds, nearestPracticeAssessmentDate };
     // `now` is deliberately excluded: recomputation is scoped to data changes
     // (cards/perf), not wall-clock drift, and live-query updates re-render anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseCards, perf]);
+  }, [assessments, course, courseCards, exposures, lessonLinks, lessons, perf]);
 
   const nodes = useMemo(
     () =>
@@ -190,6 +199,7 @@ export function CoursePath() {
               lessonCompletions: lessonCompletions ?? [],
               practiceMilestones: practiceMilestones ?? [],
             },
+            nearestPracticeAssessmentDate,
           )
         : [],
     // `now` is deliberately excluded: recomputation is scoped to data changes,
@@ -206,6 +216,7 @@ export function CoursePath() {
       exposures,
       lessonCompletions,
       practiceMilestones,
+      nearestPracticeAssessmentDate,
     ],
   );
 
@@ -229,7 +240,6 @@ export function CoursePath() {
             examDateContext,
             meanReviewSeconds,
             practiceMilestones: practiceMilestones ?? [],
-            nearestExamDate: nearestExamDate(course, assessments ?? [], now),
             now,
           })
         : null,
@@ -237,7 +247,6 @@ export function CoursePath() {
       course,
       courseCards,
       examDateContext,
-      assessments,
       exposures,
       lessonLinks,
       meanReviewSeconds,
@@ -262,7 +271,8 @@ export function CoursePath() {
     }
     return result;
   }, [studyFlowSnapshot]);
-  const studyTarget = studyDecision?.kind === 'step' ? studyDecision.step : null;
+  const studyTarget =
+    studyDecision?.kind === 'step' || studyDecision?.kind === 'choice' ? studyDecision.step : null;
   const visibleNodes = useMemo(
     () =>
       nodes.filter((node) => {
@@ -530,9 +540,7 @@ export function CoursePath() {
         {selectedAssessmentId &&
           assessments.find((assessment) => assessment.id === selectedAssessmentId) && (
             <AssessmentDetailSheet
-              assessment={assessments.find(
-                (assessment) => assessment.id === selectedAssessmentId,
-              )!}
+              assessment={assessments.find((assessment) => assessment.id === selectedAssessmentId)!}
               lessons={lessons}
               cards={courseCards}
               links={lessonLinks}

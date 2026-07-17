@@ -3,6 +3,7 @@ import type { Lesson } from '../db/types';
 import type { PathNode } from './path';
 import { planNextStudyStep } from './studyFlowPlanner';
 import type { CourseStudyFlowSnapshot, StudyFlowPracticeState } from './studyFlowSnapshot';
+import type { AssessmentPracticeOption } from './assessmentPractice';
 
 function lessonNode(id: string, status: 'completed' | 'available' | 'locked'): PathNode {
   const lesson: Lesson = {
@@ -29,6 +30,7 @@ function snapshot(
   nodes: PathNode[],
   practices: StudyFlowPracticeState[] = [],
   recurringPracticeEligibleCount = 0,
+  assessmentOptions: AssessmentPracticeOption[] = [],
 ): CourseStudyFlowSnapshot {
   return {
     courseId: 'course',
@@ -38,6 +40,7 @@ function snapshot(
     activeManualNodeKeys: new Set(),
     completedManualNodeKeys: new Set(),
     recurringPracticeEligibleCount,
+    assessmentOptions,
   };
 }
 
@@ -47,6 +50,8 @@ function practiceState(nodeKey: string, active: boolean): StudyFlowPracticeState
     nodeType: 'practice-manual',
     label: 'Checkpoint practice',
     scopeLessonIds: new Set(['1']),
+    sessionScopeLessonIds: new Set(['1']),
+    assessmentOptions: [],
     scopeVersion: 'v1',
     totalCount: 2,
     securedCount: 0,
@@ -58,7 +63,11 @@ function practiceState(nodeKey: string, active: boolean): StudyFlowPracticeState
 
 describe('planNextStudyStep', () => {
   it('selects an earlier active Practice boundary before a later lesson', () => {
-    const nodes = [lessonNode('1', 'completed'), practiceNode('p1', true), lessonNode('2', 'available')];
+    const nodes = [
+      lessonNode('1', 'completed'),
+      practiceNode('p1', true),
+      lessonNode('2', 'available'),
+    ];
     expect(planNextStudyStep(snapshot(nodes, [practiceState('p1', true)]))).toEqual({
       kind: 'step',
       step: {
@@ -71,7 +80,11 @@ describe('planNextStudyStep', () => {
   });
 
   it('ignores a latent manual Practice boundary', () => {
-    const nodes = [lessonNode('1', 'completed'), practiceNode('p1', true), lessonNode('2', 'available')];
+    const nodes = [
+      lessonNode('1', 'completed'),
+      practiceNode('p1', true),
+      lessonNode('2', 'available'),
+    ];
     expect(planNextStudyStep(snapshot(nodes, [practiceState('p1', false)]))).toEqual({
       kind: 'step',
       step: { kind: 'lesson', lessonId: '2', label: 'Lesson 2' },
@@ -83,7 +96,9 @@ describe('planNextStudyStep', () => {
       kind: 'blocked',
       reason: 'curriculum-locked',
     });
-    expect(planNextStudyStep(snapshot([lessonNode('1', 'completed')]))).toEqual({ kind: 'complete' });
+    expect(planNextStudyStep(snapshot([lessonNode('1', 'completed')]))).toEqual({
+      kind: 'complete',
+    });
     expect(planNextStudyStep(snapshot([]))).toEqual({ kind: 'empty' });
     expect(planNextStudyStep({ ...snapshot([]), archived: true })).toEqual({
       kind: 'blocked',
@@ -96,5 +111,19 @@ describe('planNextStudyStep', () => {
       kind: 'step',
       step: { kind: 'practice', nodeKey: 'end', mode: 'recurring', label: 'Practice' },
     });
+  });
+
+  it('offers ranked assessment revision without replacing the curriculum step', () => {
+    const assessments = [
+      { assessmentId: 'near', name: 'Near paper', examDate: 2, eligibleCount: 2 },
+      { assessmentId: 'later', name: 'Later paper', examDate: 3, eligibleCount: 1 },
+    ];
+    expect(planNextStudyStep(snapshot([lessonNode('1', 'available')], [], 0, assessments))).toEqual(
+      {
+        kind: 'choice',
+        step: { kind: 'lesson', lessonId: '1', label: 'Lesson 1' },
+        assessments,
+      },
+    );
   });
 });

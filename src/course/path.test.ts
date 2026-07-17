@@ -495,8 +495,30 @@ describe('buildPath — practice nodes', () => {
       practiceThresholdMinutesNear: 3,
       examDate: 1 * MS_PER_DAY, // inside the default 7-day urgent window
     });
-    const farNodes = buildPath(farCourse, lessons, [], new Map(), [], dueCardCount, 8, now);
-    const nearNodes = buildPath(nearCourse, lessons, [], new Map(), [], dueCardCount, 8, now);
+    const farNodes = buildPath(
+      farCourse,
+      lessons,
+      [],
+      new Map(),
+      [],
+      dueCardCount,
+      8,
+      now,
+      undefined,
+      farCourse.examDate,
+    );
+    const nearNodes = buildPath(
+      nearCourse,
+      lessons,
+      [],
+      new Map(),
+      [],
+      dueCardCount,
+      8,
+      now,
+      undefined,
+      nearCourse.examDate,
+    );
     expect(farNodes.some((n) => n.nodeType === 'practice-auto')).toBe(false);
     expect(nearNodes.some((n) => n.nodeType === 'practice-auto')).toBe(true);
   });
@@ -638,7 +660,18 @@ describe('buildPath — practice nodes', () => {
         ...denserDefaults,
       });
       const dueCardCount = lessonCount * cardsPerLesson;
-      const nodes = buildPath(course, fixtureLessons, [], new Map(), [], dueCardCount, 8, now);
+      const nodes = buildPath(
+        course,
+        fixtureLessons,
+        [],
+        new Map(),
+        [],
+        dueCardCount,
+        8,
+        now,
+        undefined,
+        course.examDate,
+      );
       return nodes
         .filter((node): node is PracticePathNode => node.nodeType === 'practice-auto')
         .map((node) => node.afterLessonId)

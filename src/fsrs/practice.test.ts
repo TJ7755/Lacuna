@@ -40,7 +40,7 @@ describe('shouldInsertPractice', () => {
   it('uses the tighter near threshold when the exam is within the urgent window', () => {
     const course = makeCourse({ examDate: NOW + 3 * MS_PER_DAY });
     // 50 cards * 10s / 60 = 8.3 min: above near (6) but below far (12).
-    expect(shouldInsertPractice(course, 50, 0, 10, NOW)).toBe(true);
+    expect(shouldInsertPractice(course, 50, 0, 10, NOW, course.examDate)).toBe(true);
     // The same volume would not trigger under the far threshold (exam far away).
     expect(shouldInsertPractice(makeCourse(), 50, 0, 10, NOW)).toBe(false);
   });
@@ -49,7 +49,7 @@ describe('shouldInsertPractice', () => {
     // Exactly 7 days out: daysUntil = 7, which is <= practiceUrgentWindowDays.
     const course = makeCourse({ examDate: NOW + 7 * MS_PER_DAY });
     // 50 cards * 10s / 60 = 8.3 min >= near (6) but < far (12).
-    expect(shouldInsertPractice(course, 50, 0, 10, NOW)).toBe(true);
+    expect(shouldInsertPractice(course, 50, 0, 10, NOW, course.examDate)).toBe(true);
   });
 
   it('fires the max-gap backstop even with no due cards', () => {

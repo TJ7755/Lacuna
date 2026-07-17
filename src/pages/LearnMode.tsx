@@ -33,7 +33,6 @@ import {
   isLessonUnlocked,
   lessonEffectiveReleaseDates,
   manualPracticeGateOutcomeAfterLesson,
-  nearestExamDate,
 } from '../course/path';
 import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
 import {
@@ -44,6 +43,11 @@ import {
   practiceReadiness,
   practiceScopeVersion,
 } from '../course/studyPools';
+import {
+  assessmentPracticePool,
+  currentAssessmentPracticeContext,
+} from '../course/assessmentPractice';
+import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 import {
   emptyPerformance,
   gradeFromResponse,
@@ -180,9 +184,16 @@ export type LearnSessionRequest =
       kind: 'practice';
       courseId: string;
       nodeKey?: string;
-      /** Fixed curricular prefix; omitted for recurring and ad-hoc course-wide review. */
+      /** Current curricular session scope; omitted for recurring and ad-hoc review. */
       scopeLessonIds?: string[];
       mode: 'curricular' | 'recurring' | 'ad-hoc';
+      assessmentId?: never;
+    }
+  | {
+      kind: 'practice';
+      courseId: string;
+      mode: 'assessment';
+      assessmentId: string;
     };
 
 interface LearnModeProps {
@@ -206,7 +217,14 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     request?.kind === 'practice' && request.mode === 'curricular'
       ? (request.nodeKey ?? null)
       : searchParams.get('practiceNode');
-  const requestScopeLessonIds = request?.kind === 'practice' ? request.scopeLessonIds : undefined;
+  const requestScopeLessonIds =
+    request?.kind === 'practice' && request.mode !== 'assessment'
+      ? request.scopeLessonIds
+      : undefined;
+  const requestAssessmentId =
+    request?.kind === 'practice' && request.mode === 'assessment'
+      ? request.assessmentId
+      : undefined;
   const filterParams = useMemo(() => searchParams.getAll('filter') as CardFilter[], [searchParams]);
   const navigate = useNavigate();
   const distraction = useDistraction();
@@ -472,13 +490,23 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       courseCards,
       buildDeckSecondsMap(performance),
     );
+    const currentPractice = currentAssessmentPracticeContext({
+      course,
+      assessments: examDates,
+      lessons,
+      cards: courseCards,
+      links,
+      exposures,
+      now,
+    });
+    const currentPracticeScope = currentPractice.scope;
     const nodes = buildPath(
       course,
       lessons,
       examDates,
       lessonCardsById,
       practiceNodes,
-      dueCards(availableCards(courseCards, now), now).length,
+      dueCards(availableCards(currentPracticeScope, now), now).length,
       meanReviewSeconds,
       now,
       {
@@ -486,6 +514,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         lessonCompletions: completions,
         practiceMilestones: milestones,
       },
+      currentPractice.assessmentOptions[0]?.examDate,
     );
     const snapshot = buildCourseStudyFlowSnapshot({
       course,
@@ -496,7 +525,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
       examDateContext: makeExamDateContext(course, lessons, examDates),
       meanReviewSeconds,
       practiceMilestones: milestones,
-      nearestExamDate: nearestExamDate(course, examDates, now),
       now,
     });
     for (let i = 0; i < coreLessons.length - 1; i++) {
@@ -778,8 +806,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
             : [],
         ]);
         const effectiveDates = lessonEffectiveReleaseDates(course, courseLessons);
-        const reachedLessonIds = requestScopeLessonIds
-          ? new Set(requestScopeLessonIds)
+        const reachedLessonIds: Set<string> = requestScopeLessonIds
+          ? new Set<string>(requestScopeLessonIds)
           : new Set(
               courseLessons
                 .filter((lesson) => isLessonUnlocked(course, lesson, effectiveDates, courseLessons))
@@ -788,16 +816,42 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         const practiceNode = practiceNodeKeyParam
           ? manualNodes.find((node) => node.id === practiceNodeKeyParam)
           : undefined;
-        const fullScope = practiceCardScope(
-          allCards,
-          courseLinks,
-          courseExposures,
-          { reachedLessonIds, practiceNode },
-          Date.now(),
-          course.leechThreshold,
-        );
-        const examDateContext = makeExamDateContext(course, courseLessons, examDates);
-        cards = eligiblePracticePool(fullScope, course, examDateContext);
+        const selectedAssessment = requestAssessmentId
+          ? examDates.find((assessment) => assessment.id === requestAssessmentId)
+          : undefined;
+        if (requestAssessmentId && !selectedAssessment) {
+          if (onFlowExit) onFlowExit();
+          else navigate(`/course/${courseId}`);
+          return;
+        }
+        const fullScope = selectedAssessment
+          ? resolveAssessmentCoverage(selectedAssessment, courseLessons, allCards, courseLinks)
+              .cards
+          : practiceCardScope(
+              allCards,
+              courseLinks,
+              courseExposures,
+              { reachedLessonIds, practiceNode },
+              Date.now(),
+              course.leechThreshold,
+            );
+        const examDateContext = selectedAssessment
+          ? {
+              courseExamDate: selectedAssessment.examDate,
+              lessonsById: new Map<string, Lesson>(),
+              courseAssessments: [],
+            }
+          : makeExamDateContext(course, courseLessons, examDates);
+        cards = selectedAssessment
+          ? assessmentPracticePool(selectedAssessment, {
+              course,
+              lessons: courseLessons,
+              cards: allCards,
+              links: courseLinks,
+              exposures: courseExposures,
+              reachedLessonIds,
+            })
+          : eligiblePracticePool(fullScope, course, examDateContext);
         const practiceCourse: Course = { ...course, newCardsPerDay: undefined };
         units = [course];
         sessionUnits = [
@@ -809,7 +863,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
         ];
         reviewKindRef.current = 'course';
         ratchetCourseIdRef.current = course.id;
-        setUnitDisplayName(course.name);
+        setUnitDisplayName(selectedAssessment?.name ?? course.name);
         if (practiceNodeKeyParam) {
           const scopeVersion = practiceScopeVersion(fullScope);
           practiceSessionRef.current = {
@@ -961,6 +1015,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit }: LearnModeProp
     isGlobal,
     practiceNodeKeyParam,
     requestScopeLessonIds,
+    requestAssessmentId,
     finaliseSummary,
     persistPracticeMilestone,
     ratchetUnlocks,

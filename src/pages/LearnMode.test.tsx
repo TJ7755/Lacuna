@@ -7,6 +7,7 @@ import { db } from '../db/schema';
 import {
   createCard,
   createCourse,
+  createCourseAssessment,
   createDeck,
   createLesson,
   createLessonCard,
@@ -70,6 +71,7 @@ describe('LearnMode course/lesson scope', () => {
       db.lessonCompletions.clear(),
       db.practiceNodes.clear(),
       db.practiceMilestones.clear(),
+      db.courseAssessments.clear(),
       db.noteAnnotations.clear(),
     ]);
     localStorage.clear();
@@ -95,8 +97,9 @@ describe('LearnMode course/lesson scope', () => {
     // Header shows the lesson's own name (not the course name).
     expect(await screen.findByRole('heading', { name: 'Atomic structure' })).toBeInTheDocument();
     await continueFromNotes();
-    const flipCard = (await screen.findAllByRole('button', { name: /show answer/i }))
-      .find((element) => element.tagName === 'DIV')!;
+    const flipCard = (await screen.findAllByRole('button', { name: /show answer/i })).find(
+      (element) => element.tagName === 'DIV',
+    )!;
     expect(flipCard).toHaveAttribute('tabindex', '0');
     fireEvent.keyDown(flipCard, { key: 'Enter' });
     expect(await screen.findByRole('button', { name: /^yes$/i })).toBeInTheDocument();
@@ -411,6 +414,61 @@ describe('LearnMode course/lesson scope', () => {
       const updatedCourse = await db.courses.get(course.id);
       expect(updatedCourse?.lastInteractedAt).toBeDefined();
     });
+  });
+
+  it('uses the selected assessment scope in the ordinary Practice player', async () => {
+    const course = await createCourse('History');
+    const includedLesson = await createLesson(course.id, 'Revolutions');
+    const unrelatedLesson = await createLesson(course.id, 'Empires');
+    const included = await createLessonCard(
+      course.id,
+      includedLesson.id,
+      'front_back',
+      'Assessment question',
+      'Answer',
+    );
+    const unrelated = await createLessonCard(
+      course.id,
+      unrelatedLesson.id,
+      'front_back',
+      'Unrelated question',
+      'Answer',
+    );
+    await Promise.all([
+      upsertLessonCardExposure(includedLesson.id, included.id),
+      upsertLessonCardExposure(unrelatedLesson.id, unrelated.id),
+    ]);
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Revolutions paper',
+      Date.now() + 86_400_000,
+      {
+        afterLessonId: unrelatedLesson.id,
+        coverageMode: 'custom',
+        lessonIds: [includedLesson.id],
+      },
+    );
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter>
+            <LearnMode
+              request={{
+                kind: 'practice',
+                courseId: course.id,
+                mode: 'assessment',
+                assessmentId: assessment.id,
+              }}
+            />
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('Revolutions paper')).toBeInTheDocument();
+    expect(await screen.findByText(/Assessment question/)).toBeInTheDocument();
+    expect(screen.queryByText(/Unrelated question/)).not.toBeInTheDocument();
   });
 
   it('starts in Focus Mode from the persisted preference and Esc leaves it for this session', async () => {

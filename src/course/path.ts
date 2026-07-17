@@ -329,7 +329,7 @@ function lessonIndexAtOrBeforePosition(
  *    lesson, tracking `lessonsSinceLastPractice` since the previous practice
  *    node (manual or auto) and resetting it whenever one is inserted. This only
  *    runs when `course.autoPractice` is true. `dueCardCount` and
- *    `meanReviewSeconds` are a single course-wide snapshot supplied once per
+ *    `meanReviewSeconds` are a single current-Practice snapshot supplied once per
  *    `buildPath` call, not a live per-lesson figure — the backlog is not
  *    decremented as slots are inserted (that depends on what the learner
  *    actually clears, which this pure function cannot know). Consequently,
@@ -351,6 +351,7 @@ export function buildPath(
   meanReviewSeconds: number = 0,
   now: number = Date.now(),
   progress: PathProgress = EMPTY_PATH_PROGRESS,
+  nearestPracticeAssessmentDate?: number,
 ): PathNode[] {
   const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
@@ -443,8 +444,8 @@ export function buildPath(
     });
 
   // Auto practice slots (addendum 2 §H): walk the lesson list in path order,
-  // evaluating shouldInsertPractice after every lesson against the course-wide
-  // due-card snapshot. lessonsSinceLastPractice resets at every already-placed
+  // evaluating shouldInsertPractice after every lesson against the current
+  // reached-and-exposed due-card snapshot. lessonsSinceLastPractice resets at every already-placed
   // manual node and every auto slot this walk inserts.
   //
   // dueCardCount/meanReviewSeconds are a static snapshot for the whole walk, so
@@ -478,6 +479,7 @@ export function buildPath(
             lessonsSinceLastPractice,
             meanReviewSeconds,
             now,
+            nearestPracticeAssessmentDate,
           );
       if (insert) {
         const afterLessonId = lessonNodes[i].lesson.id;

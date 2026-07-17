@@ -5,8 +5,9 @@ import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigrati
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { buildPath, nearestExamDate } from '../course/path';
+import { buildPath } from '../course/path';
 import { lessonCardMembership } from '../course/studyPools';
+import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
 import {
   buildCourseStudyFlowSnapshot,
   courseMeanReviewSeconds,
@@ -125,11 +126,22 @@ export function useCourseStudyFlow(
         lessonCardMembership(lesson.id, records.cards, records.links),
       ]),
     );
-    const reviewDueCount = dueCards(availableCards(records.cards, now), now).length;
+    const currentPractice = currentAssessmentPracticeContext({
+      course: records.course,
+      assessments: records.assessments,
+      lessons: records.lessons,
+      cards: records.cards,
+      links: records.links,
+      exposures: records.exposures,
+      now,
+    });
+    const currentPracticeScope = currentPractice.scope;
+    const reviewDueCount = dueCards(availableCards(currentPracticeScope, now), now).length;
     const meanReviewSeconds = courseMeanReviewSeconds(
       records.cards,
       buildDeckSecondsMap(records.performance),
     );
+    const nearestPracticeAssessmentDate = currentPractice.assessmentOptions[0]?.examDate;
     const nodes = buildPath(
       records.course,
       records.lessons,
@@ -144,6 +156,7 @@ export function useCourseStudyFlow(
         lessonCompletions: records.completions,
         practiceMilestones: records.milestones,
       },
+      nearestPracticeAssessmentDate,
     );
     const snapshot = buildCourseStudyFlowSnapshot({
       course: records.course,
@@ -154,7 +167,6 @@ export function useCourseStudyFlow(
       examDateContext: makeExamDateContext(records.course, records.lessons, records.assessments),
       meanReviewSeconds,
       practiceMilestones: records.milestones,
-      nearestExamDate: nearestExamDate(records.course, records.assessments, now),
       now,
     });
     return {

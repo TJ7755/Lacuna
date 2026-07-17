@@ -385,19 +385,30 @@ conductor at `/course/:courseId/study`. The conductor rebuilds its next-step dec
 authoritative course state after every completed lesson or Practice step; it never stores a
 fixed queue. Lesson notes, Simple recall, curricular Practice, recurring Practice, transition
 reports and Pomodoro breaks therefore form one continuous study period rather than unrelated
-routes. The learner leaves only through an explicit finish action. The step union reserves an
+routes. When an imminent assessment overlaps reached, exposed material and has useful work,
+the conductor explicitly offers the ordinary next step alongside each applicable assessment,
+ordered by date. Choosing either branch is temporary and is not retained as a preference.
+The learner leaves only through an explicit finish action. The step union reserves an
 `exam-questions` member for a future engine, but this version creates no placeholder questions
 or empty exam UI.
 
-Curricular Practice uses a fixed lesson-prefix scope: only introduced cards from lessons at or
-before the checkpoint are eligible, further narrowed by an authored lesson selection. Later
-lessons therefore cannot revive an earlier milestone. Manual Practice checkpoints are
-conditional. In Study mode they appear and gate progression only when they have eligible work
-whose estimated review time crosses the course's near/far threshold, or when the checkpoint is
-the last relevant opportunity inside the urgent exam window. Zero-eligible and low-workload
-nodes remain latent and non-gating; they remain visible in Edit mode. Completed manual
-checkpoints remain visible as curriculum history. Automatic Practice is conductor scheduling
-machinery and is not rendered as a separate path diamond.
+Curricular Practice keeps a fixed lesson prefix only for its milestone denominator, so later
+lessons cannot rewrite or revive that historical milestone. A current automatic or recurring
+Practice session uses all reached and exposed material; a manual Practice node may narrow its
+live session through its authored lesson selection. Manual checkpoints are conditional. In
+Study mode they appear and gate progression only when they have eligible work whose estimated
+review time crosses the course's near/far threshold, or when they are the last relevant
+opportunity for an urgent assessment intersecting that exact Practice context. An unrelated
+assessment never tightens the threshold. Zero-eligible and low-workload nodes remain latent
+and non-gating; they remain visible in Edit mode. Completed manual checkpoints remain visible
+as curriculum history. Automatic Practice is conductor scheduling machinery and is not
+rendered as a separate path diamond.
+
+Assessment revision still uses ordinary Practice and never completes a curricular milestone.
+Selecting an assessment expands from the scope that triggered the offer to the assessment's
+full resolved coverage, intersected with reached lessons and exposed cards, then removes
+assessment exclusions and unavailable cards. Its eligibility and session objective use the
+chosen assessment date alone; overlapping assessment horizons are never blended.
 
 **Review due cards** is a separate ad-hoc course-wide action. It creates no path node or
 milestone, may be launched at any time, and returns to the same conductor afterwards.
