@@ -1,4 +1,4 @@
-import frozenCoefficients from '../../tooling/short-term-memory/coefficients/half-life-logistic-v2.json';
+import frozenCoefficients from '../../tooling/short-term-memory/coefficients/half-life-logistic-v3.json';
 import type { Card, ReviewLog, RevisionProjection } from '../db/types';
 import type {
   CramMemoryModel,
@@ -9,7 +9,7 @@ import type {
 import { forgettingCurve } from './forwardSim';
 import { MS_PER_DAY } from './params';
 
-const MODEL_NAME = 'half-life-logistic-v2-routed';
+const MODEL_NAME = 'half-life-logistic-v3-routed';
 const FEATURE_NAMES = [
   'intercept',
   'log_elapsed_seconds',
@@ -24,14 +24,18 @@ const FEATURE_NAMES = [
 ] as const;
 const COUNT_CAP = 8;
 const FSRS_ONLY_SECONDS = 604_800;
-// Outcome-conditional handover (VALIDATION_PLAN.md phase 2). After a previous failure, full
-// short-term weight holds through 518,400 s (6 days) and decays to 0 at 604,800 s (7 days),
-// matching v1. After a previous success, no previous outcome, or a first predictive review,
-// weight decays much sooner: full through 86,400 s (1 day), 0 at 172,800 s (2 days).
-const POST_FAILURE_TRANSITION_START_SECONDS = 518_400;
-const POST_FAILURE_TRANSITION_END_SECONDS = FSRS_ONLY_SECONDS;
-const POST_SUCCESS_TRANSITION_START_SECONDS = 86_400;
-const POST_SUCCESS_TRANSITION_END_SECONDS = 172_800;
+// Outcome-conditional handover (v3, ROUTING_DECISION_RULE.md): the predeclared, conservative
+// re-route triggered by the 201-300 transfer result. After a previous success, no previous
+// outcome, or a first predictive review, weight moves fully onto FSRS-6 much sooner than v2:
+// full through 21,600 s (6 hours), 0 at 86,400 s (1 day). After a previous failure, the
+// logistic model is retained for far longer than the success path but far less long than v2's
+// fitting-cohort boundary: full through 345,600 s (4 days), 0 at 432,000 s (5 days) -- the
+// last bucket at or above 24-36h where the routed model won both metrics on both transfer
+// cohorts. Coefficients are unchanged from v1/v2; only these boundaries differ.
+const POST_FAILURE_TRANSITION_START_SECONDS = 345_600;
+const POST_FAILURE_TRANSITION_END_SECONDS = 432_000;
+const POST_SUCCESS_TRANSITION_START_SECONDS = 21_600;
+const POST_SUCCESS_TRANSITION_END_SECONDS = 86_400;
 const LOCAL_FIT_MINIMUM = 500;
 const LOCAL_FIT_PRIOR = 1_000;
 const PROBABILITY_EPSILON = 1e-9;
@@ -109,6 +113,7 @@ export function loadHalfLifeLogisticCoefficients(raw: unknown): HalfLifeLogistic
     composition?.fsrs_only_from_seconds !== FSRS_ONLY_SECONDS ||
     composition?.post_failure_short_term_only_through_seconds !==
       POST_FAILURE_TRANSITION_START_SECONDS ||
+    composition?.post_failure_transition_end_seconds !== POST_FAILURE_TRANSITION_END_SECONDS ||
     composition?.post_success_transition_start_seconds !== POST_SUCCESS_TRANSITION_START_SECONDS ||
     composition?.post_success_transition_end_seconds !== POST_SUCCESS_TRANSITION_END_SECONDS ||
     fallback?.lag_above_seconds !== FSRS_ONLY_SECONDS ||
@@ -216,7 +221,7 @@ function smoothstepWeight(elapsedSeconds: number, start: number, end: number): n
 }
 
 /**
- * Outcome-conditional short-term weight; mirrors `routed_short_term_weight` in
+ * Outcome-conditional short-term weight; mirrors `routed_short_term_weight_v3` in
  * `tooling/short-term-memory/stm_harness/candidates/common.py` exactly. `previousRecalled` is
  * `null` when there is no previous review at all. A first predictive review is routed onto the
  * success/no-outcome path unconditionally, even though its seed review's outcome technically
