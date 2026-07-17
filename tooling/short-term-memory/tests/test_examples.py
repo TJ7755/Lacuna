@@ -72,3 +72,47 @@ def test_rejects_invalid_source_values():
         assert "invalid source value" in str(error)
     else:
         raise AssertionError("invalid rating was accepted")
+
+
+def test_excludes_out_of_contract_state_events_without_excluding_card():
+    rows, stats = construct_user_examples(
+        1,
+        [
+            row(1, -1),
+            row(1, 20, rating=1, state=4),
+            row(1, 60, rating=3),
+            row(2, -1),
+            row(2, 30, rating=2, state=4),
+            row(2, 90, rating=1),
+        ],
+        holdout_fraction=0.5,
+        minimum_train_examples=1,
+        minimum_holdout_examples=1,
+    )
+
+    assert [item["source_index"] for item in rows] == [0, 2, 3, 5]
+    assert {item["card_id"] for item in rows} == {1, 2}
+    assert rows[1]["elapsed_seconds"] == 60
+    assert rows[3]["elapsed_seconds"] == 90
+    assert stats["excluded_state_events"] == 2
+    assert stats["excluded_state_affected_cards"] == 2
+
+
+def test_clamps_long_durations_without_excluding_outcomes():
+    rows, stats = construct_user_examples(
+        1,
+        [
+            row(1, -1, duration=1_000_000),
+            row(1, 30, rating=1, duration=60_001),
+            row(1, 60, rating=3, duration=60_000),
+        ],
+        holdout_fraction=0.5,
+        minimum_train_examples=1,
+        minimum_holdout_examples=1,
+    )
+
+    assert [item["duration_ms"] for item in rows] == [60_000, 60_000, 60_000]
+    assert [item["recalled"] for item in rows] == [True, False, True]
+    assert stats["clamped_duration_events"] == 2
+    assert stats["clamped_duration_affected_cards"] == 1
+    assert stats["maximum_source_duration_ms"] == 1_000_000

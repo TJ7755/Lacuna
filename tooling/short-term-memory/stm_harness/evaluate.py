@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import importlib
 import json
+import time
 from collections import defaultdict
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from .contract import Candidate, Example
 from .io import (
@@ -15,6 +17,12 @@ from .io import (
     sha256_file,
 )
 from .metrics import LAG_BUCKETS, MetricAccumulator, lag_bucket
+
+if TYPE_CHECKING:
+    import pyarrow as pa
+
+
+type ProgressCallback = Callable[[str, int, int], None]
 
 
 def load_candidate(reference: str) -> Candidate:
@@ -33,18 +41,25 @@ def load_candidate(reference: str) -> Candidate:
     return cast(Candidate, candidate)
 
 
-def evaluate_candidate(candidate: Candidate, examples_root: Path) -> dict[str, object]:
+def evaluate_candidate(
+    candidate: Candidate,
+    examples_root: Path,
+    progress: ProgressCallback | None = None,
+) -> dict[str, object]:
     paths = list(iter_partition_paths(examples_root))
+    fit_started = time.perf_counter()
     if hasattr(candidate, "fit_batches"):
-        fitted = candidate.fit_batches(iter_training_batches(paths))
+        fitted = candidate.fit_batches(_training_batches(paths, progress))
     else:
-        fitted = candidate.fit(iter_examples_from_paths(paths, split="train"))
+        fitted = candidate.fit(_training_examples(paths, progress))
+    fit_seconds = time.perf_counter() - fit_started
     accumulators: dict[tuple[str, str], MetricAccumulator] = defaultdict(MetricAccumulator)
     for key in _empty_slice_keys():
         accumulators[key]
     excluded = {"seed_events": 0, "training_events": 0, "lag_over_7d": 0}
 
-    for path in paths:
+    evaluation_started = time.perf_counter()
+    for partition_index, path in enumerate(paths, 1):
         user_id = int(path.parent.name.removeprefix("user_id="))
         predictor = fitted.new_predictor(user_id)
         for example in iter_partition_examples(path):
@@ -64,6 +79,9 @@ def evaluate_candidate(candidate: Candidate, examples_root: Path) -> dict[str, o
                 for dimension, value in _slice_keys(example, bucket):
                     accumulators[(dimension, value)].add(probability, example.recalled)
             predictor.observe(example)
+        if progress is not None:
+            progress("evaluate", partition_index, len(paths))
+    evaluation_seconds = time.perf_counter() - evaluation_started
 
     slices = [
         {"dimension": dimension, "value": value, **accumulator.result()}
@@ -71,6 +89,7 @@ def evaluate_candidate(candidate: Candidate, examples_root: Path) -> dict[str, o
     ]
     return {
         "candidate": fitted.name,
+        "fitted_parameters": getattr(fitted, "parameters", None),
         "protocol": {
             "holdout": "per-user chronological suffix",
             "lag_range_seconds": [0, 604_800],
@@ -78,8 +97,31 @@ def evaluate_candidate(candidate: Candidate, examples_root: Path) -> dict[str, o
         },
         "dataset": _dataset_metadata(examples_root),
         "excluded": excluded,
+        "timing_seconds": {
+            "fit": fit_seconds,
+            "evaluation": evaluation_seconds,
+            "total": fit_seconds + evaluation_seconds,
+        },
         "slices": slices,
     }
+
+
+def _training_examples(
+    paths: list[Path], progress: ProgressCallback | None
+) -> Iterator[Example]:
+    for partition_index, path in enumerate(paths, 1):
+        yield from iter_examples_from_paths([path], split="train")
+        if progress is not None:
+            progress("fit", partition_index, len(paths))
+
+
+def _training_batches(
+    paths: list[Path], progress: ProgressCallback | None
+) -> Iterator[pa.RecordBatch]:
+    for partition_index, path in enumerate(paths, 1):
+        yield from iter_training_batches([path])
+        if progress is not None:
+            progress("fit", partition_index, len(paths))
 
 
 def write_report(report: dict[str, object], destination: Path) -> None:
@@ -137,6 +179,31 @@ def _dataset_metadata(examples_root: Path) -> dict[str, object] | None:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     source = manifest.get("source_manifest") or {}
     users = manifest.get("users") or []
+    preprocessing = {
+        "source_rows": sum(user.get("source_rows", 0) for user in users),
+        "written_rows": sum(user.get("written_rows", 0) for user in users),
+        "excluded_cards": sum(user.get("excluded_cards", 0) for user in users),
+        "excluded_state_events": sum(
+            user.get("excluded_state_events", 0) for user in users
+        ),
+        "excluded_state_affected_cards": sum(
+            user.get("excluded_state_affected_cards", 0) for user in users
+        ),
+        "clamped_duration_events": sum(
+            user.get("clamped_duration_events", 0) for user in users
+        ),
+        "clamped_duration_affected_cards": sum(
+            user.get("clamped_duration_affected_cards", 0) for user in users
+        ),
+        "maximum_source_duration_ms": max(
+            (
+                user.get("maximum_source_duration_ms")
+                for user in users
+                if user.get("maximum_source_duration_ms") is not None
+            ),
+            default=None,
+        ),
+    }
     return {
         "examples_manifest_sha256": sha256_file(path),
         "schema_version": manifest.get("schema_version"),
@@ -147,4 +214,5 @@ def _dataset_metadata(examples_root: Path) -> dict[str, object] | None:
         "minimum_holdout_examples": manifest.get("minimum_holdout_examples"),
         "user_count": len(users),
         "user_ids": [user.get("user_id") for user in users],
+        "preprocessing": preprocessing,
     }

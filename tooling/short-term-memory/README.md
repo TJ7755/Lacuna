@@ -1,8 +1,8 @@
 # Offline short-term memory harness
 
-This directory contains the Arc 3 Task 5 offline dataset and evaluation tooling. It is an
-independent Python project and is not imported by the browser or Electron builds. Candidate
-models and model selection belong to Task 6.
+This directory contains the Arc 3 offline dataset, candidate and evaluation tooling. It is an
+independent Python project and is not imported by the browser or Electron builds. Arc 3 Task 6
+selected a compact short-term model; see [`BENCHMARK.md`](BENCHMARK.md).
 
 ## Dataset and licence
 
@@ -29,9 +29,10 @@ The dataset uses a
 not a permissive open-data licence. It permits FSRS memory research and research by
 individuals or university students, forbids public redistribution of the data, and requires
 Anki's permission for other contexts. Tom approved local download and benchmark compute for
-this work. That approval does not amend the upstream licence. Raw and constructed datasets
-must remain private, and permission is required before using fitted coefficients in a
-context not covered by the licence. The local `.gitignore` excludes `data/` and `reports/`.
+this work. The project owner subsequently accepted the licence consideration for committing
+the selected compact coefficient artefact for later Lacuna runtime integration. That approval
+does not amend the upstream licence or permit data redistribution. Raw and constructed datasets
+remain private; the local `.gitignore` excludes `data/` and `reports/`.
 
 The Hugging Face repository is gated. Before acquisition, sign in, accept its access terms,
 and authenticate with `hf auth login` or set `HF_TOKEN`.
@@ -51,6 +52,10 @@ revlog share of the 15.7 GB repository. The command writes `data/source/manifest
 the resolved revision, DOI, acquisition time, file sizes and SHA-256 hashes. Destinations
 must be new or empty so a smaller later run cannot silently inherit stale partitions. Use a
 new run directory when changing the revision or user set.
+
+The Task 6 benchmark uses exactly users 1–100 inclusive. This 100-user subset is a serious
+generalisability limitation, not a miniature proxy for all 10,000 users. It is also biased towards
+established learners because the source includes only collections with at least 5,000 revlogs.
 
 ## Chronological examples
 
@@ -81,6 +86,12 @@ Each row contains the current event plus features derived strictly from earlier 
 - preceding outcome;
 - whether this is the first predictive review after the seed event;
 - chronological `train` or `holdout` assignment.
+
+The source contains undocumented `state=4` events. Construction excludes those individual events,
+counts them and retains the rest of each affected card. This matches the upstream benchmark's
+exclusion of manual/rescheduled and non-rescheduling filtered-deck events. Durations above 60,000
+ms are retained but winsorised to 60,000 ms, also with explicit counts, because deleting slow
+reviews would bias the outcomes. Ratings, lags and order are never rewritten.
 
 The Parquet row retains the current outcome for fitting and post-prediction observation, but
 the evaluator's `PredictionContext` does not expose rating, recall or response duration.
@@ -118,6 +129,23 @@ SHA-256, source revision, selected user IDs and split settings.
 ```sh
 uv run stm-harness evaluate data/examples package.module:candidate reports/candidate.json
 ```
+
+The implemented candidates are:
+
+- `stm_harness.candidates.fsrs6:candidate`: the current FSRS-6 default short-term treatment;
+- `stm_harness.candidates.half_life:candidate`: elapsed-time logistic half-life with recent outcomes;
+- `stm_harness.candidates.actr:candidate`: ACT-R/Pavlik-Anderson power-law multi-trace activation.
+
+Apply the pre-declared selection gate with:
+
+```sh
+uv run stm-harness select \
+  reports/fsrs6.json reports/half-life.json reports/actr.json reports/selection.json
+```
+
+The selected frozen coefficients are in
+[`coefficients/half-life-logistic-v1.json`](coefficients/half-life-logistic-v1.json). Training and
+evaluation code remains offline; no Python, Arrow or neural dependency enters the browser bundle.
 
 ## Metrics and slices
 

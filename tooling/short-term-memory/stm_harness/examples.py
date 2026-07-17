@@ -12,6 +12,8 @@ from .io import EXAMPLE_SCHEMA, ensure_fresh_directory, sha256_file
 
 
 SOURCE_COLUMNS = {"card_id", "rating", "state", "duration", "elapsed_seconds"}
+SUPPORTED_STATES = {0, 1, 2, 3}
+MAXIMUM_DURATION_MS = 60_000
 
 
 def build_examples(
@@ -65,10 +67,16 @@ def construct_user_examples(
     minimum_train_examples: int,
     minimum_holdout_examples: int,
 ) -> tuple[list[dict[str, object]], dict[str, object]]:
-    invalid_cards = _invalid_card_ids(source_rows)
+    excluded_rows = [row for row in source_rows if _is_out_of_contract_state(row)]
+    retained_rows = [row for row in source_rows if not _is_out_of_contract_state(row)]
+    clamped_duration_rows = [
+        row for row in retained_rows if int(row["duration"]) > MAXIMUM_DURATION_MS
+    ]
+    invalid_cards = _invalid_card_ids(retained_rows)
     valid_rows = [
         (source_index, row)
         for source_index, row in enumerate(source_rows)
+        if not _is_out_of_contract_state(row)
         if int(row["card_id"]) not in invalid_cards
     ]
     predictive_indices = [
@@ -88,8 +96,8 @@ def construct_user_examples(
         elapsed_seconds = int(row["elapsed_seconds"])
         rating = int(row["rating"])
         state = int(row["state"])
-        duration = int(row["duration"])
-        if rating not in {1, 2, 3, 4} or state not in {0, 1, 2, 3} or not 0 <= duration <= 60_000:
+        source_duration = int(row["duration"])
+        if rating not in {1, 2, 3, 4} or state not in SUPPORTED_STATES or source_duration < 0:
             raise ValueError(f"invalid source value for user {user_id} at row {source_index}")
         history = histories[card_id]
         is_seed = elapsed_seconds == -1
@@ -104,7 +112,7 @@ def construct_user_examples(
                 "rating": rating,
                 "recalled": recalled,
                 "state": state,
-                "duration_ms": duration,
+                "duration_ms": min(source_duration, MAXIMUM_DURATION_MS),
                 "is_seed": is_seed,
                 "is_first_predictive_review": not is_seed and int(history["reviews"]) == 1,
                 "prior_review_count": int(history["reviews"]),
@@ -124,6 +132,17 @@ def construct_user_examples(
         "source_rows": len(source_rows),
         "written_rows": len(result),
         "excluded_cards": len(invalid_cards),
+        "excluded_state_events": len(excluded_rows),
+        "excluded_state_affected_cards": len(
+            {int(row["card_id"]) for row in excluded_rows}
+        ),
+        "clamped_duration_events": len(clamped_duration_rows),
+        "clamped_duration_affected_cards": len(
+            {int(row["card_id"]) for row in clamped_duration_rows}
+        ),
+        "maximum_source_duration_ms": max(
+            (int(row["duration"]) for row in retained_rows), default=None
+        ),
         "train_predictive_examples": len(predictive_indices) - holdout_count,
         "holdout_predictive_examples": holdout_count,
     }
@@ -143,7 +162,16 @@ def _build_user_partition(
     if missing:
         raise ValueError(f"{source} is missing columns: {sorted(missing)}")
 
-    invalid_cards, predictive_by_card, source_rows = _scan_source(parquet, user_id)
+    (
+        invalid_cards,
+        predictive_by_card,
+        source_rows,
+        excluded_state_events,
+        excluded_state_affected_cards,
+        clamped_duration_events,
+        clamped_duration_affected_cards,
+        maximum_source_duration_ms,
+    ) = _scan_source(parquet, user_id)
     predictive_count = sum(
         count for card_id, count in predictive_by_card.items() if card_id not in invalid_cards
     )
@@ -162,6 +190,8 @@ def _build_user_partition(
     written_rows = 0
     try:
         for source_index, row in enumerate(_iter_source_rows(parquet)):
+            if _is_out_of_contract_state(row):
+                continue
             card_id = int(row["card_id"])
             if card_id in invalid_cards:
                 continue
@@ -188,6 +218,11 @@ def _build_user_partition(
         "source_rows": source_rows,
         "written_rows": written_rows,
         "excluded_cards": len(invalid_cards),
+        "excluded_state_events": excluded_state_events,
+        "excluded_state_affected_cards": excluded_state_affected_cards,
+        "clamped_duration_events": clamped_duration_events,
+        "clamped_duration_affected_cards": clamped_duration_affected_cards,
+        "maximum_source_duration_ms": maximum_source_duration_ms,
         "train_predictive_examples": train_count,
         "holdout_predictive_examples": holdout_count,
     }
@@ -195,14 +230,30 @@ def _build_user_partition(
 
 def _scan_source(
     parquet: pq.ParquetFile, user_id: int
-) -> tuple[set[int], dict[int, int], int]:
+) -> tuple[set[int], dict[int, int], int, int, int, int, int, int | None]:
     seen: set[int] = set()
     invalid: set[int] = set()
     predictive_by_card: dict[int, int] = defaultdict(int)
     source_rows = 0
+    excluded_state_events = 0
+    excluded_state_cards: set[int] = set()
+    clamped_duration_events = 0
+    clamped_duration_cards: set[int] = set()
+    maximum_source_duration_ms: int | None = None
     for source_index, row in enumerate(_iter_source_rows(parquet)):
         source_rows += 1
         card_id = int(row["card_id"])
+        if _is_out_of_contract_state(row):
+            excluded_state_events += 1
+            excluded_state_cards.add(card_id)
+            continue
+        source_duration = int(row["duration"])
+        maximum_source_duration_ms = max(
+            maximum_source_duration_ms or 0, source_duration
+        )
+        if source_duration > MAXIMUM_DURATION_MS:
+            clamped_duration_events += 1
+            clamped_duration_cards.add(card_id)
         elapsed = int(row["elapsed_seconds"])
         _validate_source_values(user_id, source_index, row)
         if card_id not in seen:
@@ -213,7 +264,16 @@ def _scan_source(
             invalid.add(card_id)
         else:
             predictive_by_card[card_id] += 1
-    return invalid, predictive_by_card, source_rows
+    return (
+        invalid,
+        predictive_by_card,
+        source_rows,
+        excluded_state_events,
+        len(excluded_state_cards),
+        clamped_duration_events,
+        len(clamped_duration_cards),
+        maximum_source_duration_ms,
+    )
 
 
 def _iter_source_rows(parquet: pq.ParquetFile):
@@ -240,7 +300,7 @@ def _example_row(
         "rating": rating,
         "recalled": rating > 1,
         "state": int(row["state"]),
-        "duration_ms": int(row["duration"]),
+        "duration_ms": min(int(row["duration"]), MAXIMUM_DURATION_MS),
         "is_seed": is_seed,
         "is_first_predictive_review": not is_seed and int(history["reviews"]) == 1,
         "prior_review_count": int(history["reviews"]),
@@ -264,8 +324,12 @@ def _validate_source_values(
     rating = int(row["rating"])
     state = int(row["state"])
     duration = int(row["duration"])
-    if rating not in {1, 2, 3, 4} or state not in {0, 1, 2, 3} or not 0 <= duration <= 60_000:
+    if rating not in {1, 2, 3, 4} or state not in SUPPORTED_STATES or duration < 0:
         raise ValueError(f"invalid source value for user {user_id} at row {source_index}")
+
+
+def _is_out_of_contract_state(row: dict[str, object]) -> bool:
+    return int(row["state"]) not in SUPPORTED_STATES
 
 
 def _invalid_card_ids(rows: list[dict[str, object]]) -> set[int]:

@@ -6,6 +6,7 @@ from pathlib import Path
 from .acquire import DATASET_REVISION, acquire_revlogs
 from .evaluate import evaluate_candidate, load_candidate, write_report
 from .examples import build_examples
+from .selection import compare_reports, read_report, write_selection
 
 
 def main() -> None:
@@ -29,6 +30,12 @@ def main() -> None:
     evaluate.add_argument("examples", type=Path)
     evaluate.add_argument("candidate", help="Python module:attribute")
     evaluate.add_argument("report", type=Path)
+    evaluate.add_argument("--progress", action="store_true")
+
+    select = subparsers.add_parser("select", help="apply the pre-declared quality gate")
+    select.add_argument("baseline", type=Path)
+    select.add_argument("candidates", type=Path, nargs="+")
+    select.add_argument("report", type=Path)
 
     args = parser.parse_args()
     if args.command == "acquire":
@@ -41,8 +48,26 @@ def main() -> None:
             minimum_train_examples=args.minimum_train_examples,
             minimum_holdout_examples=args.minimum_holdout_examples,
         )
+    elif args.command == "evaluate":
+        progress = (
+            lambda phase, current, total: print(
+                f"{phase} {current}/{total} ({current / total:.0%})", flush=True
+            )
+            if args.progress
+            else None
+        )
+        write_report(
+            evaluate_candidate(load_candidate(args.candidate), args.examples, progress),
+            args.report,
+        )
     else:
-        write_report(evaluate_candidate(load_candidate(args.candidate), args.examples), args.report)
+        write_selection(
+            compare_reports(
+                read_report(args.baseline),
+                [read_report(path) for path in args.candidates],
+            ),
+            args.report,
+        )
 
 
 def _parse_user_ids(value: str) -> list[int]:
