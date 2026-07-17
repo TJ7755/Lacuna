@@ -88,7 +88,10 @@ class HalfLifeLogisticV2Predictor(ReplayGuard):
     def __init__(self, user_id: int, coefficients: tuple[float, ...]):
         super().__init__(user_id)
         self.coefficients = coefficients
-        self.baseline = Fsrs6Predictor(user_id)
+        # fractional_retrievability=True mirrors the runtime blend
+        # (src/fsrs/halfLifeLogisticModel.ts), which queries its FSRS-6 component with
+        # fractional elapsed days rather than flooring to whole days. See fsrs6.py.
+        self.baseline = Fsrs6Predictor(user_id, fractional_retrievability=True)
 
     def predict(self, context: PredictionContext) -> float:
         self.begin_prediction(context)

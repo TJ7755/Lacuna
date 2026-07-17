@@ -7,7 +7,7 @@ import pytest
 
 from stm_harness.candidates.actr import ActrCandidate
 from stm_harness.candidates.common import routed_short_term_weight
-from stm_harness.candidates.fsrs6 import Fsrs6Candidate
+from stm_harness.candidates.fsrs6 import Fsrs6Candidate, Fsrs6Predictor
 from stm_harness.candidates.half_life import HalfLifeLogisticCandidate
 from stm_harness.candidates.half_life_v2 import HalfLifeLogisticV2Candidate
 from stm_harness.contract import Example, PredictionContext
@@ -120,6 +120,41 @@ def test_fsrs_baseline_zero_second_and_observation_ordering():
     predictor.observe(zero_second)
     with pytest.raises(ValueError, match="duplicated"):
         predictor.observe(zero_second)
+
+
+def test_fsrs_baseline_fractional_retrievability_matches_runtime_blend():
+    # half_life.py/half_life_v2.py's internal FSRS baseline must query retrievability
+    # with fractional elapsed days, mirroring src/fsrs/halfLifeLogisticModel.ts's
+    # `predict()` (fractional-day forgetting curve), not the whole-day floor the
+    # standalone `fsrs6` benchmark candidate uses.
+    seed = training_stream()[0]
+
+    def predictor_at(elapsed_seconds: int, *, fractional: bool):
+        predictor = Fsrs6Predictor(1, fractional_retrievability=fractional)
+        predictor.observe(seed)
+        context = replace(training_stream()[1].context, elapsed_seconds=elapsed_seconds)
+        return predictor.predict(context)
+
+    # 1.5 days elapsed: floor(1.5) == 1 day, so the two baselines must diverge.
+    elapsed = int(1.5 * 86_400)
+    assert predictor_at(elapsed, fractional=False) != pytest.approx(
+        predictor_at(elapsed, fractional=True)
+    )
+    # At a whole-day boundary the two must agree exactly.
+    whole_day = 2 * 86_400
+    assert predictor_at(whole_day, fractional=False) == pytest.approx(
+        predictor_at(whole_day, fractional=True)
+    )
+
+
+def test_half_life_predictors_use_fractional_fsrs_baseline():
+    # Confirms the wiring: half_life/half_life_v2's `.baseline` must be constructed
+    # with fractional_retrievability=True, not the harness default.
+    v1 = HalfLifeLogisticCandidate().fit_batches([training_batch()])
+    v2 = HalfLifeLogisticV2Candidate().fit_batches([training_batch()])
+    for fitted in (v1, v2):
+        predictor = fitted.new_predictor(1)
+        assert predictor.baseline._fractional_retrievability is True
 
 
 def test_half_life_fit_is_deterministic_and_falls_back_for_corrupt_context():

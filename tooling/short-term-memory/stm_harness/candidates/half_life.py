@@ -115,7 +115,10 @@ class HalfLifeLogisticPredictor(ReplayGuard):
     def __init__(self, user_id: int, coefficients: tuple[float, ...]):
         super().__init__(user_id)
         self.coefficients = coefficients
-        self.baseline = Fsrs6Predictor(user_id)
+        # fractional_retrievability=True mirrors the runtime blend
+        # (src/fsrs/halfLifeLogisticModel.ts), which queries its FSRS-6 component with
+        # fractional elapsed days rather than flooring to whole days. See fsrs6.py.
+        self.baseline = Fsrs6Predictor(user_id, fractional_retrievability=True)
 
     def predict(self, context: PredictionContext) -> float:
         self.begin_prediction(context)
@@ -164,6 +167,33 @@ def _features(context: PredictionContext) -> tuple[float, ...] | None:
 
 
 def _features_from_key(key: tuple[int, int, int, int, bool, int]) -> tuple[float, ...]:
+    # Train/serve mismatch (VALIDATION_PLAN.md phase 2, item 4; frozen for v1, documented
+    # rather than changed): `fit_batches` groups training examples into `LAG_BIN_COUNT`
+    # log-scale lag bins (`_lag_bin`) and fits against each bin's *centre*
+    # (`(lag + 0.5) / LAG_BIN_COUNT`, computed here), not the exact log-scaled lag of the
+    # examples inside it. `_features` below, used at serving time, scales the *exact*
+    # elapsed-seconds value instead - there is no equivalent binning step at inference.
+    #
+    # This is acceptable, not a bug to fix in place: bin-centre fitting is a form of
+    # histogram regression that trades a small amount of within-bin resolution for
+    # aggregation stability (each bin pools many examples into one grouped logistic
+    # observation; see `fit_batches`'s `grouped` dict). With 64 log-scale bins across a
+    # 0-604,800 s range, bin width is sub-second near lag zero and widens geometrically;
+    # the worst-case bin-centre-to-exact-lag error is bounded by half a bin's width in
+    # log-space, i.e. well under the log-lag feature's overall dynamic range. Because the
+    # log transform compresses long lags, the absolute-second error this introduces is
+    # largest for the longest lags, which is also where the FSRS baseline already
+    # dominates the blend (`short_term_weight` / `routed_short_term_weight`), so the
+    # approximation's impact on predicted probability is muted exactly where it is
+    # largest.
+    #
+    # It would be straightforward to refit against exact per-example lag instead of the
+    # bin centre (drop the `_lag_bin` grouping key's rounding, or accumulate a running
+    # mean lag per bin and fit against that) - but doing so would change the fitted
+    # coefficients, and v1's coefficients are frozen (`coefficients/half-life-logistic-v1.json`
+    # is a versioned, checksum-validated artefact the TS runtime loads verbatim). Any
+    # exact-lag refit belongs in a new versioned artefact (`-v3` or later) with its own
+    # evaluation, not a silent change to what v1's frozen coefficients mean.
     lag, successes, failures, previous, first, state = key
     return _feature_values(
         (lag + 0.5) / LAG_BIN_COUNT,

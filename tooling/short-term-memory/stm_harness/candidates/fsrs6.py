@@ -43,15 +43,30 @@ class MemoryState:
 
 
 class Fsrs6Predictor(ReplayGuard):
-    def __init__(self, user_id: int):
+    def __init__(self, user_id: int, *, fractional_retrievability: bool = False):
         super().__init__(user_id)
         self.cards: dict[int, MemoryState] = {}
+        # Runtime mirror switch (VALIDATION_PLAN.md, phase 2 item 4): the blended
+        # candidates in half_life.py/half_life_v2.py set this True so their internal
+        # FSRS baseline queries retrievability with the same fractional elapsed days
+        # as src/fsrs/halfLifeLogisticModel.ts's `predict()`, instead of the whole-day
+        # floor the standalone `fsrs6` benchmark candidate intentionally keeps (it
+        # mirrors the current runtime FSRS-6-only fallback, which does floor). Only
+        # the retrievability query in `probability()` changes; stability-transition
+        # bookkeeping in `observe()` keeps flooring to whole days, matching the
+        # underlying FSRS-6 recurrence used by both the harness and the runtime's
+        # ts-fsrs engine — that part is not the train/serve mismatch being fixed here.
+        self._fractional_retrievability = fractional_retrievability
 
     def probability(self, context: PredictionContext) -> float:
         memory = self.cards.get(context.card_id)
         if memory is None or context.elapsed_seconds < 0:
             return 0.5
-        elapsed_days = context.elapsed_seconds // SECONDS_PER_DAY
+        elapsed_days: float
+        if self._fractional_retrievability:
+            elapsed_days = context.elapsed_seconds / SECONDS_PER_DAY
+        else:
+            elapsed_days = context.elapsed_seconds // SECONDS_PER_DAY
         return clamp_probability(_forgetting_curve(elapsed_days, memory.stability))
 
     def predict(self, context: PredictionContext) -> float:
@@ -166,7 +181,7 @@ def _next_state(memory: MemoryState, elapsed_days: int, rating: int) -> MemorySt
     return MemoryState(next_difficulty, next_stability)
 
 
-def _forgetting_curve(elapsed_days: int, stability: float) -> float:
+def _forgetting_curve(elapsed_days: float, stability: float) -> float:
     decay = -FSRS6_DEFAULT_WEIGHTS[20]
     factor = 0.9 ** (1 / decay) - 1
     return (1 + factor * max(elapsed_days, 0) / stability) ** decay
