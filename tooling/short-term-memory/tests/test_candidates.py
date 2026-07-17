@@ -6,8 +6,10 @@ import pyarrow as pa
 import pytest
 
 from stm_harness.candidates.actr import ActrCandidate
+from stm_harness.candidates.common import routed_short_term_weight
 from stm_harness.candidates.fsrs6 import Fsrs6Candidate
 from stm_harness.candidates.half_life import HalfLifeLogisticCandidate
+from stm_harness.candidates.half_life_v2 import HalfLifeLogisticV2Candidate
 from stm_harness.contract import Example, PredictionContext
 from stm_harness.io import EXAMPLE_SCHEMA
 
@@ -133,6 +135,60 @@ def test_half_life_fit_is_deterministic_and_falls_back_for_corrupt_context():
     assert 0 < predictor.predict(corrupt) < 1
 
 
+def test_routed_short_term_weight_post_failure_matches_v1_boundaries():
+    # Post-failure path is unchanged from v1: full weight through 518,400 s, 0 from
+    # 604,800 s, smoothstep strictly between.
+    assert routed_short_term_weight(518_400, previous_recalled=False) == pytest.approx(1.0)
+    assert routed_short_term_weight(518_401, previous_recalled=False) < 1.0
+    assert routed_short_term_weight(604_799, previous_recalled=False) > 0.0
+    assert routed_short_term_weight(604_800, previous_recalled=False) == pytest.approx(0.0)
+    assert routed_short_term_weight(1_000_000, previous_recalled=False) == pytest.approx(0.0)
+    mid = routed_short_term_weight(561_600, previous_recalled=False)
+    assert 0.0 < mid < 1.0
+
+
+def test_routed_short_term_weight_post_success_decays_by_three_days():
+    # Post-success path decays much earlier: full weight through 172,800 s (2 days), 0
+    # from 259,200 s (3 days).
+    assert routed_short_term_weight(172_800, previous_recalled=True) == pytest.approx(1.0)
+    assert routed_short_term_weight(172_801, previous_recalled=True) < 1.0
+    assert routed_short_term_weight(259_199, previous_recalled=True) > 0.0
+    assert routed_short_term_weight(259_200, previous_recalled=True) == pytest.approx(0.0)
+    assert routed_short_term_weight(400_000, previous_recalled=True) == pytest.approx(0.0)
+    # Well past the post-failure transition end, the post-success path is already zero:
+    # the two paths do not converge back onto v1's single boundary.
+    assert routed_short_term_weight(518_400, previous_recalled=True) == pytest.approx(0.0)
+
+
+def test_routed_short_term_weight_first_predictive_review_uses_success_path():
+    # A first predictive review is routed onto the success path even if the seed
+    # review that set previous_recalled happened to be a failure.
+    assert routed_short_term_weight(
+        172_800, previous_recalled=False, is_first_predictive_review=True
+    ) == pytest.approx(1.0)
+    assert routed_short_term_weight(
+        259_200, previous_recalled=False, is_first_predictive_review=True
+    ) == pytest.approx(0.0)
+    # No previous review at all (previous_recalled is None) also routes onto the
+    # success path, regardless of the first-review flag.
+    assert routed_short_term_weight(172_800, previous_recalled=None) == pytest.approx(1.0)
+    assert routed_short_term_weight(259_200, previous_recalled=None) == pytest.approx(0.0)
+
+
+def test_half_life_v2_fit_matches_v1_coefficients_and_routes_by_previous_outcome():
+    v1 = HalfLifeLogisticCandidate().fit_batches([training_batch()])
+    v2 = HalfLifeLogisticV2Candidate().fit_batches([training_batch()])
+    assert v2.coefficients == v1.coefficients
+
+    predictor = v2.new_predictor(1)
+    predictor.observe(training_stream()[0])
+    context = training_stream()[1].context
+    assert 0 < predictor.predict(context) < 1
+    predictor.observe(training_stream()[1])
+    corrupt = replace(training_stream()[2].context, prior_failure_count=-1)
+    assert 0 < predictor.predict(corrupt) < 1
+
+
 def test_actr_fit_is_deterministic_and_transitions_to_fsrs_at_seven_days():
     first = ActrCandidate().fit(training_stream())
     second = ActrCandidate().fit(training_stream())
@@ -150,6 +206,7 @@ def test_every_candidate_handles_zero_seconds_long_lags_corruption_and_exactly_o
     fitted_candidates = [
         Fsrs6Candidate().fit(training_stream()),
         HalfLifeLogisticCandidate().fit_batches([training_batch()]),
+        HalfLifeLogisticV2Candidate().fit_batches([training_batch()]),
         ActrCandidate().fit(training_stream()),
     ]
     for fitted in fitted_candidates:

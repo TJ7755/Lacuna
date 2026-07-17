@@ -45,6 +45,59 @@ def short_term_weight(elapsed_seconds: int) -> float:
     return 1 - smoothstep
 
 
+# Outcome-conditional handover (phase 2, VALIDATION_PLAN.md). Phase 1's lag x
+# previous-outcome crossover analysis found the logistic model stays competitive with
+# FSRS-6 for longer after a failure than after a success, so the two paths get different
+# transition windows rather than sharing v1's single six-day boundary.
+POST_FAILURE_TRANSITION_START_SECONDS = TRANSITION_START_SECONDS
+POST_FAILURE_TRANSITION_END_SECONDS = MAXIMUM_SHORT_TERM_SECONDS
+POST_SUCCESS_TRANSITION_START_SECONDS = 172_800  # 2 days
+POST_SUCCESS_TRANSITION_END_SECONDS = 259_200  # 3 days
+
+
+def _smoothstep_weight(elapsed_seconds: int, start: int, end: int) -> float:
+    if elapsed_seconds <= start:
+        return 1.0
+    if elapsed_seconds >= end:
+        return 0.0
+    position = (elapsed_seconds - start) / (end - start)
+    smoothstep = position * position * (3 - 2 * position)
+    return 1 - smoothstep
+
+
+def routed_short_term_weight(
+    elapsed_seconds: int,
+    previous_recalled: bool | None,
+    is_first_predictive_review: bool = False,
+) -> float:
+    """Outcome-conditional short-term weight.
+
+    After a previous failure, keep v1's behaviour: full weight through 518,400 s (6 days),
+    then a smoothstep decay to 0 at 604,800 s (7 days). After a previous success, decay
+    starts and finishes much earlier: full weight through 172,800 s (2 days), then a
+    smoothstep decay to 0 at 259,200 s (3 days).
+
+    First predictive reviews (`is_first_predictive_review`) are routed onto the success
+    path unconditionally, even though `previous_recalled` technically carries the seed
+    review's outcome: phase 1's first-review data showed FSRS-6 already competitive at
+    1-7 days for these reviews specifically, matching the success crossover rather than
+    the slower-decaying failure one, so the seed outcome is not treated as a genuine
+    "previous review" for routing purposes. `previous_recalled is None` (no prior review
+    at all) is likewise routed onto the success path, for the same reason.
+    """
+    if previous_recalled is False and not is_first_predictive_review:
+        return _smoothstep_weight(
+            elapsed_seconds,
+            POST_FAILURE_TRANSITION_START_SECONDS,
+            POST_FAILURE_TRANSITION_END_SECONDS,
+        )
+    return _smoothstep_weight(
+        elapsed_seconds,
+        POST_SUCCESS_TRANSITION_START_SECONDS,
+        POST_SUCCESS_TRANSITION_END_SECONDS,
+    )
+
+
 class ReplayGuard:
     def __init__(self, user_id: int):
         self.user_id = user_id
