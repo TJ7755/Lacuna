@@ -50,7 +50,8 @@ uv run match-harness evaluate data/raw/examples.jsonl --held-out path/to/held-ou
 
 The classifier is saved under `models/` and the JSON report under `reports/`; both are
 gitignored. Evaluation uses a deterministic stratified 80/20 split and reports accuracy,
-negative-class precision/recall, and the app's real lenient `compareAnswer()` baseline.
+negative-class precision/recall, and the app's real lenient `compareAnswer()` baseline,
+scored over the same 20% test split as the classifier so the two numbers are comparable.
 The held-out file uses the same source-record JSONL schema and is evaluated separately.
 
 ## Record schema

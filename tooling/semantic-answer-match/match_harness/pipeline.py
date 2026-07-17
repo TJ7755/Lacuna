@@ -10,6 +10,11 @@ from .pairs import AnswerPair, expand_pairs
 from .features import FeatureExtractor
 from .schema import validate_record
 
+# Root of this tool (tooling/semantic-answer-match), derived from this file's own location
+# so the default baseline script/cwd resolve correctly regardless of the caller's cwd.
+TOOL_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_BASELINE_SCRIPT = TOOL_ROOT / "scripts" / "compare_answer_baseline.ts"
+
 def load_records(path: Path):
     records = []
     for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
@@ -30,12 +35,14 @@ def _metrics(y, prediction):
 
 def evaluate(data_path: Path, model_path: Path, report_path: Path, extractor=None, held_out: Path | None = None, baseline_script: Path | None = None, project_root: Path | None = None) -> dict:
     pairs = expand_pairs(load_records(data_path)); extractor = extractor or FeatureExtractor(); X = extractor.transform(pairs); y = [p.label for p in pairs]
-    train_x, test_x, train_y, test_y = train_test_split(X, y, test_size=.2, random_state=0, stratify=y)
+    train_x, test_x, train_y, test_y, train_pairs, test_pairs = train_test_split(X, y, pairs, test_size=.2, random_state=0, stratify=y)
     model = joblib.load(model_path); model.fit(train_x, train_y)
     result = {"split": _metrics(test_y, model.predict(test_x))}
     if baseline_script:
-        payload = json.dumps([p.__dict__ for p in pairs])
-        completed = subprocess.run(["bun", str(baseline_script)], input=payload, text=True, capture_output=True, check=True, cwd=project_root)
+        # Score the baseline over exactly the same test-split pairs as the classifier so the
+        # two numbers are directly comparable (next_plan.md Appendix A.1 Step 4).
+        payload = json.dumps([p.__dict__ for p in test_pairs])
+        completed = subprocess.run(["bun", str(baseline_script)], input=payload, text=True, capture_output=True, check=True, cwd=project_root or TOOL_ROOT)
         result["baseline"] = json.loads(completed.stdout)
     if held_out:
         held_pairs = expand_pairs(load_records(held_out)); result["held_out"] = _metrics([p.label for p in held_pairs], model.predict(extractor.transform(held_pairs)))

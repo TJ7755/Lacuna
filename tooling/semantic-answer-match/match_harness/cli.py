@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from .ingest import ingest_batches, write_merged
-from .pipeline import evaluate, train
+from .pipeline import DEFAULT_BASELINE_SCRIPT, TOOL_ROOT, evaluate, train
 
 
 def _cmd_ingest(args: argparse.Namespace) -> int:
@@ -50,8 +50,8 @@ def main() -> int:
     evaluate_parser.add_argument("--model", default="models/answer-match.joblib")
     evaluate_parser.add_argument("--report", default="reports/evaluation.json")
     evaluate_parser.add_argument("--held-out")
-    evaluate_parser.add_argument("--baseline-script", default="scripts/compare_answer_baseline.ts")
-    evaluate_parser.add_argument("--project-root", default="../..")
+    evaluate_parser.add_argument("--baseline-script", default=str(DEFAULT_BASELINE_SCRIPT))
+    evaluate_parser.add_argument("--project-root", default=str(TOOL_ROOT))
     evaluate_parser.set_defaults(func=lambda args: _cmd_evaluate(args))
 
     args = parser.parse_args()
