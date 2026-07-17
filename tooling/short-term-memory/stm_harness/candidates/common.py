@@ -65,17 +65,17 @@ def _smoothstep_weight(elapsed_seconds: int, start: int, end: int) -> float:
     return 1 - smoothstep
 
 
-def routed_short_term_weight(
+def _routed_short_term_weight(
     elapsed_seconds: int,
     previous_recalled: bool | None,
-    is_first_predictive_review: bool = False,
+    is_first_predictive_review: bool,
+    *,
+    post_failure_start: int,
+    post_failure_end: int,
+    post_success_start: int,
+    post_success_end: int,
 ) -> float:
-    """Outcome-conditional short-term weight.
-
-    After a previous failure, keep v1's behaviour: full weight through 518,400 s (6 days),
-    then a smoothstep decay to 0 at 604,800 s (7 days). After a previous success, decay
-    starts and finishes much earlier: full weight through 86,400 s (1 day), then a
-    smoothstep decay to 0 at 172,800 s (2 days).
+    """Shared smoothstep machinery behind the outcome-conditional routing versions.
 
     First predictive reviews (`is_first_predictive_review`) are routed onto the success
     path unconditionally, even though `previous_recalled` technically carries the seed
@@ -86,15 +86,61 @@ def routed_short_term_weight(
     at all) is likewise routed onto the success path, for the same reason.
     """
     if previous_recalled is False and not is_first_predictive_review:
-        return _smoothstep_weight(
-            elapsed_seconds,
-            POST_FAILURE_TRANSITION_START_SECONDS,
-            POST_FAILURE_TRANSITION_END_SECONDS,
-        )
-    return _smoothstep_weight(
+        return _smoothstep_weight(elapsed_seconds, post_failure_start, post_failure_end)
+    return _smoothstep_weight(elapsed_seconds, post_success_start, post_success_end)
+
+
+def routed_short_term_weight(
+    elapsed_seconds: int,
+    previous_recalled: bool | None,
+    is_first_predictive_review: bool = False,
+) -> float:
+    """Outcome-conditional short-term weight (v2, shipped contract).
+
+    After a previous failure, keep v1's behaviour: full weight through 518,400 s (6 days),
+    then a smoothstep decay to 0 at 604,800 s (7 days). After a previous success, decay
+    starts and finishes much earlier: full weight through 86,400 s (1 day), then a
+    smoothstep decay to 0 at 172,800 s (2 days).
+    """
+    return _routed_short_term_weight(
         elapsed_seconds,
-        POST_SUCCESS_TRANSITION_START_SECONDS,
-        POST_SUCCESS_TRANSITION_END_SECONDS,
+        previous_recalled,
+        is_first_predictive_review,
+        post_failure_start=POST_FAILURE_TRANSITION_START_SECONDS,
+        post_failure_end=POST_FAILURE_TRANSITION_END_SECONDS,
+        post_success_start=POST_SUCCESS_TRANSITION_START_SECONDS,
+        post_success_end=POST_SUCCESS_TRANSITION_END_SECONDS,
+    )
+
+
+# v3 routing (ROUTING_DECISION_RULE.md, applied 2026-07-17): the predeclared, conservative
+# re-route triggered by the 201-300 transfer result. Success/first-review/no-previous-outcome
+# path moves fully onto FSRS-6 much sooner than v2 (full weight through 21,600 s / 6 hours,
+# zero by 86,400 s / 1 day). The failure path keeps the logistic model competitive for far
+# longer than the success path but far less long than v2's fitting-cohort boundary (full
+# weight through 345,600 s / 4 days, zero by 432,000 s / 5 days) — the last bucket at or
+# above 24-36h where the routed model won both metrics on both transfer cohorts. Coefficients
+# are unchanged from v1/v2; only these boundaries differ.
+POST_FAILURE_TRANSITION_START_SECONDS_V3 = 345_600
+POST_FAILURE_TRANSITION_END_SECONDS_V3 = 432_000
+POST_SUCCESS_TRANSITION_START_SECONDS_V3 = 21_600
+POST_SUCCESS_TRANSITION_END_SECONDS_V3 = 86_400
+
+
+def routed_short_term_weight_v3(
+    elapsed_seconds: int,
+    previous_recalled: bool | None,
+    is_first_predictive_review: bool = False,
+) -> float:
+    """Outcome-conditional short-term weight (v3, ROUTING_DECISION_RULE.md)."""
+    return _routed_short_term_weight(
+        elapsed_seconds,
+        previous_recalled,
+        is_first_predictive_review,
+        post_failure_start=POST_FAILURE_TRANSITION_START_SECONDS_V3,
+        post_failure_end=POST_FAILURE_TRANSITION_END_SECONDS_V3,
+        post_success_start=POST_SUCCESS_TRANSITION_START_SECONDS_V3,
+        post_success_end=POST_SUCCESS_TRANSITION_END_SECONDS_V3,
     )
 
 

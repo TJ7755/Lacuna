@@ -7,16 +7,21 @@ import pyarrow as pa
 import pytest
 
 from stm_harness.candidates.actr import ActrCandidate
-from stm_harness.candidates.common import routed_short_term_weight
+from stm_harness.candidates.common import routed_short_term_weight, routed_short_term_weight_v3
 from stm_harness.candidates.fsrs6 import Fsrs6Candidate, Fsrs6Predictor
 from stm_harness.candidates.half_life import HalfLifeLogisticCandidate
 from stm_harness.candidates.half_life_frozen import (
     COEFFICIENTS_PATH,
     HalfLifeLogisticFrozenCandidate,
 )
+from stm_harness.candidates.half_life_frozen_v3 import HalfLifeLogisticFrozenV3Candidate
 from stm_harness.candidates.half_life_v2 import (
     FittedHalfLifeLogisticV2,
     HalfLifeLogisticV2Candidate,
+)
+from stm_harness.candidates.half_life_v3 import (
+    FittedHalfLifeLogisticV3,
+    HalfLifeLogisticV3Candidate,
 )
 from stm_harness.contract import Example, PredictionContext
 from stm_harness.io import EXAMPLE_SCHEMA
@@ -259,6 +264,79 @@ def test_half_life_frozen_loads_shipped_artefact_and_consumes_no_training_data()
     assert fitted.coefficients == tuple(payload["coefficients"])
     assert fitted.training_examples == 0
     assert fitted.name == "half-life-logistic-frozen-v2"
+
+
+def test_routed_short_term_weight_v3_post_success_decays_by_one_day():
+    # ROUTING_DECISION_RULE.md v3 success/first-review/no-history path: full weight
+    # through 21,600 s (6 hours), 0 from 86,400 s (1 day).
+    assert routed_short_term_weight_v3(21_600, previous_recalled=True) == pytest.approx(1.0)
+    assert routed_short_term_weight_v3(21_601, previous_recalled=True) < 1.0
+    assert routed_short_term_weight_v3(86_399, previous_recalled=True) > 0.0
+    assert routed_short_term_weight_v3(86_400, previous_recalled=True) == pytest.approx(0.0)
+    assert routed_short_term_weight_v3(200_000, previous_recalled=True) == pytest.approx(0.0)
+    # First predictive review and no-previous-outcome route onto the same path.
+    assert routed_short_term_weight_v3(
+        21_600, previous_recalled=False, is_first_predictive_review=True
+    ) == pytest.approx(1.0)
+    assert routed_short_term_weight_v3(
+        86_400, previous_recalled=False, is_first_predictive_review=True
+    ) == pytest.approx(0.0)
+    assert routed_short_term_weight_v3(21_600, previous_recalled=None) == pytest.approx(1.0)
+    assert routed_short_term_weight_v3(86_400, previous_recalled=None) == pytest.approx(0.0)
+
+
+def test_routed_short_term_weight_v3_post_failure_decays_by_five_days():
+    # v3 failure path: full weight through 345,600 s (4 days), 0 from 432,000 s (5 days) —
+    # the last bucket both transfer cohorts supported per ROUTING_DECISION_RULE.md.
+    assert routed_short_term_weight_v3(345_600, previous_recalled=False) == pytest.approx(1.0)
+    assert routed_short_term_weight_v3(345_601, previous_recalled=False) < 1.0
+    assert routed_short_term_weight_v3(431_999, previous_recalled=False) > 0.0
+    assert routed_short_term_weight_v3(432_000, previous_recalled=False) == pytest.approx(0.0)
+    assert routed_short_term_weight_v3(1_000_000, previous_recalled=False) == pytest.approx(0.0)
+    mid = routed_short_term_weight_v3(388_800, previous_recalled=False)
+    assert 0.0 < mid < 1.0
+
+
+def test_half_life_v3_fit_matches_v1_coefficients_and_routes_by_previous_outcome():
+    v1 = HalfLifeLogisticCandidate().fit_batches([training_batch()])
+    v3 = HalfLifeLogisticV3Candidate().fit_batches([training_batch()])
+    assert v3.coefficients == v1.coefficients
+
+    predictor = v3.new_predictor(1)
+    predictor.observe(training_stream()[0])
+    context = training_stream()[1].context
+    assert 0 < predictor.predict(context) < 1
+    predictor.observe(training_stream()[1])
+    corrupt = replace(training_stream()[2].context, prior_failure_count=-1)
+    assert 0 < predictor.predict(corrupt) < 1
+
+
+def test_half_life_frozen_v3_matches_v3_predictions_given_same_coefficients():
+    # frozen v3 must predict exactly like half_life_v3 when both use the same
+    # coefficients, since it reuses HalfLifeLogisticV3Predictor unmodified.
+    v3_fitted = HalfLifeLogisticV3Candidate().fit_batches([training_batch()])
+    frozen_fitted = FittedHalfLifeLogisticV3(
+        v3_fitted.coefficients, 0, name="half-life-logistic-frozen-v3"
+    )
+
+    v3_predictor = v3_fitted.new_predictor(1)
+    frozen_predictor = frozen_fitted.new_predictor(1)
+    v3_predictor.observe(training_stream()[0])
+    frozen_predictor.observe(training_stream()[0])
+    for later in training_stream()[1:]:
+        assert v3_predictor.predict(later.context) == pytest.approx(
+            frozen_predictor.predict(later.context)
+        )
+        v3_predictor.observe(later)
+        frozen_predictor.observe(later)
+
+
+def test_half_life_frozen_v3_loads_shipped_artefact_and_consumes_no_training_data():
+    fitted = HalfLifeLogisticFrozenV3Candidate().fit_batches(_raising_training_batches())
+    payload = json.loads(COEFFICIENTS_PATH.read_text())
+    assert fitted.coefficients == tuple(payload["coefficients"])
+    assert fitted.training_examples == 0
+    assert fitted.name == "half-life-logistic-frozen-v3"
 
 
 def _raising_training_batches():
