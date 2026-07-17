@@ -372,10 +372,14 @@ one-way lesson unlock ratchets are deliberately left unchanged.
 
 Assessment placement and coverage are independent. Prefix coverage includes every ordered
 lesson through the placement anchor; custom coverage is an explicit, non-contiguous lesson
-set that cannot extend past that anchor. Both modes resolve primary and linked card membership,
-deduplicate cards and then apply exclusions. Deleting an anchor retargets to the nearest
-surviving predecessor and requires author confirmation; deleting a custom-covered lesson
-removes that reference and requires the same confirmation.
+set that cannot extend past that anchor. An unanchored (`afterLessonId: null`) checkpoint sits
+before every lesson, covering none of them; an unanchored final assessment — the state every
+newly created course starts in — instead sits after the last ordered lesson, covering
+everything taught so far, matching its "everything taught so far" authoring copy. Both modes
+resolve primary and linked card membership, deduplicate cards and then apply exclusions.
+Deleting an anchor retargets to the nearest surviving predecessor and requires author
+confirmation; deleting a custom-covered lesson removes that reference and requires the same
+confirmation.
 Checkpoint nodes open a detail sheet showing the assessment date, resolved lessons and cards,
 exclusions and validation state. Revision starts with that assessment's stable id; the final
 assessment uses the same authoring and resolution rules, and each course retains exactly one.

@@ -72,6 +72,14 @@ export function resolveAssessmentCoverage(
     }
   }
 
+  // A final assessment with no explicit anchor is placed after the last lesson (it
+  // covers everything taught so far), matching legacy migration semantics and the
+  // editor copy. A checkpoint with no anchor legitimately means "before all lessons",
+  // so this only applies to finals.
+  if (assessment.kind === 'final' && assessment.afterLessonId === null) {
+    placementIndex = orderedLessons.length - 1;
+  }
+
   let coveredLessons: Lesson[];
   if (assessment.coverageMode === 'prefix') {
     coveredLessons = orderedLessons.slice(0, placementIndex + 1);

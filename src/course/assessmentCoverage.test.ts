@@ -158,4 +158,28 @@ describe('resolveAssessmentCoverage', () => {
       'cross-course-excluded-card',
     ]);
   });
+
+  it('resolves an unanchored final assessment to cover every lesson', () => {
+    const result = resolveAssessmentCoverage(
+      assessment({ kind: 'final', afterLessonId: null }),
+      lessons,
+      [],
+      [],
+    );
+
+    expect(result.placementIndex).toBe(lessons.length - 1);
+    expect(result.coveredLessons.map((lesson) => lesson.id)).toEqual(['one', 'two', 'three']);
+  });
+
+  it('leaves an unanchored checkpoint covering no lessons (before all lessons)', () => {
+    const result = resolveAssessmentCoverage(
+      assessment({ kind: 'checkpoint', afterLessonId: null }),
+      lessons,
+      [],
+      [],
+    );
+
+    expect(result.placementIndex).toBe(-1);
+    expect(result.coveredLessons).toEqual([]);
+  });
 });

@@ -39,6 +39,8 @@ import {
   createOrResumeRevisionPlan,
 } from './repository';
 import { FSRS_VERSION } from '../fsrs/params';
+import { listLessons, listCardsForCourse } from './read';
+import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 
 async function reset() {
   await Promise.all([
@@ -177,6 +179,29 @@ describe('createCourse', () => {
     );
     expect(await db.courses.count()).toBe(0);
     expect(await db.courseAssessments.count()).toBe(0);
+  });
+
+  it('resolves the mandatory final assessment to cover every lesson and card', async () => {
+    const course = await createCourse('Coverage regression');
+    const first = await createLesson(course.id, 'First');
+    const second = await createLesson(course.id, 'Second');
+    const card = await createCourseCard(course.id, 'front_back', 'q', 'a');
+    await linkCardToLesson(second.id, card.id);
+    const [finalAssessment] = await db.courseAssessments
+      .where('courseId')
+      .equals(course.id)
+      .toArray();
+
+    const [lessons, cards] = await Promise.all([
+      listLessons(course.id),
+      listCardsForCourse(course.id),
+    ]);
+    const links = await db.lessonCards.toArray();
+    const resolved = resolveAssessmentCoverage(finalAssessment, lessons, cards, links);
+
+    expect(resolved.coveredLessons.map((lesson) => lesson.id)).toEqual([first.id, second.id]);
+    expect(resolved.cards.map((resolvedCard) => resolvedCard.id)).toEqual([card.id]);
+    expect(resolved.validation.valid).toBe(true);
   });
 });
 
@@ -574,6 +599,27 @@ describe('deleteLesson', () => {
       lessonIds: [],
       needsAuthorConfirmation: true,
     });
+  });
+
+  it('resolves a final assessment retargeted to null coverage after its anchor lesson is deleted', async () => {
+    const course = await createCourse('Final lesson delete test');
+    const first = await createLesson(course.id, 'First');
+    const second = await createLesson(course.id, 'Second');
+    const [finalAssessment] = await db.courseAssessments
+      .where('courseId')
+      .equals(course.id)
+      .toArray();
+    await updateCourseAssessment(finalAssessment.id, { afterLessonId: first.id });
+
+    await deleteLesson(first.id);
+
+    const retargeted = await db.courseAssessments.get(finalAssessment.id);
+    expect(retargeted?.afterLessonId).toBeNull();
+
+    const lessons = await listLessons(course.id);
+    const resolved = resolveAssessmentCoverage(retargeted!, lessons, [], []);
+
+    expect(resolved.coveredLessons.map((lesson) => lesson.id)).toEqual([second.id]);
   });
 });
 
