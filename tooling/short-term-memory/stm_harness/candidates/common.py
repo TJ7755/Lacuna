@@ -51,8 +51,8 @@ def short_term_weight(elapsed_seconds: int) -> float:
 # transition windows rather than sharing v1's single six-day boundary.
 POST_FAILURE_TRANSITION_START_SECONDS = TRANSITION_START_SECONDS
 POST_FAILURE_TRANSITION_END_SECONDS = MAXIMUM_SHORT_TERM_SECONDS
-POST_SUCCESS_TRANSITION_START_SECONDS = 172_800  # 2 days
-POST_SUCCESS_TRANSITION_END_SECONDS = 259_200  # 3 days
+POST_SUCCESS_TRANSITION_START_SECONDS = 86_400  # 1 day
+POST_SUCCESS_TRANSITION_END_SECONDS = 172_800  # 2 days
 
 
 def _smoothstep_weight(elapsed_seconds: int, start: int, end: int) -> float:
@@ -74,8 +74,8 @@ def routed_short_term_weight(
 
     After a previous failure, keep v1's behaviour: full weight through 518,400 s (6 days),
     then a smoothstep decay to 0 at 604,800 s (7 days). After a previous success, decay
-    starts and finishes much earlier: full weight through 172,800 s (2 days), then a
-    smoothstep decay to 0 at 259,200 s (3 days).
+    starts and finishes much earlier: full weight through 86,400 s (1 day), then a
+    smoothstep decay to 0 at 172,800 s (2 days).
 
     First predictive reviews (`is_first_predictive_review`) are routed onto the success
     path unconditionally, even though `previous_recalled` technically carries the seed

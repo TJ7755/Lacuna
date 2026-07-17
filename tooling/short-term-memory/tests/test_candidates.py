@@ -147,13 +147,13 @@ def test_routed_short_term_weight_post_failure_matches_v1_boundaries():
     assert 0.0 < mid < 1.0
 
 
-def test_routed_short_term_weight_post_success_decays_by_three_days():
-    # Post-success path decays much earlier: full weight through 172,800 s (2 days), 0
-    # from 259,200 s (3 days).
-    assert routed_short_term_weight(172_800, previous_recalled=True) == pytest.approx(1.0)
-    assert routed_short_term_weight(172_801, previous_recalled=True) < 1.0
-    assert routed_short_term_weight(259_199, previous_recalled=True) > 0.0
-    assert routed_short_term_weight(259_200, previous_recalled=True) == pytest.approx(0.0)
+def test_routed_short_term_weight_post_success_decays_by_two_days():
+    # Post-success path decays much earlier: full weight through 86,400 s (1 day), 0
+    # from 172,800 s (2 days).
+    assert routed_short_term_weight(86_400, previous_recalled=True) == pytest.approx(1.0)
+    assert routed_short_term_weight(86_401, previous_recalled=True) < 1.0
+    assert routed_short_term_weight(172_799, previous_recalled=True) > 0.0
+    assert routed_short_term_weight(172_800, previous_recalled=True) == pytest.approx(0.0)
     assert routed_short_term_weight(400_000, previous_recalled=True) == pytest.approx(0.0)
     # Well past the post-failure transition end, the post-success path is already zero:
     # the two paths do not converge back onto v1's single boundary.
@@ -164,15 +164,15 @@ def test_routed_short_term_weight_first_predictive_review_uses_success_path():
     # A first predictive review is routed onto the success path even if the seed
     # review that set previous_recalled happened to be a failure.
     assert routed_short_term_weight(
-        172_800, previous_recalled=False, is_first_predictive_review=True
+        86_400, previous_recalled=False, is_first_predictive_review=True
     ) == pytest.approx(1.0)
     assert routed_short_term_weight(
-        259_200, previous_recalled=False, is_first_predictive_review=True
+        172_800, previous_recalled=False, is_first_predictive_review=True
     ) == pytest.approx(0.0)
     # No previous review at all (previous_recalled is None) also routes onto the
     # success path, regardless of the first-review flag.
-    assert routed_short_term_weight(172_800, previous_recalled=None) == pytest.approx(1.0)
-    assert routed_short_term_weight(259_200, previous_recalled=None) == pytest.approx(0.0)
+    assert routed_short_term_weight(86_400, previous_recalled=None) == pytest.approx(1.0)
+    assert routed_short_term_weight(172_800, previous_recalled=None) == pytest.approx(0.0)
 
 
 def test_half_life_v2_fit_matches_v1_coefficients_and_routes_by_previous_outcome():
