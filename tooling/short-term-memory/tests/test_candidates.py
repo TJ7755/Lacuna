@@ -9,6 +9,7 @@ import pytest
 from stm_harness.candidates.actr import ActrCandidate
 from stm_harness.candidates.common import routed_short_term_weight, routed_short_term_weight_v3
 from stm_harness.candidates.fsrs6 import Fsrs6Candidate, Fsrs6Predictor
+from stm_harness.candidates.fsrs6_fractional import Fsrs6FractionalCandidate
 from stm_harness.candidates.half_life import HalfLifeLogisticCandidate
 from stm_harness.candidates.half_life_frozen import (
     COEFFICIENTS_PATH,
@@ -157,6 +158,36 @@ def test_fsrs_baseline_fractional_retrievability_matches_runtime_blend():
     whole_day = 2 * 86_400
     assert predictor_at(whole_day, fractional=False) == pytest.approx(
         predictor_at(whole_day, fractional=True)
+    )
+
+
+def test_fsrs6_fractional_candidate_wiring_matches_fractional_flag():
+    # Covers the candidate wiring itself (not the flag, which the test above
+    # already covers): `fsrs6_fractional`'s fitted predictor must behave
+    # identically to Fsrs6Predictor(fractional_retrievability=True), diverging
+    # from the floored `fsrs6` candidate mid-day and agreeing at whole-day
+    # boundaries.
+    seed = training_stream()[0]
+
+    def predict_with(new_predictor, elapsed_seconds: int):
+        predictor = new_predictor(1)
+        predictor.observe(seed)
+        context = replace(training_stream()[1].context, elapsed_seconds=elapsed_seconds)
+        return predictor.predict(context)
+
+    floored_fitted = Fsrs6Candidate().fit([])
+    fractional_fitted = Fsrs6FractionalCandidate().fit([])
+    fractional_predictor = fractional_fitted.new_predictor(1)
+    assert isinstance(fractional_predictor, Fsrs6Predictor)
+    assert fractional_predictor._fractional_retrievability is True
+
+    mid_day = int(1.5 * 86_400)
+    assert predict_with(floored_fitted.new_predictor, mid_day) != pytest.approx(
+        predict_with(fractional_fitted.new_predictor, mid_day)
+    )
+    whole_day = 2 * 86_400
+    assert predict_with(floored_fitted.new_predictor, whole_day) == pytest.approx(
+        predict_with(fractional_fitted.new_predictor, whole_day)
     )
 
 
