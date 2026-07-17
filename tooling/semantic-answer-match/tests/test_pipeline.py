@@ -91,11 +91,72 @@ def test_baseline_scored_on_same_pairs_as_classifier_split(tmp_path: Path, monke
 
     captured = {}
     def fake_run(cmd, input, **kwargs):
-        captured["n"] = len(json.loads(input))
+        n = len(json.loads(input))
+        captured["n"] = n
         class Completed:
-            stdout = json.dumps({"accuracy": 0, "negative_precision": 0, "negative_recall": 0})
+            stdout = json.dumps({"accuracy": 0, "negative_precision": 0, "negative_recall": 0, "predictions": [0] * n})
         return Completed()
     monkeypatch.setattr("match_harness.pipeline.subprocess.run", fake_run)
 
     evaluate(data, model, report, extractor=extractor(), baseline_script=Path("dummy.ts"))
     assert captured["n"] == len(expected_test_y)
+
+def test_cascade_metrics_from_fake_baseline(tmp_path: Path, monkeypatch):
+    # The cascade section reduces the whole shipping question to one number: of the pairs
+    # compareAnswer() rejected that the classifier then overturns to an accept, what fraction
+    # are genuinely correct (label=1)? Drive it with a fake baseline whose per-pair
+    # predictions are known, so the arithmetic can be checked exactly rather than trusting bun.
+    data = tmp_path / "examples.jsonl"; write_jsonl(data)
+    model = tmp_path / "models" / "model.joblib"; report = tmp_path / "reports" / "report.json"
+    train(data, model, extractor())
+
+    def fake_run(cmd, input, **kwargs):
+        pairs = json.loads(input)
+        # Baseline "rejects" every pair (all zeros): puts the whole test split into the
+        # ambiguous pool, so overturn_precision reduces to the classifier's own precision.
+        class Completed:
+            stdout = json.dumps({"accuracy": 0, "negative_precision": 0, "negative_recall": 0, "predictions": [0] * len(pairs)})
+        return Completed()
+    monkeypatch.setattr("match_harness.pipeline.subprocess.run", fake_run)
+
+    evaluation = evaluate(data, model, report, extractor=extractor(), baseline_script=Path("dummy.ts"))
+    cascade = evaluation["cascade"]
+    assert cascade["pool_size"] == cascade["pool_positives"] + cascade["pool_negatives"]
+    assert cascade["overturns"] >= cascade["paraphrases_rescued"]["count"]
+    assert cascade["wrong_answers_admitted"]["count"] <= cascade["pool_negatives"]
+    assert 0.0 <= cascade["overturn_precision"] <= 1.0
+    assert set(cascade["overturn_precision_by_kind"]).issubset({"paraphrase", "wrong", "exact", "case", "punctuation"})
+    assert "accuracy" in cascade["cascade_overall"]
+
+def test_cascade_baseline_accept_removes_pair_from_pool(tmp_path: Path, monkeypatch):
+    # A pool of size 0 (baseline accepts everything) must not divide by zero anywhere.
+    data = tmp_path / "examples.jsonl"; write_jsonl(data)
+    model = tmp_path / "models" / "model.joblib"; report = tmp_path / "reports" / "report.json"
+    train(data, model, extractor())
+
+    def fake_run(cmd, input, **kwargs):
+        pairs = json.loads(input)
+        class Completed:
+            stdout = json.dumps({"accuracy": 1, "negative_precision": 1, "negative_recall": 1, "predictions": [1] * len(pairs)})
+        return Completed()
+    monkeypatch.setattr("match_harness.pipeline.subprocess.run", fake_run)
+
+    evaluation = evaluate(data, model, report, extractor=extractor(), baseline_script=Path("dummy.ts"))
+    cascade = evaluation["cascade"]
+    assert cascade["pool_size"] == 0
+    assert cascade["overturns"] == 0
+    assert cascade["overturn_precision"] == 0.0
+    assert cascade["paraphrases_rescued"] == {"count": 0, "rate": 0.0}
+    assert cascade["wrong_answers_admitted"] == {"count": 0, "rate": 0.0}
+
+def test_baseline_predictions_included_end_to_end(tmp_path: Path):
+    # Regression test for the real bun script: it must emit per-pair predictions alongside
+    # the aggregate metrics, or evaluate() cannot build the cascade section at all.
+    if shutil.which("bun") is None:
+        pytest.skip("bun not available")
+    data = tmp_path / "examples.jsonl"; write_jsonl(data)
+    model = tmp_path / "models" / "model.joblib"; report = tmp_path / "reports" / "report.json"
+    train(data, model, extractor())
+    evaluation = evaluate(data, model, report, extractor=extractor(), baseline_script=DEFAULT_BASELINE_SCRIPT, project_root=TOOL_ROOT)
+    assert "cascade" in evaluation
+    assert "predictions" not in evaluation["baseline"]

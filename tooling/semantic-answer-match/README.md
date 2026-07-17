@@ -54,6 +54,38 @@ negative-class precision/recall, and the app's real lenient `compareAnswer()` ba
 scored over the same 20% test split as the classifier so the two numbers are comparable.
 The held-out file uses the same source-record JSONL schema and is evaluated separately.
 
+### Cascade metric
+
+The shipping architecture under consideration is not "classifier instead of
+`compareAnswer()`" but a cascade: `compareAnswer()` runs first and an accept is final; the
+classifier is only consulted when `compareAnswer()` rejects, and it can only overturn a
+rejection into an acceptance, never the reverse. Because `compareAnswer()`'s accepts are
+already near-perfectly safe (negative recall ~0.997 — it almost never accepts a wrong
+answer), essentially all of the risk a shipped cascade would carry comes from the
+classifier's overturns. The `"cascade"` section of the report captures exactly that:
+
+- `pool_size` / `pool_positives` / `pool_negatives` — the ambiguous pool: test-split pairs
+  `compareAnswer()` rejected, and their true label breakdown.
+- `overturns` — how many pool pairs the classifier accepts (i.e. would overturn).
+- `overturn_precision` — the headline number: of those overturns, the fraction that are
+  genuinely correct (`label=1`). Every overturn is either a real paraphrase rescued or a
+  wrong answer let through, and this is that trade's precision.
+- `paraphrases_rescued` / `wrong_answers_admitted` — the same trade split by direction: of
+  the pool's true positives, how many the classifier rescues; of the pool's true negatives,
+  how many it wrongly admits (count and rate, each against the relevant pool subset).
+- `cascade_overall` — accuracy / negative-class precision / recall of the full cascade
+  (`compareAnswer()` accept OR classifier accept) over the whole test split, directly
+  comparable against `"split"` (classifier alone) and `"baseline"` (`compareAnswer()`
+  alone).
+- `overturn_precision_by_kind` — `overturn_precision` broken down by `AnswerPair.kind`
+  (`paraphrase` / `wrong` / `exact` / `case` / `punctuation`), so it's visible which kinds
+  drive the rescues versus the wrongly-admitted answers.
+
+This requires `scripts/compare_answer_baseline.ts` to emit its per-pair `predictions`
+alongside its aggregate metrics (still returned under `"baseline"` in the report, with
+`predictions` popped out before that section is written), so the classifier's predictions
+can be partitioned by the baseline's verdict.
+
 ## Record schema
 
 One JSON object per line:

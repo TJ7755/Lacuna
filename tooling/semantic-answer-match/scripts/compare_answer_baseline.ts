@@ -7,4 +7,4 @@ const actual = pairs.map((pair) => pair.label);
 const negative = actual.map((label, i) => ({ label, prediction: predictions[i] })).filter((row) => row.label === 0);
 const predictedNegative = actual.map((_, i) => predictions[i] === 0).filter(Boolean).length;
 const correct = predictions.filter((prediction, i) => prediction === actual[i]).length;
-console.log(JSON.stringify({ accuracy: correct / actual.length, negative_precision: negative.filter((row) => row.prediction === 0).length / Math.max(predictedNegative, 1), negative_recall: negative.filter((row) => row.prediction === 0).length / Math.max(negative.length, 1) }));
+console.log(JSON.stringify({ accuracy: correct / actual.length, negative_precision: negative.filter((row) => row.prediction === 0).length / Math.max(predictedNegative, 1), negative_recall: negative.filter((row) => row.prediction === 0).length / Math.max(negative.length, 1), predictions }));
