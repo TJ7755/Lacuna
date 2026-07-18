@@ -22,6 +22,28 @@
 >
 > **Full changelog below**
 
+## Unreleased — Classroom distribution: versioned courses and re-import merge (Arc 7)
+
+Schema v18. Teachers can now **Publish** a course so that re-sharing an updated code
+merges into a student's already-imported copy instead of always creating a duplicate.
+
+- Added a teacher-side **Publish** action (schema v18, `Course.distribution`) that stamps
+  a course with a stable lineage id on first publish and increments a revision counter on
+  every subsequent publish; the teacher's own course is never locked and stays freely
+  editable and re-publishable.
+- Added a re-import **merge path** (`src/db/mergeImport.ts`) for students who have already
+  imported a published course: new lessons/notes/cards apply immediately, and edits or
+  removals of material the student has not touched apply automatically once the student
+  opts in per course (`autoAcceptUpdates`) or otherwise queue for later review
+  (`pendingMergeReviews`). A student's own edit is never silently overwritten — a conflict
+  between a student's change and an incoming teacher change always queues, leaving the
+  student's version active. Sequence content changes continue to flow through the existing
+  sequence-regeneration path unchanged.
+- Added a **locked/read-only mode** for a student's imported copy of a published course:
+  lesson, note and card editing is disabled while the copy tracks its teacher's lineage.
+  Students can **detach** at any time (a one-way action) to unlock the course and edit it
+  freely, at the cost of no longer receiving merged updates from that teacher.
+
 ## Unreleased — Assessment-aware revision planning (Arc 3)
 
 - Unified checkpoint and final assessments under stable `CourseAssessment` ids with independent

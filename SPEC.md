@@ -1496,6 +1496,107 @@ never one person's scheduling progress or review history.
   single-lesson courses, date-due preservation, clean scheduling state, and rejection of
   non-codes) is covered by `src/db/share.test.ts`.
 
+### Classroom distribution — versioned courses and re-import merge (schema v18)
+
+Share codes are one-shot by default (above): re-importing an updated code always creates a
+second course. Schema **v18** adds an opt-in **Publish** flow so a teacher's revisions can
+instead **merge** into a student's already-imported copy, preserving the student's FSRS
+memory, exposure history and any local edits. No content hashing is used anywhere in this
+feature — versioning is a teacher-initiated counter, not a derived value.
+
+- **Teacher side — `Course.distribution?: { lineageId: string; revision: number;
+  publishedAt: number }`.** Absent until the teacher clicks **Publish** at least once.
+  `publishCourse(courseId)` (`src/db/repository.ts`) generates a fresh `lineageId`
+  (`makeId()`) on first publish and increments `revision` by exactly 1 on every
+  subsequent call, stamping `publishedAt` with the current time; the teacher's own course
+  is never locked and remains freely editable and re-publishable. When
+  `Course.distribution` is present, the share-code export path packs `li` (lineage id) and
+  `rv` (revision) onto the `SharePayloadV2` root, plus each lesson/note/card's originating
+  id (see below) — a course that has never been published exports exactly as it always has,
+  with no lineage fields at all.
+- **Originating-id payload fields.** `ShareLesson` gains `i?: string`. `ShareNote` gains
+  `oi?: string` rather than `i`, because `ShareNote.i` was already the pre-existing
+  "images omitted" boolean flag; reusing that letter would have collided. `ShareCard`
+  needs no new field at all: its existing (already-optional) `id` — packed on every course
+  export to resolve in-payload `links`/exam `x` references — doubles as the originating
+  card id once a lineage is present, so cards are the one entity type with nothing added.
+  All three are populated only when `li` is present.
+- **Student side — `Course.distributedCopy?: CourseDistributedCopy`
+  (`{ lineageId, revision, locked, autoAcceptUpdates, sourceLabel? }`).** Set on first
+  import of a published course (`importLineageFirstTime`, `src/db/mergeImport.ts`), which
+  diverges from the ordinary import path in exactly one way: every lesson/note/card
+  **adopts its incoming originating id directly as its local id** instead of remapping
+  through `makeId()`. This is safe because `makeId()` ids are globally unique regardless of
+  which install generated them, and the merge path only ever writes ids that originated
+  from `makeId()` on the teacher's own database — there is no mapping table, only a
+  membership registry (below) recording which ids a course has already adopted.
+  `locked` starts `true`; `autoAcceptUpdates` starts `false` (opt-in per course, not
+  global — set via `setCourseAutoAcceptUpdates`).
+- **`LineageIdMapping` table (`lineageIdMappings: 'id, courseId'`)** — one row per
+  distributed course (keyed by `lineageId`), holding `lessonIds`/`noteIds`/`cardIds`/
+  `sequenceIds` arrays of adopted local ids plus a **last-merged content snapshot** for
+  every adopted lesson/note/card (`lessonSnapshots`/`noteSnapshots`/`cardSnapshots`,
+  keyed by id — name/description/isExtension/dates/sessionFilter/orderIndex for lessons,
+  name/content/orderIndex for notes, type/front/back/tags for cards, deliberately excluding
+  FSRS/scheduling fields). A re-import compares an entity's *current* local content against
+  its snapshot to detect a student edit since the last merge, rather than a separate dirty
+  flag that could drift out of sync.
+- **`pendingMergeReviews` table (`id, courseId`)** — queued merge decisions awaiting
+  student review: one row per course, holding `updates`/`removals`/`conflicts` for the
+  latest outstanding diff. A new merge for the same course **supersedes** rather than
+  appends to the previous row, so the table never accumulates history. `creates` are never
+  queued here — they apply immediately and unconditionally (below).
+- **Merge apply (`mergeLineageUpdate`, `src/db/mergeImport.ts`), run against the pure
+  diff module `src/db/lineageDiff.ts` (id-keyed, never positional or content-matched,
+  generalising `diffRegeneration`'s shape from one sequence to a whole lineage):**
+  1. **Creates** (incoming-only ids) are written immediately, adopting the incoming id as
+     the local id — purely additive, nothing to review.
+  2. **Updates and removals** where the local entity has not been edited since the last
+     merge apply immediately if `distributedCopy.autoAcceptUpdates` is true; otherwise they
+     are written to `pendingMergeReviews` and nothing changes locally until the student
+     resolves them.
+  3. **Conflicts** — an entity changed on both sides since the last merge, or a teacher
+     removal of an entity the student has edited — are **always queued**, regardless of
+     `autoAcceptUpdates`: the student's local version is left untouched either way, and the
+     incoming version sits in the queue for visibility. This is the **student-wins**
+     policy: a student's own edit is never silently overwritten or discarded by an
+     incoming teacher change.
+  4. Card updates are a strict content subset (`type`/`front`/`back`/`tags`) that never
+     touches FSRS/scheduling fields (`state`, `stability`, `difficulty`, `due`, `reps`,
+     history), mirroring `diffRegeneration`.
+  5. Sequence-shaped payload items are **not** diffed by `lineageDiff.ts` at all — they are
+     handed unconditionally to the existing sequence-regeneration path (`updateSequence`),
+     which already encodes "update content only, never FSRS fields" keyed by the stable
+     `sequenceItemId`; this is never gated by `autoAcceptUpdates`.
+  6. On completion, `distributedCopy.revision` is set to the incoming revision and
+     `lineageIdMappings` is updated with any newly adopted ids and refreshed content
+     snapshots for every entity actually applied (auto-accepted updates and creates); an
+     entity left queued or in conflict keeps its old snapshot, since nothing changed for it
+     locally yet.
+  7. **Decode-time routing:** a decoded payload carrying `li` is matched against the
+     student's own `distributedCopy.lineageId` values (never the teacher's); a match routes
+     to the merge path, otherwise it falls through to the ordinary
+     `importCourseSharePayload` exactly as today — this covers both genuinely new courses
+     and any course whose local copy predates schema v18 and so has no `distributedCopy` to
+     match against.
+- **Lock enforcement — `canEditLessons(course)` (`src/course/lessonViewMode.ts`).** Returns
+  `false` iff `course.distributedCopy?.locked === true`; an absent `distributedCopy` (every
+  ordinary course, including all pre-v18 courses) or a detached copy (`locked: false`) both
+  remain editable. This is the single gate every lesson/note/card-CRUD call site already
+  routes through (`resolveLessonViewMode`, `isLessonAuthoringMode`), so locking a
+  distributed copy needed no new call sites — only this function's body changed.
+- **Detach (`detachCourse`, `src/db/repository.ts`)** — a one-way, student-initiated escape
+  hatch (confirm dialog via `ConfirmInline`, destructive framing) that clears
+  `Course.distributedCopy` entirely, unlocking the course and severing lineage tracking in
+  the same step: it deletes the course's `LineageIdMapping` row and any pending merge
+  review, but never touches lesson/note/card content. A later re-import of the same share
+  code no longer matches this course and instead imports as an independent copy — the same
+  "no lineage, treat as new" fallback a pre-v18 course already takes on import.
+- **What's not yet built:** a review UI for queued `pendingMergeReviews` entries, an
+  `autoAcceptUpdates` settings toggle, and MCP tool surfacing (`diff_lineage_update`/
+  `apply_lineage_update`) are tracked separately (`next_plan.md` §7.9 Tasks 7–10) and not
+  covered here.
+
 ---
 
 ## 14. Search & analytics

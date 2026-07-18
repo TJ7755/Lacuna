@@ -1396,8 +1396,10 @@ additive table, matching the "six Phase-1 tables"/sequences precedent (next_plan
 once, the first time a teacher clicks Publish, and stored on the teacher's own `Course`
 (reusing the same `distributedCopy`-shaped field would be wrong here — the teacher's course
 is the *origin*, not a copy — so the teacher side gets its own minimal
-`{ lineageId: string; revision: number }` pair, e.g. `Course.distribution` optional field,
-separate from `distributedCopy`). `revision` increments by exactly 1 on every Publish.
+`{ lineageId: string; revision: number; publishedAt: number }` triple, e.g.
+`Course.distribution` optional field, separate from `distributedCopy`. `revision`
+increments by exactly 1 on every Publish; `publishedAt` records the epoch-ms timestamp of
+the most recent Publish call.
 
 **Payload additions (`SharePayloadV2`, `src/db/share.ts:303-317`), all optional so a
 non-distributed export is byte-for-byte unaffected in shape:**
@@ -1419,6 +1421,14 @@ interface ShareCard   { /* ... */ i?: string; }
 that was never published — carries no ids and behaves exactly as today; there is nothing to
 merge against). `ShareLessonSchema`/`ShareNoteSchema` (`share.ts:92,99`) currently carry no
 id field at all — this is a genuinely new capability for those two schemas, not a rename.
+
+> **Shipped divergence:** `ShareCard` already used `i?: 1` for the pre-existing
+> "images omitted" flag, so the originating-id key could not also be `i` there without a
+> collision. As implemented, `ShareCard` reuses its existing (already-optional) `id` field
+> as the originating card id — no new key at all — and `ShareNote` carries the originating
+> note id under `oi` ("originating id") instead of `i`. Only `ShareLesson` uses `i` as
+> planned, since it has no competing use of that letter. `SharePayloadV2.li`/`rv` shipped
+> exactly as written above.
 
 **Queue-for-review persistence.** Pending merge decisions (§7.5) are not silently
 discarded if the student closes the app mid-review — they are written to a new
