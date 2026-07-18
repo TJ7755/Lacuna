@@ -1257,8 +1257,11 @@ imported copy**, and only that copy.
 `canEditLessons(course)` already exists for exactly this purpose — its comment says so
 verbatim ("Today there is no locked-course concept, so this always returns true — but it
 is the ONE place that decision lives"). This arc is the first caller to make it return
-`false`. It gains one check: `course.distributedCopy?.locked !== false` — see §7.2 for the
-field. Every call site already routes through `canEditLessons`/`resolveLessonViewMode`
+`false`. It gains one check: `canEditLessons` returns `false` iff
+`course.distributedCopy?.locked === true`, so an absent `distributedCopy` (every ordinary
+course, including all pre-Arc-7 courses) or a detached copy (`locked: false`) both remain
+editable, and only a still-locked distributed copy is read-only — see §7.2 for the field.
+Every call site already routes through `canEditLessons`/`resolveLessonViewMode`
 (`LessonView`, settings toggles), so no new call sites are needed; the behaviour change is
 entirely inside the gate.
 
@@ -1312,13 +1315,15 @@ introduce a permanent indirection between "the id the diff engine reasons about"
 the learner-state tables key on" — exactly the ambiguity id adoption avoids. The remaining
 risk — a student having independently created a lesson/card that happens to collide with an
 adopted id — is already structurally impossible: `makeId()` never repeats, and locally
-authored content in a locked copy cannot exist (§7.1's lock). First import of a lineage
-still runs through the ordinary local-id path used by every import today, but persists the
-originating ids alongside the fresh local ones in a new mapping (§7.2) — because the
-*first* import is exactly like today's, and the *diff* is what needs a stable anchor from
-then on; adopting ids retroactively on first import (rather than always) avoids rewriting
-`importCourseSharePayload`'s existing, working id-generation path for the common
-non-distributed case (a share code with no lineage still behaves exactly as it does today).
+authored content in a locked copy cannot exist (§7.1's lock). First import of a
+lineage-bearing payload therefore diverges from `importCourseSharePayload`'s `makeId()`
+remapping for exactly this case: the merge path (§7.5) adopts the incoming `i` on every
+lesson/note/card directly as the local id, and records those adopted ids in
+`LineageIdMapping` (§7.2) purely as a **membership registry** — "which ids has this course
+already adopted from this lineage" — never as a translation table, since there is nothing
+to translate: incoming id and local id are the same value by construction. A plain
+(non-distributed) share code with no lineage id is entirely unaffected and continues to go
+through `importCourseSharePayload`'s existing `makeId()` path exactly as it does today.
 
 **Merge importer is a new path, not a branch inside the existing one.**
 `importCourseSharePayload` stays untouched for the no-lineage case (backwards compatibility
@@ -1363,9 +1368,10 @@ teacher authors locally, so no migration touches existing rows (Dexie v18 upgrad
 field to the schema only, no `.upgrade()` data pass needed — same "additive, no existing
 data changes" pattern as sequences' schema v10, next_plan.md §1.2).
 
-**A new table carries the originating-id mapping** created on first import of a lineage
-(§7.1) and consulted (never mutated except to add newly-created entities) by every
-subsequent merge:
+**A new table carries the adopted-id membership registry** — not a translation table, since
+adopted ids and local ids are the same value (§7.1) — created on first import of a lineage
+and consulted (never mutated except to add newly-created entities) by every subsequent
+merge, to answer "is this incoming id already present locally" without a database scan:
 
 ```typescript
 interface LineageIdMapping {
