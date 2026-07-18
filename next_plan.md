@@ -17,6 +17,8 @@ that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in ord
    depends on Arc 2)
 9. **Arc 8 — Multi-device sync** (outline; design decision first)
 10. **Arc 9 — Mobile experience and due-card reminders** (outline)
+11. **Arc 10 — UI de-clutter and navigation restructure** (detailed; independent of
+    Arcs 6–9, may run before them)
 
 Plugins remain speculative pending a concrete pain point (see Arc 2). Sync/collaboration
 is no longer parked outright: Arc 8 un-parks it as a design question to be settled before
@@ -1765,6 +1767,184 @@ Scope decided so far:
 
 ---
 
+# Arc 10 — UI De-clutter and Navigation Restructure (detailed)
+
+Motivated by a July 2026 audit of the UI's growth-by-accretion: after the Course
+architecture landed, several surfaces were bolted on beside existing ones rather than
+replacing them, leaving redundant entry points, hidden features, and two settings pages
+with no internal structure. This arc removes duplication and makes existing features
+findable. It adds **no new capabilities** — every change is navigation, layout, or
+consolidation of things that already exist.
+
+Audit findings this arc addresses:
+
+- **Four "start studying" surfaces.** Dashboard (`/`), StudyToday (`/study`),
+  CoursePath's own Study/Review-due buttons, and `CourseStudyFlow` (the real session
+  page) — the first three are parallel launchers for the fourth. StudyToday
+  (`src/pages/StudyToday.tsx`) duplicates the Dashboard's course enumeration with a
+  second, simpler card layout whose only action is `navigate('/course/:id/study')`.
+- **No persistent course-level navigation.** Question bank, course analytics and course
+  settings are reachable only from small links/icons in CoursePath's breadcrumb row
+  (`CoursePath.tsx:380–405`). From QuestionBank, CardEditor, SequenceEditor or
+  CourseAnalytics there is no way sideways — only back out and in again.
+- **CourseSettings is nine heterogeneous concerns in one flat scroll** with no sub-nav
+  (unlike global Settings' scrollspy rail), and a split save model: name/scheduling/
+  unlock/practice/view-mode are staged behind a sticky "Save changes" button
+  (`CourseSettings.tsx:139–225`) while ExamDates, LessonManagement and PracticeNodes
+  sections commit instantly. A user cannot tell which edits are pending.
+- **Hidden features.** The command palette (`Ctrl/Cmd+K`, `CommandPalette.tsx`) has no
+  visible affordance anywhere. `/method` is linked only from `/welcome`, which never
+  shows again after first run, so the page is permanently orphaned. Sequences are
+  reachable only via QuestionBank. Global Settings' scrollspy rail is `hidden xl:block`,
+  so mobile gets no wayfinding at all.
+- **Naming drift.** The sidebar nav item has id `learn`, label "Study today" and route
+  `/study`, while `/learn` is a different page (LearnMode) — three names for adjacent
+  things.
+
+## 10.1 Merge StudyToday into Dashboard
+
+The Dashboard becomes the single answer to "what do I study now?".
+
+- Each Dashboard course card gains a direct **Study** action routing to
+  `/course/:id/study` — the same target StudyToday's rows used. The card's existing
+  click-through to CoursePath is unchanged; Study is an explicit secondary action on the
+  card, not a change to the card's primary navigation.
+- StudyToday's one unique element — the "resume active session" banner driven by
+  `readActiveStudyFlow()` (`StudyToday.tsx:22–23`) — moves to the top of the Dashboard.
+- Delete `StudyToday.tsx` and its test; `/study` becomes a redirect to `/` (same shim
+  pattern as `/deck/:deckId`, `App.tsx:93–95`) so bookmarks and muscle memory survive.
+- Remove the `learn` nav item from `DEFAULT_NAV_ITEMS`
+  (`src/state/sidebarSettings.ts`). `readStored()` currently only merges *added*
+  defaults into stored settings; it gains the inverse — dropping stored items whose id
+  no longer exists in `DEFAULT_NAV_ITEMS` — so existing installs don't keep a dead
+  entry. `SidebarSection`'s reorder/visibility UI needs no change beyond the shorter
+  list.
+
+## 10.2 Course-level tab navigation
+
+Replace CoursePath's breadcrumb-row link cluster with a shared course navigation
+component rendered on **all four course surfaces**.
+
+- New `src/components/course/CourseTabs.tsx`: Path · Question bank · Analytics ·
+  Settings, active tab derived from the route, styled to match the existing header
+  vocabulary (this answers the long-standing "question bank has no tab" note).
+- Rendered by CoursePath, QuestionBank, CourseAnalytics and CourseSettings, so course
+  sections are one click from each other in any direction. The "All courses" breadcrumb
+  stays; the ChartIcon/SettingsIcon icon links and the bare "Question bank" text link go.
+- `LessonViewModeToggle` stays on CoursePath only (it configures the path view, not the
+  course) — it moves out of the breadcrumb row into the path header area.
+- CardEditor and SequenceEditor keep their focused back-link (they are editors, not
+  sections) but the back-link targets the surface the user came from — QuestionBank when
+  opened from the bank, the lesson when opened from a lesson — rather than always
+  "Back to dashboard" (`CardEditor.tsx:233`).
+
+## 10.3 CourseSettings restructure and one save model
+
+- Group the nine sections under headed groups with the same scrollspy side-rail pattern
+  as global Settings (extract the rail from `Settings.tsx` into a shared component
+  rather than duplicating it): **Basics** (name, exam objective), **Study** (scheduling
+  fields, unlock mode, auto-practice, lesson view mode, optimisation), **Content**
+  (lesson management, practice nodes), **Assessments** (exam dates/assessments),
+  **Danger zone**.
+- **One save model: instant commit everywhere.** The staged blocks convert to the
+  ExamDates/LessonManagement pattern — text/numeric inputs commit on blur, toggles and
+  selects on change, each through the existing `updateCourse` path. The sticky "Save
+  changes" bar and the staged local state in `handleSave` go. Chosen over staging
+  everything because three sections already commit instantly (so instant is the smaller
+  change), the repository already has undo patterns for the destructive cases, and a
+  sticky save bar on a page this long is exactly the pending-state ambiguity the audit
+  flagged. Numeric scheduling fields keep their existing validation/clamping on blur so
+  a half-typed value never commits.
+- The shared scrollspy rail also gets a mobile fallback (a compact sticky section
+  jumper, or at minimum visible group headings) so wayfinding no longer disappears
+  below `xl` — applied to both CourseSettings and global Settings since the component
+  is now shared.
+
+## 10.4 Discoverability fixes
+
+1. **Command palette affordance.** A visible search control in the sidebar (replacing or
+   augmenting the bare "Search" nav link) showing the `⌘K`/`Ctrl+K` shortcut, opening
+   the palette on click; the `/search` page mentions the shortcut too.
+2. **`/method` re-linked.** The Help page links to the Method page (and Method gains a
+   route back to Help); `/method` stops being reachable only from the never-again-shown
+   `/welcome`.
+3. **Assessments surfaced outside settings.** CoursePath already renders checkpoint
+   nodes and `AssessmentDetailSheet`; add a compact upcoming-assessments strip (date,
+   name, open-detail) to CoursePath's header area so assessments are visible where
+   they matter without opening CourseSettings.
+4. **Naming cleanup.** With the `learn` nav item gone (§10.1) the id/label/route
+   mismatch disappears; audit remaining user-facing copy so the words are "Study"
+   (the act, from Dashboard/CoursePath) and "Session" (LearnMode) consistently.
+5. **Analytics cross-links** (minor): the global Analytics page links each course in
+   `CourseComparison` to `/course/:id/analytics`; CourseAnalytics links back via the
+   new CourseTabs. No chart changes.
+
+## 10.5 Explicitly out of scope
+
+- **Splitting `LearnMode.tsx`** (3,564 lines, five session types, three chrome
+  variants). Deliberately deferred — it is a refactor precondition for future study-UI
+  work, not a user-facing fix, and deserves its own arc when study UI changes are next
+  needed.
+- Merging Analytics and CourseAnalytics into one system beyond §10.4's cross-links.
+- Help-page interactivity (guided tours, interactive shortcut demos). Flagged as a
+  promising later idea; needs its own scoping conversation first.
+- Any change to session logic, scheduling, or the repository layer.
+
+## 10.6 Task list
+
+Each task is one subagent's scope, one commit, tests updated alongside.
+
+1. **Dashboard absorbs StudyToday.** Study action on course cards, resume banner moved,
+   `StudyToday.tsx`/test deleted, `/study` redirect shim, `DEFAULT_NAV_ITEMS` entry
+   removed with the `readStored()` stale-id drop. Update `Dashboard.test.tsx`.
+2. **`CourseTabs.tsx` + adoption.** The shared tab component, adopted on all four course
+   surfaces; breadcrumb-row cleanup on CoursePath; `LessonViewModeToggle` relocation.
+   Component test plus a route-active assertion.
+3. **Editor back-links.** CardEditor/SequenceEditor return-to-origin behaviour (router
+   state or referrer param — decide against existing navigation conventions in those
+   files).
+4. **Shared scrollspy rail.** Extract from `Settings.tsx` into
+   `src/components/ui/SectionRail.tsx` (name indicative), with the mobile fallback;
+   re-adopt in global Settings with zero behaviour change at `xl+`.
+5. **CourseSettings regroup + instant commit.** §10.3's grouping and save-model
+   conversion, adopting the shared rail. The largest task; `CourseSettings.test.tsx`
+   updated to assert instant-commit semantics.
+6. **Discoverability batch.** §10.4 items 1, 2 and 5 (palette affordance, Method/Help
+   links, analytics cross-links).
+7. **Assessments strip on CoursePath.** §10.4 item 3, reusing `AssessmentDetailSheet`.
+8. **Documentation + end-to-end pass.** `SPEC.md`/`CHANGES.md`/Help copy updated
+   (navigation descriptions, removed `/study` page, new tabs); manual walk of the
+   restructured journey; this section's status line flipped per the Arc 1/2/3/4
+   precedent.
+
+## 10.7 Risks
+
+- **Instant commit surprising existing users** (medium): a user used to "Save changes"
+  may edit a scheduling number and back out expecting it discarded. Mitigated by
+  commit-on-blur with validation, the existing undo patterns for destructive actions,
+  and the change being called out in `CHANGES.md`; if a specific field proves
+  dangerous, per-field confirm is a within-task decision.
+- **Stored sidebar settings migration** (low): dropping unknown nav ids in
+  `readStored()` must not clobber a stored order or visibility of surviving items —
+  covered by a unit test on the merge logic.
+- **Back-link state loss** (low): return-to-origin via router state fails on hard
+  refresh; fall back to the course bank as the default origin.
+
+## 10.8 Success criteria
+
+1. `/study` no longer exists as a page; the Dashboard offers study, resume, and course
+   browsing in one place, and nothing in the sidebar duplicates it.
+2. Every course surface (path, bank, analytics, settings) is one click from every
+   other via visible tabs.
+3. CourseSettings has grouped sections, wayfinding on all viewport sizes, and exactly
+   one save model with no pending-state ambiguity.
+4. The command palette, Method page, and per-course assessments are each reachable from
+   visible, persistent UI.
+5. No behavioural change to sessions, scheduling, or data; all tests pass; `tsc -b`
+   clean.
+
+---
+
 # Cross-arc notes
 
 - All arcs follow existing conventions: additive schema migrations with pre-migration
@@ -1775,7 +1955,10 @@ Scope decided so far:
   interleave at any point, including between other arcs. Arc 7 depends on Arc 2's
   repository-tool work and is sequenced after it deliberately. Arc 8 (sync) is un-parked
   as a design question, not yet an implementation commitment; Arc 9 and Arc 6 are
-  independent of each other and of Arc 8.
+  independent of each other and of Arc 8. Arc 10 (UI de-clutter) is independent of
+  Arcs 6–9 and touches only navigation/layout, so it may run before any of them; its
+  one deliberate deferral (splitting `LearnMode.tsx`) should be revisited before the
+  next arc that changes study-session UI.
 - Each arc gets its own detailed plan (or addendum here) before implementation begins;
   outline sections above are scope agreements, not specifications.
 
