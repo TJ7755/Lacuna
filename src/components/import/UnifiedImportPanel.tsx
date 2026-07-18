@@ -23,8 +23,16 @@ import {
   decodeShare,
   importSharePayload,
   summariseShare,
+  type SharePayload,
   type ShareSummary,
 } from '../../db/share';
+import {
+  findCourseForLineage,
+  isLineagePayload,
+  mergeLineageUpdate,
+  type MergeLineageResult,
+} from '../../db/mergeImport';
+import type { CourseRecord } from '../../db/types';
 import { formatDate } from '../../utils/datetime';
 
 // ---------------------------------------------------------------------------
@@ -79,6 +87,69 @@ const FORMAT_HELP: Record<ImportFormat, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// Merge routing (Arc 7 §7.5 decode-time branch)
+// ---------------------------------------------------------------------------
+
+/** A decoded, not-yet-confirmed share-code import. `merge` is present when the
+ *  payload's lineage matches a course already imported locally — routing the confirm
+ *  step to the merge importer instead of a plain new-course import. */
+interface PendingShareImport {
+  summary: ShareSummary;
+  raw: string;
+  merge?: {
+    course: CourseRecord;
+    incomingRevision: number;
+    /** True when `incomingRevision` is not newer than the local copy — nothing to merge. */
+    stale: boolean;
+  };
+}
+
+/** Does this payload's lineage match a course already tracked locally? If so, route
+ *  the confirm step to the merge importer instead of the plain `importSharePayload`
+ *  path. */
+async function resolvePending(payload: SharePayload, raw: string): Promise<PendingShareImport> {
+  const summary = summariseShare(payload);
+  if (isLineagePayload(payload)) {
+    const course = await findCourseForLineage(payload.li);
+    if (course) {
+      const localRevision = course.distributedCopy?.revision ?? 0;
+      return {
+        summary,
+        raw,
+        merge: { course, incomingRevision: payload.rv, stale: payload.rv <= localRevision },
+      };
+    }
+  }
+  return { summary, raw };
+}
+
+/** Turn a merge result into a single sentence for the confirm surface. */
+function describeMergeResult(result: MergeLineageResult): string {
+  const parts: string[] = [];
+  if (result.createdLessons || result.createdNotes || result.createdCards) {
+    parts.push(
+      `added ${result.createdLessons} lesson${result.createdLessons === 1 ? '' : 's'}, ` +
+        `${result.createdNotes} note${result.createdNotes === 1 ? '' : 's'} and ` +
+        `${result.createdCards} card${result.createdCards === 1 ? '' : 's'}`,
+    );
+  }
+  if (result.appliedUpdates || result.appliedRemovals) {
+    parts.push(
+      `applied ${result.appliedUpdates} update${result.appliedUpdates === 1 ? '' : 's'} and ` +
+        `${result.appliedRemovals} removal${result.appliedRemovals === 1 ? '' : 's'}`,
+    );
+  }
+  let message = parts.length > 0 ? `Updated the course — ${parts.join('; ')}.` : 'The course is already up to date.';
+  if (result.queuedForReview) {
+    message +=
+      result.conflictCount > 0
+        ? ` ${result.conflictCount} change${result.conflictCount === 1 ? '' : 's'} ${result.conflictCount === 1 ? 'is' : 'are'} waiting for your review.`
+        : ' Some changes are waiting for your review.';
+  }
+  return message;
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -102,12 +173,13 @@ export function UnifiedImportPanel({
 
   // Share code state.
   const [shareMode, setShareMode] = useState(false);
-  const [sharePending, setSharePending] = useState<{
-    summary: ShareSummary;
-    raw: string;
-  } | null>(null);
+  const [sharePending, setSharePending] = useState<PendingShareImport | null>(null);
   const [shareImporting, setShareImporting] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  /** Outcome sentence for a completed merge (Arc 7 §7.5) — a merge updates an existing
+   *  course rather than adding a new one, so it is shown here instead of via
+   *  `onShareImport`'s new-import notification path. */
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
 
   // APKG state.
   const [apkgPending, setApkgPending] = useState<ApkgImportResult | null>(null);
@@ -282,24 +354,34 @@ export function UnifiedImportPanel({
     setShareError(null);
     try {
       const payload = await decodeShare(raw);
-      setSharePending({ summary: summariseShare(payload), raw });
+      setSharePending(await resolvePending(payload, raw));
     } catch (err) {
       setShareError(err instanceof Error ? err.message : 'Invalid share code.');
     }
   }
 
   async function handleShareImport() {
-    if (!sharePending) return;
+    if (!sharePending || sharePending.merge?.stale) return;
     setShareImporting(true);
     setShareError(null);
+    setShareNotice(null);
     try {
       const payload = await decodeShare(sharePending.raw);
-      const result = await importSharePayload(payload);
-      setSharePending(null);
-      setShareError(null);
-      setText('');
-      if (onShareImport) {
-        await onShareImport(result.courses, result.cards);
+      if (sharePending.merge) {
+        const result = await mergeLineageUpdate(sharePending.merge.course.id, payload);
+        setSharePending(null);
+        setText('');
+        // A merge updates an existing course rather than creating one, so it does not
+        // fit onShareImport's (courses, cards) "new import" contract — show the
+        // outcome inline instead.
+        setShareNotice(describeMergeResult(result));
+      } else {
+        const result = await importSharePayload(payload);
+        setSharePending(null);
+        setText('');
+        if (onShareImport) {
+          await onShareImport(result.courses, result.cards);
+        }
       }
     } catch (err) {
       setShareError(err instanceof Error ? err.message : 'Import failed.');
@@ -312,6 +394,7 @@ export function UnifiedImportPanel({
     setText('');
     setSharePending(null);
     setShareError(null);
+    setShareNotice(null);
   }
 
   // ---- Import handler ----
@@ -372,7 +455,7 @@ export function UnifiedImportPanel({
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => { setShareMode(false); setSharePending(null); setShareError(null); }}
+            onClick={() => { setShareMode(false); setSharePending(null); setShareError(null); setShareNotice(null); }}
             className={cn(
               'flex-1 rounded-full border px-4 py-2 text-sm font-medium transition-all',
               !shareMode
@@ -384,7 +467,7 @@ export function UnifiedImportPanel({
           </button>
           <button
             type="button"
-            onClick={() => { setShareMode(true); setSharePending(null); setShareError(null); }}
+            onClick={() => { setShareMode(true); setSharePending(null); setShareError(null); setShareNotice(null); }}
             className={cn(
               'flex-1 rounded-full border px-4 py-2 text-sm font-medium transition-all',
               shareMode
@@ -403,6 +486,7 @@ export function UnifiedImportPanel({
           text={text}
           setText={setText}
           pending={sharePending}
+          notice={shareNotice}
           onImport={handleShareImport}
           onClear={clearSharePending}
           importing={shareImporting}
@@ -751,6 +835,7 @@ function ShareCodeImport({
   text,
   setText,
   pending,
+  notice,
   onImport,
   onClear,
   importing,
@@ -758,7 +843,8 @@ function ShareCodeImport({
 }: {
   text: string;
   setText: (v: string) => void;
-  pending: { summary: ShareSummary; raw: string } | null;
+  pending: PendingShareImport | null;
+  notice: string | null;
   onImport: () => void;
   onClear: () => void;
   importing: boolean;
@@ -780,6 +866,22 @@ function ShareCodeImport({
       </div>
 
       <AnimatePresence>
+        {notice && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+            transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-5 text-sm leading-relaxed text-ink-soft shadow-sm shadow-accent/5">
+              {notice}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {pending && (
           <motion.div
             initial={{ opacity: 0, height: 0, marginTop: 0 }}
@@ -789,8 +891,26 @@ function ShareCodeImport({
             className="overflow-hidden"
           >
             <div className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-5 shadow-sm shadow-accent/5">
-              <h3 className="mb-2 font-display text-lg font-medium text-ink">Ready to import</h3>
-              {pending.summary.kind === 'course' ? (
+              <h3 className="mb-2 font-display text-lg font-medium text-ink">
+                {pending.merge ? 'Course update' : 'Ready to import'}
+              </h3>
+              {pending.merge ? (
+                <p className="mb-3 text-sm leading-relaxed text-ink-soft">
+                  {pending.merge.stale ? (
+                    <>
+                      You already have the latest version of{' '}
+                      <strong className="text-ink">{pending.merge.course.name}</strong> (revision{' '}
+                      {pending.merge.course.distributedCopy?.revision ?? 0}).
+                    </>
+                  ) : (
+                    <>
+                      This updates <strong className="text-ink">{pending.merge.course.name}</strong>{' '}
+                      (revision {pending.merge.course.distributedCopy?.revision ?? 0} →{' '}
+                      {pending.merge.incomingRevision}).
+                    </>
+                  )}
+                </p>
+              ) : pending.summary.kind === 'course' ? (
                 <p className="mb-3 text-sm leading-relaxed text-ink-soft">
                   <strong className="text-ink">{pending.summary.courseName}</strong> —{' '}
                   <strong className="text-ink">{pending.summary.lessonCount}</strong> lesson
@@ -810,7 +930,7 @@ function ShareCodeImport({
                   imported course.
                 </p>
               )}
-              {pending.summary.deckNames.length > 0 && (
+              {!pending.merge && pending.summary.deckNames.length > 0 && (
                 <ul className="mb-4 flex flex-wrap gap-1.5">
                   {pending.summary.deckNames.map((name, i) => (
                     <li
@@ -822,7 +942,7 @@ function ShareCodeImport({
                   ))}
                 </ul>
               )}
-              {pending.summary.omittedImages && (
+              {!pending.merge && pending.summary.omittedImages && (
                 <p className="mb-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm leading-relaxed text-ink-soft">
                   This share code omitted images to keep the code small. Image positions
                   will appear as placeholders after import.
@@ -830,11 +950,19 @@ function ShareCodeImport({
               )}
               <div className="flex flex-wrap justify-end gap-2">
                 <Button variant="ghost" onClick={onClear}>
-                  Cancel
+                  {pending.merge?.stale ? 'Close' : 'Cancel'}
                 </Button>
-                <Button variant="primary" onClick={() => void onImport()} disabled={importing}>
-                  {importing ? 'Importing…' : 'Add to my courses'}
-                </Button>
+                {!pending.merge?.stale && (
+                  <Button variant="primary" onClick={() => void onImport()} disabled={importing}>
+                    {importing
+                      ? pending.merge
+                        ? 'Updating…'
+                        : 'Importing…'
+                      : pending.merge
+                        ? 'Update course'
+                        : 'Add to my courses'}
+                  </Button>
+                )}
               </div>
             </div>
           </motion.div>
