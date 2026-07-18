@@ -13,6 +13,7 @@ import {
   createNote,
   linkCardToLesson,
   createSequence,
+  updateCourse,
   updateDeck,
 } from './repository';
 import {
@@ -666,6 +667,84 @@ describe('course share codes (v2)', () => {
     const result = await importSharePayload(payload);
     expect(result.courses).toBe(1);
     expect(await db.sequences.count()).toBe(0);
+  });
+
+  it('omits li/rv and per-entity originating ids for a course that has never published', async () => {
+    const course = await createCourse('Geology');
+    const lesson = await createLesson(course.id, 'Rocks');
+    await createNote(lesson.id, 'Overview', 'Igneous, sedimentary, metamorphic.');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Front', 'Back');
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.li).toBeUndefined();
+    expect(payload.rv).toBeUndefined();
+    expect(payload.lessons[0].i).toBeUndefined();
+    expect(payload.lessons[0].notes[0].oi).toBeUndefined();
+  });
+
+  it('packs li/rv and per-entity originating ids for a published course', async () => {
+    const course = await createCourse('Geology');
+    await updateCourse(course.id, {
+      distribution: { lineageId: 'lin_1', revision: 3, publishedAt: Date.now() },
+    });
+    const lesson = await createLesson(course.id, 'Rocks');
+    const note = await createNote(lesson.id, 'Overview', 'Igneous, sedimentary, metamorphic.');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Front', 'Back');
+    const bankCard = await createCourseCard(course.id, 'front_back', 'Quartz', 'Mineral');
+    await linkCardToLesson(lesson.id, bankCard.id);
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.li).toBe('lin_1');
+    expect(payload.rv).toBe(3);
+    expect(payload.lessons[0].i).toBe(lesson.id);
+    expect(payload.lessons[0].notes[0].oi).toBe(note.id);
+    expect(payload.lessons[0].cards[0].id).toBe(card.id);
+    expect(payload.bankCards?.[0].id).toBe(bankCard.id);
+  });
+
+  it('decodes li/rv and originating ids, and tolerates their absence (schema validation)', async () => {
+    const publishedPayload = {
+      v: 2 as const,
+      by: null,
+      at: Date.now(),
+      course: { n: 'Course', o: 0 as const, c: 0, e: 0, um: 'linear' as const },
+      lessons: [
+        {
+          n: 'Lesson 1',
+          i: 'lesson-orig-id',
+          notes: [{ n: 'Note 1', c: 'Content', oi: 'note-orig-id' }],
+          cards: [{ id: 'card-orig-id', k: 0 as const, f: 'Q', b: 'A' }],
+        },
+      ],
+      li: 'lin_abc',
+      rv: 2,
+    };
+    const code = await encodeShareDirect(publishedPayload);
+    const decoded = await decodeShare(code);
+    if (decoded.v !== 2) throw new Error('expected a v2 (course) payload');
+    expect(decoded.li).toBe('lin_abc');
+    expect(decoded.rv).toBe(2);
+    expect(decoded.lessons[0].i).toBe('lesson-orig-id');
+    expect(decoded.lessons[0].notes[0].oi).toBe('note-orig-id');
+    expect(decoded.lessons[0].cards[0].id).toBe('card-orig-id');
+
+    // A plain payload with none of the new fields still parses cleanly.
+    const plainPayload = {
+      v: 2 as const,
+      by: null,
+      at: Date.now(),
+      course: { n: 'Course', o: 0 as const, c: 0, e: 0, um: 'linear' as const },
+      lessons: [{ n: 'Lesson 1', notes: [], cards: [{ k: 0 as const, f: 'Q', b: 'A' }] }],
+    };
+    const plainDecoded = await decodeShare(await encodeShareDirect(plainPayload));
+    if (plainDecoded.v !== 2) throw new Error('expected a v2 (course) payload');
+    expect(plainDecoded.li).toBeUndefined();
+    expect(plainDecoded.rv).toBeUndefined();
+    expect(plainDecoded.lessons[0].i).toBeUndefined();
   });
 });
 

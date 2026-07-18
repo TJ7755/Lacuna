@@ -66,6 +66,11 @@ const PREFIX_PLAIN = 'LAC0';
 // ---------------------------------------------------------------------------
 
 const ShareCardSchema = z.object({
+  // Payload-scoped identity used to resolve `links`/exam `x` references within the
+  // same code; always remapped via makeId() on import, never adopted as-is. For a
+  // published (distributed) course this doubles as the originating card id lineage
+  // merges (Arc 7 Task 5) key off — no separate field needed since `id` is already
+  // packed for every course export.
   id: z.string().optional(),
   k: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
   f: z.string(),
@@ -93,6 +98,11 @@ const ShareNoteSchema = z.object({
   n: z.string(), // name
   c: z.string(), // content
   i: z.literal(1).optional(), // one or more images were replaced by a placeholder
+  // Originating note id, present only when the exporting course has been published
+  // (`li` set at the payload level) — `i` is already taken by the image-omission
+  // flag above, hence `oi` ("originating id") rather than the `i` shorthand used
+  // for lessons below, where no such collision exists.
+  oi: z.string().optional(),
 });
 
 /** A single lesson in a v2 (course) share payload. */
@@ -105,6 +115,9 @@ const ShareLessonSchema = z.object({
   tz: z.string().optional(), // timeZone (paired with rd/ed)
   notes: z.array(ShareNoteSchema),
   cards: z.array(ShareCardSchema),
+  // Originating lesson id, present only when the exporting course has been
+  // published (`li` set at the payload level).
+  i: z.string().optional(),
 });
 
 /** Course metadata in a v2 share payload, mirroring ShareDeck's conventions. */
@@ -179,6 +192,10 @@ const SharePayloadV2Schema = z.object({
   links: z.array(z.object({ l: z.number(), c: z.string() })).optional(),
   // Additive/optional so existing v2 codes without sequences still parse cleanly.
   sequences: z.array(ShareSequenceSchema).optional(),
+  // Present iff the exporting course has published at least once (Course.distribution,
+  // Arc 7 Task 1). `rv` is only ever present alongside `li`.
+  li: z.string().optional(), // lineageId
+  rv: z.number().optional(), // revision
 });
 
 const SharePayloadSchema = z.discriminatedUnion('v', [SharePayloadV1Schema, SharePayloadV2Schema]);
@@ -222,6 +239,7 @@ interface ShareNote {
   n: string; // name
   c: string; // content
   i?: 1; // one or more images were replaced by a placeholder
+  oi?: string; // originating note id, present only when the course has been published
 }
 
 /** A single lesson in a v2 share payload. */
@@ -235,6 +253,7 @@ interface ShareLesson {
   sf?: 'due' | 'mixed'; // sessionFilter ('new' is the default, so omitted)
   notes: ShareNote[];
   cards: ShareCard[];
+  i?: string; // originating lesson id, present only when the course has been published
 }
 
 /** Course metadata in a v2 share payload. */
@@ -314,6 +333,11 @@ interface SharePayloadV2 {
   /** Overlapping-cloze sequences belonging to the course. Optional so existing v2
    *  codes without sequences still parse. */
   sequences?: ShareSequence[];
+  /** Lineage id, present iff the exporting course has published at least once
+   *  (mirrors Course.distribution.lineageId, Arc 7). */
+  li?: string;
+  /** Revision number, present iff `li` is present (Course.distribution.revision). */
+  rv?: number;
 }
 
 /** The decoded contents of a share code, either a flat deck list or a single course. */
@@ -762,11 +786,24 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
 // Packing a whole course (DB -> v2 payload)
 // ---------------------------------------------------------------------------
 
-/** Pack a lesson's notes, stripping images the same way card content is stripped. */
-function packNotes(notes: { name: string; content: string }[]): ShareNote[] {
+/**
+ * Pack a lesson's notes, stripping images the same way card content is stripped.
+ * `withOriginatingIds` packs each note's local id as `oi` — only meaningful (and
+ * only ever passed) when the exporting course has published, so a plain course
+ * export is unaffected.
+ */
+function packNotes(
+  notes: { id: string; name: string; content: string }[],
+  withOriginatingIds = false,
+): ShareNote[] {
   return notes.map((n) => {
     const content = stripAssetImages(n.content);
-    return { n: n.name, c: content.markdown, ...(content.stripped ? { i: 1 as const } : {}) };
+    return {
+      n: n.name,
+      c: content.markdown,
+      ...(content.stripped ? { i: 1 as const } : {}),
+      ...(withOriginatingIds ? { oi: n.id } : {}),
+    };
   });
 }
 
@@ -799,6 +836,11 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
   for (const group of notesByLesson.values()) group.sort((a, b) => a.orderIndex - b.orderIndex);
   for (const group of cardsByLesson.values()) group.sort((a, b) => a.createdAt - b.createdAt);
 
+  // Originating ids (`li`/`rv`/per-entity `i`/`oi`) are packed only when the course
+  // has published at least once (Course.distribution, Arc 7 Task 1) — a plain course
+  // export/import carries none of them and its payload shape is unchanged.
+  const distribution = course.distribution;
+
   const shareLessons: ShareLesson[] = lessons.map((lesson) => {
     return {
       n: lesson.name,
@@ -810,8 +852,9 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
       ...(lesson.sessionFilter && lesson.sessionFilter !== 'new'
         ? { sf: lesson.sessionFilter }
         : {}),
-      notes: packNotes(notesByLesson.get(lesson.id) ?? []),
+      notes: packNotes(notesByLesson.get(lesson.id) ?? [], !!distribution),
       cards: packCards(cardsByLesson.get(lesson.id) ?? [], true),
+      ...(distribution ? { i: lesson.id } : {}),
     };
   });
 
@@ -908,6 +951,7 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
     ...(bankCards.length ? { bankCards: packCards(bankCards, true) } : {}),
     ...(shareLinks.length ? { links: shareLinks } : {}),
     ...(shareSequences.length ? { sequences: shareSequences } : {}),
+    ...(distribution ? { li: distribution.lineageId, rv: distribution.revision } : {}),
   };
 }
 
