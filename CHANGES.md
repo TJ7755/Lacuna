@@ -34,7 +34,7 @@
   assessment/plan/window provenance, safe leave-and-resume behaviour, deterministic explained
   replans, factual completion summaries and read-only archival after the deadline. Revision never
   completes a curricular Practice milestone or includes untaught, excluded or unavailable cards.
-- Integrated the benchmark-selected `half-life-logistic-v1` runtime through the existing
+- Integrated the benchmark-selected `half-life-logistic-v3-routed` runtime through the existing
   expected-gain boundary. Exact-second predictions blend smoothly back into ordinary FSRS-6,
   simulated outcomes apply one normal FSRS transition, coefficient and feature validation use the
   typed Practice fallback, model-version changes explain replans, and readiness remains gated on a
