@@ -7,7 +7,7 @@ import { useEffect } from 'react';
  * input are left native, and the hook stands down entirely when disabled or
  * when the visitor prefers reduced motion.
  */
-export function useSmoothScroll(enabled: boolean) {
+export function useSmoothScroll(enabled: boolean, consumeDemoScroll?: (deltaY: number) => boolean) {
   useEffect(() => {
     if (!enabled) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -33,8 +33,16 @@ export function useSmoothScroll(enabled: boolean) {
     const onWheel = (event: WheelEvent) => {
       // Leave pinch-zoom gestures (ctrl+wheel) alone.
       if (event.ctrlKey) return;
-      event.preventDefault();
       const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+      if (delta > 0 && consumeDemoScroll?.(delta)) {
+        event.preventDefault();
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+        target = window.scrollY;
+        current = window.scrollY;
+        return;
+      }
+      event.preventDefault();
       target = Math.min(maxScroll(), Math.max(0, target + delta * 0.85));
       if (!raf) raf = requestAnimationFrame(step);
     };
@@ -55,5 +63,5 @@ export function useSmoothScroll(enabled: boolean) {
       window.removeEventListener('scroll', onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [enabled]);
+  }, [consumeDemoScroll, enabled]);
 }

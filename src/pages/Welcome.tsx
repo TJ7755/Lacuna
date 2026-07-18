@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useRevealOnScroll } from '../hooks/useRevealOnScroll';
 import { GradingDemo } from '../components/welcome/GradingDemo';
@@ -8,12 +8,13 @@ import { PathDemo } from '../components/welcome/PathDemo';
 import { PracticeDeck } from '../components/welcome/PracticeDeck';
 import { LandingCta } from '../components/welcome/LandingCta';
 import { useSmoothScroll } from '../components/welcome/useSmoothScroll';
+import type { ScrollDrivenDemoHandle } from '../components/welcome/scrollDrivenDemo';
 
 /**
  * Standalone landing page, presented as a Lacuna course. The page itself is
  * laid out as a course path: every section is a node on a single vertical
  * spine — the hero opens the syllabus, the differentiators are the first
- * lessons, features are a practice node, planned work sits locked further
+ * lessons, features are a practice node, recently shipped work sits further
  * down the path, and the closing call to action is the exam checkpoint.
  * Full-screen and outside the app shell, like Learn mode.
  *
@@ -46,7 +47,13 @@ function NodeMarker({ state, visible }: { state: NodeState; visible: boolean }) 
       }
     >
       {state === 'done' && (
-        <svg viewBox="0 0 16 16" className="size-4 text-accent" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg
+          viewBox="0 0 16 16"
+          className="size-4 text-accent"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
           <path
             d="M3.5 8.5l3 3 6-7"
             strokeLinecap="round"
@@ -60,7 +67,13 @@ function NodeMarker({ state, visible }: { state: NodeState; visible: boolean }) 
       )}
       {state === 'current' && <span className="size-2.5 animate-pulse rounded-full bg-accent" />}
       {state === 'locked' && (
-        <svg viewBox="0 0 16 16" className="size-3.5 text-ink-faint" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <svg
+          viewBox="0 0 16 16"
+          className="size-3.5 text-ink-faint"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
           <rect x="3" y="7" width="10" height="7" rx="1.5" />
           <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
         </svg>
@@ -246,14 +259,33 @@ function HeroDashboard({
   );
 }
 
-const PLANNED: Array<{ name: string; detail: string }> = [
+const SHIPPED: Array<{ name: string; detail: string }> = [
   {
     name: 'Sequence learning',
-    detail: 'Cards that teach ordered material — steps, stages, proofs — as a sequence rather than isolated facts.',
+    detail:
+      'Author ordered material once — a timeline, a proof, the periodic table — and Lacuna generates a full set of cards from it, each testing a different part of the sequence with its neighbours as the cue. Edit an item later and the cards update without losing study progress.',
   },
   {
-    name: 'MCP server',
-    detail: 'Let an AI assistant read your courses and write cards for you.',
+    name: 'Connect your own AI assistant',
+    detail:
+      'Point an assistant you already use at Lacuna to build courses, generate cards from lecture notes or tidy a question bank. Nothing happens without an explicit one-time permission per course, and anything destructive comes with an instant undo.',
+  },
+];
+
+/** Headline numbers from the short-term memory model hold-out benchmark. */
+const MODEL_STATS: Array<{ num: string; label: string }> = [
+  {
+    num: '6–12×',
+    label: 'more accurate at predicting recall of material reviewed minutes to hours ago',
+  },
+  {
+    num: '11×',
+    label: 'better calibrated — when it says 90% likely, it is right about 90% of the time',
+  },
+  {
+    num: '3.5M',
+    label:
+      'real historical reviews from an anonymised public research dataset used to train and test it',
   },
 ];
 
@@ -261,6 +293,9 @@ const SMOOTH_SCROLL_KEY = 'lacuna-welcome-smooth-scroll';
 
 export function Welcome() {
   const { containerRef, lineRef } = usePathProgress();
+  const gradingDemoRef = useRef<ScrollDrivenDemoHandle>(null);
+  const pathDemoRef = useRef<ScrollDrivenDemoHandle>(null);
+  const practiceDemoRef = useRef<ScrollDrivenDemoHandle>(null);
   const [smoothScroll, setSmoothScroll] = useState(
     () => localStorage.getItem(SMOOTH_SCROLL_KEY) !== 'off',
   );
@@ -270,7 +305,12 @@ export function Welcome() {
   const [pathDone, setPathDone] = useState(false);
   const [practiceDone, setPracticeDone] = useState(false);
   const [checkpointSkip, setCheckpointSkip] = useState(false);
-  useSmoothScroll(smoothScroll);
+  const consumeDemoScroll = useCallback((deltaY: number) => {
+    if (gradingDemoRef.current?.consumeScroll(deltaY)) return true;
+    if (pathDemoRef.current?.consumeScroll(deltaY)) return true;
+    return practiceDemoRef.current?.consumeScroll(deltaY) ?? false;
+  }, []);
+  useSmoothScroll(smoothScroll, consumeDemoScroll);
 
   const readinessBoost = gradingDone ? 4 : 0;
   const predicted = mockPredictedScore(examWeeks, readinessBoost);
@@ -280,8 +320,9 @@ export function Welcome() {
   const examNode: NodeState = 'done';
   const gradingNode: NodeState = gradingDone ? 'done' : 'current';
   const pathNode: NodeState = !gradingDone ? 'locked' : pathDone ? 'done' : 'current';
+  const planNode: NodeState = !pathDone ? 'locked' : 'done';
   const practiceNode: NodeState = !pathDone ? 'locked' : practiceDone ? 'done' : 'current';
-  const plannedNode: NodeState = 'locked';
+  const shippedNode: NodeState = 'done';
   const checkpointOpen = pathDone || checkpointSkip;
 
   useEffect(() => {
@@ -307,7 +348,9 @@ export function Welcome() {
         onClick={toggleSmoothScroll}
         className={
           'fixed right-4 top-4 z-50 rounded-full border border-line-strong bg-paper/85 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft backdrop-blur transition-all hover:border-accent hover:text-ink ' +
-          (showScrollToggle ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0')
+          (showScrollToggle
+            ? 'translate-y-0 opacity-100'
+            : 'pointer-events-none -translate-y-2 opacity-0')
         }
       >
         Smooth scroll {smoothScroll ? 'on' : 'off'}
@@ -336,7 +379,10 @@ export function Welcome() {
             scheduled backwards from it, so your memory peaks in the room where it matters.
           </p>
 
-          <div className="hero-rise mt-10 flex flex-wrap items-center gap-4" style={{ animationDelay: '360ms' }}>
+          <div
+            className="hero-rise mt-10 flex flex-wrap items-center gap-4"
+            style={{ animationDelay: '360ms' }}
+          >
             <LandingCta>Create your first course</LandingCta>
             <button
               type="button"
@@ -386,10 +432,10 @@ export function Welcome() {
           >
             <p className="leading-relaxed text-ink-soft">
               Most spaced-repetition tools answer one question: when is this card next due? Lacuna
-              answers a better one: how likely are you to recall it on exam day? Built on FSRS-6,
-              it forward-simulates every card&rsquo;s memory to a fixed date and serves whatever
-              raises your predicted exam-day recall the most. The progress bar and the scheduler
-              read from the same objective, so the number you see is the number being optimised.
+              answers a better one: how likely are you to recall it on exam day? Built on FSRS-6, it
+              forward-simulates every card&rsquo;s memory to a fixed date and serves whatever raises
+              your predicted exam-day recall the most. The progress bar and the scheduler read from
+              the same objective, so the number you see is the number being optimised.
             </p>
             <ExamCurve weeks={examWeeks} onWeeksChange={setExamWeeks} />
           </PathNode>
@@ -402,13 +448,14 @@ export function Welcome() {
             id="lesson-grading"
           >
             <p className="leading-relaxed text-ink-soft">
-              No four-button guesswork after every card. You answer <span className="font-medium text-ink">Yes</span> or{' '}
+              No four-button guesswork after every card. You answer{' '}
+              <span className="font-medium text-ink">Yes</span> or{' '}
               <span className="font-medium text-ink">No</span>; a response timer, calibrated to you
-              per course, quietly infers the full grade behind the scenes. The inference is
-              measured against your actual recall — and if you would rather grade by hand, one
-              toggle brings the four buttons back.
+              per course, quietly infers the full grade behind the scenes. The inference is measured
+              against your actual recall — and if you would rather grade by hand, one toggle brings
+              the four buttons back.
             </p>
-            <GradingDemo onComplete={() => setGradingDone(true)} />
+            <GradingDemo ref={gradingDemoRef} onComplete={() => setGradingDone(true)} />
           </PathNode>
 
           <PathNode
@@ -426,11 +473,67 @@ export function Welcome() {
           >
             <p className="leading-relaxed text-ink-soft">
               A course is an ordered path of lessons — notes and cards studied in sequence, each
-              lesson unlocking the next, with practice nodes gathering due cards along the way and
-              a checkpoint marking the exam at the end. You are walking one right now: this page is
+              lesson unlocking the next, with practice nodes gathering due cards along the way and a
+              checkpoint marking the exam at the end. You are walking one right now: this page is
               laid out exactly like a Lacuna course, spine, nodes, checkpoint and all.
             </p>
-            <PathDemo onComplete={() => setPathDone(true)} />
+            <PathDemo ref={pathDemoRef} onComplete={() => setPathDone(true)} />
+          </PathNode>
+
+          <PathNode
+            state={planNode}
+            eyebrow={planNode === 'locked' ? 'Lesson 04 — locked' : 'Lesson 04 — new this term'}
+            title="Pick an exam. Get a plan. Not a queue."
+            annotation="plan, not queue"
+            id="lesson-plan"
+          >
+            <p className="leading-relaxed text-ink-soft">
+              Name the assessment you are revising for — a checkpoint test or the final — and Lacuna
+              builds a multi-day plan around it: how much time you have each day, what has actually
+              been taught and is fair game, and what is genuinely worth the next ten minutes. The
+              plan adjusts as days pass and your performance changes, without ever reshuffling a
+              session already in progress. It never claims a guaranteed grade, and it never marks a
+              lesson learned just because a revision session went well.
+            </p>
+            <p className="mt-4 leading-relaxed text-ink-soft">
+              It also picks the highest-value thing to review, not just the weakest. For every card
+              it weighs predicted recall against the time a review would cost, so a card you are
+              already solid on is left alone even if it is technically due. Powering the same-day
+              decisions is a new short-term memory model that predicts recall at the
+              minute-and-hour scale, where the day-based scheduler cannot see at all.
+            </p>
+            <dl className="mt-6 grid gap-3 sm:grid-cols-3">
+              {MODEL_STATS.map((s) => (
+                <div
+                  key={s.num}
+                  className="rounded-[10px] border border-line bg-surface-raised p-4"
+                >
+                  <dt className="sr-only">{s.label}</dt>
+                  <dd>
+                    <span className="font-mono text-2xl text-accent">{s.num}</span>
+                    <span className="mt-1.5 block text-sm leading-snug text-ink-soft">
+                      {s.label}
+                    </span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+              <p className="max-w-2xl text-sm leading-relaxed text-ink-faint">
+                Chosen by benchmark, not hunch: three approaches, a pass mark set before any results
+                were seen, and each model tested only on reviews it had never seen, in the order
+                they happened. The simplest one won — and has since been tested cold on two more
+                independent cohorts of real students, keeping its edge for 90 of every 100 users
+                each time. It runs entirely on your device, where it keeps improving for you
+                individually, without your study history ever leaving it.
+              </p>
+              <Link
+                to="/method"
+                className="inline-flex min-h-10 items-center font-mono text-[11px] uppercase tracking-[0.18em] text-accent transition-opacity hover:opacity-70"
+              >
+                See the method →
+              </Link>
+            </div>
           </PathNode>
 
           <PathNode
@@ -447,26 +550,29 @@ export function Welcome() {
           >
             <p className="mb-4 leading-relaxed text-ink-soft">
               Features as a practice queue — work through what is due, the way a practice node
-              gathers cards from lessons you have already walked. Upcoming assessments can carry
-              their own scope and exclusions; choose one by name to create a persistent,
-              time-budgeted revision plan ranked by predicted assessment-day value, with ordinary
-              Practice as the explicit fallback.
+              gathers cards from lessons you have already walked. Meeting a card for the first time
+              and revising one you half-remember are different jobs, so Lacuna treats them
+              differently: first exposure is one relaxed, unscored pass, and only then does a card
+              move into proper spaced revision against the exam it matters for. A single{' '}
+              <span className="font-medium text-ink">Study now</span> button always knows which of
+              the two you need next.
             </p>
-            <PracticeDeck onComplete={() => setPracticeDone(true)} />
+            <PracticeDeck ref={practiceDemoRef} onComplete={() => setPracticeDone(true)} />
           </PathNode>
 
           <PathNode
-            state={plannedNode}
-            eyebrow="Further along the path"
-            title="Next term"
-            annotation="not yet shipped"
-            previewWhenLocked
+            state={shippedNode}
+            eyebrow="Also on the path"
+            title="Shipped this term"
+            annotation="live now"
           >
             <ul className="space-y-5">
-              {PLANNED.map((p) => (
-                <li key={p.name} className="border-l-2 border-dashed border-line-strong pl-4">
-                  <h3 className="font-body text-sm font-semibold tracking-normal text-ink-soft">{p.name}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-ink-faint">{p.detail}</p>
+              {SHIPPED.map((p) => (
+                <li key={p.name} className="border-l-2 border-accent/40 pl-4">
+                  <h3 className="font-body text-sm font-semibold tracking-normal text-ink">
+                    {p.name}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-ink-soft">{p.detail}</p>
                 </li>
               ))}
             </ul>
@@ -526,29 +632,50 @@ function CheckpointSection({
           'absolute left-0 top-1 grid size-9 -translate-x-1/2 place-items-center rounded-full border transition-all duration-500 ' +
           (open
             ? 'border-accent bg-accent text-accent-fg ' +
-              (visible ? 'scale-100 opacity-100 shadow-[0_0_0_6px_hsl(var(--accent)/0.15)]' : 'scale-50 opacity-0')
+              (visible
+                ? 'scale-100 opacity-100 shadow-[0_0_0_6px_hsl(var(--accent)/0.15)]'
+                : 'scale-50 opacity-0')
             : 'border-dashed border-line-strong bg-paper text-ink-faint ' +
               (visible ? 'scale-100 opacity-100' : 'scale-50 opacity-0'))
         }
       >
         {open ? (
-          <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg
+            viewBox="0 0 16 16"
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
             <path d="M4 2h8v12l-4-3-4 3z" strokeLinejoin="round" />
           </svg>
         ) : (
-          <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg
+            viewBox="0 0 16 16"
+            className="size-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
             <rect x="3" y="7" width="10" height="7" rx="1.5" />
             <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
           </svg>
         )}
       </span>
       <div className={'reveal ' + (visible ? 'reveal-visible' : '')}>
-        <p className={'font-mono text-[11px] uppercase tracking-[0.18em] ' + (open ? 'text-accent' : 'text-ink-faint')}>
+        <p
+          className={
+            'font-mono text-[11px] uppercase tracking-[0.18em] ' +
+            (open ? 'text-accent' : 'text-ink-faint')
+          }
+        >
           {open ? 'Checkpoint — exam' : 'Checkpoint — locked'}
         </p>
         {!open ? (
           <div className="mt-4 max-w-2xl">
-            <h2 className="text-3xl text-balance text-ink-soft sm:text-4xl">Walk the path to the exam</h2>
+            <h2 className="text-3xl text-balance text-ink-soft sm:text-4xl">
+              Walk the path to the exam
+            </h2>
             <p className="mt-4 leading-relaxed text-ink-soft">
               Finish the grading session and the course-path demo above — or skip ahead if you
               already know the shape of the app.

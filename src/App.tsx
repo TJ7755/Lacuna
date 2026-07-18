@@ -67,6 +67,7 @@ const QuestionBank = lazy(() =>
   import('./pages/QuestionBank').then((m) => ({ default: m.QuestionBank })),
 );
 const Welcome = lazy(() => import('./pages/Welcome').then((m) => ({ default: m.Welcome })));
+const Method = lazy(() => import('./pages/Method').then((m) => ({ default: m.Method })));
 
 function RouteFallback() {
   return (
@@ -245,6 +246,17 @@ const router = createHashRouter([
       <ErrorBoundary label="the landing page">
         <Suspense fallback={<RouteFallback />}>
           <Welcome />
+        </Suspense>
+      </ErrorBoundary>
+    ),
+  },
+  {
+    // The technical account belongs to the landing page, outside the app shell.
+    path: '/method',
+    element: (
+      <ErrorBoundary label="the technical account">
+        <Suspense fallback={<RouteFallback />}>
+          <Method />
         </Suspense>
       </ErrorBoundary>
     ),
