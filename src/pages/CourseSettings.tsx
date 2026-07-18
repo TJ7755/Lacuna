@@ -27,6 +27,7 @@ import { ExamDatesSection } from './settings/ExamDatesSection';
 import { LessonManagementSection } from './settings/LessonManagementSection';
 import { PracticeNodesSection } from './settings/PracticeNodesSection';
 import { DangerZoneSection } from './settings/DangerZoneSection';
+import { DetachCourseSection } from './settings/DetachCourseSection';
 
 /**
  * Full-page course settings, mirroring DeckSettings but for the Course/Lesson model:
@@ -406,6 +407,16 @@ export function CourseSettings() {
               entityLabel="course"
             />
           </motion.div>
+
+          {course.distributedCopy?.locked === true && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24 * m, delay: 0.21 * m, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <DetachCourseSection courseId={course.id} />
+            </motion.div>
+          )}
 
           <motion.div
             initial={{ opacity: 0, y: 12 }}

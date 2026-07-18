@@ -24,6 +24,7 @@ import {
   createCourseBasicReversedPair,
   createSequence,
   assignCardsToLesson,
+  detachCourse,
   linkCardsToLesson,
   linkCardToLesson,
   listNotes,
@@ -1234,6 +1235,69 @@ describe('publishCourse', () => {
 
   it('rejects publishing a course that does not exist', async () => {
     await expect(publishCourse('missing')).rejects.toThrow('could not be found');
+  });
+});
+
+describe('detachCourse', () => {
+  beforeEach(reset);
+
+  it('clears distributedCopy, the lineage mapping and any pending review, leaving content untouched', async () => {
+    const course = await createCourse('Detach test');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    const lineageId = 'lineage-detach-1';
+    await updateCourse(course.id, {
+      distributedCopy: {
+        lineageId,
+        revision: 2,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    });
+    await db.lineageIdMappings.put({
+      id: lineageId,
+      courseId: course.id,
+      lessonIds: [lesson.id],
+      noteIds: [],
+      cardIds: [],
+      sequenceIds: [],
+      lessonSnapshots: {},
+      noteSnapshots: {},
+      cardSnapshots: {},
+    });
+    await db.pendingMergeReviews.put({
+      id: 'review-1',
+      courseId: course.id,
+      lineageId,
+      revision: 2,
+      diff: {
+        creates: { lessons: [], notes: [], cards: [] },
+        updates: { lessons: [], notes: [], cards: [] },
+        removals: { lessonIds: [], noteIds: [], cardIds: [] },
+        conflicts: [],
+      },
+      createdAt: Date.now(),
+    });
+
+    await detachCourse(course.id);
+
+    const updated = await db.courses.get(course.id);
+    expect(updated?.distributedCopy).toBeUndefined();
+    expect(await db.lineageIdMappings.get(lineageId)).toBeUndefined();
+    expect(await db.pendingMergeReviews.where('courseId').equals(course.id).toArray()).toEqual(
+      [],
+    );
+    // Lesson content itself is untouched by detach.
+    expect(await db.lessons.get(lesson.id)).toBeDefined();
+  });
+
+  it('is a no-op on lineage/review tables for a course with no distributedCopy', async () => {
+    const course = await createCourse('Undistributed detach');
+    await expect(detachCourse(course.id)).resolves.toBeUndefined();
+    expect((await db.courses.get(course.id))?.distributedCopy).toBeUndefined();
+  });
+
+  it('rejects detaching a course that does not exist', async () => {
+    await expect(detachCourse('missing')).rejects.toThrow('could not be found');
   });
 });
 

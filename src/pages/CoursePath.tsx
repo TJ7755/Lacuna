@@ -46,7 +46,7 @@ import { Button } from '../components/ui/Button';
 import { ChartIcon, ChevronLeftIcon, PlayIcon, SettingsIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { updateCourse } from '../db/repository';
-import { isLessonAuthoringMode, resolveLessonViewMode } from '../course/lessonViewMode';
+import { canEditLessons, isLessonAuthoringMode, resolveLessonViewMode } from '../course/lessonViewMode';
 import { formatDate } from '../utils/datetime';
 import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
 import { useToast } from '../components/ui/Toast';
@@ -383,10 +383,19 @@ export function CoursePath() {
           >
             Question bank
           </Link>
-          <LessonViewModeToggle
-            mode={lessonViewMode}
-            onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-          />
+          {!canEditLessons(course) ? (
+            <Link
+              to={`/course/${courseId}/settings`}
+              className="text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink"
+            >
+              Editing is locked for shared courses
+            </Link>
+          ) : (
+            <LessonViewModeToggle
+              mode={lessonViewMode}
+              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
+            />
+          )}
           <Link
             to={`/course/${courseId}/analytics`}
             aria-label="Course analytics"

@@ -31,7 +31,7 @@ import { CourseHeader } from '../components/course/CourseHeader';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { courseHeaderStats } from '../course/headerStats';
-import { resolveLessonViewMode } from '../course/lessonViewMode';
+import { canEditLessons, resolveLessonViewMode } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -156,10 +156,19 @@ export function LessonView({
               lessonCount={lessons.length}
               onCreated={() => navigate(`/course/${courseId}`)}
             />
-            <LessonViewModeToggle
-              mode={viewMode}
-              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-            />
+            {!canEditLessons(course) ? (
+              <Link
+                to={`/course/${courseId}/settings`}
+                className="text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink"
+              >
+                Editing is locked for shared courses
+              </Link>
+            ) : (
+              <LessonViewModeToggle
+                mode={viewMode}
+                onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
+              />
+            )}
             {/* Single-lesson courses skip CoursePath's header entirely (see
                 CoursePath.tsx's single-lesson branch), so this is the only
                 route to Course settings for them — mirror CoursePath's link. */}

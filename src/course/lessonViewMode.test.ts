@@ -27,10 +27,36 @@ function makeCourse(overrides: Partial<Course> & Pick<Course, 'id'>): Course {
 }
 
 describe('canEditLessons', () => {
-  it('always returns true today (no locked-course concept exists yet)', () => {
+  it('returns true for an ordinary course with no distributedCopy', () => {
     expect(canEditLessons(makeCourse({ id: 'c1' }))).toBe(true);
     expect(canEditLessons(makeCourse({ id: 'c2', lessonViewMode: 'study' }))).toBe(true);
     expect(canEditLessons(makeCourse({ id: 'c3', lessonViewMode: 'edit' }))).toBe(true);
+  });
+
+  it('returns false for a locked distributed copy', () => {
+    const course = makeCourse({
+      id: 'c1',
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    });
+    expect(canEditLessons(course)).toBe(false);
+  });
+
+  it('returns true for a detached (unlocked) distributed copy', () => {
+    const course = makeCourse({
+      id: 'c1',
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: false,
+        autoAcceptUpdates: false,
+      },
+    });
+    expect(canEditLessons(course)).toBe(true);
   });
 });
 

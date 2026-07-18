@@ -1100,6 +1100,39 @@ export async function publishCourse(
 }
 
 /**
+ * Detach a student's imported course from its teacher's lineage (Arc 7 §7.1). A
+ * one-way escape hatch from a locked distributed copy: clears `Course.distributedCopy`
+ * entirely, which both unlocks the course (absent `distributedCopy` is editable per
+ * `canEditLessons`) and severs lineage tracking, so a later re-import of the same share
+ * code no longer matches this course and instead falls through to a plain
+ * `importCourseSharePayload` — the same "no lineage, treat as new" path a pre-Arc-7
+ * course already takes. The lineage's adopted-id membership registry and any pending
+ * merge review for this course are removed alongside, since neither can ever be
+ * consulted or applied again once the course is detached; the lesson/note/card content
+ * itself is untouched.
+ */
+export async function detachCourse(courseId: string): Promise<void> {
+  try {
+    await db.transaction(
+      'rw',
+      [db.courses, db.lineageIdMappings, db.pendingMergeReviews],
+      async () => {
+        const course = await db.courses.get(courseId);
+        if (!course) throw new Error('The course could not be found.');
+        const lineageId = course.distributedCopy?.lineageId;
+        await db.courses.update(courseId, { distributedCopy: undefined });
+        if (lineageId) {
+          await db.lineageIdMappings.delete(lineageId);
+        }
+        await db.pendingMergeReviews.where('courseId').equals(courseId).delete();
+      },
+    );
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/**
  * Delete a course and cascade to all dependent rows in one transaction:
  * notes and lessonCard links belonging to the course's lessons, the lessons
  * themselves, practice nodes, course assessments, and cards whose courseId
