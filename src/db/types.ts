@@ -271,6 +271,33 @@ export interface CourseRecord {
    * for whether edit mode is available at all.
    */
   lessonViewMode?: 'study' | 'edit';
+  /**
+   * Present iff this course is a distributed copy imported from a teacher's
+   * published lineage (Arc 7 §7.2). Absent for every course authored locally
+   * or imported before this arc, which is exactly today's default and needs
+   * no migration.
+   */
+  distributedCopy?: CourseDistributedCopy;
+  /**
+   * Teacher-side publish state: present once the teacher has clicked Publish
+   * at least once. Distinct from `distributedCopy` — this course is the
+   * lineage's origin, not a copy of it (Arc 7 §7.2).
+   */
+  distribution?: { lineageId: string; revision: number };
+}
+
+/** A student's distributed-copy tracking on an imported `Course` (Arc 7 §7.2). */
+export interface CourseDistributedCopy {
+  /** Matches the teacher's `Course.distribution.lineageId`. */
+  lineageId: string;
+  /** Last-imported/merged revision number. */
+  revision: number;
+  /** True unless the student has detached from the lineage. */
+  locked: boolean;
+  /** Whether non-conflicting updates apply automatically on re-import. Default false. */
+  autoAcceptUpdates: boolean;
+  /** Optional "shared by" display string, mirrors `by` in `SharePayloadV2`. */
+  sourceLabel?: string;
 }
 
 /**
@@ -757,4 +784,58 @@ export interface BackupFile {
   courseExamDates?: AssessmentDateCompatibility[];
   // Overlapping-cloze sequences. Optional so older backups still import cleanly.
   sequences?: Sequence[];
+}
+
+/**
+ * Adopted-id membership registry for one distributed course lineage (Arc 7 §7.2).
+ * Not a translation table — adopted ids and local ids are the same value, since a
+ * student's merge import adopts a teacher's originating ids directly rather than
+ * generating fresh local ones. Created on first import of a lineage and consulted
+ * (never mutated except to add newly-created entities) by every subsequent merge.
+ */
+export interface LineageIdMapping {
+  /** = lineageId; one row per distributed course. */
+  id: string;
+  /** The local `Course` this mapping belongs to. */
+  courseId: string;
+  /** Originating lesson ids already adopted as local ids. */
+  lessonIds: string[];
+  /** Originating note ids already adopted as local ids. */
+  noteIds: string[];
+  /** Originating card ids already adopted as local ids. */
+  cardIds: string[];
+  /** Originating sequence ids already adopted as local ids. */
+  sequenceIds: string[];
+}
+
+/**
+ * A queued merge decision awaiting student review (Arc 7 §7.2/§7.5). One row per
+ * merge import; a new merge for the same course supersedes rather than appends to
+ * the previous pending row, so the table never accumulates a history. The `diff`
+ * shape mirrors `src/db/lineageDiff.ts`'s `LineageDiffResult` (Arc 7 §7.3) with
+ * incoming ids already resolved to local ids via the course's `LineageIdMapping`.
+ * `updates` uses `Partial<...>` rather than importing `lineageDiff.ts`'s dedicated
+ * update types, since this table's persisted shape must not couple to that pure
+ * module's internals.
+ */
+export interface PendingMergeReview {
+  /** Generated review id (primary key). */
+  id: string;
+  /** The local `Course` this review belongs to. */
+  courseId: string;
+  /** The lineage this merge came from; matches `CourseDistributedCopy.lineageId`. */
+  lineageId: string;
+  /** The incoming revision this diff corresponds to. */
+  revision: number;
+  diff: {
+    creates: { lessons: Lesson[]; notes: Note[]; cards: Card[] };
+    updates: {
+      lessons: Partial<Lesson>[];
+      notes: Partial<Note>[];
+      cards: Partial<Card>[];
+    };
+    removals: { lessonIds: string[]; noteIds: string[]; cardIds: string[] };
+    conflicts: { entityId: string; kind: 'lesson' | 'note' | 'card'; incoming: unknown }[];
+  };
+  createdAt: number;
 }

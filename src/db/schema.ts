@@ -22,6 +22,8 @@ import type {
   PracticeMilestone,
   Sequence,
   RevisionPlan,
+  LineageIdMapping,
+  PendingMergeReview,
 } from './types';
 import {
   migrateCardRecord,
@@ -65,6 +67,8 @@ class LacunaDatabase extends Dexie {
   courseAssessments!: Table<CourseAssessment, string>;
   sequences!: Table<Sequence, string>;
   revisionPlans!: Table<RevisionPlan, string>;
+  lineageIdMappings!: Table<LineageIdMapping, string>;
+  pendingMergeReviews!: Table<PendingMergeReview, string>;
 
   constructor() {
     super('lacuna');
@@ -522,10 +526,41 @@ class LacunaDatabase extends Dexie {
       sequences: 'id, courseId, primaryLessonId, createdAt',
       revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
     });
+
+    // Version 18: classroom distribution (Arc 7 §7.2). `Course.distributedCopy`/
+    // `Course.distribution` are new optional fields only, no index needed. Two new
+    // tables: `lineageIdMappings` (the adopted-id membership registry for a
+    // distributed course lineage) and `pendingMergeReviews` (queued merge decisions
+    // awaiting student review). Purely additive — no `.upgrade()` data pass, same
+    // pattern as sequences' schema v11 (next_plan.md §1.2).
+    this.version(18).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
+      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+      courses: 'id, createdAt',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+      lessonCompletions: 'lessonId, completedAt',
+      noteAnnotations: 'id, noteId, createdAt, updatedAt',
+      practiceNodes: 'id, courseId, position, createdAt',
+      practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      sequences: 'id, courseId, primaryLessonId, createdAt',
+      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+      lineageIdMappings: 'id, courseId',
+      pendingMergeReviews: 'id, courseId',
+    });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 17;
+const CURRENT_SCHEMA_VERSION = 18;
 
 export const db = new LacunaDatabase();
 
