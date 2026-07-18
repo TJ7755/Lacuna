@@ -1592,10 +1592,52 @@ feature — versioning is a teacher-initiated counter, not a derived value.
   review, but never touches lesson/note/card content. A later re-import of the same share
   code no longer matches this course and instead imports as an independent copy — the same
   "no lineage, treat as new" fallback a pre-v18 course already takes on import.
-- **What's not yet built:** a review UI for queued `pendingMergeReviews` entries, an
-  `autoAcceptUpdates` settings toggle, and MCP tool surfacing (`diff_lineage_update`/
-  `apply_lineage_update`) are tracked separately (`next_plan.md` §7.9 Tasks 7–10) and not
-  covered here.
+- **Review panel (`MergeReviewPanel`, `src/components/import/MergeReviewPanel.tsx`)** — a
+  course-scoped `/course/:courseId/updates` route reached from a quiet accent **"Update
+  available"** badge on the dashboard course card (`CourseCard.tsx`) and a **"Review
+  updates"** entry point in the `CoursePath` header, both shown iff a `pendingMergeReviews`
+  row exists for the course. Renders three sections — Updates, Removals, Conflicts — each
+  row offering the accept/reject action pair, plus a bottom bar with a bulk **Accept all**.
+  Conflict rows flip the emphasis: **"Keep mine"** (reject) is the emphasised default
+  action and **"Take theirs"** (accept) the secondary one, matching the student-wins policy
+  above.
+- **Resolution functions (`src/db/mergeImport.ts`)** — `acceptMergeReviewItems`/
+  `rejectMergeReviewItems(reviewId, refs)` resolve a specific set of items; `acceptAllMergeReview`/
+  `rejectAllMergeReview(reviewId)` resolve everything outstanding. All four route through the
+  same content-only apply helpers `mergeLineageUpdate`'s auto-accept branch uses (never a
+  second apply implementation) inside one `db.transaction`, then either delete the
+  `pendingMergeReviews` row (nothing left outstanding) or `put` it back with the resolved
+  items spliced out. Accepting an update or a "take theirs" conflict **refreshes that
+  entity's `lineageIdMappings` snapshot** immediately, so the next merge's student-edit
+  detection compares against what is now on disk instead of re-flagging an update the
+  student has already taken; accepting a removal deletes the entity and drops it from the
+  mapping's id lists and snapshots. Rejecting an item is a pure drop from the queue — the
+  student's current content is never touched. **`acceptAllMergeReview` excludes
+  conflicts** from its bulk accept (only updates and removals), so a student-edited
+  conflict is never silently resolved by "Accept all" — it stays queued for an explicit
+  per-row decision; `rejectAllMergeReview` clears everything, including conflicts.
+- **`autoAcceptUpdates` toggle** — `setCourseAutoAcceptUpdates(courseId, value)`
+  (`src/db/repository.ts`) persists the per-course preference read by the merge-apply
+  decision above; surfaced as an instant-commit `Toggle` in the existing "Shared course"
+  settings section (`DetachCourseSection.tsx`, above the detach control), labelled "Apply
+  updates automatically". The toggle only changes future merge behaviour — it does not
+  touch any already-queued `pendingMergeReviews` row.
+- **Decode-time merge routing (`SharePage.tsx`, `UnifiedImportPanel.tsx`)** — decoding a
+  share code now checks `isLineagePayload(payload)` and, if `li` is present, calls
+  `findCourseForLineage(payload.li)` to see whether the payload's lineage matches a course
+  already imported locally (matched only against a local course's own
+  `distributedCopy.lineageId`, never a teacher's `distribution.lineageId` — so a teacher
+  scanning their own published code, or anyone with no local copy of that lineage, falls
+  straight through to the ordinary `importCourseSharePayload` path unchanged). On a match:
+  - **Revision guard.** If the payload's `rv` is not newer than the local copy's
+    `distributedCopy.revision`, the preview reports the course is already up to date and
+    the confirm action becomes **Close** rather than calling the merge importer at all —
+    a stale or duplicate scan is a no-op, not a rejected merge.
+  - Otherwise the preview reads **"This updates `<course name>` (revision N → M)"** and
+    confirming calls `mergeLineageUpdate(course.id, payload)` instead of
+    `importSharePayload`. The result notice/toast summarises what applied immediately
+    (creates/updates/removals) and, if anything was queued, adds "N changes are waiting
+    for your review."
 
 ---
 

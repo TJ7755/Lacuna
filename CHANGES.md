@@ -43,6 +43,20 @@ merges into a student's already-imported copy instead of always creating a dupli
   lesson, note and card editing is disabled while the copy tracks its teacher's lineage.
   Students can **detach** at any time (a one-way action) to unlock the course and edit it
   freely, at the cost of no longer receiving merged updates from that teacher.
+- Added a **review panel** for queued updates: an "Update available" badge on the course
+  card and a "Review updates" link in the course header open a page listing every
+  outstanding update, removal and conflict, with per-item and bulk (Accept all) actions.
+  Conflicts default to keeping the student's own version. Accepting "Accept all" never
+  overrides a student's own edit — conflicts always stay queued for an individual
+  decision.
+- Added an **"Apply updates automatically" toggle** to a shared course's settings, so a
+  student can opt a course into silently applying future teacher updates instead of
+  queuing them for review.
+- Re-scanning or re-pasting a share code for a course already imported now **updates that
+  course in place** instead of creating a duplicate: the preview shows what revision it
+  would update to, and confirming applies the merge, reporting what changed and whether
+  anything needs review. Re-scanning a code that is not newer than the local copy is
+  reported as already up to date, with nothing applied.
 
 ## Unreleased — Assessment-aware revision planning (Arc 3)
 
