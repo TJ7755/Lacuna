@@ -1133,6 +1133,28 @@ export async function detachCourse(courseId: string): Promise<void> {
 }
 
 /**
+ * Sets `distributedCopy.autoAcceptUpdates` on a student's imported course (Arc 7 §7.1,
+ * §7.9 Task 8). The value is read by the merge-apply decision in `mergeImport.ts` to
+ * decide whether a future teacher update is applied silently or queued for review; this
+ * function only persists the preference, it does not affect any pending review.
+ */
+export async function setCourseAutoAcceptUpdates(
+  courseId: string,
+  autoAcceptUpdates: boolean,
+): Promise<void> {
+  try {
+    const course = await db.courses.get(courseId);
+    if (!course) throw new Error('The course could not be found.');
+    if (!course.distributedCopy) throw new Error('This course is not a shared copy.');
+    await db.courses.update(courseId, {
+      distributedCopy: { ...course.distributedCopy, autoAcceptUpdates },
+    });
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/**
  * Delete a course and cascade to all dependent rows in one transaction:
  * notes and lessonCard links belonging to the course's lessons, the lessons
  * themselves, practice nodes, course assessments, and cards whose courseId

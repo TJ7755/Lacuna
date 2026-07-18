@@ -25,6 +25,7 @@ import {
   createSequence,
   assignCardsToLesson,
   detachCourse,
+  setCourseAutoAcceptUpdates,
   linkCardsToLesson,
   linkCardToLesson,
   listNotes,
@@ -1298,6 +1299,45 @@ describe('detachCourse', () => {
 
   it('rejects detaching a course that does not exist', async () => {
     await expect(detachCourse('missing')).rejects.toThrow('could not be found');
+  });
+});
+
+describe('setCourseAutoAcceptUpdates', () => {
+  beforeEach(reset);
+
+  it('updates autoAcceptUpdates while leaving the rest of distributedCopy untouched', async () => {
+    const course = await createCourse('Auto-accept test');
+    await updateCourse(course.id, {
+      distributedCopy: {
+        lineageId: 'lineage-auto-1',
+        revision: 2,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    });
+
+    await setCourseAutoAcceptUpdates(course.id, true);
+
+    const updated = await db.courses.get(course.id);
+    expect(updated?.distributedCopy).toEqual({
+      lineageId: 'lineage-auto-1',
+      revision: 2,
+      locked: true,
+      autoAcceptUpdates: true,
+    });
+  });
+
+  it('rejects a course with no distributedCopy', async () => {
+    const course = await createCourse('Undistributed auto-accept');
+    await expect(setCourseAutoAcceptUpdates(course.id, true)).rejects.toThrow(
+      'not a shared copy',
+    );
+  });
+
+  it('rejects a course that does not exist', async () => {
+    await expect(setCourseAutoAcceptUpdates('missing', true)).rejects.toThrow(
+      'could not be found',
+    );
   });
 });
 

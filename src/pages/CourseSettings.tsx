@@ -414,7 +414,10 @@ export function CourseSettings() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24 * m, delay: 0.21 * m, ease: [0.16, 1, 0.3, 1] }}
             >
-              <DetachCourseSection courseId={course.id} />
+              <DetachCourseSection
+                courseId={course.id}
+                autoAcceptUpdates={course.distributedCopy?.autoAcceptUpdates === true}
+              />
             </motion.div>
           )}
 
