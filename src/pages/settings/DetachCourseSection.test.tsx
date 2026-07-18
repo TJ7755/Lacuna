@@ -62,7 +62,7 @@ describe('DetachCourseSection', () => {
     expect(screen.getByText('Apply updates automatically')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'New changes from the course author are applied without review. You can still see what changed afterwards.',
+        'New changes from the course author are applied without review. Changes that clash with your own edits still wait for you.',
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Apply updates automatically' })).toHaveAttribute(

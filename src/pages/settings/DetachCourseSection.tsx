@@ -50,8 +50,8 @@ export function DetachCourseSection({ courseId, autoAcceptUpdates }: DetachCours
             Apply updates automatically
           </label>
           <p className="mt-1 text-sm text-ink-soft">
-            New changes from the course author are applied without review. You can still
-            see what changed afterwards.
+            New changes from the course author are applied without review. Changes that
+            clash with your own edits still wait for you.
           </p>
         </div>
         <Toggle
