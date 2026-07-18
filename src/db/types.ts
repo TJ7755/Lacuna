@@ -2,6 +2,7 @@
 // All persistence is via IndexedDB (see schema.ts). British English throughout.
 
 import type { CardFilter } from './search';
+import type { CardUpdate, LessonUpdate, LineageConflict, NoteUpdate } from './lineageDiff';
 
 export type CardType = 'front_back' | 'cloze' | 'basic_reversed';
 
@@ -806,17 +807,60 @@ export interface LineageIdMapping {
   cardIds: string[];
   /** Originating sequence ids already adopted as local ids. */
   sequenceIds: string[];
+  /**
+   * Last-merged content snapshot for every adopted lesson/note/card, keyed by local
+   * (= originating) id. `src/db/mergeImport.ts` compares an entity's *current* local
+   * content against its snapshot here to detect a student edit since the last merge
+   * (Arc 7 §7.10's third risk: snapshot comparison over a separate dirty flag, so
+   * there is no second field that can drift out of sync with reality). Populated with
+   * the just-applied content on every successful first import or merge — including for
+   * entities the student's own edit left untouched, since "untouched" is exactly what a
+   * matching snapshot records. Extends the v18 shape in place (Lacuna is pre-release,
+   * see next_plan.md §7 Task 5 notes) rather than a schema bump, since no index is
+   * needed for these fields.
+   */
+  lessonSnapshots: Record<string, LineageLessonSnapshot>;
+  noteSnapshots: Record<string, LineageNoteSnapshot>;
+  cardSnapshots: Record<string, LineageCardSnapshot>;
+}
+
+/** The subset of a Lesson's fields `lineageDiff.ts` diffs on, captured for student-edit detection. */
+export interface LineageLessonSnapshot {
+  name: string;
+  description?: string;
+  isExtension: boolean;
+  releaseDate?: number;
+  examDate?: number;
+  timeZone?: string;
+  sessionFilter?: 'new' | 'due' | 'mixed';
+  orderIndex: number;
+}
+
+/** The subset of a Note's fields `lineageDiff.ts` diffs on. */
+export interface LineageNoteSnapshot {
+  name: string;
+  content: string;
+  orderIndex: number;
+}
+
+/** The subset of a Card's fields `lineageDiff.ts` diffs on — content only, never FSRS fields. */
+export interface LineageCardSnapshot {
+  type: CardType;
+  front: string;
+  back: string;
+  tags?: string[];
 }
 
 /**
  * A queued merge decision awaiting student review (Arc 7 §7.2/§7.5). One row per
  * merge import; a new merge for the same course supersedes rather than appends to
  * the previous pending row, so the table never accumulates a history. The `diff`
- * shape mirrors `src/db/lineageDiff.ts`'s `LineageDiffResult` (Arc 7 §7.3) with
- * incoming ids already resolved to local ids via the course's `LineageIdMapping`.
- * `updates` uses `Partial<...>` rather than importing `lineageDiff.ts`'s dedicated
- * update types, since this table's persisted shape must not couple to that pure
- * module's internals.
+ * shape reuses `src/db/lineageDiff.ts`'s update/conflict types directly (Arc 7
+ * §7.3) rather than a hand-duplicated `Partial<...>` shape, so the two cannot
+ * drift apart; `creates` are never persisted here since `mergeImport.ts` applies
+ * them immediately and unconditionally (Arc 7 §7.5 step 2) — the array is always
+ * empty when this row is written, but keeps the full entity shape so a future
+ * caller is not surprised by a narrower type.
  */
 export interface PendingMergeReview {
   /** Generated review id (primary key). */
@@ -830,12 +874,20 @@ export interface PendingMergeReview {
   diff: {
     creates: { lessons: Lesson[]; notes: Note[]; cards: Card[] };
     updates: {
-      lessons: Partial<Lesson>[];
-      notes: Partial<Note>[];
-      cards: Partial<Card>[];
+      lessons: LessonUpdate[];
+      notes: NoteUpdate[];
+      cards: CardUpdate[];
     };
     removals: { lessonIds: string[]; noteIds: string[]; cardIds: string[] };
-    conflicts: { entityId: string; kind: 'lesson' | 'note' | 'card'; incoming: unknown }[];
+    /**
+     * `LineageConflict` covers a content clash (both sides changed the same entity).
+     * `mergeImport.ts` also queues a second, narrower kind here — a teacher removal of
+     * an entity the student has edited (§7.10's unresolved-in-planning policy: treat as
+     * a conflict, student's copy retained until they accept the removal) — which has no
+     * incoming content to attach, hence `incoming: null` rather than reusing
+     * `LineageConflict`'s non-null `incoming`.
+     */
+    conflicts: Array<LineageConflict | { entityId: string; kind: 'lesson' | 'note' | 'card'; incoming: null }>;
   };
   createdAt: number;
 }

@@ -86,6 +86,9 @@ describe('schema v18: classroom distribution (additive)', () => {
       noteIds: [],
       cardIds: ['c1'],
       sequenceIds: [],
+      lessonSnapshots: {},
+      noteSnapshots: {},
+      cardSnapshots: {},
     });
     await db.pendingMergeReviews.add({
       id: 'review-1',
