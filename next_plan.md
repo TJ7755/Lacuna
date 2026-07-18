@@ -1238,6 +1238,491 @@ repository tools (§Arc 2, "tool design requirement"). Scope decided so far:
 
 ---
 
+# Arc 7 (detailed) — Classroom Distribution: Versioned Courses and Re-import Merge
+
+> Supersedes the Arc 7 outline above for implementation purposes.
+
+## 7.1 Architectural decisions
+
+**Publish is explicit, not derived.** Versioning is a teacher-initiated **Publish** action
+that bumps a revision counter on the course; there is no content hashing anywhere in this
+arc. A hash-based scheme would let two independent unpublished edits collide or diverge
+silently; an explicit counter means "what revision is this share code" is always a single
+integer comparison, and the teacher controls exactly when a batch of edits becomes
+distributable. Publishing does **not** lock the teacher's own course — they keep editing
+and republishing freely, exactly as today. What becomes read-only is the **student's
+imported copy**, and only that copy.
+
+**Lock enforcement lives in the existing stub.** `src/course/lessonViewMode.ts`'s
+`canEditLessons(course)` already exists for exactly this purpose — its comment says so
+verbatim ("Today there is no locked-course concept, so this always returns true — but it
+is the ONE place that decision lives"). This arc is the first caller to make it return
+`false`. It gains one check: `course.distributedCopy?.locked !== false` — see §7.2 for the
+field. Every call site already routes through `canEditLessons`/`resolveLessonViewMode`
+(`LessonView`, settings toggles), so no new call sites are needed; the behaviour change is
+entirely inside the gate.
+
+**Escape hatch: detach.** A locked copy that can never be unlocked would trap a student who
+wants to annotate or restructure their own copy. A student may explicitly **detach** an
+imported course, which sets `distributedCopy.locked = false` and severs `lineageId`
+tracking (a detached course no longer matches on re-import — see §7.4) — a one-way action,
+surfaced as a confirm dialog reusing `ConfirmInline` (`src/components/ui/ConfirmInline.tsx`,
+Arc 2 Task 1) with `variant="destructive"` framing ("You'll be able to edit this course
+freely, but future updates from your teacher will create a separate copy instead of
+merging"). This mirrors the merge-importer's own "no lineage, treat as new" fallback (§7.4),
+so detach is not a special case to build — it is the same code path a pre-Arc-7 import
+already takes.
+
+**Auto-accept scope: per-course, not global.** A student who wants incoming teacher edits
+applied silently is expressing a preference about their relationship to *one* teacher's
+material, not a blanket preference for every future distributed course they ever import
+(a language course from one teacher and a maths course from another have no reason to
+share this setting). A single field on the student's imported `Course`
+(`distributedCopy.autoAcceptUpdates: boolean`, default `false`) is simpler to reason about
+than a global setting with per-course overrides, and avoids a second settings surface.
+
+**Payload extension: additive v2, not a v3 envelope.** The alternative — a new
+`SharePayloadV3` — would duplicate `SharePayloadV2`'s ~20 fields for a change that is
+genuinely additive: every new field (originating ids, lineage id, revision number) is
+optional and a v2 payload without them still parses and imports exactly as it does today
+(pre-Arc-7 codes, and even Arc-7-built codes for non-distributed exports where the teacher
+never published, carry no lineage). `SharePayloadSchema`'s `z.discriminatedUnion('v', ...)`
+(`src/db/share.ts:184`) would have to special-case "v3 is v2 plus five fields" anyway, so a
+new discriminant tag buys nothing and doubles the schema surface to maintain. Compact-key
+convention is preserved: new single-letter/short keys (`li` for lineage id, `rv` for
+revision, `i` for originating id on lessons/notes/cards) sit alongside the existing `l`
+(links), `c` (card id), etc. at `src/db/share.ts:92-183`.
+
+**Id adoption over a mapping table.** Today `importCourseSharePayload`
+(`src/db/share.ts:1038`) always remaps every id via `makeId()`, using transaction-local
+`cardIdMap`/`itemIdMap` (`share.ts:1061,1107`) that are discarded once the transaction
+commits — by design, since every import today is an independent copy. A lineage-aware
+merge needs the *next* import of the same lineage to recognise "this incoming card is the
+same card I already have" without re-deriving that mapping from content. Two ways to get
+there: (a) keep local ids and persist a durable id-mapping table across imports, or
+(b) have the merge path **adopt the originating id directly** for lineage-tracked entities,
+so the incoming payload's packed id *is* the local id and no mapping table exists at all.
+(b) is chosen. Collision risk is the objection to id adoption, but it does not apply here:
+`makeId()`'s ids are globally unique regardless of which install generated them (same
+scheme used for the teacher's originals), and the merge path only ever writes ids that
+originated from `makeId()` on the teacher's own local database — there is no
+attacker-controlled or cross-scheme id space to collide with. A durable mapping table would
+need its own schema-versioned table, its own portability-checklist obligations (§7.7), and
+introduce a permanent indirection between "the id the diff engine reasons about" and "the id
+the learner-state tables key on" — exactly the ambiguity id adoption avoids. The remaining
+risk — a student having independently created a lesson/card that happens to collide with an
+adopted id — is already structurally impossible: `makeId()` never repeats, and locally
+authored content in a locked copy cannot exist (§7.1's lock). First import of a lineage
+still runs through the ordinary local-id path used by every import today, but persists the
+originating ids alongside the fresh local ones in a new mapping (§7.2) — because the
+*first* import is exactly like today's, and the *diff* is what needs a stable anchor from
+then on; adopting ids retroactively on first import (rather than always) avoids rewriting
+`importCourseSharePayload`'s existing, working id-generation path for the common
+non-distributed case (a share code with no lineage still behaves exactly as it does today).
+
+**Merge importer is a new path, not a branch inside the existing one.**
+`importCourseSharePayload` stays untouched for the no-lineage case (backwards compatibility
+is not a goal here — see §7.6 — but *not breaking today's working import* is). A new
+`src/db/mergeImport.ts` handles the "lineage already present locally" case: it loads the
+existing course's originating-id mapping (§7.2), runs the pure diff (§7.3) against the
+incoming payload, and applies the result under the review rules in §7.5. The SharePage/
+UnifiedImportPanel decode step (§7.6) decides which path to call based on whether the
+decoded payload's `li` (lineage id) matches a `lineageId` already present locally.
+
+**Sequences never get touched directly.** Sequence content changes packed in a lineage
+update are not diffed by the new engine at all — they are handed to the *existing*
+`diffRegeneration` (`src/db/sequenceGeneration.ts:217`) exactly as a local sequence edit
+would be, because that function already encodes the one rule that matters here: "updates
+content only, never FSRS/scheduling fields," keyed by the stable `sequenceItemId`. Building
+a second sequence-diff engine for the merge path would risk the two diverging on card
+generation semantics; routing through the same function guarantees they cannot.
+
+## 7.2 Data model
+
+**`Course` gains a `distributedCopy` field** (schema v18, additive — `CURRENT_SCHEMA_VERSION`
+is `17` in `src/db/schema.ts:528`):
+
+```typescript
+interface CourseDistributedCopy {
+  lineageId: string;          // matches the teacher's ShareCourse lineage id
+  revision: number;           // last-imported/merged revision number
+  locked: boolean;            // true unless the student has detached
+  autoAcceptUpdates: boolean; // default false; see §7.1
+  sourceLabel?: string;       // optional "shared by" display string, mirrors `by` in SharePayloadV2
+}
+
+interface Course {
+  // ...
+  distributedCopy?: CourseDistributedCopy; // absent = not a distributed copy (today's default)
+}
+```
+
+Presence of `distributedCopy` is the single flag `canEditLessons` checks (§7.1); its
+absence is exactly every course that exists before this arc ships, and every course a
+teacher authors locally, so no migration touches existing rows (Dexie v18 upgrade adds the
+field to the schema only, no `.upgrade()` data pass needed — same "additive, no existing
+data changes" pattern as sequences' schema v10, next_plan.md §1.2).
+
+**A new table carries the originating-id mapping** created on first import of a lineage
+(§7.1) and consulted (never mutated except to add newly-created entities) by every
+subsequent merge:
+
+```typescript
+interface LineageIdMapping {
+  id: string;           // = lineageId, one row per distributed course
+  courseId: string;     // the local Course this mapping belongs to
+  lessonIds: string[];  // originating ids already adopted as local ids
+  noteIds: string[];
+  cardIds: string[];
+  sequenceIds: string[];
+}
+```
+
+New Dexie table, schema v18: `lineageIdMappings: 'id, courseId'`. Kept separate from
+`Course` itself (rather than an inline array) so it is not serialised into every
+`useLiveQuery` course read and so the portability checklist (§7.7) treats it as one clean
+additive table, matching the "six Phase-1 tables"/sequences precedent (next_plan.md
+§1.2/§1.3) rather than growing `Course`'s already-large field list further.
+
+**Teacher side: `ShareCourse` gains `lineageId` and `revision`.** `lineageId` is generated
+once, the first time a teacher clicks Publish, and stored on the teacher's own `Course`
+(reusing the same `distributedCopy`-shaped field would be wrong here — the teacher's course
+is the *origin*, not a copy — so the teacher side gets its own minimal
+`{ lineageId: string; revision: number }` pair, e.g. `Course.distribution` optional field,
+separate from `distributedCopy`). `revision` increments by exactly 1 on every Publish.
+
+**Payload additions (`SharePayloadV2`, `src/db/share.ts:303-317`), all optional so a
+non-distributed export is byte-for-byte unaffected in shape:**
+
+```typescript
+interface SharePayloadV2 {
+  // ...existing fields unchanged...
+  li?: string; // lineageId, present iff the teacher has published at least once
+  rv?: number; // revision, present iff `li` is present
+}
+
+// ShareLesson, ShareNote, ShareCard each gain an optional originating id:
+interface ShareLesson { /* ... */ i?: string; }
+interface ShareNote   { /* ... */ i?: string; }
+interface ShareCard   { /* ... */ i?: string; }
+```
+
+`i` is populated only when `li` is present (a plain course export/import — sharing a course
+that was never published — carries no ids and behaves exactly as today; there is nothing to
+merge against). `ShareLessonSchema`/`ShareNoteSchema` (`share.ts:92,99`) currently carry no
+id field at all — this is a genuinely new capability for those two schemas, not a rename.
+
+**Queue-for-review persistence.** Pending merge decisions (§7.5) are not silently
+discarded if the student closes the app mid-review — they are written to a new
+`pendingMergeReviews` table (schema v18) keyed by `id, courseId`, one row per merge import,
+holding the diff result (§7.3's shape, with local ids resolved) until the student resolves
+or the next re-import supersedes it. This is the same "durable pending state" pattern
+`UnifiedImportPanel`'s `pending`/`sharePending` local state already models for the
+first-import confirm step (§7.6), just persisted because a merge review can be a much
+longer decision (a whole lesson's worth of edited cards) than a single import confirm click.
+
+## 7.3 Pure diff module
+
+**`src/db/lineageDiff.ts` (new, pure, no Dexie import)** — the generalisation of
+`diffRegeneration`'s shape (`sequenceGeneration.ts:217-252`) from "one sequence's cards"
+to "a lineage's lessons, notes, and cards":
+
+```typescript
+interface LineageDiffInput {
+  incoming: { lessons: ShareLesson[]; /* notes/cards nested as in SharePayloadV2 today */ };
+  existing: { lessons: Lesson[]; notes: Note[]; cards: Card[] };
+  mapping: LineageIdMapping; // resolves incoming `i` -> existing local id
+  studentEdits: Set<string>; // local ids the student has touched since last merge (§7.5)
+}
+
+interface LineageDiffResult {
+  creates: { lessons: Lesson[]; notes: Note[]; cards: Card[] };
+  updates: { lessons: LessonUpdate[]; notes: NoteUpdate[]; cards: CardUpdate[] };
+  removals: { lessonIds: string[]; noteIds: string[]; cardIds: string[] };
+  conflicts: { entityId: string; kind: 'lesson' | 'note' | 'card'; incoming: unknown }[];
+}
+```
+
+Keyed on the mapping's stable local ids exactly as `diffRegeneration` is keyed on
+`sequenceItemId` — never on array position or content matching. This is deliberately **not**
+built on `src/mcp/diffImport.ts`: that module (Arc 2 §2.3) matches on front/back text
+similarity for card-only, single-course-scope import preview, which is the right shape for
+"does an agent's proposed card already exist" but wrong for "is this the same entity across
+two versions of the same course" — id-keyed diffing is strictly more precise once a stable
+id exists, and generalises to lessons and notes, which `diffImport.ts` does not handle at
+all. `diffImport.ts`'s three-way `create`/`skip`/`update` classification is kept as UX
+precedent (the review UI, §7.5, presents the same three buckets plus a fourth,
+`remove`/`conflict`), but the matching logic itself is new.
+
+**Classification rules** (pure functions, exhaustively tested before any UI, per house
+convention):
+
+- Key only in incoming → `creates`.
+- Key in both, content differs, local id **not** in `studentEdits` → `updates` (applied per
+  §7.1's default, or queued if `autoAcceptUpdates` is false — §7.5 owns the apply-vs-queue
+  decision; the diff module only classifies, never decides review policy).
+- Key in both, content differs on **both** sides (local id in `studentEdits` *and* incoming
+  differs from the mapping's last-known-synced content) → `conflicts`, with the student's
+  local version left untouched and the incoming version attached for review.
+- Key only in existing (present locally, absent from incoming) → `removals`.
+- Card diffs never touch FSRS/scheduling fields, mirroring `diffRegeneration` exactly — the
+  `CardUpdate` shape in the diff module is a strict subset of `Card` excluding `state`,
+  `stability`, `difficulty`, `due`, `reps`, history, and any other engine-owned field.
+- Sequences are excluded entirely from this module's scope — see §7.1, they route to
+  `diffRegeneration` instead.
+
+## 7.4 Publish flow (teacher side)
+
+1. Teacher clicks **Publish** (new button, course-level, alongside the existing share-code
+   export entry point — exact placement decided in Task 2 against
+   `UnifiedExportPanel.tsx`'s current layout).
+2. If `Course.distribution` is absent, generate a `lineageId` (`makeId()`) and set
+   `revision = 1`; otherwise increment `revision`.
+3. Generate the share code exactly as today (`buildShareCode`/course export path in
+   `src/db/share.ts`), now packing `li`/`rv` and every lesson/note/card's originating `i`
+   (its own local id on the teacher's course — no mapping needed on the teacher side, since
+   the teacher's ids never get rewritten).
+4. No lock, no state change to the teacher's own course — they can keep editing and publish
+   again at any time. Publish is idempotent to call repeatedly (each call just bumps
+   `revision` and re-encodes current state), consistent with Arc 2's "tools should be
+   idempotent" requirement even though this is a UI action, not an MCP tool, today.
+
+## 7.5 Merge importer + review UI (student side)
+
+**Decode-time branch.** `SharePage`/`UnifiedImportPanel`'s existing decode → `summariseShare`
+→ confirm → write flow (`src/pages/SharePage.tsx`, `src/components/import/
+UnifiedImportPanel.tsx`) gains one branch after decode: if the payload carries `li` and a
+`Course` with matching `distribution.lineageId` (teacher re-sharing) is irrelevant — the
+check is against the **student's own** `distributedCopy.lineageId` values. If one matches,
+route to the merge path; otherwise fall through to `importCourseSharePayload` exactly as
+today (this covers both genuinely new courses and, per §7.1's no-backwards-compatibility
+decision, any course whose local copy predates this arc and so has no `distributedCopy` to
+match against — it simply imports as new, identically to current behaviour).
+
+**Merge apply, in order:**
+1. Run `lineageDiff` (§7.3) against the mapping and current local state.
+2. New lessons/notes/cards (`creates`) are written immediately — nothing to review, purely
+   additive, mirrors how `diffRegeneration`'s creates are unconditional.
+3. `updates` and `removals`: if `distributedCopy.autoAcceptUpdates` is true, apply
+   immediately (updates as content-field writes identical to `diffRegeneration`'s update
+   shape; removals as ordinary deletes through the existing repository delete functions, so
+   snapshot/undo behaviour is inherited for free). If false (the default), write to
+   `pendingMergeReviews` (§7.2) instead and surface a badge/notification — nothing is
+   applied silently.
+4. `conflicts`: **always** queued regardless of `autoAcceptUpdates` — the setting governs
+   accepting the *teacher's* incoming edits when the student hasn't touched that entity, not
+   overriding a student's own edit. The student's local version is left in place either way;
+   the incoming version sits in the queue purely for visibility/optional manual accept.
+5. Sequence-shaped items in the incoming payload are extracted and handed to
+   `diffRegeneration` unconditionally (its creates/updates/deletes apply through the
+   existing sequence-regeneration repository path, not through this arc's new apply logic)
+   — see §7.1.
+6. On completion, update `distributedCopy.revision` to the incoming `rv` and update
+   `lineageIdMappings` with any newly created entities' ids. Consistent with §7.1's id
+   adoption decision, `creates` on the student side adopt the incoming `i` directly rather
+   than generating a fresh local id — student and teacher ids stay identical for the whole
+   lineage, so a later merge needs no separate reverse-lookup for entities created after
+   the first import; the collision analysis in §7.1 covers this case too.
+
+**Review UI.** New `src/components/import/MergeReviewPanel.tsx`, extending the existing
+pending/confirm scaffold's visual language (`UnifiedImportPanel.tsx`'s summary-then-confirm
+pattern) rather than inventing a new interaction shape: one list, grouped by lesson, each
+row showing old/new content side by side for `updates`/`conflicts` and a removal marker for
+`removals`, with per-row accept/reject and a bulk "accept all" (which, notably, is the
+manual equivalent of what `autoAcceptUpdates` does automatically next time). Reached via a
+new entry point (a "pending updates" indicator on the course card/settings) rather than
+forcing review at import time, since a merge can arrive while the student is mid-lesson.
+
+**Setting surface.** `autoAcceptUpdates` toggle lives in the course's existing settings
+surface (student-facing course settings, exact section TBD against current settings
+layout in Task 2) rather than a new global preferences page, consistent with the
+per-course scoping decision in §7.1.
+
+## 7.6 MCP tools
+
+Following the Arc 2 conventions in `src/mcp/`: tool definitions as thin wrappers, zod input
+schemas, no parallel logic path. Two new tools, read/diff-tier (no consent gate, matching
+the existing `diff_import_preview`'s no-write-until-confirmed shape):
+
+- `lacuna.diff_lineage_update(courseId, shareCode: string)` — decodes the payload, resolves
+  the lineage mapping, runs `lineageDiff` (§7.3), and returns the classification
+  (`creates`/`updates`/`removals`/`conflicts` counts and entity summaries) without writing
+  anything — the MCP-surfaced equivalent of the review panel's preview step, letting an
+  agent inspect what a re-import would do before a human commits to it.
+- `lacuna.apply_lineage_update(courseId, shareCode: string, decisions?: {...})` — write-tier,
+  consent-gated per §2.4's existing grant model (course-scoped write grant), applies the
+  merge exactly as §7.5 describes; `decisions` lets an agent pre-resolve specific
+  conflict/update ids (mirroring how a human would use the review panel) while anything
+  unresolved still lands in `pendingMergeReviews` rather than being silently skipped.
+
+No new tool-surface version bump is required (`MCP_TOOL_SURFACE_VERSION`,
+`src/mcp/registry.ts` — Arc 2 §2.5) since these are additive tools, not changes to existing
+ones.
+
+## 7.7 Testing strategy
+
+- **`src/db/lineageDiff.ts`** — pure, table-driven Vitest tests covering every
+  classification rule in §7.3 independently: create/update/remove/conflict, FSRS-field
+  exclusion on updates, and the `studentEdits` interaction with a simultaneous incoming
+  change (the conflict case specifically). Same "exhaustive tests before any UI" bar as
+  `diffRegeneration`'s own test suite.
+- **`src/db/mergeImport.ts`** — Vitest + `fake-indexeddb/auto` (the `repository.test.ts`
+  harness), covering: first import of a lineage (mapping created, ids adopted), a
+  no-op re-import (revision unchanged, empty diff), an `autoAcceptUpdates=true` merge
+  (silent apply), an `autoAcceptUpdates=false` merge (queued, nothing applied until
+  resolved), a removal, a conflict (student edit preserved, incoming queued), and a
+  sequence-bearing payload confirming it is routed through `diffRegeneration` rather than
+  the new engine (assert on `sequenceItemId`-keyed cards, not lesson/note/card ids).
+- **`canEditLessons`** — extend the existing (currently trivial) coverage with cases for
+  `distributedCopy.locked = true` (false) and detached (`locked = false`, true).
+- **Detach flow** — component test on the confirm dialog plus a repository-level test that
+  detach clears lineage tracking without deleting content.
+- **`MergeReviewPanel.tsx`** — component tests with a fixture diff result, covering
+  per-row accept/reject and bulk accept, colocated per convention.
+- **MCP tools** — unit tests calling handlers directly with a stub `ToolContext`, matching
+  Arc 2 §2.7's pattern; `diff_lineage_update` asserted read-only (no repository writes) via
+  the fake-IndexedDB harness.
+- **Manual end-to-end pass** — publish from one local install's exported course, import into
+  a second, edit both sides, republish, re-import, and walk the review UI — the automated
+  suite cannot exercise two independent Dexie instances at once.
+
+## 7.8 Out of scope
+
+- **Any backwards compatibility for pre-Arc-7 share codes or courses.** Lacuna is in
+  private early testing (two users) at the time of this arc; a course imported before this
+  ships has no `distributedCopy`/`distribution` fields and no lineage id, so re-importing an
+  updated code for it simply creates a new course, exactly as it does today. No migration
+  path retrofits lineage onto pre-existing imports.
+- **Bidirectional/cloud sync** — remains Arc 8. The prompter's "opt-in sharing cloud" idea
+  (a possible future option where students/teachers opt into a hosted relay rather than
+  copy/paste share codes) is parked for the Arc 8 design discussion, not decided here.
+- **Multi-teacher merge** (a course imported from two different lineages, or re-parented to
+  a different teacher's lineage) — a single `distributedCopy` per course is assumed
+  throughout; no fan-in.
+- **Automatic conflict resolution beyond "student wins, incoming queued."** No three-way
+  content merge at the field level (e.g. merging a student's typo fix with a teacher's
+  unrelated content rewrite into one card) — conflicts always queue the whole entity.
+- **NoteAnnotation portability** — already out of scope for every existing portability
+  surface (device-local, excluded from share codes and backups today); this arc does not
+  change that.
+- **Locking anything other than lesson/note/card CRUD.** Sequence editing, exam dates, and
+  course settings on a locked copy are not addressed by this arc's `canEditLessons` gate —
+  if those also need locking, that is a follow-up scoping question, not assumed here.
+
+## 7.9 Task list
+
+Each task is scoped for one subagent, ends in one commit, and includes its own tests
+(except the final documentation/manual-pass task, which has no unit-testable surface).
+
+1. **Schema v18: `distributedCopy`/`distribution` fields on `Course`,
+   `lineageIdMappings` table, `pendingMergeReviews` table.** Additive Dexie migration in
+   `src/db/schema.ts` (no `.upgrade()` data pass needed — new fields/tables only), type
+   additions in `src/db/types.ts`. Migration test with a pre-migration snapshot per house
+   convention, confirming existing courses import unchanged.
+
+2. **`src/db/lineageDiff.ts` — pure diff module.** Implement §7.3 in full: types,
+   classification functions, exhaustive table-driven tests. No Dexie import, no UI. This is
+   the "generalise `diffRegeneration`'s shape" step and must land before anything calls it.
+
+3. **Payload extension: `li`/`rv`/`i` fields on `SharePayloadV2`/`ShareLesson`/
+   `ShareNote`/`ShareCard`.** Extend the zod schemas at `src/db/share.ts:92-183`, extend
+   `buildShareCode` (or equivalent export path) to pack the new fields when
+   `Course.distribution` is present, leave everything else in `share.ts` untouched. Tests
+   assert a payload without `li` round-trips byte-identically to today's behaviour.
+
+4. **Publish flow (teacher side).** New Publish action per §7.4: `lineageId`/`revision`
+   management on `Course.distribution`, wiring into the export UI
+   (`UnifiedExportPanel.tsx` or the course-level entry point decided against current
+   layout). Tests cover first-publish (lineage id created) and republish (revision
+   incremented, same lineage id).
+
+5. **`src/db/mergeImport.ts` — merge importer.** First-import-of-a-lineage path (id
+   adoption into `lineageIdMappings`, per §7.1/§7.2) and the merge-apply path (§7.5 steps
+   1-6), including the `diffRegeneration` handoff for sequence-shaped payload items and the
+   `pendingMergeReviews` write for queued items. Full `fake-indexeddb/auto` test coverage
+   per §7.7's `mergeImport.ts` bullet.
+
+6. **`canEditLessons` gate + detach flow.** Wire `distributedCopy.locked` into
+   `src/course/lessonViewMode.ts:canEditLessons` (one-line body change plus updated
+   comment), new detach action (repository function clearing lineage tracking, confirm UI
+   using `ConfirmInline`). Tests per §7.7.
+
+7. **`MergeReviewPanel.tsx` + pending-updates entry point.** Review UI per §7.5, reading
+   `pendingMergeReviews`, per-row/bulk accept-reject, wired to a new indicator on the
+   course card or settings. Component tests with a fixture diff.
+
+8. **`autoAcceptUpdates` setting UI.** Toggle in student-facing course settings (exact
+   section decided against current settings layout), wired to `distributedCopy
+   .autoAcceptUpdates`, threaded into the merge-apply decision in Task 5's code (no logic
+   change there — this task only adds the UI and confirms the existing branch reads the
+   real setting instead of a default).
+
+9. **Decode-time branch: SharePage/UnifiedImportPanel merge routing.** The lineage-match
+   check described in §7.5, added to both `src/pages/SharePage.tsx` and
+   `src/components/import/UnifiedImportPanel.tsx`'s decode step, routing to `mergeImport.ts`
+   when a matching local lineage exists and falling through to `importCourseSharePayload`
+   otherwise. Tests/manual check that a plain (non-distributed) import is unaffected.
+
+10. **MCP tools: `diff_lineage_update`/`apply_lineage_update`.** Per §7.6, following the
+    Arc 2 tool-definition conventions exactly (zod schemas, `ToolContext`, registry entry).
+    Unit tests with a stub context per Arc 2 §2.7's pattern.
+
+11. **Documentation + manual end-to-end pass.** `SPEC.md`/`CHANGES.md` updated with the new
+    Course fields, tables, and MCP tools; this section's status line updated once complete
+    (per the Arc 1/Arc 2/Arc 4 "Status: delivered" precedent); the two-install manual pass
+    from §7.7's last bullet run and its outcome recorded here.
+
+## 7.10 Risks
+
+- **Id adoption diverging from local id generation elsewhere** (low): if any other code
+  path assumes all lesson/note/card ids in a course were locally generated (e.g. an
+  ordering or prefix assumption), adopted ids from a teacher's install could violate it.
+  Mitigated by `makeId()` having no install-specific structure to begin with — audited in
+  Task 5 by grepping for any code that parses or orders on id shape rather than treating it
+  as opaque.
+- **Queued reviews accumulating indefinitely** (medium): a student who never opens the
+  review panel keeps a growing `pendingMergeReviews` backlog across repeated re-imports.
+  Mitigated by each new merge superseding rather than appending to the previous pending row
+  for the same course (Task 5), so the backlog is always "latest outstanding diff," not a
+  history.
+- **Conflict classification depending on `studentEdits` tracking being complete** (medium):
+  if the mechanism for knowing "the student touched this entity since last merge" (§7.3)
+  under-detects edits, a student's change could be silently overwritten by an
+  `autoAcceptUpdates` merge instead of correctly conflicting. This needs its own decision
+  in Task 5 — a plausible approach is comparing current content against the mapping's
+  last-merged snapshot rather than a separate dirty-flag, avoiding a new field to keep in
+  sync; Task 5's tests must cover the "student edited, no merge since" case explicitly.
+- **Detach as a silent data-loss vector** (low): a student who detaches, believing it only
+  "unlocks" the course, then never receives updates again with no future warning.
+  Mitigated by the confirm-dialog copy in §7.1 stating the consequence explicitly; no
+  further mitigation planned (this is an intentional, informed one-way action).
+
+## 7.11 Success criteria
+
+1. A teacher can Publish a course, share the code, and a student importing it for the first
+   time gets an ordinary import with lineage tracking established silently underneath —
+   indistinguishable from today's import UX.
+2. Re-importing an updated code against an already-imported lineage never duplicates the
+   course: it applies additive content immediately, and by default queues
+   teacher-originated edits and removals for review rather than silently changing the
+   student's course.
+3. A student edit to an entity that the teacher also changed is never silently lost: the
+   student's version remains active and the incoming version is queued, never both applied
+   nor either discarded.
+4. `autoAcceptUpdates` toggled on for a course causes subsequent merges to apply teacher
+   edits/removals without a review step, while conflicts (student also edited) still queue.
+5. Sequence content changes flow through the unmodified `diffRegeneration` path, verified by
+   a test asserting no `lineageDiff.ts` code path ever writes a generated card directly.
+6. A locked (non-detached) student copy blocks lesson/note/card CRUD via `canEditLessons`;
+   detaching immediately restores full editing and the copy no longer merges on future
+   re-import of the same code.
+7. `diff_lineage_update`/`apply_lineage_update` work identically to the in-app review flow
+   from an MCP client, verified by unit tests against a stub context.
+8. A pre-Arc-7 course (no `distributedCopy`) re-imported with an Arc-7-published code simply
+   creates a new course, with no error and no attempted merge.
+
+---
+
 # Arc 8 — Multi-Device Sync (design decision first) (outline)
 
 Un-parked as a direction, but the first deliverable of this arc is a design document
