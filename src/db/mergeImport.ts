@@ -175,7 +175,10 @@ function cardSnapshot(card: ExistingCard): LineageCardSnapshot {
  * Only adopted (mapping-known) ids are ever compared — a freshly created local entity
  * has no snapshot to diverge from and is irrelevant to a lineage merge.
  */
-function detectStudentEdits(
+/** Exported for `src/mcp/tools/lineage.ts`'s `lacuna.diff_lineage_update` (Arc 7 §7.6,
+ *  Task 10) — the read-only MCP preview reuses this classification verbatim rather than
+ *  reimplementing it, so the two can never drift apart on what counts as a student edit. */
+export function detectStudentEdits(
   mapping: LineageIdMapping,
   lessons: Lesson[],
   notes: Note[],

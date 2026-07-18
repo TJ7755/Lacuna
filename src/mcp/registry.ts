@@ -9,6 +9,7 @@ import { READ_TOOLS } from './tools/read';
 import { CONTENT_TOOLS } from './tools/content';
 import { DESTRUCTIVE_TOOLS } from './tools/destructive';
 import { IMPORT_TOOLS } from './tools/import';
+import { LINEAGE_TOOLS } from './tools/lineage';
 
 /**
  * Versions the *tool contract* (names, input/output shapes), independent of Dexie's
@@ -40,6 +41,7 @@ export const TOOL_REGISTRY: readonly ToolDefinition<any, any>[] = [
   ...CONTENT_TOOLS,
   ...DESTRUCTIVE_TOOLS,
   ...IMPORT_TOOLS,
+  ...LINEAGE_TOOLS,
 ];
 
 /** Looks up a tool definition by its `lacuna.<verb>_<noun>` name, or undefined if unknown. */
