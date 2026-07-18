@@ -13,6 +13,7 @@ import {
   useCourseAssessments,
   useCourseCards,
   useCourseSummary,
+  usePendingMergeReview,
   usePracticeNodes,
 } from '../state/useCourseData';
 import { availableCards, dueCards } from '../fsrs/eligibility';
@@ -89,6 +90,7 @@ export function CoursePath() {
   const courseCards = useCourseCards(courseId);
   const summary = useCourseSummary(courseId);
   const practiceNodes = usePracticeNodes(courseId);
+  const pendingUpdate = usePendingMergeReview(courseId);
   const lessonIds = useMemo(() => (lessons ?? []).map((lesson) => lesson.id), [lessons]);
   const lessonIdsKey = lessonIds.join(',');
   const lessonLinks = useLiveQuery<LessonCardLink[]>(
@@ -453,6 +455,14 @@ export function CoursePath() {
               >
                 Review due cards
               </Button>
+            )}
+            {pendingUpdate && (
+              <Link
+                to={`/course/${courseId}/updates`}
+                className="inline-flex min-h-11 items-center rounded-full bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
+              >
+                Review updates
+              </Link>
             )}
             {/* The due count already leads the stat pills above, so this line
                 only speaks when there is something the pills don't say. */}

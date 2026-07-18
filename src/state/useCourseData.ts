@@ -12,6 +12,7 @@ import type {
   Lesson,
   LessonCardLink,
   Note,
+  PendingMergeReview,
   PracticeNode,
   RevisionPlan,
   Sequence,
@@ -99,6 +100,27 @@ export function useNotes(lessonId: string | undefined): Note[] | undefined {
 /** All notes across every lesson (for global search, which has no single lessonId scope). */
 export function useAllNotes(): Note[] | undefined {
   return useLiveQuery(() => db.notes.toArray(), []);
+}
+
+/** The outstanding merge review for a course, if a re-import has queued one (Arc 7 §7.5).
+ *  `null` once loaded with nothing pending; `undefined` while loading. */
+export function usePendingMergeReview(courseId: string | undefined): PendingMergeReview | null | undefined {
+  return useLiveQuery(
+    async () => {
+      if (!courseId) return null;
+      return (await db.pendingMergeReviews.where('courseId').equals(courseId).first()) ?? null;
+    },
+    [courseId],
+  );
+}
+
+/** The set of course ids that currently have a pending merge review, for the dashboard's
+ *  quiet "update available" indicator. One live query rather than one per card. */
+export function usePendingUpdateCourseIds(): Set<string> | undefined {
+  return useLiveQuery(async () => {
+    const reviews = await db.pendingMergeReviews.toArray();
+    return new Set(reviews.map((r) => r.courseId));
+  }, []);
 }
 
 export function useCourseCards(courseId: string | undefined): Card[] | undefined {

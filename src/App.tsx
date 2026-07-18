@@ -66,6 +66,9 @@ const LessonView = lazy(() =>
 const QuestionBank = lazy(() =>
   import('./pages/QuestionBank').then((m) => ({ default: m.QuestionBank })),
 );
+const MergeReviewPanel = lazy(() =>
+  import('./components/import/MergeReviewPanel').then((m) => ({ default: m.MergeReviewPanel })),
+);
 const Welcome = lazy(() => import('./pages/Welcome').then((m) => ({ default: m.Welcome })));
 const Method = lazy(() => import('./pages/Method').then((m) => ({ default: m.Method })));
 
@@ -194,6 +197,14 @@ const router = createHashRouter([
         element: (
           <Suspense fallback={<RouteFallback />}>
             <CourseAnalytics />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'course/:courseId/updates',
+        element: (
+          <Suspense fallback={<RouteFallback />}>
+            <MergeReviewPanel />
           </Suspense>
         ),
       },

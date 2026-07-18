@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { useCourseDashboardData } from '../state/useCourseData';
+import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
 import { StudySignals } from '../components/dashboard/StudySignals';
 import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
 import { Button } from '../components/ui/Button';
@@ -17,6 +17,7 @@ export function Dashboard() {
   const summaries = data?.summaries;
   const stats = data?.stats;
   const allCards = data?.allCards;
+  const pendingUpdateIds = usePendingUpdateCourseIds();
   const navigate = useNavigate();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -119,6 +120,7 @@ export function Dashboard() {
                 course={course}
                 summary={summaries?.[course.id]}
                 cards={cardsByCourse[course.id]}
+                hasPendingUpdate={pendingUpdateIds?.has(course.id) ?? false}
                 onClick={() => navigate(`/course/${course.id}`)}
               />
             </motion.div>

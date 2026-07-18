@@ -16,6 +16,7 @@ let mockCourseDashboardData: unknown = undefined;
 
 vi.mock('../state/useCourseData', () => ({
   useCourseDashboardData: () => mockCourseDashboardData,
+  usePendingUpdateCourseIds: () => new Set<string>(),
 }));
 
 vi.mock('../state/motionSpeed', () => ({

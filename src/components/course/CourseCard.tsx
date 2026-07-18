@@ -14,6 +14,8 @@ export interface CourseCardProps {
   summary?: CourseSummary;
   /** The course's cards, used by the hover detail modules. */
   cards?: Card[];
+  /** A merge re-import has queued updates for this course (Arc 7 §7.5). */
+  hasPendingUpdate?: boolean;
   onClick: () => void;
 }
 
@@ -48,7 +50,7 @@ function relativeDue(dueMs: number, nowMs: number): string {
  * height follows the single animated detail wrapper — only that wrapper
  * animates, so there are no competing height springs.
  */
-export function CourseCard({ course, summary, cards, onClick }: CourseCardProps) {
+export function CourseCard({ course, summary, cards, hasPendingUpdate = false, onClick }: CourseCardProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const [detailSettings] = useCourseCardDetail();
@@ -169,6 +171,14 @@ export function CourseCard({ course, summary, cards, onClick }: CourseCardProps)
       <h3 className="mb-4 font-display text-2xl leading-tight tracking-tight">
         {course.name}
       </h3>
+
+      {hasPendingUpdate && (
+        <div className="mb-4 -mt-2">
+          <span className="inline-flex items-center rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+            Update available
+          </span>
+        </div>
+      )}
 
       {/* Stats and progress */}
       <div className="mt-auto">
