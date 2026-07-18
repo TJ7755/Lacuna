@@ -1242,6 +1242,17 @@ repository tools (§Arc 2, "tool design requirement"). Scope decided so far:
 
 # Arc 7 (detailed) — Classroom Distribution: Versioned Courses and Re-import Merge
 
+> **Status (July 2026): delivered.** All 11 tasks implemented and committed (schema v18,
+> pure lineage diff, payload lineage fields, Publish flow, merge importer with
+> snapshot-based student-edit detection, lock/detach, merge review panel, auto-accept
+> toggle, decode-time merge routing, MCP lineage tools, documentation). A batched code
+> review of every commit found the learner-state-safety, merge-correctness, detach and
+> lock invariants sound; its one required fix (the auto-accept description overstated
+> post-merge visibility) is corrected. Shipped divergences from the plan text are
+> recorded in §7.2 (payload keys `i`/`oi`/card `id`; `publishedAt`;
+> `LineageIdMapping` content snapshots). Remaining human item: the §7.7 two-install
+> manual end-to-end pass (publish → import → republish → merge → conflict → detach).
+
 > Supersedes the Arc 7 outline above for implementation purposes.
 
 ## 7.1 Architectural decisions

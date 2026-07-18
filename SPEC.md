@@ -1639,6 +1639,15 @@ feature — versioning is a teacher-initiated counter, not a derived value.
     (creates/updates/removals) and, if anything was queued, adds "N changes are waiting
     for your review."
 
+**MCP tools** (`src/mcp/tools/lineage.ts`, additive — no `MCP_TOOL_SURFACE_VERSION`
+bump): `lacuna.diff_lineage_update` (read-tier) previews a re-published payload's
+classification against a tracked course without writing, reusing the exported
+`detectStudentEdits` and pure `diffLineage` so the preview cannot drift from
+`mergeLineageUpdate`'s behaviour; `lacuna.apply_lineage_update` (write-tier,
+consent-gated) calls `mergeLineageUpdate` directly and may pre-resolve queued items via
+the same `acceptMergeReviewItems`/`rejectMergeReviewItems` functions the review panel
+uses.
+
 ---
 
 ## 14. Search & analytics

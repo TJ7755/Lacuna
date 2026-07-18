@@ -57,6 +57,11 @@ merges into a student's already-imported copy instead of always creating a dupli
   would update to, and confirming applies the merge, reporting what changed and whether
   anything needs review. Re-scanning a code that is not newer than the local copy is
   reported as already up to date, with nothing applied.
+- Added two MCP tools for agent-driven distribution: `lacuna.diff_lineage_update`
+  (read-tier) previews what a re-published share code would change against a tracked
+  course without writing anything, and `lacuna.apply_lineage_update` (write-tier,
+  consent-gated) applies it through the same merge path the app uses, including
+  resolving queued review items.
 
 ## Unreleased — Assessment-aware revision planning (Arc 3)
 
