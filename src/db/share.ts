@@ -113,6 +113,7 @@ const ShareLessonSchema = z.object({
   rd: z.number().optional(), // releaseDate
   ed: z.number().optional(), // examDate override
   tz: z.string().optional(), // timeZone (paired with rd/ed)
+  sf: z.union([z.literal('due'), z.literal('mixed')]).optional(), // sessionFilter ('new' is the default, so omitted)
   notes: z.array(ShareNoteSchema),
   cards: z.array(ShareCardSchema),
   // Originating lesson id, present only when the exporting course has been
