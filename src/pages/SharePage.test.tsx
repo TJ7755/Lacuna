@@ -14,6 +14,14 @@ vi.mock('../state/useCourseData', () => ({
   useCourses: () => mockCourses,
   useCourseSummaries: () => mockSummaries,
   useCourseCards: () => mockCourseCards,
+  useCourse: (courseId: string | undefined) =>
+    mockCourses?.find((course) => course.id === courseId) ?? null,
+}));
+
+vi.mock('../db/repository', () => ({
+  publishCourse: vi.fn(() =>
+    Promise.resolve({ lineageId: 'lineage-1', revision: 1, publishedAt: Date.now() }),
+  ),
 }));
 
 vi.mock('../components/ui/Toast', () => ({
@@ -177,5 +185,30 @@ describe('SharePage', () => {
     render(<SharePage />);
     expect(screen.getByText('Import a shared course')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...')).toBeInTheDocument();
+  });
+
+  it('shows the never-published publish state for a course with no distribution', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(
+      screen.getByText('Publishing lets students receive updates when you share a new code.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Publish course')).toBeInTheDocument();
+    expect(screen.queryByText(/Revision/)).not.toBeInTheDocument();
+  });
+
+  it('shows the published state with revision and relative date for a published course', () => {
+    const published: Course = {
+      ...mockCourse,
+      distribution: { lineageId: 'lineage-1', revision: 3, publishedAt: Date.now() - 60_000 },
+    };
+    mockCourses = [published];
+    mockSummaries = { [published.id]: mockSummary };
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(screen.getByText(/Revision 3 · published/)).toBeInTheDocument();
+    expect(screen.getByText('Publish update')).toBeInTheDocument();
   });
 });

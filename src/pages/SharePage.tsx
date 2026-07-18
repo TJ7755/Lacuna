@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
+import { useCourse, useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { cn } from '../components/ui/cn';
@@ -15,6 +15,7 @@ import {
 } from '../db/share';
 import { referencedAssetHashesInCards } from '../db/assets';
 import { exportCardsSimple } from '../db/export';
+import { publishCourse } from '../db/repository';
 import {
   CheckIcon,
   DownloadIcon,
@@ -26,7 +27,7 @@ import {
   CameraIcon,
   CloseIcon,
 } from '../components/ui/icons';
-import { formatDate } from '../utils/datetime';
+import { formatDate, formatRelativeTime } from '../utils/datetime';
 import QRCode from 'react-qr-code';
 import type { Html5Qrcode } from 'html5-qrcode';
 
@@ -46,6 +47,7 @@ export function SharePage() {
   const [code, setCode] = useState('');
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const [input, setInput] = useState('');
   const [pending, setPending] = useState<{ summary: ShareSummary; raw: string } | null>(null);
@@ -95,6 +97,7 @@ export function SharePage() {
 
   const m = speedMultiplier(motionSpeed);
 
+  const selectedCourse = useCourse(selectedCourseId ?? undefined);
   const selectedSummary = selectedCourseId ? summaries?.[selectedCourseId] : undefined;
   const selectedHasImages = useMemo(
     () => referencedAssetHashesInCards(courseCards ?? []).length > 0,
@@ -108,6 +111,25 @@ export function SharePage() {
     setPlainText('');
     setQrCode('');
     setShowQR(false);
+  }
+
+  async function handlePublish() {
+    if (!selectedCourseId) return;
+    setPublishing(true);
+    try {
+      await publishCourse(selectedCourseId);
+      // Keep an already-generated code in sync with the new revision, rather than
+      // leaving a stale pre-publish code on screen.
+      if (code) {
+        const refreshed = await buildCourseShareCode(selectedCourseId);
+        setCode(refreshed);
+        setCopied(false);
+      }
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not publish this course.', 'negative');
+    } finally {
+      setPublishing(false);
+    }
   }
 
   async function handleGenerate() {
@@ -381,6 +403,40 @@ export function SharePage() {
             </div>
 
             <div className="mt-5">
+              {selectedCourse && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-raised px-4 py-3">
+                  {selectedCourse.distribution ? (
+                    <>
+                      <p className="text-sm text-ink-soft">
+                        Revision {selectedCourse.distribution.revision} · published{' '}
+                        {formatRelativeTime(selectedCourse.distribution.publishedAt)}
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void handlePublish()}
+                        disabled={publishing}
+                      >
+                        {publishing ? 'Publishing…' : 'Publish update'}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-ink-soft">
+                        Publishing lets students receive updates when you share a new code.
+                      </p>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => void handlePublish()}
+                        disabled={publishing}
+                      >
+                        {publishing ? 'Publishing…' : 'Publish course'}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
               {selectedHasImages && (
                 <p className="mb-3 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
                   This course contains images. The share code will replace them with

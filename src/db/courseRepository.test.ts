@@ -29,6 +29,7 @@ import {
   listNotes,
   recordReview,
   reorderLessons,
+  publishCourse,
   restoreCourse,
   restoreLesson,
   snapshotCourse,
@@ -1196,6 +1197,43 @@ describe('assignCardsToLesson', () => {
     expect(updatedA?.primaryLessonId).toBe(lessonB.id);
     expect(updatedB?.primaryLessonId).toBe(lessonB.id);
     expect(updatedA?.deckId).toBe(updatedB?.deckId);
+  });
+});
+
+describe('publishCourse', () => {
+  beforeEach(reset);
+
+  it('creates a fresh lineage id and revision 1 on first publish', async () => {
+    const course = await createCourse('Publish test');
+    expect(course.distribution).toBeUndefined();
+    const before = Date.now();
+
+    const distribution = await publishCourse(course.id);
+
+    expect(typeof distribution.lineageId).toBe('string');
+    expect(distribution.lineageId.length).toBeGreaterThan(0);
+    expect(distribution.revision).toBe(1);
+    expect(distribution.publishedAt).toBeGreaterThanOrEqual(before);
+    expect(await db.courses.get(course.id)).toMatchObject({ distribution });
+  });
+
+  it('keeps the same lineage id and increments revision on republish', async () => {
+    const course = await createCourse('Republish test');
+    const first = await publishCourse(course.id);
+
+    const second = await publishCourse(course.id);
+    const third = await publishCourse(course.id);
+
+    expect(second.lineageId).toBe(first.lineageId);
+    expect(second.revision).toBe(2);
+    expect(second.publishedAt).toBeGreaterThanOrEqual(first.publishedAt);
+    expect(third.lineageId).toBe(first.lineageId);
+    expect(third.revision).toBe(3);
+    expect(await db.courses.get(course.id)).toMatchObject({ distribution: third });
+  });
+
+  it('rejects publishing a course that does not exist', async () => {
+    await expect(publishCourse('missing')).rejects.toThrow('could not be found');
   });
 });
 

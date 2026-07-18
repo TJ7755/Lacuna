@@ -1070,6 +1070,36 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
 }
 
 /**
+ * Publish (or republish) a course for classroom distribution (Arc 7 §7.4).
+ * First publish creates `Course.distribution` with a fresh `lineageId` and
+ * `revision: 1`; every subsequent call keeps the same `lineageId` and
+ * increments `revision` by one. The share-code export path (`src/db/share.ts`)
+ * reads `Course.distribution` to decide whether to pack lineage/revision/
+ * originating-id fields into the payload — this function only owns the
+ * counter, not the encoding.
+ */
+export async function publishCourse(
+  courseId: string,
+): Promise<{ lineageId: string; revision: number; publishedAt: number }> {
+  try {
+    let distribution: { lineageId: string; revision: number; publishedAt: number } | undefined;
+    await db.transaction('rw', db.courses, async () => {
+      const course = await db.courses.get(courseId);
+      if (!course) throw new Error('The course could not be found.');
+      distribution = {
+        lineageId: course.distribution?.lineageId ?? makeId(),
+        revision: (course.distribution?.revision ?? 0) + 1,
+        publishedAt: Date.now(),
+      };
+      await db.courses.update(courseId, { distribution });
+    });
+    return distribution!;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/**
  * Delete a course and cascade to all dependent rows in one transaction:
  * notes and lessonCard links belonging to the course's lessons, the lessons
  * themselves, practice nodes, course assessments, and cards whose courseId

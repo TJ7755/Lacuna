@@ -283,7 +283,7 @@ export interface CourseRecord {
    * at least once. Distinct from `distributedCopy` — this course is the
    * lineage's origin, not a copy of it (Arc 7 §7.2).
    */
-  distribution?: { lineageId: string; revision: number };
+  distribution?: { lineageId: string; revision: number; publishedAt: number };
 }
 
 /** A student's distributed-copy tracking on an imported `Course` (Arc 7 §7.2). */
