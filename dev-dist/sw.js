@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-afac4cd2'], (function (workbox) { 'use strict';
+define(['./workbox-5ccb27be'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -77,16 +77,35 @@ define(['./workbox-afac4cd2'], (function (workbox) { 'use strict';
    * See https://goo.gl/S9QRab
    */
   workbox.precacheAndRoute([{
-    "url": "registerSW.js",
-    "revision": "3ca0b8505b4bec776b69afdba2768812"
-  }, {
     "url": "index.html",
-    "revision": "0.s53iu7bv2vk"
+    "revision": "0.1od9mi24ja"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
     allowlist: [/^\/$/]
   }));
+  workbox.registerRoute(({
+    request
+  }) => request.destination === "script" || request.destination === "worker", new workbox.StaleWhileRevalidate({
+    "cacheName": "script-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 60,
+      maxAgeSeconds: 2592000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(({
+    request
+  }) => request.destination === "font", new workbox.CacheFirst({
+    "cacheName": "font-cache",
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 20,
+      maxAgeSeconds: 31536000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
   workbox.registerRoute(/^.*\.wasm$/i, new workbox.CacheFirst({
     "cacheName": "wasm-cache",
     plugins: [new workbox.ExpirationPlugin({
