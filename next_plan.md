@@ -685,6 +685,24 @@ tasks) includes its own tests. Arc 5 items are interleaved as noted.
 
 # Arc 3 — Assessment-Aware Revision Planning and Cram (detailed)
 
+> **Status (July 2026): delivered.** All ten §3.6 delivery steps shipped: the unified
+> `CourseAssessment` entity (schema v17, `courseAssessments` + `revisionPlans` tables) with
+> independent path placement, prefix/custom coverage and exclusions; the assessment editor
+> and checkpoint detail sheet; scope-aware Practice/Study now routing through
+> `studyFlowSnapshot`/`studyFlowPlanner`/`assessmentPractice`; `ReviewLog` provenance and the
+> offline short-term-memory harness under `tooling/short-term-memory`; the benchmark-selected
+> half-life-logistic model, now shipped as the frozen, coefficient-routed
+> **`half-life-logistic-v3-routed`** (candidate v1 did not clear the later three-cohort
+> transfer gate; v3's conservative routing did, and is what actually shipped — `CHANGES.md`'s
+> Unreleased entry still names v1 and needs updating to match); persisted `RevisionPlan`
+> repository and replan rules; the expected-gain `cramAllocator`; and Learn Mode's
+> `assessment-revision` session-kind integration. §3.5's legacy `?mode=cram` query entry is
+> confirmed retired (`LearnMode.test.tsx` — "ignores the retired mode=cram query entry"); the
+> internal `SessionMode = 'cram'` value in `src/fsrs/session.ts` is unrelated live code, now
+> driven only by the new assessment/plan-id routing (`plannedRevision` in `LearnMode.tsx`),
+> not by any URL param, so no further removal is outstanding. The sections below record the
+> shipped contract rather than a future design.
+
 The document Addendum 2 §G and §M promised. Cram is not a course-wide weak-card queue. It
 is a time-budgeted plan for one named assessment, whose authored lesson coverage determines
 the material being optimised. The course is only the owning container.
@@ -1269,5 +1287,200 @@ Scope decided so far:
   independent of each other and of Arc 8.
 - Each arc gets its own detailed plan (or addendum here) before implementation begins;
   outline sections above are scope agreements, not specifications.
+
+---
+
+# Appendix — Experimental Prototypes (not committed roadmap arcs)
+
+Work in this section is exploratory: it has no arc number, no integration commitment, and
+no place in the ordering notes above. It exists so a prototype has a written plan without
+pretending to be a scoped feature. Promotion to a numbered arc (with its own integration
+plan) is a separate, later decision made only if the prototype's results justify it.
+
+## A.1 Local semantic typed-answer matching (prototype)
+
+> **Status: complete (17 July 2026). Negative result — not promoted to an arc.** The
+> approach does not work and should not ship; see **Results** at the end of this section
+> for the numbers and the reason. The exploratory goal was met: we now know how a small
+> classifier over frozen sentence embeddings behaves on this problem, which was the stated
+> success condition rather than a shipped feature. `src/utils/answerComparison.ts` and
+> `src/state/answerStrictness.ts` were not touched, as scoped. The plan below is preserved
+> as written for the record; where the implementation deliberately diverged from it, the
+> Results section says so.
+
+**Motivation.** `compareAnswer()` (`src/utils/answerComparison.ts`) does positional,
+word-by-word string matching with optional case/punctuation normalisation
+(`src/state/answerStrictness.ts`'s lenient/standard/exact levels). It has no tolerance for
+a correct paraphrase or synonym — typed mode (`src/state/typingSetting.ts`) exists
+specifically so learners can't fudge self-grading the way silent reveal-mode allows (see
+prior discussion, not otherwise recorded in this document), so over-tolerant matching would
+defeat the point; but under-tolerant matching punishes answers that are actually correct.
+This prototype explores whether a small model trained on frozen sentence embeddings can
+classify typed-vs-expected pairs as match/no-match more usefully than string comparison,
+as a first step towards a possible future `semantic` strictness tier — not committed here.
+
+**Structure.** Mirrors the existing `tooling/short-term-memory/` precedent (the
+half-life-logistic memory model: `src/fsrs/halfLifeLogisticModel.ts`,
+`tooling/short-term-memory/`) rather than inventing new conventions:
+
+```
+tooling/semantic-answer-match/
+  pyproject.toml          # uv-managed, same pattern as short-term-memory
+  data/raw/                # user-supplied source term/answer pairs (see Step 1)
+  data/synthetic/          # generated pairs; gitignored, regenerable, not committed
+  match_harness/           # data generation, feature extraction, training, evaluation
+  reports/                 # evaluation output
+  README.md                # what it is, how to run it, flagged as exploratory/unshipped
+```
+
+**Step 1 — Source data.** Decided: not the prompter's GCSE vocabulary lists after all — a
+vocab-only corpus can't cover the subject range this is meant to generalise across (Lane A:
+short, canonical-answer near-miss matching, across subjects, not open-ended essay
+automarking — see chat discussion). Source examples (a prompt/term, its correct answer, and
+plausible wrong answers) are instead generated with the prompter's existing ChatGPT
+subscription rather than the API — the subscription already covers this at no marginal
+cost, and API pricing is irrelevant here as a result. **Model: GPT-5.6 Luna, low thinking
+effort.** Luna is OpenAI's cheapest/fastest GPT-5.6-generation tier, explicitly positioned
+for high-volume, classification-adjacent generation work — a closer match to "produce
+thousands of short structured examples" than GPT-5.4 mini's coding/agentic/tool-use
+positioning, and being the newer generation its capability at this task is expected to be
+at or above the previous generation's mini tier despite the lower cost. This is a judgement
+call from published positioning, not a benchmark run on this exact task — spot-check a
+small batch before committing to a full run, and switch tier (Sol/Terra) or generation
+(5.4 mini) if quality disappoints; switching costs nothing but which chat window gets
+pasted into. Using a hosted model for this offline, one-off data-generation step does not
+compromise the app's local-first/no-cloud principle — that principle governs what the
+shipped app calls at runtime, not how a training corpus gets built on the prompter's own
+machine before anything is frozen into it.
+
+**Step 2 — Synthetic pair generation.** Generation is manual (a subscription chat session,
+not a scripted API call), so `match_harness`'s job on this side is validating and cleaning
+what gets pasted in, not calling a generator: ask for a fixed, modest batch per message
+(recommend 30–50; larger single-completion requests risk repetition and quality drift
+towards the end) in a strict delimited format (e.g. one JSON object per line), and parse,
+deduplicate and schema-check each pasted batch from `data/raw/llm_batches/*.jsonl` before
+it's used. Iterate across separate messages/threads to build up subject and topic coverage.
+
+For each source example, generate:
+- **Positive pairs (match):** the exact expected answer; case/punctuation noise and
+  word-order shuffles (deterministic, handled in `match_harness` — no need to spend a
+  message on these); genuine paraphrase/synonym substitution (worth a model call — a real
+  paraphrase needs actual understanding of the term, which generic synonym-list
+  substitution can't reliably do for subject-specific vocabulary).
+- **Negative pairs (no-match):** the highest-value use of the model, not an afterthought —
+  ask directly for plausible *wrong* answers per subject (a common misconception, a
+  related-but-distinct term, a confusable concept), rather than pairing with a random other
+  item's answer. A model that understands the subject produces far more realistic hard
+  negatives than mechanical corruption does, and hard negatives are what actually shapes a
+  classifier's decision boundary.
+
+Target size is a few thousand pairs — enough for a classifier this small. **Open item:**
+subject/topic coverage isn't decided yet; absent other direction, default to a broad
+GCSE-style spread across sciences, humanities and languages, since "all subjects" is the
+stated eventual ambition.
+
+**Step 3 — Feature extraction & model.** Frozen pretrained sentence embeddings
+(`sentence-transformers/all-MiniLM-L6-v2`, ~90MB, CPU-only) as a fixed feature extractor —
+its weights are not fine-tuned; that would cost meaningfully more compute and memory for no
+expected benefit at this data scale. Per pair, compute: cosine similarity between typed and
+expected embeddings, normalised edit distance, and token-overlap ratio, concatenated into a
+small feature vector. Train a small classifier head (scikit-learn logistic regression or a
+two-layer MLP) on these features against the match/no-match label. This is well within an
+8GB unified-memory machine: nothing here trains or loads a full transformer's gradients,
+only inference through a frozen ~90MB model plus a classifier with a few hundred parameters.
+Save the trained head with `joblib`/pickle — no need to design a frozen JSON coefficient
+schema (`halfLifeLogisticModel.ts`'s pattern) unless and until this becomes an integration
+candidate.
+
+**Step 4 — Evaluation.**
+- Train/validation split (e.g. 80/20) on the synthetic pairs; report accuracy and,
+  specifically, precision/recall on the negative class — a false "match" is worse than a
+  false "no-match" here, since silently accepting a wrong answer is a worse failure mode
+  than the current behaviour of over-rejecting a valid paraphrase.
+- Run the current `compareAnswer()` lenient-mode logic over the same pairs as a baseline,
+  so the comparison is a concrete before/after number, not a vibe.
+- Hand-write a small held-out set of genuinely tricky paraphrase cases — not generated by
+  the same synthetic pipeline — and check the model against those specifically. This is the
+  one part of evaluation that must not be synthetic: a generator can only test its own
+  assumptions about what a paraphrase looks like, so the only honest read on whether this
+  generalises is a handful of real, manually-judged cases.
+
+**Explicitly out of scope for this pass:**
+- Any change to `src/utils/answerComparison.ts` or `src/state/answerStrictness.ts`.
+- Fine-tuning the embedding model's own weights.
+- Sourcing real (non-synthetic) typed-answer data — none exists; the app has no telemetry,
+  by design (local-first, no cloud component).
+- Deciding how a trained model would ship at runtime if this is ever integrated (in-browser
+  ONNX/WASM inference, bundle size budget, Electron-only vs PWA-compatible, etc.) — a real
+  question for a later, separate plan, not this exercise.
+
+**Results (17 July 2026).**
+
+Built and run in `tooling/semantic-answer-match/` (commits `43e21b3`, `3428f3c`, `f3d4496`,
+`61b50b6`, `0ae326a`, `1066d8a`, `94ccaa7`). 685 source records were generated across
+Biology, Chemistry, Physics, History, Geography, English Literature, French and Religious
+Studies, expanding to 5,131 labelled pairs. Every batch validated with zero schema errors.
+
+*The finding, in one line:* cosine similarity measures whether two answers are **related**;
+marking requires knowing whether they are **equivalent**. Those two agree everywhere except
+on plausible near-misses — which is exactly the population that matters. The feature set
+(cosine similarity, normalised edit distance, token overlap) cannot represent contradiction,
+so negation, reversed cause and effect, and substituted entities are invisible to it. A
+wrong answer that is *nearly* right sits in the same region of feature space as a correct
+paraphrase, and no threshold separates them.
+
+*The numbers*, on a deterministic stratified 80/20 split (`reports/evaluation.json`):
+
+| | Accuracy | Neg. precision | Neg. recall |
+| --- | --- | --- | --- |
+| Classifier | 0.793 | 0.696 | 0.670 |
+| `compareAnswer()` lenient baseline | 0.728 | 0.551 | **0.997** |
+
+The baseline almost never accepts a wrong answer; its weakness is rejecting genuine
+paraphrases. The classifier buys paraphrase tolerance at the cost of accepting roughly a
+third of wrong answers — a regression on the asymmetry Step 4 names as decisive.
+
+*The decisive metric* is `overturn_precision` = **0.614**. Framing the shipping
+architecture as a cascade (`compareAnswer()` first, an accept is final; the classifier only
+consulted on a rejection, and only able to overturn a rejection into an acceptance) reduces
+the whole question to: of the pairs the classifier rescues, what fraction are genuinely
+correct? Answer: 178 paraphrases rescued against 112 wrong answers admitted. Two wrong
+answers admitted for every three paraphrases rescued.
+
+*The adversarial held-out set* (`data/held_out/tricky_paraphrases.jsonl`, tracked because it
+is not regenerable) is where it stops being close: of 61 deliberately hard wrong answers the
+classifier correctly rejects **2**. It accepts "Chloroplasts are the site of aerobic
+respiration" against a mark scheme naming mitochondria, and "Energy is absorbed by
+mitochondria" against one saying released. See that file and the tooling README for its
+provenance caveats — it was model-drafted rather than hand-written, its labels are
+unreviewed, and it is adversarial by construction, so its error rates are a worst case
+rather than a production estimate.
+
+*Structural note:* the cascade turns out to be mathematically identical to the classifier
+alone. Across 1,027 test pairs there is no case where `compareAnswer()` accepts and the
+classifier rejects — the classifier accepts a strict superset. The cascade therefore cannot
+improve accuracy by construction; its only benefit is a fast path avoiding the ~90MB model
+load in the common case. Worth remembering if a future semantic tier is ever revisited.
+
+*Deviations from the plan as written:*
+- Step 2's word-order shuffle positives were **removed** (`f3d4496`). Reversing a
+  mark-scheme sentence produces gibberish, and labelling it a match taught the classifier
+  that word salad is correct — 676 of 5,807 pairs, working directly against Step 4's stated
+  asymmetry. Removing them moved negative recall by 0.006, confirming the failure is
+  representational rather than a data-quality artefact.
+- Step 4's held-out set was **not hand-written**; see the caveat above.
+- Data generation used GPT-5.6 (Chat mode, free tier) rather than Luna specifically. Batch
+  quality was uniformly good and format compliance was total, so tier choice never became a
+  live question.
+
+*Bugs found and fixed during the pass:* the baseline bridge never ran through the CLI (path
+resolution, `3428f3c`), and the baseline was scored over all pairs while the classifier was
+scored on the test split, making the headline comparison meaningless (also `3428f3c`).
+
+*If this is ever revisited*, the hypothesis to test is that the primitive is wrong rather
+than the idea: the question is entailment ("does the typed answer entail the mark scheme
+answer"), not similarity. NLI cross-encoders answer that directly — negation flips
+entailment to contradiction while cosine barely moves — and remain small and CPU-only, so
+the local-first constraint survives. That is a new plan, not a patch to this one.
 
 *End of plan.*
