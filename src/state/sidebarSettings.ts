@@ -20,7 +20,6 @@ export interface SidebarSettings {
 
 export const DEFAULT_NAV_ITEMS: SidebarNavItem[] = [
   { id: 'dashboard', label: 'Dashboard', visible: true },
-  { id: 'learn', label: 'Study today', visible: true },
   { id: 'search', label: 'Search', visible: true },
   { id: 'share', label: 'Share', visible: true },
   { id: 'analytics', label: 'Analytics', visible: true },
@@ -41,8 +40,10 @@ export function readStored(): SidebarSettings {
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<SidebarSettings>;
       const navItems = parsed.navItems ?? DEFAULTS.navItems;
-      // Ensure any newly added nav items are merged into the stored order.
-      const merged = [...navItems];
+      // Drop stored items whose id no longer exists as a default (e.g. a removed nav
+      // entry), then merge in any newly added defaults — preserving the stored order
+      // and visibility of everything that survives.
+      const merged = navItems.filter((n) => DEFAULT_NAV_ITEMS.some((def) => def.id === n.id));
       for (const def of DEFAULT_NAV_ITEMS) {
         if (!merged.find((n) => n.id === def.id)) {
           merged.push(def);

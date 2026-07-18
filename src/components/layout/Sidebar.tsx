@@ -17,7 +17,6 @@ import {
   FlaskIcon,
   HelpIcon,
   MoonIcon,
-  PlayIcon,
   PlusIcon,
   SearchIcon,
   SettingsIcon,
@@ -403,13 +402,11 @@ export function Sidebar({ collapsed, onToggleCollapsed, toggleLabel }: SidebarPr
           .map((n) => (
             <NavItem
               key={n.id}
-              to={n.id === 'dashboard' ? '/' : n.id === 'learn' ? '/study' : `/${n.id}`}
+              to={n.id === 'dashboard' ? '/' : `/${n.id}`}
               end={n.id === 'dashboard'}
               icon={
                 n.id === 'dashboard' ? (
                   <DashboardIcon />
-                ) : n.id === 'learn' ? (
-                  <PlayIcon />
                 ) : n.id === 'search' ? (
                   <SearchIcon />
                 ) : n.id === 'share' ? (
@@ -428,7 +425,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, toggleLabel }: SidebarPr
               collapsed={collapsed}
               compact={sidebarSettings.compactMode}
               streakBadge={
-                n.id === 'learn' ? <StudyStreakBadge collapsed={collapsed} /> : undefined
+                n.id === 'dashboard' ? <StudyStreakBadge collapsed={collapsed} /> : undefined
               }
             />
           ))}

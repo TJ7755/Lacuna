@@ -30,6 +30,22 @@ describe('readStored', () => {
     const settings = readStored();
     expect(settings.showDueCounts).toBe(DEFAULTS.showDueCounts);
   });
+
+  it('drops stored nav items whose id no longer exists as a default, preserving surviving order', () => {
+    const stored = {
+      navItems: [
+        { id: 'settings', label: 'Settings', visible: false },
+        { id: 'learn', label: 'Study today', visible: true }, // stale/removed nav item
+        { id: 'dashboard', label: 'Dashboard', visible: true },
+      ],
+    };
+    localStorage.setItem(KEY, JSON.stringify(stored));
+    const settings = readStored();
+    expect(settings.navItems.find((n) => n.id === 'learn')).toBeUndefined();
+    // Surviving items keep their stored order and visibility ahead of any merged defaults.
+    expect(settings.navItems[0]).toEqual({ id: 'settings', label: 'Settings', visible: false });
+    expect(settings.navItems[1]).toEqual({ id: 'dashboard', label: 'Dashboard', visible: true });
+  });
 });
 
 describe('useSidebarSettings', () => {

@@ -5,11 +5,12 @@ import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useC
 import { StudySignals } from '../components/dashboard/StudySignals';
 import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
 import { Button } from '../components/ui/Button';
-import { FlaskIcon, PlusIcon } from '../components/ui/icons';
+import { ChevronRightIcon, FlaskIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
 import { CourseCard } from '../components/course/CourseCard';
 import { NewCourseForm } from '../components/course/NewCourseForm';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useDashboardSort } from '../state/dashboardSort';
+import { readActiveStudyFlow } from '../state/activeStudyFlow';
 
 export function Dashboard() {
   const data = useCourseDashboardData();
@@ -69,6 +70,12 @@ export function Dashboard() {
     return grouped;
   }, [allCards]);
 
+  // A conductor interrupted mid-flow (Arc 10 §10.1: moved here from the retired
+  // StudyToday page) — resuming recalculates the next step from current course
+  // state rather than trusting the stored session.
+  const activeFlow = useMemo(() => readActiveStudyFlow(), []);
+  const resumableCourse = courses?.find((course) => course.id === activeFlow?.courseId);
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
       {/* Page header */}
@@ -91,6 +98,28 @@ export function Dashboard() {
       <AnimatePresence>
         {creatingCourse && <NewCourseForm onClose={() => setCreatingCourse(false)} />}
       </AnimatePresence>
+
+      {/* Resume an interrupted study flow */}
+      {resumableCourse && (
+        <button
+          type="button"
+          onClick={() => navigate(`/course/${resumableCourse.id}/study`)}
+          className="mb-6 flex min-h-20 w-full items-center gap-4 rounded-2xl border border-accent/30 bg-accent/[0.04] px-5 py-4 text-left transition-colors hover:bg-accent/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        >
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
+            <PlayIcon width={18} height={18} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs uppercase tracking-[0.14em] text-ink-faint">
+              Resume study flow
+            </span>
+            <span className="mt-1 block truncate font-display text-xl text-ink">
+              {resumableCourse.name}
+            </span>
+          </span>
+          <ChevronRightIcon width={18} height={18} className="shrink-0 text-accent" />
+        </button>
+      )}
 
       {/* Motivation strip: streak, reviews today, seven-day time forecast */}
       {stats && activeCourses && activeCourses.length > 0 && (
@@ -122,6 +151,7 @@ export function Dashboard() {
                 cards={cardsByCourse[course.id]}
                 hasPendingUpdate={pendingUpdateIds?.has(course.id) ?? false}
                 onClick={() => navigate(`/course/${course.id}`)}
+                onStudy={() => navigate(`/course/${course.id}/study`)}
               />
             </motion.div>
           ))}

@@ -38,9 +38,6 @@ const Analytics = lazy(() =>
   import('./pages/Analytics').then((m) => ({ default: m.Analytics })),
 );
 const HelpPage = lazy(() => import('./pages/HelpPage').then((m) => ({ default: m.HelpPage })));
-const StudyToday = lazy(() =>
-  import('./pages/StudyToday').then((m) => ({ default: m.StudyToday })),
-);
 const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default: m.LearnMode })));
 const CourseStudyFlow = lazy(() =>
   import('./pages/CourseStudyFlow').then((m) => ({ default: m.CourseStudyFlow })),
@@ -138,11 +135,7 @@ const router = createHashRouter([
       },
       {
         path: 'study',
-        element: (
-          <Suspense fallback={<RouteFallback />}>
-            <StudyToday />
-          </Suspense>
-        ),
+        element: <Navigate to="/" replace />,
       },
       {
         path: 'course/:courseId',

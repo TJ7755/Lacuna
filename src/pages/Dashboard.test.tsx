@@ -25,9 +25,16 @@ vi.mock('../state/motionSpeed', () => ({
 }));
 
 vi.mock('../components/ui/icons', () => ({
+  ChevronRightIcon: () => <svg data-testid="chevron-right-icon" />,
   FlaskIcon: () => <svg data-testid="flask-icon" />,
   PlayIcon: () => <svg data-testid="play-icon" />,
   PlusIcon: () => <svg data-testid="plus-icon" />,
+}));
+
+let mockActiveFlow: { courseId: string } | null = null;
+
+vi.mock('../state/activeStudyFlow', () => ({
+  readActiveStudyFlow: () => mockActiveFlow,
 }));
 
 vi.mock('../components/course/NewCourseForm', () => ({
@@ -59,10 +66,23 @@ vi.mock('../components/dashboard/ReviewHeatmap', () => ({
 }));
 
 vi.mock('../components/course/CourseCard', () => ({
-  CourseCard: ({ course, onClick }: { course: Course; onClick: () => void }) => (
-    <button type="button" onClick={onClick} data-testid="course-card">
-      {course.name}
-    </button>
+  CourseCard: ({
+    course,
+    onClick,
+    onStudy,
+  }: {
+    course: Course;
+    onClick: () => void;
+    onStudy: () => void;
+  }) => (
+    <div>
+      <button type="button" onClick={onClick} data-testid="course-card">
+        {course.name}
+      </button>
+      <button type="button" onClick={onStudy} data-testid={`study-${course.id}`}>
+        Study
+      </button>
+    </div>
   ),
 }));
 
@@ -116,6 +136,7 @@ const mockCard: Card = {
 beforeEach(() => {
   mockNavigate.mockClear();
   mockCourseDashboardData = undefined;
+  mockActiveFlow = null;
 });
 
 describe('Dashboard', () => {
@@ -162,6 +183,45 @@ describe('Dashboard', () => {
     render(<Dashboard />);
     fireEvent.click(screen.getByTestId('course-card'));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1');
+  });
+
+  it('navigates to the course study flow when the Study action is used', () => {
+    mockCourseDashboardData = {
+      courses: [mockCourse],
+      lessons: [],
+      allCards: [],
+      summaries: {},
+      stats: { reviewedToday: 0, streak: 0, forecast: [] },
+    };
+    render(<Dashboard />);
+    fireEvent.click(screen.getByTestId('study-course-1'));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study');
+  });
+
+  it('shows a resume banner for an active study flow and navigates on click', () => {
+    mockActiveFlow = { courseId: 'course-1' };
+    mockCourseDashboardData = {
+      courses: [mockCourse],
+      lessons: [],
+      allCards: [],
+      summaries: {},
+      stats: { reviewedToday: 0, streak: 0, forecast: [] },
+    };
+    render(<Dashboard />);
+    fireEvent.click(screen.getByText('Resume study flow'));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study');
+  });
+
+  it('does not show a resume banner when there is no active study flow', () => {
+    mockCourseDashboardData = {
+      courses: [mockCourse],
+      lessons: [],
+      allCards: [],
+      summaries: {},
+      stats: { reviewedToday: 0, streak: 0, forecast: [] },
+    };
+    render(<Dashboard />);
+    expect(screen.queryByText('Resume study flow')).not.toBeInTheDocument();
   });
 
   it('shows page heading', () => {

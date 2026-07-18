@@ -247,10 +247,10 @@ outside the shell. The shell is a flex row:
 +----------+--------------------------------------------+
 ```
 
-- **Sidebar** (`Sidebar`): brand; primary nav (Dashboard, Study today, Search, Share,
+- **Sidebar** (`Sidebar`): brand; primary nav (Dashboard, Search, Share,
   Analytics, Settings, Help — each independently hideable); a live course list (each with an
-  accent dot when active and an optional due-count badge); a **streak badge** on the Study
-  today item that springs in when a streak is active; footer with a theme toggle and a
+  accent dot when active and an optional due-count badge); a **streak badge** on the Dashboard
+  item that springs in when a streak is active; footer with a theme toggle and a
   collapse toggle. Collapsing animates the width to 72 px and hides labels. Active state is a
   sliding shared-layout marker. State (`collapsed`), compact mode, due-count visibility, and
   per-nav-item visibility are all persisted to `localStorage` via `useSidebarSettings`
@@ -1310,11 +1310,13 @@ ordinary `front_back` cards to the scheduler.
 - **Dashboard** lists courses in a responsive grid, each showing exam proximity, lesson
   count and the objective progress bar; a global **Review all** entry point appears when
   cards are due across any course. Course order is a configurable dashboard setting
-  (recent, ready to study, mastery, exam date, name, or created; §4.3).
-- **Study today** (`/study`) always asks which active course to study, shows due and curriculum
-  context, and launches that course's conductor directly. An interrupted conductor stores only
-  its course identity and timestamps, so resume always recalculates the next step from current
-  course state rather than trusting stale session data.
+  (recent, ready to study, mastery, exam date, name, or created; §4.3). Each course card
+  carries a secondary **Study** action, launching that course's conductor directly
+  (`/course/:courseId/study`) alongside the card's own click-through to its course path.
+  If a conductor was interrupted mid-flow, a resume banner sits above the course grid; an
+  interrupted conductor stores only its course identity and timestamps, so resume always
+  recalculates the next step from current course state rather than trusting stale session
+  data (Arc 10 §10.1 folded the former standalone Study Today page into this dashboard).
 - **Course path** (`/course/:courseId`) is the primary navigation surface within a course:
   an ordered sequence of lesson nodes, checkpoints and practice nodes (§4.3, §14).
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
@@ -1786,7 +1788,7 @@ rendered sections.
 - **Sidebar:** show due counts (on by default), show archived courses (on by default,
   though the current course UI has no archived-course affordance to reveal), compact
   mode (off by default), and per-nav-item visibility toggles for every primary nav
-  entry (Dashboard, Study today, Search, Share, Analytics, Settings, Help). Persisted
+  entry (Dashboard, Search, Share, Analytics, Settings, Help). Persisted
   to `localStorage` and applied immediately (`src/state/sidebarSettings.ts`). The
   dashboard's own course-ordering control (recent / ready to study / mastery / exam
   date / name / created) is a separate, dashboard-local setting
