@@ -32,6 +32,7 @@ import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course
 import { planNextStudyStep } from '../course/studyFlowPlanner';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
+import { UpcomingAssessmentsStrip } from '../components/course/UpcomingAssessmentsStrip';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import {
   PathNodeWithLine,
@@ -382,10 +383,19 @@ export function CoursePath() {
         <CourseTabs courseId={courseId ?? ''} />
       </div>
 
-      {/* Lesson view mode configures the path view (not the course as a
+      {/* Upcoming-assessment pills (left) and the lesson view mode toggle
+          (right, unchanged) share this row so the strip doesn't add height
+          of its own when there's room; it wraps below on narrow screens.
+          Lesson view mode configures the path view (not the course as a
           whole), so it stays here in the path's own header area rather than
           moving into CourseTabs (which is shared across all course surfaces). */}
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
+        <UpcomingAssessmentsStrip
+          assessments={assessments}
+          now={now}
+          onSelect={setSelectedAssessmentId}
+          className="mr-auto"
+        />
         {!canEditLessons(course) ? (
           <span className="text-xs text-ink-faint underline decoration-dotted underline-offset-2">
             Editing is locked for shared courses

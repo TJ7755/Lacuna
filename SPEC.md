@@ -351,7 +351,12 @@ courses" link with the shared `CourseTabs` component (`src/components/course/Cou
 Path · Question bank · Analytics · Settings, active tab derived from the route), rendered
 on all four course surfaces so any section is one click from any other; `LessonViewModeToggle`
 stays CoursePath-only (it configures the path view, not the course) and sits in its own row
-above the header, right-aligned. Practice gathers cards from lessons
+above the header, right-aligned. That row also carries the `UpcomingAssessmentsStrip`
+(`src/components/course/UpcomingAssessmentsStrip.tsx`), left-aligned: compact date/name pills
+for the nearest few future-dated assessments (checkpoints and the final alike), reusing the
+same `assessments` array the path itself renders checkpoint nodes from, so exam dates are
+visible without opening Course Settings. Clicking a pill opens the same `AssessmentDetailSheet`
+a checkpoint node opens. Omitted entirely when no assessment is still ahead of `now`. Practice gathers cards from lessons
 reached so far whose predicted retrievability remains below the mastery threshold at each
 card's applicable exam horizon; this is not the narrower `card.due` timestamp concept.
 Primary and explicitly linked cards count as lesson members, deduplicated by card id. A
