@@ -22,6 +22,45 @@
 >
 > **Full changelog below**
 
+## Unreleased — Handwritten maths input prototype (Appendix A.2)
+
+**No application changes.** Everything here lives in `tooling/handwriting-maths/`, an
+exploratory prototype with no integration commitment, following the precedent of
+`tooling/short-term-memory` and `tooling/semantic-answer-match`. It is not imported by
+the browser or Electron builds, and `src/` is untouched. The deliverable is knowledge;
+promotion to a numbered arc is a separate, later decision.
+
+- **The question:** can a young student write `x^2 + 3` with a finger faster and more
+  happily than they can find `^` on a keyboard? Two separable halves — recognition
+  accuracy, and input preference. The preference half survives a poor recognition
+  result, and is what feeds Arc 11 §11.3's palette design.
+- **Recognition pipeline, all four stages** as pure, unit-tested modules: stroke capture
+  and normalisation (`strokes.ts`), stroke grouping into symbols (`group.ts`), symbol
+  recognition via the $P point-cloud recogniser (`dollarP.ts`), and baseline/superscript
+  layout parsing into an expression string (`layout.ts`), joined by `interpret.ts`.
+  $P rather than the $1 recogniser the plan named, because $1 is single-stroke only and
+  cannot represent `=`, `x` or a two-stroke `4`. Fraction bars are out of scope for this
+  pass. Scoped to nineteen symbol classes at 11+ level, not GCSE.
+- **Preference harness** (`trial.ts`): three arms — written, typed, tapped — over
+  identical targets, with Latin-square ordering so no method is systematically first,
+  median-based summaries over correct entries only, and CSV export.
+- **First session (22 July 2026), one adult, one phone.** Median entry: tapped 5.25s,
+  written 5.66s, typed 6.84s. The finding worth carrying forward is the cost of `^`:
+  typing a superscript target cost +2.21s against +0.47s for handwriting, and the two
+  slowest typed entries of the session were exactly the two superscript targets. That is
+  a direct input to Arc 11 §11.3 — `^` is the expensive character, and it is expensive
+  even for a 115 WPM typist. Recorded with its caveats in the tooling README: n = 1, and
+  the canvas arm is self-scored and produces no string, so its figure is a lower bound
+  until the retained ink can be scored by `interpret()`.
+- **Dataset and licence position recorded** before any training happens: MathWriting and
+  CROHME are CC BY-NC-SA, HASYv2 is ODbL. Lacuna sells nothing so NonCommercial is not
+  the obstacle; **ShareAlike** against the repository's MIT licence is. Irrelevant while
+  nothing ships, decisive if handwriting input is ever promoted into `src/`.
+- **`next_plan.md` correction:** Arc 11 §11.3 claimed mathjs was "already shipped". It is
+  not a dependency. The line now names adopting it as a decision the arc must make,
+  weighed against a purpose-built parser, and pins the KaTeX claim to the packages that
+  genuinely are present (`katex`, `rehype-katex`).
+
 ## Unreleased — UI de-clutter and navigation restructure (Arc 10)
 
 No new capabilities — every change is navigation, layout, or consolidation of features
