@@ -22,6 +22,49 @@
 >
 > **Full changelog below**
 
+## Unreleased — UI de-clutter and navigation restructure (Arc 10)
+
+No new capabilities — every change is navigation, layout, or consolidation of features
+that already existed, following a July 2026 audit of redundant entry points, hidden
+features and unstructured settings pages.
+
+- **Study Today merged into the Dashboard.** Each Dashboard course card now has a direct
+  **Study** action; the "resume active session" banner moved from the old Study Today
+  page to the top of the Dashboard. The standalone page is gone and `/study` now
+  redirects to `/`, the same shim pattern already used for `/deck/:deckId`. The `learn`
+  sidebar nav item (labelled "Study today", pointing at `/study`) is removed; existing
+  stored sidebar settings drop the stale entry automatically while preserving the order
+  and visibility of everything else.
+- **Shared course tab navigation.** A new `CourseTabs` component (Path / Question bank /
+  Analytics / Settings) is now rendered on all four course surfaces, replacing
+  CoursePath's small breadcrumb-row icon links — every course surface is one click from
+  every other in any direction.
+- **Editors return to where you came from.** Opening the card or sequence editor from
+  the Question bank vs. from a lesson now sends its "back" link, Cancel and post-save
+  navigation to the surface you actually opened it from, instead of always falling back
+  to the Question bank.
+- **CourseSettings regrouped, and now commits instantly.** The nine settings sections are
+  grouped under five headings (Basics, Study, Content, Assessments, Danger zone) behind
+  a scrollspy side-rail matching global Settings, extracted into a shared component that
+  also gained a mobile fallback (a sticky section jumper) for viewports below `xl`, where
+  the rail previously simply disappeared.
+  **Behaviour change:** the previous split save model — some fields staged behind a
+  sticky "Save changes" button, others (exam dates, lesson management, practice nodes)
+  committing instantly — is gone. Every field on Course Settings now commits
+  immediately: text and numeric fields on blur (with the same validation/clamping as
+  before), toggles and selects on change, and the target-retention slider once per
+  drag rather than on every tick. There is no longer a way to edit a setting and back
+  out without saving.
+- **Discoverability fixes:** the sidebar's Search entry now opens the command palette
+  directly and shows the `Ctrl/Cmd+K` hint, rather than just linking to `/search`; the
+  Help and Method pages now cross-link each other, so `/method` is reachable outside the
+  one-time `/welcome` flow; the global Analytics page's course comparison links each
+  course's name to its own `/course/:id/analytics`.
+- **Upcoming assessments surfaced on the course path.** CoursePath's header now shows a
+  compact strip of upcoming assessment dates (checkpoints and the final), reusing the
+  existing `AssessmentDetailSheet` on click, so exam dates are visible without opening
+  Course Settings.
+
 ## Unreleased — Classroom distribution: versioned courses and re-import merge (Arc 7)
 
 Schema v18. Teachers can now **Publish** a course so that re-sharing an updated code

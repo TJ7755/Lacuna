@@ -232,8 +232,7 @@ outside the shell. The shell is a flex row:
 | Lacuna   |  <main> -- routed page, scrolls            |
 |          |  independently; page transitions           |
 | > Dash.. |  animate here                              |
-| > Study..|                                            |
-| > Search |                                            |
+| > Search |  (^K)                                      |
 | > Share  |                                            |
 | > Analyt.|                                            |
 | > Setting|                                            |
@@ -255,6 +254,12 @@ outside the shell. The shell is a flex row:
   sliding shared-layout marker. State (`collapsed`), compact mode, due-count visibility, and
   per-nav-item visibility are all persisted to `localStorage` via `useSidebarSettings`
   (configured in Settings → Sidebar) and take effect immediately.
+- **Search nav item as command-palette affordance:** the Search entry is a button, not a
+  plain link — it opens the `Ctrl/Cmd+K` command palette directly and shows the shortcut
+  hint inline (collapsed sidebar: as a title tooltip), so the palette has a visible
+  entry point instead of relying on the user already knowing the shortcut. Surfaces
+  without palette wiring (e.g. LearnMode's own nav drawer) fall back to a plain `/search`
+  link.
 - **Mobile:** the sidebar becomes a drawer opened from a top bar burger; the scrim closes
   it; it auto-closes on navigation. On desktop the sidebar is always visible; on touch
   viewports the burger is the only way to reach it.
@@ -287,9 +292,12 @@ outside the shell. The shell is a flex row:
 | `/lesson/:lessonId/learn` | Learn session (new cards for one lesson) | **no** | lazy |
 | `/learn` | Learn session (every course, "Today") | **no** | lazy |
 | `/deck/:deckId` | Redirects to `/` | yes | eager |
+| `/study` | Redirects to `/` | yes | eager |
 
 There is no user-facing route for a bare deck or folder; `/deck/:deckId` is kept only as a
-redirect so old bookmarks and share-code links do not dead-end.
+redirect so old bookmarks and share-code links do not dead-end. `/study` — the former
+standalone Study Today page, folded into the Dashboard in Arc 10 §10.1 — is the same
+shim pattern, for the same reason.
 
 ### 4.3 Screen wireframes
 
@@ -1313,6 +1321,15 @@ ordinary `front_back` cards to the scheduler.
 - **Touch targets:** the toolbar buttons and type-selector are 44px tall with
   active-state colours; on narrow viewports the toolbar scrolls horizontally with
   a hidden scrollbar.
+- **Return-to-origin back-link:** Cancel, post-save navigation and the breadcrumb
+  "back" link normally follow the route (the lesson if the URL encodes one, otherwise
+  the course's Question bank), but two entry points need to say otherwise — editing a
+  lesson-owned card from the Question bank, and editing a sequence (which has no
+  lesson-scoped edit route) from within a lesson. Callers that know they're not the
+  route's default surface pass an `{ origin: { path, label } }` router-state override
+  (`src/utils/editorOrigin.ts`), which both `CardEditor` and `SequenceEditor` prefer
+  over their route-derived default. A hard refresh drops router state, so the
+  route-derived fallback always applies in that case.
 
 ---
 
@@ -1746,7 +1763,9 @@ aggregating across every course:
   reviews today, leeches, mean stability, mean difficulty). Each metric renders
   as **two stacked rows** — one per course — with a colour swatch, a percentage
   bar, and a right-aligned value, so the values can never overlap or fight the
-  winner badge.
+  winner badge. Each compared course's name links to its own `/course/:id/analytics`
+  (Arc 10 §10.4), so the global and per-course analytics views cross-link both ways —
+  `CourseAnalytics` links back out via the shared `CourseTabs` (§12).
 - **Forecast** — cards due and new cards scheduled per day for the next 30
   days.
 - **Predicted exam-day score** — average predicted retrievability across all
@@ -1771,8 +1790,16 @@ charts below the fold are never invisible. Each chart container is `h-64` with
 
 `Settings.tsx` is a thin page composition; the ten independent setting groups live under
 `src/pages/settings/`. Section ids and ordering remain centralised in the page so the
-single-page IntersectionObserver scrollspy and right-hand navigation cannot drift from the
-rendered sections.
+scrollspy and its navigation cannot drift from the rendered sections.
+- **Shared scrollspy rail** (`src/components/ui/SectionRail.tsx`): `useSectionRail`
+  (the IntersectionObserver hook), `SectionRail` (the desktop right-hand nav) and
+  `SectionRailMobileJumper` (a compact sticky `<select>`-style jumper) were extracted
+  from `Settings.tsx` so `CourseSettings` (below) can reuse the same wayfinding over a
+  different section list. `useMediaQuery('(min-width: 1280px)')`
+  (`src/hooks/useMediaQuery.ts`) is the single breakpoint source both components read,
+  so exactly one of the desktop rail or the mobile jumper mounts at a time — never
+  both, never neither. Below `xl`, where the rail was previously simply hidden with no
+  replacement, the mobile jumper now gives wayfinding to every viewport size.
 
 - **Appearance:** theme toggle (defaults to **dark**); **accent colour** swatches
   (7 choices); **text size** steps that scale all text. All three persist to
@@ -1825,24 +1852,45 @@ rendered sections.
 
 ### Course settings (`src/pages/CourseSettings.tsx`)
 The only exam/scheduling settings surface in the app — there is no deck-level settings
-page any more. Composed from extracted, reusable section components (originally factored
-out of the now-deleted deck-settings page so the same form primitives serve both models
-while the deck UI still existed; only the course-facing composition remains):
-`SchedulingFieldsSection` (rename, exam date and time, exam objective toggle — Expected
-marks <-> Secure topics with live explanatory copy, new cards per day, target retention
-slider with Relaxed/Balanced/Thorough presets and adaptive guidance copy, max
-reviews/interval, learning/relearning steps, leech threshold/action, daily review goal,
-session time limit), `UnlockModeSection` (semi-linear vs linear lesson unlocking, with
-linear cadence fields), `PracticeSettingsSection` (auto-practice toggle and the four
-threshold/window/gap fields feeding `shouldInsertPractice`, §-linked to
-`src/fsrs/practice.ts`), `ExamDatesSection` (per-course exam-date list),
-`LessonManagementSection` (reorder/rename/delete lessons) and `PracticeNodesSection`
-(list/create/edit/delete teacher-authored manual
-practice nodes; see §5's Course architecture section), plus the `OptimisationPanel`
-(§8.1): a per-course on/off override for scheduling optimisation, a review-count gate,
-and an **Optimise now** action that runs in a Web Worker with a progress bar, then shows
-the before/after log loss; applying takes a restore-point snapshot first and **Reset to
+page any more. Carries the shared `CourseTabs` (§12) in its header row like the other
+three course surfaces, and groups its nine sections under the same shared `SectionRail`
+scrollspy pattern global Settings uses (extracted into `src/components/ui/SectionRail.tsx`
+in Arc 10 §10.3, see above), with five headed groups instead of one flat scroll:
+**Basics** (rename, exam objective), **Study** (scheduling fields, unlock mode,
+auto-practice, lesson view mode, optimisation), **Content** (lesson management, practice
+nodes), **Assessments** (exam dates), **Danger zone**. Composed from extracted, reusable
+section components (originally factored out of the now-deleted deck-settings page so the
+same form primitives serve both models while the deck UI still existed; only the
+course-facing composition remains): `SchedulingFieldsSection` (rename, exam date and
+time, exam objective toggle — Expected marks <-> Secure topics with live explanatory
+copy, new cards per day, target retention slider with Relaxed/Balanced/Thorough presets
+and adaptive guidance copy, max reviews/interval, learning/relearning steps, leech
+threshold/action, daily review goal, session time limit), `UnlockModeSection`
+(semi-linear vs linear lesson unlocking, with linear cadence fields),
+`PracticeSettingsSection` (auto-practice toggle and the four threshold/window/gap fields
+feeding `shouldInsertPractice`, §-linked to `src/fsrs/practice.ts`), `ExamDatesSection`
+(per-course exam-date list), `LessonManagementSection` (reorder/rename/delete lessons)
+and `PracticeNodesSection` (list/create/edit/delete teacher-authored manual practice
+nodes; see §5's Course architecture section), plus the `OptimisationPanel` (§8.1): a
+per-course on/off override for scheduling optimisation, a review-count gate, and an
+**Optimise now** action that runs in a Web Worker with a progress bar, then shows the
+before/after log loss; applying takes a restore-point snapshot first and **Reset to
 defaults** is always available.
+- **One save model: instant commit everywhere** (Arc 10 §10.3). Every field commits
+  through the existing `updateCourse` path as it's edited — there is no staged
+  "Save changes" bar and no local draft state to lose. Text and numeric fields (rename,
+  exam objective label, scheduling numbers) commit **on blur**, with the same
+  clamping/validation they always had, so a half-typed value never commits mid-edit;
+  toggles, radios and selects (unlock mode, auto-practice, lesson view mode) commit **on
+  change**. The **target-retention slider** is the one exception with its own two-phase
+  commit: dragging updates the displayed value locally on every tick but writes to the
+  repository only once, on pointer/key release (the discrete preset buttons still commit
+  immediately, since they're a single discrete action, not a drag). This replaced an
+  earlier split model where ExamDates/LessonManagement/PracticeNodes already committed
+  instantly while name/scheduling/unlock/practice/view-mode sat behind a sticky save
+  button — the ambiguity of not knowing which edits were pending is why the whole page
+  now shares one model. **Behaviour change for existing users:** there is no longer a
+  way to edit a field and back out without saving — every edit is live immediately.
 - **Legacy lesson session filter:** `Lesson.sessionFilter` is retained only so old imports
   remain readable. It has no settings control and does not alter live lesson study, which
   always serves unseen lesson members in Simple mode.
@@ -1854,7 +1902,7 @@ defaults** is always available.
   (`snapshotCourse`/`restoreCourse`, `src/db/repository.ts`): the course, its lessons,
   notes, lesson-card links, practice nodes, assessments, revision plans, cards, their hidden backing decks
   (§5, Deck and Folder), and the session history/calibration profiles keyed to either the
-  course or those decks. Sticky Save/Cancel bar.
+  course or those decks.
 - **Not-found handling:** the course is resolved via a null-sentinel
   `useLiveQuery` (missing row mapped to `null`, matching `CoursePath`) so a
   stale or deleted `courseId` reaches a genuine not-found state instead of

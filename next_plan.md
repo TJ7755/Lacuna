@@ -1790,6 +1790,19 @@ Scope decided so far:
 
 # Arc 10 — UI De-clutter and Navigation Restructure (detailed)
 
+> **Status (July 2026): delivered.** All 7 implementation tasks shipped: Study Today
+> folded into the Dashboard with a `/study` redirect shim and the stale `learn` sidebar
+> entry dropped; the shared `CourseTabs` component adopted on all four course surfaces;
+> return-to-origin back-links for the card and sequence editors; a shared `SectionRail`
+> scrollspy (with a mobile jumper fallback) extracted from global Settings and reused by
+> Course Settings; Course Settings regrouped into five sections with one instant-commit
+> save model, replacing the old split staged/instant behaviour (a genuine user-facing
+> change, called out in `CHANGES.md`); a command-palette affordance in the sidebar,
+> Help/Method cross-links, and Analytics cross-links; and an upcoming-assessments strip
+> on the course path. `SPEC.md`, `CHANGES.md` and in-app copy are updated accordingly.
+> The one deliberate deferral on record is §10.5's — splitting `LearnMode.tsx` — which
+> was never part of this arc's scope.
+
 Motivated by a July 2026 audit of the UI's growth-by-accretion: after the Course
 architecture landed, several surfaces were bolted on beside existing ones rather than
 replacing them, leaving redundant entry points, hidden features, and two settings pages
