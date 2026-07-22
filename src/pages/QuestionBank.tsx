@@ -8,6 +8,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCourse, useLessons, useCourseCards, useSequences } from '../state/useCourseData';
 import { useDeck } from '../state/useData';
 import { CardList } from '../components/cards/CardList';
+import { CourseTabs } from '../components/course/CourseTabs';
 import { FadeInView } from '../components/ui/FadeInView';
 import { Button } from '../components/ui/Button';
 import { ChevronLeftIcon, PlusIcon, SearchIcon } from '../components/ui/icons';
@@ -63,13 +64,16 @@ export function QuestionBank() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
       {/* Breadcrumb */}
-      <Link
-        to={`/course/${courseId}`}
-        className="mb-6 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-      >
-        <ChevronLeftIcon width={16} height={16} />
-        {course.name}
-      </Link>
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+        >
+          <ChevronLeftIcon width={16} height={16} />
+          All courses
+        </Link>
+        <CourseTabs courseId={courseId ?? ''} />
+      </div>
 
       {/* Header */}
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">

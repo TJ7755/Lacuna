@@ -326,7 +326,8 @@ exists in the course UI yet).
 **Course path** (`/course/:courseId`):
 
 ```
-< All courses                          Question bank   [chart]  [gear]
+< All courses                     ( Path | Question bank | Analytics | Settings )
+                                                          ( Read | Edit )
 Exam 14 Jun 2026, 23:59
 Organic Chemistry                                      [Study now]
 [path] Lesson 4 of 9   [ring] Mastery 68%   [clock] Due today 12 cards
@@ -345,7 +346,12 @@ Organic Chemistry                                      [Study now]
 ```
 
 An ordered path of lesson nodes, checkpoint assessments (informational, never block progress)
-and practice nodes, built by `src/course/path.ts`. Practice gathers cards from lessons
+and practice nodes, built by `src/course/path.ts`. The breadcrumb row pairs the "All
+courses" link with the shared `CourseTabs` component (`src/components/course/CourseTabs.tsx`:
+Path · Question bank · Analytics · Settings, active tab derived from the route), rendered
+on all four course surfaces so any section is one click from any other; `LessonViewModeToggle`
+stays CoursePath-only (it configures the path view, not the course) and sits in its own row
+above the header, right-aligned. Practice gathers cards from lessons
 reached so far whose predicted retrievability remains below the mastery threshold at each
 card's applicable exam horizon; this is not the narrower `card.due` timestamp concept.
 Primary and explicitly linked cards count as lesson members, deduplicated by card id. A
@@ -468,8 +474,8 @@ modes resolved by `src/course/lessonViewMode.ts`:
 
 Every course carries its own explicit `Course.lessonViewMode` (`src/db/types.ts`) — no more
 site-wide default. It is set directly via a compact Read/Edit segmented control
-(`LessonViewModeToggle`, `src/components/course/`) in the CoursePath and inline LessonView
-headers, next to the settings link, and via a plain Read/Edit choice on Course Settings
+(`LessonViewModeToggle`, `src/components/course/`) in the CoursePath (its own row above the
+course header) and inline LessonView headers, and via a plain Read/Edit choice on Course Settings
 (`LessonViewModeSection`, `src/pages/settings/`). `resolveLessonViewMode(course)`
 (`src/course/lessonViewMode.ts`) falls back to `'study'` only for courses that predate the
 mandatory field (e.g. an old backup restored later); a one-shot startup migration in `App.tsx`

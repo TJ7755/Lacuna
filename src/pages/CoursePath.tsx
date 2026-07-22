@@ -40,11 +40,12 @@ import {
   lockHintFor,
 } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
+import { CourseTabs } from '../components/course/CourseTabs';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { LessonView } from './LessonView';
 import { Button } from '../components/ui/Button';
-import { ChartIcon, ChevronLeftIcon, PlayIcon, SettingsIcon } from '../components/ui/icons';
+import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { updateCourse } from '../db/repository';
 import { canEditLessons, isLessonAuthoringMode, resolveLessonViewMode } from '../course/lessonViewMode';
@@ -378,43 +379,23 @@ export function CoursePath() {
           <ChevronLeftIcon width={16} height={16} />
           All courses
         </Link>
-        <div className="flex w-full items-center justify-between gap-1 sm:w-auto sm:justify-start sm:gap-4">
-          <Link
-            to={`/course/${courseId}/bank`}
-            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-          >
-            Question bank
-          </Link>
-          {!canEditLessons(course) ? (
-            <Link
-              to={`/course/${courseId}/settings`}
-              className="text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink"
-            >
-              Editing is locked for shared courses
-            </Link>
-          ) : (
-            <LessonViewModeToggle
-              mode={lessonViewMode}
-              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-            />
-          )}
-          <Link
-            to={`/course/${courseId}/analytics`}
-            aria-label="Course analytics"
-            title="Course analytics"
-            className="inline-flex min-h-11 min-w-11 items-center justify-center text-ink-faint transition-colors hover:text-ink active:text-ink"
-          >
-            <ChartIcon width={18} height={18} />
-          </Link>
-          <Link
-            to={`/course/${courseId}/settings`}
-            aria-label="Course settings"
-            title="Course settings"
-            className="inline-flex min-h-11 min-w-11 items-center justify-center text-ink-faint transition-colors hover:text-ink active:text-ink"
-          >
-            <SettingsIcon width={18} height={18} />
-          </Link>
-        </div>
+        <CourseTabs courseId={courseId ?? ''} />
+      </div>
+
+      {/* Lesson view mode configures the path view (not the course as a
+          whole), so it stays here in the path's own header area rather than
+          moving into CourseTabs (which is shared across all course surfaces). */}
+      <div className="mb-3 flex justify-end">
+        {!canEditLessons(course) ? (
+          <span className="text-xs text-ink-faint underline decoration-dotted underline-offset-2">
+            Editing is locked for shared courses
+          </span>
+        ) : (
+          <LessonViewModeToggle
+            mode={lessonViewMode}
+            onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
+          />
+        )}
       </div>
 
       {/* Header — title, a row of labelled stat pills (HeaderStats), and the

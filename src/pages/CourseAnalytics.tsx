@@ -10,6 +10,7 @@ import {
   useCourseSessionHistory,
 } from '../state/useCourseData';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
+import { CourseTabs } from '../components/course/CourseTabs';
 import { ChevronLeftIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 
@@ -76,13 +77,16 @@ export function CourseAnalytics() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8 md:px-10">
-      <Link
-        to={`/course/${course.id}`}
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
-      >
-        <ChevronLeftIcon width={16} height={16} />
-        Back to {course.name}
-      </Link>
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+        >
+          <ChevronLeftIcon width={16} height={16} />
+          All courses
+        </Link>
+        <CourseTabs courseId={course.id} />
+      </div>
 
       <motion.header
         initial={{ opacity: 0, y: 12 }}
