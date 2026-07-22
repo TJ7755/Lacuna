@@ -397,9 +397,7 @@ export function CoursePath() {
           className="mr-auto"
         />
         {!canEditLessons(course) ? (
-          <span className="text-xs text-ink-faint underline decoration-dotted underline-offset-2">
-            Editing is locked for shared courses
-          </span>
+          <span className="text-xs text-ink-faint">Editing is locked for shared courses</span>
         ) : (
           <LessonViewModeToggle
             mode={lessonViewMode}
