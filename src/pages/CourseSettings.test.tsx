@@ -374,6 +374,30 @@ describe('CourseSettings', () => {
     );
   });
 
+  it('does not let a second fsrs-nested commit revert an earlier one before the live query resolves', () => {
+    // mockCourse is a static fixture for the whole test (see beforeEach) — it never
+    // re-resolves between the two commits below, mirroring a real useLiveQuery update
+    // arriving after both fields have already committed. Regression test for the stale
+    // `course.fsrsParameters` closure bug: each fsrs-nested field must patch from a
+    // shared local draft, not from `course.fsrsParameters`, or the second commit would
+    // silently overwrite the first back to its pre-edit value.
+    renderPage();
+
+    const maxIntervalInput = screen.getByDisplayValue('36500');
+    fireEvent.change(maxIntervalInput, { target: { value: '100' } });
+    fireEvent.blur(maxIntervalInput);
+
+    const learningStepsInput = screen.getByDisplayValue('1m, 10m');
+    fireEvent.change(learningStepsInput, { target: { value: '2m, 20m' } });
+    fireEvent.blur(learningStepsInput);
+
+    expect(mockUpdateCourse).toHaveBeenCalledTimes(2);
+    const [, lastPatch] = mockUpdateCourse.mock.calls[mockUpdateCourse.mock.calls.length - 1];
+    expect(lastPatch.fsrsParameters).toEqual(
+      expect.objectContaining({ maximum_interval: 100, learning_steps: ['2m', '20m'] }),
+    );
+  });
+
   it('snapshots then deletes the course immediately, navigating away with an undo toast', async () => {
     renderPage();
     fireEvent.click(screen.getByText('Delete course'));

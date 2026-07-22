@@ -14,9 +14,9 @@ import {
   updateCourse,
 } from '../db/repository';
 import type { CourseSnapshot } from '../db/repository';
-import { clampRequestRetention, DEFAULT_REQUEST_RETENTION } from '../fsrs/params';
+import { clampRequestRetention, defaultFsrsParameters, DEFAULT_REQUEST_RETENTION } from '../fsrs/params';
 import { ChevronLeftIcon } from '../components/ui/icons';
-import type { CourseRecord, ExamObjective, UnlockMode } from '../db/types';
+import type { CourseRecord, ExamObjective, FsrsParameters, UnlockMode } from '../db/types';
 import type { LessonViewMode } from '../state/lessonViewMode';
 import { parseSteps } from './settings/parseSteps';
 import { SchedulingFieldsSection } from './settings/SchedulingFieldsSection';
@@ -73,6 +73,13 @@ export function CourseSettings() {
   const [maxInterval, setMaxInterval] = useState('');
   const [learningSteps, setLearningSteps] = useState('');
   const [relearningSteps, setRelearningSteps] = useState('');
+  // Local draft mirroring the fsrs-nested fields (target retention, fuzz, max interval,
+  // learning/relearning steps) — every commit for those fields patches from this draft
+  // rather than re-reading `course.fsrsParameters`, which resolves asynchronously via
+  // useLiveQuery and would otherwise race a second commit made before the first round-trip
+  // completes (see commitFsrsParameters below). Mirrors how linearCadence already avoids
+  // this exact bug.
+  const [fsrsParameters, setFsrsParameters] = useState<FsrsParameters>(defaultFsrsParameters());
   const [leechThreshold, setLeechThreshold] = useState('');
   const [leechAction, setLeechAction] = useState<'suspend' | 'tag' | 'none'>('suspend');
   const [dailyReviewGoal, setDailyReviewGoal] = useState('');
@@ -107,6 +114,7 @@ export function CourseSettings() {
     );
     setLearningSteps(course.fsrsParameters.learning_steps.join(', '));
     setRelearningSteps(course.fsrsParameters.relearning_steps.join(', '));
+    setFsrsParameters(course.fsrsParameters);
     setLeechThreshold(course.leechThreshold ? String(course.leechThreshold) : '');
     setLeechAction(course.leechAction ?? 'suspend');
     setDailyReviewGoal(course.dailyReviewGoal ? String(course.dailyReviewGoal) : '');
@@ -156,6 +164,19 @@ export function CourseSettings() {
     void updateCourse(course.id, patch);
   }
 
+  /**
+   * Commit entry point for the fsrs-nested fields (target retention, fuzz, max interval,
+   * learning/relearning steps). Patches the local `fsrsParameters` draft rather than
+   * `course.fsrsParameters` so two commits fired in quick succession — faster than the
+   * live query round-trip — don't have the second overwrite the first (see the
+   * `fsrsParameters` state comment above).
+   */
+  function commitFsrsParameters(patch: Partial<FsrsParameters>) {
+    const next = { ...fsrsParameters, ...patch };
+    setFsrsParameters(next);
+    commitCourse({ fsrsParameters: next });
+  }
+
   function commitName() {
     if (!course) return;
     const value = name.trim() || course.name;
@@ -180,43 +201,30 @@ export function CourseSettings() {
   }
 
   function commitMaxInterval() {
-    if (!course) return;
     const parsed = Math.floor(Number(maxInterval));
     const value =
       maxInterval.trim() === '' || !Number.isFinite(parsed) || parsed <= 0
-        ? course.fsrsParameters.maximum_interval
+        ? fsrsParameters.maximum_interval
         : parsed;
-    commitCourse({ fsrsParameters: { ...course.fsrsParameters, maximum_interval: value } });
+    commitFsrsParameters({ maximum_interval: value });
   }
 
   function commitLearningSteps() {
-    if (!course) return;
     const value = parseSteps(learningSteps);
     if (learningSteps.trim() && value === null) {
       notify('Invalid learning steps format. Use values like 1m, 10m, 1d.', 'negative');
       return;
     }
-    commitCourse({
-      fsrsParameters: {
-        ...course.fsrsParameters,
-        learning_steps: value ?? course.fsrsParameters.learning_steps,
-      },
-    });
+    commitFsrsParameters({ learning_steps: value ?? fsrsParameters.learning_steps });
   }
 
   function commitRelearningSteps() {
-    if (!course) return;
     const value = parseSteps(relearningSteps);
     if (relearningSteps.trim() && value === null) {
       notify('Invalid relearning steps format. Use values like 1m, 10m, 1d.', 'negative');
       return;
     }
-    commitCourse({
-      fsrsParameters: {
-        ...course.fsrsParameters,
-        relearning_steps: value ?? course.fsrsParameters.relearning_steps,
-      },
-    });
+    commitFsrsParameters({ relearning_steps: value ?? fsrsParameters.relearning_steps });
   }
 
   function commitLeechThreshold() {
@@ -350,19 +358,12 @@ export function CourseSettings() {
                     onRetentionChange={setRetention}
                     onRetentionCommit={(value) => {
                       setRetention(value);
-                      commitCourse({
-                        fsrsParameters: {
-                          ...course.fsrsParameters,
-                          requestRetention: clampRequestRetention(value),
-                        },
-                      });
+                      commitFsrsParameters({ requestRetention: clampRequestRetention(value) });
                     }}
                     enableFuzz={enableFuzz}
                     onEnableFuzzChange={(checked) => {
                       setEnableFuzz(checked);
-                      commitCourse({
-                        fsrsParameters: { ...course.fsrsParameters, enable_fuzz: checked },
-                      });
+                      commitFsrsParameters({ enable_fuzz: checked });
                     }}
                     maxInterval={maxInterval}
                     onMaxIntervalChange={setMaxInterval}
