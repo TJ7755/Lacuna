@@ -172,6 +172,18 @@ describe('CourseSettings', () => {
     expect(mockOptimiserReset).not.toHaveBeenCalled();
   });
 
+  it('renders the grouped section headings and no "Save changes" bar', () => {
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Basics' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Study' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Content' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Assessments' })).toBeInTheDocument();
+    // "Danger zone" has no separate group heading — DangerZoneSection labels itself —
+    // so assert on its presence rather than a specific role.
+    expect(screen.getAllByText('Danger zone').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Save changes')).not.toBeInTheDocument();
+  });
+
   it('edits the final date through the shared assessment editor', () => {
     mockCourse = {
       ...course,
@@ -188,25 +200,35 @@ describe('CourseSettings', () => {
     expect(mockUpdateCourseAssessment).not.toHaveBeenCalled();
   });
 
-  it('saves edits by calling updateCourse with unlockMode, linearCadence and practice fields', () => {
+  it('commits the course name on blur, not on every keystroke', () => {
     renderPage();
     const nameInput = screen.getByDisplayValue('Original course');
     fireEvent.change(nameInput, { target: { value: 'Renamed course' } });
-    fireEvent.click(screen.getByText('Save changes'));
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(nameInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
-      expect.objectContaining({
-        name: 'Renamed course',
-        unlockMode: 'semi-linear',
-        linearCadence: expect.objectContaining({ intervalDays: 7 }),
-        autoPractice: true,
-        practiceThresholdMinutesFar: 30,
-        practiceThresholdMinutesNear: 15,
-        practiceUrgentWindowDays: 7,
-        practiceMaxGap: 5,
-      }),
+      expect.objectContaining({ name: 'Renamed course' }),
     );
-    expect(mockUpdateCourseAssessment).not.toHaveBeenCalled();
+  });
+
+  it('commits the exam objective toggle immediately on change', () => {
+    renderPage();
+    fireEvent.click(screen.getByLabelText('Secure topics'));
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ examObjective: 'securedTopics' }),
+    );
+  });
+
+  it('commits unlock mode immediately when a radio option is picked', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Linear'));
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ unlockMode: 'linear' }),
+    );
   });
 
   it('switching unlock mode shows/hides linear cadence inputs', () => {
@@ -216,72 +238,94 @@ describe('CourseSettings', () => {
     expect(screen.getByText('Days between lessons')).toBeInTheDocument();
   });
 
-  it('falls back to the current value when a practice field is left blank', () => {
+  it('commits linear cadence interval days on blur, not on every keystroke', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Linear'));
+    mockUpdateCourse.mockClear();
+
+    const intervalInput = screen.getByLabelText(/Days between lessons/);
+    fireEvent.change(intervalInput, { target: { value: '14' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(intervalInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ linearCadence: expect.objectContaining({ intervalDays: 14 }) }),
+    );
+  });
+
+  it('falls back to the current value when a practice field is left blank on blur', () => {
     renderPage();
     const maxGapInput = screen.getByDisplayValue('5');
     fireEvent.change(maxGapInput, { target: { value: '' } });
-    fireEvent.click(screen.getByText('Save changes'));
+    fireEvent.blur(maxGapInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
       expect.objectContaining({ practiceMaxGap: 5 }),
     );
   });
 
-  it('accepts a zero value for the far/near thresholds and urgent window', () => {
+  it('accepts a zero value for the far/near thresholds and urgent window on blur', () => {
     renderPage();
-    fireEvent.change(screen.getByLabelText(/Threshold \(exam not near\)/), {
-      target: { value: '0' },
-    });
-    fireEvent.change(screen.getByLabelText(/Threshold \(exam near\)/), {
-      target: { value: '0' },
-    });
-    fireEvent.change(screen.getByLabelText(/Urgent window/), { target: { value: '0' } });
-    fireEvent.click(screen.getByText('Save changes'));
+    const farInput = screen.getByLabelText(/Threshold \(exam not near\)/);
+    fireEvent.change(farInput, { target: { value: '0' } });
+    fireEvent.blur(farInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
-      expect.objectContaining({
-        practiceThresholdMinutesFar: 0,
-        practiceThresholdMinutesNear: 0,
-        practiceUrgentWindowDays: 0,
-      }),
+      expect.objectContaining({ practiceThresholdMinutesFar: 0 }),
+    );
+
+    const nearInput = screen.getByLabelText(/Threshold \(exam near\)/);
+    fireEvent.change(nearInput, { target: { value: '0' } });
+    fireEvent.blur(nearInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ practiceThresholdMinutesNear: 0 }),
+    );
+
+    const urgentInput = screen.getByLabelText(/Urgent window/);
+    fireEvent.change(urgentInput, { target: { value: '0' } });
+    fireEvent.blur(urgentInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ practiceUrgentWindowDays: 0 }),
     );
   });
 
-  it('falls back to the current value when the maximum lesson gap is set to zero', () => {
+  it('falls back to the current value when the maximum lesson gap is set to zero on blur', () => {
     renderPage();
     const maxGapInput = screen.getByDisplayValue('5');
     fireEvent.change(maxGapInput, { target: { value: '0' } });
-    fireEvent.click(screen.getByText('Save changes'));
+    fireEvent.blur(maxGapInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
       expect.objectContaining({ practiceMaxGap: 5 }),
     );
   });
 
-  it('round-trips a valid practice field edit', () => {
+  it('round-trips a valid practice field edit on blur', () => {
     renderPage();
     const maxGapInput = screen.getByDisplayValue('5');
     fireEvent.change(maxGapInput, { target: { value: '9' } });
-    fireEvent.click(screen.getByText('Save changes'));
+    fireEvent.blur(maxGapInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
       expect.objectContaining({ practiceMaxGap: 9 }),
     );
   });
 
-  it('defaults the save payload to lessonViewMode: study when the course has none', () => {
+  it('commits auto-practice immediately on toggle', () => {
     renderPage();
-    fireEvent.click(screen.getByText('Save changes'));
+    fireEvent.click(screen.getByLabelText('Auto-practice'));
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
-      expect.objectContaining({ lessonViewMode: 'study' }),
+      expect.objectContaining({ autoPractice: false }),
     );
   });
 
-  it('picking Edit saves lessonViewMode: edit', () => {
+  it('commits lessonViewMode: edit immediately when Edit is picked', () => {
     renderPage();
     fireEvent.click(screen.getByRole('radio', { name: /Edit/ }));
-    fireEvent.click(screen.getByText('Save changes'));
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
       expect.objectContaining({ lessonViewMode: 'edit' }),
@@ -293,6 +337,23 @@ describe('CourseSettings', () => {
     renderPage();
     const editRadio = screen.getByRole('radio', { name: /Edit/ });
     expect(editRadio).toBeChecked();
+  });
+
+  it('rejects an invalid learning steps format on blur without committing', () => {
+    renderPage();
+    const learningStepsInput = screen.getByDisplayValue('1m, 10m');
+    fireEvent.change(learningStepsInput, { target: { value: 'not-a-step' } });
+    fireEvent.blur(learningStepsInput);
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid learning steps format'),
+      'negative',
+    );
+    expect(mockUpdateCourse).not.toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({
+        fsrsParameters: expect.objectContaining({ learning_steps: ['not-a-step'] }),
+      }),
+    );
   });
 
   it('snapshots then deletes the course immediately, navigating away with an undo toast', async () => {

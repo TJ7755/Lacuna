@@ -18,59 +18,80 @@ const RETENTION_PRESETS = [
 export interface SchedulingFieldsSectionProps {
   newCardsPerDay: string;
   onNewCardsPerDayChange: (value: string) => void;
+  /** Commits the current value to the repository. Fired on blur, not on every keystroke. */
+  onNewCardsPerDayBlur: () => void;
   maxReviewsPerDay: string;
   onMaxReviewsPerDayChange: (value: string) => void;
+  onMaxReviewsPerDayBlur: () => void;
   retention: number;
+  /** Bounded/clamped by the slider itself, so this commits immediately rather than on blur. */
   onRetentionChange: (value: number) => void;
   enableFuzz: boolean;
   onEnableFuzzChange: (value: boolean) => void;
   maxInterval: string;
   onMaxIntervalChange: (value: string) => void;
+  onMaxIntervalBlur: () => void;
   /** Placeholder shown when the field is blank, typically the entity's current maximum_interval. */
   maxIntervalPlaceholder: string;
   learningSteps: string;
   onLearningStepsChange: (value: string) => void;
+  onLearningStepsBlur: () => void;
   relearningSteps: string;
   onRelearningStepsChange: (value: string) => void;
+  onRelearningStepsBlur: () => void;
   leechThreshold: string;
   onLeechThresholdChange: (value: string) => void;
+  onLeechThresholdBlur: () => void;
   leechAction: 'suspend' | 'tag' | 'none';
   onLeechActionChange: (value: 'suspend' | 'tag' | 'none') => void;
   dailyReviewGoal: string;
   onDailyReviewGoalChange: (value: string) => void;
+  onDailyReviewGoalBlur: () => void;
   sessionTimeLimit: string;
   onSessionTimeLimitChange: (value: string) => void;
+  onSessionTimeLimitBlur: () => void;
 }
 
 /**
  * Shared scheduling fields for deck/course settings pages: new/review daily caps, target
  * retention, interval fuzz, maximum interval, learning/relearning steps, and leech detection.
- * Pure controlled component — all state lives with the caller.
+ * Pure controlled component — all state lives with the caller, which also owns the instant-commit
+ * mechanics: text/numeric fields commit on blur via the `on*Blur` callbacks (so a half-typed value
+ * never reaches the repository), toggles/selects/the retention slider commit directly through
+ * their `on*Change` callback.
  */
 export function SchedulingFieldsSection({
   newCardsPerDay,
   onNewCardsPerDayChange,
+  onNewCardsPerDayBlur,
   maxReviewsPerDay,
   onMaxReviewsPerDayChange,
+  onMaxReviewsPerDayBlur,
   retention,
   onRetentionChange,
   enableFuzz,
   onEnableFuzzChange,
   maxInterval,
   onMaxIntervalChange,
+  onMaxIntervalBlur,
   maxIntervalPlaceholder,
   learningSteps,
   onLearningStepsChange,
+  onLearningStepsBlur,
   relearningSteps,
   onRelearningStepsChange,
+  onRelearningStepsBlur,
   leechThreshold,
   onLeechThresholdChange,
+  onLeechThresholdBlur,
   leechAction,
   onLeechActionChange,
   dailyReviewGoal,
   onDailyReviewGoalChange,
+  onDailyReviewGoalBlur,
   sessionTimeLimit,
   onSessionTimeLimitChange,
+  onSessionTimeLimitBlur,
 }: SchedulingFieldsSectionProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -85,6 +106,7 @@ export function SchedulingFieldsSection({
           inputMode="numeric"
           value={newCardsPerDay}
           onChange={(e) => onNewCardsPerDayChange(e.target.value)}
+          onBlur={onNewCardsPerDayBlur}
           placeholder="Unlimited"
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
@@ -103,6 +125,7 @@ export function SchedulingFieldsSection({
           inputMode="numeric"
           value={maxReviewsPerDay}
           onChange={(e) => onMaxReviewsPerDayChange(e.target.value)}
+          onBlur={onMaxReviewsPerDayBlur}
           placeholder="Unlimited"
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
@@ -191,6 +214,7 @@ export function SchedulingFieldsSection({
           inputMode="numeric"
           value={maxInterval}
           onChange={(e) => onMaxIntervalChange(e.target.value)}
+          onBlur={onMaxIntervalBlur}
           placeholder={maxIntervalPlaceholder}
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
@@ -205,6 +229,7 @@ export function SchedulingFieldsSection({
         <input
           value={learningSteps}
           onChange={(e) => onLearningStepsChange(e.target.value)}
+          onBlur={onLearningStepsBlur}
           placeholder="e.g. 1m, 10m"
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
@@ -219,6 +244,7 @@ export function SchedulingFieldsSection({
         <input
           value={relearningSteps}
           onChange={(e) => onRelearningStepsChange(e.target.value)}
+          onBlur={onRelearningStepsBlur}
           placeholder="e.g. 10m"
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
@@ -239,6 +265,7 @@ export function SchedulingFieldsSection({
               inputMode="numeric"
               value={leechThreshold}
               onChange={(e) => onLeechThresholdChange(e.target.value)}
+              onBlur={onLeechThresholdBlur}
               placeholder="8"
               className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />
@@ -255,6 +282,7 @@ export function SchedulingFieldsSection({
               inputMode="numeric"
               value={dailyReviewGoal}
               onChange={(e) => onDailyReviewGoalChange(e.target.value)}
+              onBlur={onDailyReviewGoalBlur}
               placeholder="Unlimited"
               className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />
@@ -271,6 +299,7 @@ export function SchedulingFieldsSection({
               inputMode="numeric"
               value={sessionTimeLimit}
               onChange={(e) => onSessionTimeLimitChange(e.target.value)}
+              onBlur={onSessionTimeLimitBlur}
               placeholder="Unlimited"
               className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />

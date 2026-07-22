@@ -5,12 +5,16 @@ export interface PracticeSettingsSectionProps {
   onAutoPracticeChange: (value: boolean) => void;
   practiceThresholdMinutesFar: string;
   onPracticeThresholdMinutesFarChange: (value: string) => void;
+  onPracticeThresholdMinutesFarBlur: () => void;
   practiceThresholdMinutesNear: string;
   onPracticeThresholdMinutesNearChange: (value: string) => void;
+  onPracticeThresholdMinutesNearBlur: () => void;
   practiceUrgentWindowDays: string;
   onPracticeUrgentWindowDaysChange: (value: string) => void;
+  onPracticeUrgentWindowDaysBlur: () => void;
   practiceMaxGap: string;
   onPracticeMaxGapChange: (value: string) => void;
+  onPracticeMaxGapBlur: () => void;
 }
 
 /**
@@ -19,19 +23,23 @@ export interface PracticeSettingsSectionProps {
  * the exam), the days-until-exam cutoff between those two thresholds, and the
  * backstop maximum lesson gap. Pure controlled component — all state lives with
  * the caller, which parses these strings and falls back to the current course
- * value on blur/save.
+ * value on blur (see the `on*Blur` callbacks).
  */
 export function PracticeSettingsSection({
   autoPractice,
   onAutoPracticeChange,
   practiceThresholdMinutesFar,
   onPracticeThresholdMinutesFarChange,
+  onPracticeThresholdMinutesFarBlur,
   practiceThresholdMinutesNear,
   onPracticeThresholdMinutesNearChange,
+  onPracticeThresholdMinutesNearBlur,
   practiceUrgentWindowDays,
   onPracticeUrgentWindowDaysChange,
+  onPracticeUrgentWindowDaysBlur,
   practiceMaxGap,
   onPracticeMaxGapChange,
+  onPracticeMaxGapBlur,
 }: PracticeSettingsSectionProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -55,6 +63,7 @@ export function PracticeSettingsSection({
           inputMode="numeric"
           value={practiceThresholdMinutesFar}
           onChange={(e) => onPracticeThresholdMinutesFarChange(e.target.value)}
+          onBlur={onPracticeThresholdMinutesFarBlur}
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
@@ -70,6 +79,7 @@ export function PracticeSettingsSection({
           inputMode="numeric"
           value={practiceThresholdMinutesNear}
           onChange={(e) => onPracticeThresholdMinutesNearChange(e.target.value)}
+          onBlur={onPracticeThresholdMinutesNearBlur}
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
@@ -86,6 +96,7 @@ export function PracticeSettingsSection({
           inputMode="numeric"
           value={practiceUrgentWindowDays}
           onChange={(e) => onPracticeUrgentWindowDaysChange(e.target.value)}
+          onBlur={onPracticeUrgentWindowDaysBlur}
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
@@ -101,6 +112,7 @@ export function PracticeSettingsSection({
           inputMode="numeric"
           value={practiceMaxGap}
           onChange={(e) => onPracticeMaxGapChange(e.target.value)}
+          onBlur={onPracticeMaxGapBlur}
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
         <span className="mt-1 block text-xs text-ink-faint">
