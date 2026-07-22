@@ -4,13 +4,24 @@
 // IntersectionObserver-driven active-section highlighting, unchanged in
 // behaviour. Below xl — where the sidebar has always been hidden — a compact
 // sticky jumper takes over so wayfinding no longer disappears on mobile and
-// tablet.
+// tablet. SectionRail and SectionRailMobileJumper each gate their own render
+// on the same `useMediaQuery` breakpoint (see DESKTOP_QUERY below), so only
+// one of the two ever mounts at a time — not two independently-styled,
+// always-mounted elements hidden via separate Tailwind breakpoint classes.
 
 import { useEffect, useRef, useState } from 'react';
 import { LayoutGroup, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { cn } from './cn';
 import { ChevronDownIcon } from './icons';
 import { useIsTouchMode } from '../../state/inputMode';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
+
+// Matches Tailwind's default `xl` breakpoint. Both SectionRail and
+// SectionRailMobileJumper gate their render on this single matchMedia query
+// so the desktop rail and mobile jumper are architecturally guaranteed
+// mutually exclusive, rather than relying on two independent `hidden xl:block`
+// / `xl:hidden` utility classes that could in principle drift out of sync.
+const DESKTOP_QUERY = '(min-width: 1280px)';
 
 export interface SectionRailItem {
   id: string;
@@ -62,10 +73,13 @@ interface SectionRailProps {
   title?: string;
 }
 
-/** Sticky desktop sidebar nav, visible from the `xl` breakpoint up. */
+/** Sticky desktop sidebar nav, rendered only from the `xl` breakpoint up. */
 export function SectionRail({ sections, activeSection, onNavigate, motionMultiplier, title = 'On this page' }: SectionRailProps) {
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  if (!isDesktop) return null;
+
   return (
-    <aside className="hidden xl:block w-64 shrink-0">
+    <aside className="w-64 shrink-0">
       <div className="sticky top-24">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -184,8 +198,11 @@ interface SectionRailMobileJumperProps {
  * without inventing new interaction patterns.
  */
 export function SectionRailMobileJumper({ sections, activeSection, onNavigate, label = 'Jump to section', className }: SectionRailMobileJumperProps) {
+  const isDesktop = useMediaQuery(DESKTOP_QUERY);
+  if (isDesktop) return null;
+
   return (
-    <div className={cn('sticky top-0 z-10 mb-6 rounded-xl border border-line bg-surface/95 p-2 shadow-sm backdrop-blur-sm xl:hidden', className)}>
+    <div className={cn('sticky top-0 z-10 mb-6 rounded-xl border border-line bg-surface/95 p-2 shadow-sm backdrop-blur-sm', className)}>
       <label className="relative flex items-center">
         <span className="sr-only">{label}</span>
         <select

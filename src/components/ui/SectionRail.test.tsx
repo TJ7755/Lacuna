@@ -20,6 +20,22 @@ class MockIntersectionObserver {
   unobserve = vi.fn();
 }
 
+function createMediaQueryList(matches: boolean) {
+  return {
+    matches,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  };
+}
+
+/** Mocks window.matchMedia so useMediaQuery('(min-width: 1280px)') resolves to `isDesktop`. */
+function mockViewport(isDesktop: boolean) {
+  window.matchMedia = vi.fn().mockImplementation(() => createMediaQueryList(isDesktop));
+}
+
+const originalMatchMedia = window.matchMedia;
+
 beforeEach(() => {
   observerCallback = null;
   observe.mockClear();
@@ -29,10 +45,12 @@ beforeEach(() => {
     value: MockIntersectionObserver,
   });
   document.body.innerHTML = '<div id="section-a"></div><div id="section-b"></div>';
+  mockViewport(true);
 });
 
 afterEach(() => {
   document.body.innerHTML = '';
+  window.matchMedia = originalMatchMedia;
 });
 
 function Harness({ onNavigate = vi.fn() }: { onNavigate?: (id: string) => void }) {
@@ -79,6 +97,7 @@ describe('SectionRail', () => {
   });
 
   it('reflects the active section in the mobile jumper select', () => {
+    mockViewport(false);
     render(<Harness />);
     act(() => {
       observerCallback?.(
@@ -91,10 +110,25 @@ describe('SectionRail', () => {
   });
 
   it('calls onNavigate when the mobile jumper selection changes', () => {
+    mockViewport(false);
     const onNavigate = vi.fn();
     render(<Harness onNavigate={onNavigate} />);
     const select = screen.getByLabelText('Jump to section') as HTMLSelectElement;
     fireEvent.change(select, { target: { value: 'section-b' } });
     expect(onNavigate).toHaveBeenCalledWith('section-b');
+  });
+
+  it('renders only the desktop rail at desktop widths', () => {
+    mockViewport(true);
+    render(<Harness />);
+    expect(screen.getByRole('button', { name: 'Section B' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Jump to section')).not.toBeInTheDocument();
+  });
+
+  it('renders only the mobile jumper below the desktop breakpoint', () => {
+    mockViewport(false);
+    render(<Harness />);
+    expect(screen.queryByRole('button', { name: 'Section B' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Jump to section')).toBeInTheDocument();
   });
 });
