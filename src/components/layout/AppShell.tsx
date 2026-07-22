@@ -138,6 +138,7 @@ export function AppShell() {
         <Sidebar
           collapsed={collapsed}
           onToggleCollapsed={() => setCollapsed((c) => !c)}
+          onOpenPalette={() => setPaletteOpen(true)}
         />
       </div>
 
@@ -185,6 +186,10 @@ export function AppShell() {
                 collapsed={false}
                 onToggleCollapsed={() => setMobileOpen(false)}
                 toggleLabel="Close navigation"
+                onOpenPalette={() => {
+                  setMobileOpen(false);
+                  setPaletteOpen(true);
+                }}
               />
             </motion.div>
           </motion.div>

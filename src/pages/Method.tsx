@@ -280,6 +280,12 @@ export function Method() {
               >
                 Back to the course
               </Link>
+              <Link
+                to="/help"
+                className="inline-flex min-h-12 items-center font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft transition-colors hover:text-accent"
+              >
+                Read the help docs
+              </Link>
             </div>
           </div>
         </section>

@@ -31,6 +31,10 @@ interface SidebarProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   toggleLabel?: string;
+  /** Opens the command palette instead of routing to /search. When omitted
+   *  (surfaces without palette wiring, e.g. LearnMode's nav drawer) the
+   *  search item falls back to a plain link to the full search page. */
+  onOpenPalette?: () => void;
 }
 
 function NavItem({
@@ -81,6 +85,45 @@ function NavItem({
         </>
       )}
     </NavLink>
+  );
+}
+
+/** The sidebar's search entry: opens the command palette rather than routing to a
+ *  page, with a visible ⌘K/Ctrl+K hint so the palette is discoverable without
+ *  reading the shortcuts cheatsheet first. */
+function SearchNavItem({
+  onOpenPalette,
+  collapsed,
+  compact,
+}: {
+  onOpenPalette: () => void;
+  collapsed: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpenPalette}
+      title={collapsed ? 'Search (Ctrl/Cmd+K)' : undefined}
+      className={cn(
+        'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',
+        compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
+        collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
+        'text-ink-soft hover:bg-ink/5 hover:text-ink',
+      )}
+    >
+      <span className="shrink-0">
+        <SearchIcon />
+      </span>
+      {!collapsed && (
+        <>
+          <span className="flex-1 truncate">Search</span>
+          <kbd className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
+            Ctrl/Cmd+K
+          </kbd>
+        </>
+      )}
+    </button>
   );
 }
 
@@ -306,7 +349,7 @@ const CourseRow = memo(function CourseRow({
 // Main Sidebar component
 // ---------------------------------------------------------------------------
 
-export function Sidebar({ collapsed, onToggleCollapsed, toggleLabel }: SidebarProps) {
+export function Sidebar({ collapsed, onToggleCollapsed, toggleLabel, onOpenPalette }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const courses = useCourses();
   const summaries = useCourseSummaries();
@@ -399,7 +442,15 @@ export function Sidebar({ collapsed, onToggleCollapsed, toggleLabel }: SidebarPr
       <nav className={cn('flex flex-col gap-1 px-3', sidebarSettings.compactMode && 'gap-0')}>
         {sidebarSettings.navItems
           .filter((n) => n.visible)
-          .map((n) => (
+          .map((n) =>
+            n.id === 'search' && onOpenPalette ? (
+              <SearchNavItem
+                key={n.id}
+                onOpenPalette={onOpenPalette}
+                collapsed={collapsed}
+                compact={sidebarSettings.compactMode}
+              />
+            ) : (
             <NavItem
               key={n.id}
               to={n.id === 'dashboard' ? '/' : `/${n.id}`}
@@ -428,7 +479,8 @@ export function Sidebar({ collapsed, onToggleCollapsed, toggleLabel }: SidebarPr
                 n.id === 'dashboard' ? <StudyStreakBadge collapsed={collapsed} /> : undefined
               }
             />
-          ))}
+            ),
+          )}
       </nav>
 
       {/* Course list */}

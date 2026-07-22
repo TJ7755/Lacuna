@@ -848,6 +848,12 @@ export function HelpPage() {
                   Analytics
                 </Button>
               </Link>
+              <Link to="/method">
+                <Button variant="secondary" size="sm">
+                  <SparklesIcon width={16} height={16} />
+                  How the scheduler works
+                </Button>
+              </Link>
             </div>
           </div>
         </motion.div>

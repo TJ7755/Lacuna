@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useChartColours } from './useChartColours';
@@ -292,15 +293,21 @@ export function CourseComparison({ courses, cards }: CourseComparisonProps) {
               className="space-y-4 overflow-hidden"
             >
               <div className="flex items-center gap-3 text-sm">
-                <div className="flex items-center gap-1.5">
+                <Link
+                  to={`/course/${courseA.id}/analytics`}
+                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent hover:underline"
+                >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colourA }} />
-                  <span className="text-ink">{courseA.name}</span>
-                </div>
+                  {courseA.name}
+                </Link>
                 <span className="text-ink-faint">vs</span>
-                <div className="flex items-center gap-1.5">
+                <Link
+                  to={`/course/${courseB.id}/analytics`}
+                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent hover:underline"
+                >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colourB }} />
-                  <span className="text-ink">{courseB.name}</span>
-                </div>
+                  {courseB.name}
+                </Link>
               </div>
 
               <div className="space-y-4">
