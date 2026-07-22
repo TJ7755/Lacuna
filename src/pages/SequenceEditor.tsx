@@ -7,7 +7,7 @@
 // and the lesson-scoped course/:courseId/lesson/:lessonId/sequence/new variant.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
@@ -31,6 +31,7 @@ import {
   updateSequence,
   type SequenceSnapshot,
 } from '../db/repository';
+import type { EditorOriginState } from '../utils/editorOrigin';
 import type { SequenceItem, SequencePresetId } from '../db/types';
 
 export function SequenceEditor() {
@@ -41,6 +42,7 @@ export function SequenceEditor() {
   }>();
   const lessonMode = Boolean(lessonId);
   const navigate = useNavigate();
+  const location = useLocation();
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -106,7 +108,13 @@ export function SequenceEditor() {
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/bank`;
-  const backPath = lessonMode ? lessonPath : bankPath;
+  // Where the caller navigated from, when that differs from what the route alone
+  // implies. Sequence editing has no lesson-scoped edit route (only "new" does),
+  // so origin state is the only signal that an edit was opened from a lesson —
+  // absent on direct loads and hard refreshes, which fall back to the bank.
+  const origin = (location.state as EditorOriginState | null)?.origin;
+  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
+  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Question bank');
 
   // Distinct speakers seen across items, in order of first appearance, for the
   // "my speaker" picker — populated by whichever items already carry a speaker,
@@ -191,7 +199,7 @@ export function SequenceEditor() {
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">
         <p className="mb-4 text-ink-soft">This sequence could not be found.</p>
         <Link to={backPath} className="text-accent underline">
-          Back to {lessonMode ? lesson?.name : 'Question bank'}
+          Back to {backLabel}
         </Link>
       </motion.div>
     );
@@ -331,7 +339,7 @@ export function SequenceEditor() {
         </Link>
         <ChevronRight />
         <Link to={backPath} className="transition-colors hover:text-ink">
-          {lessonMode ? lesson?.name : 'Question bank'}
+          {backLabel}
         </Link>
         <ChevronRight />
         <span className="text-ink-soft">{editing ? 'Edit sequence' : 'New sequence'}</span>

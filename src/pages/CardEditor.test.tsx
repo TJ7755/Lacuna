@@ -3,13 +3,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CardEditor } from './CardEditor';
-import type { Card, Course, Sequence } from '../db/types';
+import type { Card, Course, Lesson, Sequence } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 
 const mockNavigate = vi.fn();
 let mockCourse: Course | undefined;
 let mockCard: Card | null | undefined;
 let mockSequences: Sequence[] | undefined;
+let mockLesson: Lesson | null | undefined;
 const updateCard = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('react-router-dom', async () => {
@@ -24,8 +25,8 @@ vi.mock('../state/useData', () => ({
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
   useCourseCards: () => [],
-  useLesson: () => undefined,
-  useLessonCards: () => undefined,
+  useLesson: () => mockLesson,
+  useLessonCards: () => (mockLesson ? [] : undefined),
   useSequences: () => mockSequences,
 }));
 
@@ -116,10 +117,32 @@ function renderEditing() {
   );
 }
 
+// A lesson-owned card can be edited via the lesson-scoped route (so the editor's
+// duplicate check and tag suggestions stay scoped to the lesson's own deck) while
+// having been opened from elsewhere — e.g. the Question bank, via an origin override
+// in router state (see src/utils/editorOrigin.ts).
+function renderEditingViaLesson(state?: unknown) {
+  return render(
+    <MemoryRouter
+      initialEntries={[
+        { pathname: '/course/course-1/lesson/lesson-1/cards/card-1/edit', state },
+      ]}
+    >
+      <Routes>
+        <Route
+          path="/course/:courseId/lesson/:lessonId/cards/:cardId/edit"
+          element={<CardEditor />}
+        />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 beforeEach(() => {
   mockCourse = course;
   mockCard = undefined;
   mockSequences = [];
+  mockLesson = undefined;
   mockNavigate.mockClear();
   updateCard.mockClear();
 });
@@ -153,5 +176,57 @@ describe('CardEditor — generated cards', () => {
 
     expect(screen.getByPlaceholderText(/Question or prompt/)).toBeInTheDocument();
     expect(screen.getByText('Save changes')).toBeInTheDocument();
+  });
+});
+
+describe('CardEditor — return-to-origin back-link', () => {
+  const lesson: Lesson = {
+    id: 'lesson-1',
+    courseId: 'course-1',
+    name: 'Cells',
+    description: '',
+    orderIndex: 0,
+    createdAt: Date.now(),
+    isExtension: false,
+  };
+
+  const lessonCard: Card = {
+    ...generatedCard,
+    id: 'card-1',
+    primaryLessonId: 'lesson-1',
+    sequenceItemId: undefined,
+  };
+
+  // Editing a lesson-owned card still uses the lesson-scoped route (so duplicate
+  // checking and tag suggestions stay scoped to the lesson's deck), but when the
+  // Question bank opened it, an origin override sends the back-link there instead.
+  it('targets the Question bank when an origin override is present', () => {
+    mockLesson = lesson;
+    mockCard = lessonCard;
+    renderEditingViaLesson({ origin: { path: '/course/course-1/bank', label: 'Question bank' } });
+
+    const link = screen.getByRole('link', { name: 'Question bank' });
+    expect(link).toHaveAttribute('href', '/course/course-1/bank');
+  });
+
+  // A hard refresh drops router state — the lesson-scoped route itself still
+  // carries enough information to fall back to the lesson correctly.
+  it('falls back to the lesson encoded in the route when no origin state is present', () => {
+    mockLesson = lesson;
+    mockCard = lessonCard;
+    renderEditingViaLesson();
+
+    const link = screen.getByRole('link', { name: 'Cells' });
+    expect(link).toHaveAttribute('href', '/course/course-1/lesson/lesson-1');
+  });
+
+  // The bank-scoped edit route (Question bank's Unassigned bucket) already has no
+  // lesson to fall back to, so it targets the bank by default.
+  it('falls back to the course bank when editing via the bank-scoped route', () => {
+    mockCard = { ...generatedCard, primaryLessonId: null, sequenceItemId: undefined };
+    renderEditing();
+
+    const link = screen.getByRole('link', { name: 'Question bank' });
+    expect(link).toHaveAttribute('href', '/course/course-1/bank');
   });
 });

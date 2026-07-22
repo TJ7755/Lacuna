@@ -125,6 +125,7 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
+        lessonName="Cells"
         lessonCards={[]}
         lessonDeck={undefined}
         onNavigate={vi.fn()}
@@ -140,6 +141,7 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
+        lessonName="Cells"
         lessonCards={[card]}
         lessonDeck={deck}
         onNavigate={vi.fn()}
@@ -157,6 +159,7 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
+        lessonName="Cells"
         lessonCards={[card]}
         lessonDeck={deck}
         onNavigate={vi.fn()}
@@ -177,6 +180,7 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
+        lessonName="Cells"
         lessonCards={[card]}
         lessonDeck={deck}
         onNavigate={vi.fn()}
@@ -196,6 +200,7 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
+        lessonName="Cells"
         lessonCards={[]}
         lessonDeck={undefined}
         onNavigate={vi.fn()}

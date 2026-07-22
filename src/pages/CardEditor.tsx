@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCard } from '../state/useData';
 import { useCourse, useCourseCards, useLesson, useLessonCards, useSequences } from '../state/useCourseData';
@@ -26,6 +26,7 @@ import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
+import type { EditorOriginState } from '../utils/editorOrigin';
 import type { Card, CardType } from '../db/types';
 
 /**
@@ -45,6 +46,7 @@ export function CardEditor() {
   const lessonMode = Boolean(lessonId);
   const bankMode = !lessonMode;
   const navigate = useNavigate();
+  const location = useLocation();
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -215,8 +217,14 @@ export function CardEditor() {
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/bank`;
+  // Where the caller navigated from, when that differs from what the route alone
+  // implies (e.g. a lesson-owned card opened for editing from the Question bank).
+  // Absent on direct loads and hard refreshes, which drop router state — the
+  // route-derived default below covers that case.
+  const origin = (location.state as EditorOriginState | null)?.origin;
   // Where Cancel, post-save navigation and the breadcrumb "back" target all point.
-  const backPath = lessonMode ? lessonPath : bankPath;
+  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
+  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Question bank');
 
   if (
     (lessonMode
@@ -257,7 +265,7 @@ export function CardEditor() {
       >
         <p className="mb-4 text-ink-soft">This card could not be found.</p>
         <Link to={backPath} className="text-accent underline">
-          Back to {lessonMode ? lesson?.name : 'Question bank'}
+          Back to {backLabel}
         </Link>
       </motion.div>
     );
@@ -276,27 +284,13 @@ export function CardEditor() {
     return (
       <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
         <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-          {lessonMode ? (
-            <>
-              <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-                {course?.name}
-              </Link>
-              <ChevronRight />
-              <Link to={backPath} className="transition-colors hover:text-ink">
-                {lesson?.name}
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-                {course?.name}
-              </Link>
-              <ChevronRight />
-              <Link to={backPath} className="transition-colors hover:text-ink">
-                Question bank
-              </Link>
-            </>
-          )}
+          <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
+            {course?.name}
+          </Link>
+          <ChevronRight />
+          <Link to={backPath} className="transition-colors hover:text-ink">
+            {backLabel}
+          </Link>
           <ChevronRight />
           <span className="text-ink-soft">Card</span>
         </nav>
@@ -453,27 +447,13 @@ export function CardEditor() {
     >
       {/* Breadcrumb */}
       <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-        {lessonMode ? (
-          <>
-            <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-              {course?.name}
-            </Link>
-            <ChevronRight />
-            <Link to={backPath} className="transition-colors hover:text-ink">
-              {lesson?.name}
-            </Link>
-          </>
-        ) : (
-          <>
-            <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-              {course?.name}
-            </Link>
-            <ChevronRight />
-            <Link to={backPath} className="transition-colors hover:text-ink">
-              Question bank
-            </Link>
-          </>
-        )}
+        <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
+          {course?.name}
+        </Link>
+        <ChevronRight />
+        <Link to={backPath} className="transition-colors hover:text-ink">
+          {backLabel}
+        </Link>
         <ChevronRight />
         <span className="text-ink-soft">{editing ? 'Edit card' : 'New card'}</span>
       </nav>

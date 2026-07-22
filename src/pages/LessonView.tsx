@@ -255,6 +255,7 @@ export function LessonView({
               <LessonCardsSection
                 courseId={courseId}
                 lessonId={lessonId}
+                lessonName={lesson.name}
                 lessonCards={lessonCards}
                 lessonDeck={lessonDeck}
                 onNavigate={navigate}

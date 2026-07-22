@@ -14,6 +14,14 @@ import { Button } from '../components/ui/Button';
 import { ChevronLeftIcon, PlusIcon, SearchIcon } from '../components/ui/icons';
 import type { Card, Lesson, Sequence } from '../db/types';
 
+// Editing a lesson-owned card still uses the lesson-scoped route (so the editor's
+// duplicate check and tag suggestions stay scoped to the lesson's own deck), but the
+// user opened it from here, so the back-link should return to the Question bank
+// rather than the lesson — see src/utils/editorOrigin.ts.
+function bankOrigin(courseId: string) {
+  return { origin: { path: `/course/${courseId}/bank`, label: 'Question bank' } };
+}
+
 export function QuestionBank() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
@@ -216,7 +224,9 @@ function LessonBucket({
           courseId={courseId}
           assignableLessons={assignableLessons}
           onEditCard={(card) =>
-            navigate(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`)
+            navigate(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`, {
+              state: bankOrigin(courseId),
+            })
           }
           sequences={sequences}
           onEditSequence={(sequenceId) => navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}

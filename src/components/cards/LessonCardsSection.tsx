@@ -23,15 +23,19 @@ import type { Card, Deck } from '../../db/types';
 interface LessonCardsSectionProps {
   courseId: string;
   lessonId: string;
+  /** Used only to label the back-link when the sequence editor is opened from here
+   *  (see the onEditSequence origin override below). */
+  lessonName: string;
   lessonCards: Card[];
   lessonDeck: Deck | undefined;
-  onNavigate: (path: string) => void;
+  onNavigate: (path: string, options?: { state?: unknown }) => void;
   className?: string;
 }
 
 export function LessonCardsSection({
   courseId,
   lessonId,
+  lessonName,
   lessonCards,
   lessonDeck,
   onNavigate,
@@ -137,7 +141,14 @@ export function LessonCardsSection({
           linkedCardIds={linkedCardIds}
           onUnlinkCard={(card) => void handleUnlink(card)}
           sequences={sequences}
-          onEditSequence={(sequenceId) => onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
+          onEditSequence={(sequenceId) =>
+            // Sequence editing has no lesson-scoped edit route, so without an
+            // explicit origin the editor would default to the Question bank —
+            // override it to return here instead.
+            onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`, {
+              state: { origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName } },
+            })
+          }
         />
       )}
       <AnimatePresence>
