@@ -347,7 +347,8 @@ export function CourseSettings() {
                     onMaxReviewsPerDayChange={setMaxReviewsPerDay}
                     onMaxReviewsPerDayBlur={commitMaxReviewsPerDay}
                     retention={retention}
-                    onRetentionChange={(value) => {
+                    onRetentionChange={setRetention}
+                    onRetentionCommit={(value) => {
                       setRetention(value);
                       commitCourse({
                         fsrsParameters: {

@@ -213,6 +213,24 @@ describe('CourseSettings', () => {
     );
   });
 
+  it('commits the retention slider once when the drag ends, not on every tick', () => {
+    renderPage();
+    const slider = screen.getByLabelText('Target retention');
+    fireEvent.change(slider, { target: { value: '0.91' } });
+    fireEvent.change(slider, { target: { value: '0.92' } });
+    fireEvent.change(slider, { target: { value: '0.93' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(slider, { target: { value: '0.93' } });
+    expect(mockUpdateCourse).toHaveBeenCalledTimes(1);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({
+        fsrsParameters: expect.objectContaining({ requestRetention: 0.93 }),
+      }),
+    );
+  });
+
   it('commits the exam objective toggle immediately on change', () => {
     renderPage();
     fireEvent.click(screen.getByLabelText('Secure topics'));

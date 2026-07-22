@@ -24,8 +24,10 @@ export interface SchedulingFieldsSectionProps {
   onMaxReviewsPerDayChange: (value: string) => void;
   onMaxReviewsPerDayBlur: () => void;
   retention: number;
-  /** Bounded/clamped by the slider itself, so this commits immediately rather than on blur. */
+  /** Updates the live display value as the slider is dragged; does not commit. */
   onRetentionChange: (value: number) => void;
+  /** Commits the retention value once the drag/keyboard interaction ends (or a preset is picked). */
+  onRetentionCommit: (value: number) => void;
   enableFuzz: boolean;
   onEnableFuzzChange: (value: boolean) => void;
   maxInterval: string;
@@ -57,8 +59,10 @@ export interface SchedulingFieldsSectionProps {
  * retention, interval fuzz, maximum interval, learning/relearning steps, and leech detection.
  * Pure controlled component — all state lives with the caller, which also owns the instant-commit
  * mechanics: text/numeric fields commit on blur via the `on*Blur` callbacks (so a half-typed value
- * never reaches the repository), toggles/selects/the retention slider commit directly through
- * their `on*Change` callback.
+ * never reaches the repository), toggles/selects commit directly through their `on*Change`
+ * callback. The retention slider tracks the drag live via `onRetentionChange` but only commits
+ * via `onRetentionCommit`, fired once when the drag/keyboard interaction ends (or a preset is
+ * clicked), so a drag gesture does not write on every intermediate tick.
  */
 export function SchedulingFieldsSection({
   newCardsPerDay,
@@ -69,6 +73,7 @@ export function SchedulingFieldsSection({
   onMaxReviewsPerDayBlur,
   retention,
   onRetentionChange,
+  onRetentionCommit,
   enableFuzz,
   onEnableFuzzChange,
   maxInterval,
@@ -149,6 +154,8 @@ export function SchedulingFieldsSection({
           step={0.01}
           value={retention}
           onChange={(e) => onRetentionChange(Number(e.target.value))}
+          onPointerUp={(e) => onRetentionCommit(Number(e.currentTarget.value))}
+          onKeyUp={(e) => onRetentionCommit(Number(e.currentTarget.value))}
           aria-label="Target retention"
           className="mt-3 w-full accent-accent"
         />
@@ -159,7 +166,7 @@ export function SchedulingFieldsSection({
               <motion.button
                 key={p.label}
                 type="button"
-                onClick={() => onRetentionChange(p.value)}
+                onClick={() => onRetentionCommit(p.value)}
                 aria-pressed={active}
                 whileHover={{ y: -2 }}
                 whileTap={{ scale: 0.97 }}
