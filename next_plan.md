@@ -19,6 +19,11 @@ that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in ord
 10. **Arc 9 — Mobile experience and due-card reminders** (outline)
 11. **Arc 10 — UI de-clutter and navigation restructure** (detailed; independent of
     Arcs 6–9, may run before them)
+12. **Arc 11 — Item-type generalisation and authored mark schemes** (detailed; the
+    "concept-testing app" arc)
+13. **Arc 12 — Progress receipts and encrypted relay** (detailed outline; depends on
+    Arc 11 for mark-bearing receipts, but a retrievability-only first slice depends on
+    nothing)
 
 Plugins remain speculative pending a concrete pain point (see Arc 2). Sync/collaboration
 is no longer parked outright: Arc 8 un-parks it as a design question to be settled before
@@ -1764,6 +1769,15 @@ build begins:
    logs and FSRS state recomputed from the merged log.
 3. **Self-hostable companion process**, architecturally adjacent to Arc 2's Electron-hosted
    MCP endpoint (a local companion a browser tab can connect out to).
+4. **Encrypted snapshot blobs over the Arc 12 relay** — the full state is a
+   `BackupFile`-shaped snapshot, end-to-end encrypted, pushed/pulled through the same
+   self-hostable relay Arc 12 introduces for receipts. Merge on pull reuses the existing
+   backup merge importer: newest-wins per content record, and review histories merged by
+   set-union on `ReviewLog.eventId` followed by an FSRS recompute from the merged log
+   (option 2's append-only insight without the CRDT layer). Blind last-write-wins on the
+   whole blob is explicitly ruled out — it silently discards the losing device's
+   sessions. Image assets travel separately, addressed by their existing content hash,
+   so state blobs stay small.
 
 No Lacuna-run cloud service in any option — that remains against the product's
 local-only identity. Whichever option is chosen must preserve that.
@@ -1979,6 +1993,327 @@ Each task is one subagent's scope, one commit, tests updated alongside.
 
 ---
 
+# Arc 11 — Item-Type Generalisation and Authored Mark Schemes (detailed)
+
+## 11.1 Motivation and positioning
+
+Lacuna is a concept-testing application, not a flashcard application. A flashcard is one
+delivery vehicle for a graded retrieval event; the FSRS engine only ever consumes graded
+retrieval events and does not care what produced them. This arc generalises the vehicle
+while leaving the engine untouched: alongside Basic/Reversed/Cloze/Typing, items may be
+structured practice questions — numeric answers, scaffolded working, and free working
+chains marked against a tutor-authored mark scheme. This is the arc that makes Lacuna
+useful for exam-style practice (the Atom Learning-shaped use case) rather than recall
+drill alone, and it is the prerequisite for mark-denominated readiness (§11.8) and for
+mark-bearing receipts (Arc 12).
+
+Prior art inside this repository: Appendix A.1's negative result stands as the recorded
+reason this arc contains no learned marking. Verification here is deterministic
+(equivalence by random evaluation, §11.4) or declarative (predicates, §11.5); the
+LLM-marked path is explicitly out of scope (§11.10).
+
+## 11.2 Data model: the additive payload
+
+`Card` gains one optional field:
+
+```ts
+/** Per-type structured content for practice item types. Absent on every
+ *  pre-Arc-11 card and on all four classic types. Versioned independently of the
+ *  DB schema so share codes and backups can validate forward-compatibly. */
+payload?: ItemPayload;   // { v: 1; kind: 'numeric' | 'scaffold' | 'working'; ... }
+```
+
+Rules, in order of importance:
+
+1. **No smuggling.** Structured content lives in `payload`, never encoded into `front`.
+   The cloze trick (`{{cN::...}}` in `front`) was acceptable once; a working chain with
+   waypoints, predicates and mark values crammed into Markdown is not. `front` remains
+   the question prompt (Markdown, rendered as today) and doubles as the plain-text
+   fallback rendering on clients that do not understand the payload.
+2. **Additive everywhere.** No migration. Old cards never change; backups and v2 share
+   codes carry `payload` opaquely where present. `LineageCardSnapshot` gains `payload` in
+   its diffed field set (content, never FSRS state — same rule as today).
+3. **`payload.v` from day one.** The mark-scheme grammar (§11.5) will grow; a version
+   marker costs one byte now and prevents old clients silently mis-marking new schemes
+   forever. Unknown `v` or `kind` renders the item read-only with the `front` fallback
+   and an "update Lacuna to study this item" notice — never a crash, never a wrong mark.
+
+Item kinds in this arc:
+
+- **`numeric`** — machine-checkable answer: exact value, value-with-tolerance, or
+  match-one-of. The Atom-style single question.
+- **`scaffold`** — the teacher writes the full working and holes selected steps; the
+  student fills the holes (exact/numeric/equivalence-checked per hole). Rigid by design:
+  it teaches the shape of a good answer, which is half of what method marks reward.
+  Cousin of Parsons problems; also the fallback that covers geometry proofs and wordier
+  working without a proof engine — the teacher authors the proof, holes the key steps.
+- **`working`** — free working chain: the student writes their own lines, marked against
+  an authored scheme (§11.5) by the verification engine (§11.4).
+
+The three kinds layer pedagogically: scaffold for learning a method, working for
+drilling it, working-with-full-scheme for past-paper realism.
+
+## 11.3 Maths input
+
+Target user includes 11+ students. LaTeX is never shown or required.
+
+- **Lenient plain-text parser as the base.** Accept what students naturally type
+  (`2x+6=14`, `3/4`, `sqrt(16)`, `x^2`), parsed by mathjs (**not currently a dependency**
+  — adding it is a decision this arc must make, weighed against a purpose-built parser,
+  since the arc needs only arithmetic/algebraic expression parsing and evaluation from
+  it), with a live rendered preview (KaTeX, already shipped as `katex` and
+  `rehype-katex`) so the student sees the app understood them.
+- **Palette input on top.** Buttons for the symbols students demonstrably cannot type
+  (fraction, power, root, ×, ÷ — computer literacy is falling, `^` and `sqrt()` are not
+  discoverable), inserting templates into the text field. 44px targets per the existing
+  touch system. A structure-aware equation editor is explicitly out of scope.
+- The input parser and the verification engine share one expression representation —
+  this is a single investment, not two.
+
+## 11.4 Verification engine (pure module, no DB, no React)
+
+`src/items/verify.ts` (name indicative), unit-tested standalone like `forwardSim.ts`:
+
+- **Equivalence by random evaluation.** Two expressions are judged equivalent by
+  substituting the same random values for free variables into both and comparing
+  numerically, repeated over several draws. Deterministic seeding per (item, attempt) so
+  a verdict is reproducible in dispute review. Not symbolically airtight; with
+  real-valued draws the collision probability is negligible, and the failure mode is
+  caught by the feedback loop (§11.7). This is what makes free working chains checkable
+  fully offline with no CAS dependency.
+- **Waypoint semantics.** A scheme line defines a checkpoint value, not a required
+  surface form: any student line equivalent to the waypoint earns its mark, and matching
+  is order-tolerant (each student line is tested against outstanding waypoints) rather
+  than lockstep. "Pass through these waypoints" is how method marks behave; "match my
+  working" is not.
+- **Numeric checks.** Exact, tolerance (`within`), and set membership, for `numeric`
+  kinds and final-answer lines.
+
+## 11.5 Mark-scheme syntax and compiler
+
+Tutor-authored, in the editor, as text — data, never executable code (imported decks must
+never run a stranger's logic; there is no sandbox and there will not be one). Indicative
+shape:
+
+```
+[1] substitution :: 2x = 8
+[1] solve        :: x = 4
+[1] check        :: within 0.01 :: 4.0
+```
+
+Mark value in brackets, optional criterion label (free short string — powers the
+per-criterion analytics in §11.8 with zero ontology work), then either a waypoint
+expression (equivalence-checked) or a predicate. Predicate vocabulary v1: `equals`,
+`within`, `matches-one-of`, `contains` (case-normalised substring, for "states the
+formula"-style science marks). The vocabulary is expected to grow from real tutor
+complaints, not armchair design — hence `payload.v`.
+
+**Compiler requirements** (this is a product surface, not a parser):
+
+- Error-tolerant: one malformed line never blanks the preview; other lines keep
+  compiling, the broken one gets an inline squiggle and a human-voiced message
+  ("I don't recognise 'wthin' — did you mean 'within'?").
+- Live compiled preview beside the source (the cloze-preview pattern scaled up): each
+  waypoint rendered in plain English ("1 mark — substitution — any line equivalent to
+  2x = 8") with a running mark total. The plain-English rendering is the mechanism that
+  teaches the syntax without documentation.
+- Autocomplete on `[` and predicate names.
+- One grammar, one compiler, exposed as a pure module: the editor, the import staging
+  area (§11.6), and the MCP boundary all funnel through it, so tutor typos, LLM
+  hallucinations and agent mistakes all fail the same visible way.
+
+## 11.6 Test harness, fixtures, and the LLM authoring pipeline
+
+**Test harness.** A third editor panel where the tutor types a pretend student answer and
+watches the scheme mark it live — waypoints lighting up, marks tallying, misses explained
+("no line equivalent to x = 4 found"). Over-strict predicates are the failure mode that
+silently punishes students weeks later; this is the only place they are catchable early.
+
+**Fixtures.** Sample answers (correct routes and classic wrong ones, each with an
+expected score) can be pinned to the item and re-run automatically on every scheme edit —
+regression tests for mark schemes. Fixtures travel in the payload so a shared item
+carries its own tests.
+
+**LLM pipeline** (paste loop; no API keys, no hosted endpoint — the realistic student
+and tutor sits on free-tier ChatGPT, and ChatGPT's custom-connector path is Plus-only
+and remote-server-only, so MCP is the power-user path, not the default):
+
+1. **Scheme-from-question:** "Draft mark scheme" copies a clipboard prompt containing
+   the question, the full syntax specification with worked examples, and the predicate
+   vocabulary. The tutor pastes into their chatbot, pastes the reply back into the
+   scheme pane, and the compiler validates it instantly — the compiler is what makes
+   LLM generation trustworthy.
+2. **Batch generation (the real workflow):** notes → wizard ("paste your notes for this
+   lesson", topic + level + rough item count) → clipboard prompt that additionally
+   instructs the model to ask up to three clarifying questions before producing output
+   (the follow-up conversation happens entirely in the chat window; Lacuna never
+   mediates it) → one structured, delimited output block containing items, schemes and
+   fixtures → paste back into a **staging area**, never directly into a lesson.
+   Batch-size discipline per A.1's recorded lesson: cap items per response and chunk by
+   lesson/topic, with "continue" rounds, or late items degrade into mush.
+3. **Staging/triage view** (the `PendingMergeReview` pattern wearing a different hat):
+   each proposed item shows compile status, fixture status, and duplicate status
+   (`diff_import_preview`'s duplicate detection run against the target lesson, so
+   "this looks like an item you already have" surfaces at triage, not after
+   distribution). Per-item accept/edit/reject; "accept all clean" as the bulk action.
+   Malformed item 23 shows red; the other thirty-nine import.
+4. **Revise-with-AI:** from any staged or accepted item, one button copies the item, its
+   scheme, its failing fixture and a complaint field into a fresh clipboard prompt.
+   Without this, round two means hand-reconstructing context, and tutors will ship it
+   broken instead.
+5. **MCP direct** (Arc 2 surface): `lacuna.create_card` grows a payload variant,
+   validated at the tool boundary by the same compiler. No new UI.
+
+Downstream of triage, everything already exists: accepted items join the lesson, Publish
+bumps the revision, students merge through Arc 7 with FSRS state preserved. The pipeline
+is shippable on share codes alone, before Arc 12 exists.
+
+## 11.7 Grading, feedback, and disputes
+
+- **Grade mapping.** One graded retrieval event per item (see §11.9 for the open
+  alternative). Fraction of marks earned plus response time maps onto the four-point
+  scale: full marks and fast → Easy; full marks → Good; partial with self-corrected
+  errors → Hard; collapsed → Again. Exact thresholds live in one pure function beside
+  `grading.ts` and are tunable.
+- **`ReviewLog` additions** (optional fields, no migration): marks earned/available and
+  the per-line verification verdicts, so the checker's behaviour is auditable and the
+  §11.8 analytics need no second bookkeeping.
+- **Checker feedback.** Every verified line carries a "the checker got this wrong"
+  affordance, logging question, student line, verdict and the random draws used.
+  Disputes surface in the author's marking queue (Arc 12) as a proposed new fixture —
+  the dispute becomes the test case.
+- **Author-marked queue (Arc 12 slice).** Items the checker cannot verify can be queued
+  for the tutor to mark against the scheme; scheduling proceeds on a provisional Good
+  pending correction so the queue never blocks study. Student-facing self-marking does
+  not exist as a concept.
+
+## 11.8 Marks-denominated readiness and provenance
+
+- With `marks` on scheme lines, the objective layer can compute **predicted marks**,
+  Σ(marks × predicted exam-day R), alongside mean R — upgrading the progress bar from an
+  abstract percentage to "on course for roughly 54 out of 80". Falls out of the payload
+  nearly for free; likely the single most legible number the product produces, and the
+  headline figure for Arc 12 receipts.
+- Per-criterion analytics: grouping verdicts by criterion label yields "drops the
+  substitution mark 70% of the time" — a teachable diagnosis requiring no ML and no
+  taxonomy.
+- **Provenance, deliberately thin:** `Course` gains optional `examBoard` and
+  `specification` plain strings (data-only; feeds the LLM prompt context and labels
+  receipts). Spec-point tagging rides the existing tags system as a convention
+  (`spec:3.4.1`). A first-class Specification entity (board → topic tree → spec points)
+  is explicitly refused: it is the LMS trap, it makes Lacuna a curator of other people's
+  revisable taxonomies, and the tag convention retains the migration path if per-spec
+  dashboards ever become the core pitch.
+
+## 11.9 Open questions (to settle before the build, recorded here so this section
+cannot be mistaken for finished design)
+
+1. **Waypoint-level FSRS state.** Does a working chain produce one graded event for the
+   whole item (assumed above), or does each waypoint/criterion carry its own memory
+   state (the `fsrs_state` polymorphic-UUID groundwork would permit it)? Per-waypoint is
+   more radical, changes the payload design, and must be decided first.
+2. Predicate vocabulary beyond v1 — earned from real tutor usage, not designed upfront.
+3. Palette scope per key stage (which symbols 11+ vs GCSE actually need).
+4. Whether `numeric` items belong in the existing Typing-answer UI or a new face.
+
+## 11.10 Explicitly out of scope
+
+- LLM-graded free text as a scheduling input (A.1's negative result; an optional
+  "check my working" affordance may exist later but never feeds FSRS).
+- Learned/ML marking of any kind.
+- Executable teacher verification logic or any sandbox.
+- A geometry/proof formal syntax (scaffold covers proofs; revisit only when a real
+  tutor asks).
+- A structure-aware equation editor.
+- First-class exam-board/specification entities (§11.8).
+
+## 11.11 Success criteria
+
+1. All three item kinds author, verify, grade, share (v2 codes), back up, lineage-diff
+   and merge round-trip, with pre-Arc-11 clients degrading to the read-only fallback.
+2. The compiler round-trips every fixture in its own test corpus; the editor preview,
+   staging area and MCP boundary all reject the same malformed inputs identically.
+3. A tutor can go notes → batch prompt → paste → triage → publish inside ten minutes
+   for a typical lesson, on free-tier ChatGPT, with no API key.
+4. Verification is fully offline; no item type introduces a network dependency into the
+   study loop. All tests pass; `tsc -b` clean.
+
+---
+
+# Arc 12 — Progress Receipts and Encrypted Relay (detailed outline)
+
+## 12.1 Motivation
+
+The tutor/teacher story (authoring and distribution) shipped with Arcs 2 and 7. What is
+missing is the return path: evidence of how a student is actually tracking against the
+exam, without a Lacuna-run cloud and without violating local-first. The audience is the
+tutor preparing next session ("what decayed since last week?") and the parent paying for
+tutoring ("is this working?") — predicted exam-day readiness is a number no gradebook or
+tutoring platform provides, because none of them model memory.
+
+## 12.2 Receipts (no infrastructure; first slice)
+
+A **progress receipt** is a compact, share-code-style artefact the *student* generates
+and sends over any existing channel (email, WhatsApp); the author pastes it into their
+copy. Data moves only when a human deliberately moves it — that is the consent model,
+and it keeps the no-cloud tag honest.
+
+- **Contents:** course/lineage id, per-lesson (and, post-Arc 11, per-criterion)
+  aggregates of predicted exam-day retrievability, predicted marks (§11.8), review
+  counts, generated-at. Coarse by design: no card content, no per-review timestamps.
+  Hundreds of bytes before DEFLATE.
+- **Format:** own prefix (`LACR`-style), versioned, reusing the share-code
+  encode/decode/compression machinery. Receipts are not share codes and never carry
+  scheduling state inward.
+- **Reader UI:** in the author-side surface, receipts aggregate per student per course —
+  readiness trend over time, weakest topics first ("solid on trig identities,
+  haemorrhaging circle theorems from a month ago"), so the paid hour goes on repair
+  rather than guesswork.
+
+## 12.3 Relay (optional transport; second slice)
+
+At more than a handful of students, manual pasting is farce. The answer that preserves
+the identity: a **self-hostable, end-to-end-encrypted blob relay** — dumb by design, so
+hosting it is legally and morally boring.
+
+- **Server:** one small binary (or container), three endpoints (put/get/delete), storing
+  opaque ciphertext only. Channel id = random 128-bit string (unguessable = read access
+  control); writes require a bearer token minted at channel creation; size cap per blob;
+  TTL refreshed on write so abandoned channels self-clean. SQLite or flat files;
+  free-tier-VM sized. MIT, shipped in-repo; anyone can host one, Lacuna-the-project
+  runs nothing.
+- **Encryption:** client-side, key carried in the URL fragment of whatever the student
+  shares (WhatsApp-style trust model); the server never sees a key or a plaintext byte.
+- **`RelayProvider` seam in the app:** transport is pluggable — manual paste (default,
+  always available, the degraded mode that protects the no-cloud claim), self-hosted
+  relay URL from settings. Receipts, published lineage updates (Arc 7 codes get
+  automatic delivery), and the author-marked queue (§11.7) are just channel payloads.
+  Arc 8 option 4 reuses the identical relay for device sync, which is the argument for
+  building the relay here first: it delivers tutor value immediately while the genuinely
+  hard multi-device merge question stays a design doc.
+
+## 12.4 Open questions
+
+1. Receipt cadence and prompting on the student side (manual only, or a gentle
+   "send your weekly receipt?" nudge — mindful of the no-gamification line).
+2. Whether the author-side reader lives in the current shell or waits for the Arc 10
+   follow-on role split (author/student surface separation) — see cross-arc notes.
+3. Marking-queue payload shape (working chains need student lines + draws for
+   reproducible verdicts; bigger than a receipt, still small).
+4. Relay abuse posture for a publicly hosted instance (rate limits, blob caps) —
+   irrelevant for self-hosters, required before anyone hosts a communal one.
+
+## 12.5 Success criteria (for the receipts slice)
+
+1. A student can produce a receipt in two taps; an author can paste it and see the
+   trend/weakness view with no configuration.
+2. Receipts contain no card content and nothing finer than per-topic aggregates;
+   the format is versioned and documented.
+3. Everything works with no relay configured; a self-hosted relay is configuration,
+   never a requirement.
+
+---
+
 # Cross-arc notes
 
 - All arcs follow existing conventions: additive schema migrations with pre-migration
@@ -1992,7 +2327,15 @@ Each task is one subagent's scope, one commit, tests updated alongside.
   independent of each other and of Arc 8. Arc 10 (UI de-clutter) is independent of
   Arcs 6–9 and touches only navigation/layout, so it may run before any of them; its
   one deliberate deferral (splitting `LearnMode.tsx`) should be revisited before the
-  next arc that changes study-session UI.
+  next arc that changes study-session UI. Arc 11 depends on nothing later than Arc 5 and
+  is the next detailed build after Arc 10; Arc 12's receipts slice depends on Arc 11 only
+  for mark-denominated figures (a retrievability-only receipt could ship independently),
+  and its relay slice is deliberately shared infrastructure with Arc 8 option 4.
+- **Arc 10 follow-on (role split, not yet an arc):** the de-clutter should anticipate a
+  future author/student surface separation — one engine, two shells (study surfaces vs
+  authoring/publish/triage surfaces), promoted from the existing `lessonViewMode`/
+  `canEditLessons` gate to an app-level identity. Arc 10 decisions that pre-commit both
+  roles to one navigation structure should be flagged rather than baked in.
 - Each arc gets its own detailed plan (or addendum here) before implementation begins;
   outline sections above are scope agreements, not specifications.
 
@@ -2192,3 +2535,81 @@ entailment to contradiction while cosine barely moves — and remain small and C
 the local-first constraint survives. That is a new plan, not a patch to this one.
 
 *End of plan.*
+
+---
+
+## A.2 — A.8 Idea backlog (unstarted; one Sunday afternoon each)
+
+Recorded at idea level only. Each entry states its falsifiable question and its
+acceptable failure mode, per the appendix's charter: the deliverable is knowledge, and a
+well-documented corpse is a valid outcome. None of these is promoted to anything until
+its results say so. Where one needs a small labelled dataset, generation follows A.1's
+recorded batch discipline (30–50 per message, strict delimited format, validate on
+paste).
+
+## A.2 Handwritten maths input (canvas + $1 recogniser)
+
+**Question:** can a young student write `x² + 3` on a canvas with a finger faster and
+more happily than they can find `^` on a keyboard? Template matching via the classic $1
+gesture recogniser (1990s technology, no ML, a few hundred lines) over a per-symbol
+template set, feeding the same lenient expression parser as Arc 11 §11.3. Probably a
+negative result on recognition accuracy; worth running because the *input-preference*
+half of the question survives even if recognition is poor, and it directly informs the
+Arc 11 palette design. Failure mode: funny screenshots and a README that opens honestly.
+
+## A.3 Predicted-marks backtest
+
+**Question:** across the prompter's own sat exams while using Lacuna, how far were the
+predicted exam-day figures from actual results? Tiny n, confounded, and still the only
+calibration evidence available before Arc 12 shows this number to paying parents.
+Deliverable: a one-page report of predicted vs actual with an honest error bar, and a
+decision on whether the receipt headline needs a calibration caveat. Failure mode is
+success either way — "the number is astrology" is the cheapest possible time to learn it.
+
+## A.4 Chronotype audit
+
+**Question:** does time-of-day of review predict lapse probability in the existing
+`ReviewLog` history, controlling for retrievability at review? Pure analysis over data
+already on device; no new collection. If the effect is real and large, a quiet
+evidence-based session hint ("late-night new cards underperform for you") becomes a
+candidate feature; if noise, a productivity-influencer talking point dies against real
+homework. Watch for the obvious confound: what gets studied late at night is not a
+random sample of cards.
+
+## A.5 Gzip duplicate detection (compression distance)
+
+**Question:** does normalised compression distance (the "gzip rivals embeddings" result)
+catch paraphrased duplicate cards better than `checkDuplicatesBatch`'s current logic?
+Directly relevant to Arc 11 §11.6's staging triage, where batch LLM generation will
+produce paraphrase near-duplicates at scale. `CompressionStream('deflate-raw')` already
+ships; the experiment is ~40 lines plus a labelled duplicate-pair set. Success promotes
+it into `diff_import_preview`; failure costs an afternoon.
+
+## A.6 Leech oracle (survival analysis)
+
+**Question:** do card features observable at authoring time (length, cloze count, maths
+presence, tags, siblings created in the same minute) predict which cards later cross the
+leech threshold? Deliberately boring statistics — survival analysis or plain logistic
+regression, no learned embeddings; the respectable cousin of A.1's instinct, with an
+objective label and thousands of free examples in existing history. Success is a quiet
+authoring hint ("cards shaped like this tend to become leeches"); failure is a null
+result worth recording so the instinct stays buried.
+
+## A.7 FSRS parameter transfer (per-user prior)
+
+**Question:** for a user with fitted weights on existing courses, do those weights beat
+the ts-fsrs defaults *out of sample* on a newly started course? Uses the shipped
+binding trainer and the existing held-out log-loss harness (SPEC §8.1); no new
+machinery. Success means new courses warm-start from a per-user prior instead of
+factory defaults — a real scheduling win. Must respect the existing consent rule:
+fitted weights are only ever applied explicitly.
+
+## A.8 Adversarial student (scheduler fuzzer)
+
+**Question:** what degenerate states can a property-based "student" — random grades,
+pathological gaps, fail-everything months, exam-eve resurrections, opens-once-a-year
+patterns — drive the scheduler, cram allocator, and revision planner into? Hunting NaN
+priorities, starvation, double-serves, negative budget allocations across the
+dual-governor, short-term-model and checkpoint-horizon interactions. Less an experiment
+than a monster hunt; the deliverable is a set of invariants promoted into permanent
+property-based tests, which makes this the one entry whose corpse is a test suite.
