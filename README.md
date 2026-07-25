@@ -124,7 +124,7 @@ grants expire when Lacuna closes.
 | Learn session | `src/pages/LearnMode.tsx` |
 | Analytics charts | `src/components/analytics/` |
 
-See `SPEC.md` for the full set of design decisions.
+See `docs/SPEC.md` for the full set of design decisions.
 
 ## Tech
 

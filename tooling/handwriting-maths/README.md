@@ -2,7 +2,7 @@
 
 **Status: in progress. No result yet.**
 
-This is Appendix A.2 of `next_plan.md`. It is exploratory work with no integration
+This is Appendix A.2 of `docs/next_plan.md`. It is exploratory work with no integration
 commitment: it has no arc number, it is not imported by the browser or Electron builds,
 and it does not touch `src/`. The deliverable is knowledge. A well-documented negative
 result is a valid outcome, and is the expected one for the recognition half.

@@ -77,7 +77,7 @@ def test_baseline_subprocess_runs_end_to_end(tmp_path: Path):
 
 def test_baseline_scored_on_same_pairs_as_classifier_split(tmp_path: Path, monkeypatch):
     # The classifier is scored on the 20% test split; the baseline must be scored on exactly
-    # the same pairs, or the two numbers aren't comparable (next_plan.md Appendix A.1 Step 4).
+    # the same pairs, or the two numbers aren't comparable (docs/next_plan.md Appendix A.1 Step 4).
     from sklearn.model_selection import train_test_split
     from match_harness.pipeline import load_records
 

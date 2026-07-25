@@ -41,7 +41,7 @@ def _cascade(test_pairs: list[AnswerPair], test_y: list[int], baseline_predictio
     # final; the classifier is only ever consulted on a compareAnswer() rejection, and can
     # only overturn a reject into an accept, never the reverse. So the entire risk profile of
     # shipping the classifier reduces to one question: of the pairs it overturns, what
-    # fraction are genuinely correct? (next_plan.md Appendix A.1 Step 4.)
+    # fraction are genuinely correct? (docs/next_plan.md Appendix A.1 Step 4.)
     classifier_predictions = list(classifier_predictions)
     pool = [i for i, prediction in enumerate(baseline_predictions) if prediction == 0]
     pool_positives = [i for i in pool if test_y[i] == 1]
@@ -76,7 +76,7 @@ def evaluate(data_path: Path, model_path: Path, report_path: Path, extractor=Non
     result = {"split": _metrics(test_y, classifier_predictions)}
     if baseline_script:
         # Score the baseline over exactly the same test-split pairs as the classifier so the
-        # two numbers are directly comparable (next_plan.md Appendix A.1 Step 4).
+        # two numbers are directly comparable (docs/next_plan.md Appendix A.1 Step 4).
         payload = json.dumps([p.__dict__ for p in test_pairs])
         completed = subprocess.run(["bun", str(baseline_script)], input=payload, text=True, capture_output=True, check=True, cwd=project_root or TOOL_ROOT)
         baseline_result = json.loads(completed.stdout)

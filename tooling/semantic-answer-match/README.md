@@ -1,6 +1,6 @@
 # Semantic answer-match prototype (exploratory)
 
-Offline harness for the Lane A prototype described in `next_plan.md` Appendix A.1: does a
+Offline harness for the Lane A prototype described in `docs/next_plan.md` Appendix A.1: does a
 small classifier over frozen sentence embeddings beat plain string comparison
 (`src/utils/answerComparison.ts`) at recognising a correct paraphrase of a short,
 canonical typed answer? This is not a committed feature and this directory is not imported
@@ -125,7 +125,7 @@ near-miss rather than arbitrary noise.
 
 Generation is manual — a subscription ChatGPT session, not a scripted API call — because
 that's what the prompter already pays for at no marginal cost; see the chat discussion
-recorded implicitly in `next_plan.md` Appendix A.1 for the reasoning. This is why ingestion
+recorded implicitly in `docs/next_plan.md` Appendix A.1 for the reasoning. This is why ingestion
 is a separate, explicit step rather than happening automatically: there is no generator to
 call from Python, only pasted output to validate.
 

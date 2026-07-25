@@ -1,7 +1,7 @@
 # Generation prompt
 
 Paste this into a ChatGPT conversation. Model: **GPT-5.6 Luna**, effort: **low thinking**
-(see next_plan.md Appendix A.1 for why). Replace `{{SUBJECT}}` and `{{TOPIC}}` before
+(see docs/next_plan.md Appendix A.1 for why). Replace `{{SUBJECT}}` and `{{TOPIC}}` before
 sending, and send one message per subject/topic pairing — don't ask for everything in one
 message. Recommended batch size is 30–50 examples; asking for more in a single completion
 risks repetition and quality drift towards the end.

@@ -6,7 +6,7 @@ __pycache__/
 data/*
 # The held-out set is hand-written and manually labelled, so unlike the generated
 # batches under data/raw/ it cannot be regenerated. It is the only human judgement
-# in the corpus (see next_plan.md Appendix A.1 Step 4), so it is tracked.
+# in the corpus (see docs/next_plan.md Appendix A.1 Step 4), so it is tracked.
 !data/held_out/
 
 models/

@@ -13,7 +13,7 @@ class AnswerPair:
     kind: str
 
 def _noise(answer: str) -> list[tuple[str, str]]:
-    # Deliberately no "word-order" variant here, diverging from next_plan.md
+    # Deliberately no "word-order" variant here, diverging from docs/next_plan.md
     # Appendix A.1 Step 2 ("word-order shuffles" as deterministic positives).
     # Reversing word order in a one- to two-sentence answer produces gibberish
     # (e.g. "The nucleus contains ... the cell." -> "cell. the ... nucleus

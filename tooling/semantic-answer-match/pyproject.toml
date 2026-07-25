@@ -1,7 +1,7 @@
 [project]
 name = "lacuna-semantic-answer-match"
 version = "0.1.0"
-description = "Exploratory offline harness for a local semantic typed-answer matching prototype (see next_plan.md Appendix A.1). Not a shipped Lacuna feature."
+description = "Exploratory offline harness for a local semantic typed-answer matching prototype (see docs/next_plan.md Appendix A.1). Not a shipped Lacuna feature."
 requires-python = ">=3.12"
 dependencies = [
   "joblib>=1.4,<2",
