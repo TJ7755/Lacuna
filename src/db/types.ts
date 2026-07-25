@@ -676,18 +676,17 @@ export interface PracticeMilestone {
  * `kind: 'predicate'` checks a named predicate against the student's line. See
  * next_plan.md §11.4/§11.5.
  */
-export interface MarkSchemeLine {
-  marks: number;
-  /** Free short label powering the per-criterion analytics of next_plan.md §11.8; no fixed ontology. */
-  label?: string;
-  kind: 'waypoint' | 'predicate';
-  /** The checkpoint expression, equivalence-checked. Set when `kind` is `'waypoint'`. */
-  expression?: string;
-  /** The predicate name. Set when `kind` is `'predicate'`. v1 vocabulary only (next_plan.md §11.5/§11.9). */
-  predicate?: 'equals' | 'within' | 'matches-one-of' | 'contains';
-  /** Predicate arguments (e.g. the tolerance for `within`, the candidate set for `matches-one-of`). */
-  args?: string[];
-}
+export type MarkSchemeLine =
+  | { marks: number; label?: string; kind: 'waypoint'; expression: string }
+  | {
+      marks: number;
+      label?: string;
+      kind: 'predicate';
+      /** v1 vocabulary only (next_plan.md §11.5/§11.9). */
+      predicate: 'equals' | 'within' | 'matches-one-of' | 'contains';
+      /** Predicate arguments (e.g. the tolerance for `within`, the candidate set for `matches-one-of`). */
+      args?: string[];
+    };
 
 /**
  * A numeric answer specification for `ItemPayload` kind `'numeric'`: exact value,
