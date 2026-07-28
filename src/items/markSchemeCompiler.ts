@@ -9,6 +9,27 @@ export const MARK_SCHEME_PREDICATES = [
 ] as const;
 export type PredicateName = (typeof MARK_SCHEME_PREDICATES)[number];
 
+/** Canonical examples shared by the compiler UI and clipboard authoring prompts. */
+export const MARK_SCHEME_SYNTAX_EXAMPLES = [
+  '[1] substitution :: 2x = 8',
+  '[1] answer :: equals :: 4',
+  '[1] check :: within 0.01 :: 4.0',
+  '[1] choice :: matches-one-of :: 3 :: 4 :: 5',
+  '[1] method :: contains :: substitution',
+] as const;
+
+/** The authoring syntax description lives beside the grammar so prompt copy cannot drift. */
+export function markSchemeSyntaxSpecification(): string {
+  return [
+    'Write one nonblank criterion per line.',
+    'Each line has the form: [positive whole marks] optional label :: check',
+    'A check is either a mathematical waypoint expression or one of the predicates below.',
+    `Predicate vocabulary: ${MARK_SCHEME_PREDICATES.join(', ')}.`,
+    'Canonical examples:',
+    ...MARK_SCHEME_SYNTAX_EXAMPLES.map((example) => `- ${example}`),
+  ].join('\n');
+}
+
 export interface CompiledMarkSchemeLine {
   kind: 'compiled';
   /** One-based source line number. */

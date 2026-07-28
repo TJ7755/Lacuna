@@ -5,13 +5,15 @@
 
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { AnimatePresence } from 'motion/react';
 import { useCourse, useLessons, useCourseCards, useSequences } from '../state/useCourseData';
 import { useDeck } from '../state/useData';
 import { CardList } from '../components/cards/CardList';
 import { CourseTabs } from '../components/course/CourseTabs';
 import { FadeInView } from '../components/ui/FadeInView';
 import { Button } from '../components/ui/Button';
-import { ChevronLeftIcon, PlusIcon, SearchIcon } from '../components/ui/icons';
+import { BatchAuthoringPromptDialog } from '../components/items/BatchAuthoringPromptDialog';
+import { ChevronLeftIcon, PlusIcon, SearchIcon, SparklesIcon } from '../components/ui/icons';
 import type { Card, Lesson, Sequence } from '../db/types';
 
 // Editing a lesson-owned card still uses the lesson-scoped route (so the editor's
@@ -26,6 +28,7 @@ export function QuestionBank() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [showBatchPrompt, setShowBatchPrompt] = useState(false);
 
   const course = useCourse(courseId);
   const lessons = useLessons(courseId);
@@ -91,7 +94,11 @@ export function QuestionBank() {
             {cards.length} card{cards.length === 1 ? '' : 's'} across {course.name}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => setShowBatchPrompt(true)}>
+            <SparklesIcon width={18} height={18} />
+            Generate batch
+          </Button>
           <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/sequence/new`)}>
             <PlusIcon width={18} height={18} />
             Create new sequence
@@ -164,6 +171,15 @@ export function QuestionBank() {
           )}
         </div>
       )}
+
+      <AnimatePresence>
+        {showBatchPrompt && (
+          <BatchAuthoringPromptDialog
+            courseName={course.name}
+            onClose={() => setShowBatchPrompt(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

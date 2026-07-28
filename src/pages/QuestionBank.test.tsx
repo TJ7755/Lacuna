@@ -72,6 +72,16 @@ vi.mock('../components/ui/icons', () => ({
   ChevronLeftIcon: () => <svg data-testid="chevron-left" />,
   PlusIcon: () => <svg data-testid="plus-icon" />,
   SearchIcon: () => <svg data-testid="search-icon" />,
+  SparklesIcon: () => <svg data-testid="sparkles-icon" />,
+}));
+
+vi.mock('../components/items/BatchAuthoringPromptDialog', () => ({
+  BatchAuthoringPromptDialog: ({ courseName, onClose }: { courseName: string; onClose: () => void }) => (
+    <div role="dialog" aria-label="Generate item batch">
+      <span>{courseName}</span>
+      <button type="button" onClick={onClose}>close-batch</button>
+    </div>
+  ),
 }));
 
 const course: Course = {
@@ -154,6 +164,18 @@ beforeEach(() => {
 });
 
 describe('QuestionBank', () => {
+  it('opens the course-scoped batch authoring prompt', () => {
+    mockCourse = course;
+    mockLessons = [];
+    mockCards = [];
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate batch' }));
+    expect(screen.getByRole('dialog', { name: 'Generate item batch' })).toHaveTextContent(
+      'A-Level Economics',
+    );
+  });
+
   it('shows a skeleton while loading', () => {
     renderPage();
     expect(screen.queryByText('Question bank')).not.toBeInTheDocument();

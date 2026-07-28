@@ -16,6 +16,8 @@ interface MarkSchemeEditorProps {
   onChange: (value: string) => void;
   fixtures?: ItemFixture[];
   onFixturesChange?: (fixtures: ItemFixture[]) => void;
+  onDraftMarkScheme?: () => void;
+  draftDisabled?: boolean;
   invalid?: boolean;
 }
 
@@ -39,6 +41,8 @@ export function MarkSchemeEditor({
   onChange,
   fixtures = [],
   onFixturesChange,
+  onDraftMarkScheme,
+  draftDisabled = false,
   invalid = false,
 }: MarkSchemeEditorProps) {
   const generatedId = useId();
@@ -110,8 +114,21 @@ export function MarkSchemeEditor({
             One criterion per line. Start with marks, then a label and check.
           </p>
         </div>
-        <div className="rounded-full border border-line-strong bg-surface-raised px-3 py-1 text-sm tabular-nums text-ink-soft">
-          {compilation.totalMarks} {compilation.totalMarks === 1 ? 'mark' : 'marks'} total
+        <div className="flex flex-wrap items-center gap-2">
+          {onDraftMarkScheme && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={draftDisabled}
+              onClick={onDraftMarkScheme}
+            >
+              Draft mark scheme
+            </Button>
+          )}
+          <div className="rounded-full border border-line-strong bg-surface-raised px-3 py-1 text-sm tabular-nums text-ink-soft">
+            {compilation.totalMarks} {compilation.totalMarks === 1 ? 'mark' : 'marks'} total
+          </div>
         </div>
       </div>
 
