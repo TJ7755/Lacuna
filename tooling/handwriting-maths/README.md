@@ -152,14 +152,14 @@ number above as a direction to test, not a result.
 ## Running it
 
 ```
-npm install
-npm run dev     # canvas harness
-npm test        # unit tests for the pure modules
+bun install
+bun run dev     # canvas harness
+bun run test    # unit tests for the pure modules
 ```
 
 Standalone project with its own `package.json`, following the precedent of
 `tooling/short-term-memory` and `tooling/semantic-answer-match`. Not part of the root
-build; `npm run build` at the repository root does not see it.
+build; `bun run build` at the repository root does not see it.
 
 ## Failure mode
 
