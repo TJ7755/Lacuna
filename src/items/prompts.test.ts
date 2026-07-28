@@ -43,6 +43,10 @@ describe('batch authoring prompt', () => {
     expect(prompt).toContain(BATCH_OUTPUT_START);
     expect(prompt).toContain(BATCH_OUTPUT_END);
     expect(prompt).toContain('"fixtures"');
+    expect(prompt).toContain('Every fixture must actually earn its expectedMarks');
+    expect(prompt).toContain('Do not add prose labels or units');
+    expect(prompt).toContain('"studentAnswer": ["100 * 1.4 = 140", "1120"]');
+    expect(prompt).not.toContain('"studentAnswer": ["working line", "4"]');
   });
 
   it('injects optional item-count and concept-density constraints without a hard cap', () => {
