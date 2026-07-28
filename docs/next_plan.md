@@ -2297,6 +2297,75 @@ cannot be mistaken for finished design)
 4. Verification is fully offline; no item type introduces a network dependency into the
    study loop. All tests pass; `tsc -b` clean.
 
+## 11.12 Long-term direction: skill-linked item families and generated practice
+
+**Deferred beyond Arc 11.** The fixed `Card` remains the implementation and scheduling unit
+for this arc. Do not smuggle the model below into the slice-1 payload or delay the current
+numeric/working release for it.
+
+Recall cards and practice questions are different observations of related knowledge, not
+interchangeable reviews of one card. For example, “state the quadratic formula”, “recognise
+when to use it”, “solve a quadratic with it”, and “interpret the discriminant” all belong to
+one curriculum skill while testing distinct capabilities. The long-term model is therefore:
+
+```
+Skill / concept
+  -> one or more item templates
+  -> zero or more generated review instances per template
+  -> separate memory state per template
+  -> aggregate skill readiness derived from the template evidence
+```
+
+Rules:
+
+1. **Link items through a skill, never by making one card own another.** A recall item and a
+   practice template are siblings under a stable skill id. This keeps curriculum grouping
+   separate from card rendering and avoids a fragile chain of “concept card plus attached
+   questions”.
+2. **Do not double-apply reviews.** Solving an application question is not a literal review
+   of an unseen formula card, so it must not write an FSRS event into that card's history.
+   Each item template retains its own memory trace. Skill readiness is a derived summary,
+   not a second FSRS state updated as though the learner answered another prompt.
+3. **Evidence is directional.** Successful application is some evidence for prerequisite
+   recall; successful recall is weak evidence for application. Failures may increase the
+   priority of relevant prerequisite items, but any cross-item scheduling influence must be
+   conservative, auditable and learned from outcomes rather than encoded as symmetrical
+   score sharing.
+4. **Recall prompts are optional views, not mandatory anchors.** A skill may retain a hidden
+   or disabled direct-recall template while its practice templates remain active. This covers
+   concepts whose definition card adds nothing without deleting the curriculum identity or
+   its history.
+5. **Generated instances share one scheduled identity.** A parameterised quadratic template
+   can present different valid coefficients on each attempt, but those instances update the
+   template's memory state rather than becoming dozens of fake independent concepts. Store
+   the template version, deterministic seed, generated parameters, rendered question and
+   verdict on the attempt so disputes and receipts remain reproducible.
+6. **Generation is declarative and validated.** A future template format may define typed
+   variables, domains, exclusions, constraints, derived expressions, prompt interpolation,
+   answer specifications, units, tolerances and mark schemes. Imported teacher content must
+   remain data, never arbitrary JavaScript or Python. A general-purpose code sandbox is still
+   refused; “the author is an experienced programmer” does not make executing distributed
+   course code safe.
+7. **LLMs draft templates; Lacuna proves them.** The LLM or a programmer may author the same
+   declarative format. Before acceptance, Lacuna generates a deterministic corpus across edge
+   cases and verifies that every instance compiles, has a valid answer, passes its fixtures and
+   does not produce forbidden or ambiguous values. Generation failure blocks publication just
+   like a malformed mark scheme.
+8. **Start where validation is strong.** Arithmetic, algebra and formula-driven physics,
+   chemistry and accounting are plausible first targets. Open-ended prose, proofs and diagrams
+   do not become “programmatically validatable” merely because an LLM emitted JSON; they remain
+   on scaffolded, predicate or author-marked paths until a deterministic verifier exists.
+
+The product-level generation choice should eventually be explicit: recall cards, practice
+questions, a balanced progression, or model-selected. A balanced lesson should normally move
+from recall to method recognition to application to extended practice, while refusing padded
+sets of near-identical numerical questions that measure memory of wording rather than transfer.
+
+Before implementation, settle skill granularity, prerequisite representation, cross-item
+evidence weights, template versioning and distribution, instance-history retention, and the
+minimum generated corpus needed to reject ambiguous parameter spaces. None of those decisions
+is implied by Arc 11's existing `Card.payload`.
+
 ---
 
 # Arc 12 — Progress Receipts and Encrypted Relay (detailed outline)
