@@ -737,17 +737,21 @@ tables outright is a deferred, later migration (`next_plan.md` §0.3) — not at
 course UI is still soaking.
 
 ### Card
-`id, deckId, type('front_back'|'cloze'), front, back, stability|null, difficulty|null,
+`id, deckId, type, front, back, payload?, stability|null, difficulty|null,
 lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?,
 sequenceItemId?, due|null, scheduledDays, learningSteps, history[], createdAt`
 - `front`/`back` are Markdown source. **Cloze** source lives entirely in `front`
   (`{{cN::...}}`); `back` is empty.
+- `payload` carries versioned structured practice-item data independently of the classic
+  presentation `type`. A v1 `numeric` payload stores an exact, tolerance or one-of answer
+  specification; its `back` remains empty because the checker, not a revealed answer, grades it.
 - `stability` (days; the interval at which R = 0.90), `difficulty` (in [1,10]),
   `lastReviewed`, `due` are all `null` until the first review.
 - `reps, lapses, state, scheduledDays, learningSteps, due` mirror ts-fsrs's card fields.
   `state in {0 New, 1 Learning, 2 Review, 3 Relearning}`.
 - `history[]` is an append-only array of `ReviewLog` (timestamp, grade, responseTimeSec,
-  distracted, stability/difficulty before+after, retrievabilityAtReview|null).
+  distracted, stability/difficulty before+after, retrievabilityAtReview|null, and optional
+  machine-awarded `marksEarned`/`marksAvailable` for structured items).
 - Teaching state is intentionally absent from `Card`; it is lesson-specific and lives in
   `LessonCardExposure`.
 
@@ -1109,6 +1113,17 @@ Two modes, chosen in Settings (default **reveal**), mirroring the grading-mode t
   **lenient**): lenient ignores case and punctuation (the original behaviour), standard
   ignores case only, and exact requires both to match. `answerComparisonOptions` maps the
   level to `AnswerComparisonOptions` for `compareAnswer`.
+
+### Numeric item face
+A card with a v1 `numeric` payload bypasses the reveal and self-grading controls. Its study
+face renders the Markdown question and the same maths-expression input used by authoring;
+submitting a valid expression runs `checkNumeric` against the payload's exact, tolerance or
+one-of specification. The result is one mark or zero marks out of one. In FSRS-backed sessions,
+`gradeFromMarks` maps those marks and the measured question-to-submit time to Easy/Good or
+Again, then the ordinary answer pipeline persists both marks on `ReviewLog`, updates scheduling,
+supports undo and advances the session. Lesson Simple mode uses the same automatic correctness
+result for its exposure/retry loop and retains Simple mode's rule that it writes no review log.
+Typing-mode comparison and Yes/No or manual grading never apply to numeric payloads.
 
 ### Study mode (`src/state/studyMode.ts`)
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):

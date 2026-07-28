@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
-import type { ReviewSessionKind } from '../db/types';
+import type { Card, ItemPayload, ReviewSessionKind } from '../db/types';
 import { markLessonComplete } from '../db/repository';
 import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
 import { CardEditOverlay } from '../components/cards/CardEditOverlay';
@@ -27,6 +27,7 @@ import { LearnHeader } from './learn/LearnHeader';
 import { NavSidebar } from './learn/NavSidebar';
 import { TouchBottomSheet } from './learn/TouchBottomSheet';
 import { FlipCard } from './learn/FlipCard';
+import { NumericStudyFace } from '../components/items/NumericStudyFace';
 import { LearnSkeleton } from './learn/LearnSkeleton';
 import type { LearnModeType, LearnSessionRequest } from './learn/types';
 
@@ -131,6 +132,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     hintStep,
     setHintStep,
     isTypingCard,
+    isNumericCard,
     isLinesModeCard,
     summary,
     setSummary,
@@ -230,6 +232,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     editing,
     current,
     isTypingCard,
+    isNumericCard,
     openEdit,
     hintsOpen,
     setHintsOpen,
@@ -468,9 +471,19 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             </AnimatePresence>
             {/* Card — mode-aware border accent */}
             <main
-              className={`mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-8 md:py-12 ${isTouchMode ? 'pb-40' : ''}`}
+              className={`mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-8 md:py-12 ${isTouchMode && !isNumericCard ? 'pb-40' : ''}`}
             >
-              {current && (
+              {current && isNumericCard && current.payload?.kind === 'numeric' ? (
+                <NumericStudyFace
+                  key={current.id}
+                  card={
+                    current as Card & {
+                      payload: Extract<ItemPayload, { kind: 'numeric' }>;
+                    }
+                  }
+                  onAnswer={(result) => void answer(result, 'keyboard')}
+                />
+              ) : current ? (
                 <FlipCard
                   card={current}
                   revealed={phase === 'answer'}
@@ -492,10 +505,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
                   answerStrictness={answerStrictness}
                 />
-              )}
+              ) : null}
 
               {/* Typing input for typing cards in question phase */}
-              {isTypingCard && phase === 'question' && (
+              {!isNumericCard && isTypingCard && phase === 'question' && (
                 <div className="mx-auto mt-6 w-full max-w-md">
                   <input
                     ref={typingInputRef}
@@ -521,7 +534,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               )}
 
               {/* Controls */}
-              {isTouchMode ? (
+              {!isNumericCard && (isTouchMode ? (
                 <TouchBottomSheet
                   phase={phase}
                   gradingMode={gradingMode}
@@ -654,7 +667,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                     )}
                   </AnimatePresence>
                 </div>
-              )}
+              ))}
             </main>
           </motion.div>
         )}

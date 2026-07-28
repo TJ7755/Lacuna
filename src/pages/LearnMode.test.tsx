@@ -813,6 +813,78 @@ describe('LearnMode course/lesson scope', () => {
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
   });
 
+  it('checks a numeric answer and records full marks without self-grading', async () => {
+    const performanceNow = vi.spyOn(performance, 'now').mockReturnValue(0);
+    const deck = await createDeck('Numeric deck');
+    const card = await createCard(deck.id, 'front_back', 'What is 8 / 2?', '', [], {
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+    });
+
+    try {
+      render(
+        <ThemeProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={['/learn']}>
+              <Routes>
+                <Route path="/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </ThemeProvider>,
+      );
+
+      fireEvent.change(await screen.findByLabelText('Your answer'), {
+        target: { value: '8 / 2' },
+      });
+      expect(screen.queryByRole('button', { name: /^yes$/i })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+
+      await waitFor(async () => {
+        expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+          grade: 4,
+          correct: true,
+          marksEarned: 1,
+          marksAvailable: 1,
+        });
+      });
+    } finally {
+      performanceNow.mockRestore();
+    }
+  });
+
+  it('grades an incorrect numeric answer as Again and clears it for the retry', async () => {
+    const deck = await createDeck('Numeric retry deck');
+    const card = await createCard(deck.id, 'front_back', 'What is 3 squared?', '', [], {
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '9' } },
+    });
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    const input = await screen.findByLabelText('Your answer');
+    fireEvent.change(input, { target: { value: '6' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+
+    await waitFor(async () => {
+      expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+        grade: 1,
+        correct: false,
+        marksEarned: 0,
+        marksAvailable: 1,
+      });
+    });
+    expect(await screen.findByLabelText('Your answer')).toHaveValue('');
+  });
+
   it('does not create rigid progress slots from unavailable cards outside Simple mode', async () => {
     const now = Date.now();
     const deck = await createDeck('Eligibility deck');
