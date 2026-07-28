@@ -1210,10 +1210,19 @@ them. Five items:
 
 # Arc 6 — Media Card Types: Audio and Image Occlusion (outline)
 
-To be planned after Arc 2, since Arc 2's plugin-extension-point decision (custom card
-types are the first predicted plugin surface) should inform whether these ship native or
-via a plugin API. This arc builds the two highest-demand types natively regardless, and
-the experience feeds back into that decision. Scope decided so far:
+> **Planned in full (July 2026): [`design/arc6/plan.md`](../design/arc6/plan.md).** UI
+> directions were mocked and chosen before the plan was written
+> ([`design/arc6/mockups-audio.html`](../design/arc6/mockups-audio.html),
+> [`design/arc6/mockups-occlusion.html`](../design/arc6/mockups-occlusion.html)). That plan
+> supersedes this outline for implementation purposes. Headline decisions: audio ships as a
+> Markdown asset embed on ordinary `front_back` cards with global playback settings rather
+> than a new `CardType`; occlusion follows the Sequence precedent (own table, generated
+> read-only cards, fractional mask coordinates) with a role per region, so masking printed
+> label boxes and highlighting an unlabelled feature are two generation rules over one
+> annotated image; asset-bearing distribution stays out of scope, with an explicit
+> export/publish warning instead, since share codes strip assets.
+
+The original scope agreement, retained for the record:
 
 - **Audio.** A new card mechanic reusing the assets pipeline (`src/db/assets.ts`, currently
   image-only) with a player renderer. Decide at planning time between a new `CardType`
