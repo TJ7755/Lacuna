@@ -91,6 +91,13 @@ export function parseExpression(text: string): ParseExpressionResult {
   }
 }
 
+/** Render a validated expression as KaTeX input without exposing mathjs syntax to the UI. */
+export function expressionToTex(expression: Expression): string {
+  const equation = splitEquation(expression.source);
+  if (!equation) return expression.node.toTex();
+  return `${parse(equation.left).toTex()} = ${parse(equation.right).toTex()}`;
+}
+
 /**
  * Compare two expressions by evaluating them under the same deterministic random
  * substitutions. This is probabilistic identity testing, not symbolic algebra.
