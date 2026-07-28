@@ -188,7 +188,7 @@ export async function createCard(
   front: string,
   back: string,
   tags: string[] = [],
-  opts?: { courseId?: string | null; primaryLessonId?: string | null },
+  opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'payload'>,
 ): Promise<Card> {
   try {
     const card: Card = {
@@ -378,9 +378,14 @@ export async function createLessonCard(
   front: string,
   back: string,
   tags: string[] = [],
+  payload?: ItemPayload,
 ): Promise<Card> {
   const deckId = await ensureLessonDeck(courseId, lessonId);
-  return createCard(deckId, type, front, back, tags, { courseId, primaryLessonId: lessonId });
+  return createCard(deckId, type, front, back, tags, {
+    courseId,
+    primaryLessonId: lessonId,
+    payload,
+  });
 }
 
 /** Lesson-scoped equivalent of {@link createCardWithReverse}. */
@@ -456,9 +461,10 @@ export async function createCourseCard(
   front: string,
   back: string,
   tags: string[] = [],
+  payload?: ItemPayload,
 ): Promise<Card> {
   const deckId = await ensureCourseBankDeck(courseId);
-  return createCard(deckId, type, front, back, tags, { courseId, primaryLessonId: null });
+  return createCard(deckId, type, front, back, tags, { courseId, primaryLessonId: null, payload });
 }
 
 /** Course-bank equivalent of {@link createCardWithReverse}. */

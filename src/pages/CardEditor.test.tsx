@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CardEditor } from './CardEditor';
@@ -12,6 +12,7 @@ let mockCard: Card | null | undefined;
 let mockSequences: Sequence[] | undefined;
 let mockLesson: Lesson | null | undefined;
 const updateCard = vi.fn().mockResolvedValue(undefined);
+const createCourseCard = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
@@ -39,7 +40,7 @@ vi.mock('../db/repository', () => ({
   createLessonCard: vi.fn(),
   createLessonCardWithReverse: vi.fn(),
   createLessonBasicReversedPair: vi.fn(),
-  createCourseCard: vi.fn(),
+  createCourseCard: (...args: unknown[]) => createCourseCard(...args),
   createCourseCardWithReverse: vi.fn(),
   createCourseBasicReversedPair: vi.fn(),
   updateCard: (...args: unknown[]) => updateCard(...args),
@@ -117,6 +118,16 @@ function renderEditing() {
   );
 }
 
+function renderNew() {
+  return render(
+    <MemoryRouter initialEntries={['/course/course-1/cards/new']}>
+      <Routes>
+        <Route path="/course/:courseId/cards/new" element={<CardEditor />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 // A lesson-owned card can be edited via the lesson-scoped route (so the editor's
 // duplicate check and tag suggestions stay scoped to the lesson's own deck) while
 // having been opened from elsewhere — e.g. the Question bank, via an origin override
@@ -145,6 +156,66 @@ beforeEach(() => {
   mockLesson = undefined;
   mockNavigate.mockClear();
   updateCard.mockClear();
+  createCourseCard.mockClear();
+});
+
+describe('CardEditor — numeric items', () => {
+  it('creates a numeric item with its answer in the structured payload', async () => {
+    renderNew();
+    fireEvent.click(screen.getByRole('button', { name: 'Numeric answer' }));
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'What is 8 / 2?' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Expected answer' }), {
+      target: { value: '4' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add card' }));
+
+    await waitFor(() =>
+      expect(createCourseCard).toHaveBeenCalledWith(
+        'course-1',
+        'front_back',
+        'What is 8 / 2?',
+        '',
+        [],
+        { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+      ),
+    );
+  });
+
+  it('loads and updates an existing numeric item without exposing a Back field', async () => {
+    mockCard = {
+      ...generatedCard,
+      sequenceItemId: undefined,
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+    };
+    renderEditing();
+
+    expect(screen.getByRole('button', { name: 'Numeric answer' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.queryByPlaceholderText(/Answer\. Markdown/)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Expected answer' }), {
+      target: { value: '8 / 2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() =>
+      expect(updateCard).toHaveBeenCalledWith(
+        'card-1',
+        expect.objectContaining({
+          type: 'front_back',
+          back: '',
+          payload: {
+            v: 1,
+            kind: 'numeric',
+            answer: { kind: 'exact', value: '8 / 2' },
+          },
+        }),
+      ),
+    );
+  });
 });
 
 describe('CardEditor — generated cards', () => {

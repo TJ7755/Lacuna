@@ -964,6 +964,20 @@ describe('createCard opts', () => {
     expect(card.primaryLessonId).toBe(lesson.id);
   });
 
+  it('persists a structured item payload when provided', async () => {
+    const deck = await createDeck('Test deck');
+    const payload = {
+      v: 1 as const,
+      kind: 'numeric' as const,
+      answer: { kind: 'exact' as const, value: '4' },
+    };
+
+    const card = await createCard(deck.id, 'front_back', '2 + 2', '', [], { payload });
+
+    expect(card.payload).toEqual(payload);
+    expect((await db.cards.get(card.id))?.payload).toEqual(payload);
+  });
+
   it('leaves courseId and primaryLessonId undefined when opts are omitted', async () => {
     const deck = await createDeck('Test deck');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
