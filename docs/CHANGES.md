@@ -55,6 +55,8 @@
 - Kept practice-session chrome mounted across Yes and No answers. Cards now hand off with a
   short motion-speed-aware transition while the objective track and ring interpolate from their
   previous values, removing the false impression of a page refresh or progress reset.
+- Added an exhaustive manual website release checklist covering every current route, authoring
+  path, study mode, setting, import/export flow, responsive state and explicit deferred boundary.
 
 ## Unreleased — Browser QA
 
