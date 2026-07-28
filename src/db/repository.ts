@@ -10,6 +10,7 @@ import type {
   CourseRecord,
   Deck,
   Grade,
+  ItemPayload,
   Lesson,
   LessonCardExposure,
   LessonCardLink,
@@ -225,7 +226,13 @@ export async function createCard(
  */
 export async function createCards(
   deckId: string,
-  drafts: { type: CardType; front: string; back: string; tags?: string[] }[],
+  drafts: {
+    type: CardType;
+    front: string;
+    back: string;
+    tags?: string[];
+    payload?: ItemPayload;
+  }[],
   opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<Card[]> {
   try {
@@ -236,6 +243,7 @@ export async function createCards(
       type: draft.type,
       front: draft.front,
       back: draft.back,
+      payload: draft.payload,
       stability: null,
       difficulty: null,
       lastReviewed: null,
