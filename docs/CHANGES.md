@@ -5,6 +5,8 @@
 - Added numeric-item authoring to the card editor: exact, tolerance and alternative-answer
   checks share a lenient maths input, live KaTeX preview and touch-sized symbol palette.
   Structured answers persist in the card payload rather than being hidden in display text.
+- Added pure marks-analysis helpers for machine-marked review totals and criterion-labelled
+  working performance, ready for later readiness and diagnostic UI.
 
 ## Unreleased — Browser QA
 
