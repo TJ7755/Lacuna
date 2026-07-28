@@ -885,6 +885,74 @@ describe('LearnMode course/lesson scope', () => {
     expect(await screen.findByLabelText('Your answer')).toHaveValue('');
   });
 
+  it('checks working lines and persists full marks with their verdicts', async () => {
+    const performanceNow = vi.spyOn(performance, 'now').mockReturnValue(0);
+    const deck = await createDeck('Working deck');
+    const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8.', '', [], {
+      payload: {
+        v: 1,
+        kind: 'working',
+        scheme: [
+          { marks: 1, label: 'substitution', kind: 'waypoint', expression: '2x = 8' },
+          { marks: 2, label: 'answer', kind: 'predicate', predicate: 'equals', args: ['4'] },
+        ],
+      },
+    });
+    try {
+      render(
+        <ThemeProvider><ToastProvider><MemoryRouter initialEntries={['/learn']}><Routes>
+          <Route path="/learn" element={<LearnMode />} />
+        </Routes></MemoryRouter></ToastProvider></ThemeProvider>,
+      );
+      fireEvent.change(await screen.findByLabelText('Your working'), { target: { value: '2x = 8\n4' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
+      await waitFor(async () => {
+        expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+          grade: 4,
+          correct: true,
+          marksEarned: 3,
+          marksAvailable: 3,
+          lineVerdicts: [
+            { studentLine: '2x = 8', matchedLineIndex: 0, marksEarned: 1 },
+            { studentLine: '4', matchedLineIndex: 1, marksEarned: 2 },
+          ],
+        });
+      });
+    } finally {
+      performanceNow.mockRestore();
+    }
+  });
+
+  it('grades partial working as Again and clears it for the retry', async () => {
+    const deck = await createDeck('Working retry deck');
+    const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8.', '', [], {
+      payload: {
+        v: 1,
+        kind: 'working',
+        scheme: [
+          { marks: 1, label: 'substitution', kind: 'waypoint', expression: '2x = 8' },
+          { marks: 2, label: 'answer', kind: 'predicate', predicate: 'equals', args: ['4'] },
+        ],
+      },
+    });
+    render(
+      <ThemeProvider><ToastProvider><MemoryRouter initialEntries={['/learn']}><Routes>
+        <Route path="/learn" element={<LearnMode />} />
+      </Routes></MemoryRouter></ToastProvider></ThemeProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Your working'), { target: { value: '2x = 8' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
+    await waitFor(async () => {
+      expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+        grade: 1,
+        correct: false,
+        marksEarned: 1,
+        marksAvailable: 3,
+      });
+    });
+    expect(await screen.findByLabelText('Your working')).toHaveValue('');
+  });
+
   it('does not create rigid progress slots from unavailable cards outside Simple mode', async () => {
     const now = Date.now();
     const deck = await createDeck('Eligibility deck');

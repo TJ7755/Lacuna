@@ -21,7 +21,7 @@ export interface UseLearnKeyboardShortcutsParams {
   editing: boolean;
   current: Card | null;
   isTypingCard: boolean;
-  isNumericCard: boolean;
+  isMachineMarkedCard: boolean;
   openEdit: () => void;
   hintsOpen: boolean;
   setHintsOpen: (open: boolean) => void;
@@ -60,7 +60,7 @@ export function useLearnKeyboardShortcuts({
   editing,
   current,
   isTypingCard,
-  isNumericCard,
+  isMachineMarkedCard,
   openEdit,
   hintsOpen,
   setHintsOpen,
@@ -147,7 +147,7 @@ export function useLearnKeyboardShortcuts({
         void undoLast();
         return;
       }
-      if (isNumericCard) return;
+      if (isMachineMarkedCard) return;
       if (phase === 'question' && (keyMatches(e, bindings.reveal) || e.code === 'ArrowUp')) {
         e.preventDefault();
         reveal();
@@ -199,7 +199,7 @@ export function useLearnKeyboardShortcuts({
     editing,
     current,
     isTypingCard,
-    isNumericCard,
+    isMachineMarkedCard,
     openEdit,
     hintsOpen,
     setHintsOpen,

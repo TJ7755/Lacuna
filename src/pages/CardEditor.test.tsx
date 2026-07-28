@@ -290,6 +290,23 @@ describe('CardEditor — working items', () => {
     );
     expect(screen.queryByPlaceholderText(/Answer\. Markdown/)).not.toBeInTheDocument();
   });
+
+  it('persists pinned working fixtures with the item', async () => {
+    renderNew();
+    fireEvent.click(screen.getByRole('button', { name: 'Working' }));
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), { target: { value: 'Solve for x.' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Scheme source' }), { target: { value: '[1] answer :: equals :: 4' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Test student answer' }), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Pin as fixture' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add card' }));
+    await waitFor(() => expect(createCourseCard).toHaveBeenCalledWith(
+      'course-1', 'front_back', 'Solve for x.', '', [],
+      expect.objectContaining({
+        kind: 'working',
+        fixtures: [expect.objectContaining({ studentAnswer: ['4'], expectedMarks: 1 })],
+      }),
+    ));
+  });
 });
 
 describe('CardEditor — generated cards', () => {

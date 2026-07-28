@@ -232,7 +232,9 @@ export function useLearnSession({
   // firstWordsHint.ts for the pure hint builders.
   const [hintStep, setHintStep] = useState<0 | 1 | 2>(0);
   const isTypingCard = typingSetting === 'type' && current !== null && isTypingEligible(current);
-  const isNumericCard = current?.payload?.v === 1 && current.payload.kind === 'numeric';
+  const isMachineMarkedCard =
+    current?.payload?.v === 1 &&
+    (current.payload.kind === 'numeric' || current.payload.kind === 'working');
   // Whether the current card was generated from a lines-mode Sequence (see
   // linesModeCards.ts) — drives the optional first-letter hint step in the question phase.
   const isLinesModeCard = current !== null && linesModeMapRef.current.has(current.id);
@@ -1366,6 +1368,7 @@ export function useLearnSession({
           correct,
           marksEarned: machineMarked?.marksEarned,
           marksAvailable: machineMarked?.marksAvailable,
+          lineVerdicts: machineMarked?.lineVerdicts,
         });
 
         if (correct && perf) {
@@ -1676,7 +1679,7 @@ export function useLearnSession({
     hintStep,
     setHintStep,
     isTypingCard,
-    isNumericCard,
+    isMachineMarkedCard,
     isLinesModeCard,
     summary,
     setSummary,
