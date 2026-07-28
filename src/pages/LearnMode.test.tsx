@@ -813,6 +813,59 @@ describe('LearnMode course/lesson scope', () => {
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
   });
 
+  it('keeps practice-session chrome mounted while Yes and No advance the card surface', async () => {
+    const now = Date.now();
+    const deck = await createDeck('Continuous practice');
+    await db.decks.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
+    for (const question of ['First question', 'Second question', 'Third question']) {
+      const card = await createCard(deck.id, 'front_back', question, 'Answer');
+      await db.cards.update(card.id, {
+        stability: 2,
+        difficulty: 5,
+        lastReviewed: now - 24 * 60 * 60 * 1000,
+        reps: 1,
+        state: 2,
+        due: now - 1,
+      });
+    }
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    const progress = await screen.findByRole('progressbar', { name: 'Predicted score progress' });
+    const header = progress.closest('header');
+    const firstSurface = document.querySelector<HTMLElement>('[data-study-card-id]');
+    expect(header).not.toBeNull();
+    expect(firstSurface).not.toBeNull();
+
+    await answerNo();
+    await waitFor(() => {
+      const next = document.querySelector<HTMLElement>('[data-study-card-id]');
+      expect(next?.dataset.studyCardId).not.toBe(firstSurface?.dataset.studyCardId);
+      expect(screen.getByRole('progressbar', { name: 'Predicted score progress' })).toBe(progress);
+      expect(progress.closest('header')).toBe(header);
+    });
+
+    const secondSurface = document.querySelector<HTMLElement>('[data-study-card-id]');
+    await answerYes();
+    await waitFor(() => {
+      const next = document.querySelector<HTMLElement>('[data-study-card-id]');
+      expect(next?.dataset.studyCardId).not.toBe(secondSurface?.dataset.studyCardId);
+      expect(screen.getByRole('progressbar', { name: 'Predicted score progress' })).toBe(progress);
+      expect(progress.closest('header')).toBe(header);
+    });
+    expect(await db.sessionHistory.count()).toBe(2);
+  });
+
   it('checks a numeric answer and records full marks without self-grading', async () => {
     const performanceNow = vi.spyOn(performance, 'now').mockReturnValue(0);
     const deck = await createDeck('Numeric deck');

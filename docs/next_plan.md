@@ -44,12 +44,10 @@ as `Uint8Array`, matching the rest of the asset layer. Startup performs a one-ti
 idempotent repair of missing or legacy Blob-backed seeded assets, with fresh-seed,
 round-trip rendering and existing-installation regression coverage.
 
-Practice-session continuity bug: answering does advance the non-Simple practice session,
-but replacing the whole card surface while the FSRS objective indicator snaps to its new
-value looks like a page refresh and makes the learner think progress returned to zero.
-Keep the session chrome visually stable, soften the card-to-card transition, and animate
-objective progress from its prior value. Add a browser regression check that the session
-identity and accumulated review state remain mounted across Yes and No answers.
+Resolved in the release close-out: answering in non-Simple practice keeps the session chrome
+mounted, moves between card surfaces with a motion-speed-aware hand-off, and interpolates the
+objective track and ring from their prior values. The regression test advances through both
+No and Yes while asserting that the same header and accumulated session state remain mounted.
 
 ---
 

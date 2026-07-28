@@ -52,6 +52,9 @@
 - Fixed broken images in fresh and existing seeded Welcome courses. Bundled SVGs now use the
   asset layer's durable byte representation, and startup repairs missing or legacy Blob-backed
   seed assets without touching user images.
+- Kept practice-session chrome mounted across Yes and No answers. Cards now hand off with a
+  short motion-speed-aware transition while the objective track and ring interpolate from their
+  previous values, removing the false impression of a page refresh or progress reset.
 
 ## Unreleased — Browser QA
 

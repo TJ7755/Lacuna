@@ -1323,6 +1323,9 @@ Two modes, chosen per session via the DeckView study dropdown (default **FSRS**)
   while current, and muted while unseen. FSRS, assessment-revision and filtered sessions instead show the live
   objective value from `sessionProgress`, labelled as predicted score or secured progress, so the
   header and scheduler cannot disagree.
+- **Continuous practice chrome:** Yes and No replace only the card surface; the Learn header and
+  accumulated session state stay mounted. The next card enters through a short motion-speed-aware
+  hand-off, while the objective track and ring interpolate from their previous values.
 
 ### Pomodoro timer (v0.0.2, `src/hooks/usePomodoro.ts`,
 `src/components/learn/PomodoroTimer.tsx`)

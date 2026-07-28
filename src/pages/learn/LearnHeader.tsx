@@ -218,7 +218,7 @@ export function LearnHeader({
               currentCardId={currentCardId}
             />
           ) : (
-            <ObjectiveProgressTrack value={displayedProgress} />
+            <ObjectiveProgressTrack value={displayedProgress} m={m} />
           )}
         </div>
 
@@ -230,6 +230,7 @@ export function LearnHeader({
         <SessionProgressRing
           value={displayedProgress}
           label={plannedRevision ? 'Revision window time' : progressName}
+          m={m}
         />
 
         <div className="hidden min-[340px]:block">
@@ -337,13 +338,15 @@ export function LearnHeader({
   );
 }
 
-function ObjectiveProgressTrack({ value }: { value: number }) {
+function ObjectiveProgressTrack({ value, m }: { value: number; m: number }) {
   const progress = Math.max(0, Math.min(1, value));
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-ink/10" aria-hidden="true">
-      <div
-        className="h-full rounded-full bg-accent transition-[width] duration-300"
-        style={{ width: `${progress * 100}%` }}
+      <motion.div
+        initial={false}
+        animate={{ width: `${progress * 100}%` }}
+        transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
+        className="h-full rounded-full bg-accent"
       />
     </div>
   );
@@ -406,7 +409,7 @@ function SessionSegments({
   );
 }
 
-function SessionProgressRing({ value, label }: { value: number; label: string }) {
+function SessionProgressRing({ value, label, m }: { value: number; label: string; m: number }) {
   const progress = Math.max(0, Math.min(1, value));
   const radius = 15;
   const circumference = 2 * Math.PI * radius;
@@ -422,16 +425,18 @@ function SessionProgressRing({ value, label }: { value: number; label: string })
     >
       <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden="true">
         <circle cx="18" cy="18" r={radius} fill="none" className="stroke-ink/10" strokeWidth="3" />
-        <circle
+        <motion.circle
           cx="18"
           cy="18"
           r={radius}
           fill="none"
-          className="stroke-accent transition-[stroke-dashoffset] duration-300"
+          className="stroke-accent"
           strokeWidth="3"
           strokeLinecap="round"
           strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - progress)}
+          initial={false}
+          animate={{ strokeDashoffset: circumference * (1 - progress) }}
+          transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
         />
       </svg>
       <span className="text-[9px] font-semibold tabular text-ink-soft sm:hidden">{percentage}</span>
