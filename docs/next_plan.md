@@ -350,7 +350,10 @@ To be planned in full after Arc 1. Scope decided so far:
 > companion process, durable multi-agent identity, plugin extension points, and
 > study-session hooks (see §2.1 and the Arc 2 outline above). Remaining human item: visual
 > confirmation of the read-grant toast and destructive-undo toast styling in light and dark
-> mode.
+> mode. The smoke pass covered a client cold-starting Lacuna; it did not cover attaching to
+> an application the user had already opened. The single-instance lock makes that second
+> launch exit and closes the new client's stdio pipe, so §2.12 now treats the companion as
+> required local infrastructure rather than merely a web-app extension.
 
 > Supersedes the Arc 2 outline above for implementation purposes. Arc 5's five items are
 > folded in as warm-up/interstitial tasks between Arc 2 phases — they are independent of
@@ -545,9 +548,12 @@ exactly one server instance per install.
   packaged app); `typecheck`/`electron:dev`/`electron:build*` scripts gain the
   `tsc -p electron/tsconfig.mcp.json` step alongside the existing two `tsc` calls.
 - `electron/main.ts` starts the MCP server after `app.whenReady()` and window creation
-  (needs `mainWindow.webContents` for the bridge), guarded by the existing single-instance
-  lock so at most one stdio server ever runs. No change to `installSecurityHeaders` — the
-  MCP server is Node-side and never touches the renderer's `connect-src`.
+  (needs `mainWindow.webContents` for the bridge). The existing single-instance lock limits
+  this implementation to the first MCP client that cold-starts Lacuna: it prevents duplicate
+  servers, but also prevents a later client from attaching to an already-running app. This
+  is accepted only for the delivered Arc 2 slice and is replaced by §2.12. No change to
+  `installSecurityHeaders` — the MCP server is Node-side and never touches the renderer's
+  `connect-src`.
 - `electron/preload.ts` gains an `mcp` namespace on `electronAPI` (`getStatus`, `onInvoke`,
   `reply`, `onGrantRequest`, `respondToGrantRequest`), keeping the existing narrow-surface
   pattern (no raw `ipcRenderer` passthrough).
@@ -701,6 +707,42 @@ tasks) includes its own tests. Arc 5 items are interleaved as noted.
 4. The web (Cloudflare) build is unaffected: no MCP SDK code reaches the browser bundle.
 5. All five Arc 5 items shipped and verified in light and dark mode, with no regression to
    Settings' scrollspy behaviour.
+
+## 2.12 Follow-up — attachable local MCP companion
+
+**Problem.** A stdio MCP host owns the server process it launches. Lacuna also permits only
+one Electron process, so a client configured with the Lacuna executable works only when it
+is the process that cold-starts the application. If Lacuna is already open, or a second MCP
+host tries to connect, the new process exits under the single-instance lock and its stdio
+connection disappears. The current implementation therefore exposes the right tools through
+the wrong lifecycle boundary.
+
+**Required local outcome.** A user opens Lacuna normally and one or more local MCP hosts can
+connect or reconnect without relaunching it. Add a small `lacuna-mcp` companion that owns the
+client-facing transport and relays requests to the single running Electron application:
+
+1. Provide a stdio entry point for clients that launch one server process per connection,
+   plus loopback Streamable HTTP only if it materially improves multi-client discovery.
+2. Connect the companion to Electron over authenticated, user-local IPC (Unix-domain socket
+   on macOS/Linux and named pipe on Windows), not an unauthenticated listening port.
+3. Keep tool definitions, validation, course-scope resolution, consent and IndexedDB access
+   in their existing shared/renderer layers; the companion is a transport relay, not a
+   second repository implementation.
+4. Make app-not-running, renderer-not-ready, stale-session and reconnect states explicit MCP
+   errors. Never silently launch a second data-owning application instance.
+5. Identify each live client connection so grants and consent notices can name their source;
+   retain process-scoped expiry unless a separate durable-identity design is approved.
+6. Cover attachment to an already-running app, simultaneous Codex/Claude-style clients,
+   client restart, application restart and rejected consent in automated integration tests.
+7. Update installation UX and Settings with copyable client configurations and connection
+   status; the user should not have to discover executable internals by archaeology.
+
+**Remote surfaces are a separate decision.** ChatGPT/API and other cloud-only MCP hosts need
+an authenticated, network-reachable Streamable HTTP endpoint. Serving that through an
+outbound tunnel or relay would move selected Lacuna data beyond the local machine and changes
+the product's local-only privacy promise. Do not smuggle it into the local companion. Plan it
+only after an explicit product decision covering authentication, per-user routing, consent,
+hosting and data retention.
 
 ---
 
