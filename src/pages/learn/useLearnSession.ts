@@ -35,7 +35,10 @@ import {
   lessonEffectiveReleaseDates,
   manualPracticeGateOutcomeAfterLesson,
 } from '../../course/path';
-import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../../course/studyFlowSnapshot';
+import {
+  buildCourseStudyFlowSnapshot,
+  courseMeanReviewSeconds,
+} from '../../course/studyFlowSnapshot';
 import {
   eligiblePracticePool,
   lessonCardMembership,
@@ -87,7 +90,13 @@ import { filterSessionCardPool } from '../../db/search';
 import type { CardFilter } from '../../db/search';
 import type { TypingSetting } from '../../state/typingSetting';
 import { FILTER_LABELS } from './types';
-import type { LearnModeType, LessonNotesScreen, Phase, SessionCardOutcome, StudyUnit } from './types';
+import type {
+  LearnModeType,
+  LessonNotesScreen,
+  Phase,
+  SessionCardOutcome,
+  StudyUnit,
+} from './types';
 
 /**
  * Whether a card can be answered by typing under the 'type' typing setting (see
@@ -1056,13 +1065,12 @@ export function useLearnSession({
       const ctx = makeSessionContext(sessionUnits, 'objective');
       ctxRef.current = ctx;
       cardsRef.current = cards;
-      linesModeSequencesByCard(cards)
-        .then((map) => {
-          if (!cancelled) linesModeMapRef.current = map;
-        })
-        .catch(() => {
-          /* Hint step is a non-critical enhancement; a failed lookup just disables it. */
-        });
+      try {
+        linesModeMapRef.current = await linesModeSequencesByCard(cards);
+      } catch {
+        // Line-specific prompts and hints are non-critical; a failed lookup disables them.
+      }
+      if (cancelled) return;
       const initialProgress = sessionProgress(cards, ctx);
       const hasServeableCards = plannedRevision
         ? cards.length > 0

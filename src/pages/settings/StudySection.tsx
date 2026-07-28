@@ -23,7 +23,11 @@ export function StudySection({ motionMultiplier }: { motionMultiplier: number })
       id="settings-study"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * motionMultiplier, delay: 0.25 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+      transition={{
+        duration: 0.24 * motionMultiplier,
+        delay: 0.25 * motionMultiplier,
+        ease: [0.16, 1, 0.3, 1],
+      }}
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
@@ -53,8 +57,8 @@ export function StudySection({ motionMultiplier }: { motionMultiplier: number })
           <div className="min-w-0">
             <div className="text-sm">Grading strictness</div>
             <p className="mt-1 text-sm text-ink-soft">
-              How closely a typed answer must match. Lenient ignores case and punctuation,
-              standard ignores case only, exact requires both to match.
+              How closely a typed answer must match. Lenient ignores case and punctuation, standard
+              ignores case only, exact requires both to match.
             </p>
           </div>
           <div className="flex shrink-0 gap-1">
@@ -80,12 +84,18 @@ export function StudySection({ motionMultiplier }: { motionMultiplier: number })
 
       <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
         <div className="min-w-0">
-          <label htmlFor="start-in-focus-mode" className="text-sm">Start Learn sessions in Focus Mode</label>
+          <label htmlFor="start-in-focus-mode" className="text-sm">
+            Start Learn sessions in Focus Mode
+          </label>
           <p className="mt-1 text-sm text-ink-soft">
             Hide session controls when Learn opens. Press Esc at any time to leave Focus Mode.
           </p>
         </div>
-        <Toggle id="start-in-focus-mode" checked={startInFocusMode} onChange={setStartInFocusMode} />
+        <Toggle
+          id="start-in-focus-mode"
+          checked={startInFocusMode}
+          onChange={setStartInFocusMode}
+        />
       </div>
 
       <SettingToggle
@@ -99,29 +109,75 @@ export function StudySection({ motionMultiplier }: { motionMultiplier: number })
       <div className="mt-6 border-t border-line pt-5">
         <h3 className="font-display text-base">Course defaults</h3>
         <p className="mt-1 mb-4 text-sm text-ink-soft">
-          Starting point for practice nodes on new courses. Any course can override these in its own settings, which always take priority.
+          Starting point for practice nodes on new courses. Any course can override these in its own
+          settings, which always take priority.
         </p>
         <SettingToggle
           title="Auto-insert practice nodes"
           description="Automatically add practice nodes between lessons on the course path."
           checked={practiceDefaults.autoPractice}
-          onChange={(checked) => setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })}
+          onChange={(checked) =>
+            setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })
+          }
         />
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <NumberField label="Threshold (far)" value={practiceDefaults.practiceThresholdMinutesFar} suffix="min" min={1} max={999} onChange={(value) => setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesFar: value })} />
-          <NumberField label="Threshold (near)" value={practiceDefaults.practiceThresholdMinutesNear} suffix="min" min={1} max={999} onChange={(value) => setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesNear: value })} />
-          <NumberField label="Revision period" value={practiceDefaults.practiceUrgentWindowDays} suffix="days" min={0} max={365} onChange={(value) => setPracticeDefaults({ ...practiceDefaults, practiceUrgentWindowDays: value })} />
-          <NumberField label="Max gap" value={practiceDefaults.practiceMaxGap} suffix="lessons" min={1} max={99} onChange={(value) => setPracticeDefaults({ ...practiceDefaults, practiceMaxGap: value })} />
+          <NumberField
+            label="Threshold (far)"
+            value={practiceDefaults.practiceThresholdMinutesFar}
+            suffix="min"
+            min={1}
+            max={999}
+            onChange={(value) =>
+              setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesFar: value })
+            }
+          />
+          <NumberField
+            label="Threshold (near)"
+            value={practiceDefaults.practiceThresholdMinutesNear}
+            suffix="min"
+            min={1}
+            max={999}
+            onChange={(value) =>
+              setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesNear: value })
+            }
+          />
+          <NumberField
+            label="Revision period"
+            value={practiceDefaults.practiceUrgentWindowDays}
+            suffix="days"
+            min={0}
+            max={365}
+            onChange={(value) =>
+              setPracticeDefaults({ ...practiceDefaults, practiceUrgentWindowDays: value })
+            }
+          />
+          <NumberField
+            label="Max gap"
+            value={practiceDefaults.practiceMaxGap}
+            suffix="lessons"
+            min={1}
+            max={99}
+            onChange={(value) =>
+              setPracticeDefaults({ ...practiceDefaults, practiceMaxGap: value })
+            }
+          />
         </div>
         <p className="mt-3 text-xs text-ink-faint">
-          The near threshold applies once an exam is within the revision period; the far threshold applies otherwise. Max gap forces a practice node after this many lessons without one.
+          The near threshold applies once an exam is within the revision period; the far threshold
+          applies otherwise. Max gap forces a practice node after this many lessons without one.
         </p>
       </div>
     </motion.section>
   );
 }
 
-function SettingToggle({ title, description, checked, onChange, bordered = false }: {
+function SettingToggle({
+  title,
+  description,
+  checked,
+  onChange,
+  bordered = false,
+}: {
   title: string;
   description: string;
   checked: boolean;
@@ -129,17 +185,29 @@ function SettingToggle({ title, description, checked, onChange, bordered = false
   bordered?: boolean;
 }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3', bordered && 'mt-6 border-t border-line pt-5')}>
+    <div
+      className={cn(
+        'flex items-start justify-between gap-3',
+        bordered && 'mt-6 border-t border-line pt-5',
+      )}
+    >
       <div className="min-w-0">
         <div className="text-sm">{title}</div>
         <p className="mt-1 text-sm text-ink-soft">{description}</p>
       </div>
-      <Toggle checked={checked} onChange={onChange} />
+      <Toggle checked={checked} onChange={onChange} ariaLabel={title} />
     </div>
   );
 }
 
-function NumberField({ label, value, suffix, min, max, onChange }: {
+function NumberField({
+  label,
+  value,
+  suffix,
+  min,
+  max,
+  onChange,
+}: {
   label: string;
   value: number;
   suffix: string;

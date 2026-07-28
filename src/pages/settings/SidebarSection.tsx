@@ -14,7 +14,11 @@ export function SidebarSection({ motionMultiplier }: { motionMultiplier: number 
       id="settings-sidebar"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * motionMultiplier, delay: 0.15 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+      transition={{
+        duration: 0.24 * motionMultiplier,
+        delay: 0.15 * motionMultiplier,
+        ease: [0.16, 1, 0.3, 1],
+      }}
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
@@ -25,7 +29,7 @@ export function SidebarSection({ motionMultiplier }: { motionMultiplier: number 
         Control what information appears in the sidebar navigation and how compact it is.
       </p>
       <SettingToggle
-        title="Show due card counts"
+        title="Show ready card counts"
         description="Display the number of cards ready for review next to each course name in the sidebar, so you can see which courses need attention at a glance."
         checked={sidebarSettings.showDueCounts}
         onChange={(checked) => setSidebarSettings({ showDueCounts: checked })}
@@ -56,7 +60,10 @@ export function SidebarSection({ motionMultiplier }: { motionMultiplier: number 
             const canMoveDown = index < sidebarSettings.navItems.length - 1;
             const canHide = item.visible ? visibleCount > 1 : true;
             return (
-              <div key={item.id} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 transition-colors">
+              <div
+                key={item.id}
+                className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 transition-colors"
+              >
                 <div className="flex flex-col gap-0.5">
                   <MoveButton
                     direction="up"
@@ -97,7 +104,11 @@ export function SidebarSection({ motionMultiplier }: { motionMultiplier: number 
           })}
         </div>
         <div className="mt-3 flex justify-end">
-          <Button variant="ghost" size="sm" onClick={() => setSidebarSettings({ navItems: DEFAULT_NAV_ITEMS })}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarSettings({ navItems: DEFAULT_NAV_ITEMS })}
+          >
             Reset to defaults
           </Button>
         </div>
@@ -120,12 +131,17 @@ function SettingToggle({
   bordered?: boolean;
 }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3', bordered && 'mt-6 border-t border-line pt-5')}>
+    <div
+      className={cn(
+        'flex items-start justify-between gap-3',
+        bordered && 'mt-6 border-t border-line pt-5',
+      )}
+    >
       <div className="min-w-0">
         <div className="text-sm">{title}</div>
         <p className="mt-1 text-sm text-ink-soft">{description}</p>
       </div>
-      <Toggle checked={checked} onChange={onChange} />
+      <Toggle checked={checked} onChange={onChange} ariaLabel={title} />
     </div>
   );
 }
@@ -152,7 +168,11 @@ function MoveButton({
       )}
       aria-label={`Move ${label} ${direction}`}
     >
-      <ChevronDownIcon width={12} height={12} className={direction === 'up' ? 'rotate-180' : undefined} />
+      <ChevronDownIcon
+        width={12}
+        height={12}
+        className={direction === 'up' ? 'rotate-180' : undefined}
+      />
     </button>
   );
 }

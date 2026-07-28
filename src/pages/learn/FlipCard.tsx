@@ -333,7 +333,12 @@ export function FlipCard({
               transition={{ duration: 0.24 * m, delay: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
               className="mx-auto w-full max-w-prose text-center text-lg leading-relaxed md:text-xl"
             >
-              <CardContent card={card} side={revealed ? 'back' : 'front'} sequenceCue />
+              <CardContent
+                card={card}
+                side={revealed ? 'back' : 'front'}
+                sequenceCue
+                sequenceMode={isLinesModeCard ? 'lines' : 'list'}
+              />
             </motion.div>
             {/* Hint ladder for lines-mode sequence cards: two optional, ungraded steps
                 between question and reveal (see next_plan.md §1.5). Clicking the button

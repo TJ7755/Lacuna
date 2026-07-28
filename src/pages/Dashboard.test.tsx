@@ -33,7 +33,7 @@ vi.mock('../state/motionSpeed', () => ({
 
 vi.mock('../components/ui/icons', () => ({
   ChevronRightIcon: () => <svg data-testid="chevron-right-icon" />,
-  FlaskIcon: () => <svg data-testid="flask-icon" />,
+  LacunaIcon: () => <svg data-testid="lacuna-icon" />,
   PlayIcon: () => <svg data-testid="play-icon" />,
   PlusIcon: () => <svg data-testid="plus-icon" />,
 }));

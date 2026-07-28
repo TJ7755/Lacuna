@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { m as motion } from 'motion/react';
 import { ClockIcon } from '../../components/ui/icons';
 import { Toggle } from '../../components/ui/Toggle';
-import { loadPomodoroSettings, savePomodoroSettings, type PomodoroSettings } from '../../hooks/usePomodoro';
+import {
+  loadPomodoroSettings,
+  savePomodoroSettings,
+  type PomodoroSettings,
+} from '../../hooks/usePomodoro';
 
 export function PomodoroSection({ motionMultiplier }: { motionMultiplier: number }) {
   const [settings, setSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
@@ -17,7 +21,11 @@ export function PomodoroSection({ motionMultiplier }: { motionMultiplier: number
       id="settings-pomodoro"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * motionMultiplier, delay: 0.35 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+      transition={{
+        duration: 0.24 * motionMultiplier,
+        delay: 0.35 * motionMultiplier,
+        ease: [0.16, 1, 0.3, 1],
+      }}
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
@@ -25,25 +33,52 @@ export function PomodoroSection({ motionMultiplier }: { motionMultiplier: number
         <h2 className="font-display text-xl">Pomodoro timer</h2>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
-        A built-in focus timer for your study sessions. Customise the durations to match your own rhythm.
+        A built-in focus timer for your study sessions. Customise the durations to match your own
+        rhythm.
       </p>
       <div className="grid grid-cols-3 gap-4">
-        <DurationInput label="Focus" value={settings.workMinutes} onChange={(value) => update({ ...settings, workMinutes: value })} />
-        <DurationInput label="Short break" value={settings.shortBreakMinutes} onChange={(value) => update({ ...settings, shortBreakMinutes: value })} />
-        <DurationInput label="Long break" value={settings.longBreakMinutes} onChange={(value) => update({ ...settings, longBreakMinutes: value })} />
+        <DurationInput
+          label="Focus"
+          value={settings.workMinutes}
+          onChange={(value) => update({ ...settings, workMinutes: value })}
+        />
+        <DurationInput
+          label="Short break"
+          value={settings.shortBreakMinutes}
+          onChange={(value) => update({ ...settings, shortBreakMinutes: value })}
+        />
+        <DurationInput
+          label="Long break"
+          value={settings.longBreakMinutes}
+          onChange={(value) => update({ ...settings, longBreakMinutes: value })}
+        />
       </div>
       <div className="mt-5 flex items-start justify-between gap-3 border-t border-line pt-5">
         <div className="min-w-0">
           <div className="text-sm">Auto-start breaks</div>
-          <p className="mt-1 text-sm text-ink-soft">Automatically start the break timer when a focus session ends.</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            Automatically start the break timer when a focus session ends.
+          </p>
         </div>
-        <Toggle checked={settings.autoStartBreaks} onChange={(checked) => update({ ...settings, autoStartBreaks: checked })} />
+        <Toggle
+          checked={settings.autoStartBreaks}
+          onChange={(checked) => update({ ...settings, autoStartBreaks: checked })}
+          ariaLabel="Auto-start breaks"
+        />
       </div>
     </motion.section>
   );
 }
 
-function DurationInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+function DurationInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
   return (
     <label className="block text-sm text-ink-soft">
       {label}

@@ -69,9 +69,9 @@ export function DashboardSection({ motionMultiplier }: { motionMultiplier: numbe
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {(
             [
-              { key: 'curriculum', label: 'Curriculum' },
+              { key: 'curriculum', label: 'Curriculum progress' },
               { key: 'coverage', label: 'Card coverage' },
-              { key: 'today', label: "Today's work" },
+              { key: 'today', label: "Today's workload" },
             ] as { key: CourseCardMetric; label: string }[]
           ).map((option) => {
             const active = courseCardMetric === option.key;

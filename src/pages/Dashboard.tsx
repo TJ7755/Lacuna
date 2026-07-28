@@ -6,7 +6,7 @@ import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useC
 import { StudySignals } from '../components/dashboard/StudySignals';
 import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
 import { Button } from '../components/ui/Button';
-import { ChevronRightIcon, FlaskIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
+import { ChevronRightIcon, LacunaIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
 import { CourseCard } from '../components/course/CourseCard';
 import { NewCourseForm } from '../components/course/NewCourseForm';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
