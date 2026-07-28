@@ -9,6 +9,7 @@ import { defaultExamDate } from '../utils/datetime';
 import { assetUrl, sha256Blob } from './assets';
 
 const FLAG_KEY = 'lacuna-seeded';
+const ASSET_REPAIR_FLAG_KEY = 'lacuna-seed-assets-v2';
 let seeding = false;
 
 /** A lesson and the backing deck its cards are recorded against (see ensureLessonDeck). */
@@ -61,7 +62,7 @@ async function prepareSvgAsset(svg: string, width: number, height: number) {
   return {
     record: {
       hash,
-      blob,
+      blob: new TextEncoder().encode(svg),
       mimeType: 'image/svg+xml' as const,
       width,
       height,
@@ -86,6 +87,44 @@ const SAMPLE_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="200" he
   <circle cx="60" cy="55" r="14" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
   <polyline points="90,90 115,60 140,80 175,40" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
 </svg>`;
+
+async function repairSeededSvgAssets(): Promise<void> {
+  try {
+    if (localStorage.getItem(ASSET_REPAIR_FLAG_KEY)) return;
+  } catch {
+    // localStorage may be unavailable; the idempotent database check still works.
+  }
+
+  const prepared = await Promise.all([
+    prepareSvgAsset(FORGETTING_CURVE_SVG, 320, 160),
+    prepareSvgAsset(SAMPLE_IMAGE_SVG, 200, 120),
+  ]);
+  const referenced = new Set(
+    (
+      await db.cards
+        .filter((card) =>
+          prepared.some(
+            (asset) => card.front.includes(asset.url) || card.back.includes(asset.url),
+          ),
+        )
+        .toArray()
+    ).flatMap((card) => [card.front, card.back]),
+  );
+
+  for (const asset of prepared) {
+    if (![...referenced].some((markdown) => markdown.includes(asset.url))) continue;
+    const stored = await db.assets.get(asset.record.hash);
+    if (!stored || !(stored.blob instanceof Uint8Array)) {
+      await db.assets.put(asset.record);
+    }
+  }
+
+  try {
+    localStorage.setItem(ASSET_REPAIR_FLAG_KEY, '1');
+  } catch {
+    // localStorage may be unavailable; the next start will repeat the safe repair.
+  }
+}
 
 /**
  * Build a lesson plus the hidden backing deck its cards are recorded against, mirroring
@@ -146,6 +185,7 @@ export async function seedIfFirstRun(): Promise<void> {
     // Fast-path: if any course already exists, skip seeding entirely.
     const existingCourseCount = await db.courses.count();
     if (existingCourseCount > 0) {
+      await repairSeededSvgAssets();
       // Best-effort sync of the localStorage flag so future starts are cheaper.
       try {
         localStorage.setItem(FLAG_KEY, '1');
@@ -587,6 +627,7 @@ export async function seedIfFirstRun(): Promise<void> {
     // Only set the flag after a successful commit so a failed seed is retried.
     try {
       localStorage.setItem(FLAG_KEY, '1');
+      localStorage.setItem(ASSET_REPAIR_FLAG_KEY, '1');
     } catch {
       // localStorage may be unavailable; the next start will retry the check.
     }

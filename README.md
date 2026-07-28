@@ -134,6 +134,7 @@ grants expire when Lacuna closes.
 | Analytics charts | `src/components/analytics/` |
 
 See `docs/SPEC.md` for the full set of design decisions.
+Use `docs/WEBSITE_TEST_CHECKLIST.md` for the complete browser release-verification pass.
 
 ## Tech
 

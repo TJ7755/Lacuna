@@ -474,51 +474,65 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             <main
               className={`mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-8 md:py-12 ${isTouchMode && !isMachineMarkedCard ? 'pb-40' : ''}`}
             >
-              {current && current.payload?.kind === 'numeric' ? (
-                <NumericStudyFace
-                  key={current.id}
-                  card={
-                    current as Card & {
-                      payload: Extract<ItemPayload, { kind: 'numeric' }>;
-                    }
-                  }
-                  allowCheckerDisputes={!isSimpleMode}
-                  onAnswer={(result) => void answer(result, 'keyboard')}
-                />
-              ) : current && current.payload?.kind === 'working' ? (
-                <WorkingStudyFace
-                  key={current.id}
-                  card={
-                    current as Card & {
-                      payload: Extract<ItemPayload, { kind: 'working' }>;
-                    }
-                  }
-                  allowCheckerDisputes={!isSimpleMode}
-                  onAnswer={(result) => void answer(result, 'keyboard')}
-                />
-              ) : current ? (
-                <FlipCard
-                  card={current}
-                  revealed={phase === 'answer'}
-                  motionSpeed={motionSpeed}
-                  phase={phase}
-                  isTouchMode={isTouchMode}
-                  menuOpen={menuOpen}
-                  editing={editing}
-                  navOpen={navOpen}
-                  hintsOpen={hintsOpen}
-                  onReveal={reveal}
-                  onHide={hide}
-                  onAnswer={answer}
-                  typedAnswer={typedAnswer}
-                  isTypingCard={isTypingCard}
-                  mode={mode}
-                  isLinesModeCard={isLinesModeCard}
-                  hintStep={hintStep}
-                  onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
-                  answerStrictness={answerStrictness}
-                />
-              ) : null}
+              <AnimatePresence initial={false} mode="popLayout">
+                {current && (
+                  <motion.div
+                    key={current.id}
+                    data-study-card-id={current.id}
+                    initial={{ opacity: 0, x: 18, scale: 0.992 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: -18, scale: 0.992 }}
+                    transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+                    className="w-full"
+                  >
+                    {current.payload?.kind === 'numeric' ? (
+                      <NumericStudyFace
+                        card={
+                          current as Card & {
+                            payload: Extract<ItemPayload, { kind: 'numeric' }>;
+                          }
+                        }
+                        allowCheckerDisputes={!isSimpleMode}
+                        onAnswer={(result) => void answer(result, 'keyboard')}
+                      />
+                    ) : current.payload?.kind === 'working' ? (
+                      <WorkingStudyFace
+                        card={
+                          current as Card & {
+                            payload: Extract<ItemPayload, { kind: 'working' }>;
+                          }
+                        }
+                        allowCheckerDisputes={!isSimpleMode}
+                        onAnswer={(result) => void answer(result, 'keyboard')}
+                      />
+                    ) : (
+                      <FlipCard
+                        card={current}
+                        revealed={phase === 'answer'}
+                        motionSpeed={motionSpeed}
+                        phase={phase}
+                        isTouchMode={isTouchMode}
+                        menuOpen={menuOpen}
+                        editing={editing}
+                        navOpen={navOpen}
+                        hintsOpen={hintsOpen}
+                        onReveal={reveal}
+                        onHide={hide}
+                        onAnswer={answer}
+                        typedAnswer={typedAnswer}
+                        isTypingCard={isTypingCard}
+                        mode={mode}
+                        isLinesModeCard={isLinesModeCard}
+                        hintStep={hintStep}
+                        onRevealHint={() =>
+                          setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))
+                        }
+                        answerStrictness={answerStrictness}
+                      />
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Typing input for typing cards in question phase */}
               {!isMachineMarkedCard && isTypingCard && phase === 'question' && (
