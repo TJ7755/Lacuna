@@ -11,7 +11,7 @@ import {
   parseEditedCandidate,
   type BatchCandidate,
 } from '../../items/batchStaging';
-import { BATCH_OUTPUT_START } from '../../items/prompts';
+import { BATCH_OUTPUT_START, buildItemRevisionPrompt } from '../../items/prompts';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
@@ -265,7 +265,30 @@ function CandidateRow({
   onReject,
   onRestore,
 }: CandidateRowProps) {
+  const { notify } = useToast();
+  const [revisionOpen, setRevisionOpen] = useState(false);
+  const [complaint, setComplaint] = useState('');
   const ready = Boolean(candidate.payload);
+
+  async function copyRevisionPrompt() {
+    const raw = asRecord(candidate.raw);
+    try {
+      await navigator.clipboard.writeText(
+        buildItemRevisionPrompt({
+          itemJson: candidate.sourceJson,
+          scheme: typeof raw?.scheme === 'string' ? raw.scheme : undefined,
+          failingFixture: firstFailingFixture(candidate, raw),
+          complaint,
+          validationErrors: candidate.errors,
+        }),
+      );
+      notify('Revision prompt copied to the clipboard.', 'positive');
+      setRevisionOpen(false);
+    } catch {
+      notify('Could not copy the revision prompt.', 'negative');
+    }
+  }
+
   return (
     <article
       className={cn(
@@ -323,6 +346,11 @@ function CandidateRow({
             </Button>
           </div>
         )}
+        {!editing && decision === 'accepted' && (
+          <Button size="sm" variant="ghost" onClick={() => setRevisionOpen(true)}>
+            Revise with AI
+          </Button>
+        )}
         {decision === 'rejected' && (
           <Button size="sm" variant="ghost" onClick={onRestore}>
             Restore
@@ -344,11 +372,64 @@ function CandidateRow({
         </ul>
       )}
 
+      {!editing && decision === 'staged' && !revisionOpen && (
+        <Button className="mt-3" size="sm" variant="ghost" onClick={() => setRevisionOpen(true)}>
+          Revise with AI
+        </Button>
+      )}
+
+      {revisionOpen && decision !== 'rejected' && (
+        <div className="mt-4 rounded-xl border border-line bg-surface-raised p-4">
+          <label className="flex flex-col gap-2 text-sm text-ink-soft">
+            What should change?
+            <textarea
+              value={complaint}
+              onChange={(event) => setComplaint(event.target.value)}
+              rows={3}
+              placeholder="Describe the marking or wording problem…"
+              className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 text-sm leading-6 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            />
+          </label>
+          <div className="mt-3 flex justify-end gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setRevisionOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={!complaint.trim()}
+              onClick={() => void copyRevisionPrompt()}
+            >
+              Copy revision prompt
+            </Button>
+          </div>
+        </div>
+      )}
+
       {editing && (
         <StagedItemEditor candidate={candidate} onCancel={onCancelEdit} onApply={onApplyEdit} />
       )}
     </article>
   );
+}
+
+function firstFailingFixture(
+  candidate: BatchCandidate,
+  raw: Record<string, unknown> | null,
+): unknown {
+  if (!Array.isArray(raw?.fixtures)) return undefined;
+  for (const error of candidate.errors) {
+    const match = error.match(/^Fixture (\d+)/);
+    if (!match) continue;
+    return raw.fixtures[Number(match[1]) - 1];
+  }
+  return undefined;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function StatusPill({

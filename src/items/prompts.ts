@@ -11,6 +11,14 @@ export interface BatchGenerationPromptInput {
   conceptsPerItem?: number;
 }
 
+export interface ItemRevisionPromptInput {
+  itemJson: string;
+  scheme?: string;
+  failingFixture?: unknown;
+  complaint: string;
+  validationErrors?: string[];
+}
+
 export function buildMarkSchemeDraftPrompt(question: string): string {
   return [
     'Draft a Lacuna v1 mark scheme for the question below.',
@@ -26,9 +34,7 @@ export function buildMarkSchemeDraftPrompt(question: string): string {
 }
 
 export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): string {
-  const maxItems = input.maxItems
-    ? Math.max(1, Math.trunc(input.maxItems) || 1)
-    : undefined;
+  const maxItems = input.maxItems ? Math.max(1, Math.trunc(input.maxItems) || 1) : undefined;
   const conceptsPerItem = input.conceptsPerItem
     ? Math.max(1, Math.trunc(input.conceptsPerItem) || 1)
     : undefined;
@@ -86,5 +92,42 @@ export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): s
     '}',
     BATCH_OUTPUT_END,
     'Use valid JSON. Keep scheme newlines escaped inside JSON strings. Include at least one passing fixture for every working item.',
+  ].join('\n');
+}
+
+export function buildItemRevisionPrompt(input: ItemRevisionPromptInput): string {
+  return [
+    'Revise one Lacuna v1 item in response to the tutor complaint and validation evidence below.',
+    'Preserve the learning objective. Fix the reported problem without creating additional items or unrelated variants.',
+    'For a working item, keep the mark scheme within the supplied v1 grammar and make every fixture earn its declared expectedMarks.',
+    '',
+    'Tutor complaint:',
+    input.complaint.trim(),
+    '',
+    'Validation feedback:',
+    input.validationErrors?.length
+      ? input.validationErrors.join('\n')
+      : 'No validation error was reported.',
+    '',
+    'Current mark scheme:',
+    input.scheme?.trim() || 'Not applicable.',
+    '',
+    'Failing fixture:',
+    input.failingFixture === undefined
+      ? 'No failing fixture was reported.'
+      : JSON.stringify(input.failingFixture, null, 2),
+    '',
+    'Current item JSON:',
+    input.itemJson.trim(),
+    '',
+    'Return exactly one revised item inside this complete single-item batch block, with no Markdown fence or explanation:',
+    BATCH_OUTPUT_START,
+    '{',
+    '  "version": 1,',
+    '  "items": [',
+    '    { "kind": "numeric or working", "question": "Revised question and fields" }',
+    '  ]',
+    '}',
+    BATCH_OUTPUT_END,
   ].join('\n');
 }

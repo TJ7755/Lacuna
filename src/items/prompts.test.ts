@@ -3,6 +3,7 @@ import {
   BATCH_OUTPUT_END,
   BATCH_OUTPUT_START,
   buildBatchGenerationPrompt,
+  buildItemRevisionPrompt,
   buildMarkSchemeDraftPrompt,
 } from './prompts';
 import {
@@ -72,5 +73,25 @@ describe('batch authoring prompt', () => {
     expect(prompt).toContain('Concepts per item: model-selected');
     expect(prompt).toContain('Requested maximum items: model-selected');
     expect(prompt).not.toContain('Never return more than');
+  });
+});
+
+describe('item revision prompt', () => {
+  it('includes the item, scheme, failing fixture and tutor complaint', () => {
+    const prompt = buildItemRevisionPrompt({
+      itemJson: '{"kind":"working","question":"Calculate revenue"}',
+      scheme: '[1] revenue :: equals :: 1120',
+      failingFixture: { studentAnswer: ['1000'], expectedMarks: 1 },
+      complaint: 'Accept the correctly calculated quantity before revenue.',
+      validationErrors: ['Fixture 1 expected 1 mark but received 0.'],
+    });
+
+    expect(prompt).toContain('{"kind":"working","question":"Calculate revenue"}');
+    expect(prompt).toContain('[1] revenue :: equals :: 1120');
+    expect(prompt).toContain('"studentAnswer": [');
+    expect(prompt).toContain('Accept the correctly calculated quantity before revenue.');
+    expect(prompt).toContain('Fixture 1 expected 1 mark but received 0.');
+    expect(prompt).toContain(BATCH_OUTPUT_START);
+    expect(prompt).toContain(BATCH_OUTPUT_END);
   });
 });
