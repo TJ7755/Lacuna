@@ -39,6 +39,20 @@ the current implementation and is superseded — no further action needed here.
 Detail rots (the Course plan needed two addenda), so only the most recently delivered arc
 carries full detail. Outline arcs are scoped, not specified.
 
+Known maintenance bug: the seeded Welcome course's bundled SVG assets can render as
+broken images. `prepareSvgAsset` stores a `Blob` even though the asset layer uses raw
+`Uint8Array` bytes to survive IndexedDB structured cloning reliably. Change fresh
+seeding to store bytes, add an asset round-trip/render regression test, and repair or
+backfill incompatible or missing seeded assets in existing Welcome courses. Fixing only
+new installations would leave the current broken cards untouched.
+
+Practice-session continuity bug: answering does advance the non-Simple practice session,
+but replacing the whole card surface while the FSRS objective indicator snaps to its new
+value looks like a page refresh and makes the learner think progress returned to zero.
+Keep the session chrome visually stable, soften the card-to-card transition, and animate
+objective progress from its prior value. Add a browser regression check that the session
+identity and accumulated review state remain mounted across Yes and No answers.
+
 ---
 
 # Arc 0 — Course Architecture Close-out
@@ -2078,6 +2092,17 @@ Target user includes 11+ students. LaTeX is never shown or required.
   touch system. A structure-aware equation editor is explicitly out of scope.
 - The input parser and the verification engine share one expression representation —
   this is a single investment, not two.
+
+**Numeric-authoring follow-up (not part of slice 1):** make fraction entry cursor-aware
+(or revisit a visual maths field) instead of requiring users to translate the structure
+into slash notation themselves. Compact repeated “One of” rows so each alternative does
+not duplicate a full preview and symbol palette. Extend numeric checking beyond constant
+expressions so equivalent solution statements such as `x = 2`, `2 = x`, and whitespace
+variants collapse to one accepted mathematical answer rather than requiring redundant
+set-membership entries. For algebraic solutions, prefer structured answer templates such
+as `x = [blank]` and an unordered pair of root blanks for quadratics. Decide explicitly
+whether that belongs to the reserved scaffold kind or a multi-field numeric v2; do not
+fake it by asking authors to enumerate equivalent equation spellings.
 
 ## 11.4 Verification engine (pure module, no DB, no React)
 
