@@ -12,6 +12,7 @@ import {
   compileMarkScheme,
   markSchemeSyntaxSpecification,
 } from './markSchemeCompiler';
+import { parseBatchOutput } from './batchStaging';
 
 describe('mark-scheme authoring prompt', () => {
   it('contains the question and compiler-owned grammar specification', () => {
@@ -46,7 +47,9 @@ describe('batch authoring prompt', () => {
     expect(prompt).toContain('"fixtures"');
     expect(prompt).toContain('Every fixture must actually earn its expectedMarks');
     expect(prompt).toContain('Do not add prose labels or units');
-    expect(prompt).toContain('"studentAnswer": ["100 * 1.4 = 140", "1120"]');
+    expect(prompt).toContain('durable concept checks');
+    expect(prompt).toContain('deriving the quadratic formula from ax^2 + bx + c = 0');
+    expect(prompt).toContain('"studentAnswer": ["x^2 + b*x = -c", "(x + b/2)^2 = b^2/4 - c"]');
     expect(prompt).not.toContain('"studentAnswer": ["working line", "4"]');
   });
 
@@ -61,6 +64,17 @@ describe('batch authoring prompt', () => {
 
     expect(prompt).toContain('Requested maximum items: 500');
     expect(prompt).toContain('Target concept density: 2 atomic concepts per item');
+  });
+
+  it('keeps the symbolic example valid with a passing fixture', () => {
+    const result = parseBatchOutput(
+      buildBatchGenerationPrompt({ notes: 'Notes', topic: 'Algebra', level: 'GCSE' }),
+    );
+
+    expect(result.error).toBeNull();
+    expect(result.candidates).toHaveLength(2);
+    expect(result.candidates.every((candidate) => candidate.errors.length === 0)).toBe(true);
+    expect(result.candidates[0]?.fixtureStatus).toEqual({ total: 1, passed: 1 });
   });
 
   it('lets the model choose both constraints', () => {

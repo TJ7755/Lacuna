@@ -31,6 +31,9 @@
   Each proposal is validated independently and can be edited, accepted, rejected or returned
   to a chatbot through a complaint-aware revision prompt. Lacuna stores no model key and sends
   no notes itself.
+- Clarified that batch generation creates durable concept checks rather than arbitrary-number
+  worksheets. Working-item prompts now prefer reusable symbolic methods and derivations, and the
+  authoring dialog states that parameterised exercise variants are not supported yet.
 - Added structured numeric and working payloads to `lacuna.create_card` and
   `lacuna.update_card`. MCP writes use the same numeric validator, mark-scheme compiler and
   fixture runner as the visual editor and staging path.

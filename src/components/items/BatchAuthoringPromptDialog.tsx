@@ -141,7 +141,7 @@ export function BatchAuthoringPromptDialog({
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
-                  rows={showConstraints ? 6 : 9}
+                  rows={showConstraints ? 5 : 6}
                   placeholder="Paste the notes for one lesson or topic…"
                   className="resize-y rounded-xl border border-line-strong bg-surface px-4 py-3 text-ink outline-none placeholder:text-ink-faint focus:border-accent"
                 />
@@ -166,6 +166,14 @@ export function BatchAuthoringPromptDialog({
                     className="rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-ink outline-none placeholder:text-ink-faint focus:border-accent"
                   />
                 </label>
+              </div>
+
+              <div className="rounded-xl border border-accent/25 bg-accent-soft/45 px-4 py-3">
+                <p className="text-sm font-medium text-ink">Concept checks, not worksheets</p>
+                <p className="mt-1 text-xs leading-relaxed text-ink-soft">
+                  Working items should test a reusable method or derivation. Use symbolic general
+                  forms where possible; arbitrary-number exercise variants are not supported yet.
+                </p>
               </div>
 
               <label className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
