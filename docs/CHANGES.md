@@ -1,5 +1,11 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Item-type generalisation (Arc 11)
+
+- Added numeric-item authoring to the card editor: exact, tolerance and alternative-answer
+  checks share a lenient maths input, live KaTeX preview and touch-sized symbol palette.
+  Structured answers persist in the card payload rather than being hidden in display text.
+
 ## Unreleased — Browser QA
 
 - Completed a desktop and mobile in-app-browser audit across every application route and

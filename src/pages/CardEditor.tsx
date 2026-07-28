@@ -20,6 +20,10 @@ import {
 import { hasCloze } from '../components/markdown/cloze';
 import { sequenceForItemId } from '../db/sequenceGeneration';
 import { CardContent } from '../components/cards/CardContent';
+import {
+  NumericAnswerEditor,
+  numericAnswerSpecIsValid,
+} from '../components/items/NumericAnswerEditor';
 import { SequenceBadge } from '../components/cards/SequenceBadge';
 import { ChevronLeftIcon, CheckIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
@@ -27,7 +31,11 @@ import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
 import type { EditorOriginState } from '../utils/editorOrigin';
-import type { Card, CardType } from '../db/types';
+import type { Card, CardType, ItemPayload, NumericAnswerSpec } from '../db/types';
+
+type EditorCardType = CardType | 'numeric';
+
+const EMPTY_NUMERIC_ANSWER: NumericAnswerSpec = { kind: 'exact', value: '' };
 
 /**
  * Full-page card composer for both creating and editing a card. Replaces the old
@@ -68,9 +76,10 @@ export function CardEditor() {
   // sequence here to link back to the sequence editor). Harmless to call unconditionally.
   const sequences = useSequences(courseId);
 
-  const [type, setType] = useState<CardType>('front_back');
+  const [type, setType] = useState<EditorCardType>('front_back');
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
+  const [numericAnswer, setNumericAnswer] = useState<NumericAnswerSpec>(EMPTY_NUMERIC_ANSWER);
   const [tags, setTags] = useState<string[]>([]);
   const [showBackCloze, setShowBackCloze] = useState(false);
   // When set (new front/back cards only), saving also creates an independent reverse card.
@@ -148,9 +157,10 @@ export function CardEditor() {
       if (draft && draft.timestamp > 0) {
         setDraftPrompt(true);
       } else {
-        setType(card.type);
+        setType(card.payload?.kind === 'numeric' ? 'numeric' : card.type);
         setFront(card.front);
         setBack(card.back);
+        if (card.payload?.kind === 'numeric') setNumericAnswer(card.payload.answer);
         setTags(card.tags ?? []);
       }
       setLoaded(true);
@@ -160,10 +170,11 @@ export function CardEditor() {
   const applyDraft = () => {
     const draft = loadDraft(draftKeyRef.current);
     if (!draft) return;
-    setType(draft.type);
+    setType(draft.itemKind === 'numeric' ? 'numeric' : draft.type);
     setFront(draft.front);
     setBack(draft.back);
     setTags(draft.tags);
+    if (draft.payload?.kind === 'numeric') setNumericAnswer(draft.payload.answer);
     if (draft.alsoReverse !== undefined) setAlsoReverse(draft.alsoReverse);
     setDraftPrompt(false);
   };
@@ -172,10 +183,11 @@ export function CardEditor() {
     clearDraft(draftKeyRef.current);
     setDraftPrompt(false);
     if (editing && card) {
-      setType(card.type);
+      setType(card.payload?.kind === 'numeric' ? 'numeric' : card.type);
       setFront(card.front);
       setBack(card.back);
       setTags(card.tags ?? []);
+      if (card.payload?.kind === 'numeric') setNumericAnswer(card.payload.answer);
     }
   };
 
@@ -185,16 +197,18 @@ export function CardEditor() {
     window.clearTimeout(draftTimer.current);
     draftTimer.current = window.setTimeout(() => {
       saveDraft(draftKeyRef.current, {
-        type,
+        type: type === 'numeric' ? 'front_back' : type,
+        itemKind: type === 'numeric' ? 'numeric' : undefined,
         front,
         back,
         tags,
         alsoReverse,
+        payload: type === 'numeric' ? { v: 1, kind: 'numeric', answer: numericAnswer } : undefined,
         timestamp: Date.now(),
       });
     }, 800);
     return () => window.clearTimeout(draftTimer.current);
-  }, [loaded, type, front, back, tags, alsoReverse]);
+  }, [loaded, type, front, back, tags, alsoReverse, numericAnswer]);
 
   // Check for duplicate cards whenever front/back/type changes. A fresh, empty lesson
   // or bank has no backing deck yet, so there is nothing to check against.
@@ -204,12 +218,13 @@ export function CardEditor() {
     if (editing && !card) return;
     window.clearTimeout(duplicateTimer.current);
     duplicateTimer.current = window.setTimeout(async () => {
-      const backValue = type === 'cloze' ? '' : back;
-      if (!front.trim() || (!backValue.trim() && type !== 'cloze')) {
+      const storedType: CardType = type === 'numeric' ? 'front_back' : type;
+      const backValue = type === 'cloze' || type === 'numeric' ? '' : back;
+      if (!front.trim() || (!backValue.trim() && type !== 'cloze' && type !== 'numeric')) {
         setDuplicateWarning(null);
         return;
       }
-      const dup = await checkDuplicate(duplicateCheckDeckId, type, front, backValue, card?.id);
+      const dup = await checkDuplicate(duplicateCheckDeckId, storedType, front, backValue, card?.id);
       setDuplicateWarning(dup ?? null);
     }, 600);
     return () => window.clearTimeout(duplicateTimer.current);
@@ -366,16 +381,19 @@ export function CardEditor() {
 
   const isCloze = type === 'cloze';
   const isBasicReversed = type === 'basic_reversed';
+  const isNumeric = type === 'numeric';
   const clozeValid = !isCloze || hasCloze(front);
   const frontValid = front.trim().length > 0;
-  const backValid = isCloze || back.trim().length > 0;
-  const canSave = frontValid && backValid && clozeValid;
+  const backValid = isCloze || isNumeric || back.trim().length > 0;
+  const numericValid = !isNumeric || numericAnswerSpecIsValid(numericAnswer);
+  const canSave = frontValid && backValid && clozeValid && numericValid;
 
   async function handleSave(andAnother = false) {
     const missingOwner = lessonMode ? !courseId || !lessonId : !courseId;
     if (!canSave || missingOwner) {
       // Shake the first invalid field to give the user tactile feedback on why save is blocked.
       if (!frontValid) setShakeField('front');
+      else if (!numericValid) setShakeField('answer');
       else if (!backValid) setShakeField('back');
       else if (!clozeValid) setShakeField('cloze');
       setShakeNonce((n) => n + 1);
@@ -383,9 +401,13 @@ export function CardEditor() {
       shakeTimer.current = window.setTimeout(() => setShakeField(null), 500);
       return;
     }
-    const backValue = isCloze ? '' : back;
+    const storedType: CardType = isNumeric ? 'front_back' : type;
+    const backValue = isCloze || isNumeric ? '' : back;
+    const payload: ItemPayload | undefined = isNumeric
+      ? { v: 1, kind: 'numeric', answer: numericAnswer }
+      : undefined;
     if (editing && card) {
-      await updateCard(card.id, { type, front, back: backValue, tags });
+      await updateCard(card.id, { type: storedType, front, back: backValue, tags, payload });
       // If this is a basic_reversed card, update its reverse partner too.
       if (card.type === 'basic_reversed' && card.reverseCardId) {
         await updateCard(card.reverseCardId, { front: backValue, back: front });
@@ -400,21 +422,21 @@ export function CardEditor() {
       return;
     }
 
-    const reversed = !isCloze && !isBasicReversed && alsoReverse;
+    const reversed = !isCloze && !isBasicReversed && !isNumeric && alsoReverse;
     if (lessonMode) {
       if (isBasicReversed) {
         await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags);
       } else if (reversed) {
         await createLessonCardWithReverse(courseId!, lessonId!, front, backValue, tags);
       } else {
-        await createLessonCard(courseId!, lessonId!, type, front, backValue, tags);
+        await createLessonCard(courseId!, lessonId!, storedType, front, backValue, tags, payload);
       }
     } else if (isBasicReversed) {
       await createCourseBasicReversedPair(courseId!, front, backValue, tags);
     } else if (reversed) {
       await createCourseCardWithReverse(courseId!, front, backValue, tags);
     } else {
-      await createCourseCard(courseId!, type, front, backValue, tags);
+      await createCourseCard(courseId!, storedType, front, backValue, tags, payload);
     }
     clearDraft(draftKeyRef.current);
     if (andAnother) {
@@ -422,6 +444,7 @@ export function CardEditor() {
       // (usually shared across a batch), refocus the first field, and tally the count.
       setFront('');
       setBack('');
+      if (isNumeric) setNumericAnswer(EMPTY_NUMERIC_ANSWER);
       setAddedCount((n) => n + (reversed ? 2 : 1));
       setFormKey((k) => k + 1);
       flashSaved();
@@ -541,16 +564,18 @@ export function CardEditor() {
             <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
               Card type
             </div>
-            <div className={cn('flex gap-2', isTouchMode && 'gap-3')}>
+            <div className={cn('grid grid-cols-2 gap-2 md:grid-cols-4', isTouchMode && 'gap-3')}>
               {([
                 { key: 'front_back' as const, label: 'Front / Back' },
                 { key: 'cloze' as const, label: 'Cloze deletion' },
                 { key: 'basic_reversed' as const, label: 'Basic (reversed)' },
+                { key: 'numeric' as const, label: 'Numeric answer' },
               ]).map((t) => (
                 <motion.button
                   key={t.key}
                   type="button"
                   onClick={() => setType(t.key)}
+                  aria-pressed={type === t.key}
                   whileTap={{ scale: 0.96 }}
                   className={cn(
                     'flex-1 rounded-lg border px-4 py-2.5 text-sm transition-colors',
@@ -600,6 +625,29 @@ export function CardEditor() {
                   <code className="font-mono">{'{{c1::answer}}'}</code>.
                 </p>
               )}
+            </>
+          ) : isNumeric ? (
+            <>
+              <div key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'front' ? 'shake-field' : '')}>
+                <MarkdownEditor
+                  key={`numeric-front-${formKey}`}
+                  inputRef={frontRef}
+                  autoFocus={!editing}
+                  label="Question"
+                  value={front}
+                  onChange={setFront}
+                  minRows={8}
+                  placeholder="Question or prompt. Markdown, maths and images are supported."
+                  onError={(message) => notify(message, 'negative')}
+                />
+              </div>
+              <div key={`answer-shake-${shakeField === 'answer' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'answer' ? 'shake-field' : '')}>
+                <NumericAnswerEditor
+                  value={numericAnswer}
+                  onChange={setNumericAnswer}
+                  invalid={shakeField === 'answer'}
+                />
+              </div>
             </>
           ) : (
             <>
@@ -666,7 +714,7 @@ export function CardEditor() {
         )}
       >
         <div className={cn('pointer-events-auto flex flex-wrap items-center gap-3', isTouchMode && 'max-w-3xl mx-auto')}>
-          {!editing && !isCloze && !isBasicReversed && (
+          {!editing && !isCloze && !isBasicReversed && !isNumeric && (
             <motion.button
               type="button"
               onClick={() => setAlsoReverse((v) => !v)}
