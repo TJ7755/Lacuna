@@ -121,10 +121,10 @@ describe('verifyWorkingLines', () => {
       marksEarned: 5,
       marksAvailable: 5,
       lineVerdicts: [
-        { studentLine: 'Used SUBSTITUTION', matchedLineIndex: 3, marksEarned: 1 },
-        { studentLine: '8 / 2', matchedLineIndex: 1, marksEarned: 2 },
-        { studentLine: '7.995', matchedLineIndex: 2, marksEarned: 1 },
-        { studentLine: '2 * (x + 3)', matchedLineIndex: 0, marksEarned: 1 },
+        { studentLine: 'Used SUBSTITUTION', matchedLineIndex: 3, marksEarned: 1, checkerSeeds: ['working-attempt:0:0', 'working-attempt:0:1'] },
+        { studentLine: '8 / 2', matchedLineIndex: 1, marksEarned: 2, checkerSeeds: ['working-attempt:1:0', 'working-attempt:1:1'] },
+        { studentLine: '7.995', matchedLineIndex: 2, marksEarned: 1, checkerSeeds: ['working-attempt:2:0'] },
+        { studentLine: '2 * (x + 3)', matchedLineIndex: 0, marksEarned: 1, checkerSeeds: ['working-attempt:3:0'] },
       ],
     });
   });
@@ -133,9 +133,9 @@ describe('verifyWorkingLines', () => {
     const result = verifyWorkingLines(['4', '4.0', '2 +'], scheme, 'working-attempt');
     expect(result.marksEarned).toBe(2);
     expect(result.lineVerdicts).toEqual([
-      { studentLine: '4', matchedLineIndex: 1, marksEarned: 2 },
-      { studentLine: '4.0', matchedLineIndex: null, marksEarned: 0 },
-      { studentLine: '2 +', matchedLineIndex: null, marksEarned: 0 },
+      { studentLine: '4', matchedLineIndex: 1, marksEarned: 2, checkerSeeds: ['working-attempt:0:0', 'working-attempt:0:1'] },
+      { studentLine: '4.0', matchedLineIndex: null, marksEarned: 0, checkerSeeds: ['working-attempt:1:0'] },
+      { studentLine: '2 +', matchedLineIndex: null, marksEarned: 0, checkerSeeds: ['working-attempt:2:0'] },
     ]);
   });
 

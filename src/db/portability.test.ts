@@ -128,6 +128,13 @@ describe('exportDatabase', () => {
       distracted: false,
       hintUsed: true,
       correct: true,
+      checkerDisputes: [{
+        reportedAt: 1_725_123_456_789,
+        question: 'Q1',
+        studentLine: 'A1',
+        verdict: { correct: true, marksEarned: 1 },
+        checkerSeeds: [],
+      }],
     });
 
     const backup = await exportDatabase();
@@ -140,6 +147,13 @@ describe('exportDatabase', () => {
         revisionWindowId: 'window-1',
         correct: true,
         hintUsed: true,
+        checkerDisputes: [{
+          reportedAt: 1_725_123_456_789,
+          question: 'Q1',
+          studentLine: 'A1',
+          verdict: { correct: true, marksEarned: 1 },
+          checkerSeeds: [],
+        }],
       }),
     );
     expect(backup.sessionHistory[0]).toEqual(

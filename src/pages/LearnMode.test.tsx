@@ -838,6 +838,8 @@ describe('LearnMode course/lesson scope', () => {
       });
       expect(screen.queryByRole('button', { name: /^yes$/i })).not.toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+      fireEvent.click(screen.getByRole('button', { name: 'The checker got this wrong' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
       await waitFor(async () => {
         expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
@@ -845,6 +847,12 @@ describe('LearnMode course/lesson scope', () => {
           correct: true,
           marksEarned: 1,
           marksAvailable: 1,
+          checkerDisputes: [{
+            question: 'What is 8 / 2?',
+            studentLine: '8 / 2',
+            verdict: { correct: true, marksEarned: 1 },
+            checkerSeeds: [],
+          }],
         });
       });
     } finally {
@@ -873,6 +881,7 @@ describe('LearnMode course/lesson scope', () => {
     const input = await screen.findByLabelText('Your answer');
     fireEvent.change(input, { target: { value: '6' } });
     fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     await waitFor(async () => {
       expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
@@ -906,6 +915,8 @@ describe('LearnMode course/lesson scope', () => {
       );
       fireEvent.change(await screen.findByLabelText('Your working'), { target: { value: '2x = 8\n4' } });
       fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
+      fireEvent.click(screen.getByRole('button', { name: 'The checker got this wrong for line 1' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
       await waitFor(async () => {
         expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
           grade: 4,
@@ -916,6 +927,12 @@ describe('LearnMode course/lesson scope', () => {
             { studentLine: '2x = 8', matchedLineIndex: 0, marksEarned: 1 },
             { studentLine: '4', matchedLineIndex: 1, marksEarned: 2 },
           ],
+          checkerDisputes: [{
+            question: 'Solve 2x = 8.',
+            studentLine: '2x = 8',
+            verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
+            checkerSeeds: [`${card.id}:0:0`],
+          }],
         });
       });
     } finally {
@@ -942,6 +959,7 @@ describe('LearnMode course/lesson scope', () => {
     );
     fireEvent.change(await screen.findByLabelText('Your working'), { target: { value: '2x = 8' } });
     fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await waitFor(async () => {
       expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
         grade: 1,

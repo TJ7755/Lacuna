@@ -133,6 +133,13 @@ describe('undoReview', () => {
       marksEarned: 1,
       marksAvailable: 1,
       lineVerdicts: [{ studentLine: '4', matchedLineIndex: 0, marksEarned: 1 }],
+      checkerDisputes: [{
+        reportedAt: 1_725_123_456_789,
+        question: '2 + 2',
+        studentLine: '4',
+        verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
+        checkerSeeds: ['card:0:0'],
+      }],
     });
 
     expect((await db.cards.get(card.id))!.history[0]).toMatchObject({
@@ -141,6 +148,13 @@ describe('undoReview', () => {
       marksEarned: 1,
       marksAvailable: 1,
       lineVerdicts: [{ studentLine: '4', matchedLineIndex: 0, marksEarned: 1 }],
+      checkerDisputes: [{
+        reportedAt: 1_725_123_456_789,
+        question: '2 + 2',
+        studentLine: '4',
+        verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
+        checkerSeeds: ['card:0:0'],
+      }],
     });
   });
 
