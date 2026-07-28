@@ -8,6 +8,7 @@ import {
   type PredicateName,
 } from '../../items/markSchemeCompiler';
 import { verifyWorkingLines } from '../../items/verify';
+import { runWorkingFixtures } from '../../items/fixtureRunner';
 import { Button } from '../ui/Button';
 import { cn } from '../ui/cn';
 
@@ -312,8 +313,8 @@ export function MarkSchemeEditor({
 
 function FixtureRow({ fixture, scheme, onRemove, index }: { fixture: ItemFixture; scheme: MarkSchemeLine[] | null; onRemove: () => void; index: number }) {
   const lines = Array.isArray(fixture.studentAnswer) ? fixture.studentAnswer : answerLines(fixture.studentAnswer);
-  const result = scheme ? verifyWorkingLines(lines, scheme, fixture.id) : null;
-  const matches = result?.marksEarned === fixture.expectedMarks;
+  const result = scheme ? runWorkingFixtures(scheme, [fixture])[0] : null;
+  const matches = result?.passes ?? false;
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-raised px-4 py-3">

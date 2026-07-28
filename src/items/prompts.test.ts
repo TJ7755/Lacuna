@@ -35,7 +35,6 @@ describe('batch authoring prompt', () => {
       notes: 'Price rises reduce quantity demanded.',
       topic: 'Demand',
       level: 'A level',
-      itemCount: 8,
     });
 
     expect(prompt).toContain('Price rises reduce quantity demanded.');
@@ -47,17 +46,28 @@ describe('batch authoring prompt', () => {
     expect(prompt).toContain('"fixtures"');
   });
 
-  it('caps each response and supports explicit continuation rounds', () => {
+  it('caps a requested maximum and injects a concept-density constraint', () => {
     const prompt = buildBatchGenerationPrompt({
       notes: 'Notes',
       topic: 'Topic',
       level: 'Level',
-      itemCount: 500,
-      round: 3,
+      maxItems: 500,
+      conceptsPerItem: 2,
     });
 
-    expect(prompt).toContain(`Requested items: ${MAX_BATCH_ITEMS}`);
-    expect(prompt).toContain(`continuation round 3`);
-    expect(prompt).toContain(`next ${MAX_BATCH_ITEMS} items`);
+    expect(prompt).toContain(`Requested maximum items: ${MAX_BATCH_ITEMS}`);
+    expect(prompt).toContain('Target concept density: 2 atomic concepts per item');
+  });
+
+  it('lets the model choose both constraints within the hard cap', () => {
+    const prompt = buildBatchGenerationPrompt({
+      notes: 'Dense notes',
+      topic: 'Topic',
+      level: 'Level',
+    });
+
+    expect(prompt).toContain('Concepts per item: model-selected');
+    expect(prompt).toContain('Requested maximum items: model-selected');
+    expect(prompt).toContain(`Never return more than ${MAX_BATCH_ITEMS} items`);
   });
 });

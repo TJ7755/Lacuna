@@ -1,5 +1,5 @@
 import type { NumericAnswerSpec } from '../../db/types';
-import { parseExpression } from '../../items/verify';
+import { numericAnswerSpecIsValid } from '../../items/numericAnswerSpec';
 import { MathsAnswerInput } from './MathsAnswerInput';
 import { cn } from '../ui/cn';
 
@@ -15,18 +15,7 @@ const ANSWER_KINDS = [
   { kind: 'matches-one-of' as const, label: 'One of' },
 ];
 
-function expressionIsConstant(source: string): boolean {
-  const parsed = parseExpression(source);
-  return parsed.ok && parsed.expression.variables.length === 0;
-}
-
-export function numericAnswerSpecIsValid(spec: NumericAnswerSpec): boolean {
-  if (spec.kind === 'matches-one-of') {
-    return spec.values.length > 0 && spec.values.every(expressionIsConstant);
-  }
-  if (!expressionIsConstant(spec.value)) return false;
-  return spec.kind === 'exact' || (Number.isFinite(spec.tolerance) && spec.tolerance >= 0);
-}
+export { numericAnswerSpecIsValid } from '../../items/numericAnswerSpec';
 
 function firstValue(spec: NumericAnswerSpec): string {
   return spec.kind === 'matches-one-of' ? (spec.values[0] ?? '') : spec.value;

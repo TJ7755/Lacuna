@@ -20,30 +20,89 @@ beforeEach(() => {
 });
 
 describe('BatchAuthoringPromptDialog', () => {
-  it('copies a capped, course-scoped prompt from the form', async () => {
-    render(<BatchAuthoringPromptDialog courseName="A-Level Economics" onClose={vi.fn()} />);
+  it('switches from prompt building to the staging review', () => {
+    render(
+      <BatchAuthoringPromptDialog
+        courseId="course-1"
+        courseName="Economics"
+        lessons={[]}
+        cards={[]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Review response' }));
+    expect(screen.getByText('Generated batch')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Target lesson' })).toBeDisabled();
+  });
+
+  it('copies a constrained, course-scoped prompt from the form', async () => {
+    render(
+      <BatchAuthoringPromptDialog
+        courseId="course-1"
+        courseName="A-Level Economics"
+        lessons={[]}
+        cards={[]}
+        onClose={vi.fn()}
+      />,
+    );
 
     fireEvent.change(screen.getByPlaceholderText('Paste the notes for one lesson or topic…'), {
       target: { value: 'Demand falls as price rises.' },
     });
     fireEvent.change(screen.getByPlaceholderText('Demand'), { target: { value: 'Demand' } });
     fireEvent.change(screen.getByPlaceholderText('A level'), { target: { value: 'A level' } });
-    fireEvent.change(screen.getByLabelText('Items this round'), { target: { value: '99' } });
-    fireEvent.change(screen.getByLabelText('Round'), { target: { value: '2' } });
+    fireEvent.click(screen.getByLabelText('Set generation constraints'));
+    fireEvent.change(screen.getByLabelText(/Concepts per item/), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText(/Maximum items/), { target: { value: '99' } });
     fireEvent.click(screen.getByRole('button', { name: 'Copy batch prompt' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
     const prompt = writeText.mock.calls[0][0] as string;
     expect(prompt).toContain('Demand falls as price rises.');
-    expect(prompt).toContain(`Requested items: ${MAX_BATCH_ITEMS}`);
-    expect(prompt).toContain('continuation round 2');
+    expect(prompt).toContain(`Requested maximum items: ${MAX_BATCH_ITEMS}`);
+    expect(prompt).toContain('Target concept density: 2 atomic concepts per item');
     expect(prompt).toContain(BATCH_OUTPUT_START);
     expect(notify).toHaveBeenCalledWith('Batch prompt copied to the clipboard.', 'positive');
   });
 
   it('requires notes, topic and level before copying', () => {
-    render(<BatchAuthoringPromptDialog courseName="Economics" onClose={vi.fn()} />);
+    render(
+      <BatchAuthoringPromptDialog
+        courseId="course-1"
+        courseName="Economics"
+        lessons={[]}
+        cards={[]}
+        onClose={vi.fn()}
+      />,
+    );
 
     expect(screen.getByRole('button', { name: 'Copy batch prompt' })).toBeDisabled();
+  });
+
+  it('lets the model choose both generation constraints by default', async () => {
+    render(
+      <BatchAuthoringPromptDialog
+        courseId="course-1"
+        courseName="Economics"
+        lessons={[]}
+        cards={[]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Paste the notes for one lesson or topic…'), {
+      target: { value: 'Dense lesson notes.' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Demand'), { target: { value: 'Demand' } });
+    fireEvent.change(screen.getByPlaceholderText('A level'), { target: { value: 'A level' } });
+    expect(screen.getByLabelText('Set generation constraints')).not.toBeChecked();
+    expect(screen.queryByLabelText(/Concepts per item/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Maximum items/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy batch prompt' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(writeText.mock.calls[0][0]).toContain('Concepts per item: model-selected');
+    expect(writeText.mock.calls[0][0]).toContain('Requested maximum items: model-selected');
   });
 });

@@ -8,8 +8,8 @@ export interface BatchGenerationPromptInput {
   notes: string;
   topic: string;
   level: string;
-  itemCount: number;
-  round?: number;
+  maxItems?: number;
+  conceptsPerItem?: number;
 }
 
 export function buildMarkSchemeDraftPrompt(question: string): string {
@@ -27,23 +27,32 @@ export function buildMarkSchemeDraftPrompt(question: string): string {
 }
 
 export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): string {
-  const itemCount = Math.min(MAX_BATCH_ITEMS, Math.max(1, Math.trunc(input.itemCount) || 1));
-  const round = Math.max(1, Math.trunc(input.round ?? 1) || 1);
-  const continuation =
-    round > 1
-      ? `This is continuation round ${round}. Produce the next ${itemCount} items without repeating earlier rounds.`
-      : `Produce at most ${itemCount} items in this round.`;
+  const maxItems = input.maxItems
+    ? Math.min(MAX_BATCH_ITEMS, Math.max(1, Math.trunc(input.maxItems) || 1))
+    : undefined;
+  const conceptsPerItem = input.conceptsPerItem
+    ? Math.max(1, Math.trunc(input.conceptsPerItem) || 1)
+    : undefined;
+  const generationConstraints = [
+    conceptsPerItem
+      ? `Target concept density: ${conceptsPerItem} atomic concept${conceptsPerItem === 1 ? '' : 's'} per item. Combine concepts only when they form one coherent retrieval target.`
+      : 'Choose an appropriate number of atomic concepts per item. Do not combine unrelated concepts into one retrieval target.',
+    maxItems
+      ? `Requested maximum items: ${maxItems}.`
+      : 'Choose the number of items needed for useful coverage without padding.',
+    `Never return more than ${MAX_BATCH_ITEMS} items in one response.`,
+  ];
 
   return [
     'Create a batch of Lacuna v1 numeric and working items from the lesson notes below.',
     'First decide whether anything material is ambiguous. If so, ask no more than three concise clarifying questions and wait for the answers. Otherwise produce the output immediately.',
-    continuation,
+    ...generationConstraints,
     'Keep this batch within one lesson and topic. Prefer fewer strong items to padded repetition.',
     '',
     `Topic: ${input.topic.trim()}`,
     `Level: ${input.level.trim()}`,
-    `Requested items: ${itemCount}`,
-    `Round: ${round}`,
+    `Concepts per item: ${conceptsPerItem ?? 'model-selected'}`,
+    `Requested maximum items: ${maxItems ?? 'model-selected'}`,
     '',
     'Lesson notes:',
     input.notes.trim(),
