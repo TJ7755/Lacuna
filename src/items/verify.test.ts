@@ -3,6 +3,7 @@ import type { MarkSchemeLine, NumericAnswerSpec } from '../db/types';
 import {
   checkNumeric,
   equivalentByRandomEvaluation,
+  expressionToTex,
   parseExpression,
   verifyWorkingLines,
 } from './verify';
@@ -32,6 +33,14 @@ describe('parseExpression', () => {
       if (!result.ok) expect(result.error.message).not.toBe('');
     },
   );
+
+  it.each([
+    ['3/4', '\\frac{3}{4}'],
+    ['x^2', '{ x}^{2}'],
+    ['2x + 6 = 14', '2~ x+6 = 14'],
+  ])('formats %s for the existing KaTeX rendering path', (source, expected) => {
+    expect(expressionToTex(expression(source))).toBe(expected);
+  });
 });
 
 describe('equivalentByRandomEvaluation', () => {
