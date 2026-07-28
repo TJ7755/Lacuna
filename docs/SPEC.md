@@ -1182,6 +1182,11 @@ the disputed result can be reproduced exactly and later promoted to a fixture in
 preserve this optional history data verbatim, while share codes continue to omit all personal review
 history.
 
+Pure marks-analysis helpers aggregate machine-marked attempts into earned/available totals and group
+working performance by the labels in each card's current mark scheme. Criterion summaries count full
+and missed attempts as well as marks, providing the data seam for later readiness and diagnostic UI
+without making the Arc 11 study path depend on analytics components.
+
 ### Study mode (`src/state/studyMode.ts`)
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):
 - **FSRS (default):** the full spaced-repetition scheduler with all memory-state tracking,
