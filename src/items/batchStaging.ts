@@ -2,7 +2,7 @@ import type { ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
 import { compileMarkScheme } from './markSchemeCompiler';
 import { numericAnswerSpecIsValid } from './numericAnswerSpec';
 import { runWorkingFixtures } from './fixtureRunner';
-import { BATCH_OUTPUT_END, BATCH_OUTPUT_START, MAX_BATCH_ITEMS } from './prompts';
+import { BATCH_OUTPUT_END, BATCH_OUTPUT_START } from './prompts';
 
 export interface BatchCandidate {
   id: string;
@@ -50,16 +50,14 @@ export function parseBatchOutput(source: string): BatchParseResult {
   }
 
   return {
-    candidates: parsed.items.map((item, index) =>
-      validateBatchCandidate(item, index, index >= MAX_BATCH_ITEMS),
-    ),
+    candidates: parsed.items.map((item, index) => validateBatchCandidate(item, index)),
     error: null,
   };
 }
 
 export function parseEditedCandidate(sourceJson: string, index: number): BatchCandidate {
   try {
-    return validateBatchCandidate(JSON.parse(sourceJson), index, index >= MAX_BATCH_ITEMS, sourceJson);
+    return validateBatchCandidate(JSON.parse(sourceJson), index, sourceJson);
   } catch (error) {
     return {
       id: candidateId(index),
@@ -79,11 +77,9 @@ export function parseEditedCandidate(sourceJson: string, index: number): BatchCa
 function validateBatchCandidate(
   raw: unknown,
   index: number,
-  overLimit: boolean,
   sourceJson = JSON.stringify(raw, null, 2),
 ): BatchCandidate {
   const errors: string[] = [];
-  if (overLimit) errors.push(`Batch responses are limited to ${MAX_BATCH_ITEMS} items.`);
   if (!isRecord(raw)) {
     return {
       id: candidateId(index),
@@ -124,11 +120,16 @@ function validateBatchCandidate(
     const scheme = compilation.lines.flatMap((entry) =>
       entry.kind === 'compiled' ? [entry.value] : [],
     );
-    const fixtureResult = parseFixtures(raw.fixtures, index, compilation.totalMarks);
+    const schemeIsValid = compilation.lines.every((entry) => entry.kind === 'compiled');
+    const fixtureResult = parseFixtures(
+      raw.fixtures,
+      index,
+      schemeIsValid ? compilation.totalMarks : null,
+    );
     errors.push(...fixtureResult.errors);
     fixtureStatus = { total: fixtureResult.fixtures.length, passed: 0 };
 
-    if (scheme.length > 0 && compilation.lines.every((entry) => entry.kind === 'compiled')) {
+    if (scheme.length > 0 && schemeIsValid) {
       const runs = runWorkingFixtures(scheme, fixtureResult.fixtures);
       fixtureStatus.passed = runs.filter((run) => run.passes).length;
       runs.forEach((run, fixtureIndex) => {
@@ -166,7 +167,7 @@ function validateBatchCandidate(
 function parseFixtures(
   raw: unknown,
   itemIndex: number,
-  availableMarks: number,
+  availableMarks: number | null,
 ): { fixtures: ItemFixture[]; errors: string[] } {
   if (!Array.isArray(raw) || raw.length === 0) {
     return { fixtures: [], errors: ['Add at least one working-answer fixture.'] };
@@ -190,11 +191,12 @@ function parseFixtures(
       typeof entry.expectedMarks !== 'number' ||
       !Number.isSafeInteger(entry.expectedMarks) ||
       entry.expectedMarks < 0 ||
-      entry.expectedMarks > availableMarks
+      (availableMarks !== null && entry.expectedMarks > availableMarks)
     ) {
-      errors.push(
-        `Fixture ${fixtureIndex + 1} expectedMarks must be a whole number from 0 to ${availableMarks}.`,
-      );
+      const message = availableMarks === null
+        ? `Fixture ${fixtureIndex + 1} expectedMarks must be a non-negative whole number.`
+        : `Fixture ${fixtureIndex + 1} expects ${String(entry.expectedMarks)} marks, but the scheme has ${availableMarks} available.`;
+      errors.push(message);
       return;
     }
     if (entry.note !== undefined && typeof entry.note !== 'string') {

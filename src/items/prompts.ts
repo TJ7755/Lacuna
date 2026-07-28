@@ -1,6 +1,5 @@
 import { markSchemeSyntaxSpecification } from './markSchemeCompiler';
 
-export const MAX_BATCH_ITEMS = 20;
 export const BATCH_OUTPUT_START = '<<<LACUNA_ITEMS_V1>>>';
 export const BATCH_OUTPUT_END = '<<<END_LACUNA_ITEMS_V1>>>';
 
@@ -28,7 +27,7 @@ export function buildMarkSchemeDraftPrompt(question: string): string {
 
 export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): string {
   const maxItems = input.maxItems
-    ? Math.min(MAX_BATCH_ITEMS, Math.max(1, Math.trunc(input.maxItems) || 1))
+    ? Math.max(1, Math.trunc(input.maxItems) || 1)
     : undefined;
   const conceptsPerItem = input.conceptsPerItem
     ? Math.max(1, Math.trunc(input.conceptsPerItem) || 1)
@@ -40,7 +39,6 @@ export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): s
     maxItems
       ? `Requested maximum items: ${maxItems}.`
       : 'Choose the number of items needed for useful coverage without padding.',
-    `Never return more than ${MAX_BATCH_ITEMS} items in one response.`,
   ];
 
   return [

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BatchAuthoringPromptDialog } from './BatchAuthoringPromptDialog';
-import { BATCH_OUTPUT_START, MAX_BATCH_ITEMS } from '../../items/prompts';
+import { BATCH_OUTPUT_START } from '../../items/prompts';
 
 const notify = vi.fn();
 const writeText = vi.fn().mockResolvedValue(undefined);
@@ -20,6 +20,25 @@ beforeEach(() => {
 });
 
 describe('BatchAuthoringPromptDialog', () => {
+  it('does not dismiss when the backdrop is clicked', () => {
+    const onClose = vi.fn();
+    render(
+      <BatchAuthoringPromptDialog
+        courseId="course-1"
+        courseName="Economics"
+        lessons={[]}
+        cards={[]}
+        onClose={onClose}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('batch-authoring-backdrop'));
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it('switches from prompt building to the staging review', () => {
     render(
       <BatchAuthoringPromptDialog
@@ -60,7 +79,7 @@ describe('BatchAuthoringPromptDialog', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
     const prompt = writeText.mock.calls[0][0] as string;
     expect(prompt).toContain('Demand falls as price rises.');
-    expect(prompt).toContain(`Requested maximum items: ${MAX_BATCH_ITEMS}`);
+    expect(prompt).toContain('Requested maximum items: 99');
     expect(prompt).toContain('Target concept density: 2 atomic concepts per item');
     expect(prompt).toContain(BATCH_OUTPUT_START);
     expect(notify).toHaveBeenCalledWith('Batch prompt copied to the clipboard.', 'positive');

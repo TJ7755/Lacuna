@@ -1145,8 +1145,8 @@ builder for one lesson/topic at a time: notes, topic and level produce a clipboa
 numeric and working items. By default the model chooses both the number of atomic concepts per item
 and the number of items needed for useful coverage. Tutors can instead expose independent optional
 constraints for concepts per item and maximum item count; only populated constraints enter the
-prompt. Every path retains an absolute twenty-item response cap and must use the versioned
-`LACUNA_ITEMS_V1` JSON delimiters so the staging review can parse it
+prompt. The optional maximum is tutor-controlled; Lacuna imposes no separate item-count cap.
+Every path must use the versioned `LACUNA_ITEMS_V1` JSON delimiters so the staging review can parse it
 without guessing. Lacuna sends no data to a model and stores no API key; the conversation remains in
 the tutor's chosen chatbot.
 

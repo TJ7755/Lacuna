@@ -45,11 +45,56 @@ describe('parseBatchOutput', () => {
     expect(result.candidates[2].errors).toEqual([]);
   });
 
+  it('does not validate fixture totals against a partially compiled scheme', () => {
+    const result = parseBatchOutput(
+      block([
+        {
+          kind: 'working',
+          question: 'Malformed scheme',
+          scheme: '[1] broken :: equals ::\n[2] answer :: equals :: 4',
+          fixtures: [{ studentAnswer: ['4'], expectedMarks: 3 }],
+        },
+      ]),
+    );
+
+    expect(result.candidates[0].errors).toEqual(['Scheme line 1: Use the form equals :: value.']);
+  });
+
+  it('reports a fixture score above a valid scheme total clearly', () => {
+    const result = parseBatchOutput(
+      block([
+        {
+          kind: 'working',
+          question: 'Valid scheme',
+          scheme: '[2] answer :: equals :: 4',
+          fixtures: [{ studentAnswer: ['4'], expectedMarks: 3 }],
+        },
+      ]),
+    );
+
+    expect(result.candidates[0].errors).toContain(
+      'Fixture 1 expects 3 marks, but the scheme has 2 available.',
+    );
+  });
+
   it('requires the versioned delimiters and valid top-level JSON', () => {
     expect(parseBatchOutput('{}').error).toContain(BATCH_OUTPUT_START);
     expect(parseBatchOutput(`${BATCH_OUTPUT_START}\nnope\n${BATCH_OUTPUT_END}`).error).toContain(
       'invalid',
     );
+  });
+
+  it('accepts batches larger than the former twenty-item limit', () => {
+    const items = Array.from({ length: 21 }, (_, index) => ({
+      kind: 'numeric',
+      question: `Question ${index + 1}`,
+      answer: { kind: 'exact', value: String(index + 1) },
+    }));
+
+    const result = parseBatchOutput(block(items));
+
+    expect(result.candidates).toHaveLength(21);
+    expect(result.candidates.every((candidate) => candidate.errors.length === 0)).toBe(true);
   });
 });
 

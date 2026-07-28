@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   BATCH_OUTPUT_END,
   BATCH_OUTPUT_START,
-  MAX_BATCH_ITEMS,
   buildBatchGenerationPrompt,
   buildMarkSchemeDraftPrompt,
 } from './prompts';
@@ -46,7 +45,7 @@ describe('batch authoring prompt', () => {
     expect(prompt).toContain('"fixtures"');
   });
 
-  it('caps a requested maximum and injects a concept-density constraint', () => {
+  it('injects optional item-count and concept-density constraints without a hard cap', () => {
     const prompt = buildBatchGenerationPrompt({
       notes: 'Notes',
       topic: 'Topic',
@@ -55,11 +54,11 @@ describe('batch authoring prompt', () => {
       conceptsPerItem: 2,
     });
 
-    expect(prompt).toContain(`Requested maximum items: ${MAX_BATCH_ITEMS}`);
+    expect(prompt).toContain('Requested maximum items: 500');
     expect(prompt).toContain('Target concept density: 2 atomic concepts per item');
   });
 
-  it('lets the model choose both constraints within the hard cap', () => {
+  it('lets the model choose both constraints', () => {
     const prompt = buildBatchGenerationPrompt({
       notes: 'Dense notes',
       topic: 'Topic',
@@ -68,6 +67,6 @@ describe('batch authoring prompt', () => {
 
     expect(prompt).toContain('Concepts per item: model-selected');
     expect(prompt).toContain('Requested maximum items: model-selected');
-    expect(prompt).toContain(`Never return more than ${MAX_BATCH_ITEMS} items`);
+    expect(prompt).not.toContain('Never return more than');
   });
 });

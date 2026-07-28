@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { m as motion } from 'motion/react';
 import type { Card, Lesson } from '../../db/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { buildBatchGenerationPrompt, MAX_BATCH_ITEMS } from '../../items/prompts';
+import { buildBatchGenerationPrompt } from '../../items/prompts';
 import { ItemStagingReview } from './ItemStagingReview';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
@@ -70,7 +70,10 @@ export function BatchAuthoringPromptDialog({
         }
       }}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        data-testid="batch-authoring-backdrop"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+      />
       <motion.div
         role="dialog"
         aria-modal="true"
@@ -201,9 +204,8 @@ export function BatchAuthoringPromptDialog({
                     <input
                       type="number"
                       min={1}
-                      max={MAX_BATCH_ITEMS}
                       value={maxItems}
-                      placeholder={`Up to ${MAX_BATCH_ITEMS}`}
+                      placeholder="No limit"
                       onChange={(event) =>
                         setMaxItems(event.target.value === '' ? '' : Number(event.target.value))
                       }
