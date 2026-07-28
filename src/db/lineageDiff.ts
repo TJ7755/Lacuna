@@ -13,7 +13,7 @@
  * never diffed here.
  */
 
-import type { CardType } from './types';
+import type { CardType, ItemPayload } from './types';
 
 // --- Incoming payload shapes -----------------------------------------------------------
 //
@@ -31,6 +31,7 @@ export interface ShareCardInput {
   f: string;
   b?: string;
   g?: string[];
+  p?: ItemPayload;
 }
 
 export interface ShareNoteInput {
@@ -85,6 +86,7 @@ export interface ExistingCard {
   front: string;
   back: string;
   tags?: string[];
+  payload?: ItemPayload;
 }
 
 /**
@@ -150,6 +152,7 @@ export interface CreateCardPayload {
   front: string;
   back: string;
   tags?: string[];
+  payload?: ItemPayload;
 }
 
 export interface LessonUpdate {
@@ -180,6 +183,7 @@ export interface CardUpdate {
   front?: string;
   back?: string;
   tags?: string[];
+  payload?: ItemPayload;
 }
 
 export interface LineageConflict {
@@ -218,6 +222,29 @@ function arraysEqual<T>(a: T[] | undefined, b: T[] | undefined): boolean {
   const y = b ?? [];
   if (x.length !== y.length) return false;
   return x.every((v, i) => v === y[i]);
+}
+
+export function jsonValuesEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return (
+      Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((value, index) => jsonValuesEqual(value, b[index]))
+    );
+  }
+  if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) {
+    return false;
+  }
+  const aRecord = a as Record<string, unknown>;
+  const bRecord = b as Record<string, unknown>;
+  const aKeys = Object.keys(aRecord).sort();
+  const bKeys = Object.keys(bRecord).sort();
+  return (
+    arraysEqual(aKeys, bKeys) &&
+    aKeys.every((key) => jsonValuesEqual(aRecord[key], bRecord[key]))
+  );
 }
 
 function diffLesson(incoming: ShareLessonInput, existing: ExistingLesson, orderIndex: number): LessonUpdate | undefined {
@@ -296,6 +323,10 @@ function diffCard(incoming: ShareCardInput, existing: ExistingCard): CardUpdate 
   }
   if (!arraysEqual(existing.tags, incoming.g)) {
     update.tags = incoming.g;
+    changed = true;
+  }
+  if (!jsonValuesEqual(existing.payload, incoming.p)) {
+    update.payload = incoming.p;
     changed = true;
   }
   return changed ? update : undefined;
@@ -403,6 +434,7 @@ export function diffLineage(input: LineageDiffInput): LineageDiffResult {
           front: incomingCard.f,
           back: incomingCard.b ?? '',
           tags: incomingCard.g,
+          payload: incomingCard.p,
         });
       } else {
         const update = diffCard(incomingCard, existingCard);

@@ -66,6 +66,36 @@ describe('mergeImport: first import of a lineage', () => {
 
     expect(await findCourseForLineage('lineage-1')).toMatchObject({ id: course.id });
   });
+
+  it('preserves a structured payload in the adopted card and its initial snapshot', async () => {
+    const payload = {
+      v: 1 as const,
+      kind: 'numeric' as const,
+      answer: { kind: 'exact' as const, value: '4' },
+    };
+    await importLineageFirstTime(
+      coursePayload({
+        lessons: [
+          lessonOne({
+            cards: [
+              {
+                id: 'card-1',
+                k: 0 as const,
+                f: '2 + 2',
+                b: '4',
+                p: payload,
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    expect((await db.cards.get('card-1'))?.payload).toEqual(payload);
+    expect((await db.lineageIdMappings.get('lineage-1'))?.cardSnapshots['card-1'].payload).toEqual(
+      payload,
+    );
+  });
 });
 
 describe('mergeImport: merge apply', () => {
@@ -137,6 +167,47 @@ describe('mergeImport: merge apply', () => {
 
     const lesson = await db.lessons.get('lesson-1');
     expect(lesson?.name).toBe('Cells (revised)');
+  });
+
+  it('applies and snapshots a payload-only teacher update', async () => {
+    await db.courses.update(courseId, {
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: true,
+      },
+    });
+    const payload = {
+      v: 1 as const,
+      kind: 'working' as const,
+      scheme: [{ marks: 2, kind: 'waypoint' as const, expression: 'x = 4' }],
+    };
+    const result = await mergeLineageUpdate(
+      courseId,
+      coursePayload({
+        rv: 2,
+        lessons: [
+          lessonOne({
+            cards: [
+              {
+                id: 'card-1',
+                k: 0 as const,
+                f: 'What is a cell?',
+                b: 'The basic unit of life.',
+                p: payload,
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    expect(result.appliedUpdates).toBe(1);
+    expect((await db.cards.get('card-1'))?.payload).toEqual(payload);
+    expect((await db.lineageIdMappings.get('lineage-1'))?.cardSnapshots['card-1'].payload).toEqual(
+      payload,
+    );
   });
 
   it('queues a conflict when the student has edited an entity the teacher also changed, leaving the local copy untouched', async () => {

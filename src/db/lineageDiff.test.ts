@@ -6,6 +6,19 @@ import {
   type LineageIdMapping,
   type ShareLessonInput,
 } from './lineageDiff';
+import type { ItemPayload } from './types';
+
+const ORIGINAL_PAYLOAD: ItemPayload = {
+  v: 1,
+  kind: 'working',
+  scheme: [{ marks: 1, kind: 'waypoint', expression: 'x = 4' }],
+};
+
+const REVISED_PAYLOAD: ItemPayload = {
+  v: 1,
+  kind: 'working',
+  scheme: [{ marks: 2, label: 'answer', kind: 'waypoint', expression: 'x = 4' }],
+};
 
 function mapping(overrides: Partial<LineageIdMapping> = {}): LineageIdMapping {
   return {
@@ -204,6 +217,71 @@ describe('diffLineage', () => {
     const result = diffLineage(input);
     expect(result.conflicts).toEqual([{ entityId: 'card-1', kind: 'card', incoming: incomingCard }]);
     expect(result.updates.cards).toEqual([]);
+  });
+
+  it('classifies a payload-only teacher edit as a card update', () => {
+    const input: LineageDiffInput = {
+      incoming: {
+        lessons: [
+          baseLesson({
+            cards: [
+              { i: 'card-1', k: 0, f: 'front', b: 'back', p: REVISED_PAYLOAD },
+            ],
+          }),
+        ],
+      },
+      existing: {
+        lessons: [existingLesson()],
+        notes: [],
+        cards: [
+          {
+            id: 'card-1',
+            type: 'front_back',
+            front: 'front',
+            back: 'back',
+            payload: ORIGINAL_PAYLOAD,
+          },
+        ],
+      },
+      mapping: mapping({ lessonIds: ['lesson-1'], cardIds: ['card-1'] }),
+      studentEdits: new Set(),
+    };
+
+    expect(diffLineage(input).updates.cards).toEqual([
+      { id: 'card-1', payload: REVISED_PAYLOAD },
+    ]);
+  });
+
+  it('classifies a teacher payload edit as a conflict when the student edited the card', () => {
+    const incomingCard = {
+      i: 'card-1',
+      k: 0 as const,
+      f: 'front',
+      b: 'back',
+      p: REVISED_PAYLOAD,
+    };
+    const input: LineageDiffInput = {
+      incoming: { lessons: [baseLesson({ cards: [incomingCard] })] },
+      existing: {
+        lessons: [existingLesson()],
+        notes: [],
+        cards: [
+          {
+            id: 'card-1',
+            type: 'front_back',
+            front: 'student front',
+            back: 'back',
+            payload: ORIGINAL_PAYLOAD,
+          },
+        ],
+      },
+      mapping: mapping({ lessonIds: ['lesson-1'], cardIds: ['card-1'] }),
+      studentEdits: new Set(['card-1']),
+    };
+
+    expect(diffLineage(input).conflicts).toEqual([
+      { entityId: 'card-1', kind: 'card', incoming: incomingCard },
+    ]);
   });
 
   it('treats a card unknown to the mapping as a create even if a same-id local card exists (mapping is the source of truth)', () => {

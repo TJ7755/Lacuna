@@ -43,7 +43,7 @@ import {
   updateNote,
   updateSequence,
 } from './repository';
-import { diffLineage } from './lineageDiff';
+import { diffLineage, jsonValuesEqual } from './lineageDiff';
 import type {
   CreateCardPayload,
   CreateLessonPayload,
@@ -67,6 +67,7 @@ import type {
   LineageIdMapping,
   LineageLessonSnapshot,
   LineageNoteSnapshot,
+  ItemPayload,
   Note,
   PendingMergeReview,
   Sequence,
@@ -128,7 +129,14 @@ function toShareLessonInput(lesson: LineagePayload['lessons'][number]): ShareLes
     }),
     cards: lesson.cards.map((card): ShareCardInput => {
       if (!card.id) throw new Error('Lineage payload card is missing its originating id.');
-      return { i: card.id, k: card.k, f: card.f, b: card.b, g: card.g };
+      return {
+        i: card.id,
+        k: card.k,
+        f: card.f,
+        b: card.b,
+        g: card.g,
+        p: card.p as ItemPayload | undefined,
+      };
     }),
   };
 }
@@ -152,7 +160,14 @@ function toExistingNote(note: Note): ExistingNote {
 }
 
 function toExistingCard(card: Card): ExistingCard {
-  return { id: card.id, type: card.type, front: card.front, back: card.back, tags: card.tags };
+  return {
+    id: card.id,
+    type: card.type,
+    front: card.front,
+    back: card.back,
+    tags: card.tags,
+    payload: card.payload,
+  };
 }
 
 function lessonSnapshot(lesson: ExistingLesson): LineageLessonSnapshot {
@@ -165,7 +180,13 @@ function noteSnapshot(note: ExistingNote): LineageNoteSnapshot {
 }
 
 function cardSnapshot(card: ExistingCard): LineageCardSnapshot {
-  return { type: card.type, front: card.front, back: card.back, tags: card.tags };
+  return {
+    type: card.type,
+    front: card.front,
+    back: card.back,
+    tags: card.tags,
+    payload: card.payload,
+  };
 }
 
 /**
@@ -237,7 +258,13 @@ function tagsEqual(a?: string[], b?: string[]): boolean {
 }
 
 function cardSnapshotsEqual(a: LineageCardSnapshot, b: LineageCardSnapshot): boolean {
-  return a.type === b.type && a.front === b.front && a.back === b.back && tagsEqual(a.tags, b.tags);
+  return (
+    a.type === b.type &&
+    a.front === b.front &&
+    a.back === b.back &&
+    tagsEqual(a.tags, b.tags) &&
+    jsonValuesEqual(a.payload, b.payload)
+  );
 }
 
 const MERGE_TABLES = [
@@ -372,6 +399,7 @@ async function applyCreates(
       history: [],
       createdAt,
       tags: c.tags ?? [],
+      payload: c.payload,
       suspended: false,
       buriedUntil: null,
     });
@@ -492,6 +520,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
           learningSteps: 0,
           history: [],
           tags: shareCard.g ?? [],
+          payload: shareCard.p as ItemPayload | undefined,
           suspended: false,
           buriedUntil: null,
         };
@@ -924,6 +953,7 @@ async function takeIncomingConflict(
       front: inc.f,
       back: inc.k === 1 ? '' : (inc.b ?? ''),
       tags: inc.g ?? [],
+      payload: inc.p,
     });
   }
   await refreshSnapshot(kind, entityId, mapping);
