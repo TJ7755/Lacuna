@@ -1,7 +1,13 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/schema';
-import { createCourse, createLesson, createLessonCard, createSequence } from '../../db/repository';
+import {
+  createCourse,
+  createCourseCard,
+  createLesson,
+  createLessonCard,
+  createSequence,
+} from '../../db/repository';
 import type { ToolContext } from '../types';
 import { validateAndRun } from '../registry';
 import * as tools from './content';
@@ -141,6 +147,65 @@ describe('mcp content tools', () => {
       expect(res.data.primaryLessonId).toBe(lesson.id);
     });
 
+    it('creates numeric and compiled working item payloads', async () => {
+      const course = await createCourse('Course A');
+      const numeric = await tools.createCard.handler(
+        {
+          courseId: course.id,
+          type: 'front_back',
+          front: 'What is 2 + 2?',
+          back: '',
+          payload: { kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+        },
+        ctx,
+      );
+      const working = await tools.createCard.handler(
+        {
+          courseId: course.id,
+          type: 'front_back',
+          front: 'Solve 2x = 8.',
+          back: '',
+          payload: {
+            kind: 'working',
+            scheme: '[1] substitution :: 2x = 8\n[1] answer :: equals :: 4',
+            fixtures: [{ studentAnswer: ['2x = 8', '4'], expectedMarks: 2 }],
+          },
+        },
+        ctx,
+      );
+
+      expect(numeric.data.payload).toEqual({
+        v: 1,
+        kind: 'numeric',
+        answer: { kind: 'exact', value: '4' },
+      });
+      expect(working.data.payload).toMatchObject({ v: 1, kind: 'working' });
+      expect(working.data.payload?.kind === 'working' && working.data.payload.scheme).toHaveLength(
+        2,
+      );
+    });
+
+    it('returns the shared compiler error for an invalid working payload', async () => {
+      const course = await createCourse('Course A');
+      const result = await validateAndRun(
+        tools.createCard,
+        {
+          courseId: course.id,
+          type: 'front_back',
+          front: 'Broken',
+          back: '',
+          payload: { kind: 'working', scheme: '[1] answer :: equals ::', fixtures: [] },
+        },
+        ctx,
+      );
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.kind).toBe('validation');
+        expect(result.error.message).toBe('Scheme line 1: Use the form equals :: value.');
+      }
+    });
+
     it('rejects an unknown courseId with not_found', async () => {
       const result = await validateAndRun(
         tools.createCard,
@@ -163,6 +228,24 @@ describe('mcp content tools', () => {
       const updated = await db.cards.get(card.id);
       expect(updated?.front).toBe('q2');
       expect(updated?.flagged).toBe(true);
+    });
+
+    it('replaces a card payload through the same numeric validator', async () => {
+      const course = await createCourse('Course A');
+      const card = await createCourseCard(course.id, 'front_back', 'q', '');
+      await tools.updateCard.handler(
+        {
+          cardId: card.id,
+          payload: { kind: 'numeric', answer: { kind: 'within', value: '4', tolerance: 0.1 } },
+        },
+        ctx,
+      );
+
+      expect((await db.cards.get(card.id))?.payload).toEqual({
+        v: 1,
+        kind: 'numeric',
+        answer: { kind: 'within', value: '4', tolerance: 0.1 },
+      });
     });
 
     it('rejects an unknown cardId with not_found', async () => {
