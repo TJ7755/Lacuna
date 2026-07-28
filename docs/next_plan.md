@@ -24,6 +24,8 @@ that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in ord
 13. **Arc 12 — Progress receipts and encrypted relay** (detailed outline; depends on
     Arc 11 for mark-bearing receipts, but a retrievability-only first slice depends on
     nothing)
+14. **Arc 13 — Codebase consolidation and release verification** (final cleanup arc;
+    follows the feature arcs and finishes with the complete browser checklist)
 
 Plugins remain speculative pending a concrete pain point (see Arc 2). Sync/collaboration
 is no longer parked outright: Arc 8 un-parks it as a design question to be settled before
@@ -2506,6 +2508,115 @@ hosting it is legally and morally boring.
 
 ---
 
+# Arc 13 — Codebase Consolidation and Release Verification (detailed outline)
+
+## 13.1 Positioning and constraints
+
+This is the final cleanup arc after the planned feature work, not a pretext for pausing every
+release until the codebase achieves imaginary perfection. Its purpose is to remove accumulated
+branch-era duplication, make the remaining architecture legible, eliminate noisy tests and builds,
+and prove the finished web product manually. Behaviour changes found during the audit are fixed in
+separate commits with regression tests; cleanup commits do not quietly change product semantics.
+
+The arc begins from a green build and preserves that state after every reviewable slice. Avoid a
+single repository-wide rewrite: it would maximise conflict risk while making regressions almost
+impossible to attribute. Prefer deletion, extraction and convergence on existing systems. A large
+module is not automatically bad, and a small wrapper is not automatically architecture.
+
+## 13.2 Inventory before deletion
+
+1. Record production bundle/chunk sizes, test count and duration, lint warnings and TypeScript build
+   time as the baseline. Improvements are measured against this record rather than claimed from
+   vibes.
+2. Inventory routes, exported symbols, dependencies, storage adapters, import/export paths, modal
+   patterns and scheduling entry points. Confirm apparent dead code through references, dynamic
+   imports, persisted-data compatibility and Electron entry points before removing it.
+3. Classify findings as duplicate implementation, obsolete compatibility path, oversized mixed-
+   concern module, harmless repetition, or deliberate platform boundary. Only the first three are
+   candidates for change.
+4. Keep schema readers and migration compatibility until the oldest supported backup/share formats
+   no longer require them. “Nothing imports this function today” is not sufficient evidence when
+   old persisted data calls the path indirectly.
+
+## 13.3 Consolidation slices
+
+- **Session engine:** split `useLearnSession` only at state-machine or persistence seams that can be
+  tested independently. Do not scatter one difficult flow across a dozen context wrappers merely to
+  make the line count look civilised.
+- **Repository and lineage merging:** extract cohesive persistence concerns from the large repository
+  and merge-import modules; share validation and snapshot helpers instead of maintaining near-copies.
+- **Authoring and import surfaces:** audit repeated editor state, validation, modal and preview logic.
+  Numeric, working, batch staging, visual import and MCP writes must continue to converge on the same
+  compiler/validator rather than acquiring convenient second implementations.
+- **UI primitives:** remove locally reimplemented confirmation, select, section-navigation, overlay,
+  toast and responsive-control patterns where the existing shared primitive already fits. Do not
+  force genuinely different interactions through a swollen universal component.
+- **Dependencies and assets:** remove unused packages and duplicate asset paths, verify lazy-route
+  boundaries, and resolve the current mixed static/dynamic import warnings where doing so changes an
+  actual chunk boundary. Record unavoidable large chunks rather than hiding warnings with a larger
+  threshold.
+- **Documentation:** delete superseded instructions, make `README.md`, `SPEC.md`, `CHANGES.md` and the
+  roadmap agree, and retain explicit deferred-feature boundaries so cleanup does not make planned
+  work appear shipped.
+
+Each slice gets a focused PR and must reduce or preserve code volume unless added regression tests
+or compatibility adapters justify growth. Mechanical formatting is kept separate from semantic
+changes; otherwise review becomes an expensive game of spot-the-one-real-line.
+
+## 13.4 Test and diagnostic hygiene
+
+1. Remove every ESLint warning or document the narrow rule exception beside the code. The current
+   eight-warning baseline is debt, not a target.
+2. Eliminate React `act()` warnings, zero-sized chart noise, intentional iframe-network abort noise
+   and other unsolicited test output. Expected failures are asserted or mocked explicitly; a green
+   suite that screams for forty seconds trains reviewers to ignore the one warning that matters.
+3. Add regression coverage before deleting duplicate or compatibility code. Tests should assert the
+   public behaviour, not freeze the implementation being removed.
+4. Keep the full web and Electron type-check, unit/component suite, production build and PWA output as
+   required CI gates. Add no blanket snapshot suite and no percentage target that rewards testing
+   getters while missing scheduling and data-loss risks.
+5. Audit slow and flaky tests separately. Use fake clocks and deterministic data where appropriate;
+   do not lengthen timeouts until intermittent failures become intermittent for longer.
+
+## 13.5 Full browser verification
+
+Execute `docs/WEBSITE_TEST_CHECKLIST.md` against the production preview after consolidation, not only
+the development server. The checklist is the release record and must be committed with release,
+browser, operating-system, viewport and tester metadata plus issue links for every failure.
+
+Required matrices:
+
+- fresh profile, upgraded existing profile and restored-backup profile;
+- desktop and mobile viewport, keyboard and touch interaction;
+- light and dark themes, all application motion speeds and operating-system reduced motion;
+- first run, every routed surface, authoring, lesson/Simple study, FSRS Practice, numeric/working
+  marking, revision planning, sharing/lineage updates, imports, full backup restoration and offline
+  reload;
+- permission-dependent PWA install, persistent storage, camera scanning, full screen and folder
+  access where the browser/platform supports them;
+- Electron MCP and updater verification remains a separate desktop record and is never marked as a
+  website failure.
+
+Failed checks block the arc only when they are reproducible product defects, data-loss/privacy risks,
+accessibility failures on a primary path, or contradictions with documented behaviour. Platform
+limitations and deliberately deferred features are recorded, not “fixed” by pretending support.
+
+## 13.6 Success criteria
+
+1. No confirmed dead or duplicate production path remains without a written compatibility reason;
+   oversized mixed-concern modules are split at tested seams or retain an explicit justification.
+2. TypeScript, ESLint, the full test suite and production/PWA builds pass with no unsolicited warning
+   noise; any unavoidable bundler warning is measured and documented.
+3. Bundle and test baselines are recorded before and after the arc, with regressions explained.
+4. All 254 current website checklist entries, plus any entries added by later arcs, are executed on
+   the final production candidate. Every failure is fixed or linked to an explicit release decision.
+5. A full backup produced before the pass restores successfully afterwards; no cleanup invalidates
+   supported backups, share codes, lineage updates, review history or FSRS state.
+6. The final documentation describes the code and product that actually ship. Arc 13 then closes;
+   it does not become a permanent bucket named “miscellaneous cleanup”.
+
+---
+
 # Cross-arc notes
 
 - All arcs follow existing conventions: additive schema migrations with pre-migration
@@ -2522,7 +2633,9 @@ hosting it is legally and morally boring.
   study-session UI. Arc 11's numeric/working slice is delivered; scaffold and the recorded
   authoring-input follow-ups remain. Arc 12's receipts slice depends on Arc 11 only
   for mark-denominated figures (a retrievability-only receipt could ship independently),
-  and its relay slice is deliberately shared infrastructure with Arc 8 option 4.
+  and its relay slice is deliberately shared infrastructure with Arc 8 option 4. Arc 13 follows
+  the feature arcs as a bounded consolidation and release-verification pass; it is not a reason to
+  defer ordinary maintenance or regression tests until the end of the roadmap.
 - **Arc 10 follow-on (role split, not yet an arc):** the de-clutter should anticipate a
   future author/student surface separation — one engine, two shells (study surfaces vs
   authoring/publish/triage surfaces), promoted from the existing `lessonViewMode`/
