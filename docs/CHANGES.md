@@ -2,11 +2,50 @@
 
 ## Unreleased — Item-type generalisation (Arc 11)
 
+- Added the optional, versioned `Card.payload` model for structured practice items. Numeric
+  and working payloads are implemented; the scaffold discriminant is reserved without a
+  placeholder authoring or study surface. Backups, share codes and lineage merging preserve
+  payloads, while unsupported payload versions fall back to the readable question instead of
+  being marked incorrectly.
+- Added an offline expression-verification engine over the restricted `mathjs/number` entry
+  point. It accepts ordinary school notation, renders a KaTeX preview and checks algebraic
+  equivalence through reproducible seeded evaluation rather than pretending to be a symbolic
+  proof system.
 - Added numeric-item authoring to the card editor: exact, tolerance and alternative-answer
   checks share a lenient maths input, live KaTeX preview and touch-sized symbol palette.
   Structured answers persist in the card payload rather than being hidden in display text.
+- Added automatic numeric study marking and FSRS grade mapping. Numeric cards bypass reveal,
+  typing comparison and self-grading, then persist earned and available marks in ordinary
+  review history; Simple learn uses the same verdict without writing review history.
+- Added line-oriented working-item schemes with independent compiler errors, plain-English
+  previews, autocomplete and the v1 `equals`, `within`, `matches-one-of` and `contains`
+  predicates. A built-in answer harness pins sample fixtures and reruns them whenever a scheme
+  changes, and generated fixtures must actually earn their declared marks.
+- Added automatic working-item study marking, per-line verdicts and deterministic checker
+  dispute reports. Learners can report a whole numeric verdict or individual working line in
+  FSRS-backed sessions; the submitted content, verdict and random seeds remain reproducible in
+  the review log.
+- Added a clipboard-only authoring pipeline. Tutors can copy a question-to-scheme prompt or
+  build a note-grounded batch prompt, leave concept density and item count to the model or set
+  either constraint independently, then paste the delimited result into a visual staging view.
+  Each proposal is validated independently and can be edited, accepted, rejected or returned
+  to a chatbot through a complaint-aware revision prompt. Lacuna stores no model key and sends
+  no notes itself.
+- Added structured numeric and working payloads to `lacuna.create_card` and
+  `lacuna.update_card`. MCP writes use the same numeric validator, mark-scheme compiler and
+  fixture runner as the visual editor and staging path.
 - Added pure marks-analysis helpers for machine-marked review totals and criterion-labelled
   working performance, ready for later readiness and diagnostic UI.
+- Measured the shipped verifier boundary: a standalone minified bundle of `verify.ts` plus
+  `mathjs/number` is 153.75 KB (43,571 bytes gzip); the production application chunk containing
+  it is 648,459 bytes minified (187,658 bytes gzip). These figures are recorded as measured
+  boundaries, not falsely attributed to mathjs alone.
+- Completed an in-app-browser close-out pass covering hand authoring, a passing 2/2 fixture,
+  numeric and working study, an FSRS-backed checker dispute, batch prompt/staging/revision,
+  lesson acceptance and a four-item share-code export/import. Deterministic sample model output
+  was used; no external chatbot was contacted.
+- Smoothed the end of each lesson with a staged, motion-speed-aware transition into the
+  completion result and next-step controls instead of replacing the card surface abruptly.
 
 ## Unreleased — Browser QA
 
@@ -45,8 +84,8 @@
 > - **Teacher tooling** — add lessons, configure lesson session filters, author manual
 >   practice nodes, manage exam dates, undo course deletion.
 > - **Analytics** — per-course analytics on the path; global analytics compares courses.
-> - **Simple learn mode and card types** (from v0.0.3) — algorithm-free YES/NO study loop;
->   Basic, Reversed, Cloze and Typing-answer cards.
+> - **Simple learn mode and recall presentation** (from v0.0.3) — algorithm-free YES/NO
+>   study loop; Basic, Reversed and Cloze cards with optional type-before-reveal feedback.
 >
 > **Note:** internal `decks`/`folders` tables remain as hidden backing storage; dropping them
 > is deferred to a later migration. See `next_plan.md` for Arc 1 (sequence learning).

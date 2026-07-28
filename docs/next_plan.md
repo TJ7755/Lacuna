@@ -19,8 +19,8 @@ that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in ord
 10. **Arc 9 — Mobile experience and due-card reminders** (outline)
 11. **Arc 10 — UI de-clutter and navigation restructure** (detailed; independent of
     Arcs 6–9, may run before them)
-12. **Arc 11 — Item-type generalisation and authored mark schemes** (detailed; the
-    "concept-testing app" arc)
+12. **Arc 11 — Item-type generalisation and authored mark schemes** (numeric/working
+    slice delivered; scaffold and follow-ups remain)
 13. **Arc 12 — Progress receipts and encrypted relay** (detailed outline; depends on
     Arc 11 for mark-bearing receipts, but a retrievability-only first slice depends on
     nothing)
@@ -2060,14 +2060,25 @@ Each task is one subagent's scope, one commit, tests updated alongside.
 
 # Arc 11 — Item-Type Generalisation and Authored Mark Schemes (detailed)
 
+> **Status: slice 1 delivered (28 July 2026).** Numeric and working payloads now author,
+> verify, machine-grade, back up, share, lineage-diff and merge through the same versioned
+> `Card.payload`. The visual editor, batch staging path and MCP create/update tools share one
+> compiler and validator. Checker disputes and marks provenance persist on review logs, and
+> pure marks/criterion aggregators are ready for later analytics UI. Scaffold authoring and
+> study remain reserved, not implemented. The final browser pass covered hand authoring,
+> fixtures, both study faces, an FSRS-backed dispute, the clipboard prompt/staging/revision
+> boundary and a four-item share-code export/import. It used deterministic sample model output;
+> no external chatbot was contacted, so model quality and free-tier latency remain unmeasured.
+
 ## 11.1 Motivation and positioning
 
 Lacuna is a concept-testing application, not a flashcard application. A flashcard is one
 delivery vehicle for a graded retrieval event; the FSRS engine only ever consumes graded
 retrieval events and does not care what produced them. This arc generalises the vehicle
-while leaving the engine untouched: alongside Basic/Reversed/Cloze/Typing, items may be
-structured practice questions — numeric answers, scaffolded working, and free working
-chains marked against a tutor-authored mark scheme. This is the arc that makes Lacuna
+while leaving the engine untouched: alongside Basic/Reversed/Cloze presentation types and
+the separate type-before-reveal setting, items may be structured practice questions —
+numeric answers, scaffolded working, and free working chains marked against a tutor-authored
+mark scheme. This is the arc that makes Lacuna
 useful for exam-style practice (the Atom Learning-shaped use case) rather than recall
 drill alone, and it is the prerequisite for mark-denominated readiness (§11.8) and for
 mark-bearing receipts (Arc 12).
@@ -2083,7 +2094,7 @@ LLM-marked path is explicitly out of scope (§11.10).
 
 ```ts
 /** Per-type structured content for practice item types. Absent on every
- *  pre-Arc-11 card and on all four classic types. Versioned independently of the
+ *  pre-Arc-11 card and on all three classic presentation types. Versioned independently of the
  *  DB schema so share codes and backups can validate forward-compatibly. */
 payload?: ItemPayload;   // { v: 1; kind: 'numeric' | 'scaffold' | 'working'; ... }
 ```
@@ -2123,15 +2134,17 @@ drilling it, working-with-full-scheme for past-paper realism.
 Target user includes 11+ students. LaTeX is never shown or required.
 
 - **Lenient plain-text parser as the base.** Accept what students naturally type
-  (`2x+6=14`, `3/4`, `sqrt(16)`, `x^2`), parsed by mathjs (**not currently a dependency**
-  — adding it is a decision this arc must make, weighed against a purpose-built parser,
-  since the arc needs only arithmetic/algebraic expression parsing and evaluation from
-  it), with a live rendered preview (KaTeX, already shipped as `katex` and
-  `rehype-katex`) so the student sees the app understood them.
-- **Palette input on top.** Buttons for the symbols students demonstrably cannot type
-  (fraction, power, root, ×, ÷ — computer literacy is falling, `^` and `sqrt()` are not
-  discoverable), inserting templates into the text field. 44px targets per the existing
-  touch system. A structure-aware equation editor is explicitly out of scope.
+  (`2x+6=14`, `3/4`, `sqrt(16)`, `x^2`). Slice 1 adopted the number-only `mathjs/number`
+  entry point behind a restricted validator, with a live rendered preview (KaTeX, shipped
+  as `katex` and `rehype-katex`) so the student sees what the app understood. The 28 July
+  production build placed it in the 648,459-byte minified / 187,658-byte gzip application
+  chunk. A standalone bundle of `verify.ts` plus `mathjs/number` measured 153.75 KB minified
+  and 43,571 bytes gzip; that is a dependency upper bound because it includes Lacuna's own
+  verification code too.
+- **Palette input on top.** Buttons for power, fraction, ×, ÷ and brackets insert templates
+  into the text field, with 44px targets per the existing touch system. `sqrt()` remains
+  typeable but does not get a slice-1 button; a structure-aware equation editor is explicitly
+  out of scope.
 - The input parser and the verification engine share one expression representation —
   this is a single investment, not two.
 
@@ -2220,13 +2233,15 @@ and remote-server-only, so MCP is the power-user path, not the default):
    scheme pane, and the compiler validates it instantly — the compiler is what makes
    LLM generation trustworthy.
 2. **Batch generation (the real workflow):** notes → wizard ("paste your notes for this
-   lesson", topic + level + rough item count) → clipboard prompt that additionally
+   lesson", topic + level, with optional manual concept-density and maximum-item constraints)
+   → clipboard prompt that additionally
    instructs the model to ask up to three clarifying questions before producing output
    (the follow-up conversation happens entirely in the chat window; Lacuna never
    mediates it) → one structured, delimited output block containing items, schemes and
    fixtures → paste back into a **staging area**, never directly into a lesson.
-   Batch-size discipline per A.1's recorded lesson: cap items per response and chunk by
-   lesson/topic, with "continue" rounds, or late items degrade into mush.
+   By default the model chooses concept density and the useful item count; populated manual
+   constraints are injected independently. Chunk by lesson/topic rather than adding a hidden
+   application cap or padding later items into mush.
 3. **Staging/triage view** (the `PendingMergeReview` pattern wearing a different hat):
    each proposed item shows compile status, fixture status, and duplicate status
    (`diff_import_preview`'s duplicate detection run against the target lesson, so
@@ -2306,16 +2321,21 @@ is shippable on share codes alone, before Arc 12 exists.
   revisable taxonomies, and the tag convention retains the migration path if per-spec
   dashboards ever become the core pitch.
 
-## 11.9 Open questions (to settle before the build, recorded here so this section
-cannot be mistaken for finished design)
+## 11.9 Resolved slice-1 decisions and remaining questions
 
-1. **Waypoint-level FSRS state.** Does a working chain produce one graded event for the
-   whole item (assumed above), or does each waypoint/criterion carry its own memory
-   state (the `fsrs_state` polymorphic-UUID groundwork would permit it)? Per-waypoint is
-   more radical, changes the payload design, and must be decided first.
-2. Predicate vocabulary beyond v1 — earned from real tutor usage, not designed upfront.
-3. Palette scope per key stage (which symbols 11+ vs GCSE actually need).
-4. Whether `numeric` items belong in the existing Typing-answer UI or a new face.
+1. **One FSRS event per item.** A working chain produces one graded retrieval event. Its
+   criterion verdicts and marks remain audit data on that event; they do not acquire separate
+   memory states.
+2. **Predicate vocabulary remains deliberately small.** v1 ships `equals`, `within`,
+   `matches-one-of` and `contains`; further predicates must be earned from real tutor failures.
+3. **11+ palette scope is settled for slice 1.** Power, fraction, multiply, divide and
+   brackets are visible aliases over the plain-text syntax. Root remains typeable as `sqrt()`;
+   π and trigonometric controls wait for a demonstrated GCSE need. Fraction entry itself still
+   needs the cursor-aware follow-up in §11.3.
+4. **Numeric and working items use dedicated machine-marked faces.** Typing is not a card
+   type: it is a presentation preference layered over Basic/Reversed/Cloze and retains
+   self-grading. Reusing it for authoritative numeric marks would conflate two grading models.
+   The dedicated faces reuse the shared maths input instead.
 
 ## 11.10 Explicitly out of scope
 
@@ -2496,9 +2516,9 @@ hosting it is legally and morally boring.
   as a design question, not yet an implementation commitment; Arc 9 and Arc 6 are
   independent of each other and of Arc 8. Arc 10 (UI de-clutter) is independent of
   Arcs 6–9 and touches only navigation/layout, so it may run before any of them; its
-  one deliberate deferral (splitting `LearnMode.tsx`) should be revisited before the
-  next arc that changes study-session UI. Arc 11 depends on nothing later than Arc 5 and
-  is the next detailed build after Arc 10; Arc 12's receipts slice depends on Arc 11 only
+  one deliberate deferral (splitting `LearnMode.tsx`) was completed before Arc 11 touched
+  study-session UI. Arc 11's numeric/working slice is delivered; scaffold and the recorded
+  authoring-input follow-ups remain. Arc 12's receipts slice depends on Arc 11 only
   for mark-denominated figures (a retrievability-only receipt could ship independently),
   and its relay slice is deliberately shared infrastructure with Arc 8 option 4.
 - **Arc 10 follow-on (role split, not yet an arc):** the de-clutter should anticipate a
