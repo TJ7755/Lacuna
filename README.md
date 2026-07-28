@@ -5,8 +5,8 @@
 A local-only, serverless revision application built around the **FSRS-6** spaced-repetition
 algorithm (via the official `ts-fsrs` library). Material is organised into **courses**, each
 made of **lessons** studied in order along a path; every card is scheduled to peak on the
-course's exam day, you grade yourself with a single **Yes / No**, and an invisible response
-timer infers the real FSRS grade behind the scenes.
+course's exam day. Classic recall cards use a single **Yes / No** and an invisible response
+timer to infer the FSRS grade; structured numeric and working items are marked automatically.
 
 All data lives locally in **IndexedDB**. The web app sends none of it to a Lacuna server
 because there is no Lacuna server. In the Electron build, an MCP client can access only the
@@ -32,8 +32,14 @@ file.
 - **Invisible rating engine** — Yes/No plus a hidden response timer, calibrated per course.
 - **Simple learn mode** — an algorithm-free YES/NO study loop with no FSRS scheduling, no DB writes,
   and shared in-session card progress. Cards loop until every one is marked correct.
-- **Card types** — Basic (front/back), Reversed (back/front), Cloze, and Typing-answer (type the
-  answer before revealing, with a comparison on the back).
+- **Recall and practice items** — Basic (front/back), Reversed and Cloze cards support an
+  optional type-before-reveal presentation mode. Numeric items check exact, tolerance or
+  alternative answers; working items award authored method marks against deterministic
+  expression waypoints and predicates.
+- **Structured item authoring** — build numeric answers and line-oriented working schemes in
+  the card editor, test them against pinned sample answers, or generate a clipboard prompt and
+  stage a delimited batch for per-item validation, editing and acceptance. Lacuna never sends
+  lesson notes to a model itself.
 - **Sequences** — author an ordered list once (e.g. the periodic table, a timeline, a chain of
   steps) and Lacuna generates a full set of overlapping-cloze cards, each cueing recall from the
   preceding items; editing the sequence regenerates its cards without losing their scheduling
@@ -91,7 +97,9 @@ The Electron layer lives in `electron/` and adds a custom titlebar, local font
 bundling, Cross-Origin Isolation headers for WASM, and auto-updates via
 `electron-updater`. It also hosts a local **Model Context Protocol (MCP)** server over
 stdio, allowing an MCP-capable client to work with Lacuna's courses, lessons, notes, cards,
-sequences and summaries. The web version does not host MCP and is otherwise unaffected.
+sequences and summaries. Card creation and updates accept the same validated numeric and
+working payloads as the visual editor. The web version does not host MCP and is otherwise
+unaffected.
 
 To connect a client, configure a local stdio MCP server whose command is the installed
 Lacuna executable. For example, with Claude Code on macOS:
@@ -120,6 +128,7 @@ grants expire when Lacuna closes.
 | Course/lesson data layer | `src/state/useCourseData.ts`, `src/course/path.ts` |
 | Course path, lesson view, question bank | `src/pages/CoursePath.tsx`, `src/pages/LessonView.tsx`, `src/pages/QuestionBank.tsx` |
 | Sequence generation & editor | `src/db/sequenceGeneration.ts`, `src/pages/SequenceEditor.tsx` |
+| Structured-item verification and schemes | `src/items/verify.ts`, `src/items/markSchemeCompiler.ts` |
 | MCP tool surface and Electron bridge | `src/mcp/`, `electron/mcp/` |
 | Learn session | `src/pages/LearnMode.tsx` |
 | Analytics charts | `src/components/analytics/` |
@@ -128,8 +137,8 @@ See `docs/SPEC.md` for the full set of design decisions.
 
 ## Tech
 
-React 18, TypeScript, Vite, Tailwind CSS v4, Dexie (IndexedDB), Motion, Recharts, react-markdown with
-remark-gfm / remark-math / rehype-katex / rehype-highlight.
+React 18, TypeScript, Vite, Tailwind CSS v4, Dexie (IndexedDB), Motion, Recharts, mathjs,
+react-markdown with remark-gfm / remark-math / rehype-katex / rehype-highlight.
 
 ### Testing
 

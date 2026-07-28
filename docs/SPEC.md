@@ -68,7 +68,7 @@ British English throughout. No emojis anywhere in the product or its copy.
 - **Motion:** the `motion` library (`motion/react`).
 - **Markdown / maths / code:** `react-markdown` + `remark-gfm` + `remark-math` +
   `rehype-katex` + `rehype-highlight` + `rehype-raw`. KaTeX and highlight.js styles imported
-  globally.
+  globally; the restricted expression parser uses the number-only `mathjs/number` entry point.
 - **Charts:** Recharts.
 - **Fonts (loaded via `<link>` in `index.html`):** Fraunces (display), Geist (body),
   JetBrains Mono (code and the timer/tabular figures).
@@ -414,7 +414,10 @@ the conductor explicitly offers the ordinary next step alongside each applicable
 ordered by date. Choosing either branch is temporary and is not retained as a preference.
 The learner leaves only through an explicit finish action. The step union reserves an
 `exam-questions` member for a future engine, but this version creates no placeholder questions
-or empty exam UI.
+or empty exam UI. A completed lesson enters its transition report through a motion-speed-aware
+staged animation: the panel settles, the completion state lands, and the summary and next-step
+controls follow. Disabling motion removes the delays rather than trapping the learner behind a
+decorative transition.
 
 Curricular Practice keeps a fixed lesson prefix only for its milestone denominator, so later
 lessons cannot rewrite or revive that historical milestone. A current automatic or recurring
@@ -744,7 +747,10 @@ sequenceItemId?, due|null, scheduledDays, learningSteps, history[], createdAt`
   (`{{cN::...}}`); `back` is empty.
 - `payload` carries versioned structured practice-item data independently of the classic
   presentation `type`. A v1 `numeric` payload stores an exact, tolerance or one-of answer
-  specification; its `back` remains empty because the checker, not a revealed answer, grades it.
+  specification; a v1 `working` payload stores compiled scheme lines and optional fixtures.
+  Its `back` remains empty because the checker, not a revealed answer, grades it. The
+  `scaffold` discriminant is reserved for a later payload version but has no authoring, study or
+  verification surface in this release.
 - `stability` (days; the interval at which R = 0.90), `difficulty` (in [1,10]),
   `lastReviewed`, `due` are all `null` until the first review.
 - `reps, lapses, state, scheduledDays, learningSteps, due` mirror ts-fsrs's card fields.
@@ -1114,6 +1120,22 @@ Two modes, chosen in Settings (default **reveal**), mirroring the grading-mode t
   ignores case only, and exact requires both to match. `answerComparisonOptions` maps the
   level to `AnswerComparisonOptions` for `compareAnswer`.
 
+### Structured-item verification
+
+`src/items/verify.ts` is a pure, offline boundary over the number-only mathjs entry point.
+It accepts ordinary notation such as `2x+6=14`, `3/4`, `sqrt(16)` and `x^2`, rejects assignments,
+collections and unapproved functions, and renders the validated tree as KaTeX for preview.
+Equivalence is checked by evaluating both expressions over the same deterministic random draws.
+The seed travels through each line verdict and review log, so a disputed result can be replayed
+exactly; random evaluation is deliberately not presented as symbolic proof. Numeric answer
+specifications share this parser for exact, tolerance and one-of checks.
+
+The production build measured on 28 July 2026 places the verifier in the main application chunk
+(648,459 bytes minified; 187,658 bytes gzip for the whole chunk). A standalone Bun bundle of
+`src/items/verify.ts`, including its `mathjs/number` dependency, is 153.75 KB minified and 43,571
+bytes gzip. The latter is an upper bound for mathjs rather than a dishonest claim that every byte
+belongs to it; it also includes Lacuna's parser, verifier and renderer helpers.
+
 ### Numeric item face
 A card with a v1 `numeric` payload bypasses the reveal and self-grading controls. Its study
 face renders the Markdown question and the same maths-expression input used by authoring;
@@ -1138,6 +1160,16 @@ payload. Drafts retain the uncompiled source so an interrupted invalid edit is n
 The same editor includes a test-answer harness backed directly by `verifyWorkingLines`. Tutors can
 pin a sample answer with its current expected score; those fixtures travel in the item payload and
 rerun automatically on every scheme edit, exposing any score mismatch before the card is saved.
+
+The v1 grammar is data, never executable code:
+
+```text
+[1] substitution :: 2x = 8
+[1] answer :: equals :: 4
+[1] check :: within 0.01 :: 4.0
+[1] choice :: matches-one-of :: 3 :: 4 :: 5
+[1] method :: contains :: substitution
+```
 
 Working-item authors can copy a “Draft mark scheme” prompt containing the current question and the
 compiler-owned v1 syntax specification. The Question bank also provides a course-level batch prompt
@@ -1186,6 +1218,15 @@ Pure marks-analysis helpers aggregate machine-marked attempts into earned/availa
 working performance by the labels in each card's current mark scheme. Criterion summaries count full
 and missed attempts as well as marks, providing the data seam for later readiness and diagnostic UI
 without making the Arc 11 study path depend on analytics components.
+
+The Arc 11 slice-1 manual pass on 28 July 2026 used a dedicated two-lesson course. It authored one
+numeric and one working item by hand, pinned and reran a 2/2 working fixture, studied both faces,
+recorded a numeric checker dispute in an FSRS-backed review, generated a share code and re-imported
+all four structured items. The clipboard pipeline copied a note-grounded batch prompt, staged one
+numeric and one working item from a deterministic delimited response, verified the working fixture,
+copied a revise-with-AI prompt and accepted both items into the target lesson. No external chatbot
+was contacted during this pass, so it verifies Lacuna's complete copy/paste boundary and validation
+path, not a particular model's output quality or latency.
 
 ### Study mode (`src/state/studyMode.ts`)
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):
