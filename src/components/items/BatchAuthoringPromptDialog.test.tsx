@@ -96,6 +96,10 @@ describe('BatchAuthoringPromptDialog', () => {
       />,
     );
 
+    expect(screen.getByText('Concept checks, not worksheets')).toBeInTheDocument();
+    expect(
+      screen.getByText(/arbitrary-number exercise variants are not supported yet/),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy batch prompt' })).toBeDisabled();
   });
 

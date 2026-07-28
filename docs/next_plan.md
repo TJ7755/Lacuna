@@ -2227,6 +2227,12 @@ carries its own tests.
 and tutor sits on free-tier ChatGPT, and ChatGPT's custom-connector path is Plus-only
 and remote-server-only, so MCP is the power-user path, not the default):
 
+Generated output in this slice is scheduled concept material, not an ephemeral worksheet.
+Working questions should retrieve a general method, relationship or derivation from the notes:
+derive the quadratic formula or complete the square symbolically, rather than minting cards for
+arbitrary coefficient sets. Parameterised numerical practice belongs to §11.12's future generated
+instances, where variants share one scheduled template identity.
+
 1. **Scheme-from-question:** "Draft mark scheme" copies a clipboard prompt containing
    the question, the full syntax specification with worked examples, and the predicate
    vocabulary. The tutor pastes into their chatbot, pastes the reply back into the

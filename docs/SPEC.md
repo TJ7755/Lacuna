@@ -1178,6 +1178,11 @@ numeric and working items. By default the model chooses both the number of atomi
 and the number of items needed for useful coverage. Tutors can instead expose independent optional
 constraints for concepts per item and maximum item count; only populated constraints enter the
 prompt. The optional maximum is tutor-controlled; Lacuna imposes no separate item-count cap.
+Generated items are durable scheduled concept checks, not disposable worksheet questions. Working
+items must test a reusable method, relationship or derivation; algebra prompts prefer symbolic
+general forms such as completing the square from `ax^2 + bx + c = 0` rather than inventing custom
+coefficients for another one-off exercise. Parameterised numerical practice remains deferred until
+generated variants can share one stable scheduled identity.
 Every path must use the versioned `LACUNA_ITEMS_V1` JSON delimiters so the staging review can parse it
 without guessing. Lacuna sends no data to a model and stores no API key; the conversation remains in
 the tutor's chosen chatbot.
