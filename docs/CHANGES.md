@@ -57,6 +57,9 @@
   previous values, removing the false impression of a page refresh or progress reset.
 - Added an exhaustive manual website release checklist covering every current route, authoring
   path, study mode, setting, import/export flow, responsive state and explicit deferred boundary.
+- Added Arc 13 as a bounded post-feature consolidation and release-verification pass covering dead
+  and duplicate code, oversized modules, test/build warning hygiene, bundle baselines and execution
+  of the complete website checklist.
 
 ## Unreleased — Browser QA
 
