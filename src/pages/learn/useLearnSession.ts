@@ -1369,6 +1369,7 @@ export function useLearnSession({
           marksEarned: machineMarked?.marksEarned,
           marksAvailable: machineMarked?.marksAvailable,
           lineVerdicts: machineMarked?.lineVerdicts,
+          checkerDisputes: machineMarked?.checkerDisputes,
         });
 
         if (correct && perf) {

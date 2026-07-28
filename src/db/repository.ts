@@ -5,6 +5,7 @@ import { db, makeId } from './schema';
 import type {
   Card,
   CardType,
+  CheckerDisputeReport,
   Course,
   CourseAssessment,
   CourseRecord,
@@ -728,6 +729,7 @@ export interface RecordReviewArgs {
   marksEarned?: number;
   marksAvailable?: number;
   lineVerdicts?: LineVerdict[];
+  checkerDisputes?: CheckerDisputeReport[];
   now?: number;
 }
 
@@ -776,6 +778,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
       marksEarned,
       marksAvailable,
       lineVerdicts,
+      checkerDisputes,
     } = args;
     const kind: ReviewUnitKind = args.kind ?? 'deck';
     const now = args.now ?? Date.now();
@@ -827,6 +830,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           marksEarned,
           marksAvailable,
           lineVerdicts,
+          checkerDisputes,
           stabilityBefore: cardBefore.stability,
           stabilityAfter: memory.stability,
           difficultyBefore: cardBefore.difficulty,

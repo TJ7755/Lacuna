@@ -1144,6 +1144,12 @@ Each nonblank line is checked against the persisted scheme, with each criterion 
 once. The ordinary machine-marked pipeline maps the total through `gradeFromMarks`; FSRS sessions
 persist the marks and per-line verdicts on `ReviewLog`, while lesson Simple mode uses full marks for
 mastery and requeues partial or zero-mark attempts without writing review history.
+Numeric and working faces show the automatic verdict before the learner continues. In FSRS-backed
+sessions, a learner can flag an answer or individual working line when the checker got it wrong;
+review logs retain the question, submitted line, verdict, report time and every deterministic seed, so
+the disputed result can be reproduced exactly and later promoted to a fixture in Arc 12. Backups
+preserve this optional history data verbatim, while share codes continue to omit all personal review
+history.
 
 ### Study mode (`src/state/studyMode.ts`)
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):

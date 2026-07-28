@@ -175,12 +175,15 @@ export function verifyWorkingLines(
 
   studentLines.forEach((studentLine, studentIndex) => {
     let matchedLineIndex: number | null = null;
+    const checkerSeeds: string[] = [];
     for (const schemeIndex of unmatched) {
+      const checkerSeed = `${seed}:${studentIndex}:${schemeIndex}`;
+      if (usesRandomEvaluation(scheme[schemeIndex])) checkerSeeds.push(checkerSeed);
       if (
         matchesSchemeLine(
           studentLine,
           scheme[schemeIndex],
-          `${seed}:${studentIndex}:${schemeIndex}`,
+          checkerSeed,
         )
       ) {
         matchedLineIndex = schemeIndex;
@@ -191,7 +194,7 @@ export function verifyWorkingLines(
 
     const marks = matchedLineIndex === null ? 0 : validMarks(scheme[matchedLineIndex].marks);
     marksEarned += marks;
-    lineVerdicts.push({ studentLine, matchedLineIndex, marksEarned: marks });
+    lineVerdicts.push({ studentLine, matchedLineIndex, marksEarned: marks, checkerSeeds });
   });
 
   return {
@@ -199,6 +202,10 @@ export function verifyWorkingLines(
     marksAvailable: scheme.reduce((total, line) => total + validMarks(line.marks), 0),
     lineVerdicts,
   };
+}
+
+function usesRandomEvaluation(line: MarkSchemeLine): boolean {
+  return line.kind === 'waypoint' || (line.kind === 'predicate' && line.predicate === 'equals');
 }
 
 function matchesSchemeLine(studentLine: string, line: MarkSchemeLine, seed: string): boolean {

@@ -482,6 +482,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                       payload: Extract<ItemPayload, { kind: 'numeric' }>;
                     }
                   }
+                  allowCheckerDisputes={!isSimpleMode}
                   onAnswer={(result) => void answer(result, 'keyboard')}
                 />
               ) : current && current.payload?.kind === 'working' ? (
@@ -492,6 +493,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                       payload: Extract<ItemPayload, { kind: 'working' }>;
                     }
                   }
+                  allowCheckerDisputes={!isSimpleMode}
                   onAnswer={(result) => void answer(result, 'keyboard')}
                 />
               ) : current ? (

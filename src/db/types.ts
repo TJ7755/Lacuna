@@ -110,6 +110,8 @@ export interface ReviewLog {
    * `LineVerdict`.
    */
   lineVerdicts?: LineVerdict[];
+  /** Learner-raised checker disputes attached to this machine-marked attempt. */
+  checkerDisputes?: CheckerDisputeReport[];
 }
 
 /**
@@ -127,6 +129,22 @@ export interface LineVerdict {
   matchedLineIndex: number | null;
   /** Marks earned for this line (0 when unmatched). */
   marksEarned: number;
+  /** Seeds used by random-equivalence checks while reaching this verdict. */
+  checkerSeeds?: string[];
+}
+
+/** A reproducible learner report that an automatic checker verdict was wrong. */
+export interface CheckerDisputeReport {
+  reportedAt: number;
+  question: string;
+  studentLine: string;
+  verdict: {
+    correct: boolean;
+    marksEarned: number;
+    matchedLineIndex?: number | null;
+  };
+  /** Empty for deterministic numeric/predicate checks; populated for random equivalence. */
+  checkerSeeds: string[];
 }
 
 /**
