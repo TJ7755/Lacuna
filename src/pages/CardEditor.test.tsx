@@ -13,6 +13,7 @@ let mockSequences: Sequence[] | undefined;
 let mockLesson: Lesson | null | undefined;
 const updateCard = vi.fn().mockResolvedValue(undefined);
 const createCourseCard = vi.fn().mockResolvedValue(undefined);
+const writeClipboardText = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
@@ -157,6 +158,11 @@ beforeEach(() => {
   mockNavigate.mockClear();
   updateCard.mockClear();
   createCourseCard.mockClear();
+  writeClipboardText.mockClear();
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: writeClipboardText },
+  });
 });
 
 describe('CardEditor — numeric items', () => {
@@ -219,6 +225,21 @@ describe('CardEditor — numeric items', () => {
 });
 
 describe('CardEditor — working items', () => {
+  it('copies a compiler-backed mark-scheme prompt for the current question', async () => {
+    renderNew();
+    fireEvent.click(screen.getByRole('button', { name: 'Working' }));
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'Show that x = 4.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Draft mark scheme' }));
+
+    await waitFor(() => expect(writeClipboardText).toHaveBeenCalledOnce());
+    const prompt = writeClipboardText.mock.calls[0][0] as string;
+    expect(prompt).toContain('Show that x = 4.');
+    expect(prompt).toContain('[1] answer :: equals :: 4');
+    expect(prompt).toContain('Predicate vocabulary:');
+  });
+
   it('creates a working item with the compiled scheme in its structured payload', async () => {
     renderNew();
     fireEvent.click(screen.getByRole('button', { name: 'Working' }));

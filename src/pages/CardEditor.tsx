@@ -26,6 +26,7 @@ import {
 } from '../components/items/NumericAnswerEditor';
 import { MarkSchemeEditor } from '../components/items/MarkSchemeEditor';
 import { compileMarkScheme, serialiseMarkScheme } from '../items/markSchemeCompiler';
+import { buildMarkSchemeDraftPrompt } from '../items/prompts';
 import { SequenceBadge } from '../components/cards/SequenceBadge';
 import { ChevronLeftIcon, CheckIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
@@ -131,6 +132,16 @@ export function CardEditor() {
     window.clearTimeout(savedTimer.current);
     setShowSaved(true);
     savedTimer.current = window.setTimeout(() => setShowSaved(false), 1200);
+  }
+
+  async function copyMarkSchemePrompt() {
+    if (!front.trim()) return;
+    try {
+      await navigator.clipboard.writeText(buildMarkSchemeDraftPrompt(front));
+      notify('Mark-scheme prompt copied to the clipboard.', 'positive');
+    } catch {
+      notify('Could not copy the mark-scheme prompt.', 'negative');
+    }
   }
   useEffect(() => () => window.clearTimeout(savedTimer.current), []);
 
@@ -725,6 +736,8 @@ export function CardEditor() {
                     onChange={setWorkingSource}
                     fixtures={workingFixtures}
                     onFixturesChange={setWorkingFixtures}
+                    onDraftMarkScheme={() => void copyMarkSchemePrompt()}
+                    draftDisabled={!front.trim()}
                     invalid={shakeField === 'scheme'}
                   />
                 </div>

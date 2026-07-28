@@ -1139,6 +1139,14 @@ The same editor includes a test-answer harness backed directly by `verifyWorking
 pin a sample answer with its current expected score; those fixtures travel in the item payload and
 rerun automatically on every scheme edit, exposing any score mismatch before the card is saved.
 
+Working-item authors can copy a “Draft mark scheme” prompt containing the current question and the
+compiler-owned v1 syntax specification. The Question bank also provides a course-level batch prompt
+builder for one lesson/topic at a time: notes, topic, level, requested item count and continuation
+round produce a clipboard-only prompt for numeric and working items. A response is capped at twenty
+items and must use the versioned `LACUNA_ITEMS_V1` JSON delimiters so the staging review can parse it
+without guessing. Lacuna sends no data to a model and stores no API key; the conversation remains in
+the tutor's chosen chatbot.
+
 In study, a working item replaces reveal and self-grading controls with a multi-line answer surface.
 Each nonblank line is checked against the persisted scheme, with each criterion awarded at most
 once. The ordinary machine-marked pipeline maps the total through `gradeFromMarks`; FSRS sessions
