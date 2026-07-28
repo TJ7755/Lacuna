@@ -11,7 +11,10 @@
 
 import { z } from 'zod';
 import { db } from '../../db/schema';
-import type { CourseAssessment } from '../../db/types';
+import type { CourseAssessment, ItemPayload, NumericAnswerSpec } from '../../db/types';
+import { compileMarkScheme } from '../../items/markSchemeCompiler';
+import { numericAnswerSpecIsValid } from '../../items/numericAnswerSpec';
+import { runWorkingFixtures } from '../../items/fixtureRunner';
 import * as read from '../../db/read';
 import {
   createCourse as repoCreateCourse,
@@ -200,6 +203,63 @@ const updateNote: ToolDefinition<z.infer<typeof updateNoteSchema>, { id: string 
 
 const cardTypeSchema = z.enum(['front_back', 'cloze', 'basic_reversed']).describe('The card type.');
 
+const numericAnswerSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('exact'), value: z.string() }),
+  z.object({ kind: z.literal('within'), value: z.string(), tolerance: z.number() }),
+  z.object({ kind: z.literal('matches-one-of'), values: z.array(z.string()).min(1) }),
+]);
+const itemFixtureSchema = z.object({
+  id: z.string().optional(),
+  studentAnswer: z.union([z.string(), z.array(z.string()).min(1)]),
+  expectedMarks: z.number().int().nonnegative(),
+  note: z.string().optional(),
+});
+const itemPayloadInputSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('numeric'), answer: numericAnswerSchema }),
+  z.object({
+    kind: z.literal('working'),
+    scheme: z.string(),
+    fixtures: z.array(itemFixtureSchema).optional(),
+  }),
+]);
+
+function compileItemPayload(input: z.infer<typeof itemPayloadInputSchema>): ItemPayload {
+  if (input.kind === 'numeric') {
+    if (!numericAnswerSpecIsValid(input.answer)) {
+      throw new McpToolException({
+        kind: 'validation',
+        message: 'The numeric answer specification is invalid.',
+      });
+    }
+    return { v: 1, kind: 'numeric', answer: input.answer as NumericAnswerSpec };
+  }
+
+  const compilation = compileMarkScheme(input.scheme);
+  const errors = compilation.lines.filter((line) => line.kind === 'error');
+  if (errors.length > 0 || compilation.lines.length === 0) {
+    const message =
+      errors.length > 0
+        ? errors.map((error) => `Scheme line ${error.lineNumber}: ${error.message}`).join('\n')
+        : 'Add a mark scheme.';
+    throw new McpToolException({ kind: 'validation', message });
+  }
+  const scheme = compilation.lines.flatMap((line) =>
+    line.kind === 'compiled' ? [line.value] : [],
+  );
+  const fixtures = (input.fixtures ?? []).map((fixture, index) => ({
+    ...fixture,
+    id: fixture.id ?? `mcp-fixture-${index + 1}`,
+  }));
+  const failingFixture = runWorkingFixtures(scheme, fixtures).find((run) => !run.passes);
+  if (failingFixture) {
+    throw new McpToolException({
+      kind: 'validation',
+      message: `Fixture expected ${failingFixture.fixture.expectedMarks} marks but received ${failingFixture.marksEarned}.`,
+    });
+  }
+  return { v: 1, kind: 'working', scheme, ...(fixtures.length > 0 ? { fixtures } : {}) };
+}
+
 const createCardSchema = z.object({
   courseId: courseIdSchema,
   lessonId: z
@@ -212,6 +272,7 @@ const createCardSchema = z.object({
   front: z.string().describe('Markdown source for the question/prompt side.'),
   back: z.string().describe('Markdown source for the answer side. Unused (empty) for cloze cards.'),
   tags: z.array(z.string()).optional().describe('Free-text tags. Defaults to none.'),
+  payload: itemPayloadInputSchema.optional().describe('Structured numeric or working item data.'),
 });
 const createCard: ToolDefinition<
   z.infer<typeof createCardSchema>,
@@ -223,13 +284,22 @@ const createCard: ToolDefinition<
     'when lessonId is given.',
   inputSchema: createCardSchema,
   requiredScope: 'write',
-  async handler({ courseId, lessonId, type, front, back, tags }) {
+  async handler({ courseId, lessonId, type, front, back, tags, payload }) {
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
+    if (payload && type !== 'front_back') {
+      throw new McpToolException({
+        kind: 'validation',
+        message: 'Structured items must use type front_back.',
+      });
+    }
+    const compiledPayload = payload ? compileItemPayload(payload) : undefined;
     if (lessonId !== undefined) {
       if (!(await read.getLesson(lessonId))) notFound('Lesson', lessonId);
-      return ok(await createLessonCard(courseId, lessonId, type, front, back, tags));
+      return ok(
+        await createLessonCard(courseId, lessonId, type, front, back, tags, compiledPayload),
+      );
     }
-    return ok(await createCourseCard(courseId, type, front, back, tags));
+    return ok(await createCourseCard(courseId, type, front, back, tags, compiledPayload));
   },
 };
 
@@ -239,6 +309,7 @@ const updateCardSchema = z.object({
   back: z.string().optional().describe('New Markdown source for the answer side.'),
   tags: z.array(z.string()).optional().describe('Replacement set of free-text tags.'),
   flagged: z.boolean().optional().describe('New flagged state, for quick filtering/follow-up.'),
+  payload: itemPayloadInputSchema.optional().describe('Replacement structured item data.'),
 });
 const updateCard: ToolDefinition<z.infer<typeof updateCardSchema>, { id: string }> = {
   name: 'lacuna.update_card',
@@ -252,7 +323,17 @@ const updateCard: ToolDefinition<z.infer<typeof updateCardSchema>, { id: string 
     const card = await read.getCard(cardId);
     if (!card) notFound('Card', cardId);
     if (card.sequenceItemId !== undefined) refuseGeneratedCard(cardId);
-    await repoUpdateCard(cardId, changes);
+    const { payload, ...contentChanges } = changes;
+    if (payload && card.type !== 'front_back') {
+      throw new McpToolException({
+        kind: 'validation',
+        message: 'Structured items must use type front_back.',
+      });
+    }
+    await repoUpdateCard(cardId, {
+      ...contentChanges,
+      ...(payload ? { payload: compileItemPayload(payload) } : {}),
+    });
     return ok({ id: cardId });
   },
 };
@@ -412,13 +493,19 @@ const updateCourseAssessmentSchema = z
   .object({
     assessmentId: z.string().describe('The id of the assessment to update.'),
     name: z.string().optional().describe('New name.'),
-    examDate: z.number().optional().describe('New date/time as an epoch millisecond value, in UTC.'),
+    examDate: z
+      .number()
+      .optional()
+      .describe('New date/time as an epoch millisecond value, in UTC.'),
     timeZone: z.string().optional().describe('New IANA display time zone.'),
     afterLessonId: z.string().nullable().optional().describe('New path anchor.'),
     coverageMode: z.enum(['prefix', 'custom']).optional().describe('New coverage mode.'),
     lessonIds: z.array(z.string()).min(1).optional().describe('Explicit custom lesson ids.'),
     excludedCardIds: z.array(z.string()).optional().describe('Replacement excluded card ids.'),
-    needsAuthorConfirmation: z.boolean().optional().describe('Whether an author must review references.'),
+    needsAuthorConfirmation: z
+      .boolean()
+      .optional()
+      .describe('Whether an author must review references.'),
   })
   .superRefine((value, context) => {
     if (value.lessonIds !== undefined && value.coverageMode !== 'custom') {

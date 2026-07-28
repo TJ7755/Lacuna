@@ -1165,6 +1165,10 @@ return one revised item in the ordinary batch delimiters, so the result goes bac
 staging validation rather than bypassing it.
 Acceptance calls the ordinary `createLessonCard` path with the compiled structured payload; staging
 has no separate database write path.
+The MCP `lacuna.create_card` and `lacuna.update_card` tools accept the same numeric and working
+payload inputs. Working scheme source is compiled by the shared mark-scheme compiler and fixtures
+are run before the repository write; numeric answers use the shared numeric-spec validator. Invalid
+payloads therefore return the same validation messages as authoring and staging.
 
 In study, a working item replaces reveal and self-grading controls with a multi-line answer surface.
 Each nonblank line is checked against the persisted scheme, with each criterion awarded at most
