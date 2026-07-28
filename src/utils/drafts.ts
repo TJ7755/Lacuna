@@ -7,8 +7,10 @@ export interface DraftData {
   back: string;
   tags: string[];
   type: CardType;
-  itemKind?: 'numeric';
+  itemKind?: 'numeric' | 'working';
   payload?: ItemPayload;
+  /** Uncompiled working-item source, retained even while a draft contains errors. */
+  workingSource?: string;
   alsoReverse?: boolean;
   timestamp: number;
 }

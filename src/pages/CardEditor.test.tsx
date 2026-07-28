@@ -218,6 +218,80 @@ describe('CardEditor — numeric items', () => {
   });
 });
 
+describe('CardEditor — working items', () => {
+  it('creates a working item with the compiled scheme in its structured payload', async () => {
+    renderNew();
+    fireEvent.click(screen.getByRole('button', { name: 'Working' }));
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'Show that x = 4.' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Scheme source' }), {
+      target: { value: '[1] substitution :: 2x = 8\n[2] answer :: equals :: 4' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add card' }));
+
+    await waitFor(() =>
+      expect(createCourseCard).toHaveBeenCalledWith(
+        'course-1',
+        'front_back',
+        'Show that x = 4.',
+        '',
+        [],
+        {
+          v: 1,
+          kind: 'working',
+          scheme: [
+            { marks: 1, label: 'substitution', kind: 'waypoint', expression: '2x = 8' },
+            {
+              marks: 2,
+              label: 'answer',
+              kind: 'predicate',
+              predicate: 'equals',
+              args: ['4'],
+            },
+          ],
+        },
+      ),
+    );
+  });
+
+  it('does not save while any mark-scheme line is invalid', async () => {
+    renderNew();
+    fireEvent.click(screen.getByRole('button', { name: 'Working' }));
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'Show your working.' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Scheme source' }), {
+      target: { value: '[1] valid :: 4\nmissing marks' },
+    });
+
+    expect(screen.getByRole('button', { name: 'Add card' })).toBeDisabled();
+    expect(createCourseCard).not.toHaveBeenCalled();
+  });
+
+  it('loads a persisted working scheme as editable source', () => {
+    mockCard = {
+      ...generatedCard,
+      sequenceItemId: undefined,
+      payload: {
+        v: 1,
+        kind: 'working',
+        scheme: [{ marks: 1, label: 'answer', kind: 'waypoint', expression: 'x = 4' }],
+      },
+    };
+    renderEditing();
+
+    expect(screen.getByRole('button', { name: 'Working' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('textbox', { name: 'Scheme source' })).toHaveValue(
+      '[1] answer :: x = 4',
+    );
+    expect(screen.queryByPlaceholderText(/Answer\. Markdown/)).not.toBeInTheDocument();
+  });
+});
+
 describe('CardEditor — generated cards', () => {
   it('renders a read-only preview instead of the form for a generated card', () => {
     mockCard = generatedCard;

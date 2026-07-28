@@ -3,6 +3,8 @@ import type { MarkSchemeLine } from '../db/types';
 import {
   compileMarkScheme,
   renderLineAsEnglish,
+  serialiseMarkScheme,
+  suggestMarkSchemePredicates,
   type MarkSchemeCompileError,
 } from './markSchemeCompiler';
 
@@ -178,5 +180,27 @@ describe('renderLineAsEnglish', () => {
 
   it.each(cases)('renders a plain-English preview', (line, expected) => {
     expect(renderLineAsEnglish(line)).toBe(expected);
+  });
+});
+
+describe('mark-scheme authoring helpers', () => {
+  it('suggests the nearest supported predicate for a typo', () => {
+    expect(suggestMarkSchemePredicates('wthin')).toEqual(['within']);
+    expect(suggestMarkSchemePredicates('match')).toEqual(['matches-one-of']);
+  });
+
+  it('serialises persisted criteria back into canonical editable source', () => {
+    expect(
+      serialiseMarkScheme([
+        { marks: 1, label: 'method', kind: 'waypoint', expression: '2x = 8' },
+        {
+          marks: 2,
+          label: 'answer',
+          kind: 'predicate',
+          predicate: 'within',
+          args: ['0.1', '4'],
+        },
+      ]),
+    ).toBe('[1] method :: 2x = 8\n[2] answer :: within 0.1 :: 4');
   });
 });
