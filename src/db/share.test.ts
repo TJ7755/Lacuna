@@ -30,6 +30,7 @@ import {
 } from './share';
 import { assetUrl, storeImageBlob } from './assets';
 import { bytesToBase45 } from './base45';
+import type { ItemPayload } from './types';
 
 async function reset() {
   await Promise.all([
@@ -286,6 +287,102 @@ describe('share codes', () => {
 });
 
 describe('course share codes (v2)', () => {
+  it('round-trips structured item payloads without changing their contents', async () => {
+    const course = await createCourse('Mathematics');
+    const lesson = await createLesson(course.id, 'Algebra');
+    const card = await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'Solve 2x = 8.',
+      'x = 4',
+    );
+    const itemPayload: ItemPayload = {
+      v: 1,
+      kind: 'working',
+      scheme: [
+        { marks: 1, label: 'rearrange', kind: 'waypoint', expression: '2x = 8' },
+        { marks: 1, label: 'answer', kind: 'predicate', predicate: 'equals', args: ['4'] },
+      ],
+      fixtures: [
+        {
+          id: 'fixture-1',
+          studentAnswer: ['2x = 8', 'x = 4'],
+          expectedMarks: 2,
+          note: 'Complete solution',
+        },
+      ],
+    };
+    await db.cards.update(card.id, { payload: itemPayload });
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+    expect(payload.lessons[0].cards[0].p).toEqual(itemPayload);
+
+    await reset();
+    await importSharePayload(payload);
+
+    const imported = (await db.cards.toArray())[0];
+    expect(imported.payload).toEqual(itemPayload);
+    expect(JSON.stringify(imported.payload)).toBe(JSON.stringify(itemPayload));
+  });
+
+  it('leaves payload-less card encoding unchanged', async () => {
+    const course = await createCourse('Mathematics');
+    const lesson = await createLesson(course.id, 'Arithmetic');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', '2 + 2', '4', [
+      'number',
+    ]);
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+    expect(payload.lessons[0].cards[0]).toEqual({
+      id: card.id,
+      k: 0,
+      f: '2 + 2',
+      b: '4',
+      g: ['number'],
+    });
+    expect(JSON.stringify(payload.lessons[0].cards[0])).not.toContain('"p"');
+  });
+
+  it('preserves unknown payload versions and kinds for the read-only fallback', async () => {
+    const course = await createCourse('Mathematics');
+    const lesson = await createLesson(course.id, 'Future items');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Future question', 'Fallback');
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+    const futurePayload = { v: 2, kind: 'proof-tree', nodes: [{ statement: 'A' }] };
+    payload.lessons[0].cards[0].p = futurePayload;
+
+    const decoded = await decodeShareDirect(await encodeShareDirect(payload));
+    if (decoded.v !== 2) throw new Error('expected a v2 course payload');
+    expect(decoded.lessons[0].cards[0].p).toEqual(futurePayload);
+
+    const unknownKind = { v: 1, kind: 'proof-tree', nodes: [{ statement: 'B' }] };
+    decoded.lessons[0].cards[0].p = unknownKind;
+    const decodedUnknownKind = await decodeShareDirect(await encodeShareDirect(decoded));
+    if (decodedUnknownKind.v !== 2) throw new Error('expected a v2 course payload');
+    expect(decodedUnknownKind.lessons[0].cards[0].p).toEqual(unknownKind);
+
+    await reset();
+    await importSharePayload(decodedUnknownKind);
+    expect((await db.cards.toArray())[0].payload).toEqual(unknownKind);
+  });
+
+  it('rejects malformed payloads for a known item kind', async () => {
+    const course = await createCourse('Mathematics');
+    const lesson = await createLesson(course.id, 'Broken items');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Fallback');
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+    Object.assign(payload.lessons[0].cards[0], { p: { v: 1, kind: 'numeric' } });
+
+    await expect(decodeShareDirect(await encodeShareDirect(payload))).rejects.toThrow(
+      /unsupported version/,
+    );
+  });
+
   beforeEach(reset);
 
   it('round-trips a course with lessons, notes, mixed card types and an exam date', async () => {

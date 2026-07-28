@@ -41,6 +41,7 @@ import type {
   CourseAssessment,
   Deck,
   Folder,
+  ItemPayload,
   Lesson,
   LessonCardLink,
   Note,
@@ -65,6 +66,79 @@ const PREFIX_PLAIN = 'LAC0';
 // Zod runtime schema for share payloads
 // ---------------------------------------------------------------------------
 
+const ItemFixtureSchema = z
+  .object({
+    id: z.string(),
+    studentAnswer: z.union([z.string(), z.array(z.string())]),
+    expectedMarks: z.number(),
+    note: z.string().optional(),
+  })
+  .passthrough();
+
+const NumericAnswerSpecSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('exact'), value: z.string() }).passthrough(),
+  z
+    .object({ kind: z.literal('within'), value: z.string(), tolerance: z.number() })
+    .passthrough(),
+  z.object({ kind: z.literal('matches-one-of'), values: z.array(z.string()) }).passthrough(),
+]);
+
+const MarkSchemeLineSchema = z.discriminatedUnion('kind', [
+  z
+    .object({
+      marks: z.number(),
+      label: z.string().optional(),
+      kind: z.literal('waypoint'),
+      expression: z.string(),
+    })
+    .passthrough(),
+  z
+    .object({
+      marks: z.number(),
+      label: z.string().optional(),
+      kind: z.literal('predicate'),
+      predicate: z.union([
+        z.literal('equals'),
+        z.literal('within'),
+        z.literal('matches-one-of'),
+        z.literal('contains'),
+      ]),
+      args: z.array(z.string()).optional(),
+    })
+    .passthrough(),
+]);
+
+const KnownItemPayloadSchema = z.discriminatedUnion('kind', [
+  z
+    .object({
+      v: z.literal(1),
+      kind: z.literal('numeric'),
+      answer: NumericAnswerSpecSchema,
+      fixtures: z.array(ItemFixtureSchema).optional(),
+    })
+    .passthrough(),
+  z
+    .object({
+      v: z.literal(1),
+      kind: z.literal('working'),
+      scheme: z.array(MarkSchemeLineSchema),
+      fixtures: z.array(ItemFixtureSchema).optional(),
+    })
+    .passthrough(),
+  z.object({ v: z.literal(1), kind: z.literal('scaffold') }).passthrough(),
+]);
+
+const KNOWN_ITEM_KINDS = new Set(['numeric', 'working', 'scaffold']);
+const UnknownItemPayloadSchema = z
+  .object({ v: z.number(), kind: z.string() })
+  .passthrough()
+  .refine(
+    (payload) => payload.v !== 1 || !KNOWN_ITEM_KINDS.has(payload.kind),
+    'Known item payloads must match their supported schema.',
+  );
+
+const ShareItemPayloadSchema = z.union([KnownItemPayloadSchema, UnknownItemPayloadSchema]);
+
 const ShareCardSchema = z.object({
   // Payload-scoped identity used to resolve `links`/exam `x` references within the
   // same code; always remapped via makeId() on import, never adopted as-is. For a
@@ -80,6 +154,9 @@ const ShareCardSchema = z.object({
   // Present iff this card was generated from a sequence item (positional or label,
   // the latter carrying the `::label` suffix, mirroring Card.sequenceItemId).
   si: z.string().optional(),
+  // Structured Arc 11 item content. Known payloads are validated fully; unknown
+  // versions/kinds remain opaque so a newer item can use the read-only fallback.
+  p: ShareItemPayloadSchema.optional(),
 });
 
 const ShareDeckSchema = z.object({
@@ -221,6 +298,8 @@ interface ShareCard {
   i?: 1;
   /** Present iff generated from a sequence item; mirrors Card.sequenceItemId. */
   si?: string;
+  /** Structured item content; unknown variants travel opaquely for forward compatibility. */
+  p?: ItemPayload | { v: number; kind: string; [key: string]: unknown };
 }
 
 /** A single deck in a v1 share payload, with compact keys. */
@@ -699,18 +778,26 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
     const back = stripAssetImages(c.back);
     const imageFlag = front.stripped || back.stripped ? { i: 1 as const } : {};
     const seqRef = c.sequenceItemId ? { si: c.sequenceItemId } : {};
+    const payload = c.payload ? { p: c.payload } : {};
     const identity = preserveIds ? { id: c.id } : {};
 
     if (c.type === 'cloze') {
-      out.push({ k: 1, f: front.markdown, ...tags, ...imageFlag, ...seqRef, ...identity });
+      out.push({
+        k: 1,
+        f: front.markdown,
+        ...tags,
+        ...imageFlag,
+        ...seqRef,
+        ...payload,
+        ...identity,
+      });
       consumed.add(c.id);
       continue;
     }
 
-    if (c.sequenceItemId) {
-      // Cards generated from a sequence item never fold into a reversible pair either —
-      // the `si` reference must stay on exactly one, unambiguous card so it can be
-      // remapped consistently on import.
+    if (c.sequenceItemId || c.payload) {
+      // Generated and structured-item cards never fold into reversible pairs: their
+      // metadata belongs to exactly one card and cannot be copied to its mirror.
       out.push({
         k: 0,
         f: front.markdown,
@@ -718,6 +805,7 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
         ...tags,
         ...imageFlag,
         ...seqRef,
+        ...payload,
         ...identity,
       });
       consumed.add(c.id);
@@ -774,17 +862,18 @@ export async function buildShareCode(deckIds: string[]): Promise<string> {
 
 function unpackCard(sc: ShareCard): ParsedCard[] {
   const tags = sc.g && sc.g.length ? { tags: sc.g } : {};
-  if (sc.k === 1) return [{ type: 'cloze', front: sc.f, back: '', ...tags }];
+  const payload = sc.p ? { payload: sc.p as ItemPayload } : {};
+  if (sc.k === 1) return [{ type: 'cloze', front: sc.f, back: '', ...tags, ...payload }];
   if (sc.k === 2) {
     const back = sc.b ?? '';
     return [
-      { type: 'front_back', front: sc.f, back, ...tags },
-      { type: 'front_back', front: back, back: sc.f, ...tags },
+      { type: 'front_back', front: sc.f, back, ...tags, ...payload },
+      { type: 'front_back', front: back, back: sc.f, ...tags, ...payload },
     ];
   }
   // k === 3 (typing) and k === 0 (front/back) both unpack to a plain front_back
   // card — typing is a retired card type, folded here for older share codes.
-  return [{ type: 'front_back', front: sc.f, back: sc.b ?? '', ...tags }];
+  return [{ type: 'front_back', front: sc.f, back: sc.b ?? '', ...tags, ...payload }];
 }
 
 // ---------------------------------------------------------------------------
