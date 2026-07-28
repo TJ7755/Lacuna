@@ -3,6 +3,7 @@ import { Button } from '../ui/Button';
 import { CheckIcon, ClockIcon, PlayIcon } from '../ui/icons';
 import { PomodoroTimer } from './PomodoroTimer';
 import type { SessionSummary } from './types';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 interface StudyStepTransitionProps {
   completedLabel: string;
@@ -39,6 +40,8 @@ export function StudyStepTransition({
   onReviewDueCards,
   onFinish,
 }: StudyStepTransitionProps) {
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const reviewed = summary.events.length;
   const correct = summary.events.filter((event) => event.correct).length;
   const accuracy = reviewed > 0 ? Math.round((correct / reviewed) * 100) : null;
@@ -47,26 +50,43 @@ export function StudyStepTransition({
   return (
     <div className="min-h-screen bg-paper px-6 py-10">
       <motion.main
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ opacity: 0, y: 28, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.42 * m, ease: [0.16, 1, 0.3, 1] }}
         className="mx-auto flex min-h-[70vh] max-w-2xl flex-col justify-center"
       >
         <div className="mb-6 flex items-center justify-between gap-4">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-positive/12 text-positive">
+          <motion.span
+            initial={{ opacity: 0, scale: 0.55, rotate: -8 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ duration: 0.38 * m, delay: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="grid h-12 w-12 place-items-center rounded-2xl bg-positive/12 text-positive"
+          >
             {incomplete ? (
               <ClockIcon width={24} height={24} />
             ) : (
               <CheckIcon width={24} height={24} />
             )}
-          </span>
+          </motion.span>
           <PomodoroTimer />
         </div>
 
-        <p className="mb-2 text-sm uppercase tracking-[0.18em] text-ink-faint">
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28 * m, delay: 0.16 * m }}
+          className="mb-2 text-sm uppercase tracking-[0.18em] text-ink-faint"
+        >
           {incomplete ? 'Step paused' : 'Step complete'}
-        </p>
-        <h1 className="font-display text-4xl tracking-tight md:text-5xl">{completedLabel}</h1>
+        </motion.p>
+        <motion.h1
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.32 * m, delay: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
+          className="font-display text-4xl tracking-tight md:text-5xl"
+        >
+          {completedLabel}
+        </motion.h1>
 
         {(reviewed > 0 || accuracy !== null) && (
           <p className="mt-4 text-sm text-ink-soft">
@@ -98,7 +118,12 @@ export function StudyStepTransition({
             </p>
           )}
 
-        <div className="mt-10 border-t border-line pt-7">
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.34 * m, delay: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-10 border-t border-line pt-7"
+        >
           <p className="mb-2 text-xs uppercase tracking-[0.16em] text-ink-faint">
             {incomplete ? 'Resume when ready' : nextLabel ? 'Up next' : 'Course status'}
           </p>
@@ -140,7 +165,7 @@ export function StudyStepTransition({
               Finish for now
             </Button>
           </div>
-        </div>
+        </motion.div>
       </motion.main>
     </div>
   );
