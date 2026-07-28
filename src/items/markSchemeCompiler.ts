@@ -1,8 +1,13 @@
 import type { MarkSchemeLine } from '../db/types';
 import { parseExpression } from './verify';
 
-const PREDICATES = ['equals', 'within', 'matches-one-of', 'contains'] as const;
-type PredicateName = (typeof PREDICATES)[number];
+export const MARK_SCHEME_PREDICATES = [
+  'equals',
+  'within',
+  'matches-one-of',
+  'contains',
+] as const;
+export type PredicateName = (typeof MARK_SCHEME_PREDICATES)[number];
 
 export interface CompiledMarkSchemeLine {
   kind: 'compiled';
@@ -64,6 +69,20 @@ export function renderLineAsEnglish(line: MarkSchemeLine): string {
     return `${prefix} — matches one of ${formatList(args)}`;
   }
   return `${prefix} — contains “${args[0]}”`;
+}
+
+/** Rebuild the canonical editable source for a persisted compiled scheme. */
+export function serialiseMarkScheme(scheme: MarkSchemeLine[]): string {
+  return scheme
+    .map((line) => {
+      const prefix = `[${line.marks}]${line.label ? ` ${line.label}` : ''} :: `;
+      if (line.kind === 'waypoint') return `${prefix}${line.expression}`;
+      if (line.predicate === 'within') {
+        return `${prefix}within ${line.args?.[0] ?? ''} :: ${line.args?.[1] ?? ''}`;
+      }
+      return `${prefix}${line.predicate} :: ${(line.args ?? []).join(' :: ')}`;
+    })
+    .join('\n');
 }
 
 function compileLine(source: string, lineNumber: number): MarkSchemeCompileEntry {
@@ -132,7 +151,7 @@ function compileBody(
   const parts = body.split(/\s*::\s*/);
   const headTokens = parts[0].trim().split(/\s+/);
   const candidate = headTokens[0].toLocaleLowerCase();
-  const predicate = PREDICATES.find((name) => name === candidate);
+  const predicate = MARK_SCHEME_PREDICATES.find((name) => name === candidate);
 
   if (!predicate && parts.length > 1) {
     const suggestion = nearestPredicate(candidate);
@@ -320,13 +339,23 @@ function failure(
 
 function nearestPredicate(candidate: string): PredicateName | null {
   let best: { name: PredicateName; distance: number } | null = null;
-  for (const name of PREDICATES) {
+  for (const name of MARK_SCHEME_PREDICATES) {
     const distance = editDistance(candidate, name);
     if (!best || distance < best.distance) best = { name, distance };
   }
   if (!best) return null;
   const threshold = best.name.length > 8 ? 3 : 2;
   return best.distance <= threshold ? best.name : null;
+}
+
+/** Predicate names relevant to the token currently being authored, closest match first. */
+export function suggestMarkSchemePredicates(candidate: string): PredicateName[] {
+  const normalised = candidate.trim().toLocaleLowerCase();
+  if (!normalised) return [...MARK_SCHEME_PREDICATES];
+  const prefixMatches = MARK_SCHEME_PREDICATES.filter((name) => name.startsWith(normalised));
+  if (prefixMatches.length > 0) return prefixMatches;
+  const nearest = nearestPredicate(normalised);
+  return nearest ? [nearest] : [];
 }
 
 function editDistance(left: string, right: string): number {

@@ -1125,6 +1125,17 @@ supports undo and advances the session. Lesson Simple mode uses the same automat
 result for its exposure/retry loop and retains Simple mode's rule that it writes no review log.
 Typing-mode comparison and Yes/No or manual grading never apply to numeric payloads.
 
+### Working-item authoring
+Working items use a line-oriented mark-scheme source in the card editor. Each nonblank line
+starts with a positive mark value and optional label, followed by `::` and either an expression
+waypoint or one of the `equals`, `within`, `matches-one-of` and `contains` predicates. The editor
+compiles every line independently: valid neighbours retain their plain-English preview and count
+towards the running mark total when another line is malformed. The malformed source range is
+shown with its compiler message, and mark/predicate autocomplete inserts grammar-valid snippets
+without adding another parser or UI dependency. A card can be saved only when every nonblank line
+compiles; the resulting `MarkSchemeLine[]`, not the editor source, is persisted in its v1 `working`
+payload. Drafts retain the uncompiled source so an interrupted invalid edit is not discarded.
+
 ### Study mode (`src/state/studyMode.ts`)
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):
 - **FSRS (default):** the full spaced-repetition scheduler with all memory-state tracking,
