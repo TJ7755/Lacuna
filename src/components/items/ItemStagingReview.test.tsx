@@ -57,9 +57,7 @@ function batch(items: unknown[]): string {
 }
 
 function stage(source: string, cards: Card[] = []) {
-  render(
-    <ItemStagingReview courseId="course-1" lessons={[lesson]} cards={cards} />,
-  );
+  render(<ItemStagingReview courseId="course-1" lessons={[lesson]} cards={cards} />);
   fireEvent.change(screen.getByPlaceholderText(new RegExp(BATCH_OUTPUT_START)), {
     target: { value: source },
   });
@@ -109,14 +107,8 @@ describe('ItemStagingReview', () => {
     const row = screen.getByText('Untitled item').closest('article')!;
 
     fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
-    fireEvent.change(within(row).getByRole('textbox', { name: 'Item JSON' }), {
-      target: {
-        value: JSON.stringify({
-          kind: 'numeric',
-          question: 'Corrected',
-          answer: { kind: 'exact', value: '4' },
-        }),
-      },
+    fireEvent.change(within(row).getByRole('textbox', { name: 'Question' }), {
+      target: { value: 'Corrected' },
     });
     fireEvent.click(within(row).getByRole('button', { name: 'Apply edit' }));
     expect(screen.getByText('Corrected')).toBeInTheDocument();
@@ -125,5 +117,32 @@ describe('ItemStagingReview', () => {
     fireEvent.click(within(correctedRow).getByRole('button', { name: 'Reject' }));
     expect(within(correctedRow).getByText('rejected')).toBeInTheDocument();
     expect(within(correctedRow).getByRole('button', { name: 'Restore' })).toBeInTheDocument();
+  });
+
+  it('edits a working fixture through fields rather than raw JSON', () => {
+    stage(
+      batch([
+        {
+          kind: 'working',
+          question: 'Calculate the result',
+          scheme: '[1] result :: equals :: 4',
+          fixtures: [{ studentAnswer: ['4'], expectedMarks: 2 }],
+        },
+      ]),
+    );
+    const row = screen.getByText('Calculate the result').closest('article')!;
+    expect(
+      within(row).getByText('Fixture 1 expects 2 marks, but the scheme has 1 available.'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+    expect(within(row).queryByText('Item JSON')).not.toBeInTheDocument();
+    fireEvent.change(within(row).getByRole('spinbutton', { name: 'Expected marks' }), {
+      target: { value: '1' },
+    });
+    fireEvent.click(within(row).getByRole('button', { name: 'Apply edit' }));
+
+    expect(within(row).getByText('Valid')).toBeInTheDocument();
+    expect(within(row).getByText('1 of 1 fixtures pass')).toBeInTheDocument();
   });
 });

@@ -1155,7 +1155,10 @@ item independently. Numeric answers use the shared numeric-spec validator; worki
 same compiler as the card editor, and their fixtures run through the study verifier. A malformed item
 does not block valid neighbours. Duplicate classification reuses `diffImport` against the selected
 lesson and is a warning: bulk “Accept all clean” skips likely duplicates, while the tutor can still
-accept one explicitly. Each staged item can be accepted, rejected or edited as JSON and revalidated.
+accept one explicitly. Each staged item can be accepted, rejected or edited through the same numeric-
+answer and mark-scheme controls used by ordinary card authoring, then revalidated by the batch
+parser. Working-item fixtures expose separate sample-answer, expected-marks and note fields; authors
+never need to edit the interchange JSON directly.
 Acceptance calls the ordinary `createLessonCard` path with the compiled structured payload; staging
 has no separate database write path.
 

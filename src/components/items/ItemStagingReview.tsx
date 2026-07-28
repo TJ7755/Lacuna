@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Card, Lesson } from '../../db/types';
 import { createLessonCard } from '../../db/repository';
-import { diffImport, type ExistingCardForDiff, type ProposedImportItem } from '../../mcp/diffImport';
+import {
+  diffImport,
+  type ExistingCardForDiff,
+  type ProposedImportItem,
+} from '../../mcp/diffImport';
 import {
   parseBatchOutput,
   parseEditedCandidate,
@@ -11,6 +15,7 @@ import { BATCH_OUTPUT_START } from '../../items/prompts';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
+import { StagedItemEditor } from './StagedItemEditor';
 
 interface ItemStagingReviewProps {
   courseId: string;
@@ -29,7 +34,6 @@ export function ItemStagingReview({ courseId, lessons, cards }: ItemStagingRevie
   const [edits, setEdits] = useState<Map<string, BatchCandidate>>(new Map());
   const [decisions, setDecisions] = useState<Map<string, Decision>>(new Map());
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editJson, setEditJson] = useState('');
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
@@ -122,10 +126,7 @@ export function ItemStagingReview({ courseId, lessons, cards }: ItemStagingRevie
         await acceptCandidate(candidate);
         accepted += 1;
       }
-      notify(
-        `Added ${accepted} item${accepted === 1 ? '' : 's'} to the lesson.`,
-        'positive',
-      );
+      notify(`Added ${accepted} item${accepted === 1 ? '' : 's'} to the lesson.`, 'positive');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not add every item.', 'negative');
     } finally {
@@ -135,11 +136,10 @@ export function ItemStagingReview({ courseId, lessons, cards }: ItemStagingRevie
 
   function beginEdit(candidate: BatchCandidate) {
     setEditingId(candidate.id);
-    setEditJson(candidate.sourceJson);
   }
 
-  function applyEdit(candidate: BatchCandidate) {
-    const next = parseEditedCandidate(editJson, candidate.index);
+  function applyEdit(candidate: BatchCandidate, sourceJson: string) {
+    const next = parseEditedCandidate(sourceJson, candidate.index);
     setEdits((current) => new Map(current).set(candidate.id, next));
     setDecisions((current) => new Map(current).set(candidate.id, 'staged'));
     setEditingId(null);
@@ -218,12 +218,10 @@ export function ItemStagingReview({ courseId, lessons, cards }: ItemStagingRevie
                 decision={decisionFor(candidate)}
                 duplicate={duplicateIds.has(candidate.id)}
                 editing={editingId === candidate.id}
-                editJson={editJson}
                 importing={importing}
-                onEditJson={setEditJson}
                 onBeginEdit={() => beginEdit(candidate)}
                 onCancelEdit={() => setEditingId(null)}
-                onApplyEdit={() => applyEdit(candidate)}
+                onApplyEdit={(sourceJson) => applyEdit(candidate, sourceJson)}
                 onAccept={() => void acceptOne(candidate)}
                 onReject={() =>
                   setDecisions((current) => new Map(current).set(candidate.id, 'rejected'))
@@ -245,12 +243,10 @@ interface CandidateRowProps {
   decision: Decision;
   duplicate: boolean;
   editing: boolean;
-  editJson: string;
   importing: boolean;
-  onEditJson: (value: string) => void;
   onBeginEdit: () => void;
   onCancelEdit: () => void;
-  onApplyEdit: () => void;
+  onApplyEdit: (sourceJson: string) => void;
   onAccept: () => void;
   onReject: () => void;
   onRestore: () => void;
@@ -261,9 +257,7 @@ function CandidateRow({
   decision,
   duplicate,
   editing,
-  editJson,
   importing,
-  onEditJson,
   onBeginEdit,
   onCancelEdit,
   onApplyEdit,
@@ -318,15 +312,21 @@ function CandidateRow({
 
         {!editing && decision === 'staged' && (
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="ghost" onClick={onBeginEdit}>Edit</Button>
-            <Button size="sm" variant="ghost" onClick={onReject}>Reject</Button>
+            <Button size="sm" variant="ghost" onClick={onBeginEdit}>
+              Edit
+            </Button>
+            <Button size="sm" variant="ghost" onClick={onReject}>
+              Reject
+            </Button>
             <Button size="sm" variant="secondary" disabled={!ready || importing} onClick={onAccept}>
               Accept
             </Button>
           </div>
         )}
         {decision === 'rejected' && (
-          <Button size="sm" variant="ghost" onClick={onRestore}>Restore</Button>
+          <Button size="sm" variant="ghost" onClick={onRestore}>
+            Restore
+          </Button>
         )}
       </div>
 
@@ -345,22 +345,7 @@ function CandidateRow({
       )}
 
       {editing && (
-        <div className="mt-4 border-t border-line pt-4">
-          <label className="flex flex-col gap-2 text-sm text-ink-soft">
-            Item JSON
-            <textarea
-              value={editJson}
-              onChange={(event) => onEditJson(event.target.value)}
-              rows={12}
-              spellCheck={false}
-              className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 font-mono text-sm text-ink outline-none focus:border-accent"
-            />
-          </label>
-          <div className="mt-3 flex justify-end gap-2">
-            <Button size="sm" variant="ghost" onClick={onCancelEdit}>Cancel</Button>
-            <Button size="sm" variant="primary" onClick={onApplyEdit}>Apply edit</Button>
-          </div>
-        </div>
+        <StagedItemEditor candidate={candidate} onCancel={onCancelEdit} onApply={onApplyEdit} />
       )}
     </article>
   );
