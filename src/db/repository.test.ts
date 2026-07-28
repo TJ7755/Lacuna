@@ -114,6 +114,34 @@ describe('undoReview', () => {
     expect((await db.cards.get(cardWithoutHint.id))!.history[0].hintUsed).toBe(false);
   });
 
+  it('records machine-awarded marks on the review log', async () => {
+    const deck = await createDeck('Test deck');
+    const card = await createCard(deck.id, 'front_back', '2 + 2', '', [], {
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+    });
+
+    await recordReview({
+      card,
+      eventId: 'event-numeric',
+      sessionId: 'session-numeric',
+      sessionKind: 'deck',
+      deck,
+      grade: 4,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+      marksEarned: 1,
+      marksAvailable: 1,
+    });
+
+    expect((await db.cards.get(card.id))!.history[0]).toMatchObject({
+      grade: 4,
+      correct: true,
+      marksEarned: 1,
+      marksAvailable: 1,
+    });
+  });
+
   it('course-keyed review updates Course.lastInteractedAt, courseId-keyed userPerformance, and sessionHistory.courseId', async () => {
     await Promise.all([db.courses.clear(), db.lessons.clear()]);
 

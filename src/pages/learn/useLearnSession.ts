@@ -55,6 +55,7 @@ import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
 import { revisionProjection } from '../../course/revisionProjection';
 import {
   emptyPerformance,
+  gradeFromMarks,
   gradeFromResponse,
   HINT_TIME_PENALTY_SEC,
   updatePerformance,
@@ -94,6 +95,7 @@ import type {
   LearnModeType,
   LessonNotesScreen,
   Phase,
+  MachineMarkedAnswer,
   SessionCardOutcome,
   StudyUnit,
 } from './types';
@@ -105,8 +107,11 @@ import type {
  * its own card type ('typing') — it is now a presentation mode that applies to
  * any of these card types.
  */
-export function isTypingEligible(card: Pick<Card, 'type'>): boolean {
-  return card.type === 'front_back' || card.type === 'basic_reversed' || card.type === 'cloze';
+export function isTypingEligible(card: Pick<Card, 'type' | 'payload'>): boolean {
+  return (
+    card.payload === undefined &&
+    (card.type === 'front_back' || card.type === 'basic_reversed' || card.type === 'cloze')
+  );
 }
 
 /** The expected answer text a typed answer is compared against (see compareAnswer). */
@@ -227,6 +232,7 @@ export function useLearnSession({
   // firstWordsHint.ts for the pure hint builders.
   const [hintStep, setHintStep] = useState<0 | 1 | 2>(0);
   const isTypingCard = typingSetting === 'type' && current !== null && isTypingEligible(current);
+  const isNumericCard = current?.payload?.v === 1 && current.payload.kind === 'numeric';
   // Whether the current card was generated from a lines-mode Sequence (see
   // linesModeCards.ts) — drives the optional first-letter hint step in the question phase.
   const isLinesModeCard = current !== null && linesModeMapRef.current.has(current.id);
@@ -1207,18 +1213,30 @@ export function useLearnSession({
   }, [distraction]);
 
   const answer = useCallback(
-    async (input: boolean | Grade, source: 'touch' | 'keyboard' = 'keyboard') => {
+    async (
+      input: boolean | Grade | MachineMarkedAnswer,
+      source: 'touch' | 'keyboard' = 'keyboard',
+    ) => {
       if (submitting.current) return;
       submitting.current = true;
       const phaseNow = phaseRef.current;
       const cardNow = currentRef.current;
-      if (phaseNow !== 'answer' || !cardNow) {
+      const machineMarked = typeof input === 'object' ? input : null;
+      if (
+        (!machineMarked && phaseNow !== 'answer') ||
+        (machineMarked && phaseNow !== 'question') ||
+        !cardNow
+      ) {
         submitting.current = false;
         return;
       }
 
       try {
-        const correct: boolean = typeof input === 'number' ? input > 1 : input;
+        const correct: boolean = machineMarked
+          ? machineMarked.correct
+          : typeof input === 'number'
+            ? input > 1
+            : input === true;
 
         if (feedbackTimer.current) window.clearTimeout(feedbackTimer.current);
         setFeedbackSource(source);
@@ -1231,11 +1249,22 @@ export function useLearnSession({
           Math.round(400 * m),
         );
 
-        const t = responseTime.current;
+        const t = machineMarked
+          ? (performance.now() - timerStart.current) / 1000
+          : responseTime.current;
         const distracted = distraction.wasDistracted();
 
         if (isSimpleMode) {
-          const grade: Grade = correct ? 3 : 1;
+          const grade: Grade = machineMarked
+            ? gradeFromMarks(
+                machineMarked.marksEarned,
+                machineMarked.marksAvailable,
+                t,
+                false,
+              )
+            : correct
+              ? 3
+              : 1;
           events.current = [...events.current, { grade, correct, responseTimeSec: t, distracted }];
 
           if (correct) {
@@ -1288,8 +1317,15 @@ export function useLearnSession({
         // the true, unpenalised response time is still what's persisted and calibrated on
         // below (recordReview's responseTimeSec and updatePerformance).
         const hintUsed = hintStepRef.current > 0;
-        const grade: Grade =
-          manualGrade ?? gradeFromResponse(correct, hintUsed ? t + HINT_TIME_PENALTY_SEC : t, perf);
+        const grade: Grade = machineMarked
+          ? gradeFromMarks(
+              machineMarked.marksEarned,
+              machineMarked.marksAvailable,
+              t,
+              false,
+            )
+          : (manualGrade ??
+            gradeFromResponse(correct, hintUsed ? t + HINT_TIME_PENALTY_SEC : t, perf));
 
         const cooldownsSnapshot = new Map(cooldowns.current);
         const eventsLen = events.current.length;
@@ -1328,6 +1364,8 @@ export function useLearnSession({
           distracted,
           hintUsed,
           correct,
+          marksEarned: machineMarked?.marksEarned,
+          marksAvailable: machineMarked?.marksAvailable,
         });
 
         if (correct && perf) {
@@ -1638,6 +1676,7 @@ export function useLearnSession({
     hintStep,
     setHintStep,
     isTypingCard,
+    isNumericCard,
     isLinesModeCard,
     summary,
     setSummary,

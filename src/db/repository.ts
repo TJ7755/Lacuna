@@ -723,6 +723,9 @@ export interface RecordReviewArgs {
   hintUsed?: boolean;
   /** Whether the answer was correct (grade > 1); drives per-deck calibration stats. */
   correct: boolean;
+  /** Machine-awarded marks for structured numeric/working items. */
+  marksEarned?: number;
+  marksAvailable?: number;
   now?: number;
 }
 
@@ -768,6 +771,8 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
       distracted,
       hintUsed,
       correct,
+      marksEarned,
+      marksAvailable,
     } = args;
     const kind: ReviewUnitKind = args.kind ?? 'deck';
     const now = args.now ?? Date.now();
@@ -816,6 +821,8 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           responseTimeSec,
           distracted,
           hintUsed: hintUsed ?? false,
+          marksEarned,
+          marksAvailable,
           stabilityBefore: cardBefore.stability,
           stabilityAfter: memory.stability,
           difficultyBefore: cardBefore.difficulty,

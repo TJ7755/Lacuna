@@ -16,6 +16,7 @@ interface MathsAnswerInputProps {
   label?: string;
   placeholder?: string;
   disabled?: boolean;
+  autoFocus?: boolean;
   className?: string;
 }
 
@@ -43,6 +44,7 @@ export const MathsAnswerInput = forwardRef<HTMLInputElement, MathsAnswerInputPro
       label = 'Answer',
       placeholder = 'Type an expression',
       disabled = false,
+      autoFocus = false,
       className,
     },
     forwardedRef,
@@ -108,6 +110,7 @@ export const MathsAnswerInput = forwardRef<HTMLInputElement, MathsAnswerInputPro
               onChange={handleChange}
               placeholder={placeholder}
               disabled={disabled}
+              autoFocus={autoFocus}
               aria-invalid={parsed?.ok === false || undefined}
               aria-describedby={messageId}
               className={cn(
