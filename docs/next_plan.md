@@ -39,12 +39,10 @@ the current implementation and is superseded — no further action needed here.
 Detail rots (the Course plan needed two addenda), so only the most recently delivered arc
 carries full detail. Outline arcs are scoped, not specified.
 
-Known maintenance bug: the seeded Welcome course's bundled SVG assets can render as
-broken images. `prepareSvgAsset` stores a `Blob` even though the asset layer uses raw
-`Uint8Array` bytes to survive IndexedDB structured cloning reliably. Change fresh
-seeding to store bytes, add an asset round-trip/render regression test, and repair or
-backfill incompatible or missing seeded assets in existing Welcome courses. Fixing only
-new installations would leave the current broken cards untouched.
+Resolved in the release close-out: the seeded Welcome course now stores its bundled SVGs
+as `Uint8Array`, matching the rest of the asset layer. Startup performs a one-time,
+idempotent repair of missing or legacy Blob-backed seeded assets, with fresh-seed,
+round-trip rendering and existing-installation regression coverage.
 
 Practice-session continuity bug: answering does advance the non-Simple practice session,
 but replacing the whole card surface while the FSRS objective indicator snaps to its new

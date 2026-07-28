@@ -49,6 +49,9 @@
   was used; no external chatbot was contacted.
 - Smoothed the end of each lesson with a staged, motion-speed-aware transition into the
   completion result and next-step controls instead of replacing the card surface abruptly.
+- Fixed broken images in fresh and existing seeded Welcome courses. Bundled SVGs now use the
+  asset layer's durable byte representation, and startup repairs missing or legacy Blob-backed
+  seed assets without touching user images.
 
 ## Unreleased — Browser QA
 
