@@ -49,7 +49,9 @@ interface UnifiedImportPanelProps {
   /** When true, the panel also handles share-code imports (shows a separate tab). */
   showShareImport?: boolean;
   /** Called after a share-code import completes successfully. */
-  onShareImport?: (courses: number, cards: number) => void | Promise<void>;
+  onShareImport?: (courses: number, cards: number, courseIds: string[]) => void | Promise<void>;
+  /** Show only the share-code workflow, without the general import mode toggle. */
+  shareOnly?: boolean;
   /** When provided, the panel checks parsed cards against existing cards in this deck and warns about duplicates. */
   deckId?: string;
   /** Called when an Anki .apkg file is parsed and confirmed. */
@@ -64,10 +66,21 @@ const MAX_IMPORT_ROWS = 5000;
 const MAX_IMPORT_CHARS = 500_000;
 
 const ACCEPTED_FILE_TYPES = [
-  '.csv', '.tsv', '.txt', '.json', '.md', '.markdown',
-  '.html', '.xml', '.apkg',
-  'text/csv', 'text/plain', 'text/tab-separated-values',
-  'application/json', 'text/markdown', 'text/html',
+  '.csv',
+  '.tsv',
+  '.txt',
+  '.json',
+  '.md',
+  '.markdown',
+  '.html',
+  '.xml',
+  '.apkg',
+  'text/csv',
+  'text/plain',
+  'text/tab-separated-values',
+  'application/json',
+  'text/markdown',
+  'text/html',
   'application/octet-stream',
 ].join(',');
 
@@ -78,11 +91,15 @@ const ACCEPTED_FILE_TYPES = [
 const FORMAT_HELP: Record<ImportFormat, string> = {
   csv: 'Comma-separated values. Each row is a card: first column is the front, second is the back, and an optional third column is tags.',
   tsv: 'Tab-separated values. Each row is a card: first column is the front, second is the back.',
-  'markdown-table': 'A Markdown table with headers. Columns named "front"/"back" (or "question"/"answer", "q"/"a", "term"/"definition") are used automatically.',
-  'markdown-list': 'A Markdown list where each item or pair of items is a card. Supports Q:/A: prefixes, ordered pairs, and blank-line separated blocks.',
+  'markdown-table':
+    'A Markdown table with headers. Columns named "front"/"back" (or "question"/"answer", "q"/"a", "term"/"definition") are used automatically.',
+  'markdown-list':
+    'A Markdown list where each item or pair of items is a card. Supports Q:/A: prefixes, ordered pairs, and blank-line separated blocks.',
   json: 'A JSON array of objects. Recognised keys (front/back, question/answer, etc.) are used automatically; otherwise the first two string values become front and back.',
-  'share-code': 'A Lacuna share code (starts with LAC). Paste the full code and it will be decoded automatically.',
-  'plain-text': 'Plain text with Q:/A: prefixes, separator-based pairs (using —, |, or tab), or blank-line separated blocks.',
+  'share-code':
+    'A Lacuna share code (starts with LAC). Paste the full code and it will be decoded automatically.',
+  'plain-text':
+    'Plain text with Q:/A: prefixes, separator-based pairs (using —, |, or tab), or blank-line separated blocks.',
   unknown: 'Paste or upload your cards. The format will be detected automatically.',
 };
 
@@ -139,7 +156,10 @@ function describeMergeResult(result: MergeLineageResult): string {
         `${result.appliedRemovals} removal${result.appliedRemovals === 1 ? '' : 's'}`,
     );
   }
-  let message = parts.length > 0 ? `Updated the course — ${parts.join('; ')}.` : 'The course is already up to date.';
+  let message =
+    parts.length > 0
+      ? `Updated the course — ${parts.join('; ')}.`
+      : 'The course is already up to date.';
   if (result.queuedForReview) {
     message +=
       result.conflictCount > 0
@@ -159,6 +179,7 @@ export function UnifiedImportPanel({
   importLabel = 'Import cards',
   showShareImport = false,
   onShareImport,
+  shareOnly = false,
   deckId,
   onApkgImport,
 }: UnifiedImportPanelProps) {
@@ -172,7 +193,7 @@ export function UnifiedImportPanel({
   const m = speedMultiplier(motionSpeed);
 
   // Share code state.
-  const [shareMode, setShareMode] = useState(false);
+  const [shareMode, setShareMode] = useState(shareOnly);
   const [sharePending, setSharePending] = useState<PendingShareImport | null>(null);
   const [shareImporting, setShareImporting] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -200,8 +221,7 @@ export function UnifiedImportPanel({
   );
 
   const result = useMemo(() => {
-    const trimmed =
-      text.length > MAX_IMPORT_CHARS ? text.slice(0, MAX_IMPORT_CHARS) : text;
+    const trimmed = text.length > MAX_IMPORT_CHARS ? text.slice(0, MAX_IMPORT_CHARS) : text;
     return parseImportAuto(trimmed, options);
   }, [text, options]);
 
@@ -266,7 +286,9 @@ export function UnifiedImportPanel({
         if (shareMode === true) {
           setText(trimmed);
           setShareMode(false);
-          showPasteNotification(`${FORMAT_LABELS[pasteDetection.format]} detected — switched to text import`);
+          showPasteNotification(
+            `${FORMAT_LABELS[pasteDetection.format]} detected — switched to text import`,
+          );
           e.preventDefault();
           return;
         }
@@ -283,25 +305,28 @@ export function UnifiedImportPanel({
 
   // ---- File handling ----
 
-  const handleFile = useCallback(async (file: File | undefined) => {
-    if (!file) return;
-    // Detect APKG by extension or MIME type.
-    const isApkg = file.name.endsWith('.apkg') || file.type === 'application/octet-stream';
-    if (isApkg && onApkgImport) {
-      setApkgError(null);
-      setApkgPending(null);
-      try {
-        const result = await parseApkg(file, { importScheduling: true });
-        setApkgPending(result);
-      } catch (err) {
-        setApkgError(err instanceof Error ? err.message : 'Could not read APKG file.');
+  const handleFile = useCallback(
+    async (file: File | undefined) => {
+      if (!file) return;
+      // Detect APKG by extension or MIME type.
+      const isApkg = file.name.endsWith('.apkg') || file.type === 'application/octet-stream';
+      if (isApkg && onApkgImport) {
+        setApkgError(null);
+        setApkgPending(null);
+        try {
+          const result = await parseApkg(file, { importScheduling: true });
+          setApkgPending(result);
+        } catch (err) {
+          setApkgError(err instanceof Error ? err.message : 'Could not read APKG file.');
+        }
+        return;
       }
-      return;
-    }
-    const content = await file.text();
-    setText(content);
-    setFormatOverride(null);
-  }, [onApkgImport]);
+      const content = await file.text();
+      setText(content);
+      setFormatOverride(null);
+    },
+    [onApkgImport],
+  );
 
   // ---- Drag and drop ----
 
@@ -378,9 +403,10 @@ export function UnifiedImportPanel({
       } else {
         const result = await importSharePayload(payload);
         setSharePending(null);
+        setShareError(null);
         setText('');
         if (onShareImport) {
-          await onShareImport(result.courses, result.cards);
+          await onShareImport(result.courses, result.cards, result.courseIds);
         }
       }
     } catch (err) {
@@ -429,8 +455,8 @@ export function UnifiedImportPanel({
             className="overflow-hidden"
           >
             <div className="rounded-2xl border border-negative/30 bg-negative/5 px-4 py-3 text-sm text-negative">
-              Input truncated to {MAX_IMPORT_CHARS.toLocaleString()} characters to keep the
-              import responsive.
+              Input truncated to {MAX_IMPORT_CHARS.toLocaleString()} characters to keep the import
+              responsive.
             </div>
           </motion.div>
         )}
@@ -451,11 +477,16 @@ export function UnifiedImportPanel({
       </AnimatePresence>
 
       {/* Share code import mode toggle — pill style per SPEC §3.4 */}
-      {showShareImport && (
+      {showShareImport && !shareOnly && (
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => { setShareMode(false); setSharePending(null); setShareError(null); setShareNotice(null); }}
+            onClick={() => {
+              setShareMode(false);
+              setSharePending(null);
+              setShareError(null);
+              setShareNotice(null);
+            }}
             className={cn(
               'flex-1 rounded-full border px-4 py-2 text-sm font-medium transition-all',
               !shareMode
@@ -467,7 +498,12 @@ export function UnifiedImportPanel({
           </button>
           <button
             type="button"
-            onClick={() => { setShareMode(true); setSharePending(null); setShareError(null); setShareNotice(null); }}
+            onClick={() => {
+              setShareMode(true);
+              setSharePending(null);
+              setShareError(null);
+              setShareNotice(null);
+            }}
             className={cn(
               'flex-1 rounded-full border px-4 py-2 text-sm font-medium transition-all',
               shareMode
@@ -518,11 +554,7 @@ export function UnifiedImportPanel({
                     e.target.value = '';
                   }}
                 />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => fileInput.current?.click()}
-                >
+                <Button size="sm" variant="ghost" onClick={() => fileInput.current?.click()}>
                   <UploadIcon width={14} height={14} />
                   Upload file
                 </Button>
@@ -696,13 +728,9 @@ export function UnifiedImportPanel({
                           <span className="shrink-0 rounded-full bg-ink/5 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-faint">
                             {c.type === 'cloze' ? 'Cloze' : 'Basic'}
                           </span>
-                          <span className="min-w-0 flex-1 truncate text-ink">
-                            {c.front}
-                          </span>
+                          <span className="min-w-0 flex-1 truncate text-ink">{c.front}</span>
                           {c.back && (
-                            <span className="min-w-0 truncate text-ink-faint">
-                              — {c.back}
-                            </span>
+                            <span className="min-w-0 truncate text-ink-faint">— {c.back}</span>
                           )}
                           {c.tags && c.tags.length > 0 && (
                             <span className="shrink-0 text-[10px] text-ink-faint">
@@ -739,17 +767,19 @@ export function UnifiedImportPanel({
             <p className="mb-3 text-sm leading-relaxed text-ink-soft">
               <strong className="text-ink">{apkgPending.cards.length}</strong> card
               {apkgPending.cards.length === 1 ? '' : 's'} from{' '}
-              <strong className="text-ink">{apkgPending.deckName}</strong>{' '}
-              will be imported with scheduling history.
+              <strong className="text-ink">{apkgPending.deckName}</strong> will be imported with
+              scheduling history.
             </p>
             {apkgPending.skippedNotes > 0 && (
               <p className="mb-2 text-xs text-ink-faint">
-                {apkgPending.skippedNotes} unsupported note type{apkgPending.skippedNotes === 1 ? '' : 's'} skipped.
+                {apkgPending.skippedNotes} unsupported note type
+                {apkgPending.skippedNotes === 1 ? '' : 's'} skipped.
               </p>
             )}
             {apkgPending.media.size > 0 && (
               <p className="mb-2 text-xs text-ink-faint">
-                {apkgPending.media.size} image{apkgPending.media.size === 1 ? '' : 's'} will be imported.
+                {apkgPending.media.size} image{apkgPending.media.size === 1 ? '' : 's'} will be
+                imported.
               </p>
             )}
           </motion.div>
@@ -791,7 +821,11 @@ export function UnifiedImportPanel({
       {/* Action buttons */}
       <div className="flex justify-end gap-2 pt-1">
         {onCancel && (
-          <Button variant="ghost" onClick={onCancel} disabled={busy || apkgImporting}>
+          <Button
+            variant="ghost"
+            onClick={onCancel}
+            disabled={busy || apkgImporting || shareImporting}
+          >
             Cancel
           </Button>
         )}
@@ -812,11 +846,7 @@ export function UnifiedImportPanel({
             Read code
           </Button>
         ) : (
-          <Button
-            variant="primary"
-            onClick={handleImport}
-            disabled={busy || !canImport}
-          >
+          <Button variant="primary" onClick={handleImport} disabled={busy || !canImport}>
             {busy
               ? 'Importing…'
               : `${importLabel} (${Math.min(result.cards.length, MAX_IMPORT_ROWS)})`}
@@ -824,6 +854,22 @@ export function UnifiedImportPanel({
         )}
       </div>
     </div>
+  );
+}
+
+/** Share-code-only entry point backed by the unified import workflow. */
+export function ShareCodeImportPanel({
+  onCancel,
+  onShareImport,
+}: Pick<UnifiedImportPanelProps, 'onCancel' | 'onShareImport'>) {
+  return (
+    <UnifiedImportPanel
+      onImport={() => undefined}
+      onCancel={onCancel}
+      showShareImport
+      shareOnly
+      onShareImport={onShareImport}
+    />
   );
 }
 
@@ -860,6 +906,7 @@ function ShareCodeImport({
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={4}
+          autoFocus
           placeholder="Paste a Lacuna share code here (it starts with LAC)..."
           className="w-full resize-none break-all rounded-xl border border-line bg-surface-raised/30 px-4 py-3 font-mono text-xs text-ink outline-none transition-all focus:border-accent/40 placeholder:text-ink-faint"
         />
@@ -926,8 +973,8 @@ function ShareCodeImport({
                   {pending.summary.deckCount === 1 ? '' : 's'} and{' '}
                   <strong className="text-ink">{pending.summary.cardCount}</strong> card
                   {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
-                  {formatDate(pending.summary.exportedAt)}. It will be added as a single
-                  imported course.
+                  {formatDate(pending.summary.exportedAt)}. It will be added as a single imported
+                  course.
                 </p>
               )}
               {!pending.merge && pending.summary.deckNames.length > 0 && (
@@ -944,8 +991,8 @@ function ShareCodeImport({
               )}
               {!pending.merge && pending.summary.omittedImages && (
                 <p className="mb-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm leading-relaxed text-ink-soft">
-                  This share code omitted images to keep the code small. Image positions
-                  will appear as placeholders after import.
+                  This share code omitted images to keep the code small. Image positions will appear
+                  as placeholders after import.
                 </p>
               )}
               <div className="flex flex-wrap justify-end gap-2">
@@ -976,13 +1023,7 @@ function ShareCodeImport({
 // Format badge
 // ---------------------------------------------------------------------------
 
-function FormatBadge({
-  format,
-  confidence,
-}: {
-  format: ImportFormat;
-  confidence: number;
-}) {
+function FormatBadge({ format, confidence }: { format: ImportFormat; confidence: number }) {
   const colour =
     confidence >= 0.8
       ? 'border-positive/30 bg-positive/10 text-positive'

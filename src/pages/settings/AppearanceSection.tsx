@@ -3,8 +3,9 @@ import { MoonIcon, SunIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
 import { ACCENTS, useAccent } from '../../state/AccentContext';
 import { FONT_SCALE_STEPS, useFontScale } from '../../state/FontScaleContext';
-import { useMotionSpeed, type MotionSpeed } from '../../state/motionSpeed';
+import { useMotionSpeed } from '../../state/motionSpeed';
 import { useTheme, type Theme } from '../../state/ThemeContext';
+import { MotionSpeedControl } from './MotionSpeedControl';
 
 export function AppearanceSection({ motionMultiplier }: { motionMultiplier: number }) {
   const [motionSpeed, setMotionSpeed] = useMotionSpeed();
@@ -17,7 +18,11 @@ export function AppearanceSection({ motionMultiplier }: { motionMultiplier: numb
       id="settings-appearance"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * motionMultiplier, delay: 0.05 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+      transition={{
+        duration: 0.24 * motionMultiplier,
+        delay: 0.05 * motionMultiplier,
+        ease: [0.16, 1, 0.3, 1],
+      }}
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
@@ -29,10 +34,16 @@ export function AppearanceSection({ motionMultiplier }: { motionMultiplier: numb
       </p>
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-2 text-sm">
-          {resolvedTheme === 'dark' ? <MoonIcon width={18} height={18} /> : <SunIcon width={18} height={18} />}
+          {resolvedTheme === 'dark' ? (
+            <MoonIcon width={18} height={18} />
+          ) : (
+            <SunIcon width={18} height={18} />
+          )}
           {theme === 'auto'
             ? `Auto (${resolvedTheme === 'dark' ? 'dark' : 'light'})`
-            : resolvedTheme === 'dark' ? 'Dark mode' : 'Light mode'}
+            : resolvedTheme === 'dark'
+              ? 'Dark mode'
+              : 'Light mode'}
         </span>
         <div className="flex gap-1">
           {(['dark', 'light', 'auto'] as Theme[]).map((value) => (
@@ -75,7 +86,9 @@ export function AppearanceSection({ motionMultiplier }: { motionMultiplier: numb
                 className="relative h-9 w-9 rounded-full transition-transform duration-150 hover:scale-110 active:scale-[0.88]"
                 style={{ backgroundColor: option.swatch }}
               >
-                {active && <span className="absolute inset-[-4px] rounded-full ring-2 ring-ink ring-offset-2 ring-offset-surface" />}
+                {active && (
+                  <span className="absolute inset-[-4px] rounded-full ring-2 ring-ink ring-offset-2 ring-offset-surface" />
+                )}
               </button>
             );
           })}
@@ -117,31 +130,19 @@ export function AppearanceSection({ motionMultiplier }: { motionMultiplier: numb
       <div className="mt-6 border-t border-line pt-5">
         <div className="mb-1 flex items-baseline justify-between">
           <span className="text-sm">Animation speed</span>
-          <span className="tabular text-sm text-ink-faint">
+          <span aria-live="polite" aria-atomic="true" className="tabular text-sm text-ink-faint">
             {motionSpeed === 'slow' ? 'Slow' : motionSpeed === 'fast' ? 'Fast' : 'Normal'}
           </span>
         </div>
-        <p className="mb-3 text-sm text-ink-soft">
-          Adjust how quickly decorative animations play across the app. Does not affect functional timers or progress bars.
+        <p id="animation-speed-description" className="mb-2 text-sm text-ink-soft">
+          Adjust how quickly decorative animations play across the app. Does not affect functional
+          timers or progress bars.
         </p>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-ink-faint">Slow</span>
-          <input
-            type="range"
-            min={0}
-            max={2}
-            step={1}
-            value={motionSpeed === 'slow' ? 0 : motionSpeed === 'normal' ? 1 : 2}
-            onChange={(event) => {
-              const value = Number(event.target.value);
-              const next: MotionSpeed = value === 0 ? 'slow' : value === 2 ? 'fast' : 'normal';
-              setMotionSpeed(next);
-            }}
-            className="flex-1 accent-accent"
-            aria-label="Animation speed"
-          />
-          <span className="text-xs text-ink-faint">Fast</span>
-        </div>
+        <MotionSpeedControl
+          value={motionSpeed}
+          onChange={setMotionSpeed}
+          describedBy="animation-speed-description"
+        />
       </div>
     </motion.section>
   );

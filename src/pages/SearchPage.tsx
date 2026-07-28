@@ -248,13 +248,13 @@ export function SearchPage() {
                 transition={{ duration: 0.16 * m }}
                 onClick={() => navigate(cardEditPath(hit.card))}
                 whileHover={{ y: -3, transition: { duration: 0.12 * m } }}
-                className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.04]"
+                className="flex min-w-0 flex-col gap-1 rounded-xl border border-line bg-surface p-4 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.04]"
               >
-                <span className="text-sm text-ink">
+                <span className="break-words text-sm text-ink">
                   {plainPreview(hit.card.front, 140) || '(empty front)'}
                 </span>
                 {hit.card.back.trim() && (
-                  <span className="truncate text-sm text-ink-faint">
+                  <span className="break-words text-sm text-ink-faint">
                     {plainPreview(hit.card.back, 140)}
                   </span>
                 )}

@@ -44,7 +44,11 @@ export function Settings() {
           </div>
         </header>
 
-        <SectionRailMobileJumper sections={SETTINGS_SECTIONS} activeSection={activeSection} onNavigate={goToSection} />
+        <SectionRailMobileJumper
+          sections={SETTINGS_SECTIONS}
+          activeSection={activeSection}
+          onNavigate={goToSection}
+        />
 
         <AppearanceSection motionMultiplier={motionMultiplier} />
         <InputModeSection motionMultiplier={motionMultiplier} />
@@ -59,7 +63,12 @@ export function Settings() {
         <BackupsSection motionMultiplier={motionMultiplier} />
       </div>
 
-      <SectionRail sections={SETTINGS_SECTIONS} activeSection={activeSection} onNavigate={goToSection} motionMultiplier={motionMultiplier} />
+      <SectionRail
+        sections={SETTINGS_SECTIONS}
+        activeSection={activeSection}
+        onNavigate={goToSection}
+        motionMultiplier={motionMultiplier}
+      />
     </div>
   );
 }

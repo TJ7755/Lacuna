@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LacunaIcon } from '../ui/icons';
 
 /**
  * A simplified, hand-drawn SVG rendering of the Lacuna dashboard for the
@@ -98,14 +99,7 @@ export function DashboardMock({ examWeeks = 12, readinessBoost = 0 }: DashboardM
 
           {/* Logo */}
           <rect x="24" y="24" width="34" height="34" rx="10" fill={accent} />
-          <path
-            d="M37.5 31.5v7l-5.5 9a2.8 2.8 0 0 0 2.4 4.3h13.2a2.8 2.8 0 0 0 2.4-4.3l-5.5-9v-7M35 31.5h12"
-            fill="none"
-            stroke={accentFg}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <LacunaIcon x={31} y={31} width={20} height={20} color={accentFg} />
           <text x="70" y="42" fontFamily={display} fontSize="19" fontWeight="500" fill={ink}>
             Lacuna
           </text>

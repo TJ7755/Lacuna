@@ -423,6 +423,15 @@ export async function encodeShareDirect(payload: SharePayload): Promise<string> 
 }
 
 /** Encode a share payload as a Base45 string optimised for QR code density. */
+export async function encodeShareQRDirect(payload: SharePayload): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  if (canCompress) {
+    const deflated = await pipeThrough(bytes, new CompressionStream('deflate-raw'));
+    return PREFIX_BASE45_COMPRESSED + bytesToBase45(deflated);
+  }
+  return PREFIX_BASE45_PLAIN + bytesToBase45(bytes);
+}
+
 export async function encodeShareQR(payload: SharePayload): Promise<string> {
   if (canUseShareWorker) {
     try {
@@ -431,12 +440,7 @@ export async function encodeShareQR(payload: SharePayload): Promise<string> {
       // Fall through to direct path if the worker fails.
     }
   }
-  const bytes = new TextEncoder().encode(JSON.stringify(payload));
-  if (canCompress) {
-    const deflated = await pipeThrough(bytes, new CompressionStream('deflate-raw'));
-    return PREFIX_BASE45_COMPRESSED + bytesToBase45(deflated);
-  }
-  return PREFIX_BASE45_PLAIN + bytesToBase45(bytes);
+  return encodeShareQRDirect(payload);
 }
 
 const MAX_SHARE_BYTES = 5 * 1024 * 1024;
@@ -978,6 +982,7 @@ export interface ImportShareResult {
   courses: number;
   lessons: number;
   cards: number;
+  courseIds: string[];
 }
 
 /**
@@ -1068,7 +1073,12 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
     },
   );
 
-  return { courses: migration.courses.length, lessons: migration.lessons.length, cards: cardCount };
+  return {
+    courses: migration.courses.length,
+    lessons: migration.lessons.length,
+    cards: cardCount,
+    courseIds: migration.courses.map((course) => course.id),
+  };
 }
 
 /** Split a sequenceItemId into its base item id and, when present, the label-card suffix. */
@@ -1082,6 +1092,7 @@ function splitSequenceItemId(si: string): { baseId: string; isLabel: boolean } {
 /** Import a v2 (single course) payload directly into the course model. */
 async function importCourseSharePayload(payload: SharePayloadV2): Promise<ImportShareResult> {
   let cardCount = 0;
+  let importedCourseId: string | null = null;
 
   await db.transaction(
     'rw',
@@ -1132,6 +1143,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         // sharer's own setting — the share payload never packs lessonViewMode.
         lessonViewMode: 'study',
       });
+      importedCourseId = course.id;
 
       const importedAt = Date.now();
       const importedLessons: Lesson[] = payload.lessons.map((shareLesson, orderIndex) => ({
@@ -1309,7 +1321,13 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
     },
   );
 
-  return { courses: 1, lessons: payload.lessons.length, cards: cardCount };
+  if (!importedCourseId) throw new Error('The shared course could not be created.');
+  return {
+    courses: 1,
+    lessons: payload.lessons.length,
+    cards: cardCount,
+    courseIds: [importedCourseId],
+  };
 }
 
 /**

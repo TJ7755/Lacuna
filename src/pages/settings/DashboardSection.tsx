@@ -3,6 +3,7 @@ import { cn } from '../../components/ui/cn';
 import { GridIcon } from '../../components/ui/icons';
 import { Toggle } from '../../components/ui/Toggle';
 import { useCourseCardDetail } from '../../state/courseCardDetail';
+import { useCourseCardMetric, type CourseCardMetric } from '../../state/courseCardMetric';
 import { useDashboardSort, type DashboardSort } from '../../state/dashboardSort';
 
 const SORT_OPTIONS: { key: DashboardSort; label: string }[] = [
@@ -17,13 +18,18 @@ const SORT_OPTIONS: { key: DashboardSort; label: string }[] = [
 export function DashboardSection({ motionMultiplier }: { motionMultiplier: number }) {
   const [dashboardSort, setDashboardSort] = useDashboardSort();
   const [cardDetail, setCardDetail] = useCourseCardDetail();
+  const [courseCardMetric, setCourseCardMetric] = useCourseCardMetric();
 
   return (
     <motion.section
       id="settings-dashboard"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * motionMultiplier, delay: 0.2 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+      transition={{
+        duration: 0.24 * motionMultiplier,
+        delay: 0.2 * motionMultiplier,
+        ease: [0.16, 1, 0.3, 1],
+      }}
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
@@ -56,14 +62,63 @@ export function DashboardSection({ motionMultiplier }: { motionMultiplier: numbe
       </div>
 
       <div className="mt-6 border-t border-line pt-5">
+        <h3 className="mb-1 text-sm font-medium text-ink">Course progress metric</h3>
+        <p className="mb-4 text-sm text-ink-soft">
+          Choose the progress measure shown on each dashboard course card.
+        </p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {(
+            [
+              { key: 'curriculum', label: 'Curriculum' },
+              { key: 'coverage', label: 'Card coverage' },
+              { key: 'today', label: "Today's work" },
+            ] as { key: CourseCardMetric; label: string }[]
+          ).map((option) => {
+            const active = courseCardMetric === option.key;
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => setCourseCardMetric(option.key)}
+                aria-pressed={active}
+                className={cn(
+                  'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors',
+                  active
+                    ? 'border-accent bg-accent-soft text-accent'
+                    : 'border-line text-ink-soft hover:border-line-strong',
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-6 border-t border-line pt-5">
         <h3 className="mb-1 text-sm font-medium text-ink">Card hover detail</h3>
         <p className="mb-4 text-sm text-ink-soft">
           Choose what a course card reveals when you hover over it.
         </p>
         <div className="flex flex-col gap-3">
-          <Toggle id="card-detail-next-due" label="Next review time" checked={cardDetail.nextDue} onChange={(checked) => setCardDetail({ nextDue: checked })} />
-          <Toggle id="card-detail-breakdown" label="New, learnt and due breakdown" checked={cardDetail.breakdown} onChange={(checked) => setCardDetail({ breakdown: checked })} />
-          <Toggle id="card-detail-activity" label="Recent review activity" checked={cardDetail.activity} onChange={(checked) => setCardDetail({ activity: checked })} />
+          <Toggle
+            id="card-detail-next-due"
+            label="Next review time"
+            checked={cardDetail.nextDue}
+            onChange={(checked) => setCardDetail({ nextDue: checked })}
+          />
+          <Toggle
+            id="card-detail-breakdown"
+            label="New, learnt and due breakdown"
+            checked={cardDetail.breakdown}
+            onChange={(checked) => setCardDetail({ breakdown: checked })}
+          />
+          <Toggle
+            id="card-detail-activity"
+            label="Recent review activity"
+            checked={cardDetail.activity}
+            onChange={(checked) => setCardDetail({ activity: checked })}
+          />
         </div>
       </div>
     </motion.section>

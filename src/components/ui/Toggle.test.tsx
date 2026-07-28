@@ -37,4 +37,10 @@ describe('Toggle', () => {
     expect(switchBtn).toHaveAttribute('id', 'test-toggle');
     expect(switchBtn).toHaveAttribute('aria-label', 'Airplane mode');
   });
+
+  it('supports an accessible name without rendering duplicate visible text', () => {
+    render(<Toggle checked={false} onChange={vi.fn()} ariaLabel="Randomise order" />);
+    expect(screen.getByRole('switch', { name: 'Randomise order' })).toBeInTheDocument();
+    expect(screen.queryByText('Randomise order')).not.toBeInTheDocument();
+  });
 });

@@ -5,11 +5,12 @@ interface ToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label?: string;
+  ariaLabel?: string;
   id?: string;
   disabled?: boolean;
 }
 
-export function Toggle({ checked, onChange, label, id, disabled }: ToggleProps) {
+export function Toggle({ checked, onChange, label, ariaLabel, id, disabled }: ToggleProps) {
   return (
     <label htmlFor={id} className={cn('inline-flex items-center gap-3 select-none', disabled ? 'cursor-not-allowed' : 'cursor-pointer')}>
       <button
@@ -17,7 +18,7 @@ export function Toggle({ checked, onChange, label, id, disabled }: ToggleProps) 
         type="button"
         role="switch"
         aria-checked={checked}
-        aria-label={label}
+        aria-label={ariaLabel ?? label}
         disabled={disabled}
         onClick={() => !disabled && onChange(!checked)}
         className={cn(

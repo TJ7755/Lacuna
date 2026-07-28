@@ -147,10 +147,12 @@ export const UploadIcon = (p: IconProps) => (
   </Icon>
 );
 
-export const FlaskIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M9 3h6M10 3v6.5L4.5 18a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 9.5V3" />
-    <path d="M7.5 14h9" />
+/** Lacuna's interrupted forgetting-curve brand mark. */
+export const LacunaIcon = (p: IconProps) => (
+  <Icon {...p} strokeWidth="1.75">
+    <path d="M4.4 5.7c2.2 7.9 3.9 10.4 6.5 11.7" />
+    <path d="M12.7 9.6c1.7 4.8 3.9 7 6.9 8.3" opacity="0.55" />
+    <circle cx="12" cy="6.6" r="1.3" fill="currentColor" stroke="none" />
   </Icon>
 );
 

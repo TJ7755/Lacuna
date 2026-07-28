@@ -10,7 +10,9 @@ import type {
   CourseAssessment,
   CourseRecord,
   Lesson,
+  LessonCardExposure,
   LessonCardLink,
+  LessonCompletion,
   Note,
   PendingMergeReview,
   PracticeNode,
@@ -21,8 +23,11 @@ import type {
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { availableCards, studyPool } from '../fsrs/eligibility';
+import { availableCards, dueCards, studyPool } from '../fsrs/eligibility';
 import { computeStudyStats, buildDeckSecondsMap, type StudyStats } from '../fsrs/stats';
+import { lessonCardMembership } from '../course/studyPools';
+import { lessonTaught } from '../course/unlock';
+import { startOfDay } from '../utils/datetime';
 
 // ---------------------------------------------------------------------------
 // Individual record hooks
@@ -104,14 +109,13 @@ export function useAllNotes(): Note[] | undefined {
 
 /** The outstanding merge review for a course, if a re-import has queued one (Arc 7 §7.5).
  *  `null` once loaded with nothing pending; `undefined` while loading. */
-export function usePendingMergeReview(courseId: string | undefined): PendingMergeReview | null | undefined {
-  return useLiveQuery(
-    async () => {
-      if (!courseId) return null;
-      return (await db.pendingMergeReviews.where('courseId').equals(courseId).first()) ?? null;
-    },
-    [courseId],
-  );
+export function usePendingMergeReview(
+  courseId: string | undefined,
+): PendingMergeReview | null | undefined {
+  return useLiveQuery(async () => {
+    if (!courseId) return null;
+    return (await db.pendingMergeReviews.where('courseId').equals(courseId).first()) ?? null;
+  }, [courseId]);
 }
 
 /** The set of course ids that currently have a pending merge review, for the dashboard's
@@ -180,9 +184,7 @@ export function useCourseAssessments(courseId: string | undefined): CourseAssess
   );
 }
 
-export function useRevisionPlan(
-  assessmentId: string | undefined,
-): RevisionPlan | null | undefined {
+export function useRevisionPlan(assessmentId: string | undefined): RevisionPlan | null | undefined {
   return useLiveQuery<RevisionPlan | null>(
     () =>
       assessmentId
@@ -227,15 +229,33 @@ export interface CourseSummary {
   mastery: number;
   /** Number of core cards that have never been reviewed. */
   unreviewed: number;
-  /** Core cards a session would serve today (available, new-card cap applied). */
+  /** Reviews due now plus brand-new cards admitted by today's cap. */
   eligible: number;
+  /** Number of core lessons whose material has been taught. */
+  completedLessonCount: number;
+  /** Number of core cards reviewed at least once. */
+  reviewedCardCount: number;
+  /** Unique core cards with at least one review today in the course time zone. */
+  reviewedTodayCount: number;
 }
 
+export interface CourseSummaryProgress {
+  links: LessonCardLink[];
+  exposures: LessonCardExposure[];
+  completions: LessonCompletion[];
+}
+
+const EMPTY_SUMMARY_PROGRESS: CourseSummaryProgress = {
+  links: [],
+  exposures: [],
+  completions: [],
+};
+
 /**
- * Per-course summary statistics: lesson count, card count, mastery fraction,
- * unreviewed count and eligible count. Extension-lesson cards are excluded from
- * all four numerical summary fields; cards with a null or missing primaryLessonId
- * are included. Mirrors computeDeckSummaries (including the orphaned-card-set guard).
+ * Per-course summary statistics for dashboard and course-header surfaces.
+ * Extension-lesson cards are excluded from card-level figures; cards with a null
+ * or missing primaryLessonId are included. Mirrors computeDeckSummaries (including
+ * the orphaned-card-set guard).
  *
  * Pure — accepts only already-loaded arrays so it can be reused by combined hooks
  * and called in tests without a database. Exam dates are optional for backwards-
@@ -247,6 +267,7 @@ export function computeCourseSummaries(
   cards: Card[],
   assessments: CourseAssessment[] = [],
   now: number = Date.now(),
+  progress: CourseSummaryProgress = EMPTY_SUMMARY_PROGRESS,
 ): Record<string, CourseSummary> {
   const courseById = new Map(courses.map((c) => [c.id, c]));
 
@@ -289,6 +310,18 @@ export function computeCourseSummaries(
         !extensionLessonIds.has(c.primaryLessonId),
     );
     const available = availableCards(coreCards, now);
+    const pool = studyPool(coreCards, course, now);
+    const readyNow = dueCards(pool, now).length + pool.filter((card) => card.state === 0).length;
+    const coreLessons = (lessonsByCourse[course.id] ?? []).filter((lesson) => !lesson.isExtension);
+    const completedLessonCount = coreLessons.filter((lesson) =>
+      lessonTaught(
+        lesson.id,
+        lessonCardMembership(lesson.id, courseCards, progress.links),
+        progress.exposures,
+        progress.completions,
+      ),
+    ).length;
+    const today = startOfDay(now, course.timeZone);
     const examDateContext = makeExamDateContext(
       course,
       lessonsByCourse[course.id] ?? [],
@@ -299,7 +332,12 @@ export function computeCourseSummaries(
       cardCount: coreCards.length,
       mastery: progressValue(available, course, now, examDateContext),
       unreviewed: available.filter((c) => c.lastReviewed === null).length,
-      eligible: studyPool(coreCards, course, now).length,
+      eligible: readyNow,
+      completedLessonCount,
+      reviewedCardCount: coreCards.filter((card) => card.lastReviewed !== null).length,
+      reviewedTodayCount: coreCards.filter((card) =>
+        card.history.some((review) => review.timestamp >= today && review.timestamp <= now),
+      ).length,
     };
   }
 
@@ -312,6 +350,9 @@ export function computeCourseSummaries(
       mastery: 0,
       unreviewed: 0,
       eligible: 0,
+      completedLessonCount: 0,
+      reviewedCardCount: 0,
+      reviewedTodayCount: 0,
     };
   }
 
@@ -379,15 +420,23 @@ export function useCourseDashboardData():
     }
   | undefined {
   return useLiveQuery(async () => {
-    const [records, lessons, cards, assessments, perf] = await Promise.all([
-      db.courses.toArray(),
-      db.lessons.toArray(),
-      db.cards.toArray(),
-      db.courseAssessments.toArray(),
-      db.userPerformance.toArray(),
-    ]);
+    const [records, lessons, cards, assessments, perf, links, exposures, completions] =
+      await Promise.all([
+        db.courses.toArray(),
+        db.lessons.toArray(),
+        db.cards.toArray(),
+        db.courseAssessments.toArray(),
+        db.userPerformance.toArray(),
+        db.lessonCards.toArray(),
+        db.lessonCardExposures.toArray(),
+        db.lessonCompletions.toArray(),
+      ]);
     const courses = hydrateCourses(records, assessments);
-    const summaries = computeCourseSummaries(courses, lessons, cards, assessments);
+    const summaries = computeCourseSummaries(courses, lessons, cards, assessments, Date.now(), {
+      links,
+      exposures,
+      completions,
+    });
     const deckSeconds = buildDeckSecondsMap(perf);
     const stats = computeStudyStats(cards, deckSeconds);
     return { courses, lessons, allCards: cards, summaries, stats };

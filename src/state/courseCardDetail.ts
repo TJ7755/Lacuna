@@ -8,7 +8,7 @@ const KEY = 'lacuna.courseCardDetail';
 export interface CourseCardDetailSettings {
   /** Show the time of the next scheduled review. */
   nextDue: boolean;
-  /** Show the new / learnt / due card breakdown. */
+  /** Show the new / learnt / ready card breakdown. */
   breakdown: boolean;
   /** Show the recent review activity bars. */
   activity: boolean;

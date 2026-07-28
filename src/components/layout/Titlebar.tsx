@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FlaskIcon } from '../ui/icons';
+import { LacunaIcon } from '../ui/icons';
 
 function isElectron(): boolean {
   return typeof window !== 'undefined' && !!window.electronAPI?.isElectron;
@@ -70,7 +70,7 @@ export function Titlebar() {
     <div className="titlebar-drag flex h-12 shrink-0 items-center justify-between border-b border-line bg-surface px-3 select-none">
       {/* Title area — draggable */}
       <div className="titlebar-drag flex items-center gap-2 text-sm text-ink-soft">
-        <FlaskIcon width={14} height={14} className="text-accent" />
+        <LacunaIcon width={14} height={14} className="text-accent" />
         <span className="font-display font-medium">Lacuna</span>
       </div>
 

@@ -19,6 +19,7 @@ export const CardContent = memo(function CardContent({
   side,
   className,
   sequenceCue = false,
+  sequenceMode = 'list',
 }: {
   card: Card;
   side: Side;
@@ -34,6 +35,8 @@ export const CardContent = memo(function CardContent({
    * preview — should leave this off so they keep rendering the stored Markdown as-is.
    */
   sequenceCue?: boolean;
+  /** The owning sequence's mode, used to choose item- or line-specific recall wording. */
+  sequenceMode?: 'list' | 'lines';
 }) {
   if (card.type === 'cloze') {
     return (
@@ -48,8 +51,11 @@ export const CardContent = memo(function CardContent({
   if (sequenceCue && side === 'front' && card.sequenceItemId !== undefined && !isLabelCardId(card.sequenceItemId)) {
     const { header, body } = parseSequenceFront(card.front);
     const headerText = header.replace(/^\*\*/, '').replace(/\*\*$/, '');
-    const isFirstItem = body === 'First item?';
-    const cueParagraphs = isFirstItem ? [] : body.split('\n\n');
+    const isLinesMode = sequenceMode === 'lines' || body === 'First line?';
+    const firstPrompt = isLinesMode ? 'First line?' : 'First item?';
+    const nextPrompt = isLinesMode ? 'Next line?' : 'Next item?';
+    const isFirst = body === firstPrompt;
+    const cueParagraphs = isFirst ? [] : body.split('\n\n');
     return (
       <div className={className}>
         <div className="mb-3 text-[11px] uppercase tracking-[0.2em] text-ink-faint">{headerText}</div>
@@ -60,7 +66,7 @@ export const CardContent = memo(function CardContent({
             ))}
           </div>
         )}
-        <div className="text-ink">{isFirstItem ? 'First item?' : 'Next item?'}</div>
+        <div className="text-ink">{isFirst ? firstPrompt : nextPrompt}</div>
       </div>
     );
   }
