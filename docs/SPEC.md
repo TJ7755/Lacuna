@@ -1135,6 +1135,15 @@ shown with its compiler message, and mark/predicate autocomplete inserts grammar
 without adding another parser or UI dependency. A card can be saved only when every nonblank line
 compiles; the resulting `MarkSchemeLine[]`, not the editor source, is persisted in its v1 `working`
 payload. Drafts retain the uncompiled source so an interrupted invalid edit is not discarded.
+The same editor includes a test-answer harness backed directly by `verifyWorkingLines`. Tutors can
+pin a sample answer with its current expected score; those fixtures travel in the item payload and
+rerun automatically on every scheme edit, exposing any score mismatch before the card is saved.
+
+In study, a working item replaces reveal and self-grading controls with a multi-line answer surface.
+Each nonblank line is checked against the persisted scheme, with each criterion awarded at most
+once. The ordinary machine-marked pipeline maps the total through `gradeFromMarks`; FSRS sessions
+persist the marks and per-line verdicts on `ReviewLog`, while lesson Simple mode uses full marks for
+mastery and requeues partial or zero-mark attempts without writing review history.
 
 ### Study mode (`src/state/studyMode.ts`)
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):

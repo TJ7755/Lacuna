@@ -132,6 +132,7 @@ describe('undoReview', () => {
       correct: true,
       marksEarned: 1,
       marksAvailable: 1,
+      lineVerdicts: [{ studentLine: '4', matchedLineIndex: 0, marksEarned: 1 }],
     });
 
     expect((await db.cards.get(card.id))!.history[0]).toMatchObject({
@@ -139,6 +140,7 @@ describe('undoReview', () => {
       correct: true,
       marksEarned: 1,
       marksAvailable: 1,
+      lineVerdicts: [{ studentLine: '4', matchedLineIndex: 0, marksEarned: 1 }],
     });
   });
 

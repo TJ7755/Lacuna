@@ -1,4 +1,5 @@
 import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import type { ItemFixture, MarkSchemeLine } from '../../db/types';
 import {
   compileMarkScheme,
   renderLineAsEnglish,
@@ -6,11 +7,15 @@ import {
   type MarkSchemeCompileError,
   type PredicateName,
 } from '../../items/markSchemeCompiler';
+import { verifyWorkingLines } from '../../items/verify';
+import { Button } from '../ui/Button';
 import { cn } from '../ui/cn';
 
 interface MarkSchemeEditorProps {
   value: string;
   onChange: (value: string) => void;
+  fixtures?: ItemFixture[];
+  onFixturesChange?: (fixtures: ItemFixture[]) => void;
   invalid?: boolean;
 }
 
@@ -29,15 +34,32 @@ const PREDICATE_TEMPLATES: Record<PredicateName, string> = {
   contains: 'contains :: text',
 };
 
-export function MarkSchemeEditor({ value, onChange, invalid = false }: MarkSchemeEditorProps) {
+export function MarkSchemeEditor({
+  value,
+  onChange,
+  fixtures = [],
+  onFixturesChange,
+  invalid = false,
+}: MarkSchemeEditorProps) {
   const generatedId = useId();
   const sourceId = `mark-scheme-source-${generatedId}`;
   const suggestionsId = `${sourceId}-suggestions`;
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [cursor, setCursor] = useState(0);
   const [activeSuggestion, setActiveSuggestion] = useState(0);
+  const [testAnswer, setTestAnswer] = useState('');
   const compilation = useMemo(() => compileMarkScheme(value), [value]);
   const suggestions = useMemo(() => suggestionsAt(value, cursor), [value, cursor]);
+  const scheme = useMemo(
+    () => compilation.lines.flatMap((line) => line.kind === 'compiled' ? [line.value] : []),
+    [compilation],
+  );
+  const schemeValid = scheme.length > 0 && compilation.lines.every((line) => line.kind === 'compiled');
+  const testLines = useMemo(() => answerLines(testAnswer), [testAnswer]);
+  const testResult = useMemo(
+    () => (schemeValid ? verifyWorkingLines(testLines, scheme, 'authoring-preview') : null),
+    [scheme, schemeValid, testLines],
+  );
 
   const refreshCursor = () => {
     const next = inputRef.current?.selectionStart ?? 0;
@@ -179,8 +201,128 @@ export function MarkSchemeEditor({ value, onChange, invalid = false }: MarkSchem
           </div>
         </div>
       </div>
+
+      <div className="mt-5 border-t border-line pt-5">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 className="font-display text-lg text-ink">Test answer</h3>
+            <p className="mt-1 text-sm text-ink-faint">Write one student step per line. Results update as the scheme changes.</p>
+          </div>
+          {testResult && (
+            <div className="rounded-full border border-line-strong bg-surface-raised px-3 py-1 text-sm tabular-nums text-ink-soft">
+              {testResult.marksEarned} / {testResult.marksAvailable} marks
+            </div>
+          )}
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,0.75fr)]">
+          <div>
+            <label htmlFor={`${sourceId}-test`} className="sr-only">Test student answer</label>
+            <textarea
+              id={`${sourceId}-test`}
+              value={testAnswer}
+              onChange={(event) => setTestAnswer(event.target.value)}
+              rows={6}
+              placeholder="2x = 8\nx = 4"
+              className="w-full resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 font-mono text-sm leading-7 text-ink outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+            />
+            {!schemeValid && (
+              <p className="mt-2 text-xs text-negative">Fix every scheme error before testing answers.</p>
+            )}
+          </div>
+          <div className="rounded-xl border border-line bg-surface-raised p-3">
+            {!testResult || testLines.length === 0 ? (
+              <div className="grid min-h-32 place-items-center px-4 text-center text-sm text-ink-faint">
+                Line-by-line verdicts will appear here.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {testResult.lineVerdicts.map((verdict, index) => (
+                  <div key={`${index}-${verdict.studentLine}`} className="flex items-start gap-3 rounded-lg border border-line bg-surface px-3 py-2">
+                    <span className={cn('mt-0.5 rounded-full px-2 py-0.5 text-xs tabular-nums', verdict.matchedLineIndex === null ? 'bg-negative/10 text-negative' : 'bg-positive/10 text-positive')}>
+                      {verdict.marksEarned}
+                    </span>
+                    <span className="min-w-0 break-words font-mono text-sm text-ink">{verdict.studentLine}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        {onFixturesChange && (
+          <div className="mt-4 flex justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={!testResult || testLines.length === 0}
+              onClick={() => {
+                if (!testResult) return;
+                onFixturesChange([...fixtures, {
+                  id: makeFixtureId(),
+                  studentAnswer: testLines,
+                  expectedMarks: testResult.marksEarned,
+                }]);
+              }}
+            >
+              Pin as fixture
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {onFixturesChange && fixtures.length > 0 && (
+        <div className="mt-5 border-t border-line pt-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="font-display text-lg text-ink">Pinned fixtures</h3>
+            <span className="text-xs text-ink-faint">Checked automatically</span>
+          </div>
+          <div className="space-y-2">
+            {fixtures.map((fixture, index) => (
+              <FixtureRow
+                key={fixture.id}
+                fixture={fixture}
+                scheme={schemeValid ? scheme : null}
+                onRemove={() => onFixturesChange(fixtures.filter((entry) => entry.id !== fixture.id))}
+                index={index}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
+}
+
+function FixtureRow({ fixture, scheme, onRemove, index }: { fixture: ItemFixture; scheme: MarkSchemeLine[] | null; onRemove: () => void; index: number }) {
+  const lines = Array.isArray(fixture.studentAnswer) ? fixture.studentAnswer : answerLines(fixture.studentAnswer);
+  const result = scheme ? verifyWorkingLines(lines, scheme, fixture.id) : null;
+  const matches = result?.marksEarned === fixture.expectedMarks;
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-raised px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <div className="text-xs uppercase tracking-[0.12em] text-ink-faint">Fixture {index + 1}</div>
+        <div className="mt-1 truncate font-mono text-sm text-ink">{lines.join(' · ')}</div>
+      </div>
+      <span className="text-sm tabular-nums text-ink-soft">Expected {fixture.expectedMarks}, got {result?.marksEarned ?? '—'}</span>
+      <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', matches ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative')}>
+        {matches ? 'Pass' : 'Mismatch'}
+      </span>
+      <button type="button" onClick={onRemove} className="rounded-lg px-2 py-1 text-xs text-ink-faint hover:bg-ink/5 hover:text-ink">Remove</button>
+    </div>
+  );
+}
+
+function answerLines(answer: string): string[] {
+  return answer.split('\n').map((line) => line.trim()).filter(Boolean);
+}
+
+function makeFixtureId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
 }
 
 function SchemeError({ error }: { error: MarkSchemeCompileError }) {

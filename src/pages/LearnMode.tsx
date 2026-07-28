@@ -28,6 +28,7 @@ import { NavSidebar } from './learn/NavSidebar';
 import { TouchBottomSheet } from './learn/TouchBottomSheet';
 import { FlipCard } from './learn/FlipCard';
 import { NumericStudyFace } from '../components/items/NumericStudyFace';
+import { WorkingStudyFace } from '../components/items/WorkingStudyFace';
 import { LearnSkeleton } from './learn/LearnSkeleton';
 import type { LearnModeType, LearnSessionRequest } from './learn/types';
 
@@ -132,7 +133,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     hintStep,
     setHintStep,
     isTypingCard,
-    isNumericCard,
+    isMachineMarkedCard,
     isLinesModeCard,
     summary,
     setSummary,
@@ -232,7 +233,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     editing,
     current,
     isTypingCard,
-    isNumericCard,
+    isMachineMarkedCard,
     openEdit,
     hintsOpen,
     setHintsOpen,
@@ -471,14 +472,24 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             </AnimatePresence>
             {/* Card — mode-aware border accent */}
             <main
-              className={`mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-8 md:py-12 ${isTouchMode && !isNumericCard ? 'pb-40' : ''}`}
+              className={`mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-8 md:py-12 ${isTouchMode && !isMachineMarkedCard ? 'pb-40' : ''}`}
             >
-              {current && isNumericCard && current.payload?.kind === 'numeric' ? (
+              {current && current.payload?.kind === 'numeric' ? (
                 <NumericStudyFace
                   key={current.id}
                   card={
                     current as Card & {
                       payload: Extract<ItemPayload, { kind: 'numeric' }>;
+                    }
+                  }
+                  onAnswer={(result) => void answer(result, 'keyboard')}
+                />
+              ) : current && current.payload?.kind === 'working' ? (
+                <WorkingStudyFace
+                  key={current.id}
+                  card={
+                    current as Card & {
+                      payload: Extract<ItemPayload, { kind: 'working' }>;
                     }
                   }
                   onAnswer={(result) => void answer(result, 'keyboard')}
@@ -508,7 +519,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               ) : null}
 
               {/* Typing input for typing cards in question phase */}
-              {!isNumericCard && isTypingCard && phase === 'question' && (
+              {!isMachineMarkedCard && isTypingCard && phase === 'question' && (
                 <div className="mx-auto mt-6 w-full max-w-md">
                   <input
                     ref={typingInputRef}
@@ -534,7 +545,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               )}
 
               {/* Controls */}
-              {!isNumericCard && (isTouchMode ? (
+              {!isMachineMarkedCard && (isTouchMode ? (
                 <TouchBottomSheet
                   phase={phase}
                   gradingMode={gradingMode}

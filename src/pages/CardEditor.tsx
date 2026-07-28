@@ -33,7 +33,7 @@ import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
 import type { EditorOriginState } from '../utils/editorOrigin';
-import type { Card, CardType, ItemPayload, NumericAnswerSpec } from '../db/types';
+import type { Card, CardType, ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
 
 type EditorCardType = CardType | 'numeric' | 'working';
 
@@ -83,6 +83,7 @@ export function CardEditor() {
   const [back, setBack] = useState('');
   const [numericAnswer, setNumericAnswer] = useState<NumericAnswerSpec>(EMPTY_NUMERIC_ANSWER);
   const [workingSource, setWorkingSource] = useState('');
+  const [workingFixtures, setWorkingFixtures] = useState<ItemFixture[]>([]);
   const workingCompilation = useMemo(() => compileMarkScheme(workingSource), [workingSource]);
   const [tags, setTags] = useState<string[]>([]);
   const [showBackCloze, setShowBackCloze] = useState(false);
@@ -173,6 +174,7 @@ export function CardEditor() {
         if (card.payload?.kind === 'numeric') setNumericAnswer(card.payload.answer);
         if (card.payload?.kind === 'working') {
           setWorkingSource(serialiseMarkScheme(card.payload.scheme));
+          setWorkingFixtures(card.payload.fixtures ?? []);
         }
         setTags(card.tags ?? []);
       }
@@ -197,6 +199,7 @@ export function CardEditor() {
         draft.workingSource ??
           (draft.payload?.kind === 'working' ? serialiseMarkScheme(draft.payload.scheme) : ''),
       );
+      setWorkingFixtures(draft.payload?.kind === 'working' ? (draft.payload.fixtures ?? []) : []);
     }
     if (draft.alsoReverse !== undefined) setAlsoReverse(draft.alsoReverse);
     setDraftPrompt(false);
@@ -219,6 +222,7 @@ export function CardEditor() {
       if (card.payload?.kind === 'numeric') setNumericAnswer(card.payload.answer);
       if (card.payload?.kind === 'working') {
         setWorkingSource(serialiseMarkScheme(card.payload.scheme));
+        setWorkingFixtures(card.payload.fixtures ?? []);
       }
     }
   };
@@ -245,6 +249,7 @@ export function CardEditor() {
                   scheme: workingCompilation.lines.flatMap((line) =>
                     line.kind === 'compiled' ? [line.value] : [],
                   ),
+                  ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
                 }
               : undefined,
         workingSource: type === 'working' ? workingSource : undefined,
@@ -252,7 +257,7 @@ export function CardEditor() {
       });
     }, 800);
     return () => window.clearTimeout(draftTimer.current);
-  }, [loaded, type, front, back, tags, alsoReverse, numericAnswer, workingCompilation, workingSource]);
+  }, [loaded, type, front, back, tags, alsoReverse, numericAnswer, workingCompilation, workingFixtures, workingSource]);
 
   // Check for duplicate cards whenever front/back/type changes. A fresh, empty lesson
   // or bank has no backing deck yet, so there is nothing to check against.
@@ -464,6 +469,7 @@ export function CardEditor() {
             scheme: workingCompilation.lines.flatMap((line) =>
               line.kind === 'compiled' ? [line.value] : [],
             ),
+            ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
           }
         : undefined;
     if (editing && card) {
@@ -506,6 +512,7 @@ export function CardEditor() {
       setBack('');
       if (isNumeric) setNumericAnswer(EMPTY_NUMERIC_ANSWER);
       if (isWorking) setWorkingSource('');
+      if (isWorking) setWorkingFixtures([]);
       setAddedCount((n) => n + (reversed ? 2 : 1));
       setFormKey((k) => k + 1);
       flashSaved();
@@ -716,6 +723,8 @@ export function CardEditor() {
                   <MarkSchemeEditor
                     value={workingSource}
                     onChange={setWorkingSource}
+                    fixtures={workingFixtures}
+                    onFixturesChange={setWorkingFixtures}
                     invalid={shakeField === 'scheme'}
                   />
                 </div>

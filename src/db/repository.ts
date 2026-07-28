@@ -11,6 +11,7 @@ import type {
   Deck,
   Grade,
   ItemPayload,
+  LineVerdict,
   Lesson,
   LessonCardExposure,
   LessonCardLink,
@@ -726,6 +727,7 @@ export interface RecordReviewArgs {
   /** Machine-awarded marks for structured numeric/working items. */
   marksEarned?: number;
   marksAvailable?: number;
+  lineVerdicts?: LineVerdict[];
   now?: number;
 }
 
@@ -773,6 +775,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
       correct,
       marksEarned,
       marksAvailable,
+      lineVerdicts,
     } = args;
     const kind: ReviewUnitKind = args.kind ?? 'deck';
     const now = args.now ?? Date.now();
@@ -823,6 +826,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           hintUsed: hintUsed ?? false,
           marksEarned,
           marksAvailable,
+          lineVerdicts,
           stabilityBefore: cardBefore.stability,
           stabilityAfter: memory.stability,
           difficultyBefore: cardBefore.difficulty,
