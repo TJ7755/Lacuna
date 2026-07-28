@@ -6,6 +6,7 @@ import { ItemStagingReview } from './ItemStagingReview';
 
 const createLessonCard = vi.fn().mockResolvedValue({ id: 'created-card' });
 const notify = vi.fn();
+const writeText = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('../../db/repository', () => ({
   createLessonCard: (...args: unknown[]) => createLessonCard(...args),
@@ -67,6 +68,11 @@ function stage(source: string, cards: Card[] = []) {
 beforeEach(() => {
   createLessonCard.mockClear();
   notify.mockClear();
+  writeText.mockClear();
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText },
+  });
 });
 
 describe('ItemStagingReview', () => {
@@ -100,6 +106,9 @@ describe('ItemStagingReview', () => {
 
     fireEvent.click(within(duplicateRow).getByRole('button', { name: 'Accept' }));
     await waitFor(() => expect(createLessonCard).toHaveBeenCalledTimes(3));
+    expect(
+      within(duplicateRow).getByRole('button', { name: 'Revise with AI' }),
+    ).toBeInTheDocument();
   });
 
   it('revalidates an edited malformed item and supports rejection', () => {
@@ -144,5 +153,33 @@ describe('ItemStagingReview', () => {
 
     expect(within(row).getByText('Valid')).toBeInTheDocument();
     expect(within(row).getByText('1 of 1 fixtures pass')).toBeInTheDocument();
+  });
+
+  it('copies a scoped revision prompt with the failing fixture and complaint', async () => {
+    stage(
+      batch([
+        {
+          kind: 'working',
+          question: 'Calculate revenue',
+          scheme: '[1] revenue :: equals :: 1120',
+          fixtures: [{ studentAnswer: ['1000'], expectedMarks: 1 }],
+        },
+      ]),
+    );
+    const row = screen.getByText('Calculate revenue').closest('article')!;
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Revise with AI' }));
+    fireEvent.change(within(row).getByRole('textbox', { name: 'What should change?' }), {
+      target: { value: 'Accept the correct intermediate quantity.' },
+    });
+    fireEvent.click(within(row).getByRole('button', { name: 'Copy revision prompt' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    const prompt = writeText.mock.calls[0][0] as string;
+    expect(prompt).toContain('Calculate revenue');
+    expect(prompt).toContain('[1] revenue :: equals :: 1120');
+    expect(prompt).toContain('"studentAnswer": [');
+    expect(prompt).toContain('Accept the correct intermediate quantity.');
+    expect(notify).toHaveBeenCalledWith('Revision prompt copied to the clipboard.', 'positive');
   });
 });

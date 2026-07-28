@@ -1159,6 +1159,10 @@ accept one explicitly. Each staged item can be accepted, rejected or edited thro
 answer and mark-scheme controls used by ordinary card authoring, then revalidated by the batch
 parser. Working-item fixtures expose separate sample-answer, expected-marks and note fields; authors
 never need to edit the interchange JSON directly.
+Staged and accepted items can also copy a revision prompt containing the current item, mark scheme,
+first failing fixture, validation feedback and a tutor-written complaint. The model is instructed to
+return one revised item in the ordinary batch delimiters, so the result goes back through the same
+staging validation rather than bypassing it.
 Acceptance calls the ordinary `createLessonCard` path with the compiled structured payload; staging
 has no separate database write path.
 
