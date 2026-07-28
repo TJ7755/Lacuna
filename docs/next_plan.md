@@ -39,6 +39,20 @@ the current implementation and is superseded — no further action needed here.
 Detail rots (the Course plan needed two addenda), so only the most recently delivered arc
 carries full detail. Outline arcs are scoped, not specified.
 
+Known maintenance bug: the seeded Welcome course's bundled SVG assets can render as
+broken images. `prepareSvgAsset` stores a `Blob` even though the asset layer uses raw
+`Uint8Array` bytes to survive IndexedDB structured cloning reliably. Change fresh
+seeding to store bytes, add an asset round-trip/render regression test, and repair or
+backfill incompatible or missing seeded assets in existing Welcome courses. Fixing only
+new installations would leave the current broken cards untouched.
+
+Practice-session continuity bug: answering does advance the non-Simple practice session,
+but replacing the whole card surface while the FSRS objective indicator snaps to its new
+value looks like a page refresh and makes the learner think progress returned to zero.
+Keep the session chrome visually stable, soften the card-to-card transition, and animate
+objective progress from its prior value. Add a browser regression check that the session
+identity and accumulated review state remain mounted across Yes and No answers.
+
 ---
 
 # Arc 0 — Course Architecture Close-out
@@ -2079,6 +2093,17 @@ Target user includes 11+ students. LaTeX is never shown or required.
 - The input parser and the verification engine share one expression representation —
   this is a single investment, not two.
 
+**Numeric-authoring follow-up (not part of slice 1):** make fraction entry cursor-aware
+(or revisit a visual maths field) instead of requiring users to translate the structure
+into slash notation themselves. Compact repeated “One of” rows so each alternative does
+not duplicate a full preview and symbol palette. Extend numeric checking beyond constant
+expressions so equivalent solution statements such as `x = 2`, `2 = x`, and whitespace
+variants collapse to one accepted mathematical answer rather than requiring redundant
+set-membership entries. For algebraic solutions, prefer structured answer templates such
+as `x = [blank]` and an unordered pair of root blanks for quadratics. Decide explicitly
+whether that belongs to the reserved scaffold kind or a multi-field numeric v2; do not
+fake it by asking authors to enumerate equivalent equation spellings.
+
 ## 11.4 Verification engine (pure module, no DB, no React)
 
 `src/items/verify.ts` (name indicative), unit-tested standalone like `forwardSim.ts`:
@@ -2172,6 +2197,31 @@ and remote-server-only, so MCP is the power-user path, not the default):
    broken instead.
 5. **MCP direct** (Arc 2 surface): `lacuna.create_card` grows a payload variant,
    validated at the tool boundary by the same compiler. No new UI.
+
+**Source-file ingestion follow-up.** The batch-authoring notes field currently accepts
+only pasted text. Add a file picker and drop target for `.md`, `.txt`, `.docx`, `.pptx`
+and common image formats, implemented locally rather than uploading source material to a
+Lacuna server. Extend the existing import and asset systems instead of creating another
+file pipeline:
+
+- extract DOCX paragraphs, headings, tables and embedded images in document order;
+- extract PPTX slide titles, body text, speaker notes and embedded images in slide order;
+- reuse the existing content-hashed `ImageAsset` store for extracted and directly uploaded
+  images, with optional on-device OCR only after its bundle size and accuracy are measured;
+- show an extraction preview split into named sections, images and warnings before anything
+  enters a prompt, so a broken table or image-only slide is visible rather than silently lost;
+- keep original files transient by default. A plain-text clipboard prompt cannot transfer
+  binary attachments, so copy explicit attachment names/instructions and let the tutor attach
+  the originals or exported images in their chosen chatbot;
+- validate MIME signatures as well as extensions, cap decompressed OOXML size and image count,
+  reject encrypted/password-protected Office files clearly, and never execute macros or active
+  document content;
+- treat unsupported file types as an explicit parser gap. An indiscriminate “upload any file”
+  control that then guesses at bytes is not support.
+
+Success requires fixtures made from real DOCX/PPTX samples covering headings, tables, speaker
+notes, reordered slides and embedded images, plus a browser test proving that extraction stays
+on-device and that cancelling the preview stores nothing.
 
 Downstream of triage, everything already exists: accepted items join the lesson, Publish
 bumps the revision, students merge through Arc 7 with FSRS state preserved. The pipeline

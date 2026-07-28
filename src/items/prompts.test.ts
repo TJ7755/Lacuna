@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   BATCH_OUTPUT_END,
   BATCH_OUTPUT_START,
-  MAX_BATCH_ITEMS,
   buildBatchGenerationPrompt,
   buildMarkSchemeDraftPrompt,
 } from './prompts';
@@ -35,7 +34,6 @@ describe('batch authoring prompt', () => {
       notes: 'Price rises reduce quantity demanded.',
       topic: 'Demand',
       level: 'A level',
-      itemCount: 8,
     });
 
     expect(prompt).toContain('Price rises reduce quantity demanded.');
@@ -45,19 +43,34 @@ describe('batch authoring prompt', () => {
     expect(prompt).toContain(BATCH_OUTPUT_START);
     expect(prompt).toContain(BATCH_OUTPUT_END);
     expect(prompt).toContain('"fixtures"');
+    expect(prompt).toContain('Every fixture must actually earn its expectedMarks');
+    expect(prompt).toContain('Do not add prose labels or units');
+    expect(prompt).toContain('"studentAnswer": ["100 * 1.4 = 140", "1120"]');
+    expect(prompt).not.toContain('"studentAnswer": ["working line", "4"]');
   });
 
-  it('caps each response and supports explicit continuation rounds', () => {
+  it('injects optional item-count and concept-density constraints without a hard cap', () => {
     const prompt = buildBatchGenerationPrompt({
       notes: 'Notes',
       topic: 'Topic',
       level: 'Level',
-      itemCount: 500,
-      round: 3,
+      maxItems: 500,
+      conceptsPerItem: 2,
     });
 
-    expect(prompt).toContain(`Requested items: ${MAX_BATCH_ITEMS}`);
-    expect(prompt).toContain(`continuation round 3`);
-    expect(prompt).toContain(`next ${MAX_BATCH_ITEMS} items`);
+    expect(prompt).toContain('Requested maximum items: 500');
+    expect(prompt).toContain('Target concept density: 2 atomic concepts per item');
+  });
+
+  it('lets the model choose both constraints', () => {
+    const prompt = buildBatchGenerationPrompt({
+      notes: 'Dense notes',
+      topic: 'Topic',
+      level: 'Level',
+    });
+
+    expect(prompt).toContain('Concepts per item: model-selected');
+    expect(prompt).toContain('Requested maximum items: model-selected');
+    expect(prompt).not.toContain('Never return more than');
   });
 });

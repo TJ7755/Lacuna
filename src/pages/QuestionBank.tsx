@@ -175,7 +175,10 @@ export function QuestionBank() {
       <AnimatePresence>
         {showBatchPrompt && (
           <BatchAuthoringPromptDialog
+            courseId={course.id}
             courseName={course.name}
+            lessons={lessons}
+            cards={cards}
             onClose={() => setShowBatchPrompt(false)}
           />
         )}
