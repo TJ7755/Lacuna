@@ -125,7 +125,6 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
-        lessonName="Cells"
         lessonCards={[]}
         lessonDeck={undefined}
         onNavigate={vi.fn()}
@@ -141,7 +140,6 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
-        lessonName="Cells"
         lessonCards={[card]}
         lessonDeck={deck}
         onNavigate={vi.fn()}
@@ -155,11 +153,11 @@ describe('LessonCardsSection', () => {
   it('warns before unlinking a card with lesson-specific teaching progress', async () => {
     mockLinks = [{ id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1 }];
     mockGetExposure.mockResolvedValue({ lessonId: 'lesson-1', cardId: card.id, taughtAt: 1 });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     render(
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
-        lessonName="Cells"
         lessonCards={[card]}
         lessonDeck={deck}
         onNavigate={vi.fn()}
@@ -167,11 +165,9 @@ describe('LessonCardsSection', () => {
     );
 
     fireEvent.click(screen.getByText('Remove linked card'));
-    await waitFor(() => expect(screen.getByText('Remove card from this lesson?')).toBeInTheDocument());
+    await waitFor(() => expect(confirm).toHaveBeenCalledOnce());
     expect(mockUnlink).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByText('Remove'));
-    await waitFor(() => expect(mockUnlink).toHaveBeenCalledOnce());
+    confirm.mockRestore();
   });
 
   it('withholds card controls until linked membership has loaded', () => {
@@ -180,7 +176,6 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
-        lessonName="Cells"
         lessonCards={[card]}
         lessonDeck={deck}
         onNavigate={vi.fn()}
@@ -200,7 +195,6 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
-        lessonName="Cells"
         lessonCards={[]}
         lessonDeck={undefined}
         onNavigate={vi.fn()}

@@ -110,11 +110,9 @@ function renderNew() {
   );
 }
 
-function renderEdit(state?: unknown) {
+function renderEdit() {
   return render(
-    <MemoryRouter
-      initialEntries={[{ pathname: '/course/course-1/sequence/seq-1/edit', state }]}
-    >
+    <MemoryRouter initialEntries={['/course/course-1/sequence/seq-1/edit']}>
       <Routes>
         <Route path="/course/:courseId/sequence/:sequenceId/edit" element={<SequenceEditor />} />
       </Routes>
@@ -435,40 +433,6 @@ describe('SequenceEditor', () => {
     });
   });
 
-  describe('return-to-origin back-link', () => {
-    const editingSequence: Sequence = {
-      id: 'seq-1',
-      courseId: 'course-1',
-      primaryLessonId: 'lesson-1',
-      name: 'Scene one',
-      items: [{ id: 'item-1', value: 'Indeed I am.' }],
-      cueWindow: 2,
-      createdAt: Date.now(),
-    };
-
-    // Sequences have no lesson-scoped edit route, so the URL alone never signals a
-    // lesson origin — the caller must pass it via router state (see LessonCardsSection).
-    it('targets the lesson passed via router state when editing was opened from a lesson', () => {
-      mockCourse = course;
-      mockSequence = editingSequence;
-      renderEdit({ origin: { path: '/course/course-1/lesson/lesson-1', label: 'Cells' } });
-
-      const link = screen.getByRole('link', { name: 'Cells' });
-      expect(link).toHaveAttribute('href', '/course/course-1/lesson/lesson-1');
-    });
-
-    // A hard refresh drops router state entirely — the back-link must still land
-    // somewhere sensible (the course bank) rather than erroring.
-    it('falls back to the course bank when no origin state is present', () => {
-      mockCourse = course;
-      mockSequence = editingSequence;
-      renderEdit();
-
-      const link = screen.getByRole('link', { name: 'Question bank' });
-      expect(link).toHaveAttribute('href', '/course/course-1/bank');
-    });
-  });
-
   describe('re-pasting a script while editing', () => {
     const editingSequence: Sequence = {
       id: 'seq-1',
@@ -485,27 +449,28 @@ describe('SequenceEditor', () => {
     it('warns before opening the paste modal when the sequence already has items, and cancelling keeps it closed', () => {
       mockCourse = course;
       mockSequence = editingSequence;
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
       renderEdit();
 
       fireEvent.click(screen.getByText('Paste script…'));
 
-      const warning = screen.getByText(/reset study progress/i);
-      expect(warning).toBeInTheDocument();
+      expect(confirmSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/reset study progress/i),
+      );
       expect(screen.queryByLabelText('Paste script')).not.toBeInTheDocument();
-
-      fireEvent.click(warning.parentElement!.querySelector('button:last-of-type')!);
-      expect(screen.getByText('Paste script…')).toBeInTheDocument();
+      confirmSpy.mockRestore();
     });
 
     it('opens the paste modal once the warning is confirmed', () => {
       mockCourse = course;
       mockSequence = editingSequence;
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       renderEdit();
 
       fireEvent.click(screen.getByText('Paste script…'));
-      fireEvent.click(screen.getByText('Replace'));
 
       expect(screen.getByLabelText('Paste script')).toBeInTheDocument();
+      confirmSpy.mockRestore();
     });
   });
 });

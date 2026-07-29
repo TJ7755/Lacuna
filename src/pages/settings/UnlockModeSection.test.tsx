@@ -9,9 +9,7 @@ describe('UnlockModeSection', () => {
         unlockMode="open"
         onUnlockModeChange={vi.fn()}
         linearCadence={{ anchorDate: Date.now(), intervalDays: 7 }}
-        onAnchorDateChange={vi.fn()}
-        onIntervalDaysChange={vi.fn()}
-        onIntervalDaysBlur={vi.fn()}
+        onLinearCadenceChange={vi.fn()}
       />,
     );
     expect(screen.getByText('Open')).toBeInTheDocument();
@@ -26,9 +24,7 @@ describe('UnlockModeSection', () => {
         unlockMode="linear"
         onUnlockModeChange={vi.fn()}
         linearCadence={{ anchorDate: Date.now(), intervalDays: 7 }}
-        onAnchorDateChange={vi.fn()}
-        onIntervalDaysChange={vi.fn()}
-        onIntervalDaysBlur={vi.fn()}
+        onLinearCadenceChange={vi.fn()}
       />,
     );
     expect(screen.getByText('Days between lessons')).toBeInTheDocument();

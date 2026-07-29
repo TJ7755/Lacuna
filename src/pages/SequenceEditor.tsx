@@ -7,12 +7,10 @@
 // and the lesson-scoped course/:courseId/lesson/:lessonId/sequence/new variant.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
-import { ConfirmInline } from '../components/ui/ConfirmInline';
-import { Select } from '../components/ui/Select';
 import { useToast } from '../components/ui/Toast';
 import { DangerZoneSection } from './settings/DangerZoneSection';
 import { SequenceItemRow } from '../components/sequences/SequenceItemRow';
@@ -31,7 +29,6 @@ import {
   updateSequence,
   type SequenceSnapshot,
 } from '../db/repository';
-import type { EditorOriginState } from '../utils/editorOrigin';
 import type { SequenceItem, SequencePresetId } from '../db/types';
 
 export function SequenceEditor() {
@@ -42,7 +39,6 @@ export function SequenceEditor() {
   }>();
   const lessonMode = Boolean(lessonId);
   const navigate = useNavigate();
-  const location = useLocation();
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -59,7 +55,6 @@ export function SequenceEditor() {
   const [presetId, setPresetId] = useState<SequencePresetId>('list');
   const [mySpeaker, setMySpeaker] = useState('');
   const [showScriptPaste, setShowScriptPaste] = useState(false);
-  const [confirmingPasteScript, setConfirmingPasteScript] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [invalidItems, setInvalidItems] = useState<Set<string>>(() => new Set());
@@ -108,13 +103,7 @@ export function SequenceEditor() {
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/bank`;
-  // Where the caller navigated from, when that differs from what the route alone
-  // implies. Sequence editing has no lesson-scoped edit route (only "new" does),
-  // so origin state is the only signal that an edit was opened from a lesson —
-  // absent on direct loads and hard refreshes, which fall back to the bank.
-  const origin = (location.state as EditorOriginState | null)?.origin;
-  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
-  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Question bank');
+  const backPath = lessonMode ? lessonPath : bankPath;
 
   // Distinct speakers seen across items, in order of first appearance, for the
   // "my speaker" picker — populated by whichever items already carry a speaker,
@@ -204,7 +193,7 @@ export function SequenceEditor() {
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">
         <p className="mb-4 text-ink-soft">This sequence could not be found.</p>
         <Link to={backPath} className="text-accent underline">
-          Back to {backLabel}
+          Back to {lessonMode ? lesson?.name : 'Question bank'}
         </Link>
       </motion.div>
     );
@@ -298,15 +287,15 @@ export function SequenceEditor() {
     // Re-pasting a script while editing replaces the whole item list with fresh
     // ids, so saving treats every existing card as delete+create and wipes its
     // FSRS study progress. Warn before opening the modal when that's at stake.
-    if (editing && items.length > 0) {
-      setConfirmingPasteScript(true);
+    if (
+      editing &&
+      items.length > 0 &&
+      !window.confirm(
+        'Replacing the script will reset study progress for this sequence’s cards. Continue?',
+      )
+    ) {
       return;
     }
-    setShowScriptPaste(true);
-  }
-
-  function confirmPasteScript() {
-    setConfirmingPasteScript(false);
     setShowScriptPaste(true);
   }
 
@@ -345,7 +334,7 @@ export function SequenceEditor() {
         </Link>
         <ChevronRight />
         <Link to={backPath} className="transition-colors hover:text-ink">
-          {backLabel}
+          {lessonMode ? lesson?.name : 'Question bank'}
         </Link>
         <ChevronRight />
         <span className="text-ink-soft">{editing ? 'Edit sequence' : 'New sequence'}</span>
@@ -509,10 +498,10 @@ export function SequenceEditor() {
             {usesSpeakers && (
               <label className="flex items-center gap-2 text-sm text-ink-soft">
                 My speaker
-                <Select
+                <select
                   value={mySpeaker}
                   onChange={(e) => setMySpeaker(e.target.value)}
-                  className="min-w-[8rem]"
+                  className="min-w-[8rem] rounded-lg border border-line bg-transparent px-2 py-1 outline-none focus:border-accent"
                 >
                   <option value="">Choose…</option>
                   {speakers.map((speaker) => (
@@ -523,7 +512,7 @@ export function SequenceEditor() {
                   {mySpeaker && !speakers.includes(mySpeaker) && (
                     <option value={mySpeaker}>{mySpeaker}</option>
                   )}
-                </Select>
+                </select>
                 <span className="text-ink-faint">— only these lines get recall cards</span>
               </label>
             )}
@@ -536,19 +525,11 @@ export function SequenceEditor() {
                 {preset.terminology.itemPlural} <span className="text-ink-faint/70">({items.length})</span>
               </div>
               <div className="flex items-center gap-3">
-                {usesSpeakers &&
-                  (confirmingPasteScript ? (
-                    <ConfirmInline
-                      message="Reset study progress?"
-                      confirmLabel="Replace"
-                      onConfirm={confirmPasteScript}
-                      onCancel={() => setConfirmingPasteScript(false)}
-                    />
-                  ) : (
-                    <Button variant="ghost" size="sm" onClick={handlePasteScriptClick}>
-                      Paste script&hellip;
-                    </Button>
-                  ))}
+                {usesSpeakers && (
+                  <Button variant="ghost" size="sm" onClick={handlePasteScriptClick}>
+                    Paste script&hellip;
+                  </Button>
+                )}
                 <span className="text-xs text-ink-faint">
                   Ctrl/Cmd+Enter adds the next {preset.terminology.item}
                 </span>
@@ -609,7 +590,7 @@ export function SequenceEditor() {
                 className={cn(
                   'rounded-full px-3 py-1 text-sm font-medium',
                   preview.length > 30
-                    ? 'bg-warning/10 text-warning-fg'
+                    ? 'bg-amber-500/10 text-amber-600'
                     : 'bg-accent-soft text-accent',
                 )}
               >

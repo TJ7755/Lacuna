@@ -3,7 +3,7 @@ import { computeCourseSummaries } from './useCourseData';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
-import type { Card, Course, CourseAssessment, Lesson, ReviewLog } from '../db/types';
+import type { Card, Course, CourseExamDate, Lesson, ReviewLog } from '../db/types';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers
@@ -180,17 +180,13 @@ describe('computeCourseSummaries', () => {
         due: now,
       }),
     ];
-    const examDates: CourseAssessment[] = [
+    const examDates: CourseExamDate[] = [
       {
         id: 'near-exam',
         courseId: 'c1',
         name: 'Near checkpoint',
-        kind: 'checkpoint',
         examDate: now + 2 * MS_PER_DAY,
-        coverageMode: 'custom',
         lessonIds: ['near'],
-        afterLessonId: 'near',
-        excludedCardIds: [],
         createdAt: 0,
       },
     ];

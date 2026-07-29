@@ -17,7 +17,6 @@ module.exports = {
       './tsconfig.app.json',
       './electron/tsconfig.json',
       './electron/tsconfig.preload.json',
-      './electron/tsconfig.mcp.json',
     ],
   },
   plugins: ['@typescript-eslint', 'react', 'react-hooks'],

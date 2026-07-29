@@ -7,21 +7,9 @@ import { initAutoUpdater } from './updater.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// electron/mcp/server.ts is built separately (esbuild, see electron/mcp/build.mjs) rather
-// than by this file's own `tsc -p electron/tsconfig.json` project — see that file's build
-// comment for why. Typed loosely at this boundary via a local interface rather than a
-// static import, so main.ts's own tsc project does not need to resolve the mcp/ module
-// graph; `bun run typecheck:electron` type-checks electron/mcp/ separately.
-interface McpServerModule {
-  startMcpServer: (getWindow: () => BrowserWindow | null) => Promise<void>;
-  stopMcpServer: () => Promise<void>;
-  getMcpStatus: () => { running: boolean; toolCount: number; toolSurfaceVersion: number };
-}
-
 const isDev = !app.isPackaged;
 const VITE_DEV_URL = 'http://localhost:5173';
 let mainWindow: BrowserWindow | null = null;
-let mcpModule: McpServerModule | null = null;
 
 // ---------------------------------------------------------------------------
 // Window state persistence
@@ -300,7 +288,7 @@ if (!gotTheLock) {
     }
   });
 
-  void app.whenReady().then(async () => {
+  void app.whenReady().then(() => {
     installSecurityHeaders();
 
     if (!isDev) {
@@ -333,37 +321,9 @@ if (!gotTheLock) {
     ipcMain.handle('window:isMaximized', () => {
       return mainWindow?.isMaximized() ?? false;
     });
-
-    // Starts the stdio MCP server unconditionally alongside the window (Arc 2 §2.6): the
-    // single-instance lock above already guarantees at most one main-process instance, so
-    // at most one stdio server ever runs. See electron/mcp/server.ts's module doc comment
-    // for the invocation command and the stdout-corruption mitigation.
-    //
-    // The specifier is built from a variable, not a string literal, so tsc does not
-    // statically resolve and pull electron/mcp/server.ts (and, transitively, the whole
-    // src/mcp/registry.ts module graph) into *this* project's program — that graph is
-    // type-checked separately by tsc -p electron/tsconfig.mcp.json, which resolves it the
-    // way the rest of src/ does (see that file's build comment). A literal specifier here
-    // would drag those files under this project's NodeNext resolution and rootDir instead.
-    const mcpServerModulePath = './mcp/server.js';
-    const mcp = (await import(mcpServerModulePath)) as McpServerModule;
-    mcpModule = mcp;
-    await mcp.startMcpServer(() => mainWindow);
-
-    ipcMain.handle('mcp:status', (event) => {
-      if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed() ||
-        event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) {
-        throw new Error('Untrusted MCP status request.');
-      }
-      return mcpModule?.getMcpStatus() ?? { running: false, toolCount: 0, toolSurfaceVersion: 0 };
-    });
   });
 }
 
 app.on('window-all-closed', () => {
   app.quit();
-});
-
-app.on('before-quit', () => {
-  void mcpModule?.stopMcpServer();
 });

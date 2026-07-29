@@ -10,7 +10,6 @@ import { useState } from 'react';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
-import { ConfirmInline } from '../ui/ConfirmInline';
 import { useToast } from '../ui/Toast';
 import { CloseIcon } from '../ui/icons';
 import { createPracticeNode, updatePracticeNode, deletePracticeNode } from '../../db/repository';
@@ -47,7 +46,6 @@ export function PracticeNodeEditor({
     node ? draftFromPracticeNode(node) : emptyPracticeNodeDraft(defaultPosition),
   );
   const [saving, setSaving] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -73,11 +71,11 @@ export function PracticeNodeEditor({
 
   async function handleDelete() {
     if (!node) return;
+    if (!window.confirm(`Delete '${node.name}'? This cannot be undone.`)) return;
     try {
       await deletePracticeNode(node.id);
       onSaved();
     } catch (err) {
-      setConfirmingDelete(false);
       notify(err instanceof Error ? err.message : 'Could not delete the practice node.', 'negative');
     }
   }
@@ -130,17 +128,9 @@ export function PracticeNodeEditor({
 
         <footer className="flex items-center justify-between gap-3 border-t border-line px-6 py-4">
           {node ? (
-            confirmingDelete ? (
-              <ConfirmInline
-                message="Delete?"
-                onConfirm={() => void handleDelete()}
-                onCancel={() => setConfirmingDelete(false)}
-              />
-            ) : (
-              <Button variant="danger" size="sm" onClick={() => setConfirmingDelete(true)}>
-                Delete
-              </Button>
-            )
+            <Button variant="danger" size="sm" onClick={() => void handleDelete()}>
+              Delete
+            </Button>
           ) : (
             <span />
           )}

@@ -1,13 +1,13 @@
 import { m as motion } from 'motion/react';
 import { cn } from './cn';
 
-export type ProgressVariant = 'accent' | 'positive' | 'negative' | 'warning' | 'simple';
+export type ProgressVariant = 'accent' | 'positive' | 'negative' | 'amber' | 'simple';
 
 const variantClass: Record<ProgressVariant, string> = {
   accent: 'bg-accent',
   positive: 'bg-positive',
   negative: 'bg-negative',
-  warning: 'bg-warning',
+  amber: 'bg-amber-500',
   simple: 'bg-positive',
 };
 

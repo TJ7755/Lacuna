@@ -23,7 +23,6 @@ let mockCourseDashboardData: unknown = undefined;
 
 vi.mock('../state/useCourseData', () => ({
   useCourseDashboardData: () => mockCourseDashboardData,
-  usePendingUpdateCourseIds: () => new Set<string>(),
 }));
 
 vi.mock('../state/motionSpeed', () => ({
@@ -32,16 +31,9 @@ vi.mock('../state/motionSpeed', () => ({
 }));
 
 vi.mock('../components/ui/icons', () => ({
-  ChevronRightIcon: () => <svg data-testid="chevron-right-icon" />,
   LacunaIcon: () => <svg data-testid="lacuna-icon" />,
   PlayIcon: () => <svg data-testid="play-icon" />,
   PlusIcon: () => <svg data-testid="plus-icon" />,
-}));
-
-let mockActiveFlow: { courseId: string } | null = null;
-
-vi.mock('../state/activeStudyFlow', () => ({
-  readActiveStudyFlow: () => mockActiveFlow,
 }));
 
 vi.mock('../components/course/NewCourseForm', () => ({
@@ -78,36 +70,29 @@ vi.mock('../components/course/CourseCard', () => ({
   CourseCard: ({
     course,
     onClick,
-    onStudy,
     onArchiveMenu,
   }: {
     course: Course;
     onClick: () => void;
-    onStudy: () => void;
     onArchiveMenu?: (position: { x: number; y: number }, trigger: HTMLButtonElement) => void;
   }) => (
-    <div>
-      <button
-        type="button"
-        onClick={onClick}
-        onContextMenu={(event) => {
+    <button
+      type="button"
+      onClick={onClick}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onArchiveMenu?.({ x: event.clientX, y: event.clientY }, event.currentTarget);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
           event.preventDefault();
-          onArchiveMenu?.({ x: event.clientX, y: event.clientY }, event.currentTarget);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
-            event.preventDefault();
-            onArchiveMenu?.({ x: 10, y: 10 }, event.currentTarget);
-          }
-        }}
-        data-testid="course-card"
-      >
-        {course.name}
-      </button>
-      <button type="button" onClick={onStudy} data-testid={`study-${course.id}`}>
-        Study
-      </button>
-    </div>
+          onArchiveMenu?.({ x: 10, y: 10 }, event.currentTarget);
+        }
+      }}
+      data-testid="course-card"
+    >
+      {course.name}
+    </button>
   ),
 }));
 
@@ -164,7 +149,6 @@ beforeEach(() => {
   mockUpdateCourse.mockResolvedValue(undefined);
   mockNotify.mockReset();
   mockCourseDashboardData = undefined;
-  mockActiveFlow = null;
 });
 
 function setCourseData(courses: Course[] = [mockCourse]) {
@@ -221,45 +205,6 @@ describe('Dashboard', () => {
     render(<Dashboard />);
     fireEvent.click(screen.getByTestId('course-card'));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1');
-  });
-
-  it('navigates to the course study flow when the Study action is used', () => {
-    mockCourseDashboardData = {
-      courses: [mockCourse],
-      lessons: [],
-      allCards: [],
-      summaries: {},
-      stats: { reviewedToday: 0, streak: 0, forecast: [] },
-    };
-    render(<Dashboard />);
-    fireEvent.click(screen.getByTestId('study-course-1'));
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study');
-  });
-
-  it('shows a resume banner for an active study flow and navigates on click', () => {
-    mockActiveFlow = { courseId: 'course-1' };
-    mockCourseDashboardData = {
-      courses: [mockCourse],
-      lessons: [],
-      allCards: [],
-      summaries: {},
-      stats: { reviewedToday: 0, streak: 0, forecast: [] },
-    };
-    render(<Dashboard />);
-    fireEvent.click(screen.getByText('Resume study flow'));
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study');
-  });
-
-  it('does not show a resume banner when there is no active study flow', () => {
-    mockCourseDashboardData = {
-      courses: [mockCourse],
-      lessons: [],
-      allCards: [],
-      summaries: {},
-      stats: { reviewedToday: 0, streak: 0, forecast: [] },
-    };
-    render(<Dashboard />);
-    expect(screen.queryByText('Resume study flow')).not.toBeInTheDocument();
   });
 
   it('shows page heading', () => {
@@ -362,16 +307,12 @@ describe('Dashboard', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Archive' }));
     fireEvent.click(screen.getByRole('button', { name: 'Archive course' }));
 
-    await waitFor(() =>
-      expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: true }),
-    );
-    await waitFor(() =>
-      expect(mockNotify).toHaveBeenCalledWith(
-        'Test Course archived',
-        'positive',
-        expect.objectContaining({ actionLabel: 'Undo' }),
-      ),
-    );
+    await waitFor(() => expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: true }));
+    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith(
+      'Test Course archived',
+      'positive',
+      expect.objectContaining({ actionLabel: 'Undo' }),
+    ));
 
     setCourseData([{ ...mockCourse, archived: true }]);
     rerender(<Dashboard />);
@@ -379,9 +320,7 @@ describe('Dashboard', () => {
 
     const options = mockNotify.mock.calls[0][2] as { onAction: () => void };
     options.onAction();
-    await waitFor(() =>
-      expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: false }),
-    );
+    await waitFor(() => expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: false }));
   });
 
   it('keeps the confirmation open and reports an archive failure', async () => {

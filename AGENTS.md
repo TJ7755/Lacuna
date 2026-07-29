@@ -22,7 +22,7 @@
 9. **No TODOs, placeholders, mock data, or stubs** unless explicitly requested.
 10. **Do not remove comments** unless incorrect, obsolete, or superseded. Update outdated comments rather than deleting them.
 11. **Fix incidental bugs** you find, even if it costs time. Mention each one, and commit it separately from the main task.
-12. **Update documentation** (docs/SPEC.md, README.md, etc.) after any meaningful change. If the relevant documentation does not exist, ignore this.
+12. **Update documentation** (SPEC.md, README.md, etc.) after any meaningful change. If the relevant documentation does not exist, ignore this.
 13. **UI changes must look native** — beautiful, seamless, never bolted on. Use the frontend-design skill and its principles. Keep user-facing text minimal and intentional; no cringe or design-commentary copy.
 14. **Avoid unnecessary dependencies.**
 

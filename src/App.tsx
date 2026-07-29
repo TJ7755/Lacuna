@@ -18,7 +18,6 @@ import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
 import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
-import { McpBridgeController } from './components/mcp/McpBridgeController';
 
 function RouterWithQuotaWarning() {
   useStorageQuotaWarning();
@@ -32,9 +31,16 @@ const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m
 const SearchPage = lazy(() =>
   import('./pages/SearchPage').then((m) => ({ default: m.SearchPage })),
 );
-const SharePage = lazy(() => import('./pages/SharePage').then((m) => ({ default: m.SharePage })));
-const Analytics = lazy(() => import('./pages/Analytics').then((m) => ({ default: m.Analytics })));
+const SharePage = lazy(() =>
+  import('./pages/SharePage').then((m) => ({ default: m.SharePage })),
+);
+const Analytics = lazy(() =>
+  import('./pages/Analytics').then((m) => ({ default: m.Analytics })),
+);
 const HelpPage = lazy(() => import('./pages/HelpPage').then((m) => ({ default: m.HelpPage })));
+const StudyToday = lazy(() =>
+  import('./pages/StudyToday').then((m) => ({ default: m.StudyToday })),
+);
 const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default: m.LearnMode })));
 const CourseStudyFlow = lazy(() =>
   import('./pages/CourseStudyFlow').then((m) => ({ default: m.CourseStudyFlow })),
@@ -60,11 +66,7 @@ const LessonView = lazy(() =>
 const QuestionBank = lazy(() =>
   import('./pages/QuestionBank').then((m) => ({ default: m.QuestionBank })),
 );
-const MergeReviewPanel = lazy(() =>
-  import('./components/import/MergeReviewPanel').then((m) => ({ default: m.MergeReviewPanel })),
-);
 const Welcome = lazy(() => import('./pages/Welcome').then((m) => ({ default: m.Welcome })));
-const Method = lazy(() => import('./pages/Method').then((m) => ({ default: m.Method })));
 
 function RouteFallback() {
   return (
@@ -135,7 +137,11 @@ const router = createHashRouter([
           },
           {
             path: 'study',
-            element: <Navigate to="/" replace />,
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <StudyToday />
+              </Suspense>
+            ),
           },
           {
             path: 'course/:courseId',
@@ -194,14 +200,6 @@ const router = createHashRouter([
             ),
           },
           {
-            path: 'course/:courseId/updates',
-            element: (
-              <Suspense fallback={<RouteFallback />}>
-                <MergeReviewPanel />
-              </Suspense>
-            ),
-          },
-          {
             path: 'course/:courseId/lesson/:lessonId/cards/new',
             element: (
               <Suspense fallback={<RouteFallback />}>
@@ -250,17 +248,6 @@ const router = createHashRouter([
           <ErrorBoundary label="the landing page">
             <Suspense fallback={<RouteFallback />}>
               <Welcome />
-            </Suspense>
-          </ErrorBoundary>
-        ),
-      },
-      {
-        // The technical account belongs to the landing page, outside the app shell.
-        path: '/method',
-        element: (
-          <ErrorBoundary label="the technical account">
-            <Suspense fallback={<RouteFallback />}>
-              <Method />
             </Suspense>
           </ErrorBoundary>
         ),
@@ -450,7 +437,6 @@ export function App() {
         <AccentProvider>
           <FontScaleProvider>
             <ToastProvider>
-              {window.electronAPI?.isElectron && <McpBridgeController />}
               <RouterWithQuotaWarning />
               <LandingTransition />
             </ToastProvider>

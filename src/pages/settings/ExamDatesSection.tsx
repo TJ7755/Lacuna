@@ -1,199 +1,171 @@
-import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
-import {
-  AssessmentEditor,
-  assessmentChanges,
-  assessmentDraftIsSaveable,
-  draftFromAssessment,
-  emptyAssessmentDraft,
-  type AssessmentDraft,
-} from '../../components/course/AssessmentEditor';
 import { Button } from '../../components/ui/Button';
-import { ConfirmInline } from '../../components/ui/ConfirmInline';
-import { EditIcon, PlusIcon, TrashIcon } from '../../components/ui/icons';
-import { useToast } from '../../components/ui/Toast';
-import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
-import {
-  createCourseAssessment,
-  deleteCourseAssessment,
-  updateCourseAssessment,
-} from '../../db/repository';
-import { db } from '../../db/schema';
-import type { CourseAssessment } from '../../db/types';
-import { useCourseAssessments, useCourseCards, useLessons } from '../../state/useCourseData';
+import { DateTimePicker } from '../../components/ui/DateTimePicker';
+import { TrashIcon, EditIcon, PlusIcon } from '../../components/ui/icons';
 import { formatDateTime } from '../../utils/datetime';
+import { useCourseExamDates, useLessons } from '../../state/useCourseData';
+import {
+  createCourseExamDate,
+  updateCourseExamDate,
+  deleteCourseExamDate,
+} from '../../db/repository';
 
 export interface ExamDatesSectionProps {
   courseId: string;
   timeZone?: string;
 }
 
+interface DraftExamDate {
+  name: string;
+  examDate: number;
+  lessonIds?: string[];
+}
+
+const EMPTY_DRAFT = (): DraftExamDate => ({ name: '', examDate: Date.now(), lessonIds: undefined });
+
+/**
+ * Course-only exam-date management: the extra assessment dates and lesson-scoped
+ * checkpoints (`CourseExamDate[]`) the FSRS scheduler targets alongside the course's
+ * primary exam date. Reads via `useCourseExamDates`/`useLessons`, writes directly to
+ * the repository (no data lives in this component's own state beyond the add/edit form).
+ */
 export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) {
-  const assessments = useCourseAssessments(courseId);
+  const examDates = useCourseExamDates(courseId);
   const lessons = useLessons(courseId);
-  const cards = useCourseCards(courseId);
-  const lessonIds = (lessons ?? []).map((lesson) => lesson.id);
-  const links = useLiveQuery(
-    () => (lessonIds.length ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : []),
-    [lessonIds.join(',')],
-  );
-  const { notify } = useToast();
   const [editingId, setEditingId] = useState<string | 'new' | null>(null);
-  const [draft, setDraft] = useState<AssessmentDraft>();
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const loaded = assessments && lessons && cards && links;
+  const [draft, setDraft] = useState<DraftExamDate>(EMPTY_DRAFT());
 
   function startAdd() {
-    if (!lessons) return;
-    setDraft(emptyAssessmentDraft(lessons, timeZone));
+    setDraft(EMPTY_DRAFT());
     setEditingId('new');
   }
 
-  function startEdit(assessment: CourseAssessment) {
-    setDraft(draftFromAssessment(assessment));
-    setEditingId(assessment.id);
+  function startEdit(id: string) {
+    const existing = examDates?.find((d) => d.id === id);
+    if (!existing) return;
+    setDraft({ name: existing.name, examDate: existing.examDate, lessonIds: existing.lessonIds });
+    setEditingId(id);
   }
 
   function cancel() {
     setEditingId(null);
-    setDraft(undefined);
+    setDraft(EMPTY_DRAFT());
   }
 
   async function save() {
-    if (!draft || !loaded) return;
-    const changes = assessmentChanges(draft);
-    try {
-      if (editingId === 'new') {
-        const { name, examDate, ...options } = changes;
-        await createCourseAssessment(
-          courseId,
-          name ?? 'Untitled assessment',
-          examDate ?? draft.examDate,
-          options,
-        );
-      } else if (editingId) {
-        await updateCourseAssessment(editingId, changes);
-      }
-      cancel();
-    } catch (error) {
-      notify(error instanceof Error ? error.message : 'Could not save the assessment.', 'negative');
+    const name = draft.name.trim() || 'Untitled date';
+    if (editingId === 'new') {
+      await createCourseExamDate(courseId, name, draft.examDate, { lessonIds: draft.lessonIds });
+    } else if (editingId) {
+      await updateCourseExamDate(editingId, {
+        name,
+        examDate: draft.examDate,
+        lessonIds: draft.lessonIds,
+      });
     }
+    cancel();
   }
 
-  async function remove(id: string) {
-    try {
-      await deleteCourseAssessment(id);
-      if (editingId === id) cancel();
-      setConfirmDeleteId(null);
-    } catch (error) {
-      notify(error instanceof Error ? error.message : 'Could not delete the assessment.', 'negative');
-    }
+  async function remove(id: string, name: string) {
+    if (!window.confirm(`Delete '${name}'? This cannot be undone.`)) return;
+    await deleteCourseExamDate(id);
+    if (editingId === id) cancel();
+  }
+
+  function toggleLesson(lessonId: string) {
+    setDraft((d) => {
+      const current = d.lessonIds ?? [];
+      const next = current.includes(lessonId)
+        ? current.filter((id) => id !== lessonId)
+        : [...current, lessonId];
+      return { ...d, lessonIds: next.length > 0 ? next : undefined };
+    });
   }
 
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-ink-faint">
-        Place assessments on the path, then choose everything taught so far or an explicit set of
-        lessons. Assessments never lock later lessons.
+        Extra assessment dates the scheduler can target instead of the primary exam date.
+        Scope one to specific lessons to create a checkpoint (e.g. a mock exam covering
+        only the lessons taught so far); leave it unscoped to cover every lesson to date.
       </p>
 
-      {loaded &&
-        assessments.map((assessment) => {
-          const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links);
-          return (
-            <div
-              key={assessment.id}
-              className="flex items-start justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm text-ink">
-                  <span>{assessment.name}</span>
-                  {assessment.kind === 'final' && (
-                    <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[0.65rem] text-accent">
-                      Final
-                    </span>
-                  )}
-                </div>
-                <div className="mt-0.5 text-xs text-ink-faint">
-                  {formatDateTime(assessment.examDate, assessment.timeZone ?? timeZone)} ·{' '}
-                  {resolved.coveredLessons.length} lesson
-                  {resolved.coveredLessons.length === 1 ? '' : 's'} · {resolved.cards.length} card
-                  {resolved.cards.length === 1 ? '' : 's'}
-                </div>
-                {resolved.validation.needsAuthorConfirmation && (
-                  <div className="mt-1 text-xs text-negative">Needs author review</div>
-                )}
-              </div>
-              <div className="flex shrink-0 gap-1">
-                {confirmDeleteId === assessment.id ? (
-                  <ConfirmInline
-                    message="Delete?"
-                    onConfirm={() => void remove(assessment.id)}
-                    onCancel={() => setConfirmDeleteId(null)}
-                  />
-                ) : (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => startEdit(assessment)}
-                      aria-label={`Edit ${assessment.name}`}
-                    >
-                      <EditIcon width={16} height={16} />
-                    </Button>
-                    {assessment.kind === 'checkpoint' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setConfirmDeleteId(assessment.id)}
-                        aria-label={`Delete ${assessment.name}`}
-                      >
-                        <TrashIcon width={16} height={16} />
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
+      {examDates?.map((entry) => (
+        <div
+          key={entry.id}
+          className="flex items-start justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3"
+        >
+          <div className="min-w-0">
+            <div className="text-sm text-ink">{entry.name}</div>
+            <div className="mt-0.5 text-xs text-ink-faint">
+              {formatDateTime(entry.examDate, timeZone)}
+              {entry.lessonIds && entry.lessonIds.length > 0
+                ? ` · checkpoint (${entry.lessonIds.length} lesson${entry.lessonIds.length === 1 ? '' : 's'})`
+                : ''}
             </div>
-          );
-        })}
+          </div>
+          <div className="flex shrink-0 gap-1">
+            <Button variant="ghost" size="sm" onClick={() => startEdit(entry.id)} aria-label={`Edit ${entry.name}`}>
+              <EditIcon width={16} height={16} />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => void remove(entry.id, entry.name)} aria-label={`Delete ${entry.name}`}>
+              <TrashIcon width={16} height={16} />
+            </Button>
+          </div>
+        </div>
+      ))}
 
-      {editingId && draft && loaded ? (
-        <div className="flex flex-col gap-4 rounded-lg border border-line-strong bg-surface px-4 py-4">
-          <AssessmentEditor
-            courseId={courseId}
-            kind={
-              editingId === 'new'
-                ? 'checkpoint'
-                : (assessments.find((assessment) => assessment.id === editingId)?.kind ??
-                  'checkpoint')
-            }
-            draft={draft}
-            onChange={setDraft}
-            lessons={lessons}
-            cards={cards}
-            links={links}
+      {editingId ? (
+        <div className="flex flex-col gap-3 rounded-lg border border-line-strong bg-surface px-4 py-3">
+          <label className="block text-sm text-ink-soft">
+            Name
+            <input
+              value={draft.name}
+              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+              placeholder="e.g. Mock exam"
+              className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+            />
+          </label>
+
+          <DateTimePicker
+            value={draft.examDate}
+            onChange={(ms) => setDraft((d) => ({ ...d, examDate: ms }))}
             timeZone={timeZone}
+            label="Date and time"
           />
+
+          {lessons && lessons.length > 0 && (
+            <div className="block text-sm text-ink-soft">
+              <div className="mb-2">Scope to lessons (optional)</div>
+              <div className="flex flex-wrap gap-2">
+                {lessons.map((lesson) => {
+                  const active = draft.lessonIds?.includes(lesson.id) ?? false;
+                  return (
+                    <button
+                      key={lesson.id}
+                      type="button"
+                      onClick={() => toggleLesson(lesson.id)}
+                      aria-pressed={active}
+                      className={
+                        'rounded-full border px-3 py-1 text-xs transition-colors ' +
+                        (active
+                          ? 'border-accent bg-accent-soft text-accent'
+                          : 'border-line text-ink-soft hover:border-line-strong')
+                      }
+                    >
+                      {lesson.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <span className="mt-1 block text-xs text-ink-faint">
+                Leave none selected to cover every lesson taught so far.
+              </span>
+            </div>
+          )}
+
           <div className="flex gap-2">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => void save()}
-              disabled={
-                !assessmentDraftIsSaveable(
-                  courseId,
-                  editingId === 'new'
-                    ? 'checkpoint'
-                    : (assessments.find((assessment) => assessment.id === editingId)?.kind ??
-                        'checkpoint'),
-                  draft,
-                  lessons,
-                  cards,
-                  links,
-                )
-              }
-            >
+            <Button variant="primary" size="sm" onClick={() => void save()}>
               Save
             </Button>
             <Button variant="ghost" size="sm" onClick={cancel}>
@@ -204,7 +176,7 @@ export function ExamDatesSection({ courseId, timeZone }: ExamDatesSectionProps) 
       ) : (
         <Button variant="secondary" size="sm" onClick={startAdd} className="self-start">
           <PlusIcon width={16} height={16} />
-          Add checkpoint
+          Add date
         </Button>
       )}
     </div>

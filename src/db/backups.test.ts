@@ -10,8 +10,7 @@ import {
   autoBackupIfStale,
   __resetBackupThrottleForTests,
 } from './backups';
-import { createCard, createDeck } from './repository';
-import type { ItemPayload } from './types';
+import { createDeck } from './repository';
 
 describe('backups', () => {
   beforeEach(async () => {
@@ -49,36 +48,6 @@ describe('backups', () => {
     const restored = await db.decks.toArray();
     expect(restored).toHaveLength(1);
     expect(restored[0].name).toBe('Restoreable');
-  });
-
-  it('round-trips a structured item payload through backup and restore', async () => {
-    const deck = await createDeck('Mathematics');
-    const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8.', 'x = 4');
-    const payload: ItemPayload = {
-      v: 1,
-      kind: 'numeric',
-      answer: { kind: 'within', value: '4', tolerance: 0.01 },
-      fixtures: [
-        {
-          id: 'fixture-1',
-          studentAnswer: '3.995',
-          expectedMarks: 1,
-          note: 'Accepted at the lower tolerance boundary',
-        },
-      ],
-    };
-    await db.cards.update(card.id, { payload });
-
-    await takeAutoBackup();
-    const [snapshot] = await db.backups.toArray();
-    expect(snapshot.payload.cards[0].payload).toEqual(payload);
-
-    await db.cards.clear();
-    await restoreBackup(snapshot.id!);
-
-    const restored = await db.cards.get(card.id);
-    expect(restored?.payload).toEqual(payload);
-    expect(JSON.stringify(restored?.payload)).toBe(JSON.stringify(payload));
   });
 
   it('deleteBackup removes a stored restore point', async () => {
