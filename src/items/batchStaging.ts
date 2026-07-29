@@ -127,11 +127,15 @@ function validateBatchCandidate(
       schemeIsValid ? compilation.totalMarks : null,
     );
     errors.push(...fixtureResult.errors);
-    fixtureStatus = { total: fixtureResult.fixtures.length, passed: 0 };
 
+    // Only report a fixture tally once the scheme compiles. Reporting "0 of N pass"
+    // for an uncompilable scheme blames the fixtures for a scheme error.
     if (scheme.length > 0 && schemeIsValid) {
       const runs = runWorkingFixtures(scheme, fixtureResult.fixtures);
-      fixtureStatus.passed = runs.filter((run) => run.passes).length;
+      fixtureStatus = {
+        total: fixtureResult.fixtures.length,
+        passed: runs.filter((run) => run.passes).length,
+      };
       runs.forEach((run, fixtureIndex) => {
         if (!run.passes) {
           errors.push(

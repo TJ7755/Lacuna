@@ -111,6 +111,24 @@ describe('ItemStagingReview', () => {
     ).toBeInTheDocument();
   });
 
+  it('reports fixtures as unavailable rather than failing when the scheme will not compile', () => {
+    stage(
+      batch([
+        {
+          kind: 'working',
+          question: 'Broken scheme',
+          scheme: 'no marks',
+          fixtures: [{ studentAnswer: ['4'], expectedMarks: 1 }],
+        },
+      ]),
+    );
+    const row = screen.getByText('Broken scheme').closest('article')!;
+
+    expect(within(row).getByText('Fixtures unavailable')).toBeInTheDocument();
+    expect(within(row).queryByText(/fixtures pass/)).not.toBeInTheDocument();
+    expect(within(row).getByText(/Scheme line 1/)).toBeInTheDocument();
+  });
+
   it('revalidates an edited malformed item and supports rejection', () => {
     stage(batch([{ kind: 'numeric', question: '', answer: { kind: 'exact', value: '4' } }]));
     const row = screen.getByText('Untitled item').closest('article')!;
