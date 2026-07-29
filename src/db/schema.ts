@@ -6,7 +6,7 @@ import type {
   UserPerformance,
   BackupFile,
   AppStateEntry,
-  ImageAsset,
+  MediaAsset,
   BackupSnapshot,
   Folder,
   Course,
@@ -53,7 +53,7 @@ class LacunaDatabase extends Dexie {
   userPerformance!: Table<UserPerformance, string>;
   backups!: Table<BackupSnapshot, number>;
   appState!: Table<AppStateEntry, string>;
-  assets!: Table<ImageAsset, string>;
+  assets!: Table<MediaAsset, string>;
   folders!: Table<Folder, string>;
   courses!: Table<CourseRecord, string>;
   lessons!: Table<Lesson, string>;
@@ -696,7 +696,7 @@ export async function readAllDataFromVersion(
     throw new Error(`Database version mismatch: expected ${expectedVersion}, found ${raw.version}`);
   }
 
-  const assetsRaw = (raw.data['assets'] ?? []) as ImageAsset[];
+  const assetsRaw = (raw.data['assets'] ?? []) as MediaAsset[];
   const assets = await Promise.all(
     assetsRaw.map(async (a) => {
       const buf = new Uint8Array(await blobToArrayBuffer(a.blob));
