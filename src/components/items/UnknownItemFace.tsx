@@ -22,8 +22,7 @@ export function UnknownItemFace({ card }: UnknownItemFaceProps) {
         <CardContent card={card} side="front" />
       </div>
       <div className="mx-auto mt-10 w-full max-w-2xl border-t border-line pt-8 text-center text-sm text-ink-faint">
-        This item uses a newer format this version of Lacuna doesn’t understand yet.
-        Update Lacuna to study it.
+        Lacuna can’t study this item yet — this version doesn’t support its format.
       </div>
     </section>
   );

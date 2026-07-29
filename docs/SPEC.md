@@ -1148,9 +1148,10 @@ as unchecked rather than as a zero, with the existing dispute control alongside 
 marks, so the marks total still reflects only what the checker could actually award. Numeric answer
 specifications share this parser for exact, tolerance and one-of checks.
 
-A payload with an unrecognised `kind` or version renders `UnknownItemFace`: the readable `front`
-fallback and an update notice, with no submit, reveal, self-grading or keyboard grading path. The
-central `answer()` boundary rejects it as well, so future or stale callers cannot create a review.
+A payload with an unrecognised version, or a recognised-but-unsupported `kind` (currently
+`scaffold`), renders `UnknownItemFace`: the readable `front` fallback and a plain notice that this
+version can't study it, with no submit, reveal, self-grading or keyboard grading path. The central
+`answer()` boundary rejects it as well, so future or stale callers cannot create a review.
 
 The production build measured on 28 July 2026 places the verifier in the main application chunk
 (648,459 bytes minified; 187,658 bytes gzip for the whole chunk). A standalone Bun bundle of

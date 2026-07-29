@@ -745,6 +745,14 @@ export interface ItemFixture {
 }
 
 /**
+ * The current `ItemPayload.v`. Single source of truth for "known version" checks at
+ * study time (`useLearnSession`'s `hasMachineMarkedPayload`) and at share/backup
+ * validation time (`db/share.ts`'s `KnownItemPayloadSchema`) — see next_plan.md
+ * §11.2 rule 3.
+ */
+export const CURRENT_ITEM_PAYLOAD_VERSION = 1 as const;
+
+/**
  * Structured content for a practice item's kind, layered on top of `Card.front`
  * (which remains the Markdown question prompt, and doubles as the plain-text
  * fallback rendering for clients that don't understand the payload — next_plan.md
@@ -753,23 +761,26 @@ export interface ItemFixture {
  * of the Dexie schema (`v`) so share codes and backups can validate
  * forward-compatibly: an unknown `v` or `kind` must render read-only with the
  * `front` fallback, never crash and never mis-mark (next_plan.md §11.2 rule 3; the
- * fallback itself is Arc 11 slice-1 Task 8's to build, not this task's).
+ * fallback itself is `UnknownItemFace`).
  *
  * `scaffold` is declared but not built in Arc 11 slice 1 (deferred — see
  * `.agent-mail/arc11-slice1-plan.md`'s "Deferrals" section). Its eventual payload
  * is expected to reuse `MarkSchemeLine` per hole rather than invent a second
  * grammar, so the slot is reserved now instead of this union being reopened later.
  */
-
-/** The current `ItemPayload.v`. Single source of truth for "known version" checks
- *  at study time (`useLearnSession`'s `isMachineMarkedCard`) and at share/backup
- *  validation time (`db/share.ts`'s `KNOWN_ITEM_KINDS` schema) — see next_plan.md
- *  §11.2 rule 3. */
-export const CURRENT_ITEM_PAYLOAD_VERSION = 1 as const;
-
 export type ItemPayload =
-  | { v: typeof CURRENT_ITEM_PAYLOAD_VERSION; kind: 'numeric'; answer: NumericAnswerSpec; fixtures?: ItemFixture[] }
-  | { v: typeof CURRENT_ITEM_PAYLOAD_VERSION; kind: 'working'; scheme: MarkSchemeLine[]; fixtures?: ItemFixture[] }
+  | {
+      v: typeof CURRENT_ITEM_PAYLOAD_VERSION;
+      kind: 'numeric';
+      answer: NumericAnswerSpec;
+      fixtures?: ItemFixture[];
+    }
+  | {
+      v: typeof CURRENT_ITEM_PAYLOAD_VERSION;
+      kind: 'working';
+      scheme: MarkSchemeLine[];
+      fixtures?: ItemFixture[];
+    }
   | {
       v: typeof CURRENT_ITEM_PAYLOAD_VERSION;
       kind: 'scaffold';
@@ -1042,7 +1053,9 @@ export interface PendingMergeReview {
      * incoming content to attach, hence `incoming: null` rather than reusing
      * `LineageConflict`'s non-null `incoming`.
      */
-    conflicts: Array<LineageConflict | { entityId: string; kind: 'lesson' | 'note' | 'card'; incoming: null }>;
+    conflicts: Array<
+      LineageConflict | { entityId: string; kind: 'lesson' | 'note' | 'card'; incoming: null }
+    >;
   };
   createdAt: number;
 }

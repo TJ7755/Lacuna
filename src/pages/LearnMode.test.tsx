@@ -1044,7 +1044,9 @@ describe('LearnMode course/lesson scope', () => {
 
     expect(await screen.findByText('Solve 2x = 8 by scaffold.')).toBeInTheDocument();
     expect(
-      await screen.findByText(/doesn’t understand yet\. Update Lacuna to study it\./),
+      await screen.findByText(
+        /can’t study this item yet — this version doesn’t support its format\./,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^yes$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^no$/i })).not.toBeInTheDocument();
@@ -1076,7 +1078,9 @@ describe('LearnMode course/lesson scope', () => {
 
     expect(await screen.findByText('What is 8 / 2?')).toBeInTheDocument();
     expect(
-      await screen.findByText(/doesn’t understand yet\. Update Lacuna to study it\./),
+      await screen.findByText(
+        /can’t study this item yet — this version doesn’t support its format\./,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText('Your answer')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Check answer' })).not.toBeInTheDocument();

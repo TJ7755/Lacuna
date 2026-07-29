@@ -20,7 +20,8 @@ that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in ord
 11. **Arc 10 — UI de-clutter and navigation restructure** (detailed; independent of
     Arcs 6–9, may run before them)
 12. **Arc 11 — Item-type generalisation and authored mark schemes** (numeric/working
-    delivery complete; deliberate post-arc deferrals recorded)
+    delivery complete bar success criterion 3, the repository owner's manual free-tier
+    trial; deliberate post-arc deferrals recorded)
 13. **Arc 12 — Progress receipts and encrypted relay** (detailed outline; depends on
     Arc 11 for mark-bearing receipts, but a retrievability-only first slice depends on
     nothing)
@@ -2058,7 +2059,8 @@ Each task is one subagent's scope, one commit, tests updated alongside.
 
 # Arc 11 — Item-Type Generalisation and Authored Mark Schemes (detailed)
 
-> **Status: complete (29 July 2026).** Numeric and working payloads author, verify,
+> **Status: complete bar success criterion 3 (29 July 2026), which awaits the repository
+> owner's own manual free-tier trial.** Numeric and working payloads author, verify,
 > machine-grade, back up, share, lineage-diff and merge through the same versioned
 > `Card.payload`. The visual editor, batch staging path and MCP create/update tools share one
 > compiler and validator. The verification engine now samples every multi-variable sign
@@ -2068,7 +2070,8 @@ Each task is one subagent's scope, one commit, tests updated alongside.
 > the grading boundary. Optional course exam-board and specification provenance feeds batch
 > prompts. The final browser pass covered hand authoring, fixtures, both study faces, an
 > FSRS-backed dispute, the clipboard prompt/staging/revision boundary and a four-item share-code
-> export/import. It used deterministic sample model output; no external chatbot was contacted.
+> export/import. It used deterministic sample model output; no external chatbot was
+contacted, so model quality and free-tier latency remain unmeasured.
 
 ## 11.1 Motivation and positioning
 
@@ -2369,7 +2372,9 @@ is shippable on share codes alone, before Arc 12 exists.
 ## 11.11 Success criteria
 
 1. Both delivered item kinds author, verify, grade, share (v2 codes), back up, lineage-diff
-   and merge round-trip, with pre-Arc-11 clients degrading to the read-only fallback.
+   and merge round-trip, with pre-Arc-11 clients — which have no `payload` field and no
+   `UnknownItemFace` — silently dropping the unknown `p` key on import and self-grading
+   the resulting front_back card against its (empty) back.
 2. The compiler round-trips every fixture in its own test corpus; the editor preview,
    staging area and MCP boundary all reject the same malformed inputs identically.
 3. A tutor can go notes → batch prompt → paste → triage → publish inside ten minutes

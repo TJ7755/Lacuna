@@ -42,9 +42,10 @@
 
 - Added the optional, versioned `Card.payload` model for structured practice items. Numeric
   and working payloads are implemented; the scaffold discriminant is reserved without a
-  placeholder authoring or study surface. Backups, share codes and lineage merging preserve
-  payloads, while unsupported payload versions fall back to the readable question instead of
-  being marked incorrectly.
+  placeholder authoring or study surface. Backups, share codes and lineage merging validate
+  known payloads fully and preserve unsupported versions as opaque values so they round-trip
+  instead of being rejected — study-time handling of unsupported payloads is covered
+  separately above, under the follow-up fix.
 - Added an offline expression-verification engine over the restricted `mathjs/number` entry
   point. It accepts ordinary school notation, renders a KaTeX preview and checks algebraic
   equivalence through reproducible seeded evaluation rather than pretending to be a symbolic
