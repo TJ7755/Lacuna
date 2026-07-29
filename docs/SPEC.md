@@ -1206,6 +1206,9 @@ items must test a reusable method, relationship or derivation; algebra prompts p
 general forms such as completing the square from `ax^2 + bx + c = 0` rather than inventing custom
 coefficients for another one-off exercise. Parameterised numerical practice remains deferred until
 generated variants can share one stable scheduled identity.
+The prompt's item-type contract reserves `numeric` for constant scalar answers with no variables or
+equals sign. Formula recall, symbolic relationships and other variable-bearing answers must use a
+working item with a passing fixture, or be omitted when they cannot be checked meaningfully.
 Every path must use the versioned `LACUNA_ITEMS_V1` JSON delimiters so the staging review can parse it
 without guessing. Lacuna sends no data to a model and stores no API key; the conversation remains in
 the tutor's chosen chatbot.
@@ -1222,7 +1225,8 @@ never need to edit the interchange JSON directly.
 Staged and accepted items can also copy a revision prompt containing the current item, mark scheme,
 first failing fixture, validation feedback and a tutor-written complaint. The model is instructed to
 return one revised item in the ordinary batch delimiters, so the result goes back through the same
-staging validation rather than bypassing it.
+staging validation rather than bypassing it. Revision prompts repeat the same item-type contract so a
+repair cannot turn a symbolic answer into an invalid numeric item.
 Acceptance calls the ordinary `createLessonCard` path with the compiled structured payload; staging
 has no separate database write path.
 The MCP `lacuna.create_card` and `lacuna.update_card` tools accept the same numeric and working

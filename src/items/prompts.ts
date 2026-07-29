@@ -21,6 +21,15 @@ export interface ItemRevisionPromptInput {
   validationErrors?: string[];
 }
 
+const ITEM_TYPE_CONTRACT = [
+  'Item-type contract:',
+  '- Use `numeric` only when the answer evaluates to a constant scalar containing no variables, such as 12, sqrt(2) or pi/4.',
+  '- A numeric answer must not be an equation, formula, definition, derivation or prose. If any variable or equals sign remains, it is not numeric.',
+  '- Use `working` when the expected answer contains variables or an equals sign, including questions that ask the learner to recall or state a formula. Supply a mark scheme and at least one passing fixture.',
+  '- If the notes support neither a scalar numeric answer nor meaningful machine-checkable working, omit the item. Never force coverage by misclassifying it.',
+  '- Before returning the JSON, check every numeric answer. If it contains a variable or equals sign, change the item to working or omit it.',
+].join('\n');
+
 export function buildMarkSchemeDraftPrompt(question: string): string {
   return [
     'Draft a Lacuna v1 mark scheme for the question below.',
@@ -56,6 +65,8 @@ export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): s
     'Generate durable concept checks, not a disposable worksheet of arbitrary-number exercises. A working item must test a reusable method, relationship or derivation from the notes.',
     'For algebra, prefer symbolic general forms such as deriving the quadratic formula from ax^2 + bx + c = 0 or completing the square generally; do not invent custom coefficients merely to produce another practice question.',
     'Keep this batch within one lesson and topic. Prefer fewer strong items to padded repetition.',
+    '',
+    ITEM_TYPE_CONTRACT,
     '',
     `Topic: ${input.topic.trim()}`,
     `Level: ${input.level.trim()}`,
@@ -108,6 +119,8 @@ export function buildItemRevisionPrompt(input: ItemRevisionPromptInput): string 
     'Revise one Lacuna v1 item in response to the tutor complaint and validation evidence below.',
     'Preserve the learning objective. Fix the reported problem without creating additional items or unrelated variants.',
     'For a working item, keep the mark scheme within the supplied v1 grammar and make every fixture earn its declared expectedMarks.',
+    '',
+    ITEM_TYPE_CONTRACT,
     '',
     'Tutor complaint:',
     input.complaint.trim(),

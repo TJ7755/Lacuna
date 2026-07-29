@@ -56,7 +56,9 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: true,
+        // A development worker can cache Vite modules from different optimiser
+        // generations, leaving React and its renderer with incompatible instances.
+        enabled: false,
       },
     }),
     cloudflare(),
@@ -71,6 +73,9 @@ export default defineConfig({
   // Surface the package version to the app (used by the diagnostic bundle).
   define: {
     __APP_VERSION__: JSON.stringify(version),
+  },
+  resolve: {
+    dedupe: ['react', 'react-dom', 'motion'],
   },
   // Pre-bundle the heavy dependencies up front so the dev server never pauses to
   // re-optimise (and full-page reload) the first time a lazy route pulls one in.

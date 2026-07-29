@@ -76,6 +76,13 @@
 - Clarified that batch generation creates durable concept checks rather than arbitrary-number
   worksheets. Working-item prompts now prefer reusable symbolic methods and derivations, and the
   authoring dialog states that parameterised exercise variants are not supported yet.
+- Reserved generated `numeric` items for constant scalar answers. Generation and revision prompts
+  now direct formula recall and all other variable-bearing answers into checked working items or
+  omit them, preventing symbolic equations from being mislabelled as numeric answers.
+- Disabled the PWA service worker in development and deduplicated React-family dependencies in Vite.
+  Development startup also unregisters existing workers and clears their stale runtime caches.
+  Modules can no longer be served from different optimiser cache generations, which previously
+  caused invalid-hook crashes after route changes.
 - Added structured numeric and working payloads to `lacuna.create_card` and
   `lacuna.update_card`. MCP writes use the same numeric validator, mark-scheme compiler and
   fixture runner as the visual editor and staging path.
