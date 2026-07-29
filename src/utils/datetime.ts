@@ -28,6 +28,27 @@ export function formatDate(ms: number, timeZone?: string): string {
   });
 }
 
+/** Coarse relative-time buckets, largest first, used by {@link formatRelativeTime}. */
+const RELATIVE_TIME_UNITS: { unit: Intl.RelativeTimeFormatUnit; ms: number }[] = [
+  { unit: 'year', ms: 365 * MS_PER_DAY },
+  { unit: 'month', ms: 30 * MS_PER_DAY },
+  { unit: 'week', ms: 7 * MS_PER_DAY },
+  { unit: 'day', ms: MS_PER_DAY },
+  { unit: 'hour', ms: 60 * 60 * 1000 },
+  { unit: 'minute', ms: 60 * 1000 },
+];
+
+/** Format a past epoch instant as a short relative string, e.g. "3 days ago" or "just now". */
+export function formatRelativeTime(ms: number, nowMs: number = Date.now()): string {
+  const diff = nowMs - ms;
+  if (diff < 60 * 1000) return 'just now';
+  const rtf = new Intl.RelativeTimeFormat('en-GB', { numeric: 'auto' });
+  for (const { unit, ms: unitMs } of RELATIVE_TIME_UNITS) {
+    if (diff >= unitMs) return rtf.format(-Math.round(diff / unitMs), unit);
+  }
+  return 'just now';
+}
+
 /** Format an epoch instant as date and time in the given time zone. */
 export function formatDateTime(ms: number, timeZone?: string): string {
   return new Date(ms).toLocaleString('en-GB', {

@@ -1,6 +1,6 @@
 // Import/Export: the entire database serialises to a single JSON file and back.
 
-import { db } from './schema';
+import { db, makeId } from './schema';
 import {
   migrateCardRecord,
   migrateDeckRecord,
@@ -10,8 +10,8 @@ import {
 import type {
   BackupFile,
   Card,
-  Course,
-  CourseExamDate,
+  CourseAssessment,
+  CourseRecord,
   Deck,
   Folder,
   Lesson,
@@ -25,7 +25,14 @@ import type {
   SessionHistoryEntry,
   UserPerformance,
   ImageAsset,
+  RevisionPlan,
 } from './types';
+import {
+  buildCourseAssessmentMigration,
+  courseToRecord,
+  finalAssessmentForCourse,
+  type LegacyCourseRecord,
+} from './assessmentMigration';
 import {
   assetsForBackup,
   backupAssetToImageAsset,
@@ -33,8 +40,9 @@ import {
   referencedAssetHashes,
   referencedAssetHashesInCards,
 } from './assets';
+import { mergeRevisionPlans } from '../course/revisionPlan';
 
-export const BACKUP_VERSION = 6;
+export const BACKUP_VERSION = 9;
 
 /** Gather the whole database into a single backup object. */
 export async function exportDatabase(): Promise<BackupFile> {
@@ -52,8 +60,9 @@ export async function exportDatabase(): Promise<BackupFile> {
     lessonCompletions,
     practiceNodes,
     practiceMilestones,
-    courseExamDates,
+    courseAssessments,
     sequences,
+    revisionPlans,
   ] = await Promise.all([
     db.decks.toArray(),
     db.cards.toArray(),
@@ -68,8 +77,9 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.lessonCompletions.toArray(),
     db.practiceNodes.toArray(),
     db.practiceMilestones.toArray(),
-    db.courseExamDates.toArray(),
+    db.courseAssessments.toArray(),
     db.sequences.toArray(),
+    db.revisionPlans.toArray(),
   ]);
   const referencedHashes = new Set(referencedAssetHashesInCards(cards));
   for (const note of notes) {
@@ -94,8 +104,9 @@ export async function exportDatabase(): Promise<BackupFile> {
     lessonCompletions,
     practiceNodes,
     practiceMilestones,
-    courseExamDates,
+    courseAssessments,
     sequences,
+    revisionPlans,
   };
 }
 
@@ -136,7 +147,8 @@ export type ImportMode = 'replace' | 'merge';
 /**
  * Import a backup. In "replace" mode the database is cleared first; in "merge" mode
  * records are matched by id and the most recently touched copy wins each conflict.
- * SessionHistory is append-only and de-duplicated by (timestamp, deckId).
+ * SessionHistory is append-only and de-duplicated by stable event identity when
+ * available, falling back to (timestamp, deckId) for legacy rows.
  */
 export async function importBackup(backup: BackupFile, mode: ImportMode): Promise<void> {
   if (!validateBackup(backup)) {
@@ -187,6 +199,24 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     })),
   );
   const importedAssets = [...assets.map(backupAssetToImageAsset), ...extractedAssets];
+  const rawCourses = backup.courses ?? [];
+  const currentAssessments = backup.courseAssessments;
+  const assessmentMigration = currentAssessments
+    ? {
+        courses: rawCourses.map((course) =>
+          'examDate' in course ? courseToRecord(course as LegacyCourseRecord) : course,
+        ),
+        assessments: currentAssessments,
+      }
+    : buildCourseAssessmentMigration(
+        rawCourses as LegacyCourseRecord[],
+        backup.lessons ?? [],
+        backup.courseExamDates ?? [],
+        makeId,
+      );
+  const courses = assessmentMigration.courses;
+  const courseAssessments = assessmentMigration.assessments;
+  for (const course of courses) finalAssessmentForCourse(course.id, courseAssessments);
   await db.transaction(
     'rw',
     [
@@ -205,8 +235,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       db.lessonCompletions,
       db.practiceNodes,
       db.practiceMilestones,
-      db.courseExamDates,
+      db.courseAssessments,
       db.sequences,
+      db.revisionPlans,
     ],
     async () => {
       // Deduplicate by hash so bulkPut never encounters a constraint conflict.
@@ -228,8 +259,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           db.lessonCompletions.clear(),
           db.practiceNodes.clear(),
           db.practiceMilestones.clear(),
-          db.courseExamDates.clear(),
+          db.courseAssessments.clear(),
           db.sequences.clear(),
+          db.revisionPlans.clear(),
         ]);
         await db.decks.bulkAdd(decks);
         await db.cards.bulkAdd(cards);
@@ -244,8 +276,8 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           await db.folders.bulkAdd(backup.folders);
         }
         // Restore course-architecture tables if present in the backup.
-        if (backup.courses && backup.courses.length > 0) {
-          await db.courses.bulkAdd(backup.courses);
+        if (courses.length > 0) {
+          await db.courses.bulkAdd(courses);
         }
         if (backup.lessons && backup.lessons.length > 0) {
           await db.lessons.bulkAdd(backup.lessons);
@@ -268,11 +300,14 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         if (backup.practiceMilestones && backup.practiceMilestones.length > 0) {
           await db.practiceMilestones.bulkAdd(backup.practiceMilestones);
         }
-        if (backup.courseExamDates && backup.courseExamDates.length > 0) {
-          await db.courseExamDates.bulkAdd(backup.courseExamDates);
+        if (courseAssessments.length > 0) {
+          await db.courseAssessments.bulkAdd(courseAssessments);
         }
         if (backup.sequences && backup.sequences.length > 0) {
           await db.sequences.bulkAdd(backup.sequences);
+        }
+        if (backup.revisionPlans && backup.revisionPlans.length > 0) {
+          await db.revisionPlans.bulkAdd(backup.revisionPlans);
         }
         return;
       }
@@ -281,7 +316,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       // by an incoming backup whose examDate happens to be newer.
       const existingDecks = new Map((await db.decks.toArray()).map((d) => [d.id, d]));
       const existingCourses = new Map((await db.courses.toArray()).map((c) => [c.id, c]));
-      const incomingCourses = new Map((backup.courses ?? []).map((c) => [c.id, c]));
+      const incomingCourses = new Map(courses.map((c) => [c.id, c]));
       const mergedDecks: Deck[] = [];
       for (const incoming of decks) {
         const existing = existingDecks.get(incoming.id);
@@ -322,9 +357,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
 
       // Merge course-architecture tables: add incoming rows that don't exist locally,
       // preferring the newer record (by createdAt) when both sides have the same id.
-      if (backup.courses && backup.courses.length > 0) {
-        const mergedCourses: Course[] = [];
-        for (const incoming of backup.courses) {
+      if (courses.length > 0) {
+        const mergedCourses: CourseRecord[] = [];
+        for (const incoming of courses) {
           const existing = existingCourses.get(incoming.id);
           if (!existing) {
             mergedCourses.push(incoming);
@@ -440,22 +475,34 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         await db.practiceMilestones.bulkPut(mergedMilestones);
       }
 
-      if (backup.courseExamDates && backup.courseExamDates.length > 0) {
-        const existingCourseExamDates = new Map(
-          (await db.courseExamDates.toArray()).map((ced) => [ced.id, ced]),
+      const assessmentIdRemap = new Map<string, string>();
+      if (courseAssessments.length > 0) {
+        const localAssessments = await db.courseAssessments.toArray();
+        const existingCourseAssessments = new Map(
+          localAssessments.map((assessment) => [assessment.id, assessment]),
         );
-        const mergedCourseExamDates: CourseExamDate[] = [];
-        for (const incoming of backup.courseExamDates) {
-          const existing = existingCourseExamDates.get(incoming.id);
+        const existingFinalsByCourse = new Map(
+          localAssessments
+            .filter((assessment) => assessment.kind === 'final')
+            .map((assessment) => [assessment.courseId, assessment]),
+        );
+        const mergedCourseAssessments: CourseAssessment[] = [];
+        for (const incoming of courseAssessments) {
+          const existing =
+            incoming.kind === 'final'
+              ? existingFinalsByCourse.get(incoming.courseId)
+              : existingCourseAssessments.get(incoming.id);
           if (!existing) {
-            mergedCourseExamDates.push(incoming);
+            mergedCourseAssessments.push(incoming);
           } else {
-            mergedCourseExamDates.push(
-              incoming.createdAt > existing.createdAt ? incoming : existing,
+            const newer = incoming.createdAt > existing.createdAt ? incoming : existing;
+            if (incoming.kind === 'final') assessmentIdRemap.set(incoming.id, existing.id);
+            mergedCourseAssessments.push(
+              incoming.kind === 'final' ? { ...newer, id: existing.id } : newer,
             );
           }
         }
-        await db.courseExamDates.bulkPut(mergedCourseExamDates);
+        await db.courseAssessments.bulkPut(mergedCourseAssessments);
       }
 
       if (backup.sequences && backup.sequences.length > 0) {
@@ -470,6 +517,26 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           }
         }
         await db.sequences.bulkPut(mergedSequences);
+      }
+
+      if (backup.revisionPlans && backup.revisionPlans.length > 0) {
+        const existingPlans = new Map(
+          (await db.revisionPlans.toArray()).map((plan) => [plan.assessmentId, plan]),
+        );
+        const incomingPlans = new Map<string, RevisionPlan>();
+        for (const raw of backup.revisionPlans) {
+          const assessmentId = assessmentIdRemap.get(raw.assessmentId) ?? raw.assessmentId;
+          const incoming = { ...raw, assessmentId };
+          const duplicate = incomingPlans.get(assessmentId);
+          if (!duplicate || incoming.updatedAt > duplicate.updatedAt) {
+            incomingPlans.set(assessmentId, incoming);
+          }
+        }
+        const mergedPlans: RevisionPlan[] = [...incomingPlans.values()].map((incoming) => {
+          const existing = existingPlans.get(incoming.assessmentId);
+          return existing ? mergeRevisionPlans(existing, incoming) : incoming;
+        });
+        await db.revisionPlans.bulkPut(mergedPlans);
       }
 
       // Merge cards (most recent lastReviewed wins, falling back to createdAt).
@@ -523,11 +590,20 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
 
       // Append session history that we do not already have.
       const existingKeys = new Set(
-        (await db.sessionHistory.toArray()).map((s) => `${s.timestamp}:${s.deckId}`),
+        (await db.sessionHistory.toArray()).map((s) =>
+          s.eventId ? `event:${s.eventId}` : `legacy:${s.timestamp}:${s.deckId}`,
+        ),
       );
-      const toAdd = backup.sessionHistory
-        .filter((s) => !existingKeys.has(`${s.timestamp}:${s.deckId}`))
-        .map(({ id: _id, ...rest }) => rest as SessionHistoryEntry);
+      const toAdd = backup.sessionHistory.flatMap((entry) => {
+        const key = entry.eventId
+          ? `event:${entry.eventId}`
+          : `legacy:${entry.timestamp}:${entry.deckId}`;
+        if (existingKeys.has(key)) return [];
+        existingKeys.add(key);
+        const rest = { ...entry };
+        delete rest.id;
+        return [rest as SessionHistoryEntry];
+      });
       if (toAdd.length) await db.sessionHistory.bulkAdd(toAdd);
     },
   );

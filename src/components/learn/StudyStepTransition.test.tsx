@@ -81,4 +81,56 @@ describe('StudyStepTransition', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
     expect(actions.onContinue).toHaveBeenCalledOnce();
   });
+
+  it('shows factual revision counts and the next window without a readiness promise', () => {
+    const revisionSummary: SessionSummary = {
+      ...summary(true),
+      revision: {
+        cardsCovered: 7,
+        cardsImproved: 5,
+        cardsParked: 1,
+        workNotReached: 3,
+        nextWindowDay: '2026-07-18',
+        replanExplanation: 'the assessment deadline moved',
+      },
+    };
+    render(
+      <StudyStepTransition
+        completedLabel="Paper 1"
+        summary={revisionSummary}
+        canReviewDueCards={false}
+        breakPending={false}
+        {...callbacks()}
+      />,
+    );
+
+    expect(screen.getByText('Next revision window: Sat 18 Jul')).toBeInTheDocument();
+    expect(screen.getByText('Plan updated: the assessment deadline moved.')).toBeInTheDocument();
+    expect(screen.getByText('Not reached')).toBeInTheDocument();
+    expect(screen.queryByText(/predicted|readiness|mark/i)).not.toBeInTheDocument();
+  });
+
+  it('shows readiness only when the model supplies prediction uncertainty', () => {
+    render(
+      <StudyStepTransition
+        completedLabel="Paper 1"
+        summary={{
+          ...summary(true),
+          revision: {
+            cardsCovered: 7,
+            cardsImproved: 5,
+            cardsParked: 1,
+            workNotReached: 3,
+            predictedReadiness: 0.74,
+            readinessUncertainty: 0.08,
+          },
+        }}
+        canReviewDueCards={false}
+        breakPending={false}
+        {...callbacks()}
+      />,
+    );
+
+    expect(screen.getByText('74% predicted readiness · ±8% uncertainty')).toBeInTheDocument();
+  });
 });

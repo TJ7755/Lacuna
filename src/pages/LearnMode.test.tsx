@@ -8,10 +8,12 @@ import {
   cardsForSequence,
   createCard,
   createCourse,
+  createCourseAssessment,
   createDeck,
   createLesson,
   createLessonCard,
   createPracticeNode,
+  createOrResumeRevisionPlan,
   createSequence,
   linkCardToLesson,
   upsertLessonCardExposure,
@@ -73,6 +75,8 @@ describe('LearnMode course/lesson scope', () => {
       db.lessonCompletions.clear(),
       db.practiceNodes.clear(),
       db.practiceMilestones.clear(),
+      db.courseAssessments.clear(),
+      db.revisionPlans.clear(),
       db.noteAnnotations.clear(),
       db.sequences.clear(),
     ]);
@@ -151,8 +155,9 @@ describe('LearnMode course/lesson scope', () => {
     // Header shows the lesson's own name (not the course name).
     expect(await screen.findByRole('heading', { name: 'Atomic structure' })).toBeInTheDocument();
     await continueFromNotes();
-    const flipCard = (await screen.findAllByRole('button', { name: /show answer/i }))
-      .find((element) => element.tagName === 'DIV')!;
+    const flipCard = (await screen.findAllByRole('button', { name: /show answer/i })).find(
+      (element) => element.tagName === 'DIV',
+    )!;
     expect(flipCard).toHaveAttribute('tabindex', '0');
     fireEvent.keyDown(flipCard, { key: 'Enter' });
     expect(await screen.findByRole('button', { name: /^yes$/i })).toBeInTheDocument();
@@ -469,6 +474,237 @@ describe('LearnMode course/lesson scope', () => {
     });
   });
 
+  it('ignores the retired mode=cram query entry', async () => {
+    const course = await createCourse('Classics');
+    const lesson = await createLesson(course.id, 'Athens');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Agora', 'Market');
+    await upsertLessonCardExposure(lesson.id, card.id);
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/course/${course.id}/learn?mode=cram`]}>
+            <Routes>
+              <Route path="/course/:courseId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText(/Classics/)).toBeInTheDocument();
+    expect(screen.queryByText(/Cram mode|Weakest cards first/)).not.toBeInTheDocument();
+  });
+
+  it('uses the selected assessment scope in the ordinary Practice player', async () => {
+    const course = await createCourse('History');
+    const includedLesson = await createLesson(course.id, 'Revolutions');
+    const unrelatedLesson = await createLesson(course.id, 'Empires');
+    const included = await createLessonCard(
+      course.id,
+      includedLesson.id,
+      'front_back',
+      'Assessment question',
+      'Answer',
+    );
+    const unrelated = await createLessonCard(
+      course.id,
+      unrelatedLesson.id,
+      'front_back',
+      'Unrelated question',
+      'Answer',
+    );
+    await Promise.all([
+      upsertLessonCardExposure(includedLesson.id, included.id),
+      upsertLessonCardExposure(unrelatedLesson.id, unrelated.id),
+    ]);
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Revolutions paper',
+      Date.now() + 86_400_000,
+      {
+        afterLessonId: unrelatedLesson.id,
+        coverageMode: 'custom',
+        lessonIds: [includedLesson.id],
+      },
+    );
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter>
+            <LearnMode
+              sessionId="flow-session-1"
+              request={{
+                kind: 'practice',
+                courseId: course.id,
+                mode: 'assessment',
+                assessmentId: assessment.id,
+              }}
+            />
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('Revolutions paper')).toBeInTheDocument();
+    expect(await screen.findByText(/Assessment question/)).toBeInTheDocument();
+    expect(screen.queryByText(/Unrelated question/)).not.toBeInTheDocument();
+
+    await answerYes();
+    await waitFor(async () => {
+      const reviewed = await db.cards.get(included.id);
+      expect(reviewed?.history[0]).toEqual(
+        expect.objectContaining({
+          eventId: expect.any(String),
+          sessionId: 'flow-session-1',
+          sessionKind: 'assessment-revision',
+          correct: true,
+        }),
+      );
+      expect(await db.sessionHistory.toArray()).toEqual([
+        expect.objectContaining({
+          eventId: reviewed?.history[0].eventId,
+          sessionId: 'flow-session-1',
+        }),
+      ]);
+    });
+  });
+
+  it('runs a persisted assessment window through the existing player with provenance and a factual summary', async () => {
+    const course = await createCourse('Geography');
+    const lesson = await createLesson(course.id, 'Rivers');
+    const card = await createLessonCard(
+      course.id,
+      lesson.id,
+      'front_back',
+      'What is erosion?',
+      'Wear',
+    );
+    await upsertLessonCardExposure(lesson.id, card.id);
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Physical geography',
+      Date.now() + 86_400_000,
+      { afterLessonId: lesson.id, coverageMode: 'prefix' },
+    );
+    const plan = await createOrResumeRevisionPlan(assessment.id, 20, {
+      projectionMode: 'fsrs-6-practice-fallback',
+      memoryModelVersion: 'fsrs-6',
+      fallbackReason: 'missing',
+    });
+    const onStepFinished = vi.fn();
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter>
+            <LearnMode
+              sessionId="revision-session-1"
+              request={{
+                kind: 'practice',
+                courseId: course.id,
+                mode: 'assessment',
+                assessmentId: assessment.id,
+                planId: plan.id,
+                windowId: plan.windows[0].id,
+              }}
+              onStepFinished={onStepFinished}
+            />
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText(/Ordinary Practice ordering/)).toBeInTheDocument();
+    expect(await screen.findByText(/What is erosion/)).toBeInTheDocument();
+    await answerYes();
+
+    await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
+    expect(onStepFinished.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        reachedGoal: true,
+        revision: expect.objectContaining({
+          cardsCovered: 1,
+          cardsImproved: 1,
+          workNotReached: 0,
+        }),
+      }),
+    );
+    const reviewed = await db.cards.get(card.id);
+    expect(reviewed?.history).toHaveLength(1);
+    expect(reviewed?.history[0]).toEqual(
+      expect.objectContaining({
+        sessionId: 'revision-session-1',
+        revisionPlanId: plan.id,
+        revisionWindowId: plan.windows[0].id,
+      }),
+    );
+    const storedPlan = await db.revisionPlans.get(plan.id);
+    expect(storedPlan?.completedSessions[0]).toEqual(
+      expect.objectContaining({
+        cardIds: [card.id],
+        improvedCardIds: [card.id],
+        reviewEventIds: [reviewed?.history[0].eventId],
+      }),
+    );
+    expect(await db.practiceMilestones.count()).toBe(0);
+  });
+
+  it('parks a failed card when its productive FSRS retry falls outside the active window', async () => {
+    const course = await createCourse('French');
+    const lesson = await createLesson(course.id, 'Vocabulary');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'bonjour', 'hello');
+    await upsertLessonCardExposure(lesson.id, card.id);
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Speaking',
+      Date.now() + 86_400_000,
+      {
+        afterLessonId: lesson.id,
+        coverageMode: 'prefix',
+      },
+    );
+    const plan = await createOrResumeRevisionPlan(assessment.id, 0.1, {
+      projectionMode: 'fsrs-6-practice-fallback',
+      memoryModelVersion: 'fsrs-6',
+      fallbackReason: 'missing',
+    });
+    const onStepFinished = vi.fn();
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter>
+            <LearnMode
+              request={{
+                kind: 'practice',
+                courseId: course.id,
+                mode: 'assessment',
+                assessmentId: assessment.id,
+                planId: plan.id,
+                windowId: plan.windows[0].id,
+              }}
+              onStepFinished={onStepFinished}
+            />
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
+    fireEvent.click(revealCandidates.find((element) => element.tagName === 'BUTTON')!);
+    expect(await screen.findByText('hello')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^no$/i }));
+
+    await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
+    expect(onStepFinished.mock.calls[0][0].revision).toEqual(
+      expect.objectContaining({ cardsCovered: 1, cardsImproved: 0, cardsParked: 1 }),
+    );
+    expect((await db.revisionPlans.get(plan.id))?.completedSessions[0].parkedCardIds).toEqual([
+      card.id,
+    ]);
+  });
+
   it('starts in Focus Mode from the persisted preference and Esc leaves it for this session', async () => {
     localStorage.setItem('lacuna.startInFocusMode', 'on');
     const course = await createCourse('Physics');
@@ -575,6 +811,305 @@ describe('LearnMode course/lesson scope', () => {
       await screen.findByRole('progressbar', { name: 'Predicted score progress' }),
     ).toHaveAttribute('aria-valuenow', String(expected));
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
+  });
+
+  it('keeps practice-session chrome mounted while Yes and No advance the card surface', async () => {
+    const now = Date.now();
+    const deck = await createDeck('Continuous practice');
+    await db.decks.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
+    for (const question of ['First question', 'Second question', 'Third question']) {
+      const card = await createCard(deck.id, 'front_back', question, 'Answer');
+      await db.cards.update(card.id, {
+        stability: 2,
+        difficulty: 5,
+        lastReviewed: now - 24 * 60 * 60 * 1000,
+        reps: 1,
+        state: 2,
+        due: now - 1,
+      });
+    }
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    const progress = await screen.findByRole('progressbar', { name: 'Predicted score progress' });
+    const header = progress.closest('header');
+    const firstSurface = document.querySelector<HTMLElement>('[data-study-card-id]');
+    expect(header).not.toBeNull();
+    expect(firstSurface).not.toBeNull();
+
+    await answerNo();
+    await waitFor(() => {
+      const next = document.querySelector<HTMLElement>('[data-study-card-id]');
+      expect(next?.dataset.studyCardId).not.toBe(firstSurface?.dataset.studyCardId);
+      expect(screen.getByRole('progressbar', { name: 'Predicted score progress' })).toBe(progress);
+      expect(progress.closest('header')).toBe(header);
+    });
+
+    const secondSurface = document.querySelector<HTMLElement>('[data-study-card-id]');
+    await answerYes();
+    await waitFor(() => {
+      const next = document.querySelector<HTMLElement>('[data-study-card-id]');
+      expect(next?.dataset.studyCardId).not.toBe(secondSurface?.dataset.studyCardId);
+      expect(screen.getByRole('progressbar', { name: 'Predicted score progress' })).toBe(progress);
+      expect(progress.closest('header')).toBe(header);
+    });
+    expect(await db.sessionHistory.count()).toBe(2);
+  });
+
+  it('checks a numeric answer and records full marks without self-grading', async () => {
+    const performanceNow = vi.spyOn(performance, 'now').mockReturnValue(0);
+    const deck = await createDeck('Numeric deck');
+    const card = await createCard(deck.id, 'front_back', 'What is 8 / 2?', '', [], {
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+    });
+
+    try {
+      render(
+        <ThemeProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={['/learn']}>
+              <Routes>
+                <Route path="/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </ThemeProvider>,
+      );
+
+      fireEvent.change(await screen.findByLabelText('Your answer'), {
+        target: { value: '8 / 2' },
+      });
+      expect(screen.queryByRole('button', { name: /^yes$/i })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+      fireEvent.click(screen.getByRole('button', { name: 'The checker got this wrong' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+      await waitFor(async () => {
+        expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+          grade: 4,
+          correct: true,
+          marksEarned: 1,
+          marksAvailable: 1,
+          checkerDisputes: [{
+            question: 'What is 8 / 2?',
+            studentLine: '8 / 2',
+            verdict: { correct: true, marksEarned: 1 },
+            checkerSeeds: [],
+          }],
+        });
+      });
+    } finally {
+      performanceNow.mockRestore();
+    }
+  });
+
+  it('grades an incorrect numeric answer as Again and clears it for the retry', async () => {
+    const deck = await createDeck('Numeric retry deck');
+    const card = await createCard(deck.id, 'front_back', 'What is 3 squared?', '', [], {
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '9' } },
+    });
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    const input = await screen.findByLabelText('Your answer');
+    fireEvent.change(input, { target: { value: '6' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(async () => {
+      expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+        grade: 1,
+        correct: false,
+        marksEarned: 0,
+        marksAvailable: 1,
+      });
+    });
+    expect(await screen.findByLabelText('Your answer')).toHaveValue('');
+  });
+
+  it('checks working lines and persists full marks with their verdicts', async () => {
+    const performanceNow = vi.spyOn(performance, 'now').mockReturnValue(0);
+    const deck = await createDeck('Working deck');
+    const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8.', '', [], {
+      payload: {
+        v: 1,
+        kind: 'working',
+        scheme: [
+          { marks: 1, label: 'substitution', kind: 'waypoint', expression: '2x = 8' },
+          { marks: 2, label: 'answer', kind: 'predicate', predicate: 'equals', args: ['4'] },
+        ],
+      },
+    });
+    try {
+      render(
+        <ThemeProvider><ToastProvider><MemoryRouter initialEntries={['/learn']}><Routes>
+          <Route path="/learn" element={<LearnMode />} />
+        </Routes></MemoryRouter></ToastProvider></ThemeProvider>,
+      );
+      fireEvent.change(await screen.findByLabelText('Your working'), { target: { value: '2x = 8\n4' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
+      fireEvent.click(screen.getByRole('button', { name: 'The checker got this wrong for line 1' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      await waitFor(async () => {
+        expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+          grade: 4,
+          correct: true,
+          marksEarned: 3,
+          marksAvailable: 3,
+          lineVerdicts: [
+            { studentLine: '2x = 8', matchedLineIndex: 0, marksEarned: 1 },
+            { studentLine: '4', matchedLineIndex: 1, marksEarned: 2 },
+          ],
+          checkerDisputes: [{
+            question: 'Solve 2x = 8.',
+            studentLine: '2x = 8',
+            verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
+            checkerSeeds: [`${card.id}:0:0`],
+          }],
+        });
+      });
+    } finally {
+      performanceNow.mockRestore();
+    }
+  });
+
+  it('grades partial working as Again and clears it for the retry', async () => {
+    const deck = await createDeck('Working retry deck');
+    const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8.', '', [], {
+      payload: {
+        v: 1,
+        kind: 'working',
+        scheme: [
+          { marks: 1, label: 'substitution', kind: 'waypoint', expression: '2x = 8' },
+          { marks: 2, label: 'answer', kind: 'predicate', predicate: 'equals', args: ['4'] },
+        ],
+      },
+    });
+    render(
+      <ThemeProvider><ToastProvider><MemoryRouter initialEntries={['/learn']}><Routes>
+        <Route path="/learn" element={<LearnMode />} />
+      </Routes></MemoryRouter></ToastProvider></ThemeProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Your working'), { target: { value: '2x = 8' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(async () => {
+      expect((await db.cards.get(card.id))?.history[0]).toMatchObject({
+        grade: 1,
+        correct: false,
+        marksEarned: 1,
+        marksAvailable: 3,
+      });
+    });
+    expect(await screen.findByLabelText('Your working')).toHaveValue('');
+  });
+
+  it('renders a scaffold-kind item read-only, with no grading affordance and an empty history', async () => {
+    const deck = await createDeck('Scaffold deck');
+    const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8 by scaffold.', '', [], {
+      payload: { v: 1, kind: 'scaffold' },
+    });
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('Solve 2x = 8 by scaffold.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /can’t study this item yet — this version doesn’t support its format\./,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^yes$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^no$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show answer' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+
+    expect((await db.cards.get(card.id))?.history ?? []).toHaveLength(0);
+  });
+
+  it('falls back to the read-only face for an unknown payload version, not just an unknown kind', async () => {
+    const deck = await createDeck('Unknown version deck');
+    await createCard(deck.id, 'front_back', 'What is 8 / 2?', '', [], {
+      // A hypothetical future `v: 2` numeric payload — the version guard, not the
+      // kind check, is what must catch this.
+      payload: { v: 2, kind: 'numeric', answer: { kind: 'exact', value: '4' } } as never,
+    });
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('What is 8 / 2?')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /can’t study this item yet — this version doesn’t support its format\./,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Your answer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Check answer' })).not.toBeInTheDocument();
+  });
+
+  it('buries a scaffold-kind item from its read-only face and advances the session', async () => {
+    const deck = await createDeck('Scaffold bury deck');
+    const card = await createCard(deck.id, 'front_back', 'Scaffold question', '', [], {
+      payload: { v: 1, kind: 'scaffold' },
+    });
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('Scaffold question')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Bury until tomorrow' }));
+
+    expect(await screen.findByText('Session complete')).toBeInTheDocument();
+    expect((await db.cards.get(card.id))?.history ?? []).toHaveLength(0);
   });
 
   it('does not create rigid progress slots from unavailable cards outside Simple mode', async () => {

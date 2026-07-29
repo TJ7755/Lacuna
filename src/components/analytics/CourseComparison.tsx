@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useChartColours } from './useChartColours';
 import { ChartCard } from './ChartCard';
+import { Select } from '../ui/Select';
 import type { Course, Card } from '../../db/types';
 import {
   averagePredictedRetrievability,
@@ -251,10 +253,10 @@ export function CourseComparison({ courses, cards }: CourseComparisonProps) {
     >
       <div className="space-y-4">
         <div className="flex flex-wrap gap-3">
-          <select
+          <Select
             value={courseAId}
             onChange={(e) => setCourseAId(e.target.value)}
-            className="min-w-[10rem] rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
+            className="min-w-[10rem]"
             aria-label="First course"
           >
             <option value="">Select a course…</option>
@@ -263,12 +265,12 @@ export function CourseComparison({ courses, cards }: CourseComparisonProps) {
                 {course.name}
               </option>
             ))}
-          </select>
+          </Select>
           <span className="self-center text-sm text-ink-faint">vs</span>
-          <select
+          <Select
             value={courseBId}
             onChange={(e) => setCourseBId(e.target.value)}
-            className="min-w-[10rem] rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-accent"
+            className="min-w-[10rem]"
             aria-label="Second course"
           >
             <option value="">Select a course…</option>
@@ -277,7 +279,7 @@ export function CourseComparison({ courses, cards }: CourseComparisonProps) {
                 {course.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <AnimatePresence mode="wait">
@@ -291,15 +293,21 @@ export function CourseComparison({ courses, cards }: CourseComparisonProps) {
               className="space-y-4 overflow-hidden"
             >
               <div className="flex items-center gap-3 text-sm">
-                <div className="flex items-center gap-1.5">
+                <Link
+                  to={`/course/${courseA.id}/analytics`}
+                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent hover:underline"
+                >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colourA }} />
-                  <span className="text-ink">{courseA.name}</span>
-                </div>
+                  {courseA.name}
+                </Link>
                 <span className="text-ink-faint">vs</span>
-                <div className="flex items-center gap-1.5">
+                <Link
+                  to={`/course/${courseB.id}/analytics`}
+                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent hover:underline"
+                >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colourB }} />
-                  <span className="text-ink">{courseB.name}</span>
-                </div>
+                  {courseB.name}
+                </Link>
               </div>
 
               <div className="space-y-4">

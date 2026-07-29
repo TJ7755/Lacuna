@@ -1,4 +1,11 @@
-import { useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
+import {
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 import { m as motion } from 'motion/react';
 import { ProgressBar } from '../ui/ProgressBar';
 import { relativeExam, startOfDay } from '../../utils/datetime';
@@ -6,6 +13,7 @@ import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useCourseCardDetail } from '../../state/courseCardDetail';
 import { useCourseCardMetric } from '../../state/courseCardMetric';
+import { PlayIcon } from '../ui/icons';
 import type { Card, Course } from '../../db/types';
 import type { CourseSummary } from '../../state/useCourseData';
 
@@ -14,7 +22,12 @@ export interface CourseCardProps {
   summary?: CourseSummary;
   /** The course's cards, used by the hover detail modules. */
   cards?: Card[];
+  /** A merge re-import has queued updates for this course (Arc 7 §7.5). */
+  hasPendingUpdate?: boolean;
   onClick: () => void;
+  /** Secondary "Study" action, routing straight into the course's study flow
+   * (Arc 10 §10.1) — distinct from onClick, which opens the course path. */
+  onStudy?: () => void;
   onArchiveMenu?: (position: { x: number; y: number }, trigger: HTMLButtonElement) => void;
 }
 
@@ -50,7 +63,15 @@ function relativeDue(dueMs: number, nowMs: number): string {
  * height follows the single animated detail wrapper — only that wrapper
  * animates, so there are no competing height springs.
  */
-export function CourseCard({ course, summary, cards, onClick, onArchiveMenu }: CourseCardProps) {
+export function CourseCard({
+  course,
+  summary,
+  cards,
+  hasPendingUpdate = false,
+  onClick,
+  onStudy,
+  onArchiveMenu,
+}: CourseCardProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const [detailSettings] = useCourseCardDetail();
@@ -68,9 +89,10 @@ export function CourseCard({ course, summary, cards, onClick, onArchiveMenu }: C
     event.preventDefault();
     event.stopPropagation();
     const rect = buttonRef.current.getBoundingClientRect();
-    const position = 'clientX' in event && (event.clientX !== 0 || event.clientY !== 0)
-      ? { x: event.clientX, y: event.clientY }
-      : { x: rect.left + 12, y: rect.top + 12 };
+    const position =
+      'clientX' in event && (event.clientX !== 0 || event.clientY !== 0)
+        ? { x: event.clientX, y: event.clientY }
+        : { x: rect.left + 12, y: rect.top + 12 };
     onArchiveMenu(position, buttonRef.current);
   }
 
@@ -174,8 +196,8 @@ export function CourseCard({ course, summary, cards, onClick, onArchiveMenu }: C
       {/* Exam date label */}
       <div
         className={cn(
-          'mb-1 text-xs uppercase tracking-[0.14em]',
-          examPassed ? 'text-amber-600' : 'text-ink-faint',
+          'mb-1 pr-10 text-xs uppercase tracking-[0.14em]',
+          examPassed ? 'text-warning-fg' : 'text-ink-faint',
         )}
       >
         {examLabel}
@@ -183,6 +205,14 @@ export function CourseCard({ course, summary, cards, onClick, onArchiveMenu }: C
 
       {/* Course name */}
       <h3 className="mb-4 font-display text-2xl leading-tight tracking-tight">{course.name}</h3>
+
+      {hasPendingUpdate && (
+        <div className="mb-4 -mt-2">
+          <span className="inline-flex items-center rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+            Update available
+          </span>
+        </div>
+      )}
 
       {/* Stats and selected course metric */}
       <div className="mt-auto">
@@ -326,6 +356,24 @@ export function CourseCard({ course, summary, cards, onClick, onArchiveMenu }: C
           </motion.div>
         )}
       </motion.button>
+
+      {/* Study: a secondary action distinct from the card's click-through to the
+          course path (Arc 10 §10.1). Sits above the card button so it does not
+          trigger the card's own hover/click handling. */}
+      {onStudy && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onStudy();
+          }}
+          title={`Study ${course.name}`}
+          aria-label={`Study ${course.name}`}
+          className="absolute right-4 top-4 z-30 grid h-9 w-9 place-items-center rounded-full border border-line bg-surface text-ink-faint shadow-sm shadow-black/[0.02] transition-colors hover:border-accent/40 hover:bg-accent-soft hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        >
+          <PlayIcon width={16} height={16} />
+        </button>
+      )}
     </div>
   );
 }

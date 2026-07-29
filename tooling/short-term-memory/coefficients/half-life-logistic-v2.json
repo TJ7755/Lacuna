@@ -1,0 +1,75 @@
+{
+  "candidate": "half-life-logistic-v2-routed",
+  "coefficients": [
+    2.29426737093,
+    -0.760229051065,
+    0.619248216512,
+    -0.619248216512,
+    0.112358228005,
+    1.383602664329,
+    -2.679808495013,
+    0.236894220905,
+    -0.62004298257,
+    0.383148761665
+  ],
+  "dataset": {
+    "examples_manifest_sha256": "4dcc7d9c0a56c88424458cf89addf50325cbdcb8a088d00ee31a69d4cafa693d",
+    "id": "open-spaced-repetition/anki-revlogs-10k",
+    "revision": "75299740cff05894ef42d7ad990666691efdd2da",
+    "user_ids": "1-100"
+  },
+  "fallback": {
+    "invalid_or_missing_features": "FSRS-6",
+    "lag_above_seconds": 604800,
+    "model": "FSRS-6"
+  },
+  "features": [
+    "intercept",
+    "log_elapsed_seconds",
+    "previous_success",
+    "previous_failure",
+    "first_predictive_review",
+    "log_prior_successes",
+    "log_prior_failures",
+    "state_learning",
+    "state_review",
+    "state_relearning"
+  ],
+  "fit": {
+    "count_cap": 8,
+    "lag_bins": 64,
+    "training_examples": 2582880
+  },
+  "personalisation": {
+    "global_only_below_local_examples": 500,
+    "local_parameters": [
+      "intercept",
+      "previous_success",
+      "previous_failure"
+    ],
+    "shrinkage_pseudo_examples": 1000,
+    "weight": "local_examples / (local_examples + 1000)"
+  },
+  "probability_composition": {
+    "description": "The short-term probability replaces FSRS-6, then a smoothstep blend returns to FSRS-6. Probabilities are not added, so evidence is not counted twice. The handover is routed on the previous review's outcome (VALIDATION_PLAN.md phase 2): after a previous failure, full short-term weight holds through 518,400 s (6 days) and decays to 0 at 604,800 s (7 days), matching v1. After a previous success, after no previous outcome at all, or on the first predictive review (the seed review's outcome is not treated as a genuine previous outcome for routing), full short-term weight holds only through 86,400 s (1 day) and decays to 0 at 172,800 s (2 days). FSRS-6 alone governs beyond 604,800 s on both paths.",
+    "fsrs_only_from_seconds": 604800,
+    "post_failure_short_term_only_through_seconds": 518400,
+    "post_success_transition_start_seconds": 86400,
+    "post_success_transition_end_seconds": 172800
+  },
+  "schema_version": 1,
+  "supported_features": {
+    "elapsed_seconds": [
+      0,
+      604800
+    ],
+    "prior_counts": "non-negative; each count is capped at 8 for the model feature",
+    "previous_recalled": "required boolean",
+    "state": [
+      0,
+      1,
+      2,
+      3
+    ]
+  }
+}

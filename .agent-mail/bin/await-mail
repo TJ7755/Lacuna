@@ -1,0 +1,22 @@
+#!/bin/sh
+# Block until a mailbox file for the given slug and kind arrives, print it, and consume it.
+# Usage: .agent-mail/bin/await-mail <task-slug> [kind] [timeout-seconds]
+#   kind defaults to "answer"; timeout defaults to 900 (15 minutes).
+# Exit 0 with the message on stdout, or exit 1 on timeout with nothing consumed.
+set -eu
+slug="$1"
+kind="${2:-answer}"
+timeout="${3:-900}"
+dir="$(dirname "$0")/.."
+file="$dir/$slug-$kind.md"
+waited=0
+while [ ! -f "$file" ]; do
+  if [ "$waited" -ge "$timeout" ]; then
+    echo "await-mail: timed out after ${timeout}s waiting for $slug-$kind.md" >&2
+    exit 1
+  fi
+  sleep 15
+  waited=$((waited + 15))
+done
+cat "$file"
+rm -f "$file"

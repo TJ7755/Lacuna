@@ -39,8 +39,15 @@ describe('undoReview', () => {
     const perfBefore = (await db.userPerformance.get(deck.id)) ?? null;
     const deckLastInteractedAtBefore = (await db.decks.get(deck.id))!.lastInteractedAt;
 
-    const { card: updated, sessionHistoryId, lastInteractedAtBefore } = await recordReview({
+    const {
+      card: updated,
+      sessionHistoryId,
+      lastInteractedAtBefore,
+    } = await recordReview({
       card,
+      eventId: 'event-undo',
+      sessionId: 'session-undo',
+      sessionKind: 'deck',
       deck,
       grade: 3,
       responseTimeSec: 2,
@@ -56,6 +63,7 @@ describe('undoReview', () => {
     expect((await db.decks.get(deck.id))!.lastInteractedAt).not.toBe(deckLastInteractedAtBefore);
 
     await undoReview({
+      eventId: 'event-undo',
       cardBefore,
       perfBefore,
       sessionHistoryId,
@@ -80,6 +88,9 @@ describe('undoReview', () => {
 
     await recordReview({
       card: cardWithHint,
+      eventId: 'event-hint',
+      sessionId: 'session-hints',
+      sessionKind: 'deck',
       deck,
       grade: 3,
       responseTimeSec: 2,
@@ -89,6 +100,9 @@ describe('undoReview', () => {
     });
     await recordReview({
       card: cardWithoutHint,
+      eventId: 'event-no-hint',
+      sessionId: 'session-hints',
+      sessionKind: 'deck',
       deck,
       grade: 3,
       responseTimeSec: 2,
@@ -98,6 +112,50 @@ describe('undoReview', () => {
 
     expect((await db.cards.get(cardWithHint.id))!.history[0].hintUsed).toBe(true);
     expect((await db.cards.get(cardWithoutHint.id))!.history[0].hintUsed).toBe(false);
+  });
+
+  it('records machine-awarded marks on the review log', async () => {
+    const deck = await createDeck('Test deck');
+    const card = await createCard(deck.id, 'front_back', '2 + 2', '', [], {
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+    });
+
+    await recordReview({
+      card,
+      eventId: 'event-numeric',
+      sessionId: 'session-numeric',
+      sessionKind: 'deck',
+      deck,
+      grade: 4,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+      marksEarned: 1,
+      marksAvailable: 1,
+      lineVerdicts: [{ studentLine: '4', matchedLineIndex: 0, marksEarned: 1 }],
+      checkerDisputes: [{
+        reportedAt: 1_725_123_456_789,
+        question: '2 + 2',
+        studentLine: '4',
+        verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
+        checkerSeeds: ['card:0:0'],
+      }],
+    });
+
+    expect((await db.cards.get(card.id))!.history[0]).toMatchObject({
+      grade: 4,
+      correct: true,
+      marksEarned: 1,
+      marksAvailable: 1,
+      lineVerdicts: [{ studentLine: '4', matchedLineIndex: 0, marksEarned: 1 }],
+      checkerDisputes: [{
+        reportedAt: 1_725_123_456_789,
+        question: '2 + 2',
+        studentLine: '4',
+        verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
+        checkerSeeds: ['card:0:0'],
+      }],
+    });
   });
 
   it('course-keyed review updates Course.lastInteractedAt, courseId-keyed userPerformance, and sessionHistory.courseId', async () => {
@@ -111,8 +169,15 @@ describe('undoReview', () => {
     const perfBefore = (await db.userPerformance.get(c.id)) ?? null;
     const courseLastInteractedAtBefore = (await db.courses.get(c.id))!.lastInteractedAt;
 
-    const { card: updated, sessionHistoryId, lastInteractedAtBefore } = await recordReview({
+    const {
+      card: updated,
+      sessionHistoryId,
+      lastInteractedAtBefore,
+    } = await recordReview({
       card,
+      eventId: 'event-course',
+      sessionId: 'session-course',
+      sessionKind: 'lesson',
       deck: c,
       kind: 'course',
       grade: 3,
@@ -140,6 +205,7 @@ describe('undoReview', () => {
     expect((await db.userPerformance.get(card.deckId))?.totalCorrectReviews).toBe(0);
 
     await undoReview({
+      eventId: 'event-course',
       cardBefore,
       perfBefore,
       sessionHistoryId,
@@ -153,6 +219,123 @@ describe('undoReview', () => {
     expect(await db.sessionHistory.get(sessionHistoryId)).toBeUndefined();
     expect(await db.userPerformance.get(c.id)).toBeUndefined();
     expect((await db.courses.get(c.id))!.lastInteractedAt).toBe(courseLastInteractedAtBefore);
+  });
+
+  it('persists every provenance field and the exact attempt timestamp', async () => {
+    const deck = await createDeck('Test deck');
+    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    const now = 1_725_123_456_789;
+
+    const result = await recordReview({
+      card,
+      deck,
+      eventId: 'event-provenance',
+      sessionId: 'session-provenance',
+      sessionKind: 'revision-plan',
+      revisionPlanId: 'plan-1',
+      revisionWindowId: 'window-1',
+      grade: 2,
+      correct: false,
+      responseTimeSec: 3.125,
+      distracted: true,
+      hintUsed: true,
+      now,
+    });
+
+    expect(result.recorded).toBe(true);
+    expect(result.card.history[0]).toEqual(
+      expect.objectContaining({
+        eventId: 'event-provenance',
+        sessionId: 'session-provenance',
+        sessionKind: 'revision-plan',
+        revisionPlanId: 'plan-1',
+        revisionWindowId: 'window-1',
+        timestamp: now,
+        grade: 2,
+        correct: false,
+        responseTimeSec: 3.125,
+        distracted: true,
+        hintUsed: true,
+      }),
+    );
+    expect(await db.sessionHistory.get(result.sessionHistoryId)).toEqual(
+      expect.objectContaining({
+        eventId: 'event-provenance',
+        sessionId: 'session-provenance',
+        revisionPlanId: 'plan-1',
+        revisionWindowId: 'window-1',
+        timestamp: now,
+      }),
+    );
+  });
+
+  it('commits concurrent replays once and performs one FSRS transition', async () => {
+    const deck = await createDeck('Test deck');
+    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    const args = {
+      card,
+      deck,
+      eventId: 'event-replayed',
+      sessionId: 'session-replayed',
+      sessionKind: 'deck' as const,
+      grade: 3 as const,
+      correct: true,
+      responseTimeSec: 2,
+      distracted: false,
+      now: 1_725_123_456_789,
+    };
+
+    const results = await Promise.all([recordReview(args), recordReview(args)]);
+
+    expect(results.map((result) => result.recorded).sort()).toEqual([false, true]);
+    expect((await db.cards.get(card.id))?.reps).toBe(1);
+    expect((await db.cards.get(card.id))?.history).toHaveLength(1);
+    expect(await db.sessionHistory.count()).toBe(1);
+    expect((await db.userPerformance.get(deck.id))?.totalCorrectReviews).toBe(1);
+  });
+
+  it('makes repeated undo harmless and permits a genuine retry afterwards', async () => {
+    const deck = await createDeck('Test deck');
+    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    const perfBefore = (await db.userPerformance.get(deck.id)) ?? null;
+    const result = await recordReview({
+      card,
+      deck,
+      eventId: 'event-retry',
+      sessionId: 'session-retry',
+      sessionKind: 'deck',
+      grade: 3,
+      correct: true,
+      responseTimeSec: 2,
+      distracted: false,
+    });
+    const undo = {
+      eventId: 'event-retry',
+      cardBefore: result.cardBefore,
+      perfBefore,
+      sessionHistoryId: result.sessionHistoryId,
+      deckId: deck.id,
+      kind: result.kind,
+      lastInteractedAtBefore: result.lastInteractedAtBefore,
+    };
+
+    await undoReview(undo);
+    await undoReview(undo);
+    const retried = await recordReview({
+      card: result.cardBefore,
+      deck,
+      eventId: 'event-retry',
+      sessionId: 'session-retry',
+      sessionKind: 'deck',
+      grade: 3,
+      correct: true,
+      responseTimeSec: 2,
+      distracted: false,
+    });
+
+    expect(retried.recorded).toBe(true);
+    expect((await db.cards.get(card.id))?.reps).toBe(1);
+    expect(await db.sessionHistory.count()).toBe(1);
   });
 });
 
@@ -195,9 +378,7 @@ describe('createCardWithReverse', () => {
 
   it('creates two independent cards with swapped sides and shared tags', async () => {
     const deck = await createDeck('Vocab');
-    const { card, reverse } = await createCardWithReverse(deck.id, 'bonjour', 'hello', [
-      'french',
-    ]);
+    const { card, reverse } = await createCardWithReverse(deck.id, 'bonjour', 'hello', ['french']);
 
     expect(card.front).toBe('bonjour');
     expect(card.back).toBe('hello');

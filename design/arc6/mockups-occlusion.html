@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arc 6 — occlusion, chosen design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Geist:wght@300..600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:38 33% 96%; --surface:40 30% 99%; --surface-raised:0 0% 100%;
+  --ink:30 12% 14%; --ink-soft:30 8% 38%; --ink-faint:30 6% 58%;
+  --line:34 14% 86%; --line-strong:34 12% 78%;
+  --accent:32 90% 48%; --accent-soft:32 85% 92%; --accent-ink:28 60% 24%;
+  --positive:150 45% 38%; --negative:6 62% 48%; --warning:38 92% 50%;
+  --font-display:'Fraunces',Georgia,serif; --font-body:'Geist',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,monospace;
+}
+.dark{
+  --paper:30 8% 7%; --surface:30 7% 9%; --surface-raised:30 6% 12%;
+  --ink:36 20% 92%; --ink-soft:34 10% 66%; --ink-faint:34 8% 46%;
+  --line:30 6% 18%; --line-strong:30 6% 26%;
+  --accent:34 92% 56%; --accent-soft:32 40% 18%; --accent-ink:36 90% 70%;
+  --positive:150 40% 55%; --negative:6 70% 62%; --warning:38 92% 56%;
+}
+*{box-sizing:border-box}
+body{margin:0;background:hsl(var(--paper));color:hsl(var(--ink));font-family:var(--font-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--font-display);font-weight:500;margin:0}
+code{font-family:var(--font-mono);font-size:.9em}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 22px 80px}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+h1{font-size:24px}
+.sub{color:hsl(var(--ink-soft));max-width:74ch;margin:8px 0 0}
+.ghost{border:1px solid hsl(var(--line));background:hsl(var(--surface));color:hsl(var(--ink-soft));border-radius:999px;padding:7px 14px;font:inherit;font-size:12px;cursor:pointer}
+.ghost:hover{border-color:hsl(var(--line-strong));color:hsl(var(--ink))}
+h2.sec{font-size:17px;margin:34px 0 2px}
+.secsub{color:hsl(var(--ink-soft));font-size:13px;margin:0 0 4px;max-width:80ch}
+.grid{display:grid;gap:20px;margin-top:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.g1{grid-template-columns:1fr}
+.panel{border:1px solid hsl(var(--line));background:hsl(var(--surface));border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.phead{padding:12px 16px;border-bottom:1px solid hsl(var(--line));display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.phead h3{font-size:15px}
+.tag{font-family:var(--font-mono);font-size:11px;color:hsl(var(--accent-ink));background:hsl(var(--accent-soft));border-radius:5px;padding:2px 6px}
+.pbody{padding:18px 16px;flex:1;display:flex;flex-direction:column;gap:12px}
+.note{padding:12px 16px 14px;border-top:1px dashed hsl(var(--line));color:hsl(var(--ink-soft));font-size:12.5px}
+.note b{color:hsl(var(--ink));font-weight:500}
+.hint{font-size:11px;color:hsl(var(--ink-faint));text-align:center}
+.faint{color:hsl(var(--ink-faint));font-size:12px}
+.kbd{font-family:var(--font-mono);font-size:10.5px;border:1px solid hsl(var(--line-strong));border-radius:4px;padding:1px 5px;color:hsl(var(--ink-faint))}
+.grades{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.grade{border:1px solid hsl(var(--line));background:hsl(var(--surface));border-radius:8px;padding:6px 12px;font-size:12px;color:hsl(var(--ink-soft))}
+.chip{border:1px solid hsl(var(--line));background:hsl(var(--surface));border-radius:999px;padding:4px 10px;font-size:11.5px;color:hsl(var(--ink-soft));cursor:pointer}
+.chip:hover{border-color:hsl(var(--line-strong))}
+
+/* figure + regions */
+.fig{position:relative;width:100%;aspect-ratio:460/300;border-radius:10px;overflow:hidden;border:1px solid hsl(var(--line));background:hsl(var(--surface-raised))}
+.fig svg{position:absolute;inset:0;width:100%;height:100%}
+.rg{position:absolute;border-radius:3px;transition:background .14s,border-color .14s,opacity .14s}
+.rg.masked{background:hsl(var(--ink) / .88);border:1px solid hsl(var(--ink) / .55)}
+.dark .rg.masked{background:hsl(var(--ink-faint) / .62);border-color:hsl(var(--ink-faint) / .8)}
+.rg.target{cursor:pointer;box-shadow:0 0 0 3px hsl(var(--accent) / .22);border:2px solid hsl(var(--accent))}
+.rg.target .q{color:hsl(var(--accent));font-size:12px;font-weight:500;display:grid;place-items:center;height:100%}
+.dark .rg.target .q{color:hsl(var(--accent))}
+.rg.open{background:none;border:1px dashed hsl(var(--positive));box-shadow:0 0 0 3px hsl(var(--positive) / .14)}
+.rg.ring{background:none;border:2px solid hsl(var(--accent));border-radius:999px;box-shadow:0 0 0 3px hsl(var(--accent) / .18);cursor:pointer}
+.rg.sel{border:2px solid hsl(var(--accent));background:hsl(var(--accent) / .13);box-shadow:0 0 0 3px hsl(var(--accent) / .18)}
+.rg.draft{border:1px dashed hsl(var(--ink-faint));background:hsl(var(--ink-faint) / .12)}
+.rg.feat{border:2px dashed hsl(var(--accent));border-radius:999px;background:none}
+
+/* editor */
+.ed{border:1px solid hsl(var(--line));border-radius:10px;overflow:hidden;background:hsl(var(--surface-raised))}
+.edbar{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid hsl(var(--line));background:hsl(var(--surface));flex-wrap:wrap}
+.tool{border:1px solid hsl(var(--line));background:hsl(var(--surface-raised));border-radius:7px;padding:4px 9px;font-size:11.5px;color:hsl(var(--ink-soft));cursor:pointer}
+.tool[aria-pressed=true]{border-color:hsl(var(--accent));color:hsl(var(--accent-ink));background:hsl(var(--accent-soft))}
+.spacer{flex:1}
+.split{display:grid;grid-template-columns:1fr 250px}
+@media(max-width:760px){.split{grid-template-columns:1fr}}
+.canvaspane{padding:12px;border-right:1px solid hsl(var(--line))}
+.sidepane{display:flex;flex-direction:column;min-width:0}
+.sidehead{padding:9px 12px;border-bottom:1px solid hsl(var(--line));font-size:11px;color:hsl(var(--ink-faint));text-transform:uppercase;letter-spacing:.08em;display:flex;justify-content:space-between;align-items:center}
+.rlist{list-style:none;margin:0;padding:6px;display:flex;flex-direction:column;gap:3px;overflow:auto;max-height:210px}
+.rlist li{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;font-size:12.5px;cursor:pointer;border:1px solid transparent}
+.rlist li:hover{background:hsl(var(--paper))}
+.rlist li[aria-current=true]{background:hsl(var(--accent-soft));border-color:hsl(var(--accent) / .4);color:hsl(var(--accent-ink))}
+.role{font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;border:1px solid hsl(var(--line-strong));border-radius:4px;padding:1px 4px;color:hsl(var(--ink-faint))}
+.rlist li[aria-current=true] .role{border-color:hsl(var(--accent) / .5);color:hsl(var(--accent-ink))}
+.rname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.x{color:hsl(var(--ink-faint));font-size:14px;line-height:1}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;color:hsl(var(--ink-faint));text-transform:uppercase;letter-spacing:.08em}
+.input{border:1px solid hsl(var(--line-strong));background:hsl(var(--surface-raised));border-radius:8px;padding:7px 10px;font:inherit;font-size:12.5px;color:hsl(var(--ink))}
+.input.ph{color:hsl(var(--ink-faint))}
+.footbar{padding:9px 12px;border-top:1px solid hsl(var(--line));display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:hsl(var(--ink-soft));background:hsl(var(--surface));flex-wrap:wrap}
+.count{font-family:var(--font-mono);font-size:11.5px;color:hsl(var(--accent-ink));background:hsl(var(--accent-soft));border-radius:5px;padding:2px 7px}
+.primary{background:hsl(var(--accent));color:#3a2200;border:0;border-radius:8px;padding:7px 14px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
+.dark .primary{color:#241a08}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:hsl(var(--ink-faint));margin-top:10px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <h1>Arc 6 — occlusion, chosen design</h1>
+      <p class="sub">The label-box model. One annotated image produces two kinds of card, because a rectangle carries a role: a <b>label</b> box sits over text already printed on the diagram, and a <b>feature</b> region points at a thing in the drawing. Nothing here asks the author to retype a label that is already in the picture. Click a ringed region to reveal.</p>
+    </div>
+    <button class="ghost" id="themeBtn">Dark mode</button>
+  </div>
+
+  <h2 class="sec">Study</h2>
+  <p class="secsub">Both card kinds mask every label box on the front, so the diagram can never answer itself by elimination. What differs is what the front asks and what the back uncovers.</p>
+
+  <div class="grid g2">
+
+    <div class="panel">
+      <div class="phead"><span class="tag">Label card</span><h3>Which label goes here?</h3></div>
+      <div class="pbody">
+        <div class="fig" data-fig data-mode="label">
+          <div data-diagram></div>
+        </div>
+        <div class="hint">click the ringed box to reveal</div>
+        <div class="grades"><span class="grade">Again</span><span class="grade">Hard</span><span class="grade">Good</span><span class="grade">Easy</span></div>
+      </div>
+      <div class="note"><b>One card per label box.</b> Front covers every label; the target is ringed. Revealing lifts that one mask, so the answer is the diagram's own printed text and the author typed nothing. Twelve boxes on a skeleton is twelve cards for about thirty seconds of drawing.</div>
+    </div>
+
+    <div class="panel">
+      <div class="phead"><span class="tag">Feature card</span><h3>What is this part called?</h3></div>
+      <div class="pbody">
+        <div class="fig" data-fig data-mode="feature">
+          <div data-diagram></div>
+        </div>
+        <div class="hint">click the ringed region to reveal</div>
+        <div class="input ph" style="text-align:left">type the name…</div>
+        <div class="faint">Typed mode needs an authored label, so it is offered only on regions that have one.</div>
+      </div>
+      <div class="note"><b>One card per feature region.</b> Front rings a part of the drawing with all labels masked; the back uncovers the <i>paired</i> label box. Pairing is what keeps this typing-free too. Where a region has no pair (an unlabelled diagram), the author supplies the text and the back shows that instead.</div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <span><i class="sw" style="background:hsl(var(--ink) / .88)"></i> masked label</span>
+    <span><i class="sw" style="background:transparent;border:2px solid hsl(var(--accent))"></i> target</span>
+    <span><i class="sw" style="background:transparent;border:2px solid hsl(var(--accent));border-radius:999px"></i> feature region</span>
+    <span><i class="sw" style="background:transparent;border:1px dashed hsl(var(--positive))"></i> revealed</span>
+  </div>
+
+  <h2 class="sec">Editor (D1, adapted)</h2>
+  <p class="secsub">D1's shape kept: draw on the left, manage on the right, live generated-card count in the footer. The sidebar's job changes from "type every label" to "set a role, and add text only where you want typed answers". Labels are optional and empty by default.</p>
+
+  <div class="grid g1">
+    <div class="panel">
+      <div class="phead"><span class="tag">D1</span><h3>Canvas plus region sidebar</h3></div>
+      <div class="pbody" style="padding:0">
+        <div class="ed" style="border:0;border-radius:0">
+          <div class="edbar">
+            <span class="tool" aria-pressed="true">Draw label box</span>
+            <span class="tool">Draw feature</span>
+            <span class="tool">Select</span>
+            <span class="spacer"></span>
+            <span class="tool">Replace image</span>
+          </div>
+          <div class="split">
+            <div class="canvaspane">
+              <div class="fig" style="border-radius:8px">
+                <div data-diagram></div>
+                <div class="rg draft" style="left:1.7%;top:6.7%;width:18.7%;height:7.3%"></div>
+                <div class="rg draft" style="left:1.7%;top:40%;width:18.7%;height:7.3%"></div>
+                <div class="rg sel" style="left:79.6%;top:23.3%;width:18.7%;height:7.3%"></div>
+                <div class="rg draft" style="left:79.6%;top:50%;width:18.7%;height:7.3%"></div>
+                <div class="rg draft" style="left:32.6%;top:90.7%;width:19.6%;height:7.3%"></div>
+                <div class="rg feat" style="left:48.3%;top:27.3%;width:12.2%;height:18.7%"></div>
+              </div>
+              <div class="faint" style="margin-top:8px">Drag to draw. Coordinates are stored as fractions of the image, so masks hold their place at any size.</div>
+            </div>
+            <div class="sidepane">
+              <div class="sidehead"><span>Regions</span><span>6</span></div>
+              <ul class="rlist">
+                <li><span class="role">lbl</span><span class="rname">Box 1</span><span class="x">×</span></li>
+                <li><span class="role">lbl</span><span class="rname">Box 2</span><span class="x">×</span></li>
+                <li aria-current="true"><span class="role">lbl</span><span class="rname">Box 3</span><span class="x">×</span></li>
+                <li><span class="role">lbl</span><span class="rname">Box 4</span><span class="x">×</span></li>
+                <li><span class="role">lbl</span><span class="rname">Box 5</span><span class="x">×</span></li>
+                <li><span class="role">ftr</span><span class="rname">Region 1 → Box 3</span><span class="x">×</span></li>
+              </ul>
+              <div style="padding:11px 12px;border-top:1px solid hsl(var(--line));display:flex;flex-direction:column;gap:9px">
+                <div class="field"><label>Role</label>
+                  <div style="display:flex;gap:5px"><span class="tool" aria-pressed="true">Label box</span><span class="tool">Feature</span></div>
+                </div>
+                <div class="field"><label>Answer text (optional)</label><div class="input ph">only needed for typed mode</div></div>
+                <div class="field"><label>Note on back (optional)</label><div class="input ph">Contains the DNA</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="footbar">
+            <span><span class="count">6 cards will be generated</span> · 5 label, 1 feature · read-only in the card editor</span>
+            <span style="display:flex;gap:8px;align-items:center"><span class="chip">Cancel</span><button class="primary">Save occlusion</button></span>
+          </div>
+        </div>
+      </div>
+      <div class="note"><b>Two draw tools, one list, one detail pane.</b> Region names default to <code>Box 1…n</code> so the list stays navigable without typing; a feature region shows its pairing inline. The footer count is the sequence editor's precedent, and it is the thing that stops an author accidentally generating forty cards from one diagram.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// A labelled diagram: printed labels in boxes with leader lines, which is the point.
+const DIAGRAM = `<svg viewBox="0 0 460 300" xmlns="http://www.w3.org/2000/svg" aria-label="Labelled plant cell diagram">
+  <rect x="0" y="0" width="460" height="300" fill="hsl(var(--surface-raised))"/>
+  <g stroke="hsl(var(--ink-faint))" stroke-width="1.2" opacity=".8">
+    <line x1="94" y1="31" x2="150" y2="46"/><line x1="94" y1="131" x2="140" y2="132"/>
+    <line x1="366" y1="81" x2="278" y2="104"/><line x1="366" y1="161" x2="322" y2="168"/>
+    <line x1="195" y1="272" x2="205" y2="238"/>
+  </g>
+  <rect x="110" y="30" width="230" height="220" rx="18" fill="none" stroke="hsl(var(--ink-soft))" stroke-width="6"/>
+  <rect x="120" y="40" width="210" height="200" rx="12" fill="hsl(var(--accent-soft))" stroke="hsl(var(--ink-faint))" stroke-width="1.6"/>
+  <ellipse cx="175" cy="132" rx="38" ry="48" fill="hsl(var(--surface))" stroke="hsl(var(--ink-faint))" stroke-width="1.6"/>
+  <circle cx="250" cy="112" r="28" fill="hsl(var(--ink-faint))" opacity=".42" stroke="hsl(var(--ink-soft))" stroke-width="1.6"/>
+  <circle cx="250" cy="112" r="10" fill="hsl(var(--ink-soft))" opacity=".7"/>
+  <g fill="hsl(var(--positive))" opacity=".5" stroke="hsl(var(--positive))" stroke-width="1.3">
+    <ellipse cx="302" cy="168" rx="20" ry="11"/><ellipse cx="285" cy="205" rx="19" ry="10"/>
+    <ellipse cx="170" cy="212" rx="19" ry="10"/>
+  </g>
+  <g font-family="Geist, system-ui, sans-serif" font-size="12" fill="hsl(var(--ink))" text-anchor="middle">
+    <g fill="none" stroke="hsl(var(--ink-faint))" stroke-width="1.2">
+      <rect x="8" y="20" width="86" height="22" rx="4"/><rect x="8" y="120" width="86" height="22" rx="4"/>
+      <rect x="366" y="70" width="86" height="22" rx="4"/><rect x="366" y="150" width="86" height="22" rx="4"/>
+      <rect x="150" y="272" width="90" height="22" rx="4"/>
+    </g>
+    <text x="51" y="35">Cell wall</text><text x="51" y="135">Vacuole</text>
+    <text x="409" y="85">Nucleus</text><text x="409" y="165">Chloroplast</text>
+    <text x="195" y="287">Cytoplasm</text>
+  </g>
+</svg>`;
+document.querySelectorAll('[data-diagram]').forEach(n => n.innerHTML = DIAGRAM);
+
+// label boxes, as fractions of the image
+const BOXES = [
+  { id:'b1', l:1.7,  t:6.7,  w:18.7, h:7.3, text:'Cell wall' },
+  { id:'b2', l:1.7,  t:40,   w:18.7, h:7.3, text:'Vacuole' },
+  { id:'b3', l:79.6, t:23.3, w:18.7, h:7.3, text:'Nucleus' },
+  { id:'b4', l:79.6, t:50,   w:18.7, h:7.3, text:'Chloroplast' },
+  { id:'b5', l:32.6, t:90.7, w:19.6, h:7.3, text:'Cytoplasm' },
+];
+const FEATURE = { l:48.3, t:27.3, w:12.2, h:18.7, paired:'b3' };
+const TARGET = 'b3';
+
+document.querySelectorAll('[data-fig]').forEach(fig => {
+  const feature = fig.dataset.mode === 'feature';
+  BOXES.forEach(b => {
+    const d = document.createElement('div');
+    const isTarget = !feature && b.id === TARGET;
+    d.className = 'rg masked' + (isTarget ? ' target' : '');
+    d.style.cssText = `left:${b.l}%;top:${b.t}%;width:${b.w}%;height:${b.h}%`;
+    if (isTarget) d.innerHTML = '<span class="q">?</span>';
+    d.dataset.id = b.id;
+    fig.appendChild(d);
+  });
+  if (feature) {
+    const r = document.createElement('div');
+    r.className = 'rg ring';
+    r.style.cssText = `left:${FEATURE.l}%;top:${FEATURE.t}%;width:${FEATURE.w}%;height:${FEATURE.h}%`;
+    r.innerHTML = '<span class="q">?</span>';
+    fig.appendChild(r);
+  }
+
+  const reveal = () => {
+    const id = feature ? FEATURE.paired : TARGET;
+    const box = fig.querySelector(`[data-id="${id}"]`);
+    const open = box.classList.contains('open');
+    box.classList.toggle('open', !open);
+    box.classList.toggle('masked', open);
+    box.classList.toggle('target', open && !feature);
+    box.innerHTML = open && !feature ? '<span class="q">?</span>' : '';
+    if (feature) fig.querySelector('.ring').style.opacity = open ? '1' : '.45';
+  };
+  fig.querySelectorAll('.target, .ring').forEach(el => el.addEventListener('click', reveal));
+});
+
+const btn = document.getElementById('themeBtn');
+btn.addEventListener('click', () => {
+  const dark = document.documentElement.classList.toggle('dark');
+  document.body.classList.toggle('dark', dark);
+  btn.textContent = dark ? 'Light mode' : 'Dark mode';
+});
+</script>
+</body>
+</html>

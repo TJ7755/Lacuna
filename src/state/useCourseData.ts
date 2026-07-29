@@ -7,16 +7,20 @@ import { db } from '../db/schema';
 import type {
   Card,
   Course,
-  CourseExamDate,
+  CourseAssessment,
+  CourseRecord,
   Lesson,
   LessonCardExposure,
   LessonCardLink,
   LessonCompletion,
   Note,
+  PendingMergeReview,
   PracticeNode,
+  RevisionPlan,
   Sequence,
   SessionHistoryEntry,
 } from '../db/types';
+import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { availableCards, dueCards, studyPool } from '../fsrs/eligibility';
@@ -29,23 +33,36 @@ import { startOfDay } from '../utils/datetime';
 // Individual record hooks
 // ---------------------------------------------------------------------------
 
+function hydrateCourses(records: CourseRecord[], assessments: CourseAssessment[]): Course[] {
+  return records.map((record) =>
+    hydrateCourse(record, finalAssessmentForCourse(record.id, assessments)),
+  );
+}
+
 export function useCourses(): Course[] | undefined {
-  return useLiveQuery(() => db.courses.orderBy('createdAt').toArray(), []);
+  return useLiveQuery(async () => {
+    const [records, assessments] = await Promise.all([
+      db.courses.orderBy('createdAt').toArray(),
+      db.courseAssessments.toArray(),
+    ]);
+    return hydrateCourses(records, assessments);
+  }, []);
 }
 
 export function useCourse(courseId: string | undefined): Course | null | undefined {
-  return useLiveQuery<Course | null>(
-    () => (courseId ? db.courses.get(courseId).then((course) => course ?? null) : null),
-    [courseId],
-  );
+  return useLiveQuery<Course | null>(async () => {
+    if (!courseId) return null;
+    const [record, assessments] = await Promise.all([
+      db.courses.get(courseId),
+      db.courseAssessments.where('courseId').equals(courseId).toArray(),
+    ]);
+    return record ? hydrateCourse(record, finalAssessmentForCourse(courseId, assessments)) : null;
+  }, [courseId]);
 }
 
 export function useLessons(courseId: string | undefined): Lesson[] | undefined {
   return useLiveQuery(
-    () =>
-      courseId
-        ? db.lessons.where('courseId').equals(courseId).sortBy('orderIndex')
-        : [],
+    () => (courseId ? db.lessons.where('courseId').equals(courseId).sortBy('orderIndex') : []),
     [courseId],
   );
 }
@@ -73,20 +90,14 @@ export function useSequence(sequenceId: string | undefined): Sequence | null | u
  *  management surfaces to group/badge generated cards and resolve a card's owning sequence. */
 export function useSequences(courseId: string | undefined): Sequence[] | undefined {
   return useLiveQuery(
-    () =>
-      courseId
-        ? db.sequences.where('courseId').equals(courseId).sortBy('createdAt')
-        : [],
+    () => (courseId ? db.sequences.where('courseId').equals(courseId).sortBy('createdAt') : []),
     [courseId],
   );
 }
 
 export function useNotes(lessonId: string | undefined): Note[] | undefined {
   return useLiveQuery(
-    () =>
-      lessonId
-        ? db.notes.where('lessonId').equals(lessonId).sortBy('orderIndex')
-        : [],
+    () => (lessonId ? db.notes.where('lessonId').equals(lessonId).sortBy('orderIndex') : []),
     [lessonId],
   );
 }
@@ -96,10 +107,29 @@ export function useAllNotes(): Note[] | undefined {
   return useLiveQuery(() => db.notes.toArray(), []);
 }
 
+/** The outstanding merge review for a course, if a re-import has queued one (Arc 7 §7.5).
+ *  `null` once loaded with nothing pending; `undefined` while loading. */
+export function usePendingMergeReview(
+  courseId: string | undefined,
+): PendingMergeReview | null | undefined {
+  return useLiveQuery(async () => {
+    if (!courseId) return null;
+    return (await db.pendingMergeReviews.where('courseId').equals(courseId).first()) ?? null;
+  }, [courseId]);
+}
+
+/** The set of course ids that currently have a pending merge review, for the dashboard's
+ *  quiet "update available" indicator. One live query rather than one per card. */
+export function usePendingUpdateCourseIds(): Set<string> | undefined {
+  return useLiveQuery(async () => {
+    const reviews = await db.pendingMergeReviews.toArray();
+    return new Set(reviews.map((r) => r.courseId));
+  }, []);
+}
+
 export function useCourseCards(courseId: string | undefined): Card[] | undefined {
   return useLiveQuery(
-    () =>
-      courseId ? db.cards.where('courseId').equals(courseId).toArray() : [],
+    () => (courseId ? db.cards.where('courseId').equals(courseId).toArray() : []),
     [courseId],
   );
 }
@@ -110,30 +140,25 @@ export function useCourseCards(courseId: string | undefined): Card[] | undefined
  * LessonCardLink is display-only and never introduces an FSRS-eligible duplicate.
  */
 export function useLessonCards(lessonId: string | undefined): Card[] | undefined {
-  return useLiveQuery(
-    async () => {
-      if (!lessonId) return [];
-      const [links, primaryCards] = await Promise.all([
-        db.lessonCards.where('lessonId').equals(lessonId).toArray(),
-        db.cards.where('primaryLessonId').equals(lessonId).toArray(),
-      ]);
-      const linkedCardIds = links.map((l) => l.cardId);
-      const linkedCards =
-        linkedCardIds.length > 0
-          ? await db.cards.where('id').anyOf(linkedCardIds).toArray()
-          : [];
-      const seen = new Set<string>();
-      const result: Card[] = [];
-      for (const card of [...primaryCards, ...linkedCards]) {
-        if (!seen.has(card.id)) {
-          seen.add(card.id);
-          result.push(card);
-        }
+  return useLiveQuery(async () => {
+    if (!lessonId) return [];
+    const [links, primaryCards] = await Promise.all([
+      db.lessonCards.where('lessonId').equals(lessonId).toArray(),
+      db.cards.where('primaryLessonId').equals(lessonId).toArray(),
+    ]);
+    const linkedCardIds = links.map((l) => l.cardId);
+    const linkedCards =
+      linkedCardIds.length > 0 ? await db.cards.where('id').anyOf(linkedCardIds).toArray() : [];
+    const seen = new Set<string>();
+    const result: Card[] = [];
+    for (const card of [...primaryCards, ...linkedCards]) {
+      if (!seen.has(card.id)) {
+        seen.add(card.id);
+        result.push(card);
       }
-      return result;
-    },
-    [lessonId],
-  );
+    }
+    return result;
+  }, [lessonId]);
 }
 
 /** Explicit display links for one lesson, kept separate from primary card membership. */
@@ -146,20 +171,36 @@ export function useLessonCardLinks(lessonId: string | undefined): LessonCardLink
 
 export function usePracticeNodes(courseId: string | undefined): PracticeNode[] | undefined {
   return useLiveQuery(
-    () =>
-      courseId
-        ? db.practiceNodes.where('courseId').equals(courseId).toArray()
-        : [],
+    () => (courseId ? db.practiceNodes.where('courseId').equals(courseId).toArray() : []),
     [courseId],
   );
 }
 
-export function useCourseExamDates(courseId: string | undefined): CourseExamDate[] | undefined {
+export function useCourseAssessments(courseId: string | undefined): CourseAssessment[] | undefined {
   return useLiveQuery(
     () =>
-      courseId
-        ? db.courseExamDates.where('courseId').equals(courseId).sortBy('examDate')
-        : [],
+      courseId ? db.courseAssessments.where('courseId').equals(courseId).sortBy('examDate') : [],
+    [courseId],
+  );
+}
+
+export function useRevisionPlan(assessmentId: string | undefined): RevisionPlan | null | undefined {
+  return useLiveQuery<RevisionPlan | null>(
+    () =>
+      assessmentId
+        ? db.revisionPlans
+            .where('assessmentId')
+            .equals(assessmentId)
+            .first()
+            .then((plan) => plan ?? null)
+        : null,
+    [assessmentId],
+  );
+}
+
+export function useCourseRevisionPlans(courseId: string | undefined): RevisionPlan[] | undefined {
+  return useLiveQuery(
+    () => (courseId ? db.revisionPlans.where('courseId').equals(courseId).sortBy('updatedAt') : []),
     [courseId],
   );
 }
@@ -170,9 +211,7 @@ export function useCourseSessionHistory(
 ): SessionHistoryEntry[] | undefined {
   return useLiveQuery(
     () =>
-      courseId
-        ? db.sessionHistory.where('courseId').equals(courseId).sortBy('timestamp')
-        : [],
+      courseId ? db.sessionHistory.where('courseId').equals(courseId).sortBy('timestamp') : [],
     [courseId],
   );
 }
@@ -226,16 +265,14 @@ export function computeCourseSummaries(
   courses: Course[],
   lessons: Lesson[],
   cards: Card[],
-  examDates: CourseExamDate[] = [],
+  assessments: CourseAssessment[] = [],
   now: number = Date.now(),
   progress: CourseSummaryProgress = EMPTY_SUMMARY_PROGRESS,
 ): Record<string, CourseSummary> {
   const courseById = new Map(courses.map((c) => [c.id, c]));
 
   // Build a set of lesson ids that are extensions, for O(1) exclusion.
-  const extensionLessonIds = new Set(
-    lessons.filter((l) => l.isExtension).map((l) => l.id),
-  );
+  const extensionLessonIds = new Set(lessons.filter((l) => l.isExtension).map((l) => l.id));
 
   // Count non-extension lessons per course.
   const coreLessonCount: Record<string, number> = {};
@@ -256,9 +293,9 @@ export function computeCourseSummaries(
     (lessonsByCourse[lesson.courseId] ??= []).push(lesson);
   }
 
-  const examDatesByCourse: Record<string, CourseExamDate[]> = {};
-  for (const examDate of examDates) {
-    (examDatesByCourse[examDate.courseId] ??= []).push(examDate);
+  const assessmentsByCourse: Record<string, CourseAssessment[]> = {};
+  for (const assessment of assessments) {
+    (assessmentsByCourse[assessment.courseId] ??= []).push(assessment);
   }
 
   const summaries: Record<string, CourseSummary> = {};
@@ -274,11 +311,8 @@ export function computeCourseSummaries(
     );
     const available = availableCards(coreCards, now);
     const pool = studyPool(coreCards, course, now);
-    const readyNow =
-      dueCards(pool, now).length + pool.filter((card) => card.state === 0).length;
-    const coreLessons = (lessonsByCourse[course.id] ?? []).filter(
-      (lesson) => !lesson.isExtension,
-    );
+    const readyNow = dueCards(pool, now).length + pool.filter((card) => card.state === 0).length;
+    const coreLessons = (lessonsByCourse[course.id] ?? []).filter((lesson) => !lesson.isExtension);
     const completedLessonCount = coreLessons.filter((lesson) =>
       lessonTaught(
         lesson.id,
@@ -291,7 +325,7 @@ export function computeCourseSummaries(
     const examDateContext = makeExamDateContext(
       course,
       lessonsByCourse[course.id] ?? [],
-      examDatesByCourse[course.id] ?? [],
+      assessmentsByCourse[course.id] ?? [],
     );
     summaries[course.id] = {
       lessonCount: coreLessonCount[course.id] ?? 0,
@@ -331,13 +365,18 @@ export function computeCourseSummaries(
  */
 export function useCourseSummaries(): Record<string, CourseSummary> | undefined {
   return useLiveQuery(async () => {
-    const [courses, lessons, cards, examDates] = await Promise.all([
+    const [records, lessons, cards, assessments] = await Promise.all([
       db.courses.toArray(),
       db.lessons.toArray(),
       db.cards.toArray(),
-      db.courseExamDates.toArray(),
+      db.courseAssessments.toArray(),
     ]);
-    return computeCourseSummaries(courses, lessons, cards, examDates);
+    return computeCourseSummaries(
+      hydrateCourses(records, assessments),
+      lessons,
+      cards,
+      assessments,
+    );
   }, []);
 }
 
@@ -347,19 +386,18 @@ export function useCourseSummaries(): Record<string, CourseSummary> | undefined 
  * reruns on any write anywhere). Use this wherever only one course's summary is
  * needed, e.g. CoursePath.
  */
-export function useCourseSummary(
-  courseId: string | undefined,
-): CourseSummary | null | undefined {
+export function useCourseSummary(courseId: string | undefined): CourseSummary | null | undefined {
   return useLiveQuery<CourseSummary | null>(async () => {
     if (!courseId) return null;
-    const [course, lessons, cards, examDates] = await Promise.all([
+    const [record, lessons, cards, assessments] = await Promise.all([
       db.courses.get(courseId),
       db.lessons.where('courseId').equals(courseId).toArray(),
       db.cards.where('courseId').equals(courseId).toArray(),
-      db.courseExamDates.where('courseId').equals(courseId).toArray(),
+      db.courseAssessments.where('courseId').equals(courseId).toArray(),
     ]);
-    if (!course) return null;
-    return computeCourseSummaries([course], lessons, cards, examDates)[courseId];
+    if (!record) return null;
+    const course = hydrateCourse(record, finalAssessmentForCourse(courseId, assessments));
+    return computeCourseSummaries([course], lessons, cards, assessments)[courseId];
   }, [courseId]);
 }
 
@@ -382,18 +420,19 @@ export function useCourseDashboardData():
     }
   | undefined {
   return useLiveQuery(async () => {
-    const [courses, lessons, cards, examDates, perf, links, exposures, completions] =
+    const [records, lessons, cards, assessments, perf, links, exposures, completions] =
       await Promise.all([
         db.courses.toArray(),
         db.lessons.toArray(),
         db.cards.toArray(),
-        db.courseExamDates.toArray(),
+        db.courseAssessments.toArray(),
         db.userPerformance.toArray(),
         db.lessonCards.toArray(),
         db.lessonCardExposures.toArray(),
         db.lessonCompletions.toArray(),
       ]);
-    const summaries = computeCourseSummaries(courses, lessons, cards, examDates, Date.now(), {
+    const courses = hydrateCourses(records, assessments);
+    const summaries = computeCourseSummaries(courses, lessons, cards, assessments, Date.now(), {
       links,
       exposures,
       completions,

@@ -25,20 +25,27 @@ export interface UnlockModeSectionProps {
   unlockMode: UnlockMode;
   onUnlockModeChange: (mode: UnlockMode) => void;
   linearCadence: { anchorDate: number; intervalDays: number };
-  onLinearCadenceChange: (cadence: { anchorDate: number; intervalDays: number }) => void;
+  /** Discrete date pick — the caller commits this immediately, like a select. */
+  onAnchorDateChange: (anchorDate: number) => void;
+  /** Free-typed field — updates local state only; commits on blur via `onIntervalDaysBlur`. */
+  onIntervalDaysChange: (intervalDays: number) => void;
+  onIntervalDaysBlur: () => void;
   timeZone?: string;
 }
 
 /**
  * Course-only unlock-mode picker: `open` | `semi-linear` | `linear`, with the
  * anchor-date/interval cadence inputs shown only under `linear`. Pure controlled
- * component — all state lives with the caller.
+ * component — all state lives with the caller, which also owns the instant-commit
+ * mechanics (see the `on*Change`/`on*Blur` prop docs above).
  */
 export function UnlockModeSection({
   unlockMode,
   onUnlockModeChange,
   linearCadence,
-  onLinearCadenceChange,
+  onAnchorDateChange,
+  onIntervalDaysChange,
+  onIntervalDaysBlur,
   timeZone,
 }: UnlockModeSectionProps) {
   return (
@@ -67,9 +74,7 @@ export function UnlockModeSection({
         <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4">
           <DateTimePicker
             value={linearCadence.anchorDate}
-            onChange={(ms) =>
-              onLinearCadenceChange({ ...linearCadence, anchorDate: ms })
-            }
+            onChange={onAnchorDateChange}
             timeZone={timeZone}
             label="First lesson unlocks on"
           />
@@ -80,12 +85,8 @@ export function UnlockModeSection({
               min={1}
               inputMode="numeric"
               value={linearCadence.intervalDays}
-              onChange={(e) =>
-                onLinearCadenceChange({
-                  ...linearCadence,
-                  intervalDays: Math.max(1, Number(e.target.value) || 1),
-                })
-              }
+              onChange={(e) => onIntervalDaysChange(Math.max(1, Number(e.target.value) || 1))}
+              onBlur={onIntervalDaysBlur}
               className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
             />
             <span className="mt-1 block text-xs text-ink-faint">

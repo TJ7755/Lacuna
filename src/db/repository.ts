@@ -5,10 +5,14 @@ import { db, makeId } from './schema';
 import type {
   Card,
   CardType,
+  CheckerDisputeReport,
   Course,
-  CourseExamDate,
+  CourseAssessment,
+  CourseRecord,
   Deck,
   Grade,
+  ItemPayload,
+  LineVerdict,
   Lesson,
   LessonCardExposure,
   LessonCardLink,
@@ -18,12 +22,17 @@ import type {
   PracticeMilestone,
   PracticeNode,
   ReviewLog,
+  ReviewSessionKind,
+  RevisionPlan,
+  RevisionPlanSession,
+  RevisionProjection,
   SchedulerConfig,
   Sequence,
   SequenceItem,
   SessionHistoryEntry,
   UserPerformance,
 } from './types';
+import { courseToRecord, finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { emptyPerformance, updatePerformance } from '../fsrs/grading';
@@ -33,6 +42,17 @@ import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import { readPracticeDefaults } from '../state/practiceDefaults';
 import { readLessonViewMode } from '../state/lessonViewMode';
 import { scheduleAssetGc } from './assets';
+import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
+import {
+  appendCompletedSession,
+  applyPendingRevisionPlanInput,
+  applyRevisionPlanInput,
+  buildRevisionWindows,
+  planIsComplete,
+  revisionPlanDays,
+  resolveRevisionPlanInput,
+} from '../course/revisionPlan';
 import {
   diffRegeneration,
   generateCards,
@@ -114,8 +134,10 @@ export async function deleteDeck(id: string): Promise<void> {
 // Cards
 // ---------------------------------------------------------------------------
 
-/** Normalise card text for duplicate comparison: trim, lowercase, collapse whitespace. */
-function normaliseCardText(text: string): string {
+/** Normalise card text for duplicate comparison: trim, lowercase, collapse whitespace.
+ * Exported so src/mcp/diffImport.ts can reuse the exact same semantics rather than
+ * forking them (see checkDuplicatesBatch, which this also backs). */
+export function normaliseCardText(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
@@ -168,7 +190,7 @@ export async function createCard(
   front: string,
   back: string,
   tags: string[] = [],
-  opts?: { courseId?: string | null; primaryLessonId?: string | null },
+  opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'payload'>,
 ): Promise<Card> {
   try {
     const card: Card = {
@@ -206,7 +228,13 @@ export async function createCard(
  */
 export async function createCards(
   deckId: string,
-  drafts: { type: CardType; front: string; back: string; tags?: string[] }[],
+  drafts: {
+    type: CardType;
+    front: string;
+    back: string;
+    tags?: string[];
+    payload?: ItemPayload;
+  }[],
   opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<Card[]> {
   try {
@@ -217,6 +245,7 @@ export async function createCards(
       type: draft.type,
       front: draft.front,
       back: draft.back,
+      payload: draft.payload,
       stability: null,
       difficulty: null,
       lastReviewed: null,
@@ -293,6 +322,15 @@ async function ownedBackingDeck(
     .first();
 }
 
+async function hydratedCourseById(courseId: string): Promise<Course | undefined> {
+  const [record, assessments] = await Promise.all([
+    db.courses.get(courseId),
+    db.courseAssessments.where('courseId').equals(courseId).toArray(),
+  ]);
+  if (!record) return undefined;
+  return hydrateCourse(record, finalAssessmentForCourse(courseId, assessments));
+}
+
 /**
  * Every course card still needs a real backing Deck (recordReview and userPerformance
  * both key off deckId). This lazily creates one hidden deck per lesson, inheriting the
@@ -312,7 +350,7 @@ export async function ensureLessonDeck(courseId: string, lessonId: string): Prom
     return existing.deckId;
   }
 
-  const course = await db.courses.get(courseId);
+  const course = await hydratedCourseById(courseId);
   const lesson = await db.lessons.get(lessonId);
   const createdAt = Date.now();
   const deck: Deck = {
@@ -342,9 +380,14 @@ export async function createLessonCard(
   front: string,
   back: string,
   tags: string[] = [],
+  payload?: ItemPayload,
 ): Promise<Card> {
   const deckId = await ensureLessonDeck(courseId, lessonId);
-  return createCard(deckId, type, front, back, tags, { courseId, primaryLessonId: lessonId });
+  return createCard(deckId, type, front, back, tags, {
+    courseId,
+    primaryLessonId: lessonId,
+    payload,
+  });
 }
 
 /** Lesson-scoped equivalent of {@link createCardWithReverse}. */
@@ -392,7 +435,7 @@ export async function ensureCourseBankDeck(courseId: string): Promise<string> {
     return existing.deckId;
   }
 
-  const course = await db.courses.get(courseId);
+  const course = await hydratedCourseById(courseId);
   const createdAt = Date.now();
   const deck: Deck = {
     id: makeId(),
@@ -420,9 +463,10 @@ export async function createCourseCard(
   front: string,
   back: string,
   tags: string[] = [],
+  payload?: ItemPayload,
 ): Promise<Card> {
   const deckId = await ensureCourseBankDeck(courseId);
-  return createCard(deckId, type, front, back, tags, { courseId, primaryLessonId: null });
+  return createCard(deckId, type, front, back, tags, { courseId, primaryLessonId: null, payload });
 }
 
 /** Course-bank equivalent of {@link createCardWithReverse}. */
@@ -657,6 +701,14 @@ type ReviewUnitKind = 'deck' | 'course';
 
 export interface RecordReviewArgs {
   card: Card;
+  /** Stable caller-owned identity reused if the same submission is retried. */
+  eventId: string;
+  /** Stable identity shared by attempts in the same study session. */
+  sessionId: string;
+  sessionKind: ReviewSessionKind;
+  /** Optional revision provenance for task-planned review windows. */
+  revisionPlanId?: string;
+  revisionWindowId?: string;
   /**
    * The Deck (legacy per-deck/global-Today scope) or Course (course/lesson scope) this
    * review is scheduled and calibrated against. Both satisfy SchedulerConfig, so the
@@ -673,12 +725,21 @@ export interface RecordReviewArgs {
   hintUsed?: boolean;
   /** Whether the answer was correct (grade > 1); drives per-deck calibration stats. */
   correct: boolean;
+  /** Machine-awarded marks for structured numeric/working items. */
+  marksEarned?: number;
+  marksAvailable?: number;
+  lineVerdicts?: LineVerdict[];
+  checkerDisputes?: CheckerDisputeReport[];
   now?: number;
 }
 
 /** The result of recording a review: the updated card plus undo bookkeeping. */
 export interface RecordReviewResult {
   card: Card;
+  /** The exact persisted state before this transition, used by undo. */
+  cardBefore: Card;
+  /** False when this eventId had already been committed and no state changed. */
+  recorded: boolean;
   /** Id of the SessionHistory row written for this review, so it can be undone. */
   sessionHistoryId: number;
   /** The review kind this was recorded against (see {@link RecordReviewArgs.kind}), so
@@ -701,60 +762,110 @@ export interface RecordReviewResult {
  */
 export async function recordReview(args: RecordReviewArgs): Promise<RecordReviewResult> {
   try {
-    const { card, deck, grade, responseTimeSec, distracted, hintUsed, correct } = args;
-    const kind: ReviewUnitKind = args.kind ?? 'deck';
-    const now = args.now ?? Date.now();
-
-    // All FSRS-6 maths is delegated to ts-fsrs via the engine wrapper.
-    const engine = makeEngine(deck.fsrsParameters);
-    const { memory, retrievabilityAtReview } = applyReview(engine, card, grade, now);
-
-    const log: ReviewLog = {
-      timestamp: now,
+    const {
+      card,
+      deck,
+      eventId,
+      sessionId,
+      sessionKind,
+      revisionPlanId,
+      revisionWindowId,
       grade,
       responseTimeSec,
       distracted,
-      hintUsed: hintUsed ?? false,
-      stabilityBefore: card.stability,
-      stabilityAfter: memory.stability,
-      difficultyBefore: card.difficulty,
-      difficultyAfter: memory.difficulty,
-      retrievabilityAtReview,
-    };
+      hintUsed,
+      correct,
+      marksEarned,
+      marksAvailable,
+      lineVerdicts,
+      checkerDisputes,
+    } = args;
+    const kind: ReviewUnitKind = args.kind ?? 'deck';
+    const now = args.now ?? Date.now();
 
-    const updatedCard: Card = {
-      ...card,
-      stability: memory.stability,
-      difficulty: memory.difficulty,
-      lastReviewed: memory.lastReviewed,
-      due: memory.due,
-      scheduledDays: memory.scheduledDays,
-      learningSteps: memory.learningSteps,
-      reps: memory.reps,
-      lapses: memory.lapses,
-      state: memory.state,
-      history: [...card.history, log],
-    };
-
-    // Leech auto-action: if the card just crossed the threshold, act on it.
-    const action = deck.leechAction ?? 'suspend';
-    const threshold = deck.leechThreshold;
-    if (action !== 'none' && isLeech(updatedCard, threshold) && !isLeech(card, threshold)) {
-      if (action === 'suspend') {
-        updatedCard.suspended = true;
-      } else if (action === 'tag') {
-        const tags = updatedCard.tags ?? [];
-        if (!tags.includes('leech')) {
-          updatedCard.tags = [...tags, 'leech'];
-        }
-      }
+    if (!eventId.trim() || !sessionId.trim()) {
+      throw new Error('Review eventId and sessionId must be non-empty.');
     }
 
     let lastInteractedAtBefore: number | undefined;
-    const sessionHistoryId = await db.transaction(
+    return await db.transaction(
       'rw',
       [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance],
       async () => {
+        const existingSession = await db.sessionHistory.where('eventId').equals(eventId).first();
+        if (existingSession) {
+          const persistedCard = await db.cards.get(card.id);
+          if (!persistedCard?.history.some((entry) => entry.eventId === eventId)) {
+            throw new Error(`Review event ${eventId} belongs to another attempt.`);
+          }
+          return {
+            card: persistedCard,
+            cardBefore: persistedCard,
+            recorded: false,
+            sessionHistoryId: existingSession.id!,
+            kind,
+            lastInteractedAtBefore: undefined,
+          };
+        }
+
+        const cardBefore = await db.cards.get(card.id);
+        if (!cardBefore) throw new Error('The reviewed card no longer exists.');
+
+        // Compute from the transaction's current card, not the caller's potentially
+        // stale snapshot. Duplicate detection and the one FSRS transition are atomic.
+        const engine = makeEngine(deck.fsrsParameters);
+        const { memory, retrievabilityAtReview } = applyReview(engine, cardBefore, grade, now);
+        const log: ReviewLog = {
+          eventId,
+          sessionId,
+          sessionKind,
+          revisionPlanId,
+          revisionWindowId,
+          timestamp: now,
+          grade,
+          correct,
+          responseTimeSec,
+          distracted,
+          hintUsed: hintUsed ?? false,
+          marksEarned,
+          marksAvailable,
+          lineVerdicts,
+          checkerDisputes,
+          stabilityBefore: cardBefore.stability,
+          stabilityAfter: memory.stability,
+          difficultyBefore: cardBefore.difficulty,
+          difficultyAfter: memory.difficulty,
+          retrievabilityAtReview,
+        };
+        const updatedCard: Card = {
+          ...cardBefore,
+          stability: memory.stability,
+          difficulty: memory.difficulty,
+          lastReviewed: memory.lastReviewed,
+          due: memory.due,
+          scheduledDays: memory.scheduledDays,
+          learningSteps: memory.learningSteps,
+          reps: memory.reps,
+          lapses: memory.lapses,
+          state: memory.state,
+          history: [...cardBefore.history, log],
+        };
+
+        const action = deck.leechAction ?? 'suspend';
+        const threshold = deck.leechThreshold;
+        if (
+          action !== 'none' &&
+          isLeech(updatedCard, threshold) &&
+          !isLeech(cardBefore, threshold)
+        ) {
+          if (action === 'suspend') {
+            updatedCard.suspended = true;
+          } else if (action === 'tag') {
+            const tags = updatedCard.tags ?? [];
+            if (!tags.includes('leech')) updatedCard.tags = [...tags, 'leech'];
+          }
+        }
+
         await db.cards.put(updatedCard);
         if (kind === 'course') {
           lastInteractedAtBefore = (await db.courses.get(deck.id))?.lastInteractedAt;
@@ -787,7 +898,11 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         });
         const avgRetrievability = cardCount > 0 ? retrievabilityTotal / cardCount : 1;
 
-        return db.sessionHistory.add({
+        const sessionHistoryId = await db.sessionHistory.add({
+          eventId,
+          sessionId,
+          revisionPlanId,
+          revisionWindowId,
           timestamp: now,
           // deckId always identifies the backing (possibly shadow) deck the card lives
           // in; courseId is populated in addition for course/lesson-scoped reviews.
@@ -795,17 +910,42 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           ...(kind === 'course' ? { courseId: deck.id } : {}),
           averagePredictedRetrievability: avgRetrievability,
         });
+
+        return {
+          card: updatedCard,
+          cardBefore,
+          recorded: true,
+          sessionHistoryId,
+          kind,
+          lastInteractedAtBefore,
+        };
       },
     );
-
-    return { card: updatedCard, sessionHistoryId, kind, lastInteractedAtBefore };
   } catch (err) {
+    // A transaction in another tab can win the unique eventId race after this
+    // transaction's initial lookup. Resolve that replay as the same no-op result.
+    const existingSession = await db.sessionHistory.where('eventId').equals(args.eventId).first();
+    if (existingSession) {
+      const persistedCard = await db.cards.get(args.card.id);
+      if (persistedCard?.history.some((entry) => entry.eventId === args.eventId)) {
+        return {
+          card: persistedCard,
+          cardBefore: persistedCard,
+          recorded: false,
+          sessionHistoryId: existingSession.id!,
+          kind: args.kind ?? 'deck',
+          lastInteractedAtBefore: undefined,
+        };
+      }
+    }
     throw friendlyDbError(err);
   }
 }
 
 /** Snapshot needed to reverse a single review (see undoReview). */
 export interface ReviewUndo {
+  /** Stable review identity; makes repeated or stale undo requests harmless. */
+  eventId: string;
   /** The card exactly as it was before the review. */
   cardBefore: Card;
   /** The deck's calibration profile before the review (null if none existed). */
@@ -842,6 +982,11 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
       'rw',
       [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance],
       async () => {
+        const session = await db.sessionHistory.get(undo.sessionHistoryId);
+        if (!session) return;
+        if (session.eventId !== undo.eventId) {
+          throw new Error('The review event no longer matches its session history entry.');
+        }
         await db.cards.put(undo.cardBefore);
         if (undo.perfBefore) {
           await db.userPerformance.put(undo.perfBefore);
@@ -867,7 +1012,12 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
 // Courses
 // ---------------------------------------------------------------------------
 
-export async function createCourse(name: string, opts?: Partial<Course>): Promise<Course> {
+export type CreateCourseOptions = Partial<CourseRecord> & {
+  examDate?: number;
+  timeZone?: string;
+};
+
+export async function createCourse(name: string, opts?: CreateCourseOptions): Promise<Course> {
   try {
     const createdAt = Date.now();
     const practiceDefaults = readPracticeDefaults();
@@ -888,8 +1038,25 @@ export async function createCourse(name: string, opts?: Partial<Course>): Promis
       ...practiceDefaults,
       ...opts,
     };
-    await db.courses.add(course);
-    return course;
+    const record = courseToRecord(course);
+    const finalAssessment: CourseAssessment = {
+      id: makeId(),
+      courseId: record.id,
+      name: 'Final exam',
+      kind: 'final',
+      examDate: course.examDate,
+      ...(course.timeZone !== undefined ? { timeZone: course.timeZone } : {}),
+      afterLessonId: null,
+      coverageMode: 'prefix',
+      excludedCardIds: [],
+      createdAt: record.createdAt,
+    };
+    validateAssessmentStructure(finalAssessment);
+    await db.transaction('rw', db.courses, db.courseAssessments, async () => {
+      await db.courses.add(record);
+      await db.courseAssessments.add(finalAssessment);
+    });
+    return hydrateCourse(record, finalAssessment);
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -916,9 +1083,101 @@ export async function stampMissingLessonViewModes(): Promise<void> {
   );
 }
 
-export async function updateCourse(id: string, changes: Partial<Course>): Promise<void> {
+export async function updateCourse(id: string, changes: Partial<CourseRecord>): Promise<void> {
   try {
+    const compatibilityChanges = changes as Partial<Course>;
+    if (
+      Object.prototype.hasOwnProperty.call(compatibilityChanges, 'examDate') ||
+      Object.prototype.hasOwnProperty.call(compatibilityChanges, 'timeZone')
+    ) {
+      throw new Error('Course examDate and timeZone are derived, read-only assessment values.');
+    }
     await db.courses.update(id, changes);
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/**
+ * Publish (or republish) a course for classroom distribution (Arc 7 §7.4).
+ * First publish creates `Course.distribution` with a fresh `lineageId` and
+ * `revision: 1`; every subsequent call keeps the same `lineageId` and
+ * increments `revision` by one. The share-code export path (`src/db/share.ts`)
+ * reads `Course.distribution` to decide whether to pack lineage/revision/
+ * originating-id fields into the payload — this function only owns the
+ * counter, not the encoding.
+ */
+export async function publishCourse(
+  courseId: string,
+): Promise<{ lineageId: string; revision: number; publishedAt: number }> {
+  try {
+    let distribution: { lineageId: string; revision: number; publishedAt: number } | undefined;
+    await db.transaction('rw', db.courses, async () => {
+      const course = await db.courses.get(courseId);
+      if (!course) throw new Error('The course could not be found.');
+      distribution = {
+        lineageId: course.distribution?.lineageId ?? makeId(),
+        revision: (course.distribution?.revision ?? 0) + 1,
+        publishedAt: Date.now(),
+      };
+      await db.courses.update(courseId, { distribution });
+    });
+    return distribution!;
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/**
+ * Detach a student's imported course from its teacher's lineage (Arc 7 §7.1). A
+ * one-way escape hatch from a locked distributed copy: clears `Course.distributedCopy`
+ * entirely, which both unlocks the course (absent `distributedCopy` is editable per
+ * `canEditLessons`) and severs lineage tracking, so a later re-import of the same share
+ * code no longer matches this course and instead falls through to a plain
+ * `importCourseSharePayload` — the same "no lineage, treat as new" path a pre-Arc-7
+ * course already takes. The lineage's adopted-id membership registry and any pending
+ * merge review for this course are removed alongside, since neither can ever be
+ * consulted or applied again once the course is detached; the lesson/note/card content
+ * itself is untouched.
+ */
+export async function detachCourse(courseId: string): Promise<void> {
+  try {
+    await db.transaction(
+      'rw',
+      [db.courses, db.lineageIdMappings, db.pendingMergeReviews],
+      async () => {
+        const course = await db.courses.get(courseId);
+        if (!course) throw new Error('The course could not be found.');
+        const lineageId = course.distributedCopy?.lineageId;
+        await db.courses.update(courseId, { distributedCopy: undefined });
+        if (lineageId) {
+          await db.lineageIdMappings.delete(lineageId);
+        }
+        await db.pendingMergeReviews.where('courseId').equals(courseId).delete();
+      },
+    );
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+/**
+ * Sets `distributedCopy.autoAcceptUpdates` on a student's imported course (Arc 7 §7.1,
+ * §7.9 Task 8). The value is read by the merge-apply decision in `mergeImport.ts` to
+ * decide whether a future teacher update is applied silently or queued for review; this
+ * function only persists the preference, it does not affect any pending review.
+ */
+export async function setCourseAutoAcceptUpdates(
+  courseId: string,
+  autoAcceptUpdates: boolean,
+): Promise<void> {
+  try {
+    const course = await db.courses.get(courseId);
+    if (!course) throw new Error('The course could not be found.');
+    if (!course.distributedCopy) throw new Error('This course is not a shared copy.');
+    await db.courses.update(courseId, {
+      distributedCopy: { ...course.distributedCopy, autoAcceptUpdates },
+    });
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -927,7 +1186,7 @@ export async function updateCourse(id: string, changes: Partial<Course>): Promis
 /**
  * Delete a course and cascade to all dependent rows in one transaction:
  * notes and lessonCard links belonging to the course's lessons, the lessons
- * themselves, practice nodes, course exam dates, and cards whose courseId
+ * themselves, practice nodes, course assessments, and cards whose courseId
  * matches. Cards are deleted (not unassigned) because they were created for
  * this course; the cascade mirrors deleteDeck deleting its cards.
  */
@@ -944,12 +1203,13 @@ export async function deleteCourse(id: string): Promise<void> {
       db.lessonCompletions,
       db.practiceNodes,
       db.practiceMilestones,
-      db.courseExamDates,
+      db.courseAssessments,
       db.cards,
       db.decks,
       db.sessionHistory,
       db.userPerformance,
       db.sequences,
+      db.revisionPlans,
     ],
     async () => {
       const lessonIds = await db.lessons.where('courseId').equals(id).primaryKeys();
@@ -976,7 +1236,8 @@ export async function deleteCourse(id: string): Promise<void> {
       await db.lessons.where('courseId').equals(id).delete();
       await db.practiceNodes.where('courseId').equals(id).delete();
       await db.practiceMilestones.where('courseId').equals(id).delete();
-      await db.courseExamDates.where('courseId').equals(id).delete();
+      await db.courseAssessments.where('courseId').equals(id).delete();
+      await db.revisionPlans.where('courseId').equals(id).delete();
       await db.sequences.where('courseId').equals(id).delete();
       await db.cards.where('courseId').equals(id).delete();
       if (deckIds.length > 0) {
@@ -996,18 +1257,20 @@ export async function deleteCourse(id: string): Promise<void> {
 }
 
 /** A complete copy of a course and everything that hangs off it: lessons, notes,
- * lesson-card links, practice nodes, exam dates, cards and their hidden backing decks
+ * lesson-card links, practice nodes, assessments, cards and their hidden backing decks
  * (plus the session history and calibration profiles keyed to either). */
 export interface CourseSnapshot {
-  course: Course;
+  course: CourseRecord;
   lessons: Lesson[];
   notes: Note[];
+  noteAnnotations: NoteAnnotation[];
   lessonCards: LessonCardLink[];
   lessonCardExposures: LessonCardExposure[];
   lessonCompletions: LessonCompletion[];
   practiceNodes: PracticeNode[];
   practiceMilestones: PracticeMilestone[];
-  courseExamDates: CourseExamDate[];
+  courseAssessments: CourseAssessment[];
+  revisionPlans: RevisionPlan[];
   sequences: Sequence[];
   cards: Card[];
   decks: Deck[];
@@ -1030,7 +1293,8 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     lessons,
     practiceNodes,
     practiceMilestones,
-    courseExamDates,
+    courseAssessments,
+    revisionPlans,
     sequences,
     cards,
     coursePerf,
@@ -1038,7 +1302,8 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.lessons.where('courseId').equals(id).toArray(),
     db.practiceNodes.where('courseId').equals(id).toArray(),
     db.practiceMilestones.where('courseId').equals(id).toArray(),
-    db.courseExamDates.where('courseId').equals(id).toArray(),
+    db.courseAssessments.where('courseId').equals(id).toArray(),
+    db.revisionPlans.where('courseId').equals(id).toArray(),
     db.sequences.where('courseId').equals(id).toArray(),
     db.cards.where('courseId').equals(id).toArray(),
     db.userPerformance.get(id),
@@ -1066,6 +1331,13 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.sessionHistory.where('courseId').equals(id).toArray(),
     deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
   ]);
+  const noteAnnotations =
+    notes.length > 0
+      ? await db.noteAnnotations
+          .where('noteId')
+          .anyOf(notes.map((note) => note.id))
+          .toArray()
+      : [];
   // A backing deck's session history is always course-scoped too (see recordReview),
   // so de-duplicate by row id between the deckId and courseId lookups.
   const sessionHistoryById = new Map(
@@ -1076,12 +1348,14 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     course,
     lessons,
     notes,
+    noteAnnotations,
     lessonCards,
     lessonCardExposures,
     lessonCompletions,
     practiceNodes,
     practiceMilestones,
-    courseExamDates,
+    courseAssessments,
+    revisionPlans,
     sequences,
     cards,
     decks,
@@ -1093,18 +1367,27 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
 /** Re-insert a previously captured CourseSnapshot (the inverse of deleteCourse). */
 export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
   try {
+    finalAssessmentForCourse(snapshot.course.id, snapshot.courseAssessments);
+    for (const assessment of snapshot.courseAssessments) {
+      if (assessment.courseId !== snapshot.course.id) {
+        throw new Error('A course snapshot cannot contain assessments from another course.');
+      }
+      validateAssessmentStructure(assessment);
+    }
     await db.transaction(
       'rw',
       [
         db.courses,
         db.lessons,
         db.notes,
+        db.noteAnnotations,
         db.lessonCards,
         db.lessonCardExposures,
         db.lessonCompletions,
         db.practiceNodes,
         db.practiceMilestones,
-        db.courseExamDates,
+        db.courseAssessments,
+        db.revisionPlans,
         db.sequences,
         db.cards,
         db.decks,
@@ -1116,12 +1399,14 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.courses.put(snapshot.course),
           db.lessons.bulkPut(snapshot.lessons),
           db.notes.bulkPut(snapshot.notes),
+          db.noteAnnotations.bulkPut(snapshot.noteAnnotations),
           db.lessonCards.bulkPut(snapshot.lessonCards),
           db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures),
           db.lessonCompletions.bulkPut(snapshot.lessonCompletions),
           db.practiceNodes.bulkPut(snapshot.practiceNodes),
           db.practiceMilestones.bulkPut(snapshot.practiceMilestones),
-          db.courseExamDates.bulkPut(snapshot.courseExamDates),
+          db.courseAssessments.bulkPut(snapshot.courseAssessments),
+          db.revisionPlans.bulkPut(snapshot.revisionPlans),
           db.sequences.bulkPut(snapshot.sequences),
           db.cards.bulkPut(snapshot.cards),
           db.decks.bulkPut(snapshot.decks),
@@ -1174,6 +1459,115 @@ export async function updateLesson(id: string, changes: Partial<Lesson>): Promis
   }
 }
 
+/** Everything {@link deleteLesson} removes or rewrites, captured for undo. */
+export interface LessonSnapshot {
+  lesson: Lesson;
+  notes: Note[];
+  noteAnnotations: NoteAnnotation[];
+  lessonCards: LessonCardLink[];
+  lessonCardExposures: LessonCardExposure[];
+  lessonCompletion?: LessonCompletion;
+  cards: Card[];
+  sequences: Sequence[];
+  decks: Deck[];
+  sessionHistory: SessionHistoryEntry[];
+  userPerformance: UserPerformance[];
+  courseAssessments: CourseAssessment[];
+}
+
+/** Capture a lesson and every row {@link deleteLesson} changes before deleting it. */
+export async function snapshotLesson(id: string): Promise<LessonSnapshot | null> {
+  const lesson = await db.lessons.get(id);
+  if (!lesson) return null;
+
+  const [
+    notes,
+    lessonCards,
+    lessonCardExposures,
+    lessonCompletion,
+    cards,
+    sequences,
+    decks,
+    courseAssessments,
+  ] = await Promise.all([
+    db.notes.where('lessonId').equals(id).toArray(),
+    db.lessonCards.where('lessonId').equals(id).toArray(),
+    db.lessonCardExposures.where('lessonId').equals(id).toArray(),
+    db.lessonCompletions.get(id),
+    db.cards.where('primaryLessonId').equals(id).toArray(),
+    db.sequences.where('primaryLessonId').equals(id).toArray(),
+    db.decks
+      .filter((deck) => deck.backingCourseId === lesson.courseId && deck.backingLessonId === id)
+      .toArray(),
+    db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
+  ]);
+  const noteIds = notes.map((note) => note.id);
+  const deckIds = decks.map((deck) => deck.id);
+  const [noteAnnotations, sessionHistory, userPerformance] = await Promise.all([
+    noteIds.length > 0 ? db.noteAnnotations.where('noteId').anyOf(noteIds).toArray() : [],
+    deckIds.length > 0 ? db.sessionHistory.where('deckId').anyOf(deckIds).toArray() : [],
+    deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
+  ]);
+
+  return {
+    lesson,
+    notes,
+    noteAnnotations,
+    lessonCards,
+    lessonCardExposures,
+    ...(lessonCompletion ? { lessonCompletion } : {}),
+    cards,
+    sequences,
+    decks,
+    sessionHistory,
+    userPerformance,
+    courseAssessments,
+  };
+}
+
+/** Restore a lesson snapshot captured immediately before {@link deleteLesson}. */
+export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
+  try {
+    await db.transaction(
+      'rw',
+      [
+        db.lessons,
+        db.notes,
+        db.noteAnnotations,
+        db.lessonCards,
+        db.lessonCardExposures,
+        db.lessonCompletions,
+        db.cards,
+        db.sequences,
+        db.decks,
+        db.sessionHistory,
+        db.userPerformance,
+        db.courseAssessments,
+      ],
+      async () => {
+        await Promise.all([
+          db.lessons.put(snapshot.lesson),
+          db.notes.bulkPut(snapshot.notes),
+          db.noteAnnotations.bulkPut(snapshot.noteAnnotations),
+          db.lessonCards.bulkPut(snapshot.lessonCards),
+          db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures),
+          snapshot.lessonCompletion
+            ? db.lessonCompletions.put(snapshot.lessonCompletion)
+            : Promise.resolve(),
+          db.cards.bulkPut(snapshot.cards),
+          db.sequences.bulkPut(snapshot.sequences),
+          db.decks.bulkPut(snapshot.decks),
+          db.sessionHistory.bulkPut(snapshot.sessionHistory),
+          db.userPerformance.bulkPut(snapshot.userPerformance),
+          db.courseAssessments.bulkPut(snapshot.courseAssessments),
+        ]);
+      },
+    );
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
 /**
  * The semi-linear unlock ratchet (Course Architecture Plan Addendum 2, §I): sets
  * `Lesson.unlockedAt` to `now` the first time the gate is satisfied, and never
@@ -1203,10 +1597,13 @@ export async function ratchetLessonUnlock(
 export async function deleteLesson(id: string): Promise<void> {
   const lesson = await db.lessons.get(id);
   if (!lesson) return;
-  const [cardCount, sequenceCount] = await Promise.all([
+  const [cardCount, sequenceCount, orderedLessons] = await Promise.all([
     db.cards.where('primaryLessonId').equals(id).count(),
     db.sequences.where('primaryLessonId').equals(id).count(),
+    db.lessons.where('courseId').equals(lesson.courseId).sortBy('orderIndex'),
   ]);
+  const deletedIndex = orderedLessons.findIndex((candidate) => candidate.id === id);
+  const precedingLessonId = deletedIndex > 0 ? orderedLessons[deletedIndex - 1].id : null;
   const bankDeckId =
     cardCount > 0 || sequenceCount > 0 ? await ensureCourseBankDeck(lesson.courseId) : null;
   await db.transaction(
@@ -1223,6 +1620,7 @@ export async function deleteLesson(id: string): Promise<void> {
       db.decks,
       db.sessionHistory,
       db.userPerformance,
+      db.courseAssessments,
     ],
     async () => {
       const noteIds = await db.notes.where('lessonId').equals(id).primaryKeys();
@@ -1249,6 +1647,46 @@ export async function deleteLesson(id: string): Promise<void> {
         await db.userPerformance.where('deckId').anyOf(backingDeckIds).delete();
       }
       await db.lessons.delete(id);
+
+      const [remainingLessons, courseCards, courseLinks, assessments] = await Promise.all([
+        db.lessons.where('courseId').equals(lesson.courseId).toArray(),
+        db.cards.where('courseId').equals(lesson.courseId).toArray(),
+        db.lessonCards.toArray(),
+        db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
+      ]);
+      for (const assessment of assessments) {
+        const lostPlacement = assessment.afterLessonId === id;
+        const lostCustomLesson =
+          assessment.coverageMode === 'custom' && assessment.lessonIds.includes(id);
+        let updated: CourseAssessment = {
+          ...assessment,
+          ...(lostPlacement ? { afterLessonId: precedingLessonId } : {}),
+          ...(lostCustomLesson
+            ? { lessonIds: assessment.lessonIds.filter((lessonId) => lessonId !== id) }
+            : {}),
+          ...(lostPlacement || lostCustomLesson ? { needsAuthorConfirmation: true } : {}),
+        } as CourseAssessment;
+        const withoutExclusions = { ...updated, excludedCardIds: [] } as CourseAssessment;
+        const coveredCardIds = new Set(
+          resolveAssessmentCoverage(
+            withoutExclusions,
+            remainingLessons,
+            courseCards,
+            courseLinks,
+          ).cards.map((card) => card.id),
+        );
+        const excludedCardIds = updated.excludedCardIds.filter((cardId) =>
+          coveredCardIds.has(cardId),
+        );
+        if (excludedCardIds.length !== updated.excludedCardIds.length) {
+          updated = {
+            ...updated,
+            excludedCardIds,
+            needsAuthorConfirmation: true,
+          } as CourseAssessment;
+        }
+        await db.courseAssessments.put(updated);
+      }
     },
   );
   scheduleAssetGc();
@@ -1543,44 +1981,477 @@ export async function savePracticeMilestoneProgress(
 }
 
 // ---------------------------------------------------------------------------
-// Course exam dates
+// Course assessments
 // ---------------------------------------------------------------------------
 
-export async function createCourseExamDate(
+function validateAssessmentStructure(assessment: CourseAssessment): void {
+  if (assessment.kind !== 'final' && assessment.kind !== 'checkpoint') {
+    throw new Error('Assessment kind must be final or checkpoint.');
+  }
+  if (
+    assessment.afterLessonId !== null &&
+    (typeof assessment.afterLessonId !== 'string' || assessment.afterLessonId.length === 0)
+  ) {
+    throw new Error('An assessment path position must be a lesson id or null.');
+  }
+  if (!Number.isFinite(assessment.examDate)) {
+    throw new Error('An assessment date must be a finite timestamp.');
+  }
+  if (
+    assessment.needsAuthorConfirmation !== undefined &&
+    typeof assessment.needsAuthorConfirmation !== 'boolean'
+  ) {
+    throw new Error('Assessment author-confirmation state must be boolean.');
+  }
+  if (!Array.isArray(assessment.excludedCardIds)) {
+    throw new Error('Assessment exclusions must be an explicit card-id array.');
+  }
+  if (
+    assessment.excludedCardIds.some((cardId) => typeof cardId !== 'string' || cardId.length === 0)
+  ) {
+    throw new Error('Assessment exclusions must contain valid card ids.');
+  }
+  if (new Set(assessment.excludedCardIds).size !== assessment.excludedCardIds.length) {
+    throw new Error('Assessment exclusions cannot contain duplicate card ids.');
+  }
+  if (assessment.coverageMode === 'prefix') {
+    if (assessment.lessonIds !== undefined) {
+      throw new Error('Prefix assessment coverage cannot store lesson ids.');
+    }
+    return;
+  }
+  if (assessment.coverageMode === 'custom') {
+    if (!Array.isArray(assessment.lessonIds) || assessment.lessonIds.length === 0) {
+      throw new Error('Custom assessment coverage requires an explicit lesson-id array.');
+    }
+    if (
+      assessment.lessonIds.some((lessonId) => typeof lessonId !== 'string' || lessonId.length === 0)
+    ) {
+      throw new Error('Custom assessment coverage must contain valid lesson ids.');
+    }
+    if (new Set(assessment.lessonIds).size !== assessment.lessonIds.length) {
+      throw new Error('Custom assessment coverage cannot contain duplicate lesson ids.');
+    }
+    return;
+  }
+  throw new Error('Assessment coverage mode must be prefix or custom.');
+}
+
+async function validateAssessmentReferences(assessment: CourseAssessment): Promise<void> {
+  const [lessons, cards, links] = await Promise.all([
+    db.lessons.toArray(),
+    db.cards.toArray(),
+    db.lessonCards.toArray(),
+  ]);
+  const issue = resolveAssessmentCoverage(assessment, lessons, cards, links).validation.issues[0];
+  if (issue) throw new Error(issue.message);
+}
+
+export async function createCourseAssessment(
   courseId: string,
   name: string,
   examDate: number,
-  opts?: Partial<CourseExamDate>,
-): Promise<CourseExamDate> {
+  opts?: Partial<CourseAssessment>,
+): Promise<CourseAssessment> {
   try {
-    const entry: CourseExamDate = {
-      id: makeId(),
-      courseId,
-      name,
-      examDate,
-      createdAt: Date.now(),
-      ...opts,
-    };
-    await db.courseExamDates.add(entry);
-    return entry;
+    let entry: CourseAssessment | undefined;
+    await db.transaction(
+      'rw',
+      [db.courses, db.lessons, db.cards, db.lessonCards, db.courseAssessments],
+      async () => {
+        if (!(await db.courses.get(courseId))) throw new Error('The course could not be found.');
+        const existing = await db.courseAssessments.where('courseId').equals(courseId).toArray();
+        finalAssessmentForCourse(courseId, existing);
+        const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
+        const coverageMode =
+          opts?.coverageMode ??
+          (Array.isArray(opts?.lessonIds) && opts.lessonIds.length > 0 ? 'custom' : 'prefix');
+        const coveredLessonIds = new Set(coverageMode === 'custom' ? (opts?.lessonIds ?? []) : []);
+        const inferredAnchor =
+          [...lessons]
+            .reverse()
+            .find((lesson) => coverageMode === 'prefix' || coveredLessonIds.has(lesson.id))?.id ??
+          null;
+        const afterLessonId =
+          opts !== undefined && Object.prototype.hasOwnProperty.call(opts, 'afterLessonId')
+            ? opts.afterLessonId!
+            : inferredAnchor;
+        entry = {
+          kind: 'checkpoint',
+          excludedCardIds: [],
+          ...opts,
+          id: makeId(),
+          courseId,
+          name,
+          examDate,
+          afterLessonId,
+          coverageMode,
+          createdAt: Date.now(),
+        } as CourseAssessment;
+        validateAssessmentStructure(entry);
+        await validateAssessmentReferences(entry);
+        if (entry.kind === 'final') {
+          throw new Error('A course must have exactly one final assessment.');
+        }
+        await db.courseAssessments.add(entry);
+      },
+    );
+    return entry!;
   } catch (err) {
     throw friendlyDbError(err);
   }
 }
 
-export async function updateCourseExamDate(
+export async function updateCourseAssessment(
   id: string,
-  changes: Partial<CourseExamDate>,
+  changes: Partial<CourseAssessment>,
 ): Promise<void> {
   try {
-    await db.courseExamDates.update(id, changes);
+    await db.transaction(
+      'rw',
+      db.lessons,
+      db.cards,
+      db.lessonCards,
+      db.courseAssessments,
+      async () => {
+        const existing = await db.courseAssessments.get(id);
+        if (!existing) throw new Error('The assessment could not be found.');
+        if (changes.courseId !== undefined && changes.courseId !== existing.courseId) {
+          throw new Error('An assessment cannot move to another course.');
+        }
+        const updated = {
+          ...existing,
+          ...changes,
+          id: existing.id,
+          courseId: existing.courseId,
+          createdAt: existing.createdAt,
+        } as CourseAssessment;
+        validateAssessmentStructure(updated);
+        await validateAssessmentReferences(updated);
+        const assessments = await db.courseAssessments
+          .where('courseId')
+          .equals(existing.courseId)
+          .toArray();
+        const finalAssessment = finalAssessmentForCourse(existing.courseId, assessments);
+        if (existing.kind === 'final' && updated.kind !== 'final') {
+          throw new Error('The sole final assessment cannot be demoted.');
+        }
+        if (existing.kind !== 'final' && updated.kind === 'final' && finalAssessment.id !== id) {
+          throw new Error('A course must have exactly one final assessment.');
+        }
+        await db.courseAssessments.put(updated);
+      },
+    );
   } catch (err) {
     throw friendlyDbError(err);
   }
 }
 
-export async function deleteCourseExamDate(id: string): Promise<void> {
-  await db.courseExamDates.delete(id);
+export async function deleteCourseAssessment(id: string): Promise<void> {
+  try {
+    await db.transaction('rw', db.courseAssessments, db.revisionPlans, async () => {
+      const assessment = await db.courseAssessments.get(id);
+      if (!assessment) return;
+      if (assessment.kind === 'final') {
+        throw new Error('The sole final assessment cannot be deleted.');
+      }
+      await db.revisionPlans.where('assessmentId').equals(id).delete();
+      await db.courseAssessments.delete(id);
+    });
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Revision plans
+// ---------------------------------------------------------------------------
+
+async function resolveCurrentRevisionInput(
+  assessmentId: string,
+  projection: RevisionProjection,
+  now: number,
+) {
+  const assessment = await db.courseAssessments.get(assessmentId);
+  if (!assessment) throw new Error('The assessment could not be found.');
+  const [courseRecord, assessments, lessons, cards, links, exposures, completions] =
+    await Promise.all([
+      db.courses.get(assessment.courseId),
+      db.courseAssessments.where('courseId').equals(assessment.courseId).toArray(),
+      db.lessons.where('courseId').equals(assessment.courseId).sortBy('orderIndex'),
+      db.cards.where('courseId').equals(assessment.courseId).toArray(),
+      db.lessonCards.toArray(),
+      db.lessonCardExposures.toArray(),
+      db.lessonCompletions.toArray(),
+    ]);
+  if (!courseRecord) throw new Error('The course could not be found.');
+  const course = hydrateCourse(
+    courseRecord,
+    finalAssessmentForCourse(assessment.courseId, assessments),
+  );
+  const reachedLessonIds = currentAssessmentPracticeContext({
+    course,
+    assessments,
+    lessons,
+    cards,
+    links,
+    exposures,
+    now,
+  }).reachedLessonIds;
+  return {
+    assessment,
+    resolved: resolveRevisionPlanInput({
+      assessment,
+      lessons,
+      cards,
+      links,
+      exposures,
+      completions,
+      reachedLessonIds,
+      projection,
+      now,
+    }),
+  };
+}
+
+export async function createOrResumeRevisionPlan(
+  assessmentId: string,
+  todayBudgetMinutes: number,
+  projection: RevisionProjection,
+  now: number = Date.now(),
+): Promise<RevisionPlan> {
+  try {
+    return await db.transaction(
+      'rw',
+      [
+        db.revisionPlans,
+        db.courseAssessments,
+        db.courses,
+        db.lessons,
+        db.cards,
+        db.lessonCards,
+        db.lessonCardExposures,
+        db.lessonCompletions,
+      ],
+      async () => {
+        const existing = await db.revisionPlans.where('assessmentId').equals(assessmentId).first();
+        const { assessment, resolved } = await resolveCurrentRevisionInput(
+          assessmentId,
+          projection,
+          now,
+        );
+        if (existing) {
+          const refreshed = applyRevisionPlanInput(existing, resolved, now);
+          const updated =
+            assessment.examDate <= now && refreshed.status !== 'completed'
+              ? { ...refreshed, status: 'completed' as const, updatedAt: now }
+              : refreshed;
+          if (updated !== existing) await db.revisionPlans.put(updated);
+          return updated;
+        }
+        if (assessment.examDate <= now) {
+          throw new Error('A revision plan cannot be created after its assessment deadline.');
+        }
+        const id = makeId();
+        const plan: RevisionPlan = {
+          id,
+          assessmentId,
+          courseId: assessment.courseId,
+          status: 'active',
+          revision: 1,
+          input: resolved.input,
+          scope: resolved.scope,
+          cardStates: resolved.cardStates,
+          windows: buildRevisionWindows(
+            id,
+            todayBudgetMinutes,
+            now,
+            assessment.examDate,
+            assessment.timeZone,
+          ),
+          completedSessions: [],
+          replans: [],
+          createdAt: now,
+          updatedAt: now,
+        };
+        await db.revisionPlans.add(plan);
+        return plan;
+      },
+    );
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function refreshRevisionPlan(
+  planId: string,
+  projection: RevisionProjection,
+  now: number = Date.now(),
+): Promise<RevisionPlan> {
+  try {
+    return await db.transaction(
+      'rw',
+      [
+        db.revisionPlans,
+        db.courseAssessments,
+        db.courses,
+        db.lessons,
+        db.cards,
+        db.lessonCards,
+        db.lessonCardExposures,
+        db.lessonCompletions,
+      ],
+      async () => {
+        const plan = await db.revisionPlans.get(planId);
+        if (!plan) throw new Error('The revision plan could not be found.');
+        const { assessment, resolved } = await resolveCurrentRevisionInput(
+          plan.assessmentId,
+          projection,
+          now,
+        );
+        const refreshed = applyRevisionPlanInput(plan, resolved, now);
+        const updated =
+          assessment.examDate <= now && refreshed.status !== 'completed'
+            ? { ...refreshed, status: 'completed' as const, updatedAt: now }
+            : refreshed;
+        if (updated !== plan) await db.revisionPlans.put(updated);
+        return updated;
+      },
+    );
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function setRevisionDayBudget(
+  planId: string,
+  day: string,
+  budgetMinutes: number,
+  now: number = Date.now(),
+): Promise<RevisionPlan> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error('Revision day must use YYYY-MM-DD.');
+  if (!Number.isFinite(budgetMinutes) || budgetMinutes <= 0) {
+    throw new Error('The daily revision budget must be greater than zero.');
+  }
+  return db.transaction('rw', db.revisionPlans, async () => {
+    const plan = await db.revisionPlans.get(planId);
+    if (!plan) throw new Error('The revision plan could not be found.');
+    if (plan.status === 'completed') throw new Error('A completed revision plan is read-only.');
+    if (!revisionPlanDays(now, plan.input.deadlineAt, plan.input.timeZone).includes(day)) {
+      throw new Error('The revision day must be between today and the assessment deadline.');
+    }
+    const existing = plan.windows.find((window) => window.day === day);
+    if (existing && existing.status !== 'scheduled') {
+      throw new Error('An active or completed revision window cannot be edited.');
+    }
+    if (existing?.budgetMinutes === budgetMinutes) return plan;
+    const windows = existing
+      ? plan.windows.map((window) =>
+          window.id === existing.id ? { ...window, budgetMinutes } : window,
+        )
+      : [
+          ...plan.windows,
+          {
+            id: `${plan.id}:${day}`,
+            day,
+            budgetMinutes,
+            status: 'scheduled' as const,
+            planRevision: plan.revision,
+          },
+        ];
+    const updated = { ...plan, windows, status: 'active' as const, updatedAt: now };
+    await db.revisionPlans.put(updated);
+    return updated;
+  });
+}
+
+export async function removeRevisionDay(
+  planId: string,
+  day: string,
+  now: number = Date.now(),
+): Promise<RevisionPlan> {
+  return db.transaction('rw', db.revisionPlans, async () => {
+    const plan = await db.revisionPlans.get(planId);
+    if (!plan) throw new Error('The revision plan could not be found.');
+    if (plan.status === 'completed') throw new Error('A completed revision plan is read-only.');
+    const window = plan.windows.find((candidate) => candidate.day === day);
+    if (!window) return plan;
+    if (window.status !== 'scheduled') {
+      throw new Error('An active or completed revision window cannot be removed.');
+    }
+    const updated: RevisionPlan = {
+      ...plan,
+      windows: plan.windows.filter((candidate) => candidate.id !== window.id),
+      updatedAt: now,
+    };
+    updated.status = planIsComplete(updated, now) ? 'completed' : 'active';
+    await db.revisionPlans.put(updated);
+    return updated;
+  });
+}
+
+export async function startRevisionWindow(
+  planId: string,
+  windowId: string,
+  startedAt: number = Date.now(),
+): Promise<RevisionPlan> {
+  return db.transaction('rw', db.revisionPlans, async () => {
+    const plan = await db.revisionPlans.get(planId);
+    if (!plan) throw new Error('The revision plan could not be found.');
+    if (plan.status === 'completed' || startedAt >= plan.input.deadlineAt) {
+      throw new Error('A completed revision plan is read-only.');
+    }
+    const target = plan.windows.find((window) => window.id === windowId);
+    if (!target) throw new Error('The revision window could not be found.');
+    if (target.status === 'active') return plan;
+    if (target.status === 'completed')
+      throw new Error('A completed revision window cannot restart.');
+    if (plan.windows.some((window) => window.status === 'active')) {
+      throw new Error('Another revision window is already active.');
+    }
+    const updated: RevisionPlan = {
+      ...plan,
+      windows: plan.windows.map((window) =>
+        window.id === windowId ? { ...window, status: 'active', startedAt } : window,
+      ),
+      updatedAt: startedAt,
+    };
+    await db.revisionPlans.put(updated);
+    return updated;
+  });
+}
+
+export async function completeRevisionWindow(
+  planId: string,
+  windowId: string,
+  session: RevisionPlanSession,
+  now: number = Date.now(),
+): Promise<RevisionPlan> {
+  return db.transaction('rw', db.revisionPlans, async () => {
+    const plan = await db.revisionPlans.get(planId);
+    if (!plan) throw new Error('The revision plan could not be found.');
+    if (session.windowId !== windowId) throw new Error('The session belongs to another window.');
+    const window = plan.windows.find((candidate) => candidate.id === windowId);
+    if (!window) throw new Error('The revision window could not be found.');
+    if (window.status === 'completed') {
+      if (plan.completedSessions.some((existing) => existing.id === session.id)) return plan;
+      throw new Error('A completed revision window cannot accept another session.');
+    }
+    let updated: RevisionPlan = {
+      ...plan,
+      windows: plan.windows.map((candidate) =>
+        candidate.id === windowId
+          ? { ...candidate, status: 'completed', completedAt: session.completedAt }
+          : candidate,
+      ),
+      completedSessions: appendCompletedSession(plan.completedSessions, session),
+      updatedAt: now,
+    };
+    updated = applyPendingRevisionPlanInput(updated, now);
+    updated.status = planIsComplete(updated, now) ? 'completed' : 'active';
+    await db.revisionPlans.put(updated);
+    return updated;
+  });
 }
 
 // ---------------------------------------------------------------------------
