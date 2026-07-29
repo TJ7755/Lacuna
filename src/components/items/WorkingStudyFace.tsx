@@ -46,6 +46,7 @@ export function WorkingStudyFace({ card, onAnswer, allowCheckerDisputes = true }
                   correct: verdict.matchedLineIndex !== null,
                   marksEarned: verdict.marksEarned,
                   matchedLineIndex: verdict.matchedLineIndex,
+                  ...(verdict.undetermined ? { undetermined: true as const } : {}),
                 },
                 checkerSeeds: verdict.checkerSeeds ?? [],
               };
@@ -70,17 +71,35 @@ export function WorkingStudyFace({ card, onAnswer, allowCheckerDisputes = true }
           <div aria-label="Checker result">
             <div className="mb-3 text-right text-sm tabular-nums text-ink-soft">
               {result.marksEarned} / {result.marksAvailable} marks
+              {result.undeterminedLines > 0 && (
+                <span className="ml-2 font-sans text-xs text-ink-faint">
+                  {result.undeterminedLines === 1 ? '1 line unchecked' : `${result.undeterminedLines} lines unchecked`}
+                </span>
+              )}
             </div>
             <div className="space-y-2">
               {result.lineVerdicts.map((verdict, index) => {
                 const disputed = disputedLines.has(index);
+                const markTone = verdict.undetermined
+                  ? 'text-ink-faint'
+                  : verdict.matchedLineIndex === null
+                    ? 'text-negative'
+                    : 'text-positive';
                 return (
                   <div key={`${index}-${verdict.studentLine}`} className="rounded-xl border border-line bg-surface-raised px-4 py-3">
                     <div className="flex items-start gap-3">
-                      <span className={verdict.matchedLineIndex === null ? 'text-negative' : 'text-positive'}>
-                        {verdict.marksEarned}
+                      <span className={markTone} aria-label={verdict.undetermined ? 'Not checked' : undefined}>
+                        {verdict.undetermined ? '–' : verdict.marksEarned}
                       </span>
-                      <span className="min-w-0 flex-1 break-words font-mono text-sm text-ink">{verdict.studentLine}</span>
+                      <span className="min-w-0 flex-1 break-words font-mono text-sm text-ink">
+                        {verdict.studentLine}
+                        {verdict.undetermined && (
+                          <span className="mt-1 block font-sans text-xs text-ink-faint">
+                            Lacuna could not check this line, so it earned no marks. Report it if you
+                            think it is right.
+                          </span>
+                        )}
+                      </span>
                       {allowCheckerDisputes && (
                         <button
                           type="button"

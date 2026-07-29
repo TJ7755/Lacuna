@@ -131,6 +131,13 @@ export interface LineVerdict {
   marksEarned: number;
   /** Seeds used by random-equivalence checks while reaching this verdict. */
   checkerSeeds?: string[];
+  /**
+   * Set when the checker could not reach a verdict at all — a scheme expression that
+   * no longer parses, or a comparison whose domain defeated the sampler. The line earns
+   * no marks, but it is not a wrong answer and must not be presented as one. Absent on
+   * every verdict recorded before this distinction existed.
+   */
+  undetermined?: true;
 }
 
 /** A reproducible learner report that an automatic checker verdict was wrong. */
@@ -142,6 +149,8 @@ export interface CheckerDisputeReport {
     correct: boolean;
     marksEarned: number;
     matchedLineIndex?: number | null;
+    /** Mirrors `LineVerdict.undetermined`: the checker abstained rather than said wrong. */
+    undetermined?: true;
   };
   /** Empty for deterministic numeric/predicate checks; populated for random equivalence. */
   checkerSeeds: string[];

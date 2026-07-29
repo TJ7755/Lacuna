@@ -11,6 +11,19 @@
   non-finite value at every sampled point and did not compare equal even to itself. Sample
   magnitude now widens as attempts fail, so the sampler reaches the region where such an
   expression is defined.
+- Separated "cannot check" from "wrong". Comparison returns `equivalent`, `different` or
+  `undetermined` instead of a boolean, so a comparison that runs out of valid sample points is no
+  longer reported as a difference.
+- Working lines the checker cannot decide are recorded as `undetermined` rather than as misses,
+  including lines whose scheme expression no longer parses or whose predicate arguments are
+  unusable. They earn no marks but are shown as unchecked instead of a red zero, keep the dispute
+  control, and carry the distinction into the persisted verdict and any dispute report. Older
+  review logs without the flag are unaffected.
+- Renamed `equivalentByRandomEvaluation` to `compareByRandomEvaluation`, since it no longer answers
+  a yes/no question. It had no callers outside `verify.ts` and its tests.
+- Recorded the greedy scheme-line matching limit in `next_plan.md` §11.9: a student line that
+  satisfies two scheme lines consumes whichever comes first, which can underscore a later line.
+  Deferred deliberately, with the reproducing shape written down.
 
 ## Unreleased — Item-type generalisation (Arc 11)
 

@@ -33,7 +33,7 @@ const { parse } = create({
 
 const DEFAULT_DRAWS = 8;
 const COMPARISON_EPSILON = 1e-9;
-/** Attempts allowed per requested draw before a comparison gives up. */
+/** Attempts allowed per requested draw before a comparison gives up as undetermined. */
 const ATTEMPTS_PER_DRAW = 12;
 /** Base sample magnitude before domain widening; see `sampleValue`. */
 const BASE_MAGNITUDE_MIN = 0.25;
@@ -68,10 +68,21 @@ export type ParseExpressionResult =
   | { ok: true; expression: Expression }
   | { ok: false; error: ExpressionParseError };
 
+/**
+ * The result of a random-evaluation comparison. `undetermined` means the sampler could
+ * not find enough points where both expressions evaluate to finite numbers — a
+ * domain-restricted expression such as `sqrt(x - 100)`, not evidence of a difference.
+ * Callers must not treat it as `different`: doing so marks a student wrong for writing
+ * something the checker cannot check.
+ */
+export type EquivalenceOutcome = 'equivalent' | 'different' | 'undetermined';
+
 export interface WorkingVerificationResult {
   marksEarned: number;
   marksAvailable: number;
   lineVerdicts: LineVerdict[];
+  /** Lines the checker could not decide; they earn nothing but are not wrong answers. */
+  undeterminedLines: number;
 }
 
 /**
@@ -107,19 +118,19 @@ export function expressionToTex(expression: Expression): string {
  * Compare two expressions by evaluating them under the same deterministic random
  * substitutions. This is probabilistic identity testing, not symbolic algebra.
  *
- * Each variable draws its own sign, so every sign combination is reachable: deriving the
- * sign from the attempt index instead made `abs(x*y)` and `-x*y` look equivalent, because
- * the two variables could never share a sign. The sample magnitude widens as attempts
- * fail, which is what lets an expression defined only away from the origin, such as
- * `sqrt(x - 100)`, reach the region where it is defined at all.
+ * Each variable draws its own sign, so every sign quadrant is reachable: deriving the
+ * sign from the attempt index instead made `abs(x*y)` and `-x*y` look equivalent,
+ * because the two variables could never share a sign. The sample magnitude widens as
+ * attempts fail, which is what lets a domain-restricted expression such as
+ * `sqrt(x - 100)` reach the region where it is defined at all.
  */
-export function equivalentByRandomEvaluation(
+export function compareByRandomEvaluation(
   a: Expression,
   b: Expression,
   seed: string,
   draws = DEFAULT_DRAWS,
-): boolean {
-  if (!Number.isInteger(draws) || draws < 1) return false;
+): EquivalenceOutcome {
+  if (!Number.isInteger(draws) || draws < 1) return 'undetermined';
 
   const variables = [...new Set([...a.variables, ...b.variables])].sort();
   const evaluateA = a.node.compile();
@@ -127,7 +138,8 @@ export function equivalentByRandomEvaluation(
   if (variables.length === 0) {
     const left = evaluateNumber(evaluateA, new Map());
     const right = evaluateNumber(evaluateB, new Map());
-    return left !== null && right !== null && nearlyEqual(left, right);
+    if (left === null || right === null) return 'undetermined';
+    return nearlyEqual(left, right) ? 'equivalent' : 'different';
   }
 
   const random = seededRandom(seed);
@@ -142,10 +154,10 @@ export function equivalentByRandomEvaluation(
     const left = evaluateNumber(evaluateA, scope);
     const right = evaluateNumber(evaluateB, scope);
     if (left === null || right === null) continue;
-    if (!nearlyEqual(left, right)) return false;
+    if (!nearlyEqual(left, right)) return 'different';
     accepted += 1;
   }
-  return accepted === draws;
+  return accepted === draws ? 'equivalent' : 'undetermined';
 }
 
 /** Check a parsed scalar answer against an exact, tolerance or membership specification. */
@@ -175,6 +187,11 @@ export function checkNumeric(value: Expression, spec: NumericAnswerSpec): boolea
 /**
  * Mark student working against outstanding scheme lines. Both student and scheme
  * order are tolerated; a scheme line can earn marks at most once.
+ *
+ * A line that matches nothing is only a miss when every comparison reached a verdict.
+ * If any comparison came back undetermined the line is recorded as such: it earns no
+ * marks, but it is not the student's mistake and the study face says so rather than
+ * showing a red zero.
  */
 export function verifyWorkingLines(
   studentLines: string[],
@@ -184,20 +201,18 @@ export function verifyWorkingLines(
   const unmatched = new Set(scheme.map((_, index) => index));
   const lineVerdicts: LineVerdict[] = [];
   let marksEarned = 0;
+  let undeterminedLines = 0;
 
   studentLines.forEach((studentLine, studentIndex) => {
     let matchedLineIndex: number | null = null;
+    let sawUndetermined = false;
     const checkerSeeds: string[] = [];
     for (const schemeIndex of unmatched) {
       const checkerSeed = `${seed}:${studentIndex}:${schemeIndex}`;
       if (usesRandomEvaluation(scheme[schemeIndex])) checkerSeeds.push(checkerSeed);
-      if (
-        matchesSchemeLine(
-          studentLine,
-          scheme[schemeIndex],
-          checkerSeed,
-        )
-      ) {
+      const outcome = matchesSchemeLine(studentLine, scheme[schemeIndex], checkerSeed);
+      if (outcome === 'undetermined') sawUndetermined = true;
+      if (outcome === 'matched') {
         matchedLineIndex = schemeIndex;
         unmatched.delete(schemeIndex);
         break;
@@ -206,13 +221,22 @@ export function verifyWorkingLines(
 
     const marks = matchedLineIndex === null ? 0 : validMarks(scheme[matchedLineIndex].marks);
     marksEarned += marks;
-    lineVerdicts.push({ studentLine, matchedLineIndex, marksEarned: marks, checkerSeeds });
+    const undetermined = matchedLineIndex === null && sawUndetermined;
+    if (undetermined) undeterminedLines += 1;
+    lineVerdicts.push({
+      studentLine,
+      matchedLineIndex,
+      marksEarned: marks,
+      checkerSeeds,
+      ...(undetermined ? { undetermined: true as const } : {}),
+    });
   });
 
   return {
     marksEarned,
     marksAvailable: scheme.reduce((total, line) => total + validMarks(line.marks), 0),
     lineVerdicts,
+    undeterminedLines,
   };
 }
 
@@ -220,43 +244,66 @@ function usesRandomEvaluation(line: MarkSchemeLine): boolean {
   return line.kind === 'waypoint' || (line.kind === 'predicate' && line.predicate === 'equals');
 }
 
-function matchesSchemeLine(studentLine: string, line: MarkSchemeLine, seed: string): boolean {
+type SchemeLineOutcome = 'matched' | 'unmatched' | 'undetermined';
+
+/**
+ * A scheme line the compiler let through can still be unusable at study time — an
+ * expression that no longer parses, or a comparison whose domain defeats the sampler.
+ * Those are author-side failures, so they return `undetermined` rather than reporting
+ * the student's line as a miss.
+ */
+function matchesSchemeLine(
+  studentLine: string,
+  line: MarkSchemeLine,
+  seed: string,
+): SchemeLineOutcome {
   if (line.kind === 'predicate' && line.predicate === 'contains') {
     const needle = line.args?.[0]?.trim().toLocaleLowerCase();
-    return !!needle && studentLine.toLocaleLowerCase().includes(needle);
+    if (!needle) return 'undetermined';
+    return studentLine.toLocaleLowerCase().includes(needle) ? 'matched' : 'unmatched';
   }
 
   const parsedStudent = parseExpression(studentLine);
-  if (!parsedStudent.ok) return false;
+  if (!parsedStudent.ok) return 'unmatched';
 
   if (line.kind === 'waypoint') {
     const expected = parseExpression(line.expression);
-    return (
-      expected.ok &&
-      equivalentByRandomEvaluation(parsedStudent.expression, expected.expression, seed)
+    if (!expected.ok) return 'undetermined';
+    return fromOutcome(
+      compareByRandomEvaluation(parsedStudent.expression, expected.expression, seed),
     );
   }
 
   const args = line.args ?? [];
   if (line.predicate === 'equals') {
     const expected = args[0] ? parseExpression(args[0]) : null;
-    return (
-      expected?.ok === true &&
-      equivalentByRandomEvaluation(parsedStudent.expression, expected.expression, seed)
+    if (!expected?.ok) return 'undetermined';
+    return fromOutcome(
+      compareByRandomEvaluation(parsedStudent.expression, expected.expression, seed),
     );
   }
   if (line.predicate === 'within') {
     const tolerance = Number(args[0]);
-    return (
-      args[1] !== undefined &&
-      checkNumeric(parsedStudent.expression, {
-        kind: 'within',
-        value: args[1],
-        tolerance,
-      })
-    );
+    if (args[1] === undefined || !Number.isFinite(tolerance) || tolerance < 0) {
+      return 'undetermined';
+    }
+    return checkNumeric(parsedStudent.expression, {
+      kind: 'within',
+      value: args[1],
+      tolerance,
+    })
+      ? 'matched'
+      : 'unmatched';
   }
-  return checkNumeric(parsedStudent.expression, { kind: 'matches-one-of', values: args });
+  if (args.length === 0) return 'undetermined';
+  return checkNumeric(parsedStudent.expression, { kind: 'matches-one-of', values: args })
+    ? 'matched'
+    : 'unmatched';
+}
+
+function fromOutcome(outcome: EquivalenceOutcome): SchemeLineOutcome {
+  if (outcome === 'equivalent') return 'matched';
+  return outcome === 'different' ? 'unmatched' : 'undetermined';
 }
 
 function splitEquation(source: string): { left: string; right: string } | null {

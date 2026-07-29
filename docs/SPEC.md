@@ -1126,8 +1126,19 @@ Two modes, chosen in Settings (default **reveal**), mirroring the grading-mode t
 It accepts ordinary notation such as `2x+6=14`, `3/4`, `sqrt(16)` and `x^2`, rejects assignments,
 collections and unapproved functions, and renders the validated tree as KaTeX for preview.
 Equivalence is checked by evaluating both expressions over the same deterministic random draws.
-The seed travels through each line verdict and review log, so a disputed result can be replayed
-exactly; random evaluation is deliberately not presented as symbolic proof. Numeric answer
+Each variable draws its own sign, so every sign combination is reachable rather than only the
+alternating pattern an index-derived sign allows, and the sample magnitude widens as draws fail so
+that expressions defined only away from the origin (`sqrt(x - 100)`) are still sampled inside their
+domain. The seed travels through each line verdict and review log, so a disputed result can be
+replayed exactly; random evaluation is deliberately not presented as symbolic proof.
+
+Comparison returns three outcomes, not two: `equivalent`, `different`, and `undetermined` for the
+case where too few sample points leave both expressions finite. `undetermined` is never reported as
+a wrong answer. A working line that reaches no verdict — including one whose scheme expression no
+longer parses or whose predicate arguments are unusable — is flagged `undetermined` on its
+`LineVerdict`, counted in `WorkingVerificationResult.undeterminedLines`, and shown in the study face
+as unchecked rather than as a zero, with the existing dispute control alongside it. It earns no
+marks, so the marks total still reflects only what the checker could actually award. Numeric answer
 specifications share this parser for exact, tolerance and one-of checks.
 
 The production build measured on 28 July 2026 places the verifier in the main application chunk

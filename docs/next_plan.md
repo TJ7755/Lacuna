@@ -2341,6 +2341,15 @@ is shippable on share codes alone, before Arc 12 exists.
    self-grading. Reusing it for authoritative numeric marks would conflate two grading models.
    The dedicated faces reuse the shared maths input instead.
 
+5. **Line matching is greedy, and that is a known limit.** `verifyWorkingLines` walks the
+   outstanding scheme lines in order and takes the first match, so a student line that satisfies
+   both a generic 1-mark line and a specific 2-mark line consumes whichever appears earlier in the
+   scheme. A later student line whose only match has just been consumed then scores nothing.
+   The error is always underscoring, never overscoring. Schemes are small enough that optimal
+   maximum-weight bipartite matching would cost nothing to run; it is deferred because it changes
+   marks for existing schemes and needs its own regression corpus first. Revisit when a real
+   scheme demonstrates the collision rather than on principle.
+
 ## 11.10 Explicitly out of scope
 
 - LLM-graded free text as a scheduling input (A.1's negative result; an optional

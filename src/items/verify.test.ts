@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { MarkSchemeLine, NumericAnswerSpec } from '../db/types';
 import {
   checkNumeric,
-  equivalentByRandomEvaluation,
+  compareByRandomEvaluation,
   expressionToTex,
   parseExpression,
   verifyWorkingLines,
@@ -43,26 +43,26 @@ describe('parseExpression', () => {
   });
 });
 
-describe('equivalentByRandomEvaluation', () => {
+describe('compareByRandomEvaluation', () => {
   it.each([
     ['8 / 2', '4'],
     ['2 * (x + 3)', '2x + 6'],
     ['x^2 + 2x + 1', '(x + 1)^2'],
     ['2x + 6 = 14', '2x - 8 = 0'],
   ])('accepts equivalent forms %s and %s', (left, right) => {
-    expect(equivalentByRandomEvaluation(expression(left), expression(right), 'item:attempt')).toBe(
-      true,
+    expect(compareByRandomEvaluation(expression(left), expression(right), 'item:attempt')).toBe(
+      'equivalent',
     );
   });
 
   it('rejects expressions that merely agree at one obvious value', () => {
-    expect(equivalentByRandomEvaluation(expression('x^2'), expression('x'), 'seed')).toBe(false);
+    expect(compareByRandomEvaluation(expression('x^2'), expression('x'), 'seed')).toBe('different');
   });
 
   it('draws across positive and negative values for piecewise expressions', () => {
-    expect(
-      equivalentByRandomEvaluation(expression('sqrt(x^2)'), expression('x'), 'piecewise'),
-    ).toBe(false);
+    expect(compareByRandomEvaluation(expression('sqrt(x^2)'), expression('x'), 'piecewise')).toBe(
+      'different',
+    );
   });
 
   it.each([
@@ -70,33 +70,30 @@ describe('equivalentByRandomEvaluation', () => {
     ['abs(x * y)', 'x * y'],
     ['abs(x + y)', 'x + y'],
   ])('samples every sign combination, so %s and %s differ', (left, right) => {
-    expect(equivalentByRandomEvaluation(expression(left), expression(right), 'signs')).toBe(false);
+    expect(compareByRandomEvaluation(expression(left), expression(right), 'signs')).toBe(
+      'different',
+    );
   });
 
-  it('widens the sample range to reach a restricted domain', () => {
+  it('separates "cannot check" from "differs" for domain-restricted expressions', () => {
     expect(
-      equivalentByRandomEvaluation(
-        expression('sqrt(x - 100)'),
-        expression('sqrt(x - 100)'),
-        'domain',
-      ),
-    ).toBe(true);
+      compareByRandomEvaluation(expression('sqrt(x - 100)'), expression('sqrt(x - 100)'), 'domain'),
+    ).toBe('equivalent');
     expect(
-      equivalentByRandomEvaluation(
-        expression('sqrt(x - 100)'),
-        expression('sqrt(x - 200)'),
-        'domain',
-      ),
-    ).toBe(false);
+      compareByRandomEvaluation(expression('sqrt(x - 100)'), expression('sqrt(x - 200)'), 'domain'),
+    ).toBe('different');
+    expect(
+      compareByRandomEvaluation(expression('sqrt(0 - x^2 - 1)'), expression('x'), 'empty-domain'),
+    ).toBe('undetermined');
   });
 
   it('is reproducible for the same seed', () => {
     const left = expression('x^3 - x');
     const right = expression('x * (x - 1) * (x + 1)');
-    const first = equivalentByRandomEvaluation(left, right, 'repeatable-seed');
-    const second = equivalentByRandomEvaluation(left, right, 'repeatable-seed');
+    const first = compareByRandomEvaluation(left, right, 'repeatable-seed');
+    const second = compareByRandomEvaluation(left, right, 'repeatable-seed');
     expect(second).toBe(first);
-    expect(first).toBe(true);
+    expect(first).toBe('equivalent');
   });
 });
 
@@ -145,6 +142,7 @@ describe('verifyWorkingLines', () => {
     expect(result).toEqual({
       marksEarned: 5,
       marksAvailable: 5,
+      undeterminedLines: 0,
       lineVerdicts: [
         { studentLine: 'Used SUBSTITUTION', matchedLineIndex: 3, marksEarned: 1, checkerSeeds: ['working-attempt:0:0', 'working-attempt:0:1'] },
         { studentLine: '8 / 2', matchedLineIndex: 1, marksEarned: 2, checkerSeeds: ['working-attempt:1:0', 'working-attempt:1:1'] },
@@ -169,5 +167,27 @@ describe('verifyWorkingLines', () => {
     expect(verifyWorkingLines(lines, scheme, 'same-seed')).toEqual(
       verifyWorkingLines(lines, scheme, 'same-seed'),
     );
+  });
+
+  it('records an uncheckable scheme line as undetermined rather than a student miss', () => {
+    const brokenScheme: MarkSchemeLine[] = [
+      { marks: 2, label: 'expand', kind: 'waypoint', expression: '2x +' },
+    ];
+    const result = verifyWorkingLines(['2x + 6'], brokenScheme, 'broken');
+
+    expect(result.marksEarned).toBe(0);
+    expect(result.undeterminedLines).toBe(1);
+    expect(result.lineVerdicts[0]).toMatchObject({
+      matchedLineIndex: null,
+      marksEarned: 0,
+      undetermined: true,
+    });
+  });
+
+  it('leaves genuine misses free of the undetermined flag', () => {
+    const result = verifyWorkingLines(['x + 1'], scheme, 'miss');
+
+    expect(result.undeterminedLines).toBe(0);
+    expect(result.lineVerdicts[0].undetermined).toBeUndefined();
   });
 });
