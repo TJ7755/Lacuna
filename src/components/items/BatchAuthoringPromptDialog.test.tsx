@@ -60,6 +60,8 @@ describe('BatchAuthoringPromptDialog', () => {
       <BatchAuthoringPromptDialog
         courseId="course-1"
         courseName="A-Level Economics"
+        examBoard="AQA"
+        specification="7136"
         lessons={[]}
         cards={[]}
         onClose={vi.fn()}
@@ -79,6 +81,8 @@ describe('BatchAuthoringPromptDialog', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
     const prompt = writeText.mock.calls[0][0] as string;
     expect(prompt).toContain('Demand falls as price rises.');
+    expect(prompt).toContain('Exam board: AQA');
+    expect(prompt).toContain('Specification: 7136');
     expect(prompt).toContain('Requested maximum items: 99');
     expect(prompt).toContain('Target concept density: 2 atomic concepts per item');
     expect(prompt).toContain(BATCH_OUTPUT_START);

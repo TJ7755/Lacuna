@@ -297,6 +297,8 @@ export interface CourseRecord {
   id: string;
   name: string;
   description: string;
+  examBoard?: string;
+  specification?: string;
   createdAt: number;
   colour?: string;
   // Scheduling (inherited from the old Deck).

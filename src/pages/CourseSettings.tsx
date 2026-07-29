@@ -64,6 +64,8 @@ export function CourseSettings() {
   const cards = useCourseCards(courseId);
 
   const [name, setName] = useState('');
+  const [examBoard, setExamBoard] = useState('');
+  const [specification, setSpecification] = useState('');
   const [timeZone, setTimeZone] = useState<string | undefined>(undefined);
   const [objective, setObjective] = useState<ExamObjective>('expectedMarks');
   const [newPerDay, setNewPerDay] = useState('');
@@ -103,6 +105,8 @@ export function CourseSettings() {
   useEffect(() => {
     if (loaded || !course) return;
     setName(course.name);
+    setExamBoard(course.examBoard ?? '');
+    setSpecification(course.specification ?? '');
     setTimeZone(course.timeZone);
     setObjective(course.examObjective);
     setNewPerDay(course.newCardsPerDay ? String(course.newCardsPerDay) : '');
@@ -182,6 +186,18 @@ export function CourseSettings() {
     const value = name.trim() || course.name;
     if (value !== name) setName(value);
     commitCourse({ name: value });
+  }
+
+  function commitExamBoard() {
+    const value = examBoard.trim() || undefined;
+    setExamBoard(value ?? '');
+    commitCourse({ examBoard: value });
+  }
+
+  function commitSpecification() {
+    const value = specification.trim() || undefined;
+    setSpecification(value ?? '');
+    commitCourse({ specification: value });
   }
 
   function commitNewCardsPerDay() {
@@ -310,6 +326,26 @@ export function CourseSettings() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       onBlur={commitName}
+                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+                    />
+                  </label>
+
+                  <label className="block text-sm text-ink-soft">
+                    Exam board
+                    <input
+                      value={examBoard}
+                      onChange={(e) => setExamBoard(e.target.value)}
+                      onBlur={commitExamBoard}
+                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
+                    />
+                  </label>
+
+                  <label className="block text-sm text-ink-soft">
+                    Specification
+                    <input
+                      value={specification}
+                      onChange={(e) => setSpecification(e.target.value)}
+                      onBlur={commitSpecification}
                       className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
                     />
                   </label>

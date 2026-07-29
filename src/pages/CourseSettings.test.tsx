@@ -213,6 +213,42 @@ describe('CourseSettings', () => {
     );
   });
 
+  it('commits the exam board on blur, not on every keystroke', () => {
+    renderPage();
+    const input = screen.getByLabelText('Exam board');
+    fireEvent.change(input, { target: { value: 'AQA' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(input);
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { examBoard: 'AQA' });
+  });
+
+  it('commits the specification on blur, not on every keystroke', () => {
+    renderPage();
+    const input = screen.getByLabelText('Specification');
+    fireEvent.change(input, { target: { value: '7136' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(input);
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { specification: '7136' });
+  });
+
+  it('clears optional course provenance to undefined', () => {
+    mockCourse = { ...course, examBoard: 'AQA', specification: '7136' };
+    renderPage();
+
+    const examBoardInput = screen.getByLabelText('Exam board');
+    fireEvent.change(examBoardInput, { target: { value: '' } });
+    fireEvent.blur(examBoardInput);
+
+    const specificationInput = screen.getByLabelText('Specification');
+    fireEvent.change(specificationInput, { target: { value: '   ' } });
+    fireEvent.blur(specificationInput);
+
+    expect(mockUpdateCourse).toHaveBeenNthCalledWith(1, 'course-1', { examBoard: undefined });
+    expect(mockUpdateCourse).toHaveBeenNthCalledWith(2, 'course-1', { specification: undefined });
+  });
+
   it('commits the retention slider once when the drag ends, not on every tick', () => {
     renderPage();
     const slider = screen.getByLabelText('Target retention');
