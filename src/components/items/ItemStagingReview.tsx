@@ -346,11 +346,6 @@ function CandidateRow({
             </Button>
           </div>
         )}
-        {!editing && decision === 'accepted' && (
-          <Button size="sm" variant="ghost" onClick={() => setRevisionOpen(true)}>
-            Revise with AI
-          </Button>
-        )}
         {decision === 'rejected' && (
           <Button size="sm" variant="ghost" onClick={onRestore}>
             Restore
@@ -378,7 +373,7 @@ function CandidateRow({
         </Button>
       )}
 
-      {revisionOpen && decision !== 'rejected' && (
+      {revisionOpen && decision === 'staged' && (
         <div className="mt-4 rounded-xl border border-line bg-surface-raised p-4">
           <label className="flex flex-col gap-2 text-sm text-ink-soft">
             What should change?

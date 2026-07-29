@@ -24,6 +24,11 @@
 - Recorded the greedy scheme-line matching limit in `next_plan.md` §11.9: a student line that
   satisfies two scheme lines consumes whichever comes first, which can underscore a later line.
   Deferred deliberately, with the reproducing shape written down.
+- Staged batch items no longer report "0 of N fixtures pass" when the mark scheme itself failed to
+  compile. The fixtures were never run in that case, so the row now reads "Fixtures unavailable"
+  and the scheme errors stand on their own.
+- Removed the revision prompt from accepted staged items. Acceptance is terminal — there is no
+  Edit, Reject or Restore afterwards — so the copied prompt could not be applied to anything.
 
 ## Unreleased — Item-type generalisation (Arc 11)
 

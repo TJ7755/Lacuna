@@ -106,9 +106,10 @@ describe('ItemStagingReview', () => {
 
     fireEvent.click(within(duplicateRow).getByRole('button', { name: 'Accept' }));
     await waitFor(() => expect(createLessonCard).toHaveBeenCalledTimes(3));
+    expect(within(duplicateRow).getByText('accepted')).toBeInTheDocument();
     expect(
-      within(duplicateRow).getByRole('button', { name: 'Revise with AI' }),
-    ).toBeInTheDocument();
+      within(duplicateRow).queryByRole('button', { name: 'Revise with AI' }),
+    ).not.toBeInTheDocument();
   });
 
   it('reports fixtures as unavailable rather than failing when the scheme will not compile', () => {
