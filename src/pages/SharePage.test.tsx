@@ -171,31 +171,29 @@ describe('SharePage', () => {
     expect(generateBtn).toBeDisabled();
   });
 
-  it('shows an image-placeholder warning when the selected course has images', () => {
+  it('shows a media-placeholder warning and identifies affected cards', () => {
     mockCourses = [mockCourse];
     mockSummaries = { [mockCourse.id]: mockSummary };
     mockCourseCards = [
       {
+        id: 'media-card',
         front: 'What is shown? lacuna-asset://' + 'a'.repeat(64),
         back: 'Answer',
       } as Card,
     ];
     render(<SharePage />);
     fireEvent.click(screen.getByText('Test Course'));
-    expect(
-      screen.getByText(/This course contains images\. The share code will replace them/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/This course contains media in 1 card/)).toBeInTheDocument();
+    expect(screen.getByText('What is shown?')).toBeInTheDocument();
   });
 
-  it('does not show the image-placeholder warning when the selected course has no images', () => {
+  it('does not show the media-placeholder warning when the selected course has no media', () => {
     mockCourses = [mockCourse];
     mockSummaries = { [mockCourse.id]: mockSummary };
     mockCourseCards = [{ front: 'Plain text', back: 'Answer' } as Card];
     render(<SharePage />);
     fireEvent.click(screen.getByText('Test Course'));
-    expect(
-      screen.queryByText(/This course contains images\. The share code will replace them/),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/This course contains media in/)).not.toBeInTheDocument();
   });
 
   it('shows import section with textarea', () => {

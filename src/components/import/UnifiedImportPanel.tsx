@@ -991,7 +991,7 @@ function ShareCodeImport({
               )}
               {!pending.merge && pending.summary.omittedImages && (
                 <p className="mb-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm leading-relaxed text-ink-soft">
-                  This share code omitted images to keep the code small. Image positions will appear
+                  This share code omitted media to keep the code small. Images and audio will appear
                   as placeholders after import.
                 </p>
               )}

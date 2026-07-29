@@ -9,6 +9,7 @@ import { useAutoOptimiseDefault } from '../../state/optimiseSetting';
 import { usePracticeDefaults } from '../../state/practiceDefaults';
 import { useTypingSetting } from '../../state/typingSetting';
 import { cn } from '../../components/ui/cn';
+import { AUDIO_PLAYBACK_SPEEDS, useAudioSettings } from '../../state/audioSettings';
 
 export function StudySection({ motionMultiplier }: { motionMultiplier: number }) {
   const [gradingMode, setGradingMode] = useGradingMode();
@@ -17,6 +18,7 @@ export function StudySection({ motionMultiplier }: { motionMultiplier: number })
   const [autoOptimise, setAutoOptimise] = useAutoOptimiseDefault();
   const [practiceDefaults, setPracticeDefaults] = usePracticeDefaults();
   const [startInFocusMode, setStartInFocusMode] = useStartInFocusMode();
+  const [audioSettings, setAudioSettings] = useAudioSettings();
 
   return (
     <motion.section
@@ -51,6 +53,39 @@ export function StudySection({ motionMultiplier }: { motionMultiplier: number })
         checked={typingSetting === 'type'}
         onChange={(checked) => setTypingSetting(checked ? 'type' : 'reveal')}
       />
+
+      <SettingToggle
+        bordered
+        title="Autoplay audio cards"
+        description="Start an audio clip when its question face appears. Browser autoplay rules can still require the first play to be started manually."
+        checked={audioSettings.autoplay}
+        onChange={(autoplay) => setAudioSettings({ ...audioSettings, autoplay })}
+      />
+      <div className="mt-5 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm">Audio playback speed</div>
+          <p className="mt-1 text-sm text-ink-soft">Applied to every audio card on this device.</p>
+        </div>
+        <div className="flex shrink-0 gap-1" role="radiogroup" aria-label="Audio playback speed">
+          {AUDIO_PLAYBACK_SPEEDS.map((speed) => (
+            <button
+              key={speed}
+              type="button"
+              role="radio"
+              aria-checked={audioSettings.playbackSpeed === speed}
+              onClick={() => setAudioSettings({ ...audioSettings, playbackSpeed: speed })}
+              className={cn(
+                'min-h-11 rounded-lg border px-3 py-1.5 text-xs transition-colors',
+                audioSettings.playbackSpeed === speed
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-line text-ink-soft hover:border-line-strong',
+              )}
+            >
+              {speed}×
+            </button>
+          ))}
+        </div>
+      </div>
 
       {typingSetting === 'type' && (
         <div className="mt-5 flex items-center justify-between gap-3 pl-0">

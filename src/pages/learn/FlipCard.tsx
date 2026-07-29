@@ -12,6 +12,7 @@ import { cn } from '../../components/ui/cn';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import { typingExpectedAnswer } from './useLearnSession';
 import type { LearnModeType, Phase } from './types';
+import { isAudioCardFront } from '../../media/audio';
 
 function modeBorderClass(mode: LearnModeType, revealed: boolean): string {
   if (!revealed) return 'border-line shadow-xl shadow-black/5';
@@ -81,6 +82,8 @@ export function FlipCard({
   const m = speedMultiplier(motionSpeed);
   const isTyping = Boolean(isTypingCard);
   const [swipe, setSwipe] = useState({ x: 0, hint: null as 'left' | 'right' | null });
+  const audioCard = isAudioCardFront(card.front);
+  const [showAudioFront, setShowAudioFront] = useState(false);
   const [hasSwiped, setHasSwiped] = useState(() => {
     try {
       return localStorage.getItem('lacuna.learnHints') === '1';
@@ -94,6 +97,39 @@ export function FlipCard({
   const swipeThreshold = 60;
   const maxDrag = 180;
 
+  const replayAudio = useCallback(() => {
+    if (!audioCard || phase !== 'answer') return;
+    if (!showAudioFront) {
+      setShowAudioFront(true);
+      return;
+    }
+    const player = containerRef.current?.querySelector('audio');
+    if (player) {
+      player.currentTime = 0;
+      void player.play().catch(() => {});
+    }
+  }, [audioCard, phase, showAudioFront]);
+
+  useEffect(() => setShowAudioFront(false), [card.id]);
+
+  useEffect(() => {
+    const onReplayKey = (event: KeyboardEvent) => {
+      if (event.repeat || event.key.toLowerCase() !== 'r' || !audioCard || phase !== 'answer')
+        return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      )
+        return;
+      if (menuOpen || editing || navOpen || hintsOpen) return;
+      event.preventDefault();
+      replayAudio();
+    };
+    window.addEventListener('keydown', onReplayKey);
+    return () => window.removeEventListener('keydown', onReplayKey);
+  }, [audioCard, phase, menuOpen, editing, navOpen, hintsOpen, replayAudio]);
+
   // Spring-physics x position for the snap-back so the card feels tactile.
   const swipeXMotion = useMotionValue(0);
   const swipeXSpring = useSpring(swipeXMotion, { stiffness: 480, damping: 32, mass: 0.9 });
@@ -101,6 +137,7 @@ export function FlipCard({
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (swipeRef.current.dragging) return;
+      if ((e.target as Element).closest('audio, button, input, textarea, a')) return;
       // Ignore swipes when any overlay is open.
       if (menuOpen || editing || navOpen || hintsOpen) return;
       swipeRef.current = {
@@ -202,11 +239,12 @@ export function FlipCard({
         setSwipe({ x: 0, hint: null });
         if (!selectionGrew || !isInsideCard) {
           if (phase === 'question') onReveal();
+          else if (phase === 'answer' && audioCard) setShowAudioFront((visible) => !visible);
           else if (phase === 'answer') onHide();
         }
       }
     },
-    [phase, onReveal, onHide, onAnswer, swipeXMotion],
+    [phase, audioCard, onReveal, onHide, onAnswer, swipeXMotion],
   );
 
   const handlePointerCancel = useCallback(
@@ -223,10 +261,13 @@ export function FlipCard({
   // Safety net: clear any lingering swipe state when the card flips back to question.
   useEffect(() => {
     if (phase === 'question') {
+      setShowAudioFront(false);
       swipeXMotion.set(0);
       setSwipe({ x: 0, hint: null });
     }
   }, [phase, swipeXMotion]);
+
+  const displayedFront = !revealed || showAudioFront;
 
   return (
     <div className="flex flex-1 items-center justify-center" style={{ perspective: '1600px' }}>
@@ -234,7 +275,9 @@ export function FlipCard({
         ref={containerRef}
         role="button"
         tabIndex={0}
-        aria-label={revealed ? 'Hide answer' : 'Show answer'}
+        aria-label={
+          displayedFront ? (revealed ? 'Show answer again' : 'Show answer') : 'Hide answer'
+        }
         className="relative w-full cursor-pointer"
         style={{ transformStyle: 'preserve-3d', touchAction: 'pan-y' }}
         onPointerDown={handlePointerDown}
@@ -246,6 +289,7 @@ export function FlipCard({
           event.preventDefault();
           event.stopPropagation();
           if (phase === 'question') onReveal();
+          else if (phase === 'answer' && audioCard) setShowAudioFront((visible) => !visible);
           else if (phase === 'answer') onHide();
         }}
       >
@@ -311,7 +355,7 @@ export function FlipCard({
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
-            key={revealed ? 'back' : 'front'}
+            key={displayedFront ? 'front' : 'back'}
             initial={{ rotateX: -92, opacity: 0, scale: 0.97, x: swipe.x }}
             animate={{ rotateX: 0, opacity: 1, scale: 1 }}
             exit={{ rotateX: 92, opacity: 0, scale: 0.97, x: swipe.x }}
@@ -335,11 +379,26 @@ export function FlipCard({
             >
               <CardContent
                 card={card}
-                side={revealed ? 'back' : 'front'}
+                side={displayedFront ? 'front' : 'back'}
+                audioAutoplay={audioCard && displayedFront}
                 sequenceCue
                 sequenceMode={isLinesModeCard ? 'lines' : 'list'}
               />
             </motion.div>
+            {audioCard && revealed && !displayedFront && (
+              <button
+                type="button"
+                onPointerDown={(event) => event.stopPropagation()}
+                onPointerUp={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  replayAudio();
+                }}
+                className="mt-6 min-h-11 rounded-full border border-line px-4 py-2 text-sm text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+              >
+                Hear it again <span className="ml-1 text-xs text-ink-faint">R</span>
+              </button>
+            )}
             {/* Hint ladder for lines-mode sequence cards: two optional, ungraded steps
                 between question and reveal (see next_plan.md §1.5). Clicking the button
                 must not flip the card, hence the pointer/click guards. */}

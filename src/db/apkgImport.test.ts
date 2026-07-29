@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Card } from './types';
 import { db } from './schema';
 import { importApkgResult, type ApkgImportResult } from './apkgImport';
+import { MAX_AUDIO_BYTES } from './assets';
 import { createDeck } from './repository';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -111,7 +112,17 @@ describe('importApkgResult', () => {
     expect(await db.cards.count()).toBe(0);
   });
 
-  it('stores a referenced image once, rewrites HTML and Markdown, and ignores non-image media', async () => {
+  it('does not create a deck or cards when imported audio is rejected', async () => {
+    const result = makeResult({
+      media: new Map([['oversized.mp3', new Uint8Array(MAX_AUDIO_BYTES + 1)]]),
+    });
+
+    await expect(importApkgResult(result)).rejects.toThrow(/25 MB/);
+    expect(await db.decks.count()).toBe(0);
+    expect(await db.cards.count()).toBe(0);
+  });
+
+  it('stores referenced images and audio and rewrites their Anki markers', async () => {
     vi.stubGlobal('Image', undefined);
     const imageBytes = new TextEncoder().encode('image bytes');
     const audioBytes = new TextEncoder().encode('audio bytes');
@@ -132,11 +143,14 @@ describe('importApkgResult', () => {
     const card = imported.cards[0];
     const assets = await db.assets.toArray();
 
-    expect(assets).toHaveLength(1);
-    expect(assets[0].mimeType).toBe('image/png');
-    expect(card.front).toBe(`![image](lacuna-asset://${assets[0].hash})`);
+    expect(assets).toHaveLength(2);
+    const image = assets.find((asset) => asset.kind === 'image');
+    const audio = assets.find((asset) => asset.kind === 'audio');
+    expect(image?.mimeType).toBe('image/png');
+    expect(audio?.mimeType).toBe('audio/mpeg');
+    expect(card.front).toBe(`![image](lacuna-asset://${image!.hash})`);
     expect(card.back).toBe(
-      `See ![diagram](lacuna-asset://${assets[0].hash}) and [sound:voice.mp3]`,
+      `See ![diagram](lacuna-asset://${image!.hash}) and ![audio](lacuna-asset://${audio!.hash})`,
     );
     expect(await db.cards.get(card.id)).toEqual(card);
   });

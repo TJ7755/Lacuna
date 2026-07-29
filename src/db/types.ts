@@ -876,26 +876,29 @@ export interface UserPerformance {
   totalCorrectReviews: number;
 }
 
-/** Binary image asset stored separately from card Markdown and deduplicated by hash.
+/** Binary media asset stored separately from card Markdown and deduplicated by hash.
  *  We store the raw bytes as Uint8Array because fake-indexeddb (and some browser
  *  IndexedDB implementations) do not reliably preserve Blob objects through
  *  structuredClone.  DOM APIs that need a Blob receive one via `toBlob()`. */
-export interface ImageAsset {
+export interface MediaAsset {
   hash: string;
   blob: Blob | Uint8Array;
   mimeType: string;
-  width: number;
-  height: number;
+  /** Absent on pre-Arc-6 records and therefore interpreted as image. */
+  kind?: 'image' | 'audio';
+  width?: number;
+  height?: number;
   createdAt: number;
 }
 
-/** JSON-safe form of an ImageAsset for backups and exports. */
+/** JSON-safe form of a MediaAsset for backups and exports. */
 export interface BackupAsset {
   hash: string;
   data: string;
   mimeType: string;
-  width: number;
-  height: number;
+  kind?: 'image' | 'audio';
+  width?: number;
+  height?: number;
   createdAt: number;
 }
 

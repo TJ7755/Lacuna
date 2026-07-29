@@ -24,7 +24,7 @@ import type {
   Sequence,
   SessionHistoryEntry,
   UserPerformance,
-  ImageAsset,
+  MediaAsset,
   RevisionPlan,
 } from './types';
 import {
@@ -35,7 +35,7 @@ import {
 } from './assessmentMigration';
 import {
   assetsForBackup,
-  backupAssetToImageAsset,
+  backupAssetToMediaAsset,
   extractMarkdownAssets,
   referencedAssetHashes,
   referencedAssetHashesInCards,
@@ -160,7 +160,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
   const decks = backup.decks.map((d) => migrateDeckRecord(d as LegacyDeck));
   const assets = backup.assets;
   const knownHashes = new Set(backup.assets.map((a) => a.hash.toLowerCase()));
-  const extractedAssets: ImageAsset[] = [];
+  const extractedAssets: MediaAsset[] = [];
   const cards = await Promise.all(
     backup.cards.map(async (c) => {
       const migrated = migrateCardRecord(c as LegacyCard);
@@ -198,7 +198,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       ),
     })),
   );
-  const importedAssets = [...assets.map(backupAssetToImageAsset), ...extractedAssets];
+  const importedAssets = [...assets.map(backupAssetToMediaAsset), ...extractedAssets];
   const rawCourses = backup.courses ?? [];
   const currentAssessments = backup.courseAssessments;
   const assessmentMigration = currentAssessments

@@ -120,6 +120,7 @@ durations to ~0 globally, so every effect below degrades gracefully. A per-user
 so the app can be as snappy or as gentle as the user prefers.
 
 Shared conventions:
+
 - Standard easing curve `[0.16, 1, 0.3, 1]` (a soft "ease-out-quint") for entrances.
 - Springs for tactile controls and shared-layout indicators.
 - Staggered list/grid reveals with a small per-item delay, capped so long lists do not crawl.
@@ -127,6 +128,7 @@ Shared conventions:
   Help's active-tab underline).
 
 Specific motion (current state of the app):
+
 - **Page transitions:** the routed page fades and lifts in (`y: 12 → 0`) as the previous one
   settles out (`y: 0 → -8`) via `AnimatePresence mode="wait"` keyed on the pathname; the main
   scroll area resets to the top on every navigation (`AppShell`).
@@ -271,28 +273,28 @@ outside the shell. The shell is a flex row:
 
 ### 4.2 Route map
 
-| Path | Screen | In shell? | Loading |
-|------|--------|-----------|---------|
-| `/` | Dashboard (course grid) | yes | eager |
-| `/course/:courseId` | Course path (or the single lesson directly, if the course has only one) | yes | lazy |
-| `/course/:courseId/lesson/:lessonId` | Lesson view (notes / cards) | yes | lazy |
-| `/course/:courseId/bank` | Question bank (all cards in the course) | yes | lazy |
-| `/course/:courseId/settings` | Course settings | yes | lazy |
-| `/course/:courseId/analytics` | Course analytics | yes | lazy |
-| `/course/:courseId/cards/new` | Card editor (create, course-scoped) | yes | lazy |
-| `/course/:courseId/cards/:cardId/edit` | Card editor (edit, course-scoped) | yes | lazy |
-| `/course/:courseId/lesson/:lessonId/cards/new` | Card editor (create, lesson-scoped) | yes | lazy |
-| `/course/:courseId/lesson/:lessonId/cards/:cardId/edit` | Card editor (edit, lesson-scoped) | yes | lazy |
-| `/settings` | Settings | yes | eager |
-| `/search` | Search | yes | eager |
-| `/share` | Share (export/import via codes) | yes | eager |
-| `/analytics` | Global (cross-course) analytics | yes | eager |
-| `/help` | Help | yes | eager |
-| `/course/:courseId/learn` | Learn session (practice over every due card in the course) | **no** | lazy |
-| `/lesson/:lessonId/learn` | Learn session (new cards for one lesson) | **no** | lazy |
-| `/learn` | Learn session (every course, "Today") | **no** | lazy |
-| `/deck/:deckId` | Redirects to `/` | yes | eager |
-| `/study` | Redirects to `/` | yes | eager |
+| Path                                                    | Screen                                                                  | In shell? | Loading |
+| ------------------------------------------------------- | ----------------------------------------------------------------------- | --------- | ------- |
+| `/`                                                     | Dashboard (course grid)                                                 | yes       | eager   |
+| `/course/:courseId`                                     | Course path (or the single lesson directly, if the course has only one) | yes       | lazy    |
+| `/course/:courseId/lesson/:lessonId`                    | Lesson view (notes / cards)                                             | yes       | lazy    |
+| `/course/:courseId/bank`                                | Question bank (all cards in the course)                                 | yes       | lazy    |
+| `/course/:courseId/settings`                            | Course settings                                                         | yes       | lazy    |
+| `/course/:courseId/analytics`                           | Course analytics                                                        | yes       | lazy    |
+| `/course/:courseId/cards/new`                           | Card editor (create, course-scoped)                                     | yes       | lazy    |
+| `/course/:courseId/cards/:cardId/edit`                  | Card editor (edit, course-scoped)                                       | yes       | lazy    |
+| `/course/:courseId/lesson/:lessonId/cards/new`          | Card editor (create, lesson-scoped)                                     | yes       | lazy    |
+| `/course/:courseId/lesson/:lessonId/cards/:cardId/edit` | Card editor (edit, lesson-scoped)                                       | yes       | lazy    |
+| `/settings`                                             | Settings                                                                | yes       | eager   |
+| `/search`                                               | Search                                                                  | yes       | eager   |
+| `/share`                                                | Share (export/import via codes)                                         | yes       | eager   |
+| `/analytics`                                            | Global (cross-course) analytics                                         | yes       | eager   |
+| `/help`                                                 | Help                                                                    | yes       | eager   |
+| `/course/:courseId/learn`                               | Learn session (practice over every due card in the course)              | **no**    | lazy    |
+| `/lesson/:lessonId/learn`                               | Learn session (new cards for one lesson)                                | **no**    | lazy    |
+| `/learn`                                                | Learn session (every course, "Today")                                   | **no**    | lazy    |
+| `/deck/:deckId`                                         | Redirects to `/`                                                        | yes       | eager   |
+| `/study`                                                | Redirects to `/`                                                        | yes       | eager   |
 
 There is no user-facing route for a bare deck or folder; `/deck/:deckId` is kept only as a
 redirect so old bookmarks and share-code links do not dead-end. `/study` — the former
@@ -539,6 +541,7 @@ editor and course settings add a sticky bottom action bar.
 All tables are keyed by string `id` unless noted. Types live in `src/db/types.ts`.
 
 ### Course architecture (the user-facing model)
+
 Schema **v9** introduced the `Course -> Lesson -> Note + Card` model. This is the only model
 the UI exposes: every route, sidebar entry and page works in terms of courses, lessons, notes
 and cards. Stores: `courses, lessons, notes, lessonCards, practiceNodes, courseExamDates`
@@ -611,6 +614,7 @@ Linked rows are not backfilled because the old display-only link proves nothing 
 the card was taught.
 
 ### Sequences — overlapping-cloze sequence learning (schema v11)
+
 Schema **v11** adds `sequences: 'id, courseId, primaryLessonId, createdAt'` (additive; no
 `upgrade()` needed) and one optional indexed field on `cards`: `sequenceItemId`. A `Sequence`
 is an **authoring-time entity only** — it is never itself studied — that generates ordinary
@@ -622,8 +626,8 @@ directly targets the serial-position effect (mid-sequence recall is weakest) by 
 element a turn as the recall target with local context as the cue.
 
 - `Sequence { id, courseId, primaryLessonId: string | null, name, description?, mode?,
-  items: SequenceItem[], cueWindow, chunkLabels?, generateLabelCards?, mySpeaker?, presetId?,
-  createdAt }` — `items` is ordered and stored inline (sequences are small); `primaryLessonId`
+items: SequenceItem[], cueWindow, chunkLabels?, generateLabelCards?, mySpeaker?, presetId?,
+createdAt }` — `items` is ordered and stored inline (sequences are small); `primaryLessonId`
   follows the same semantics as `Card.primaryLessonId`. `generateLabelCards` (default off)
   additionally generates an unordered label -> value card per item that carries a `label`
   (e.g. "Atomic number 11 -> ?"), alongside the positional card. These are additive optional
@@ -669,18 +673,18 @@ element a turn as the recall target with local context as the cue.
   - Step 2, first words: the answer reduced to the first word of each clause/sentence
     chunk (`firstWordsHint` in `src/utils/firstWordsHint.ts`, e.g. "To be, or not to be,
     that is the question" -> "To…, or…, that…"; boundary punctuation kept in place).
-  The button label reflects the next step ("Hint" then "More hint"); both steps are
-  rendered by `LineHintButton`/`LineHintDisplay` (`src/components/learn/LineHint.tsx`).
-  The ladder is ungraded and resets per card; full reveal remains the existing, separate
-  flip action. LearnMode resolves which pool cards are lines-mode once per session via
-  `linesModeSequencesByCard` (`src/db/linesModeCards.ts`), which batches one
-  `listSequences` per distinct courseId among the pool's generated cards. Strict grading
-  reuses the global typed-answer mode: with the typing setting on 'type', a lines-mode card
-  is typed against verbatim and diffed word-by-word via `compareAnswer`
-  (`src/utils/answerComparison.ts`) — feedback only; Yes/No self-grading remains the grade.
-  Using any hint step is recorded as `ReviewLog.hintUsed` and nudges the invisible
-  silent-mode grade (see "The invisible timer & grading" below); manual grading is
-  unaffected.
+    The button label reflects the next step ("Hint" then "More hint"); both steps are
+    rendered by `LineHintButton`/`LineHintDisplay` (`src/components/learn/LineHint.tsx`).
+    The ladder is ungraded and resets per card; full reveal remains the existing, separate
+    flip action. LearnMode resolves which pool cards are lines-mode once per session via
+    `linesModeSequencesByCard` (`src/db/linesModeCards.ts`), which batches one
+    `listSequences` per distinct courseId among the pool's generated cards. Strict grading
+    reuses the global typed-answer mode: with the typing setting on 'type', a lines-mode card
+    is typed against verbatim and diffed word-by-word via `compareAnswer`
+    (`src/utils/answerComparison.ts`) — feedback only; Yes/No self-grading remains the grade.
+    Using any hint step is recorded as `ReviewLog.hintUsed` and nudges the invisible
+    silent-mode grade (see "The invisible timer & grading" below); manual grading is
+    unaffected.
 - **Script paste import** (`src/db/scriptSplitter.ts`, `splitScript`): a pure parser for the
   lines-mode editor's paste + auto-split flow. A line matching `NAME: dialogue` starts a new
   item for that speaker; a following non-matching line is folded in as a wrapped continuation
@@ -729,6 +733,7 @@ element a turn as the recall target with local context as the cue.
   shortcut is scoped to item content and does not fire from sequence metadata fields.
 
 ### Deck and Folder (legacy backing structures, no UI)
+
 `Deck` (`id, name, examDate, createdAt, examDatePromptDismissed?, fsrsVersion,
 fsrsParameters, examObjective, newCardsPerDay?, archived?, autoOptimise?, folderId?,
 colour?, timeZone?`) and `Folder` (`id, name, parentId?, createdAt`) are the tables the
@@ -745,9 +750,11 @@ tables outright is a deferred, later migration (`next_plan.md` §0.3) — not at
 course UI is still soaking.
 
 ### Card
+
 `id, deckId, type, front, back, payload?, stability|null, difficulty|null,
 lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?,
 sequenceItemId?, due|null, scheduledDays, learningSteps, history[], createdAt`
+
 - `front`/`back` are Markdown source. **Cloze** source lives entirely in `front`
   (`{{cN::...}}`); `back` is empty.
 - `payload` carries versioned structured practice-item data independently of the classic
@@ -769,36 +776,42 @@ sequenceItemId?, due|null, scheduledDays, learningSteps, history[], createdAt`
   `LessonCardExposure`.
 
 ### SessionHistoryEntry
+
 `{ id?, timestamp, deckId, averagePredictedRetrievability }` — written **per answered
 card**; analytics aggregate to the last snapshot per calendar day to plot the trajectory.
 
 ### UserPerformance (per deck)
+
 `{ deckId, runningMeanResponseTime, runningStdDevResponseTime, m2, totalCorrectReviews }`
 — a Welford running mean/variance over **correct (Yes) reviews only**, used to calibrate
 the invisible grader.
 
-### ImageAsset / BackupAsset
-- `ImageAsset { hash, blob, mimeType, width, height, createdAt }` — a card image stored
+### MediaAsset / BackupAsset
+
+- `MediaAsset { hash, blob, mimeType, kind?, width?, height?, createdAt }` — a card image or
+  audio clip stored
   as a **`Uint8Array`** in the `assets` table, keyed by the SHA-256 of its bytes so
-  identical images are stored once. (`Blob | Uint8Array` in the type for backward
+  identical media is stored once. `kind` is absent on pre-Arc-6 records and therefore means
+  image; audio records use `kind: 'audio'` and omit dimensions. (`Blob | Uint8Array` in the type for backward
   compatibility, but the implementation always stores `Uint8Array` for cross-environment
   consistency, including `fake-indexeddb`.) Card Markdown carries only a
   `lacuna-asset://<hash>` reference, resolved to an object URL at render time via
   `toBlob()` and cached per hash for the app lifetime (revoked only at app teardown). This
   keeps reactive card reads small, stops base64 inflating exports and quota, and avoids
   the create/revoke churn on every card flip during a fast Learn session.
-- `BackupAsset { hash, data(base64), mimeType, width, height, createdAt }` — the
-  JSON-safe form of an `ImageAsset` carried in backup/export files.
+- `BackupAsset { hash, data(base64), mimeType, kind?, width?, height?, createdAt }` — the
+  JSON-safe form of a `MediaAsset` carried in backup/export files.
 
 ### BackupSnapshot / BackupFile / AppStateEntry
+
 - `BackupSnapshot { id?, createdAt, tag?, deckCount, cardCount, payload }` — a stored
   automatic restore point (denormalised counts so the list renders without parsing the
   payload). `tag = 'pre-migration'` marks a snapshot taken automatically before a schema
   upgrade; these are **exempt from daily-snapshot pruning** so a botched migration always
   has a fallback (§13).
 - `BackupFile { app:'lacuna', version, exportedAt, decks, cards, assets, sessionHistory,
-  userPerformance, folders?, courses?, lessons?, notes?, lessonCards?, practiceNodes?,
-  courseExamDates?, lessonCardExposures?, lessonCompletions?, practiceMilestones? }` — the
+userPerformance, folders?, courses?, lessons?, notes?, lessonCards?, practiceNodes?,
+courseExamDates?, lessonCardExposures?, lessonCompletions?, practiceMilestones? }` — the
   shape of both manual exports and snapshot payloads; `noteAnnotations` is deliberately
   absent. `assets`
   carries the referenced images. The course-architecture arrays are optional so older
@@ -813,7 +826,7 @@ the invisible grader.
 A thin, pure translation layer over `ts-fsrs`. **No memory maths is implemented by hand.**
 
 - `makeEngine(params)` builds an FSRS-6 scheduler: `fsrs({ w, request_retention,
-  enable_short_term: true })`.
+enable_short_term: true })`.
 - `decayOf(params) = -params.w[20]` — the (always negative) forgetting-curve decay exponent.
 - `toTsCard(card, now)` / `fromTsCard(ts, now)` map between Lacuna's persisted card shape
   and ts-fsrs's; a never-reviewed card becomes a fresh `createEmptyCard` so ts-fsrs applies
@@ -890,6 +903,7 @@ A deck's `examObjective` is the single value from which **both** the scheduler's
 and the progress-bar value are derived, so they can never disagree.
 
 ### Progress-bar value (`progressValue`, via `src/fsrs/progress.ts`)
+
 - `expectedMarks` -> **mean predicted exam-day R** across the cards:
   `averagePredictedRetrievability = (Σ rAtExam) / n`.
 - `securedTopics` -> **fraction of cards with predicted exam-day R >= 0.90**:
@@ -897,6 +911,7 @@ and the progress-bar value are derived, so they can never disagree.
 - An empty set is treated as `1` for mastery and `0` for the mean.
 
 ### Scheduler sort key (`scoreCard`; higher = serve sooner)
+
 - `expectedMarks`: greedy maximisation of Σ R, so the score **is** `DR`.
 - `securedTopics`, evaluating each card:
   - if already secured (`R_no >= 0.90`) -> score `-1` (nothing to gain, lowest priority);
@@ -906,6 +921,7 @@ and the progress-bar value are derived, so they can never disagree.
   - else -> score `R_yes` (make the most progress available toward the line).
 
 ### Objective complete? (`isObjectiveComplete`)
+
 - `securedTopics`: every card is at or above 0.90 (`masteryFraction >= 1`).
 - `expectedMarks`: no card offers a meaningful further gain —
   `max(DR) < EXPECTED_MARKS_EPSILON (1e-3)`.
@@ -914,11 +930,13 @@ Helper copy (`progressNoun`, `progressHeading`) phrases the same
 number appropriately ("predicted score" vs "secured").
 
 ### The scheduling horizon (`src/fsrs/horizon.ts`, `src/fsrs/examDate.ts`)
+
 A card's horizon is resolved **per card**, not shared uniformly across a whole unit,
 because a course can carry several `CourseAssessment` records (each explicitly placed and scoped)
 to a subset of lessons) as well as a per-lesson `Lesson.examDate` override.
 `resolveCardExamDate` (`src/fsrs/examDate.ts`) picks the effective exam date for one
 card in strict order:
+
 1. **Lesson override** — if the card's primary lesson has an `examDate`, use it
    outright, even if it is in the past and even if a sooner checkpoint exists.
 2. **Nearest applicable future assessment** — among the course's `CourseAssessment` rows
@@ -950,9 +968,11 @@ precision they don't need. The live Course session, path and progress callers su
 `ExamDateContext`; legacy Deck callers continue to use the unit-level fallback.
 
 ### 8.1 Parameter optimisation (`src/fsrs/optimise.ts`, Web Worker)
+
 The default weights are a starting point; most of FSRS's efficiency comes from fitting
 them to a user's own history. Lacuna uses the **official gradient-based trainer** from
 the ts-fsrs authors (`@open-spaced-repetition/binding`, fsrs-rs compiled to WASM):
+
 - each card's `history[]` is converted to the binding's review-item format (grade 1–4,
   `deltaT` in days since the previous review, with `0` on the first review);
 - `computeParameters()` fits the 21 weights with `enableShortTerm: true`, consistent with
@@ -976,6 +996,7 @@ the ts-fsrs authors (`@open-spaced-repetition/binding`, fsrs-rs compiled to WASM
   (§15).
 
 ### 8.2 Post-exam state
+
 A course whose `examDate` has passed is detected (`examHasPassed`) and surfaced clearly
 rather than silently stopping: the course card on the dashboard reads "Exam date passed".
 Course Settings lets the exam date be changed (**set a new exam date**), and with no further
@@ -994,7 +1015,7 @@ The single rule set that keeps the scheduler and the progress denominator in agr
 when cards are withheld.
 
 - `isAvailable(card)` — not `suspended` and not currently `buried` (`buriedUntil > now`).
-  Suspended/buried cards are excluded **entirely**: from the study pool *and* from the
+  Suspended/buried cards are excluded **entirely**: from the study pool _and_ from the
   progress/objective denominator while excluded.
 - `newCardsIntroducedToday` — cards whose first-ever review timestamp is today.
 - `studyPool(cards, deck)` — returns **empty for an archived deck** (withdrawn from
@@ -1036,6 +1057,7 @@ Course-guided sessions run inside the persistent conductor, while direct legacy 
 available for standalone entry.
 
 ### Session lifecycle
+
 1. **Load** a static snapshot of the deck(s) and their cards (an optional `?tag=`
    filter narrows a single-deck session). Build a `SessionContext` (one objective
    context per deck) and per-deck `UserPerformance`. Capture `progressBefore`.
@@ -1053,9 +1075,10 @@ Lesson authoring should favour fewer cards per pass and more lesson units where 
 the aim is lower working-memory load, not less course content.
 
 ### Card selection (`selectNext`)
+
 - **Single deck:** exactly the per-deck objective order (`sortByObjective`) with
   cooldown skipping (`selectNextCard`).
-- **Multiple decks:** each card is scored by *its own* deck's objective; scores are
+- **Multiple decks:** each card is scored by _its own_ deck's objective; scores are
   **min-max normalised within each deck** to 0..1 and weighted by an exam-proximity
   urgency, so figures are comparable across decks with different objectives and
   deadlines:
@@ -1071,6 +1094,7 @@ the aim is lower working-memory load, not less course content.
   never produce `NaN`.
 
 ### Named assessment revision (`src/course/revisionPlan.ts`, `src/fsrs/cramAllocator.ts`)
+
 Assessment revision is entered only with an explicit assessment id. Starting it creates or
 resumes that assessment's persisted plan, then starts one explicit plan/window pair in the
 existing Practice player. Scope is frozen from the assessment's resolved coverage intersected
@@ -1096,22 +1120,29 @@ these are predictions, not promised marks. The retired `?mode=cram` query has no
 behaviour.
 
 ### Cooldown (`src/fsrs/cooldown.ts`)
+
 In-memory, per session, to stop a just-failed card being shown again immediately:
+
 ```
 maxCooldown(deckSize) = deckSize >= 6 ? 5 : max(deckSize - 1, 0)
 ```
-A failed card (grade 1) is given that cooldown; after every answer, all *other*
+
+A failed card (grade 1) is given that cooldown; after every answer, all _other_
 cards' cooldowns decrement by one (skip-and-decrement).
 
 ### Grading modes (`src/state/gradingMode.ts`)
+
 Two modes, chosen in Settings (default **silent**):
+
 - **Silent (default):** the learner presses only Yes/No and the four-point grade is
   inferred (below). This is the product's core UX bet.
 - **Manual:** the four FSRS buttons (Again/Hard/Good/Easy) are shown and the user
   grades directly; no inference is applied.
 
 ### Typing setting (`src/state/typingSetting.ts`)
+
 Two modes, chosen in Settings (default **reveal**), mirroring the grading-mode toggle above:
+
 - **Reveal (default):** the ordinary flip-card flow — tap/press to reveal the answer.
 - **Type:** before reveal, an eligible card (front_back, basic_reversed, or cloze) shows a
   text input; on reveal, the typed answer is compared against the expected answer
@@ -1160,6 +1191,7 @@ bytes gzip. The latter is an upper bound for mathjs rather than a dishonest clai
 belongs to it; it also includes Lacuna's parser, verifier and renderer helpers.
 
 ### Numeric item face
+
 A card with a v1 `numeric` payload bypasses the reveal and self-grading controls. Its study
 face renders the Markdown question and the same maths-expression input used by authoring;
 submitting a valid expression runs `checkNumeric` against the payload's exact, tolerance or
@@ -1171,6 +1203,7 @@ result for its exposure/retry loop and retains Simple mode's rule that it writes
 Typing-mode comparison and Yes/No or manual grading never apply to numeric payloads.
 
 ### Working-item authoring
+
 Working items use a line-oriented mark-scheme source in the card editor. Each nonblank line
 starts with a positive mark value and optional label, followed by `::` and either an expression
 waypoint or one of the `equals`, `within`, `matches-one-of` and `contains` predicates. The editor
@@ -1264,7 +1297,9 @@ was contacted during this pass, so it verifies Lacuna's complete copy/paste boun
 path, not a particular model's output quality or latency.
 
 ### Study mode (`src/state/studyMode.ts`)
+
 Two modes, chosen per session via the DeckView study dropdown (default **FSRS**):
+
 - **FSRS (default):** the full spaced-repetition scheduler with all memory-state tracking,
   review logging, and objective-driven ordering.
 - **Simple:** an algorithm-free study loop with no FSRS scheduling or memory-state write,
@@ -1276,6 +1311,7 @@ Two modes, chosen per session via the DeckView study dropdown (default **FSRS**)
   grade-distribution chart since grades are not meaningful in this mode.
 
 ### The invisible timer & grading (`src/fsrs/grading.ts`, silent mode)
+
 - The response timer **starts on reveal** ("Show answer") and **stops when the answer
   is graded**; it runs continuously and never pauses. (Opening the in-session editor
   rebases the timer so editing time is excluded.)
@@ -1313,6 +1349,7 @@ Two modes, chosen per session via the DeckView study dropdown (default **FSRS**)
   ever feeds `gradeFromResponse`, which manual mode bypasses entirely.
 
 ### Per-card actions & state
+
 - **Edit**: opens an in-session overlay (`CardEditOverlay`) that pauses/rebases the
   timer; saving updates the live card without leaving the session.
 - **Flag** (toggle), **Bury until tomorrow** (`buriedUntil = startOfDay(now) + 1 day`),
@@ -1335,6 +1372,7 @@ Two modes, chosen per session via the DeckView study dropdown (default **FSRS**)
   only; it never affects the grade.
 
 ### Touch-mode affordances (v0.0.2)
+
 - The **grading controls live in a bottom sheet** with a drag handle (down-drag past
   a threshold or a fast flick closes the sheet), a scrim backdrop, and a focus
   trap. The "Show answer" / "Hide answer" sheet and the "Yes/No" / "Again…Easy" sheet
@@ -1358,10 +1396,12 @@ Two modes, chosen per session via the DeckView study dropdown (default **FSRS**)
   hand-off, while the objective track and ring interpolate from their previous values.
 
 ### Pomodoro timer (v0.0.2, `src/hooks/usePomodoro.ts`,
+
 `src/components/learn/PomodoroTimer.tsx`)
 A built-in Pomodoro timer (configurable in §15 Settings → Pomodoro) that sits in the Learn header. It runs independently of
 the review scheduler — the app does not grade the user on whether they actually
 studied — but it provides a tactile, visible session for focus.
+
 - **Settings (per-user, persisted to `localStorage`):** work minutes (1–120,
   default 25), short break minutes (1–60, default 5), long break minutes (1–60,
   default 15), and `autoStartBreaks` (default off).
@@ -1377,6 +1417,7 @@ studied — but it provides a tactile, visible session for focus.
   corrupted `localStorage` entry can never crash the timer.
 
 ### Recording a review
+
 Each answer calls `recordReview` which applies the FSRS update, appends a
 `ReviewLog`, and writes a per-card `SessionHistory` snapshot
 (`averagePredictedRetrievability` of the served pool). The progress value is
@@ -1388,6 +1429,7 @@ snapshot to its review log and is unique, so replaying a submission cannot apply
 FSRS or calibration twice. Legacy history without provenance remains readable.
 
 ### Completion & the report (`SessionReport`)
+
 The session **auto-ends** when the objective is met (all cards secured, or no card
 offers a meaningful gain in Σ R), or on manual exit. The report shows: progress
 before -> after (with the objective label), and stat tiles for **cards reviewed,
@@ -1396,11 +1438,13 @@ focus note when distractions occurred. Reaching the goal shows a celebratory tic
 badge; otherwise "Keep studying" is offered.
 
 ### Keyboard
+
 `Space`/`Up` reveal; after reveal `Y`/`J`/`Right` = Yes, `N`/`Left` = No; `E` edit,
 `U` undo, `F` focus mode, `?` help (also accessible from the 3-dot menu as
 "Keyboard shortcuts"), `Esc` closes overlays/drawer.
 
 ### Exam-date prompt
+
 The first time a deck is studied an inline banner (`ExamDateBanner`, not a modal)
 asks for the real exam date and time, with a "don't ask again for this deck"
 toggle. The date is also editable in deck settings. Once set or dismissed,
@@ -1411,6 +1455,7 @@ toggle. The date is also editable in deck settings. Once set or dismissed,
 ## 11. Cards, cloze & the editor
 
 ### Cloze (`src/components/markdown/cloze.ts`)
+
 - Notation: `{{c1::hidden answer}}` and `{{c1::hidden answer::optional hint}}`.
 - A single card hides **all** `cN` spans at once. On the **front** each span renders
   as a styled blank — `[...]`, or `[hint]` if a hint is given. On the **back** every
@@ -1420,6 +1465,7 @@ toggle. The date is also editable in deck settings. Once set or dismissed,
   cloze validity and import.
 
 ### Card rendering (`CardContent` -> `MarkdownView`)
+
 Front/back Markdown is rendered with GFM, maths (KaTeX), syntax highlighting, and
 raw HTML (for the cloze spans), inside `.prose-lacuna` styling. Memoised per card.
 
@@ -1434,6 +1480,7 @@ the same source string does not re-assign `dangerouslySetInnerHTML` and wipe the
 user's text selection.
 
 ### Cloze highlight (v0.0.2 fix)
+
 The revealed cloze span is rendered with `text-decoration: underline` (and a
 faint accent ink shadow) rather than a `background-color` fill, with an explicit
 `.cloze-reveal::selection { background-color: hsl(var(--accent) / 0.45); color:
@@ -1443,6 +1490,7 @@ double-highlight on selected text inside a revealed cloze. With no element
 background, `::selection` paints cleanly across the cloze mark.
 
 ### Sequence-generated cards in Learn mode
+
 When a card was generated from a Sequence (§5), `CardContent`'s `sequenceCue` prop (set in
 `LearnMode`) parses the front's header/cue-items structure (`parseSequenceFront`) and styles
 the preceding cue items as muted context above the recall prompt, rather than rendering the
@@ -1451,11 +1499,17 @@ they have no cue window to style. No FSRS or session-flow changes: generated car
 ordinary `front_back` cards to the scheduler.
 
 ### Editor (`src/pages/CardEditor.tsx`, full page)
+
 - Mode is decided by the route (`/cards/new` vs `/cards/:id/edit`).
-- **Card type** selector: Basic (front/back), Reversed (back/front), or Cloze.
+- **Card type** selector: Basic (front/back), Reversed, Cloze, Numeric answer, Working or Audio.
   - **Basic:** standard front/back flashcard.
   - **Reversed:** creates an independent card that tests the back as the prompt.
   - **Cloze:** front contains `{{c1::hidden answer}}` deletions; back is empty.
+  - **Audio:** a structured file/recording slot, optional prompt and required answer write an
+    ordinary `front_back` card whose front contains `![audio](lacuna-asset://<hash>)`. Supported
+    files are MP3, M4A/MP4, Ogg, WAV and WebM up to 25 MB. Playback autoplay and speed are global
+    device settings. In Learn mode, “Hear it again” or R returns to the front presentation while
+    the answer phase, captured response time and grading controls remain intact.
 - One or two **Markdown editors** with a live preview; a formatting toolbar (bold,
   italic, heading, lists, code, link, image, cloze auto-index, inline/block maths);
   a cloze editor can preview the revealed answer.
@@ -1466,6 +1520,9 @@ ordinary `front_back` cards to the scheduler.
   path resolves references to object URLs on display via `toBlob()` and revokes
   them on unmount. This keeps card rows small (base64 inflates payloads ~1/3 and
   dragged full image data through every reactive read) and keeps exports lean.
+- **Audio** is stored without transcoding in the same content-addressed asset table. Anki
+  `[sound:filename]` references are rewritten to the same audio marker during APKG import rather
+  than being silently discarded.
 - **Validation:** front required; back required for front/back; at least one cloze
   for cloze.
 - **Quick capture:** "Save & add another" keeps the page open, clears content,
@@ -1533,12 +1590,15 @@ ordinary `front_back` cards to the scheduler.
 ---
 
 ## 13. Import, export & backups (`src/db/importEngine.ts`,
+
 `src/db/portability.ts`, `src/db/import.ts`, `src/db/export.ts`,
 `src/db/backups.ts`)
 
 ### Unified import engine (`src/db/importEngine.ts`)
+
 A single, format-detecting import engine that powers all import locations in the
 app:
+
 - **Auto-detection** (`detectFormat`): examines input text and returns a
   `DetectedFormat` (confidence-scored) choosing from: `share-code`, `csv`, `tsv`,
   `markdown-table`, `markdown-list`, `json`, `plain-text`, or `unknown`. Detection
@@ -1572,7 +1632,9 @@ app:
   cloze card; otherwise the row is skipped.
 
 ### Unified export panel (`src/components/import/UnifiedExportPanel.tsx`)
+
 A single, reusable export UI offering multiple output formats:
+
 - **Full backup (JSON)** — complete database snapshot including all decks, cards,
   review history, and images (`downloadBackup`).
 - **CSV** — comma-separated values with all card fields.
@@ -1586,11 +1648,12 @@ A single, reusable export UI offering multiple output formats:
   code via `buildShareCode`.
 
 ### Backup file import/export
+
 - **Export:** versioned JSON of the whole database (`BackupFile`: decks, cards,
   **referenced image assets**, session history, user performance, folders, the six
   course-architecture tables — courses, lessons, notes, lessonCards, practiceNodes,
   courseExamDates — and `sequences`, schema v11). Backups are the route that carries
-  images between machines (share codes deliberately do not, §13). Older backups that
+  media between machines (share codes deliberately do not, §13). Older backups that
   pre-date the course tables or sequences still import cleanly: all these arrays are
   optional in `BackupFile`.
 - **Import modes:**
@@ -1608,6 +1671,7 @@ A single, reusable export UI offering multiple output formats:
     data-loss footgun.
 
 ### Automatic restore points & migration safety
+
 - Up to the **ten most recent** snapshots are kept on-device; one is taken
   automatically on open, **at most once a day** (`autoBackupIfStale`), and never
   blocks the UI.
@@ -1691,7 +1755,7 @@ memory, exposure history and any local edits. No content hashing is used anywher
 feature — versioning is a teacher-initiated counter, not a derived value.
 
 - **Teacher side — `Course.distribution?: { lineageId: string; revision: number;
-  publishedAt: number }`.** Absent until the teacher clicks **Publish** at least once.
+publishedAt: number }`.** Absent until the teacher clicks **Publish** at least once.
   `publishCourse(courseId)` (`src/db/repository.ts`) generates a fresh `lineageId`
   (`makeId()`) on first publish and increments `revision` by exactly 1 on every
   subsequent call, stamping `publishedAt` with the current time; the teacher's own course
@@ -1702,7 +1766,8 @@ feature — versioning is a teacher-initiated counter, not a derived value.
   with no lineage fields at all.
 - **Originating-id payload fields.** `ShareLesson` gains `i?: string`. `ShareNote` gains
   `oi?: string` rather than `i`, because `ShareNote.i` was already the pre-existing
-  "images omitted" boolean flag; reusing that letter would have collided. `ShareCard`
+  historical "media omitted" boolean flag (named for images before audio existed); reusing that
+  letter would have collided. `ShareCard`
   needs no new field at all: its existing (already-optional) `id` — packed on every course
   export to resolve in-payload `links`/exam `x` references — doubles as the originating
   card id once a lineage is present, so cards are the one entity type with nothing added.
@@ -1724,7 +1789,7 @@ feature — versioning is a teacher-initiated counter, not a derived value.
   every adopted lesson/note/card (`lessonSnapshots`/`noteSnapshots`/`cardSnapshots`,
   keyed by id — name/description/isExtension/dates/sessionFilter/orderIndex for lessons,
   name/content/orderIndex for notes, type/front/back/tags for cards, deliberately excluding
-  FSRS/scheduling fields). A re-import compares an entity's *current* local content against
+  FSRS/scheduling fields). A re-import compares an entity's _current_ local content against
   its snapshot to detect a student edit since the last merge, rather than a separate dirty
   flag that could drift out of sync.
 - **`pendingMergeReviews` table (`id, courseId`)** — queued merge decisions awaiting
@@ -1839,6 +1904,7 @@ uses.
 ## 14. Search & analytics
 
 ### Search (`src/db/search.ts`, `SearchPage`, `CommandPalette`)
+
 - **Card search** (`searchCards`) is a pure, offline, case- and diacritic-insensitive
   substring search over a card's front, back, its (backing-deck) name and its tags.
   **Ranking:** front matches rank above back/deck/tag matches; earlier match positions
@@ -1859,7 +1925,9 @@ uses.
   the search filter, but scheduling is never changed automatically.
 
 ### Dashboard signals (`src/fsrs/stats.ts`, `StudySignals`)
+
 Pure aggregates over stored history, in local time:
+
 - **Streak:** consecutive studied days counting back from today (a not-yet-studied
   today does not break a streak that includes yesterday).
 - **Reviewed today:** count of review logs dated today.
@@ -1878,8 +1946,10 @@ Pure aggregates over stored history, in local time:
   cells.
 
 ### Per-card analysis (`CardAnalytics`)
+
 Each card in a course's card list (lesson view or question bank) can be expanded in-place
 to reveal a **forgetting curve** and **vital statistics** for that individual card:
+
 - **Forgetting curve** — an `AreaChart` projecting retrievability from the
   card's most recent review forward to `examDate + 14 days`, with historical
   review moments overlaid as grade-coloured dots. Vertical reference lines mark
@@ -1896,9 +1966,11 @@ to reveal a **forgetting curve** and **vital statistics** for that individual ca
   the view. The row is keyboard-accessible (`Enter`/`Space` toggles expansion).
 
 ### Course analytics (`/course/:courseId/analytics`, `src/components/analytics/CourseAnalytics.tsx`)
+
 Theme-aware Recharts panels scoped to one course's **deduplicated card set** — the same
 pool `progressValue` and the course path's mastery figure use (a card shared across
 lessons is counted once):
+
 - **Predicted exam-day score** over time (area chart of the daily `SessionHistory`
   trajectory).
 - **Lesson breakdown** — a bar chart of mastery and completion percentage per lesson, with
@@ -1912,8 +1984,10 @@ the developer-facing `gradeQualitySummary` — remains available at the global l
 it has not yet been added to the course-scoped view.
 
 ### Global analytics (`/analytics`)
+
 A cross-course view, sharing the same Recharts primitives as course analytics but
 aggregating across every course:
+
 - **Course comparison** — select any two courses and see their statistics side by
   side (cards, predicted score, mastery fraction, cards reviewed, total reviews,
   reviews today, leeches, mean stability, mean difficulty). Each metric renders
@@ -1947,6 +2021,7 @@ charts below the fold are never invisible. Each chart container is `h-64` with
 `Settings.tsx` is a thin page composition; the ten independent setting groups live under
 `src/pages/settings/`. Section ids and ordering remain centralised in the page so the
 scrollspy and its navigation cannot drift from the rendered sections.
+
 - **Shared scrollspy rail** (`src/components/ui/SectionRail.tsx`): `useSectionRail`
   (the IntersectionObserver hook), `SectionRail` (the desktop right-hand nav) and
   `SectionRailMobileJumper` (a compact sticky `<select>`-style jumper) were extracted
@@ -2007,6 +2082,7 @@ scrollspy and its navigation cannot drift from the rendered sections.
   closes.
 
 ### Course settings (`src/pages/CourseSettings.tsx`)
+
 The only exam/scheduling settings surface in the app — there is no deck-level settings
 page any more. Carries the shared `CourseTabs` (§12) in its header row like the other
 three course surfaces, and groups its nine sections under the same shared `SectionRail`
@@ -2032,6 +2108,7 @@ per-course on/off override for scheduling optimisation, a review-count gate, and
 **Optimise now** action that runs in a Web Worker with a progress bar, then shows the
 before/after log loss; applying takes a restore-point snapshot first and **Reset to
 defaults** is always available.
+
 - **One save model: instant commit everywhere** (Arc 10 §10.3). Every field commits
   through the existing `updateCourse` path as it's edited — there is no staged
   "Save changes" bar and no local draft state to lose. Text and numeric fields (rename,
@@ -2109,24 +2186,24 @@ defaults** is always available.
 
 ## 18. Keyboard shortcuts (summary)
 
-| Context | Key | Action |
-|---------|-----|--------|
-| Global (shell) | `Ctrl/Cmd+K` | Toggle command palette |
-| Global (shell) | `/` | Open search |
-| Global (shell) | `?` | Toggle keyboard hints |
-| Deck view | `N` | New card |
-| Card editor | `Ctrl/Cmd+Enter` | Save (and add another, for new cards) |
-| Card editor | `Tab` | Front -> Back -> Save-and-add -> Save |
-| Sequence item editor | `Ctrl/Cmd+Enter` | Insert and focus the next item |
-| Learn | `Space` / `Up` | Show answer |
-| Learn | `Down` | Hide answer |
-| Learn (silent grading) | `Y` / `J` / `Right` | Yes (correct) |
-| Learn (silent grading) | `N` / `Left` | No (incorrect) |
-| Learn (manual grading) | `1`, `2`, `3`, `4` | Again / Hard / Good / Easy |
-| Learn | `E` | Edit current card |
-| Learn | `U` | Undo last answer |
-| Learn | `F` | Toggle focus mode |
-| Overlays | `Esc` | Close |
+| Context                | Key                 | Action                                |
+| ---------------------- | ------------------- | ------------------------------------- |
+| Global (shell)         | `Ctrl/Cmd+K`        | Toggle command palette                |
+| Global (shell)         | `/`                 | Open search                           |
+| Global (shell)         | `?`                 | Toggle keyboard hints                 |
+| Deck view              | `N`                 | New card                              |
+| Card editor            | `Ctrl/Cmd+Enter`    | Save (and add another, for new cards) |
+| Card editor            | `Tab`               | Front -> Back -> Save-and-add -> Save |
+| Sequence item editor   | `Ctrl/Cmd+Enter`    | Insert and focus the next item        |
+| Learn                  | `Space` / `Up`      | Show answer                           |
+| Learn                  | `Down`              | Hide answer                           |
+| Learn (silent grading) | `Y` / `J` / `Right` | Yes (correct)                         |
+| Learn (silent grading) | `N` / `Left`        | No (incorrect)                        |
+| Learn (manual grading) | `1`, `2`, `3`, `4`  | Again / Hard / Good / Easy            |
+| Learn                  | `E`                 | Edit current card                     |
+| Learn                  | `U`                 | Undo last answer                      |
+| Learn                  | `F`                 | Toggle focus mode                     |
+| Overlays               | `Esc`               | Close                                 |
 
 Single-key shortcuts are inert while a text field is focused. The `?` overlay can
 also be opened from the "Keyboard shortcuts" item in the Learn mode 3-dot action
@@ -2141,6 +2218,7 @@ The Electron layer lives in `electron/` and wraps the existing Vite SPA without
 modifying the renderer source.
 
 ### Architecture
+
 - **Main process** (`electron/main.ts`): creates a frameless `BrowserWindow`,
   injects Cross-Origin Isolation headers (COOP/COEP) required by the FSRS WASM
   trainer, registers a custom `app://` protocol for production builds, and
@@ -2194,12 +2272,14 @@ operations, note annotations and most curriculum-structure mutation. Streamable 
 companion process, durable client identity and plugin extension points remain deferred.
 
 ### Scripts
+
 - `bun run electron:dev` — runs Vite dev server and Electron in parallel.
 - `bun run electron:build:win` — compiles the Electron TypeScript, builds the
   Vite SPA with `--base ./`, and packages via electron-builder (NSIS
   installer).
 
 ### Build output
+
 Packaged files land in `release/` (gitignored). The electron-builder
 configuration is at `electron/electron-builder.yml`.
 
@@ -2208,6 +2288,7 @@ configuration is at `electron/electron-builder.yml`.
 ## 20. v0.0.3 changelog
 
 ### New features
+
 1. **Simple learn mode** — an algorithm-free YES/NO study loop with no FSRS scheduling,
    no DB writes, and a live pill UI (Wrong / Remaining / Right). Cards are re-queued at
    the end when marked wrong; the session loops until all cards are correct. The
@@ -2226,6 +2307,7 @@ configuration is at `electron/electron-builder.yml`.
    Settings (study / archive).
 
 ### Visual polish
+
 1. **Learn mode redesign** — mode-aware progress, header controls, and card accents
    (amber for cram, green for simple, red for leech filter, etc.). A label pill animates
    in with each card face to orient the user (Question / Answer / Fill the gap /
@@ -2244,7 +2326,7 @@ configuration is at `electron/electron-builder.yml`.
    HelpPage, SearchPage, SharePage) and empty states, creating a cohesive "drafting table"
    feel across the app without gratuitous gradients.
 6. **Page headers** — all major pages now use a consistent `rounded-2xl border border-line
-   bg-surface` header with a dot-grid background, a large display-type title, and an
+bg-surface` header with a dot-grid background, a large display-type title, and an
    eyebrow label in small uppercase with wide tracking.
 7. **Cards and surfaces** — elevated cards with `shadow-sm shadow-black/[0.02]` and a
    `hover:shadow-lg hover:shadow-black/[0.04]` transition, plus a `hover:-translate-y-1`
@@ -2261,6 +2343,7 @@ configuration is at `electron/electron-builder.yml`.
     call-to-action button for a more polished first-run experience.
 
 ### Bug fixes
+
 1. **Text selection focus ring** — removed the internal `box-shadow` ring on
    `input:focus-visible` so only the external `:focus-visible` ring applies.
 2. **Share code importing** — Base45 whitespace stripping corrupted share codes because
@@ -2273,6 +2356,7 @@ configuration is at `electron/electron-builder.yml`.
 5. **ESLint errors** — fixed 10 ESLint errors across Dashboard, DeckSettings, and LearnMode.
 
 ### Quality
+
 - TypeScript is clean (`tsc --noEmit`).
 - 332 tests pass across the full suite.
 - All UI changes follow the touch-first design system (44px targets, active states,
@@ -2287,6 +2371,7 @@ bug fixes uncovered during the redesign and a storage-layer change for
 cross-environment consistency.
 
 ### Touch-first redesign (Stages 1–14)
+
 - **Input mode setting.** A new `InputMode` (`auto` / `touch` / `keyboard`)
   drives the entire app. `auto` resolves to `touch` on touch devices and
   `keyboard` otherwise; explicit choices persist to `localStorage`. The
@@ -2328,6 +2413,7 @@ cross-environment consistency.
 - **PWA service worker** for offline use, registered at the application root.
 
 ### Storage layer
+
 - Image assets are now stored as **`Uint8Array`** in the `assets` table rather
   than as `Blob`, because `fake-indexeddb` (and some browser IndexedDB
   implementations) does not reliably preserve `Blob` objects through
@@ -2339,6 +2425,7 @@ cross-environment consistency.
   without limit.
 
 ### Bug fixes (5)
+
 1. **Deck comparison overlapping layout** — the comparison bars were in a
    single side-by-side track with a 0.5px separator and a winner badge at
    `right-0`. The badge could be clipped by `overflow-hidden` and the right
@@ -2371,6 +2458,7 @@ cross-environment consistency.
    track wider than their share.
 
 ### Quality
+
 - The test suite now covers UI components, hooks, and state-management
   modules in addition to the data and FSRS layers (Vitest with
   `fake-indexeddb` for the database, `@testing-library/react` and

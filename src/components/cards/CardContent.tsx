@@ -20,6 +20,7 @@ export const CardContent = memo(function CardContent({
   className,
   sequenceCue = false,
   sequenceMode = 'list',
+  audioAutoplay = false,
 }: {
   card: Card;
   side: Side;
@@ -37,6 +38,7 @@ export const CardContent = memo(function CardContent({
   sequenceCue?: boolean;
   /** The owning sequence's mode, used to choose item- or line-specific recall wording. */
   sequenceMode?: 'list' | 'lines';
+  audioAutoplay?: boolean;
 }) {
   if (card.type === 'cloze') {
     return (
@@ -48,7 +50,12 @@ export const CardContent = memo(function CardContent({
     );
   }
 
-  if (sequenceCue && side === 'front' && card.sequenceItemId !== undefined && !isLabelCardId(card.sequenceItemId)) {
+  if (
+    sequenceCue &&
+    side === 'front' &&
+    card.sequenceItemId !== undefined &&
+    !isLabelCardId(card.sequenceItemId)
+  ) {
     const { header, body } = parseSequenceFront(card.front);
     const headerText = header.replace(/^\*\*/, '').replace(/\*\*$/, '');
     const isLinesMode = sequenceMode === 'lines' || body === 'First line?';
@@ -58,7 +65,9 @@ export const CardContent = memo(function CardContent({
     const cueParagraphs = isFirst ? [] : body.split('\n\n');
     return (
       <div className={className}>
-        <div className="mb-3 text-[11px] uppercase tracking-[0.2em] text-ink-faint">{headerText}</div>
+        <div className="mb-3 text-[11px] uppercase tracking-[0.2em] text-ink-faint">
+          {headerText}
+        </div>
         {cueParagraphs.length > 0 && (
           <div className="mb-4 flex flex-col gap-2 text-ink-soft">
             {cueParagraphs.map((paragraph, i) => (
@@ -72,5 +81,11 @@ export const CardContent = memo(function CardContent({
   }
 
   // basic_reversed and front_back both render the same way: front or back.
-  return <MarkdownView source={side === 'front' ? card.front : card.back} className={className} />;
+  return (
+    <MarkdownView
+      source={side === 'front' ? card.front : card.back}
+      className={className}
+      audioAutoplay={audioAutoplay && side === 'front'}
+    />
+  );
 });

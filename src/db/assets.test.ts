@@ -6,6 +6,7 @@ import {
   blobToArrayBuffer,
   extractMarkdownAssets,
   referencedAssetHashes,
+  storeAudioBlob,
   storeImageBlob,
 } from './assets';
 import { createCard, createCourse, createDeck, createLesson, createNote } from './repository';
@@ -129,5 +130,43 @@ describe('image assets', () => {
     const imported = await db.notes.get(note.id);
     expect(referencedAssetHashes(imported!.content)).toHaveLength(1);
     expect(await db.assets.count()).toBe(1);
+  });
+});
+
+describe('audio assets', () => {
+  beforeEach(reset);
+
+  it('stores audio without image dimensions and deduplicates by content', async () => {
+    const first = await storeAudioBlob(new Blob(['clip'], { type: 'audio/mpeg' }));
+    const second = await storeAudioBlob(new Blob(['clip'], { type: 'audio/mpeg' }));
+
+    expect(first).toMatchObject({ kind: 'audio', mimeType: 'audio/mpeg' });
+    expect(first.width).toBeUndefined();
+    expect(first.hash).toBe(second.hash);
+    expect(await db.assets.count()).toBe(1);
+  });
+
+  it('rejects unsupported and oversized audio', async () => {
+    await expect(storeAudioBlob(new Blob(['x'], { type: 'audio/aac' }))).rejects.toThrow(
+      /MP3, M4A, MP4, Ogg, WAV or WebM/,
+    );
+    await expect(
+      storeAudioBlob(new Blob([new Uint8Array(25 * 1024 * 1024 + 1)], { type: 'audio/mpeg' })),
+    ).rejects.toThrow(/25 MB/);
+  });
+
+  it('round-trips its kind and bytes through backup export and import', async () => {
+    const deck = await createDeck('Audio');
+    const asset = await storeAudioBlob(new Blob(['spoken'], { type: 'audio/ogg' }));
+    await createCard(deck.id, 'front_back', `![audio](${assetUrl(asset.hash)})`, 'answer');
+
+    const backup = await exportDatabase();
+    expect(backup.assets[0]).toMatchObject({ hash: asset.hash, kind: 'audio' });
+    await reset();
+    await importBackup(backup, 'replace');
+
+    const imported = (await db.assets.get(asset.hash))!;
+    expect(imported.kind).toBe('audio');
+    expect(new TextDecoder().decode(await blobToArrayBuffer(imported.blob))).toBe('spoken');
   });
 });

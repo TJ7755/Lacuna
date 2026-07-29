@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import remarkBreaks from 'remark-breaks';
@@ -12,6 +12,7 @@ import { renderClozeBack, renderClozeFront } from './cloze';
 import { cn } from '../ui/cn';
 import { ASSET_PROTOCOL } from '../../db/assets';
 import { resolveAssetMarkdownCached } from '../../db/assetCache';
+import { readAudioSettings } from '../../state/audioSettings';
 
 type ClozeMode = 'front' | 'back' | 'none';
 
@@ -27,6 +28,8 @@ interface MarkdownViewProps {
    * or imported content.
    */
   allowEmbeds?: boolean;
+  /** Play embedded card audio when this rendered face is mounted in Learn mode. */
+  audioAutoplay?: boolean;
 }
 
 // Stable plugin references so the unified pipeline isn't rebuilt on every call.
@@ -42,16 +45,42 @@ const REMARK_PLUGINS: MarkdownProps['remarkPlugins'] = [remarkGfm, remarkMath, r
  */
 const RESTRICTED_SCHEMA = {
   ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames ?? []), 'audio'],
   attributes: {
     ...defaultSchema.attributes,
     span: [...(defaultSchema.attributes?.span ?? []), ['className', 'math', 'math-inline']],
     div: [...(defaultSchema.attributes?.div ?? []), ['className', 'math', 'math-display']],
     code: [...(defaultSchema.attributes?.code ?? []), ['className', /^language-/]],
+    audio: ['src', 'controls', 'preload'],
+  },
+  protocols: {
+    ...defaultSchema.protocols,
+    src: [...(defaultSchema.protocols?.src ?? []), 'blob'],
   },
 };
 
+/** Convert Lacuna's `![audio](lacuna-asset://…)` marker, after object-URL resolution,
+ * into a native player. Remote images labelled "audio" remain images; only local
+ * blob URLs are eligible. */
+function rehypeAudioAssets(): (tree: unknown) => void {
+  return (tree) => {
+    walkHast(tree as HastParent, (el, i, parent) => {
+      if (el.tagName !== 'img' || el.properties?.alt !== 'audio') return;
+      const src = el.properties.src;
+      if (typeof src !== 'string' || !src.startsWith('blob:')) return;
+      parent.children[i] = {
+        type: 'element',
+        tagName: 'audio',
+        properties: { src, controls: true, preload: 'metadata' },
+        children: [],
+      } as { type: string };
+    });
+  };
+}
+
 const REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   rehypeRaw,
+  rehypeAudioAssets,
   [rehypeSanitize, RESTRICTED_SCHEMA],
   rehypeKatex,
   [rehypeHighlight, { detect: true, ignoreMissing: true }],
@@ -85,7 +114,10 @@ interface HastText {
 interface HastElement {
   type: 'element';
   tagName: string;
-  properties?: Record<string, boolean | number | string | Array<string | number> | null | undefined>;
+  properties?: Record<
+    string,
+    boolean | number | string | Array<string | number> | null | undefined
+  >;
   children: Array<{ type: string }>;
 }
 interface HastParent {
@@ -245,6 +277,7 @@ const EMBED_SCHEMA = {
 const EMBED_REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   rehypeRaw,
   rehypeEmbedVideos,
+  rehypeAudioAssets,
   [rehypeSanitize, EMBED_SCHEMA],
   rehypeStripUnsourcedIframes,
   rehypeKatex,
@@ -314,7 +347,11 @@ function renderMarkdownToHtml(prepared: string, allowEmbeds: boolean): string {
   const rehypePlugins = allowEmbeds ? EMBED_REHYPE_PLUGINS : REHYPE_PLUGINS;
 
   const html = renderToStaticMarkup(
-    <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={rehypePlugins}>
+    <ReactMarkdown
+      remarkPlugins={REMARK_PLUGINS}
+      rehypePlugins={rehypePlugins}
+      urlTransform={(url) => (url.startsWith('blob:') ? url : defaultUrlTransform(url))}
+    >
       {prepared}
     </ReactMarkdown>,
   );
@@ -343,8 +380,10 @@ export const MarkdownView = memo(function MarkdownView({
   clozeMode = 'none',
   className,
   allowEmbeds = false,
+  audioAutoplay = false,
 }: MarkdownViewProps) {
   const [resolved, setResolved] = useState(source);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Track the source we have already resolved so the effect can distinguish
   // "source prop changed" (do work) from "effect re-fired with the same source"
@@ -389,8 +428,19 @@ export const MarkdownView = memo(function MarkdownView({
     return renderMarkdownToHtml(prepared, allowEmbeds);
   }, [resolved, clozeMode, allowEmbeds]);
 
+  useEffect(() => {
+    const players = containerRef.current?.querySelectorAll('audio') ?? [];
+    if (players.length === 0) return;
+    const settings = readAudioSettings();
+    players.forEach((player) => {
+      player.playbackRate = settings.playbackSpeed;
+      if (audioAutoplay && settings.autoplay) void player.play().catch(() => {});
+    });
+  }, [html, audioAutoplay]);
+
   return (
     <div
+      ref={containerRef}
       className={cn('prose-lacuna', className)}
       dangerouslySetInnerHTML={{ __html: html }}
       tabIndex={-1}

@@ -1,5 +1,24 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Audio cards (Arc 6, first slice)
+
+- Widened the content-addressed image store into a media store without a schema migration.
+  Existing records remain images; audio records carry `kind: 'audio'`, omit dimensions and retain
+  the same SHA-256 deduplication, object-URL cache, garbage collection and backup round-trip.
+- Added structured audio authoring to the card editor. MP3, M4A/MP4, Ogg, WAV and WebM files up to
+  25 MB can be selected or recorded; the editor writes an ordinary `front_back` card containing a
+  `![audio](lacuna-asset://…)` Markdown marker and an optional prompt.
+- Rendered local audio markers as native players. Global autoplay and playback-speed settings live
+  under Study & scheduling. The Learn face can return to the player with the R key without resetting
+  the answer phase, response timer or available grading controls.
+- Fixed Anki imports silently dropping audio. Supported `[sound:…]` media is now stored, rewritten
+  to Lacuna's audio marker and returned with the imported card; rejected media no longer leaves a
+  partial deck and cards behind.
+- Prevented overlapping microphone permission requests from starting unreachable recorders, and
+  made share-code warnings and placeholders describe omitted audio as media rather than images.
+- Recorded the approved Arc 6 defaults: rectangle regions with an explicit shape field, all-label
+  masking, a 2560px occlusion-image ceiling and desktop-first occlusion authoring.
+
 ## Unreleased — Verification engine corrections (Arc 11 follow-up)
 
 - Fixed multi-variable equivalence checking. Sample signs were derived from the attempt and
