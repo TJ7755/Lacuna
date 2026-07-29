@@ -2071,7 +2071,7 @@ Each task is one subagent's scope, one commit, tests updated alongside.
 > prompts. The final browser pass covered hand authoring, fixtures, both study faces, an
 > FSRS-backed dispute, the clipboard prompt/staging/revision boundary and a four-item share-code
 > export/import. It used deterministic sample model output; no external chatbot was
-contacted, so model quality and free-tier latency remain unmeasured.
+> contacted, so model quality and free-tier latency remain unmeasured.
 
 ## 11.1 Motivation and positioning
 
