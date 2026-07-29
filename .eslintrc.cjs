@@ -30,7 +30,10 @@ module.exports = {
     'react-hooks/exhaustive-deps': 'error',
     'eqeqeq': ['error', 'always'],
     '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    '@typescript-eslint/no-unused-vars': [
+      'warn',
+      { argsIgnorePattern: '^_', ignoreRestSiblings: true },
+    ],
     '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
     '@typescript-eslint/consistent-type-imports': 'warn',
     'no-console': ['warn', { allow: ['error'] }],

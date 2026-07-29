@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { SharePayload } from './share';
+import type { ShareLesson, SharePayloadV2 } from './share';
 import { findCourseForLineage, importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
 
 // Arc 7 §7.7/§7.9 Task 5: mergeImport.ts. Payloads are built as plain object literals
@@ -9,7 +9,7 @@ import { findCourseForLineage, importLineageFirstTime, mergeLineageUpdate } from
 // `li`/`rv` at the payload level, `i` on ShareLesson, `oi` on ShareNote, and ShareCard's
 // existing `id` field doubling as the originating card id (see share.ts:68-74/97-121).
 
-function coursePayload(overrides: Partial<SharePayload & { v: 2 }> = {}): SharePayload {
+function coursePayload(overrides: Partial<SharePayloadV2> = {}): SharePayloadV2 {
   return {
     v: 2,
     by: 'Ms Teacher',
@@ -19,10 +19,10 @@ function coursePayload(overrides: Partial<SharePayload & { v: 2 }> = {}): ShareP
     li: 'lineage-1',
     rv: 1,
     ...overrides,
-  } as SharePayload;
+  };
 }
 
-function lessonOne(overrides: Partial<any> = {}) {
+function lessonOne(overrides: Partial<ShareLesson> = {}): ShareLesson {
   return {
     i: 'lesson-1',
     n: 'Cells',
@@ -340,7 +340,7 @@ describe('mergeImport: merge apply', () => {
           pl: 0,
         },
       ],
-    } as any);
+    });
     await mergeLineageUpdate(courseId, seqPayload);
 
     const sequence = await db.sequences.get('seq-1');
@@ -367,7 +367,7 @@ describe('mergeImport: merge apply', () => {
             pl: 0,
           },
         ],
-      } as any),
+      }),
     );
     const regenerated = await db.cards.where('sequenceItemId').equals('item-1').toArray();
     expect(regenerated).toHaveLength(1);

@@ -324,7 +324,7 @@ interface ShareNote {
 }
 
 /** A single lesson in a v2 share payload. */
-interface ShareLesson {
+export interface ShareLesson {
   n: string; // name
   d?: string; // description
   x?: 0 | 1; // isExtension
@@ -400,7 +400,7 @@ export interface SharePayloadV1 {
 }
 
 /** The decoded contents of a v2 (single course) share code. */
-interface SharePayloadV2 {
+export interface SharePayloadV2 {
   v: 2;
   /** Creator, reserved for a future "shared by" field; currently always null. */
   by?: string | null;

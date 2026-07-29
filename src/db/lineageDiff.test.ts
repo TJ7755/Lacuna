@@ -313,7 +313,7 @@ describe('diffLineage', () => {
 
   it('maps a retired typing card kind (k=3) to front_back on create', () => {
     const input: LineageDiffInput = {
-      incoming: { lessons: [baseLesson({ cards: [{ i: 'card-1', k: 3, f: 'front', b: 'back' } as any] })] },
+      incoming: { lessons: [baseLesson({ cards: [{ i: 'card-1', k: 3, f: 'front', b: 'back' }] })] },
       existing: { lessons: [existingLesson()], notes: [], cards: [] },
       mapping: mapping({ lessonIds: ['lesson-1'] }),
       studentEdits: new Set(),
