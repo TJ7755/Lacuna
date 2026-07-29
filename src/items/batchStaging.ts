@@ -23,15 +23,30 @@ export interface BatchParseResult {
 
 export function parseBatchOutput(source: string): BatchParseResult {
   const start = source.indexOf(BATCH_OUTPUT_START);
-  const end = source.indexOf(BATCH_OUTPUT_END, start + BATCH_OUTPUT_START.length);
-  if (start === -1 || end === -1) {
+  if (start === -1) {
     return {
       candidates: [],
       error: `Paste the complete block from ${BATCH_OUTPUT_START} to ${BATCH_OUTPUT_END}.`,
     };
   }
 
-  const json = source.slice(start + BATCH_OUTPUT_START.length, end).trim();
+  const afterStart = start + BATCH_OUTPUT_START.length;
+  const end = source.indexOf(BATCH_OUTPUT_END, afterStart);
+  // Models routinely close the block by mirroring the opening delimiter rather than copying
+  // the closing one (observed on free-tier output during the Arc 11 authoring trial). A second
+  // opening token is an unambiguous terminator, since the block is already open by then, and
+  // the closing delimiter does not contain the opening one as a substring. A correct closing
+  // delimiter still wins when both are present.
+  const mirrored = source.indexOf(BATCH_OUTPUT_START, afterStart);
+  const terminator = end === -1 ? mirrored : end;
+  if (terminator === -1) {
+    return {
+      candidates: [],
+      error: `Paste the complete block from ${BATCH_OUTPUT_START} to ${BATCH_OUTPUT_END}.`,
+    };
+  }
+
+  const json = source.slice(afterStart, terminator).trim();
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);

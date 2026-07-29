@@ -84,6 +84,32 @@ describe('parseBatchOutput', () => {
     );
   });
 
+  it('accepts a block closed by a mirrored opening delimiter', () => {
+    const items = [
+      { kind: 'numeric', question: 'What is 2 + 2?', answer: { kind: 'exact', value: '4' } },
+    ];
+    const mirrored = `${BATCH_OUTPUT_START}\n${JSON.stringify({ version: 1, items })}\n${BATCH_OUTPUT_START}`;
+
+    const result = parseBatchOutput(mirrored);
+
+    expect(result.error).toBeNull();
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0].errors).toEqual([]);
+  });
+
+  it('prefers a real closing delimiter over a later mirrored one', () => {
+    const items = [
+      { kind: 'numeric', question: 'What is 2 + 2?', answer: { kind: 'exact', value: '4' } },
+    ];
+    const trailing = `${block(items)}\nCommentary.\n${BATCH_OUTPUT_START}`;
+
+    const result = parseBatchOutput(trailing);
+
+    expect(result.error).toBeNull();
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0].errors).toEqual([]);
+  });
+
   it('accepts batches larger than the former twenty-item limit', () => {
     const items = Array.from({ length: 21 }, (_, index) => ({
       kind: 'numeric',
