@@ -21,7 +21,10 @@ export interface UseLearnKeyboardShortcutsParams {
   editing: boolean;
   current: Card | null;
   isTypingCard: boolean;
-  isMachineMarkedCard: boolean;
+  /** Suppresses the classic reveal/grade shortcuts — true for a machine-marked
+   *  item (its own study face owns submission) and for one whose payload this
+   *  client can't render at all (UnknownItemFace; next_plan.md §11.2 rule 3). */
+  suppressClassicGrading: boolean;
   openEdit: () => void;
   hintsOpen: boolean;
   setHintsOpen: (open: boolean) => void;
@@ -60,7 +63,7 @@ export function useLearnKeyboardShortcuts({
   editing,
   current,
   isTypingCard,
-  isMachineMarkedCard,
+  suppressClassicGrading,
   openEdit,
   hintsOpen,
   setHintsOpen,
@@ -147,7 +150,7 @@ export function useLearnKeyboardShortcuts({
         void undoLast();
         return;
       }
-      if (isMachineMarkedCard) return;
+      if (suppressClassicGrading) return;
       if (phase === 'question' && (keyMatches(e, bindings.reveal) || e.code === 'ArrowUp')) {
         e.preventDefault();
         reveal();
@@ -199,7 +202,7 @@ export function useLearnKeyboardShortcuts({
     editing,
     current,
     isTypingCard,
-    isMachineMarkedCard,
+    suppressClassicGrading,
     openEdit,
     hintsOpen,
     setHintsOpen,

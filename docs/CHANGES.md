@@ -29,6 +29,14 @@
   and the scheme errors stand on their own.
 - Removed the revision prompt from accepted staged items. Acceptance is terminal — there is no
   Edit, Reject or Restore afterwards — so the copied prompt could not be applied to anything.
+- Fixed Learn mode silently mis-marking items it cannot render. A card whose `payload` has an
+  unrecognised `v` or a known-but-unbuilt `kind` (currently `scaffold`, reserved but not built —
+  see §11.2) used to fall through to the classic flip card with an empty back, offering the
+  Again/Hard/Good/Easy controls for a question that was never actually answered. It now renders
+  read-only via `UnknownItemFace` — the `front` fallback plus a plain notice — with no submit
+  control and no `onAnswer` callback at all, so neither the on-screen controls nor the keyboard
+  shortcuts can grade it. Only the share/backup round-trip validated unknown payloads correctly
+  before this fix; study time did not.
 
 ## Unreleased — Item-type generalisation (Arc 11)
 

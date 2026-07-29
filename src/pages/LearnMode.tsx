@@ -29,6 +29,7 @@ import { TouchBottomSheet } from './learn/TouchBottomSheet';
 import { FlipCard } from './learn/FlipCard';
 import { NumericStudyFace } from '../components/items/NumericStudyFace';
 import { WorkingStudyFace } from '../components/items/WorkingStudyFace';
+import { UnknownItemFace } from '../components/items/UnknownItemFace';
 import { LearnSkeleton } from './learn/LearnSkeleton';
 import type { LearnModeType, LearnSessionRequest } from './learn/types';
 
@@ -134,6 +135,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setHintStep,
     isTypingCard,
     isMachineMarkedCard,
+    hasUnrenderableItemPayload,
     isLinesModeCard,
     summary,
     setSummary,
@@ -216,6 +218,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     m,
   });
 
+  // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
+  // applies to a machine-marked item, nor to one whose payload this client
+  // can't render at all — see UnknownItemFace and next_plan.md §11.2 rule 3.
+  const suppressClassicGrading = isMachineMarkedCard || hasUnrenderableItemPayload;
+
   useLearnKeyboardShortcuts({
     phase,
     reveal,
@@ -233,7 +240,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     editing,
     current,
     isTypingCard,
-    isMachineMarkedCard,
+    suppressClassicGrading,
     openEdit,
     hintsOpen,
     setHintsOpen,
@@ -472,7 +479,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             </AnimatePresence>
             {/* Card — mode-aware border accent */}
             <main
-              className={`mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-8 md:py-12 ${isTouchMode && !isMachineMarkedCard ? 'pb-40' : ''}`}
+              className={`mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-8 md:py-12 ${isTouchMode && !suppressClassicGrading ? 'pb-40' : ''}`}
             >
               <AnimatePresence initial={false} mode="popLayout">
                 {current && (
@@ -485,7 +492,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                     transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
                     className="w-full"
                   >
-                    {current.payload?.kind === 'numeric' ? (
+                    {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
                       <NumericStudyFace
                         card={
                           current as Card & {
@@ -495,7 +502,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                         allowCheckerDisputes={!isSimpleMode}
                         onAnswer={(result) => void answer(result, 'keyboard')}
                       />
-                    ) : current.payload?.kind === 'working' ? (
+                    ) : isMachineMarkedCard && current.payload?.kind === 'working' ? (
                       <WorkingStudyFace
                         card={
                           current as Card & {
@@ -505,6 +512,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                         allowCheckerDisputes={!isSimpleMode}
                         onAnswer={(result) => void answer(result, 'keyboard')}
                       />
+                    ) : hasUnrenderableItemPayload ? (
+                      <UnknownItemFace card={current} />
                     ) : (
                       <FlipCard
                         card={current}
@@ -535,7 +544,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               </AnimatePresence>
 
               {/* Typing input for typing cards in question phase */}
-              {!isMachineMarkedCard && isTypingCard && phase === 'question' && (
+              {!suppressClassicGrading && isTypingCard && phase === 'question' && (
                 <div className="mx-auto mt-6 w-full max-w-md">
                   <input
                     ref={typingInputRef}
@@ -561,7 +570,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               )}
 
               {/* Controls */}
-              {!isMachineMarkedCard && (isTouchMode ? (
+              {!suppressClassicGrading && (isTouchMode ? (
                 <TouchBottomSheet
                   phase={phase}
                   gradingMode={gradingMode}

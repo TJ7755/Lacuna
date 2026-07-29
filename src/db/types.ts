@@ -758,11 +758,18 @@ export interface ItemFixture {
  * is expected to reuse `MarkSchemeLine` per hole rather than invent a second
  * grammar, so the slot is reserved now instead of this union being reopened later.
  */
+
+/** The current `ItemPayload.v`. Single source of truth for "known version" checks
+ *  at study time (`useLearnSession`'s `isMachineMarkedCard`) and at share/backup
+ *  validation time (`db/share.ts`'s `KNOWN_ITEM_KINDS` schema) — see next_plan.md
+ *  §11.2 rule 3. */
+export const CURRENT_ITEM_PAYLOAD_VERSION = 1 as const;
+
 export type ItemPayload =
-  | { v: 1; kind: 'numeric'; answer: NumericAnswerSpec; fixtures?: ItemFixture[] }
-  | { v: 1; kind: 'working'; scheme: MarkSchemeLine[]; fixtures?: ItemFixture[] }
+  | { v: typeof CURRENT_ITEM_PAYLOAD_VERSION; kind: 'numeric'; answer: NumericAnswerSpec; fixtures?: ItemFixture[] }
+  | { v: typeof CURRENT_ITEM_PAYLOAD_VERSION; kind: 'working'; scheme: MarkSchemeLine[]; fixtures?: ItemFixture[] }
   | {
-      v: 1;
+      v: typeof CURRENT_ITEM_PAYLOAD_VERSION;
       kind: 'scaffold';
       /* Reserved: not built in Arc 11 slice 1. See next_plan.md §11.2 and
        * `.agent-mail/arc11-slice1-plan.md`'s deferrals section. */

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
 import { getCourse, listCourseAssessments } from '../../db/read';
+import { CURRENT_ITEM_PAYLOAD_VERSION } from '../../db/types';
 import type {
   Card,
   Course,
@@ -233,8 +234,13 @@ export function useLearnSession({
   const [hintStep, setHintStep] = useState<0 | 1 | 2>(0);
   const isTypingCard = typingSetting === 'type' && current !== null && isTypingEligible(current);
   const isMachineMarkedCard =
-    current?.payload?.v === 1 &&
+    current?.payload?.v === CURRENT_ITEM_PAYLOAD_VERSION &&
     (current.payload.kind === 'numeric' || current.payload.kind === 'working');
+  // A payload the current client cannot render as a study face at all: present but
+  // not machine-markable (unknown v, or a known-but-unbuilt kind such as `scaffold`).
+  // Renders read-only via UnknownItemFace — never a wrong FSRS mark (next_plan.md
+  // §11.2 rule 3).
+  const hasUnrenderableItemPayload = !!current?.payload && !isMachineMarkedCard;
   // Whether the current card was generated from a lines-mode Sequence (see
   // linesModeCards.ts) — drives the optional first-letter hint step in the question phase.
   const isLinesModeCard = current !== null && linesModeMapRef.current.has(current.id);
@@ -1681,6 +1687,7 @@ export function useLearnSession({
     setHintStep,
     isTypingCard,
     isMachineMarkedCard,
+    hasUnrenderableItemPayload,
     isLinesModeCard,
     summary,
     setSummary,

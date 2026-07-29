@@ -1024,6 +1024,90 @@ describe('LearnMode course/lesson scope', () => {
     expect(await screen.findByLabelText('Your working')).toHaveValue('');
   });
 
+  it('renders a scaffold-kind item read-only, with no grading affordance and an empty history', async () => {
+    const deck = await createDeck('Scaffold deck');
+    const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8 by scaffold.', '', [], {
+      payload: { v: 1, kind: 'scaffold' },
+    });
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('Solve 2x = 8 by scaffold.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(/doesn’t understand yet\. Update Lacuna to study it\./),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^yes$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^no$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show answer' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+
+    expect((await db.cards.get(card.id))?.history ?? []).toHaveLength(0);
+  });
+
+  it('falls back to the read-only face for an unknown payload version, not just an unknown kind', async () => {
+    const deck = await createDeck('Unknown version deck');
+    await createCard(deck.id, 'front_back', 'What is 8 / 2?', '', [], {
+      // A hypothetical future `v: 2` numeric payload — the version guard, not the
+      // kind check, is what must catch this.
+      payload: { v: 2, kind: 'numeric', answer: { kind: 'exact', value: '4' } } as never,
+    });
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('What is 8 / 2?')).toBeInTheDocument();
+    expect(
+      await screen.findByText(/doesn’t understand yet\. Update Lacuna to study it\./),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Your answer')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Check answer' })).not.toBeInTheDocument();
+  });
+
+  it('buries a scaffold-kind item from its read-only face and advances the session', async () => {
+    const deck = await createDeck('Scaffold bury deck');
+    const card = await createCard(deck.id, 'front_back', 'Scaffold question', '', [], {
+      payload: { v: 1, kind: 'scaffold' },
+    });
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('Scaffold question')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Bury until tomorrow' }));
+
+    expect(await screen.findByText('Session complete')).toBeInTheDocument();
+    expect((await db.cards.get(card.id))?.history ?? []).toHaveLength(0);
+  });
+
   it('does not create rigid progress slots from unavailable cards outside Simple mode', async () => {
     const now = Date.now();
     const deck = await createDeck('Eligibility deck');
