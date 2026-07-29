@@ -20,7 +20,7 @@ that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in ord
 11. **Arc 10 — UI de-clutter and navigation restructure** (detailed; independent of
     Arcs 6–9, may run before them)
 12. **Arc 11 — Item-type generalisation and authored mark schemes** (numeric/working
-    slice delivered; scaffold and follow-ups remain)
+    delivery complete; deliberate post-arc deferrals recorded)
 13. **Arc 12 — Progress receipts and encrypted relay** (detailed outline; depends on
     Arc 11 for mark-bearing receipts, but a retrievability-only first slice depends on
     nothing)
@@ -2058,15 +2058,17 @@ Each task is one subagent's scope, one commit, tests updated alongside.
 
 # Arc 11 — Item-Type Generalisation and Authored Mark Schemes (detailed)
 
-> **Status: slice 1 delivered (28 July 2026).** Numeric and working payloads now author,
-> verify, machine-grade, back up, share, lineage-diff and merge through the same versioned
+> **Status: complete (29 July 2026).** Numeric and working payloads author, verify,
+> machine-grade, back up, share, lineage-diff and merge through the same versioned
 > `Card.payload`. The visual editor, batch staging path and MCP create/update tools share one
-> compiler and validator. Checker disputes and marks provenance persist on review logs, and
-> pure marks/criterion aggregators are ready for later analytics UI. Scaffold authoring and
-> study remain reserved, not implemented. The final browser pass covered hand authoring,
-> fixtures, both study faces, an FSRS-backed dispute, the clipboard prompt/staging/revision
-> boundary and a four-item share-code export/import. It used deterministic sample model output;
-> no external chatbot was contacted, so model quality and free-tier latency remain unmeasured.
+> compiler and validator. The verification engine now samples every multi-variable sign
+> combination, widens sampling for domain-restricted expressions and distinguishes
+> `equivalent`, `different` and `undetermined`. Checker disputes and marks provenance persist
+> on review logs; unsupported payload kinds or versions render read-only and are rejected at
+> the grading boundary. Optional course exam-board and specification provenance feeds batch
+> prompts. The final browser pass covered hand authoring, fixtures, both study faces, an
+> FSRS-backed dispute, the clipboard prompt/staging/revision boundary and a four-item share-code
+> export/import. It used deterministic sample model output; no external chatbot was contacted.
 
 ## 11.1 Motivation and positioning
 
@@ -2116,11 +2118,10 @@ Item kinds in this arc:
 
 - **`numeric`** — machine-checkable answer: exact value, value-with-tolerance, or
   match-one-of. The Atom-style single question.
-- **`scaffold`** — the teacher writes the full working and holes selected steps; the
-  student fills the holes (exact/numeric/equivalence-checked per hole). Rigid by design:
-  it teaches the shape of a good answer, which is half of what method marks reward.
-  Cousin of Parsons problems; also the fallback that covers geometry proofs and wordier
-  working without a proof engine — the teacher authors the proof, holes the key steps.
+- **`scaffold` — deferred beyond Arc 11.** The discriminant remains reserved without an
+  authoring or study surface. It remains the planned home for geometry proofs and wordier
+  working: the teacher authors the full proof or method and holes selected steps, avoiding a
+  pretend proof engine.
 - **`working`** — free working chain: the student writes their own lines, marked against
   an authored scheme (§11.5) by the verification engine (§11.4).
 
@@ -2146,7 +2147,7 @@ Target user includes 11+ students. LaTeX is never shown or required.
 - The input parser and the verification engine share one expression representation —
   this is a single investment, not two.
 
-**Numeric-authoring follow-up (not part of slice 1):** make fraction entry cursor-aware
+**Numeric-authoring follow-up — deferred beyond Arc 11:** make fraction entry cursor-aware
 (or revisit a visual maths field) instead of requiring users to translate the structure
 into slash notation themselves. Compact repeated “One of” rows so each alternative does
 not duplicate a full preview and symbol palette. Extend numeric checking beyond constant
@@ -2156,6 +2157,7 @@ set-membership entries. For algebraic solutions, prefer structured answer templa
 as `x = [blank]` and an unordered pair of root blanks for quadratics. Decide explicitly
 whether that belongs to the reserved scaffold kind or a multi-field numeric v2; do not
 fake it by asking authors to enumerate equivalent equation spellings.
+These linked interaction and answer-model changes need their own design pass.
 
 ## 11.4 Verification engine (pure module, no DB, no React)
 
@@ -2259,11 +2261,12 @@ instances, where variants share one scheduled template identity.
 5. **MCP direct** (Arc 2 surface): `lacuna.create_card` grows a payload variant,
    validated at the tool boundary by the same compiler. No new UI.
 
-**Source-file ingestion follow-up.** The batch-authoring notes field currently accepts
-only pasted text. Add a file picker and drop target for `.md`, `.txt`, `.docx`, `.pptx`
-and common image formats, implemented locally rather than uploading source material to a
-Lacuna server. Extend the existing import and asset systems instead of creating another
-file pipeline:
+**Source-file ingestion — deferred beyond Arc 11.** The batch-authoring notes field currently
+accepts only pasted text. DOCX/PPTX/image/OCR ingestion is substantial product and security scope
+of its own. A later implementation should add a file picker and drop target for `.md`, `.txt`,
+`.docx`, `.pptx` and common image formats, locally rather than uploading source material to a
+Lacuna server, and extend the existing import and asset systems instead of creating another file
+pipeline:
 
 - extract DOCX paragraphs, headings, tables and embedded images in document order;
 - extract PPTX slide titles, body text, speaker notes and embedded images in slide order;
@@ -2309,16 +2312,17 @@ is shippable on share codes alone, before Arc 12 exists.
 
 ## 11.8 Marks-denominated readiness and provenance
 
-- With `marks` on scheme lines, the objective layer can compute **predicted marks**,
-  Σ(marks × predicted exam-day R), alongside mean R — upgrading the progress bar from an
-  abstract percentage to "on course for roughly 54 out of 80". Falls out of the payload
-  nearly for free; likely the single most legible number the product produces, and the
-  headline figure for Arc 12 receipts.
-- Per-criterion analytics: grouping verdicts by criterion label yields "drops the
-  substitution mark 70% of the time" — a teachable diagnosis requiring no ML and no
-  taxonomy.
-- **Provenance, deliberately thin:** `Course` gains optional `examBoard` and
-  `specification` plain strings (data-only; feeds the LLM prompt context and labels
+- **Marks-denominated readiness UI — deferred beyond Arc 11.** `aggregateMarkPerformance`
+  and `aggregateCriterionPerformance` are fully tested but deliberately have no production
+  callers: they summarise retrospective `ReviewLog` attainment. The promised forward-looking
+  Σ(marks × predicted exam-day R) depends on a future exam-realistic practice mode; ordinary
+  learn-mode marks are not the sample to forecast from.
+- The retained criterion labels and pure aggregators preserve the data seam for later
+  diagnoses such as "drops the substitution mark 70% of the time" without creating an
+  ontology now.
+- **Provenance, deliberately thin:** `Course` has optional `examBoard` and
+  `specification` plain strings (data-only; edited in Course Settings, feeds the batch LLM
+  prompt context and labels
   receipts). Spec-point tagging rides the existing tags system as a convention
   (`spec:3.4.1`). A first-class Specification entity (board → topic tree → spec points)
   is explicitly refused: it is the LMS trap, it makes Lacuna a curator of other people's
@@ -2341,7 +2345,8 @@ is shippable on share codes alone, before Arc 12 exists.
    self-grading. Reusing it for authoritative numeric marks would conflate two grading models.
    The dedicated faces reuse the shared maths input instead.
 
-5. **Line matching is greedy, and that is a known limit.** `verifyWorkingLines` walks the
+5. **Line matching remains greedy; optimal bipartite matching is deferred beyond Arc 11.**
+   `verifyWorkingLines` walks the
    outstanding scheme lines in order and takes the first match, so a student line that satisfies
    both a generic 1-mark line and a specific 2-mark line consumes whichever appears earlier in the
    scheme. A later student line whose only match has just been consumed then scores nothing.
@@ -2356,19 +2361,20 @@ is shippable on share codes alone, before Arc 12 exists.
   "check my working" affordance may exist later but never feeds FSRS).
 - Learned/ML marking of any kind.
 - Executable teacher verification logic or any sandbox.
-- A geometry/proof formal syntax (scaffold covers proofs; revisit only when a real
-  tutor asks).
+- A geometry/proof formal syntax; the reserved scaffold kind remains the planned home for
+  geometry proofs and wordier working in a later arc.
 - A structure-aware equation editor.
 - First-class exam-board/specification entities (§11.8).
 
 ## 11.11 Success criteria
 
-1. All three item kinds author, verify, grade, share (v2 codes), back up, lineage-diff
+1. Both delivered item kinds author, verify, grade, share (v2 codes), back up, lineage-diff
    and merge round-trip, with pre-Arc-11 clients degrading to the read-only fallback.
 2. The compiler round-trips every fixture in its own test corpus; the editor preview,
    staging area and MCP boundary all reject the same malformed inputs identically.
 3. A tutor can go notes → batch prompt → paste → triage → publish inside ten minutes
-   for a typical lesson, on free-tier ChatGPT, with no API key.
+   for a typical lesson, on free-tier ChatGPT, with no API key. **Pending the repository
+   owner's own manual trial; not yet attempted by design.**
 4. Verification is fully offline; no item type introduces a network dependency into the
    study loop. All tests pass; `tsc -b` clean.
 

@@ -69,6 +69,9 @@
   Each proposal is validated independently and can be edited, accepted, rejected or returned
   to a chatbot through a complaint-aware revision prompt. Lacuna stores no model key and sends
   no notes itself.
+- Added optional exam-board and specification provenance to courses and Course Settings. Both
+  values are plain strings, commit on blur, clear cleanly when blank and enter note-grounded
+  batch-generation prompts only when present; no curriculum taxonomy or schema version was added.
 - Clarified that batch generation creates durable concept checks rather than arbitrary-number
   worksheets. Working-item prompts now prefer reusable symbolic methods and derivations, and the
   authoring dialog states that parameterised exercise variants are not supported yet.
