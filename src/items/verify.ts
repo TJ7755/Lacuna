@@ -33,6 +33,11 @@ const { parse } = create({
 
 const DEFAULT_DRAWS = 8;
 const COMPARISON_EPSILON = 1e-9;
+/** Attempts allowed per requested draw before a comparison gives up. */
+const ATTEMPTS_PER_DRAW = 12;
+/** Base sample magnitude before domain widening; see `sampleValue`. */
+const BASE_MAGNITUDE_MIN = 0.25;
+const BASE_MAGNITUDE_SPAN = 9.75;
 const ALLOWED_FUNCTIONS = new Set(['abs', 'sqrt']);
 const BUILT_IN_SYMBOLS = new Set(['e', 'pi']);
 const ALLOWED_NODE_TYPES = new Set([
@@ -101,6 +106,12 @@ export function expressionToTex(expression: Expression): string {
 /**
  * Compare two expressions by evaluating them under the same deterministic random
  * substitutions. This is probabilistic identity testing, not symbolic algebra.
+ *
+ * Each variable draws its own sign, so every sign combination is reachable: deriving the
+ * sign from the attempt index instead made `abs(x*y)` and `-x*y` look equivalent, because
+ * the two variables could never share a sign. The sample magnitude widens as attempts
+ * fail, which is what lets an expression defined only away from the origin, such as
+ * `sqrt(x - 100)`, reach the region where it is defined at all.
  */
 export function equivalentByRandomEvaluation(
   a: Expression,
@@ -120,11 +131,12 @@ export function equivalentByRandomEvaluation(
   }
 
   const random = seededRandom(seed);
+  const attemptLimit = draws * ATTEMPTS_PER_DRAW;
   let accepted = 0;
-  for (let attempt = 0; attempt < draws * 12 && accepted < draws; attempt += 1) {
+  for (let attempt = 0; attempt < attemptLimit && accepted < draws; attempt += 1) {
     const scope = new Map<string, number>();
-    variables.forEach((variable, variableIndex) => {
-      scope.set(variable, randomValue(random, attempt + variableIndex));
+    variables.forEach((variable) => {
+      scope.set(variable, sampleValue(random, attempt, draws));
     });
 
     const left = evaluateNumber(evaluateA, scope);
@@ -355,9 +367,15 @@ function seededRandom(seed: string): () => number {
   };
 }
 
-function randomValue(random: () => number, signIndex: number): number {
-  const magnitude = 0.25 + random() * 9.75;
-  return signIndex % 2 === 0 ? magnitude : -magnitude;
+/**
+ * Draw one substitution value. Sign is independent per variable, and magnitude doubles
+ * every `draws` failed attempts so that expressions defined only far from the origin
+ * still get sampled inside their domain before the attempt budget runs out.
+ */
+function sampleValue(random: () => number, attempt: number, draws: number): number {
+  const widening = 2 ** Math.floor(attempt / draws);
+  const magnitude = (BASE_MAGNITUDE_MIN + random() * BASE_MAGNITUDE_SPAN) * widening;
+  return random() < 0.5 ? -magnitude : magnitude;
 }
 
 function parseFailure(message: string, position?: number): ParseExpressionResult {

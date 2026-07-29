@@ -1,5 +1,17 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Verification engine corrections (Arc 11 follow-up)
+
+- Fixed multi-variable equivalence checking. Sample signs were derived from the attempt and
+  variable indices, so with two variables only the alternating sign patterns were ever drawn and
+  the same-sign quadrants were unreachable: `abs(x*y)` compared equal to `-x*y`. Each variable now
+  draws its own sign. The existing tests missed this because every one of them used a single
+  variable, where index-derived signs do cover both halves of the line.
+- Fixed domain-restricted comparisons. An expression such as `sqrt(x - 100)` evaluated to a
+  non-finite value at every sampled point and did not compare equal even to itself. Sample
+  magnitude now widens as attempts fail, so the sampler reaches the region where such an
+  expression is defined.
+
 ## Unreleased — Item-type generalisation (Arc 11)
 
 - Added the optional, versioned `Card.payload` model for structured practice items. Numeric

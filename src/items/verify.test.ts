@@ -65,6 +65,31 @@ describe('equivalentByRandomEvaluation', () => {
     ).toBe(false);
   });
 
+  it.each([
+    ['abs(x * y)', '-x * y'],
+    ['abs(x * y)', 'x * y'],
+    ['abs(x + y)', 'x + y'],
+  ])('samples every sign combination, so %s and %s differ', (left, right) => {
+    expect(equivalentByRandomEvaluation(expression(left), expression(right), 'signs')).toBe(false);
+  });
+
+  it('widens the sample range to reach a restricted domain', () => {
+    expect(
+      equivalentByRandomEvaluation(
+        expression('sqrt(x - 100)'),
+        expression('sqrt(x - 100)'),
+        'domain',
+      ),
+    ).toBe(true);
+    expect(
+      equivalentByRandomEvaluation(
+        expression('sqrt(x - 100)'),
+        expression('sqrt(x - 200)'),
+        'domain',
+      ),
+    ).toBe(false);
+  });
+
   it('is reproducible for the same seed', () => {
     const left = expression('x^3 - x');
     const right = expression('x * (x - 1) * (x + 1)');
