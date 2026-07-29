@@ -149,7 +149,7 @@ drawing on touch is supported but not optimised (§6.9).
 
 ## 6.6 Distribution: the honest-failure decision
 
-`stripAssetImages` replaces every asset reference in a share code with placeholder text
+`stripAssetMedia` replaces every asset reference in a share code with placeholder text
 under a 5MB cap, so **no occlusion or audio card can be distributed today**, and an
 occlusion card without its image is worthless rather than degraded. Backups carry assets
 properly (`BackupFile.assets`), so this is a share-code and published-lineage problem only.

@@ -34,9 +34,12 @@ export function AudioCardEditor({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [startingRecording, setStartingRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const startingRecordingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,7 +55,13 @@ export function AudioCardEditor({
     };
   }, [parsed?.assetHash]);
 
-  useEffect(() => () => streamRef.current?.getTracks().forEach((track) => track.stop()), []);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
 
   const store = async (blob: Blob, mimeType: string) => {
     setBusy(true);
@@ -78,13 +87,20 @@ export function AudioCardEditor({
   const stopRecording = () => recorderRef.current?.stop();
 
   const startRecording = async () => {
+    if (startingRecordingRef.current || recorderRef.current) return;
     const mimeType = recordingMimeType();
     if (!mimeType || !navigator.mediaDevices?.getUserMedia) {
       onError('Audio recording is not supported in this browser.');
       return;
     }
+    startingRecordingRef.current = true;
+    setStartingRecording(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       const recorder = new MediaRecorder(stream, { mimeType });
       recorderRef.current = recorder;
       streamRef.current = stream;
@@ -96,13 +112,18 @@ export function AudioCardEditor({
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
         recorderRef.current = null;
-        setRecording(false);
-        void store(new Blob(chunksRef.current, { type: mimeType }), mimeType);
+        if (mountedRef.current) {
+          setRecording(false);
+          void store(new Blob(chunksRef.current, { type: mimeType }), mimeType);
+        }
       };
       recorder.start();
       setRecording(true);
     } catch {
-      onError('Microphone access was not granted.');
+      if (mountedRef.current) onError('Microphone access was not granted.');
+    } finally {
+      startingRecordingRef.current = false;
+      if (mountedRef.current) setStartingRecording(false);
     }
   };
 
@@ -125,18 +146,18 @@ export function AudioCardEditor({
               type="file"
               accept={AUDIO_ACCEPT}
               className="sr-only"
-              disabled={busy || recording}
+              disabled={busy || recording || startingRecording}
               onChange={(event) => chooseFile(event.target.files?.[0])}
             />
           </label>
           <Button
             type="button"
             variant={recording ? 'primary' : 'secondary'}
-            disabled={busy}
+            disabled={busy || startingRecording}
             onClick={() => (recording ? stopRecording() : void startRecording())}
           >
             {recording && <PauseIcon width={15} height={15} />}
-            {recording ? 'Stop recording' : 'Record'}
+            {recording ? 'Stop recording' : startingRecording ? 'Starting…' : 'Record'}
           </Button>
         </div>
         <p className="mt-2 text-xs text-ink-faint">

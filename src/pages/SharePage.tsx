@@ -14,7 +14,7 @@ import {
   type SharePayload,
   type ShareSummary,
 } from '../db/share';
-import { referencedAssetHashesInCards } from '../db/assets';
+import { referencedAssetHashes } from '../db/assets';
 import { exportCardsSimple } from '../db/export';
 import { publishCourse } from '../db/repository';
 import {
@@ -23,7 +23,7 @@ import {
   mergeLineageUpdate,
   type MergeLineageResult,
 } from '../db/mergeImport';
-import type { CourseRecord } from '../db/types';
+import type { Card, CourseRecord } from '../db/types';
 import {
   CheckIcon,
   DownloadIcon,
@@ -41,6 +41,17 @@ import type { Html5Qrcode } from 'html5-qrcode';
 
 /** Maximum characters a single QR code (version 40, L error correction) can hold in Alphanumeric mode. */
 const MAX_QR_ALPHANUMERIC_CHARS = 4296;
+
+function mediaCardLabel(card: Card, index: number): string {
+  const firstTextLine = card.front
+    .replace(/!\[[^\]]*\]\(lacuna-asset:\/\/[a-f0-9]{64}\)/gi, '')
+    .replace(/lacuna-asset:\/\/[a-f0-9]{64}/gi, '')
+    .split('\n')
+    .map((line) => line.replace(/^[#>*_\s-]+|[*_\s]+$/g, '').trim())
+    .find(Boolean);
+  if (!firstTextLine) return `Card ${index + 1} (no text prompt)`;
+  return firstTextLine.length > 80 ? `${firstTextLine.slice(0, 77)}…` : firstTextLine;
+}
 
 /** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
  *  (Arc 7 §7.5) matches a course already imported locally — routing this to the merge
@@ -166,8 +177,11 @@ export function SharePage() {
 
   const selectedCourse = useCourse(selectedCourseId ?? undefined);
   const selectedSummary = selectedCourseId ? summaries?.[selectedCourseId] : undefined;
-  const selectedHasImages = useMemo(
-    () => referencedAssetHashesInCards(courseCards ?? []).length > 0,
+  const selectedMediaCards = useMemo(
+    () =>
+      (courseCards ?? []).filter(
+        (card) => referencedAssetHashes(`${card.front}\n${card.back}`).length > 0,
+      ),
     [courseCards],
   );
 
@@ -399,9 +413,9 @@ export function SharePage() {
           <h2 className="font-display text-xl">Export a course</h2>
         </div>
         <p className="mb-5 text-sm text-ink-soft">
-          Select a course, then generate a code to copy and share. Images are not included
-          in share codes because they make pasteable codes too large; use a full backup
-          when you need to transfer images.
+          Select a course, then generate a code to copy and share. Media files are not included
+          because they make pasteable codes too large; use a full backup when you need to transfer
+          images or audio.
         </p>
 
         {!courses ? (
@@ -509,11 +523,20 @@ export function SharePage() {
                   )}
                 </div>
               )}
-              {selectedHasImages && (
-                <p className="mb-3 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
-                  This course contains images. The share code will replace them with
-                  placeholders; export a full backup from Settings to transfer the images too.
-                </p>
+              {selectedMediaCards.length > 0 && (
+                <div className="mb-3 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
+                  <p>
+                    This course contains media in {selectedMediaCards.length}{' '}
+                    {selectedMediaCards.length === 1 ? 'card' : 'cards'}. The share code will
+                    replace those files with placeholders; export a full backup from Settings to
+                    transfer the media too.
+                  </p>
+                  <ul className="mt-2 max-h-32 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-ink-faint">
+                    {selectedMediaCards.map((card, index) => (
+                      <li key={`${card.id}-${index}`}>{mediaCardLabel(card, index)}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -805,8 +828,8 @@ export function SharePage() {
                 )}
                 {!pending.merge && pending.summary.omittedImages && (
                   <p className="mb-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink-soft">
-                    This share code omitted images to keep the code small. Image positions
-                    will appear as placeholders after import.
+                    This share code omitted media to keep the code small. Images and audio will
+                    appear as placeholders after import.
                   </p>
                 )}
                 <div className="flex flex-wrap justify-end gap-2">

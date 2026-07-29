@@ -12,7 +12,10 @@
   under Study & scheduling. The Learn face can return to the player with the R key without resetting
   the answer phase, response timer or available grading controls.
 - Fixed Anki imports silently dropping audio. Supported `[sound:…]` media is now stored, rewritten
-  to Lacuna's audio marker and returned with the imported card; image behaviour is unchanged.
+  to Lacuna's audio marker and returned with the imported card; rejected media no longer leaves a
+  partial deck and cards behind.
+- Prevented overlapping microphone permission requests from starting unreachable recorders, and
+  made share-code warnings and placeholders describe omitted audio as media rather than images.
 - Recorded the approved Arc 6 defaults: rectangle regions with an explicit shape field, all-label
   masking, a 2560px occlusion-image ceiling and desktop-first occlusion authoring.
 

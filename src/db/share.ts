@@ -52,7 +52,7 @@ import type {
   UnlockMode,
 } from './types';
 import { courseToRecord, finalAssessmentForCourse } from './assessmentMigration';
-import { stripAssetImages } from './assets';
+import { stripAssetMedia } from './assets';
 import { bytesToBase45, base45ToBytes } from './base45';
 import { buildCourseMigration } from './courseMigration';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
@@ -775,9 +775,10 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
   for (const c of cards) {
     if (consumed.has(c.id)) continue;
     const tags = c.tags && c.tags.length ? { g: c.tags } : {};
-    const front = stripAssetImages(c.front);
-    const back = stripAssetImages(c.back);
-    const imageFlag = front.stripped || back.stripped ? { i: 1 as const } : {};
+    const front = stripAssetMedia(c.front);
+    const back = stripAssetMedia(c.back);
+    // The compact `i` field predates audio and remains unchanged for share-code compatibility.
+    const mediaFlag = front.stripped || back.stripped ? { i: 1 as const } : {};
     const seqRef = c.sequenceItemId ? { si: c.sequenceItemId } : {};
     const payload = c.payload ? { p: c.payload } : {};
     const identity = preserveIds ? { id: c.id } : {};
@@ -787,7 +788,7 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
         k: 1,
         f: front.markdown,
         ...tags,
-        ...imageFlag,
+        ...mediaFlag,
         ...seqRef,
         ...payload,
         ...identity,
@@ -804,7 +805,7 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
         f: front.markdown,
         b: back.markdown,
         ...tags,
-        ...imageFlag,
+        ...mediaFlag,
         ...seqRef,
         ...payload,
         ...identity,
@@ -817,11 +818,11 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
       (p) => p.id !== c.id && !consumed.has(p.id),
     );
     if (partner) {
-      out.push({ k: 2, f: front.markdown, b: back.markdown, ...tags, ...imageFlag });
+      out.push({ k: 2, f: front.markdown, b: back.markdown, ...tags, ...mediaFlag });
       consumed.add(c.id);
       consumed.add(partner.id);
     } else {
-      out.push({ k: 0, f: front.markdown, b: back.markdown, ...tags, ...imageFlag, ...identity });
+      out.push({ k: 0, f: front.markdown, b: back.markdown, ...tags, ...mediaFlag, ...identity });
       consumed.add(c.id);
     }
   }
@@ -882,7 +883,7 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Pack a lesson's notes, stripping images the same way card content is stripped.
+ * Pack a lesson's notes, stripping media the same way card content is stripped.
  * `withOriginatingIds` packs each note's local id as `oi` — only meaningful (and
  * only ever passed) when the exporting course has published, so a plain course
  * export is unaffected.
@@ -892,7 +893,7 @@ function packNotes(
   withOriginatingIds = false,
 ): ShareNote[] {
   return notes.map((n) => {
-    const content = stripAssetImages(n.content);
+    const content = stripAssetMedia(n.content);
     return {
       n: n.name,
       c: content.markdown,

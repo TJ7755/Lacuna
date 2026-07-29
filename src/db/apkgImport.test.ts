@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Card } from './types';
 import { db } from './schema';
 import { importApkgResult, type ApkgImportResult } from './apkgImport';
+import { MAX_AUDIO_BYTES } from './assets';
 import { createDeck } from './repository';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
@@ -108,6 +109,16 @@ describe('importApkgResult', () => {
     await expect(importApkgResult(makeResult(), 'missing-deck')).rejects.toThrow(
       'Target deck not found.',
     );
+    expect(await db.cards.count()).toBe(0);
+  });
+
+  it('does not create a deck or cards when imported audio is rejected', async () => {
+    const result = makeResult({
+      media: new Map([['oversized.mp3', new Uint8Array(MAX_AUDIO_BYTES + 1)]]),
+    });
+
+    await expect(importApkgResult(result)).rejects.toThrow(/25 MB/);
+    expect(await db.decks.count()).toBe(0);
     expect(await db.cards.count()).toBe(0);
   });
 

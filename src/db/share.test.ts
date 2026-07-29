@@ -28,7 +28,7 @@ import {
   type SharePayload,
   type SharePayloadV1,
 } from './share';
-import { assetUrl, storeImageBlob } from './assets';
+import { assetUrl, storeAudioBlob, storeImageBlob } from './assets';
 import { bytesToBase45 } from './base45';
 import type { ItemPayload } from './types';
 
@@ -226,6 +226,17 @@ describe('share codes', () => {
     expect(cards[0].front).toContain('Label');
     expect(cards[0].front).toContain('Image omitted from share code');
     expect(cards[0].back).toBe('Back text');
+  });
+
+  it('identifies stripped audio as audio while retaining the legacy omission flag', async () => {
+    const deck = await createDeck('Audio deck');
+    const asset = await storeAudioBlob(new Blob(['spoken'], { type: 'audio/mpeg' }));
+    await createCard(deck.id, 'front_back', `Listen\n![audio](${assetUrl(asset.hash)})`, 'Answer');
+
+    const payload = await decodeShare(await buildShareCode([deck.id]));
+    expect(summariseShare(payload).omittedImages).toBe(true);
+    expect(JSON.stringify(payload)).not.toContain(asset.hash);
+    expect(JSON.stringify(payload)).toContain('Audio omitted from share code');
   });
 
   it('unpacks a legacy k:3 (typing) card as front_back for backward compatibility', async () => {

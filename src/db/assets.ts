@@ -129,14 +129,15 @@ export function referencedAssetHashesInCards(cards: { front: string; back: strin
   return [...hashes];
 }
 
-export function stripAssetImages(markdown: string): { markdown: string; stripped: boolean } {
+export function stripAssetMedia(markdown: string): { markdown: string; stripped: boolean } {
   let stripped = false;
   // Normalise line endings so every regex below can assume LF-only.
   const source = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  // Inline images: ![alt](lacuna-asset://hash)
+  // Inline media: ![alt](lacuna-asset://hash). Audio uses the reserved "audio" alt text.
   let next = source.replace(/!\[([^\]]*)\]\(lacuna-asset:\/\/[a-f0-9]{64}\)/gi, (_m, alt) => {
     stripped = true;
-    return `[Image omitted from share code: ${alt || 'image'}]`;
+    const kind = alt.toLowerCase() === 'audio' ? 'Audio' : 'Image';
+    return `[${kind} omitted from share code${alt ? `: ${alt}` : ''}]`;
   });
   // Reference-style images: ![alt][ref] where [ref]: lacuna-asset://hash
   const strippedRefs = new Set<string>();

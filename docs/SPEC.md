@@ -1653,7 +1653,7 @@ A single, reusable export UI offering multiple output formats:
   **referenced image assets**, session history, user performance, folders, the six
   course-architecture tables — courses, lessons, notes, lessonCards, practiceNodes,
   courseExamDates — and `sequences`, schema v11). Backups are the route that carries
-  images between machines (share codes deliberately do not, §13). Older backups that
+  media between machines (share codes deliberately do not, §13). Older backups that
   pre-date the course tables or sequences still import cleanly: all these arrays are
   optional in `BackupFile`.
 - **Import modes:**
@@ -1766,7 +1766,8 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   with no lineage fields at all.
 - **Originating-id payload fields.** `ShareLesson` gains `i?: string`. `ShareNote` gains
   `oi?: string` rather than `i`, because `ShareNote.i` was already the pre-existing
-  "images omitted" boolean flag; reusing that letter would have collided. `ShareCard`
+  historical "media omitted" boolean flag (named for images before audio existed); reusing that
+  letter would have collided. `ShareCard`
   needs no new field at all: its existing (already-optional) `id` — packed on every course
   export to resolve in-payload `links`/exam `x` references — doubles as the originating
   card id once a lineage is present, so cards are the one entity type with nothing added.
