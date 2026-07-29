@@ -201,4 +201,110 @@ describe('ItemStagingReview', () => {
     expect(prompt).toContain('Accept the correct intermediate quantity.');
     expect(notify).toHaveBeenCalledWith('Revision prompt copied to the clipboard.', 'positive');
   });
+  it('applies a pasted revision to one item without disturbing its neighbours', async () => {
+    stage(
+      batch([
+        {
+          kind: 'working',
+          question: 'Broken fixture',
+          scheme: '[1] answer :: equals :: 4',
+          fixtures: [{ studentAnswer: ['5'], expectedMarks: 1 }],
+        },
+        { kind: 'numeric', question: 'Untouched neighbour', answer: { kind: 'exact', value: '2' } },
+      ]),
+    );
+    const row = screen.getByText('Broken fixture').closest('article')!;
+    expect(within(row).getByText(/expected 1 marks but received 0/)).toBeInTheDocument();
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Revise with AI' }));
+    fireEvent.change(within(row).getByRole('textbox', { name: 'Revised reply' }), {
+      target: {
+        value: JSON.stringify({
+          kind: 'working',
+          question: 'Repaired fixture',
+          scheme: '[1] answer :: equals :: 4',
+          fixtures: [{ studentAnswer: ['4'], expectedMarks: 1 }],
+        }),
+      },
+    });
+    fireEvent.click(within(row).getByRole('button', { name: 'Apply revision' }));
+
+    await waitFor(() => expect(screen.getByText('Repaired fixture')).toBeInTheDocument());
+    expect(screen.queryByText(/expected 1 marks but received 0/)).not.toBeInTheDocument();
+    expect(screen.getByText('Untouched neighbour')).toBeInTheDocument();
+    expect(notify).toHaveBeenCalledWith('Revised item applied.', 'positive');
+  });
+
+  it('merges a batch revision over the failing items in order', async () => {
+    stage(
+      batch([
+        {
+          kind: 'working',
+          question: 'First broken',
+          scheme: '[1] answer :: equals :: 4',
+          fixtures: [{ studentAnswer: ['5'], expectedMarks: 1 }],
+        },
+        { kind: 'numeric', question: 'Already clean', answer: { kind: 'exact', value: '9' } },
+        { kind: 'numeric', question: 'Second broken', answer: { kind: 'exact', value: 'x + 1' } },
+      ]),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Revise 2 with AI' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy revision prompt' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    const prompt = writeText.mock.calls[0][0] as string;
+    expect(prompt).toContain('--- Item 1 of 2 ---');
+    expect(prompt).toContain('First broken');
+    expect(prompt).toContain('Second broken');
+    expect(prompt).not.toContain('Already clean');
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Revised reply' }), {
+      target: {
+        value: batch([
+          {
+            kind: 'working',
+            question: 'First repaired',
+            scheme: '[1] answer :: equals :: 4',
+            fixtures: [{ studentAnswer: ['4'], expectedMarks: 1 }],
+          },
+          { kind: 'numeric', question: 'Second repaired', answer: { kind: 'exact', value: '7' } },
+        ]),
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply revisions' }));
+
+    await waitFor(() => expect(screen.getByText('First repaired')).toBeInTheDocument());
+    expect(screen.getByText('Second repaired')).toBeInTheDocument();
+    expect(screen.getByText('Already clean')).toBeInTheDocument();
+    expect(notify).toHaveBeenCalledWith('Applied 2 revised items.', 'positive');
+  });
+
+  it('applies nothing when the revision count does not match', async () => {
+    stage(
+      batch([
+        { kind: 'numeric', question: 'Broken one', answer: { kind: 'exact', value: 'x' } },
+        { kind: 'numeric', question: 'Broken two', answer: { kind: 'exact', value: 'y' } },
+      ]),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Revise 2 with AI' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Revised reply' }), {
+      target: {
+        value: batch([
+          { kind: 'numeric', question: 'Only one back', answer: { kind: 'exact', value: '3' } },
+        ]),
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Apply revisions' }));
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        'The response has 1 item but 2 needed revision.',
+        'negative',
+      ),
+    );
+    expect(screen.getByText('Broken one')).toBeInTheDocument();
+    expect(screen.getByText('Broken two')).toBeInTheDocument();
+    expect(screen.queryByText('Only one back')).not.toBeInTheDocument();
+  });
 });

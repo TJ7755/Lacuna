@@ -2406,8 +2406,16 @@ is shippable on share codes alone, before Arc 12 exists.
    with the delimiter corrected by hand, three of its nine items validated (see §11.9.6 for the
    cause of the other six, and note that two of the three that passed were weak items a tutor
    would discard). The parser now accepts a mirrored closing delimiter and the prompt now states
-   the one-value-per-answer rule. Criterion 3 stays open until a fresh free-tier run clears it
-   without hand-editing.
+   the one-value-per-answer rule.
+
+   A second trial the same day, on a deliberately weak model (GPT-5.5 mini, no thinking),
+   returned eight items of which six validated. Both fixes held: the model mirrored the closing
+   delimiter again and the block parsed anyway, and no answer came back as a tuple. The two
+   failures shared one cause — an `equals` fixture written `y = 3` rather than `3` — which turned
+   out to be a verifier gap rather than an authoring one, since the study face runs the same
+   check and a student writing `y = 3` lost the mark too. With that fixed the batch validates
+   8/8 unedited. Criterion 3 stays open until a run clears it end to end, including the tutor
+   actually publishing inside ten minutes, which neither trial measured.
 4. Verification is fully offline; no item type introduces a network dependency into the
    study loop. All tests pass; `tsc -b` clean.
 

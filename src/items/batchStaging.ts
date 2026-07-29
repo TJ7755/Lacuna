@@ -21,32 +21,40 @@ export interface BatchParseResult {
   error: string | null;
 }
 
-export function parseBatchOutput(source: string): BatchParseResult {
+/**
+ * The JSON between the versioned delimiters, or null when the block is not present.
+ *
+ * Models routinely close the block by mirroring the opening delimiter rather than copying the
+ * closing one (observed on free-tier output during the Arc 11 authoring trials). A second
+ * opening token is an unambiguous terminator, since the block is already open by then, and the
+ * closing delimiter does not contain the opening one as a substring. A correct closing
+ * delimiter still wins when both are present.
+ *
+ * `lenient` additionally accepts a block with no terminator at all. That is safe only when the
+ * caller already knows how many items it expects — reading a revision — and not when
+ * discovering a whole batch, where trailing commentary would be swallowed into the JSON.
+ */
+function extractDelimitedBlock(source: string, lenient = false): string | null {
   const start = source.indexOf(BATCH_OUTPUT_START);
-  if (start === -1) {
-    return {
-      candidates: [],
-      error: `Paste the complete block from ${BATCH_OUTPUT_START} to ${BATCH_OUTPUT_END}.`,
-    };
-  }
+  if (start === -1) return null;
 
   const afterStart = start + BATCH_OUTPUT_START.length;
   const end = source.indexOf(BATCH_OUTPUT_END, afterStart);
-  // Models routinely close the block by mirroring the opening delimiter rather than copying
-  // the closing one (observed on free-tier output during the Arc 11 authoring trial). A second
-  // opening token is an unambiguous terminator, since the block is already open by then, and
-  // the closing delimiter does not contain the opening one as a substring. A correct closing
-  // delimiter still wins when both are present.
   const mirrored = source.indexOf(BATCH_OUTPUT_START, afterStart);
   const terminator = end === -1 ? mirrored : end;
-  if (terminator === -1) {
+  if (terminator === -1) return lenient ? source.slice(afterStart).trim() : null;
+  return source.slice(afterStart, terminator).trim();
+}
+
+export function parseBatchOutput(source: string): BatchParseResult {
+  const json = extractDelimitedBlock(source);
+  if (json === null) {
     return {
       candidates: [],
       error: `Paste the complete block from ${BATCH_OUTPUT_START} to ${BATCH_OUTPUT_END}.`,
     };
   }
 
-  const json = source.slice(afterStart, terminator).trim();
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
@@ -68,6 +76,47 @@ export function parseBatchOutput(source: string): BatchParseResult {
     candidates: parsed.items.map((item, index) => validateBatchCandidate(item, index)),
     error: null,
   };
+}
+
+export interface RevisedItemsResult {
+  items: unknown[];
+  error: string | null;
+}
+
+/**
+ * Read revised items back out of a model response.
+ *
+ * The revision prompts ask for the same delimited block the batch prompt uses, but a response
+ * that drops the delimiters, returns a bare array, or returns a single bare item is still
+ * unambiguous — and the tutor already knows which items they asked about. Rejecting those
+ * shapes would leave them hand-editing JSON, which is the friction the revision loop exists to
+ * remove. Validation is unchanged: every item still goes through `parseEditedCandidate`.
+ */
+export function parseRevisedItems(source: string): RevisedItemsResult {
+  const trimmed = source.trim();
+  if (!trimmed) return { items: [], error: 'Paste the revised item first.' };
+
+  const json = extractDelimitedBlock(trimmed, true) ?? trimmed;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch (error) {
+    return {
+      items: [],
+      error: `The revised JSON is invalid: ${error instanceof Error ? error.message : 'unknown error'}`,
+    };
+  }
+
+  const items = Array.isArray(parsed)
+    ? parsed
+    : isRecord(parsed) && Array.isArray(parsed.items)
+      ? parsed.items
+      : isRecord(parsed)
+        ? [parsed]
+        : null;
+  if (!items) return { items: [], error: 'The response is not an item or a list of items.' };
+  if (items.length === 0) return { items: [], error: 'The response contains no items.' };
+  return { items, error: null };
 }
 
 export function parseEditedCandidate(sourceJson: string, index: number): BatchCandidate {

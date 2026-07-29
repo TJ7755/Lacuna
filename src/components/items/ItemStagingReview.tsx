@@ -9,9 +9,14 @@ import {
 import {
   parseBatchOutput,
   parseEditedCandidate,
+  parseRevisedItems,
   type BatchCandidate,
 } from '../../items/batchStaging';
-import { BATCH_OUTPUT_START, buildItemRevisionPrompt } from '../../items/prompts';
+import {
+  BATCH_OUTPUT_START,
+  buildBatchRevisionPrompt,
+  buildItemRevisionPrompt,
+} from '../../items/prompts';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { cn } from '../ui/cn';
@@ -35,6 +40,9 @@ export function ItemStagingReview({ courseId, lessons, cards }: ItemStagingRevie
   const [decisions, setDecisions] = useState<Map<string, Decision>>(new Map());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [batchRevisionOpen, setBatchRevisionOpen] = useState(false);
+  const [batchComplaint, setBatchComplaint] = useState('');
+  const [batchRevisionSource, setBatchRevisionSource] = useState('');
 
   useEffect(() => {
     if (lessons.some((lesson) => lesson.id === targetLessonId)) return;
@@ -83,12 +91,69 @@ export function ItemStagingReview({ courseId, lessons, cards }: ItemStagingRevie
     (candidate) =>
       decisionFor(candidate) === 'staged' && candidate.payload && !duplicateIds.has(candidate.id),
   );
+  const failingCandidates = candidates.filter(
+    (candidate) => decisionFor(candidate) === 'staged' && candidate.errors.length > 0,
+  );
 
   function reviewBatch() {
     setSubmittedSource(source);
     setEdits(new Map());
     setDecisions(new Map());
     setEditingId(null);
+    setBatchRevisionOpen(false);
+    setBatchRevisionSource('');
+  }
+
+  async function copyBatchRevisionPrompt() {
+    try {
+      await navigator.clipboard.writeText(
+        buildBatchRevisionPrompt({
+          items: failingCandidates.map((candidate) => ({
+            itemJson: candidate.sourceJson,
+            validationErrors: candidate.errors,
+          })),
+          complaint: batchComplaint,
+        }),
+      );
+      notify('Revision prompt copied to the clipboard.', 'positive');
+    } catch {
+      notify('Could not copy the revision prompt.', 'negative');
+    }
+  }
+
+  function applyBatchRevision() {
+    const result = parseRevisedItems(batchRevisionSource);
+    if (result.error) {
+      notify(result.error, 'negative');
+      return;
+    }
+    // Revised items are matched to the items they replace by position, which is what the prompt
+    // asks for and all a bare item carries. A count mismatch means the model added, dropped or
+    // reordered something, so nothing is applied rather than silently pairing the wrong items.
+    if (result.items.length !== failingCandidates.length) {
+      notify(
+        `The response has ${result.items.length} item${result.items.length === 1 ? '' : 's'} but ${failingCandidates.length} needed revision.`,
+        'negative',
+      );
+      return;
+    }
+
+    setEdits((current) => {
+      const next = new Map(current);
+      failingCandidates.forEach((candidate, position) => {
+        next.set(
+          candidate.id,
+          parseEditedCandidate(JSON.stringify(result.items[position], null, 2), candidate.index),
+        );
+      });
+      return next;
+    });
+    setBatchRevisionOpen(false);
+    setBatchRevisionSource('');
+    notify(
+      `Applied ${result.items.length} revised item${result.items.length === 1 ? '' : 's'}.`,
+      'positive',
+    );
   }
 
   async function acceptCandidate(candidate: BatchCandidate) {
@@ -201,14 +266,67 @@ export function ItemStagingReview({ courseId, lessons, cards }: ItemStagingRevie
                 {cleanCandidates.length} clean
               </p>
             </div>
-            <Button
-              variant="primary"
-              disabled={cleanCandidates.length === 0 || importing}
-              onClick={() => void acceptAllClean()}
-            >
-              Accept all clean
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {failingCandidates.length > 0 && !batchRevisionOpen && (
+                <Button variant="ghost" onClick={() => setBatchRevisionOpen(true)}>
+                  Revise {failingCandidates.length} with AI
+                </Button>
+              )}
+              <Button
+                variant="primary"
+                disabled={cleanCandidates.length === 0 || importing}
+                onClick={() => void acceptAllClean()}
+              >
+                Accept all clean
+              </Button>
+            </div>
           </div>
+
+          {batchRevisionOpen && failingCandidates.length > 0 && (
+            <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <p className="text-sm text-ink-soft">
+                The prompt carries each failing item and its validation errors. Paste the reply
+                back below; the {failingCandidates.length} revised item
+                {failingCandidates.length === 1 ? '' : 's'} replace only those, in order.
+              </p>
+              <label className="mt-3 flex flex-col gap-2 text-sm text-ink-soft">
+                Anything else to change? (optional)
+                <textarea
+                  value={batchComplaint}
+                  onChange={(event) => setBatchComplaint(event.target.value)}
+                  rows={2}
+                  placeholder="Applies to every item in the prompt…"
+                  className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 text-sm leading-6 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                />
+              </label>
+              <label className="mt-3 flex flex-col gap-2 text-sm text-ink-soft">
+                Revised reply
+                <textarea
+                  value={batchRevisionSource}
+                  onChange={(event) => setBatchRevisionSource(event.target.value)}
+                  rows={5}
+                  placeholder="Paste the model's reply here"
+                  className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 font-mono text-sm text-ink outline-none placeholder:font-sans placeholder:text-ink-faint focus:border-accent"
+                />
+              </label>
+              <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setBatchRevisionOpen(false)}>
+                  Cancel
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => void copyBatchRevisionPrompt()}>
+                  Copy revision prompt
+                </Button>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={!batchRevisionSource.trim()}
+                  onClick={applyBatchRevision}
+                >
+                  Apply revisions
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3">
             {candidates.map((candidate) => (
@@ -268,7 +386,22 @@ function CandidateRow({
   const { notify } = useToast();
   const [revisionOpen, setRevisionOpen] = useState(false);
   const [complaint, setComplaint] = useState('');
+  const [revisedSource, setRevisedSource] = useState('');
   const ready = Boolean(candidate.payload);
+
+  function applyRevisedItem() {
+    const result = parseRevisedItems(revisedSource);
+    if (result.error) {
+      notify(result.error, 'negative');
+      return;
+    }
+    // One item was sent, so the first item back is the revision. A model that returns more has
+    // padded the reply rather than answered a different question.
+    onApplyEdit(JSON.stringify(result.items[0], null, 2));
+    setRevisionOpen(false);
+    setRevisedSource('');
+    notify('Revised item applied.', 'positive');
+  }
 
   async function copyRevisionPrompt() {
     const raw = asRecord(candidate.raw);
@@ -385,17 +518,35 @@ function CandidateRow({
               className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 text-sm leading-6 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </label>
-          <div className="mt-3 flex justify-end gap-2">
+          <label className="mt-3 flex flex-col gap-2 text-sm text-ink-soft">
+            Revised reply
+            <textarea
+              value={revisedSource}
+              onChange={(event) => setRevisedSource(event.target.value)}
+              rows={4}
+              placeholder="Paste the model's reply here"
+              className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 font-mono text-sm text-ink outline-none placeholder:font-sans placeholder:text-ink-faint focus:border-accent"
+            />
+          </label>
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
             <Button size="sm" variant="ghost" onClick={() => setRevisionOpen(false)}>
               Cancel
             </Button>
             <Button
               size="sm"
-              variant="primary"
+              variant="secondary"
               disabled={!complaint.trim()}
               onClick={() => void copyRevisionPrompt()}
             >
               Copy revision prompt
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={!revisedSource.trim()}
+              onClick={applyRevisedItem}
+            >
+              Apply revision
             </Button>
           </div>
         </div>

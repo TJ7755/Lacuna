@@ -1,5 +1,19 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Answer forms and the revision loop (Arc 11 free-tier trial)
+
+- Value predicates now accept an answer written as `y = 3` as well as a bare `3`. The verifier
+  normalises an equation to `left - right`, so a named answer compared unequal to its own value and
+  scored zero. This was found through authoring, but the study face runs the same verifier, so a
+  student ending their working the natural way lost the mark too. Only a bare variable on the left
+  is reduced, waypoints are untouched, and the line as written is still tried first, so nothing that
+  matched before stops matching.
+- Revised items can now be pasted back. Previously "Revise with AI" copied a prompt whose reply had
+  nowhere to go: the per-item editor is a structured form, and the only free-text box re-parsed the
+  whole batch, discarding every other item and every accept/reject decision. Each item now has its
+  own paste target, and a batch-level control revises every failing item in one round trip, matching
+  replies back by position and applying nothing on a count mismatch.
+
 ## Unreleased — Batch authoring hardening (Arc 11 free-tier trial)
 
 - The batch review step now accepts a block closed by a mirrored `<<<LACUNA_ITEMS_V1>>>` instead

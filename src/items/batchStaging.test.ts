@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseBatchOutput, parseEditedCandidate } from './batchStaging';
+import { parseBatchOutput, parseEditedCandidate, parseRevisedItems } from './batchStaging';
 import { BATCH_OUTPUT_END, BATCH_OUTPUT_START } from './prompts';
 
 function block(items: unknown[]): string {
@@ -138,5 +138,43 @@ describe('parseEditedCandidate', () => {
     expect(candidate.id).toBe('batch-item-5');
     expect(candidate.question).toBe('Corrected question');
     expect(candidate.errors).toEqual([]);
+  });
+});
+
+describe('parseRevisedItems', () => {
+  const item = { kind: 'numeric', question: 'Revised?', answer: { kind: 'exact', value: '4' } };
+
+  it('reads the delimited block the revision prompts ask for', () => {
+    const result = parseRevisedItems(block([item]));
+
+    expect(result.error).toBeNull();
+    expect(result.items).toEqual([item]);
+  });
+
+  it('accepts the shapes a model returns instead of the delimited block', () => {
+    const bareItem = parseRevisedItems(JSON.stringify(item));
+    const bareArray = parseRevisedItems(JSON.stringify([item, item]));
+    const wrapper = parseRevisedItems(JSON.stringify({ version: 1, items: [item] }));
+
+    expect(bareItem.items).toEqual([item]);
+    expect(bareArray.items).toEqual([item, item]);
+    expect(wrapper.items).toEqual([item]);
+    expect([bareItem.error, bareArray.error, wrapper.error]).toEqual([null, null, null]);
+  });
+
+  it('accepts a mirrored or entirely missing closing delimiter', () => {
+    const payload = JSON.stringify({ version: 1, items: [item] });
+    const mirrored = parseRevisedItems(`${BATCH_OUTPUT_START}\n${payload}\n${BATCH_OUTPUT_START}`);
+    const unterminated = parseRevisedItems(`${BATCH_OUTPUT_START}\n${payload}`);
+
+    expect(mirrored.items).toEqual([item]);
+    expect(unterminated.items).toEqual([item]);
+  });
+
+  it('reports empty, unparseable and itemless responses without throwing', () => {
+    expect(parseRevisedItems('   ').error).toContain('Paste the revised item');
+    expect(parseRevisedItems('not json').error).toContain('invalid');
+    expect(parseRevisedItems('[]').error).toContain('no items');
+    expect(parseRevisedItems('"a string"').error).toContain('not an item');
   });
 });

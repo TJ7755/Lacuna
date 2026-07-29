@@ -3,6 +3,7 @@ import {
   BATCH_OUTPUT_END,
   BATCH_OUTPUT_START,
   buildBatchGenerationPrompt,
+  buildBatchRevisionPrompt,
   buildItemRevisionPrompt,
   buildMarkSchemeDraftPrompt,
 } from './prompts';
@@ -109,6 +110,38 @@ describe('batch authoring prompt', () => {
     expect(prompt).toContain('Concepts per item: model-selected');
     expect(prompt).toContain('Requested maximum items: model-selected');
     expect(prompt).not.toContain('Never return more than');
+  });
+});
+
+describe('batch revision prompt', () => {
+  it('carries every failing item with its errors and pins the order and count', () => {
+    const prompt = buildBatchRevisionPrompt({
+      items: [
+        { itemJson: '{"kind":"working","question":"First"}', validationErrors: ['Fixture 1 failed.'] },
+        { itemJson: '{"kind":"numeric","question":"Second"}', validationErrors: [] },
+      ],
+      complaint: 'Keep the wording shorter.',
+    });
+
+    expect(prompt).toContain('Revise the 2 Lacuna v1 items');
+    expect(prompt).toContain('Return exactly 2 items, in the same order');
+    expect(prompt).toContain('--- Item 1 of 2 ---');
+    expect(prompt).toContain('--- Item 2 of 2 ---');
+    expect(prompt).toContain('Fixture 1 failed.');
+    expect(prompt).toContain('No validation error was reported.');
+    expect(prompt).toContain('Keep the wording shorter.');
+    expect(prompt).toContain(BATCH_OUTPUT_START);
+    expect(prompt).toContain(BATCH_OUTPUT_END);
+  });
+
+  it('reads naturally for one item and omits an absent complaint', () => {
+    const prompt = buildBatchRevisionPrompt({
+      items: [{ itemJson: '{"kind":"numeric"}', validationErrors: ['Bad answer.'] }],
+    });
+
+    expect(prompt).toContain('Revise the 1 Lacuna v1 item below');
+    expect(prompt).toContain('Return exactly 1 item, in the same order');
+    expect(prompt).not.toContain('Tutor complaint');
   });
 });
 

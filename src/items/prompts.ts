@@ -111,6 +111,47 @@ export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): s
   ].join('\n');
 }
 
+export interface BatchRevisionPromptInput {
+  items: Array<{ itemJson: string; validationErrors: string[] }>;
+  complaint?: string;
+}
+
+export function buildBatchRevisionPrompt(input: BatchRevisionPromptInput): string {
+  const count = input.items.length;
+  const plural = count === 1 ? '' : 's';
+
+  return [
+    `Revise the ${count} Lacuna v1 item${plural} below in response to the validation evidence.`,
+    'Preserve each learning objective. Fix only the reported problems.',
+    `Return exactly ${count} item${plural}, in the same order as they appear below. Do not add,`,
+    'merge, drop or reorder items, and do not revise an item that reports no problem.',
+    'For a working item, keep the mark scheme within the supplied v1 grammar and make every',
+    'fixture earn its declared expectedMarks.',
+    '',
+    ...(input.complaint?.trim() ? ['Tutor complaint (applies to all of them):', input.complaint.trim(), ''] : []),
+    'Mark-scheme syntax:',
+    markSchemeSyntaxSpecification(),
+    '',
+    ...input.items.flatMap((item, index) => [
+      `--- Item ${index + 1} of ${count} ---`,
+      'Validation feedback:',
+      item.validationErrors.length
+        ? item.validationErrors.join('\n')
+        : 'No validation error was reported.',
+      'Current item JSON:',
+      item.itemJson.trim(),
+      '',
+    ]),
+    'Return one JSON object between these delimiter lines, with no Markdown fence or explanation:',
+    BATCH_OUTPUT_START,
+    '{',
+    '  "version": 1,',
+    `  "items": [ the ${count} revised item${plural}, in the original order ]`,
+    '}',
+    BATCH_OUTPUT_END,
+  ].join('\n');
+}
+
 export function buildItemRevisionPrompt(input: ItemRevisionPromptInput): string {
   return [
     'Revise one Lacuna v1 item in response to the tutor complaint and validation evidence below.',

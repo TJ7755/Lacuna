@@ -1148,6 +1148,13 @@ as unchecked rather than as a zero, with the existing dispute control alongside 
 marks, so the marks total still reflects only what the checker could actually award. Numeric answer
 specifications share this parser for exact, tolerance and one-of checks.
 
+A value predicate (`equals`, `within`, `matches-one-of`) accepts an answer written as
+`<variable> = value` as well as the bare value, since students and authoring models alike end their
+working with `y = 3` rather than `3`. The line as written is tried first, so nothing that matched
+before stops matching, and only a bare variable on the left is reduced — an equation carrying real
+content, such as `2y = 6` or `6+4=10`, keeps its meaning. Waypoints are excluded entirely: there the
+equation is the content.
+
 A payload with an unrecognised version, or a recognised-but-unsupported `kind` (currently
 `scaffold`), renders `UnknownItemFace`: the readable `front` fallback and a plain notice that this
 version can't study it, with no submit, reveal, self-grading or keyboard grading path. The central
@@ -1227,7 +1234,14 @@ never need to edit the interchange JSON directly.
 Staged and accepted items can also copy a revision prompt containing the current item, mark scheme,
 first failing fixture, validation feedback and a tutor-written complaint. The model is instructed to
 return one revised item in the ordinary batch delimiters, so the result goes back through the same
-staging validation rather than bypassing it.
+staging validation rather than bypassing it. The reply is pasted back beside the prompt control and
+replaces only that item, leaving every other item and every accept/reject decision alone. A
+batch-level control does the same for all failing items at once: one prompt carries each of them
+with its validation errors, and the reply is matched back by position, which is what the prompt asks
+for and all a bare item carries. A count mismatch applies nothing rather than pairing the wrong
+items. Revision replies are read more leniently than a first batch — a bare item, a bare array, a
+missing wrapper or a missing closing delimiter are all accepted, because the tutor already knows how
+many items they asked about — but every item still passes through the unchanged staging validation.
 Acceptance calls the ordinary `createLessonCard` path with the compiled structured payload; staging
 has no separate database write path.
 The MCP `lacuna.create_card` and `lacuna.update_card` tools accept the same numeric and working
