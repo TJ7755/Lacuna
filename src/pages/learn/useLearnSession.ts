@@ -120,6 +120,13 @@ export function typingExpectedAnswer(card: Pick<Card, 'type' | 'front' | 'back'>
   return card.type === 'cloze' ? clozeAnswerText(card.front) : card.back;
 }
 
+function hasMachineMarkedPayload(card: Pick<Card, 'payload'> | null): boolean {
+  return (
+    card?.payload?.v === CURRENT_ITEM_PAYLOAD_VERSION &&
+    (card.payload.kind === 'numeric' || card.payload.kind === 'working')
+  );
+}
+
 /** What undoing the most recent answer needs to restore (DB + in-session state). */
 interface AnswerSnapshot {
   undo: ReviewUndo;
@@ -233,9 +240,7 @@ export function useLearnSession({
   // firstWordsHint.ts for the pure hint builders.
   const [hintStep, setHintStep] = useState<0 | 1 | 2>(0);
   const isTypingCard = typingSetting === 'type' && current !== null && isTypingEligible(current);
-  const isMachineMarkedCard =
-    current?.payload?.v === CURRENT_ITEM_PAYLOAD_VERSION &&
-    (current.payload.kind === 'numeric' || current.payload.kind === 'working');
+  const isMachineMarkedCard = hasMachineMarkedPayload(current);
   // A payload the current client cannot render as a study face at all: present but
   // not machine-markable (unknown v, or a known-but-unbuilt kind such as `scaffold`).
   // Renders read-only via UnknownItemFace — never a wrong FSRS mark (next_plan.md
@@ -1233,7 +1238,8 @@ export function useLearnSession({
       if (
         (!machineMarked && phaseNow !== 'answer') ||
         (machineMarked && phaseNow !== 'question') ||
-        !cardNow
+        !cardNow ||
+        (cardNow.payload !== undefined && !hasMachineMarkedPayload(cardNow))
       ) {
         submitting.current = false;
         return;
