@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { cardSchedulingHorizon, schedulingHorizon, MAINTENANCE_HORIZON_DAYS } from './horizon';
+import {
+  cardSchedulingHorizon,
+  schedulingHorizon,
+  MAINTENANCE_HORIZON_DAYS,
+} from './horizon';
 import { studyPool } from './eligibility';
 import { progressValue } from './objective';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from './params';
@@ -88,7 +92,7 @@ describe('cardSchedulingHorizon', () => {
           },
         ],
       ]),
-      courseAssessments: [],
+      courseExamDates: [],
     };
 
     expect(cardSchedulingHorizon(card, deck, examDateContext, now)).toBe(lessonExamDate);
@@ -114,7 +118,7 @@ describe('cardSchedulingHorizon', () => {
           },
         ],
       ]),
-      courseAssessments: [],
+      courseExamDates: [],
     };
 
     expect(cardSchedulingHorizon(card, deck, examDateContext, now)).toBe(

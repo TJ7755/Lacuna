@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { CardContent } from './CardContent';
 import { Button } from '../ui/Button';
-import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
 import { hapticLight, hapticMedium } from '../../utils/haptic';
 import { UnifiedImportPanel } from '../import/UnifiedImportPanel';
@@ -686,17 +685,17 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
                 <div className="border-t border-line pt-3">
                   <label className="block text-sm text-ink-soft">
                     Move {selected.size} card{selected.size === 1 ? '' : 's'} to
-                    <Select
+                    <select
                       value={moveTarget}
                       onChange={(e) => setMoveTarget(e.target.value)}
-                      className="mt-2 w-full"
+                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
                     >
                       {otherDecks.map((d) => (
                         <option key={d.id} value={d.id}>
                           {d.name}
                         </option>
                       ))}
-                    </Select>
+                    </select>
                   </label>
                   <div className="mt-4 flex justify-end gap-2">
                     <Button size="sm" variant="ghost" onClick={() => setMoving(false)}>
@@ -729,10 +728,10 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
                 <div className="border-t border-line pt-3">
                   <label className="block text-sm text-ink-soft">
                     Assign {selected.size} card{selected.size === 1 ? '' : 's'} to
-                    <Select
+                    <select
                       value={assignTarget}
                       onChange={(e) => setAssignTarget(e.target.value)}
-                      className="mt-2 w-full"
+                      className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
                     >
                       <option value="">Unassigned</option>
                       {assignableLessons.map((l) => (
@@ -740,7 +739,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
                           {l.name}
                         </option>
                       ))}
-                    </Select>
+                    </select>
                   </label>
                   <div className="mt-4 flex justify-end gap-2">
                     <Button size="sm" variant="ghost" onClick={() => setAssigningLesson(false)}>

@@ -7,7 +7,6 @@ import { AnimatePresence } from 'motion/react';
 import { CardList } from './CardList';
 import { LinkCardsDialog } from './LinkCardsDialog';
 import { Button } from '../ui/Button';
-import { ConfirmInline } from '../ui/ConfirmInline';
 import { PlusIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
 import {
@@ -23,19 +22,15 @@ import type { Card, Deck } from '../../db/types';
 interface LessonCardsSectionProps {
   courseId: string;
   lessonId: string;
-  /** Used only to label the back-link when the sequence editor is opened from here
-   *  (see the onEditSequence origin override below). */
-  lessonName: string;
   lessonCards: Card[];
   lessonDeck: Deck | undefined;
-  onNavigate: (path: string, options?: { state?: unknown }) => void;
+  onNavigate: (path: string) => void;
   className?: string;
 }
 
 export function LessonCardsSection({
   courseId,
   lessonId,
-  lessonName,
   lessonCards,
   lessonDeck,
   onNavigate,
@@ -43,9 +38,6 @@ export function LessonCardsSection({
 }: LessonCardsSectionProps) {
   const { notify } = useToast();
   const [linking, setLinking] = useState(false);
-  // A card pending unlink confirmation — only set when it has lesson-specific
-  // teaching progress that unlinking would reset (see handleUnlink below).
-  const [pendingUnlink, setPendingUnlink] = useState<Card | null>(null);
   const sequences = useSequences(courseId);
   const courseCards = useCourseCards(courseId);
   const lessons = useLessons(courseId);
@@ -60,21 +52,19 @@ export function LessonCardsSection({
 
   async function handleUnlink(card: Card) {
     const exposure = await db.lessonCardExposures.get([lessonId, card.id]);
-    if (exposure) {
-      setPendingUnlink(card);
+    if (
+      exposure &&
+      !window.confirm(
+        'Remove this card from the lesson? Its teaching progress in this lesson will be reset.',
+      )
+    ) {
       return;
     }
-    await doUnlink(card);
-  }
-
-  async function doUnlink(card: Card) {
     try {
       await unlinkCardFromLesson(lessonId, card.id);
       notify('Card removed from this lesson.', 'neutral');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not remove the card.', 'negative');
-    } finally {
-      setPendingUnlink(null);
     }
   }
 
@@ -83,18 +73,6 @@ export function LessonCardsSection({
       <h2 className="mb-4 font-display text-xl text-ink-soft">
         Cards <span className="text-ink-faint">({lessonCards.length})</span>
       </h2>
-
-      {pendingUnlink && (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2.5">
-          <span className="text-sm text-ink-soft">Remove card from this lesson?</span>
-          <ConfirmInline
-            message="Its teaching progress here will be reset."
-            confirmLabel="Remove"
-            onConfirm={() => void doUnlink(pendingUnlink)}
-            onCancel={() => setPendingUnlink(null)}
-          />
-        </div>
-      )}
 
       {lessonCards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-12 text-center">
@@ -141,14 +119,7 @@ export function LessonCardsSection({
           linkedCardIds={linkedCardIds}
           onUnlinkCard={(card) => void handleUnlink(card)}
           sequences={sequences}
-          onEditSequence={(sequenceId) =>
-            // Sequence editing has no lesson-scoped edit route, so without an
-            // explicit origin the editor would default to the Question bank —
-            // override it to return here instead.
-            onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`, {
-              state: { origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName } },
-            })
-          }
+          onEditSequence={(sequenceId) => onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
         />
       )}
       <AnimatePresence>

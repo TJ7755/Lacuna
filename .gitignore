@@ -6,10 +6,6 @@ dist/
 .DS_Store
 .npmrc
 
-# Agent mailbox runtime files
-.agent-mail/*
-!.agent-mail/README.md
-
 # Electron
 /release/
 electron/dist-electron/
@@ -20,4 +16,3 @@ electron/dist-electron/
 !.dev.vars.example
 .env*
 !.env.example
-!.agent-mail/bin/

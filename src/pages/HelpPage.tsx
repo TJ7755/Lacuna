@@ -47,15 +47,15 @@ function SectionCard({
   icon: React.ReactNode;
   label: string;
   children: React.ReactNode;
-  accent?: 'accent' | 'positive' | 'negative' | 'warning';
+  accent?: 'accent' | 'positive' | 'negative' | 'amber';
 }) {
   const iconBgClass =
     accent === 'positive'
       ? 'bg-positive/10 text-positive'
       : accent === 'negative'
         ? 'bg-negative/10 text-negative'
-        : accent === 'warning'
-          ? 'bg-warning/10 text-warning-fg'
+        : accent === 'amber'
+          ? 'bg-amber-500/10 text-amber-600'
           : 'bg-accent/10 text-accent';
 
   return (
@@ -256,8 +256,9 @@ export function HelpPage() {
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">The course path</h3>
                 <p className="text-sm text-ink-soft">
-                  The path is an ordered sequence of lessons. Completing a lesson unlocks the
-                  next one. Alongside lessons, the path can show:
+                  The path is an ordered sequence of lessons. Course settings determine whether
+                  every lesson is open, each lesson unlocks after the previous one is completed,
+                  or lessons unlock on scheduled dates. Alongside lessons, the path can show:
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
                   <li>
@@ -295,7 +296,9 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Course settings</h3>
                 <p className="text-sm text-ink-soft">
                   Course Settings holds the exam date(s), study objective, scheduling
-                  optimisation, import/export and course deletion. Open it from the path page.
+                  limits, lesson behaviour, practice configuration, optimisation and course
+                  deletion. Open it from the path page. Import and export live in global
+                  Settings.
                 </p>
               </div>
             </div>
@@ -311,7 +314,7 @@ export function HelpPage() {
             <p className="text-base text-ink-soft">
               Lacuna offers several ways to study your cards. Each mode is designed for a
               different purpose. You can start a session from a lesson, from the course path,
-              or from the global &lsquo;Today&rsquo; review across every course.
+              or by choosing a course from Study today.
             </p>
             <div className="grid gap-3">
               <ModeCard
@@ -324,16 +327,9 @@ export function HelpPage() {
               <ModeCard
                 title="Simple learn"
                 description="A stripped-back mode with no algorithm. You simply mark each card as correct or incorrect, and it loops until you have answered every card correctly."
-                whatItDoes="Shows every card in the course. If you answer correctly, the card is marked as mastered. If you answer incorrectly, the card is sent to the back of the queue and reappears later. The session ends only when every card has been marked correct."
+                whatItDoes="Shows every card in the selected lesson or session. If you answer correctly, the card is marked as mastered. If you answer incorrectly, the card is sent to the back of the queue and reappears later. The session ends only when every card has been marked correct."
                 whenToUse="Use this when you want to learn a set of cards for the first time, or when you want to drill through every card without any algorithmic scheduling."
                 tip="The progress bar at the top shows how many cards are wrong, remaining, and mastered. Try to turn them all correct before you finish."
-              />
-              <ModeCard
-                title="Assessment revision"
-                description="A time-budgeted revision plan for one named checkpoint or final assessment."
-                whatItDoes="Uses the assessment’s covered lessons, removes excluded and unavailable cards, and limits revision to material you have reached and studied. Plans persist by day, can be left and resumed, and never complete a curriculum Practice milestone."
-                whenToUse="Choose it from a relevant Practice node, checkpoint details, or Study now when an upcoming assessment overlaps material you have reached."
-                tip="Set today’s time and edit future days before starting. The plan estimates each review’s assessment-day value and reports what was covered, improved, parked or not reached. If the model is unavailable, it says so and uses ordinary Practice ordering."
               />
             </div>
           </div>
@@ -846,12 +842,6 @@ export function HelpPage() {
                 <Button variant="secondary" size="sm">
                   <ChartIcon width={16} height={16} />
                   Analytics
-                </Button>
-              </Link>
-              <Link to="/method">
-                <Button variant="secondary" size="sm">
-                  <SparklesIcon width={16} height={16} />
-                  How the scheduler works
                 </Button>
               </Link>
             </div>

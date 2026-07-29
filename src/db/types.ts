@@ -2,7 +2,6 @@
 // All persistence is via IndexedDB (see schema.ts). British English throughout.
 
 import type { CardFilter } from './search';
-import type { CardUpdate, LessonUpdate, LineageConflict, NoteUpdate } from './lineageDiff';
 
 export type CardType = 'front_back' | 'cloze' | 'basic_reversed';
 
@@ -50,29 +49,10 @@ export interface FsrsParameters {
  */
 export type ExamObjective = 'expectedMarks' | 'securedTopics';
 
-/** The study context that produced a review event. */
-export type ReviewSessionKind =
-  | 'deck'
-  | 'lesson'
-  | 'practice'
-  | 'assessment-revision'
-  | 'revision-plan';
-
 /** A single review event appended to a card's history. */
 export interface ReviewLog {
-  /** Stable identity for this attempt. Optional only for history written before schema v16. */
-  eventId?: string;
-  /** Stable identity shared by attempts in the same study session. */
-  sessionId?: string;
-  /** The study context that produced the attempt. */
-  sessionKind?: ReviewSessionKind;
-  /** Optional revision provenance populated by the revision-plan flow. */
-  revisionPlanId?: string;
-  revisionWindowId?: string;
   timestamp: number;
   grade: Grade;
-  /** Explicit outcome retained independently of the scheduler grade. */
-  correct?: boolean;
   /** Measured response time in seconds (time from reveal to "Show Answer"). */
   responseTimeSec: number;
   /** Whether the user lost focus while the answer was pending (report only; no grade effect). */
@@ -91,69 +71,6 @@ export interface ReviewLog {
   difficultyAfter: number;
   /** Retrievability at the moment of review (null on a first review). */
   retrievabilityAtReview: number | null;
-  /**
-   * Marks earned/available for a machine-verified `numeric`/`working` item response
-   * (Arc 11; next_plan.md §11.7). Optional and additive, matching the `hintUsed`/
-   * `retrievabilityAtReview` precedent above — absent for classic-type reviews and
-   * for history written before this field existed. The grade mapping that derives
-   * `grade` from these figures, and their test coverage, is Arc 11 slice-1 Task 4's
-   * to build; this field is declared here only so Task 4 does not need to reopen
-   * this interface.
-   */
-  marksEarned?: number;
-  /** Total marks available for the response this log entry records. See `marksEarned`. */
-  marksAvailable?: number;
-  /**
-   * Per-line verdicts for a `working` item response, produced by `verifyWorkingLines`
-   * (Arc 11 slice-1 Task 2, `src/items/verify.ts`) and persisted verbatim so the
-   * checker's behaviour is auditable and reproducible from the logged seed. See
-   * `LineVerdict`.
-   */
-  lineVerdicts?: LineVerdict[];
-  /** Learner-raised checker disputes attached to this machine-marked attempt. */
-  checkerDisputes?: CheckerDisputeReport[];
-}
-
-/**
- * The verdict for one student-written line within a `working` item, as produced by
- * `verifyWorkingLines` (Arc 11 slice-1 Task 2, `src/items/verify.ts`) and persisted
- * verbatim on `ReviewLog.lineVerdicts` (next_plan.md §11.7). Declared here, ahead of
- * `verify.ts`'s implementation, so `ReviewLog`'s shape is frozen from Task 1 onward;
- * `verify.ts` is expected to produce values of this exact shape rather than a second,
- * incompatible one.
- */
-export interface LineVerdict {
-  /** The student's line, verbatim. */
-  studentLine: string;
-  /** Index into the matched scheme's `MarkSchemeLine[]`, or null if no line matched. */
-  matchedLineIndex: number | null;
-  /** Marks earned for this line (0 when unmatched). */
-  marksEarned: number;
-  /** Seeds used by random-equivalence checks while reaching this verdict. */
-  checkerSeeds?: string[];
-  /**
-   * Set when the checker could not reach a verdict at all — a scheme expression that
-   * no longer parses, or a comparison whose domain defeated the sampler. The line earns
-   * no marks, but it is not a wrong answer and must not be presented as one. Absent on
-   * every verdict recorded before this distinction existed.
-   */
-  undetermined?: true;
-}
-
-/** A reproducible learner report that an automatic checker verdict was wrong. */
-export interface CheckerDisputeReport {
-  reportedAt: number;
-  question: string;
-  studentLine: string;
-  verdict: {
-    correct: boolean;
-    marksEarned: number;
-    matchedLineIndex?: number | null;
-    /** Mirrors `LineVerdict.undetermined`: the checker abstained rather than said wrong. */
-    undetermined?: true;
-  };
-  /** Empty for deterministic numeric/predicate checks; populated for random equivalence. */
-  checkerSeeds: string[];
 }
 
 /**
@@ -293,15 +210,16 @@ export type UnlockMode = 'linear' | 'semi-linear' | 'open';
  * Deck owned plus course-path configuration. The FSRS engine schedules a course's
  * cards against the nearest applicable exam date (see src/fsrs/examDate.ts).
  */
-export interface CourseRecord {
+export interface Course {
   id: string;
   name: string;
   description: string;
-  examBoard?: string;
-  specification?: string;
   createdAt: number;
   colour?: string;
   // Scheduling (inherited from the old Deck).
+  /** Primary exam date/time as epoch ms in UTC. Fallback when no nearer date applies. */
+  examDate: number;
+  timeZone?: string;
   /** Set true once the exam-date prompt has been answered or dismissed. */
   examDatePromptDismissed?: boolean;
   fsrsVersion: number;
@@ -337,183 +255,24 @@ export interface CourseRecord {
    * for whether edit mode is available at all.
    */
   lessonViewMode?: 'study' | 'edit';
-  /**
-   * Present iff this course is a distributed copy imported from a teacher's
-   * published lineage (Arc 7 §7.2). Absent for every course authored locally
-   * or imported before this arc, which is exactly today's default and needs
-   * no migration.
-   */
-  distributedCopy?: CourseDistributedCopy;
-  /**
-   * Teacher-side publish state: present once the teacher has clicked Publish
-   * at least once. Distinct from `distributedCopy` — this course is the
-   * lineage's origin, not a copy of it (Arc 7 §7.2).
-   */
-  distribution?: { lineageId: string; revision: number; publishedAt: number };
-}
-
-/** A student's distributed-copy tracking on an imported `Course` (Arc 7 §7.2). */
-export interface CourseDistributedCopy {
-  /** Matches the teacher's `Course.distribution.lineageId`. */
-  lineageId: string;
-  /** Last-imported/merged revision number. */
-  revision: number;
-  /** True unless the student has detached from the lineage. */
-  locked: boolean;
-  /** Whether non-conflicting updates apply automatically on re-import. Default false. */
-  autoAcceptUpdates: boolean;
-  /** Optional "shared by" display string, mirrors `by` in `SharePayloadV2`. */
-  sourceLabel?: string;
 }
 
 /**
- * Hydrated course view used by existing scheduling consumers during the assessment
- * migration. The compatibility date fields are derived from the course's one final
- * assessment and are never persisted on the course row.
+ * A dated assessment within a course: an extra exam date or a checkpoint
+ * (mini-exam). The scheduler always targets the nearest applicable date.
+ * A checkpoint is simply a CourseExamDate with a lesson scope.
  */
-export interface Course extends CourseRecord {
-  readonly examDate: number;
-  readonly timeZone?: string;
-}
-
-export type AssessmentKind = 'final' | 'checkpoint';
-
-interface CourseAssessmentBase {
+export interface CourseExamDate {
   id: string;
   courseId: string;
+  /** e.g. "Mid-term", "Mock exam", "Final". */
   name: string;
-  kind: AssessmentKind;
-  /** Assessment date/time as epoch milliseconds in UTC. */
+  /** Required: a checkpoint without a date is not a checkpoint. Epoch ms, UTC. */
   examDate: number;
   timeZone?: string;
-  /** Stable path anchor, independent of which lessons the assessment covers. */
-  afterLessonId: string | null;
-  /** Cards omitted from this assessment without changing lesson membership. */
-  excludedCardIds: string[];
-  /** Set when automatic repair after lesson deletion needs an author's review. */
-  needsAuthorConfirmation?: boolean;
-  createdAt: number;
-}
-
-/**
- * A final assessment or intermediate checkpoint. Prefix coverage expands through
- * `afterLessonId`; custom coverage stores an explicit, non-contiguous lesson set.
- */
-export type CourseAssessment = CourseAssessmentBase &
-  ({ coverageMode: 'prefix'; lessonIds?: never } | { coverageMode: 'custom'; lessonIds: string[] });
-
-export type RevisionProjection =
-  | {
-      projectionMode: 'memory-model';
-      memoryModelVersion: string;
-    }
-  | {
-      projectionMode: 'fsrs-6-practice-fallback';
-      memoryModelVersion: 'fsrs-6';
-      fallbackReason: 'missing' | 'corrupt' | 'unsupported';
-    };
-
-export type RevisionReplanReason =
-  | 'assessment-coverage-changed'
-  | 'assessment-deadline-changed'
-  | 'assessment-time-zone-changed'
-  | 'memory-model-changed'
-  | 'reached-lessons-changed'
-  | 'card-exposure-changed'
-  | 'card-availability-changed'
-  | 'review-evidence-changed';
-
-export interface RevisionPlanInputSnapshot {
-  coverageVersion: string;
-  deadlineAt: number;
-  timeZone?: string;
-  reachedLessonIds: string[];
-  exposureVersion: string;
-  availabilityVersion: string;
-  reviewEvidenceVersion: string;
-  projection: RevisionProjection;
-}
-
-export interface RevisionPlanScopeSnapshot {
-  coveredLessonIds: string[];
-  excludedCardIds: string[];
-  eligibleCardIds: string[];
-  unavailableCardIds: string[];
-  unreachedLessonIds: string[];
-  untaughtLessonIds: string[];
-}
-
-export interface RevisionPlanCardState {
-  cardId: string;
-  status: 'eligible' | 'unavailable';
-}
-
-export interface RevisionPlanWindow {
-  id: string;
-  day: string;
-  budgetMinutes: number;
-  status: 'scheduled' | 'active' | 'completed';
-  planRevision: number;
-  startedAt?: number;
-  completedAt?: number;
-}
-
-export interface RevisionPlanSession {
-  id: string;
-  windowId: string;
-  startedAt: number;
-  completedAt: number;
-  cardIds: string[];
-  reviewEventIds: string[];
-  improvedCardIds?: string[];
-  parkedCardIds?: string[];
-}
-
-export interface RevisionPlanReplan {
-  id: string;
-  revision: number;
-  reasons: RevisionReplanReason[];
-  explanation: string;
-  appliedAt: number;
-}
-
-export interface RevisionPlanPendingReplan {
-  reasons: RevisionReplanReason[];
-  requestedAt: number;
-  input: RevisionPlanInputSnapshot;
-  scope: RevisionPlanScopeSnapshot;
-  cardStates: RevisionPlanCardState[];
-}
-
-/** One durable multi-day revision plan. Card queues are deliberately never persisted. */
-export interface RevisionPlan {
-  id: string;
-  assessmentId: string;
-  courseId: string;
-  status: 'active' | 'completed';
-  revision: number;
-  input: RevisionPlanInputSnapshot;
-  scope: RevisionPlanScopeSnapshot;
-  cardStates: RevisionPlanCardState[];
-  windows: RevisionPlanWindow[];
-  completedSessions: RevisionPlanSession[];
-  replans: RevisionPlanReplan[];
-  pendingReplan?: RevisionPlanPendingReplan;
-  createdAt: number;
-  updatedAt: number;
-}
-
-/**
- * Temporary v6-backup projection for checkpoint rows. The live database never
- * stores this shape; backup migration moves it into CourseAssessment.
- */
-export interface AssessmentDateCompatibility {
-  id: string;
-  courseId: string;
-  name: string;
-  examDate: number;
-  timeZone?: string;
+  /** Lessons whose cards are in scope. Undefined = all lessons so far. */
   lessonIds?: string[];
+  /** Card-level exclusions within the scoped lessons; excluded cards fall back to the next date. */
   excludedCardIds?: string[];
   createdAt: number;
 }
@@ -696,98 +455,6 @@ export interface PracticeMilestone {
   completedAt?: number;
 }
 
-/**
- * One scored line within a mark scheme (`ItemPayload` kind `'working'`), and — once
- * `scaffold` is built — expected to double as the per-hole check there too, rather
- * than inventing a second grammar (see the deferral note on `ItemPayload`).
- * `kind: 'waypoint'` checks equivalence of a checkpoint expression (order-tolerant:
- * a student's lines are matched against outstanding waypoints, not lockstep);
- * `kind: 'predicate'` checks a named predicate against the student's line. See
- * next_plan.md §11.4/§11.5.
- */
-export type MarkSchemeLine =
-  | { marks: number; label?: string; kind: 'waypoint'; expression: string }
-  | {
-      marks: number;
-      label?: string;
-      kind: 'predicate';
-      /** v1 vocabulary only (next_plan.md §11.5/§11.9). */
-      predicate: 'equals' | 'within' | 'matches-one-of' | 'contains';
-      /** Predicate arguments (e.g. the tolerance for `within`, the candidate set for `matches-one-of`). */
-      args?: string[];
-    };
-
-/**
- * A numeric answer specification for `ItemPayload` kind `'numeric'`: exact value,
- * value-with-tolerance, or match-one-of. See next_plan.md §11.2/§11.4.
- */
-export type NumericAnswerSpec =
-  | { kind: 'exact'; value: string }
-  | { kind: 'within'; value: string; tolerance: number }
-  | { kind: 'matches-one-of'; values: string[] };
-
-/**
- * A pinned sample answer used by the tutor's test harness (next_plan.md §11.6) to
- * regression-test a mark scheme or numeric spec on every edit. Fixtures travel in
- * the payload so a shared item carries its own tests.
- */
-export interface ItemFixture {
-  id: string;
-  /**
-   * The student answer under test: a single string for `numeric`, or one entry per
-   * working line for `working`. Kept as a union here rather than narrowed to one
-   * shape, since the exact representation `verifyWorkingLines` wants is Arc 11
-   * slice-1 Task 2's to finalise, not this task's.
-   */
-  studentAnswer: string | string[];
-  expectedMarks: number;
-  note?: string;
-}
-
-/**
- * The current `ItemPayload.v`. Single source of truth for "known version" checks at
- * study time (`useLearnSession`'s `hasMachineMarkedPayload`) and at share/backup
- * validation time (`db/share.ts`'s `KnownItemPayloadSchema`) — see next_plan.md
- * §11.2 rule 3.
- */
-export const CURRENT_ITEM_PAYLOAD_VERSION = 1 as const;
-
-/**
- * Structured content for a practice item's kind, layered on top of `Card.front`
- * (which remains the Markdown question prompt, and doubles as the plain-text
- * fallback rendering for clients that don't understand the payload — next_plan.md
- * §11.2 rule 1: no smuggling, structured content never lives in `front`). Absent on
- * every pre-Arc-11 card and on the four classic `CardType`s. Versioned independently
- * of the Dexie schema (`v`) so share codes and backups can validate
- * forward-compatibly: an unknown `v` or `kind` must render read-only with the
- * `front` fallback, never crash and never mis-mark (next_plan.md §11.2 rule 3; the
- * fallback itself is `UnknownItemFace`).
- *
- * `scaffold` is declared but not built in Arc 11 slice 1 (deferred — see
- * `.agent-mail/arc11-slice1-plan.md`'s "Deferrals" section). Its eventual payload
- * is expected to reuse `MarkSchemeLine` per hole rather than invent a second
- * grammar, so the slot is reserved now instead of this union being reopened later.
- */
-export type ItemPayload =
-  | {
-      v: typeof CURRENT_ITEM_PAYLOAD_VERSION;
-      kind: 'numeric';
-      answer: NumericAnswerSpec;
-      fixtures?: ItemFixture[];
-    }
-  | {
-      v: typeof CURRENT_ITEM_PAYLOAD_VERSION;
-      kind: 'working';
-      scheme: MarkSchemeLine[];
-      fixtures?: ItemFixture[];
-    }
-  | {
-      v: typeof CURRENT_ITEM_PAYLOAD_VERSION;
-      kind: 'scaffold';
-      /* Reserved: not built in Arc 11 slice 1. See next_plan.md §11.2 and
-       * `.agent-mail/arc11-slice1-plan.md`'s deferrals section. */
-    };
-
 export interface Card {
   id: string;
   deckId: string;
@@ -807,13 +474,6 @@ export interface Card {
   front: string;
   /** Markdown source for the answer side. Unused (empty) for cloze cards. */
   back: string;
-  /**
-   * Per-type structured content for practice item kinds (numeric/scaffold/working;
-   * Arc 11). Absent on every pre-Arc-11 card and on the four classic `CardType`s.
-   * Unindexed and optional, so no Dexie schema version bump is needed to add it —
-   * see `ItemPayload`'s doc comment and next_plan.md §11.2.
-   */
-  payload?: ItemPayload;
   /** FSRS stability in days (interval at which R = 0.90). Null until first review. */
   stability: number | null;
   /** FSRS difficulty in [1, 10]. Null until first review. */
@@ -851,11 +511,6 @@ export interface Card {
 /** A snapshot of a deck's predicted exam-day retrievability, written per answered card. */
 export interface SessionHistoryEntry {
   id?: number;
-  /** Links this aggregate to the ReviewLog without relying on the auto-increment id. */
-  eventId?: string;
-  sessionId?: string;
-  revisionPlanId?: string;
-  revisionWindowId?: string;
   timestamp: number;
   deckId: string;
   /** The Course this entry belongs to, once sessions are course-scoped. */
@@ -934,7 +589,7 @@ export interface BackupFile {
   userPerformance: UserPerformance[];
   folders?: Folder[];
   // Course architecture tables. Optional so older backups still import cleanly.
-  courses?: CourseRecord[];
+  courses?: Course[];
   lessons?: Lesson[];
   notes?: Note[];
   lessonCards?: LessonCardLink[];
@@ -942,120 +597,7 @@ export interface BackupFile {
   lessonCompletions?: LessonCompletion[];
   practiceNodes?: PracticeNode[];
   practiceMilestones?: PracticeMilestone[];
-  /** Full assessment records in current backups. */
-  courseAssessments?: CourseAssessment[];
-  revisionPlans?: RevisionPlan[];
-  /** Legacy v6-and-earlier import boundary. Never emitted by current exports. */
-  courseExamDates?: AssessmentDateCompatibility[];
+  courseExamDates?: CourseExamDate[];
   // Overlapping-cloze sequences. Optional so older backups still import cleanly.
   sequences?: Sequence[];
-}
-
-/**
- * Adopted-id membership registry for one distributed course lineage (Arc 7 §7.2).
- * Not a translation table — adopted ids and local ids are the same value, since a
- * student's merge import adopts a teacher's originating ids directly rather than
- * generating fresh local ones. Created on first import of a lineage and consulted
- * (never mutated except to add newly-created entities) by every subsequent merge.
- */
-export interface LineageIdMapping {
-  /** = lineageId; one row per distributed course. */
-  id: string;
-  /** The local `Course` this mapping belongs to. */
-  courseId: string;
-  /** Originating lesson ids already adopted as local ids. */
-  lessonIds: string[];
-  /** Originating note ids already adopted as local ids. */
-  noteIds: string[];
-  /** Originating card ids already adopted as local ids. */
-  cardIds: string[];
-  /** Originating sequence ids already adopted as local ids. */
-  sequenceIds: string[];
-  /**
-   * Last-merged content snapshot for every adopted lesson/note/card, keyed by local
-   * (= originating) id. `src/db/mergeImport.ts` compares an entity's *current* local
-   * content against its snapshot here to detect a student edit since the last merge
-   * (Arc 7 §7.10's third risk: snapshot comparison over a separate dirty flag, so
-   * there is no second field that can drift out of sync with reality). Populated with
-   * the just-applied content on every successful first import or merge — including for
-   * entities the student's own edit left untouched, since "untouched" is exactly what a
-   * matching snapshot records. Extends the v18 shape in place (Lacuna is pre-release,
-   * see next_plan.md §7 Task 5 notes) rather than a schema bump, since no index is
-   * needed for these fields.
-   */
-  lessonSnapshots: Record<string, LineageLessonSnapshot>;
-  noteSnapshots: Record<string, LineageNoteSnapshot>;
-  cardSnapshots: Record<string, LineageCardSnapshot>;
-}
-
-/** The subset of a Lesson's fields `lineageDiff.ts` diffs on, captured for student-edit detection. */
-export interface LineageLessonSnapshot {
-  name: string;
-  description?: string;
-  isExtension: boolean;
-  releaseDate?: number;
-  examDate?: number;
-  timeZone?: string;
-  sessionFilter?: 'new' | 'due' | 'mixed';
-  orderIndex: number;
-}
-
-/** The subset of a Note's fields `lineageDiff.ts` diffs on. */
-export interface LineageNoteSnapshot {
-  name: string;
-  content: string;
-  orderIndex: number;
-}
-
-/** The subset of a Card's fields `lineageDiff.ts` diffs on — content only, never FSRS fields. */
-export interface LineageCardSnapshot {
-  type: CardType;
-  front: string;
-  back: string;
-  tags?: string[];
-  /** Content only, never FSRS state — same rule as the rest of this snapshot (Arc 11). */
-  payload?: ItemPayload;
-}
-
-/**
- * A queued merge decision awaiting student review (Arc 7 §7.2/§7.5). One row per
- * merge import; a new merge for the same course supersedes rather than appends to
- * the previous pending row, so the table never accumulates a history. The `diff`
- * shape reuses `src/db/lineageDiff.ts`'s update/conflict types directly (Arc 7
- * §7.3) rather than a hand-duplicated `Partial<...>` shape, so the two cannot
- * drift apart; `creates` are never persisted here since `mergeImport.ts` applies
- * them immediately and unconditionally (Arc 7 §7.5 step 2) — the array is always
- * empty when this row is written, but keeps the full entity shape so a future
- * caller is not surprised by a narrower type.
- */
-export interface PendingMergeReview {
-  /** Generated review id (primary key). */
-  id: string;
-  /** The local `Course` this review belongs to. */
-  courseId: string;
-  /** The lineage this merge came from; matches `CourseDistributedCopy.lineageId`. */
-  lineageId: string;
-  /** The incoming revision this diff corresponds to. */
-  revision: number;
-  diff: {
-    creates: { lessons: Lesson[]; notes: Note[]; cards: Card[] };
-    updates: {
-      lessons: LessonUpdate[];
-      notes: NoteUpdate[];
-      cards: CardUpdate[];
-    };
-    removals: { lessonIds: string[]; noteIds: string[]; cardIds: string[] };
-    /**
-     * `LineageConflict` covers a content clash (both sides changed the same entity).
-     * `mergeImport.ts` also queues a second, narrower kind here — a teacher removal of
-     * an entity the student has edited (§7.10's unresolved-in-planning policy: treat as
-     * a conflict, student's copy retained until they accept the removal) — which has no
-     * incoming content to attach, hence `incoming: null` rather than reusing
-     * `LineageConflict`'s non-null `incoming`.
-     */
-    conflicts: Array<
-      LineageConflict | { entityId: string; kind: 'lesson' | 'note' | 'card'; incoming: null }
-    >;
-  };
-  createdAt: number;
 }

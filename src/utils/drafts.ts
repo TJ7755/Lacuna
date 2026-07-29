@@ -1,4 +1,4 @@
-import type { CardType, ItemPayload } from '../db/types';
+import type { CardType } from '../db/types';
 
 const DRAFT_PREFIX = 'lacuna:draft';
 
@@ -7,10 +7,6 @@ export interface DraftData {
   back: string;
   tags: string[];
   type: CardType;
-  itemKind?: 'numeric' | 'working';
-  payload?: ItemPayload;
-  /** Uncompiled working-item source, retained even while a draft contains errors. */
-  workingSource?: string;
   alsoReverse?: boolean;
   timestamp: number;
 }

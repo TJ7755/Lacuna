@@ -125,7 +125,7 @@ export function DashboardMock({ examWeeks = 12, readinessBoost = 0 }: DashboardM
           </text>
 
           {/* Remaining nav */}
-          {['Search', 'Share', 'Analytics', 'Settings'].map((label, i) => (
+          {['Study today', 'Search', 'Analytics', 'Settings'].map((label, i) => (
             <g key={label}>
               <circle
                 cx="34"

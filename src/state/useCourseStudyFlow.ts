@@ -1,13 +1,11 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { buildPath } from '../course/path';
+import { buildPath, nearestExamDate } from '../course/path';
 import { lessonCardMembership } from '../course/studyPools';
-import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
 import {
   buildCourseStudyFlowSnapshot,
   courseMeanReviewSeconds,
@@ -18,7 +16,7 @@ import type {
   Course,
   Lesson,
   Card,
-  CourseAssessment,
+  CourseExamDate,
   LessonCardLink,
   LessonCardExposure,
   LessonCompletion,
@@ -38,7 +36,7 @@ interface CourseStudyFlowRecords {
   course: Course | null;
   lessons: Lesson[];
   cards: Card[];
-  assessments: CourseAssessment[];
+  examDates: CourseExamDate[];
   links: LessonCardLink[];
   exposures: LessonCardExposure[];
   completions: LessonCompletion[];
@@ -58,7 +56,7 @@ export function useCourseStudyFlow(
         course: null,
         lessons: [],
         cards: [],
-        assessments: [],
+        examDates: [],
         links: [],
         exposures: [],
         completions: [],
@@ -67,16 +65,13 @@ export function useCourseStudyFlow(
         performance: [],
       };
     }
-    const [courseRecord, assessments] = await Promise.all([
-      db.courses.get(courseId),
-      db.courseAssessments.where('courseId').equals(courseId).toArray(),
-    ]);
-    if (!courseRecord) {
+    const course = (await db.courses.get(courseId)) ?? null;
+    if (!course) {
       return {
         course: null,
         lessons: [],
         cards: [],
-        assessments: [],
+        examDates: [],
         links: [],
         exposures: [],
         completions: [],
@@ -85,10 +80,10 @@ export function useCourseStudyFlow(
         performance: [],
       };
     }
-    const course = hydrateCourse(courseRecord, finalAssessmentForCourse(courseId, assessments));
-    const [lessons, cards, practiceNodes, milestones] = await Promise.all([
+    const [lessons, cards, examDates, practiceNodes, milestones] = await Promise.all([
       db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
       db.cards.where('courseId').equals(courseId).toArray(),
+      db.courseExamDates.where('courseId').equals(courseId).toArray(),
       db.practiceNodes.where('courseId').equals(courseId).toArray(),
       db.practiceMilestones.where('courseId').equals(courseId).toArray(),
     ]);
@@ -106,7 +101,7 @@ export function useCourseStudyFlow(
       course,
       lessons,
       cards,
-      assessments,
+      examDates,
       links,
       exposures,
       completions,
@@ -126,26 +121,15 @@ export function useCourseStudyFlow(
         lessonCardMembership(lesson.id, records.cards, records.links),
       ]),
     );
-    const currentPractice = currentAssessmentPracticeContext({
-      course: records.course,
-      assessments: records.assessments,
-      lessons: records.lessons,
-      cards: records.cards,
-      links: records.links,
-      exposures: records.exposures,
-      now,
-    });
-    const currentPracticeScope = currentPractice.scope;
-    const reviewDueCount = dueCards(availableCards(currentPracticeScope, now), now).length;
+    const reviewDueCount = dueCards(availableCards(records.cards, now), now).length;
     const meanReviewSeconds = courseMeanReviewSeconds(
       records.cards,
       buildDeckSecondsMap(records.performance),
     );
-    const nearestPracticeAssessmentDate = currentPractice.assessmentOptions[0]?.examDate;
     const nodes = buildPath(
       records.course,
       records.lessons,
-      records.assessments,
+      records.examDates,
       lessonCardsById,
       records.practiceNodes,
       reviewDueCount,
@@ -156,7 +140,6 @@ export function useCourseStudyFlow(
         lessonCompletions: records.completions,
         practiceMilestones: records.milestones,
       },
-      nearestPracticeAssessmentDate,
     );
     const snapshot = buildCourseStudyFlowSnapshot({
       course: records.course,
@@ -164,9 +147,10 @@ export function useCourseStudyFlow(
       cards: records.cards,
       links: records.links,
       exposures: records.exposures,
-      examDateContext: makeExamDateContext(records.course, records.lessons, records.assessments),
+      examDateContext: makeExamDateContext(records.course, records.lessons, records.examDates),
       meanReviewSeconds,
       practiceMilestones: records.milestones,
+      nearestExamDate: nearestExamDate(records.course, records.examDates, now),
       now,
     });
     return {

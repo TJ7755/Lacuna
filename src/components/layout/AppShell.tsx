@@ -15,7 +15,9 @@ const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
 
 export function AppShell() {
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem(COLLAPSE_KEY) === '1',
+  );
 
   // Sync sidebar collapsed state across tabs.
   useEffect(() => {
@@ -120,13 +122,7 @@ export function AppShell() {
       }
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
       const el = e.target as HTMLElement | null;
-      if (
-        el &&
-        (el.tagName === 'INPUT' ||
-          el.tagName === 'TEXTAREA' ||
-          el.tagName === 'SELECT' ||
-          el.isContentEditable)
-      )
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable))
         return;
       if (e.key === '?') {
         e.preventDefault();
@@ -153,117 +149,109 @@ export function AppShell() {
         <Titlebar />
       </div>
       <div ref={shellBodyRef} className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar */}
-        <div className="hidden md:block">
-          <Sidebar
-            collapsed={!wideDesktop || collapsed}
-            onToggleCollapsed={() => setCollapsed((c) => !c)}
-            onOpenPalette={() => setPaletteOpen(true)}
-            collapseControl={wideDesktop}
-          />
-        </div>
+      {/* Desktop sidebar */}
+      <div className="hidden md:block">
+        <Sidebar
+          collapsed={!wideDesktop || collapsed}
+          onToggleCollapsed={() => setCollapsed((c) => !c)}
+          collapseControl={wideDesktop}
+        />
+      </div>
 
-        {/* Mobile drawer */}
-        <AnimatePresence>
-          {mobileOpen && (
-            <motion.div
-              className="fixed inset-0 z-40 md:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                onClick={() => setMobileOpen(false)}
-              />
-              <motion.div
-                ref={mobileDrawerRef}
-                className="absolute inset-y-0 left-0"
-                initial={{ x: -280 }}
-                animate={{ x: 0 }}
-                exit={{ x: -280 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 30 }}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Navigation"
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    e.preventDefault();
-                    setMobileOpen(false);
-                  }
-                }}
-              >
-                <button
-                  type="button"
-                  data-mobile-close
-                  onClick={() => setMobileOpen(false)}
-                  aria-label="Close navigation"
-                  title="Close navigation (Esc)"
-                  className="absolute right-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
-                >
-                  <CloseIcon width={18} height={18} />
-                </button>
-                <Sidebar
-                  collapsed={false}
-                  onToggleCollapsed={() => setMobileOpen(false)}
-                  toggleLabel="Close navigation"
-                  onOpenPalette={() => {
-                    setMobileOpen(false);
-                    setPaletteOpen(true);
-                  }}
-                />
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div
-          ref={appContentRef}
-          aria-hidden={mobileOpen || undefined}
-          className="flex min-w-0 flex-1 flex-col"
-        >
-          {/* Mobile top bar */}
-          <div className="flex items-center gap-3 border-b border-line bg-surface/80 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
-            <button
-              ref={mobileTriggerRef}
-              onClick={() => setMobileOpen(true)}
-              aria-label="Open navigation"
-              className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft hover:bg-ink/5 active:bg-ink/10"
-            >
-              <span className="flex flex-col gap-1">
-                <span className="block h-0.5 w-5 bg-current" />
-                <span className="block h-0.5 w-5 bg-current" />
-                <span className="block h-0.5 w-5 bg-current" />
-              </span>
-            </button>
-            <span className="flex items-center gap-2 font-display text-lg">
-              <LacunaIcon width={18} height={18} className="text-accent" />
-              Lacuna
-            </span>
-          </div>
-
-          <main
-            ref={mainRef}
-            className="min-w-0 flex-1 overflow-y-auto overscroll-y-none"
-            style={{ touchAction: 'pan-y' }}
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            className="fixed inset-0 z-40 md:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
-            <ErrorBoundary label="this page">
-              {/* Each route fades, scales, and lifts in as the previous one settles out,
-                giving navigation a polished sense of place without slowing the user down. */}
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
-                  key={location.pathname}
-                  initial={{ opacity: 0, y: 12, scale: 0.995 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.995 }}
-                  transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  {outlet}
-                </motion.div>
-              </AnimatePresence>
-            </ErrorBoundary>
-          </main>
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.div
+              ref={mobileDrawerRef}
+              className="absolute inset-y-0 left-0"
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation"
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setMobileOpen(false);
+                }
+              }}
+            >
+              <button
+                type="button"
+                data-mobile-close
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close navigation"
+                title="Close navigation (Esc)"
+                className="absolute right-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+              >
+                <CloseIcon width={18} height={18} />
+              </button>
+              <Sidebar
+                collapsed={false}
+                onToggleCollapsed={() => setMobileOpen(false)}
+                toggleLabel="Close navigation"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div
+        ref={appContentRef}
+        aria-hidden={mobileOpen || undefined}
+        className="flex min-w-0 flex-1 flex-col"
+      >
+        {/* Mobile top bar */}
+        <div className="flex items-center gap-3 border-b border-line bg-surface/80 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
+          <button
+            ref={mobileTriggerRef}
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open navigation"
+            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft hover:bg-ink/5 active:bg-ink/10"
+          >
+            <span className="flex flex-col gap-1">
+              <span className="block h-0.5 w-5 bg-current" />
+              <span className="block h-0.5 w-5 bg-current" />
+              <span className="block h-0.5 w-5 bg-current" />
+            </span>
+          </button>
+          <span className="flex items-center gap-2 font-display text-lg">
+            <LacunaIcon width={18} height={18} className="text-accent" />
+            Lacuna
+          </span>
         </div>
+
+        <main ref={mainRef} className="min-w-0 flex-1 overflow-y-auto overscroll-y-none" style={{ touchAction: 'pan-y' }}>
+          <ErrorBoundary label="this page">
+            {/* Each route fades, scales, and lifts in as the previous one settles out,
+                giving navigation a polished sense of place without slowing the user down. */}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 12, scale: 0.995 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.995 }}
+                transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {outlet}
+              </motion.div>
+            </AnimatePresence>
+          </ErrorBoundary>
+        </main>
+      </div>
+
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />

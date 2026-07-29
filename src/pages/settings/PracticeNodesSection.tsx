@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
-import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { useToast } from '../../components/ui/Toast';
 import { TrashIcon, EditIcon, PlusIcon } from '../../components/ui/icons';
 import { useLessons, usePracticeNodes } from '../../state/useCourseData';
@@ -33,7 +32,6 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
   const manualNodes = practiceNodes?.filter((n) => n.type === 'manual');
   const [editingId, setEditingId] = useState<string | 'new' | null>(null);
   const [draft, setDraft] = useState<PracticeNodeDraft>(emptyPracticeNodeDraft());
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   function startAdd() {
     setDraft(emptyPracticeNodeDraft());
@@ -72,14 +70,13 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
     }
   }
 
-  async function remove(id: string) {
+  async function remove(id: string, name: string) {
+    if (!window.confirm(`Delete '${name}'? This cannot be undone.`)) return;
     try {
       await deletePracticeNode(id);
       if (editingId === id) cancel();
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Could not delete the practice node.', 'negative');
-    } finally {
-      setConfirmDeleteId(null);
     }
   }
 
@@ -121,27 +118,17 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
             </div>
           </div>
           <div className="flex shrink-0 gap-1">
-            {confirmDeleteId === node.id ? (
-              <ConfirmInline
-                message="Delete?"
-                onConfirm={() => void remove(node.id)}
-                onCancel={() => setConfirmDeleteId(null)}
-              />
-            ) : (
-              <>
-                <Button variant="ghost" size="sm" onClick={() => startEdit(node.id)} aria-label={`Edit ${node.name}`}>
-                  <EditIcon width={16} height={16} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmDeleteId(node.id)}
-                  aria-label={`Delete ${node.name}`}
-                >
-                  <TrashIcon width={16} height={16} />
-                </Button>
-              </>
-            )}
+            <Button variant="ghost" size="sm" onClick={() => startEdit(node.id)} aria-label={`Edit ${node.name}`}>
+              <EditIcon width={16} height={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void remove(node.id, node.name)}
+              aria-label={`Delete ${node.name}`}
+            >
+              <TrashIcon width={16} height={16} />
+            </Button>
           </div>
         </div>
       ))}

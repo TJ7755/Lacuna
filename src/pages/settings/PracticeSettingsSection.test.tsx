@@ -10,16 +10,12 @@ describe('PracticeSettingsSection', () => {
         onAutoPracticeChange={vi.fn()}
         practiceThresholdMinutesFar="30"
         onPracticeThresholdMinutesFarChange={vi.fn()}
-        onPracticeThresholdMinutesFarBlur={vi.fn()}
         practiceThresholdMinutesNear="15"
         onPracticeThresholdMinutesNearChange={vi.fn()}
-        onPracticeThresholdMinutesNearBlur={vi.fn()}
         practiceUrgentWindowDays="7"
         onPracticeUrgentWindowDaysChange={vi.fn()}
-        onPracticeUrgentWindowDaysBlur={vi.fn()}
         practiceMaxGap="5"
         onPracticeMaxGapChange={vi.fn()}
-        onPracticeMaxGapBlur={vi.fn()}
       />,
     );
     expect(screen.getByText('Auto-practice')).toBeInTheDocument();

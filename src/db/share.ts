@@ -2,7 +2,7 @@
 // single compact, copy-and-paste code, and rebuild it from such a code. A share code
 // carries only the *content* needed to recreate the material (type, front, back, tags
 // — images ride along inside the Markdown as base64 data URIs — plus, for a course,
-// its lessons, notes and assessments) alongside light scheduling metadata (name,
+// its lessons, notes and extra exam dates) alongside light scheduling metadata (name,
 // objective, the date it was created and the date due). It deliberately omits personal
 // scheduling state and review history: sharing is about the material, not one
 // learner's progress.
@@ -26,32 +26,34 @@
 //
 // Payload version (the `v` field, unrelated to the LACn encoding prefix above):
 //   v1 = a flat list of decks (the original shape).
-//   v2 = a single course: course metadata, ordered lessons, cards, assessment scope
-//        references and lesson-card links. PracticeNode remains device-local.
+//   v2 = a single course: course metadata, ordered lessons (each with notes and
+//        cards) and any extra exam dates. Deliberately out of scope for v2:
+//        LessonCardLink (display-only linking) and PracticeNode (practice is a
+//        later phase) — a shared course carries only the taught material.
 
 import { z } from 'zod';
 import { db, makeId } from './schema';
-import { createCards, createCourse, ensureCourseBankDeck, ensureLessonDeck } from './repository';
+import {
+  createCards,
+  createCourse,
+  ensureLessonDeck,
+} from './repository';
 import { clampRequestRetention, defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { emptyPerformance } from '../fsrs/grading';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import type { ParsedCard } from './import';
-import { CURRENT_ITEM_PAYLOAD_VERSION } from './types';
 import type {
   Card,
-  CourseAssessment,
+  CourseExamDate,
   Deck,
   Folder,
-  ItemPayload,
   Lesson,
-  LessonCardLink,
   Note,
   Sequence,
   SequenceItem,
   SequencePresetId,
   UnlockMode,
 } from './types';
-import { courseToRecord, finalAssessmentForCourse } from './assessmentMigration';
 import { stripAssetImages } from './assets';
 import { bytesToBase45, base45ToBytes } from './base45';
 import { buildCourseMigration } from './courseMigration';
@@ -67,86 +69,7 @@ const PREFIX_PLAIN = 'LAC0';
 // Zod runtime schema for share payloads
 // ---------------------------------------------------------------------------
 
-const ItemFixtureSchema = z
-  .object({
-    id: z.string(),
-    studentAnswer: z.union([z.string(), z.array(z.string())]),
-    expectedMarks: z.number(),
-    note: z.string().optional(),
-  })
-  .passthrough();
-
-const NumericAnswerSpecSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('exact'), value: z.string() }).passthrough(),
-  z
-    .object({ kind: z.literal('within'), value: z.string(), tolerance: z.number() })
-    .passthrough(),
-  z.object({ kind: z.literal('matches-one-of'), values: z.array(z.string()) }).passthrough(),
-]);
-
-const MarkSchemeLineSchema = z.discriminatedUnion('kind', [
-  z
-    .object({
-      marks: z.number(),
-      label: z.string().optional(),
-      kind: z.literal('waypoint'),
-      expression: z.string(),
-    })
-    .passthrough(),
-  z
-    .object({
-      marks: z.number(),
-      label: z.string().optional(),
-      kind: z.literal('predicate'),
-      predicate: z.union([
-        z.literal('equals'),
-        z.literal('within'),
-        z.literal('matches-one-of'),
-        z.literal('contains'),
-      ]),
-      args: z.array(z.string()).optional(),
-    })
-    .passthrough(),
-]);
-
-const KnownItemPayloadSchema = z.discriminatedUnion('kind', [
-  z
-    .object({
-      v: z.literal(CURRENT_ITEM_PAYLOAD_VERSION),
-      kind: z.literal('numeric'),
-      answer: NumericAnswerSpecSchema,
-      fixtures: z.array(ItemFixtureSchema).optional(),
-    })
-    .passthrough(),
-  z
-    .object({
-      v: z.literal(CURRENT_ITEM_PAYLOAD_VERSION),
-      kind: z.literal('working'),
-      scheme: z.array(MarkSchemeLineSchema),
-      fixtures: z.array(ItemFixtureSchema).optional(),
-    })
-    .passthrough(),
-  z.object({ v: z.literal(CURRENT_ITEM_PAYLOAD_VERSION), kind: z.literal('scaffold') }).passthrough(),
-]);
-
-const KNOWN_ITEM_KINDS = new Set(['numeric', 'working', 'scaffold']);
-const UnknownItemPayloadSchema = z
-  .object({ v: z.number(), kind: z.string() })
-  .passthrough()
-  .refine(
-    (payload) => payload.v !== CURRENT_ITEM_PAYLOAD_VERSION || !KNOWN_ITEM_KINDS.has(payload.kind),
-    'Known item payloads must match their supported schema.',
-  );
-
-const ShareItemPayloadSchema = z.union([KnownItemPayloadSchema, UnknownItemPayloadSchema]);
-
 const ShareCardSchema = z.object({
-  // Payload-scoped identity used to resolve `links`/exam `x` references within the
-  // same code; always remapped via makeId() on import, never adopted as-is. For a
-  // published (distributed) course this doubles as the originating card id lineage
-  // merges (Arc 7 Task 5) key off — no separate field needed since `id` is already
-  // packed for every course export.
-  id: z.string().optional(),
   k: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
   f: z.string(),
   b: z.string().optional(),
@@ -155,9 +78,6 @@ const ShareCardSchema = z.object({
   // Present iff this card was generated from a sequence item (positional or label,
   // the latter carrying the `::label` suffix, mirroring Card.sequenceItemId).
   si: z.string().optional(),
-  // Structured Arc 11 item content. Known payloads are validated fully; unknown
-  // versions/kinds remain opaque so a newer item can use the read-only fallback.
-  p: ShareItemPayloadSchema.optional(),
 });
 
 const ShareDeckSchema = z.object({
@@ -176,11 +96,6 @@ const ShareNoteSchema = z.object({
   n: z.string(), // name
   c: z.string(), // content
   i: z.literal(1).optional(), // one or more images were replaced by a placeholder
-  // Originating note id, present only when the exporting course has been published
-  // (`li` set at the payload level) — `i` is already taken by the image-omission
-  // flag above, hence `oi` ("originating id") rather than the `i` shorthand used
-  // for lessons below, where no such collision exists.
-  oi: z.string().optional(),
 });
 
 /** A single lesson in a v2 (course) share payload. */
@@ -191,12 +106,8 @@ const ShareLessonSchema = z.object({
   rd: z.number().optional(), // releaseDate
   ed: z.number().optional(), // examDate override
   tz: z.string().optional(), // timeZone (paired with rd/ed)
-  sf: z.union([z.literal('due'), z.literal('mixed')]).optional(), // sessionFilter ('new' is the default, so omitted)
   notes: z.array(ShareNoteSchema),
   cards: z.array(ShareCardSchema),
-  // Originating lesson id, present only when the exporting course has been
-  // published (`li` set at the payload level).
-  i: z.string().optional(),
 });
 
 /** Course metadata in a v2 share payload, mirroring ShareDeck's conventions. */
@@ -212,18 +123,16 @@ const ShareCourseSchema = z.object({
   um: z.union([z.literal('linear'), z.literal('semi-linear'), z.literal('open')]),
 });
 
+/**
+ * An extra CourseExamDate (beyond the course's primary exam date) in a v2 payload.
+ * `excludedCardIds` is deliberately omitted: per-card checkpoint exclusions are a
+ * lossy detail that does not survive a share round-trip.
+ */
 const ShareExamSchema = z.object({
-  id: z.string().optional(),
   n: z.string(), // name
   e: z.number(), // examDate
   tz: z.string().optional(), // timeZone
   ls: z.array(z.number()).optional(), // indices into the payload's lessons array
-  k: z.union([z.literal('f'), z.literal('c')]).optional(),
-  a: z.number().nullable().optional(),
-  m: z.union([z.literal('p'), z.literal('c')]).optional(),
-  x: z.array(z.string()).optional(),
-  ac: z.literal(1).optional(),
-  c: z.number().optional(),
 });
 
 /** A single SequenceItem in a v2 share payload. */
@@ -267,21 +176,14 @@ const SharePayloadV2Schema = z.object({
   course: ShareCourseSchema,
   lessons: z.array(ShareLessonSchema),
   exams: z.array(ShareExamSchema).optional(),
-  bankCards: z.array(ShareCardSchema).optional(),
-  links: z.array(z.object({ l: z.number(), c: z.string() })).optional(),
   // Additive/optional so existing v2 codes without sequences still parse cleanly.
   sequences: z.array(ShareSequenceSchema).optional(),
-  // Present iff the exporting course has published at least once (Course.distribution,
-  // Arc 7 Task 1). `rv` is only ever present alongside `li`.
-  li: z.string().optional(), // lineageId
-  rv: z.number().optional(), // revision
 });
 
 const SharePayloadSchema = z.discriminatedUnion('v', [SharePayloadV1Schema, SharePayloadV2Schema]);
 
 /** A single card in a share payload. `k` is the kind. */
 interface ShareCard {
-  id?: string;
   /**
    * 0 = front/back, 1 = cloze, 2 = reversible front/back pair (expands to two
    * cards). 3 = typing — retired as a card type (see src/state/typingSetting.ts);
@@ -299,8 +201,6 @@ interface ShareCard {
   i?: 1;
   /** Present iff generated from a sequence item; mirrors Card.sequenceItemId. */
   si?: string;
-  /** Structured item content; unknown variants travel opaquely for forward compatibility. */
-  p?: ItemPayload | { v: number; kind: string; [key: string]: unknown };
 }
 
 /** A single deck in a v1 share payload, with compact keys. */
@@ -320,7 +220,6 @@ interface ShareNote {
   n: string; // name
   c: string; // content
   i?: 1; // one or more images were replaced by a placeholder
-  oi?: string; // originating note id, present only when the course has been published
 }
 
 /** A single lesson in a v2 share payload. */
@@ -334,7 +233,6 @@ interface ShareLesson {
   sf?: 'due' | 'mixed'; // sessionFilter ('new' is the default, so omitted)
   notes: ShareNote[];
   cards: ShareCard[];
-  i?: string; // originating lesson id, present only when the course has been published
 }
 
 /** Course metadata in a v2 share payload. */
@@ -350,19 +248,12 @@ interface ShareCourse {
   um: UnlockMode;
 }
 
-/** An assessment in a course share payload. Fields beyond n/e/tz/ls are additive to legacy v2. */
+/** An extra CourseExamDate in a v2 share payload. */
 interface ShareExam {
-  id?: string;
   n: string; // name
   e: number; // examDate
   tz?: string; // timeZone
   ls?: number[]; // indices into the payload's lessons array (scoped lessons)
-  k?: 'f' | 'c';
-  a?: number | null;
-  m?: 'p' | 'c';
-  x?: string[];
-  ac?: 1;
-  c?: number;
 }
 
 /** A single SequenceItem in a v2 share payload. */
@@ -409,16 +300,9 @@ interface SharePayloadV2 {
   course: ShareCourse;
   lessons: ShareLesson[];
   exams?: ShareExam[];
-  bankCards?: ShareCard[];
-  links?: Array<{ l: number; c: string }>;
   /** Overlapping-cloze sequences belonging to the course. Optional so existing v2
    *  codes without sequences still parse. */
   sequences?: ShareSequence[];
-  /** Lineage id, present iff the exporting course has published at least once
-   *  (mirrors Course.distribution.lineageId, Arc 7). */
-  li?: string;
-  /** Revision number, present iff `li` is present (Course.distribution.revision). */
-  rv?: number;
 }
 
 /** The decoded contents of a share code, either a flat deck list or a single course. */
@@ -538,7 +422,11 @@ export async function decodeShareDirect(code: string): Promise<SharePayload> {
     if (compressed.length > MAX_SHARE_BYTES) {
       throw new Error('Share code is too large to decode safely.');
     }
-    bytes = await pipeThrough(compressed, new DecompressionStream('deflate-raw'), MAX_SHARE_BYTES);
+    bytes = await pipeThrough(
+      compressed,
+      new DecompressionStream('deflate-raw'),
+      MAX_SHARE_BYTES,
+    );
   } else if (trimmed.startsWith(PREFIX_BASE45_PLAIN)) {
     const encoded = trimmed.slice(PREFIX_BASE45_PLAIN.length);
     bytes = base45ToBytes(encoded);
@@ -604,9 +492,10 @@ let shareJobId = 0;
 
 function getShareWorker(): Worker {
   if (!shareWorker) {
-    shareWorker = new Worker(new URL('../workers/share.worker.ts', import.meta.url), {
-      type: 'module',
-    });
+    shareWorker = new Worker(
+      new URL('../workers/share.worker.ts', import.meta.url),
+      { type: 'module' },
+    );
   }
   return shareWorker;
 }
@@ -714,10 +603,6 @@ export function summariseShare(payload: SharePayload): ShareSummary {
       }
       if (lesson.notes.some((n) => n.i === 1)) omittedImages = true;
     }
-    for (const card of payload.bankCards ?? []) {
-      cardCount += card.k === 2 ? 2 : 1;
-      if (card.i === 1) omittedImages = true;
-    }
     return {
       kind: 'course',
       deckCount: payload.lessons.length,
@@ -754,7 +639,7 @@ export function summariseShare(payload: SharePayload): ShareSummary {
  * Pack a deck's cards, folding each front/back card that has an exact mirror into a
  * single reversible entry. Cloze cards pass through untouched.
  */
-function packCards(cards: Card[], preserveIds = false): ShareCard[] {
+function packCards(cards: Card[]): ShareCard[] {
   const out: ShareCard[] = [];
   const consumed = new Set<string>();
   // Use a length-prefixed key so the separator can never collide with card content.
@@ -779,41 +664,23 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
     const back = stripAssetImages(c.back);
     const imageFlag = front.stripped || back.stripped ? { i: 1 as const } : {};
     const seqRef = c.sequenceItemId ? { si: c.sequenceItemId } : {};
-    const payload = c.payload ? { p: c.payload } : {};
-    const identity = preserveIds ? { id: c.id } : {};
 
     if (c.type === 'cloze') {
-      out.push({
-        k: 1,
-        f: front.markdown,
-        ...tags,
-        ...imageFlag,
-        ...seqRef,
-        ...payload,
-        ...identity,
-      });
+      out.push({ k: 1, f: front.markdown, ...tags, ...imageFlag, ...seqRef });
       consumed.add(c.id);
       continue;
     }
 
-    if (c.sequenceItemId || c.payload) {
-      // Generated and structured-item cards never fold into reversible pairs: their
-      // metadata belongs to exactly one card and cannot be copied to its mirror.
-      out.push({
-        k: 0,
-        f: front.markdown,
-        b: back.markdown,
-        ...tags,
-        ...imageFlag,
-        ...seqRef,
-        ...payload,
-        ...identity,
-      });
+    if (c.sequenceItemId) {
+      // Cards generated from a sequence item never fold into a reversible pair either —
+      // the `si` reference must stay on exactly one, unambiguous card so it can be
+      // remapped consistently on import.
+      out.push({ k: 0, f: front.markdown, b: back.markdown, ...tags, ...imageFlag, ...seqRef });
       consumed.add(c.id);
       continue;
     }
 
-    const partner = !preserveIds && (byContent.get(key(c.back, c.front)) ?? []).find(
+    const partner = (byContent.get(key(c.back, c.front)) ?? []).find(
       (p) => p.id !== c.id && !consumed.has(p.id),
     );
     if (partner) {
@@ -821,7 +688,7 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
       consumed.add(c.id);
       consumed.add(partner.id);
     } else {
-      out.push({ k: 0, f: front.markdown, b: back.markdown, ...tags, ...imageFlag, ...identity });
+      out.push({ k: 0, f: front.markdown, b: back.markdown, ...tags, ...imageFlag });
       consumed.add(c.id);
     }
   }
@@ -863,46 +730,32 @@ export async function buildShareCode(deckIds: string[]): Promise<string> {
 
 function unpackCard(sc: ShareCard): ParsedCard[] {
   const tags = sc.g && sc.g.length ? { tags: sc.g } : {};
-  const payload = sc.p ? { payload: sc.p as ItemPayload } : {};
-  if (sc.k === 1) return [{ type: 'cloze', front: sc.f, back: '', ...tags, ...payload }];
+  if (sc.k === 1) return [{ type: 'cloze', front: sc.f, back: '', ...tags }];
   if (sc.k === 2) {
     const back = sc.b ?? '';
     return [
-      { type: 'front_back', front: sc.f, back, ...tags, ...payload },
-      { type: 'front_back', front: back, back: sc.f, ...tags, ...payload },
+      { type: 'front_back', front: sc.f, back, ...tags },
+      { type: 'front_back', front: back, back: sc.f, ...tags },
     ];
   }
   // k === 3 (typing) and k === 0 (front/back) both unpack to a plain front_back
   // card — typing is a retired card type, folded here for older share codes.
-  return [{ type: 'front_back', front: sc.f, back: sc.b ?? '', ...tags, ...payload }];
+  return [{ type: 'front_back', front: sc.f, back: sc.b ?? '', ...tags }];
 }
 
 // ---------------------------------------------------------------------------
 // Packing a whole course (DB -> v2 payload)
 // ---------------------------------------------------------------------------
 
-/**
- * Pack a lesson's notes, stripping images the same way card content is stripped.
- * `withOriginatingIds` packs each note's local id as `oi` — only meaningful (and
- * only ever passed) when the exporting course has published, so a plain course
- * export is unaffected.
- */
-function packNotes(
-  notes: { id: string; name: string; content: string }[],
-  withOriginatingIds = false,
-): ShareNote[] {
+/** Pack a lesson's notes, stripping images the same way card content is stripped. */
+function packNotes(notes: { name: string; content: string }[]): ShareNote[] {
   return notes.map((n) => {
     const content = stripAssetImages(n.content);
-    return {
-      n: n.name,
-      c: content.markdown,
-      ...(content.stripped ? { i: 1 as const } : {}),
-      ...(withOriginatingIds ? { oi: n.id } : {}),
-    };
+    return { n: n.name, c: content.markdown, ...(content.stripped ? { i: 1 as const } : {}) };
   });
 }
 
-/** Pack a whole course, including assessment scope references, into a v2 payload. */
+/** Pack a whole course — its lessons, notes, cards and extra exam dates — into a v2 payload. */
 async function buildCourseSharePayload(courseId: string): Promise<SharePayload> {
   const course = await db.courses.get(courseId);
   if (!course) throw new Error('Course not found.');
@@ -910,10 +763,11 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
   const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
   const lessonIndexById = new Map(lessons.map((l, i) => [l.id, i]));
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [notes, courseCards, lessonLinks] = await Promise.all([
+  const [notes, cards] = await Promise.all([
     lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
-    db.cards.where('courseId').equals(courseId).toArray(),
-    lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+    lessonIds.length > 0
+      ? db.cards.where('primaryLessonId').anyOf(lessonIds).toArray()
+      : [],
   ]);
   const notesByLesson = new Map<string, Note[]>();
   for (const note of notes) {
@@ -922,7 +776,7 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
     else notesByLesson.set(note.lessonId, [note]);
   }
   const cardsByLesson = new Map<string, Card[]>();
-  for (const card of courseCards) {
+  for (const card of cards) {
     if (!card.primaryLessonId) continue;
     const group = cardsByLesson.get(card.primaryLessonId);
     if (group) group.push(card);
@@ -930,11 +784,6 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
   }
   for (const group of notesByLesson.values()) group.sort((a, b) => a.orderIndex - b.orderIndex);
   for (const group of cardsByLesson.values()) group.sort((a, b) => a.createdAt - b.createdAt);
-
-  // Originating ids (`li`/`rv`/per-entity `i`/`oi`) are packed only when the course
-  // has published at least once (Course.distribution, Arc 7 Task 1) — a plain course
-  // export/import carries none of them and its payload shape is unchanged.
-  const distribution = course.distribution;
 
   const shareLessons: ShareLesson[] = lessons.map((lesson) => {
     return {
@@ -944,39 +793,22 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
       ...(typeof lesson.releaseDate === 'number' ? { rd: lesson.releaseDate } : {}),
       ...(typeof lesson.examDate === 'number' ? { ed: lesson.examDate } : {}),
       ...(lesson.timeZone ? { tz: lesson.timeZone } : {}),
-      ...(lesson.sessionFilter && lesson.sessionFilter !== 'new'
-        ? { sf: lesson.sessionFilter }
-        : {}),
-      notes: packNotes(notesByLesson.get(lesson.id) ?? [], !!distribution),
-      cards: packCards(cardsByLesson.get(lesson.id) ?? [], true),
-      ...(distribution ? { i: lesson.id } : {}),
+      ...(lesson.sessionFilter && lesson.sessionFilter !== 'new' ? { sf: lesson.sessionFilter } : {}),
+      notes: packNotes(notesByLesson.get(lesson.id) ?? []),
+      cards: packCards(cardsByLesson.get(lesson.id) ?? []),
     };
   });
 
-  const assessments = await db.courseAssessments
-    .where('courseId')
-    .equals(courseId)
-    .sortBy('examDate');
-  const finalAssessment = finalAssessmentForCourse(courseId, assessments);
-  const shareExams: ShareExam[] = assessments.map((assessment) => {
-    const ls = (assessment.coverageMode === 'custom' ? assessment.lessonIds : [])
+  const examDates = await db.courseExamDates.where('courseId').equals(courseId).sortBy('examDate');
+  const shareExams: ShareExam[] = examDates.map((e) => {
+    const ls = (e.lessonIds ?? [])
       .map((id) => lessonIndexById.get(id))
       .filter((i): i is number => i !== undefined);
     return {
-      id: assessment.id,
-      n: assessment.name,
-      e: assessment.examDate,
-      ...(assessment.timeZone ? { tz: assessment.timeZone } : {}),
-      k: assessment.kind === 'final' ? 'f' : 'c',
-      a:
-        assessment.afterLessonId === null
-          ? null
-          : (lessonIndexById.get(assessment.afterLessonId) ?? null),
-      m: assessment.coverageMode === 'custom' ? 'c' : 'p',
-      ...(assessment.coverageMode === 'custom' ? { ls } : {}),
-      ...(assessment.excludedCardIds.length ? { x: assessment.excludedCardIds } : {}),
-      ...(assessment.needsAuthorConfirmation ? { ac: 1 as const } : {}),
-      c: assessment.createdAt,
+      n: e.name,
+      e: e.examDate,
+      ...(e.timeZone ? { tz: e.timeZone } : {}),
+      ...(e.lessonIds && e.lessonIds.length ? { ls } : {}),
     };
   });
 
@@ -985,29 +817,20 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
     ...(course.description ? { d: course.description } : {}),
     o: course.examObjective === 'securedTopics' ? 1 : 0,
     c: course.createdAt,
-    e: finalAssessment.examDate,
+    e: course.examDate,
     r: course.fsrsParameters.requestRetention,
     ...(course.newCardsPerDay ? { p: course.newCardsPerDay } : {}),
     ...(course.colour ? { l: course.colour } : {}),
     um: course.unlockMode,
   };
-  const linkedCardIds = new Set(lessonLinks.map((link) => link.cardId));
-  const bankCards = courseCards.filter(
-    (card) => card.primaryLessonId === null && linkedCardIds.has(card.id),
-  );
-  const knownCardIds = new Set(courseCards.map((card) => card.id));
-  const shareLinks = lessonLinks.flatMap((link) => {
-    const lessonIndex = lessonIndexById.get(link.lessonId);
-    return lessonIndex === undefined || !knownCardIds.has(link.cardId)
-      ? []
-      : [{ l: lessonIndex, c: link.cardId }];
-  });
 
-  // Bank-scoped sequences remain excluded: a share carries taught lesson material,
-  // not unassigned sequence authoring state.
-  const sequences = (
-    await db.sequences.where('courseId').equals(courseId).sortBy('createdAt')
-  ).filter((s) => s.primaryLessonId !== null);
+  // Bank-scoped sequences (primaryLessonId null) have no packed cards — see the
+  // per-lesson `cards` query above, which only covers lesson-scoped cards. Excluding
+  // them here keeps the payload internally consistent, mirroring the exclusion of
+  // bank cards from shares.
+  const sequences = (await db.sequences.where('courseId').equals(courseId).sortBy('createdAt')).filter(
+    (s) => s.primaryLessonId !== null
+  );
   const shareSequences: ShareSequence[] = sequences.map((s) => {
     const pl = s.primaryLessonId ? lessonIndexById.get(s.primaryLessonId) : undefined;
     return {
@@ -1029,8 +852,7 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
       ...(s.mySpeaker ? { ms: s.mySpeaker } : {}),
       // Only spend payload space on the preset id when the receiving end couldn't
       // re-derive it from m/ms alone (see presetForSequence) — e.g. poetry vs. speech.
-      ...(s.presetId &&
-      s.presetId !== presetForSequence({ mode: s.mode, mySpeaker: s.mySpeaker }).id
+      ...(s.presetId && s.presetId !== presetForSequence({ mode: s.mode, mySpeaker: s.mySpeaker }).id
         ? { pr: s.presetId }
         : {}),
     };
@@ -1043,10 +865,7 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
     course: shareCourse,
     lessons: shareLessons,
     ...(shareExams.length ? { exams: shareExams } : {}),
-    ...(bankCards.length ? { bankCards: packCards(bankCards, true) } : {}),
-    ...(shareLinks.length ? { links: shareLinks } : {}),
     ...(shareSequences.length ? { sequences: shareSequences } : {}),
-    ...(distribution ? { li: distribution.lineageId, rv: distribution.revision } : {}),
   };
 }
 
@@ -1116,15 +935,7 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
 
   await db.transaction(
     'rw',
-    [
-      db.decks,
-      db.cards,
-      db.userPerformance,
-      db.assets,
-      db.courses,
-      db.lessons,
-      db.courseAssessments,
-    ],
+    [db.decks, db.cards, db.userPerformance, db.assets, db.courses, db.lessons],
     async () => {
       for (let i = 0; i < decks.length; i++) {
         const deck = decks[i];
@@ -1142,24 +953,8 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
         }
         cardCount += cards.length;
       }
-      await db.courses.bulkAdd(migration.courses.map(courseToRecord));
+      await db.courses.bulkAdd(migration.courses);
       await db.lessons.bulkAdd(migration.lessons);
-      const finalAssessments: CourseAssessment[] = migration.courses.map((course) => ({
-        id: makeId(),
-        courseId: course.id,
-        name: 'Final exam',
-        kind: 'final',
-        examDate: course.examDate,
-        ...(course.timeZone ? { timeZone: course.timeZone } : {}),
-        afterLessonId:
-          migration.lessons
-            .filter((lesson) => lesson.courseId === course.id)
-            .sort((a, b) => b.orderIndex - a.orderIndex)[0]?.id ?? null,
-        coverageMode: 'prefix',
-        excludedCardIds: [],
-        createdAt: course.createdAt,
-      }));
-      await db.courseAssessments.bulkAdd(finalAssessments);
     },
   );
 
@@ -1192,10 +987,9 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
       db.notes,
       db.decks,
       db.cards,
-      db.lessonCards,
       db.userPerformance,
       db.assets,
-      db.courseAssessments,
+      db.courseExamDates,
       db.sequences,
     ],
     async () => {
@@ -1237,21 +1031,20 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
 
       const importedAt = Date.now();
       const importedLessons: Lesson[] = payload.lessons.map((shareLesson, orderIndex) => ({
-        id: makeId(),
-        courseId: course.id,
-        name: shareLesson.n.trim() || 'Untitled lesson',
-        orderIndex,
-        createdAt: importedAt + orderIndex,
-        ...(shareLesson.d ? { description: shareLesson.d } : {}),
-        isExtension: shareLesson.x === 1,
-        ...(typeof shareLesson.rd === 'number' ? { releaseDate: shareLesson.rd } : {}),
-        ...(typeof shareLesson.ed === 'number' ? { examDate: shareLesson.ed } : {}),
-        ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
-        ...(shareLesson.sf ? { sessionFilter: shareLesson.sf } : {}),
-      }));
+          id: makeId(),
+          courseId: course.id,
+          name: shareLesson.n.trim() || 'Untitled lesson',
+          orderIndex,
+          createdAt: importedAt + orderIndex,
+          ...(shareLesson.d ? { description: shareLesson.d } : {}),
+          isExtension: shareLesson.x === 1,
+          ...(typeof shareLesson.rd === 'number' ? { releaseDate: shareLesson.rd } : {}),
+          ...(typeof shareLesson.ed === 'number' ? { examDate: shareLesson.ed } : {}),
+          ...(shareLesson.tz ? { timeZone: shareLesson.tz } : {}),
+          ...(shareLesson.sf ? { sessionFilter: shareLesson.sf } : {}),
+        }));
       if (importedLessons.length > 0) await db.lessons.bulkAdd(importedLessons);
       const lessonIds = importedLessons.map((lesson) => lesson.id);
-      const cardIdMap = new Map<string, string>();
 
       const importedNotes: Note[] = payload.lessons.flatMap((shareLesson, lessonIndex) =>
         shareLesson.notes.map((shareNote, orderIndex) => ({
@@ -1269,11 +1062,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         const shareLesson = payload.lessons[lessonIndex];
         const lessonId = lessonIds[lessonIndex];
         const drafts = shareLesson.cards.flatMap((shareCard) =>
-          unpackCard(shareCard).map((draft) => ({
-            draft,
-            sequenceItemId: shareCard.si,
-            sourceCardId: shareCard.id,
-          })),
+          unpackCard(shareCard).map((draft) => ({ draft, sequenceItemId: shareCard.si })),
         );
         if (drafts.length === 0) continue;
         const deckId = await ensureLessonDeck(course.id, lessonId);
@@ -1283,8 +1072,6 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           { courseId: course.id, primaryLessonId: lessonId },
         );
         const generatedCards = created.flatMap((card, index) => {
-          const sourceCardId = drafts[index].sourceCardId;
-          if (sourceCardId && !cardIdMap.has(sourceCardId)) cardIdMap.set(sourceCardId, card.id);
           const sequenceItemId = drafts[index].sequenceItemId;
           if (!sequenceItemId) return [];
           const remapped = remapSequenceItemId(sequenceItemId);
@@ -1294,85 +1081,20 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         cardCount += created.length;
       }
 
-      const bankDrafts = (payload.bankCards ?? []).flatMap((shareCard) =>
-        unpackCard(shareCard).map((draft) => ({ draft, sourceCardId: shareCard.id })),
+      const importedExams: CourseExamDate[] = (payload.exams ?? []).map(
+        (shareExam, index) => ({
+          id: makeId(),
+          courseId: course.id,
+          name: shareExam.n || 'Exam',
+          examDate: shareExam.e,
+          createdAt: importedAt + index,
+          ...(shareExam.tz ? { timeZone: shareExam.tz } : {}),
+          ...(shareExam.ls && shareExam.ls.length
+            ? { lessonIds: shareExam.ls.map((i) => lessonIds[i]).filter((id): id is string => !!id) }
+            : {}),
+        }),
       );
-      if (bankDrafts.length > 0) {
-        const bankDeckId = await ensureCourseBankDeck(course.id);
-        const created = await createCards(
-          bankDeckId,
-          bankDrafts.map(({ draft }) => draft),
-          { courseId: course.id, primaryLessonId: null },
-        );
-        created.forEach((card, index) => {
-          const sourceCardId = bankDrafts[index].sourceCardId;
-          if (sourceCardId && !cardIdMap.has(sourceCardId)) cardIdMap.set(sourceCardId, card.id);
-        });
-        cardCount += created.length;
-      }
-
-      const importedLinks: LessonCardLink[] = (payload.links ?? []).flatMap((link) => {
-        const lessonId = lessonIds[link.l];
-        const cardId = cardIdMap.get(link.c);
-        return lessonId && cardId
-          ? [{ id: makeId(), lessonId, cardId, createdAt: importedAt }]
-          : [];
-      });
-      if (importedLinks.length > 0) await db.lessonCards.bulkAdd(importedLinks);
-
-      const fullAssessmentPayload = (payload.exams ?? []).some(
-        (assessment) => assessment.id !== undefined || assessment.k !== undefined,
-      );
-      if (
-        fullAssessmentPayload &&
-        (payload.exams ?? []).filter((assessment) => assessment.k === 'f').length !== 1
-      ) {
-        throw new Error('A shared course must contain exactly one final assessment.');
-      }
-      const importedAssessments: CourseAssessment[] = (payload.exams ?? []).map(
-        (shareExam, index) => {
-          const coveredLessonIds = (shareExam.ls ?? [])
-            .map((lessonIndex) => lessonIds[lessonIndex])
-            .filter((id): id is string => !!id);
-          const afterLessonId = fullAssessmentPayload
-            ? shareExam.a === null
-              ? null
-              : typeof shareExam.a === 'number'
-                ? (lessonIds[shareExam.a] ?? null)
-                : null
-            : coveredLessonIds.length > 0
-              ? ([...importedLessons]
-                  .reverse()
-                  .find((lesson) => coveredLessonIds.includes(lesson.id))?.id ?? null)
-              : (lessonIds[lessonIds.length - 1] ?? null);
-          const common = {
-            id: shareExam.id ?? makeId(),
-            courseId: course.id,
-            name: shareExam.n || 'Exam',
-            kind: shareExam.k === 'f' ? ('final' as const) : ('checkpoint' as const),
-            examDate: shareExam.e,
-            createdAt: shareExam.c ?? importedAt + index,
-            afterLessonId,
-            excludedCardIds: (shareExam.x ?? [])
-              .map((id) => cardIdMap.get(id))
-              .filter((id): id is string => id !== undefined),
-            ...(shareExam.ac ? { needsAuthorConfirmation: true } : {}),
-            ...(shareExam.tz ? { timeZone: shareExam.tz } : {}),
-          };
-          return shareExam.m === 'c' || (!fullAssessmentPayload && coveredLessonIds.length > 0)
-            ? { ...common, coverageMode: 'custom' as const, lessonIds: coveredLessonIds }
-            : { ...common, coverageMode: 'prefix' as const };
-        },
-      );
-      if (importedAssessments.length > 0) {
-        if (fullAssessmentPayload) {
-          await db.courseAssessments.where('courseId').equals(course.id).delete();
-          for (const assessment of importedAssessments) {
-            if (await db.courseAssessments.get(assessment.id)) assessment.id = makeId();
-          }
-        }
-        await db.courseAssessments.bulkAdd(importedAssessments);
-      }
+      if (importedExams.length > 0) await db.courseExamDates.bulkAdd(importedExams);
 
       // Insert the sequences themselves once lessonIds is complete (for primaryLessonId)
       // and their generated cards already exist with remapped sequenceItemIds. Inserted
@@ -1403,7 +1125,9 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           // `pr` only travels when it diverges from the m/ms inference (see the export
           // side above); resolve it through getPreset so an unrecognised id degrades to
           // 'list' rather than sticking around as an invalid presetId.
-          ...(shareSeq.pr ? { presetId: getPreset(shareSeq.pr as SequencePresetId).id } : {}),
+          ...(shareSeq.pr
+            ? { presetId: getPreset(shareSeq.pr as SequencePresetId).id }
+            : {}),
           createdAt: importedAt + index,
         };
       });
