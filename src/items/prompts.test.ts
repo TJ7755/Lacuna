@@ -47,6 +47,8 @@ describe('batch authoring prompt', () => {
     expect(prompt).toContain('"fixtures"');
     expect(prompt).toContain('Every fixture must actually earn its expectedMarks');
     expect(prompt).toContain('Do not add prose labels or units');
+    expect(prompt).toContain('One answer means one value');
+    expect(prompt).toContain('never "[1] answer :: equals :: x=6,y=4"');
     expect(prompt).toContain('durable concept checks');
     expect(prompt).toContain('deriving the quadratic formula from ax^2 + bx + c = 0');
     expect(prompt).toContain('"studentAnswer": ["x^2 + b*x = -c", "(x + b/2)^2 = b^2/4 - c"]');

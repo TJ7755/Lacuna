@@ -20,8 +20,8 @@ that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in ord
 11. **Arc 10 — UI de-clutter and navigation restructure** (detailed; independent of
     Arcs 6–9, may run before them)
 12. **Arc 11 — Item-type generalisation and authored mark schemes** (numeric/working
-    delivery complete bar success criterion 3, the repository owner's manual free-tier
-    trial; deliberate post-arc deferrals recorded)
+    delivery complete bar success criterion 3, which the first free-tier trial did not
+    meet; deliberate post-arc deferrals recorded)
 13. **Arc 12 — Progress receipts and encrypted relay** (detailed outline; depends on
     Arc 11 for mark-bearing receipts, but a retrievability-only first slice depends on
     nothing)
@@ -2059,8 +2059,9 @@ Each task is one subagent's scope, one commit, tests updated alongside.
 
 # Arc 11 — Item-Type Generalisation and Authored Mark Schemes (detailed)
 
-> **Status: complete bar success criterion 3 (29 July 2026), which awaits the repository
-> owner's own manual free-tier trial.** Numeric and working payloads author, verify,
+> **Status: complete bar success criterion 3 (29 July 2026), which the first free-tier trial
+> did not meet; the prompt and the batch parser were hardened in response and a re-run is
+> owed.** Numeric and working payloads author, verify,
 > machine-grade, back up, share, lineage-diff and merge through the same versioned
 > `Card.payload`. The visual editor, batch staging path and MCP create/update tools share one
 > compiler and validator. The verification engine now samples every multi-variable sign
@@ -2358,6 +2359,27 @@ is shippable on share codes alone, before Arc 12 exists.
    marks for existing schemes and needs its own regression corpus first. Revisit when a real
    scheme demonstrates the collision rather than on principle.
 
+6. **A tuple answer kind is deferred beyond Arc 11, and is the first thing criterion 3 earned.**
+   The manual free-tier trial (29 July 2026, simultaneous equations) returned nine well-formed
+   items of which three validated. Six failed on one cause: the model expressed a two-variable
+   solution as a single answer, `x=6,y=4`. Both boundaries reject it correctly and for the same
+   underlying reason — `numericAnswerSpecIsValid` requires a constant expression with no
+   variables, and an `equals` criterion permits at most one `=`. Splitting into one criterion per
+   variable (`[1] x :: equals :: 6`, `[1] y :: equals :: 4`) compiles and earns full marks, so
+   the content was always authorable; the prompt simply never stated the constraint. The prompt
+   now does (§11.6), which is the whole fix for now.
+
+   The open question is whether v1's one-value-per-answer model should acquire a first-class
+   ordered or named tuple — a coordinate pair, a solution set, a quantity with a unit — so that
+   "solve for x and y" is one criterion instead of two. Arguments for: it is the natural answer
+   shape for simultaneous equations, intersections and vectors, all of which are core GCSE
+   content, and splitting silently changes a 2-mark question into a 3-mark one. Arguments
+   against: §11.10 holds that predicates are earned from real tutor failures, and this is one
+   trial on one topic; a tuple also raises ordering, partial-credit and equivalence questions
+   (is `y=4,x=6` the same answer? does half a tuple earn half a mark?) that the current
+   single-value model does not have to answer. Settle those before building, and treat the
+   splitting workaround as the supported path meanwhile.
+
 ## 11.10 Explicitly out of scope
 
 - LLM-graded free text as a scheduling input (A.1's negative result; an optional
@@ -2378,8 +2400,14 @@ is shippable on share codes alone, before Arc 12 exists.
 2. The compiler round-trips every fixture in its own test corpus; the editor preview,
    staging area and MCP boundary all reject the same malformed inputs identically.
 3. A tutor can go notes → batch prompt → paste → triage → publish inside ten minutes
-   for a typical lesson, on free-tier ChatGPT, with no API key. **Pending the repository
-   owner's own manual trial; not yet attempted by design.**
+   for a typical lesson, on free-tier ChatGPT, with no API key. **Attempted 29 July 2026 and
+   not met on the first pass.** The response was rejected outright because the model closed the
+   block by mirroring `<<<LACUNA_ITEMS_V1>>>` instead of copying `<<<END_LACUNA_ITEMS_V1>>>`;
+   with the delimiter corrected by hand, three of its nine items validated (see §11.9.6 for the
+   cause of the other six, and note that two of the three that passed were weak items a tutor
+   would discard). The parser now accepts a mirrored closing delimiter and the prompt now states
+   the one-value-per-answer rule. Criterion 3 stays open until a fresh free-tier run clears it
+   without hand-editing.
 4. Verification is fully offline; no item type introduces a network dependency into the
    study loop. All tests pass; `tsc -b` clean.
 

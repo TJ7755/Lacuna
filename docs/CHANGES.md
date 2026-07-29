@@ -1,5 +1,17 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Batch authoring hardening (Arc 11 free-tier trial)
+
+- The batch review step now accepts a block closed by a mirrored `<<<LACUNA_ITEMS_V1>>>` instead
+  of `<<<END_LACUNA_ITEMS_V1>>>`. Free-tier models mirror the opening delimiter often enough that
+  a correct response was being rejected wholesale; a second opening token is unambiguous once the
+  block is open, and a correct closing delimiter still takes precedence.
+- The batch prompt now states the answer shape: a numeric answer and an `equals` criterion each
+  take one constant expression with no variables and at most one `=`, and a multi-variable
+  solution is written as one criterion per variable. Without this, a model asked about
+  simultaneous equations returns `x=6,y=4` as a single answer, which both the numeric validator
+  and the scheme compiler correctly reject.
+
 ## Unreleased — Verification engine corrections (Arc 11 follow-up)
 
 - Fixed multi-variable equivalence checking. Sample signs were derived from the attempt and

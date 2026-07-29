@@ -1207,11 +1207,16 @@ general forms such as completing the square from `ax^2 + bx + c = 0` rather than
 coefficients for another one-off exercise. Parameterised numerical practice remains deferred until
 generated variants can share one stable scheduled identity.
 Every path must use the versioned `LACUNA_ITEMS_V1` JSON delimiters so the staging review can parse it
-without guessing. Lacuna sends no data to a model and stores no API key; the conversation remains in
-the tutor's chosen chatbot.
+without guessing. The prompt also fixes the answer shape: a numeric answer and an `equals` criterion
+each take one constant expression, so a multi-variable solution is written as one criterion per
+variable rather than as `x=6,y=4`. Lacuna sends no data to a model and stores no API key; the
+conversation remains in the tutor's chosen chatbot.
 
-The batch dialog's review step parses only the complete versioned delimiter block and validates each
-item independently. Numeric answers use the shared numeric-spec validator; working schemes use the
+The batch dialog's review step parses the versioned delimiter block and validates each
+item independently. A block closed by a mirrored `<<<LACUNA_ITEMS_V1>>>` instead of
+`<<<END_LACUNA_ITEMS_V1>>>` is accepted, since the block is already open by that point and the
+closing delimiter does not contain the opening one as a substring; a correct closing delimiter still
+wins when both appear. Numeric answers use the shared numeric-spec validator; working schemes use the
 same compiler as the card editor, and their fixtures run through the study verifier. A malformed item
 does not block valid neighbours. Duplicate classification reuses `diffImport` against the selected
 lesson and is a warning: bulk “Accept all clean” skips likely duplicates, while the tutor can still
