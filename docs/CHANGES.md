@@ -29,14 +29,23 @@
   and the scheme errors stand on their own.
 - Removed the revision prompt from accepted staged items. Acceptance is terminal — there is no
   Edit, Reject or Restore afterwards — so the copied prompt could not be applied to anything.
+- Fixed Learn mode silently mis-marking items it cannot render. A card whose `payload` has an
+  unrecognised `v` or a known-but-unbuilt `kind` (currently `scaffold`, reserved but not built —
+  see §11.2) used to fall through to the classic flip card with an empty back, offering the
+  Again/Hard/Good/Easy controls for a question that was never actually answered. It now renders
+  read-only via `UnknownItemFace` — the `front` fallback plus a plain notice — with no submit
+  control and no `onAnswer` callback at all, so neither the on-screen controls nor the keyboard
+  shortcuts can grade it. Only the share/backup round-trip validated unknown payloads correctly
+  before this fix; study time did not.
 
 ## Unreleased — Item-type generalisation (Arc 11)
 
 - Added the optional, versioned `Card.payload` model for structured practice items. Numeric
   and working payloads are implemented; the scaffold discriminant is reserved without a
-  placeholder authoring or study surface. Backups, share codes and lineage merging preserve
-  payloads, while unsupported payload versions fall back to the readable question instead of
-  being marked incorrectly.
+  placeholder authoring or study surface. Backups, share codes and lineage merging validate
+  known payloads fully and preserve unsupported versions as opaque values so they round-trip
+  instead of being rejected — study-time handling of unsupported payloads is covered
+  separately above, under the follow-up fix.
 - Added an offline expression-verification engine over the restricted `mathjs/number` entry
   point. It accepts ordinary school notation, renders a KaTeX preview and checks algebraic
   equivalence through reproducible seeded evaluation rather than pretending to be a symbolic
@@ -61,6 +70,9 @@
   Each proposal is validated independently and can be edited, accepted, rejected or returned
   to a chatbot through a complaint-aware revision prompt. Lacuna stores no model key and sends
   no notes itself.
+- Added optional exam-board and specification provenance to courses and Course Settings. Both
+  values are plain strings, commit on blur, clear cleanly when blank and enter note-grounded
+  batch-generation prompts only when present; no curriculum taxonomy or schema version was added.
 - Clarified that batch generation creates durable concept checks rather than arbitrary-number
   worksheets. Working-item prompts now prefer reusable symbolic methods and derivations, and the
   authoring dialog states that parameterised exercise variants are not supported yet.

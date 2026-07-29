@@ -36,6 +36,7 @@ import { clampRequestRetention, defaultFsrsParameters, FSRS_VERSION } from '../f
 import { emptyPerformance } from '../fsrs/grading';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import type { ParsedCard } from './import';
+import { CURRENT_ITEM_PAYLOAD_VERSION } from './types';
 import type {
   Card,
   CourseAssessment,
@@ -111,7 +112,7 @@ const MarkSchemeLineSchema = z.discriminatedUnion('kind', [
 const KnownItemPayloadSchema = z.discriminatedUnion('kind', [
   z
     .object({
-      v: z.literal(1),
+      v: z.literal(CURRENT_ITEM_PAYLOAD_VERSION),
       kind: z.literal('numeric'),
       answer: NumericAnswerSpecSchema,
       fixtures: z.array(ItemFixtureSchema).optional(),
@@ -119,13 +120,13 @@ const KnownItemPayloadSchema = z.discriminatedUnion('kind', [
     .passthrough(),
   z
     .object({
-      v: z.literal(1),
+      v: z.literal(CURRENT_ITEM_PAYLOAD_VERSION),
       kind: z.literal('working'),
       scheme: z.array(MarkSchemeLineSchema),
       fixtures: z.array(ItemFixtureSchema).optional(),
     })
     .passthrough(),
-  z.object({ v: z.literal(1), kind: z.literal('scaffold') }).passthrough(),
+  z.object({ v: z.literal(CURRENT_ITEM_PAYLOAD_VERSION), kind: z.literal('scaffold') }).passthrough(),
 ]);
 
 const KNOWN_ITEM_KINDS = new Set(['numeric', 'working', 'scaffold']);
@@ -133,7 +134,7 @@ const UnknownItemPayloadSchema = z
   .object({ v: z.number(), kind: z.string() })
   .passthrough()
   .refine(
-    (payload) => payload.v !== 1 || !KNOWN_ITEM_KINDS.has(payload.kind),
+    (payload) => payload.v !== CURRENT_ITEM_PAYLOAD_VERSION || !KNOWN_ITEM_KINDS.has(payload.kind),
     'Known item payloads must match their supported schema.',
   );
 

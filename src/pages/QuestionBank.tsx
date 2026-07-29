@@ -177,6 +177,8 @@ export function QuestionBank() {
           <BatchAuthoringPromptDialog
             courseId={course.id}
             courseName={course.name}
+            examBoard={course.examBoard}
+            specification={course.specification}
             lessons={lessons}
             cards={cards}
             onClose={() => setShowBatchPrompt(false)}

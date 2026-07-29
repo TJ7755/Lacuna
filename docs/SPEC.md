@@ -550,6 +550,11 @@ course kept it as a per-lesson override. Migration mapping lives in
 `courseId?`/`primaryLessonId?`, and `SessionHistoryEntry`/`UserPerformance` gained
 `courseId?`, all stamped during the upgrade.
 
+A course's static metadata includes `name`, `description`, and optional `examBoard` and
+`specification` plain strings. The provenance fields are unindexed, additive metadata edited in
+Course Settings and included in batch-generation prompt context only when present; they do not
+create a first-class exam-board or specification entity.
+
 `src/db/repository.ts` exposes CRUD functions for every course-architecture table —
 `createCourse`/`updateCourse`/`deleteCourse`/`listCourses`/`getCourse`,
 `createLesson`/`updateLesson`/`deleteLesson`/`listLessons`/`reorderLessons`,
@@ -751,6 +756,8 @@ sequenceItemId?, due|null, scheduledDays, learningSteps, history[], createdAt`
   Its `back` remains empty because the checker, not a revealed answer, grades it. The
   `scaffold` discriminant is reserved for a later payload version but has no authoring, study or
   verification surface in this release.
+- `tags` remain free-form strings. Specification-point provenance uses the manual `spec:3.4.1`
+  convention; there is no separate specification-point model or batch-generation field.
 - `stability` (days; the interval at which R = 0.90), `difficulty` (in [1,10]),
   `lastReviewed`, `due` are all `null` until the first review.
 - `reps, lapses, state, scheduledDays, learningSteps, due` mirror ts-fsrs's card fields.
@@ -1141,6 +1148,11 @@ as unchecked rather than as a zero, with the existing dispute control alongside 
 marks, so the marks total still reflects only what the checker could actually award. Numeric answer
 specifications share this parser for exact, tolerance and one-of checks.
 
+A payload with an unrecognised version, or a recognised-but-unsupported `kind` (currently
+`scaffold`), renders `UnknownItemFace`: the readable `front` fallback and a plain notice that this
+version can't study it, with no submit, reveal, self-grading or keyboard grading path. The central
+`answer()` boundary rejects it as well, so future or stale callers cannot create a review.
+
 The production build measured on 28 July 2026 places the verifier in the main application chunk
 (648,459 bytes minified; 187,658 bytes gzip for the whole chunk). A standalone Bun bundle of
 `src/items/verify.ts`, including its `mathjs/number` dependency, is 153.75 KB minified and 43,571
@@ -1230,10 +1242,13 @@ the disputed result can be reproduced exactly and later promoted to a fixture in
 preserve this optional history data verbatim, while share codes continue to omit all personal review
 history.
 
-Pure marks-analysis helpers aggregate machine-marked attempts into earned/available totals and group
-working performance by the labels in each card's current mark scheme. Criterion summaries count full
-and missed attempts as well as marks, providing the data seam for later readiness and diagnostic UI
-without making the Arc 11 study path depend on analytics components.
+The pure marks-analysis helpers `aggregateMarkPerformance` and
+`aggregateCriterionPerformance` aggregate machine-marked attempts into earned/available totals and
+group working performance by the labels in each card's current mark scheme. Criterion summaries
+count full and missed attempts as well as marks. These are intentionally uncalled production seams
+reporting retrospective `ReviewLog` attainment only. Forward-looking marks-denominated readiness is
+deferred until an exam-realistic practice mode supplies a sample worth forecasting; ordinary
+learn-mode marks do not.
 
 The Arc 11 slice-1 manual pass on 28 July 2026 used a dedicated two-lesson course. It authored one
 numeric and one working item by hand, pinned and reran a 2/2 working fixture, studied both faces,

@@ -12,6 +12,8 @@ import { cn } from '../ui/cn';
 interface BatchAuthoringPromptDialogProps {
   courseId: string;
   courseName: string;
+  examBoard?: string;
+  specification?: string;
   lessons: Lesson[];
   cards: Card[];
   onClose: () => void;
@@ -20,6 +22,8 @@ interface BatchAuthoringPromptDialogProps {
 export function BatchAuthoringPromptDialog({
   courseId,
   courseName,
+  examBoard,
+  specification,
   lessons,
   cards,
   onClose,
@@ -43,6 +47,8 @@ export function BatchAuthoringPromptDialog({
           notes,
           topic,
           level,
+          examBoard,
+          specification,
           maxItems: showConstraints && maxItems !== '' ? maxItems : undefined,
           conceptsPerItem:
             showConstraints && conceptsPerItem !== '' ? conceptsPerItem : undefined,

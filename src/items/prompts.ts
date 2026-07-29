@@ -7,6 +7,8 @@ export interface BatchGenerationPromptInput {
   notes: string;
   topic: string;
   level: string;
+  examBoard?: string;
+  specification?: string;
   maxItems?: number;
   conceptsPerItem?: number;
 }
@@ -57,6 +59,10 @@ export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): s
     '',
     `Topic: ${input.topic.trim()}`,
     `Level: ${input.level.trim()}`,
+    ...(input.examBoard?.trim() ? [`Exam board: ${input.examBoard.trim()}`] : []),
+    ...(input.specification?.trim()
+      ? [`Specification: ${input.specification.trim()}`]
+      : []),
     `Concepts per item: ${conceptsPerItem ?? 'model-selected'}`,
     `Requested maximum items: ${maxItems ?? 'model-selected'}`,
     '',

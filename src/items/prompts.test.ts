@@ -66,6 +66,26 @@ describe('batch authoring prompt', () => {
     expect(prompt).toContain('Target concept density: 2 atomic concepts per item');
   });
 
+  it('includes course provenance only when supplied', () => {
+    const withProvenance = buildBatchGenerationPrompt({
+      notes: 'Notes',
+      topic: 'Topic',
+      level: 'Level',
+      examBoard: ' AQA ',
+      specification: ' 7136 ',
+    });
+    const withoutProvenance = buildBatchGenerationPrompt({
+      notes: 'Notes',
+      topic: 'Topic',
+      level: 'Level',
+    });
+
+    expect(withProvenance).toContain('Exam board: AQA');
+    expect(withProvenance).toContain('Specification: 7136');
+    expect(withoutProvenance).not.toContain('Exam board:');
+    expect(withoutProvenance).not.toContain('Specification:');
+  });
+
   it('keeps the symbolic example valid with a passing fixture', () => {
     const result = parseBatchOutput(
       buildBatchGenerationPrompt({ notes: 'Notes', topic: 'Algebra', level: 'GCSE' }),

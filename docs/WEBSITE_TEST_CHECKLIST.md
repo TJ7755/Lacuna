@@ -127,6 +127,9 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 - [ ] The dialog explains that working items are durable concept checks, not arbitrary-number
       worksheets.
 - [ ] Copy batch prompt includes notes, topic, level, clarification rules and delimiters.
+- [ ] With exam board and specification set on the course, the copied prompt includes both.
+- [ ] With exam board and specification cleared, the copied prompt omits them entirely rather than
+      leaving a blank or placeholder line.
 - [ ] Pasting a valid delimited batch produces staged item cards rather than a raw-JSON-only editor.
 - [ ] Invalid JSON, an invalid numeric answer, a malformed scheme and a failing fixture are each
       isolated to the affected staged item.
@@ -199,11 +202,17 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 - [ ] Global Practice and course Practice start with the correct eligible pool.
 - [ ] Due, new, leech, flagged, suspended, tag and combined filters serve only matching cards.
 - [ ] An empty filtered pool explains whether no cards match or none are currently eligible.
+- [ ] Grading still succeeds for every card type: classic front/back, cloze, typing-mode and a
+      machine-marked numeric or working item.
+- [ ] An answer press always either advances the queue or shows feedback; no card silently
+      registers nothing.
 - [ ] Silent grading maps No to Again and maps Yes by response time without showing a four-button
       choice.
 - [ ] Manual grading exposes Again, Hard, Good and Easy and records the selected grade.
 - [ ] Pressing Yes and No advances only the card surface: the header stays mounted, the card hand-off
       is smooth and objective progress does not appear to reset.
+- [ ] Grading works through each route: the on-screen grade buttons, the keyboard shortcuts and
+      swipe-to-grade on a touch viewport.
 - [ ] A failed card enters cooldown and is not immediately served again when alternatives exist.
 - [ ] Type-before-reveal comparison gives feedback but leaves authoritative grading to the learner.
 - [ ] Numeric study checks the expression, shows marks and bypasses self-grading.
@@ -213,6 +222,7 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 - [ ] Flag, unflag, bury, suspend and edit the current card from the action menu.
 - [ ] Editing pauses/rebases timing and returns to the same session.
 - [ ] Undo restores the prior card state, progress, performance calibration, cooldown and history row.
+- [ ] Undo after a grade restores the card's due date, and regrading it afterwards behaves correctly.
 - [ ] Focus mode, top-edge control reveal, full screen and Exit behave correctly.
 - [ ] Keyboard controls work: reveal/hide, Yes/No or grades, edit, undo, focus and help.
 - [ ] Touch controls work: tap reveal, left/right grading swipes, bottom sheet and action sheet.
@@ -242,6 +252,9 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 - [ ] Desktop section rail and mobile section jumper navigate Basics, Study, Content, Assessments and
       Danger zone and highlight the current section.
 - [ ] Course name and time zone commit on blur and survive reload.
+- [ ] Exam board and specification accept a value, commit on blur and survive reload.
+- [ ] Clearing exam board or specification and leaving the field persists the cleared state through
+      a reload rather than restoring the previous value.
 - [ ] Switching Expected marks/Secure topics changes objective copy and study progress terminology.
 - [ ] New cards/day, max reviews/day, daily goal and session time limit accept blank/unlimited and
       valid positive values without corrupting one another.
@@ -363,6 +376,8 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 - [ ] If testing Electron separately, use the MCP smoke scripts and consent/grant tests documented in
       `README.md`; do not record them as website failures.
 - [ ] Scaffold item authoring/study is reserved but not implemented.
+- [ ] The read-only face for an unsupported item payload is covered by unit tests only; no authoring
+      path in the browser can create one to exercise directly.
 - [ ] Batch source ingestion for DOCX, PPTX and image files is planned but not implemented.
 - [ ] Parameterised generated practice instances and shared skill/template identities are planned but
       not implemented.
