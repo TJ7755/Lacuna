@@ -1,5 +1,6 @@
 export interface ActiveStudyFlowIdentity {
   courseId: string;
+  sessionId: string;
   startedAt: number;
   lastActiveAt: number;
 }
@@ -14,8 +15,9 @@ function parseIdentity(value: unknown): ActiveStudyFlowIdentity | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const keys = Object.keys(value);
   if (
-    keys.length !== 3 ||
+    keys.length !== 4 ||
     !keys.includes('courseId') ||
+    !keys.includes('sessionId') ||
     !keys.includes('startedAt') ||
     !keys.includes('lastActiveAt')
   ) {
@@ -25,6 +27,8 @@ function parseIdentity(value: unknown): ActiveStudyFlowIdentity | null {
   if (
     typeof candidate.courseId !== 'string' ||
     candidate.courseId.trim().length === 0 ||
+    typeof candidate.sessionId !== 'string' ||
+    candidate.sessionId.trim().length === 0 ||
     !isValidTimestamp(candidate.startedAt) ||
     !isValidTimestamp(candidate.lastActiveAt) ||
     candidate.lastActiveAt < candidate.startedAt
@@ -33,6 +37,7 @@ function parseIdentity(value: unknown): ActiveStudyFlowIdentity | null {
   }
   return {
     courseId: candidate.courseId,
+    sessionId: candidate.sessionId,
     startedAt: candidate.startedAt,
     lastActiveAt: candidate.lastActiveAt,
   };
@@ -58,8 +63,9 @@ export function readActiveStudyFlow(): ActiveStudyFlowIdentity | null {
 export function startActiveStudyFlow(
   courseId: string,
   now: number = Date.now(),
+  sessionId: string = makeSessionId(),
 ): ActiveStudyFlowIdentity | null {
-  const identity = parseIdentity({ courseId, startedAt: now, lastActiveAt: now });
+  const identity = parseIdentity({ courseId, sessionId, startedAt: now, lastActiveAt: now });
   if (!identity) return null;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(identity));
@@ -67,6 +73,14 @@ export function startActiveStudyFlow(
     // The flow remains usable without device-local resume state.
   }
   return identity;
+}
+
+function makeSessionId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
 }
 
 export function touchActiveStudyFlow(

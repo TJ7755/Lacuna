@@ -5,7 +5,7 @@
 // spreadsheets and Anki export CSV. Anki's plain-text export is tab-separated and
 // flows through the same path.
 
-import type { CardType } from './types';
+import type { CardType, ItemPayload } from './types';
 import { hasCloze } from '../components/markdown/cloze';
 
 /** A card ready to be created: the same shape createCards() consumes. */
@@ -15,6 +15,8 @@ export interface ParsedCard {
   back: string;
   /** Optional tags parsed from a third column (space-separated, Anki-style). */
   tags?: string[];
+  /** Structured item content supplied by validated share/import boundaries. */
+  payload?: ItemPayload;
 }
 
 export interface ImportParseResult {

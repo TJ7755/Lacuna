@@ -10,13 +10,14 @@
 import type {
   Card,
   Course,
-  CourseExamDate,
+  CourseAssessment,
   Lesson,
   LessonCardExposure,
   LessonCompletion,
   PracticeMilestone,
   PracticeNode,
 } from '../db/types';
+import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { MS_PER_DAY } from '../fsrs/params';
 import { shouldInsertPractice } from '../fsrs/practice';
 import { practiceNodeKey } from './studyPools';
@@ -52,13 +53,13 @@ interface LessonPathNode {
 }
 
 /**
- * A checkpoint (CourseExamDate) rendered as a path node.
+ * A checkpoint assessment rendered as a path node.
  * Checkpoints are informational and never gate progression (addendum G).
  */
 interface CheckpointPathNode {
   id: string;
   nodeType: 'checkpoint';
-  examDate: CourseExamDate;
+  assessment: CourseAssessment;
   /**
    * ID of the lesson immediately before this checkpoint on the path, or null
    * when the checkpoint follows an empty lesson list.
@@ -190,13 +191,7 @@ export function isLessonUnlocked(
       firstCoreLessonId = candidate.id;
     }
   }
-  return isLessonUnlockedWithFirstCore(
-    course,
-    lesson,
-    effectiveDates,
-    firstCoreLessonId,
-    now,
-  );
+  return isLessonUnlockedWithFirstCore(course, lesson, effectiveDates, firstCoreLessonId, now);
 }
 
 function isLessonUnlockedWithFirstCore(
@@ -313,7 +308,7 @@ function lessonIndexAtOrBeforePosition(
  * computed correctly (always unlocked per addendum B), but excluded from
  * `pathPosition` totals.
  *
- * **Checkpoint placement (addendum G):** each `CourseExamDate` renders
+ * **Checkpoint placement (addendum G):** each checkpoint assessment renders
  * immediately after the lesson with the highest `orderIndex` among its
  * `lessonIds`. When `lessonIds` is absent or empty, the checkpoint follows the
  * last lesson. Checkpoints never gate progression under any unlock mode.
@@ -334,7 +329,7 @@ function lessonIndexAtOrBeforePosition(
  *    lesson, tracking `lessonsSinceLastPractice` since the previous practice
  *    node (manual or auto) and resetting it whenever one is inserted. This only
  *    runs when `course.autoPractice` is true. `dueCardCount` and
- *    `meanReviewSeconds` are a single course-wide snapshot supplied once per
+ *    `meanReviewSeconds` are a single current-Practice snapshot supplied once per
  *    `buildPath` call, not a live per-lesson figure — the backlog is not
  *    decremented as slots are inserted (that depends on what the learner
  *    actually clears, which this pure function cannot know). Consequently,
@@ -349,13 +344,14 @@ function lessonIndexAtOrBeforePosition(
 export function buildPath(
   course: Course,
   lessons: Lesson[],
-  examDates: CourseExamDate[],
+  assessments: CourseAssessment[],
   lessonCardsById: Map<string, Card[]>,
   practiceNodes: PracticeNode[] = [],
   dueCardCount: number = 0,
   meanReviewSeconds: number = 0,
   now: number = Date.now(),
   progress: PathProgress = EMPTY_PATH_PROGRESS,
+  nearestPracticeAssessmentDate?: number,
 ): PathNode[] {
   const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
@@ -373,9 +369,6 @@ export function buildPath(
   const completedLessonIds = new Set(
     progress.lessonCompletions.map((completion) => completion.lessonId),
   );
-
-  // Map lessonId → orderIndex for fast checkpoint-placement lookups.
-  const orderByLessonId = new Map<string, number>(sorted.map((l) => [l.id, l.orderIndex]));
 
   // Build lesson nodes in path order.
   const lessonNodes: LessonPathNode[] = sorted.map((lesson) => {
@@ -412,34 +405,20 @@ export function buildPath(
     node: CheckpointPathNode | PracticePathNode;
   }
 
-  const checkpointPlacements: Placement[] = examDates.map((ed) => {
-    // Default: after the last lesson.
-    let afterIndex = lessonNodes.length - 1;
-
-    if (ed.lessonIds && ed.lessonIds.length > 0) {
-      // Find the lesson with the highest orderIndex among the scoped lesson ids.
-      let maxOrder = -Infinity;
-      for (const lid of ed.lessonIds) {
-        const order = orderByLessonId.get(lid);
-        if (order !== undefined && order > maxOrder) maxOrder = order;
-      }
-      if (isFinite(maxOrder)) {
-        const idx = lessonNodes.findIndex((n) => n.lesson.orderIndex === maxOrder);
-        if (idx >= 0) afterIndex = idx;
-      }
-    }
-
-    const afterLesson = lessonNodes[afterIndex];
-    return {
-      afterIndex,
-      node: {
-        id: ed.id,
-        nodeType: 'checkpoint',
-        examDate: ed,
-        afterLessonId: afterLesson?.lesson.id ?? null,
-      },
-    };
-  });
+  const checkpointPlacements: Placement[] = assessments
+    .filter((assessment) => assessment.kind === 'checkpoint')
+    .map((assessment) => {
+      const afterIndex = resolveAssessmentCoverage(assessment, sorted, [], []).placementIndex;
+      return {
+        afterIndex,
+        node: {
+          id: assessment.id,
+          nodeType: 'checkpoint',
+          assessment,
+          afterLessonId: afterIndex >= 0 ? sorted[afterIndex].id : null,
+        },
+      };
+    });
 
   // Manual practice nodes: placed after the highest-orderIndex lesson at or
   // before the node's stored `position`, or before every lesson when `position`
@@ -465,8 +444,8 @@ export function buildPath(
     });
 
   // Auto practice slots (addendum 2 §H): walk the lesson list in path order,
-  // evaluating shouldInsertPractice after every lesson against the course-wide
-  // due-card snapshot. lessonsSinceLastPractice resets at every already-placed
+  // evaluating shouldInsertPractice after every lesson against the current
+  // reached-and-exposed due-card snapshot. lessonsSinceLastPractice resets at every already-placed
   // manual node and every auto slot this walk inserts.
   //
   // dueCardCount/meanReviewSeconds are a static snapshot for the whole walk, so
@@ -500,6 +479,7 @@ export function buildPath(
             lessonsSinceLastPractice,
             meanReviewSeconds,
             now,
+            nearestPracticeAssessmentDate,
           );
       if (insert) {
         const afterLessonId = lessonNodes[i].lesson.id;
@@ -665,19 +645,22 @@ export function pathPosition(nodes: PathNode[]): { reached: number; total: numbe
 
 /**
  * Nearest upcoming exam date for a course: considers `course.examDate` and all
- * explicit `CourseExamDate` checkpoints, and returns the soonest one still in
+ * explicit checkpoint assessments, and returns the soonest one still in
  * the future. Falls back to `course.examDate` even if it has already passed,
  * so the header always has something to show. Shared by CoursePath and
  * LessonView so both headers agree on "the" exam date.
  */
 export function nearestExamDate(
   course: Course,
-  examDates: CourseExamDate[],
+  assessments: CourseAssessment[],
   now: number = Date.now(),
 ): number {
-  const futureDates = [course.examDate, ...examDates.map((ed) => ed.examDate)].filter(
-    (d) => d > now,
-  );
+  const futureDates = [
+    course.examDate,
+    ...assessments
+      .filter((assessment) => assessment.kind === 'checkpoint')
+      .map((assessment) => assessment.examDate),
+  ].filter((d) => d > now);
   return futureDates.length > 0 ? Math.min(...futureDates) : course.examDate;
 }
 

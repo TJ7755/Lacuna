@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  progressValue,
-  scoreCard,
-  makeObjectiveContext,
-  isObjectiveComplete,
-} from './objective';
+import { progressValue, scoreCard, makeObjectiveContext, isObjectiveComplete } from './objective';
 import { forgettingCurve } from './forwardSim';
 import { defaultFsrsParameters, MASTERY_R, MS_PER_DAY } from './params';
 import type { Card, Deck, ExamObjective } from '../db/types';
@@ -99,8 +94,7 @@ describe('objective consistency: the bar matches the objective', () => {
       forgettingCurve(examDays, 100, DECAY),
       0,
     ];
-    const fraction =
-      rValues.filter((r) => r >= MASTERY_R).length / rValues.length;
+    const fraction = rValues.filter((r) => r >= MASTERY_R).length / rValues.length;
     expect(progressValue(cards, deck, 0)).toBeCloseTo(fraction, 12);
   });
 
@@ -110,7 +104,7 @@ describe('objective consistency: the bar matches the objective', () => {
     expect(meanR).not.toBeCloseTo(secured, 2);
   });
 
-  it('uses each card\'s resolved exam horizon when course context is provided', () => {
+  it("uses each card's resolved exam horizon when course context is provided", () => {
     const deck = makeDeck('expectedMarks');
     const nearDate = 2 * MS_PER_DAY;
     const farDate = 30 * MS_PER_DAY;
@@ -144,7 +138,7 @@ describe('objective consistency: the bar matches the objective', () => {
           },
         ],
       ]),
-      courseExamDates: [],
+      courseAssessments: [],
     };
     const expected =
       (forgettingCurve(nearDate / MS_PER_DAY, 10, DECAY) +
@@ -192,12 +186,10 @@ describe('scheduler scoring follows the objective', () => {
           },
         ],
       ]),
-      courseExamDates: [],
+      courseAssessments: [],
     };
 
     expect(isObjectiveComplete([card], makeObjectiveContext(deck), 0)).toBe(true);
-    expect(
-      isObjectiveComplete([card], makeObjectiveContext(deck, examDateContext), 0),
-    ).toBe(false);
+    expect(isObjectiveComplete([card], makeObjectiveContext(deck, examDateContext), 0)).toBe(false);
   });
 });

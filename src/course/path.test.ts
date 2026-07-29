@@ -16,7 +16,7 @@ import {
   type PracticePathNode,
 } from './path';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
-import type { Card, Course, CourseExamDate, Lesson, PracticeNode } from '../db/types';
+import type { Card, Course, CourseAssessment, Lesson, PracticeNode } from '../db/types';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers (mirroring useCourseData.test.ts)
@@ -82,14 +82,21 @@ function makePracticeNode(
 }
 
 function makeExamDate(
-  overrides: Partial<CourseExamDate> & Pick<CourseExamDate, 'id' | 'courseId'>,
-): CourseExamDate {
+  overrides: Partial<CourseAssessment> & Pick<CourseAssessment, 'id' | 'courseId'>,
+): CourseAssessment {
+  const coverage = overrides.lessonIds
+    ? { coverageMode: 'custom' as const, lessonIds: overrides.lessonIds }
+    : { coverageMode: 'prefix' as const };
   return {
     name: 'Checkpoint',
+    kind: 'checkpoint',
     examDate: 10 * MS_PER_DAY,
+    ...coverage,
+    afterLessonId: null,
+    excludedCardIds: [],
     createdAt: 0,
     ...overrides,
-  };
+  } as CourseAssessment;
 }
 
 // ---------------------------------------------------------------------------
@@ -338,14 +345,19 @@ describe('buildPath', () => {
     expect(nodes.every((n) => n.nodeType === 'lesson')).toBe(true);
   });
 
-  it('places a checkpoint after the highest-orderIndex scoped lesson', () => {
+  it('places a checkpoint after its independent placement anchor', () => {
     const course = makeCourse({ id: 'c1', unlockMode: 'open' });
     const lessons = [
       makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
       makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
       makeLesson({ id: 'l3', courseId: 'c1', orderIndex: 2 }),
     ];
-    const checkpoint = makeExamDate({ id: 'cp1', courseId: 'c1', lessonIds: ['l1', 'l2'] });
+    const checkpoint = makeExamDate({
+      id: 'cp1',
+      courseId: 'c1',
+      lessonIds: ['l1'],
+      afterLessonId: 'l2',
+    });
     const nodes = buildPath(course, lessons, [checkpoint], new Map());
     expect(nodes.map((n) => n.id)).toEqual(['l1', 'l2', 'cp1', 'l3']);
     const cpNode = nodes.find((n) => n.id === 'cp1');
@@ -355,13 +367,13 @@ describe('buildPath', () => {
     }
   });
 
-  it('places a checkpoint with no lessonIds after the last lesson', () => {
+  it('places prefix coverage after its anchor', () => {
     const course = makeCourse({ id: 'c1', unlockMode: 'open' });
     const lessons = [
       makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
       makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
     ];
-    const checkpoint = makeExamDate({ id: 'cp1', courseId: 'c1' });
+    const checkpoint = makeExamDate({ id: 'cp1', courseId: 'c1', afterLessonId: 'l2' });
     const nodes = buildPath(course, lessons, [checkpoint], new Map());
     expect(nodes.map((n) => n.id)).toEqual(['l1', 'l2', 'cp1']);
     const cpNode = nodes.find((n) => n.id === 'cp1');
@@ -407,8 +419,18 @@ describe('buildPath', () => {
       makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 }),
       makeLesson({ id: 'l2', courseId: 'c1', orderIndex: 1 }),
     ];
-    const cp1 = makeExamDate({ id: 'cp1', courseId: 'c1', lessonIds: ['l1'] });
-    const cp2 = makeExamDate({ id: 'cp2', courseId: 'c1', lessonIds: ['l1'] });
+    const cp1 = makeExamDate({
+      id: 'cp1',
+      courseId: 'c1',
+      lessonIds: ['l1'],
+      afterLessonId: 'l1',
+    });
+    const cp2 = makeExamDate({
+      id: 'cp2',
+      courseId: 'c1',
+      lessonIds: ['l1'],
+      afterLessonId: 'l1',
+    });
     const nodes = buildPath(course, lessons, [cp1, cp2], new Map());
     expect(nodes.map((n) => n.id)).toEqual(['l1', 'cp1', 'cp2', 'l2']);
   });
@@ -473,8 +495,30 @@ describe('buildPath — practice nodes', () => {
       practiceThresholdMinutesNear: 3,
       examDate: 1 * MS_PER_DAY, // inside the default 7-day urgent window
     });
-    const farNodes = buildPath(farCourse, lessons, [], new Map(), [], dueCardCount, 8, now);
-    const nearNodes = buildPath(nearCourse, lessons, [], new Map(), [], dueCardCount, 8, now);
+    const farNodes = buildPath(
+      farCourse,
+      lessons,
+      [],
+      new Map(),
+      [],
+      dueCardCount,
+      8,
+      now,
+      undefined,
+      farCourse.examDate,
+    );
+    const nearNodes = buildPath(
+      nearCourse,
+      lessons,
+      [],
+      new Map(),
+      [],
+      dueCardCount,
+      8,
+      now,
+      undefined,
+      nearCourse.examDate,
+    );
     expect(farNodes.some((n) => n.nodeType === 'practice-auto')).toBe(false);
     expect(nearNodes.some((n) => n.nodeType === 'practice-auto')).toBe(true);
   });
@@ -616,7 +660,18 @@ describe('buildPath — practice nodes', () => {
         ...denserDefaults,
       });
       const dueCardCount = lessonCount * cardsPerLesson;
-      const nodes = buildPath(course, fixtureLessons, [], new Map(), [], dueCardCount, 8, now);
+      const nodes = buildPath(
+        course,
+        fixtureLessons,
+        [],
+        new Map(),
+        [],
+        dueCardCount,
+        8,
+        now,
+        undefined,
+        course.examDate,
+      );
       return nodes
         .filter((node): node is PracticePathNode => node.nodeType === 'practice-auto')
         .map((node) => node.afterLessonId)

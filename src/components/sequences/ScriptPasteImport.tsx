@@ -114,7 +114,7 @@ export function ScriptPasteImport({ onImport, onCancel }: ScriptPasteImportProps
           ) : (
             <div className="flex flex-col gap-3">
               {unmatchedCount > 0 && (
-                <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-600">
+                <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning-fg">
                   {unmatchedCount} line{unmatchedCount === 1 ? '' : 's'} before the first recognised speaker
                   {' '}
                   {unmatchedCount === 1 ? 'was' : 'were'} skipped.

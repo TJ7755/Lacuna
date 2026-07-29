@@ -4,6 +4,7 @@
 // mirrors the notes list's NoteRow split.
 
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
+import { Select } from '../ui/Select';
 import { ChevronDownIcon, PlusIcon, TrashIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import type { Ref } from 'react';
@@ -125,13 +126,13 @@ export function SequenceItemRow({
           className="min-h-11 min-w-[10rem] flex-1 rounded-lg border border-line bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
         />
         {chunkLabels.length > 0 && (
-          <select
+          <Select
             value={item.chunkIndex ?? ''}
             onChange={(e) =>
               onChange({ chunkIndex: e.target.value === '' ? undefined : Number(e.target.value) })
             }
             aria-label={`Chunk for ${itemTerm} ${index + 1}`}
-            className="min-h-11 min-w-[10rem] flex-1 rounded-lg border border-line bg-transparent px-3 py-2 text-sm outline-none focus:border-accent sm:flex-none"
+            className="min-w-[10rem] flex-1 sm:flex-none"
           >
             <option value="">No chunk</option>
             {chunkLabels.map((label, i) => (
@@ -139,7 +140,7 @@ export function SequenceItemRow({
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
       <MarkdownEditor

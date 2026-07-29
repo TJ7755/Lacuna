@@ -22,7 +22,7 @@
 9. **No TODOs, placeholders, mock data, or stubs** unless explicitly requested.
 10. **Do not remove comments** unless incorrect, obsolete, or superseded. Update outdated comments rather than deleting them.
 11. **Fix incidental bugs** you find, even if it costs time. Mention each one, and commit it separately from the main task.
-12. **Update documentation** (SPEC.md, README.md, etc.) after any meaningful change. If the relevant documentation does not exist, ignore this.
+12. **Update documentation** (docs/SPEC.md, README.md, etc.) after any meaningful change. If the relevant documentation does not exist, ignore this.
 13. **UI changes must look native** — beautiful, seamless, never bolted on. Use the frontend-design skill and its principles. Keep user-facing text minimal and intentional; no cringe or design-commentary copy.
 14. **Avoid unnecessary dependencies.**
 
@@ -36,6 +36,14 @@
 4. **Complete the entire task list in one go** (where a list exists), except for asking questions. Do not stop after the first task unless blocked by ambiguity or errors.
 5. **Extract rather than append.** When a change would push a file past ~500 lines, or adds a concern distinct from the file's main responsibility (e.g. gesture handling inside a page component), extract it into a new module instead of appending. Extending existing *systems* does not mean extending existing *files*.
 6. For any task touching more than ~5 files, or needing a multi-step research → plan → implement → review loop, follow the **subagent-orchestration** skill.
+
+---
+
+## Agent mailbox
+
+Every task agent must adopt the `.agent-mail/` protocol without prompting. Derive a stable kebab-case slug from the task, write `<slug>-status.md` heartbeats, and finish with `<slug>-done.md` containing a summary and commit hash. When genuinely blocked, write `<slug>-question.md`, stop work, and poll for `<slug>-answer.md` rather than guessing or giving up early.
+
+The orchestrator polls the mailbox roughly every 20 seconds, so questions will be seen and answered quickly. It deletes consumed files; a status or completion file vanishing is normal. Runtime mailbox files are temporary, ignored by Git, and must not be committed. See `.agent-mail/README.md` for the full protocol.
 
 ---
 

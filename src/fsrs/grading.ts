@@ -10,6 +10,9 @@ const CALIBRATION_THRESHOLD = 20;
 const FAST_SECONDS = 3.0;
 const SLOW_SECONDS = 8.0;
 
+/** Full-mark responses faster than this are graded Easy rather than Good. */
+export const FULL_MARKS_EASY_SECONDS = 3.0;
+
 /** Number of standard deviations either side of the mean for adaptive grading. */
 const SIGMA_FACTOR = 0.75;
 
@@ -55,6 +58,38 @@ export function gradeFromResponse(
   if (responseTimeSec < mu - SIGMA_FACTOR * sigma) return 4;
   if (responseTimeSec > mu + SIGMA_FACTOR * sigma) return 2;
   return 3;
+}
+
+/**
+ * Map machine-awarded marks to an FSRS grade without involving deck calibration.
+ * Full marks are Good (or Easy when fast); a learner who repairs a partial response
+ * receives Hard. Zero marks, uncorrected partial work, and invalid totals are Again.
+ */
+export function gradeFromMarks(
+  marksEarned: number,
+  marksAvailable: number,
+  responseTimeSec: number,
+  selfCorrected: boolean,
+): Grade {
+  if (
+    !Number.isFinite(marksEarned) ||
+    !Number.isFinite(marksAvailable) ||
+    marksAvailable <= 0 ||
+    marksEarned <= 0 ||
+    marksEarned > marksAvailable
+  ) {
+    return 1;
+  }
+
+  if (marksEarned === marksAvailable) {
+    return Number.isFinite(responseTimeSec) &&
+      responseTimeSec >= 0 &&
+      responseTimeSec < FULL_MARKS_EASY_SECONDS
+      ? 4
+      : 3;
+  }
+
+  return selfCorrected ? 2 : 1;
 }
 
 /** An empty performance profile for a deck that has had no correct reviews yet. */

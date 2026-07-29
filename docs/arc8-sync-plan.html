@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lacuna — Arc 8 sync plan (personal multi-device, encrypted relay)</title>
+<style>
+  :root {
+    --bg: #0e1013;
+    --panel: #14171c;
+    --panel-2: #191d23;
+    --line: #262c34;
+    --text: #dfe3e8;
+    --dim: #9aa4b1;
+    --dimmer: #6f7a88;
+    --accent: #7aa2f7;
+    --warn: #e0af68;
+    --bad: #f7768e;
+    --good: #9ece6a;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.62 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px 96px; display: grid; grid-template-columns: 218px 1fr; gap: 44px; }
+  header.top { grid-column: 1 / -1; padding: 52px 0 30px; border-bottom: 1px solid var(--line); margin-bottom: 36px; }
+  h1 { font-size: 27px; line-height: 1.25; margin: 0 0 10px; letter-spacing: -0.02em; font-weight: 640; }
+  .sub { color: var(--dim); font-size: 14.5px; max-width: 74ch; margin: 0; }
+  .meta { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag { font: 500 11.5px/1 var(--mono); letter-spacing: .04em; text-transform: uppercase;
+         padding: 6px 10px; border: 1px solid var(--line); border-radius: 5px; color: var(--dim); background: var(--panel); }
+  .tag.b { color: var(--accent); border-color: #2b3a55; }
+
+  nav { position: sticky; top: 26px; align-self: start; font-size: 13.5px; max-height: calc(100vh - 60px); overflow-y: auto; }
+  nav ol { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  nav li { counter-increment: s; }
+  nav a { display: block; color: var(--dim); text-decoration: none; padding: 5px 0 5px 26px; position: relative; border-left: 1px solid transparent; }
+  nav a::before { content: counter(s); position: absolute; left: 0; color: var(--dimmer); font: 500 11px/1.5 var(--mono); }
+  nav a:hover { color: var(--text); }
+
+  main { min-width: 0; }
+  section { margin-bottom: 46px; scroll-margin-top: 24px; }
+  h2 { font-size: 19px; margin: 0 0 14px; letter-spacing: -0.01em; font-weight: 620; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+  h2 .n { color: var(--dimmer); font: 500 13px/1 var(--mono); margin-right: 10px; }
+  h3 { font-size: 15px; margin: 26px 0 9px; font-weight: 620; color: #eef1f5; }
+  p { margin: 0 0 13px; max-width: 82ch; }
+  ul, ol { margin: 0 0 13px; padding-left: 20px; max-width: 82ch; }
+  li { margin-bottom: 6px; }
+  code { font: 500 12.6px/1.4 var(--mono); background: var(--panel-2); border: 1px solid var(--line);
+         border-radius: 4px; padding: 1.5px 5px; color: #c3ccd8; }
+  pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px;
+        overflow-x: auto; margin: 0 0 15px; }
+  pre code { background: none; border: 0; padding: 0; font-size: 12.4px; line-height: 1.65; color: #b9c2ce; }
+  .k { color: var(--accent); }
+  .c { color: var(--dimmer); font-style: italic; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 16px 18px; margin: 0 0 15px; }
+  .card > :last-child { margin-bottom: 0; }
+  .card h4 { margin: 0 0 8px; font-size: 13.5px; letter-spacing: .02em; text-transform: uppercase; color: var(--dim); font-weight: 600; }
+
+  .flag { border-left: 3px solid var(--warn); background: #1a1712; }
+  .flag h4 { color: var(--warn); }
+  .stop { border-left: 3px solid var(--bad); background: #1c1316; }
+  .stop h4 { color: var(--bad); }
+  .ok { border-left: 3px solid var(--good); background: #141a12; }
+  .ok h4 { color: var(--good); }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 13.7px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td code { font-size: 12px; }
+  tr:last-child td { border-bottom: 0; }
+
+  .phase { display: grid; grid-template-columns: 46px 1fr; gap: 16px; border: 1px solid var(--line);
+           border-radius: 9px; background: var(--panel); padding: 15px 17px; margin-bottom: 11px; }
+  .phase .id { font: 600 12px/1 var(--mono); color: var(--accent); background: var(--panel-2);
+               border: 1px solid var(--line); border-radius: 5px; height: 30px; display: grid; place-items: center; }
+  .phase h4 { margin: 0 0 5px; font-size: 14.5px; font-weight: 620; color: #eef1f5; text-transform: none; letter-spacing: 0; }
+  .phase p { margin: 0 0 7px; font-size: 13.8px; color: var(--dim); }
+  .phase p:last-child { margin-bottom: 0; }
+  .files { font: 500 11.8px/1.7 var(--mono); color: var(--dimmer); }
+
+  .dec { border-bottom: 1px solid var(--line); padding: 13px 0; display: grid; grid-template-columns: 168px 1fr; gap: 18px; }
+  .dec:last-child { border-bottom: 0; }
+  .dec dt { color: var(--dim); font-size: 13.5px; }
+  .dec dd { margin: 0; }
+  dl { margin: 0; }
+
+  footer { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 20px; color: var(--dimmer); font-size: 12.8px; }
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; padding: 0 18px 60px; }
+    nav { position: static; margin-bottom: 34px; }
+    .dec { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>Arc 8 — Personal multi-device sync over a self-hosted encrypted relay</h1>
+  <p class="sub">Implementation plan. Resolves Arc 8's outstanding design decision in favour of
+  option 4 (encrypted snapshot blobs over the Arc 12 relay), and delivers the Arc 12 §12.3 relay
+  early because personal sync needs it first. One user, three devices, no accounts, no Lacuna-run
+  service that can read anything.</p>
+  <div class="meta">
+    <span class="tag b">Draft for review</span>
+    <span class="tag">Target schema v20, after Arc 6 v19</span>
+    <span class="tag">Relay: separate Vercel project</span>
+    <span class="tag">Supersedes Arc 8 options 1–3</span>
+  </div>
+</header>
+
+<nav>
+  <ol>
+    <li><a href="#s1">Scope and decisions</a></li>
+    <li><a href="#s2">Not building</a></li>
+    <li><a href="#s3">Architecture</a></li>
+    <li><a href="#s4">Blockers found in code</a></li>
+    <li><a href="#s5">Schema v20</a></li>
+    <li><a href="#s6">The relay service</a></li>
+    <li><a href="#s7">Cryptography</a></li>
+    <li><a href="#s8">Merge algorithm</a></li>
+    <li><a href="#s9">Transport seam</a></li>
+    <li><a href="#s10">Orchestration</a></li>
+    <li><a href="#s11">Pairing UI</a></li>
+    <li><a href="#s12">Phasing</a></li>
+    <li><a href="#s13">Risks</a></li>
+    <li><a href="#s14">Success criteria</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="s1">
+  <h2><span class="n">01</span>Scope and recorded decisions</h2>
+  <p>The problem is narrow and it should stay narrow: three devices belonging to one person
+  (a phone and two laptops) currently kept in step by copying <code>BackupFile</code> JSON around,
+  which does not work. Everything below is scoped to that. Tutor receipts, classroom
+  distribution and multi-person merge are out, though the relay built here is deliberately the
+  same relay Arc 12 §12.3 specifies, so receipts inherit it for free later.</p>
+
+  <dl>
+    <div class="dec"><dt>Sync mechanism</dt><dd>Arc 8 option 4. Full-state encrypted snapshot,
+      pushed and pulled through a dumb relay, merged on pull. Options 1–3 are closed:
+      option 1 (folder mirror) cannot reach the phone, option 2 (CRDT) is disproportionate for
+      one user, option 3 (local companion process) does not help a phone on mobile data.</dd></div>
+    <div class="dec"><dt>Relay hosting</dt><dd>Its own Vercel project, deployed from
+      <code>relay/</code> in this repo, MIT licensed and independently self-hostable. Not the
+      app's project, so the relay's release cycle is not welded to the UI's.</dd></div>
+    <div class="dec"><dt>Merge symmetry</dt><dd>Full symmetric newest-wins on content from day one,
+      even though the phone cannot author yet. See §1.1.</dd></div>
+    <div class="dec"><dt>Assets</dt><dd>Inline in the snapshot, as <code>exportDatabase()</code>
+      already produces. Size mitigation in §13.</dd></div>
+    <div class="dec"><dt>Trigger</dt><dd>Automatic: pull on app focus, push after a study session
+      ends. Debounced, single-flight, with a visible failure state.</dd></div>
+    <div class="dec"><dt>Key transfer</dt><dd>QR pairing and passphrase, both first-class, both
+      yielding the <em>same</em> channel key. Design in §7.</dd></div>
+  </dl>
+
+  <h3>1.1 The phone authoring gap</h3>
+  <p>You want full authoring on the phone but the UI is not at parity yet, which raises the
+  question of what to do in the meantime. The answer is to build the symmetric merge now and
+  change nothing when the UI lands.</p>
+  <p>The merge is a pure module operating on two <code>BackupFile</code>-shaped snapshots. It has
+  no idea which device produced either one, and it does not care whether a device is
+  <em>capable</em> of authoring, only whether a given record actually changed. A phone that cannot
+  author simply never presents a newer content record, so the content half of the merge is a
+  no-op in practice and becomes live the day Arc 9 ships, with no code change and no migration.</p>
+  <p>Building a review-only special case would mean an asymmetric protocol, a device-role concept
+  in the payload, and a deletion path for all of it in a few months. That is a parallel system in
+  the sense CLAUDE.md §5 forbids. Skip it.</p>
+</section>
+
+<section id="s2">
+  <h2><span class="n">02</span>Explicitly not building</h2>
+  <ul>
+    <li><strong>Accounts, identity or authentication of people.</strong> A channel id is a
+      capability. Whoever holds it plus the key is you.</li>
+    <li><strong>Any server that can read course content or review history.</strong> The relay
+      stores ciphertext and cannot decrypt it, which is what keeps the README's claim structural
+      rather than a promise.</li>
+    <li><strong>Reactivity or subscriptions.</strong> Pull on focus is sufficient for three devices
+      that are rarely used simultaneously.</li>
+    <li><strong>CRDTs.</strong> Arc 8 option 2 stays closed.</li>
+    <li><strong>Blind last-write-wins on the whole blob.</strong> Ruled out in the Arc 8 outline
+      because it discards the losing device's sessions, and still ruled out.</li>
+    <li><strong>A relay Lacuna-the-project operates for other people.</strong> You run one instance
+      for yourself. Publishing the code is not the same as running a service.</li>
+  </ul>
+</section>
+
+<section id="s3">
+  <h2><span class="n">03</span>Architecture</h2>
+<pre><code><span class="c">// Each device, on pull:</span>
+   local <span class="k">BackupFile</span>  ─┐
+                     ├─&gt; mergeSnapshots() ─&gt; merged ─&gt; importBackup(merged, <span class="k">'replace'</span>)
+   remote plaintext ─┘                          │
+                                                └─&gt; encrypt ─&gt; PUT (if changed)
+
+<span class="c">// Wire format per channel, stored as two opaque blobs:</span>
+   /c/&lt;channelId&gt;/state    AES-GCM ciphertext of the snapshot  <span class="c">// device-written</span>
+   /c/&lt;channelId&gt;/keybag   passphrase-wrapped copy of the channel key</code></pre>
+  <p>Three moving parts. A relay that stores blobs by channel id and knows nothing else. A pure
+  merge module in the app that is the only place sync semantics live. A thin transport behind the
+  <code>RelayProvider</code> seam that Arc 12 §12.3 already specifies, so manual export stays the
+  always-available degraded mode.</p>
+  <p>Pull-merge-push is the only cycle. A device never pushes without first merging what is
+  already there, which is what makes a lost race harmless (§13.2).</p>
+</section>
+
+<section id="s4">
+  <h2><span class="n">04</span>Blockers found in the current code</h2>
+  <p>Two prerequisites are missing and both must land before any merge code is written. These are
+  the reason this plan has a schema phase at all.</p>
+
+  <div class="card stop">
+    <h4>Blocker 1 — most content records have no mutation timestamp</h4>
+    <p>Newest-wins per record needs an <code>updatedAt</code>. Across <code>src/db/types.ts</code>
+    only <code>NoteAnnotation</code>, <code>RevisionPlan</code> and <code>PracticeMilestone</code>
+    carry one. <code>Card</code>, <code>Note</code>, <code>Lesson</code>, <code>CourseRecord</code>,
+    <code>Deck</code>, <code>Sequence</code>, <code>LessonCardLink</code> and
+    <code>CourseAssessment</code> have <code>createdAt</code> at best. Newest-wins is not
+    implementable today on the tables that matter most.</p>
+  </div>
+
+  <div class="card stop">
+    <h4>Blocker 2 — deletes cannot be expressed</h4>
+    <p>There are no tombstones anywhere in the schema (nothing matching
+    <code>deletedAt</code>/<code>tombstone</code>/<code>isDeleted</code>). With whole-snapshot
+    newest-wins, a card deleted on the laptop is simply absent from the laptop's snapshot, so the
+    phone's copy wins by existing and the deletion silently reverts on the next sync. Deleted
+    courses resurrect. This is the single most likely way for this feature to look haunted, and it
+    must be fixed in the same migration.</p>
+  </div>
+
+  <div class="card ok">
+    <h4>Already correct — review history is a sound event log</h4>
+    <p><code>sessionHistory</code> is indexed <code>'++id, &amp;eventId, sessionId, deckId,
+    courseId, timestamp'</code>, so <code>eventId</code> is unique-constrained, and
+    <code>recordReview</code> in <code>src/db/repository.ts</code> already rejects a duplicate
+    <code>eventId</code> and one belonging to another attempt. Review events are globally unique
+    and idempotently committed, which is exactly the property a set-union merge needs. This was
+    built in schema v16 for undo and happens to be the hard half of sync, done.</p>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="n">05</span>Schema v20 (additive)</h2>
+  <p>Follows the existing convention: additive migration, pre-migration snapshot via
+  <code>preMigrationSnapshots.ts</code>, same shape as v18's purely-additive pass. Arc 6
+  reserves v19 for occlusions; if Arc 8 lands first, implementation must use the next
+  available schema version rather than leaving a gap.</p>
+
+  <table>
+    <thead><tr><th>Change</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td><code>updatedAt: number</code></td>
+        <td>Added to <code>Deck</code>, <code>Card</code>, <code>CourseRecord</code>,
+        <code>Lesson</code>, <code>Note</code>, <code>LessonCardLink</code>,
+        <code>Sequence</code>, <code>SequenceItem</code>, <code>PracticeNode</code>,
+        <code>CourseAssessment</code>. Backfilled in the upgrade pass from
+        <code>createdAt</code>, or <code>lastReviewed</code> for cards where it is later.
+        Every repository write path sets it; this is the invasive part of the migration and wants
+        a single helper rather than ten scattered <code>Date.now()</code> calls.</td></tr>
+      <tr><td><code>tombstones</code> table</td>
+        <td>New: <code>'[table+recordId], deletedAt'</code>. One row per deletion, written inside
+        the same Dexie transaction as the delete itself. Pruned after 90 days, which is the
+        maximum time a device may be offline and still merge correctly. Longer than that and the
+        stale device must be reset from a pull rather than merged.</td></tr>
+      <tr><td><code>syncState</code> in <code>appState</code></td>
+        <td>Channel id, wrapped key material, last pushed generation, last successful sync at,
+        last error. Under the existing <code>appState</code> key-value table, no new table.</td></tr>
+      <tr><td><code>BACKUP_VERSION</code></td>
+        <td>9 &rarr; 10, with <code>tombstones</code> added to the <code>BackupFile</code> payload
+        and to <code>exportDatabase()</code>/<code>validateBackup()</code>. Older backups import
+        unchanged, absent tombstones meaning none.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card flag">
+    <h4>Decide during implementation</h4>
+    <p>Pre-v16 <code>ReviewLog</code> rows have no <code>eventId</code> and cannot be deduplicated.
+    Proposal: on merge, take local legacy rows as authoritative and never adopt legacy rows from a
+    remote snapshot, so an old row cannot be duplicated by syncing. The alternative, synthesising
+    a deterministic id from <code>cardId + timestamp + grade</code>, is available if you would
+    rather not lose pre-v16 history that exists only on one device. Worth ten minutes before
+    Phase 4.</p>
+  </div>
+</section>
+
+<section id="s6">
+  <h2><span class="n">06</span>The relay service</h2>
+  <p>Its own Vercel project, sources in <code>relay/</code>, deployed independently. Vercel
+  serverless functions plus <strong>Vercel Blob</strong> for storage. Note that Vercel KV and
+  Vercel Postgres have both been sunset and now route through the Marketplace to Upstash and Neon;
+  Blob is the remaining first-party primitive and is the right one here, since the workload is
+  opaque bytes keyed by a string with a TTL.</p>
+
+  <table>
+    <thead><tr><th>Endpoint</th><th>Behaviour</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST /channel</code></td>
+        <td>Mints a channel: returns a random 128-bit <code>channelId</code> and a bearer
+        <code>writeToken</code>. No body, no identity, no rate-limit story needed for a private
+        instance beyond a global cap.</td></tr>
+      <tr><td><code>GET /c/:id/:slot</code></td>
+        <td>Returns the stored ciphertext for <code>state</code> or <code>keybag</code>, with an
+        <code>ETag</code> carrying the generation number. 404 when empty. Knowledge of the id is
+        the read capability.</td></tr>
+      <tr><td><code>PUT /c/:id/:slot</code></td>
+        <td>Requires the bearer token. Requires <code>If-Match</code> with the generation the
+        client merged from; a mismatch returns 412 and the client re-pulls. Enforces a size cap
+        and refreshes the TTL on write.</td></tr>
+      <tr><td><code>DELETE /c/:id</code></td>
+        <td>Requires the bearer token. Removes both slots. The panic button.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Constraints on the implementation: never log request bodies, never log channel ids, respond
+  with CORS headers (see §13.1), reject anything above the blob cap before reading the body, and
+  keep the whole thing small enough that reading it end to end is a five-minute job for anyone
+  deciding whether to trust it.</p>
+</section>
+
+<section id="s7">
+  <h2><span class="n">07</span>Cryptography</h2>
+  <p>WebCrypto only, no new dependencies (CLAUDE.md §14). One 256-bit random <strong>channel
+  key</strong> (CK) per channel is the single key that ever encrypts state. QR and passphrase are
+  two ways of obtaining that same CK, never two parallel encryptions of the same data.</p>
+
+<pre><code>CK          = crypto.getRandomValues(32 bytes)          <span class="c">// generated once, on the first device</span>
+state blob  = AES-GCM(CK, nonce, JSON(snapshot))       <span class="c">// fresh 96-bit nonce per push, prepended</span>
+
+<span class="c">// QR path: CK travels directly, device to device, never through the relay</span>
+QR payload  = { relayUrl, channelId, writeToken, CK }   <span class="c">// scanned once</span>
+
+<span class="c">// Passphrase path: CK is wrapped and the wrapper is stored in the keybag slot</span>
+KEK         = PBKDF2-HMAC-SHA-256(passphrase, salt, iterations)
+keybag blob = AES-GCM(KEK, nonce, { CK, writeToken })</code></pre>
+
+  <ul>
+    <li><strong>Nonce discipline.</strong> A fresh 96-bit random nonce for every single encryption,
+      prepended to the ciphertext. Never derived, never counted, never reused. Two devices pushing
+      concurrently must not be able to produce the same nonce, which random generation gives you
+      and a counter would not.</li>
+    <li><strong>Salt and iterations</strong> are stored alongside the keybag in cleartext, which is
+      normal and fine. Pick the iteration count by measuring on the slowest device (the phone) and
+      targeting roughly half a second, then hard-code it with the measurement in a comment.</li>
+    <li><strong>The passphrase is the weak point and the plan should say so.</strong> Anyone holding
+      the channel id can fetch the keybag and grind offline. The channel id is a 128-bit random
+      string that is never published, so this is not a realistic remote attack, but a four-word
+      passphrase is still worse than the QR path. The UI should say plainly that the passphrase is
+      the recovery route and QR is the everyday one.</li>
+    <li><strong>No key ever reaches the relay.</strong> Not in a URL path, not in a header, not in
+      a query string. The keybag holds the key wrapped, and the wrapping key never leaves the
+      device.</li>
+  </ul>
+
+  <div class="card flag">
+    <h4>Review gate</h4>
+    <p>This is the one slice where agent-written code with passing tests is not sufficient
+    evidence of correctness, because incorrect nonce or KDF handling produces code that works
+    perfectly and is broken. Run <code>/security-review</code> against this module specifically,
+    and read the diff yourself, before anything is pushed to a real channel.</p>
+  </div>
+</section>
+
+<section id="s8">
+  <h2><span class="n">08</span>Merge algorithm</h2>
+  <p>A pure module, <code>src/sync/mergeSnapshots.ts</code>, taking two <code>BackupFile</code>
+  values and returning a third. No Dexie access, no I/O, fully unit-testable, written and tested
+  before any UI exists, per the convention in the cross-arc notes. It reuses the spirit of
+  <code>importBackup(payload, 'merge')</code> but does not extend it, because that function
+  resolves a foreign import against local state whereas this resolves two peers.</p>
+
+  <h3>8.1 Order of operations</h3>
+  <ol>
+    <li><strong>Tombstones union first.</strong> Union both tombstone sets. Any record id appearing
+      in the union is excluded from the result entirely, regardless of what either side holds,
+      unless the surviving record's <code>updatedAt</code> is strictly newer than the
+      <code>deletedAt</code> (an edit after a delete on another device wins, and resurrects
+      deliberately).</li>
+    <li><strong>Content records: newest-wins per record by <code>updatedAt</code>,</strong> with
+      the record id as a deterministic tiebreak when timestamps are equal, so both devices compute
+      the same result independently. Whole-record replacement, no field-level merge.</li>
+    <li><strong>Review history: set-union on <code>eventId</code></strong> across both
+      <code>sessionHistory</code> and each <code>Card.history[]</code>. Both locations hold review
+      events and must be unioned consistently, or a card's inline history disagrees with the
+      session table and the analytics pages diverge from the scheduler.</li>
+    <li><strong>Replay to derive FSRS state.</strong> Sort the unioned history per card by
+      <code>timestamp</code>, tiebreaking on <code>eventId</code>, and replay through
+      <code>ts-fsrs</code> using that course's trained parameters to produce
+      <code>stability</code>, <code>difficulty</code>, <code>due</code> and state.</li>
+    <li><strong>Assets:</strong> union by hash, which is trivially conflict-free since the hash is
+      the identity. Then re-run the existing referenced-hash sweep so orphans do not accumulate
+      across devices.</li>
+  </ol>
+
+  <div class="card stop">
+    <h4>Never merge card state directly</h4>
+    <p>Do not take the newer of two <code>Card.stability</code> values, or of <code>due</code>, or
+    of any other scheduler field. Derive all of them by replaying the merged log. Merging them
+    directly produces a card record that looks coherent and that no sequence of reviews could have
+    generated, and once one exists it is undetectable and permanent.</p>
+  </div>
+
+  <div class="card flag">
+    <h4>Expected, correct, and surprising</h4>
+    <p>A card reviewed on two devices while both were offline will, after merge, land on a due date
+    neither device predicted, because it now has two reviews in its history rather than one. This is
+    correct. Make sure nothing in the UI treats a due date moving backwards or forwards after a pull
+    as corruption, and consider a one-line note in the sync panel the first time it happens.</p>
+  </div>
+
+  <h3>8.2 Test coverage this module needs</h3>
+  <ul>
+    <li>Commutativity: <code>merge(a, b)</code> equals <code>merge(b, a)</code> for every case
+      below. If this ever fails, two devices will oscillate forever.</li>
+    <li>Idempotence: <code>merge(a, merge(a, b))</code> equals <code>merge(a, b)</code>.</li>
+    <li>Same card reviewed on both devices offline, with the replayed state asserted against a
+      hand-computed <code>ts-fsrs</code> result.</li>
+    <li>Delete on A, untouched on B. Delete on A, edited later on B. Edited on both.</li>
+    <li>Pre-v16 legacy rows without <code>eventId</code>, per the §5 decision.</li>
+    <li>A device that has been offline longer than the tombstone retention window.</li>
+  </ul>
+</section>
+
+<section id="s9">
+  <h2><span class="n">09</span>Transport seam</h2>
+  <p><code>RelayProvider</code>, as specified in Arc 12 §12.3, with two implementations from day
+  one: <code>manual</code> (the existing export and import flow, always available, requires no
+  configuration) and <code>http</code> (a relay URL from settings). Sync must degrade to manual
+  with the relay switched off, and the test suite should prove it, because that fallback is what
+  keeps the local-only claim honest rather than aspirational.</p>
+<pre><code>interface RelayProvider {
+  pull(slot): Promise&lt;{ bytes: Uint8Array; generation: string } | null&gt;;
+  push(slot, bytes, ifMatch): Promise&lt;{ generation: string }&gt;;   <span class="c">// throws StaleGeneration on 412</span>
+  purge(): Promise&lt;void&gt;;
+}</code></pre>
+</section>
+
+<section id="s10">
+  <h2><span class="n">10</span>Orchestration</h2>
+  <ul>
+    <li><strong>Pull on focus</strong> via <code>visibilitychange</code>, debounced so tabbing
+      between windows does not thrash, and skipped entirely if a sync completed within the last
+      couple of minutes.</li>
+    <li><strong>Push after a study session ends,</strong> at the same point the session report is
+      produced. Never mid-session: a push during review competes with the write path and risks
+      snapshotting a half-committed session.</li>
+    <li><strong>Single-flight.</strong> One sync in progress at a time, per device, enforced with a
+      promise held in a module-level guard. Overlapping cycles are how you get a stale push.</li>
+    <li><strong>Always pull-merge-push,</strong> never push alone. On a 412 from the relay, re-pull
+      and retry once, then surface the failure rather than looping.</li>
+    <li><strong>Reuse <code>takeAutoBackup(force)</code></strong> before applying a merged snapshot,
+      so a bad merge is one click from recoverable via the existing restore-point UI. This is the
+      cheapest safety net available and it already exists.</li>
+    <li><strong>Failure is visible but not modal.</strong> Last-sync status and last error live in
+      the Settings sync panel. Offline is not an error state and must not present as one, given
+      the app is expected to work with no network at all.</li>
+  </ul>
+</section>
+
+<section id="s11">
+  <h2><span class="n">11</span>Pairing UI</h2>
+  <p>A new Settings section, following the existing Settings conventions and the
+  <code>frontend-design</code> skill. No new dependencies: <code>react-qr-code</code> and
+  <code>html5-qrcode</code> are both already in <code>package.json</code>, currently serving the
+  share-code flow.</p>
+  <ul>
+    <li><strong>First device:</strong> "Set up sync" mints a channel, generates CK, prompts for a
+      recovery passphrase, writes the keybag, pushes the first state blob.</li>
+    <li><strong>Second and third devices:</strong> either scan the QR shown on a paired device, or
+      enter the relay URL, channel id and passphrase by hand. Both paths end in the same place.</li>
+    <li><strong>The QR contains the key.</strong> Display it only on explicit tap, never on a
+      settings page that could be over a shoulder or in a screen share, and dismiss it on blur.</li>
+    <li><strong>Unpair</strong> clears local sync state. <strong>Delete channel</strong> purges the
+      relay. Distinguish them clearly, since one is per-device and the other is destructive for
+      every device.</li>
+  </ul>
+</section>
+
+<section id="s12">
+  <h2><span class="n">12</span>Phasing</h2>
+
+  <div class="phase"><div class="id">P0</div><div>
+    <h4>Repo hygiene, committed separately</h4>
+    <p>Remove the Cloudflare residue now that Vercel is the deploy target: delete
+    <code>wrangler.jsonc</code> and <code>.wrangler/</code>, drop wrangler from devDependencies,
+    and repoint <code>"preview"</code> and <code>"deploy"</code> in <code>package.json</code>,
+    which currently run <code>wrangler dev</code> and <code>wrangler deploy</code>. Local preview
+    presently runs a different runtime from production.</p>
+    <p class="files">package.json · wrangler.jsonc · .wrangler/ · .gitignore</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P1</div><div>
+    <h4>Relay service</h4>
+    <p>Four endpoints, Vercel Blob, ETag generation guard, size cap, TTL, CORS. Its own Vercel
+    project and its own README covering self-hosting. Deployed and reachable before any app code
+    depends on it.</p>
+    <p class="files">relay/</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P2</div><div>
+    <h4>Crypto module, then security review</h4>
+    <p>CK generation, AES-GCM seal and open, PBKDF2 wrap and unwrap, keybag encode. Pure, tested
+    against known vectors. Gate: <code>/security-review</code> plus a human read before P5.</p>
+    <p class="files">src/sync/crypto.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P3</div><div>
+    <h4>Schema v20</h4>
+    <p><code>updatedAt</code> across content tables with a single write helper, the
+    <code>tombstones</code> table wired into every delete path, <code>syncState</code>,
+    <code>BACKUP_VERSION</code> 10. Pre-migration snapshot per existing convention. Largest and
+    most invasive phase; nothing after it can start until it is stable.</p>
+    <p class="files">src/db/schema.ts · types.ts · repository.ts · portability.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P4</div><div>
+    <h4>Merge module</h4>
+    <p>Pure <code>mergeSnapshots()</code> with the full §8.2 test matrix, including the
+    commutativity and idempotence properties. No UI, no transport, no Dexie. This is the phase
+    worth over-testing; everything else is replaceable and this is not.</p>
+    <p class="files">src/sync/mergeSnapshots.ts (+ tests)</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P5</div><div>
+    <h4>Transport seam and sync cycle</h4>
+    <p><code>RelayProvider</code> with manual and http implementations, the pull-merge-push cycle,
+    backup-before-apply, 412 retry, single-flight guard.</p>
+    <p class="files">src/sync/relay.ts · src/sync/cycle.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P6</div><div>
+    <h4>Pairing UI and status panel</h4>
+    <p>Settings section, QR display and scan, passphrase entry, unpair, delete channel, last-sync
+    and error surface.</p>
+    <p class="files">src/pages/settings/*</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P7</div><div>
+    <h4>Automatic triggers</h4>
+    <p>Focus pull and session-end push, debounce, offline handling. Deliberately last, so every
+    earlier phase is exercised manually before anything runs unattended.</p>
+    <p class="files">src/sync/triggers.ts · src/App.tsx</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P8</div><div>
+    <h4>Documentation and Arc 8 close-out</h4>
+    <p>SPEC.md sync section, CHANGES.md, README's local-only paragraph updated to describe optional
+    self-hosted sync honestly, and next_plan.md Arc 8 marked resolved in favour of option 4 with
+    options 1–3 recorded as closed and why.</p>
+    <p class="files">docs/SPEC.md · docs/CHANGES.md · README.md · docs/next_plan.md</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P9</div><div>
+    <h4>Three-device manual pass</h4>
+    <p>Not optional and not automatable. Pair all three. Review the same card on two devices in
+    aeroplane mode, reconnect both, confirm the replayed state matches a hand-computed expectation.
+    Delete a course on one device and confirm it stays dead. Restore from a pre-sync backup.</p>
+  </div></div>
+</section>
+
+<section id="s13">
+  <h2><span class="n">13</span>Risks and open questions</h2>
+
+  <h3>13.1 COEP will bite the relay</h3>
+  <p><code>vercel.json</code> sets <code>Cross-Origin-Embedder-Policy: require-corp</code> on every
+  route, which the FSRS trainer's WASM worker needs. Since the relay is deliberately a separate
+  project on a separate origin, its responses must carry correct CORS headers or the fetch fails
+  in a way that reads as a network fault rather than a policy one. Build the headers in from the
+  first endpoint and add a test that asserts them, rather than discovering this on the phone.</p>
+
+  <h3>13.2 Concurrent pushes</h3>
+  <p>Two devices merging from generation <em>n</em> and both pushing would let the second silently
+  clobber the first. The <code>If-Match</code> guard turns that into a 412, and because every cycle
+  is pull-merge-push, the loser re-pulls, re-merges (a union, so nothing is lost) and pushes again.
+  Worth an explicit test with two simulated clients, since this is the failure that silently eats
+  a study session.</p>
+
+  <h3>13.3 Snapshot size with inline assets</h3>
+  <p>You chose inline assets, which is right for correctness and means the blob grows with every
+  image dragged into a note. Set the relay's cap deliberately (start around 25 MB), surface the
+  current snapshot size in the sync panel, and fail the push with a clear message naming the
+  offending courses rather than a generic error. If it becomes a real constraint, the escape is
+  Arc 12's content-hash-addressed asset path, which is why assets are hashed already. Do not
+  pre-build it.</p>
+
+  <h3>13.4 The <code>updatedAt</code> backfill is where bugs will hide</h3>
+  <p>Every write path in <code>repository.ts</code> must set it. One missed path produces a record
+  that never wins a merge and therefore silently stops propagating, which will present months later
+  as "my notes edit did not reach my phone" and will be miserable to trace. A single write helper
+  plus a test that asserts <code>updatedAt</code> advances after every public mutation is worth the
+  effort here.</p>
+
+  <h3>13.5 Open</h3>
+  <ol>
+    <li>Legacy pre-v16 review rows: drop remote or synthesise ids (§5).</li>
+    <li>Tombstone retention: 90 days proposed, and what the UI does with a device that exceeds it.</li>
+    <li>Whether the Electron builds should ship a bundled relay URL default or start unconfigured.
+      Unconfigured is more honest; bundled is less friction for you specifically.</li>
+  </ol>
+</section>
+
+<section id="s14">
+  <h2><span class="n">14</span>Success criteria</h2>
+  <ol>
+    <li>Three devices converge to the same state after any interleaving of offline edits and
+      reviews, with no manual file copying.</li>
+    <li>A card reviewed on two devices offline ends with both reviews in its history and an FSRS
+      state derived by replay, verified by hand once on real devices.</li>
+    <li>A deletion on any device stays deleted everywhere.</li>
+    <li>With the relay switched off, the app is exactly what it is today, and the test suite proves
+      the manual path still works.</li>
+    <li>The relay never receives a key, and its stored bytes are indistinguishable from random to
+      anyone holding them.</li>
+    <li>The merge module's commutativity and idempotence properties hold under test.</li>
+  </ol>
+</section>
+
+</main>
+
+<footer>
+  Lacuna — Arc 8 implementation plan, drafted 25 July 2026 against schema v18 at
+  <code>a8408a9</code>. Supersedes the Arc 8 outline in <code>docs/next_plan.md</code> for
+  implementation purposes; options 1–3 recorded there remain closed.
+</footer>
+
+</div>
+</body>
+</html>

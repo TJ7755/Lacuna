@@ -17,7 +17,7 @@ import {
   useNotes,
   useLessonCards,
   useLessons,
-  useCourseExamDates,
+  useCourseAssessments,
 } from '../state/useCourseData';
 import { useDeck } from '../state/useData';
 import { LessonNotesSection } from '../components/notes/LessonNotesSection';
@@ -31,7 +31,7 @@ import { CourseHeader } from '../components/course/CourseHeader';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { courseHeaderStats } from '../course/headerStats';
-import { resolveLessonViewMode } from '../course/lessonViewMode';
+import { canEditLessons, resolveLessonViewMode } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -76,7 +76,7 @@ export function LessonView({
   );
   const course = useCourse(courseId);
   const lessons = useLessons(courseId);
-  const examDates = useCourseExamDates(courseId);
+  const examDates = useCourseAssessments(courseId);
   const notes = useNotes(lessonId);
   const lessonCards = useLessonCards(lessonId);
 
@@ -109,7 +109,9 @@ export function LessonView({
         <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
         <div className="relative">
           <p className="mb-4 text-ink-soft">
-            {lesson === null ? 'This lesson could not be found.' : 'This course could not be found.'}
+            {lesson === null
+              ? 'This lesson could not be found.'
+              : 'This course could not be found.'}
           </p>
           <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
             {courseId ? 'Back to course' : 'Back to dashboard'}
@@ -154,10 +156,19 @@ export function LessonView({
               lessonCount={lessons.length}
               onCreated={() => navigate(`/course/${courseId}`)}
             />
-            <LessonViewModeToggle
-              mode={viewMode}
-              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-            />
+            {!canEditLessons(course) ? (
+              <Link
+                to={`/course/${courseId}/settings`}
+                className="text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink"
+              >
+                Editing is locked for shared courses
+              </Link>
+            ) : (
+              <LessonViewModeToggle
+                mode={viewMode}
+                onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
+              />
+            )}
             {/* Single-lesson courses skip CoursePath's header entirely (see
                 CoursePath.tsx's single-lesson branch), so this is the only
                 route to Course settings for them — mirror CoursePath's link. */}
@@ -244,6 +255,7 @@ export function LessonView({
               <LessonCardsSection
                 courseId={courseId}
                 lessonId={lessonId}
+                lessonName={lesson.name}
                 lessonCards={lessonCards}
                 lessonDeck={lessonDeck}
                 onNavigate={navigate}

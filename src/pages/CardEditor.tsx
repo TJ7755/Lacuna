@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCard } from '../state/useData';
 import { useCourse, useCourseCards, useLesson, useLessonCards, useSequences } from '../state/useCourseData';
@@ -20,13 +20,25 @@ import {
 import { hasCloze } from '../components/markdown/cloze';
 import { sequenceForItemId } from '../db/sequenceGeneration';
 import { CardContent } from '../components/cards/CardContent';
+import {
+  NumericAnswerEditor,
+  numericAnswerSpecIsValid,
+} from '../components/items/NumericAnswerEditor';
+import { MarkSchemeEditor } from '../components/items/MarkSchemeEditor';
+import { compileMarkScheme, serialiseMarkScheme } from '../items/markSchemeCompiler';
+import { buildMarkSchemeDraftPrompt } from '../items/prompts';
 import { SequenceBadge } from '../components/cards/SequenceBadge';
 import { ChevronLeftIcon, CheckIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
-import type { Card, CardType } from '../db/types';
+import type { EditorOriginState } from '../utils/editorOrigin';
+import type { Card, CardType, ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
+
+type EditorCardType = CardType | 'numeric' | 'working';
+
+const EMPTY_NUMERIC_ANSWER: NumericAnswerSpec = { kind: 'exact', value: '' };
 
 /**
  * Full-page card composer for both creating and editing a card. Replaces the old
@@ -45,6 +57,7 @@ export function CardEditor() {
   const lessonMode = Boolean(lessonId);
   const bankMode = !lessonMode;
   const navigate = useNavigate();
+  const location = useLocation();
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -66,9 +79,13 @@ export function CardEditor() {
   // sequence here to link back to the sequence editor). Harmless to call unconditionally.
   const sequences = useSequences(courseId);
 
-  const [type, setType] = useState<CardType>('front_back');
+  const [type, setType] = useState<EditorCardType>('front_back');
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
+  const [numericAnswer, setNumericAnswer] = useState<NumericAnswerSpec>(EMPTY_NUMERIC_ANSWER);
+  const [workingSource, setWorkingSource] = useState('');
+  const [workingFixtures, setWorkingFixtures] = useState<ItemFixture[]>([]);
+  const workingCompilation = useMemo(() => compileMarkScheme(workingSource), [workingSource]);
   const [tags, setTags] = useState<string[]>([]);
   const [showBackCloze, setShowBackCloze] = useState(false);
   // When set (new front/back cards only), saving also creates an independent reverse card.
@@ -116,6 +133,16 @@ export function CardEditor() {
     setShowSaved(true);
     savedTimer.current = window.setTimeout(() => setShowSaved(false), 1200);
   }
+
+  async function copyMarkSchemePrompt() {
+    if (!front.trim()) return;
+    try {
+      await navigator.clipboard.writeText(buildMarkSchemeDraftPrompt(front));
+      notify('Mark-scheme prompt copied to the clipboard.', 'positive');
+    } catch {
+      notify('Could not copy the mark-scheme prompt.', 'negative');
+    }
+  }
   useEffect(() => () => window.clearTimeout(savedTimer.current), []);
 
   // Existing tags across the lesson or bank, offered as suggestions in the tag input.
@@ -146,9 +173,20 @@ export function CardEditor() {
       if (draft && draft.timestamp > 0) {
         setDraftPrompt(true);
       } else {
-        setType(card.type);
+        setType(
+          card.payload?.kind === 'numeric'
+            ? 'numeric'
+            : card.payload?.kind === 'working'
+              ? 'working'
+              : card.type,
+        );
         setFront(card.front);
         setBack(card.back);
+        if (card.payload?.kind === 'numeric') setNumericAnswer(card.payload.answer);
+        if (card.payload?.kind === 'working') {
+          setWorkingSource(serialiseMarkScheme(card.payload.scheme));
+          setWorkingFixtures(card.payload.fixtures ?? []);
+        }
         setTags(card.tags ?? []);
       }
       setLoaded(true);
@@ -158,10 +196,22 @@ export function CardEditor() {
   const applyDraft = () => {
     const draft = loadDraft(draftKeyRef.current);
     if (!draft) return;
-    setType(draft.type);
+    setType(
+      draft.itemKind === 'numeric' || draft.itemKind === 'working'
+        ? draft.itemKind
+        : draft.type,
+    );
     setFront(draft.front);
     setBack(draft.back);
     setTags(draft.tags);
+    if (draft.payload?.kind === 'numeric') setNumericAnswer(draft.payload.answer);
+    if (draft.itemKind === 'working') {
+      setWorkingSource(
+        draft.workingSource ??
+          (draft.payload?.kind === 'working' ? serialiseMarkScheme(draft.payload.scheme) : ''),
+      );
+      setWorkingFixtures(draft.payload?.kind === 'working' ? (draft.payload.fixtures ?? []) : []);
+    }
     if (draft.alsoReverse !== undefined) setAlsoReverse(draft.alsoReverse);
     setDraftPrompt(false);
   };
@@ -170,10 +220,21 @@ export function CardEditor() {
     clearDraft(draftKeyRef.current);
     setDraftPrompt(false);
     if (editing && card) {
-      setType(card.type);
+      setType(
+        card.payload?.kind === 'numeric'
+          ? 'numeric'
+          : card.payload?.kind === 'working'
+            ? 'working'
+            : card.type,
+      );
       setFront(card.front);
       setBack(card.back);
       setTags(card.tags ?? []);
+      if (card.payload?.kind === 'numeric') setNumericAnswer(card.payload.answer);
+      if (card.payload?.kind === 'working') {
+        setWorkingSource(serialiseMarkScheme(card.payload.scheme));
+        setWorkingFixtures(card.payload.fixtures ?? []);
+      }
     }
   };
 
@@ -183,16 +244,31 @@ export function CardEditor() {
     window.clearTimeout(draftTimer.current);
     draftTimer.current = window.setTimeout(() => {
       saveDraft(draftKeyRef.current, {
-        type,
+        type: type === 'numeric' || type === 'working' ? 'front_back' : type,
+        itemKind: type === 'numeric' || type === 'working' ? type : undefined,
         front,
         back,
         tags,
         alsoReverse,
+        payload:
+          type === 'numeric'
+            ? { v: 1, kind: 'numeric', answer: numericAnswer }
+            : type === 'working'
+              ? {
+                  v: 1,
+                  kind: 'working',
+                  scheme: workingCompilation.lines.flatMap((line) =>
+                    line.kind === 'compiled' ? [line.value] : [],
+                  ),
+                  ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
+                }
+              : undefined,
+        workingSource: type === 'working' ? workingSource : undefined,
         timestamp: Date.now(),
       });
     }, 800);
     return () => window.clearTimeout(draftTimer.current);
-  }, [loaded, type, front, back, tags, alsoReverse]);
+  }, [loaded, type, front, back, tags, alsoReverse, numericAnswer, workingCompilation, workingFixtures, workingSource]);
 
   // Check for duplicate cards whenever front/back/type changes. A fresh, empty lesson
   // or bank has no backing deck yet, so there is nothing to check against.
@@ -202,12 +278,14 @@ export function CardEditor() {
     if (editing && !card) return;
     window.clearTimeout(duplicateTimer.current);
     duplicateTimer.current = window.setTimeout(async () => {
-      const backValue = type === 'cloze' ? '' : back;
-      if (!front.trim() || (!backValue.trim() && type !== 'cloze')) {
+      const structured = type === 'numeric' || type === 'working';
+      const storedType: CardType = structured ? 'front_back' : type;
+      const backValue = type === 'cloze' || structured ? '' : back;
+      if (!front.trim() || (!backValue.trim() && type !== 'cloze' && !structured)) {
         setDuplicateWarning(null);
         return;
       }
-      const dup = await checkDuplicate(duplicateCheckDeckId, type, front, backValue, card?.id);
+      const dup = await checkDuplicate(duplicateCheckDeckId, storedType, front, backValue, card?.id);
       setDuplicateWarning(dup ?? null);
     }, 600);
     return () => window.clearTimeout(duplicateTimer.current);
@@ -215,8 +293,14 @@ export function CardEditor() {
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/bank`;
+  // Where the caller navigated from, when that differs from what the route alone
+  // implies (e.g. a lesson-owned card opened for editing from the Question bank).
+  // Absent on direct loads and hard refreshes, which drop router state — the
+  // route-derived default below covers that case.
+  const origin = (location.state as EditorOriginState | null)?.origin;
   // Where Cancel, post-save navigation and the breadcrumb "back" target all point.
-  const backPath = lessonMode ? lessonPath : bankPath;
+  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
+  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Question bank');
 
   if (
     (lessonMode
@@ -257,7 +341,7 @@ export function CardEditor() {
       >
         <p className="mb-4 text-ink-soft">This card could not be found.</p>
         <Link to={backPath} className="text-accent underline">
-          Back to {lessonMode ? lesson?.name : 'Question bank'}
+          Back to {backLabel}
         </Link>
       </motion.div>
     );
@@ -276,27 +360,13 @@ export function CardEditor() {
     return (
       <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
         <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-          {lessonMode ? (
-            <>
-              <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-                {course?.name}
-              </Link>
-              <ChevronRight />
-              <Link to={backPath} className="transition-colors hover:text-ink">
-                {lesson?.name}
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-                {course?.name}
-              </Link>
-              <ChevronRight />
-              <Link to={backPath} className="transition-colors hover:text-ink">
-                Question bank
-              </Link>
-            </>
-          )}
+          <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
+            {course?.name}
+          </Link>
+          <ChevronRight />
+          <Link to={backPath} className="transition-colors hover:text-ink">
+            {backLabel}
+          </Link>
           <ChevronRight />
           <span className="text-ink-soft">Card</span>
         </nav>
@@ -372,16 +442,26 @@ export function CardEditor() {
 
   const isCloze = type === 'cloze';
   const isBasicReversed = type === 'basic_reversed';
+  const isNumeric = type === 'numeric';
+  const isWorking = type === 'working';
+  const isStructured = isNumeric || isWorking;
+  const workingValid =
+    !isWorking ||
+    (workingCompilation.lines.length > 0 &&
+      workingCompilation.lines.every((line) => line.kind === 'compiled'));
   const clozeValid = !isCloze || hasCloze(front);
   const frontValid = front.trim().length > 0;
-  const backValid = isCloze || back.trim().length > 0;
-  const canSave = frontValid && backValid && clozeValid;
+  const backValid = isCloze || isStructured || back.trim().length > 0;
+  const numericValid = !isNumeric || numericAnswerSpecIsValid(numericAnswer);
+  const canSave = frontValid && backValid && clozeValid && numericValid && workingValid;
 
   async function handleSave(andAnother = false) {
     const missingOwner = lessonMode ? !courseId || !lessonId : !courseId;
     if (!canSave || missingOwner) {
       // Shake the first invalid field to give the user tactile feedback on why save is blocked.
       if (!frontValid) setShakeField('front');
+      else if (!numericValid) setShakeField('answer');
+      else if (!workingValid) setShakeField('scheme');
       else if (!backValid) setShakeField('back');
       else if (!clozeValid) setShakeField('cloze');
       setShakeNonce((n) => n + 1);
@@ -389,9 +469,22 @@ export function CardEditor() {
       shakeTimer.current = window.setTimeout(() => setShakeField(null), 500);
       return;
     }
-    const backValue = isCloze ? '' : back;
+    const storedType: CardType = isStructured ? 'front_back' : type;
+    const backValue = isCloze || isStructured ? '' : back;
+    const payload: ItemPayload | undefined = isNumeric
+      ? { v: 1, kind: 'numeric', answer: numericAnswer }
+      : isWorking
+        ? {
+            v: 1,
+            kind: 'working',
+            scheme: workingCompilation.lines.flatMap((line) =>
+              line.kind === 'compiled' ? [line.value] : [],
+            ),
+            ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
+          }
+        : undefined;
     if (editing && card) {
-      await updateCard(card.id, { type, front, back: backValue, tags });
+      await updateCard(card.id, { type: storedType, front, back: backValue, tags, payload });
       // If this is a basic_reversed card, update its reverse partner too.
       if (card.type === 'basic_reversed' && card.reverseCardId) {
         await updateCard(card.reverseCardId, { front: backValue, back: front });
@@ -406,21 +499,21 @@ export function CardEditor() {
       return;
     }
 
-    const reversed = !isCloze && !isBasicReversed && alsoReverse;
+    const reversed = !isCloze && !isBasicReversed && !isStructured && alsoReverse;
     if (lessonMode) {
       if (isBasicReversed) {
         await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags);
       } else if (reversed) {
         await createLessonCardWithReverse(courseId!, lessonId!, front, backValue, tags);
       } else {
-        await createLessonCard(courseId!, lessonId!, type, front, backValue, tags);
+        await createLessonCard(courseId!, lessonId!, storedType, front, backValue, tags, payload);
       }
     } else if (isBasicReversed) {
       await createCourseBasicReversedPair(courseId!, front, backValue, tags);
     } else if (reversed) {
       await createCourseCardWithReverse(courseId!, front, backValue, tags);
     } else {
-      await createCourseCard(courseId!, type, front, backValue, tags);
+      await createCourseCard(courseId!, storedType, front, backValue, tags, payload);
     }
     clearDraft(draftKeyRef.current);
     if (andAnother) {
@@ -428,6 +521,9 @@ export function CardEditor() {
       // (usually shared across a batch), refocus the first field, and tally the count.
       setFront('');
       setBack('');
+      if (isNumeric) setNumericAnswer(EMPTY_NUMERIC_ANSWER);
+      if (isWorking) setWorkingSource('');
+      if (isWorking) setWorkingFixtures([]);
       setAddedCount((n) => n + (reversed ? 2 : 1));
       setFormKey((k) => k + 1);
       flashSaved();
@@ -453,27 +549,13 @@ export function CardEditor() {
     >
       {/* Breadcrumb */}
       <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-        {lessonMode ? (
-          <>
-            <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-              {course?.name}
-            </Link>
-            <ChevronRight />
-            <Link to={backPath} className="transition-colors hover:text-ink">
-              {lesson?.name}
-            </Link>
-          </>
-        ) : (
-          <>
-            <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-              {course?.name}
-            </Link>
-            <ChevronRight />
-            <Link to={backPath} className="transition-colors hover:text-ink">
-              Question bank
-            </Link>
-          </>
-        )}
+        <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
+          {course?.name}
+        </Link>
+        <ChevronRight />
+        <Link to={backPath} className="transition-colors hover:text-ink">
+          {backLabel}
+        </Link>
         <ChevronRight />
         <span className="text-ink-soft">{editing ? 'Edit card' : 'New card'}</span>
       </nav>
@@ -540,9 +622,9 @@ export function CardEditor() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
                 transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="flex items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3"
+                className="flex items-center gap-3 rounded-xl border border-warning/20 bg-warning/5 px-4 py-3"
               >
-                <span className="text-sm text-amber-700">
+                <span className="text-sm text-warning-fg">
                   A card with identical content already exists in this deck.
                 </span>
                 <button
@@ -561,16 +643,19 @@ export function CardEditor() {
             <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
               Card type
             </div>
-            <div className={cn('flex gap-2', isTouchMode && 'gap-3')}>
+            <div className={cn('grid grid-cols-2 gap-2 md:grid-cols-5', isTouchMode && 'gap-3')}>
               {([
                 { key: 'front_back' as const, label: 'Front / Back' },
                 { key: 'cloze' as const, label: 'Cloze deletion' },
                 { key: 'basic_reversed' as const, label: 'Basic (reversed)' },
+                { key: 'numeric' as const, label: 'Numeric answer' },
+                { key: 'working' as const, label: 'Working' },
               ]).map((t) => (
                 <motion.button
                   key={t.key}
                   type="button"
                   onClick={() => setType(t.key)}
+                  aria-pressed={type === t.key}
                   whileTap={{ scale: 0.96 }}
                   className={cn(
                     'flex-1 rounded-lg border px-4 py-2.5 text-sm transition-colors',
@@ -619,6 +704,43 @@ export function CardEditor() {
                   Add at least one cloze deletion using the Cloze button, e.g.{' '}
                   <code className="font-mono">{'{{c1::answer}}'}</code>.
                 </p>
+              )}
+            </>
+          ) : isNumeric || isWorking ? (
+            <>
+              <div key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'front' ? 'shake-field' : '')}>
+                <MarkdownEditor
+                  key={`structured-front-${formKey}`}
+                  inputRef={frontRef}
+                  autoFocus={!editing}
+                  label="Question"
+                  value={front}
+                  onChange={setFront}
+                  minRows={8}
+                  placeholder="Question or prompt. Markdown, maths and images are supported."
+                  onError={(message) => notify(message, 'negative')}
+                />
+              </div>
+              {isNumeric ? (
+                <div key={`answer-shake-${shakeField === 'answer' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'answer' ? 'shake-field' : '')}>
+                  <NumericAnswerEditor
+                    value={numericAnswer}
+                    onChange={setNumericAnswer}
+                    invalid={shakeField === 'answer'}
+                  />
+                </div>
+              ) : (
+                <div key={`scheme-shake-${shakeField === 'scheme' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'scheme' ? 'shake-field' : '')}>
+                  <MarkSchemeEditor
+                    value={workingSource}
+                    onChange={setWorkingSource}
+                    fixtures={workingFixtures}
+                    onFixturesChange={setWorkingFixtures}
+                    onDraftMarkScheme={() => void copyMarkSchemePrompt()}
+                    draftDisabled={!front.trim()}
+                    invalid={shakeField === 'scheme'}
+                  />
+                </div>
               )}
             </>
           ) : (
@@ -686,7 +808,7 @@ export function CardEditor() {
         )}
       >
         <div className={cn('pointer-events-auto flex flex-wrap items-center gap-3', isTouchMode && 'max-w-3xl mx-auto')}>
-          {!editing && !isCloze && !isBasicReversed && (
+          {!editing && !isCloze && !isBasicReversed && !isStructured && (
             <motion.button
               type="button"
               onClick={() => setAlsoReverse((v) => !v)}
