@@ -127,6 +127,17 @@ function hasMachineMarkedPayload(card: Pick<Card, 'payload'> | null): boolean {
   );
 }
 
+/**
+ * A payload the current client cannot render as a study face at all: present but not
+ * machine-markable (unknown v, or a known-but-unbuilt kind such as `scaffold`). A falsy
+ * (null or undefined) payload is treated as no payload, matching the ordinary card path.
+ * Single source of truth for the read-only-render check and the grading guard below so
+ * the two cannot drift apart.
+ */
+function isUnrenderableItemPayload(card: Pick<Card, 'payload'> | null): boolean {
+  return !!card?.payload && !hasMachineMarkedPayload(card);
+}
+
 /** What undoing the most recent answer needs to restore (DB + in-session state). */
 interface AnswerSnapshot {
   undo: ReviewUndo;
@@ -245,7 +256,7 @@ export function useLearnSession({
   // not machine-markable (unknown v, or a known-but-unbuilt kind such as `scaffold`).
   // Renders read-only via UnknownItemFace — never a wrong FSRS mark (next_plan.md
   // §11.2 rule 3).
-  const hasUnrenderableItemPayload = !!current?.payload && !isMachineMarkedCard;
+  const hasUnrenderableItemPayload = isUnrenderableItemPayload(current);
   // Whether the current card was generated from a lines-mode Sequence (see
   // linesModeCards.ts) — drives the optional first-letter hint step in the question phase.
   const isLinesModeCard = current !== null && linesModeMapRef.current.has(current.id);
@@ -1239,7 +1250,7 @@ export function useLearnSession({
         (!machineMarked && phaseNow !== 'answer') ||
         (machineMarked && phaseNow !== 'question') ||
         !cardNow ||
-        (cardNow.payload !== undefined && !hasMachineMarkedPayload(cardNow))
+        isUnrenderableItemPayload(cardNow)
       ) {
         submitting.current = false;
         return;

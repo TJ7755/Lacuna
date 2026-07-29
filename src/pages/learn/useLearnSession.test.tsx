@@ -70,4 +70,49 @@ describe('useLearnSession answer boundary', () => {
     expect((await db.cards.get(card.id))?.history).toHaveLength(0);
     expect(await db.sessionHistory.count()).toBe(0);
   });
+
+  it('grades a card with a null payload like an ordinary card', async () => {
+    const deck = await createDeck('Null payload');
+    const card = await createCard(deck.id, 'front_back', 'Question', 'Answer', [], {
+      payload: null as never,
+    });
+    const params = {
+      courseId: undefined,
+      lessonId: undefined,
+      sessionId: undefined,
+      tagFilter: null,
+      filterParams: [],
+      requestScopeLessonIds: undefined,
+      practiceNodeKeyParam: null,
+      requestAssessmentId: undefined,
+      requestPlanId: undefined,
+      requestWindowId: undefined,
+      plannedRevision: false,
+      reviewSessionKind: 'deck' as const,
+      isSimpleMode: false,
+      mode: 'fsrs' as const,
+      navigate: vi.fn(),
+      notify: vi.fn(),
+      distraction,
+      typingSetting: 'reveal' as const,
+      startInFocusMode: false,
+      m: 1,
+    };
+    const { result } = renderHook(() => useLearnSession(params));
+
+    await waitFor(() => expect(result.current.current?.id).toBe(card.id));
+
+    act(() => {
+      result.current.reveal();
+    });
+    await waitFor(() => expect(result.current.phase).toBe('answer'));
+
+    await act(async () => {
+      await result.current.answer(true);
+    });
+
+    expect(result.current.phase).not.toBe('answer');
+    expect(result.current.events.current).toHaveLength(1);
+    expect((await db.cards.get(card.id))?.history).toHaveLength(1);
+  });
 });
