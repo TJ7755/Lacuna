@@ -274,12 +274,21 @@ function matchesSchemeLine(
     );
   }
 
+  // A value predicate asks for the answer, and both students and authoring models write an
+  // answer as "y = 3" at least as often as a bare "3". Offer the named value alongside the
+  // whole line so either form earns the mark. The line as written is still tried first, so
+  // nothing that matched before stops matching. Waypoints deliberately do not get this: there
+  // the equation is the content, and "2y = 6" must keep meaning 2y - 6.
+  const values = [parsedStudent.expression];
+  const named = namedAnswerValue(studentLine);
+  if (named) values.push(named);
+
   const args = line.args ?? [];
   if (line.predicate === 'equals') {
     const expected = args[0] ? parseExpression(args[0]) : null;
     if (!expected?.ok) return 'undetermined';
-    return fromOutcome(
-      compareByRandomEvaluation(parsedStudent.expression, expected.expression, seed),
+    return bestOutcome(
+      values.map((value) => fromOutcome(compareByRandomEvaluation(value, expected.expression, seed))),
     );
   }
   if (line.predicate === 'within') {
@@ -287,18 +296,39 @@ function matchesSchemeLine(
     if (args[1] === undefined || !Number.isFinite(tolerance) || tolerance < 0) {
       return 'undetermined';
     }
-    return checkNumeric(parsedStudent.expression, {
-      kind: 'within',
-      value: args[1],
-      tolerance,
-    })
+    return values.some((value) =>
+      checkNumeric(value, { kind: 'within', value: args[1] as string, tolerance }),
+    )
       ? 'matched'
       : 'unmatched';
   }
   if (args.length === 0) return 'undetermined';
-  return checkNumeric(parsedStudent.expression, { kind: 'matches-one-of', values: args })
+  return values.some((value) => checkNumeric(value, { kind: 'matches-one-of', values: args }))
     ? 'matched'
     : 'unmatched';
+}
+
+/**
+ * The value side of a student line that names what it has found, e.g. `y = 3` -> `3`.
+ * Returns null unless the left side is a single bare variable, so an equation carrying real
+ * content — `2y = 6`, `6+4=10` — is never reduced to its right-hand side.
+ */
+function namedAnswerValue(studentLine: string): Expression | null {
+  let equation: { left: string; right: string } | null;
+  try {
+    equation = splitEquation(studentLine.trim());
+  } catch {
+    return null;
+  }
+  if (!equation || !/^[A-Za-z][A-Za-z0-9_]*$/.test(equation.left)) return null;
+  const parsed = parseExpression(equation.right);
+  return parsed.ok ? parsed.expression : null;
+}
+
+/** Prefer a mark, then an honest "cannot tell", and only then a miss. */
+function bestOutcome(outcomes: SchemeLineOutcome[]): SchemeLineOutcome {
+  if (outcomes.includes('matched')) return 'matched';
+  return outcomes.includes('undetermined') ? 'undetermined' : 'unmatched';
 }
 
 function fromOutcome(outcome: EquivalenceOutcome): SchemeLineOutcome {

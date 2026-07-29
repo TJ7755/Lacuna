@@ -191,3 +191,80 @@ describe('verifyWorkingLines', () => {
     expect(result.lineVerdicts[0].undetermined).toBeUndefined();
   });
 });
+
+describe('verifyWorkingLines: answers written as "<variable> = value"', () => {
+  function marksFor(line: MarkSchemeLine, studentLine: string): number {
+    return verifyWorkingLines([studentLine], [line], 'named-answer').marksEarned;
+  }
+
+  const equals: MarkSchemeLine = {
+    marks: 1,
+    label: 'y',
+    kind: 'predicate',
+    predicate: 'equals',
+    args: ['3'],
+  };
+
+  it('earns an equals criterion whether the value is bare or named', () => {
+    expect(marksFor(equals, '3')).toBe(1);
+    expect(marksFor(equals, 'y = 3')).toBe(1);
+    expect(marksFor(equals, 'y=3')).toBe(1);
+    expect(marksFor(equals, '  y   =   3  ')).toBe(1);
+  });
+
+  it('accepts a named answer whose variable differs from the criterion label', () => {
+    expect(marksFor(equals, 'x = 3')).toBe(1);
+    expect(marksFor({ ...equals, label: 'final answer' }, 'y = 3')).toBe(1);
+  });
+
+  it('accepts multi-character and equivalent named values', () => {
+    expect(marksFor({ ...equals, args: ['12'] }, 'total = 12')).toBe(1);
+    expect(marksFor({ ...equals, args: ['18/7'] }, 'x = 18/7')).toBe(1);
+    expect(marksFor({ ...equals, args: ['6'] }, 'x = 12/2')).toBe(1);
+  });
+
+  it('still refuses a named answer with the wrong value', () => {
+    expect(marksFor(equals, 'y = 5')).toBe(0);
+    expect(marksFor(equals, '5')).toBe(0);
+  });
+
+  it('reduces only a bare variable, so equations keep their meaning', () => {
+    // The left side is arithmetic, not a name, so this stays the equation 6 + 4 - 10.
+    expect(marksFor({ ...equals, args: ['10'] }, '6+4=10')).toBe(0);
+    expect(marksFor({ ...equals, args: ['6'] }, '2y = 6')).toBe(0);
+  });
+
+  it('leaves waypoint equations untouched', () => {
+    const waypoint: MarkSchemeLine = {
+      marks: 1,
+      label: 'elimination',
+      kind: 'waypoint',
+      expression: '2y = 6',
+    };
+
+    expect(marksFor(waypoint, '2y = 6')).toBe(1);
+    expect(marksFor(waypoint, 'y = 3')).toBe(0);
+  });
+
+  it('applies to the other value predicates', () => {
+    const within: MarkSchemeLine = {
+      marks: 1,
+      label: 'estimate',
+      kind: 'predicate',
+      predicate: 'within',
+      args: ['0.01', '8'],
+    };
+    const oneOf: MarkSchemeLine = {
+      marks: 1,
+      label: 'root',
+      kind: 'predicate',
+      predicate: 'matches-one-of',
+      args: ['2', '-2'],
+    };
+
+    expect(marksFor(within, 'x = 7.995')).toBe(1);
+    expect(marksFor(within, 'x = 9')).toBe(0);
+    expect(marksFor(oneOf, 'x = -2')).toBe(1);
+    expect(marksFor(oneOf, 'x = 5')).toBe(0);
+  });
+});
