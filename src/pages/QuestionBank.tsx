@@ -6,7 +6,13 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
-import { useCourse, useLessons, useCourseCards, useSequences } from '../state/useCourseData';
+import {
+  useCourse,
+  useLessons,
+  useCourseCards,
+  useOcclusions,
+  useSequences,
+} from '../state/useCourseData';
 import { useDeck } from '../state/useData';
 import { CardList } from '../components/cards/CardList';
 import { CourseTabs } from '../components/course/CourseTabs';
@@ -14,7 +20,7 @@ import { FadeInView } from '../components/ui/FadeInView';
 import { Button } from '../components/ui/Button';
 import { BatchAuthoringPromptDialog } from '../components/items/BatchAuthoringPromptDialog';
 import { ChevronLeftIcon, PlusIcon, SearchIcon, SparklesIcon } from '../components/ui/icons';
-import type { Card, Lesson, Sequence } from '../db/types';
+import type { Card, Lesson, Occlusion, Sequence } from '../db/types';
 
 // Editing a lesson-owned card still uses the lesson-scoped route (so the editor's
 // duplicate check and tag suggestions stay scoped to the lesson's own deck), but the
@@ -34,8 +40,15 @@ export function QuestionBank() {
   const lessons = useLessons(courseId);
   const cards = useCourseCards(courseId);
   const sequences = useSequences(courseId);
+  const occlusions = useOcclusions(courseId);
 
-  if (course === undefined || lessons === undefined || cards === undefined || sequences === undefined) {
+  if (
+    course === undefined ||
+    lessons === undefined ||
+    cards === undefined ||
+    sequences === undefined ||
+    occlusions === undefined
+  ) {
     return <QuestionBankSkeleton />;
   }
   if (course === null) {
@@ -164,6 +177,7 @@ export function QuestionBank() {
                 cards={byLesson.get(lesson.id) ?? []}
                 assignableLessons={assignableLessons}
                 sequences={sequences.filter((s) => s.primaryLessonId === lesson.id)}
+                occlusions={occlusions.filter((o) => o.primaryLessonId === lesson.id)}
               />
             </FadeInView>
           ))}
@@ -174,6 +188,7 @@ export function QuestionBank() {
                 cards={unassigned}
                 assignableLessons={assignableLessons}
                 sequences={sequences.filter((s) => s.primaryLessonId === null)}
+                occlusions={occlusions.filter((o) => o.primaryLessonId === null)}
               />
             </FadeInView>
           )}
@@ -208,12 +223,14 @@ function LessonBucket({
   cards,
   assignableLessons,
   sequences,
+  occlusions,
 }: {
   courseId: string;
   lesson: Lesson;
   cards: Card[];
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
+  occlusions: Occlusion[];
 }) {
   const navigate = useNavigate();
   // Invariant (assignCardsToLesson): every card assigned to a lesson shares that
@@ -259,6 +276,8 @@ function LessonBucket({
           }
           sequences={sequences}
           onEditSequence={(sequenceId) => navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
+          occlusions={occlusions}
+          onEditOcclusion={(occlusionId) => navigate(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
         />
       )}
     </section>
@@ -270,11 +289,13 @@ function UnassignedBucket({
   cards,
   assignableLessons,
   sequences,
+  occlusions,
 }: {
   courseId: string;
   cards: Card[];
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
+  occlusions: Occlusion[];
 }) {
   const navigate = useNavigate();
   // Invariant (assignCardsToLesson): unassigned cards all share the course's lazy
@@ -312,6 +333,8 @@ function UnassignedBucket({
           onEditCard={(card) => navigate(`/course/${courseId}/cards/${card.id}/edit`)}
           sequences={sequences}
           onEditSequence={(sequenceId) => navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
+          occlusions={occlusions}
+          onEditOcclusion={(occlusionId) => navigate(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
         />
       )}
     </section>

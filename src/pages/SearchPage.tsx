@@ -21,7 +21,7 @@ import {
   FolderIcon,
   FileTextIcon,
 } from '../components/ui/icons';
-import { SequenceBadge } from '../components/cards/SequenceBadge';
+import { GeneratedCardBadge } from '../components/cards/GeneratedCardBadge';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 
 /** The structured filters offered as quick chips, in display order. */
@@ -270,7 +270,13 @@ export function SearchPage() {
                     </span>
                   )}
                   {hit.card.sequenceItemId !== null &&
-                    hit.card.sequenceItemId !== undefined && <SequenceBadge />}
+                    hit.card.sequenceItemId !== undefined && (
+                      <GeneratedCardBadge kind="sequence" />
+                    )}
+                  {hit.card.occlusionRegionId !== null &&
+                    hit.card.occlusionRegionId !== undefined && (
+                      <GeneratedCardBadge kind="occlusion" />
+                    )}
                 </span>
               </motion.button>
             ))}

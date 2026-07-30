@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CardList } from './CardList';
-import type { Card, Deck, Sequence } from '../../db/types';
+import type { Card, Deck, Occlusion, Sequence } from '../../db/types';
 
 const mockNotify = vi.fn();
 
@@ -42,6 +42,7 @@ vi.mock('../ui/icons', () => ({
   CloseIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="close-icon" {...props} />,
   EditIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="edit-icon" {...props} />,
   FlagIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="flag-icon" {...props} />,
+  ImageIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="image-icon" {...props} />,
   PathIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="path-icon" {...props} />,
   PlusIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="plus-icon" {...props} />,
   TagIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="tag-icon" {...props} />,
@@ -395,6 +396,48 @@ describe('CardList', () => {
         />,
       );
       expect(screen.getByText('Sequence')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Select'));
+      // Only the ordinary card is selectable: "Select all" only ever selects it.
+      fireEvent.click(screen.getByText('Select all'));
+      expect(screen.getByText('1 selected')).toBeInTheDocument();
+    });
+
+    const occlusion: Occlusion = {
+      id: 'occlusion-1',
+      courseId: 'course-1',
+      primaryLessonId: null,
+      name: 'The heart',
+      assetHash: 'hash-1',
+      regions: [{ id: 'region-1', role: 'label', shape: 'rectangle', x: 0, y: 0, w: 0.1, h: 0.1 }],
+      createdAt: Date.now(),
+    };
+    const occlusionCard: Card = {
+      ...mockCard,
+      id: 'card-4',
+      front: 'Label 1 of 1 — The heart',
+      back: 'Label 1 of 1 — The heart\n\nAorta',
+      occlusionRegionId: 'region-1',
+    };
+
+    it('groups an occlusion-generated card under an occlusion header, badges it, and hides its select checkbox and delete action', () => {
+      const onEditOcclusion = vi.fn();
+      render(
+        <CardList
+          cards={[mockCard, occlusionCard]}
+          deck={mockDeck}
+          allDecks={[mockDeck]}
+          onEditCard={vi.fn()}
+          occlusions={[occlusion]}
+          onEditOcclusion={onEditOcclusion}
+        />,
+      );
+      expect(screen.getByText('The heart')).toBeInTheDocument();
+      expect(screen.getByText('1 card')).toBeInTheDocument();
+      expect(screen.getByText('Occlusion')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Edit occlusion'));
+      expect(onEditOcclusion).toHaveBeenCalledWith('occlusion-1');
 
       fireEvent.click(screen.getByText('Select'));
       // Only the ordinary card is selectable: "Select all" only ever selects it.

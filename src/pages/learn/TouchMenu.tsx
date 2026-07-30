@@ -114,7 +114,7 @@ export function TouchMenuSheet({
           </div>
         </div>
         <div className="mx-auto flex max-w-3xl flex-col gap-1">
-          {current.sequenceItemId === undefined && (
+          {current.sequenceItemId === undefined && current.occlusionRegionId === undefined && (
             <TouchMenuButton
               icon={<EditIcon width={22} height={22} />}
               label="Edit card"

@@ -139,6 +139,7 @@ export function useLearnKeyboardShortcuts({
         keyMatches(e, bindings.edit) &&
         current &&
         current.sequenceItemId === undefined &&
+        current.occlusionRegionId === undefined &&
         (phase === 'question' || phase === 'answer')
       ) {
         e.preventDefault();

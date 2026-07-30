@@ -39,11 +39,12 @@ import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useIsTouchMode } from '../../state/inputMode';
 import { useVirtualList } from '../../hooks/useVirtualList';
 import { sequenceForItemId } from '../../db/sequenceGeneration';
-import { SequenceCardGroup } from './SequenceCardGroup';
-import { SequenceBadge } from './SequenceBadge';
+import { occlusionForRegionId } from '../../db/occlusionGeneration';
+import { GeneratedCardGroup } from './GeneratedCardGroup';
+import { GeneratedCardBadge } from './GeneratedCardBadge';
 import type { ParsedCard } from '../../db/import';
 import { importApkgResult, type ApkgImportResult } from '../../db/apkgImport';
-import type { Card, Deck, Sequence } from '../../db/types';
+import type { Card, Deck, Occlusion, Sequence } from '../../db/types';
 
 /** A lesson a card can be bulk-assigned to, offered in the "Assign to lesson…" panel. */
 interface AssignableLesson {
@@ -80,13 +81,22 @@ interface CardListProps {
   sequences?: Sequence[];
   /** Navigates to the sequence editor for a generated-card group's "Edit sequence" affordance. */
   onEditSequence?: (sequenceId: string) => void;
+  /**
+   * Occlusions in scope for these cards (same course/lesson). When supplied, generated
+   * cards with an occlusion region ID are grouped under a header naming their owning
+   * occlusion rather than listed loosely; a generated card whose occlusion cannot be
+   * resolved (e.g. omitted here by mistake) still renders inline, badged and read-only.
+   */
+  occlusions?: Occlusion[];
+  /** Navigates to the occlusion editor for a generated-card group's "Edit occlusion" affordance. */
+  onEditOcclusion?: (occlusionId: string) => void;
   /** Cards linked into the current lesson rather than owned by it. */
   linkedCardIds?: ReadonlySet<string>;
   /** Removes one linked membership while preserving the underlying card. */
   onUnlinkCard?: (card: Card) => void;
 }
 
-export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLinkExisting, onEditCard, hideHeader = false, assignableLessons, courseId, sequences, onEditSequence, linkedCardIds, onUnlinkCard }: CardListProps) {
+export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLinkExisting, onEditCard, hideHeader = false, assignableLessons, courseId, sequences, onEditSequence, occlusions, onEditOcclusion, linkedCardIds, onUnlinkCard }: CardListProps) {
   const { notify } = useToast();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -120,32 +130,47 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
     return [...set].sort();
   }, [cards]);
 
-  // Generated cards with a sequence item ID are managed exclusively from their
-  // owning sequence: they never take part in bulk selection (Tag/Suspend/Move/Delete/…),
-  // since content edits and deletes would desync or fight with the next regeneration.
-  // Grouping them under a sequence header is purely presentational — every card still
-  // flows through the same CardListBody/CardRow, which independently enforces the
-  // read-only treatment (no checkbox, no delete) from `card.sequenceItemId` itself.
-  const sequenceGroups = useMemo(() => {
-    const bySequence = new Map<string, { sequence: Sequence; cards: Card[] }>();
+  // Generated cards (a sequence item ID or an occlusion region ID) are managed exclusively
+  // from their owning sequence/occlusion: they never take part in bulk selection
+  // (Tag/Suspend/Move/Delete/…), since content edits and deletes would desync or fight
+  // with the next regeneration. Grouping them under a header naming their owner is purely
+  // presentational — every card still flows through the same CardListBody/CardRow, which
+  // independently enforces the read-only treatment (no checkbox, no delete) from
+  // `card.sequenceItemId`/`card.occlusionRegionId` itself.
+  interface GeneratedGroup {
+    kind: 'sequence' | 'occlusion';
+    owner: { id: string; name: string };
+    cards: Card[];
+  }
+  const generatedGroups = useMemo(() => {
+    const byOwner = new Map<string, GeneratedGroup>();
     for (const card of cards) {
-      if (card.sequenceItemId === null || card.sequenceItemId === undefined) continue;
-      const sequence = sequences ? sequenceForItemId(sequences, card.sequenceItemId) : undefined;
-      if (!sequence) continue;
-      const group = bySequence.get(sequence.id) ?? { sequence, cards: [] };
-      group.cards.push(card);
-      bySequence.set(sequence.id, group);
+      if (card.sequenceItemId !== null && card.sequenceItemId !== undefined) {
+        const sequence = sequences ? sequenceForItemId(sequences, card.sequenceItemId) : undefined;
+        if (!sequence) continue;
+        const key = `sequence:${sequence.id}`;
+        const group = byOwner.get(key) ?? { kind: 'sequence', owner: sequence, cards: [] };
+        group.cards.push(card);
+        byOwner.set(key, group);
+      } else if (card.occlusionRegionId !== null && card.occlusionRegionId !== undefined) {
+        const occlusion = occlusions ? occlusionForRegionId(occlusions, card.occlusionRegionId) : undefined;
+        if (!occlusion) continue;
+        const key = `occlusion:${occlusion.id}`;
+        const group = byOwner.get(key) ?? { kind: 'occlusion', owner: occlusion, cards: [] };
+        group.cards.push(card);
+        byOwner.set(key, group);
+      }
     }
-    return [...bySequence.values()];
-  }, [cards, sequences]);
+    return [...byOwner.values()];
+  }, [cards, sequences, occlusions]);
 
   const groupedCardIds = useMemo(
-    () => new Set(sequenceGroups.flatMap((g) => g.cards.map((c) => c.id))),
-    [sequenceGroups],
+    () => new Set(generatedGroups.flatMap((g) => g.cards.map((c) => c.id))),
+    [generatedGroups],
   );
-  // Every card not shown under a sequence group heading: ordinary cards plus any
-  // generated card whose owning sequence could not be resolved (defensive fallback —
-  // still badged/read-only via CardRow, just without a group header to sit under).
+  // Every card not shown under a group heading: ordinary cards plus any generated card
+  // whose owning sequence/occlusion could not be resolved (defensive fallback — still
+  // badged/read-only via CardRow, just without a group header to sit under).
   const looseCards = useMemo(
     () => cards.filter((c) => !groupedCardIds.has(c.id)),
     [cards, groupedCardIds],
@@ -156,6 +181,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
       cards.filter(
         (c) =>
           (c.sequenceItemId === null || c.sequenceItemId === undefined) &&
+          (c.occlusionRegionId === null || c.occlusionRegionId === undefined) &&
           !linkedCardIds?.has(c.id),
       ),
     [cards, linkedCardIds],
@@ -779,14 +805,15 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
         </div>
       ) : (
         <>
-          {sequenceGroups.map((group) => (
-            <SequenceCardGroup
-              key={group.sequence.id}
-              sequence={group.sequence}
+          {generatedGroups.map((group) => (
+            <GeneratedCardGroup
+              key={`${group.kind}:${group.owner.id}`}
+              kind={group.kind}
+              owner={group.owner}
               cards={group.cards}
               deck={deck}
               onEditCard={onEditCard}
-              onEditSequence={onEditSequence}
+              onEditOwner={group.kind === 'sequence' ? onEditSequence : onEditOcclusion}
               onResume={handleResume}
               onToggleFlag={handleToggleFlag}
               linkedCardIds={linkedCardIds}
@@ -822,8 +849,8 @@ const VIRTUAL_THRESHOLD = 50;
 
 /** Renders the card list either as a simple grid (small decks) or a virtualised
  *  absolute-positioned list (large decks) to keep performance constant. Exported for
- *  reuse by {@link SequenceCardGroup}, which renders a sequence's own generated cards
- *  through the same CardRow (and so gets its read-only treatment for free). */
+ *  reuse by {@link GeneratedCardGroup}, which renders a sequence's or occlusion's own
+ *  generated cards through the same CardRow (and so gets its read-only treatment for free). */
 export function CardListBody({
   cards,
   deck,
@@ -989,10 +1016,13 @@ const CardRow = React.memo(function CardRow({
   const buried = card.buriedUntil !== null && card.buriedUntil !== undefined && card.buriedUntil > Date.now();
   const leech = isLeech(card);
   const flagged = card.flagged === true;
-  // Generated cards are owned by their Sequence: content edits and deletes happen there,
-  // never here, so selection and deletion are suppressed regardless of selectMode/hover.
-  // Scheduling actions (flag/suspend/bury/reschedule/resume) stay fully available.
-  const generated = card.sequenceItemId !== null && card.sequenceItemId !== undefined;
+  // Generated cards are owned by their Sequence or Occlusion: content edits and deletes
+  // happen there, never here, so selection and deletion are suppressed regardless of
+  // selectMode/hover. Scheduling actions (flag/suspend/bury/reschedule/resume) stay fully
+  // available.
+  const isSequenceGenerated = card.sequenceItemId !== null && card.sequenceItemId !== undefined;
+  const isOcclusionGenerated = card.occlusionRegionId !== null && card.occlusionRegionId !== undefined;
+  const generated = isSequenceGenerated || isOcclusionGenerated;
   const removable = linked || !generated;
 
   // Swipe-to-reveal state — multi-directional in touch mode.
@@ -1321,7 +1351,9 @@ const CardRow = React.memo(function CardRow({
                 </span>
               )}
               {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
-              {generated && <SequenceBadge />}
+              {generated && (
+                <GeneratedCardBadge kind={isSequenceGenerated ? 'sequence' : 'occlusion'} />
+              )}
               {linked && (
                 <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
                   Linked

@@ -8,6 +8,7 @@ import {
   createLessonCard,
   createSequence,
 } from '../../db/repository';
+import { createOcclusion } from '../../db/occlusionRepository';
 import type { ToolContext } from '../types';
 import { validateAndRun } from '../registry';
 import * as tools from './content';
@@ -23,6 +24,7 @@ async function clearAll(): Promise<void> {
     db.practiceNodes.clear(),
     db.courseAssessments.clear(),
     db.sequences.clear(),
+    db.occlusions.clear(),
     db.userPerformance.clear(),
   ]);
 }
@@ -259,6 +261,24 @@ describe('mcp content tools', () => {
       const lesson = await createLesson(course.id, 'Lesson 1');
       await createSequence(course.id, lesson.id, 'Sequence 1', [{ id: 'item-1', value: 'q' }]);
       const generated = await db.cards.where('sequenceItemId').equals('item-1').first();
+      expect(generated).toBeDefined();
+
+      const result = await validateAndRun(
+        tools.updateCard,
+        { cardId: generated!.id, front: 'edited' },
+        ctx,
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('conflict');
+    });
+
+    it('refuses to edit an occlusion-generated card', async () => {
+      const course = await createCourse('Course A');
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      await createOcclusion(course.id, lesson.id, 'Occlusion 1', 'hash-1', [
+        { id: 'region-1', role: 'label', shape: 'rectangle', x: 0, y: 0, w: 0.1, h: 0.1 },
+      ]);
+      const generated = await db.cards.where('occlusionRegionId').equals('region-1').first();
       expect(generated).toBeDefined();
 
       const result = await validateAndRun(

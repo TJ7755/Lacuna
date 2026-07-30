@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CommandPalette } from './CommandPalette';
-import type { Card, Deck } from '../../db/types';
+import { describe, expect, it, vi } from 'vitest';
+import { SearchPage } from './SearchPage';
+import type { Card, Deck } from '../db/types';
 
 const mockDeck: Deck = {
   id: 'deck-1',
@@ -43,50 +43,21 @@ const dataHooks = vi.hoisted(() => ({
   useAllNotes: vi.fn(() => []),
 }));
 
-vi.mock('../../state/useData', () => ({
+vi.mock('../state/useData', () => ({
   useDecks: dataHooks.useDecks,
   useAllCards: dataHooks.useAllCards,
 }));
-vi.mock('../../state/useCourseData', () => ({
+vi.mock('../state/useCourseData', () => ({
   useCourses: dataHooks.useCourses,
   useAllLessons: dataHooks.useAllLessons,
   useAllNotes: dataHooks.useAllNotes,
 }));
 
-describe('CommandPalette', () => {
-  it('does not subscribe to whole-database queries while closed', () => {
-    render(<CommandPalette open={false} onClose={vi.fn()} />, { wrapper: MemoryRouter });
-    Object.values(dataHooks).forEach((hook) => expect(hook).not.toHaveBeenCalled());
-  });
-
-  it('exposes an open palette as a focus-trapped modal', async () => {
-    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
-    const dialog = await screen.findByRole('dialog', { name: 'Search' });
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog.style.opacity).toBe('');
-    expect(screen.getByPlaceholderText(/search courses/i)).toHaveFocus();
-    Object.values(dataHooks).forEach((hook) => expect(hook).toHaveBeenCalled());
-  });
-
-  it('updates search results without a fixed debounce delay', () => {
-    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
-
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
-      target: { value: 'missing' },
-    });
-
-    expect(screen.getByText('Nothing matches “missing”.')).toBeInTheDocument();
-  });
-
-  afterEach(() => {
-    dataHooks.useDecks.mockReturnValue([]);
-    dataHooks.useAllCards.mockReturnValue([]);
-  });
-
-  it('badges a sequence-generated card hit', () => {
+describe('SearchPage', () => {
+  it('badges a sequence-generated card result', () => {
     dataHooks.useDecks.mockReturnValue([mockDeck]);
     dataHooks.useAllCards.mockReturnValue([{ ...mockCard, sequenceItemId: 'item-1' }]);
-    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+    render(<SearchPage />, { wrapper: MemoryRouter });
 
     fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
       target: { value: 'Palatine' },
@@ -95,10 +66,10 @@ describe('CommandPalette', () => {
     expect(screen.getByText('Sequence')).toBeInTheDocument();
   });
 
-  it('badges an occlusion-generated card hit', () => {
+  it('badges an occlusion-generated card result', () => {
     dataHooks.useDecks.mockReturnValue([mockDeck]);
     dataHooks.useAllCards.mockReturnValue([{ ...mockCard, occlusionRegionId: 'region-1' }]);
-    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+    render(<SearchPage />, { wrapper: MemoryRouter });
 
     fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
       target: { value: 'Palatine' },

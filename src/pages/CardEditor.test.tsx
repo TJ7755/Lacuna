@@ -3,13 +3,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CardEditor } from './CardEditor';
-import type { Card, Course, Lesson, Sequence } from '../db/types';
+import type { Card, Course, Lesson, Occlusion, Sequence } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 
 const mockNavigate = vi.fn();
 let mockCourse: Course | undefined;
 let mockCard: Card | null | undefined;
 let mockSequences: Sequence[] | undefined;
+let mockOcclusions: Occlusion[] | undefined;
 let mockLesson: Lesson | null | undefined;
 const updateCard = vi.fn().mockResolvedValue(undefined);
 const createCourseCard = vi.fn().mockResolvedValue(undefined);
@@ -30,6 +31,7 @@ vi.mock('../state/useCourseData', () => ({
   useLesson: () => mockLesson,
   useLessonCards: () => (mockLesson ? [] : undefined),
   useSequences: () => mockSequences,
+  useOcclusions: () => mockOcclusions,
 }));
 
 vi.mock('../components/ui/Toast', () => ({
@@ -109,6 +111,23 @@ const sequence: Sequence = {
   createdAt: Date.now(),
 };
 
+const occlusionCard: Card = {
+  ...generatedCard,
+  id: 'card-2',
+  sequenceItemId: undefined,
+  occlusionRegionId: 'region-1',
+};
+
+const occlusion: Occlusion = {
+  id: 'occlusion-1',
+  courseId: 'course-1',
+  primaryLessonId: null,
+  name: 'The heart',
+  assetHash: 'hash-1',
+  regions: [{ id: 'region-1', role: 'label', shape: 'rectangle', x: 0, y: 0, w: 0.1, h: 0.1 }],
+  createdAt: Date.now(),
+};
+
 function renderEditing() {
   return render(
     <MemoryRouter initialEntries={['/course/course-1/cards/card-1/edit']}>
@@ -154,6 +173,7 @@ beforeEach(() => {
   mockCourse = course;
   mockCard = undefined;
   mockSequences = [];
+  mockOcclusions = [];
   mockLesson = undefined;
   mockNavigate.mockClear();
   updateCard.mockClear();
@@ -359,6 +379,20 @@ describe('CardEditor — generated cards', () => {
 
     expect(screen.getByPlaceholderText(/Question or prompt/)).toBeInTheDocument();
     expect(screen.getByText('Save changes')).toBeInTheDocument();
+  });
+
+  it('renders a read-only preview and links to the owning occlusion for an occlusion-generated card', () => {
+    mockCard = occlusionCard;
+    mockOcclusions = [occlusion];
+    renderEditing();
+
+    expect(screen.getByText(/generated from the occlusion/i)).toBeInTheDocument();
+    expect(screen.getByText(/“The heart”/)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Question or prompt/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Save changes')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Edit occlusion'));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/occlusion/occlusion-1/edit');
   });
 });
 

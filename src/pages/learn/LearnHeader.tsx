@@ -269,7 +269,7 @@ export function LearnHeader({
                   transition={{ duration: 0.12 * m }}
                   className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
                 >
-                  {current.sequenceItemId === undefined && (
+                  {current.sequenceItemId === undefined && current.occlusionRegionId === undefined && (
                     <MenuItem
                       icon={<EditIcon width={16} height={16} />}
                       label="Edit card"

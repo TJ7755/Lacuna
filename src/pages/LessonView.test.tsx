@@ -36,6 +36,7 @@ vi.mock('../state/useCourseData', () => ({
   useLessonCardLinks: () => [],
   useCourseCards: () => mockLessonCards,
   useSequences: () => [],
+  useOcclusions: () => [],
 }));
 
 vi.mock('../state/useData', () => ({

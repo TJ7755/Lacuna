@@ -7,6 +7,7 @@ import {
   useCourseCards,
   useLesson,
   useLessonCards,
+  useOcclusions,
   useSequences,
 } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
@@ -25,6 +26,7 @@ import {
 } from '../db/repository';
 import { hasCloze } from '../components/markdown/cloze';
 import { sequenceForItemId } from '../db/sequenceGeneration';
+import { occlusionForRegionId } from '../db/occlusionGeneration';
 import { CardContent } from '../components/cards/CardContent';
 import {
   NumericAnswerEditor,
@@ -33,7 +35,7 @@ import {
 import { MarkSchemeEditor } from '../components/items/MarkSchemeEditor';
 import { compileMarkScheme, serialiseMarkScheme } from '../items/markSchemeCompiler';
 import { buildMarkSchemeDraftPrompt } from '../items/prompts';
-import { SequenceBadge } from '../components/cards/SequenceBadge';
+import { GeneratedCardBadge } from '../components/cards/GeneratedCardBadge';
 import { AudioCardEditor } from '../components/cards/AudioCardEditor';
 import { ChevronLeftIcon, CheckIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
@@ -84,8 +86,10 @@ export function CardEditor() {
   const editing = Boolean(cardId);
   const card = useCard(cardId);
   // Only fetched for the read-only branch below (a generated card resolves its owning
-  // sequence here to link back to the sequence editor). Harmless to call unconditionally.
+  // sequence/occlusion here to link back to the owning editor). Harmless to call
+  // unconditionally.
   const sequences = useSequences(courseId);
+  const occlusions = useOcclusions(courseId);
 
   const [type, setType] = useState<EditorCardType>('front_back');
   const [front, setFront] = useState('');
@@ -371,13 +375,27 @@ export function CardEditor() {
     );
   }
 
-  // Generated cards are owned by their Sequence: content, front/back, and deletion are
-  // all managed there (edits here would be silently reverted on the sequence's next
+  // Generated cards are owned by their Sequence or Occlusion: content, front/back, and
+  // deletion are all managed there (edits here would be silently reverted on the next
   // regeneration), so this page shows a static preview and a link back instead of a form.
-  if (editing && card && card.sequenceItemId !== null && card.sequenceItemId !== undefined) {
-    const owningSequence = sequences
-      ? sequenceForItemId(sequences, card.sequenceItemId)
-      : undefined;
+  const isSequenceGenerated =
+    editing && card && card.sequenceItemId !== null && card.sequenceItemId !== undefined;
+  const isOcclusionGenerated =
+    editing && card && card.occlusionRegionId !== null && card.occlusionRegionId !== undefined;
+  if (isSequenceGenerated || isOcclusionGenerated) {
+    const owningSequence =
+      isSequenceGenerated && sequences
+        ? sequenceForItemId(sequences, card!.sequenceItemId!)
+        : undefined;
+    const owningOcclusion =
+      isOcclusionGenerated && occlusions
+        ? occlusionForRegionId(occlusions, card!.occlusionRegionId!)
+        : undefined;
+    const editHref = owningSequence
+      ? `/course/${courseId}/sequence/${owningSequence.id}/edit`
+      : owningOcclusion
+        ? `/course/${courseId}/occlusion/${owningOcclusion.id}/edit`
+        : undefined;
     return (
       <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
         <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
@@ -409,7 +427,7 @@ export function CardEditor() {
               </Link>
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="font-display text-4xl tracking-tight md:text-5xl">Card</h1>
-                <SequenceBadge />
+                <GeneratedCardBadge kind={isSequenceGenerated ? 'sequence' : 'occlusion'} />
               </div>
             </div>
           </header>
@@ -417,18 +435,24 @@ export function CardEditor() {
           <div className="mb-5 flex items-center gap-3 rounded-xl border border-accent/20 bg-accent-soft px-4 py-3">
             <span className="text-sm text-accent">
               This card is generated from{' '}
-              {owningSequence ? `the sequence “${owningSequence.name}”` : 'a sequence'}. Edit its
-              content, order or cue window there — changes here would be lost the next time it
-              regenerates.
+              {owningSequence
+                ? `the sequence “${owningSequence.name}”`
+                : owningOcclusion
+                  ? `the occlusion “${owningOcclusion.name}”`
+                  : isSequenceGenerated
+                    ? 'a sequence'
+                    : 'an occlusion'}
+              . Edit its {isSequenceGenerated ? 'content, order or cue window' : 'regions'} there —
+              changes here would be lost the next time it regenerates.
             </span>
-            {owningSequence && (
+            {editHref && (
               <Button
                 variant="secondary"
                 size="sm"
                 className="ml-auto shrink-0"
-                onClick={() => navigate(`/course/${courseId}/sequence/${owningSequence.id}/edit`)}
+                onClick={() => navigate(editHref)}
               >
-                Edit sequence
+                {isSequenceGenerated ? 'Edit sequence' : 'Edit occlusion'}
               </Button>
             )}
           </div>
