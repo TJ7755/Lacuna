@@ -379,6 +379,19 @@ export async function collectOrphanedAssets(): Promise<number> {
       }
       noteOffset += batch.length;
     }
+    // An occlusion's diagram is referenced solely by `Occlusion.assetHash`, not by any
+    // Markdown the regex above scans (its generated cards carry only a plain-text
+    // fallback, per occlusionGeneration.ts) — without this, GC would delete a diagram out
+    // from under the cards generated from it.
+    let occlusionOffset = 0;
+    for (;;) {
+      const batch = await db.occlusions.offset(occlusionOffset).limit(batchSize).toArray();
+      if (batch.length === 0) break;
+      for (const occlusion of batch) {
+        referenced.add(occlusion.assetHash);
+      }
+      occlusionOffset += batch.length;
+    }
 
     // Stream asset keys and collect orphans without loading all keys at once.
     const orphans: string[] = [];
