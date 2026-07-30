@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { hapticMedium } from '../../utils/haptic';
-import type { Card, Grade } from '../../db/types';
+import type { Card, Grade, Occlusion } from '../../db/types';
 import { CardContent } from '../../components/cards/CardContent';
 import { LineHintButton, LineHintDisplay } from '../../components/learn/LineHint';
 import { speedMultiplier, type MotionSpeed } from '../../state/motionSpeed';
@@ -58,6 +58,8 @@ export function FlipCard({
   hintStep,
   onRevealHint,
   answerStrictness,
+  occlusion,
+  occlusionAnswerText,
 }: {
   card: Card;
   revealed: boolean;
@@ -78,6 +80,11 @@ export function FlipCard({
   hintStep?: 0 | 1 | 2;
   onRevealHint?: () => void;
   answerStrictness: AnswerStrictness;
+  /** The owning Occlusion for an occlusion-generated card, resolved by useLearnSession. */
+  occlusion?: Occlusion;
+  /** The resolved typed-mode answer for an occlusion-generated card (§6.5); undefined
+   *  when typed mode is not offered for it. */
+  occlusionAnswerText?: string;
 }) {
   const m = speedMultiplier(motionSpeed);
   const isTyping = Boolean(isTypingCard);
@@ -383,6 +390,7 @@ export function FlipCard({
                 audioAutoplay={audioCard && displayedFront}
                 sequenceCue
                 sequenceMode={isLinesModeCard ? 'lines' : 'list'}
+                occlusion={occlusion}
               />
             </motion.div>
             {audioCard && revealed && !displayedFront && (
@@ -433,7 +441,7 @@ export function FlipCard({
               (() => {
                 const comparison = compareAnswer(
                   typedAnswer,
-                  typingExpectedAnswer(card),
+                  typingExpectedAnswer(card, occlusionAnswerText),
                   answerComparisonOptions(answerStrictness),
                 );
                 return (

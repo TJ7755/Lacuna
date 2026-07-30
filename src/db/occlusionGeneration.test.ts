@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { diffRegeneration, generateCards, occlusionForRegionId, resolveOcclusionFace } from './occlusionGeneration';
+import {
+  diffRegeneration,
+  generateCards,
+  occlusionForRegionId,
+  resolveOcclusionAnswerText,
+  resolveOcclusionFace,
+} from './occlusionGeneration';
 import type { Card, Occlusion, OcclusionRegion } from './types';
 
 function region(id: string, role: OcclusionRegion['role'], overrides: Partial<OcclusionRegion> = {}): OcclusionRegion {
@@ -196,6 +202,48 @@ describe('resolveOcclusionFace', () => {
   it('an occlusion with zero regions resolves no face and masks nothing', () => {
     const occ = makeOcclusion({ regions: [] });
     expect(resolveOcclusionFace(occ, 'anything')).toBeUndefined();
+  });
+});
+
+describe('resolveOcclusionAnswerText', () => {
+  it('returns undefined for a region id the occlusion does not have', () => {
+    expect(resolveOcclusionAnswerText(makeOcclusion(), 'nope')).toBeUndefined();
+  });
+
+  it("returns a label region's own answerText when set", () => {
+    const occ = makeOcclusion({
+      regions: [region('l1', 'label', { answerText: 'Nucleus' })],
+    });
+    expect(resolveOcclusionAnswerText(occ, 'l1')).toBe('Nucleus');
+  });
+
+  it('returns undefined for a label region with no answerText, never a fallback line', () => {
+    const occ = makeOcclusion({ regions: [region('l1', 'label')] });
+    expect(resolveOcclusionAnswerText(occ, 'l1')).toBeUndefined();
+  });
+
+  it("returns a paired feature's paired label's answerText", () => {
+    const occ = makeOcclusion({
+      regions: [
+        region('l1', 'label', { answerText: 'Nucleus' }),
+        region('f1', 'feature', { pairedRegionId: 'l1' }),
+      ],
+    });
+    expect(resolveOcclusionAnswerText(occ, 'f1')).toBe('Nucleus');
+  });
+
+  it('returns undefined for a paired feature whose paired label has no answerText', () => {
+    const occ = makeOcclusion({
+      regions: [region('l1', 'label'), region('f1', 'feature', { pairedRegionId: 'l1' })],
+    });
+    expect(resolveOcclusionAnswerText(occ, 'f1')).toBeUndefined();
+  });
+
+  it("returns an unpaired feature's own answerText", () => {
+    const occ = makeOcclusion({
+      regions: [region('f2', 'feature', { answerText: 'Mitochondrion' })],
+    });
+    expect(resolveOcclusionAnswerText(occ, 'f2')).toBe('Mitochondrion');
   });
 });
 

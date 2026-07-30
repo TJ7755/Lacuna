@@ -1,7 +1,8 @@
 import { memo } from 'react';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { isLabelCardId, parseSequenceFront } from '../../db/sequenceGeneration';
-import type { Card } from '../../db/types';
+import type { Card, Occlusion } from '../../db/types';
+import { OcclusionStudyFace } from '../occlusion/OcclusionStudyFace';
 
 type Side = 'front' | 'back';
 
@@ -21,6 +22,7 @@ export const CardContent = memo(function CardContent({
   sequenceCue = false,
   sequenceMode = 'list',
   audioAutoplay = false,
+  occlusion,
 }: {
   card: Card;
   side: Side;
@@ -39,7 +41,27 @@ export const CardContent = memo(function CardContent({
   /** The owning sequence's mode, used to choose item- or line-specific recall wording. */
   sequenceMode?: 'list' | 'lines';
   audioAutoplay?: boolean;
+  /**
+   * The Occlusion an occlusion-generated card (`card.occlusionRegionId`) belongs to,
+   * resolved by the caller (see src/db/occlusionStudy.ts). When present, the card
+   * renders its masked diagram instead of its plain-text front/back fallback. Left
+   * unset — including by every non-Learn-mode surface (card list, search, the read-only
+   * card editor view) — so those keep showing the fallback text occlusion cards carry
+   * for exactly this purpose (§6.4).
+   */
+  occlusion?: Occlusion;
 }) {
+  if (card.occlusionRegionId !== undefined && occlusion) {
+    return (
+      <OcclusionStudyFace
+        card={card as Card & { occlusionRegionId: string }}
+        occlusion={occlusion}
+        side={side}
+        className={className}
+      />
+    );
+  }
+
   if (card.type === 'cloze') {
     return (
       <MarkdownView

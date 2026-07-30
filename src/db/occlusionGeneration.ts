@@ -142,6 +142,24 @@ export function resolveOcclusionFace(occlusion: Occlusion, occlusionRegionId: st
   };
 }
 
+/**
+ * The literal answer text a region resolves to for typed-mode comparison (§6.5): a
+ * label's or unpaired feature's own `answerText`, or a paired feature's paired label's
+ * `answerText`. Undefined when no answerText was recorded, which is exactly when typed
+ * mode is not offered for that card. Distinct from {@link OcclusionFace.answerText},
+ * which is *display* text shown in place of a lifted mask on an unpaired feature's back
+ * face only, and never falls back to a generic line the way {@link revealText} does — a
+ * fallback line is not a real answer to type against.
+ */
+export function resolveOcclusionAnswerText(occlusion: Occlusion, occlusionRegionId: string): string | undefined {
+  const region = occlusion.regions.find((r) => r.id === occlusionRegionId);
+  if (!region) return undefined;
+  if (region.role === 'feature' && region.pairedRegionId) {
+    return occlusion.regions.find((r) => r.id === region.pairedRegionId)?.answerText;
+  }
+  return region.answerText;
+}
+
 /** Deterministically generate every card payload for an occlusion: one card per region,
  *  in region order, both roles included. */
 export function generateCards(occlusion: Occlusion): GeneratedCardPayload[] {
