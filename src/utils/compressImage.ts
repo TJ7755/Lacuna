@@ -42,12 +42,21 @@ function canvasToBlob(canvas: HTMLCanvasElement, mimeType: string): Promise<Blob
   });
 }
 
+export interface CompressImageOptions {
+  /** Longest-edge ceiling in pixels. Defaults to {@link MAX_DIMENSION} (1280), the
+   *  ceiling every existing caller (card images) relies on. Image occlusion diagrams
+   *  pass a higher ceiling (2560, see src/db/occlusionImage.ts) so small printed labels
+   *  survive compression legibly (§6.10.4). */
+  maxDimension?: number;
+}
+
 /** Compress an image blob using a canvas on the main thread. */
 export async function compressImageBlob(
   blob: Blob,
+  options?: CompressImageOptions,
 ): Promise<{ blob: Blob; width: number; height: number }> {
   const bitmap = await loadImageFromBlob(blob);
-  const { width, height } = scaleToFit(bitmap.width, bitmap.height, MAX_DIMENSION);
+  const { width, height } = scaleToFit(bitmap.width, bitmap.height, options?.maxDimension ?? MAX_DIMENSION);
 
   const canvas = document.createElement('canvas');
   canvas.width = width;

@@ -102,7 +102,8 @@ export function OcclusionMaskLayer({
           className={cn(
             'absolute',
             VISUAL_CLASSES[region.visual],
-            interactive && 'cursor-pointer outline-none',
+            interactive &&
+              'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-accent/70',
           )}
           style={{
             left: `${region.x * 100}%`,

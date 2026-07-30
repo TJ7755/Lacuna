@@ -80,9 +80,21 @@ export function LessonCardsSection({
 
   return (
     <section className={className}>
-      <h2 className="mb-4 font-display text-xl text-ink-soft">
-        Cards <span className="text-ink-faint">({lessonCards.length})</span>
-      </h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-xl text-ink-soft">
+          Cards <span className="text-ink-faint">({lessonCards.length})</span>
+        </h2>
+        {lessonCards.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
+          >
+            <PlusIcon width={16} height={16} />
+            New occlusion
+          </Button>
+        )}
+      </div>
 
       {pendingUnlink && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2.5">
@@ -113,6 +125,13 @@ export function LessonCardsSection({
             >
               <PlusIcon width={18} height={18} />
               Add a sequence
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
+            >
+              <PlusIcon width={18} height={18} />
+              Add an occlusion
             </Button>
             <Button variant="secondary" onClick={() => setLinking(true)}>
               <PlusIcon width={18} height={18} />

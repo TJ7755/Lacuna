@@ -103,6 +103,10 @@ export function QuestionBank() {
             <PlusIcon width={18} height={18} />
             Create new sequence
           </Button>
+          <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/occlusion/new`)}>
+            <PlusIcon width={18} height={18} />
+            Create new occlusion
+          </Button>
           <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
             <PlusIcon width={18} height={18} />
             Create new card
@@ -139,6 +143,10 @@ export function QuestionBank() {
             <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/sequence/new`)}>
               <PlusIcon width={18} height={18} />
               Create a sequence
+            </Button>
+            <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/occlusion/new`)}>
+              <PlusIcon width={18} height={18} />
+              Create an occlusion
             </Button>
           </div>
         </div>

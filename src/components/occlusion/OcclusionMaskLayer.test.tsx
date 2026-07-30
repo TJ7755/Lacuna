@@ -72,4 +72,18 @@ describe('OcclusionMaskLayer', () => {
     fireEvent.keyDown(overlay, { key: 'Tab' });
     expect(onRegionClick).not.toHaveBeenCalled();
   });
+
+  it('shows a visible focus ring on the interactive (authoring) path only', () => {
+    const { container: interactiveContainer } = render(
+      <OcclusionMaskLayer assetUrl="blob:diagram" alt="Diagram" regions={REGIONS} onRegionClick={vi.fn()} />,
+    );
+    const interactiveOverlay = interactiveContainer.querySelector('.absolute') as HTMLElement;
+    expect(interactiveOverlay.className).toContain('focus-visible:ring-2');
+
+    const { container: studyContainer } = render(
+      <OcclusionMaskLayer assetUrl="blob:diagram" alt="Diagram" regions={REGIONS} />,
+    );
+    const studyOverlay = studyContainer.querySelector('.absolute') as HTMLElement;
+    expect(studyOverlay.className).not.toContain('focus-visible:ring-2');
+  });
 });
