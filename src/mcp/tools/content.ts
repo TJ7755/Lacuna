@@ -33,6 +33,10 @@ import {
   createCourseAssessment as repoCreateCourseAssessment,
   updateCourseAssessment as repoUpdateCourseAssessment,
 } from '../../db/repository';
+import {
+  createOcclusion as repoCreateOcclusion,
+  updateOcclusion as repoUpdateOcclusion,
+} from '../../db/occlusionRepository';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 
 const courseIdSchema = z.string().describe('The id of the course.');
@@ -460,6 +464,131 @@ const updateSequence: ToolDefinition<z.infer<typeof updateSequenceSchema>, { id:
 };
 
 // ---------------------------------------------------------------------------
+// Image occlusions
+// ---------------------------------------------------------------------------
+
+// `assetHash` must name a diagram already stored in this install: there is no
+// asset-upload tool, deliberately, since binary transport is not a natural MCP shape.
+// An agent authoring an SVG diagram plus fractional coordinates is the intended path once
+// the user has uploaded (or the agent has otherwise produced) the image (Arc 6 §6.7).
+const occlusionRegionSchema = z.object({
+  id: z
+    .string()
+    .describe('Stable id for this region — anchors the card generated from it across edits.'),
+  role: z
+    .enum(['label', 'feature'])
+    .describe(
+      '`label`: masks text printed on the diagram, revealed by uncovering it. `feature`: points at part of the drawing and is answered by its paired label region.',
+    ),
+  shape: z.literal('rectangle').describe('Rectangles only in this version.'),
+  x: z.number().describe('Left edge as a fraction of image width, 0..1.'),
+  y: z.number().describe('Top edge as a fraction of image height, 0..1.'),
+  w: z.number().describe('Width as a fraction of image width, 0..1.'),
+  h: z.number().describe('Height as a fraction of image height, 0..1.'),
+  answerText: z
+    .string()
+    .optional()
+    .describe('Required for typed mode and for an unpaired feature region.'),
+  pairedRegionId: z
+    .string()
+    .optional()
+    .describe('`feature` regions only: the label region that answers this one.'),
+  backNote: z.string().optional().describe('Optional extra shown below the image on the back.'),
+});
+
+/** Reject region references the occlusion itself cannot satisfy, before they reach the
+ *  generator: a pairing must name a label region present in the same occlusion. */
+function assertOcclusionRegionsResolve(regions: z.infer<typeof occlusionRegionSchema>[]): void {
+  const byId = new Map(regions.map((region) => [region.id, region]));
+  if (byId.size !== regions.length) {
+    throw new McpToolException({
+      kind: 'validation',
+      message: 'Occlusion region ids must be unique within the occlusion.',
+    });
+  }
+  for (const region of regions) {
+    if (region.pairedRegionId === undefined) continue;
+    const paired = byId.get(region.pairedRegionId);
+    if (!paired || paired.role !== 'label') {
+      throw new McpToolException({
+        kind: 'validation',
+        message: `Region "${region.id}" is paired to "${region.pairedRegionId}", which is not a label region in this occlusion.`,
+      });
+    }
+  }
+}
+
+async function assertAssetExists(assetHash: string): Promise<void> {
+  if (!(await db.assets.get(assetHash))) notFound('Asset', assetHash);
+}
+
+const createOcclusionSchema = z.object({
+  courseId: courseIdSchema,
+  lessonId: z
+    .string()
+    .optional()
+    .describe(
+      'If given, scope the occlusion (and its generated cards) to this lesson. Otherwise the course question bank.',
+    ),
+  name: z.string().describe('The occlusion name, used in each generated card\'s text fallback.'),
+  assetHash: z
+    .string()
+    .describe('Hash of a diagram already stored in this install (see lacuna.get_occlusion).'),
+  regions: z
+    .array(occlusionRegionSchema)
+    .describe('The regions to generate one card each from. Every label region is masked on every front.'),
+});
+const createOcclusion: ToolDefinition<
+  z.infer<typeof createOcclusionSchema>,
+  Awaited<ReturnType<typeof repoCreateOcclusion>>
+> = {
+  name: 'lacuna.create_occlusion',
+  description:
+    'Create an image occlusion over an existing diagram and, in the same transaction, one card per region.',
+  inputSchema: createOcclusionSchema,
+  requiredScope: 'write',
+  async handler({ courseId, lessonId, name, assetHash, regions }) {
+    if (!(await read.getCourse(courseId))) notFound('Course', courseId);
+    if (lessonId !== undefined && !(await read.getLesson(lessonId))) notFound('Lesson', lessonId);
+    await assertAssetExists(assetHash);
+    assertOcclusionRegionsResolve(regions);
+    return ok(await repoCreateOcclusion(courseId, lessonId ?? null, name, assetHash, regions));
+  },
+};
+
+const updateOcclusionSchema = z.object({
+  occlusionId: z.string().describe('The id of the occlusion to update.'),
+  name: z.string().optional().describe('New occlusion name.'),
+  assetHash: z
+    .string()
+    .optional()
+    .describe('Replacement diagram. Regenerates every card in the occlusion.'),
+  regions: z.array(occlusionRegionSchema).optional().describe('Replacement region list.'),
+});
+const updateOcclusion: ToolDefinition<z.infer<typeof updateOcclusionSchema>, { id: string }> = {
+  name: 'lacuna.update_occlusion',
+  description:
+    "Update an occlusion's name, diagram and/or regions, regenerating its cards to match. Card " +
+    'content is diffed and updated in place where possible, so existing FSRS memory state ' +
+    'survives content-only regeneration (moving or resizing a region, re-pairing, role changes).',
+  inputSchema: updateOcclusionSchema,
+  requiredScope: 'write',
+  async handler({ occlusionId, name, assetHash, regions }) {
+    const existing = await read.getOcclusion(occlusionId);
+    if (!existing) notFound('Occlusion', occlusionId);
+    if (assetHash !== undefined) await assertAssetExists(assetHash);
+    if (regions !== undefined) assertOcclusionRegionsResolve(regions);
+    await repoUpdateOcclusion({
+      ...existing,
+      ...(name !== undefined ? { name } : {}),
+      ...(assetHash !== undefined ? { assetHash } : {}),
+      ...(regions !== undefined ? { regions } : {}),
+    });
+    return ok({ id: occlusionId });
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Assessments
 // ---------------------------------------------------------------------------
 
@@ -562,6 +691,8 @@ export const CONTENT_TOOLS: readonly ToolDefinition<any, any>[] = [
   linkCardToLesson,
   createSequence,
   updateSequence,
+  createOcclusion,
+  updateOcclusion,
   createCourseAssessment,
   updateCourseAssessment,
 ];
@@ -579,6 +710,8 @@ export {
   linkCardToLesson,
   createSequence,
   updateSequence,
+  createOcclusion,
+  updateOcclusion,
   createCourseAssessment,
   updateCourseAssessment,
 };

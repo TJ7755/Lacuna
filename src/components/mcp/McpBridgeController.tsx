@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useToast } from '../ui/Toast';
 import { db } from '../../db/schema';
 import { restoreCards, restoreCourse, restoreLesson, restoreSequence, type CardSnapshot, type CourseSnapshot, type LessonSnapshot, type SequenceSnapshot } from '../../db/repository';
+import { restoreOcclusion, type OcclusionSnapshot } from '../../db/occlusionRepository';
 import { GLOBAL_SCOPE_KEY } from '../../mcp/grants';
 import type { McpConsentRequest } from '../../mcp/bridge/protocol';
 import { attachMcpBridge } from '../../mcp/bridge/renderer';
@@ -16,6 +17,8 @@ async function restoreUndo(undo: RecordedUndo): Promise<void> {
     await restoreCourse(undo.payload.snapshot as CourseSnapshot);
   } else if (undo.payload.kind === 'restoreLesson') {
     await restoreLesson(undo.payload.snapshot as LessonSnapshot);
+  } else if (undo.payload.kind === 'restoreOcclusion') {
+    await restoreOcclusion(undo.payload.snapshot as OcclusionSnapshot);
   } else {
     await restoreSequence(undo.payload.snapshot as SequenceSnapshot);
   }

@@ -11,6 +11,7 @@ import {
   restoreLesson,
 } from '../../db/repository';
 import type { CardSnapshot, LessonSnapshot } from '../../db/repository';
+import { createOcclusion } from '../../db/occlusionRepository';
 import type { ToolContext } from '../types';
 import { validateAndRun } from '../registry';
 import * as tools from './destructive';
@@ -26,6 +27,7 @@ async function clearAll(): Promise<void> {
     db.practiceNodes.clear(),
     db.courseAssessments.clear(),
     db.sequences.clear(),
+    db.occlusions.clear(),
     db.userPerformance.clear(),
   ]);
 }
@@ -209,6 +211,28 @@ describe('mcp destructive tools', () => {
 
     it('rejects an unknown sequenceId with not_found', async () => {
       const result = await validateAndRun(tools.deleteSequence, { sequenceId: 'missing' }, ctx);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('not_found');
+    });
+  });
+
+  describe('lacuna.delete_occlusion', () => {
+    it('deletes an occlusion and its generated cards, returning an undo snapshot', async () => {
+      const course = await createCourse('Course A');
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      const occlusion = await createOcclusion(course.id, lesson.id, 'Plant cell', 'hash-1', [
+        { id: 'region-1', role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.2, h: 0.1 },
+      ]);
+
+      const res = await tools.deleteOcclusion.handler({ occlusionId: occlusion.id }, ctx);
+      expect(res.data.id).toBe(occlusion.id);
+      expect(res.undo?.kind).toBe('restoreOcclusion');
+      expect(await db.occlusions.get(occlusion.id)).toBeUndefined();
+      expect(await db.cards.where('occlusionRegionId').equals('region-1').count()).toBe(0);
+    });
+
+    it('rejects an unknown occlusionId with not_found', async () => {
+      const result = await validateAndRun(tools.deleteOcclusion, { occlusionId: 'missing' }, ctx);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('not_found');
     });

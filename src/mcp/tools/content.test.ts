@@ -406,6 +406,145 @@ describe('mcp content tools', () => {
     });
   });
 
+  describe('lacuna.create_occlusion / lacuna.update_occlusion', () => {
+    const label = {
+      id: 'region-1',
+      role: 'label' as const,
+      shape: 'rectangle' as const,
+      x: 0.1,
+      y: 0.1,
+      w: 0.2,
+      h: 0.1,
+      answerText: 'Nucleus',
+    };
+
+    async function storeDiagram(hash = 'hash-1'): Promise<string> {
+      await db.assets.put({
+        hash,
+        mimeType: 'image/png',
+        blob: new Uint8Array([1, 2, 3]),
+        kind: 'image',
+        width: 800,
+        height: 600,
+        createdAt: Date.now(),
+      });
+      return hash;
+    }
+
+    it('creates an occlusion and one card per region', async () => {
+      const course = await createCourse('Course A');
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      const hash = await storeDiagram();
+
+      const res = await tools.createOcclusion.handler(
+        {
+          courseId: course.id,
+          lessonId: lesson.id,
+          name: 'Plant cell',
+          assetHash: hash,
+          regions: [
+            label,
+            {
+              id: 'region-2',
+              role: 'feature',
+              shape: 'rectangle',
+              x: 0.5,
+              y: 0.4,
+              w: 0.1,
+              h: 0.1,
+              pairedRegionId: 'region-1',
+            },
+          ],
+        },
+        ctx,
+      );
+
+      expect(res.data.name).toBe('Plant cell');
+      expect(await db.cards.where('occlusionRegionId').equals('region-1').count()).toBe(1);
+      expect(await db.cards.where('occlusionRegionId').equals('region-2').count()).toBe(1);
+    });
+
+    it('rejects a diagram this install does not hold with not_found', async () => {
+      const course = await createCourse('Course A');
+      const result = await validateAndRun(
+        tools.createOcclusion,
+        { courseId: course.id, name: 'Plant cell', assetHash: 'absent', regions: [label] },
+        ctx,
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('not_found');
+    });
+
+    it('rejects a pairing that names no label region in the same occlusion', async () => {
+      const course = await createCourse('Course A');
+      const hash = await storeDiagram();
+      const result = await validateAndRun(
+        tools.createOcclusion,
+        {
+          courseId: course.id,
+          name: 'Plant cell',
+          assetHash: hash,
+          regions: [
+            label,
+            {
+              id: 'region-2',
+              role: 'feature',
+              shape: 'rectangle',
+              x: 0.5,
+              y: 0.4,
+              w: 0.1,
+              h: 0.1,
+              pairedRegionId: 'region-absent',
+            },
+          ],
+        },
+        ctx,
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('validation');
+    });
+
+    it('rejects duplicate region ids', async () => {
+      const course = await createCourse('Course A');
+      const hash = await storeDiagram();
+      const result = await validateAndRun(
+        tools.createOcclusion,
+        { courseId: course.id, name: 'Plant cell', assetHash: hash, regions: [label, label] },
+        ctx,
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('validation');
+    });
+
+    it('moving a region regenerates content without touching memory state', async () => {
+      const course = await createCourse('Course A');
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      const hash = await storeDiagram();
+      const occlusion = await createOcclusion(course.id, lesson.id, 'Plant cell', hash, [label]);
+      const generated = (await db.cards.where('occlusionRegionId').equals('region-1').first())!;
+      await db.cards.update(generated.id, { reps: 3, stability: 9 });
+
+      const res = await tools.updateOcclusion.handler(
+        { occlusionId: occlusion.id, regions: [{ ...label, y: 0.6 }] },
+        ctx,
+      );
+
+      expect(res.data.id).toBe(occlusion.id);
+      expect((await db.occlusions.get(occlusion.id))!.regions[0].y).toBe(0.6);
+      const after = await db.cards.where('occlusionRegionId').equals('region-1').toArray();
+      expect(after).toHaveLength(1);
+      expect(after[0].id).toBe(generated.id);
+      expect(after[0].reps).toBe(3);
+      expect(after[0].stability).toBe(9);
+    });
+
+    it('rejects an unknown occlusionId with not_found', async () => {
+      const result = await validateAndRun(tools.updateOcclusion, { occlusionId: 'missing' }, ctx);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('not_found');
+    });
+  });
+
   describe('lacuna.create_course_assessment / lacuna.update_course_assessment', () => {
     it('creates an assessment with explicit placement, coverage and exclusions', async () => {
       const course = await createCourse('Course A');
