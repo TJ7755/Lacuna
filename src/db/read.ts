@@ -20,6 +20,7 @@ import type {
   Course,
   CourseAssessment,
   Lesson,
+  Occlusion,
   PracticeNode,
   RevisionPlan,
   Sequence,
@@ -30,6 +31,7 @@ import {
   listNotes as repositoryListNotes,
   listSequences as repositoryListSequences,
 } from './repository';
+import { listOcclusions as repositoryListOcclusions } from './occlusionRepository';
 import { availableCards, dueCards, studyPool } from '../fsrs/eligibility';
 import { makeObjectiveContext, progressValue, scoreCard, sortByObjective } from '../fsrs/objective';
 import { isLeech } from '../fsrs/leech';
@@ -215,7 +217,7 @@ export async function getCourseStats(
 }
 
 // ---------------------------------------------------------------------------
-// Sequences / notes
+// Sequences / occlusions / notes
 // ---------------------------------------------------------------------------
 
 /** All sequences for a course, ordered by createdAt ascending. Re-exports repository.ts's implementation. */
@@ -224,6 +226,14 @@ export const listSequences = repositoryListSequences;
 /** A single sequence, or null if it does not exist. */
 export async function getSequence(sequenceId: string): Promise<Sequence | null> {
   return (await db.sequences.get(sequenceId)) ?? null;
+}
+
+/** All occlusions for a course, ordered by createdAt ascending. Re-exports occlusionRepository.ts's implementation. */
+export const listOcclusions = repositoryListOcclusions;
+
+/** A single occlusion, or null if it does not exist. */
+export async function getOcclusion(occlusionId: string): Promise<Occlusion | null> {
+  return (await db.occlusions.get(occlusionId)) ?? null;
 }
 
 /** All notes for a lesson, ordered by orderIndex ascending. Re-exports repository.ts's implementation. */

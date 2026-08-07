@@ -9,6 +9,7 @@ import {
   createNote,
   createSequence,
 } from '../../db/repository';
+import { createOcclusion } from '../../db/occlusionRepository';
 import { GLOBAL_SCOPE_KEY } from '../grants';
 import { resolveToolScopes } from './scopeResolver';
 
@@ -18,12 +19,15 @@ beforeEach(async () => {
 });
 
 describe('resolveToolScopes', () => {
-  it('resolves ID-only card, lesson, note and sequence tools to their owning course', async () => {
+  it('resolves ID-only card, lesson, note, sequence and occlusion tools to their owning course', async () => {
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Cells');
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q', 'A');
     const note = await createNote(lesson.id, 'Notes', 'Body');
     const sequence = await createSequence(course.id, lesson.id, 'Order', [{ id: 'one', value: 'One' }]);
+    const occlusion = await createOcclusion(course.id, lesson.id, 'Plant cell', 'hash-1', [
+      { id: 'region-1', role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.2, h: 0.1 },
+    ]);
     const assessment = await createCourseAssessment(course.id, 'Paper 1', Date.now() + 1000, {
       afterLessonId: lesson.id,
       coverageMode: 'prefix',
@@ -34,6 +38,7 @@ describe('resolveToolScopes', () => {
       { lessonId: lesson.id },
       { noteId: note.id },
       { sequenceId: sequence.id },
+      { occlusionId: occlusion.id },
       { assessmentId: assessment.id },
     ]) {
       const outcome = await resolveToolScopes(input);

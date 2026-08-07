@@ -14,6 +14,7 @@ import type {
   LessonCardLink,
   LessonCompletion,
   Note,
+  Occlusion,
   PendingMergeReview,
   PracticeNode,
   RevisionPlan,
@@ -91,6 +92,22 @@ export function useSequence(sequenceId: string | undefined): Sequence | null | u
 export function useSequences(courseId: string | undefined): Sequence[] | undefined {
   return useLiveQuery(
     () => (courseId ? db.sequences.where('courseId').equals(courseId).sortBy('createdAt') : []),
+    [courseId],
+  );
+}
+
+export function useOcclusion(occlusionId: string | undefined): Occlusion | null | undefined {
+  return useLiveQuery<Occlusion | null>(
+    () => (occlusionId ? db.occlusions.get(occlusionId).then((occlusion) => occlusion ?? null) : null),
+    [occlusionId],
+  );
+}
+
+/** All occlusions for a course, ordered by createdAt (mirrors listOcclusions). Used by
+ *  management surfaces to group/badge generated cards and resolve a card's owning occlusion. */
+export function useOcclusions(courseId: string | undefined): Occlusion[] | undefined {
+  return useLiveQuery(
+    () => (courseId ? db.occlusions.where('courseId').equals(courseId).sortBy('createdAt') : []),
     [courseId],
   );
 }

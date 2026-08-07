@@ -137,6 +137,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     isMachineMarkedCard,
     hasUnrenderableItemPayload,
     isLinesModeCard,
+    occlusion,
+    occlusionAnswerText,
     summary,
     setSummary,
     canUndo,
@@ -537,6 +539,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                           setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))
                         }
                         answerStrictness={answerStrictness}
+                        occlusion={occlusion}
+                        occlusionAnswerText={occlusionAnswerText}
                       />
                     )}
                   </motion.div>

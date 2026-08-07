@@ -19,12 +19,13 @@ import type {
   LessonCardLink,
   LessonCompletion,
   Note,
+  Occlusion,
   PracticeNode,
   PracticeMilestone,
   Sequence,
   SessionHistoryEntry,
   UserPerformance,
-  ImageAsset,
+  MediaAsset,
   RevisionPlan,
 } from './types';
 import {
@@ -35,7 +36,7 @@ import {
 } from './assessmentMigration';
 import {
   assetsForBackup,
-  backupAssetToImageAsset,
+  backupAssetToMediaAsset,
   extractMarkdownAssets,
   referencedAssetHashes,
   referencedAssetHashesInCards,
@@ -62,6 +63,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     practiceMilestones,
     courseAssessments,
     sequences,
+    occlusions,
     revisionPlans,
   ] = await Promise.all([
     db.decks.toArray(),
@@ -79,12 +81,17 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.practiceMilestones.toArray(),
     db.courseAssessments.toArray(),
     db.sequences.toArray(),
+    db.occlusions.toArray(),
     db.revisionPlans.toArray(),
   ]);
   const referencedHashes = new Set(referencedAssetHashesInCards(cards));
   for (const note of notes) {
     for (const hash of referencedAssetHashes(note.content)) referencedHashes.add(hash);
   }
+  // An occlusion's diagram is referenced solely by `Occlusion.assetHash` — its generated
+  // cards carry a plain-text fallback, not a Markdown embed — so it must be gathered
+  // explicitly or a backup would restore occlusions with no image (mirrors assets.ts's GC).
+  for (const occlusion of occlusions) referencedHashes.add(occlusion.assetHash);
   const assets = await assetsForBackup([...referencedHashes]);
   return {
     app: 'lacuna',
@@ -106,6 +113,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     practiceMilestones,
     courseAssessments,
     sequences,
+    occlusions,
     revisionPlans,
   };
 }
@@ -160,7 +168,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
   const decks = backup.decks.map((d) => migrateDeckRecord(d as LegacyDeck));
   const assets = backup.assets;
   const knownHashes = new Set(backup.assets.map((a) => a.hash.toLowerCase()));
-  const extractedAssets: ImageAsset[] = [];
+  const extractedAssets: MediaAsset[] = [];
   const cards = await Promise.all(
     backup.cards.map(async (c) => {
       const migrated = migrateCardRecord(c as LegacyCard);
@@ -198,7 +206,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       ),
     })),
   );
-  const importedAssets = [...assets.map(backupAssetToImageAsset), ...extractedAssets];
+  const importedAssets = [...assets.map(backupAssetToMediaAsset), ...extractedAssets];
   const rawCourses = backup.courses ?? [];
   const currentAssessments = backup.courseAssessments;
   const assessmentMigration = currentAssessments
@@ -237,6 +245,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       db.practiceMilestones,
       db.courseAssessments,
       db.sequences,
+      db.occlusions,
       db.revisionPlans,
     ],
     async () => {
@@ -261,6 +270,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           db.practiceMilestones.clear(),
           db.courseAssessments.clear(),
           db.sequences.clear(),
+          db.occlusions.clear(),
           db.revisionPlans.clear(),
         ]);
         await db.decks.bulkAdd(decks);
@@ -305,6 +315,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         }
         if (backup.sequences && backup.sequences.length > 0) {
           await db.sequences.bulkAdd(backup.sequences);
+        }
+        if (backup.occlusions && backup.occlusions.length > 0) {
+          await db.occlusions.bulkAdd(backup.occlusions);
         }
         if (backup.revisionPlans && backup.revisionPlans.length > 0) {
           await db.revisionPlans.bulkAdd(backup.revisionPlans);
@@ -517,6 +530,20 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           }
         }
         await db.sequences.bulkPut(mergedSequences);
+      }
+
+      if (backup.occlusions && backup.occlusions.length > 0) {
+        const existingOcclusions = new Map((await db.occlusions.toArray()).map((o) => [o.id, o]));
+        const mergedOcclusions: Occlusion[] = [];
+        for (const incoming of backup.occlusions) {
+          const existing = existingOcclusions.get(incoming.id);
+          if (!existing) {
+            mergedOcclusions.push(incoming);
+          } else {
+            mergedOcclusions.push(incoming.createdAt > existing.createdAt ? incoming : existing);
+          }
+        }
+        await db.occlusions.bulkPut(mergedOcclusions);
       }
 
       if (backup.revisionPlans && backup.revisionPlans.length > 0) {

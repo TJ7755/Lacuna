@@ -188,6 +188,31 @@ const getSequence: ToolDefinition<z.infer<typeof getSequenceSchema>, NonNullable
   },
 };
 
+const listOcclusionsSchema = z.object({ courseId: z.string().describe('The id of the course whose occlusions to list.') });
+const listOcclusions: ToolDefinition<z.infer<typeof listOcclusionsSchema>, Awaited<ReturnType<typeof read.listOcclusions>>> = {
+  name: 'lacuna.list_occlusions',
+  description: "List a course's image occlusions, ordered by creation time.",
+  inputSchema: listOcclusionsSchema,
+  requiredScope: 'read',
+  async handler({ courseId }) {
+    return ok(await read.listOcclusions(courseId));
+  },
+};
+
+const getOcclusionSchema = z.object({ occlusionId: z.string().describe('The id of the occlusion to fetch.') });
+const getOcclusion: ToolDefinition<z.infer<typeof getOcclusionSchema>, NonNullable<Awaited<ReturnType<typeof read.getOcclusion>>>> = {
+  name: 'lacuna.get_occlusion',
+  description:
+    'Fetch a single image occlusion by id, including every region and its fractional coordinates.',
+  inputSchema: getOcclusionSchema,
+  requiredScope: 'read',
+  async handler({ occlusionId }) {
+    const occlusion = await read.getOcclusion(occlusionId);
+    if (!occlusion) notFound('Occlusion', occlusionId);
+    return ok(occlusion);
+  },
+};
+
 const listNotesSchema = z.object({ lessonId: z.string().describe('The id of the lesson whose notes to list.') });
 const listNotes: ToolDefinition<z.infer<typeof listNotesSchema>, Awaited<ReturnType<typeof read.listNotes>>> = {
   name: 'lacuna.list_notes',
@@ -232,6 +257,8 @@ export const READ_TOOLS: readonly ToolDefinition<any, any>[] = [
   getCourseStats,
   listSequences,
   getSequence,
+  listOcclusions,
+  getOcclusion,
   listNotes,
   diagnosticsSummary,
 ];
@@ -250,6 +277,8 @@ export {
   getCourseStats,
   listSequences,
   getSequence,
+  listOcclusions,
+  getOcclusion,
   listNotes,
   diagnosticsSummary,
 };

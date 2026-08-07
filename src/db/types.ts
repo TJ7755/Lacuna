@@ -585,6 +585,50 @@ export interface SequenceItem {
   speaker?: string;
 }
 
+/**
+ * One masked region on an occlusion diagram; anchors exactly one generated card.
+ * `x`/`y`/`w`/`h` are fractions of image width/height in 0..1, never pixels — this
+ * keeps masks positioned correctly under responsive image sizing.
+ */
+export interface OcclusionRegion {
+  /** Stable across edits; anchors one generated card. */
+  id: string;
+  role: 'label' | 'feature';
+  /** v1 only; explicit for forward-compatible geometry. */
+  shape: 'rectangle';
+  /** Fraction of image width, 0..1. */
+  x: number;
+  /** Fraction of image height, 0..1. */
+  y: number;
+  /** Fraction of image width, 0..1. */
+  w: number;
+  /** Fraction of image height, 0..1. */
+  h: number;
+  /** Optional; required only for typed mode and unpaired features. */
+  answerText?: string;
+  /** feature -> the label region that answers it. */
+  pairedRegionId?: string;
+  /** Optional extra shown on the back. */
+  backNote?: string;
+}
+
+/**
+ * An image occlusion set: a diagram plus masked regions from which generation logic
+ * derives one card per region. Occlusions themselves are not studied directly.
+ */
+export interface Occlusion {
+  id: string;
+  courseId: string;
+  /** Same semantics as Card.primaryLessonId. */
+  primaryLessonId: string | null;
+  name: string;
+  /** The diagram. */
+  assetHash: string;
+  /** Ordered; stored inline as occlusions are small. */
+  regions: OcclusionRegion[];
+  createdAt: number;
+}
+
 /** A learning unit on the course path: notes plus the cards taught in it. */
 export interface Lesson {
   id: string;
@@ -838,6 +882,8 @@ export interface Card {
   reverseCardId?: string | null;
   /** Id of the SequenceItem this card was generated from. Present iff the card was generated from a sequence item. */
   sequenceItemId?: string;
+  /** Id of the OcclusionRegion this card was generated from. Present iff the card was generated from an occlusion region. */
+  occlusionRegionId?: string;
   /** Epoch ms of the next scheduled review (= ts-fsrs `due`). Null until first review. */
   due: number | null;
   /** Days ts-fsrs last scheduled this card for (= ts-fsrs `scheduled_days`). */
@@ -876,26 +922,29 @@ export interface UserPerformance {
   totalCorrectReviews: number;
 }
 
-/** Binary image asset stored separately from card Markdown and deduplicated by hash.
+/** Binary media asset stored separately from card Markdown and deduplicated by hash.
  *  We store the raw bytes as Uint8Array because fake-indexeddb (and some browser
  *  IndexedDB implementations) do not reliably preserve Blob objects through
  *  structuredClone.  DOM APIs that need a Blob receive one via `toBlob()`. */
-export interface ImageAsset {
+export interface MediaAsset {
   hash: string;
   blob: Blob | Uint8Array;
   mimeType: string;
-  width: number;
-  height: number;
+  /** Absent on pre-Arc-6 records and therefore interpreted as image. */
+  kind?: 'image' | 'audio';
+  width?: number;
+  height?: number;
   createdAt: number;
 }
 
-/** JSON-safe form of an ImageAsset for backups and exports. */
+/** JSON-safe form of a MediaAsset for backups and exports. */
 export interface BackupAsset {
   hash: string;
   data: string;
   mimeType: string;
-  width: number;
-  height: number;
+  kind?: 'image' | 'audio';
+  width?: number;
+  height?: number;
   createdAt: number;
 }
 
@@ -949,6 +998,8 @@ export interface BackupFile {
   courseExamDates?: AssessmentDateCompatibility[];
   // Overlapping-cloze sequences. Optional so older backups still import cleanly.
   sequences?: Sequence[];
+  // Image occlusions. Optional so older backups still import cleanly.
+  occlusions?: Occlusion[];
 }
 
 /**
@@ -971,6 +1022,9 @@ export interface LineageIdMapping {
   cardIds: string[];
   /** Originating sequence ids already adopted as local ids. */
   sequenceIds: string[];
+  /** Originating occlusion ids already adopted as local ids. Absent on mappings written
+   *  before image occlusion existed, so readers must tolerate `undefined`. */
+  occlusionIds?: string[];
   /**
    * Last-merged content snapshot for every adopted lesson/note/card, keyed by local
    * (= originating) id. `src/db/mergeImport.ts` compares an entity's *current* local

@@ -67,6 +67,64 @@ describe('mergeImport: first import of a lineage', () => {
     expect(await findCourseForLineage('lineage-1')).toMatchObject({ id: course.id });
   });
 
+  it('regenerates a sequence-generated card rather than also adopting the packed copy', async () => {
+    // A published course packs its sequence-generated cards like any other lesson card,
+    // so without the isGeneratedShareCard filter the merge path adopted the packed copy
+    // *and* regenerated it from the sequence, leaving two cards for one item.
+    await importLineageFirstTime(
+      coursePayload({
+        lessons: [
+          lessonOne({
+            cards: [
+              { id: 'card-gen-1', k: 0 as const, f: 'stale front', b: 'Brackets', si: 'item-1' },
+            ],
+          }),
+        ],
+        sequences: [
+          { id: 'seq-1', n: 'Order', items: [{ id: 'item-1', v: 'Brackets' }], cw: 2, pl: 0 },
+        ],
+      } as any),
+    );
+
+    const cards = await db.cards.toArray();
+    expect(cards).toHaveLength(1);
+    expect(cards[0].sequenceItemId).toBe('item-1');
+    expect(await db.cards.get('card-gen-1')).toBeUndefined();
+    expect((await db.lineageIdMappings.get('lineage-1'))?.cardIds).toEqual([]);
+  });
+
+  it('regenerates an occlusion-generated card rather than also adopting the packed copy', async () => {
+    await importLineageFirstTime(
+      coursePayload({
+        lessons: [
+          lessonOne({
+            cards: [
+              { id: 'card-occ-1', k: 0 as const, f: 'stale front', b: 'stale back', oc: 'region-1' },
+            ],
+          }),
+        ],
+        occlusions: [
+          {
+            id: 'occ-1',
+            n: 'Plant cell',
+            ah: 'abc123',
+            regions: [{ id: 'region-1', r: 0, x: 0.1, y: 0.1, w: 0.2, h: 0.1, a: 'Nucleus' }],
+            pl: 0,
+          },
+        ],
+      } as any),
+    );
+
+    const occlusion = await db.occlusions.get('occ-1');
+    expect(occlusion?.name).toBe('Plant cell');
+    expect(occlusion?.regions[0].shape).toBe('rectangle');
+    const cards = await db.cards.toArray();
+    expect(cards).toHaveLength(1);
+    expect(cards[0].occlusionRegionId).toBe('region-1');
+    expect(await db.cards.get('card-occ-1')).toBeUndefined();
+    expect((await db.lineageIdMappings.get('lineage-1'))?.occlusionIds).toEqual(['occ-1']);
+  });
+
   it('preserves a structured payload in the adopted card and its initial snapshot', async () => {
     const payload = {
       v: 1 as const,
@@ -372,5 +430,43 @@ describe('mergeImport: merge apply', () => {
     const regenerated = await db.cards.where('sequenceItemId').equals('item-1').toArray();
     expect(regenerated).toHaveLength(1);
     expect(regenerated[0].back).toBe('Brackets and powers');
+  });
+
+  it('hands occlusion-shaped payload items to updateOcclusion on a merge update', async () => {
+    const occlusionPayload = (revision: number, y: number) =>
+      coursePayload({
+        rv: revision,
+        lessons: [lessonOne()],
+        occlusions: [
+          {
+            id: 'occ-1',
+            n: 'Plant cell',
+            ah: 'abc123',
+            regions: [
+              { id: 'region-1', r: 0, x: 0.1, y, w: 0.2, h: 0.1, a: 'Nucleus' },
+              { id: 'region-2', r: 1, x: 0.5, y: 0.4, w: 0.1, h: 0.1, p: 'region-1' },
+            ],
+            pl: 0,
+          },
+        ],
+      } as any);
+
+    await mergeLineageUpdate(courseId, occlusionPayload(2, 0.1));
+    expect((await db.occlusions.get('occ-1'))?.regions).toHaveLength(2);
+    const first = await db.cards.where('occlusionRegionId').equals('region-1').first();
+    expect(first).toBeDefined();
+    expect((await db.lineageIdMappings.get('lineage-1'))?.occlusionIds).toEqual(['occ-1']);
+
+    // Moving a region regenerates content only: the card keeps its identity, so its
+    // FSRS memory state survives the merge.
+    await db.cards.update(first!.id, { reps: 4, stability: 12 });
+    await mergeLineageUpdate(courseId, occlusionPayload(3, 0.3));
+
+    const after = await db.cards.where('occlusionRegionId').equals('region-1').toArray();
+    expect(after).toHaveLength(1);
+    expect(after[0].id).toBe(first!.id);
+    expect(after[0].reps).toBe(4);
+    expect(after[0].stability).toBe(12);
+    expect((await db.occlusions.get('occ-1'))?.regions[0].y).toBe(0.3);
   });
 });

@@ -8,6 +8,7 @@ import {
   createLessonCard,
   createSequence,
 } from '../../db/repository';
+import { createOcclusion } from '../../db/occlusionRepository';
 import type { ToolContext } from '../types';
 import { validateAndRun } from '../registry';
 import * as tools from './read';
@@ -23,6 +24,7 @@ async function clearAll(): Promise<void> {
     db.practiceNodes.clear(),
     db.courseAssessments.clear(),
     db.sequences.clear(),
+    db.occlusions.clear(),
     db.userPerformance.clear(),
   ]);
 }
@@ -209,6 +211,27 @@ describe('mcp read tools', () => {
 
     it('maps a missing sequence to a not_found error via validateAndRun', async () => {
       const result = await validateAndRun(tools.getSequence, { sequenceId: 'missing' }, ctx);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.kind).toBe('not_found');
+    });
+
+    it('lists and fetches occlusions, including their fractional region coordinates', async () => {
+      const course = await createCourse('Course A');
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      const occlusion = await createOcclusion(course.id, lesson.id, 'Plant cell', 'hash-1', [
+        { id: 'region-1', role: 'label', shape: 'rectangle', x: 0.1, y: 0.2, w: 0.3, h: 0.4 },
+      ]);
+
+      const listed = await tools.listOcclusions.handler({ courseId: course.id }, ctx);
+      expect(listed.data.map((o) => o.id)).toEqual([occlusion.id]);
+
+      const fetched = await tools.getOcclusion.handler({ occlusionId: occlusion.id }, ctx);
+      expect(fetched.data.name).toBe('Plant cell');
+      expect(fetched.data.regions[0]).toMatchObject({ x: 0.1, y: 0.2, w: 0.3, h: 0.4 });
+    });
+
+    it('maps a missing occlusion to a not_found error via validateAndRun', async () => {
+      const result = await validateAndRun(tools.getOcclusion, { occlusionId: 'missing' }, ctx);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('not_found');
     });

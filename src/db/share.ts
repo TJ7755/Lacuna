@@ -46,13 +46,14 @@ import type {
   Lesson,
   LessonCardLink,
   Note,
+  Occlusion,
   Sequence,
   SequenceItem,
   SequencePresetId,
   UnlockMode,
 } from './types';
 import { courseToRecord, finalAssessmentForCourse } from './assessmentMigration';
-import { stripAssetImages } from './assets';
+import { stripAssetMedia } from './assets';
 import { bytesToBase45, base45ToBytes } from './base45';
 import { buildCourseMigration } from './courseMigration';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
@@ -155,6 +156,9 @@ const ShareCardSchema = z.object({
   // Present iff this card was generated from a sequence item (positional or label,
   // the latter carrying the `::label` suffix, mirroring Card.sequenceItemId).
   si: z.string().optional(),
+  // Present iff this card was generated from an occlusion region, mirroring
+  // Card.occlusionRegionId. Payload-scoped, remapped on import like `si`.
+  oc: z.string().optional(),
   // Structured Arc 11 item content. Known payloads are validated fully; unknown
   // versions/kinds remain opaque so a newer item can use the read-only fallback.
   p: ShareItemPayloadSchema.optional(),
@@ -253,6 +257,33 @@ const ShareSequenceSchema = z.object({
   pr: z.string().optional(),
 });
 
+/** A single OcclusionRegion in a v2 share payload. Coordinates are fractions of the
+ *  image, so they travel unchanged. `shape` is not packed: v1 is rectangles only and
+ *  the import side restores the explicit value. */
+const ShareOcclusionRegionSchema = z.object({
+  id: z.string(),
+  r: z.union([z.literal(0), z.literal(1)]), // role: 0 label, 1 feature
+  x: z.number(),
+  y: z.number(),
+  w: z.number(),
+  h: z.number(),
+  a: z.string().optional(), // answerText
+  p: z.string().optional(), // pairedRegionId (payload-scoped; remapped on import)
+  bn: z.string().optional(), // backNote
+});
+
+/** A whole Occlusion (regions inline) in a v2 share payload. The diagram itself never
+ *  travels — `stripAssetMedia` removes asset media from share codes — so `ah` will not
+ *  resolve for the recipient and the study face falls back to legible text. Publishing
+ *  and exporting warn about exactly this (Arc 6 §6.6). */
+const ShareOcclusionSchema = z.object({
+  id: z.string(),
+  n: z.string().min(1),
+  ah: z.string(), // assetHash
+  regions: z.array(ShareOcclusionRegionSchema),
+  pl: z.number().optional(), // index into the payload's lessons array (primaryLessonId)
+});
+
 const SharePayloadV1Schema = z.object({
   v: z.literal(1),
   by: z.union([z.string(), z.null()]).optional(),
@@ -271,6 +302,8 @@ const SharePayloadV2Schema = z.object({
   links: z.array(z.object({ l: z.number(), c: z.string() })).optional(),
   // Additive/optional so existing v2 codes without sequences still parse cleanly.
   sequences: z.array(ShareSequenceSchema).optional(),
+  // Likewise additive: codes predating image occlusion carry no `occlusions` array.
+  occlusions: z.array(ShareOcclusionSchema).optional(),
   // Present iff the exporting course has published at least once (Course.distribution,
   // Arc 7 Task 1). `rv` is only ever present alongside `li`.
   li: z.string().optional(), // lineageId
@@ -299,6 +332,8 @@ interface ShareCard {
   i?: 1;
   /** Present iff generated from a sequence item; mirrors Card.sequenceItemId. */
   si?: string;
+  /** Present iff generated from an occlusion region; mirrors Card.occlusionRegionId. */
+  oc?: string;
   /** Structured item content; unknown variants travel opaquely for forward compatibility. */
   p?: ItemPayload | { v: number; kind: string; [key: string]: unknown };
 }
@@ -389,6 +424,28 @@ interface ShareSequence {
   pr?: string; // presetId, only when it diverges from what m/ms alone would infer
 }
 
+/** A single OcclusionRegion in a v2 share payload. */
+interface ShareOcclusionRegion {
+  id: string;
+  r: 0 | 1; // role: 0 label, 1 feature
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  a?: string; // answerText
+  p?: string; // pairedRegionId (payload-scoped; remapped on import)
+  bn?: string; // backNote
+}
+
+/** A whole Occlusion (regions inline) in a v2 share payload. */
+interface ShareOcclusion {
+  id: string;
+  n: string; // name
+  ah: string; // assetHash; never resolvable for the recipient (see the schema comment)
+  regions: ShareOcclusionRegion[];
+  pl?: number; // index into the payload's lessons array (primaryLessonId)
+}
+
 /** The decoded contents of a v1 (flat deck list) share code. */
 export interface SharePayloadV1 {
   v: 1;
@@ -414,6 +471,9 @@ export interface SharePayloadV2 {
   /** Overlapping-cloze sequences belonging to the course. Optional so existing v2
    *  codes without sequences still parse. */
   sequences?: ShareSequence[];
+  /** Image occlusions belonging to the course. Optional so existing v2 codes without
+   *  occlusions still parse. */
+  occlusions?: ShareOcclusion[];
   /** Lineage id, present iff the exporting course has published at least once
    *  (mirrors Course.distribution.lineageId, Arc 7). */
   li?: string;
@@ -775,10 +835,12 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
   for (const c of cards) {
     if (consumed.has(c.id)) continue;
     const tags = c.tags && c.tags.length ? { g: c.tags } : {};
-    const front = stripAssetImages(c.front);
-    const back = stripAssetImages(c.back);
-    const imageFlag = front.stripped || back.stripped ? { i: 1 as const } : {};
+    const front = stripAssetMedia(c.front);
+    const back = stripAssetMedia(c.back);
+    // The compact `i` field predates audio and remains unchanged for share-code compatibility.
+    const mediaFlag = front.stripped || back.stripped ? { i: 1 as const } : {};
     const seqRef = c.sequenceItemId ? { si: c.sequenceItemId } : {};
+    const occRef = c.occlusionRegionId ? { oc: c.occlusionRegionId } : {};
     const payload = c.payload ? { p: c.payload } : {};
     const identity = preserveIds ? { id: c.id } : {};
 
@@ -787,8 +849,9 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
         k: 1,
         f: front.markdown,
         ...tags,
-        ...imageFlag,
+        ...mediaFlag,
         ...seqRef,
+        ...occRef,
         ...payload,
         ...identity,
       });
@@ -796,7 +859,7 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
       continue;
     }
 
-    if (c.sequenceItemId || c.payload) {
+    if (c.sequenceItemId || c.occlusionRegionId || c.payload) {
       // Generated and structured-item cards never fold into reversible pairs: their
       // metadata belongs to exactly one card and cannot be copied to its mirror.
       out.push({
@@ -804,8 +867,9 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
         f: front.markdown,
         b: back.markdown,
         ...tags,
-        ...imageFlag,
+        ...mediaFlag,
         ...seqRef,
+        ...occRef,
         ...payload,
         ...identity,
       });
@@ -817,11 +881,11 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
       (p) => p.id !== c.id && !consumed.has(p.id),
     );
     if (partner) {
-      out.push({ k: 2, f: front.markdown, b: back.markdown, ...tags, ...imageFlag });
+      out.push({ k: 2, f: front.markdown, b: back.markdown, ...tags, ...mediaFlag });
       consumed.add(c.id);
       consumed.add(partner.id);
     } else {
-      out.push({ k: 0, f: front.markdown, b: back.markdown, ...tags, ...imageFlag, ...identity });
+      out.push({ k: 0, f: front.markdown, b: back.markdown, ...tags, ...mediaFlag, ...identity });
       consumed.add(c.id);
     }
   }
@@ -882,7 +946,7 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Pack a lesson's notes, stripping images the same way card content is stripped.
+ * Pack a lesson's notes, stripping media the same way card content is stripped.
  * `withOriginatingIds` packs each note's local id as `oi` — only meaningful (and
  * only ever passed) when the exporting course has published, so a plain course
  * export is unaffected.
@@ -892,7 +956,7 @@ function packNotes(
   withOriginatingIds = false,
 ): ShareNote[] {
   return notes.map((n) => {
-    const content = stripAssetImages(n.content);
+    const content = stripAssetMedia(n.content);
     return {
       n: n.name,
       c: content.markdown,
@@ -1036,6 +1100,32 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
     };
   });
 
+  // Bank-scoped occlusions are excluded for the same reason bank-scoped sequences are:
+  // a share carries taught lesson material, not unassigned authoring state.
+  const occlusions = (
+    await db.occlusions.where('courseId').equals(courseId).sortBy('createdAt')
+  ).filter((o) => o.primaryLessonId !== null);
+  const shareOcclusions: ShareOcclusion[] = occlusions.map((o) => {
+    const pl = o.primaryLessonId ? lessonIndexById.get(o.primaryLessonId) : undefined;
+    return {
+      id: o.id,
+      n: o.name,
+      ah: o.assetHash,
+      regions: o.regions.map((region) => ({
+        id: region.id,
+        r: (region.role === 'feature' ? 1 : 0) as 0 | 1,
+        x: region.x,
+        y: region.y,
+        w: region.w,
+        h: region.h,
+        ...(region.answerText ? { a: region.answerText } : {}),
+        ...(region.pairedRegionId ? { p: region.pairedRegionId } : {}),
+        ...(region.backNote ? { bn: region.backNote } : {}),
+      })),
+      ...(pl !== undefined ? { pl } : {}),
+    };
+  });
+
   return {
     v: 2,
     by: null,
@@ -1046,6 +1136,7 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
     ...(bankCards.length ? { bankCards: packCards(bankCards, true) } : {}),
     ...(shareLinks.length ? { links: shareLinks } : {}),
     ...(shareSequences.length ? { sequences: shareSequences } : {}),
+    ...(shareOcclusions.length ? { occlusions: shareOcclusions } : {}),
     ...(distribution ? { li: distribution.lineageId, rv: distribution.revision } : {}),
   };
 }
@@ -1197,6 +1288,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
       db.assets,
       db.courseAssessments,
       db.sequences,
+      db.occlusions,
     ],
     async () => {
       // Pre-compute fresh ids for every incoming sequence and sequence item before any
@@ -1214,6 +1306,14 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         if (!mapped) return undefined;
         return isLabel ? `${mapped}${LABEL_CARD_SUFFIX}` : mapped;
       };
+
+      // Same pre-computation for occlusion regions: a shared card's `oc` reference is
+      // resolved while walking the lessons below, and `pairedRegionId` points at another
+      // region in the same occlusion, so every region id must be mapped up front.
+      const regionIdMap = new Map<string, string>();
+      for (const shareOcc of payload.occlusions ?? []) {
+        for (const region of shareOcc.regions) regionIdMap.set(region.id, makeId());
+      }
 
       const course = await createCourse(payload.course.n || 'Shared course', {
         description: payload.course.d ?? '',
@@ -1272,6 +1372,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           unpackCard(shareCard).map((draft) => ({
             draft,
             sequenceItemId: shareCard.si,
+            occlusionRegionId: shareCard.oc,
             sourceCardId: shareCard.id,
           })),
         );
@@ -1282,13 +1383,19 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           drafts.map(({ draft }) => draft),
           { courseId: course.id, primaryLessonId: lessonId },
         );
-        const generatedCards = created.flatMap((card, index) => {
+        const generatedCards = created.flatMap<Card>((card, index) => {
           const sourceCardId = drafts[index].sourceCardId;
           if (sourceCardId && !cardIdMap.has(sourceCardId)) cardIdMap.set(sourceCardId, card.id);
-          const sequenceItemId = drafts[index].sequenceItemId;
-          if (!sequenceItemId) return [];
-          const remapped = remapSequenceItemId(sequenceItemId);
-          return remapped ? [{ ...card, sequenceItemId: remapped }] : [];
+          const { sequenceItemId, occlusionRegionId } = drafts[index];
+          if (sequenceItemId) {
+            const remapped = remapSequenceItemId(sequenceItemId);
+            return remapped ? [{ ...card, sequenceItemId: remapped }] : [];
+          }
+          if (occlusionRegionId) {
+            const remapped = regionIdMap.get(occlusionRegionId);
+            return remapped ? [{ ...card, occlusionRegionId: remapped }] : [];
+          }
+          return [];
         });
         if (generatedCards.length > 0) await db.cards.bulkPut(generatedCards);
         cardCount += created.length;
@@ -1408,6 +1515,40 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         };
       });
       if (importedSequences.length > 0) await db.sequences.bulkAdd(importedSequences);
+
+      // Occlusions insert on the same terms as sequences: after lessonIds exists (for
+      // primaryLessonId) and after their generated cards already carry remapped region
+      // ids, and directly rather than through createOcclusion, which would generate a
+      // second set of cards. `assetHash` travels but the asset itself does not (§6.6),
+      // so the study face falls back to each card's plain-text front/back.
+      const importedOcclusions: Occlusion[] = (payload.occlusions ?? []).map(
+        (shareOcc, index) => ({
+          id: makeId(),
+          courseId: course.id,
+          primaryLessonId:
+            typeof shareOcc.pl === 'number' ? (lessonIds[shareOcc.pl] ?? null) : null,
+          name: shareOcc.n || 'Shared occlusion',
+          assetHash: shareOcc.ah,
+          regions: shareOcc.regions.map((region) => ({
+            id: regionIdMap.get(region.id)!,
+            role: region.r === 1 ? ('feature' as const) : ('label' as const),
+            shape: 'rectangle' as const,
+            x: region.x,
+            y: region.y,
+            w: region.w,
+            h: region.h,
+            ...(region.a ? { answerText: region.a } : {}),
+            // Drop a pairing whose target region did not travel, rather than leaving a
+            // dangling reference — an unpaired feature falls back to its answerText.
+            ...(region.p && regionIdMap.has(region.p)
+              ? { pairedRegionId: regionIdMap.get(region.p)! }
+              : {}),
+            ...(region.bn ? { backNote: region.bn } : {}),
+          })),
+          createdAt: importedAt + index,
+        }),
+      );
+      if (importedOcclusions.length > 0) await db.occlusions.bulkAdd(importedOcclusions);
     },
   );
 

@@ -52,6 +52,9 @@ describe('batch authoring prompt', () => {
     expect(prompt).toContain('never "[1] answer :: equals :: x=6,y=4"');
     expect(prompt).toContain('durable concept checks');
     expect(prompt).toContain('deriving the quadratic formula from ax^2 + bx + c = 0');
+    expect(prompt).toContain('If any variable or equals sign remains, it is not numeric');
+    expect(prompt).toContain('recall or state a formula');
+    expect(prompt).toContain('change the item to working or omit it');
     expect(prompt).toContain('"studentAnswer": ["x^2 + b*x = -c", "(x + b/2)^2 = b^2/4 - c"]');
     expect(prompt).not.toContain('"studentAnswer": ["working line", "4"]');
   });
@@ -160,6 +163,8 @@ describe('item revision prompt', () => {
     expect(prompt).toContain('"studentAnswer": [');
     expect(prompt).toContain('Accept the correctly calculated quantity before revenue.');
     expect(prompt).toContain('Fixture 1 expected 1 mark but received 0.');
+    expect(prompt).toContain('If any variable or equals sign remains, it is not numeric');
+    expect(prompt).toContain('recall or state a formula');
     expect(prompt).toContain(BATCH_OUTPUT_START);
     expect(prompt).toContain(BATCH_OUTPUT_END);
   });

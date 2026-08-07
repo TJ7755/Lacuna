@@ -26,6 +26,10 @@ import {
   rescheduleCards as repoRescheduleCards,
   deleteCourseAssessment as repoDeleteCourseAssessment,
 } from '../../db/repository';
+import {
+  deleteOcclusion as repoDeleteOcclusion,
+  snapshotOcclusion,
+} from '../../db/occlusionRepository';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 
 const cardIdsSchema = z.array(z.string()).min(1).describe('Card ids to act on.');
@@ -176,6 +180,22 @@ const deleteSequenceTool: ToolDefinition<z.infer<typeof deleteSequenceSchema>, {
   },
 };
 
+const deleteOcclusionSchema = z.object({
+  occlusionId: z.string().describe('The id of the occlusion to delete.'),
+});
+const deleteOcclusionTool: ToolDefinition<z.infer<typeof deleteOcclusionSchema>, { id: string }> = {
+  name: 'lacuna.delete_occlusion',
+  description: 'Permanently delete an image occlusion and every card it generated.',
+  inputSchema: deleteOcclusionSchema,
+  requiredScope: 'destructive',
+  async handler({ occlusionId }) {
+    const snapshot = await snapshotOcclusion(occlusionId);
+    if (!snapshot) notFound('Occlusion', occlusionId);
+    await repoDeleteOcclusion(occlusionId);
+    return ok({ id: occlusionId }, { kind: 'restoreOcclusion', snapshot });
+  },
+};
+
 const deleteCourseAssessmentSchema = z.object({
   assessmentId: z.string().describe('The id of the checkpoint assessment to delete.'),
 });
@@ -211,6 +231,7 @@ export const DESTRUCTIVE_TOOLS: readonly ToolDefinition<any, any>[] = [
   deleteLessonTool,
   deleteCourseTool,
   deleteSequenceTool,
+  deleteOcclusionTool,
   deleteCourseAssessmentTool,
   suspendCards,
   setCardsFlagTool,
@@ -223,6 +244,7 @@ export {
   deleteLessonTool as deleteLesson,
   deleteCourseTool as deleteCourse,
   deleteSequenceTool as deleteSequence,
+  deleteOcclusionTool as deleteOcclusion,
   deleteCourseAssessmentTool as deleteCourseAssessment,
   suspendCards,
   setCardsFlagTool as setCardsFlag,

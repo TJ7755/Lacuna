@@ -88,6 +88,7 @@ import type { SessionEvent, SessionSummary } from '../../components/learn/types'
 import { clozeAnswerText } from '../../components/markdown/cloze';
 import type { useToast } from '../../components/ui/Toast';
 import { linesModeSequencesByCard } from '../../db/linesModeCards';
+import { occlusionDataByCard, type OcclusionCardData } from '../../db/occlusionStudy';
 import { filterSessionCardPool } from '../../db/search';
 import type { CardFilter } from '../../db/search';
 import type { TypingSetting } from '../../state/typingSetting';
@@ -115,8 +116,17 @@ export function isTypingEligible(card: Pick<Card, 'type' | 'payload'>): boolean 
   );
 }
 
-/** The expected answer text a typed answer is compared against (see compareAnswer). */
-export function typingExpectedAnswer(card: Pick<Card, 'type' | 'front' | 'back'>): string {
+/**
+ * The expected answer text a typed answer is compared against (see compareAnswer).
+ * `occlusionAnswerText` overrides the card's own front/back-derived text for an
+ * occlusion-generated card, whose plain-text `back` fallback (§6.4) is not a typing
+ * target — see `resolveOcclusionAnswerText` in occlusionGeneration.ts.
+ */
+export function typingExpectedAnswer(
+  card: Pick<Card, 'type' | 'front' | 'back'>,
+  occlusionAnswerText?: string,
+): string {
+  if (occlusionAnswerText !== undefined) return occlusionAnswerText;
   return card.type === 'cloze' ? clozeAnswerText(card.front) : card.back;
 }
 
@@ -245,12 +255,26 @@ export function useLearnSession({
   // owning Sequence — loaded once alongside the card pool (see linesModeCards.ts). Drives
   // the first-letter hint step, which only applies to lines-mode recall cards.
   const linesModeMapRef = useRef<Map<string, Sequence>>(new Map());
+  // Occlusion-generated cards in this session's pool, mapped to their owning Occlusion
+  // and resolved typed-mode answer text — loaded once alongside the card pool (see
+  // occlusionStudy.ts). Drives both the study face's diagram rendering and per-card
+  // typed-mode eligibility (§6.5: offered only where the target region has answerText).
+  const occlusionMapRef = useRef<Map<string, OcclusionCardData>>(new Map());
   // The lines-mode hint ladder step the learner has reached for the current card: 0 = no
   // hint requested, 1 = first-letter hint, 2 = first-words hint. Reset per card. See
   // src/components/learn/LineHint.tsx for the two steps and src/utils/firstLetterHint.ts /
   // firstWordsHint.ts for the pure hint builders.
   const [hintStep, setHintStep] = useState<0 | 1 | 2>(0);
-  const isTypingCard = typingSetting === 'type' && current !== null && isTypingEligible(current);
+  // An occlusion-generated card's typing eligibility is decided per-card by whether its
+  // region resolves an answerText, never by the blanket typingSetting check that applies
+  // to ordinary front_back cards — its plain-text `back` fallback is not a typing target.
+  const currentOcclusionData = current !== null ? (occlusionMapRef.current.get(current.id) ?? null) : null;
+  const isTypingCard =
+    typingSetting === 'type' &&
+    current !== null &&
+    (current.occlusionRegionId !== undefined
+      ? currentOcclusionData?.answerText !== undefined
+      : isTypingEligible(current));
   const isMachineMarkedCard = hasMachineMarkedPayload(current);
   // A payload the current client cannot render as a study face at all: present but
   // not machine-markable (unknown v, or a known-but-unbuilt kind such as `scaffold`).
@@ -861,6 +885,7 @@ export function useLearnSession({
     ctxRef.current = null;
     cardsRef.current = [];
     linesModeMapRef.current = new Map();
+    occlusionMapRef.current = new Map();
     lessonExposureIdRef.current = null;
     lessonHasMembersRef.current = false;
     practiceSessionRef.current = null;
@@ -1099,6 +1124,12 @@ export function useLearnSession({
         linesModeMapRef.current = await linesModeSequencesByCard(cards);
       } catch {
         // Line-specific prompts and hints are non-critical; a failed lookup disables them.
+      }
+      try {
+        occlusionMapRef.current = await occlusionDataByCard(cards);
+      } catch {
+        // Diagram rendering and typed mode are non-critical to a session's grading path;
+        // a failed lookup leaves occlusion cards on their plain-text fallback.
       }
       if (cancelled) return;
       const initialProgress = sessionProgress(cards, ctx);
@@ -1706,6 +1737,8 @@ export function useLearnSession({
     isMachineMarkedCard,
     hasUnrenderableItemPayload,
     isLinesModeCard,
+    occlusion: currentOcclusionData?.occlusion,
+    occlusionAnswerText: currentOcclusionData?.answerText,
     summary,
     setSummary,
     canUndo,

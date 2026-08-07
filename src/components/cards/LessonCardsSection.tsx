@@ -14,6 +14,7 @@ import {
   useCourseCards,
   useLessonCardLinks,
   useLessons,
+  useOcclusions,
   useSequences,
 } from '../../state/useCourseData';
 import { db } from '../../db/schema';
@@ -47,6 +48,7 @@ export function LessonCardsSection({
   // teaching progress that unlinking would reset (see handleUnlink below).
   const [pendingUnlink, setPendingUnlink] = useState<Card | null>(null);
   const sequences = useSequences(courseId);
+  const occlusions = useOcclusions(courseId);
   const courseCards = useCourseCards(courseId);
   const lessons = useLessons(courseId);
   const links = useLessonCardLinks(lessonId);
@@ -55,7 +57,8 @@ export function LessonCardsSection({
   const linkCandidates = (courseCards ?? []).filter(
     (card) =>
       !lessonCardIds.has(card.id) &&
-      (card.sequenceItemId === null || card.sequenceItemId === undefined),
+      (card.sequenceItemId === null || card.sequenceItemId === undefined) &&
+      (card.occlusionRegionId === null || card.occlusionRegionId === undefined),
   );
 
   async function handleUnlink(card: Card) {
@@ -80,9 +83,21 @@ export function LessonCardsSection({
 
   return (
     <section className={className}>
-      <h2 className="mb-4 font-display text-xl text-ink-soft">
-        Cards <span className="text-ink-faint">({lessonCards.length})</span>
-      </h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-xl text-ink-soft">
+          Cards <span className="text-ink-faint">({lessonCards.length})</span>
+        </h2>
+        {lessonCards.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
+          >
+            <PlusIcon width={16} height={16} />
+            New occlusion
+          </Button>
+        )}
+      </div>
 
       {pendingUnlink && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2.5">
@@ -113,6 +128,13 @@ export function LessonCardsSection({
             >
               <PlusIcon width={18} height={18} />
               Add a sequence
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
+            >
+              <PlusIcon width={18} height={18} />
+              Add an occlusion
             </Button>
             <Button variant="secondary" onClick={() => setLinking(true)}>
               <PlusIcon width={18} height={18} />
@@ -146,6 +168,14 @@ export function LessonCardsSection({
             // explicit origin the editor would default to the Question bank —
             // override it to return here instead.
             onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`, {
+              state: { origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName } },
+            })
+          }
+          occlusions={occlusions}
+          onEditOcclusion={(occlusionId) =>
+            // Mirrors onEditSequence above: occlusion editing has no lesson-scoped edit
+            // route either, so override the origin to return here instead.
+            onNavigate(`/course/${courseId}/occlusion/${occlusionId}/edit`, {
               state: { origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName } },
             })
           }

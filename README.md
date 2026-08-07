@@ -36,6 +36,9 @@ file.
   optional type-before-reveal presentation mode. Numeric items check exact, tolerance or
   alternative answers; working items award authored method marks against deterministic
   expression waypoints and predicates.
+- **Audio cards** — attach or record an MP3, M4A/MP4, Ogg, WAV or WebM clip through the card
+  editor. Audio uses the same local, content-addressed asset store as images; playback speed and
+  autoplay are device settings, and Anki `[sound:…]` media imports intact.
 - **Structured item authoring** — build numeric answers and line-oriented working schemes in
   the card editor, test them against pinned sample answers, or generate a clipboard prompt and
   stage a delimited batch for per-item validation, editing and acceptance. Lacuna never sends
@@ -44,6 +47,10 @@ file.
   steps) and Lacuna generates a full set of overlapping-cloze cards, each cueing recall from the
   preceding items; editing the sequence regenerates its cards without losing their scheduling
   progress.
+- **Image occlusion** — upload a labelled diagram, draw boxes over it once, and Lacuna generates
+  one card per box: label boxes hide text printed on the diagram, feature boxes point at an
+  unlabelled part and are answered by their paired label. Moving or re-pairing a box regenerates
+  that card without losing its scheduling progress.
 - **Cooldown slotting** — failed cards are held back briefly to prevent fatigue.
 - **Assessment revision plans** — checkpoints and final assessments have explicit prefix or custom
   lesson coverage and card exclusions. A named assessment can create one persistent multi-day plan
@@ -97,7 +104,7 @@ The Electron layer lives in `electron/` and adds a custom titlebar, local font
 bundling, Cross-Origin Isolation headers for WASM, and auto-updates via
 `electron-updater`. It also hosts a local **Model Context Protocol (MCP)** server over
 stdio, allowing an MCP-capable client to work with Lacuna's courses, lessons, notes, cards,
-sequences and summaries. Card creation and updates accept the same validated numeric and
+sequences, image occlusions and summaries. Card creation and updates accept the same validated numeric and
 working payloads as the visual editor. The web version does not host MCP and is otherwise
 unaffected.
 
@@ -116,22 +123,23 @@ grants expire when Lacuna closes.
 
 ## How it works
 
-| Area | Where |
-| --- | --- |
-| FSRS-6 engine wrapper (ts-fsrs) | `src/fsrs/fsrs.ts`, `src/fsrs/params.ts` |
-| Forward simulation (exam-day R) | `src/fsrs/forwardSim.ts` |
-| Exam objective (scheduler + bar) | `src/fsrs/objective.ts` |
-| Yes/No → grade + Welford stats | `src/fsrs/grading.ts` |
-| Cooldown slotting | `src/fsrs/cooldown.ts` |
-| Exam-day mastery / progress | `src/fsrs/progress.ts` |
-| IndexedDB schema & operations | `src/db/` |
-| Course/lesson data layer | `src/state/useCourseData.ts`, `src/course/path.ts` |
-| Course path, lesson view, question bank | `src/pages/CoursePath.tsx`, `src/pages/LessonView.tsx`, `src/pages/QuestionBank.tsx` |
-| Sequence generation & editor | `src/db/sequenceGeneration.ts`, `src/pages/SequenceEditor.tsx` |
-| Structured-item verification and schemes | `src/items/verify.ts`, `src/items/markSchemeCompiler.ts` |
-| MCP tool surface and Electron bridge | `src/mcp/`, `electron/mcp/` |
-| Learn session | `src/pages/LearnMode.tsx` |
-| Analytics charts | `src/components/analytics/` |
+| Area                                     | Where                                                                                |
+| ---------------------------------------- | ------------------------------------------------------------------------------------ |
+| FSRS-6 engine wrapper (ts-fsrs)          | `src/fsrs/fsrs.ts`, `src/fsrs/params.ts`                                             |
+| Forward simulation (exam-day R)          | `src/fsrs/forwardSim.ts`                                                             |
+| Exam objective (scheduler + bar)         | `src/fsrs/objective.ts`                                                              |
+| Yes/No → grade + Welford stats           | `src/fsrs/grading.ts`                                                                |
+| Cooldown slotting                        | `src/fsrs/cooldown.ts`                                                               |
+| Exam-day mastery / progress              | `src/fsrs/progress.ts`                                                               |
+| IndexedDB schema & operations            | `src/db/`                                                                            |
+| Course/lesson data layer                 | `src/state/useCourseData.ts`, `src/course/path.ts`                                   |
+| Course path, lesson view, question bank  | `src/pages/CoursePath.tsx`, `src/pages/LessonView.tsx`, `src/pages/QuestionBank.tsx` |
+| Sequence generation & editor             | `src/db/sequenceGeneration.ts`, `src/pages/SequenceEditor.tsx`                       |
+| Occlusion generation & editor            | `src/db/occlusionGeneration.ts`, `src/pages/OcclusionEditor.tsx`                     |
+| Structured-item verification and schemes | `src/items/verify.ts`, `src/items/markSchemeCompiler.ts`                             |
+| MCP tool surface and Electron bridge     | `src/mcp/`, `electron/mcp/`                                                          |
+| Learn session                            | `src/pages/LearnMode.tsx`                                                            |
+| Analytics charts                         | `src/components/analytics/`                                                          |
 
 See `docs/SPEC.md` for the full set of design decisions.
 Use `docs/WEBSITE_TEST_CHECKLIST.md` for the complete browser release-verification pass.

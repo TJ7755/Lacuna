@@ -45,6 +45,9 @@ const CardEditor = lazy(() =>
 const SequenceEditor = lazy(() =>
   import('./pages/SequenceEditor').then((m) => ({ default: m.SequenceEditor })),
 );
+const OcclusionEditor = lazy(() =>
+  import('./pages/OcclusionEditor').then((m) => ({ default: m.OcclusionEditor })),
+);
 const CourseSettings = lazy(() =>
   import('./pages/CourseSettings').then((m) => ({ default: m.CourseSettings })),
 );
@@ -238,6 +241,30 @@ const router = createHashRouter([
             element: (
               <Suspense fallback={<RouteFallback />}>
                 <SequenceEditor />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/occlusion/new',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <OcclusionEditor />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/occlusion/:occlusionId/edit',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <OcclusionEditor />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'course/:courseId/lesson/:lessonId/occlusion/new',
+            element: (
+              <Suspense fallback={<RouteFallback />}>
+                <OcclusionEditor />
               </Suspense>
             ),
           },

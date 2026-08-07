@@ -2,7 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCard } from '../state/useData';
-import { useCourse, useCourseCards, useLesson, useLessonCards, useSequences } from '../state/useCourseData';
+import {
+  useCourse,
+  useCourseCards,
+  useLesson,
+  useLessonCards,
+  useOcclusions,
+  useSequences,
+} from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
 import { TagInput } from '../components/ui/TagInput';
@@ -19,6 +26,7 @@ import {
 } from '../db/repository';
 import { hasCloze } from '../components/markdown/cloze';
 import { sequenceForItemId } from '../db/sequenceGeneration';
+import { occlusionForRegionId } from '../db/occlusionGeneration';
 import { CardContent } from '../components/cards/CardContent';
 import {
   NumericAnswerEditor,
@@ -27,7 +35,8 @@ import {
 import { MarkSchemeEditor } from '../components/items/MarkSchemeEditor';
 import { compileMarkScheme, serialiseMarkScheme } from '../items/markSchemeCompiler';
 import { buildMarkSchemeDraftPrompt } from '../items/prompts';
-import { SequenceBadge } from '../components/cards/SequenceBadge';
+import { GeneratedCardBadge } from '../components/cards/GeneratedCardBadge';
+import { AudioCardEditor } from '../components/cards/AudioCardEditor';
 import { ChevronLeftIcon, CheckIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -35,8 +44,9 @@ import { useIsTouchMode } from '../state/inputMode';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
 import type { EditorOriginState } from '../utils/editorOrigin';
 import type { Card, CardType, ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
+import { isAudioCardFront } from '../media/audio';
 
-type EditorCardType = CardType | 'numeric' | 'working';
+type EditorCardType = CardType | 'numeric' | 'working' | 'audio';
 
 const EMPTY_NUMERIC_ANSWER: NumericAnswerSpec = { kind: 'exact', value: '' };
 
@@ -76,8 +86,10 @@ export function CardEditor() {
   const editing = Boolean(cardId);
   const card = useCard(cardId);
   // Only fetched for the read-only branch below (a generated card resolves its owning
-  // sequence here to link back to the sequence editor). Harmless to call unconditionally.
+  // sequence/occlusion here to link back to the owning editor). Harmless to call
+  // unconditionally.
   const sequences = useSequences(courseId);
+  const occlusions = useOcclusions(courseId);
 
   const [type, setType] = useState<EditorCardType>('front_back');
   const [front, setFront] = useState('');
@@ -178,7 +190,9 @@ export function CardEditor() {
             ? 'numeric'
             : card.payload?.kind === 'working'
               ? 'working'
-              : card.type,
+              : isAudioCardFront(card.front)
+                ? 'audio'
+                : card.type,
         );
         setFront(card.front);
         setBack(card.back);
@@ -197,7 +211,7 @@ export function CardEditor() {
     const draft = loadDraft(draftKeyRef.current);
     if (!draft) return;
     setType(
-      draft.itemKind === 'numeric' || draft.itemKind === 'working'
+      draft.itemKind === 'numeric' || draft.itemKind === 'working' || draft.itemKind === 'audio'
         ? draft.itemKind
         : draft.type,
     );
@@ -225,7 +239,9 @@ export function CardEditor() {
           ? 'numeric'
           : card.payload?.kind === 'working'
             ? 'working'
-            : card.type,
+            : isAudioCardFront(card.front)
+              ? 'audio'
+              : card.type,
       );
       setFront(card.front);
       setBack(card.back);
@@ -244,8 +260,8 @@ export function CardEditor() {
     window.clearTimeout(draftTimer.current);
     draftTimer.current = window.setTimeout(() => {
       saveDraft(draftKeyRef.current, {
-        type: type === 'numeric' || type === 'working' ? 'front_back' : type,
-        itemKind: type === 'numeric' || type === 'working' ? type : undefined,
+        type: type === 'numeric' || type === 'working' || type === 'audio' ? 'front_back' : type,
+        itemKind: type === 'numeric' || type === 'working' || type === 'audio' ? type : undefined,
         front,
         back,
         tags,
@@ -268,7 +284,18 @@ export function CardEditor() {
       });
     }, 800);
     return () => window.clearTimeout(draftTimer.current);
-  }, [loaded, type, front, back, tags, alsoReverse, numericAnswer, workingCompilation, workingFixtures, workingSource]);
+  }, [
+    loaded,
+    type,
+    front,
+    back,
+    tags,
+    alsoReverse,
+    numericAnswer,
+    workingCompilation,
+    workingFixtures,
+    workingSource,
+  ]);
 
   // Check for duplicate cards whenever front/back/type changes. A fresh, empty lesson
   // or bank has no backing deck yet, so there is nothing to check against.
@@ -279,13 +306,20 @@ export function CardEditor() {
     window.clearTimeout(duplicateTimer.current);
     duplicateTimer.current = window.setTimeout(async () => {
       const structured = type === 'numeric' || type === 'working';
-      const storedType: CardType = structured ? 'front_back' : type;
+      const audio = type === 'audio';
+      const storedType: CardType = structured || audio ? 'front_back' : type;
       const backValue = type === 'cloze' || structured ? '' : back;
       if (!front.trim() || (!backValue.trim() && type !== 'cloze' && !structured)) {
         setDuplicateWarning(null);
         return;
       }
-      const dup = await checkDuplicate(duplicateCheckDeckId, storedType, front, backValue, card?.id);
+      const dup = await checkDuplicate(
+        duplicateCheckDeckId,
+        storedType,
+        front,
+        backValue,
+        card?.id,
+      );
       setDuplicateWarning(dup ?? null);
     }, 600);
     return () => window.clearTimeout(duplicateTimer.current);
@@ -314,17 +348,15 @@ export function CardEditor() {
     return (
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">Back to dashboard</Link>
+        <Link to="/" className="text-accent underline">
+          Back to dashboard
+        </Link>
       </div>
     );
   }
   if (lessonMode && lesson === null) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-10"
-      >
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">
         <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
         <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
           {courseId ? 'Back to course' : 'Back to dashboard'}
@@ -334,11 +366,7 @@ export function CardEditor() {
   }
   if (editing && card === null) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-10"
-      >
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">
         <p className="mb-4 text-ink-soft">This card could not be found.</p>
         <Link to={backPath} className="text-accent underline">
           Back to {backLabel}
@@ -347,16 +375,27 @@ export function CardEditor() {
     );
   }
 
-  // Generated cards are owned by their Sequence: content, front/back, and deletion are
-  // all managed there (edits here would be silently reverted on the sequence's next
+  // Generated cards are owned by their Sequence or Occlusion: content, front/back, and
+  // deletion are all managed there (edits here would be silently reverted on the next
   // regeneration), so this page shows a static preview and a link back instead of a form.
-  if (
-    editing &&
-    card &&
-    card.sequenceItemId !== null &&
-    card.sequenceItemId !== undefined
-  ) {
-    const owningSequence = sequences ? sequenceForItemId(sequences, card.sequenceItemId) : undefined;
+  const isSequenceGenerated =
+    editing && card && card.sequenceItemId !== null && card.sequenceItemId !== undefined;
+  const isOcclusionGenerated =
+    editing && card && card.occlusionRegionId !== null && card.occlusionRegionId !== undefined;
+  if (isSequenceGenerated || isOcclusionGenerated) {
+    const owningSequence =
+      isSequenceGenerated && sequences
+        ? sequenceForItemId(sequences, card!.sequenceItemId!)
+        : undefined;
+    const owningOcclusion =
+      isOcclusionGenerated && occlusions
+        ? occlusionForRegionId(occlusions, card!.occlusionRegionId!)
+        : undefined;
+    const editHref = owningSequence
+      ? `/course/${courseId}/sequence/${owningSequence.id}/edit`
+      : owningOcclusion
+        ? `/course/${courseId}/occlusion/${owningOcclusion.id}/edit`
+        : undefined;
     return (
       <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
         <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
@@ -371,7 +410,11 @@ export function CardEditor() {
           <span className="text-ink-soft">Card</span>
         </nav>
 
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.16 }}
+        >
           <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
             <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
             <div className="relative">
@@ -384,24 +427,32 @@ export function CardEditor() {
               </Link>
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="font-display text-4xl tracking-tight md:text-5xl">Card</h1>
-                <SequenceBadge />
+                <GeneratedCardBadge kind={isSequenceGenerated ? 'sequence' : 'occlusion'} />
               </div>
             </div>
           </header>
 
           <div className="mb-5 flex items-center gap-3 rounded-xl border border-accent/20 bg-accent-soft px-4 py-3">
             <span className="text-sm text-accent">
-              This card is generated from {owningSequence ? `the sequence “${owningSequence.name}”` : 'a sequence'}.
-              Edit its content, order or cue window there — changes here would be lost the next time it regenerates.
+              This card is generated from{' '}
+              {owningSequence
+                ? `the sequence “${owningSequence.name}”`
+                : owningOcclusion
+                  ? `the occlusion “${owningOcclusion.name}”`
+                  : isSequenceGenerated
+                    ? 'a sequence'
+                    : 'an occlusion'}
+              . Edit its {isSequenceGenerated ? 'content, order or cue window' : 'regions'} there —
+              changes here would be lost the next time it regenerates.
             </span>
-            {owningSequence && (
+            {editHref && (
               <Button
                 variant="secondary"
                 size="sm"
                 className="ml-auto shrink-0"
-                onClick={() => navigate(`/course/${courseId}/sequence/${owningSequence.id}/edit`)}
+                onClick={() => navigate(editHref)}
               >
-                Edit sequence
+                {isSequenceGenerated ? 'Edit sequence' : 'Edit occlusion'}
               </Button>
             )}
           </div>
@@ -444,13 +495,14 @@ export function CardEditor() {
   const isBasicReversed = type === 'basic_reversed';
   const isNumeric = type === 'numeric';
   const isWorking = type === 'working';
+  const isAudio = type === 'audio';
   const isStructured = isNumeric || isWorking;
   const workingValid =
     !isWorking ||
     (workingCompilation.lines.length > 0 &&
       workingCompilation.lines.every((line) => line.kind === 'compiled'));
   const clozeValid = !isCloze || hasCloze(front);
-  const frontValid = front.trim().length > 0;
+  const frontValid = front.trim().length > 0 && (!isAudio || isAudioCardFront(front));
   const backValid = isCloze || isStructured || back.trim().length > 0;
   const numericValid = !isNumeric || numericAnswerSpecIsValid(numericAnswer);
   const canSave = frontValid && backValid && clozeValid && numericValid && workingValid;
@@ -469,7 +521,7 @@ export function CardEditor() {
       shakeTimer.current = window.setTimeout(() => setShakeField(null), 500);
       return;
     }
-    const storedType: CardType = isStructured ? 'front_back' : type;
+    const storedType: CardType = isStructured || isAudio ? 'front_back' : type;
     const backValue = isCloze || isStructured ? '' : back;
     const payload: ItemPayload | undefined = isNumeric
       ? { v: 1, kind: 'numeric', answer: numericAnswer }
@@ -499,7 +551,7 @@ export function CardEditor() {
       return;
     }
 
-    const reversed = !isCloze && !isBasicReversed && !isStructured && alsoReverse;
+    const reversed = !isCloze && !isBasicReversed && !isStructured && !isAudio && alsoReverse;
     if (lessonMode) {
       if (isBasicReversed) {
         await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags);
@@ -640,17 +692,16 @@ export function CardEditor() {
 
           {/* Card type selector */}
           <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
-              Card type
-            </div>
-            <div className={cn('grid grid-cols-2 gap-2 md:grid-cols-5', isTouchMode && 'gap-3')}>
-              {([
+            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Card type</div>
+            <div className={cn('grid grid-cols-2 gap-2 md:grid-cols-3', isTouchMode && 'gap-3')}>
+              {[
                 { key: 'front_back' as const, label: 'Front / Back' },
                 { key: 'cloze' as const, label: 'Cloze deletion' },
                 { key: 'basic_reversed' as const, label: 'Basic (reversed)' },
                 { key: 'numeric' as const, label: 'Numeric answer' },
                 { key: 'working' as const, label: 'Working' },
-              ]).map((t) => (
+                { key: 'audio' as const, label: 'Audio' },
+              ].map((t) => (
                 <motion.button
                   key={t.key}
                   type="button"
@@ -674,7 +725,12 @@ export function CardEditor() {
 
           {isCloze ? (
             <>
-              <div key={`front-shake-${shakeField === 'front' || shakeField === 'cloze' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'front' || shakeField === 'cloze' ? 'shake-field' : '')}>
+              <div
+                key={`front-shake-${shakeField === 'front' || shakeField === 'cloze' ? shakeNonce : 'stable'}`}
+                className={cn(
+                  shakeField === 'front' || shakeField === 'cloze' ? 'shake-field' : '',
+                )}
+              >
                 <MarkdownEditor
                   key={`cloze-${formKey}`}
                   inputRef={frontRef}
@@ -706,9 +762,25 @@ export function CardEditor() {
                 </p>
               )}
             </>
+          ) : isAudio ? (
+            <div
+              key={`audio-${formKey}`}
+              className={cn(shakeField === 'front' || shakeField === 'back' ? 'shake-field' : '')}
+            >
+              <AudioCardEditor
+                front={front}
+                back={back}
+                onFrontChange={setFront}
+                onBackChange={setBack}
+                onError={(message) => notify(message, 'negative')}
+              />
+            </div>
           ) : isNumeric || isWorking ? (
             <>
-              <div key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'front' ? 'shake-field' : '')}>
+              <div
+                key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
+                className={cn(shakeField === 'front' ? 'shake-field' : '')}
+              >
                 <MarkdownEditor
                   key={`structured-front-${formKey}`}
                   inputRef={frontRef}
@@ -722,7 +794,10 @@ export function CardEditor() {
                 />
               </div>
               {isNumeric ? (
-                <div key={`answer-shake-${shakeField === 'answer' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'answer' ? 'shake-field' : '')}>
+                <div
+                  key={`answer-shake-${shakeField === 'answer' ? shakeNonce : 'stable'}`}
+                  className={cn(shakeField === 'answer' ? 'shake-field' : '')}
+                >
                   <NumericAnswerEditor
                     value={numericAnswer}
                     onChange={setNumericAnswer}
@@ -730,7 +805,10 @@ export function CardEditor() {
                   />
                 </div>
               ) : (
-                <div key={`scheme-shake-${shakeField === 'scheme' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'scheme' ? 'shake-field' : '')}>
+                <div
+                  key={`scheme-shake-${shakeField === 'scheme' ? shakeNonce : 'stable'}`}
+                  className={cn(shakeField === 'scheme' ? 'shake-field' : '')}
+                >
                   <MarkSchemeEditor
                     value={workingSource}
                     onChange={setWorkingSource}
@@ -745,7 +823,10 @@ export function CardEditor() {
             </>
           ) : (
             <>
-              <div key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'front' ? 'shake-field' : '')}>
+              <div
+                key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
+                className={cn(shakeField === 'front' ? 'shake-field' : '')}
+              >
                 <MarkdownEditor
                   key={`front-${formKey}`}
                   inputRef={frontRef}
@@ -759,7 +840,10 @@ export function CardEditor() {
                   onTabForward={() => backRef.current?.focus()}
                 />
               </div>
-              <div key={`back-shake-${shakeField === 'back' ? shakeNonce : 'stable'}`} className={cn(shakeField === 'back' ? 'shake-field' : '')}>
+              <div
+                key={`back-shake-${shakeField === 'back' ? shakeNonce : 'stable'}`}
+                className={cn(shakeField === 'back' ? 'shake-field' : '')}
+              >
                 <MarkdownEditor
                   inputRef={backRef}
                   label="Back"
@@ -777,9 +861,7 @@ export function CardEditor() {
 
           {/* Tags */}
           <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
-              Tags
-            </div>
+            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
             <TagInput
               tags={tags}
               onChange={setTags}
@@ -807,8 +889,13 @@ export function CardEditor() {
             : 'sticky bottom-0 -mx-6 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10',
         )}
       >
-        <div className={cn('pointer-events-auto flex flex-wrap items-center gap-3', isTouchMode && 'max-w-3xl mx-auto')}>
-          {!editing && !isCloze && !isBasicReversed && !isStructured && (
+        <div
+          className={cn(
+            'pointer-events-auto flex flex-wrap items-center gap-3',
+            isTouchMode && 'max-w-3xl mx-auto',
+          )}
+        >
+          {!editing && !isCloze && !isBasicReversed && !isStructured && !isAudio && (
             <motion.button
               type="button"
               onClick={() => setAlsoReverse((v) => !v)}
@@ -825,9 +912,7 @@ export function CardEditor() {
               <span
                 className={cn(
                   'grid h-4 w-4 place-items-center rounded-full border transition-colors',
-                  alsoReverse
-                    ? 'border-accent bg-accent text-accent-fg'
-                    : 'border-line-strong',
+                  alsoReverse ? 'border-accent bg-accent text-accent-fg' : 'border-line-strong',
                 )}
               >
                 <AnimatePresence>

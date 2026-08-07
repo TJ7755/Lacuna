@@ -43,6 +43,7 @@ import {
   updateNote,
   updateSequence,
 } from './repository';
+import { updateOcclusion } from './occlusionRepository';
 import { diffLineage, jsonValuesEqual } from './lineageDiff';
 import type {
   CreateCardPayload,
@@ -69,6 +70,7 @@ import type {
   LineageNoteSnapshot,
   ItemPayload,
   Note,
+  Occlusion,
   PendingMergeReview,
   Sequence,
 } from './types';
@@ -112,6 +114,17 @@ function reverseCardId(primaryId: string): string {
 // field doubles as the originating card id for a published course, share.ts:68-74).
 // ---------------------------------------------------------------------------
 
+/**
+ * True for a share card that some authoring entity regenerates rather than the diff
+ * owning directly. Such cards are packed into a course payload like any other (the
+ * recipient of a plain share import needs them), but a lineage merge must skip them:
+ * `applySequences`/`applyOcclusions` recreate them from their owning entity, so diffing
+ * them as well adopts a second, stale copy under the payload's own card id.
+ */
+function isGeneratedShareCard(card: LineagePayload['lessons'][number]['cards'][number]): boolean {
+  return card.si !== undefined || card.oc !== undefined;
+}
+
 function toShareLessonInput(lesson: LineagePayload['lessons'][number]): ShareLessonInput {
   if (!lesson.i) throw new Error('Lineage payload lesson is missing its originating id.');
   return {
@@ -127,7 +140,7 @@ function toShareLessonInput(lesson: LineagePayload['lessons'][number]): ShareLes
       if (!note.oi) throw new Error('Lineage payload note is missing its originating id.');
       return { i: note.oi, n: note.n, c: note.c };
     }),
-    cards: lesson.cards.map((card): ShareCardInput => {
+    cards: lesson.cards.filter((card) => !isGeneratedShareCard(card)).map((card): ShareCardInput => {
       if (!card.id) throw new Error('Lineage payload card is missing its originating id.');
       return {
         i: card.id,
@@ -280,6 +293,7 @@ const MERGE_TABLES = [
   db.userPerformance,
   db.sessionHistory,
   db.sequences,
+  db.occlusions,
   db.courseAssessments,
   db.lineageIdMappings,
   db.pendingMergeReviews,
@@ -294,6 +308,7 @@ function emptyMapping(lineageId: string, courseId: string): LineageIdMapping {
     noteIds: [],
     cardIds: [],
     sequenceIds: [],
+    occlusionIds: [],
     lessonSnapshots: {},
     noteSnapshots: {},
     cardSnapshots: {},
@@ -338,6 +353,50 @@ async function applySequences(
     };
     await updateSequence(sequence);
     if (!mapping.sequenceIds.includes(sequence.id)) mapping.sequenceIds.push(sequence.id);
+  }
+}
+
+/**
+ * Insert a payload's occlusions via `updateOcclusion`, the occlusion counterpart to
+ * {@link applySequences}: it owns "diff against the previous generation, touch content
+ * fields only" through the same `diffRegeneration` contract, and covers the create case
+ * because `db.occlusions.put` on an unknown id inserts and the diff against zero existing
+ * cards is all-creates. Occlusion and region ids are the originating ids, adopted directly
+ * (§7.1), so there is nothing to remap.
+ *
+ * The diagram itself never travels in a share code (Arc 6 §6.6), so `assetHash` will not
+ * resolve for the student; the study face falls back to each card's plain-text content.
+ */
+async function applyOcclusions(
+  payload: LineagePayload,
+  courseId: string,
+  lessonIdByIndex: (index: number) => string | null,
+  mapping: LineageIdMapping,
+): Promise<void> {
+  for (const shareOcc of payload.occlusions ?? []) {
+    const occlusion: Occlusion = {
+      id: shareOcc.id,
+      courseId,
+      primaryLessonId: typeof shareOcc.pl === 'number' ? lessonIdByIndex(shareOcc.pl) : null,
+      name: shareOcc.n || 'Shared occlusion',
+      assetHash: shareOcc.ah,
+      regions: shareOcc.regions.map((region) => ({
+        id: region.id,
+        role: region.r === 1 ? ('feature' as const) : ('label' as const),
+        shape: 'rectangle' as const,
+        x: region.x,
+        y: region.y,
+        w: region.w,
+        h: region.h,
+        ...(region.a ? { answerText: region.a } : {}),
+        ...(region.p ? { pairedRegionId: region.p } : {}),
+        ...(region.bn ? { backNote: region.bn } : {}),
+      })),
+      createdAt: Date.now(),
+    };
+    await updateOcclusion(occlusion);
+    const occlusionIds = (mapping.occlusionIds ??= []);
+    if (!occlusionIds.includes(occlusion.id)) occlusionIds.push(occlusion.id);
   }
 }
 
@@ -500,10 +559,11 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     for (let lessonIndex = 0; lessonIndex < payload.lessons.length; lessonIndex++) {
       const shareLesson = payload.lessons[lessonIndex];
       const lessonId = newLessons[lessonIndex].id;
-      if (shareLesson.cards.length === 0) continue;
+      if (shareLesson.cards.every(isGeneratedShareCard)) continue;
       const deckId = await ensureLessonDeck(course.id, lessonId);
       let cardCreatedAt = createdAt;
       for (const shareCard of shareLesson.cards) {
+        if (isGeneratedShareCard(shareCard)) continue;
         if (!shareCard.id) throw new Error('Lineage payload card is missing its originating id.');
         const base = {
           deckId,
@@ -563,12 +623,9 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
       mapping.cardSnapshots[card.id] = cardSnapshot(toExistingCard(card));
     }
 
-    await applySequences(
-      payload,
-      course.id,
-      (index) => newLessons[index]?.id ?? null,
-      mapping,
-    );
+    const lessonIdByIndex = (index: number) => newLessons[index]?.id ?? null;
+    await applySequences(payload, course.id, lessonIdByIndex, mapping);
+    await applyOcclusions(payload, course.id, lessonIdByIndex, mapping);
 
     await db.lineageIdMappings.put(mapping);
     await db.pendingMergeReviews.where('courseId').equals(course.id).delete();
@@ -629,7 +686,11 @@ export async function mergeLineageUpdate(
       existing: {
         lessons: existingLessons.map(toExistingLesson),
         notes: existingNotes.map(toExistingNote),
-        cards: courseCards.map(toExistingCard),
+        // Locally regenerated cards are never lineage-diffed either: they are owned by
+        // their sequence or occlusion, not by the mapping (see isGeneratedShareCard).
+        cards: courseCards
+          .filter((card) => !card.sequenceItemId && !card.occlusionRegionId)
+          .map(toExistingCard),
       },
       mapping: {
         id: mapping.id,
@@ -750,6 +811,7 @@ export async function mergeLineageUpdate(
       return shareLesson.i;
     };
     await applySequences(payload, courseId, lessonIdByIndex, mapping);
+    await applyOcclusions(payload, courseId, lessonIdByIndex, mapping);
 
     // 6. Revision + mapping bookkeeping.
     await db.courses.update(courseId, {

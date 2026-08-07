@@ -6,7 +6,7 @@ import type {
   UserPerformance,
   BackupFile,
   AppStateEntry,
-  ImageAsset,
+  MediaAsset,
   BackupSnapshot,
   Folder,
   Course,
@@ -24,6 +24,7 @@ import type {
   RevisionPlan,
   LineageIdMapping,
   PendingMergeReview,
+  Occlusion,
 } from './types';
 import {
   migrateCardRecord,
@@ -53,7 +54,7 @@ class LacunaDatabase extends Dexie {
   userPerformance!: Table<UserPerformance, string>;
   backups!: Table<BackupSnapshot, number>;
   appState!: Table<AppStateEntry, string>;
-  assets!: Table<ImageAsset, string>;
+  assets!: Table<MediaAsset, string>;
   folders!: Table<Folder, string>;
   courses!: Table<CourseRecord, string>;
   lessons!: Table<Lesson, string>;
@@ -69,6 +70,7 @@ class LacunaDatabase extends Dexie {
   revisionPlans!: Table<RevisionPlan, string>;
   lineageIdMappings!: Table<LineageIdMapping, string>;
   pendingMergeReviews!: Table<PendingMergeReview, string>;
+  occlusions!: Table<Occlusion, string>;
 
   constructor() {
     super('lacuna');
@@ -557,10 +559,40 @@ class LacunaDatabase extends Dexie {
       lineageIdMappings: 'id, courseId',
       pendingMergeReviews: 'id, courseId',
     });
+
+    // Version 19: image occlusion (Arc 6 slice 2, §6.3). New table `occlusions`,
+    // following the sequences precedent exactly, plus an `occlusionRegionId` index
+    // on `cards` so generated occlusion cards can be looked up by owning region.
+    // Purely additive — no `.upgrade()` data pass.
+    this.version(19).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: 'id, parentId, createdAt',
+      courses: 'id, createdAt',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+      lessonCompletions: 'lessonId, completedAt',
+      noteAnnotations: 'id, noteId, createdAt, updatedAt',
+      practiceNodes: 'id, courseId, position, createdAt',
+      practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      sequences: 'id, courseId, primaryLessonId, createdAt',
+      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+      lineageIdMappings: 'id, courseId',
+      pendingMergeReviews: 'id, courseId',
+      occlusions: 'id, courseId, primaryLessonId, createdAt',
+    });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 18;
+const CURRENT_SCHEMA_VERSION = 19;
 
 export const db = new LacunaDatabase();
 
@@ -696,7 +728,7 @@ export async function readAllDataFromVersion(
     throw new Error(`Database version mismatch: expected ${expectedVersion}, found ${raw.version}`);
   }
 
-  const assetsRaw = (raw.data['assets'] ?? []) as ImageAsset[];
+  const assetsRaw = (raw.data['assets'] ?? []) as MediaAsset[];
   const assets = await Promise.all(
     assetsRaw.map(async (a) => {
       const buf = new Uint8Array(await blobToArrayBuffer(a.blob));

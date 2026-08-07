@@ -55,7 +55,7 @@ function exampleCard(
   };
 }
 
-/** Build an ImageAsset record from an inline SVG string without writing to the database yet. */
+/** Build an image MediaAsset record from an inline SVG string without writing to the database yet. */
 async function prepareSvgAsset(svg: string, width: number, height: number) {
   const blob = new Blob([svg], { type: 'image/svg+xml' });
   const hash = await sha256Blob(blob);
@@ -103,9 +103,7 @@ async function repairSeededSvgAssets(): Promise<void> {
     (
       await db.cards
         .filter((card) =>
-          prepared.some(
-            (asset) => card.front.includes(asset.url) || card.back.includes(asset.url),
-          ),
+          prepared.some((asset) => card.front.includes(asset.url) || card.back.includes(asset.url)),
         )
         .toArray()
     ).flatMap((card) => [card.front, card.back]),

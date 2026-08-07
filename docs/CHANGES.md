@@ -1,5 +1,56 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Image occlusion (Arc 6, second slice)
+
+- Added image occlusion: upload a labelled diagram, draw boxes over it once, and one ordinary
+  card is generated per box. A **label** box covers text printed on the diagram, so the author
+  types nothing; a **feature** box points at an unlabelled part and is answered by uncovering its
+  paired label. Every label is covered on every question face, so no card is answerable by
+  reading the picture or by elimination. Schema v19 adds an `occlusions` table and an
+  `occlusionRegionId` index on cards.
+- Stored mask coordinates as fractions of the image rather than pixels, so masks hold their
+  position at any viewport size and zoom, and persisted an explicit `shape` field from the first
+  version so later geometry never has to guess what an old record meant.
+- Routed editing through the same regeneration contract as sequences: moving, resizing, re-pairing
+  or changing the role of a box rewrites that card's content and keeps its FSRS memory state;
+  deleting a box removes its card with an undo; replacing the image warns before regenerating
+  everything. Scheduling fields are never written by regeneration.
+- Made generated cards read-only, badged and grouped under their owning diagram everywhere cards
+  are listed, searched or shown in the command palette, matching the sequence conventions.
+- Carried occlusions through backups (replace and merge), diagnostics counts, share codes and the
+  published-lineage merge. A diagram is referenced only by its occlusion, never by card Markdown,
+  so backup export and asset garbage collection both gather those hashes explicitly.
+- Added five MCP tools — list, get, create, update and delete occlusion. `create_occlusion`
+  references a diagram already stored in the install; there is no asset-upload tool, so region
+  ids, roles and fractional coordinates are the whole agent-facing contract.
+- Made the share-code media warning honest about diagrams. It previously counted only cards with
+  an asset reference in their Markdown, which missed occlusion cards entirely; it now names them
+  and says what the recipient actually receives — a placeholder for embedded files, and a text
+  fallback with no image for a diagram card. Backups remain the way to move media between
+  machines.
+- Fixed sequence-generated cards duplicating on a lineage merge. A published course packs those
+  cards like any other, so the merge both adopted the packed copy and regenerated the card from
+  its sequence, leaving two per item with the adopted one frozen at the publishing revision.
+
+## Unreleased — Audio cards (Arc 6, first slice)
+
+- Widened the content-addressed image store into a media store without a schema migration.
+  Existing records remain images; audio records carry `kind: 'audio'`, omit dimensions and retain
+  the same SHA-256 deduplication, object-URL cache, garbage collection and backup round-trip.
+- Added structured audio authoring to the card editor. MP3, M4A/MP4, Ogg, WAV and WebM files up to
+  25 MB can be selected or recorded; the editor writes an ordinary `front_back` card containing a
+  `![audio](lacuna-asset://…)` Markdown marker and an optional prompt.
+- Rendered local audio markers as native players. Global autoplay and playback-speed settings live
+  under Study & scheduling. The Learn face can return to the player with the R key without resetting
+  the answer phase, response timer or available grading controls.
+- Fixed Anki imports silently dropping audio. Supported `[sound:…]` media is now stored, rewritten
+  to Lacuna's audio marker and returned with the imported card; rejected media no longer leaves a
+  partial deck and cards behind.
+- Prevented overlapping microphone permission requests from starting unreachable recorders, and
+  made share-code warnings and placeholders describe omitted audio as media rather than images.
+- Recorded the approved Arc 6 defaults: rectangle regions with an explicit shape field, all-label
+  masking, a 2560px occlusion-image ceiling and desktop-first occlusion authoring.
+
 ## Unreleased — Answer forms and the revision loop (Arc 11 free-tier trial)
 
 - Value predicates now accept an answer written as `y = 3` as well as a bare `3`. The verifier
@@ -102,6 +153,13 @@
 - Clarified that batch generation creates durable concept checks rather than arbitrary-number
   worksheets. Working-item prompts now prefer reusable symbolic methods and derivations, and the
   authoring dialog states that parameterised exercise variants are not supported yet.
+- Reserved generated `numeric` items for constant scalar answers. Generation and revision prompts
+  now direct formula recall and all other variable-bearing answers into checked working items or
+  omit them, preventing symbolic equations from being mislabelled as numeric answers.
+- Disabled the PWA service worker in development and deduplicated React-family dependencies in Vite.
+  Development startup also unregisters existing workers and clears their stale runtime caches.
+  Modules can no longer be served from different optimiser cache generations, which previously
+  caused invalid-hook crashes after route changes.
 - Added structured numeric and working payloads to `lacuna.create_card` and
   `lacuna.update_card`. MCP writes use the same numeric validator, mark-scheme compiler and
   fixture runner as the visual editor and staging path.

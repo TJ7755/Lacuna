@@ -1265,6 +1265,13 @@ them. Five items:
 
 # Arc 6 — Media Card Types: Audio and Image Occlusion (outline)
 
+> **Status (August 2026): delivered.** All 13 tasks of
+> [`design/arc6/plan.md`](../design/arc6/plan.md) are implemented, documented in `SPEC.md`,
+> `README.md`, `CHANGES.md` and Help, and covered by tests. Deferred as planned:
+> asset-bearing distribution (Arc 12), region grouping, per-card playback settings, video,
+> and OCR of label text. Remaining human item: the manual pass on a real labelled diagram
+> (both card kinds, light and dark, touch and keyboard, web and Electron).
+
 > **Planned in full (July 2026): [`design/arc6/plan.md`](../design/arc6/plan.md).** UI
 > directions were mocked and chosen before the plan was written
 > ([`design/arc6/mockups-audio.html`](../design/arc6/mockups-audio.html),

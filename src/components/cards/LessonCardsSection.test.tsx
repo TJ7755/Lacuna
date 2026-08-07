@@ -13,6 +13,7 @@ vi.mock('../../state/useCourseData', () => ({
   useLessonCardLinks: () => mockLinks,
   useLessons: () => [lesson],
   useSequences: () => [],
+  useOcclusions: () => [],
 }));
 
 vi.mock('../../db/schema', () => ({
@@ -195,6 +196,27 @@ describe('LessonCardsSection', () => {
     mockCourseCards = [
       card,
       { ...card, id: 'generated-card', sequenceItemId: 'sequence-item-1' },
+    ];
+    render(
+      <LessonCardsSection
+        courseId="course-1"
+        lessonId="lesson-1"
+        lessonName="Cells"
+        lessonCards={[]}
+        lessonDeck={undefined}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Link existing cards'));
+    expect(screen.getByTestId('picker-card-ids')).toHaveTextContent(card.id);
+    expect(screen.getByTestId('picker-card-ids')).not.toHaveTextContent('generated-card');
+  });
+
+  it('excludes generated occlusion cards from linking candidates', () => {
+    mockCourseCards = [
+      card,
+      { ...card, id: 'generated-card', occlusionRegionId: 'region-1' },
     ];
     render(
       <LessonCardsSection

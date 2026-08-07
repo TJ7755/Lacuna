@@ -85,6 +85,12 @@ export async function resolveToolScopes(input: unknown): Promise<Resolution> {
     const conflict = addOwnedCourse(sequence.courseId);
     if (conflict) return conflict;
   }
+  if (typeof value.occlusionId === 'string') {
+    const occlusion = await db.occlusions.get(value.occlusionId);
+    if (!occlusion) return missing('Occlusion', value.occlusionId);
+    const conflict = addOwnedCourse(occlusion.courseId);
+    if (conflict) return conflict;
+  }
   if (typeof value.assessmentId === 'string') {
     const assessment = await db.courseAssessments.get(value.assessmentId);
     if (!assessment) return missing('Course assessment', value.assessmentId);
