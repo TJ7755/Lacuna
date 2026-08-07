@@ -185,6 +185,24 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 - [ ] Deleting a sequence uses explicit confirmation and removes its generated cards only.
 - [ ] Cancel and keyboard shortcuts return to the originating lesson or bank.
 
+## 10a. Occlusion (diagram) editor and study
+
+- [ ] Upload a real labelled diagram; small printed labels remain legible after compression.
+- [ ] Draw, move, resize and delete both label and feature boxes; pair a feature to a label.
+- [ ] The generated-card count in the footer tracks the region list.
+- [ ] Saving generates one card per region without duplicating them.
+- [ ] Every label is masked on every question face; the card's own region is ringed.
+- [ ] A feature card reveals its paired label; an unpaired feature falls back to its answer text.
+- [ ] Masks hold their position at every viewport width, at zoom, and in both themes.
+- [ ] Moving or resizing a region preserves scheduling state for that card.
+- [ ] Replacing the image warns before regenerating every card.
+- [ ] Deleting a region removes its card with an undo; deleting the occlusion removes all of them.
+- [ ] Generated cards are read-only and badged in the card editor, card list, question bank,
+      search and command palette.
+- [ ] Typed mode is offered only where the target region has answer text.
+- [ ] Drawing works with a mouse and, at reduced fidelity, with touch.
+- [ ] Verify the whole flow in both the web build and Electron.
+
 ## 11. Lesson study and Simple learn
 
 - [ ] Starting a lesson presents its notes before any new card.
@@ -345,7 +363,7 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 ## 20. Help, copy and discoverability
 
 - [ ] Help section navigation tracks Courses & lessons, Study modes, Filtered study, How to study,
-      Keyboard shortcuts, Touch gestures, Progress, Card types, Sequences and Tips.
+      Keyboard shortcuts, Touch gestures, Progress, Card types, Sequences, Diagrams and Tips.
 - [ ] Help deep links scroll to the intended section.
 - [ ] Help descriptions match the controls and terminology currently visible in the application.
 - [ ] Every primary feature above is reachable through visible navigation, Help or contextual copy;

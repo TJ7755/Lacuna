@@ -47,6 +47,10 @@ file.
   steps) and Lacuna generates a full set of overlapping-cloze cards, each cueing recall from the
   preceding items; editing the sequence regenerates its cards without losing their scheduling
   progress.
+- **Image occlusion** — upload a labelled diagram, draw boxes over it once, and Lacuna generates
+  one card per box: label boxes hide text printed on the diagram, feature boxes point at an
+  unlabelled part and are answered by their paired label. Moving or re-pairing a box regenerates
+  that card without losing its scheduling progress.
 - **Cooldown slotting** — failed cards are held back briefly to prevent fatigue.
 - **Assessment revision plans** — checkpoints and final assessments have explicit prefix or custom
   lesson coverage and card exclusions. A named assessment can create one persistent multi-day plan
@@ -100,7 +104,7 @@ The Electron layer lives in `electron/` and adds a custom titlebar, local font
 bundling, Cross-Origin Isolation headers for WASM, and auto-updates via
 `electron-updater`. It also hosts a local **Model Context Protocol (MCP)** server over
 stdio, allowing an MCP-capable client to work with Lacuna's courses, lessons, notes, cards,
-sequences and summaries. Card creation and updates accept the same validated numeric and
+sequences, image occlusions and summaries. Card creation and updates accept the same validated numeric and
 working payloads as the visual editor. The web version does not host MCP and is otherwise
 unaffected.
 
@@ -131,6 +135,7 @@ grants expire when Lacuna closes.
 | Course/lesson data layer                 | `src/state/useCourseData.ts`, `src/course/path.ts`                                   |
 | Course path, lesson view, question bank  | `src/pages/CoursePath.tsx`, `src/pages/LessonView.tsx`, `src/pages/QuestionBank.tsx` |
 | Sequence generation & editor             | `src/db/sequenceGeneration.ts`, `src/pages/SequenceEditor.tsx`                       |
+| Occlusion generation & editor            | `src/db/occlusionGeneration.ts`, `src/pages/OcclusionEditor.tsx`                     |
 | Structured-item verification and schemes | `src/items/verify.ts`, `src/items/markSchemeCompiler.ts`                             |
 | MCP tool surface and Electron bridge     | `src/mcp/`, `electron/mcp/`                                                          |
 | Learn session                            | `src/pages/LearnMode.tsx`                                                            |

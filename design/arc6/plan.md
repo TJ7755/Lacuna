@@ -1,5 +1,23 @@
 # Arc 6 — Media Card Types: Audio and Image Occlusion (detailed)
 
+> **Status (August 2026): delivered.** All 13 tasks in §6.9 are implemented and committed:
+> the audio slice (assets, rendering, flip/un-flip, editor, the `apkgImport` fix), then the
+> occlusion slice (schema v19, the pure generation module, repository with undo, study
+> renderer, editor, read-only enforcement), and finally portability, the MCP tools, §6.6's
+> export warning and this documentation pass. `SPEC.md`, `README.md`, `CHANGES.md` and the
+> Help page describe both types.
+>
+> **Incidental fix committed separately:** the lineage merge duplicated sequence-generated
+> cards — a published course packs them like any other lesson card, so the merge adopted the
+> packed copy *and* regenerated the card from its sequence. Generated cards are now skipped on
+> both sides of the diff, which is what §6.7 assumed already held.
+>
+> **Deferred as planned:** asset-bearing distribution (§6.6 — Arc 12), region grouping
+> (§6.10.3), per-card playback settings, video, and OCR of label text.
+>
+> **Remaining human item:** the §6.8 manual pass — a real labelled diagram authored end to
+> end, both card kinds, light and dark, touch and keyboard, web and Electron.
+
 > Supersedes the Arc 6 outline in `next_plan.md` for implementation purposes. UI directions
 > were mocked, reviewed and chosen before this plan was written: see
 > [`mockups-audio.html`](./mockups-audio.html) and

@@ -1,5 +1,37 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Image occlusion (Arc 6, second slice)
+
+- Added image occlusion: upload a labelled diagram, draw boxes over it once, and one ordinary
+  card is generated per box. A **label** box covers text printed on the diagram, so the author
+  types nothing; a **feature** box points at an unlabelled part and is answered by uncovering its
+  paired label. Every label is covered on every question face, so no card is answerable by
+  reading the picture or by elimination. Schema v19 adds an `occlusions` table and an
+  `occlusionRegionId` index on cards.
+- Stored mask coordinates as fractions of the image rather than pixels, so masks hold their
+  position at any viewport size and zoom, and persisted an explicit `shape` field from the first
+  version so later geometry never has to guess what an old record meant.
+- Routed editing through the same regeneration contract as sequences: moving, resizing, re-pairing
+  or changing the role of a box rewrites that card's content and keeps its FSRS memory state;
+  deleting a box removes its card with an undo; replacing the image warns before regenerating
+  everything. Scheduling fields are never written by regeneration.
+- Made generated cards read-only, badged and grouped under their owning diagram everywhere cards
+  are listed, searched or shown in the command palette, matching the sequence conventions.
+- Carried occlusions through backups (replace and merge), diagnostics counts, share codes and the
+  published-lineage merge. A diagram is referenced only by its occlusion, never by card Markdown,
+  so backup export and asset garbage collection both gather those hashes explicitly.
+- Added five MCP tools — list, get, create, update and delete occlusion. `create_occlusion`
+  references a diagram already stored in the install; there is no asset-upload tool, so region
+  ids, roles and fractional coordinates are the whole agent-facing contract.
+- Made the share-code media warning honest about diagrams. It previously counted only cards with
+  an asset reference in their Markdown, which missed occlusion cards entirely; it now names them
+  and says what the recipient actually receives — a placeholder for embedded files, and a text
+  fallback with no image for a diagram card. Backups remain the way to move media between
+  machines.
+- Fixed sequence-generated cards duplicating on a lineage merge. A published course packs those
+  cards like any other, so the merge both adopted the packed copy and regenerated the card from
+  its sequence, leaving two per item with the adopted one frozen at the publishing revision.
+
 ## Unreleased — Audio cards (Arc 6, first slice)
 
 - Widened the content-addressed image store into a media store without a schema migration.

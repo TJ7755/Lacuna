@@ -732,6 +732,81 @@ createdAt }` — `items` is ordered and stored inline (sequences are small); `pr
   directly after it; an empty item is marked invalid instead of creating blank chains. The
   shortcut is scoped to item content and does not fire from sequence metadata fields.
 
+### Occlusions — image occlusion (schema v19)
+
+Schema **v19** adds `occlusions: 'id, courseId, primaryLessonId, createdAt'` (additive) and one
+optional indexed field on `cards`: `occlusionRegionId`. An `Occlusion` follows the Sequence
+precedent exactly: an **authoring-time entity only**, never itself studied, that generates
+ordinary `front_back` `Card` rows — one per region — anchored by a stable region id, so editing
+a region regenerates that card's presentation while preserving its FSRS memory state. It is
+deliberately *not* an Arc 11 `payload`: a payload has no owner to regenerate from.
+
+- `Occlusion { id, courseId, primaryLessonId: string | null, name, assetHash, regions:
+  OcclusionRegion[], createdAt }` — `regions` is stored inline (occlusions are small);
+  `primaryLessonId` follows the same semantics as `Card.primaryLessonId`. `assetHash` names
+  the diagram in the `assets` store.
+- `OcclusionRegion { id, role, shape, x, y, w, h, answerText?, pairedRegionId?, backNote? }` —
+  `id` is stable across edits and anchors the generated card. **Coordinates are fractions of
+  the image (0..1), never pixels**, so masks hold their position under `FlipCard`'s responsive
+  sizing and at any zoom. `shape` is `'rectangle'` in this version but is persisted explicitly
+  so later geometry never has to guess what an old record meant.
+- **A region's role decides which of two card kinds it produces**, from one annotated image:
+  - A **label** region covers text already printed on the diagram. Revealing it uncovers the
+    diagram's own pixels, so the author types nothing.
+  - A **feature** region points at part of the drawing. Its answer is the *paired* label
+    region (`pairedRegionId`), uncovered on the back; an unpaired feature falls back to its
+    own `answerText`.
+- **Masking rules** (`resolveOcclusionFace`): both kinds mask **every** label region on the
+  front, without exception — a feature card that left labels visible would be answerable by
+  reading the picture, and a label card that left its siblings visible by elimination. The
+  card's own region is always ringed as the target. The back lifts exactly one mask.
+  `backNote` renders below the image where present.
+- `Card.occlusionRegionId?: string` is present iff the card was generated from a region.
+  Region geometry is **never** copied onto the card: the study renderer resolves masking live
+  from the owning `Occlusion`, which is what keeps `diffRegeneration`'s front/back-only update
+  contract intact. The card's `front`/`back` carry a plain-text fallback only
+  (`"Label 3 of 6 — Plant cell"`), so search, the card-list preview and any client that cannot
+  render an occlusion degrade to something legible rather than blank.
+- **Generation and regeneration** (`src/db/occlusionGeneration.ts`) is a pure, Dexie-free
+  module tested exhaustively ahead of any UI, and routes through the same `diffRegeneration`
+  contract as sequences: moving or resizing a region, changing its role, or re-pairing it
+  rewrites that card's content and keeps its memory state; deleting a region deletes its card;
+  adding one creates a card; replacing the image regenerates every card in the occlusion (the
+  editor warns first). FSRS/scheduling fields are never written.
+- **Repository** (`src/db/occlusionRepository.ts`): `createOcclusion`/`updateOcclusion`/
+  `deleteOcclusion`/`listOcclusions`, plus `snapshotOcclusion`/`restoreOcclusion` for the
+  standard undo pattern. Creates and regenerations happen in the same transaction as the
+  occlusion write. `updateOcclusion` clears a `pairedRegionId` left dangling by a removed
+  label region, so the surviving feature card regenerates against its own `answerText` rather
+  than pointing at a region that no longer exists.
+- **Diagram upload** (`src/db/occlusionImage.ts`) uses its own 2560px longest-edge ceiling
+  rather than `compressImage.ts`'s 1280px default, so small printed labels survive
+  compression legibly. Otherwise identical to the ordinary image path.
+- **Study** (`src/components/occlusion/OcclusionStudyFace.tsx`): masked labels, ringed target,
+  ordinary reveal and grade row. `occlusionDataByCard` (`src/db/occlusionStudy.ts`) resolves
+  each pool card's owning occlusion once per session, batching one `listOcclusions` per
+  distinct courseId — the same approach `linesModeCards.ts` uses. Typed mode is offered only
+  where the target region resolves an `answerText`. **A missing asset degrades to the card's
+  plain-text fallback rather than a broken image**, which is what makes §13's share-code
+  behaviour merely disappointing rather than unusable.
+- **Editor** (`src/pages/OcclusionEditor.tsx`, routes `/course/:courseId/occlusion/new`,
+  `/course/:courseId/lesson/:lessonId/occlusion/new` and `…/occlusion/:occlusionId/edit`): two
+  draw tools (label box, feature), a region list with role chips and inline pairing, a detail
+  pane, and a live generated-card count in the footer, following the sequence editor's
+  precedent. Regions default to `Box 1…n` so the list is navigable with no typing. Authoring
+  is deliberately desktop-first: drawing with a finger works but is not separately optimised.
+- **Portability**: occlusions ride backup export/import (replace and merge) and diagnostics
+  bundles (`occlusions` count) by the same per-table semantics as sequences. A diagram is
+  referenced *only* by `Occlusion.assetHash` — never by card Markdown — so both
+  `exportDatabase` and the asset GC gather occlusion hashes explicitly; without that a backup
+  would restore occlusions with no image. Share codes carry occlusions as an additive v2
+  field, but **not** the diagram (§13).
+- Generated cards are **read-only** in the card editor and carry a `GeneratedCardBadge`
+  wherever cards are listed, searched or shown in the command palette; `CardList` groups them
+  under their owning occlusion (`GeneratedCardGroup`, shared with sequences) rather than
+  listing them loose. Enforced below the UI by the same `assertNoGeneratedCards` guard on
+  `deleteCards`/`moveCards`.
+
 ### Deck and Folder (legacy backing structures, no UI)
 
 `Deck` (`id, name, examDate, createdAt, examDatePromptDismissed?, fsrsVersion,
@@ -753,7 +828,8 @@ course UI is still soaking.
 
 `id, deckId, type, front, back, payload?, stability|null, difficulty|null,
 lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?,
-sequenceItemId?, due|null, scheduledDays, learningSteps, history[], createdAt`
+sequenceItemId?, occlusionRegionId?, due|null, scheduledDays, learningSteps, history[],
+createdAt`
 
 - `front`/`back` are Markdown source. **Cloze** source lives entirely in `front`
   (`{{cN::...}}`); `back` is empty.
@@ -1652,19 +1728,21 @@ A single, reusable export UI offering multiple output formats:
 - **Export:** versioned JSON of the whole database (`BackupFile`: decks, cards,
   **referenced image assets**, session history, user performance, folders, the six
   course-architecture tables — courses, lessons, notes, lessonCards, practiceNodes,
-  courseExamDates — and `sequences`, schema v11). Backups are the route that carries
-  media between machines (share codes deliberately do not, §13). Older backups that
-  pre-date the course tables or sequences still import cleanly: all these arrays are
-  optional in `BackupFile`.
+  courseExamDates — plus `sequences` and `occlusions`). Backups are the route that carries
+  media between machines (share codes deliberately do not, §13); an occlusion's diagram is
+  gathered explicitly from `Occlusion.assetHash`, since it is referenced by no card Markdown.
+  Older backups that pre-date the course tables, sequences or occlusions still import
+  cleanly: all these arrays are optional in `BackupFile`.
 - **Import modes:**
-  - **Replace all** — wipe then restore exactly. All thirteen data tables (including the
-    six course tables and `sequences`) are cleared before the backup is written; each is
+  - **Replace all** — wipe then restore exactly. Every data table (including the six course
+    tables, `sequences` and `occlusions`) is cleared before the backup is written; each is
     restored only if the backup contains it.
   - **Merge** — fold in by id. Before committing, a **visible diff** summarises
     what will be **added, changed and overwritten** (counts at minimum) and
     requires **explicit confirmation**; only on confirm are changes applied
     (newest `lastReviewed`/`createdAt` wins per conflicting record). The course
-    tables and `sequences` follow the same per-table merge semantics as folders: incoming
+    tables, `sequences` and `occlusions` follow the same per-table merge semantics as
+    folders: incoming
     rows that do not exist locally are added; where both sides share an id, the newer
     record (by `createdAt`) wins. Existing local rows absent from the backup are never
     deleted. This replaces the previous silent "most-recent-wins" merge, which was a
@@ -1706,11 +1784,23 @@ never one person's scheduling progress or review history.
   shared sequence never collides with one already present locally. Older v2 codes without
   a `sequences` field still parse. Lines mode's `mode`/`mySpeaker` (sequence) and `speaker`
   (item) travel as further additive optional keys on the same schema.
-  Images ride along inline inside card/note Markdown as base64 data URIs rather than being
-  stripped, so a shared course renders faithfully; DEFLATE still compresses the payload
-  overall. `LessonCardLink` (display-only cross-lesson linking) and `PracticeNode` are
+  **Occlusions** (§5) ride along the same way, as an additive `occlusions` field with an `oc`
+  reference on each generated card, region ids remapped fresh on import and a pairing whose
+  target region did not travel dropped rather than left dangling. Bank-scoped sequences and
+  occlusions are excluded from both, since their generated cards are never packed.
+  `LessonCardLink` (display-only cross-lesson linking) and `PracticeNode` are
   deliberately out of scope — a shared course carries only the taught material, not its
   practice-path configuration.
+- **What it omits — media, deliberately and loudly.** `stripAssetMedia` replaces every asset
+  reference in card and note Markdown with placeholder text (`[Image omitted from share
+  code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's diagram is
+  not a Markdown reference at all and likewise never travels: its `assetHash` will not resolve
+  for the recipient, and the study face falls back to each card's plain-text content. Solving
+  asset transport properly needs either a companion asset file or the Arc 12 relay, so the
+  chosen behaviour is **local and backup only, with the failure made loud**: the Share page
+  counts affected cards — asset-bearing *and* occlusion-generated — names them, and says what
+  the recipient will actually receive. Backups carry assets properly (`BackupFile.assets`), so
+  this is a share-code and published-lineage limitation only.
 - **What it omits:** FSRS memory state, review history, and suspended/buried/flag state.
   Imported cards always start with clean scheduling for their new owner. Lesson exposures,
   cardless-lesson completions and Practice milestones are learner progress and are likewise
@@ -1785,7 +1875,8 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   global — set via `setCourseAutoAcceptUpdates`).
 - **`LineageIdMapping` table (`lineageIdMappings: 'id, courseId'`)** — one row per
   distributed course (keyed by `lineageId`), holding `lessonIds`/`noteIds`/`cardIds`/
-  `sequenceIds` arrays of adopted local ids plus a **last-merged content snapshot** for
+  `sequenceIds`/`occlusionIds` arrays of adopted local ids (`occlusionIds` is optional —
+  mappings written before image occlusion existed have no such field) plus a **last-merged content snapshot** for
   every adopted lesson/note/card (`lessonSnapshots`/`noteSnapshots`/`cardSnapshots`,
   keyed by id — name/description/isExtension/dates/sessionFilter/orderIndex for lessons,
   name/content/orderIndex for notes, type/front/back/tags for cards, deliberately excluding
@@ -1815,10 +1906,15 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   4. Card updates are a strict content subset (`type`/`front`/`back`/`tags`) that never
      touches FSRS/scheduling fields (`state`, `stability`, `difficulty`, `due`, `reps`,
      history), mirroring `diffRegeneration`.
-  5. Sequence-shaped payload items are **not** diffed by `lineageDiff.ts` at all — they are
-     handed unconditionally to the existing sequence-regeneration path (`updateSequence`),
-     which already encodes "update content only, never FSRS fields" keyed by the stable
-     `sequenceItemId`; this is never gated by `autoAcceptUpdates`.
+  5. Sequence- and occlusion-shaped payload items are **not** diffed by `lineageDiff.ts` at
+     all — they are handed unconditionally to their existing regeneration path
+     (`updateSequence`/`updateOcclusion`), which already encodes "update content only, never
+     FSRS fields" keyed by the stable `sequenceItemId`/`occlusionRegionId`; this is never
+     gated by `autoAcceptUpdates`. Their **generated cards are correspondingly skipped on
+     both sides of the diff** — incoming cards carrying `si`/`oc`, and local cards carrying
+     `sequenceItemId`/`occlusionRegionId`. Without that skip the merge both adopted the
+     packed copy under its originating id and regenerated the same card, leaving two cards
+     per item with the adopted one frozen at the publishing revision.
   6. On completion, `distributedCopy.revision` is set to the incoming revision and
      `lineageIdMappings` is updated with any newly adopted ids and refreshed content
      snapshots for every entity actually applied (auto-accepted updates and creates); an
@@ -2244,13 +2340,14 @@ client launches the installed Lacuna executable as its server command; the norma
 window must remain open because it owns IndexedDB.
 
 The tool contract is transport-independent and versioned separately from the Dexie schema
-(`MCP_TOOL_SURFACE_VERSION = 1`). It exposes:
+(`MCP_TOOL_SURFACE_VERSION`, currently 2 — additive tools never bump it). It exposes:
 
 - read/query tools for courses, lessons, cards, due and weak cards, statistics, sequences,
-  notes and diagnostics;
-- content tools for course, lesson, note, card, sequence and exam-date creation/update;
-- destructive or bulk tools for cards, lessons, courses and sequences, plus suspension,
-  flags and bounded rescheduling; and
+  occlusions, notes and diagnostics;
+- content tools for course, lesson, note, card, sequence, occlusion and exam-date
+  creation/update;
+- destructive or bulk tools for cards, lessons, courses, sequences and occlusions, plus
+  suspension, flags and bounded rescheduling; and
 - idempotent card-import preview/import tools that classify items as create, skip or
   update candidates before writing.
 
@@ -2266,6 +2363,11 @@ destructive call blocks on an in-app consent prompt and fails closed if no decis
 Settings shows the current grants and can grant or revoke them manually. Destructive and
 bulk handlers capture repository snapshots; their internal undo payload never reaches the
 client, but drives an in-app undo toast after the action completes.
+
+`create_occlusion` takes the hash of a diagram already stored in this install: there is no
+asset-upload tool, deliberately, since binary transport is not a natural MCP shape. Region
+ids, roles and fractional coordinates are the whole agent-facing contract, which makes an
+agent-authored SVG diagram plus coordinates a text-only workflow.
 
 The v1 surface deliberately excludes raw FSRS-state writes, review recording, backup/share
 operations, note annotations and most curriculum-structure mutation. Streamable HTTP, a web

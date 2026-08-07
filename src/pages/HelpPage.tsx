@@ -11,6 +11,7 @@ import {
   FlameIcon,
   KeyboardIcon,
   InfoIcon,
+  ImageIcon,
   SparklesIcon,
   ChevronLeftIcon,
   SettingsIcon,
@@ -35,6 +36,7 @@ const HELP_SECTIONS = [
   { id: 'progress', label: 'Progress & scheduling' },
   { id: 'card-types', label: 'Card types' },
   { id: 'sequences', label: 'Sequences' },
+  { id: 'occlusions', label: 'Diagrams' },
   { id: 'tips', label: 'Tips & best practice' },
 ];
 
@@ -682,6 +684,13 @@ export function HelpPage() {
                   Autoplay and playback speed are under Settings &rarr; Study &amp; scheduling.
                 </p>
               </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Diagram card</h3>
+                <p className="text-sm text-ink-soft">
+                  Generated from a labelled diagram: the labels are covered and one is ringed for
+                  you to recall. See Diagrams below.
+                </p>
+              </div>
             </div>
           </div>
         ),
@@ -730,6 +739,51 @@ export function HelpPage() {
                   sequence badge wherever they appear. To change their content, edit the sequence
                   itself — Lacuna regenerates the affected cards and keeps their memory state
                   intact.
+                </p>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: 'occlusions',
+        label: 'Diagrams',
+        icon: <ImageIcon width={20} height={20} />,
+        content: (
+          <div className="space-y-4">
+            <p className="text-base text-ink-soft">
+              Upload a labelled diagram, draw boxes over it once, and Lacuna generates one card per
+              box. As with sequences, you study the cards rather than the diagram itself, and
+              editing the diagram keeps them in sync.
+            </p>
+            <div className="space-y-3">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Labels and features</h3>
+                <p className="text-sm text-ink-soft">
+                  A <strong>label</strong> box covers text already printed on the diagram — you
+                  type nothing, and revealing uncovers the diagram&rsquo;s own words. A{' '}
+                  <strong>feature</strong> box points at a part of the drawing that carries no
+                  printed label; pair it with the label box that names it, and revealing uncovers
+                  that label. Every label is covered on every question face, so no card can be
+                  answered by reading the picture or by elimination.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Editing a diagram</h3>
+                <p className="text-sm text-ink-soft">
+                  Moving, resizing or re-pairing a box updates that card and keeps its memory
+                  state; deleting a box removes its card, with an undo. Replacing the image itself
+                  regenerates every card in the diagram, so Lacuna warns you first. Drawing is
+                  designed for a mouse or trackpad — it works on a touchscreen, but a larger screen
+                  is easier.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Sharing a diagram</h3>
+                <p className="text-sm text-ink-soft">
+                  Share codes cannot carry image or audio files, so a shared diagram card arrives as
+                  text with no picture. To move diagrams between machines, export a full backup from
+                  Settings instead.
                 </p>
               </div>
             </div>
