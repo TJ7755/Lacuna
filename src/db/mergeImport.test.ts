@@ -67,6 +67,32 @@ describe('mergeImport: first import of a lineage', () => {
     expect(await findCourseForLineage('lineage-1')).toMatchObject({ id: course.id });
   });
 
+  it('regenerates a sequence-generated card rather than also adopting the packed copy', async () => {
+    // A published course packs its sequence-generated cards like any other lesson card,
+    // so without the isGeneratedShareCard filter the merge path adopted the packed copy
+    // *and* regenerated it from the sequence, leaving two cards for one item.
+    await importLineageFirstTime(
+      coursePayload({
+        lessons: [
+          lessonOne({
+            cards: [
+              { id: 'card-gen-1', k: 0 as const, f: 'stale front', b: 'Brackets', si: 'item-1' },
+            ],
+          }),
+        ],
+        sequences: [
+          { id: 'seq-1', n: 'Order', items: [{ id: 'item-1', v: 'Brackets' }], cw: 2, pl: 0 },
+        ],
+      } as any),
+    );
+
+    const cards = await db.cards.toArray();
+    expect(cards).toHaveLength(1);
+    expect(cards[0].sequenceItemId).toBe('item-1');
+    expect(await db.cards.get('card-gen-1')).toBeUndefined();
+    expect((await db.lineageIdMappings.get('lineage-1'))?.cardIds).toEqual([]);
+  });
+
   it('preserves a structured payload in the adopted card and its initial snapshot', async () => {
     const payload = {
       v: 1 as const,

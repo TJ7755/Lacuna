@@ -112,6 +112,17 @@ function reverseCardId(primaryId: string): string {
 // field doubles as the originating card id for a published course, share.ts:68-74).
 // ---------------------------------------------------------------------------
 
+/**
+ * True for a share card that some authoring entity regenerates rather than the diff
+ * owning directly. Such cards are packed into a course payload like any other (the
+ * recipient of a plain share import needs them), but a lineage merge must skip them:
+ * `applySequences` recreates them from the sequence, so diffing them as well adopts a
+ * second, stale copy under the payload's own card id.
+ */
+function isGeneratedShareCard(card: LineagePayload['lessons'][number]['cards'][number]): boolean {
+  return card.si !== undefined;
+}
+
 function toShareLessonInput(lesson: LineagePayload['lessons'][number]): ShareLessonInput {
   if (!lesson.i) throw new Error('Lineage payload lesson is missing its originating id.');
   return {
@@ -127,7 +138,7 @@ function toShareLessonInput(lesson: LineagePayload['lessons'][number]): ShareLes
       if (!note.oi) throw new Error('Lineage payload note is missing its originating id.');
       return { i: note.oi, n: note.n, c: note.c };
     }),
-    cards: lesson.cards.map((card): ShareCardInput => {
+    cards: lesson.cards.filter((card) => !isGeneratedShareCard(card)).map((card): ShareCardInput => {
       if (!card.id) throw new Error('Lineage payload card is missing its originating id.');
       return {
         i: card.id,
@@ -500,10 +511,11 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     for (let lessonIndex = 0; lessonIndex < payload.lessons.length; lessonIndex++) {
       const shareLesson = payload.lessons[lessonIndex];
       const lessonId = newLessons[lessonIndex].id;
-      if (shareLesson.cards.length === 0) continue;
+      if (shareLesson.cards.every(isGeneratedShareCard)) continue;
       const deckId = await ensureLessonDeck(course.id, lessonId);
       let cardCreatedAt = createdAt;
       for (const shareCard of shareLesson.cards) {
+        if (isGeneratedShareCard(shareCard)) continue;
         if (!shareCard.id) throw new Error('Lineage payload card is missing its originating id.');
         const base = {
           deckId,
@@ -629,7 +641,9 @@ export async function mergeLineageUpdate(
       existing: {
         lessons: existingLessons.map(toExistingLesson),
         notes: existingNotes.map(toExistingNote),
-        cards: courseCards.map(toExistingCard),
+        // Locally regenerated cards are never lineage-diffed either: they are owned by
+        // their sequence, not by the mapping (see isGeneratedShareCard).
+        cards: courseCards.filter((card) => !card.sequenceItemId).map(toExistingCard),
       },
       mapping: {
         id: mapping.id,
