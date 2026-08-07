@@ -16,6 +16,7 @@ import {
   updateCourse,
   updateDeck,
 } from './repository';
+import { createOcclusion } from './occlusionRepository';
 import {
   buildCourseShareCode,
   buildCourseShareCodeQR,
@@ -45,6 +46,7 @@ async function reset() {
     db.lessonCards.clear(),
     db.courseAssessments.clear(),
     db.sequences.clear(),
+    db.occlusions.clear(),
   ]);
 }
 
@@ -753,6 +755,100 @@ describe('course share codes (v2)', () => {
     expect(allSequences.filter((s) => s.name === 'Bank sequence')).toHaveLength(1);
   });
 
+  it('round-trips an occlusion, remapping region ids and pairings', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const asset = await storeImageBlob(
+      new Blob(['diagram'], { type: 'image/png' }),
+      'image/png',
+      800,
+      600,
+    );
+    const occlusion = await createOcclusion(course.id, lesson.id, 'Plant cell', asset.hash, [
+      {
+        id: 'region-nucleus',
+        role: 'label',
+        shape: 'rectangle',
+        x: 0.1,
+        y: 0.1,
+        w: 0.2,
+        h: 0.1,
+        answerText: 'Nucleus',
+      },
+      {
+        id: 'region-arrow',
+        role: 'feature',
+        shape: 'rectangle',
+        x: 0.5,
+        y: 0.4,
+        w: 0.1,
+        h: 0.1,
+        pairedRegionId: 'region-nucleus',
+        backNote: 'Contains the DNA.',
+      },
+    ]);
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.occlusions).toHaveLength(1);
+    expect(payload.occlusions![0].n).toBe('Plant cell');
+    expect(payload.occlusions![0].ah).toBe(asset.hash);
+    expect(payload.occlusions![0].regions.map((r) => r.r)).toEqual([0, 1]);
+    // One card per region, each carrying its `oc` reference.
+    expect(payload.lessons[0].cards).toHaveLength(2);
+    expect(payload.lessons[0].cards.every((c) => typeof c.oc === 'string')).toBe(true);
+
+    await importSharePayload(payload);
+
+    const imported = (await db.occlusions.toArray()).find((o) => o.id !== occlusion.id)!;
+    expect(imported.name).toBe('Plant cell');
+    expect(imported.assetHash).toBe(asset.hash);
+    expect(imported.regions).toHaveLength(2);
+    // Region ids are freshly minted, and the pairing follows them.
+    expect(imported.regions.map((r) => r.id)).not.toContain('region-nucleus');
+    const label = imported.regions.find((r) => r.role === 'label')!;
+    const feature = imported.regions.find((r) => r.role === 'feature')!;
+    expect(feature.pairedRegionId).toBe(label.id);
+    expect(feature.backNote).toBe('Contains the DNA.');
+    expect(label.shape).toBe('rectangle');
+    expect(label.x).toBe(0.1);
+    // The generated cards point at the remapped region ids.
+    expect(await db.cards.where('occlusionRegionId').equals(label.id).count()).toBe(1);
+    expect(await db.cards.where('occlusionRegionId').equals(feature.id).count()).toBe(1);
+  });
+
+  it('excludes bank-scoped occlusions from a course share', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const asset = await storeImageBlob(
+      new Blob(['diagram'], { type: 'image/png' }),
+      'image/png',
+      800,
+      600,
+    );
+    await createOcclusion(course.id, lesson.id, 'Plant cell', asset.hash, [
+      { id: 'region-1', role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.2, h: 0.1 },
+    ]);
+    // Bank-scoped, like the sequence case above: its generated cards are never packed,
+    // so the occlusion must not travel either or it would import with no cards.
+    await createOcclusion(course.id, null, 'Bank diagram', asset.hash, [
+      { id: 'region-2', role: 'label', shape: 'rectangle', x: 0.3, y: 0.3, w: 0.2, h: 0.1 },
+    ]);
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+
+    expect(payload.occlusions).toHaveLength(1);
+    expect(payload.occlusions![0].n).toBe('Plant cell');
+
+    await importSharePayload(payload);
+
+    const all = await db.occlusions.toArray();
+    expect(all.filter((o) => o.name === 'Plant cell')).toHaveLength(2);
+    expect(all.filter((o) => o.name === 'Bank diagram')).toHaveLength(1);
+  });
+
   it('parses an old v2 payload with no sequences field', async () => {
     const legacyPayload = {
       v: 2 as const,
@@ -772,11 +868,13 @@ describe('course share codes (v2)', () => {
     const payload = await decodeShare(code);
     if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
     expect(payload.sequences).toBeUndefined();
+    expect(payload.occlusions).toBeUndefined();
     expect(payload.lessons).toHaveLength(1);
 
     const result = await importSharePayload(payload);
     expect(result.courses).toBe(1);
     expect(await db.sequences.count()).toBe(0);
+    expect(await db.occlusions.count()).toBe(0);
   });
 
   it('omits li/rv and per-entity originating ids for a course that has never published', async () => {
