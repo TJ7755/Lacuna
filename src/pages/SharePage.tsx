@@ -177,10 +177,17 @@ export function SharePage() {
 
   const selectedCourse = useCourse(selectedCourseId ?? undefined);
   const selectedSummary = selectedCourseId ? summaries?.[selectedCourseId] : undefined;
+  // Two ways a card carries media a share code cannot: an asset embed in its Markdown
+  // (images, audio), and an occlusion diagram, which lives on `Occlusion.assetHash` and so
+  // never appears in the card's text at all. Occlusion cards degrade to their plain-text
+  // fallback for the recipient rather than breaking, but they are still not the card the
+  // author made — Arc 6 §6.6.
   const selectedMediaCards = useMemo(
     () =>
       (courseCards ?? []).filter(
-        (card) => referencedAssetHashes(`${card.front}\n${card.back}`).length > 0,
+        (card) =>
+          card.occlusionRegionId !== undefined ||
+          referencedAssetHashes(`${card.front}\n${card.back}`).length > 0,
       ),
     [courseCards],
   );
@@ -527,9 +534,10 @@ export function SharePage() {
                 <div className="mb-3 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
                   <p>
                     This course contains media in {selectedMediaCards.length}{' '}
-                    {selectedMediaCards.length === 1 ? 'card' : 'cards'}. The share code will
-                    replace those files with placeholders; export a full backup from Settings to
-                    transfer the media too.
+                    {selectedMediaCards.length === 1 ? 'card' : 'cards'}. The share code cannot
+                    carry the files: recipients get a placeholder in their place, and diagram
+                    cards fall back to text with no image to label. Export a full backup from
+                    Settings to transfer the media too.
                   </p>
                   <ul className="mt-2 max-h-32 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-ink-faint">
                     {selectedMediaCards.map((card, index) => (
