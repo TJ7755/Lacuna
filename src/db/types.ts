@@ -1022,6 +1022,9 @@ export interface LineageIdMapping {
   cardIds: string[];
   /** Originating sequence ids already adopted as local ids. */
   sequenceIds: string[];
+  /** Originating occlusion ids already adopted as local ids. Absent on mappings written
+   *  before image occlusion existed, so readers must tolerate `undefined`. */
+  occlusionIds?: string[];
   /**
    * Last-merged content snapshot for every adopted lesson/note/card, keyed by local
    * (= originating) id. `src/db/mergeImport.ts` compares an entity's *current* local
