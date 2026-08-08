@@ -83,7 +83,7 @@ describe('mergeImport: first import of a lineage', () => {
         sequences: [
           { id: 'seq-1', n: 'Order', items: [{ id: 'item-1', v: 'Brackets' }], cw: 2, pl: 0 },
         ],
-      } as any),
+      }),
     );
 
     const cards = await db.cards.toArray();
@@ -112,7 +112,7 @@ describe('mergeImport: first import of a lineage', () => {
             pl: 0,
           },
         ],
-      } as any),
+      }),
     );
 
     const occlusion = await db.occlusions.get('occ-1');
@@ -449,7 +449,7 @@ describe('mergeImport: merge apply', () => {
             pl: 0,
           },
         ],
-      } as any);
+      });
 
     await mergeLineageUpdate(courseId, occlusionPayload(2, 0.1));
     expect((await db.occlusions.get('occ-1'))?.regions).toHaveLength(2);
