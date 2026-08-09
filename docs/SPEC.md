@@ -2393,6 +2393,11 @@ The v1 surface deliberately excludes raw FSRS-state writes, review recording, ba
 operations, note annotations and most curriculum-structure mutation. Streamable HTTP, a web
 companion process, durable client identity and plugin extension points remain deferred.
 
+These exclusions describe the shipped contract, not an instruction to bolt future operations onto
+the renderer through generic UI automation. The attachable local companion, programmatic release
+scenarios and proposed polished user-action surface — including the separate safety boundary for
+study-history writes — are specified as future work in `docs/next_plan.md` §§2.12–2.14.
+
 ### Scripts
 
 - `bun run electron:dev` — runs Vite dev server and Electron in parallel.

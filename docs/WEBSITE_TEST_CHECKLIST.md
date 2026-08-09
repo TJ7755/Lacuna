@@ -4,28 +4,42 @@ Use this checklist for a release candidate in a real browser. It covers every us
 surface currently implemented. Electron-only MCP and auto-update behaviour is identified
 separately; deferred roadmap work is not presented as though it exists.
 
+## Automation boundary
+
+Programmatic scenarios may create disposable data, exercise domain transitions and verify persisted
+state through Lacuna's MCP and test-only application services. GUI automation may supply repeatable
+evidence for navigation, focus, input and responsive behaviour. Human inspection remains required
+for typography, visual hierarchy, animation quality, native platform feel and any case whose result
+depends on physical touch, operating-system integration or subjective judgement.
+
+Record the evidence source for each automated result. A passing MCP call proves domain behaviour; it
+does not prove that the corresponding control is visible or usable. Do not add raw database writes,
+review recording or other human-only operations to the normal MCP surface just to make this checklist
+easier. The planned programmatic release-scenario architecture is specified in `docs/next_plan.md`
+§2.13.
+
 ## Test record
 
-- Release/commit: `____________________`
+- Release/commit: `ea29734a47ff25d1ea9fed5551a60d1883039cee`
 - Tester: `____________________`
-- Date: `____________________`
-- Browser and version: `____________________`
-- Operating system: `____________________`
-- Desktop viewport: `____________________`
-- Mobile viewport/device: `____________________`
-- Production URL or local command: `____________________`
+- Date: `2026-08-09`
+- Browser and version: `T3 collaborative preview (Chromium; version not recorded)`
+- Operating system: `macOS 26.6`
+- Desktop viewport: `1280 × 800`
+- Mobile viewport/device: `375 × 667 (iPhone SE portrait)`
+- Production URL or local command: `http://127.0.0.1:4173/ via bun run preview --host 0.0.0.0`
 
 Mark each item `[x]` when it passes. Add the issue number after a failed item and leave it
 unchecked. Run destructive cases only against disposable courses and export a full backup first.
 
 ## 1. Release gate and test data
 
-- [ ] `bun install --frozen-lockfile` succeeds with the checked-in `bun.lock`.
-- [ ] `bun run typecheck` passes.
-- [ ] `bun run lint` passes.
-- [ ] `bun run test` passes.
-- [ ] `bun run build` produces a production build without an error.
-- [ ] The production preview loads directly and after a hard refresh.
+- [x] `bun install --frozen-lockfile` succeeds with the checked-in `bun.lock`.
+- [x] `bun run typecheck` passes.
+- [x] `bun run lint` passes.
+- [x] `bun run test` passes.
+- [x] `bun run build` produces a production build without an error.
+- [x] The production preview loads directly and after a hard refresh.
 - [ ] Browser console contains no uncaught error during the route sweep below.
 - [ ] Create a disposable course with at least three lessons, notes, classic cards, a numeric
       item, a working item, a sequence, a manual practice node and two assessments.
@@ -408,3 +422,14 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 - [ ] No release-blocking failure remains open.
 - [ ] Full backup from the test profile restores successfully in a clean profile.
 - [ ] Tester approves the release candidate: `____________________`
+
+## Notes:
+- It would be nice to be able to select the cards and have an option to 'create reverse'.
+- It would also be nice to be able to edit reversed cards together - so they're like one card but with two options, rather than physically two cards.
+- There is no way to edit the name of 'Lesson 1'. Followup lessons *can* be named for some reason. Similarly, editing the name of courses is more painful than it should be. It should be like a file system where you can double click and have a typebox appear.
+- After creating a new lesson the view goes to the course view rather than the lesson view.
+- After adding an item to a sequence you must manually scroll down to be able to see it - it should auto-scroll. The keyboard shortcuts are perfect, though.
+- For numeric answers the 'accept one of' UI editor is sooo clunky - it repeats the preview, the accepted answer and the other things in one page. I need to brainstorm on how to improve this.
+- Resolved: the production preview appeared to load forever because Wrangler blocked before
+  starting its server on an interactive Cloudflare skills prompt. The obsolete Cloudflare tooling
+  has been removed and `bun run preview` now starts Vite's production preview directly.

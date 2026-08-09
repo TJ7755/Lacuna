@@ -1,0 +1,593 @@
+<!doctype html><html><head><!-- frame-runtime --><base href="/_f/1785404123-0657/"><script>window.__FRAME_PREAMBLE={"capabilities":{"assets":"assets.hcOK0ALv.js","comments":"comments.D1Mkjxge.js","db":"db.CeV_J5G-.js","downloads":"downloads.BXsoAvg9.js","mcp":"mcp.CYSdpjo0.js","permissions":"permissions.DdITF2Mk.js","sample":"sample.DpdXn9di.js","self":"self.BN4be5De.js","user":"user.Cr_h1ETf.js"},"transforms":"_transforms.VaITkagF.js","comments":"_comments.CNSvmFji.js","translate":"_translate.BOzFH2D9.js"}</script><script>(function(){"use strict";var ne=["light","dark","system"];function oe(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_init;return t!==null&&typeof t=="object"}function W(e){return e!==null&&typeof e=="object"&&e.__frame_size_poke===!0}function se(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_theme;if(t===null||typeof t!="object")return!1;const n=t.theme;return typeof n=="string"&&ne.includes(n)}function ie(e){try{typeof reportError=="function"?reportError(e):setTimeout(()=>{throw e},0)}catch{}}var Y=Object.freeze(Object.assign(Object.create(null),{user:Object.freeze(Object.assign(Object.create(null),{id:null,isOwner:!1,canEdit:!1,name:null,avatarUrl:null,email:null}))})),ae={sample:"sample"};function x(){const e=new Uint8Array(20);try{crypto.getRandomValues(e)}catch{for(let n=0;n<e.length;n++)e[n]=Math.floor(Math.random()*256)}let t="";for(const n of e)t+=(n%36).toString(36);return t}function ce(e,t){const n=r=>{const o={path:r},i=r.split("/");return{id:i[i.length-1],path:r,get:()=>t("get",[o]),set:g=>t("set",[o,g]),update:g=>t("update",[o,g]),delete:()=>t("delete",[o]),acquire:g=>t("acquire",[o,g]),onSnapshot:(g,y)=>t("subscribe",[o,g,y]),collection:g=>a(r+"/"+String(g))}},u=r=>({where:(o,i,g)=>u({...r,where:[...r.where??[],{f:String(o),op:String(i),v:g}]}),orderBy:(o,i)=>u({...r,orderBy:{f:String(o),dir:i===void 0?"asc":String(i)}}),limit:o=>u({...r,limit:Number(o)}),get:()=>t("query",[r]),onSnapshot:(o,i)=>t("subscribe",[r,o,i])}),a=r=>({...u({collection:r}),path:r,doc:o=>n(r+"/"+(o===void 0?x():String(o))),add:o=>{const i=n(r+"/"+x());return Promise.resolve(i.set(o)).then(()=>i)}});e.doc=r=>n(String(r)),e.collection=r=>a(String(r))}function J(e){if(window===top||e.type==="auxclick"&&e.button!==1)return;const t=e.composedPath?e.composedPath():[e.target];let n=null;for(let o=0;o<t.length;o++){const i=t[o];if(i&&i.matches&&i.matches("a[href],area[href]")){n=i;break}}if(!n&&e.target&&e.target.closest&&(n=e.target.closest("a[href],area[href]")),!n)return;const u=n.getAttribute("href");if(!u)return;let a,r;try{a=new URL(u,document.baseURI),r=new URL(document.baseURI).origin}catch{return}if((a.protocol==="http:"||a.protocol==="https:")&&a.origin!==r){e.preventDefault();const o=(n.getAttribute("target")??document.querySelector("base[target]")?.getAttribute("target")??"").toLowerCase(),i=e.type==="auxclick"||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||!["","_self","_top","_parent"].includes(o);parent.postMessage({__frame_nav:!0,url:a.href,newTab:i},"*")}}var G={};function I(e){if(window===top)return;const t=Date.now();t-(G[e]||0)<500||(G[e]=t,parent.postMessage({__frame_engaged:!0,kind:e},"*"))}var le=2e3,V=["wheel","touchstart","touchmove","keydown","pointerdown"],X=0;function ue(e){e.isTrusted&&(X=Date.now())}function fe(){addEventListener("click",J,!0),addEventListener("auxclick",J,!0)}function de(){for(let e=0;e<V.length;e++)addEventListener(V[e],ue,{capture:!0,passive:!0});addEventListener("scroll",e=>{e.isTrusted&&Date.now()-X<le&&I("scroll")},{capture:!0,passive:!0}),addEventListener("pointermove",e=>{e.isTrusted&&I("pointer")},{capture:!0,passive:!0}),addEventListener("click",e=>{e.isTrusted&&I("click")},{capture:!0,passive:!0})}var q="__frame_scroll",me=150,pe=310,ge=160,he=3e4;function ve(){let e=0,t=!1,n=!1,u=!1,a=0,r=null;const o=d=>{try{sessionStorage.setItem(q,JSON.stringify({y:d}))}catch{}},i=()=>{if(clearTimeout(e),r===null)return;const d=r;r=null,o(d)},g=()=>{if(t){t=!1;return}n=!0,r=scrollY,clearTimeout(e),e=setTimeout(i,me)};try{addEventListener("scroll",g,{passive:!0}),addEventListener("pagehide",i)}catch{}const y=()=>{let d;try{d=sessionStorage.getItem(q)}catch{return null}if(d===null)return null;let l;try{l=JSON.parse(d)}catch{l=null}const p=l?.y;if(!(typeof p=="number"&&Number.isFinite(p)&&p>=0)){try{sessionStorage.removeItem(q)}catch{}return null}return p};let c=!1;const f=d=>{try{const l=scrollY;scrollTo({top:d,left:0,behavior:"instant"}),a=d,u=!0,clearTimeout(e),r=null,o(d);const p=scrollY;p!==l&&(t=!0),p!==d&&!c&&(c=!0,addEventListener("load",()=>{try{if(scrollY===p){const v=y();f(v!==null?v:a)}}catch{}},{once:!0}))}catch{}},m=()=>{try{return!!location.hash}catch{return!0}};let h=!1;const _=()=>{try{if(h||innerWidth>pe||innerHeight>ge)return;h=!0;const d=Date.now(),l=()=>{try{removeEventListener("resize",l)}catch{}if(Date.now()-d>he||n||m())return;const p=y();f(p!==null?p:a)};addEventListener("resize",l)}catch{}};let w=!1,S=!1;return{restore(){if(w||(w=!0,m()))return;const d=y();d!==null&&(f(d),_())},promoted(){if(S||(S=!0,m()))return;const d=y();d!==null?(f(d),_()):u&&f(a)}}}function _e(e,t,n){const u=[...t.values()].filter(a=>a.targets.some(r=>r.startsWith(e+".")));return{wrap(a,r){const o=`${e}.${a}`,i=u.filter(g=>g.targets.includes(o));return i.length===0?(...g)=>{try{return r(...g)}catch(y){return Promise.reject(y)}}:(...g)=>{let y=g;for(const f of i){const m=f.module.parameters;if(m)try{y=m(y)}catch{return Promise.reject({code:"transform_error",id:f.id,scope:e,message:"parameters transform failed"})}}let c;try{c=r(...y)}catch(f){c=Promise.reject(f)}return c.then(f=>{for(let m=i.length-1;m>=0;m--){const h=i[m],_=h.module.returns;if(_)try{f=_(f)}catch{return n({id:h.id,scope:e,leg:"returns"}),f}}return f},f=>{for(let m=i.length-1;m>=0;m--){const h=i[m],_=h.module.throws;if(_)try{f=_(f)}catch{return n({id:h.id,scope:e,leg:"throws"}),Promise.reject(f)}}return Promise.reject(f)})}}}}function ye(e,t,n,u=()=>{}){const a=new Set(e.changes??[]),r=new Map;for(const o of a){const i=t[o];i&&r.set(o,i)}return{contract:e.contract,changes:a,flags:new Set(e.flags??[]),capabilities:e.capabilities??{},capBudgets:e.capBudgets??{},transforms:r,shellOrigin:n.shellOrigin,mount:n.mount,pipe:o=>_e(o,r,u)}}var Ae="modulepreload",Re=function(e){return"/"+e},je={},be=function(t,n,u){let a=Promise.resolve();function r(o){const i=new Event("vite:preloadError",{cancelable:!0});if(i.payload=o,window.dispatchEvent(i),!i.defaultPrevented)throw o}return a.then(o=>{for(const i of o||[])i.status==="rejected"&&r(i.reason);return t().catch(r)})};(function(){const e=Object.defineProperty,t=globalThis,n=["RTCPeerConnection","webkitRTCPeerConnection","RTCDataChannel","RTCIceCandidate","RTCSessionDescription","RTCRtpSender","RTCRtpReceiver"];let u=0;for(let a=0;a<n.length;a++){const r=n[a];try{e(t,r,{value:void 0,writable:!1,configurable:!1})}catch{try{delete t[r]}catch{}try{e(t,r,{value:void 0,writable:!1,configurable:!0})}catch{}}typeof t[r]=="function"&&u++}if(u&&window!==top)try{parent.postMessage({__frame_rtc_lockdown_failed:u},"*")}catch{}})();var Ee=1e4,we=Object.freeze([...window.__FRAME_PREAMBLE?.origins??["https://claude.ai","https://preview.claude.ai"]]);function Q(e){for(const t of we)if(t.endsWith(":*"))try{const n=new URL(e);if(`${n.protocol}//${n.hostname}:*`===t)return!0}catch{}else if(e===t)return!0;return!1}var k=Object.freeze({...window.__FRAME_PREAMBLE?.capabilities}),D=window.__FRAME_PREAMBLE?.transforms,z=window.__FRAME_PREAMBLE?.comments,B=window.__FRAME_PREAMBLE?.translate,C=/^[\w.-]+\.js$/,Se=/^[a-z][a-z0-9_-]{0,63}$/,Z=null,M=null;function $(e,t,n){try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!1,enumerable:!0})}catch{try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!0,enumerable:!0})}catch{}}}var F=!1;function ee(e){const t=document.documentElement;e==="light"||e==="dark"?(t.dataset.theme=e,t.style.colorScheme=e,F=!0):F&&(delete t.dataset.theme,t.style.colorScheme="",F=!1)}var te=256,P=Object.assign(Object.create(null),{mcp:Object.assign(Object.create(null),{watchTool:{handlerArg:3}}),db:Object.assign(Object.create(null),{subscribe:{handlerArg:1,errArg:2}})}),L=new Map;function re(e,t){const n=L.get(e);if(!n)return;const u=Object.assign(Object.create(null),t);Object.assign(n.impl,u),n.impl.__settled=()=>Promise.reject({code:"capability_removed",message:`${e}: method not in this runtime`});const a=n.queue;n.queue=[];for(const r of a){const o=u[r.method];if(o)if(P[e]?.[r.method])try{r.resolve(o(...r.args))}catch{T(r,P[e][r.method],{code:"transform_error",message:`${e}.${r.method} rejected its arguments`})}else o(...r.args).then(r.resolve,r.reject);else{const i={code:"capability_removed",message:`${e}.${r.method} is not in this runtime`},g=P[e]?.[r.method];if(g){T(r,g,i);continue}r.reject(i)}}}function Oe(e,t){const n=L.get(e);if(!n)return;n.impl.__settled=()=>Promise.reject(t);const u=n.queue;n.queue=[];for(const a of u){const r=P[e]?.[a.method];if(r){T(a,r,t);continue}a.reject(t)}}function N(e,t){const n=Y[e];if(!n){Oe(e,t);return}re(e,Object.fromEntries(Object.entries(n).map(([u,a])=>[u,()=>Promise.resolve(a)])))}function T(e,t,n){if(e.syncState?.dead)return;const u=t.errArg===void 0?void 0:e.args[t.errArg],a=t.errArg===void 0?e.args[t.handlerArg]:u;typeof a=="function"&&queueMicrotask(()=>{if(!e.syncState?.dead)try{a(t.errArg===void 0?{type:"error",error:n}:n)}catch(r){ie(r)}})}var H=Object.getOwnPropertyDescriptor(window,"claude");if(window!==top&&!(H&&H.writable===!1)){fe(),de();let e=null;try{e=ve()}catch{}const t=H?.value??{};$(window,"claude",t);const n=c=>{const f={impl:Object.create(null),queue:[]};L.set(c,f);const m=f.impl,h=d=>({code:"queue_overflow",message:`${c}.${d}: pre-init call queue is full`}),_=(d,l)=>{if(f.queue.length>=te){const p=Y[c];return p&&d in p?Promise.resolve(p[d]):Promise.reject(h(d))}return new Promise((p,v)=>{f.queue.push({method:d,args:l,resolve:p,reject:v})})},w=ae[c],S=new Proxy(w===void 0?m:(()=>{}),{apply:(d,l,p)=>{const v=w,E=m[v]??m.__settled;return E?E(...p):_(v,p)},get:(d,l)=>{if(typeof l!="string"||l==="then"||l==="toJSON"||l==="valueOf")return;if(l==="toString")return Object.prototype.toString;if(w!==void 0&&(l==="call"||l==="apply"||l==="bind"))return Function.prototype[l];const p=P[c]?.[l];return p?(...v)=>{if(typeof v[p.handlerArg]!="function")throw new TypeError(`${c}.${l} requires a handler function`);const E=m[l];if(E)return E(...v);if(m.__settled){const b={dead:!1},U={args:[...v],syncState:b};return m.__settled().catch(s=>T(U,p,s)),()=>{b.dead=!0}}if(f.queue.length>=te){const b={dead:!1};return T({args:[...v],syncState:b},p,h(l)),()=>{b.dead=!0}}let A=null;const R={dead:!1};return f.queue.push({method:l,args:v,resolve:b=>{A=typeof b=="function"?b:null,R.dead&&A?.()},reject:()=>{},syncState:R}),()=>{R.dead=!0,A?.()}}:(...v)=>{const E=m[l]??m.__settled;return E?E(...v):_(l,v)}},set:()=>!1});c==="db"&&ce(m,(d,l)=>S[d](...l)),$(t,c,S)};for(const c of Object.keys(k)){if(t[c]!==void 0){$(t,c,t[c]);continue}n(c)}let u=null,a=null,r=0;const o=c=>{c.source!==parent||!Q(c.origin)||oe(c.data)&&(u=c.data.__frame_init,M=c.origin,removeEventListener("message",o),clearTimeout(r),a?.())};addEventListener("message",o),parent.postMessage({__frame_connect:!0},"*");const i=new Promise(c=>{a=c,r=setTimeout(()=>{removeEventListener("message",o),c()},Ee)}),g=document.readyState==="loading"?new Promise(c=>document.addEventListener("DOMContentLoaded",()=>c(),{once:!0})):Promise.resolve();g.then(()=>{try{e?.restore()}catch{}});const y=c=>{if(!(c.source!==parent||!Q(c.origin))&&W(c.data)){removeEventListener("message",y);try{e?.promoted()}catch{}}};addEventListener("message",y),i.then(async()=>{if(!u||!M){for(const s of L.keys())N(s,{code:"not_granted",message:"frame initialization did not arrive - capability unavailable"});return}ee(u.theme);const c=M;let f=!1,m=!1;addEventListener("message",s=>{if(s.source!==parent||s.origin!==c)return;se(s.data)&&ee(s.data.__frame_theme.theme);const O=s.data?.__fc_mode;O&&typeof O=="object"&&!f&&z&&C.test(z)&&(f=!0,h(z).then(K=>K.install?.(c,O.on===!0)).catch(()=>{}));const j=s.data?.__ft_cmd;j&&typeof j=="object"&&!m&&B&&C.test(B)&&(m=!0,h(B).then(K=>K.install?.(c,j)).catch(()=>{}))});const h=s=>be(()=>import("/_runtime/"+s),void 0),_=Object.keys(u.capabilities??{});for(const s of _)Object.hasOwn(k,s)||Se.test(s)&&t[s]===void 0&&(n(s),N(s,{code:"capability_disabled",message:"capability not in this runtime generation"}));const w=_.filter(s=>Object.hasOwn(k,s)).map(s=>[s,k[s]]).filter(s=>typeof s[1]=="string"&&C.test(s[1])),[S,...d]=await Promise.allSettled([D&&C.test(D)?h(D):Promise.resolve({}),...w.map(([,s])=>h(s))]),l=M;Z=ye(u,S.status==="fulfilled"&&S.value?.TRANSFORMS||{},{shellOrigin:l,mount:re},s=>parent.postMessage({__frame_cap_telemetry:s},l));const p=s=>parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:s}},l),v=Z;d.forEach((s,O)=>{const j=w[O][0];if(s.status!=="fulfilled"){p(j);return}try{s.value?.install?.(v)}catch{p(j)}});for(const[s,O]of L)if(!(O.queue.length===0&&Object.keys(O.impl).length>0)){if(_.includes(s)){N(s,{code:"capability_disabled",message:"capability not available in this session"});continue}N(s,{code:"not_granted",message:"capability not available in this session"})}await g,parent.postMessage({__frame_ready:!0},M);let E=-1,A=0;const R=()=>{A=0;const s=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);s!==E&&(E=s,parent.postMessage({__frame_size:!0,h:s},l))},b=()=>{A||(A=setTimeout(R,200))},U=new ResizeObserver(b);U.observe(document.documentElement),document.body&&U.observe(document.body),document.addEventListener("load",b,!0),document.fonts?.ready.then(b,()=>{}),addEventListener("beforeprint",()=>{E=-1,R()}),b(),addEventListener("message",s=>{if(!(s.source!==parent||s.origin!==l)&&W(s.data)){try{e?.promoted()}catch{}E=-1,b()}})})}})();</script><!-- /frame-runtime --><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>Lacuna — is it optimising the right quantity?</title>
+
+<style>
+  :root {
+    --paper: #eceff0;
+    --surface: #ffffff;
+    --surface-2: #e2e7e8;
+    --ink: #101719;
+    --ink-2: #3a474b;
+    --ink-3: #6a787c;
+    --rule: #cbd4d6;
+    --rule-2: #dde3e4;
+    --accent: #0f5f61;
+    --accent-soft: #dbeceb;
+    --refuted: #97372a;
+    --weakened: #8a6110;
+    --survives: #1d5f45;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --serif: "Iowan Old Style", Charter, "Bitstream Charter", Georgia, serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0b1113;
+      --surface: #121a1d;
+      --surface-2: #182226;
+      --ink: #e4eaeb;
+      --ink-2: #aebabd;
+      --ink-3: #7d8b8f;
+      --rule: #263237;
+      --rule-2: #1e292d;
+      --accent: #5ab5ad;
+      --accent-soft: #16282a;
+      --refuted: #dd8072;
+      --weakened: #d3a252;
+      --survives: #6cbf9a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0b1113;
+    --surface: #121a1d;
+    --surface-2: #182226;
+    --ink: #e4eaeb;
+    --ink-2: #aebabd;
+    --ink-3: #7d8b8f;
+    --rule: #263237;
+    --rule-2: #1e292d;
+    --accent: #5ab5ad;
+    --accent-soft: #16282a;
+    --refuted: #dd8072;
+    --weakened: #d3a252;
+    --survives: #6cbf9a;
+  }
+  :root[data-theme="light"] {
+    --paper: #eceff0;
+    --surface: #ffffff;
+    --surface-2: #e2e7e8;
+    --ink: #101719;
+    --ink-2: #3a474b;
+    --ink-3: #6a787c;
+    --rule: #cbd4d6;
+    --rule-2: #dde3e4;
+    --accent: #0f5f61;
+    --accent-soft: #dbeceb;
+    --refuted: #97372a;
+    --weakened: #8a6110;
+    --survives: #1d5f45;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 62rem;
+    margin: 0 auto;
+    padding: 3.5rem 1.5rem 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.25rem;
+  }
+  h1, h2, h3 {
+    font-family: var(--mono);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  h1 { font-size: clamp(1.9rem, 4.4vw, 2.75rem); }
+  h2 { font-size: 1.4rem; }
+  h3 { font-size: 1.02rem; letter-spacing: -0.01em; }
+  p { max-width: 68ch; }
+  code, .ref {
+    font-family: var(--mono);
+    font-size: 0.85em;
+  }
+  .ref {
+    color: var(--ink-2);
+    background: var(--surface-2);
+    padding: 0.1em 0.36em;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  header { display: flex; flex-direction: column; gap: 1rem; }
+  header .lede {
+    font-family: var(--serif);
+    font-size: 1.24rem;
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 58ch;
+  }
+  header .meta {
+    display: flex; flex-wrap: wrap; gap: 0.4rem 1.6rem;
+    font-family: var(--mono); font-size: 0.75rem; color: var(--ink-3);
+    border-top: 1px solid var(--rule); padding-top: 0.9rem;
+  }
+
+  section { display: flex; flex-direction: column; gap: 1.15rem; }
+  .section-head {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 0.5rem;
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+  }
+
+  .thesis {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--accent);
+    padding: 1.6rem 1.75rem;
+    display: flex; flex-direction: column; gap: 0.9rem;
+  }
+  .thesis p { font-family: var(--serif); font-size: 1.06rem; max-width: 64ch; }
+  .thesis strong { font-weight: 600; }
+
+  .ledger {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  .led {
+    background: var(--surface);
+    padding: 1rem 1.1rem;
+    display: flex; flex-direction: column; gap: 0.45rem;
+  }
+  .led .q { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+  .led .v { font-family: var(--mono); font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; }
+  .led .n { font-size: 0.86rem; color: var(--ink-2); }
+  .v.refuted { color: var(--refuted); }
+  .v.weakened { color: var(--weakened); }
+  .v.survives { color: var(--survives); }
+
+  .claim {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+  }
+  .claim > div { background: var(--surface); padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; }
+  .claim .eyebrow { color: var(--ink-3); }
+  .claim p { font-size: 0.93rem; color: var(--ink-2); margin: 0; }
+  @media (max-width: 46rem) { .claim { grid-template-columns: 1fr; } }
+
+  .f {
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-left: 3px solid var(--ink-3);
+    padding: 0.95rem 1.15rem;
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .f.kill { border-left-color: var(--refuted); }
+  .f.warn { border-left-color: var(--weakened); }
+  .f.ok { border-left-color: var(--survives); }
+  .f.new { border-left-color: var(--accent); }
+  .f p { font-size: 0.93rem; color: var(--ink-2); max-width: 74ch; margin: 0; }
+  .findings { display: flex; flex-direction: column; gap: 0.7rem; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .chip {
+    font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.07em; text-transform: uppercase;
+    padding: 0.16rem 0.44rem; border: 1px solid var(--rule);
+    color: var(--ink-3); background: var(--surface-2); white-space: nowrap;
+  }
+  .chip.exec { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: var(--accent-soft); }
+  .chip.kill { color: var(--refuted); border-color: color-mix(in srgb, var(--refuted) 40%, transparent); }
+  .chip.warn { color: var(--weakened); border-color: color-mix(in srgb, var(--weakened) 40%, transparent); }
+
+  .tw { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--rule-2); vertical-align: top; white-space: nowrap; }
+  th { font-family: var(--mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); background: var(--surface-2); }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-family: var(--mono); }
+  td.bad { color: var(--refuted); font-weight: 600; }
+  caption { caption-side: bottom; text-align: left; padding: 0.6rem 0.8rem; font-size: 0.8rem; color: var(--ink-3); white-space: normal; }
+
+  ol.rank { list-style: none; padding: 0; counter-reset: r; display: flex; flex-direction: column; gap: 0.85rem; }
+  ol.rank > li {
+    counter-increment: r;
+    display: grid; grid-template-columns: 2rem 1fr; gap: 1rem; align-items: start;
+    background: var(--surface); border: 1px solid var(--rule-2); padding: 1rem 1.15rem;
+  }
+  ol.rank > li::before {
+    content: counter(r);
+    font-family: var(--mono); font-size: 1.1rem; font-weight: 600; color: var(--accent);
+    font-variant-numeric: tabular-nums; line-height: 1.4;
+  }
+  ol.rank .body { display: flex; flex-direction: column; gap: 0.45rem; }
+  ol.rank h3 { font-family: var(--sans); font-size: 0.99rem; font-weight: 650; letter-spacing: 0; }
+  ol.rank p { font-size: 0.92rem; color: var(--ink-2); margin: 0; }
+
+  ul.tight { padding-left: 1.05rem; display: flex; flex-direction: column; gap: 0.4rem; margin: 0; }
+  ul.tight li { font-size: 0.93rem; color: var(--ink-2); max-width: 72ch; }
+  ul.tight li strong { color: var(--ink); font-weight: 620; }
+
+  .note { background: var(--surface-2); border: 1px solid var(--rule); padding: 1.1rem 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; }
+  .note p { font-size: 0.91rem; color: var(--ink-2); margin: 0; }
+  .note.fact-check { border-left: 3px solid var(--weakened); }
+
+  footer { border-top: 1px solid var(--rule); padding-top: 1.25rem; color: var(--ink-3); font-size: 0.83rem; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Modelling audit · the objective function, not its implementation</div>
+  <h1>Is Lacuna optimising the right quantity?</h1>
+  <p class="lede">Six auditors put the four hypotheses to the code and to executed sweeps. One adversarial reviewer then tried to destroy all six. Two of the four hypotheses did not survive contact — and the most serious defect in the system was not one of them.</p>
+  <div class="meta">
+    <span>30 July 2026</span>
+    <span>branch codex/arc6-audio</span>
+    <span>6 auditors · 1 adversarial verifier</span>
+    <span>read-only · no repo writes</span>
+  </div>
+</header>
+
+<aside class="note fact-check" aria-label="Fact-check status">
+  <div class="eyebrow">Fact-checked 9 August 2026</div>
+  <p>This historical audit has been corrected against the current code and primary FSRS sources. Numerical sweeps and simulations whose scripts, seeds and raw outputs were not retained are labelled <strong>unreproduced</strong>, not verified. They may be genuine, but the report does not contain enough evidence to reproduce them.</p>
+</aside>
+
+<section>
+  <div class="thesis">
+    <div class="eyebrow">Verdict</div>
+    <p><strong>The objective is defensible; some inputs to it are not.</strong> Every hypothesis in the brief targeted the estimator — the shape of &Delta;R, its aggregation, its horizon. The estimator is broadly sound. The clearest lower-layer defect is that machine-marked and ordinary recall response times are pooled despite measuring different things. Machine-marked grading is structurally three-valued — Again, Good and Easy — although Hard is unreachable because <code>selfCorrected</code> is hard-coded false.</p>
+    <p>The single most consequential finding was not asked about. Every auditor measured the <code>expectedMarks</code> branch of the objective. The <code>securedTopics</code> branch is thresholded and discontinuous, which makes it far more sensitive to exactly the optimistic-grade assumption the brief was interrogating — and nobody tested it.</p>
+  </div>
+</section>
+
+<section>
+  <div class="ledger">
+    <div class="led">
+      <span class="q">1 · The estimator</span>
+      <span class="v weakened">Survives weakened</span>
+      <span class="n">Systematic bias confirmed; the proposed fix is itself mis-specified.</span>
+    </div>
+    <div class="led">
+      <span class="q">2 · Correlated siblings</span>
+      <span class="v refuted">Refuted</span>
+      <span class="n">Nothing multiplies. Real-course distortion is 0.6 points, display-only.</span>
+    </div>
+    <div class="led">
+      <span class="q">3 · Overlapping assessments</span>
+      <span class="v weakened">Survives weakened</span>
+      <span class="n">The simulation refutes the complaint it was run to support.</span>
+    </div>
+    <div class="led">
+      <span class="q">4 · The synthesised grade</span>
+      <span class="v weakened">Survives weakened</span>
+      <span class="n">Distribution framing is a category error. Hard is unwired, while incompatible response-time units are pooled.</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>1 · The estimator</h2><span class="eyebrow">bias confirmed, remedy rejected</span></div>
+
+  <div class="claim">
+    <div>
+      <div class="eyebrow">As briefed</div>
+      <p>&Delta;R-given-Good is not E[&Delta;R]. The expected value is <code>R·&Delta;R_good + (1&minus;R)·&Delta;R_again</code>. R is already available and deterministic, so the dependency-free property survives the change.</p>
+    </div>
+    <div>
+      <div class="eyebrow">What survived</div>
+      <p>The bias is real, systematic, and monotone in R. The proposed correction is <em>not</em> the right replacement — it is a two-point model of a four-point grade space, and it discards 24.5% of the probability mass.</p>
+    </div>
+  </div>
+
+  <div class="findings">
+    <div class="f warn">
+      <div class="chips"><span class="chip warn">Unreproduced execution</span><span class="chip">Real modules claimed</span></div>
+      <h3>The bias is systematic, not marginal reordering</h3>
+      <p>Sweeping the real <code>forwardSim</code> across horizons and stabilities: rank correlation between the two quantities never drops below 0.993 and pairwise inversions stay under 2.6%. But <code>corr(R, gap)</code> sits between &minus;0.95 and &minus;0.99 at every horizon, and the gap scales four to five times from strong cards to weak ones. The metric consistently over-values weak cards, and the effect roughly triples as the horizon lengthens.</p>
+    </div>
+
+    <div class="tw">
+      <table>
+        <caption>Executed sweep, 42 synthetic cards per horizon, default FSRS-6 weights.</caption>
+        <thead>
+          <tr><th>Horizon</th><th>Spearman &rho;</th><th>Inverted pairs</th><th>Mean gap</th><th>corr(R, gap)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">7 d</td><td class="num">0.9979</td><td class="num">1.05%</td><td class="num">0.047</td><td class="num">&minus;0.945</td></tr>
+          <tr><td class="num">30 d</td><td class="num">0.9989</td><td class="num">0.81%</td><td class="num">0.091</td><td class="num">&minus;0.985</td></tr>
+          <tr><td class="num">90 d</td><td class="num">0.9966</td><td class="num">1.51%</td><td class="num">0.119</td><td class="num">&minus;0.983</td></tr>
+          <tr><td class="num">180 d</td><td class="num">0.9932</td><td class="num">2.56%</td><td class="num">0.131</td><td class="num">&minus;0.976</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="f kill">
+      <div class="chips"><span class="chip kill">Remedy rejected</span><span class="chip">Verifier</span></div>
+      <h3>E[&Delta;R] as specified replaces one mis-specification with another</h3>
+      <p>A two-branch expectation over Good and Again omits the Hard and Easy transitions, including the <code>w[15]</code> and <code>w[16]</code> effects. The original 20.0 / 16.5 / 55.5 / 8.0 distribution and 5.2-million-row corpus attribution could not be traced to an authoritative source and have been removed. A valid four-point expectation would require context-sensitive <em>P(grade | card, history)</em>; substituting a global grade histogram would repeat the same category error at a different layer. The claim that <code>w11</code>&ndash;<code>w14</code> are the least identifiable FSRS weights was also unsupported.</p>
+    </div>
+
+    <div class="f new">
+      <div class="chips"><span class="chip warn">Unreproduced execution</span><span class="chip warn">Not in the brief</span></div>
+      <h3>A sign flip <em>is</em> reachable — but only under optimised weights</h3>
+      <p>The first sweep found zero sign flips in 3,500 cells and correctly scoped that to default weights. The verifier re-swept 3,600 cells under weight vectors the optimiser is permitted to install. Flips appear, concentrated on badly overdue, low-stability, high-difficulty cards — leeches. <code>CLAMP_PARAMETERS</code> allows <code>w11</code> down to 0.001, so <code>w11 = 0.1</code> passes <code>validateFittedWeights</code> unmodified. A user who optimises their deck can install weights under which serving the top-ranked card is expected-harmful.</p>
+    </div>
+
+    <div class="tw">
+      <table>
+        <caption>Sign flips: &Delta;R-given-Good positive while E[&Delta;R] is negative. 3,600 cells, real ts-fsrs.</caption>
+        <thead>
+          <tr><th>Weight vector</th><th>Sign flips</th><th>Rate</th><th>Worst E[&Delta;R]</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>FSRS-6 defaults</td><td class="num">0 / 3600</td><td class="num">0%</td><td class="num">&mdash;</td></tr>
+          <tr><td>w11 0.5 · w12 0.4 · w13 0.15 · w14 0.5</td><td class="num">21 / 3600</td><td class="num">0.6%</td><td class="num bad">&minus;0.008</td></tr>
+          <tr><td>w11 0.1 · w12 0.6 · w13 0.05 · w14 0.1</td><td class="num">176 / 3600</td><td class="num">4.9%</td><td class="num bad">&minus;0.056</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="f new">
+      <div class="chips"><span class="chip">Traced in code</span><span class="chip warn">Unmeasured</span></div>
+      <h3>The branch nobody tested is the one most exposed</h3>
+      <p><code>securedTopics</code> is not a smooth marginal gain. It scores <code>&minus;1</code> when the card is already above threshold, <code>1 + rNo</code> when a review would push it above, and <code>rYes</code> otherwise — a discontinuous jump at the 0.90 line, driven by a <code>rYes</code> that assumes Good. Rank correlation measured on the <code>expectedMarks</code> branch says nothing about it. An optimistic <code>rYes</code> pushes cards across the band boundary, and a discrete misclassification is a far larger error than a small ranking gap.</p>
+    </div>
+
+    <div class="f kill">
+      <div class="chips"><span class="chip kill">Reframed</span></div>
+      <h3>The starvation hypothesis inverts, then dissolves</h3>
+      <p>Weak cards are not outbid — the bias above <em>favours</em> them. There is no anti-starvation mechanism (no round-robin, no aging, no due-date gating in the Learn session, and <code>newCardsPerDay</code> unset means unlimited), but the surviving vector is new cards out-ranking review cards, because a never-seen card has <code>rNo = 0</code> and therefore a large &Delta;R. The verifier's rebuttal stands: under the stated objective a never-seen card genuinely <em>is</em> the highest-marginal-gain item. That looks wrong only because a new card's true P(Good) is far below a review card's — which is the Good-assumption again, not a separate defect.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>2 · Correlated siblings</h2><span class="eyebrow">refuted</span></div>
+
+  <div class="claim">
+    <div>
+      <div class="eyebrow">As briefed</div>
+      <p>Sequences generate overlapping cloze cards from one ordered definition; FSRS treats them as independent. Does the exam-day forecast multiply per-card recall across siblings?</p>
+    </div>
+    <div>
+      <div class="eyebrow">What survived</div>
+      <p>No. Nothing multiplies. The aggregate is an arithmetic mean, the distortion on a real course is 0.6 points, and the quantity is display-only — no decision reads it.</p>
+    </div>
+  </div>
+
+  <div class="findings">
+    <div class="f kill">
+      <div class="chips"><span class="chip">Traced in code</span><span class="chip kill">Premise refuted</span></div>
+      <h3>The multiplication never happens</h3>
+      <p><code>averagePredictedRetrievability</code> is an arithmetic mean; <code>masteryFraction</code> is a threshold count. A naive independent product for a 20-item sequence at R = 0.9 would report 0.12. The app reports 0.90. The failure mode the brief anticipated is absent from the codebase.</p>
+    </div>
+
+    <div class="f kill">
+      <div class="chips"><span class="chip warn">Unreproduced execution</span><span class="chip kill">Severity overstated</span></div>
+      <h3>The headline number refutes its own severity claim</h3>
+      <p>The 11.8-point overstatement comes from a single hand-built 20-item sequence with an assumed serial-position dip — a distribution chosen so that mean and min diverge. On a realistic 420-card mixed course the gap is <strong>0.6 points</strong>, because clusters are roughly a tenth of the pool. The uniform-R case is degenerate: mean, min and geometric mean all coincide at 0.90.</p>
+    </div>
+
+    <div class="f kill">
+      <div class="chips"><span class="chip">Traced in code</span></div>
+      <h3>Nothing downstream reads it</h3>
+      <p>The mean does not feed <code>scoreCard</code>, and session completion tests <code>masteryFraction</code> or raw &Delta;R. The only decision the number could influence is "stop studying", and it is 0.6 points off. The comparative-reading defence in the brief is technically wrong — mean and min are not monotone transforms of one another over time — but it does not matter, because no decision depends on the difference.</p>
+    </div>
+
+    <div class="f warn">
+      <div class="chips"><span class="chip">Traced in code</span><span class="chip warn">Real, unrelated</span></div>
+      <h3>No sibling burying exists — but the fix is authoring, not modelling</h3>
+      <p>Eligibility, cooldown and session assembly were read in full. The only spacing mechanism is keyed on card id and fires only after a failed grade. Items 14, 15 and 16 of one sequence can appear in a single sitting. However: if each generated card is separately gradable, they <em>are</em> independent marks and linearity of expectation is correct. A sibling discount is right only if the exam scores the sequence all-or-nothing, and nothing in the data model records which. That is a per-note authoring flag, not a change to the objective.</p>
+    </div>
+
+    <div class="f ok">
+      <div class="chips"><span class="chip">Corrections</span></div>
+      <h3>Two corrections to the prior audit</h3>
+      <p>Cloze is not a sibling case at all — one card hides every deletion simultaneously, so there is exactly one FSRS card per note. And the reversible-pair creation site is <code>share.ts:865-879</code>; the previously cited <code>767-773</code> is the packing-side mirror detector, which does not create cards.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>3 · Overlapping assessments</h2><span class="eyebrow">survives, narrowly</span></div>
+
+  <div class="claim">
+    <div>
+      <div class="eyebrow">As briefed</div>
+      <p>For a card covered by a mock in three weeks and a final in four months, what does selecting one cost on the other? Is there a clamp? What does the learner see?</p>
+    </div>
+    <div>
+      <div class="eyebrow">What survived</div>
+      <p>Choosing the mock costs nothing on the final. The only strictly-dominated action is choosing the final. Two small local defects survive; the framing does not.</p>
+    </div>
+  </div>
+
+  <div class="tw">
+    <table>
+      <caption>Simulated GCSE-shaped course: 1,200 cards, 40 lessons, mock day 21 covering lessons 1&ndash;24, final day 120 covering all. Executed against the real selection and scheduling modules.</caption>
+      <thead>
+        <tr><th>Learner selects</th><th>R @ mock, overlap</th><th>R @ final, overlap</th><th>Cost on the other</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>The mock</td><td class="num">0.938</td><td class="num">0.933</td><td class="num">&minus;0.002 &middot; noise</td></tr>
+        <tr><td>The final</td><td class="num">0.889</td><td class="num">0.935</td><td class="num bad">&minus;0.049 on the mock</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="findings">
+    <div class="f kill">
+      <div class="chips"><span class="chip warn">Unreproduced execution</span><span class="chip kill">Framing refuted</span></div>
+      <h3>The simulation refutes the complaint it was run to support</h3>
+      <p>Choosing the mock costs +0.002 R on the final — nothing. The app's <em>default</em> path, unselected practice, already resolves each card to its nearest applicable future checkpoint, so the default behaviour is already near-optimal. Blindness is reachable only by an explicit learner override, documented as deliberate and non-retained at <span class="ref">SPEC.md:416</span>. Attack (c) lands: this respects a stated preference. Arguing otherwise is close to arguing the learner should not be allowed to choose.</p>
+    </div>
+
+    <div class="f warn">
+      <div class="chips"><span class="chip">Traced in code</span><span class="chip warn">Magnitudes unreliable</span></div>
+      <h3>The 4.9-point cost is directionally sound and numerically soft</h3>
+      <p>The simulation grades success as Good and failure as Again, so it inherits the exact assumption section 1 interrogates. Because both arms share that policy and the headline result is a near-tie, the <em>direction</em> survives the circularity. The magnitudes do not. The 35.5-expected-marks figure should not be quoted in a remediation plan.</p>
+    </div>
+
+    <div class="f ok">
+      <div class="chips"><span class="chip">Traced in code</span><span class="chip">Survives</span></div>
+      <h3>Two genuine local defects</h3>
+      <p>Selecting an assessment builds the exam-date context with an empty assessment list and empty lesson map, discarding per-card resolution — so a card covered by an <em>earlier</em> checkpoint than the selected one receives a horizon that is too far out. That is an internal inconsistency with the unselected path, not a preference. Separately, once the selected date passes the practice pool returns empty with "You are caught up" and no rollover to the next covering assessment. Both are small, local and worth fixing.</p>
+    </div>
+
+    <div class="f warn">
+      <div class="chips"><span class="chip">Traced in code</span></div>
+      <h3>No clamp, and no disclosure</h3>
+      <p>Horizon feeds ranking and mastery only; it never touches the due date, which comes from ts-fsrs driven by grade and stability. Intervals can run past a covering assessment. The picker offers "Revise for {assessment}" under "An upcoming assessment overlaps material you have reached", with no overlap indicator and no statement of what the choice costs. Given the measured cost is one-directional, a disclosure is only warranted on the <em>final</em>-selecting branch.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>4 · The grade the scheduler receives</h2><span class="eyebrow">the real damage</span></div>
+
+  <div class="claim">
+    <div>
+      <div class="eyebrow">As briefed</div>
+      <p>Synthesised grades versus the human 1&ndash;4 distribution FSRS-6 was fitted on; per-deck calibration pooling card types; contamination of the review log by known auto-marker bugs.</p>
+    </div>
+    <div>
+      <div class="eyebrow">What survived</div>
+      <p>The distribution comparison is a category error. The narrower defect is still real: Hard is unreachable, Easy remains possible only for full marks under three seconds, and machine-marked production times are pooled into the ordinary recall calibration.</p>
+    </div>
+  </div>
+
+  <div class="findings">
+    <div class="f kill">
+      <div class="chips"><span class="chip kill">Category error</span><span class="chip">Verifier</span></div>
+      <h3>Distribution mismatch is not, by itself, a defect</h3>
+      <p>FSRS conditions its transitions on review history and grade, so a different marginal grade histogram alone does not prove bias. That statement requires stable grade semantics and conditional relationships, however. Lacuna manufactures grades from response time and machine-awarded marks, so semantic and measurement shift remain legitimate concerns even when the marginal histogram proves nothing. The previously quoted 5.2-million-row corpus and exact grade percentages had no traceable authoritative source.</p>
+    </div>
+
+    <div class="f kill">
+      <div class="chips"><span class="chip kill">Prior audit refuted</span><span class="chip exec">Verified independently</span></div>
+      <h3>The timer does not run through feedback — and the replacement claim is also wrong</h3>
+      <p>The response time is frozen at the question-to-answer transition, before any grade button exists, and a comment in the source says so explicitly. Self-graded timing is clean. But machine-marked timing is not "inflated by feedback" either — its guard requires the question phase, and the time is computed on the first line of the handler. Nothing leaks feedback time anywhere. The actual defect is a <strong>units mismatch</strong>: machine-marked time measures answer <em>production</em> (typing several lines of working) while self-graded time measures recall <em>latency</em>, and both are folded into one per-deck pool with no card-kind gate. Any remediation written against "the timer keeps running" would fix nothing.</p>
+    </div>
+
+    <div class="f kill">
+      <div class="chips"><span class="chip warn">Synthetic scenario</span><span class="chip warn">Mechanism confirmed</span></div>
+      <h3>Pooling incompatible timings can collapse the adaptive thresholds</h3>
+      <p>Pooling ordinary recall latency with typed-answer production time is a real defect. Under the synthetic component moments assumed below — recall mean 5s and typed-answer mean 60s — the Easy threshold becomes negative and the Hard threshold rises sharply. Those assumptions were not measured from Lacuna users, so the table demonstrates a possible failure mode, not the current production distribution. Machine-marked grades bypass these adaptive thresholds; the contamination affects later ordinary self-graded reviews. “Always Good” was therefore too absolute.</p>
+    </div>
+
+    <div class="tw">
+      <table>
+        <caption>Threshold collapse. Clean recall pool (&mu;=5s, &sigma;=3s) contaminated at fraction p by typed answers (&mu;=60s). Negative Easy threshold is unreachable by construction.</caption>
+        <thead>
+          <tr><th>Contamination p</th><th>Pooled &mu;</th><th>Pooled &sigma;</th><th>Easy threshold</th><th>Hard threshold</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">0</td><td class="num">5.0 s</td><td class="num">3.0 s</td><td class="num">2.75 s</td><td class="num">7.25 s</td></tr>
+          <tr><td class="num">0.05</td><td class="num">7.75 s</td><td class="num">12.4 s</td><td class="num bad">&minus;1.52 s</td><td class="num bad">17.0 s</td></tr>
+          <tr><td class="num">0.10</td><td class="num">10.5 s</td><td class="num">16.8 s</td><td class="num bad">&minus;2.08 s</td><td class="num bad">23.1 s</td></tr>
+          <tr><td class="num">0.20</td><td class="num">16.0 s</td><td class="num">22.2 s</td><td class="num bad">&minus;0.65 s</td><td class="num bad">32.7 s</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="f kill">
+      <div class="chips"><span class="chip exec">Verified</span><span class="chip warn">Found by the verifier</span></div>
+      <h3>Machine-marked grading emits three of the four grades</h3>
+      <p><code>selfCorrected</code> is hard-coded <code>false</code> at both call sites, so grade 2 is dead code for machine-marked items. Full marks in under 3.0 seconds do produce grade 4, and the test suite asserts that boundary explicitly. The function therefore emits <strong>{1, 3, 4}</strong>. Easy is probably rare for substantial typed work, but it is not structurally unreachable.</p>
+    </div>
+
+    <div class="f warn">
+      <div class="chips"><span class="chip">Traced in code</span><span class="chip warn">Partially mitigated</span></div>
+      <h3>Self-optimisation would absorb this, if it ever ran and if the labels held still</h3>
+      <p>A stationary grade stream can be refitted, but “absorb” was too confident: aggregate calibration does not guarantee that one parameter vector handles heterogeneous card types or changed grade semantics. Parameters exclusive to absent grades are unidentified and harmless only while those grades remain absent. The optimiser still needs 1,000 pooled reviews and runs only from settings, while the lifetime calibration window changes composition as the deck's card mix changes.</p>
+    </div>
+
+    <div class="f warn">
+      <div class="chips"><span class="chip">Traced in code</span><span class="chip">Corrected derivation</span></div>
+      <h3>The raw grade delta is not the complete difficulty transition</h3>
+      <p>The raw delta is <code>&minus;w[6]·(g&minus;3)</code>, but FSRS then applies linear damping, mean reversion and bounds. Good can reduce difficulty when the current value lies above the reversion target, and Again need not increase it at the upper boundary. The earlier “ratchet” conclusion was false because it treated one term as the complete transition. Lacuna delegates the full update to <code>ts-fsrs</code>.</p>
+    </div>
+
+    <div class="f warn">
+      <div class="chips"><span class="chip">Traced in code</span><span class="chip">Decisive</span></div>
+      <h3>Contamination is identifiable but not recoverable</h3>
+      <p>The review log is append-only; undo reverses only the immediately previous attempt. Affected rows can be located exactly from the stored marks fields. But the grades cannot be recomputed: <code>selfCorrected</code> has no field on the log at all, and the stored response time <em>is</em> the mismatched primitive rather than a clean input badly derived from. One genuine remedy exists — the per-deck performance record is a pure Welford fold over history, so it can be deterministically rebuilt, and rebuilt while excluding machine-marked entries from the pool.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Remediation, ranked</h2><span class="eyebrow">what the verifier would actually fix</span></div>
+
+  <ol class="rank">
+    <li>
+      <div class="body">
+        <h3>Gate the response-time pool by card kind, and resolve the dead Hard branch</h3>
+        <p>Typed-production times are pooled with recall latencies and can distort the adaptive thresholds used by later ordinary reviews. Separately, <code>selfCorrected</code> is hard-coded false at both call sites — wire it or delete it, but do not leave a grade branch that cannot fire. The per-deck performance record is deterministically rebuildable from history, so the calibration record can be rebuilt while excluding machine-marked timings.</p>
+      </div>
+    </li>
+    <li>
+      <div class="body">
+        <h3>Measure the Good-assumption on the <code>securedTopics</code> branch before changing anything</h3>
+        <p>The thresholded, discontinuous branch is far more sensitive to an optimistic <code>rYes</code> than the smooth branch every auditor measured. Report band-misclassification rate, not rank correlation. This is the one place where the brief's original hypothesis is likely to be <em>understated</em> rather than overstated.</p>
+      </div>
+    </li>
+    <li>
+      <div class="body">
+        <h3>Guard against expected-harmful serves under optimised weights</h3>
+        <p>A sign flip is unreachable under FSRS-6 defaults but reachable under weight vectors the optimiser is permitted to install. The cheap guard is independent of whatever the primary ranking uses: refuse to serve a card whose expected &Delta;R is negative. This does not require adopting E[&Delta;R] as the ranking metric.</p>
+      </div>
+    </li>
+    <li>
+      <div class="body">
+        <h3>Restore per-card horizon resolution when an assessment is selected, and handle the passed date</h3>
+        <p>Two small local defects: the empty assessment list discards per-card resolution so cards covered by an earlier checkpoint get too distant a horizon; and once the selected date passes the pool empties with no rollover. Neither is "the model blends assessments" — fix them as the narrow bugs they are.</p>
+      </div>
+    </li>
+  </ol>
+
+  <div class="note">
+    <div class="eyebrow">Do not put these in a plan</div>
+    <ul class="tight">
+      <li><strong>The sibling aggregation.</strong> 0.6 points on a real course, display-only, and no decision reads it. If sequence-level grading matters, that is a per-note authoring flag, not a change to the objective.</li>
+      <li><strong>"Our grade distribution differs from the corpus."</strong> A marginal histogram mismatch alone does not establish bias; changed grade semantics or conditional relationships still can.</li>
+      <li><strong>"Assessment horizons should be blended."</strong> The default path already picks the nearest checkpoint, choosing the mock costs nothing on the final, and the override is a documented deliberate design position.</li>
+      <li><strong>E[&Delta;R] as a two-point expectation.</strong> A four-grade replacement needs a defensible per-card grade-probability model. A global corpus histogram is not one.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  Six auditors and one adversarial verifier, all read-only; no repository files were written. Findings are labelled by how they were established — executed against the real modules, traced in code, or reasoned. Where an auditor's claim did not survive the verifier, the verifier's position is the one reported.
+</footer>
+
+</div>
+
+</body></html>

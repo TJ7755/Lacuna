@@ -743,6 +743,517 @@ the product's local-only privacy promise. Do not smuggle it into the local compa
 only after an explicit product decision covering authentication, per-user routing, consent,
 hosting and data retention.
 
+## 2.13 Follow-up — programmatic operation and release scenarios
+
+**Goal.** Lacuna should be operable and verifiable through its real domain APIs without forcing an
+agent or release tester to reproduce every data mutation through the GUI. The existing MCP tool
+contract is the foundation: it already reuses repository functions, validators, course scoping and
+consent. Do not add a parallel REST API or a second data-access implementation.
+
+The programmatic surface and GUI automation have different jobs:
+
+1. **MCP builds and inspects scenarios.** It creates disposable courses, lessons, notes, cards,
+   sequences, occlusions and assessments, then reads the resulting content, due pools, weak cards,
+   statistics and diagnostics.
+2. **A test-only scenario runner performs human-only state transitions.** Review recording, undo,
+   first-run seeding, backup restoration and other deliberately non-MCP operations may be exposed to
+   automated integration tests, but never added to the normal agent tool surface merely for test
+   convenience. It must call the same application services as the UI rather than writing IndexedDB
+   records directly.
+3. **GUI automation verifies interface behaviour.** Route transitions, focus trapping, keyboard and
+   touch input, drag-and-drop, responsive layout, themes, reduced motion and visual regressions still
+   require the web or Electron renderer. MCP success is not evidence that a control is usable.
+4. **Human review is reserved for judgement.** Typography, hierarchy, animation quality and platform
+   feel remain a short visual sign-off rather than hundreds of repetitive data-entry steps.
+
+The attachable `lacuna-mcp` companion in §2.12 must land first so scenario setup can connect to a
+normally running application. After that, provide a release-scenario command that:
+
+1. creates an isolated profile or disposable database;
+2. seeds a canonical course containing every supported content and assessment type;
+3. runs named state transitions through MCP and the test-only runner;
+4. verifies persisted state and invariants through MCP reads;
+5. opens exact renderer routes for screenshot and interaction assertions; and
+6. destroys only the isolated profile after producing a machine-readable report and evidence index.
+
+Keep destructive targeting explicit and recoverable. The runner must reject the ordinary user
+profile, unresolved paths, broad deletion targets and schema-version mismatches. It must never expose
+raw FSRS field writes or let an agent record recall on a user's behalf.
+
+**Release outcome.** Most of `WEBSITE_TEST_CHECKLIST.md` becomes repeatable integration coverage.
+The manual pass remains authoritative only for behaviour that is genuinely visual, physical or
+platform-dependent. Each checklist item must state whether its evidence came from a programmatic
+scenario, GUI automation or human inspection; `not run` must never be treated as `pass`.
+
+## 2.14 Follow-up — polished MCP product surface
+
+**Product outcome.** An MCP-connected assistant should be able to perform roughly 70–80% of
+Lacuna's non-visual user operations through the real domain layer. It should build and maintain
+courses, organise material, prepare assessments, inspect learning state, manage imports and
+backups, and conduct carefully constrained study sessions. Perception, subjective judgement,
+physical interaction and authentic recall remain human- or GUI-owned.
+
+This is an expansion of the transport-independent contract under `src/mcp/`, not permission to add
+a parallel REST API, a second repository implementation or generic GUI controls. Expose domain
+verbs such as `archive_course`; never reproduce brittle browser automation as
+`click_course_menu`/`click_archive`.
+
+### 2.14.1 Current polish audit
+
+The existing 45-tool surface has sound repository reuse, validation, course-scope resolution and
+consent, but it is not yet a finished integration:
+
+1. The stdio lifecycle requires the MCP host to cold-start Electron and cannot reliably attach to
+   an already-running Lacuna process. §2.12's companion is therefore a prerequisite.
+2. Tool results are JSON-serialised into text instead of being returned as MCP
+   `structuredContent` backed by declared output schemas.
+3. Tools do not expose complete standard annotations for read-only, destructive and idempotent
+   behaviour.
+4. Long-running imports, backups and optimisation have no progress reporting or cancellation.
+5. Consent is shown out-of-band in Lacuna while the client appears to wait without useful status.
+6. Every call is attributed to the generic `stdio-mcp-client`; Settings and consent cannot identify
+   the actual connected client.
+7. Large result sets have no consistent cursor pagination.
+8. Mutating tools do not consistently accept idempotency keys or optimistic revision tokens.
+9. The server exposes tools only: it does not use MCP resources for read-heavy context or
+   user-controlled prompts for named workflows.
+10. Resource subscriptions and change notifications do not exist, so clients must poll and can work
+    from stale state.
+11. The smoke scripts are machine-specific: `scripts/mcp-smoke.mjs` hard-codes the repository path,
+    and `scripts/mcp-smoke-click-allow.mjs` defaults to two approvals although the current flow needs
+    three (global write, course write and destructive).
+12. Documentation still records the earlier 35-tool smoke result in places although the live server
+    now lists 45 tools.
+
+### 2.14.2 Protocol and connection foundation
+
+Complete these before broadening the action inventory:
+
+1. Land the attachable `lacuna-mcp` companion from §2.12 with authenticated user-local IPC,
+   reconnect support and explicit app-not-running/renderer-not-ready/stale-session errors.
+2. Identify every connection with a client name, version and ephemeral connection id. Include that
+   identity in consent prompts, notices, Settings and diagnostics.
+3. Return both concise human-readable text and typed `structuredContent`; declare an output schema
+   for every tool and validate it before sending a result.
+4. Add standard tool annotations wherever the pinned SDK and negotiated protocol version support
+   them. Lacuna's own `requiredScope` remains authoritative for enforcement.
+5. Standardise machine-readable errors with stable kinds, entity ids and retryability metadata while
+   retaining concise user-facing messages. Never leak stack traces or repository snapshots.
+6. Add opaque cursor pagination to card, note, search, review-log and task-style results. Never make a
+   client load an entire large course merely to find the next page.
+7. Accept an optional idempotency key on create/import/publish/backup operations. Store only the
+   bounded data required to replay the result safely, scoped to the live connection or explicit
+   operation lifetime.
+8. Include entity revision tokens on reads and accept `ifRevision` on consequential updates. Return
+   a conflict with current revision metadata rather than silently overwriting newer user work.
+9. Emit progress notifications for long operations and honour cancellation at safe transaction
+   boundaries. Cancellation must never leave a partial import, restore or optimisation applied.
+10. Use negotiated form elicitation for simple, non-sensitive missing inputs where the client
+    supports it. Keep Lacuna's in-app consent for privileged actions; client elicitation is not a
+    substitute for the trusted permission boundary.
+11. Make capability support explicit in `lacuna.get_server_info`: protocol version, tool-surface
+    version, resources/prompts support, progress/cancellation support and relevant feature flags.
+12. Replace the hard-coded smoke setup with portable path resolution and a fresh disposable profile.
+    The smoke pass must derive its expected consent count from the scenario rather than duplicating
+    it as a magic number.
+
+Relevant protocol features are documented by MCP at:
+
+- <https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation>
+- <https://modelcontextprotocol.io/specification/2025-06-18/basic/utilities/progress>
+- <https://modelcontextprotocol.io/specification/2025-11-25/schema>
+
+Keep the pinned SDK/protocol compatibility matrix in the repository. Do not assume every client
+implements every optional capability merely because the latest specification defines it.
+
+### 2.14.3 Resources and user-controlled prompts
+
+Use resources for stable or subscribable context rather than inflating the tool list with dozens of
+read-only variants. Initial resource templates:
+
+```text
+lacuna://courses/{courseId}/outline
+lacuna://courses/{courseId}/stats
+lacuna://courses/{courseId}/due
+lacuna://courses/{courseId}/assessments
+lacuna://lessons/{lessonId}/notes
+lacuna://cards/{cardId}
+lacuna://schemas/working-mark-scheme
+lacuna://schemas/import-formats
+```
+
+Resource reads use the same course-scoped implicit-read grants as tools. Subscriptions may emit
+`resources/updated` after committed repository changes; coalesce bursts and never notify before a
+transaction commits. Binary assets remain opt-in resource links or explicitly approved downloads,
+not automatic inline disclosure.
+
+Add a small set of user-invoked prompts for repeatable workflows:
+
+- **Build a course from notes** — inspect source material, propose a course outline, then stage
+  content before any write.
+- **Audit this course** — report missing coverage, duplicate cards, malformed material and weak
+  areas without changing data.
+- **Prepare for an assessment** — inspect exact coverage and produce or update a revision plan after
+  approval.
+- **Revise weak topics** — explain the eligible weak-card set and start a constrained study session
+  only when requested.
+- **Review an incoming course update** — run the lineage diff and guide explicit conflict choices.
+
+Prompts orchestrate resources and tools; they do not receive hidden permissions and do not contain a
+second implementation of domain rules.
+
+### 2.14.4 Expanded action inventory
+
+#### Courses, settings and path authoring
+
+- Archive, restore, duplicate and reorder courses.
+- Read and update the complete supported course settings contract: objective, scheduling limits,
+  retention/fuzz/maximum interval/steps, leech policy, unlock mode, auto-practice thresholds,
+  default lesson view, exam board and specification.
+- Reorder lessons and move a lesson to an explicit stable path position.
+- Create, update, reposition and delete manual practice nodes, including filters and randomisation.
+- Preview unlock/path consequences before applying a structural change.
+- Return affected entity ids and a bounded undo action for reversible mutations.
+
+Do not expose one tool per scalar setting. Use cohesive read/update schemas with optional fields,
+field-level validation errors and optimistic revision checks.
+
+#### Notes and lesson membership
+
+- Reorder, move, duplicate and delete notes.
+- Link and unlink an existing card from a lesson without changing its scheduling identity.
+- Move a card's primary lesson using repository-owned invariants.
+- Preview Markdown validation and resolved local asset references without requiring a save.
+
+Device-local note annotations remain excluded from normal MCP reads and writes. Their privacy model
+would be destroyed if an assistant could silently enumerate them.
+
+#### Cards and batch authoring
+
+- Bulk tag, move, duplicate, reverse, link, unlink, suspend and flag cards.
+- Add an explicit reverse-card operation that reports the created relationship and refuses accidental
+  repeated reversal through an idempotency key.
+- Validate a proposed classic, cloze, numeric or working item without saving it.
+- Create a batch-staging session; add, edit, revalidate, reject and accept individual items; accept
+  all clean items; report duplicates and isolated validation failures structurally.
+- Expose revision context for a rejected machine-marked item without sending content to any external
+  model itself.
+
+Generated sequence/occlusion cards remain read-only through card tools. Mutate them through their
+owning generator so stable identities and scheduling state survive regeneration.
+
+#### Sequences and occlusions
+
+- Expose sequence presets, mode changes, speaker/chunk metadata, label-card options and regeneration
+  previews.
+- Return generated-card diffs before sequence updates: create, preserve, update and remove counts
+  with stable ids.
+- Permit asset ingestion only from an explicitly approved local file or client-provided content
+  block, with size/type validation, hashing and deduplication.
+- Preview occlusion regeneration and region validation before applying it.
+- Preserve the existing no-arbitrary-filesystem-access rule: roots must be explicit and file targets
+  must resolve inside the approved selection.
+
+#### Assessments and revision plans
+
+- Reorder assessments and expose complete prefix/custom coverage and exclusions.
+- Create, update, replan, archive and delete revision plans.
+- Start and close individual revision windows; return covered, improved, parked and not-reached
+  summaries.
+- Explain material replanning changes and preserve completed history.
+- Expose the ordinary-Practice fallback reason when the short-term model is unavailable.
+
+#### Search and analytics
+
+- Search courses, lessons, notes and cards using the application's real text, tag, due/new/leech,
+  flagged and suspended filters.
+- Return typed result locations that other tools can consume without scraping UI routes.
+- Expose forecasts, exam-day prediction, calibration accuracy, review volume, study time, retention
+  by age, leech counts, machine-marked criteria and course comparisons as structured reads.
+- Keep chart rendering out of MCP; the client receives data and labels, not screenshots pretending to
+  be accessible analytics.
+
+#### Import, export, sharing and backups
+
+- Detect and preview CSV, TSV, Anki text, Markdown, JSON, share-code, full-backup and APKG input.
+- Expose field mapping, delimiter/header decisions, skipped records and unsupported material before
+  acceptance.
+- Keep import acceptance atomic and idempotent.
+- Export course/share/full-backup and limited formats with explicit completeness metadata and warnings
+  about omitted assets or scheduling history.
+- Publish course revisions, inspect lineage, preview merges and apply explicit conflict choices.
+- Create, list, inspect and delete restore points.
+- Restore backups only after a preflight summary and fresh destructive confirmation; create a
+  pre-restore snapshot first.
+
+Large generated artefacts should be returned as resource links or explicitly saved files, not dumped
+as enormous base64 strings inside ordinary tool results.
+
+#### Maintenance and optimisation
+
+- Report storage quota, persistent-storage state, asset references, orphan candidates and database
+  integrity diagnostics.
+- Run safe asset garbage collection with a preview and recoverable transaction where practical.
+- Run scheduling optimisation as a cancellable long operation with progress, eligibility reasons,
+  held-out validation metrics and an explicit apply step.
+- Never apply new weights merely because training completed; require the existing validated-
+  improvement gate.
+
+### 2.14.5 Safe study-session contract
+
+Do not expose the repository's raw `recordReview`/`undoReview` functions. A general-purpose agent
+must not claim that the user remembered something and poison their FSRS history. Instead, add a
+session-scoped façade only after the underlying study engine is extracted into shared application
+services:
+
+```text
+lacuna.start_study_session
+lacuna.get_current_prompt
+lacuna.reveal_answer
+lacuna.submit_explicit_user_response
+lacuna.undo_last_response
+lacuna.get_session_report
+lacuna.end_study_session
+```
+
+Rules:
+
+1. `start_study_session` returns an opaque, short-lived token bound to one client, course, mode and
+   eligibility snapshot. It does not return the whole queue for client-side manipulation.
+2. Lacuna owns timing. The client cannot supply response times or arbitrary grades.
+3. Classic/cloze self-grading records only an explicit user assertion relayed by the client. The
+   client must not infer recall from its own answer or explanation.
+4. Numeric and working answers may be marked by Lacuna's deterministic checker. The result includes
+   marks, criteria and dispute actions; the client cannot silently override the verdict.
+5. Manual four-grade mode accepts only a grade the user explicitly selected. Silent grading derives
+   the grade from the user's Yes/No response and Lacuna-owned timing.
+6. The first history-writing response in a session requires explicit session-level consent unless
+   the user started the session from Lacuna and delegated that exact live session.
+7. Undo calls the real session engine and restores scheduling, progress, calibration, cooldown and
+   review history atomically.
+8. Session expiry, application restart, stale token, changed card and concurrent grading are explicit
+   conflicts. Never guess how to merge them.
+9. The assistant may explain feedback and ask the user for an answer; it may not answer and grade the
+   card on the user's behalf.
+10. Focus, swipe, keyboard, Pomodoro and animation behaviour remain GUI concerns even when the domain
+    session is MCP-driven.
+
+### 2.14.6 Permission tiers
+
+Retain ordinal, course-scoped grants but refine their presentation and operation boundaries:
+
+- **Read** — implicit per course with a visible notice; covers resources and read-only tools.
+- **Write** — explicit consent; covers ordinary reversible content and settings changes.
+- **Destructive** — fresh or appropriately scoped consent plus a preflight summary; covers permanent
+  deletion, restore/replace and broad bulk mutation.
+- **Study history** — separate short-lived session consent; never implied by ordinary write access.
+- **Local file access** — explicit user-selected roots/files for the duration required; never a broad
+  home-directory grant.
+
+The server, not the client or tool description, enforces the tier. Grants expire with the appropriate
+connection/session lifetime and remain revocable in Settings. Persistent blanket grants are out of
+scope until there is a separately reviewed identity and threat model.
+
+### 2.14.7 Permanent exclusions
+
+Do not expose:
+
+- arbitrary IndexedDB queries, table access or record patches;
+- raw per-card FSRS stability, difficulty or review-log writes;
+- fabricated review history or automatic subjective self-grading;
+- generic click/type/navigate/window-control tools;
+- unrestricted filesystem paths or implicit folder crawling;
+- silent backup replacement, course publishing or merge conflict resolution;
+- repository undo snapshots or other internal recovery payloads;
+- hidden durable credentials or persistent blanket permissions; or
+- a network-reachable remote MCP endpoint without the explicit privacy, authentication, routing,
+  hosting and retention decision already required by §2.12.
+
+### 2.14.8 Delivery sequence
+
+1. **Connection and harness polish** — companion, client identity, portable smoke profile, current
+   tool-count assertions and attach/reconnect integration tests.
+2. **Protocol correctness** — structured outputs, output schemas, annotations, stable errors,
+   pagination, idempotency, optimistic revisions, progress and cancellation.
+3. **Resources and prompts** — course/lesson/card/stat resources, subscriptions and the five named
+   user workflows.
+4. **Low-risk action parity** — search, analytics reads, course settings, reordering, note/card
+   membership and practice-node CRUD.
+5. **Authoring workflows** — batch staging, sequence/occlusion previews and constrained asset
+   ingestion.
+6. **Assessments and revision plans** — plan/window lifecycle and summaries.
+7. **Portability and sharing** — unified imports, exports, backups, restore points, publishing and
+   lineage review.
+8. **Maintenance and optimisation** — diagnostics, storage maintenance and cancellable training/apply
+   flow.
+9. **Safe study sessions** — only after shared session services, session consent and atomic undo are
+   proven independently of MCP.
+10. **Release-scenario integration** — use §2.13's isolated runner to prove the combined surface and
+    reduce the manual checklist without weakening its GUI/human boundaries.
+
+Each step ships with handler tests against the transport-independent contract, bridge/permission
+tests, and at least one real-client integration scenario through the companion. Do not batch a large
+tool inventory behind untested consent plumbing.
+
+### 2.14.9 Acceptance criteria
+
+1. A normally launched Lacuna accepts multiple reconnecting local MCP clients without losing the
+   single renderer-owned database or confusing their grants.
+2. Every tool has validated input/output schemas, accurate annotations, stable error semantics and
+   current documentation.
+3. Re-running any operation documented as idempotent produces no duplicate mutation.
+4. Conflicting writes fail with actionable revision metadata instead of overwriting newer work.
+5. Long operations report monotonic progress, support safe cancellation and leave no partial state.
+6. Resources respect course grants and notify subscribed clients only after committed changes.
+7. Destructive, restore, publish and study-history actions cannot complete without their required
+   trusted consent path.
+8. An agent can complete the supported non-visual workflows without scraping UI text or inventing
+   internal ids/routes.
+9. The web build remains free of the Electron MCP SDK and local companion transport.
+10. The expanded surface achieves approximately 70–80% non-visual operation coverage without adding
+    raw database access, fabricated recall or generic GUI automation.
+
+### 2.14.10 MCP interaction and presentation polish notes
+
+These are product requirements, not decorative cleanup to postpone until after the tool inventory.
+The current server can complete a call correctly while still leaving the user unsure what connected,
+what is waiting, what changed or how to recover.
+
+#### Connection and setup
+
+1. Settings must show **Starting**, **Running**, **Stopped**, **Unavailable** and **Error** as distinct
+   states. The current `null` status renders as `Stopped`, `0 tools` and `Surface v0` while the first
+   request is loading, which reports a false failure.
+2. Show the actual connected clients, not merely server status: name, version, connection time, last
+   activity, current operation and whether reconnect is healthy.
+3. Provide copyable, client-specific configuration for supported local MCP hosts. Users should not
+   have to find an executable path or construct stdio arguments manually.
+4. Add a connection test that reports each stage separately: companion found, Electron reached,
+   renderer ready, database open, tool contract compatible.
+5. Show actionable recovery for stale companion, incompatible tool-surface version and renderer-not-
+   ready failures. `Could not read MCP server status` is accurate but useless.
+6. Do not display internal protocol trivia as the primary status. `Surface v2` belongs in expandable
+   diagnostics; connection health and the connected client's identity matter more.
+7. Keep a compact copyable diagnostics block containing app version, companion version, negotiated
+   protocol version, tool-surface version, tool count and last connection error.
+
+#### Grants and terminology
+
+1. Rename or explain the `__global__` row. **All Lacuna data** currently sounds like a blanket grant
+   over every course, but the pseudo-scope gates no-course-id operations such as listing/creating
+   courses and whole-database diagnostics; course tools still use course-specific grants. The UI must
+   describe what the grant actually authorises.
+2. Explain the three ordinary tiers in plain language beside the controls:
+   **Read** inspects data, **Write** creates or changes content, and **Destructive** permits deletion
+   and broad mutation. Do not rely on users knowing Lacuna's ordinal grant model.
+3. Display which client owns each live grant, when it was granted and when it expires. A bare
+   `write access` label gives too little information for a security control.
+4. Granting destructive access directly from Settings needs an inline confirmation describing its
+   breadth. A small ghost button should not silently turn one accidental click into course-wide
+   deletion authority for the rest of the session.
+5. Downgrade and revoke should use consistent verbs and immediately announce the resulting scope.
+   Generic failure toasts must include the affected client/course and a retry action where safe.
+6. Group or filter course grants when there are many courses. One unpaginated row per course will
+   turn Settings into a wall of repetitive controls.
+7. Separate short-lived **Study history** and **Local file** permissions visually from the ordinary
+   read/write/destructive ladder. They are different risks, not two more ordinal levels.
+
+#### Consent requests
+
+1. Render consent as a semantic modal/sheet with an accessible name, focus trap, Escape behaviour and
+   focus restoration. The current fixed `div` has no dialog semantics and does not itself manage
+   focus.
+2. Name the requesting client. `An MCP client` is insufficient once more than one host can connect.
+3. Translate internal names such as `lacuna.delete_course` into a concise action summary while
+   retaining the exact tool name under optional technical details.
+4. Show the exact target and expected effect: course, entity names, item count, whether history or
+   assets are affected, and whether Undo is available. `This can remove or bulk-change data` is too
+   generic for informed consent.
+5. For destructive actions, show a server-generated preflight summary based on the live database.
+   Never trust the client to describe its own impact.
+6. Distinguish **Deny**, **Not now**, **Timed out**, **Target changed** and **Client disconnected** in
+   the result. Returning the same missing-grant error for every branch makes recovery guesswork.
+7. The current ten-second bridge timeout is too short for a human consent decision. Scope resolution
+   may remain tightly bounded, but an on-screen permission request needs a separate human-scale
+   lifetime, visible countdown/status and cancellation when the client disconnects.
+8. Coalesced requests should state that matching calls are waiting behind the same decision. Consent
+   must never approve a broader target or scope merely because several calls arrived together.
+9. When prompts queue, show position/count and refresh the course label synchronously for the next
+   request. Do not briefly display the previous request's label while an asynchronous lookup settles.
+10. If the application is backgrounded, use a restrained native attention signal without stealing
+    focus. Repeated consent requests must be rate-limited so a broken client cannot harass the user.
+
+#### In-progress and completed actions
+
+1. The client and Lacuna should show the same operation id and status: waiting for consent, running,
+   committing, completed, failed, cancelled or undone.
+2. Long operations need meaningful progress text and monotonic progress values. `Importing 318 of
+   1,204 cards` is useful; an indeterminate spinner labelled `Working` is not.
+3. Cancellation should say whether nothing changed, a transaction rolled back or a safe partial
+   artefact remains. Never imply rollback without verifying it.
+4. Completion messages must use user language. `MCP action lacuna.delete_course completed` exposes an
+   implementation name; prefer `Deleted “Biology mock course”` with `Undo` and optional details.
+5. Undo notices must state their expiry/lifetime and affected records. If Undo cannot be guaranteed
+   after another conflicting mutation, disable it with an explanation rather than failing later.
+6. Collapse repeated read-grant notices from the same client/course. The current toast identifies the
+   course but not the client or initiating operation and can become notification noise.
+7. Maintain a session-scoped activity list containing client, operation, target, result, time and undo
+   status. It is an audit aid, not a permanent telemetry log, and clears when the MCP session ends.
+8. Provide `Copy details` for failures using sanitised structured diagnostics. Do not make users
+   transcribe a fleeting toast or expose private course content in logs by default.
+
+#### Tool and response presentation
+
+1. Tools should return a one-line user summary plus structured data. Raw JSON strings are poor for
+   clients, inaccessible for people and impossible to validate against an output contract.
+2. Use stable display labels for entities alongside ids. Agents need ids for follow-up calls; users
+   should not be shown a UUID where a course or lesson name is available.
+3. Validation errors need field paths and local messages. A single serialised Zod error blob is not a
+   finished authoring experience.
+4. Bulk results must separate succeeded, skipped, conflicted and failed items and preserve input order
+   or explicit correlation ids.
+5. Every preview/apply pair should share an opaque revision token so the user can see when the target
+   changed between inspection and execution.
+6. Tool descriptions should state prerequisites and consequences, not marketing copy. Resources and
+   prompts should carry the explanatory workflow material instead of bloating every tool description.
+7. Avoid tool-list sprawl. Prefer resources for read-heavy context, cohesive update schemas for
+   related settings and prompts for orchestration. A hundred microscopic tools would technically
+   expand coverage while making discovery worse.
+8. Preserve British English in all server descriptions, consent copy, errors and generated summaries.
+
+#### Visual quality and responsive behaviour
+
+1. The MCP Settings section must be tested with zero, one, dozens and hundreds of courses. Controls
+   must remain scannable without wrapping into ambiguous button soup.
+2. Current access should be visually dominant; available upgrades/downgrades are secondary. A row of
+   equally weighted `Read`, `Write`, `Destructive` and `Revoke` buttons obscures the current state.
+3. Destructive affordances use the same warning vocabulary, colour tokens and confirmation patterns
+   as the rest of Lacuna. MCP must not look like a bolted-on administrator console.
+4. Consent and activity surfaces must work at narrow widths, 200% zoom, light/dark themes and reduced
+   motion, with 44 px touch targets and no obscured action buttons.
+5. Status cannot rely on red/green text alone. Include an icon or textual state and expose changes to
+   assistive technology without moving focus.
+6. Tool names, ids, error details and configuration commands may be long. Wrap or scroll technical
+   values without forcing horizontal overflow across the whole Settings page.
+7. Empty states should explain how to connect a client or why no grants exist. Do not show a blank
+   list beneath a bare `Stopped` label.
+
+#### Polish acceptance checks
+
+1. A new user can connect a supported client from Settings without reading repository documentation.
+2. The user can identify every connected client and every permission it currently holds.
+3. A consent request explains who is asking, what will happen, what data is affected and how recovery
+   works before the user decides.
+4. Waiting for consent never resembles a hung tool call, and a slow human decision does not hit a
+   renderer timeout intended for machine work.
+5. Completion, failure, cancellation and Undo produce consistent state in Lacuna and the client.
+6. The Settings, consent and activity interfaces pass keyboard, screen-reader, narrow-width, zoom,
+   theme and reduced-motion checks.
+7. No primary user-facing surface exposes raw tool names, UUIDs or serialised validation blobs unless
+   the user opens technical details.
+8. The complete setup and consent smoke scenario works from a fresh profile without hard-coded paths,
+   magic approval counts or manual DevTools clicking.
+
 ---
 
 # Arc 3 — Assessment-Aware Revision Planning and Cram (detailed)

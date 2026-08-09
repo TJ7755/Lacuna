@@ -121,6 +121,11 @@ per course with an in-app notice; the first write or destructive call blocks for
 Current grants can be inspected, changed or revoked under **Settings → MCP server**, and all
 grants expire when Lacuna closes.
 
+The shipped MCP surface and its deliberate exclusions are specified in `docs/SPEC.md`. Planned
+connection polish, programmatic release scenarios and the broader user-action surface are documented
+in `docs/next_plan.md` §§2.12–2.14. Those roadmap sections are not descriptions of currently shipped
+tools.
+
 ## How it works
 
 | Area                                     | Where                                                                                |
