@@ -491,12 +491,11 @@ keybag blob = AES-GCM(KEK, nonce, { CK, writeToken })</code></pre>
   <h2><span class="n">12</span>Phasing</h2>
 
   <div class="phase"><div class="id">P0</div><div>
-    <h4>Repo hygiene, committed separately</h4>
-    <p>Remove the Cloudflare residue now that Vercel is the deploy target: delete
-    <code>wrangler.jsonc</code> and <code>.wrangler/</code>, drop wrangler from devDependencies,
-    and repoint <code>"preview"</code> and <code>"deploy"</code> in <code>package.json</code>,
-    which currently run <code>wrangler dev</code> and <code>wrangler deploy</code>. Local preview
-    presently runs a different runtime from production.</p>
+    <h4>Repo hygiene — complete</h4>
+    <p>Cloudflare residue has been removed now that Vercel is the deploy target:
+    <code>wrangler.jsonc</code>, <code>.wrangler/</code>, the Cloudflare Vite plugin and Wrangler
+    dependencies are gone. <code>"preview"</code> now runs Vite's production preview, and the
+    obsolete Wrangler deploy command has been removed.</p>
     <p class="files">package.json · wrangler.jsonc · .wrangler/ · .gitignore</p>
   </div></div>
 

@@ -1,5 +1,12 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Preview tooling
+
+- Removed the obsolete Cloudflare Vite plugin, Wrangler configuration and Wrangler dependencies
+  now that the web application is deployed through Vercel. `bun run preview` now serves the
+  production build directly with Vite instead of blocking on Wrangler's interactive agent-skills
+  prompt, and the stale Wrangler deploy command has been removed.
+
 ## Unreleased — Image occlusion (Arc 6, second slice)
 
 - Added image occlusion: upload a labelled diagram, draw boxes over it once, and one ordinary

@@ -4,8 +4,6 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { version } from './package.json';
 
-import { cloudflare } from '@cloudflare/vite-plugin';
-
 // Cross-origin isolation headers required by the FSRS WASM trainer worker.
 const crossOriginIsolationHeaders = {
   'Cross-Origin-Opener-Policy': 'same-origin',
@@ -61,7 +59,6 @@ export default defineConfig({
         enabled: false,
       },
     }),
-    cloudflare(),
   ],
   server: {
     port: 5173,

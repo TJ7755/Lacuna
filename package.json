@@ -10,7 +10,7 @@
     "start": "vite",
     "dev": "vite",
     "build": "bun run typecheck && vite build",
-    "preview": "bun run build && wrangler dev",
+    "preview": "bun run build && vite preview",
     "typecheck": "bun run typecheck:web && bun run typecheck:electron",
     "typecheck:web": "tsc -b --noEmit",
     "typecheck:electron": "tsc -p electron/tsconfig.json --noEmit && tsc -p electron/tsconfig.preload.json --noEmit && tsc -p electron/tsconfig.mcp.json --noEmit",
@@ -22,8 +22,7 @@
     "build:mcp": "node electron/mcp/build.mjs",
     "electron:dev": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && bun run build:mcp && bun -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && bun run build:mcp && bun -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && vite build --mode production --base ./ && electron-builder --config electron/electron-builder.yml",
-    "electron:build:win": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && bun run build:mcp && bun -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && vite build --mode production --base ./ && electron-builder --win --config electron/electron-builder.yml",
-    "deploy": "bun run build && wrangler deploy"
+    "electron:build:win": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && bun run build:mcp && bun -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && vite build --mode production --base ./ && electron-builder --win --config electron/electron-builder.yml"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
@@ -63,7 +62,6 @@
     "@napi-rs/wasm-runtime": "1.1.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.40.1",
     "@tailwindcss/vite": "4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^15.0.7",
@@ -90,7 +88,6 @@
     "vite": "^6.0.3",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^2.1.9",
-    "wait-on": "^7.2.0",
-    "wrangler": "^4.99.0"
+    "wait-on": "^7.2.0"
   }
 }
