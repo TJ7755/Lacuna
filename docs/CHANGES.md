@@ -1,5 +1,11 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Browser QA fixes
+
+- Newly created lessons now open directly from single-lesson course views. Course and lesson
+  headers expose inline renaming through an edit control or double-click, while distributed locked
+  courses remain read-only.
+
 ## Unreleased — Preview tooling
 
 - Removed the obsolete Cloudflare Vite plugin, Wrangler configuration and Wrangler dependencies

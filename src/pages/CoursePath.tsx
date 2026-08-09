@@ -49,7 +49,11 @@ import { Button } from '../components/ui/Button';
 import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { updateCourse } from '../db/repository';
-import { canEditLessons, isLessonAuthoringMode, resolveLessonViewMode } from '../course/lessonViewMode';
+import {
+  canEditLessons,
+  isLessonAuthoringMode,
+  resolveLessonViewMode,
+} from '../course/lessonViewMode';
 import { formatDate } from '../utils/datetime';
 import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
 import { useToast } from '../components/ui/Toast';
@@ -413,6 +417,22 @@ export function CoursePath() {
         eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
         examUrgent={examUrgent}
         title={course.name}
+        onRename={
+          canEditLessons(course)
+            ? async (name) => {
+                try {
+                  await updateCourse(course.id, { name });
+                } catch (error) {
+                  notify(
+                    error instanceof Error ? error.message : 'Could not rename the course.',
+                    'negative',
+                  );
+                  throw error;
+                }
+              }
+            : undefined
+        }
+        renameLabel="course"
       >
         <div className="min-w-0 max-w-full">
           <HeaderStats

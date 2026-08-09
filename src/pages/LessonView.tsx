@@ -35,9 +35,10 @@ import { canEditLessons, resolveLessonViewMode } from '../course/lessonViewMode'
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { updateCourse } from '../db/repository';
+import { updateCourse, updateLesson } from '../db/repository';
 import { formatDate } from '../utils/datetime';
 import type { Lesson } from '../db/types';
+import { useToast } from '../components/ui/Toast';
 
 interface LessonViewProps {
   /**
@@ -65,6 +66,7 @@ export function LessonView({
   const isInline = courseIdProp !== undefined;
 
   const navigate = useNavigate();
+  const { notify } = useToast();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
@@ -154,7 +156,9 @@ export function LessonView({
             <AddLessonControl
               courseId={courseId}
               lessonCount={lessons.length}
-              onCreated={() => navigate(`/course/${courseId}`)}
+              onCreated={(createdLesson) =>
+                navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
+              }
             />
             {!canEditLessons(course) ? (
               <Link
@@ -191,6 +195,22 @@ export function LessonView({
         eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
         examUrgent={examUrgent}
         title={lesson.name}
+        onRename={
+          canEditLessons(course)
+            ? async (name) => {
+                try {
+                  await updateLesson(lesson.id, { name });
+                } catch (error) {
+                  notify(
+                    error instanceof Error ? error.message : 'Could not rename the lesson.',
+                    'negative',
+                  );
+                  throw error;
+                }
+              }
+            : undefined
+        }
+        renameLabel="lesson"
       >
         <div>
           <HeaderStats

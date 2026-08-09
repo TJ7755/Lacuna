@@ -2,8 +2,9 @@
 // content beneath — typically the HeaderStats pill row. Used by CoursePath
 // (full course) and, in a leaner form, LessonView.
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cn } from '../ui/cn';
+import { EditIcon } from '../ui/icons';
 
 interface CourseHeaderProps {
   /** e.g. "Exam 12 July 2026". */
@@ -11,6 +12,10 @@ interface CourseHeaderProps {
   /** Pulses a small accent dot beside the eyebrow — reserve for an imminent exam. */
   examUrgent?: boolean;
   title: string;
+  /** Enables inline title editing. Omit for read-only/shared content. */
+  onRename?: (name: string) => void | Promise<void>;
+  /** Entity noun used by the rename control and input label. */
+  renameLabel?: 'course' | 'lesson';
   /** Content under the title — typically the HeaderStats pill row. */
   children?: ReactNode;
   className?: string;
@@ -25,9 +30,50 @@ export function CourseHeader({
   eyebrow,
   examUrgent = false,
   title,
+  onRename,
+  renameLabel = 'course',
   children,
   className,
 }: CourseHeaderProps) {
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(title);
+  const [savingTitle, setSavingTitle] = useState(false);
+  const titleInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!editingTitle) setTitleDraft(title);
+  }, [editingTitle, title]);
+
+  function startRename() {
+    if (!onRename || savingTitle) return;
+    setTitleDraft(title);
+    setEditingTitle(true);
+    requestAnimationFrame(() => titleInput.current?.select());
+  }
+
+  function cancelRename() {
+    setTitleDraft(title);
+    setEditingTitle(false);
+  }
+
+  async function commitRename() {
+    if (!onRename || savingTitle) return;
+    const name = titleDraft.trim();
+    if (!name || name === title) {
+      cancelRename();
+      return;
+    }
+    setSavingTitle(true);
+    try {
+      await onRename(name);
+      setEditingTitle(false);
+    } catch {
+      requestAnimationFrame(() => titleInput.current?.focus());
+    } finally {
+      setSavingTitle(false);
+    }
+  }
+
   return (
     <header
       className={cn(
@@ -46,7 +92,45 @@ export function CourseHeader({
           )}
           {eyebrow}
         </div>
-        <h1 className="mb-5 font-display text-4xl tracking-tight md:text-5xl">{title}</h1>
+        <div className="mb-5 flex min-w-0 items-center gap-2">
+          {editingTitle ? (
+            <input
+              ref={titleInput}
+              value={titleDraft}
+              onChange={(event) => setTitleDraft(event.target.value)}
+              onBlur={() => void commitRename()}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') void commitRename();
+                if (event.key === 'Escape') cancelRename();
+              }}
+              aria-label={`${renameLabel} name`}
+              disabled={savingTitle}
+              className="min-w-0 flex-1 rounded-lg border border-accent bg-paper/70 px-2 py-1 font-display text-4xl tracking-tight text-ink outline-none md:text-5xl"
+            />
+          ) : (
+            <h1
+              onDoubleClick={startRename}
+              title={onRename ? `Double-click to rename ${renameLabel}` : undefined}
+              className={cn(
+                'min-w-0 break-words font-display text-4xl tracking-tight md:text-5xl',
+                onRename && 'cursor-text',
+              )}
+            >
+              {title}
+            </h1>
+          )}
+          {onRename && !editingTitle && (
+            <button
+              type="button"
+              onClick={startRename}
+              aria-label={`Rename ${renameLabel}`}
+              title={`Rename ${renameLabel}`}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <EditIcon width={17} height={17} />
+            </button>
+          )}
+        </div>
         {children && <div className="flex flex-wrap gap-x-8 gap-y-4">{children}</div>}
       </div>
     </header>
