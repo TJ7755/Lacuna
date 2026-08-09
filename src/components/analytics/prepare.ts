@@ -171,7 +171,7 @@ export interface RetentionByAgePoint {
   count: number;
 }
 
-/** Retention rate grouped by card age (time since first review). */
+/** Observed recall rate for every review, grouped by the card's age at that review. */
 export function retentionByAge(cards: Card[], now = Date.now()): RetentionByAgePoint[] {
   const dayMs = 86_400_000;
   const buckets = [
@@ -182,16 +182,19 @@ export function retentionByAge(cards: Card[], now = Date.now()): RetentionByAgeP
     { label: '180+ days', min: 180, max: Infinity, total: 0, recalled: 0 },
   ];
   for (const card of cards) {
-    if (card.history.length === 0) continue;
-    const firstReview = card.history[0].timestamp;
-    const ageDays = Math.floor((now - firstReview) / dayMs);
-    const lastLog = card.history[card.history.length - 1];
-    const wasRecalled = lastLog.grade > 1;
-    for (const bucket of buckets) {
-      if (ageDays >= bucket.min && ageDays < bucket.max) {
+    const reviews = card.history.filter(
+      (log) => Number.isFinite(log.timestamp) && log.timestamp <= now,
+    );
+    if (reviews.length === 0) continue;
+    const firstReview = Math.min(...reviews.map((log) => log.timestamp));
+    for (const log of reviews) {
+      const ageDays = Math.max(0, Math.floor((log.timestamp - firstReview) / dayMs));
+      const bucket = buckets.find((candidate) => {
+        return ageDays >= candidate.min && ageDays < candidate.max;
+      });
+      if (bucket) {
         bucket.total++;
-        if (wasRecalled) bucket.recalled++;
-        break;
+        if (log.grade > 1) bucket.recalled++;
       }
     }
   }

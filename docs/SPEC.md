@@ -2122,8 +2122,10 @@ aggregating across every course:
 - **Prediction accuracy** — Brier score for predicted vs actual recall.
 - **Review volume** and **Study time** — daily counts and minutes over the past
   30 days.
-- **Retention by age** — recall rate grouped by how long each card has been in
-  review.
+- **Observed recall by card age** — every review is grouped by the time elapsed
+  since that card's first review. The chart reports the observed recall rate for
+  each age bucket and exposes its sample count (`n`) in the tooltip; it is not a
+  current-state retention estimate or forecast.
 - **Leech count by course** — horizontal bar chart of leeches per course.
 - **Stability profile** — distribution of cards by stability range.
 
