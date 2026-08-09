@@ -42,6 +42,7 @@ import {
   referencedAssetHashesInCards,
 } from './assets';
 import { mergeRevisionPlans } from '../course/revisionPlan';
+import { itemPayloadIsValid } from '../items/payloadValidation';
 
 export const BACKUP_VERSION = 9;
 
@@ -139,11 +140,22 @@ export async function downloadBackup(): Promise<void> {
 export function validateBackup(data: unknown): data is BackupFile {
   if (typeof data !== 'object' || data === null) return false;
   const b = data as Partial<BackupFile>;
+  const cardsHaveValidPayloads =
+    Array.isArray(b.cards) &&
+    b.cards.every((card) => {
+      if (typeof card !== 'object' || card === null) return false;
+      const candidate = card as Card;
+      return (
+        itemPayloadIsValid(candidate.payload) &&
+        (candidate.payload === undefined || candidate.type === 'front_back')
+      );
+    });
   return (
     b.app === 'lacuna' &&
     typeof b.version === 'number' &&
     Array.isArray(b.decks) &&
     Array.isArray(b.cards) &&
+    cardsHaveValidPayloads &&
     Array.isArray(b.assets) &&
     Array.isArray(b.sessionHistory) &&
     Array.isArray(b.userPerformance)

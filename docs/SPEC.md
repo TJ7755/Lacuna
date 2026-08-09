@@ -1299,6 +1299,9 @@ payload. Drafts retain the uncompiled source so an interrupted invalid edit is n
 The same editor includes a test-answer harness backed directly by `verifyWorkingLines`. Tutors can
 pin a sample answer with its current expected score; those fixtures travel in the item payload and
 rerun automatically on every scheme edit, exposing any score mismatch before the card is saved.
+The repository, share-code decoder/importer and backup reader repeat the known-payload validation at
+their storage boundaries, so an import cannot bypass the authoring checks. Unknown versions and
+kinds are preserved for the read-only fallback described in §11.2 rather than rejected as corrupt.
 
 The v1 grammar is data, never executable code:
 

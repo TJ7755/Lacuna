@@ -44,6 +44,7 @@ import {
   updateSequence,
 } from './repository';
 import { updateOcclusion } from './occlusionRepository';
+import { assertValidCardPayload } from '../items/payloadValidation';
 import { diffLineage, jsonValuesEqual } from './lineageDiff';
 import type {
   CreateCardPayload,
@@ -565,6 +566,8 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
       for (const shareCard of shareLesson.cards) {
         if (isGeneratedShareCard(shareCard)) continue;
         if (!shareCard.id) throw new Error('Lineage payload card is missing its originating id.');
+        const type = shareCardKindToType(shareCard.k);
+        assertValidCardPayload(type, shareCard.p);
         const base = {
           deckId,
           courseId: course.id,
@@ -608,7 +611,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
         } else {
           newCards.push({
             id: shareCard.id,
-            type: shareCardKindToType(shareCard.k),
+            type,
             front: shareCard.f,
             back: shareCard.k === 1 ? '' : (shareCard.b ?? ''),
             createdAt: cardCreatedAt++,

@@ -58,6 +58,7 @@ import { bytesToBase45, base45ToBytes } from './base45';
 import { buildCourseMigration } from './courseMigration';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
 import { getPreset, presetForSequence } from './sequencePresets';
+import { itemPayloadIsValid, assertValidCardPayload } from '../items/payloadValidation';
 
 const PREFIX_BASE45_COMPRESSED = 'LAC2';
 const PREFIX_BASE45_PLAIN = 'LAC3';
@@ -71,8 +72,8 @@ const PREFIX_PLAIN = 'LAC0';
 const ItemFixtureSchema = z
   .object({
     id: z.string(),
-    studentAnswer: z.union([z.string(), z.array(z.string())]),
-    expectedMarks: z.number(),
+    studentAnswer: z.union([z.string(), z.array(z.string()).min(1)]),
+    expectedMarks: z.number().int().nonnegative(),
     note: z.string().optional(),
   })
   .passthrough();
@@ -123,7 +124,7 @@ const KnownItemPayloadSchema = z.discriminatedUnion('kind', [
     .object({
       v: z.literal(CURRENT_ITEM_PAYLOAD_VERSION),
       kind: z.literal('working'),
-      scheme: z.array(MarkSchemeLineSchema),
+      scheme: z.array(MarkSchemeLineSchema).min(1),
       fixtures: z.array(ItemFixtureSchema).optional(),
     })
     .passthrough(),
@@ -139,7 +140,9 @@ const UnknownItemPayloadSchema = z
     'Known item payloads must match their supported schema.',
   );
 
-const ShareItemPayloadSchema = z.union([KnownItemPayloadSchema, UnknownItemPayloadSchema]);
+const ShareItemPayloadSchema = z
+  .union([KnownItemPayloadSchema, UnknownItemPayloadSchema])
+  .refine(itemPayloadIsValid, 'Structured item payload content is invalid.');
 
 const ShareCardSchema = z.object({
   // Payload-scoped identity used to resolve `links`/exam `x` references within the
@@ -162,6 +165,14 @@ const ShareCardSchema = z.object({
   // Structured Arc 11 item content. Known payloads are validated fully; unknown
   // versions/kinds remain opaque so a newer item can use the read-only fallback.
   p: ShareItemPayloadSchema.optional(),
+}).superRefine((card, context) => {
+  if (card.p !== undefined && card.k !== 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Structured item payloads must be carried by front/back cards.',
+      path: ['p'],
+    });
+  }
 });
 
 const ShareDeckSchema = z.object({
@@ -644,10 +655,6 @@ export async function decodeShareDirect(code: string): Promise<SharePayload> {
   }
   const parse = SharePayloadSchema.safeParse(payload);
   if (!parse.success) {
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.error('Share payload validation failed:', parse.error.issues);
-    }
     throw new Error('This share code is from an unsupported version of Lacuna.');
   }
   return parse.data;
@@ -927,7 +934,10 @@ export async function buildShareCode(deckIds: string[]): Promise<string> {
 
 function unpackCard(sc: ShareCard): ParsedCard[] {
   const tags = sc.g && sc.g.length ? { tags: sc.g } : {};
-  const payload = sc.p ? { payload: sc.p as ItemPayload } : {};
+  if (sc.p !== undefined) {
+    assertValidCardPayload(sc.k === 1 ? 'cloze' : 'front_back', sc.p);
+  }
+  const payload = sc.p !== undefined ? { payload: sc.p as ItemPayload } : {};
   if (sc.k === 1) return [{ type: 'cloze', front: sc.f, back: '', ...tags, ...payload }];
   if (sc.k === 2) {
     const back = sc.b ?? '';

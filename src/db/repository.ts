@@ -59,6 +59,7 @@ import {
   LABEL_CARD_SUFFIX,
   type GeneratedCardPayload,
 } from './sequenceGeneration';
+import { assertValidCardPayload } from '../items/payloadValidation';
 
 /** Convert low-level IndexedDB errors into user-friendly messages. */
 function friendlyDbError(err: unknown): Error {
@@ -193,6 +194,7 @@ export async function createCard(
   opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'payload'>,
 ): Promise<Card> {
   try {
+    assertValidCardPayload(type, opts?.payload);
     const card: Card = {
       id: makeId(),
       deckId,
@@ -238,6 +240,7 @@ export async function createCards(
   opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<Card[]> {
   try {
+    for (const draft of drafts) assertValidCardPayload(draft.type, draft.payload);
     const now = Date.now();
     const cards: Card[] = drafts.map((draft, i) => ({
       id: makeId(),
@@ -521,6 +524,12 @@ export async function assignCardsToLesson(
 
 export async function updateCard(id: string, changes: Partial<Card>): Promise<void> {
   try {
+    if ('payload' in changes) {
+      const card = await db.cards.get(id);
+      if (card && changes.payload !== undefined) {
+        assertValidCardPayload(changes.type ?? card.type, changes.payload);
+      }
+    }
     await db.cards.update(id, changes);
     if ('front' in changes || 'back' in changes) {
       scheduleAssetGc();

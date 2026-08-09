@@ -5,6 +5,7 @@ import {
   addTagToCards,
   buryCards,
   createCard,
+  createCards,
   createCardWithReverse,
   createCourse,
   createDeck,
@@ -18,6 +19,7 @@ import {
   rescheduleCards,
   setCardsSuspended,
   undoReview,
+  updateCard,
 } from './repository';
 
 describe('undoReview', () => {
@@ -391,6 +393,52 @@ describe('createCardWithReverse', () => {
     expect(card.tags).toEqual(['french']);
     expect(reverse.tags).toEqual(['french']);
     expect(await db.cards.where('deckId').equals(deck.id).count()).toBe(2);
+  });
+});
+
+describe('structured item payload validation', () => {
+  beforeEach(async () => {
+    await Promise.all([
+      db.decks.clear(),
+      db.cards.clear(),
+      db.userPerformance.clear(),
+      db.assets.clear(),
+    ]);
+  });
+
+  it('rejects malformed payloads before create and update writes', async () => {
+    const deck = await createDeck('Payload validation');
+    const invalidPayload = { v: 1, kind: 'working', scheme: [] } as never;
+
+    await expect(
+      createCard(deck.id, 'front_back', 'Question', '', [], { payload: invalidPayload }),
+    ).rejects.toThrow('Invalid structured item payload.');
+    expect(await db.cards.count()).toBe(0);
+
+    const card = await createCard(deck.id, 'front_back', 'Question', 'Answer');
+    await expect(updateCard(card.id, { payload: invalidPayload })).rejects.toThrow(
+      'Invalid structured item payload.',
+    );
+    expect((await db.cards.get(card.id))?.payload).toBeUndefined();
+  });
+
+  it('validates every draft before a bulk create and keeps payloads off cloze cards', async () => {
+    const deck = await createDeck('Payload validation');
+    const invalidPayload = { v: 1, kind: 'working', scheme: [] } as never;
+
+    await expect(
+      createCards(deck.id, [
+        { type: 'front_back', front: 'Q1', back: '', payload: invalidPayload },
+        { type: 'front_back', front: 'Q2', back: '' },
+      ]),
+    ).rejects.toThrow('Invalid structured item payload.');
+    expect(await db.cards.count()).toBe(0);
+
+    await expect(
+      createCard(deck.id, 'cloze', '{{c1::answer}}', '', [], {
+        payload: { v: 1, kind: 'scaffold' },
+      }),
+    ).rejects.toThrow('Structured item payloads require a front_back card.');
   });
 });
 

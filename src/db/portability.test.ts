@@ -240,6 +240,20 @@ describe('importBackup', () => {
     expect(cards[0].front).toBe('Q1');
   });
 
+  it('rejects malformed structured payloads before replacing the database', async () => {
+    const deck = await createDeck('Protected');
+    const card = await createCard(deck.id, 'front_back', 'Q', 'A');
+    const backup = await exportDatabase();
+    backup.cards[0] = {
+      ...backup.cards[0],
+      payload: { v: 1, kind: 'working', scheme: [] } as never,
+    };
+
+    expect(validateBackup(backup)).toBe(false);
+    await expect(importBackup(backup, 'replace')).rejects.toThrow('Invalid backup file.');
+    expect(await db.cards.get(card.id)).toBeDefined();
+  });
+
   it('imports the explicit legacy courseExamDates boundary and preserves checkpoint ids', async () => {
     const course = await createCourse('Legacy course', { examDate: 1_900_000_000_000 });
     const lesson = await createLesson(course.id, 'Lesson 1');
