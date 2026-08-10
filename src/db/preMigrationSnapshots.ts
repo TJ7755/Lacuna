@@ -22,13 +22,16 @@ class PreMigrationDb extends Dexie {
   }
 }
 
-const preMigrationDb = new PreMigrationDb();
-
 export async function savePreMigrationSnapshot(
   targetVersion: number,
   payload: BackupFile,
 ): Promise<void> {
-  await preMigrationDb.snapshots.add({ targetVersion, createdAt: Date.now(), payload });
+  const preMigrationDb = new PreMigrationDb();
+  try {
+    await preMigrationDb.snapshots.add({ targetVersion, createdAt: Date.now(), payload });
+  } finally {
+    preMigrationDb.close();
+  }
   // Also mirror to the configured folder so the snapshot survives browser data clearing.
   // Fire-and-forget so the snapshot is committed immediately; the mirror is best-effort.
   const { mirrorToFolder } = await import('./backups');
@@ -43,6 +46,10 @@ export async function savePreMigrationSnapshot(
 export async function getPreMigrationSnapshot(
   targetVersion: number,
 ): Promise<PreMigrationSnapshot | undefined> {
-  return preMigrationDb.snapshots.where({ targetVersion }).last();
+  const preMigrationDb = new PreMigrationDb();
+  try {
+    return await preMigrationDb.snapshots.where({ targetVersion }).last();
+  } finally {
+    preMigrationDb.close();
+  }
 }
-
