@@ -20,17 +20,37 @@ easier. The planned programmatic release-scenario architecture is specified in `
 
 ## Test record
 
-- Release/commit: `ea29734a47ff25d1ea9fed5551a60d1883039cee`
-- Tester: `____________________`
-- Date: `2026-08-09`
-- Browser and version: `T3 collaborative preview (Chromium; version not recorded)`
+- Release/commit: `0baf269ee6ef118e8077b99b9e25a330c322d7b8`
+- Tester: `Codex in-app browser verification`
+- Date: `2026-08-10`
+- Browser and version: `Codex in-app browser (Chromium; version not exposed)`
 - Operating system: `macOS 26.6`
-- Desktop viewport: `1280 × 800`
+- Desktop viewport: `1280 × 720`
 - Mobile viewport/device: `375 × 667 (iPhone SE portrait)`
-- Production URL or local command: `http://127.0.0.1:4173/ via bun run preview --host 0.0.0.0`
+- Production URL or local command: `http://127.0.0.1:4173/ via bunx vite preview --host 127.0.0.1 --port 4173`
 
 Mark each item `[x]` when it passes. Add the issue number after a failed item and leave it
 unchecked. Run destructive cases only against disposable courses and export a full backup first.
+
+### 10 August continuation evidence
+
+- The clean profile opened `#/welcome`; the landing exam slider responded to ArrowRight and the
+  Yes/No grading demonstration advanced without a console error. The primary call to action created
+  one seeded Welcome course, and a hard reload left exactly one dashboard card and one sidebar link.
+- The `Arc 13 disposable` course contains three lessons, one Markdown note, classic, numeric and
+  working authored items, a three-item sequence, a lesson-filtered randomised manual practice node
+  and two assessments. It opens from both its dashboard card and sidebar link.
+- The desktop navigation sweep reached Dashboard, Search, Share, Analytics, Settings and Help. The
+  course Path, Question bank, Analytics and Settings tabs cross-linked to the expected routes.
+- Hard-loaded `#/deck/legacy-id` and `#/study` redirected to the dashboard. An invalid route and a
+  missing course id rendered the branded recovery page with a dashboard link.
+- At 375 × 667, the dashboard and Settings document widths stayed at 375 pixels. The formerly
+  clipped `ALarger` control ended at x=326, the mobile drawer focused its close control when opened
+  and restored focus to `Open navigation` when closed, and both light and dark presentations
+  rendered. These are supporting observations only: the broader mobile/theme matrix remains
+  unchecked until every routed surface has been swept.
+- No browser console errors were captured during this continuation. The overall console checkbox
+  remains unchecked until the complete route sweep finishes.
 
 ## 1. Release gate and test data
 
@@ -41,7 +61,7 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 - [x] `bun run build` produces a production build without an error.
 - [x] The production preview loads directly and after a hard refresh.
 - [ ] Browser console contains no uncaught error during the route sweep below.
-- [ ] Create a disposable course with at least three lessons, notes, classic cards, a numeric
+- [x] Create a disposable course with at least three lessons, notes, classic cards, a numeric
       item, a working item, a sequence, a manual practice node and two assessments.
 - [ ] Keep a second clean browser profile for first-run, import and shared-course tests.
 - [ ] Repeat the visual route sweep at desktop and mobile widths, in light and dark themes.
@@ -50,11 +70,11 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 
 ## 2. First run, landing page and technical account
 
-- [ ] A genuinely empty profile opens `#/welcome`; an existing profile opens the dashboard.
+- [x] A genuinely empty profile opens `#/welcome`; an existing profile opens the dashboard.
 - [ ] The landing page scroll navigation, exam-date demonstration and interactive grading
       demonstration all respond without trapping scroll or keyboard focus.
-- [ ] The landing call to action enters the application and creates the seeded Welcome course once.
-- [ ] Reloading does not duplicate the Welcome course.
+- [x] The landing call to action enters the application and creates the seeded Welcome course once.
+- [x] Reloading does not duplicate the Welcome course.
 - [ ] Both seeded SVG illustrations render; no broken-image icon appears.
 - [ ] Deleting the Welcome course and reloading does not recreate it.
 - [ ] `#/method` opens from the landing page and all interactive charts respond to their controls.
@@ -62,22 +82,22 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 
 ## 3. Application shell and navigation
 
-- [ ] Dashboard, Search, Share, Analytics, Settings and Help are reachable from visible navigation.
-- [ ] Course links in the sidebar open the correct course.
+- [x] Dashboard, Search, Share, Analytics, Settings and Help are reachable from visible navigation.
+- [x] Course links in the sidebar open the correct course.
 - [ ] Collapsing and expanding the desktop sidebar preserves the chosen state after reload.
 - [ ] The mobile navigation drawer opens, traps focus, closes by its explicit control and returns focus.
 - [ ] Sidebar compact mode, ready counts, archived-course visibility and item ordering match Settings.
 - [ ] `Ctrl/Cmd+K` opens the command palette; Escape closes it and restores focus.
 - [ ] Browser Back and Forward restore the expected route without stale modal or editor state.
-- [ ] Legacy `#/deck/<id>` and `#/study` routes redirect to the dashboard.
+- [x] Legacy `#/deck/<id>` and `#/study` routes redirect to the dashboard.
 - [ ] Lazy-loaded routes show a skeleton rather than a blank page on first visit.
-- [ ] An invalid route or simulated render failure reaches a useful recovery state, not a white screen.
+- [x] An invalid route or simulated render failure reaches a useful recovery state, not a white screen.
 
 ## 4. Dashboard and course lifecycle
 
 - [ ] The dashboard empty state offers course creation.
-- [ ] New course validation rejects a blank name and accepts a valid name and exam date.
-- [ ] Created courses appear once and open from both the card and sidebar.
+- [x] New course validation rejects a blank name and accepts a valid name and exam date.
+- [x] Created courses appear once and open from both the card and sidebar.
 - [ ] Course cards show the configured progress metric: completed lessons, reviewed coverage or
       today's workload.
 - [ ] Dashboard sort choices produce the documented ordering and persist after reload.
@@ -91,7 +111,7 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 
 ## 5. Course path and shared course tabs
 
-- [ ] Path, Question bank, Analytics and Settings tabs are visible and cross-link correctly.
+- [x] Path, Question bank, Analytics and Settings tabs are visible and cross-link correctly.
 - [ ] The path header shows the course name, exam date and live progress without overflow.
 - [ ] Study now opens the persistent course study flow.
 - [ ] Study mode renders the curriculum without authoring controls.
