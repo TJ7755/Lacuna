@@ -1,5 +1,14 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — ADR for study-day time semantics
+
+- Added `docs/architecture/fsrs-time-semantics.md`: a proposed ADR for one global
+  study clock (04:00 rollover, learner-configured IANA time zone, exact epoch-ms
+  instants) and the distinction between exact elapsed duration, study-day index
+  and calendar-day. Implementation is explicitly deferred pending product review;
+  the archived `archive/fsrs-validation` branch holds the experimental
+  implementation and validation tooling.
+
 ## Unreleased — Audit correctness fixes
 
 - Revalidated structured item payloads at the card repository, share-code and backup boundaries.
