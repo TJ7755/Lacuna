@@ -1,13 +1,15 @@
 // First-run seed data: one small, deletable example course so the app is never empty.
 
 import { db, makeId } from './schema';
-import type { Card, Course, Lesson, Note, Deck } from './types';
+import type { Card, Course, CourseAssessment, Lesson, Note, Deck } from './types';
+import { courseToRecord } from './assessmentMigration';
 import { emptyPerformance } from '../fsrs/grading';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { defaultExamDate } from '../utils/datetime';
 import { assetUrl, sha256Blob } from './assets';
 
 const FLAG_KEY = 'lacuna-seeded';
+const ASSET_REPAIR_FLAG_KEY = 'lacuna-seed-assets-v2';
 let seeding = false;
 
 /** A lesson and the backing deck its cards are recorded against (see ensureLessonDeck). */
@@ -53,14 +55,14 @@ function exampleCard(
   };
 }
 
-/** Build an ImageAsset record from an inline SVG string without writing to the database yet. */
+/** Build an image MediaAsset record from an inline SVG string without writing to the database yet. */
 async function prepareSvgAsset(svg: string, width: number, height: number) {
   const blob = new Blob([svg], { type: 'image/svg+xml' });
   const hash = await sha256Blob(blob);
   return {
     record: {
       hash,
-      blob,
+      blob: new TextEncoder().encode(svg),
       mimeType: 'image/svg+xml' as const,
       width,
       height,
@@ -85,6 +87,42 @@ const SAMPLE_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="200" he
   <circle cx="60" cy="55" r="14" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
   <polyline points="90,90 115,60 140,80 175,40" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
 </svg>`;
+
+async function repairSeededSvgAssets(): Promise<void> {
+  try {
+    if (localStorage.getItem(ASSET_REPAIR_FLAG_KEY)) return;
+  } catch {
+    // localStorage may be unavailable; the idempotent database check still works.
+  }
+
+  const prepared = await Promise.all([
+    prepareSvgAsset(FORGETTING_CURVE_SVG, 320, 160),
+    prepareSvgAsset(SAMPLE_IMAGE_SVG, 200, 120),
+  ]);
+  const referenced = new Set(
+    (
+      await db.cards
+        .filter((card) =>
+          prepared.some((asset) => card.front.includes(asset.url) || card.back.includes(asset.url)),
+        )
+        .toArray()
+    ).flatMap((card) => [card.front, card.back]),
+  );
+
+  for (const asset of prepared) {
+    if (![...referenced].some((markdown) => markdown.includes(asset.url))) continue;
+    const stored = await db.assets.get(asset.record.hash);
+    if (!stored || !(stored.blob instanceof Uint8Array)) {
+      await db.assets.put(asset.record);
+    }
+  }
+
+  try {
+    localStorage.setItem(ASSET_REPAIR_FLAG_KEY, '1');
+  } catch {
+    // localStorage may be unavailable; the next start will repeat the safe repair.
+  }
+}
 
 /**
  * Build a lesson plus the hidden backing deck its cards are recorded against, mirroring
@@ -145,8 +183,11 @@ export async function seedIfFirstRun(): Promise<void> {
     // Fast-path: if any course already exists, skip seeding entirely.
     const existingCourseCount = await db.courses.count();
     if (existingCourseCount > 0) {
+      await repairSeededSvgAssets();
       // Best-effort sync of the localStorage flag so future starts are cheaper.
-      try { localStorage.setItem(FLAG_KEY, '1'); } catch {
+      try {
+        localStorage.setItem(FLAG_KEY, '1');
+      } catch {
         // localStorage may be unavailable; next start will retry the check.
       }
       return;
@@ -206,6 +247,17 @@ export async function seedIfFirstRun(): Promise<void> {
       3,
     );
     const seedLessons = [lessonCore, lessonScheduling, lessonLearn, lessonAdvanced];
+    const finalAssessment: CourseAssessment = {
+      id: makeId(),
+      courseId: course.id,
+      name: 'Final exam',
+      kind: 'final',
+      examDate: course.examDate,
+      afterLessonId: lessonAdvanced.lesson.id,
+      coverageMode: 'prefix',
+      excludedCardIds: [],
+      createdAt,
+    };
 
     const notes: Note[] = [
       {
@@ -216,7 +268,7 @@ export async function seedIfFirstRun(): Promise<void> {
           'Every card you study has a **retrievability** — the probability you could recall it right now — ' +
           'which decays over time since your last review. Lacuna schedules each review to catch that decay ' +
           'just before it costs you the card, using the FSRS-6 model for stability and difficulty.\n\n' +
-          'Notes like this one live alongside a lesson\'s cards. Write explanations or source material here, ' +
+          "Notes like this one live alongside a lesson's cards. Write explanations or source material here, " +
           'then generate or add cards for the parts you actually need to be quizzed on.',
         orderIndex: 0,
         createdAt: Date.now() + 4,
@@ -313,9 +365,9 @@ export async function seedIfFirstRun(): Promise<void> {
         course.id,
         lessonScheduling.lesson.id,
         'front_back',
-        'What is Cram mode?',
-        'An exam-eve emergency mode that appears in the study dropdown once your exam is within 48 hours. It serves every card, ignoring the daily new-card cap, ordered **weakest-first** by predicted exam-day retrievability, so already-secured cards move to the back.',
-        ['scheduling', 'cram'],
+        'How does assessment revision work?',
+        'Choose a named checkpoint or final assessment from the course path or **Study now**. Lacuna creates a persistent, time-budgeted plan over reached and studied cards in that assessment’s coverage, respecting exclusions. Cards are ranked by predicted assessment-day value; invalid model data uses ordinary Practice ordering.',
+        ['scheduling', 'revision'],
         17,
       ),
       exampleCard(
@@ -398,7 +450,7 @@ export async function seedIfFirstRun(): Promise<void> {
         lessonAdvanced.lesson.id,
         'front_back',
         'How can you share a course with someone else?',
-        'Go to the **Share** page, select a course, and generate a compact **share code**. It carries the course\'s lessons, notes and cards, but not review history or images. The recipient pastes the code to add it as a new course of their own.',
+        "Go to the **Share** page, select a course, and generate a compact **share code**. It carries the course's lessons, notes and cards, but not review history or images. The recipient pastes the code to add it as a new course of their own.",
         ['share', 'export'],
         25,
       ),
@@ -428,7 +480,7 @@ export async function seedIfFirstRun(): Promise<void> {
         lessonAdvanced.lesson.id,
         'front_back',
         'Did you know: FSRS parameters can be personalised?',
-        'Lacuna can **optimise** a course\'s FSRS weights by training them on your own review history. Run it manually from **Course Settings → Scheduling optimisation**, or enable automatic optimisation in Settings. It only applies after confirming an improvement in prediction accuracy.',
+        "Lacuna can **optimise** a course's FSRS weights by training them on your own review history. Run it manually from **Course Settings → Scheduling optimisation**, or enable automatic optimisation in Settings. It only applies after confirming an improvement in prediction accuracy.",
         ['optimisation', 'advanced'],
         28,
       ),
@@ -488,7 +540,7 @@ export async function seedIfFirstRun(): Promise<void> {
         lessonAdvanced.lesson.id,
         'front_back',
         'Did you know: you can import cards from a spreadsheet?',
-        'From a lesson or the question bank, choose **Import**. Lacuna accepts **CSV** or **TSV** files (and Anki\'s plain-text export) with front, back, and optional tags. Cloze notation in a single column is recognised automatically.',
+        "From a lesson or the question bank, choose **Import**. Lacuna accepts **CSV** or **TSV** files (and Anki's plain-text export) with front, back, and optional tags. Cloze notation in a single column is recognised automatically.",
         ['import', 'data'],
         34,
       ),
@@ -546,11 +598,21 @@ export async function seedIfFirstRun(): Promise<void> {
 
     await db.transaction(
       'rw',
-      [db.courses, db.lessons, db.notes, db.decks, db.cards, db.userPerformance, db.assets],
+      [
+        db.courses,
+        db.courseAssessments,
+        db.lessons,
+        db.notes,
+        db.decks,
+        db.cards,
+        db.userPerformance,
+        db.assets,
+      ],
       async () => {
         const courseCount = await db.courses.count();
         if (courseCount > 0) return;
-        await db.courses.add(course);
+        await db.courses.add(courseToRecord(course));
+        await db.courseAssessments.add(finalAssessment);
         await db.lessons.bulkAdd(seedLessons.map((s) => s.lesson));
         await db.notes.bulkAdd(notes);
         await db.decks.bulkAdd(seedLessons.map((s) => s.deck));
@@ -561,7 +623,10 @@ export async function seedIfFirstRun(): Promise<void> {
     );
 
     // Only set the flag after a successful commit so a failed seed is retried.
-    try { localStorage.setItem(FLAG_KEY, '1'); } catch {
+    try {
+      localStorage.setItem(FLAG_KEY, '1');
+      localStorage.setItem(ASSET_REPAIR_FLAG_KEY, '1');
+    } catch {
       // localStorage may be unavailable; the next start will retry the check.
     }
   } finally {

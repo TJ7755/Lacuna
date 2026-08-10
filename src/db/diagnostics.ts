@@ -5,16 +5,16 @@
 // offer a one-click "copy" / "download" of a diagnostic bundle the user can paste
 // into a report. Everything stays on the device: nothing here transmits anywhere.
 //
-// Card content is never included by default. The bundle carries only counts and
-// non-sensitive app state; including a content sample is a separate, explicit
-// opt-in (see gatherContentSample).
+// Card content is never included by default. The bundle carries counts and
+// assessment configuration needed to diagnose scope faults; including a card
+// content sample remains a separate, explicit opt-in (see gatherContentSample).
 
 import { db } from './schema';
+import type { CourseAssessment } from './types';
 
 /** Build-time application version, injected by Vite (see vite.config.ts). */
 declare const __APP_VERSION__: string;
-const APP_VERSION: string =
-  typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0-dev';
+const APP_VERSION: string = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0-dev';
 
 export interface DiagnosticBundle {
   app: 'lacuna';
@@ -36,8 +36,11 @@ export interface DiagnosticBundle {
     notes?: number;
     lessonCards?: number;
     practiceNodes?: number;
-    courseExamDates?: number;
+    courseAssessments?: number;
+    assessments?: CourseAssessment[];
     sequences?: number;
+    occlusions?: number;
+    revisionPlans?: number;
   };
   /** Present only when the user explicitly opts in to including card content. */
   contentSample?: { front: string; back: string }[];
@@ -57,8 +60,11 @@ export interface DiagnosticInput {
     notes?: number;
     lessonCards?: number;
     practiceNodes?: number;
-    courseExamDates?: number;
+    courseAssessments?: number;
+    assessments?: CourseAssessment[];
     sequences?: number;
+    occlusions?: number;
+    revisionPlans?: number;
   };
   contentSample?: { front: string; back: string }[];
   userAgent?: string;
@@ -116,8 +122,9 @@ export function formatDiagnostics(bundle: DiagnosticBundle): string {
       (bundle.data.courses !== undefined
         ? `, ${bundle.data.courses} courses, ${bundle.data.lessons ?? 0} lessons, ` +
           `${bundle.data.notes ?? 0} notes, ${bundle.data.lessonCards ?? 0} lesson card links, ` +
-          `${bundle.data.practiceNodes ?? 0} practice nodes, ${bundle.data.courseExamDates ?? 0} course exam dates, ` +
-          `${bundle.data.sequences ?? 0} sequences`
+          `${bundle.data.practiceNodes ?? 0} practice nodes, ${bundle.data.courseAssessments ?? 0} course assessments, ` +
+          `${bundle.data.sequences ?? 0} sequences, ${bundle.data.occlusions ?? 0} occlusions, ` +
+          `${bundle.data.revisionPlans ?? 0} revision plans`
         : ''),
   ];
   if (bundle.contentSample) {
@@ -126,29 +133,57 @@ export function formatDiagnostics(bundle: DiagnosticBundle): string {
   return lines.join('\n');
 }
 
-/** Read non-sensitive record counts from the database for a bundle. */
+/** Read record counts and assessment configuration from the database for a bundle. */
 export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
-  const [decks, cards, backups, reviews, courses, lessons, notes, lessonCards, practiceNodes, courseExamDates, sequences] =
-    await Promise.all([
-      db.decks.count(),
-      db.cards.count(),
-      db.backups.count(),
-      db.sessionHistory.count(),
-      db.courses.count(),
-      db.lessons.count(),
-      db.notes.count(),
-      db.lessonCards.count(),
-      db.practiceNodes.count(),
-      db.courseExamDates.count(),
-      db.sequences.count(),
-    ]);
-  return { decks, cards, reviews, backups, courses, lessons, notes, lessonCards, practiceNodes, courseExamDates, sequences };
+  const [
+    decks,
+    cards,
+    backups,
+    reviews,
+    courses,
+    lessons,
+    notes,
+    lessonCards,
+    practiceNodes,
+    assessments,
+    sequences,
+    occlusions,
+    revisionPlans,
+  ] = await Promise.all([
+    db.decks.count(),
+    db.cards.count(),
+    db.backups.count(),
+    db.sessionHistory.count(),
+    db.courses.count(),
+    db.lessons.count(),
+    db.notes.count(),
+    db.lessonCards.count(),
+    db.practiceNodes.count(),
+    db.courseAssessments.toArray(),
+    db.sequences.count(),
+    db.occlusions.count(),
+    db.revisionPlans.count(),
+  ]);
+  return {
+    decks,
+    cards,
+    reviews,
+    backups,
+    courses,
+    lessons,
+    notes,
+    lessonCards,
+    practiceNodes,
+    courseAssessments: assessments.length,
+    assessments,
+    sequences,
+    occlusions,
+    revisionPlans,
+  };
 }
 
 /** Read a small sample of card content. Only called when the user opts in. */
-export async function gatherContentSample(
-  limit = 5,
-): Promise<{ front: string; back: string }[]> {
+export async function gatherContentSample(limit = 5): Promise<{ front: string; back: string }[]> {
   const cards = await db.cards.limit(limit).toArray();
   return cards.map((c) => ({ front: c.front, back: c.back }));
 }

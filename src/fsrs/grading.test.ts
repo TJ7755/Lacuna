@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { UserPerformance } from '../db/types';
 import {
   emptyPerformance,
+  FULL_MARKS_EASY_SECONDS,
+  gradeFromMarks,
   gradeFromResponse,
   HINT_TIME_PENALTY_SEC,
   updatePerformance,
@@ -52,6 +54,49 @@ describe('gradeFromResponse', () => {
       expect(gradeFromResponse(true, responseTimeSec, calibratedPerformance)).toBe(expected);
     });
   });
+});
+
+describe('gradeFromMarks', () => {
+  it.each([
+    { marksEarned: 4, marksAvailable: 4, responseTimeSec: 2.999, selfCorrected: false, grade: 4 },
+    { marksEarned: 4, marksAvailable: 4, responseTimeSec: 3, selfCorrected: false, grade: 3 },
+    { marksEarned: 4, marksAvailable: 4, responseTimeSec: 20, selfCorrected: true, grade: 3 },
+    { marksEarned: 3, marksAvailable: 4, responseTimeSec: 2, selfCorrected: true, grade: 2 },
+    { marksEarned: 1, marksAvailable: 4, responseTimeSec: 20, selfCorrected: true, grade: 2 },
+    { marksEarned: 3, marksAvailable: 4, responseTimeSec: 2, selfCorrected: false, grade: 1 },
+    { marksEarned: 0, marksAvailable: 4, responseTimeSec: 2, selfCorrected: true, grade: 1 },
+  ])(
+    'maps $marksEarned/$marksAvailable marks at $responseTimeSec seconds to grade $grade',
+    ({ marksEarned, marksAvailable, responseTimeSec, selfCorrected, grade }) => {
+      expect(gradeFromMarks(marksEarned, marksAvailable, responseTimeSec, selfCorrected)).toBe(
+        grade,
+      );
+    },
+  );
+
+  it.each([
+    [Number.NaN, 4],
+    [4, Number.NaN],
+    [1, 0],
+    [1, -1],
+    [-1, 4],
+    [5, 4],
+  ])('grades invalid marks %s/%s as Again', (marksEarned, marksAvailable) => {
+    expect(gradeFromMarks(marksEarned, marksAvailable, 2, true)).toBe(1);
+  });
+
+  it('uses a named fast-response boundary', () => {
+    expect(FULL_MARKS_EASY_SECONDS).toBe(3);
+    expect(gradeFromMarks(1, 1, FULL_MARKS_EASY_SECONDS - 0.001, false)).toBe(4);
+    expect(gradeFromMarks(1, 1, FULL_MARKS_EASY_SECONDS, false)).toBe(3);
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -0.001])(
+    'does not award Easy for an invalid response time of %s',
+    (responseTimeSec) => {
+      expect(gradeFromMarks(1, 1, responseTimeSec, false)).toBe(3);
+    },
+  );
 });
 
 describe('HINT_TIME_PENALTY_SEC', () => {

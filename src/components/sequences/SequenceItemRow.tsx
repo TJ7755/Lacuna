@@ -4,6 +4,7 @@
 // mirrors the notes list's NoteRow split.
 
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
+import { Select } from '../ui/Select';
 import { ChevronDownIcon, PlusIcon, TrashIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import type { Ref } from 'react';
@@ -76,6 +77,7 @@ export function SequenceItemRow({
             type="button"
             onClick={onMoveUp}
             disabled={isFirst}
+            aria-label={`Move ${itemTerm} ${index + 1} up`}
             title="Move up"
             className={cn(
               'flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
@@ -88,6 +90,7 @@ export function SequenceItemRow({
             type="button"
             onClick={onMoveDown}
             disabled={isLast}
+            aria-label={`Move ${itemTerm} ${index + 1} down`}
             title="Move down"
             className={cn(
               'flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
@@ -99,6 +102,7 @@ export function SequenceItemRow({
           <button
             type="button"
             onClick={onDelete}
+            aria-label={`Delete ${itemTerm} ${index + 1}`}
             title={`Delete ${itemTerm}`}
             className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
           >
@@ -119,19 +123,20 @@ export function SequenceItemRow({
         )}
         <input
           type="text"
+          aria-label={`Label for ${itemTerm} ${index + 1}`}
           value={item.label ?? ''}
           onChange={(e) => onChange({ label: e.target.value || undefined })}
           placeholder="Label (optional)"
           className="min-h-11 min-w-[10rem] flex-1 rounded-lg border border-line bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
         />
         {chunkLabels.length > 0 && (
-          <select
+          <Select
             value={item.chunkIndex ?? ''}
             onChange={(e) =>
               onChange({ chunkIndex: e.target.value === '' ? undefined : Number(e.target.value) })
             }
             aria-label={`Chunk for ${itemTerm} ${index + 1}`}
-            className="min-h-11 min-w-[10rem] flex-1 rounded-lg border border-line bg-transparent px-3 py-2 text-sm outline-none focus:border-accent sm:flex-none"
+            className="min-w-[10rem] flex-1 sm:flex-none"
           >
             <option value="">No chunk</option>
             {chunkLabels.map((label, i) => (
@@ -139,7 +144,7 @@ export function SequenceItemRow({
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
       <MarkdownEditor
@@ -155,7 +160,7 @@ export function SequenceItemRow({
       />
       {invalid && (
         <p id={errorId} role="alert" className="mt-2 text-sm text-negative">
-          Enter {itemTerm} content before adding another.
+          Enter {itemTerm} content before saving or adding another.
         </p>
       )}
     </div>

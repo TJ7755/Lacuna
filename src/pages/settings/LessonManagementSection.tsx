@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
+import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { AddLessonControl } from '../../components/course/AddLessonControl';
 import { ChevronDownIcon, TrashIcon, EditIcon } from '../../components/ui/icons';
 import { useLessons } from '../../state/useCourseData';
@@ -19,6 +20,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
   const lessons = useLessons(courseId);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   function startEdit(id: string, currentName: string) {
     setEditingId(id);
@@ -42,10 +44,9 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
     await reorderLessons(courseId, orderedIds);
   }
 
-  async function remove(id: string, name: string) {
-    if (!window.confirm(`Delete '${name}'? Its notes will be removed and its cards unassigned.`))
-      return;
+  async function remove(id: string) {
     await deleteLesson(id);
+    setConfirmDeleteId(null);
   }
 
   return (
@@ -104,22 +105,32 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => startEdit(lesson.id, lesson.name)}
-              aria-label={`Rename ${lesson.name}`}
-            >
-              <EditIcon width={16} height={16} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void remove(lesson.id, lesson.name)}
-              aria-label={`Delete ${lesson.name}`}
-            >
-              <TrashIcon width={16} height={16} />
-            </Button>
+            {confirmDeleteId === lesson.id ? (
+              <ConfirmInline
+                message="Delete? Notes will be removed and cards unassigned."
+                onConfirm={() => void remove(lesson.id)}
+                onCancel={() => setConfirmDeleteId(null)}
+              />
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => startEdit(lesson.id, lesson.name)}
+                  aria-label={`Rename ${lesson.name}`}
+                >
+                  <EditIcon width={16} height={16} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmDeleteId(lesson.id)}
+                  aria-label={`Delete ${lesson.name}`}
+                >
+                  <TrashIcon width={16} height={16} />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       ))}

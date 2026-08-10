@@ -302,6 +302,7 @@ export function UnifiedExportPanel({
               </div>
               <textarea
                 readOnly
+                aria-label="Generated share code"
                 value={shareCode}
                 onFocus={(e) => e.currentTarget.select()}
                 rows={4}

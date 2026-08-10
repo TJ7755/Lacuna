@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
+import { useCourse, useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { cn } from '../components/ui/cn';
@@ -11,10 +11,19 @@ import {
   decodeShare,
   importSharePayload,
   summariseShare,
+  type SharePayload,
   type ShareSummary,
 } from '../db/share';
-import { referencedAssetHashesInCards } from '../db/assets';
+import { referencedAssetHashes } from '../db/assets';
 import { exportCardsSimple } from '../db/export';
+import { publishCourse } from '../db/repository';
+import {
+  findCourseForLineage,
+  isLineagePayload,
+  mergeLineageUpdate,
+  type MergeLineageResult,
+} from '../db/mergeImport';
+import type { Card, CourseRecord } from '../db/types';
 import {
   CheckIcon,
   DownloadIcon,
@@ -26,12 +35,82 @@ import {
   CameraIcon,
   CloseIcon,
 } from '../components/ui/icons';
-import { formatDate } from '../utils/datetime';
+import { formatDate, formatRelativeTime } from '../utils/datetime';
 import QRCode from 'react-qr-code';
 import type { Html5Qrcode } from 'html5-qrcode';
 
 /** Maximum characters a single QR code (version 40, L error correction) can hold in Alphanumeric mode. */
 const MAX_QR_ALPHANUMERIC_CHARS = 4296;
+
+function mediaCardLabel(card: Card, index: number): string {
+  const firstTextLine = card.front
+    .replace(/!\[[^\]]*\]\(lacuna-asset:\/\/[a-f0-9]{64}\)/gi, '')
+    .replace(/lacuna-asset:\/\/[a-f0-9]{64}/gi, '')
+    .split('\n')
+    .map((line) => line.replace(/^[#>*_\s-]+|[*_\s]+$/g, '').trim())
+    .find(Boolean);
+  if (!firstTextLine) return `Card ${index + 1} (no text prompt)`;
+  return firstTextLine.length > 80 ? `${firstTextLine.slice(0, 77)}…` : firstTextLine;
+}
+
+/** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
+ *  (Arc 7 §7.5) matches a course already imported locally — routing this to the merge
+ *  importer instead of a plain new-course import. */
+interface PendingShareImport {
+  summary: ShareSummary;
+  raw: string;
+  merge?: {
+    course: CourseRecord;
+    incomingRevision: number;
+    /** True when `incomingRevision` is not newer than the local copy — nothing to merge. */
+    stale: boolean;
+  };
+}
+
+/** Decode-time lineage check (next_plan.md §7.5): does this payload's lineage match a
+ *  course already tracked locally? If so, route the confirm step to the merge importer
+ *  instead of the plain `importSharePayload` path. */
+async function resolvePending(payload: SharePayload, raw: string): Promise<PendingShareImport> {
+  const summary = summariseShare(payload);
+  if (isLineagePayload(payload)) {
+    const course = await findCourseForLineage(payload.li);
+    if (course) {
+      const localRevision = course.distributedCopy?.revision ?? 0;
+      return {
+        summary,
+        raw,
+        merge: { course, incomingRevision: payload.rv, stale: payload.rv <= localRevision },
+      };
+    }
+  }
+  return { summary, raw };
+}
+
+/** Turn a merge result into a single sentence for the post-import toast. */
+function describeMergeResult(result: MergeLineageResult): string {
+  const parts: string[] = [];
+  if (result.createdLessons || result.createdNotes || result.createdCards) {
+    parts.push(
+      `added ${result.createdLessons} lesson${result.createdLessons === 1 ? '' : 's'}, ` +
+        `${result.createdNotes} note${result.createdNotes === 1 ? '' : 's'} and ` +
+        `${result.createdCards} card${result.createdCards === 1 ? '' : 's'}`,
+    );
+  }
+  if (result.appliedUpdates || result.appliedRemovals) {
+    parts.push(
+      `applied ${result.appliedUpdates} update${result.appliedUpdates === 1 ? '' : 's'} and ` +
+        `${result.appliedRemovals} removal${result.appliedRemovals === 1 ? '' : 's'}`,
+    );
+  }
+  let message = parts.length > 0 ? `Updated the course — ${parts.join('; ')}.` : 'The course is already up to date.';
+  if (result.queuedForReview) {
+    message +=
+      result.conflictCount > 0
+        ? ` ${result.conflictCount} change${result.conflictCount === 1 ? '' : 's'} ${result.conflictCount === 1 ? 'is' : 'are'} waiting for your review.`
+        : ' Some changes are waiting for your review.';
+  }
+  return message;
+}
 
 /**
  * Share a course as a single copy-and-paste code, and rebuild a course from a code. Share
@@ -46,9 +125,10 @@ export function SharePage() {
   const [code, setCode] = useState('');
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const [input, setInput] = useState('');
-  const [pending, setPending] = useState<{ summary: ShareSummary; raw: string } | null>(null);
+  const [pending, setPending] = useState<PendingShareImport | null>(null);
   const [importing, setImporting] = useState(false);
   const copyTimeoutRef = useRef<number | null>(null);
   const plainTextCopyTimeoutRef = useRef<number | null>(null);
@@ -95,9 +175,20 @@ export function SharePage() {
 
   const m = speedMultiplier(motionSpeed);
 
+  const selectedCourse = useCourse(selectedCourseId ?? undefined);
   const selectedSummary = selectedCourseId ? summaries?.[selectedCourseId] : undefined;
-  const selectedHasImages = useMemo(
-    () => referencedAssetHashesInCards(courseCards ?? []).length > 0,
+  // Two ways a card carries media a share code cannot: an asset embed in its Markdown
+  // (images, audio), and an occlusion diagram, which lives on `Occlusion.assetHash` and so
+  // never appears in the card's text at all. Occlusion cards degrade to their plain-text
+  // fallback for the recipient rather than breaking, but they are still not the card the
+  // author made — Arc 6 §6.6.
+  const selectedMediaCards = useMemo(
+    () =>
+      (courseCards ?? []).filter(
+        (card) =>
+          card.occlusionRegionId !== undefined ||
+          referencedAssetHashes(`${card.front}\n${card.back}`).length > 0,
+      ),
     [courseCards],
   );
 
@@ -108,6 +199,25 @@ export function SharePage() {
     setPlainText('');
     setQrCode('');
     setShowQR(false);
+  }
+
+  async function handlePublish() {
+    if (!selectedCourseId) return;
+    setPublishing(true);
+    try {
+      await publishCourse(selectedCourseId);
+      // Keep an already-generated code in sync with the new revision, rather than
+      // leaving a stale pre-publish code on screen.
+      if (code) {
+        const refreshed = await buildCourseShareCode(selectedCourseId);
+        setCode(refreshed);
+        setCopied(false);
+      }
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'Could not publish this course.', 'negative');
+    } finally {
+      setPublishing(false);
+    }
   }
 
   async function handleGenerate() {
@@ -196,22 +306,27 @@ export function SharePage() {
     if (!raw) return;
     try {
       const payload = await decodeShare(raw);
-      setPending({ summary: summariseShare(payload), raw });
+      setPending(await resolvePending(payload, raw));
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Invalid share code.', 'negative');
     }
   }
 
   async function handleImport() {
-    if (!pending) return;
+    if (!pending || pending.merge?.stale) return;
     setImporting(true);
     try {
       const payload = await decodeShare(pending.raw);
-      const { courses, cards: c } = await importSharePayload(payload);
-      notify(
-        `Added ${courses} course${courses === 1 ? '' : 's'} and ${c} card${c === 1 ? '' : 's'}.`,
-        'positive',
-      );
+      if (pending.merge) {
+        const result = await mergeLineageUpdate(pending.merge.course.id, payload);
+        notify(describeMergeResult(result), 'positive');
+      } else {
+        const { courses, cards: c } = await importSharePayload(payload);
+        notify(
+          `Added ${courses} course${courses === 1 ? '' : 's'} and ${c} card${c === 1 ? '' : 's'}.`,
+          'positive',
+        );
+      }
       setPending(null);
       setInput('');
     } catch (err) {
@@ -248,7 +363,7 @@ export function SharePage() {
           setScanning(false);
           try {
             const payload = await decodeShare(decodedText);
-            setPending({ summary: summariseShare(payload), raw: decodedText });
+            setPending(await resolvePending(payload, decodedText));
           } catch (err) {
             notify(err instanceof Error ? err.message : 'Invalid QR code.', 'negative');
           }
@@ -305,9 +420,9 @@ export function SharePage() {
           <h2 className="font-display text-xl">Export a course</h2>
         </div>
         <p className="mb-5 text-sm text-ink-soft">
-          Select a course, then generate a code to copy and share. Images are not included
-          in share codes because they make pasteable codes too large; use a full backup
-          when you need to transfer images.
+          Select a course, then generate a code to copy and share. Media files are not included
+          because they make pasteable codes too large; use a full backup when you need to transfer
+          images or audio.
         </p>
 
         {!courses ? (
@@ -381,11 +496,55 @@ export function SharePage() {
             </div>
 
             <div className="mt-5">
-              {selectedHasImages && (
-                <p className="mb-3 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
-                  This course contains images. The share code will replace them with
-                  placeholders; export a full backup from Settings to transfer the images too.
-                </p>
+              {selectedCourse && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-raised px-4 py-3">
+                  {selectedCourse.distribution ? (
+                    <>
+                      <p className="text-sm text-ink-soft">
+                        Revision {selectedCourse.distribution.revision} · published{' '}
+                        {formatRelativeTime(selectedCourse.distribution.publishedAt)}
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void handlePublish()}
+                        disabled={publishing}
+                      >
+                        {publishing ? 'Publishing…' : 'Publish update'}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-ink-soft">
+                        Publishing lets students receive updates when you share a new code.
+                      </p>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => void handlePublish()}
+                        disabled={publishing}
+                      >
+                        {publishing ? 'Publishing…' : 'Publish course'}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              )}
+              {selectedMediaCards.length > 0 && (
+                <div className="mb-3 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
+                  <p>
+                    This course contains media in {selectedMediaCards.length}{' '}
+                    {selectedMediaCards.length === 1 ? 'card' : 'cards'}. The share code cannot
+                    carry the files: recipients get a placeholder in their place, and diagram
+                    cards fall back to text with no image to label. Export a full backup from
+                    Settings to transfer the media too.
+                  </p>
+                  <ul className="mt-2 max-h-32 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-ink-faint">
+                    {selectedMediaCards.map((card, index) => (
+                      <li key={`${card.id}-${index}`}>{mediaCardLabel(card, index)}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -443,6 +602,7 @@ export function SharePage() {
                     </div>
                     <textarea
                       readOnly
+                      aria-label="Generated share code"
                       value={code}
                       onFocus={(e) => e.currentTarget.select()}
                       rows={4}
@@ -525,6 +685,7 @@ export function SharePage() {
                     </div>
                     <textarea
                       readOnly
+                      aria-label="Generated plain-text export"
                       value={plainText}
                       onFocus={(e) => e.currentTarget.select()}
                       rows={6}
@@ -552,6 +713,7 @@ export function SharePage() {
 
         <div className="rounded-xl border border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
           <textarea
+            aria-label="Share code to import"
             value={input}
             onChange={(e) => {
               setInput(e.target.value);
@@ -624,12 +786,32 @@ export function SharePage() {
               className="overflow-hidden"
             >
               <div className="rounded-xl border border-accent/40 bg-accent-soft/40 p-5">
-                <h3 className="mb-2 font-display text-lg">Ready to import</h3>
-                {pending.summary.kind === 'course' ? (
+                <h3 className="mb-2 font-display text-lg">
+                  {pending.merge ? 'Course update' : 'Ready to import'}
+                </h3>
+                {pending.merge ? (
+                  <p className="mb-3 text-sm text-ink-soft">
+                    {pending.merge.stale ? (
+                      <>
+                        You already have the latest version of{' '}
+                        <strong className="text-ink">{pending.merge.course.name}</strong> (revision{' '}
+                        {pending.merge.course.distributedCopy?.revision ?? 0}).
+                      </>
+                    ) : (
+                      <>
+                        This updates <strong className="text-ink">{pending.merge.course.name}</strong>{' '}
+                        (revision {pending.merge.course.distributedCopy?.revision ?? 0} →{' '}
+                        {pending.merge.incomingRevision}).
+                      </>
+                    )}
+                  </p>
+                ) : pending.summary.kind === 'course' ? (
                   <p className="mb-3 text-sm text-ink-soft">
                     <strong className="text-ink">{pending.summary.courseName}</strong> —{' '}
                     <strong className="text-ink">{pending.summary.lessonCount}</strong> lesson
-                    {pending.summary.lessonCount === 1 ? '' : 's'} and{' '}
+                    {pending.summary.lessonCount === 1 ? '' : 's'},{' '}
+                    <strong className="text-ink">{pending.summary.noteCount ?? 0}</strong> note
+                    {pending.summary.noteCount === 1 ? '' : 's'} and{' '}
                     <strong className="text-ink">{pending.summary.cardCount}</strong> card
                     {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
                     {formatDate(pending.summary.exportedAt)}.
@@ -645,7 +827,7 @@ export function SharePage() {
                     imported course.
                   </p>
                 )}
-                {pending.summary.deckNames.length > 0 && (
+                {!pending.merge && pending.summary.deckNames.length > 0 && (
                   <ul className="mb-4 flex flex-wrap gap-1.5">
                     {pending.summary.deckNames.map((name, i) => (
                       <li
@@ -657,19 +839,27 @@ export function SharePage() {
                     ))}
                   </ul>
                 )}
-                {pending.summary.omittedImages && (
+                {!pending.merge && pending.summary.omittedImages && (
                   <p className="mb-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink-soft">
-                    This share code omitted images to keep the code small. Image positions
-                    will appear as placeholders after import.
+                    This share code omitted media to keep the code small. Images and audio will
+                    appear as placeholders after import.
                   </p>
                 )}
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button variant="ghost" onClick={() => setPending(null)}>
-                    Cancel
+                    {pending.merge?.stale ? 'Close' : 'Cancel'}
                   </Button>
-                  <Button variant="primary" onClick={handleImport} disabled={importing}>
-                    {importing ? 'Importing…' : 'Add to my courses'}
-                  </Button>
+                  {!pending.merge?.stale && (
+                    <Button variant="primary" onClick={handleImport} disabled={importing}>
+                      {importing
+                        ? pending.merge
+                          ? 'Updating…'
+                          : 'Importing…'
+                        : pending.merge
+                          ? 'Update course'
+                          : 'Add to my courses'}
+                    </Button>
+                  )}
                 </div>
               </div>
             </motion.div>

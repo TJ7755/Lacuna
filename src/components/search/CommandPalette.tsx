@@ -12,7 +12,7 @@ import {
   type SearchResult,
 } from '../../db/search';
 import { SearchIcon, GridIcon, FolderIcon, FileTextIcon } from '../ui/icons';
-import { SequenceBadge } from '../cards/SequenceBadge';
+import { GeneratedCardBadge } from '../cards/GeneratedCardBadge';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
@@ -253,7 +253,13 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                                     </span>
                                   )}
                                   {hit.card.sequenceItemId !== null &&
-                                    hit.card.sequenceItemId !== undefined && <SequenceBadge />}
+                                    hit.card.sequenceItemId !== undefined && (
+                                      <GeneratedCardBadge kind="sequence" />
+                                    )}
+                                  {hit.card.occlusionRegionId !== null &&
+                                    hit.card.occlusionRegionId !== undefined && (
+                                      <GeneratedCardBadge kind="occlusion" />
+                                    )}
                                 </span>
                               </span>
                             ) : (

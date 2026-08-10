@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CourseSettings } from './CourseSettings';
@@ -7,6 +8,7 @@ import type { Card, Course } from '../db/types';
 
 const mockNavigate = vi.fn();
 const mockUpdateCourse = vi.fn().mockResolvedValue(undefined);
+const mockUpdateCourseAssessment = vi.fn().mockResolvedValue(undefined);
 const mockDeleteCourse = vi.fn().mockResolvedValue(undefined);
 const mockSnapshotCourse = vi.fn().mockResolvedValue({ course: 'snapshot' });
 const mockRestoreCourse = vi.fn().mockResolvedValue(undefined);
@@ -14,29 +16,51 @@ const mockNotify = vi.fn();
 const mockOptimiserReset = vi.fn();
 const mockOptimiserRun = vi.fn();
 
+vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => [] }));
+
 let mockCourse: Course | null | undefined;
 let mockCards: Card[] | undefined;
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
+  function TestMemoryRouter(props: React.ComponentProps<typeof actual.MemoryRouter>) {
+    return React.createElement(actual.MemoryRouter, {
+      ...props,
+      future: {
+        ...props.future,
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      },
+    });
+  }
   return {
     ...actual,
+    MemoryRouter: TestMemoryRouter,
     useNavigate: () => mockNavigate,
   };
 });
 
 vi.mock('../state/useCourseData', () => ({
+  useCourse: () => mockCourse,
   useCourseCards: () => mockCards,
-  useCourseExamDates: () => [],
+  useCourseAssessments: () =>
+    mockCourse
+      ? [
+          {
+            id: 'final-1',
+            courseId: mockCourse.id,
+            name: 'Final exam',
+            kind: 'final',
+            examDate: mockCourse.examDate,
+            afterLessonId: null,
+            coverageMode: 'prefix',
+            excludedCardIds: [],
+            createdAt: mockCourse.createdAt,
+          },
+        ]
+      : [],
   useLessons: () => [],
   usePracticeNodes: () => [],
-}));
-
-// CourseSettings resolves the course itself via useLiveQuery + db.courses.get
-// (mapping a missing row to null, matching CoursePath's reachable not-found
-// pattern), rather than the useCourse hook — see the finding this test now covers.
-vi.mock('dexie-react-hooks', () => ({
-  useLiveQuery: () => mockCourse,
 }));
 
 vi.mock('../state/motionSpeed', () => ({
@@ -49,9 +73,10 @@ vi.mock('../db/repository', () => ({
   deleteCourse: (id: string) => mockDeleteCourse(id),
   snapshotCourse: (id: string) => mockSnapshotCourse(id),
   restoreCourse: (snapshot: unknown) => mockRestoreCourse(snapshot),
-  createCourseExamDate: vi.fn().mockResolvedValue(undefined),
-  updateCourseExamDate: vi.fn().mockResolvedValue(undefined),
-  deleteCourseExamDate: vi.fn().mockResolvedValue(undefined),
+  createCourseAssessment: vi.fn().mockResolvedValue(undefined),
+  updateCourseAssessment: (id: string, changes: Record<string, unknown>) =>
+    mockUpdateCourseAssessment(id, changes),
+  deleteCourseAssessment: vi.fn().mockResolvedValue(undefined),
   updateLesson: vi.fn().mockResolvedValue(undefined),
   deleteLesson: vi.fn().mockResolvedValue(undefined),
   reorderLessons: vi.fn().mockResolvedValue(undefined),
@@ -116,6 +141,7 @@ beforeEach(() => {
   mockCourse = course;
   mockCards = [];
   mockUpdateCourse.mockClear();
+  mockUpdateCourseAssessment.mockClear();
   mockDeleteCourse.mockClear();
   mockSnapshotCourse.mockClear();
   mockRestoreCourse.mockClear();
@@ -158,7 +184,19 @@ describe('CourseSettings', () => {
     expect(mockOptimiserReset).not.toHaveBeenCalled();
   });
 
-  it('shows the draft exam date before it is saved', () => {
+  it('renders the grouped section headings and no "Save changes" bar', () => {
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Basics' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Study' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Content' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Assessments' })).toBeInTheDocument();
+    // "Danger zone" has no separate group heading — DangerZoneSection labels itself —
+    // so assert on its presence rather than a specific role.
+    expect(screen.getAllByText('Danger zone').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Save changes')).not.toBeInTheDocument();
+  });
+
+  it('edits the final date through the shared assessment editor', () => {
     mockCourse = {
       ...course,
       examDate: Date.UTC(2026, 5, 10, 14, 30),
@@ -166,30 +204,96 @@ describe('CourseSettings', () => {
     };
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Exam date and time' }));
+    fireEvent.click(screen.getByLabelText('Edit Final exam'));
+    fireEvent.click(screen.getByRole('button', { name: 'Date and time' }));
     fireEvent.click(screen.getByRole('button', { name: '20 June 2026' }));
 
-    expect(screen.getByText(/20 June 2026.*14:30.*UTC/)).toBeInTheDocument();
-    expect(mockUpdateCourse).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Date and time' })).toHaveTextContent('20 Jun 2026');
+    expect(mockUpdateCourseAssessment).not.toHaveBeenCalled();
   });
 
-  it('saves edits by calling updateCourse with unlockMode, linearCadence and practice fields', () => {
+  it('commits the course name on blur, not on every keystroke', () => {
     renderPage();
     const nameInput = screen.getByDisplayValue('Original course');
     fireEvent.change(nameInput, { target: { value: 'Renamed course' } });
-    fireEvent.click(screen.getByText('Save changes'));
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(nameInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ name: 'Renamed course' }),
+    );
+  });
+
+  it('commits the exam board on blur, not on every keystroke', () => {
+    renderPage();
+    const input = screen.getByLabelText('Exam board');
+    fireEvent.change(input, { target: { value: 'AQA' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(input);
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { examBoard: 'AQA' });
+  });
+
+  it('commits the specification on blur, not on every keystroke', () => {
+    renderPage();
+    const input = screen.getByLabelText('Specification');
+    fireEvent.change(input, { target: { value: '7136' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(input);
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { specification: '7136' });
+  });
+
+  it('clears optional course provenance to undefined', () => {
+    mockCourse = { ...course, examBoard: 'AQA', specification: '7136' };
+    renderPage();
+
+    const examBoardInput = screen.getByLabelText('Exam board');
+    fireEvent.change(examBoardInput, { target: { value: '' } });
+    fireEvent.blur(examBoardInput);
+
+    const specificationInput = screen.getByLabelText('Specification');
+    fireEvent.change(specificationInput, { target: { value: '   ' } });
+    fireEvent.blur(specificationInput);
+
+    expect(mockUpdateCourse).toHaveBeenNthCalledWith(1, 'course-1', { examBoard: undefined });
+    expect(mockUpdateCourse).toHaveBeenNthCalledWith(2, 'course-1', { specification: undefined });
+  });
+
+  it('commits the retention slider once when the drag ends, not on every tick', () => {
+    renderPage();
+    const slider = screen.getByLabelText('Target retention');
+    fireEvent.change(slider, { target: { value: '0.91' } });
+    fireEvent.change(slider, { target: { value: '0.92' } });
+    fireEvent.change(slider, { target: { value: '0.93' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(slider, { target: { value: '0.93' } });
+    expect(mockUpdateCourse).toHaveBeenCalledTimes(1);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
       expect.objectContaining({
-        name: 'Renamed course',
-        unlockMode: 'semi-linear',
-        linearCadence: expect.objectContaining({ intervalDays: 7 }),
-        autoPractice: true,
-        practiceThresholdMinutesFar: 30,
-        practiceThresholdMinutesNear: 15,
-        practiceUrgentWindowDays: 7,
-        practiceMaxGap: 5,
+        fsrsParameters: expect.objectContaining({ requestRetention: 0.93 }),
       }),
+    );
+  });
+
+  it('commits the exam objective toggle immediately on change', () => {
+    renderPage();
+    fireEvent.click(screen.getByLabelText('Secure topics'));
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ examObjective: 'securedTopics' }),
+    );
+  });
+
+  it('commits unlock mode immediately when a radio option is picked', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Linear'));
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ unlockMode: 'linear' }),
     );
   });
 
@@ -200,72 +304,94 @@ describe('CourseSettings', () => {
     expect(screen.getByText('Days between lessons')).toBeInTheDocument();
   });
 
-  it('falls back to the current value when a practice field is left blank', () => {
+  it('commits linear cadence interval days on blur, not on every keystroke', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Linear'));
+    mockUpdateCourse.mockClear();
+
+    const intervalInput = screen.getByLabelText(/Days between lessons/);
+    fireEvent.change(intervalInput, { target: { value: '14' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+
+    fireEvent.blur(intervalInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ linearCadence: expect.objectContaining({ intervalDays: 14 }) }),
+    );
+  });
+
+  it('falls back to the current value when a practice field is left blank on blur', () => {
     renderPage();
     const maxGapInput = screen.getByDisplayValue('5');
     fireEvent.change(maxGapInput, { target: { value: '' } });
-    fireEvent.click(screen.getByText('Save changes'));
+    fireEvent.blur(maxGapInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
       expect.objectContaining({ practiceMaxGap: 5 }),
     );
   });
 
-  it('accepts a zero value for the far/near thresholds and urgent window', () => {
+  it('accepts a zero value for the far/near thresholds and urgent window on blur', () => {
     renderPage();
-    fireEvent.change(screen.getByLabelText(/Threshold \(exam not near\)/), {
-      target: { value: '0' },
-    });
-    fireEvent.change(screen.getByLabelText(/Threshold \(exam near\)/), {
-      target: { value: '0' },
-    });
-    fireEvent.change(screen.getByLabelText(/Urgent window/), { target: { value: '0' } });
-    fireEvent.click(screen.getByText('Save changes'));
+    const farInput = screen.getByLabelText(/Threshold \(exam not near\)/);
+    fireEvent.change(farInput, { target: { value: '0' } });
+    fireEvent.blur(farInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
-      expect.objectContaining({
-        practiceThresholdMinutesFar: 0,
-        practiceThresholdMinutesNear: 0,
-        practiceUrgentWindowDays: 0,
-      }),
+      expect.objectContaining({ practiceThresholdMinutesFar: 0 }),
+    );
+
+    const nearInput = screen.getByLabelText(/Threshold \(exam near\)/);
+    fireEvent.change(nearInput, { target: { value: '0' } });
+    fireEvent.blur(nearInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ practiceThresholdMinutesNear: 0 }),
+    );
+
+    const urgentInput = screen.getByLabelText(/Urgent window/);
+    fireEvent.change(urgentInput, { target: { value: '0' } });
+    fireEvent.blur(urgentInput);
+    expect(mockUpdateCourse).toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({ practiceUrgentWindowDays: 0 }),
     );
   });
 
-  it('falls back to the current value when the maximum lesson gap is set to zero', () => {
+  it('falls back to the current value when the maximum lesson gap is set to zero on blur', () => {
     renderPage();
     const maxGapInput = screen.getByDisplayValue('5');
     fireEvent.change(maxGapInput, { target: { value: '0' } });
-    fireEvent.click(screen.getByText('Save changes'));
+    fireEvent.blur(maxGapInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
       expect.objectContaining({ practiceMaxGap: 5 }),
     );
   });
 
-  it('round-trips a valid practice field edit', () => {
+  it('round-trips a valid practice field edit on blur', () => {
     renderPage();
     const maxGapInput = screen.getByDisplayValue('5');
     fireEvent.change(maxGapInput, { target: { value: '9' } });
-    fireEvent.click(screen.getByText('Save changes'));
+    fireEvent.blur(maxGapInput);
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
       expect.objectContaining({ practiceMaxGap: 9 }),
     );
   });
 
-  it('defaults the save payload to lessonViewMode: study when the course has none', () => {
+  it('commits auto-practice immediately on toggle', () => {
     renderPage();
-    fireEvent.click(screen.getByText('Save changes'));
+    fireEvent.click(screen.getByLabelText('Auto-practice'));
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
-      expect.objectContaining({ lessonViewMode: 'study' }),
+      expect.objectContaining({ autoPractice: false }),
     );
   });
 
-  it('picking Edit saves lessonViewMode: edit', () => {
+  it('commits lessonViewMode: edit immediately when Edit is picked', () => {
     renderPage();
     fireEvent.click(screen.getByRole('radio', { name: /Edit/ }));
-    fireEvent.click(screen.getByText('Save changes'));
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
       expect.objectContaining({ lessonViewMode: 'edit' }),
@@ -277,6 +403,47 @@ describe('CourseSettings', () => {
     renderPage();
     const editRadio = screen.getByRole('radio', { name: /Edit/ });
     expect(editRadio).toBeChecked();
+  });
+
+  it('rejects an invalid learning steps format on blur without committing', () => {
+    renderPage();
+    const learningStepsInput = screen.getByDisplayValue('1m, 10m');
+    fireEvent.change(learningStepsInput, { target: { value: 'not-a-step' } });
+    fireEvent.blur(learningStepsInput);
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid learning steps format'),
+      'negative',
+    );
+    expect(mockUpdateCourse).not.toHaveBeenCalledWith(
+      'course-1',
+      expect.objectContaining({
+        fsrsParameters: expect.objectContaining({ learning_steps: ['not-a-step'] }),
+      }),
+    );
+  });
+
+  it('does not let a second fsrs-nested commit revert an earlier one before the live query resolves', () => {
+    // mockCourse is a static fixture for the whole test (see beforeEach) — it never
+    // re-resolves between the two commits below, mirroring a real useLiveQuery update
+    // arriving after both fields have already committed. Regression test for the stale
+    // `course.fsrsParameters` closure bug: each fsrs-nested field must patch from a
+    // shared local draft, not from `course.fsrsParameters`, or the second commit would
+    // silently overwrite the first back to its pre-edit value.
+    renderPage();
+
+    const maxIntervalInput = screen.getByDisplayValue('36500');
+    fireEvent.change(maxIntervalInput, { target: { value: '100' } });
+    fireEvent.blur(maxIntervalInput);
+
+    const learningStepsInput = screen.getByDisplayValue('1m, 10m');
+    fireEvent.change(learningStepsInput, { target: { value: '2m, 20m' } });
+    fireEvent.blur(learningStepsInput);
+
+    expect(mockUpdateCourse).toHaveBeenCalledTimes(2);
+    const [, lastPatch] = mockUpdateCourse.mock.calls[mockUpdateCourse.mock.calls.length - 1];
+    expect(lastPatch.fsrsParameters).toEqual(
+      expect.objectContaining({ maximum_interval: 100, learning_steps: ['2m', '20m'] }),
+    );
   });
 
   it('snapshots then deletes the course immediately, navigating away with an undo toast', async () => {
@@ -298,8 +465,6 @@ describe('CourseSettings', () => {
     await vi.waitFor(() => expect(mockDeleteCourse).toHaveBeenCalledWith('course-1'));
     const [, , options] = mockNotify.mock.calls[mockNotify.mock.calls.length - 1];
     options.onAction();
-    await vi.waitFor(() =>
-      expect(mockRestoreCourse).toHaveBeenCalledWith({ course: 'snapshot' }),
-    );
+    await vi.waitFor(() => expect(mockRestoreCourse).toHaveBeenCalledWith({ course: 'snapshot' }));
   });
 });

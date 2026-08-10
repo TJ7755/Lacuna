@@ -1,0 +1,647 @@
+<!doctype html><html><head><!-- frame-runtime --><base href="/_f/1785389667-e84b/"><script>window.__FRAME_PREAMBLE={"capabilities":{"assets":"assets.hcOK0ALv.js","comments":"comments.D1Mkjxge.js","db":"db.CeV_J5G-.js","downloads":"downloads.BXsoAvg9.js","mcp":"mcp.CYSdpjo0.js","permissions":"permissions.DdITF2Mk.js","sample":"sample.DpdXn9di.js","self":"self.BN4be5De.js","user":"user.Cr_h1ETf.js"},"transforms":"_transforms.VaITkagF.js","comments":"_comments.CNSvmFji.js","translate":"_translate.BOzFH2D9.js"}</script><script>(function(){"use strict";var ne=["light","dark","system"];function oe(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_init;return t!==null&&typeof t=="object"}function W(e){return e!==null&&typeof e=="object"&&e.__frame_size_poke===!0}function se(e){if(e===null||typeof e!="object")return!1;const t=e.__frame_theme;if(t===null||typeof t!="object")return!1;const n=t.theme;return typeof n=="string"&&ne.includes(n)}function ie(e){try{typeof reportError=="function"?reportError(e):setTimeout(()=>{throw e},0)}catch{}}var Y=Object.freeze(Object.assign(Object.create(null),{user:Object.freeze(Object.assign(Object.create(null),{id:null,isOwner:!1,canEdit:!1,name:null,avatarUrl:null,email:null}))})),ae={sample:"sample"};function x(){const e=new Uint8Array(20);try{crypto.getRandomValues(e)}catch{for(let n=0;n<e.length;n++)e[n]=Math.floor(Math.random()*256)}let t="";for(const n of e)t+=(n%36).toString(36);return t}function ce(e,t){const n=r=>{const o={path:r},i=r.split("/");return{id:i[i.length-1],path:r,get:()=>t("get",[o]),set:g=>t("set",[o,g]),update:g=>t("update",[o,g]),delete:()=>t("delete",[o]),acquire:g=>t("acquire",[o,g]),onSnapshot:(g,y)=>t("subscribe",[o,g,y]),collection:g=>a(r+"/"+String(g))}},u=r=>({where:(o,i,g)=>u({...r,where:[...r.where??[],{f:String(o),op:String(i),v:g}]}),orderBy:(o,i)=>u({...r,orderBy:{f:String(o),dir:i===void 0?"asc":String(i)}}),limit:o=>u({...r,limit:Number(o)}),get:()=>t("query",[r]),onSnapshot:(o,i)=>t("subscribe",[r,o,i])}),a=r=>({...u({collection:r}),path:r,doc:o=>n(r+"/"+(o===void 0?x():String(o))),add:o=>{const i=n(r+"/"+x());return Promise.resolve(i.set(o)).then(()=>i)}});e.doc=r=>n(String(r)),e.collection=r=>a(String(r))}function J(e){if(window===top||e.type==="auxclick"&&e.button!==1)return;const t=e.composedPath?e.composedPath():[e.target];let n=null;for(let o=0;o<t.length;o++){const i=t[o];if(i&&i.matches&&i.matches("a[href],area[href]")){n=i;break}}if(!n&&e.target&&e.target.closest&&(n=e.target.closest("a[href],area[href]")),!n)return;const u=n.getAttribute("href");if(!u)return;let a,r;try{a=new URL(u,document.baseURI),r=new URL(document.baseURI).origin}catch{return}if((a.protocol==="http:"||a.protocol==="https:")&&a.origin!==r){e.preventDefault();const o=(n.getAttribute("target")??document.querySelector("base[target]")?.getAttribute("target")??"").toLowerCase(),i=e.type==="auxclick"||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||!["","_self","_top","_parent"].includes(o);parent.postMessage({__frame_nav:!0,url:a.href,newTab:i},"*")}}var G={};function I(e){if(window===top)return;const t=Date.now();t-(G[e]||0)<500||(G[e]=t,parent.postMessage({__frame_engaged:!0,kind:e},"*"))}var le=2e3,V=["wheel","touchstart","touchmove","keydown","pointerdown"],X=0;function ue(e){e.isTrusted&&(X=Date.now())}function fe(){addEventListener("click",J,!0),addEventListener("auxclick",J,!0)}function de(){for(let e=0;e<V.length;e++)addEventListener(V[e],ue,{capture:!0,passive:!0});addEventListener("scroll",e=>{e.isTrusted&&Date.now()-X<le&&I("scroll")},{capture:!0,passive:!0}),addEventListener("pointermove",e=>{e.isTrusted&&I("pointer")},{capture:!0,passive:!0}),addEventListener("click",e=>{e.isTrusted&&I("click")},{capture:!0,passive:!0})}var q="__frame_scroll",me=150,pe=310,ge=160,he=3e4;function ve(){let e=0,t=!1,n=!1,u=!1,a=0,r=null;const o=d=>{try{sessionStorage.setItem(q,JSON.stringify({y:d}))}catch{}},i=()=>{if(clearTimeout(e),r===null)return;const d=r;r=null,o(d)},g=()=>{if(t){t=!1;return}n=!0,r=scrollY,clearTimeout(e),e=setTimeout(i,me)};try{addEventListener("scroll",g,{passive:!0}),addEventListener("pagehide",i)}catch{}const y=()=>{let d;try{d=sessionStorage.getItem(q)}catch{return null}if(d===null)return null;let l;try{l=JSON.parse(d)}catch{l=null}const p=l?.y;if(!(typeof p=="number"&&Number.isFinite(p)&&p>=0)){try{sessionStorage.removeItem(q)}catch{}return null}return p};let c=!1;const f=d=>{try{const l=scrollY;scrollTo({top:d,left:0,behavior:"instant"}),a=d,u=!0,clearTimeout(e),r=null,o(d);const p=scrollY;p!==l&&(t=!0),p!==d&&!c&&(c=!0,addEventListener("load",()=>{try{if(scrollY===p){const v=y();f(v!==null?v:a)}}catch{}},{once:!0}))}catch{}},m=()=>{try{return!!location.hash}catch{return!0}};let h=!1;const _=()=>{try{if(h||innerWidth>pe||innerHeight>ge)return;h=!0;const d=Date.now(),l=()=>{try{removeEventListener("resize",l)}catch{}if(Date.now()-d>he||n||m())return;const p=y();f(p!==null?p:a)};addEventListener("resize",l)}catch{}};let w=!1,S=!1;return{restore(){if(w||(w=!0,m()))return;const d=y();d!==null&&(f(d),_())},promoted(){if(S||(S=!0,m()))return;const d=y();d!==null?(f(d),_()):u&&f(a)}}}function _e(e,t,n){const u=[...t.values()].filter(a=>a.targets.some(r=>r.startsWith(e+".")));return{wrap(a,r){const o=`${e}.${a}`,i=u.filter(g=>g.targets.includes(o));return i.length===0?(...g)=>{try{return r(...g)}catch(y){return Promise.reject(y)}}:(...g)=>{let y=g;for(const f of i){const m=f.module.parameters;if(m)try{y=m(y)}catch{return Promise.reject({code:"transform_error",id:f.id,scope:e,message:"parameters transform failed"})}}let c;try{c=r(...y)}catch(f){c=Promise.reject(f)}return c.then(f=>{for(let m=i.length-1;m>=0;m--){const h=i[m],_=h.module.returns;if(_)try{f=_(f)}catch{return n({id:h.id,scope:e,leg:"returns"}),f}}return f},f=>{for(let m=i.length-1;m>=0;m--){const h=i[m],_=h.module.throws;if(_)try{f=_(f)}catch{return n({id:h.id,scope:e,leg:"throws"}),Promise.reject(f)}}return Promise.reject(f)})}}}}function ye(e,t,n,u=()=>{}){const a=new Set(e.changes??[]),r=new Map;for(const o of a){const i=t[o];i&&r.set(o,i)}return{contract:e.contract,changes:a,flags:new Set(e.flags??[]),capabilities:e.capabilities??{},capBudgets:e.capBudgets??{},transforms:r,shellOrigin:n.shellOrigin,mount:n.mount,pipe:o=>_e(o,r,u)}}var Ae="modulepreload",Re=function(e){return"/"+e},je={},be=function(t,n,u){let a=Promise.resolve();function r(o){const i=new Event("vite:preloadError",{cancelable:!0});if(i.payload=o,window.dispatchEvent(i),!i.defaultPrevented)throw o}return a.then(o=>{for(const i of o||[])i.status==="rejected"&&r(i.reason);return t().catch(r)})};(function(){const e=Object.defineProperty,t=globalThis,n=["RTCPeerConnection","webkitRTCPeerConnection","RTCDataChannel","RTCIceCandidate","RTCSessionDescription","RTCRtpSender","RTCRtpReceiver"];let u=0;for(let a=0;a<n.length;a++){const r=n[a];try{e(t,r,{value:void 0,writable:!1,configurable:!1})}catch{try{delete t[r]}catch{}try{e(t,r,{value:void 0,writable:!1,configurable:!0})}catch{}}typeof t[r]=="function"&&u++}if(u&&window!==top)try{parent.postMessage({__frame_rtc_lockdown_failed:u},"*")}catch{}})();var Ee=1e4,we=Object.freeze([...window.__FRAME_PREAMBLE?.origins??["https://claude.ai","https://preview.claude.ai"]]);function Q(e){for(const t of we)if(t.endsWith(":*"))try{const n=new URL(e);if(`${n.protocol}//${n.hostname}:*`===t)return!0}catch{}else if(e===t)return!0;return!1}var k=Object.freeze({...window.__FRAME_PREAMBLE?.capabilities}),D=window.__FRAME_PREAMBLE?.transforms,z=window.__FRAME_PREAMBLE?.comments,B=window.__FRAME_PREAMBLE?.translate,C=/^[\w.-]+\.js$/,Se=/^[a-z][a-z0-9_-]{0,63}$/,Z=null,M=null;function $(e,t,n){try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!1,enumerable:!0})}catch{try{Object.defineProperty(e,t,{value:n,writable:!1,configurable:!0,enumerable:!0})}catch{}}}var F=!1;function ee(e){const t=document.documentElement;e==="light"||e==="dark"?(t.dataset.theme=e,t.style.colorScheme=e,F=!0):F&&(delete t.dataset.theme,t.style.colorScheme="",F=!1)}var te=256,P=Object.assign(Object.create(null),{mcp:Object.assign(Object.create(null),{watchTool:{handlerArg:3}}),db:Object.assign(Object.create(null),{subscribe:{handlerArg:1,errArg:2}})}),L=new Map;function re(e,t){const n=L.get(e);if(!n)return;const u=Object.assign(Object.create(null),t);Object.assign(n.impl,u),n.impl.__settled=()=>Promise.reject({code:"capability_removed",message:`${e}: method not in this runtime`});const a=n.queue;n.queue=[];for(const r of a){const o=u[r.method];if(o)if(P[e]?.[r.method])try{r.resolve(o(...r.args))}catch{T(r,P[e][r.method],{code:"transform_error",message:`${e}.${r.method} rejected its arguments`})}else o(...r.args).then(r.resolve,r.reject);else{const i={code:"capability_removed",message:`${e}.${r.method} is not in this runtime`},g=P[e]?.[r.method];if(g){T(r,g,i);continue}r.reject(i)}}}function Oe(e,t){const n=L.get(e);if(!n)return;n.impl.__settled=()=>Promise.reject(t);const u=n.queue;n.queue=[];for(const a of u){const r=P[e]?.[a.method];if(r){T(a,r,t);continue}a.reject(t)}}function N(e,t){const n=Y[e];if(!n){Oe(e,t);return}re(e,Object.fromEntries(Object.entries(n).map(([u,a])=>[u,()=>Promise.resolve(a)])))}function T(e,t,n){if(e.syncState?.dead)return;const u=t.errArg===void 0?void 0:e.args[t.errArg],a=t.errArg===void 0?e.args[t.handlerArg]:u;typeof a=="function"&&queueMicrotask(()=>{if(!e.syncState?.dead)try{a(t.errArg===void 0?{type:"error",error:n}:n)}catch(r){ie(r)}})}var H=Object.getOwnPropertyDescriptor(window,"claude");if(window!==top&&!(H&&H.writable===!1)){fe(),de();let e=null;try{e=ve()}catch{}const t=H?.value??{};$(window,"claude",t);const n=c=>{const f={impl:Object.create(null),queue:[]};L.set(c,f);const m=f.impl,h=d=>({code:"queue_overflow",message:`${c}.${d}: pre-init call queue is full`}),_=(d,l)=>{if(f.queue.length>=te){const p=Y[c];return p&&d in p?Promise.resolve(p[d]):Promise.reject(h(d))}return new Promise((p,v)=>{f.queue.push({method:d,args:l,resolve:p,reject:v})})},w=ae[c],S=new Proxy(w===void 0?m:(()=>{}),{apply:(d,l,p)=>{const v=w,E=m[v]??m.__settled;return E?E(...p):_(v,p)},get:(d,l)=>{if(typeof l!="string"||l==="then"||l==="toJSON"||l==="valueOf")return;if(l==="toString")return Object.prototype.toString;if(w!==void 0&&(l==="call"||l==="apply"||l==="bind"))return Function.prototype[l];const p=P[c]?.[l];return p?(...v)=>{if(typeof v[p.handlerArg]!="function")throw new TypeError(`${c}.${l} requires a handler function`);const E=m[l];if(E)return E(...v);if(m.__settled){const b={dead:!1},U={args:[...v],syncState:b};return m.__settled().catch(s=>T(U,p,s)),()=>{b.dead=!0}}if(f.queue.length>=te){const b={dead:!1};return T({args:[...v],syncState:b},p,h(l)),()=>{b.dead=!0}}let A=null;const R={dead:!1};return f.queue.push({method:l,args:v,resolve:b=>{A=typeof b=="function"?b:null,R.dead&&A?.()},reject:()=>{},syncState:R}),()=>{R.dead=!0,A?.()}}:(...v)=>{const E=m[l]??m.__settled;return E?E(...v):_(l,v)}},set:()=>!1});c==="db"&&ce(m,(d,l)=>S[d](...l)),$(t,c,S)};for(const c of Object.keys(k)){if(t[c]!==void 0){$(t,c,t[c]);continue}n(c)}let u=null,a=null,r=0;const o=c=>{c.source!==parent||!Q(c.origin)||oe(c.data)&&(u=c.data.__frame_init,M=c.origin,removeEventListener("message",o),clearTimeout(r),a?.())};addEventListener("message",o),parent.postMessage({__frame_connect:!0},"*");const i=new Promise(c=>{a=c,r=setTimeout(()=>{removeEventListener("message",o),c()},Ee)}),g=document.readyState==="loading"?new Promise(c=>document.addEventListener("DOMContentLoaded",()=>c(),{once:!0})):Promise.resolve();g.then(()=>{try{e?.restore()}catch{}});const y=c=>{if(!(c.source!==parent||!Q(c.origin))&&W(c.data)){removeEventListener("message",y);try{e?.promoted()}catch{}}};addEventListener("message",y),i.then(async()=>{if(!u||!M){for(const s of L.keys())N(s,{code:"not_granted",message:"frame initialization did not arrive - capability unavailable"});return}ee(u.theme);const c=M;let f=!1,m=!1;addEventListener("message",s=>{if(s.source!==parent||s.origin!==c)return;se(s.data)&&ee(s.data.__frame_theme.theme);const O=s.data?.__fc_mode;O&&typeof O=="object"&&!f&&z&&C.test(z)&&(f=!0,h(z).then(K=>K.install?.(c,O.on===!0)).catch(()=>{}));const j=s.data?.__ft_cmd;j&&typeof j=="object"&&!m&&B&&C.test(B)&&(m=!0,h(B).then(K=>K.install?.(c,j)).catch(()=>{}))});const h=s=>be(()=>import("/_runtime/"+s),void 0),_=Object.keys(u.capabilities??{});for(const s of _)Object.hasOwn(k,s)||Se.test(s)&&t[s]===void 0&&(n(s),N(s,{code:"capability_disabled",message:"capability not in this runtime generation"}));const w=_.filter(s=>Object.hasOwn(k,s)).map(s=>[s,k[s]]).filter(s=>typeof s[1]=="string"&&C.test(s[1])),[S,...d]=await Promise.allSettled([D&&C.test(D)?h(D):Promise.resolve({}),...w.map(([,s])=>h(s))]),l=M;Z=ye(u,S.status==="fulfilled"&&S.value?.TRANSFORMS||{},{shellOrigin:l,mount:re},s=>parent.postMessage({__frame_cap_telemetry:s},l));const p=s=>parent.postMessage({__frame_cap_telemetry:{kind:"cap-load-error",cap:s}},l),v=Z;d.forEach((s,O)=>{const j=w[O][0];if(s.status!=="fulfilled"){p(j);return}try{s.value?.install?.(v)}catch{p(j)}});for(const[s,O]of L)if(!(O.queue.length===0&&Object.keys(O.impl).length>0)){if(_.includes(s)){N(s,{code:"capability_disabled",message:"capability not available in this session"});continue}N(s,{code:"not_granted",message:"capability not available in this session"})}await g,parent.postMessage({__frame_ready:!0},M);let E=-1,A=0;const R=()=>{A=0;const s=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);s!==E&&(E=s,parent.postMessage({__frame_size:!0,h:s},l))},b=()=>{A||(A=setTimeout(R,200))},U=new ResizeObserver(b);U.observe(document.documentElement),document.body&&U.observe(document.body),document.addEventListener("load",b,!0),document.fonts?.ready.then(b,()=>{}),addEventListener("beforeprint",()=>{E=-1,R()}),b(),addEventListener("message",s=>{if(!(s.source!==parent||s.origin!==l)&&W(s.data)){try{e?.promoted()}catch{}E=-1,b()}})})}})();</script><!-- /frame-runtime --><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>Lacuna — Interrogation Report</title>
+<style>
+  :root {
+    --paper: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef0f5;
+    --ink: #131722;
+    --ink-2: #3d4459;
+    --ink-3: #6b7288;
+    --rule: #d9dde7;
+    --rule-2: #e8eaf1;
+    --accent: #46589b;
+    --accent-soft: #e6e9f5;
+    --critical: #a8231c;
+    --warning: #8f5406;
+    --ok: #1c6144;
+    --info: #45508a;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --serif: Charter, "Bitstream Charter", "Iowan Old Style", "Source Serif Pro", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #0e1118;
+      --surface: #151926;
+      --surface-2: #1c2130;
+      --ink: #e7eaf2;
+      --ink-2: #b3bacd;
+      --ink-3: #838b a3;
+      --ink-3: #838ba3;
+      --rule: #2a3042;
+      --rule-2: #232838;
+      --accent: #93a4e0;
+      --accent-soft: #1e2437;
+      --critical: #e8817a;
+      --warning: #d8a154;
+      --ok: #6cbf98;
+      --info: #97a2d8;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0e1118;
+    --surface: #151926;
+    --surface-2: #1c2130;
+    --ink: #e7eaf2;
+    --ink-2: #b3bacd;
+    --ink-3: #838ba3;
+    --rule: #2a3042;
+    --rule-2: #232838;
+    --accent: #93a4e0;
+    --accent-soft: #1e2437;
+    --critical: #e8817a;
+    --warning: #d8a154;
+    --ok: #6cbf98;
+    --info: #97a2d8;
+  }
+  :root[data-theme="light"] {
+    --paper: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #eef0f5;
+    --ink: #131722;
+    --ink-2: #3d4459;
+    --ink-3: #6b7288;
+    --rule: #d9dde7;
+    --rule-2: #e8eaf1;
+    --accent: #46589b;
+    --accent-soft: #e6e9f5;
+    --critical: #a8231c;
+    --warning: #8f5406;
+    --ok: #1c6144;
+    --info: #45508a;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 4rem 1.5rem 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+  }
+  h1, h2, h3 { font-family: var(--serif); font-weight: 600; text-wrap: balance; line-height: 1.2; }
+  h1 { font-size: clamp(2.1rem, 5vw, 3.1rem); letter-spacing: -0.015em; }
+  h2 { font-size: 1.65rem; letter-spacing: -0.01em; }
+  h3 { font-size: 1.15rem; }
+  p { max-width: 68ch; }
+  code, .ref { font-family: var(--mono); font-size: 0.855em; }
+  .ref { color: var(--ink-2); background: var(--surface-2); padding: 0.1em 0.36em; border-radius: 3px; white-space: nowrap; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  header .lede { font-size: 1.18rem; color: var(--ink-2); max-width: 60ch; }
+  header .meta {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1.75rem;
+    font-family: var(--mono); font-size: 0.78rem; color: var(--ink-3);
+    border-top: 1px solid var(--rule); padding-top: 1rem; margin-top: 0.5rem;
+  }
+  header > * + * { margin-top: 1rem; }
+
+  section > * + * { margin-top: 1.25rem; }
+  .section-head { border-bottom: 2px solid var(--ink); padding-bottom: 0.6rem; display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+
+  .verdict {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    padding: 1.75rem;
+    border-radius: 4px;
+  }
+  .verdict > * + * { margin-top: 1rem; }
+  .verdict p { max-width: 66ch; }
+
+  .scorecard { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+  .tile { background: var(--surface); padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.3rem; }
+  .tile .n { font-family: var(--serif); font-size: 1.9rem; font-variant-numeric: tabular-nums; line-height: 1; }
+  .tile .l { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); }
+  .tile.crit .n { color: var(--critical); }
+  .tile.warn .n { color: var(--warning); }
+  .tile.ok .n { color: var(--ok); }
+
+  .findings { display: flex; flex-direction: column; gap: 0.75rem; }
+  .f {
+    background: var(--surface);
+    border: 1px solid var(--rule-2);
+    border-left: 3px solid var(--ink-3);
+    border-radius: 3px;
+    padding: 1rem 1.15rem;
+    display: flex; flex-direction: column; gap: 0.55rem;
+  }
+  .f.high { border-left-color: var(--critical); }
+  .f.med { border-left-color: var(--warning); }
+  .f.low { border-left-color: var(--info); }
+  .f.good { border-left-color: var(--ok); }
+  .f h3 { font-family: var(--sans); font-size: 1rem; font-weight: 650; }
+  .f p { font-size: 0.94rem; color: var(--ink-2); max-width: 72ch; }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .chip {
+    font-family: var(--mono); font-size: 0.67rem; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.18rem 0.45rem; border-radius: 3px; border: 1px solid var(--rule);
+    color: var(--ink-3); background: var(--surface-2); white-space: nowrap;
+  }
+  .chip.sev-high { color: var(--critical); border-color: color-mix(in srgb, var(--critical) 35%, transparent); }
+  .chip.sev-med { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 35%, transparent); }
+  .chip.sev-good { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+  .chip.verified { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+  .chip.single { color: var(--ink-2); }
+  .chip.judgement { color: var(--ink-3); font-style: italic; }
+  .chip.wip { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: var(--accent-soft); }
+
+  .legend { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 4px; padding: 1.25rem 1.4rem; }
+  .legend.fact-check { border-left: 3px solid var(--warning); }
+  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; margin: 0; align-items: baseline; }
+  .legend dt { font-family: var(--mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink); white-space: nowrap; }
+  .legend dd { margin: 0; font-size: 0.9rem; color: var(--ink-2); }
+
+  .corrections { counter-reset: corr; display: flex; flex-direction: column; gap: 0.9rem; }
+  .corr { display: grid; grid-template-columns: 1.75rem 1fr; gap: 0.9rem; align-items: start; }
+  .corr::before {
+    counter-increment: corr; content: counter(corr);
+    font-family: var(--mono); font-size: 0.78rem; color: var(--ink-3);
+    border: 1px solid var(--rule); border-radius: 50%;
+    width: 1.75rem; height: 1.75rem; display: grid; place-items: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .corr p { font-size: 0.94rem; color: var(--ink-2); margin: 0; }
+  .corr strong { color: var(--ink); font-weight: 620; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .tw { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; background: var(--surface); }
+  th, td { text-align: left; padding: 0.6rem 0.85rem; border-bottom: 1px solid var(--rule-2); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); background: var(--surface-2); }
+  tr:last-child td { border-bottom: none; }
+
+  ul.tight { padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.45rem; }
+  ul.tight li { font-size: 0.94rem; color: var(--ink-2); max-width: 70ch; }
+  ul.tight li strong { color: var(--ink); font-weight: 620; }
+
+  footer { border-top: 1px solid var(--rule); padding-top: 1.5rem; color: var(--ink-3); font-size: 0.85rem; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Codebase interrogation · algorithms, claims, evidence</div>
+  <h1>Lacuna under the microscope</h1>
+  <p class="lede">A seventeen-agent audit of the scheduling mathematics, the scientific claims, the data layer, the security surface and the user experience — with every finding labelled by how well it is actually established.</p>
+  <div class="meta">
+    <span>30 July 2026</span>
+    <span>branch codex/arc6-audio</span>
+    <span>17 agents · 9 audit · 6 verification · 2 completeness</span>
+    <span>read-only</span>
+  </div>
+</header>
+
+<aside class="legend fact-check" aria-label="Fact-check status">
+  <div class="eyebrow" style="margin-bottom:0.8rem">Fact-checked 9 August 2026</div>
+  <p>This is a historical audit of the 30 July code state, corrected against the current repository and primary FSRS sources. Its original severity counts are not a current backlog. Claims labelled “verified” by the original audit are not independently reproducible unless the repository retains the script, seed and raw output; unsupported numerical claims are identified in the relevant finding.</p>
+</aside>
+
+<section>
+  <div class="verdict">
+    <div class="eyebrow">Verdict</div>
+    <p><strong>This codebase is considerably more rigorous than its defect count suggests, and the audit repeatedly failed to break the parts that matter most.</strong> The memory model is delegated to the official <code>ts-fsrs</code> rather than hand-rolled. The parameter optimiser uses a chronological train/validation split, an out-of-sample gate and bounds-checked weights — correct methodology that most hobby projects get wrong. The bespoke short-term model was <em>pre-registered</em>, and the pre-registration held: an earlier version failed cross-cohort transfer and was retreated rather than re-justified. Two independent agents, one of them actively attacking, failed to find a cross-site scripting path. The test suite asserts mathematical invariants rather than its own output.</p>
+    <p>The real defects clustered in three places. The auto-marker converts partial credit into a crude FSRS grade and pools typed-answer production times with ordinary recall latency. Occlusion sharing and documentation were missing in the audited snapshot but have since been implemented. The mature, shipped, user-facing problem remains the analytics: <strong>the retention chart shows users a flattering number about their own memory that the data does not support.</strong></p>
+    <p>Underneath several bugs sits one architectural pattern worth more than any single fix: <strong>validation is often enforced in the authoring UI rather than at the storage boundary.</strong> It still explains the empty imported mark scheme and weakly validated share payloads. The occlusion orphaning route cited by the original report has since been closed.</p>
+  </div>
+</section>
+
+<section>
+  <div class="scorecard">
+    <div class="tile crit"><span class="n">3</span><span class="l">High</span></div>
+    <div class="tile warn"><span class="n">11</span><span class="l">Medium</span></div>
+    <div class="tile"><span class="n">14</span><span class="l">Low / nit</span></div>
+    <div class="tile ok"><span class="n">9</span><span class="l">Verified sound</span></div>
+    <div class="tile"><span class="n">9</span><span class="l">Self-corrections</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="legend">
+    <div class="eyebrow" style="margin-bottom:0.8rem">How to read the labels</div>
+    <dl>
+      <dt>Verified</dt><dd>The original audit's label for a replicated or hard-evidence finding. It is not a substitute for a retained reproduction artefact; this fact-check downgrades unsupported execution claims.</dd>
+      <dt>Single-source</dt><dd>One agent traced it to <span class="ref">file:line</span> and it was not replicated. Honest, but weaker.</dd>
+      <dt>Judgement</dt><dd>Design opinion, literature-based reasoning, or an absence claim ("no guard exists"). Absence is the weakest evidence: not finding something is not proof it is missing.</dd>
+      <dt>Shipped</dt><dd>Mature code, in use.</dd>
+      <dt>WIP</dt><dd>Written within roughly a day of this audit. Judge accordingly — these are unfinished seams, not neglect.</dd>
+    </dl>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>The scheduling core</h2><span class="eyebrow">largely vindicated</span></div>
+  <p>Lacuna's distinctive bet is that it does <em>not</em> schedule by FSRS intervals. It forward-simulates predicted retrievability to a fixed exam date and picks the card with the largest marginal gain. The audit spent its heaviest effort here and found the mathematics sound.</p>
+
+  <div class="findings">
+    <div class="f good">
+      <div class="chips"><span class="chip sev-good">Sound</span><span class="chip verified">Verified</span><span class="chip">Shipped</span></div>
+      <h3>The memory model is genuinely delegated, not reimplemented</h3>
+      <p>Stability, difficulty, the initial-stability table, mean reversion and same-day handling all come from the installed <code>ts-fsrs@5.4.1</code>, which implements FSRS-6 with 21 weights. Defaults are pulled from the library rather than hardcoded, so the classic mismatched-weight-vector bug cannot occur. The forgetting curve in <span class="ref">forwardSim.ts:12-34</span> correctly implements the FSRS-6 power law and clamps degenerate inputs instead of returning NaN. “Current” here means the installed <code>ts-fsrs</code> release, not the newest FSRS family; FSRS-7 now exists.</p>
+    </div>
+
+    <div class="f good">
+      <div class="chips"><span class="chip sev-good">Sound</span><span class="chip verified">Verified</span><span class="chip">Shipped</span></div>
+      <h3>The optimiser uses correct methodology</h3>
+      <p>Official <code>fsrs-rs</code> binding, a 1,000-review gate, and — critically — a <strong>chronological</strong> train/validation split rather than a random one. Random splitting leaks the future in review data; this gets it right. Weights are bounds-checked before application and only adopted if they beat defaults out-of-sample.</p>
+    </div>
+
+    <div class="f good">
+      <div class="chips"><span class="chip sev-med">Corrected</span><span class="chip verified">Benchmarked</span><span class="chip">Shipped</span></div>
+      <h3>The architecture scales; the name oversells the cost</h3>
+      <p>"Forward simulation" sounds like a day-by-day sweep. It isn't: <span class="ref">horizon.ts:34-51</span> and <span class="ref">forwardSim.ts:71-99</span> project stability analytically via the closed-form power law, so per-card cost is O(1) and card selection is O(cards), not O(cards × days). The original sub-millisecond claim was false: a warmed ten-run fact-check benchmark of <code>scoreCard</code> over 20,000 cards had a 47.2 ms median on the audit machine, before sorting and UI work. The asymptotic claim survives; the performance claim does not.</p>
+    </div>
+
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip verified">Verified</span><span class="chip">Shipped</span></div>
+      <h3>Elapsed days are computed two different ways</h3>
+      <p><span class="ref">fsrs.ts:62</span> floors raw milliseconds, but <code>engine.next()</code> discards that field and recomputes internally via <code>dateDiffInDays</code>, which counts <strong>UTC calendar-day crossings</strong>. Two reviews minutes apart across UTC midnight are one day to ts-fsrs and zero to Lacuna. An unmerged validation branch measured the divergence at max |ΔR| 0.117 (0.022 for elapsed ≥ 1 day) — decision-relevant, not rounding noise. Note <code>get_retrievability</code> uses the same raw-ms formula Lacuna does, so the divergence is isolated to <code>engine.next</code>'s scheduling maths.</p>
+    </div>
+
+    <div class="f low">
+      <div class="chips"><span class="chip">Low</span><span class="chip verified">Verified</span><span class="chip">Shipped</span></div>
+      <h3>The "single source of truth" invariant is not honoured in revision-plan mode</h3>
+      <p><span class="ref">objective.ts:1-14</span> and <span class="ref">SPEC.md:37</span> assert that one module guarantees the scheduler and progress display can never disagree. In revision-plan sessions, selection goes through <code>allocateCramReview</code> using the blended half-life model while <code>sessionProgress</code> uses pure FSRS. <strong>No user-visible symptom</strong> — <span class="ref">LearnHeader.tsx:171-172</span> shows a time-budget bar in that mode and <code>sessionProgress</code> is computed but never rendered. A documentation-accuracy issue, not a bug.</p>
+    </div>
+
+    <div class="f low">
+      <div class="chips"><span class="chip">Low</span><span class="chip verified">Verified</span><span class="chip">Shipped</span></div>
+      <h3>DST affects labelling, not scheduling</h3>
+      <p>There is no configurable study-day rollover, so local-day grouping and "due today" buckets shift by an hour when clocks change. Because scheduling elapsed-days ultimately derives from a UTC diff, and UTC has no DST, the interval mathematics is untouched. This is narrower than the source document implied.</p>
+    </div>
+
+    <div class="f low">
+      <div class="chips"><span class="chip">Low</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>An algorithm-defining dependency floats on a caret range</h3>
+      <p><code>ts-fsrs</code> is pinned <code>^5.2.3</code>, resolving to 5.4.1. An install without the lockfile could pick up a minor release with changed default weights. Worth an exact pin given how central it is.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>The bespoke short-term model</h2><span class="eyebrow">real science, thin margin</span></div>
+  <p>One component is genuinely Lacuna's own invention: a logistic half-life predictor blended with FSRS for short intervals. The original statement that FSRS has “no sub-day memory model” was too absolute: FSRS-6 includes same-day stability handling, but its continuous sub-day retrievability modelling is limited. Anki's tracker has an open PR (<a href="https://github.com/ankitects/anki/pull/3375">#3375</a>) addressing that gap.</p>
+
+  <div class="findings">
+    <div class="f good">
+      <div class="chips"><span class="chip sev-good">Sound</span><span class="chip verified">Verified via git</span><span class="chip">Shipped</span></div>
+      <h3>The pre-registration is real, and it bit</h3>
+      <p><code>ROUTING_DECISION_RULE.md</code> was committed standalone as <code>d02f609</code> at 12:03:15 on 2026-07-17 and <strong>never edited afterwards</strong> — no post-hoc threshold adjustment. And the rule had teeth: v1's multi-day advantage won only 1 of 7 lag buckets on both unseen cohorts, so the predeclared rule forced the routing boundary back. A thin win at day 6–7 (n≈300) was discounted as noise rather than banked. That is the opposite of p-hacking.</p>
+    </div>
+
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Caveat</span><span class="chip verified">Verified via git</span><span class="chip">Shipped</span></div>
+      <h3>…but the blinding was tighter than "before the results were examined" implies</h3>
+      <p>The reports directory is gitignored, so dating relies on filesystem mtimes. The FSRS-6 comparison file was written <strong>78 seconds after</strong> the commit — and since the rule requires both files to agree to call a win, the comparison genuinely could not have been examined first. But the routed model's own result file was on disk <strong>10 seconds before</strong>. Verified, but thin: blinded to the comparison, not comfortably blinded to its own numbers.</p>
+    </div>
+
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>The headline improvement is softer than the number suggests</h3>
+      <p>The reported gap (FSRS-6 2.66 vs 0.39 log loss) is dominated by FSRS-6's whole-day flooring producing near-certain sub-day predictions — a baseline weakness, not a subtle edge. Against the <em>fractional</em> FSRS-6 baseline matching runtime, the advantage in the routed zone shrinks to ≤0.0002 log loss. The team documents this themselves. The one retrospective step in an otherwise pre-registered exercise: the strengthened no-regression gate fails against the floored baseline and passes only against the fractional one, and that reframing came after seeing the failure.</p>
+    </div>
+
+    <div class="f high">
+      <div class="chips"><span class="chip sev-high">High</span><span class="chip verified">Verified ×3</span><span class="chip">Shipped</span></div>
+      <h3>The spec advertises a model that was tested and rejected</h3>
+      <p><span class="ref">SPEC.md:451</span> and <span class="ref">:1111</span> describe <code>half-life-logistic-v1</code> as the model that passed the benchmark and ships as the frozen fit. The runtime loads <code>half-life-logistic-v3-routed</code>. And <span class="ref">next_plan.md:756-757</span> records that v1 <em>explicitly failed</em> transfer validation. The process worked; the documentation did not follow. A fix is already drafted as P7 on an unmerged branch.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>The auto-marker</h2><span class="eyebrow">WIP · built the day before this audit</span></div>
+  <p>The checker itself is careful work. The wiring into FSRS is not, and the seam is visible: <span class="ref">verify.ts</span> uses magnitude-relative epsilon, compares algebra <em>semantically</em> by evaluating both expressions at random points, and keeps an <code>undetermined</code> verdict distinct from <code>different</code> so students are not punished for expressions it cannot evaluate. The grade conversion then reduces partial-credit outcomes to Again unless a currently unwired self-correction path fires.</p>
+
+  <div class="findings">
+    <div class="f high">
+      <div class="chips"><span class="chip sev-high">High</span><span class="chip verified">Verified</span><span class="chip wip">WIP</span></div>
+      <h3>Partial credit is recorded as total failure</h3>
+      <p><span class="ref">grading.ts:92</span> returns <code>selfCorrected ? 2 : 1</code> for any partial mark, and both production call sites (<span class="ref">useLearnSession.ts:1315</span>, <span class="ref">:1377</span>) hard-code <code>selfCorrected</code> false. <code>selfCorrected</code> is <strong>dead code</strong> — no path in the app sets it true, and the comment at <span class="ref">grading.ts:36</span> describes a feature with no caller. Three marks out of four and zero out of four both write "forgotten" into the memory model. Partial marks are genuinely reachable: <code>WorkingStudyFace</code> sums verdicts across lines.</p>
+    </div>
+
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Corrected</span><span class="chip verified">Verified</span><span class="chip wip">WIP</span></div>
+      <h3>The response timer excludes feedback; the pooled units are the defect</h3>
+      <p>The original finding was false. Machine-marked answers are accepted only in the <code>question</code> phase, and <span class="ref">useLearnSession.ts:1308-1310</span> calculates elapsed time immediately on handler entry, before feedback. Full marks under 3.0 seconds can produce Easy, so machine-marked grades are structurally <strong>{1, 3, 4}</strong>, not {1, 3}. The genuine defect is that typed-answer production time and ordinary recall latency are folded into the same calibration pool even though they measure different tasks. Hard remains unreachable because both production callers pass <code>selfCorrected</code> false.</p>
+    </div>
+
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip verified">Verified</span><span class="chip wip">WIP</span></div>
+      <h3>An empty mark scheme shows "correct" and records "Again"</h3>
+      <p><span class="ref">WorkingStudyFace.tsx:33</span> computes correctness as <code>marksEarned === marksAvailable</code>; an empty scheme yields <code>0 === 0</code> → green. <span class="ref">grading.ts:74-82</span> treats <code>marksAvailable &lt;= 0</code> as Again. The authoring editor blocks empty schemes via <code>compileMarkScheme</code>, but the import path never calls it — <span class="ref">share.ts:87-125</span> validates shape with no <code>.min(1)</code>, so an imported payload writes one straight through. <span class="ref">LearnMode.tsx:507-508</span> routes on payload kind alone with no length check.</p>
+    </div>
+
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip single">Single-source</span><span class="chip wip">WIP</span></div>
+      <h3>Keyword matching has no typo tolerance</h3>
+      <p><span class="ref">verify.ts:260-264</span> is plain lowercase substring matching. An <code>editDistance</code> implementation exists at <span class="ref">markSchemeCompiler.ts:361-396</span> — but it suggests keywords to the <em>author</em>, never to grade student text. Writing "sub in" against a scheme line reading "substitution" loses that line, and per the finding above, one lost line of four grades the whole answer as forgotten.</p>
+    </div>
+
+    <div class="f low">
+      <div class="chips"><span class="chip">Low</span><span class="chip verified">Verified</span><span class="chip wip">WIP</span></div>
+      <h3>Dispute reports go nowhere</h3>
+      <p><code>checkerDisputes</code> is persisted by <span class="ref">repository.ts:838</span> and has <strong>zero consumers</strong> anywhere in <code>src/</code> — no review queue, no re-grade surface. A remedy does exist: <code>undoReview</code> (<span class="ref">repository.ts:984</span>) fully restores card, calibration and performance state, on a discoverable <kbd>U</kbd> shortcut. So a bad grade is fixable, but only until the next answer, and the dispute itself never prompts anyone to look.</p>
+    </div>
+
+    <div class="f low">
+      <div class="chips"><span class="chip">Low</span><span class="chip single">Single-source</span><span class="chip wip">WIP</span></div>
+      <h3>Locale numerals and units are not handled</h3>
+      <p>Unicode minus (U+2212 — what you get pasting from a PDF), decimal commas and thousands separators all fail to parse. In the numeric face this blocks submission; in working lines (<span class="ref">verify.ts:266-267</span>) it silently scores zero. No unit handling exists at all, so "1000 m" and "1 km" are not equivalent.</p>
+    </div>
+
+    <div class="f low">
+      <div class="chips"><span class="chip">Low</span><span class="chip single">Single-source</span><span class="chip wip">WIP</span></div>
+      <h3>Editing a scheme silently rewrites history</h3>
+      <p><span class="ref">marksAnalytics.ts:75-114</span> reattributes historical <code>lineVerdicts</code> to scheme lines by <em>positional index</em>. Reorder or delete a line after reviews exist and past performance is silently misattributed to the wrong criterion. FSRS state is unaffected; the criterion analytics quietly become wrong.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Occlusion &amp; audio</h2><span class="eyebrow">WIP · in flight the morning of this audit</span></div>
+  <div class="findings">
+    <div class="f good">
+      <div class="chips"><span class="chip sev-good">Resolved</span><span class="chip verified">Historically accurate</span><span class="chip">Current</span></div>
+      <h3>Occlusion sharing now preserves generated-card ownership</h3>
+      <p>The original finding was accurate at commit <code>61cfde5</code> but is stale. <code>share.ts</code> now carries occlusions as an additive payload field, preserves each generated card's <code>occlusionRegionId</code>, excludes those cards from reversible-pair folding, remaps region ids on import and restores the occlusion rows. Diagram media still does not travel in share codes by design; cards retain a plain-text fallback.</p>
+    </div>
+    <div class="f good">
+      <div class="chips"><span class="chip sev-good">Resolved</span><span class="chip verified">Historically accurate</span><span class="chip">Current</span></div>
+      <h3>Occlusion is now documented</h3>
+      <p>The original finding was accurate during the unfinished arc. README now describes image occlusion, and SPEC documents its schema, generation, study behaviour, portability and share-code limitations.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>What the app tells users about their memory</h2><span class="eyebrow">the one mature user-facing defect</span></div>
+  <div class="findings">
+    <div class="f high">
+      <div class="chips"><span class="chip sev-high">High</span><span class="chip verified">Verified</span><span class="chip">Shipped</span></div>
+      <h3>The retention chart is not a retention rate</h3>
+      <p><span class="ref">prepare.ts:184-197</span> takes each card's <strong>single most recent</strong> grade and buckets it by <code>now - firstReview</code>. Two compounding defects. First, it collapses every review into one binary sample — a card failed eight times and finally passed reads as 100% recalled — and because FSRS schedules to hit ~90% retention, most recent reviews are passes <em>by construction</em>. Second, age and outcome come from different moments: a card first seen 200 days ago but last reviewed on day 20 sits in the 180+ bucket carrying a 180-day-stale data point.</p>
+      <p>The sample count <em>is</em> computed (<span class="ref">prepare.ts:198-202</span>) and never rendered. A bucket of n=1 looks identical to n=500 and is coloured green at ≥80% (<span class="ref">Analytics.tsx:380</span>). The card description reads "Recall rate grouped by how long each card has been in review" — it does not disclose "most recent review only", so the label does not rescue it.</p>
+    </div>
+    <div class="f low">
+      <div class="chips"><span class="chip">Low</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>Forecasts are presented in the register of observations</h3>
+      <p><code>averagePredictedRetrievability</code> and <code>masteryFraction</code> are model forecasts, not measured pass rates, but UI copy carries no qualifier — unlike retention, which is presented as observed. Both read to a user as facts about their memory.</p>
+    </div>
+    <div class="f good">
+      <div class="chips"><span class="chip sev-good">Sound</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>Calibration, streaks and volume charts are honest</h3>
+      <p><span class="ref">calibration.ts:24-56</span> computes real Brier scores and predicted-versus-actual recall by day. An app that scores its own prediction accuracy and shows you the result is not one hiding from evidence. Streak logic is DST-safe by construction; heatmap and volume series are raw counts with no rate claims to distort.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Data integrity</h2><span class="eyebrow">strong core, weak import path</span></div>
+  <div class="findings">
+    <div class="f good">
+      <div class="chips"><span class="chip sev-good">Sound</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>The write path is genuinely well engineered</h3>
+      <p><code>recordReview</code> (<span class="ref">repository.ts:768-948</span>) wraps card update, course timestamps, performance record and session history in one transaction, made idempotent by a unique <code>eventId</code>, and explicitly handles the cross-tab race where a second tab commits the same event first. Migrations run 1→19 monotonically, and <code>ensurePreMigrationSnapshot</code> captures a full snapshot into a <em>separate</em> database before Dexie's destructive upgrade. Opening an old build against a newer database yields a clear <code>VersionError</code>, not silent corruption.</p>
+    </div>
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip verified">Verified · scoped</span><span class="chip">Shipped</span></div>
+      <h3>On the web build, the safety net lives inside the building it protects</h3>
+      <p>Auto-backups are written via <span class="ref">backups.ts:99</span> into the same Dexie database as the live data, so one eviction or one "clear site data" takes cards, history and every restore point together. The only cross-origin protection is a Chromium-only folder mirror. <code>navigator.storage.persist()</code> <em>is</em> requested at <span class="ref">App.tsx:369-379</span> — right instinct — but Safari grants heuristically and nothing tells the user when it is denied. <strong>The Electron build is unaffected</strong>: its IndexedDB lives in the app's <code>userData</code> directory, not an evictable browser origin.</p>
+    </div>
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip verified">Verified</span><span class="chip">Shipped</span></div>
+      <h3>Re-importing an .apkg silently doubles the deck</h3>
+      <p><code>createCards</code> (<span class="ref">apkgImport.ts:698</span>) inserts fresh rows unconditionally — no guid, content hash or provenance check. Existing progress is not clobbered, but stats and stability distributions inflate. A <code>checkDuplicatesBatch</code> mechanism already exists (<span class="ref">UnifiedImportPanel.tsx:238</span>) and is wired only to the text/markdown path. The capability is built; it just is not connected to the import that most needs it.</p>
+    </div>
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>A study session works from a frozen snapshot</h3>
+      <p>Most of <code>src/state/</code> uses Dexie <code>useLiveQuery</code> — reactive and cross-tab aware. But a session snapshots <code>db.cards.toArray()</code> once into a plain ref (<span class="ref">useLearnSession.ts:1102</span>) and works from it throughout. Two tabs on one deck, or Electron plus a browser tab, and the session serves deleted cards, misses the other tab's FSRS state, and read-modify-writes from stale data. The write path was designed for concurrency; the read path was not.</p>
+    </div>
+    <div class="f low">
+      <div class="chips"><span class="chip">Low</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>Anki scheduling is approximated, and the UI does not say so</h3>
+      <p><span class="ref">apkgImport.ts:525-527</span> derives FSRS stability from Anki's interval and difficulty from ease factor ÷ 1000. The code comment honestly calls this a "crude approximation for migration"; <span class="ref">UnifiedImportPanel.tsx:766-772</span> tells the user cards arrive "with scheduling history". The code is more honest than the interface. Separately, the import has no wrapping transaction, so a mid-import failure can leave a partial deck.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Security</h2><span class="eyebrow">clean where it counts</span></div>
+  <p>Two independent agents examined the untrusted-input surface; the second was instructed to <em>find</em> an exploit rather than assess whether one existed, and to document its failed attempts. Both came back clean on script execution, which is what makes the result meaningful.</p>
+  <div class="findings">
+    <div class="f good">
+      <div class="chips"><span class="chip sev-good">Sound</span><span class="chip verified">Verified ×2</span><span class="chip">Shipped</span></div>
+      <h3>No XSS path found, including through the suspicious plugin ordering</h3>
+      <p><code>rehypeKatex</code> and <code>rehypeHighlight</code> run <em>after</em> sanitisation, which is structurally the right thing to suspect. It holds: KaTeX is invoked bare (<span class="ref">MarkdownView.tsx:85</span>) so <code>trust</code> is undefined, and <code>\href{javascript:…}</code>, <code>\htmlStyle</code>, <code>\includegraphics</code> all degrade to inert text. Documented failed attacks: SVG/MathML foreignObject smuggling, <code>srcset</code> with <code>javascript:</code>, style-attribute exfiltration, <code>data-*</code> abuse. Electron is hardened correctly — <code>contextIsolation: true</code>, <code>nodeIntegration: false</code>, <code>sandbox: true</code>, a narrow enumerated preload, and a proper traversal guard on the <code>app://</code> handler.</p>
+    </div>
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>Imported notes are rendered with the trusted-content flag</h3>
+      <p><span class="ref">MarkdownView.tsx:24-29</span> states in its own comment that <code>allowEmbeds</code> "must only be set for trusted content — do not set this on untrusted or imported content." <span class="ref">NoteRow.tsx:150</span> and <span class="ref">AnnotatedNoteContent.tsx:121</span> set it unconditionally, and <span class="ref">mergeImport.ts:126-128</span> builds notes straight from share payloads with no local-versus-imported distinction. Not script execution — the iframe src regexes are anchored to real YouTube/Vimeo origins — but a stranger's deck can load live cross-origin embeds, violating the code's own written contract.</p>
+    </div>
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip verified">Verified ×2</span><span class="chip">Shipped</span></div>
+      <h3>No window-open or navigation handler in Electron</h3>
+      <p>Neither <code>setWindowOpenHandler</code> nor <code>will-navigate</code> is registered in <span class="ref">electron/main.ts</span>. If renderer script execution were ever achieved, <code>window.open()</code> would spawn a window with <em>default</em> webPreferences rather than the hardened config. Chained rather than exploitable today, but it is a removed layer of defence.</p>
+    </div>
+    <div class="f low">
+      <div class="chips"><span class="chip">Low</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>Attack markup is reconstituted before storage</h3>
+      <p><code>convertAnkiHtml()</code> (<span class="ref">apkgImport.ts:448-478</span>) decodes HTML entities <em>after</em> its tag-matching regexes, so an encoded <code>&lt;script&gt;</code> slips past every regex and is rebuilt as live markup in the stored card. Blocked at render by <code>rehypeSanitize</code>, so not exploitable — but the database ends up holding attack payloads that rely on one downstream control. Decode before substituting, not after. Separately, no size cap precedes <code>fflate.unzipSync</code> (<span class="ref">apkgImport.ts:150</span>), leaving a decompression-bomb DoS; there is no zip-slip risk since nothing is extracted to disk.</p>
+    </div>
+    <div class="f good">
+      <div class="chips"><span class="chip sev-good">Sound</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>The MCP surface enforces consent where it should</h3>
+      <p>Grant state and consent gating live in the <strong>main process</strong>, not the renderer, so a compromised renderer cannot self-grant scope. Scopes are per-course, destructive tools are explicitly gated, and raw FSRS writes, <code>recordReview</code>/<code>undoReview</code> and backup/restore are deliberately excluded from the registry. Residual risk is UX: destructive grants persist for the process lifetime, so one approval covers unlimited deletes until restart. The server starts unconditionally on launch — worth confirming that is intended.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Privacy &amp; deployment</h2></div>
+  <div class="findings">
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium-high</span><span class="chip verified">Verified · narrowed</span><span class="chip">Shipped</span></div>
+      <h3>"Local-only, serverless" is contradicted on one of two web targets</h3>
+      <p><span class="ref">main.tsx:4,26-34</span> mounts <code>@vercel/analytics</code> unconditionally — no env gate, no consent, no opt-out. The package resolves to the relative path <code>/_vercel/insights/script.js</code>, which means it <strong>does</strong> beacon page views on the Vercel deployment and <strong>silently 404s</strong> on the Cloudflare Workers deployment (<code>wrangler deploy</code>), where it no-ops. Electron's CSP blocks it. So the desktop build is local-only partly by accident of its own header policy. Otherwise the claim holds well: no other outbound calls anywhere in <code>src/</code> or <code>electron/</code>, no LLM integration, no API keys in repo or bundle. The Electron updater's GitHub Releases check is legitimate but also unmentioned in the README.</p>
+    </div>
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip verified">Verified · corrected</span><span class="chip">Shipped</span></div>
+      <h3>Security headers exist for Vercel but were never ported to Workers</h3>
+      <p><code>vercel.json</code> sets COOP, COEP, <code>X-Content-Type-Options</code> and <code>Referrer-Policy</code>. <code>wrangler.jsonc</code> sets nothing at all, with no <code>public/_headers</code> fallback — and <code>wrangler deploy</code> is the target in <span class="ref">package.json:26</span>. Neither web target sets a CSP or HSTS, while Electron sets a full CSP. The framing is "config exists but was not carried across", not "no mechanism exists".</p>
+    </div>
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium-high</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>A stale trainer binary can outlive an update</h3>
+      <p><span class="ref">vite.config.ts:49-56</span> configures <code>CacheFirst</code> for <code>*.wasm</code> with a one-year max age — covering the FSRS trainer. It is <em>runtime</em>-cached by URL regex, not precached with a revision hash, so there is no versioning to invalidate it: new application code can call an old trainer. Compounding this, <code>registerType: 'autoUpdate'</code> with no <code>registerSW</code> call means silent <code>skipWaiting</code> and <code>clientsClaim</code> — the app can reload mid-session with no prompt.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Interface &amp; experience</h2></div>
+  <p>The core study loop is the strongest part of the product. Errors interpolate real causes rather than generic failures; the no-eligible-cards state explains itself; each answer is written immediately so a crash costs at most the in-flight card; session-end reporting closes the loop legibly. Double-submit is guarded by a ref set before async work and cleared in <code>finally</code>. Large lists virtualise. Dark mode is token-driven. The friction is elsewhere.</p>
+  <div class="findings">
+    <div class="f high">
+      <div class="chips"><span class="chip sev-high">High</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>The command palette is invisible to screen readers</h3>
+      <p><span class="ref">CommandPalette.tsx:207-289</span> tracks the active row in React state and shows it with a CSS class. No <code>role="listbox"</code>, no <code>role="option"</code>, no <code>aria-selected</code>, no <code>aria-activedescendant</code>. Arrow keys move a visual highlight only, so a screen-reader user pressing Enter activates a result they were never told was selected. For a keyboard-first study app, this is the accessibility defect to fix first.</p>
+    </div>
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>Two unguarded paths to losing work</h3>
+      <p><span class="ref">CardEditor.tsx</span> has no dirty-state tracking, <code>beforeunload</code> listener or navigation blocker — edit a card, navigate away, the edit is gone. And <span class="ref">DangerZoneSection.tsx:40-57</span> deletes a course on click with only a transient undo toast between the user and months of scheduling history. Undo is also single-level throughout (<span class="ref">useLearnSession.ts:407</span> holds one snapshot, not a stack), which matters more than usual here because a wrong grade is a false observation in the memory model.</p>
+    </div>
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Medium</span><span class="chip judgement">Judgement</span><span class="chip">Shipped</span></div>
+      <h3>Getting to the core loop takes real authoring work</h3>
+      <p>A new user must create a course, add a lesson, then author or import cards before studying anything. There is no seeded demo inside the app — the demo lives on the separate <code>/welcome</code> page. And <span class="ref">LandingCta.tsx:29-38</span> navigates to <code>/</code> regardless of label, so "Create your first course" simply lands on the dashboard. Course creation itself is admirably minimal: a name, with no forced FSRS decisions.</p>
+    </div>
+    <div class="f low">
+      <div class="chips"><span class="chip">Low</span><span class="chip judgement">Judgement</span><span class="chip">Shipped</span></div>
+      <h3>Two hierarchies coexist, and an expert knob sits in plain view</h3>
+      <p>"Deck" survives as the legacy global-session unit alongside Course/Lesson (<span class="ref">useLearnSession.ts:1098-1103</span>) — consistent with the half-finished migration, but it reads as two competing structures. Separately, <code>requestRetention</code> sits directly in the Study settings tab (<span class="ref">CourseSettings.tsx:393-397</span>) rather than behind an advanced toggle: an FSRS-literacy-requiring control shown to everyone. The optimiser, by contrast, is properly gated behind a review-count minimum with an auto-snapshot before applying.</p>
+    </div>
+    <div class="f low">
+      <div class="chips"><span class="chip">Low</span><span class="chip single">Single-source</span><span class="chip">Shipped</span></div>
+      <h3>Smaller items</h3>
+      <p><code>DateTimePicker</code> has <code>role="dialog"</code> but no focus trap, despite <code>useFocusTrap</code> existing and being used correctly elsewhere — a one-line fix. Only one page-level error boundary exists, so a crash in the occlusion canvas or import panel takes the whole page. And <code>newCardsPerDay &lt;= 0</code> means <em>unlimited</em>, not zero (<span class="ref">eligibility.ts:62-63</span>) — a user typing 0 to mean "none today" gets the opposite.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Tests, process and prior art</h2></div>
+  <p>The audit discovered mid-flight that prior audits already existed in the repo, and reconciled against them. None contradicts these findings.</p>
+  <ul class="tight">
+    <li><strong>The test suite is real.</strong> <span class="ref">forwardSim.test.ts:49-146</span> asserts mathematical <em>invariants</em> — that <code>forgettingCurve(S,S,decay) ≈ 0.90</code> across a sweep, monotonic decay, the divide-by-zero guard — not outputs against themselves. <span class="ref">objective.test.ts</span> recomputes expectations from a lower-level primitive and explicitly asserts the two objectives <em>disagree</em>, proving the pinning matters. <span class="ref">repository.test.ts</span> tests concurrent-replay idempotency against a real database. No tautological or "does not throw" filler in the sampled files. It would catch a scheduling-maths regression.</li>
+    <li><strong>The gap it would miss:</strong> nothing exercises the allocator/progress-bar pairing in revision-plan mode.</li>
+    <li><strong>An unmerged validation branch vindicates the scheduler.</strong> <code>plan/fsrs-validation</code> sits 25 commits ahead, effectively abandoned in place: TypeScript/Python parity to 1e-14, a cram ablation recommending production routing stay frozen, and a backlog study justifying existing workload defaults. Notably it <em>retracted</em> a prior audit's claim that Lacuna had no review cap — it does. A project that checks its own accusations is a good sign.</li>
+    <li><strong>Prior audits are closed or open-by-design.</strong> <code>BROWSER_QA_AUDIT.md</code> found three defects, all fixed and verified. <code>docs/code-quality-remediation-plan.html</code> is an unapproved draft that independently flags the same two oversized files this audit did — <span class="ref">repository.ts</span> at 2,686 lines and <span class="ref">useLearnSession.ts</span> at 1,802, both well past the project's own ~500-line rule.</li>
+    <li><strong>CI has real gaps.</strong> <code>release.yml</code> builds Windows only; <code>ci.yml</code> never builds or tests <code>electron/main.ts</code>, <code>preload.ts</code> or the MCP server, and <code>scripts/mcp-smoke.mjs</code> is not wired in. The privileged Electron surface has no coverage beyond typechecking. <code>electron/updater.ts</code> also has a macOS branch that <code>electron-builder.yml</code> never builds.</li>
+  </ul>
+</section>
+
+<section id="science">
+  <div class="section-head"><h2>Is it backed by science?</h2><span class="eyebrow">literature review · sources cited</span></div>
+  <p>A dedicated literature agent assessed the claims on their own terms, without reading the code. The short answer: <strong>the foundations are real but the marketing copy outruns them</strong>, and the app's most distinctive design decision rests on thinner evidence than its most conventional ones.</p>
+
+  <div class="findings">
+    <div class="f good">
+      <div class="chips"><span class="chip sev-good">Supported</span><span class="chip judgement">Literature</span></div>
+      <h3>The power-law forgetting curve is well-evidenced</h3>
+      <p>Wixted &amp; Ebbesen found power functions fit individual-subject forgetting data better than exponential, linear or logarithmic alternatives. The historical averaging-artifact objection has largely been addressed by within-subject analyses. FSRS cites this literature for its curve choice, correctly.</p>
+    </div>
+
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Partial</span><span class="chip judgement">Literature</span></div>
+      <h3>DSR is an engineering approximation, not a validated psychological model</h3>
+      <p>Difficulty, stability and retrievability descend from SuperMemo's heuristics, not from a peer-reviewed cognitive model. They are fitted constructs optimised to minimise log-loss on review logs; nobody has shown they correspond to distinct cognitive or neural quantities. That FSRS beats SM-2 <em>is</em> independently corroborated — Domenech-Iglesias et al. (2024) report ~30% fewer reviews for equivalent retention — but the main benchmark infrastructure is run by FSRS's own organisation, and SuperMemo's creator publicly disputes its methodology, arguing log-loss is the wrong metric and Anki logs are biased toward crammers. That dispute is live and unresolved, not settled.</p>
+    </div>
+
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Partial · disclose</span><span class="chip judgement">Literature</span></div>
+      <h3>Exam-date optimisation is plausible, under-tested, and has a real cost the app does not mention</h3>
+      <p>This is Lacuna's defining bet, so it deserves the sharpest reading. It is <em>not</em> cramming — the app reweights which cards get spaced review sooner, rather than collapsing spacing into one session, so Cepeda's meta-analysis (254 studies, 259 of 271 comparisons favouring spacing) does not condemn it. There is prior art in the optimisation literature: Tabibian et al. (PNAS 2019) and Reddy et al. on unbounded human learning. But those are optimisation-theory papers, not randomised trials against standard SRS with real students. The claim "compressing toward the exam improves exam-day recall without meaningfully harming durability" is plausible-but-thinly-evidenced.</p>
+      <p><strong>The trade-off itself is not speculative.</strong> Narrowing the review horizon to a deadline will, by ordinary forgetting-curve mathematics, under-serve post-exam retention relative to an uncapped schedule. That is a predictable consequence, and a user choosing an exam-driven tool deserves to be told it. Separately, "expected marks on exam day" conflates recall probability with exam performance — format effects, question difficulty and transfer are not modelled. A defensible simplification, but not a validated equivalence.</p>
+    </div>
+
+    <div class="f high">
+      <div class="chips"><span class="chip sev-high">Overclaims</span><span class="chip judgement">Literature</span><span class="chip">Shipped</span></div>
+      <h3>The Help page says more than the evidence supports</h3>
+      <p><em>"Models your memory with mathematical precision"</em> — overclaim. DSR is a statistical approximation with meaningful per-card error. <em>"The most efficient mode for long-term retention"</em> — unsupported as an absolute; efficiency is benchmark-relative and the benchmark is self-run. <em>"Optimal interval"</em> — true only relative to the FSRS optimiser's own definition of optimal, conditional on the model being correct, and sourced from community analysis rather than peer review.</p>
+      <p><em>"Just before you would forget"</em> is the most interesting one. It is roughly what maximising efficiency under a retrievability target implies — but Bjork's desirable-difficulty work suggests the optimal moment for <em>durable</em> learning may be somewhat earlier, where retrieval is more effortful. The phrase elides a real distinction. <em>"Short breaks improve retention"</em> is supported in general, but it is generically true of any study method, not something Lacuna's algorithm does or validates.</p>
+    </div>
+
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Partial</span><span class="chip judgement">Literature</span></div>
+      <h3>The retention slider is defensible but under-explained</h3>
+      <p>The 80–97% range matches community consensus that workload is U-shaped in retention target with a minimum around 80–90%. That analysis is SRS-community-authored and simulated under FSRS's own assumptions — somewhat circular. Exposing the control is reasonable; offering the knob without explaining the U-shape invites students to mis-set it.</p>
+    </div>
+
+    <div class="f med">
+      <div class="chips"><span class="chip sev-med">Partial</span><span class="chip judgement">Literature</span></div>
+      <h3>Response-time grading is a reasonable proxy carrying compounding risk</h3>
+      <p>Retrieval latency does index memory strength, and faster initial recall predicts better subsequent retention. But the relationship is noisy, and 3s/8s are engineering heuristics with no validated latency-to-grade mapping behind them. Device, typing friction and anxiety all confound retrieval effort — and because these grades feed a <em>long-term</em> scheduler, an error does not just misjudge one review, it biases every future interval for that card. Note FSRS's own reference implementation deliberately keeps response time out of its scheduling weights. Per-deck self-calibration mitigates this; it does not eliminate it.</p>
+    </div>
+
+    <div class="f low">
+      <div class="chips"><span class="chip">Opportunity</span><span class="chip judgement">Literature</span></div>
+      <h3>Better-evidenced wins than further parameter tuning</h3>
+      <p>Four effects have stronger and more consistent evidence than several of the app's current claims: <strong>interleaving</strong> across related topics over blocked practice; <strong>elaborated feedback</strong> during review rather than correct/incorrect alone; the <strong>generation effect</strong>, where self-generated answers beat recognition; and <strong>successive relearning</strong> for weak items rather than purely interval-driven scheduling. Lacuna already blocks during initial teaching and interleaves during practice, which is correct instructional design — the others are open ground.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>What this audit got wrong</h2><span class="eyebrow">nine self-corrections</span></div>
+  <p>Findings were sent to adversarial verifiers instructed to refute them. Several did not survive, and a report that hides its own misses is worth less than one that shows them.</p>
+  <div class="corrections">
+    <div class="corr"><p><strong>"No hand-rolled FSRS maths" is not a false claim.</strong> Read in full context the README scopes it to memory-<em>state</em> updates, which is true, and SPEC §7 discloses the hand-rolled forgetting curve candidly two sections later. Reading a quoted line in isolation and treating disclosure elsewhere as concealment was the error. Downgraded from "documentation is inaccurate" to a wording nit.</p></div>
+    <div class="corr"><p><strong>A wrong auto-mark is not permanent.</strong> The dispute mechanism genuinely has no consumer, but a working single-step undo fully reverses card, calibration and history state. "Cannot prevent" and "cannot fix" are very different severities and were conflated.</p></div>
+    <div class="corr"><p><strong>The day-boundary issue is not benign.</strong> Initially dismissed as "what Anki does too". An unmerged branch had already quantified the divergence at |ΔR| up to 0.117. This was the audit's own error, not a subagent's.</p></div>
+    <div class="corr"><p><strong>DST does not affect scheduling arithmetic.</strong> Inherited from a source document and repeated before checking. Because elapsed days ultimately derive from a UTC diff, the clock change shifts local-day display and grouping only.</p></div>
+    <div class="corr"><p><strong>The objective-invariant violation is not user-visible.</strong> The claim that a user sees two disagreeing numbers was wrong: in revision-plan mode the header shows a time-budget bar, and <code>sessionProgress</code> is computed but never rendered. Downgraded from medium to low.</p></div>
+    <div class="corr"><p><strong>The project does have security headers.</strong> "No headers anywhere" missed <code>vercel.json</code> entirely, which sets four. The real finding is narrower: they were never ported to <code>wrangler.jsonc</code>.</p></div>
+    <div class="corr"><p><strong>Telemetry does not fire everywhere.</strong> The Vercel script resolves to a relative path that 404s on the Cloudflare deployment, where it silently no-ops. Real on Vercel, inert on Workers.</p></div>
+    <div class="corr"><p><strong>The backup risk is web-only.</strong> Originally rated high. Electron stores IndexedDB in the app's <code>userData</code> directory, not an evictable browser origin, so desktop users are unaffected.</p></div>
+    <div class="corr"><p><strong>The .apkg importer does not always create a deck.</strong> It reuses an existing <code>targetDeckId</code>. The duplication finding survived; the mechanism described was wrong.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Where to spend effort</h2></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Priority</th><th>Change</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Validate at the storage boundary, not only in authoring UI</td><td>Closes the empty imported mark scheme and other payloads whose shape passes while their content is invalid</td></tr>
+        <tr><td>2</td><td>Fix or remove the retention-by-age chart; show n</td><td>The only mature, shipped defect that misinforms a user about their own memory</td></tr>
+        <tr><td>3</td><td>Wire <code>selfCorrected</code>; exclude machine-marked timings from recall calibration</td><td>Restores the Hard branch and stops typed-production time distorting ordinary recall thresholds</td></tr>
+        <tr><td>4</td><td>Reconcile SPEC's v1/v3 naming</td><td>The spec advertises a model that failed transfer validation while runtime ships v3</td></tr>
+        <tr><td>5</td><td>Gate or remove <code>@vercel/analytics</code></td><td>Contradicts a headline claim on a live deploy target</td></tr>
+        <tr><td>6</td><td>Port headers to the Workers deployment; add <code>setWindowOpenHandler</code></td><td>Cheap defence-in-depth on builds that render imported content</td></tr>
+        <tr><td>7</td><td>ARIA the command palette</td><td>Keyboard-first app with a keyboard-inaccessible primary control</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><h2>Open questions</h2><span class="eyebrow">not findings</span></div>
+  <ul class="tight">
+    <li>Does the content-addressed asset store garbage-collect when the <em>last</em> card referencing an image or audio file is deleted? Occlusion's asset lifecycle is new.</li>
+    <li>Does <code>occlusionRepository.ts</code>'s own undo interact correctly with the global single-level undo, or do they fight?</li>
+    <li>Can imported cards collide with or overwrite legitimately-generated occlusion cards in a target course? The bulk-mutation guard at <span class="ref">repository.ts:534-552</span> may not cover the import write path.</li>
+    <li>Is the MCP server intended to start unconditionally on every launch?</li>
+    <li>The shipped research dataset carries a custom licence. For a product that redistributes it, is attribution compliant?</li>
+  </ul>
+  <p>The first three sit in code that was changing during this audit and may already be stale.</p>
+</section>
+
+<footer>
+  <p>Read-only interrogation of <code>codex/arc6-audio</code> at 30 July 2026. Seventeen agents: nine subsystem audits, six adversarial verifications, two completeness critics. Findings labelled <strong>verified</strong> were independently replicated or checked against git history, package internals or configuration; <strong>single-source</strong> findings were traced once and not replicated.</p>
+</footer>
+
+</div>
+
+</body></html>

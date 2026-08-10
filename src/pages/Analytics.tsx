@@ -357,8 +357,8 @@ export function Analytics() {
 
         <FadeInView delay={0.30} y={0}>
           <ChartCard
-            title="Retention by age"
-            description="Recall rate grouped by how long each card has been in review."
+            title="Observed recall by card age"
+            description="Every review, grouped by time since the card was first reviewed; n is shown in the tooltip."
             empty={!hasReviews}
             emptyMessage="Retention data will appear after your first reviews."
             delay={0.30}
@@ -371,16 +371,12 @@ export function Analytics() {
               <Tooltip
                 contentStyle={tooltipStyle}
                 cursor={{ fill: c.line, opacity: 0.4 }}
-                formatter={(v: number) => [`${v}%`, 'Retention']}
+                formatter={(value, _name, item) => [
+                  `${value}% (n=${item.payload?.count ?? 0})`,
+                  'Observed recall',
+                ]}
               />
-              <Bar dataKey="retention" radius={[6, 6, 0, 0]}>
-                {retention.map((entry, i) => (
-                  <Cell
-                    key={i}
-                    fill={entry.retention >= 80 ? c.positive : c.accent}
-                  />
-                ))}
-              </Bar>
+              <Bar dataKey="retention" fill={c.accent} radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>          </ChartCard>
         </FadeInView>

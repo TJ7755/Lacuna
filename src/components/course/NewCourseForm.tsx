@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -28,17 +28,26 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
   const { notify } = useToast();
   const navigate = useNavigate();
   const trapRef = useFocusTrap(true, { autoFocusSelector: 'input, textarea' });
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState<'create' | 'import'>('create');
 
-  const canCreate = name.trim().length > 0 && !saving;
+  const canCreate = !saving;
 
   async function handleCreate() {
-    if (!canCreate) return;
+    if (saving) return;
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setNameError('Enter a course name before creating the course.');
+      nameInputRef.current?.focus();
+      return;
+    }
+    setNameError(null);
     setSaving(true);
     try {
-      const course = await createCourse(name.trim());
+      const course = await createCourse(trimmedName);
       await createLesson(course.id, 'Lesson 1');
       onClose();
       navigate(`/course/${course.id}`);
@@ -139,18 +148,30 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
                 Course name
               </label>
               <input
+                ref={nameInputRef}
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (e.target.value.trim()) setNameError(null);
+                }}
                 placeholder="Course name"
                 autoFocus
                 disabled={saving}
+                aria-invalid={nameError ? 'true' : undefined}
+                aria-describedby={nameError ? 'new-course-name-error' : undefined}
                 className={cn(
-                  'w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-sm text-ink',
+                  'w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-ink',
+                  nameError ? 'border-negative' : 'border-line',
                   'placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/60',
                   'disabled:opacity-40',
                 )}
               />
+              {nameError && (
+                <p id="new-course-name-error" role="alert" className="text-sm text-negative">
+                  {nameError}
+                </p>
+              )}
             </div>
 
             <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">

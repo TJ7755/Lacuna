@@ -13,6 +13,7 @@ vi.mock('../../state/useCourseData', () => ({
   useLessonCardLinks: () => mockLinks,
   useLessons: () => [lesson],
   useSequences: () => [],
+  useOcclusions: () => [],
 }));
 
 vi.mock('../../db/schema', () => ({
@@ -125,6 +126,7 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
+        lessonName="Cells"
         lessonCards={[]}
         lessonDeck={undefined}
         onNavigate={vi.fn()}
@@ -140,6 +142,7 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
+        lessonName="Cells"
         lessonCards={[card]}
         lessonDeck={deck}
         onNavigate={vi.fn()}
@@ -153,11 +156,11 @@ describe('LessonCardsSection', () => {
   it('warns before unlinking a card with lesson-specific teaching progress', async () => {
     mockLinks = [{ id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1 }];
     mockGetExposure.mockResolvedValue({ lessonId: 'lesson-1', cardId: card.id, taughtAt: 1 });
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     render(
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
+        lessonName="Cells"
         lessonCards={[card]}
         lessonDeck={deck}
         onNavigate={vi.fn()}
@@ -165,9 +168,11 @@ describe('LessonCardsSection', () => {
     );
 
     fireEvent.click(screen.getByText('Remove linked card'));
-    await waitFor(() => expect(confirm).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByText('Remove card from this lesson?')).toBeInTheDocument());
     expect(mockUnlink).not.toHaveBeenCalled();
-    confirm.mockRestore();
+
+    fireEvent.click(screen.getByText('Remove'));
+    await waitFor(() => expect(mockUnlink).toHaveBeenCalledOnce());
   });
 
   it('withholds card controls until linked membership has loaded', () => {
@@ -176,6 +181,7 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
+        lessonName="Cells"
         lessonCards={[card]}
         lessonDeck={deck}
         onNavigate={vi.fn()}
@@ -195,6 +201,28 @@ describe('LessonCardsSection', () => {
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
+        lessonName="Cells"
+        lessonCards={[]}
+        lessonDeck={undefined}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Link existing cards'));
+    expect(screen.getByTestId('picker-card-ids')).toHaveTextContent(card.id);
+    expect(screen.getByTestId('picker-card-ids')).not.toHaveTextContent('generated-card');
+  });
+
+  it('excludes generated occlusion cards from linking candidates', () => {
+    mockCourseCards = [
+      card,
+      { ...card, id: 'generated-card', occlusionRegionId: 'region-1' },
+    ];
+    render(
+      <LessonCardsSection
+        courseId="course-1"
+        lessonId="lesson-1"
+        lessonName="Cells"
         lessonCards={[]}
         lessonDeck={undefined}
         onNavigate={vi.fn()}

@@ -9,9 +9,11 @@ import { m as motion, AnimatePresence } from 'motion/react';
 import { db } from '../db/schema';
 import {
   useLessons,
-  useCourseExamDates,
+  useCourse,
+  useCourseAssessments,
   useCourseCards,
   useCourseSummary,
+  usePendingMergeReview,
   usePracticeNodes,
 } from '../state/useCourseData';
 import { availableCards, dueCards } from '../fsrs/eligibility';
@@ -19,17 +21,18 @@ import { buildDeckSecondsMap } from '../fsrs/stats';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { MS_PER_DAY } from '../fsrs/params';
-import {
-  buildPath,
-  pathPosition,
-  lessonEffectiveReleaseDates,
-  nearestExamDate,
-} from '../course/path';
+import { buildPath, pathPosition, lessonEffectiveReleaseDates } from '../course/path';
 import { lessonCardMembership } from '../course/studyPools';
+import {
+  currentAssessmentPracticeContext,
+  type AssessmentPracticeOption,
+} from '../course/assessmentPractice';
 import { courseHeaderStats } from '../course/headerStats';
 import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
 import { planNextStudyStep } from '../course/studyFlowPlanner';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
+import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
+import { UpcomingAssessmentsStrip } from '../components/course/UpcomingAssessmentsStrip';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import {
   PathNodeWithLine,
@@ -38,20 +41,24 @@ import {
   lockHintFor,
 } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
+import { CourseTabs } from '../components/course/CourseTabs';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { LessonView } from './LessonView';
 import { Button } from '../components/ui/Button';
-import { ChartIcon, ChevronLeftIcon, PlayIcon, SettingsIcon } from '../components/ui/icons';
+import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { updateCourse } from '../db/repository';
-import { isLessonAuthoringMode, resolveLessonViewMode } from '../course/lessonViewMode';
+import {
+  canEditLessons,
+  isLessonAuthoringMode,
+  resolveLessonViewMode,
+} from '../course/lessonViewMode';
 import { formatDate } from '../utils/datetime';
 import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
 import { useToast } from '../components/ui/Toast';
 import type {
   Card,
-  Course,
   LessonCardExposure,
   LessonCardLink,
   LessonCompletion,
@@ -64,6 +71,7 @@ interface PracticeNodeProgress {
   eligibleCount: number;
   completed: boolean;
   scopeVersion: string;
+  assessment?: AssessmentPracticeOption;
 }
 
 export function CoursePath() {
@@ -78,18 +86,17 @@ export function CoursePath() {
   const [editorState, setEditorState] = useState<
     { mode: 'new'; defaultPosition?: number } | { mode: 'edit'; node: PracticeNode } | null
   >(null);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
 
   // Use a null-sentinel to distinguish "loading" (undefined) from "not found" (null).
   // When courseId is absent the query resolves immediately to null.
-  const course = useLiveQuery<Course | null>(
-    () => (courseId ? db.courses.get(courseId).then((c) => c ?? null) : Promise.resolve(null)),
-    [courseId],
-  );
+  const course = useCourse(courseId);
   const lessons = useLessons(courseId);
-  const examDates = useCourseExamDates(courseId);
+  const assessments = useCourseAssessments(courseId);
   const courseCards = useCourseCards(courseId);
   const summary = useCourseSummary(courseId);
   const practiceNodes = usePracticeNodes(courseId);
+  const pendingUpdate = usePendingMergeReview(courseId);
   const lessonIds = useMemo(() => (lessons ?? []).map((lesson) => lesson.id), [lessons]);
   const lessonIdsKey = lessonIds.join(',');
   const lessonLinks = useLiveQuery<LessonCardLink[]>(
@@ -138,7 +145,7 @@ export function CoursePath() {
   const dataLoaded =
     course !== undefined &&
     lessons !== undefined &&
-    examDates !== undefined &&
+    assessments !== undefined &&
     courseCards !== undefined &&
     summary !== undefined &&
     practiceNodes !== undefined &&
@@ -164,23 +171,36 @@ export function CoursePath() {
   // is about FSRS review pressure, unlike the header's dueCardCount which also
   // admits new cards (see courseHeaderStats).
   const now = Date.now();
-  const { reviewDueCount, meanReviewSeconds } = useMemo(() => {
-    const reviewDueCount = dueCards(availableCards(courseCards ?? [], now), now).length;
+  const { reviewDueCount, meanReviewSeconds, nearestPracticeAssessmentDate } = useMemo(() => {
+    const currentPractice = course
+      ? currentAssessmentPracticeContext({
+          course,
+          assessments: assessments ?? [],
+          lessons: lessons ?? [],
+          cards: courseCards ?? [],
+          links: lessonLinks ?? [],
+          exposures: exposures ?? [],
+          now,
+        })
+      : { scope: [], assessmentOptions: [] };
+    const scope = currentPractice.scope;
+    const reviewDueCount = dueCards(availableCards(scope, now), now).length;
     const deckSeconds = buildDeckSecondsMap(perf ?? []);
     const meanReviewSeconds = courseMeanReviewSeconds(courseCards ?? [], deckSeconds);
-    return { reviewDueCount, meanReviewSeconds };
+    const nearestPracticeAssessmentDate = currentPractice.assessmentOptions[0]?.examDate;
+    return { reviewDueCount, meanReviewSeconds, nearestPracticeAssessmentDate };
     // `now` is deliberately excluded: recomputation is scoped to data changes
     // (cards/perf), not wall-clock drift, and live-query updates re-render anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseCards, perf]);
+  }, [assessments, course, courseCards, exposures, lessonLinks, lessons, perf]);
 
   const nodes = useMemo(
     () =>
-      course && lessons && examDates && practiceNodes
+      course && lessons && assessments && practiceNodes
         ? buildPath(
             course,
             lessons,
-            examDates,
+            assessments,
             lessonCardsById,
             practiceNodes,
             reviewDueCount,
@@ -191,6 +211,7 @@ export function CoursePath() {
               lessonCompletions: lessonCompletions ?? [],
               practiceMilestones: practiceMilestones ?? [],
             },
+            nearestPracticeAssessmentDate,
           )
         : [],
     // `now` is deliberately excluded: recomputation is scoped to data changes,
@@ -199,7 +220,7 @@ export function CoursePath() {
     [
       course,
       lessons,
-      examDates,
+      assessments,
       lessonCardsById,
       practiceNodes,
       reviewDueCount,
@@ -207,13 +228,16 @@ export function CoursePath() {
       exposures,
       lessonCompletions,
       practiceMilestones,
+      nearestPracticeAssessmentDate,
     ],
   );
 
   const examDateContext = useMemo(
     () =>
-      course && lessons && examDates ? makeExamDateContext(course, lessons, examDates) : undefined,
-    [course, lessons, examDates],
+      course && lessons && assessments
+        ? makeExamDateContext(course, lessons, assessments)
+        : undefined,
+    [course, lessons, assessments],
   );
 
   const studyFlowSnapshot = useMemo(
@@ -228,7 +252,6 @@ export function CoursePath() {
             examDateContext,
             meanReviewSeconds,
             practiceMilestones: practiceMilestones ?? [],
-            nearestExamDate: nearestExamDate(course, examDates ?? [], now),
             now,
           })
         : null,
@@ -236,7 +259,6 @@ export function CoursePath() {
       course,
       courseCards,
       examDateContext,
-      examDates,
       exposures,
       lessonLinks,
       meanReviewSeconds,
@@ -257,11 +279,13 @@ export function CoursePath() {
         eligibleCount: practice.eligibleCount,
         completed: practice.completed,
         scopeVersion: practice.scopeVersion,
+        assessment: practice.assessmentOptions[0],
       });
     }
     return result;
   }, [studyFlowSnapshot]);
-  const studyTarget = studyDecision?.kind === 'step' ? studyDecision.step : null;
+  const studyTarget =
+    studyDecision?.kind === 'step' || studyDecision?.kind === 'choice' ? studyDecision.step : null;
   const visibleNodes = useMemo(
     () =>
       nodes.filter((node) => {
@@ -331,7 +355,7 @@ export function CoursePath() {
   // there).
   const { nearestExam, examUrgent, mastery, dueCardCount } = courseHeaderStats(
     course,
-    examDates,
+    assessments,
     courseCards,
     summary?.mastery ?? 0,
     now,
@@ -360,34 +384,30 @@ export function CoursePath() {
           <ChevronLeftIcon width={16} height={16} />
           All courses
         </Link>
-        <div className="flex w-full items-center justify-between gap-1 sm:w-auto sm:justify-start sm:gap-4">
-          <Link
-            to={`/course/${courseId}/bank`}
-            className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-          >
-            Question bank
-          </Link>
+        <CourseTabs courseId={courseId ?? ''} />
+      </div>
+
+      {/* Upcoming-assessment pills (left) and the lesson view mode toggle
+          (right, unchanged) share this row so the strip doesn't add height
+          of its own when there's room; it wraps below on narrow screens.
+          Lesson view mode configures the path view (not the course as a
+          whole), so it stays here in the path's own header area rather than
+          moving into CourseTabs (which is shared across all course surfaces). */}
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
+        <UpcomingAssessmentsStrip
+          assessments={assessments}
+          now={now}
+          onSelect={setSelectedAssessmentId}
+          className="mr-auto"
+        />
+        {!canEditLessons(course) ? (
+          <span className="text-xs text-ink-faint">Editing is locked for shared courses</span>
+        ) : (
           <LessonViewModeToggle
             mode={lessonViewMode}
             onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
           />
-          <Link
-            to={`/course/${courseId}/analytics`}
-            aria-label="Course analytics"
-            title="Course analytics"
-            className="inline-flex min-h-11 min-w-11 items-center justify-center text-ink-faint transition-colors hover:text-ink active:text-ink"
-          >
-            <ChartIcon width={18} height={18} />
-          </Link>
-          <Link
-            to={`/course/${courseId}/settings`}
-            aria-label="Course settings"
-            title="Course settings"
-            className="inline-flex min-h-11 min-w-11 items-center justify-center text-ink-faint transition-colors hover:text-ink active:text-ink"
-          >
-            <SettingsIcon width={18} height={18} />
-          </Link>
-        </div>
+        )}
       </div>
 
       {/* Header — title, a row of labelled stat pills (HeaderStats), and the
@@ -397,6 +417,22 @@ export function CoursePath() {
         eyebrow={`Exam ${formatDate(nearestExam, course.timeZone)}`}
         examUrgent={examUrgent}
         title={course.name}
+        onRename={
+          canEditLessons(course)
+            ? async (name) => {
+                try {
+                  await updateCourse(course.id, { name });
+                } catch (error) {
+                  notify(
+                    error instanceof Error ? error.message : 'Could not rename the course.',
+                    'negative',
+                  );
+                  throw error;
+                }
+              }
+            : undefined
+        }
+        renameLabel="course"
       >
         <div className="min-w-0 max-w-full">
           <HeaderStats
@@ -428,6 +464,14 @@ export function CoursePath() {
               >
                 Review due cards
               </Button>
+            )}
+            {pendingUpdate && (
+              <Link
+                to={`/course/${courseId}/updates`}
+                className="inline-flex min-h-11 items-center rounded-full bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
+              >
+                Review updates
+              </Link>
             )}
             {/* The due count already leads the stat pills above, so this line
                 only speaks when there is something the pills don't say. */}
@@ -492,11 +536,22 @@ export function CoursePath() {
                   ? practiceProgressByKey.get(node.nodeKey)
                   : undefined
               }
+              practiceAssessment={
+                node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual'
+                  ? practiceProgressByKey.get(node.nodeKey)?.assessment
+                  : undefined
+              }
               onPracticeClick={(practiceNode) =>
                 navigate(
                   `/course/${courseId}/study?practiceNode=${encodeURIComponent(practiceNode.nodeKey)}`,
                 )
               }
+              onPracticeAssessmentClick={(assessmentId) =>
+                navigate(
+                  `/course/${courseId}/study?assessmentId=${encodeURIComponent(assessmentId)}`,
+                )
+              }
+              onCheckpointClick={setSelectedAssessmentId}
               onPracticeEdit={(pn) =>
                 pn.practiceNode && setEditorState({ mode: 'edit', node: pn.practiceNode })
               }
@@ -525,6 +580,21 @@ export function CoursePath() {
       )}
 
       <AnimatePresence>
+        {selectedAssessmentId &&
+          assessments.find((assessment) => assessment.id === selectedAssessmentId) && (
+            <AssessmentDetailSheet
+              assessment={assessments.find((assessment) => assessment.id === selectedAssessmentId)!}
+              lessons={lessons}
+              cards={courseCards}
+              links={lessonLinks}
+              onClose={() => setSelectedAssessmentId(null)}
+              onRevise={() =>
+                navigate(
+                  `/course/${courseId}/study?assessmentId=${encodeURIComponent(selectedAssessmentId)}`,
+                )
+              }
+            />
+          )}
         {editorState && (
           <PracticeNodeEditor
             courseId={course.id}

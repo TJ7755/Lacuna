@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { MarkdownView } from './MarkdownView';
+import { resolveAssetMarkdownCached } from '../../db/assetCache';
 
 vi.mock('../../db/assets', () => ({
   ASSET_PROTOCOL: 'lacuna-asset://',
@@ -17,9 +18,7 @@ describe('MarkdownView — embed rendering (allowEmbeds true)', () => {
     );
     const iframe = container.querySelector('iframe');
     expect(iframe).not.toBeNull();
-    expect(iframe!.getAttribute('src')).toBe(
-      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
-    );
+    expect(iframe!.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
     // The responsive wrapper's layout classes must survive sanitisation, else the
     // aspect-ratio box collapses and the video renders at zero height.
     expect(container.querySelector('.aspect-video iframe')).not.toBeNull();
@@ -31,15 +30,11 @@ describe('MarkdownView — embed rendering (allowEmbeds true)', () => {
     );
     const iframe = container.querySelector('iframe');
     expect(iframe).not.toBeNull();
-    expect(iframe!.getAttribute('src')).toBe(
-      'https://www.youtube-nocookie.com/embed/abc123defGH',
-    );
+    expect(iframe!.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/abc123defGH');
   });
 
   it('converts a bare Vimeo URL to a player.vimeo iframe', () => {
-    const { container } = render(
-      <MarkdownView source="https://vimeo.com/123456789" allowEmbeds />,
-    );
+    const { container } = render(<MarkdownView source="https://vimeo.com/123456789" allowEmbeds />);
     const iframe = container.querySelector('iframe');
     expect(iframe).not.toBeNull();
     expect(iframe!.getAttribute('src')).toBe('https://player.vimeo.com/video/123456789');
@@ -82,5 +77,23 @@ describe('MarkdownView — embed rendering (allowEmbeds true)', () => {
     expect(container.querySelector('details')).not.toBeNull();
     expect(container.querySelector('summary')).not.toBeNull();
     expect(container.querySelector('summary')!.textContent).toBe('Section title');
+  });
+});
+
+describe('MarkdownView — audio assets', () => {
+  it('turns only resolved local audio markers into players', async () => {
+    vi.mocked(resolveAssetMarkdownCached).mockResolvedValueOnce('![audio](blob:clip)');
+    const hash = 'a'.repeat(64);
+    const { container } = render(<MarkdownView source={`![audio](lacuna-asset://${hash})`} />);
+
+    await waitFor(() => expect(container.querySelector('audio')).not.toBeNull());
+    expect(container.querySelector('audio')).toHaveAttribute('src', 'blob:clip');
+    expect(container.querySelector('audio')).toHaveAttribute('controls');
+  });
+
+  it('does not turn a remote image labelled audio into a player', () => {
+    const { container } = render(<MarkdownView source="![audio](https://example.com/clip.mp3)" />);
+    expect(container.querySelector('audio')).toBeNull();
+    expect(container.querySelector('img')).not.toBeNull();
   });
 });

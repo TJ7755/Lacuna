@@ -7,8 +7,8 @@ import type {
 } from '../db/types';
 import type { ExamDateContext } from '../fsrs/examDate';
 import { DEFAULT_REVIEW_SECONDS } from '../fsrs/stats';
-import { daysUntil } from '../utils/datetime';
 import type { PathNode, PracticePathNode } from './path';
+import { assessmentPracticeOptions, type AssessmentPracticeOption } from './assessmentPractice';
 import {
   eligiblePracticePool,
   practiceCardScope,
@@ -21,6 +21,8 @@ export interface StudyFlowPracticeState {
   nodeType: PracticePathNode['nodeType'];
   label: string;
   scopeLessonIds: ReadonlySet<string>;
+  sessionScopeLessonIds: ReadonlySet<string>;
+  assessmentOptions: AssessmentPracticeOption[];
   scopeVersion: string;
   totalCount: number;
   securedCount: number;
@@ -37,6 +39,7 @@ export interface CourseStudyFlowSnapshot {
   activeManualNodeKeys: ReadonlySet<string>;
   completedManualNodeKeys: ReadonlySet<string>;
   recurringPracticeEligibleCount: number;
+  assessmentOptions: AssessmentPracticeOption[];
 }
 
 export interface BuildCourseStudyFlowSnapshotInput {
@@ -48,8 +51,6 @@ export interface BuildCourseStudyFlowSnapshotInput {
   examDateContext: ExamDateContext;
   meanReviewSeconds: number;
   practiceMilestones?: PracticeMilestone[];
-  /** Nearest relevant course/checkpoint date, used only for urgency. */
-  nearestExamDate: number;
   now?: number;
 }
 
@@ -90,16 +91,17 @@ export function practicePrefixLessonIds(
   return result;
 }
 
-function thresholdMinutes(course: Course, nearestExamDate: number, now: number): number {
-  return daysUntil(nearestExamDate, now) <= course.practiceUrgentWindowDays
+function thresholdMinutes(course: Course, nearestAssessmentDate?: number): number {
+  return nearestAssessmentDate !== undefined
     ? course.practiceThresholdMinutesNear
     : course.practiceThresholdMinutesFar;
 }
 
 /**
  * Builds every fact the conductor and course path need from one immutable
- * course snapshot. Curricular Practice is scoped to its fixed path prefix;
- * later lessons therefore cannot revive an earlier milestone.
+ * course snapshot. A curricular milestone keeps its fixed path prefix, while
+ * its live session uses the current reached scope; later lessons cannot rewrite
+ * or revive the earlier milestone.
  */
 export function buildCourseStudyFlowSnapshot({
   course,
@@ -110,13 +112,38 @@ export function buildCourseStudyFlowSnapshot({
   examDateContext,
   meanReviewSeconds,
   practiceMilestones = [],
-  nearestExamDate,
   now = Date.now(),
 }: BuildCourseStudyFlowSnapshotInput): CourseStudyFlowSnapshot {
   const milestoneByKey = new Map(
     practiceMilestones.map((milestone) => [milestone.nodeKey, milestone]),
   );
-  const provisional: Array<StudyFlowPracticeState & { manual: boolean; pathIndex: number }> = [];
+  const reachedLessonIds = new Set(
+    nodes
+      .filter((node) => node.nodeType === 'lesson' && node.status !== 'locked')
+      .map((node) => node.id),
+  );
+  const assessmentContext = {
+    course,
+    assessments: examDateContext.courseAssessments,
+    lessons: [...examDateContext.lessonsById.values()],
+    cards,
+    links,
+    exposures,
+    reachedLessonIds,
+    now,
+  };
+  const recurringScope = practiceCardScope(
+    cards,
+    links,
+    exposures,
+    { reachedLessonIds },
+    now,
+    course.leechThreshold,
+  );
+  const recurringAssessmentOptions = assessmentPracticeOptions(assessmentContext, recurringScope);
+  const provisional: Array<
+    StudyFlowPracticeState & { manual: boolean; pathIndex: number; nearestAssessmentDate?: number }
+  > = [];
 
   for (const [pathIndex, node] of nodes.entries()) {
     if (node.nodeType !== 'practice-auto' && node.nodeType !== 'practice-manual') continue;
@@ -131,53 +158,77 @@ export function buildCourseStudyFlowSnapshot({
     );
     const scopeVersion = practiceScopeVersion(scope);
     const readiness = practiceReadiness(scope, course, examDateContext, now);
-    const eligibleCount = eligiblePracticePool(scope, course, examDateContext, now).length;
+    const sessionScopeLessonIds = node.practiceNode?.lessonIds
+      ? new Set(node.practiceNode.lessonIds.filter((lessonId) => reachedLessonIds.has(lessonId)))
+      : reachedLessonIds;
+    const sessionScope =
+      node.nodeType === 'practice-auto'
+        ? recurringScope
+        : practiceCardScope(
+            cards,
+            links,
+            exposures,
+            { reachedLessonIds, practiceNode: node.practiceNode },
+            now,
+            course.leechThreshold,
+          );
+    const assessmentOptions = assessmentPracticeOptions(assessmentContext, sessionScope);
+    const sessionEligibleCount = eligiblePracticePool(
+      sessionScope,
+      course,
+      examDateContext,
+      now,
+    ).length;
     const milestone = milestoneByKey.get(node.nodeKey) ?? node.milestone;
     provisional.push({
       nodeKey: node.nodeKey,
       nodeType: node.nodeType,
       label: node.practiceNode?.name ?? 'Practice',
       scopeLessonIds,
+      sessionScopeLessonIds,
+      assessmentOptions,
       scopeVersion,
       totalCount: readiness.totalCardCount,
       securedCount: readiness.securedCardCount,
-      eligibleCount,
+      eligibleCount: sessionEligibleCount,
       completed: milestone?.scopeVersion === scopeVersion && milestone.completedAt !== undefined,
       active: false,
       manual: node.nodeType === 'practice-manual',
       pathIndex,
+      nearestAssessmentDate: assessmentOptions[0]?.examDate,
     });
   }
 
-  const urgent = daysUntil(nearestExamDate, now) <= course.practiceUrgentWindowDays;
   const firstLockedLessonIndex = nodes.findIndex(
     (node) => node.nodeType === 'lesson' && node.status === 'locked',
   );
-  const lastRelevantManual = [...provisional]
+  const lastRelevantUrgentManual = [...provisional]
     .reverse()
     .find(
       (practice) =>
         practice.manual &&
         !practice.completed &&
         practice.eligibleCount > 0 &&
+        practice.nearestAssessmentDate !== undefined &&
         (firstLockedLessonIndex < 0 || practice.pathIndex < firstLockedLessonIndex),
     )?.nodeKey;
-  const workloadThreshold = thresholdMinutes(course, nearestExamDate, now);
 
   const practiceByKey = new Map<string, StudyFlowPracticeState>();
   for (const practice of provisional) {
     const workloadMinutes = (practice.eligibleCount * meanReviewSeconds) / 60;
+    const workloadThreshold = thresholdMinutes(course, practice.nearestAssessmentDate);
     const active = practice.manual
       ? !practice.completed &&
         practice.eligibleCount > 0 &&
-        (workloadMinutes >= workloadThreshold ||
-          (urgent && practice.nodeKey === lastRelevantManual))
+        (workloadMinutes >= workloadThreshold || practice.nodeKey === lastRelevantUrgentManual)
       : !practice.completed && practice.eligibleCount > 0;
     const state: StudyFlowPracticeState = {
       nodeKey: practice.nodeKey,
       nodeType: practice.nodeType,
       label: practice.label,
       scopeLessonIds: practice.scopeLessonIds,
+      sessionScopeLessonIds: practice.sessionScopeLessonIds,
+      assessmentOptions: practice.assessmentOptions,
       scopeVersion: practice.scopeVersion,
       totalCount: practice.totalCount,
       securedCount: practice.securedCount,
@@ -188,17 +239,6 @@ export function buildCourseStudyFlowSnapshot({
     practiceByKey.set(practice.nodeKey, state);
   }
 
-  const allLessonIds = new Set(
-    nodes.filter((node) => node.nodeType === 'lesson').map((node) => node.id),
-  );
-  const recurringScope = practiceCardScope(
-    cards,
-    links,
-    exposures,
-    { reachedLessonIds: allLessonIds },
-    now,
-    course.leechThreshold,
-  );
   const recurringPracticeEligibleCount = eligiblePracticePool(
     recurringScope,
     course,
@@ -224,5 +264,6 @@ export function buildCourseStudyFlowSnapshot({
     activeManualNodeKeys,
     completedManualNodeKeys,
     recurringPracticeEligibleCount,
+    assessmentOptions: recurringAssessmentOptions,
   };
 }

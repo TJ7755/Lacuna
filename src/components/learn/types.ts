@@ -25,5 +25,24 @@ export interface SessionSummary {
   /** True when this session was a simple mode (no algorithms, YES/NO only). */
   simpleMode?: boolean;
   /** Visual mode identifier for the session report UI. */
-  mode?: 'fsrs' | 'simple' | 'cram' | 'filtered' | 'filtered-due' | 'filtered-new' | 'filtered-leech' | 'filtered-flagged' | 'filtered-suspended';
+  mode?:
+    | 'fsrs'
+    | 'simple'
+    | 'cram'
+    | 'filtered'
+    | 'filtered-due'
+    | 'filtered-new'
+    | 'filtered-leech'
+    | 'filtered-flagged'
+    | 'filtered-suspended';
+  revision?: {
+    cardsCovered: number;
+    cardsImproved: number;
+    cardsParked: number;
+    workNotReached: number;
+    predictedReadiness?: number;
+    readinessUncertainty?: number;
+    nextWindowDay?: string;
+    replanExplanation?: string;
+  };
 }

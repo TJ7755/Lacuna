@@ -2,7 +2,9 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { assetUrl, collectOrphanedAssets, storeImageBlob } from './assets';
-import { createCard, createDeck, deleteCards, updateCard } from './repository';
+import { createCard, createCourse, createDeck, deleteCards, updateCard } from './repository';
+import { createOcclusion, deleteOcclusion } from './occlusionRepository';
+import type { OcclusionRegion } from './types';
 
 async function reset() {
   await Promise.all([
@@ -12,6 +14,8 @@ async function reset() {
     db.sessionHistory.clear(),
     db.userPerformance.clear(),
     db.notes.clear(),
+    db.courses.clear(),
+    db.occlusions.clear(),
   ]);
 }
 
@@ -117,5 +121,53 @@ describe('asset garbage collection', () => {
 
     expect(await collectOrphanedAssets()).toBe(0);
     expect(await db.assets.get(asset.hash)).toBeDefined();
+  });
+
+  it('retains an occlusion diagram referenced only by Occlusion.assetHash, not by any card Markdown', async () => {
+    const course = await createCourse('Biology');
+    const asset = await storeImageBlob(
+      new Blob(['diagram'], { type: 'image/png' }),
+      'image/png',
+      4,
+      3,
+    );
+    const region: OcclusionRegion = {
+      id: 'r1',
+      role: 'label',
+      shape: 'rectangle',
+      x: 0,
+      y: 0,
+      w: 0.1,
+      h: 0.1,
+    };
+    await createOcclusion(course.id, null, 'Cell diagram', asset.hash, [region]);
+
+    expect(await collectOrphanedAssets()).toBe(0);
+    expect(await db.assets.get(asset.hash)).toBeDefined();
+  });
+
+  it('collects an occlusion diagram once its occlusion is deleted', async () => {
+    const course = await createCourse('Biology');
+    const asset = await storeImageBlob(
+      new Blob(['diagram'], { type: 'image/png' }),
+      'image/png',
+      4,
+      3,
+    );
+    const region: OcclusionRegion = {
+      id: 'r1',
+      role: 'label',
+      shape: 'rectangle',
+      x: 0,
+      y: 0,
+      w: 0.1,
+      h: 0.1,
+    };
+    const occlusion = await createOcclusion(course.id, null, 'Cell diagram', asset.hash, [region]);
+
+    await deleteOcclusion(occlusion.id);
+    const removed = await collectOrphanedAssets();
+    expect(removed).toBe(1);
+    expect(await db.assets.get(asset.hash)).toBeUndefined();
   });
 });

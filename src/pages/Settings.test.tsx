@@ -61,7 +61,10 @@ vi.mock('../state/sidebarSettings', () => ({
     showDueCounts: true,
     showArchived: true,
     compactMode: false,
-    navItems: [],
+    navItems: [
+      { id: 'dashboard', label: 'Dashboard', visible: true },
+      { id: 'search', label: 'Search', visible: true },
+    ],
   }, vi.fn()],
 }));
 vi.mock('../state/shortcutBindings', () => ({
@@ -171,5 +174,18 @@ describe('Settings', () => {
     expect(screen.getByRole('switch', { name: 'Optimise scheduling' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Auto-insert practice nodes' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Auto-start breaks' })).toBeInTheDocument();
+  });
+
+  it('names primary navigation visibility switches and numeric settings fields', () => {
+    render(<Settings />);
+
+    expect(screen.getByRole('switch', { name: 'Show Dashboard' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Show Search' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Threshold (far)',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'Focus duration, in minutes' })).toBeInTheDocument();
   });
 });

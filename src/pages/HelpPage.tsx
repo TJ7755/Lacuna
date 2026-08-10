@@ -11,6 +11,7 @@ import {
   FlameIcon,
   KeyboardIcon,
   InfoIcon,
+  ImageIcon,
   SparklesIcon,
   ChevronLeftIcon,
   SettingsIcon,
@@ -35,6 +36,7 @@ const HELP_SECTIONS = [
   { id: 'progress', label: 'Progress & scheduling' },
   { id: 'card-types', label: 'Card types' },
   { id: 'sequences', label: 'Sequences' },
+  { id: 'occlusions', label: 'Diagrams' },
   { id: 'tips', label: 'Tips & best practice' },
 ];
 
@@ -47,15 +49,15 @@ function SectionCard({
   icon: React.ReactNode;
   label: string;
   children: React.ReactNode;
-  accent?: 'accent' | 'positive' | 'negative' | 'amber';
+  accent?: 'accent' | 'positive' | 'negative' | 'warning';
 }) {
   const iconBgClass =
     accent === 'positive'
       ? 'bg-positive/10 text-positive'
       : accent === 'negative'
         ? 'bg-negative/10 text-negative'
-        : accent === 'amber'
-          ? 'bg-amber-500/10 text-amber-600'
+        : accent === 'warning'
+          ? 'bg-warning/10 text-warning-fg'
           : 'bg-accent/10 text-accent';
 
   return (
@@ -240,65 +242,60 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
-              Lacuna organises material into courses. Each course is made up of lessons,
-              studied in order along a path.
+              Lacuna organises material into courses. Each course is made up of lessons, studied in
+              order along a path.
             </p>
             <div className="space-y-3">
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Courses</h3>
                 <p className="text-sm text-ink-soft">
-                  A course is the top-level subject you are studying &mdash; a module, a
-                  subject, an exam. The dashboard lists your courses; opening one takes you to
-                  its path. A course with a single lesson skips the path and opens straight
-                  into that lesson.
+                  A course is the top-level subject you are studying &mdash; a module, a subject, an
+                  exam. The dashboard lists your courses; opening one takes you to its path. A
+                  course with a single lesson skips the path and opens straight into that lesson.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">The course path</h3>
                 <p className="text-sm text-ink-soft">
-                  The path is an ordered sequence of lessons. Course settings determine whether
-                  every lesson is open, each lesson unlocks after the previous one is completed,
-                  or lessons unlock on scheduled dates. Alongside lessons, the path can show:
+                  The path is an ordered sequence of lessons. Completing a lesson unlocks the next
+                  one. Alongside lessons, the path can show:
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
                   <li>
-                    <strong className="text-ink">Checkpoints:</strong> markers for exam dates
-                    you have set on the course. They are informational only and never block
-                    progress.
+                    <strong className="text-ink">Checkpoints:</strong> markers for exam dates you
+                    have set on the course. They are informational only and never block progress.
                   </li>
                   <li>
-                    <strong className="text-ink">Practice sessions:</strong> nodes that gather
-                    up due cards from the lessons studied so far, so you keep reviewing older
-                    material as you move through the course.
+                    <strong className="text-ink">Practice sessions:</strong> nodes that gather up
+                    due cards from the lessons studied so far, so you keep reviewing older material
+                    as you move through the course.
                   </li>
                 </ul>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Lessons and notes</h3>
                 <p className="text-sm text-ink-soft">
-                  A lesson holds the notes and cards for one topic. Notes are Markdown blocks
-                  where you write out explanations, examples or source material &mdash; add,
-                  reorder and edit them directly on the lesson page. Add further lessons from
-                  the course path, from course settings under Lessons, or from a single-lesson
-                  course view. Cards are the flashcards you actually get quizzed on; create
-                  them from the lesson page or generate them from a note.
+                  A lesson holds the notes and cards for one topic. Notes are Markdown blocks where
+                  you write out explanations, examples or source material &mdash; add, reorder and
+                  edit them directly on the lesson page. Add further lessons from the course path,
+                  from course settings under Lessons, or from a single-lesson course view. Cards are
+                  the flashcards you actually get quizzed on; create them from the lesson page or
+                  generate them from a note.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Question bank</h3>
                 <p className="text-sm text-ink-soft">
-                  Every course has a question bank listing all of its cards in one place,
-                  regardless of which lesson they belong to. Use it to browse, search, edit or
-                  bulk-manage cards.
+                  Every course has a question bank listing all of its cards in one place, regardless
+                  of which lesson they belong to. Use it to browse, search, edit or bulk-manage
+                  cards.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Course settings</h3>
                 <p className="text-sm text-ink-soft">
-                  Course Settings holds the exam date(s), study objective, scheduling
-                  limits, lesson behaviour, practice configuration, optimisation and course
-                  deletion. Open it from the path page. Import and export live in global
-                  Settings.
+                  Course Settings holds the exam date(s), study objective, scheduling optimisation,
+                  import/export and course deletion. Open it from the path page.
                 </p>
               </div>
             </div>
@@ -312,9 +309,9 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
-              Lacuna offers several ways to study your cards. Each mode is designed for a
-              different purpose. You can start a session from a lesson, from the course path,
-              or by choosing a course from Study today.
+              Lacuna offers several ways to study your cards. Each mode is designed for a different
+              purpose. You can start a session from a lesson, from the course path, or from the
+              global &lsquo;Today&rsquo; review across every course.
             </p>
             <div className="grid gap-3">
               <ModeCard
@@ -327,9 +324,16 @@ export function HelpPage() {
               <ModeCard
                 title="Simple learn"
                 description="A stripped-back mode with no algorithm. You simply mark each card as correct or incorrect, and it loops until you have answered every card correctly."
-                whatItDoes="Shows every card in the selected lesson or session. If you answer correctly, the card is marked as mastered. If you answer incorrectly, the card is sent to the back of the queue and reappears later. The session ends only when every card has been marked correct."
+                whatItDoes="Shows every card in the course. If you answer correctly, the card is marked as mastered. If you answer incorrectly, the card is sent to the back of the queue and reappears later. The session ends only when every card has been marked correct."
                 whenToUse="Use this when you want to learn a set of cards for the first time, or when you want to drill through every card without any algorithmic scheduling."
                 tip="The progress bar at the top shows how many cards are wrong, remaining, and mastered. Try to turn them all correct before you finish."
+              />
+              <ModeCard
+                title="Assessment revision"
+                description="A time-budgeted revision plan for one named checkpoint or final assessment."
+                whatItDoes="Uses the assessment’s covered lessons, removes excluded and unavailable cards, and limits revision to material you have reached and studied. Plans persist by day, can be left and resumed, and never complete a curriculum Practice milestone."
+                whenToUse="Choose it from a relevant Practice node, checkpoint details, or Study now when an upcoming assessment overlaps material you have reached."
+                tip="Set today’s time and edit future days before starting. The plan estimates each review’s assessment-day value and reports what was covered, improved, parked or not reached. If the model is unavailable, it says so and uses ordinary Practice ordering."
               />
             </div>
           </div>
@@ -342,8 +346,8 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
-              Filtered study lets you narrow down to a specific subset of cards. These are
-              useful for targeted review, maintenance, or catching up on specific categories.
+              Filtered study lets you narrow down to a specific subset of cards. These are useful
+              for targeted review, maintenance, or catching up on specific categories.
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <ModeCard
@@ -379,8 +383,8 @@ export function HelpPage() {
               />
             </div>
             <p className="text-base text-ink-soft">
-              You can combine multiple filters together (e.g., due + flagged) to study only
-              cards that match all selected criteria.
+              You can combine multiple filters together (e.g., due + flagged) to study only cards
+              that match all selected criteria.
             </p>
           </div>
         ),
@@ -392,33 +396,39 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
-              The study session is designed to be fast and keyboard-driven. Here is how a
-              typical session works.
+              The study session is designed to be fast and keyboard-driven. Here is how a typical
+              session works.
             </p>
             <div className="space-y-3">
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">1. Question phase</h3>
                 <p className="text-sm text-ink-soft">
-                  The card is shown front-side only. Read the question and try to recall the
-                  answer. Do not flip the card immediately: the time you spend thinking is
-                  what builds memory.
+                  The card is shown front-side only. Read the question and try to recall the answer.
+                  Do not flip the card immediately: the time you spend thinking is what builds
+                  memory.
                 </p>
                 <p className="mt-2 text-sm text-ink-soft">
-                  <strong className="text-ink">Keyboard:</strong> press Space or the Up arrow to reveal.
+                  <strong className="text-ink">Keyboard:</strong> press Space or the Up arrow to
+                  reveal.
                   <br />
-                  <strong className="text-ink">Touch:</strong> tap the card or the &lsquo;Show answer&rsquo; button.
+                  <strong className="text-ink">Touch:</strong> tap the card or the &lsquo;Show
+                  answer&rsquo; button.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">2. Answer phase</h3>
                 <p className="text-sm text-ink-soft">
-                  The card flips to reveal the answer. Compare your recalled answer with the
-                  actual answer. Grade yourself honestly.
+                  The card flips to reveal the answer. Compare your recalled answer with the actual
+                  answer. Grade yourself honestly.
                 </p>
                 <p className="mt-2 text-sm text-ink-soft">
-                  <strong className="text-ink">Silent grading (default):</strong> press Yes (Space or Right arrow) if you were correct, No (Left arrow) if you were wrong. The algorithm measures your response time to determine how well you knew the card.
+                  <strong className="text-ink">Silent grading (default):</strong> press Yes (Space
+                  or Right arrow) if you were correct, No (Left arrow) if you were wrong. The
+                  algorithm measures your response time to determine how well you knew the card.
                   <br />
-                  <strong className="text-ink">Manual grading:</strong> press 1 (Again), 2 (Hard), 3 (Good), or 4 (Easy) to self-grade. Enable this in Settings under &lsquo;Study &amp; scheduling&rsquo;.
+                  <strong className="text-ink">Manual grading:</strong> press 1 (Again), 2 (Hard), 3
+                  (Good), or 4 (Easy) to self-grade. Enable this in Settings under &lsquo;Study
+                  &amp; scheduling&rsquo;.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
@@ -429,19 +439,24 @@ export function HelpPage() {
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
                   <li>
-                    <strong className="text-ink">Edit (E):</strong> fix a typo or reword the card. The timer pauses while you edit.
+                    <strong className="text-ink">Edit (E):</strong> fix a typo or reword the card.
+                    The timer pauses while you edit.
                   </li>
                   <li>
-                    <strong className="text-ink">Flag:</strong> mark the card for later review in the flagged-cards filter.
+                    <strong className="text-ink">Flag:</strong> mark the card for later review in
+                    the flagged-cards filter.
                   </li>
                   <li>
-                    <strong className="text-ink">Bury:</strong> hide the card until tomorrow. Use this for cards that you already know well or do not want to see today.
+                    <strong className="text-ink">Bury:</strong> hide the card until tomorrow. Use
+                    this for cards that you already know well or do not want to see today.
                   </li>
                   <li>
-                    <strong className="text-ink">Suspend:</strong> remove the card from all study sessions indefinitely. Use this for cards that are no longer relevant.
+                    <strong className="text-ink">Suspend:</strong> remove the card from all study
+                    sessions indefinitely. Use this for cards that are no longer relevant.
                   </li>
                   <li>
-                    <strong className="text-ink">Undo (U):</strong> undo your last answer if you mis-pressed.
+                    <strong className="text-ink">Undo (U):</strong> undo your last answer if you
+                    mis-pressed.
                   </li>
                 </ul>
               </div>
@@ -541,8 +556,7 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
-              In touch-first mode, the study interface supports swipe gestures for faster
-              grading.
+              In touch-first mode, the study interface supports swipe gestures for faster grading.
             </p>
             <div className="space-y-3">
               <div className="rounded-xl border border-line bg-surface-raised p-5">
@@ -561,8 +575,8 @@ export function HelpPage() {
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Swipe left = No</h3>
                 <p className="text-sm text-ink-soft">
-                  In the answer phase, swipe left on the card to mark it wrong. A red glow
-                  appears to confirm the action.
+                  In the answer phase, swipe left on the card to mark it wrong. A red glow appears
+                  to confirm the action.
                 </p>
               </div>
             </div>
@@ -576,8 +590,7 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
-              Understanding the progress bar and scheduling helps you use Lacuna more
-              effectively.
+              Understanding the progress bar and scheduling helps you use Lacuna more effectively.
             </p>
             <div className="space-y-3">
               <div className="rounded-xl border border-line bg-surface-raised p-5">
@@ -588,20 +601,22 @@ export function HelpPage() {
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
                   <li>
-                    <strong className="text-ink">Secure topics:</strong> the fraction of cards that are predicted to be retrievable at 90% or above on exam day.
+                    <strong className="text-ink">Secure topics:</strong> the fraction of cards that
+                    are predicted to be retrievable at 90% or above on exam day.
                   </li>
                   <li>
-                    <strong className="text-ink">Maximise expected marks:</strong> the mean predicted retrievability across all cards on exam day.
+                    <strong className="text-ink">Maximise expected marks:</strong> the mean
+                    predicted retrievability across all cards on exam day.
                   </li>
                 </ul>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">FSRS scheduling</h3>
                 <p className="text-sm text-ink-soft">
-                  Lacuna uses FSRS (Free Spaced Repetition Scheduler), an open-source algorithm
-                  that models your memory with mathematical precision. It tracks how well you
-                  know each card and schedules reviews at the optimal moment: just before you
-                  would forget, but not so often that it wastes time.
+                  Lacuna uses FSRS (Free Spaced Repetition Scheduler), an open-source algorithm that
+                  models your memory with mathematical precision. It tracks how well you know each
+                  card and schedules reviews at the optimal moment: just before you would forget,
+                  but not so often that it wastes time.
                 </p>
                 <p className="mt-2 text-sm text-ink-soft">
                   The algorithm adapts to you. Over time, cards you find easy will be shown less
@@ -611,10 +626,10 @@ export function HelpPage() {
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Optimisation</h3>
                 <p className="text-sm text-ink-soft">
-                  Lacuna can fit the FSRS weights to your own review history. This is where most
-                  of the efficiency gains come from. You can run this manually per course in
-                  Course Settings &rarr; Scheduling optimisation, or enable automatic
-                  optimisation in Settings &rarr; Study & scheduling.
+                  Lacuna can fit the FSRS weights to your own review history. This is where most of
+                  the efficiency gains come from. You can run this manually per course in Course
+                  Settings &rarr; Scheduling optimisation, or enable automatic optimisation in
+                  Settings &rarr; Study & scheduling.
                 </p>
               </div>
             </div>
@@ -648,17 +663,32 @@ export function HelpPage() {
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Typing-answer card</h3>
                 <p className="text-sm text-ink-soft">
-                  You type the answer into a text box before revealing. This is more demanding
-                  than simply recalling, and is excellent for spelling, formulae, or precise
-                  terminology.
+                  You type the answer into a text box before revealing. This is more demanding than
+                  simply recalling, and is excellent for spelling, formulae, or precise terminology.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Cloze card</h3>
                 <p className="text-sm text-ink-soft">
                   A sentence with one or more words hidden. You recall the hidden words before
-                  revealing them. Useful for context-dependent knowledge and fill-in-the-blank
-                  style questions.
+                  revealing them. Useful for context-dependent knowledge and fill-in-the-blank style
+                  questions.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Audio card</h3>
+                <p className="text-sm text-ink-soft">
+                  Attach or record a short clip, add an optional prompt and provide the answer.
+                  Audio plays on the question face and disappears when the answer is revealed;
+                  choose Hear it again or press R to replay without losing the grading controls.
+                  Autoplay and playback speed are under Settings &rarr; Study &amp; scheduling.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Diagram card</h3>
+                <p className="text-sm text-ink-soft">
+                  Generated from a labelled diagram: the labels are covered and one is ringed for
+                  you to recall. See Diagrams below.
                 </p>
               </div>
             </div>
@@ -672,35 +702,34 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
-              A sequence is an ordered list you write once — a list of steps, dates, or items in
-              a series — from which Lacuna generates ordinary cards for you. You never study the
-              sequence itself; you study the cards it produces, and editing the sequence keeps
-              them in sync.
+              A sequence is an ordered list you write once — a list of steps, dates, or items in a
+              series — from which Lacuna generates ordinary cards for you. You never study the
+              sequence itself; you study the cards it produces, and editing the sequence keeps them
+              in sync.
             </p>
             <div className="space-y-3">
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Cue window</h3>
                 <p className="text-sm text-ink-soft">
-                  Each generated card’s front shows the preceding item or two (the cue window,
-                  two by default) so you recall the next item from local context, rather than the
-                  whole list. This targets the point in a list you are most likely to forget: the
-                  middle.
+                  Each generated card’s front shows the preceding item or two (the cue window, two
+                  by default) so you recall the next item from local context, rather than the whole
+                  list. This targets the point in a list you are most likely to forget: the middle.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Chunks</h3>
                 <p className="text-sm text-ink-soft">
-                  Long sequences can be split into named chunks. The first item of a chunk is
-                  cued by its chunk name rather than by the previous chunk’s items, so chunks
-                  study independently of one another.
+                  Long sequences can be split into named chunks. The first item of a chunk is cued
+                  by its chunk name rather than by the previous chunk’s items, so chunks study
+                  independently of one another.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Label cards</h3>
                 <p className="text-sm text-ink-soft">
-                  Turning on label cards additionally generates an unordered label-to-value card
-                  for each item (for example, “Atomic number 11 &rarr; ?”), for recall that does
-                  not depend on position in the sequence at all.
+                  Turning on label cards additionally generates an unordered label-to-value card for
+                  each item (for example, “Atomic number 11 &rarr; ?”), for recall that does not
+                  depend on position in the sequence at all.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
@@ -710,6 +739,51 @@ export function HelpPage() {
                   sequence badge wherever they appear. To change their content, edit the sequence
                   itself — Lacuna regenerates the affected cards and keeps their memory state
                   intact.
+                </p>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: 'occlusions',
+        label: 'Diagrams',
+        icon: <ImageIcon width={20} height={20} />,
+        content: (
+          <div className="space-y-4">
+            <p className="text-base text-ink-soft">
+              Upload a labelled diagram, draw boxes over it once, and Lacuna generates one card per
+              box. As with sequences, you study the cards rather than the diagram itself, and
+              editing the diagram keeps them in sync.
+            </p>
+            <div className="space-y-3">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Labels and features</h3>
+                <p className="text-sm text-ink-soft">
+                  A <strong>label</strong> box covers text already printed on the diagram — you
+                  type nothing, and revealing uncovers the diagram&rsquo;s own words. A{' '}
+                  <strong>feature</strong> box points at a part of the drawing that carries no
+                  printed label; pair it with the label box that names it, and revealing uncovers
+                  that label. Every label is covered on every question face, so no card can be
+                  answered by reading the picture or by elimination.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Editing a diagram</h3>
+                <p className="text-sm text-ink-soft">
+                  Moving, resizing or re-pairing a box updates that card and keeps its memory
+                  state; deleting a box removes its card, with an undo. Replacing the image itself
+                  regenerates every card in the diagram, so Lacuna warns you first. Drawing is
+                  designed for a mouse or trackpad — it works on a touchscreen, but a larger screen
+                  is easier.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Sharing a diagram</h3>
+                <p className="text-sm text-ink-soft">
+                  Share codes cannot carry image or audio files, so a shared diagram card arrives as
+                  text with no picture. To move diagrams between machines, export a full backup from
+                  Settings instead.
                 </p>
               </div>
             </div>
@@ -727,8 +801,8 @@ export function HelpPage() {
                 <h3 className="mb-2 font-medium text-ink">Set an exam date</h3>
                 <p className="text-sm text-ink-soft">
                   The single most important thing you can do is set an accurate exam date and time
-                  for each course. Without it, Lacuna defaults to a generic rolling horizon and
-                  will not prioritise the cards that matter most. The exam date is set in Course
+                  for each course. Without it, Lacuna defaults to a generic rolling horizon and will
+                  not prioritise the cards that matter most. The exam date is set in Course
                   Settings.
                 </p>
               </div>
@@ -742,17 +816,17 @@ export function HelpPage() {
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Be honest when grading</h3>
                 <p className="text-sm text-ink-soft">
-                  The algorithm is only as good as your self-assessment. If you were not sure,
-                  mark it wrong. It is better to review a card one extra time than to forget it on
-                  exam day.
+                  The algorithm is only as good as your self-assessment. If you were not sure, mark
+                  it wrong. It is better to review a card one extra time than to forget it on exam
+                  day.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Use the Pomodoro timer</h3>
                 <p className="text-sm text-ink-soft">
                   The built-in Pomodoro timer helps you maintain focus. Short breaks prevent
-                  fatigue, which improves retention. You can customise the durations in
-                  Settings &rarr; Pomodoro timer.
+                  fatigue, which improves retention. You can customise the durations in Settings
+                  &rarr; Pomodoro timer.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
@@ -828,8 +902,8 @@ export function HelpPage() {
               <InfoIcon width={20} height={20} />
             </div>
             <p className="mb-3 text-base text-ink-soft">
-              Still have questions? Check the settings pages for more granular controls, or
-              explore the analytics page to understand your study patterns.
+              Still have questions? Check the settings pages for more granular controls, or explore
+              the analytics page to understand your study patterns.
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               <Link to="/settings">
@@ -842,6 +916,12 @@ export function HelpPage() {
                 <Button variant="secondary" size="sm">
                   <ChartIcon width={16} height={16} />
                   Analytics
+                </Button>
+              </Link>
+              <Link to="/method">
+                <Button variant="secondary" size="sm">
+                  <SparklesIcon width={16} height={16} />
+                  How the scheduler works
                 </Button>
               </Link>
             </div>

@@ -3,17 +3,16 @@
 
 import { Link, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/schema';
 import {
+  useCourse,
   useLessons,
   useCourseCards,
   useCourseSessionHistory,
 } from '../state/useCourseData';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
+import { CourseTabs } from '../components/course/CourseTabs';
 import { ChevronLeftIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import type { Course } from '../db/types';
 
 function CourseAnalyticsSkeleton() {
   return (
@@ -25,10 +24,7 @@ function CourseAnalyticsSkeleton() {
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className={i < 2 ? 'lg:col-span-2' : undefined}
-          >
+          <div key={i} className={i < 2 ? 'lg:col-span-2' : undefined}>
             <div className="rounded-2xl border border-line bg-surface p-5">
               <div className="mb-4 space-y-2">
                 <div className="h-7 w-36 animate-pulse rounded-lg bg-ink/5" />
@@ -50,13 +46,7 @@ export function CourseAnalytics() {
 
   // Null-sentinel to distinguish "loading" from "not found", matching CoursePath
   // and CourseSettings.
-  const course = useLiveQuery<Course | null>(
-    () =>
-      courseId
-        ? db.courses.get(courseId).then((c) => c ?? null)
-        : Promise.resolve(null),
-    [courseId],
-  );
+  const course = useCourse(courseId);
   const lessons = useLessons(courseId);
   const cards = useCourseCards(courseId);
   const history = useCourseSessionHistory(courseId);
@@ -87,13 +77,16 @@ export function CourseAnalytics() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8 md:px-10">
-      <Link
-        to={`/course/${course.id}`}
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
-      >
-        <ChevronLeftIcon width={16} height={16} />
-        Back to {course.name}
-      </Link>
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+        >
+          <ChevronLeftIcon width={16} height={16} />
+          All courses
+        </Link>
+        <CourseTabs courseId={course.id} />
+      </div>
 
       <motion.header
         initial={{ opacity: 0, y: 12 }}

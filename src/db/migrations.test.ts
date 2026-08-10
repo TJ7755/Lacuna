@@ -172,9 +172,7 @@ describe('buildLessonCardExposureBackfill', () => {
       },
     ]);
 
-    expect(rows).toEqual([
-      { lessonId: 'primary', cardId: 'reviewed', taughtAt: 200 },
-    ]);
+    expect(rows).toEqual([{ lessonId: 'primary', cardId: 'reviewed', taughtAt: 200 }]);
   });
 });
 
@@ -213,9 +211,7 @@ describe('Dexie upgrade from the old 17-parameter schema', () => {
     v1.close();
 
     // 2. Reopen at version 2 with the upgrade hook (mirrors src/db/schema.ts).
-    const { migrateCardRecord: mc, migrateDeckRecord: md } = await import(
-      './migrations'
-    );
+    const { migrateCardRecord: mc, migrateDeckRecord: md } = await import('./migrations');
     const v2 = new Dexie(dbName);
     v2.version(1).stores({
       decks: 'id, createdAt, examDate',
@@ -439,5 +435,138 @@ describe('Dexie upgrade to v13: retire the typing card type', () => {
     expect(untouched?.type).toBe('front_back');
 
     await db.delete();
+  });
+});
+
+describe('Dexie upgrade to v16: stable review-event identity', () => {
+  it('keeps legacy aggregates and rejects duplicate new event ids', async () => {
+    const dbName = `lacuna-review-events-${Date.now()}`;
+    const legacy = new Dexie(dbName);
+    legacy.version(15).stores({
+      sessionHistory: '++id, deckId, courseId, timestamp',
+    });
+    await legacy.open();
+    await legacy.table('sessionHistory').add({
+      deckId: 'deck-1',
+      timestamp: 1000,
+      averagePredictedRetrievability: 0.5,
+    });
+    legacy.close();
+
+    const current = new Dexie(dbName);
+    current.version(15).stores({
+      sessionHistory: '++id, deckId, courseId, timestamp',
+    });
+    current.version(16).stores({
+      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
+    });
+    await current.open();
+
+    expect(await current.table('sessionHistory').count()).toBe(1);
+    await current.table('sessionHistory').add({
+      eventId: 'event-1',
+      sessionId: 'session-1',
+      deckId: 'deck-1',
+      timestamp: 2000,
+      averagePredictedRetrievability: 0.6,
+    });
+    await expect(
+      current.table('sessionHistory').add({
+        eventId: 'event-1',
+        sessionId: 'session-1',
+        deckId: 'deck-1',
+        timestamp: 3000,
+        averagePredictedRetrievability: 0.7,
+      }),
+    ).rejects.toThrow();
+
+    current.close();
+    await Dexie.delete(dbName);
+  });
+});
+
+describe('Dexie upgrade to v17: revision plans', () => {
+  it('keeps v16 data, starts with no plans and enforces one plan per assessment', async () => {
+    const dbName = `lacuna-revision-plans-${Date.now()}`;
+    const legacy = new Dexie(dbName);
+    legacy.version(16).stores({
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+    });
+    await legacy.open();
+    await legacy.table('courseAssessments').add({
+      id: 'assessment-1',
+      courseId: 'course-1',
+      kind: 'checkpoint',
+      examDate: 1_000,
+      createdAt: 1,
+    });
+    legacy.close();
+
+    const current = new Dexie(dbName);
+    current.version(16).stores({
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+    });
+    current.version(17).stores({
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+    });
+    await current.open();
+    expect(await current.table('courseAssessments').count()).toBe(1);
+    expect(await current.table('revisionPlans').count()).toBe(0);
+    await current.table('revisionPlans').add({
+      id: 'plan-1',
+      assessmentId: 'assessment-1',
+      courseId: 'course-1',
+      status: 'active',
+      updatedAt: 1,
+    });
+    await expect(
+      current.table('revisionPlans').add({
+        id: 'plan-2',
+        assessmentId: 'assessment-1',
+        courseId: 'course-1',
+        status: 'active',
+        updatedAt: 2,
+      }),
+    ).rejects.toThrow();
+    current.close();
+    await Dexie.delete(dbName);
+  });
+
+  it('includes assessments and plans in raw pre-migration payloads', async () => {
+    const dbName = `lacuna-revision-snapshot-${Date.now()}`;
+    const raw = new Dexie(dbName);
+    raw.version(17).stores({
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+    });
+    await raw.open();
+    await raw.table('courseAssessments').add({
+      id: 'assessment-1',
+      courseId: 'course-1',
+      name: 'Paper',
+      kind: 'checkpoint',
+      examDate: 2_000,
+      afterLessonId: null,
+      coverageMode: 'prefix',
+      excludedCardIds: [],
+      createdAt: 1,
+    });
+    await raw.table('revisionPlans').add({
+      id: 'plan-1',
+      assessmentId: 'assessment-1',
+      courseId: 'course-1',
+      status: 'active',
+      updatedAt: 1,
+    });
+    raw.close();
+
+    const { readAllDataFromVersion } = await import('./schema');
+    const payload = await readAllDataFromVersion(dbName);
+    expect(payload.courseAssessments?.map((assessment) => assessment.id)).toEqual([
+      'assessment-1',
+    ]);
+    expect(payload.revisionPlans?.map((plan) => plan.id)).toEqual(['plan-1']);
+    await Dexie.delete(dbName);
   });
 });

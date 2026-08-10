@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { LessonView } from './LessonView';
@@ -8,6 +9,11 @@ import type { Card, Course, Lesson, Note } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 
 const mockNavigate = vi.fn();
+const { mockCreateLesson, mockUpdateCourse, mockUpdateLesson } = vi.hoisted(() => ({
+  mockCreateLesson: vi.fn(),
+  mockUpdateCourse: vi.fn(),
+  mockUpdateLesson: vi.fn(),
+}));
 let mockLesson: Lesson | null | undefined;
 let mockCourse: Course | undefined;
 let mockLessons: Lesson[] | undefined;
@@ -17,8 +23,19 @@ let mockLessonCards: Card[] | undefined;
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
+  function TestMemoryRouter(props: React.ComponentProps<typeof actual.MemoryRouter>) {
+    return React.createElement(actual.MemoryRouter, {
+      ...props,
+      future: {
+        ...props.future,
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      },
+    });
+  }
   return {
     ...actual,
+    MemoryRouter: TestMemoryRouter,
     useNavigate: () => mockNavigate,
   };
 });
@@ -30,16 +47,23 @@ vi.mock('dexie-react-hooks', () => ({
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
   useLessons: () => mockLessons,
-  useCourseExamDates: () => mockExamDates,
+  useCourseAssessments: () => mockExamDates,
   useNotes: () => mockNotes,
   useLessonCards: () => mockLessonCards,
   useLessonCardLinks: () => [],
   useCourseCards: () => mockLessonCards,
   useSequences: () => [],
+  useOcclusions: () => [],
 }));
 
 vi.mock('../state/useData', () => ({
   useDeck: () => undefined,
+}));
+
+vi.mock('../db/repository', () => ({
+  createLesson: mockCreateLesson,
+  updateCourse: mockUpdateCourse,
+  updateLesson: mockUpdateLesson,
 }));
 
 vi.mock('../state/motionSpeed', () => ({
@@ -133,6 +157,17 @@ beforeEach(() => {
   mockNotes = [note];
   mockLessonCards = [makeCard('card-1')];
   mockNavigate.mockClear();
+  mockCreateLesson.mockReset();
+  mockCreateLesson.mockResolvedValue({
+    ...lesson,
+    id: 'lesson-2',
+    name: 'Lesson 2',
+    orderIndex: 1,
+  });
+  mockUpdateCourse.mockReset();
+  mockUpdateCourse.mockResolvedValue(undefined);
+  mockUpdateLesson.mockReset();
+  mockUpdateLesson.mockResolvedValue(undefined);
 });
 
 describe('LessonView study mode', () => {
@@ -164,6 +199,30 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     renderInline();
     const link = screen.getByLabelText('Course settings');
     expect(link).toHaveAttribute('href', '/course/course-1/settings');
+  });
+
+  it('opens a newly created lesson instead of returning to the course', async () => {
+    renderInline();
+    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
+    });
+  });
+});
+
+describe('LessonView title editing', () => {
+  it('renames the lesson from its header', async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Rename lesson' }));
+    const input = screen.getByRole('textbox', { name: 'lesson name' });
+    fireEvent.change(input, { target: { value: 'Renamed lesson' } });
+    fireEvent.blur(input);
+
+    await waitFor(() => {
+      expect(mockUpdateLesson).toHaveBeenCalledWith('lesson-1', { name: 'Renamed lesson' });
+    });
   });
 });
 

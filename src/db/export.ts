@@ -108,19 +108,27 @@ function cardToRow(
   ];
 }
 
-const CSV_WARNING = '# WARNING: This is a human-readable export, not a full backup. Re-importing will lose review history, image assets, and FSRS parameters. Use JSON backup for a complete snapshot.\n';
+const CSV_WARNING =
+  '# WARNING: This is a human-readable export, not a full backup. Re-importing will lose review history, image assets, and FSRS parameters. Use JSON backup for a complete snapshot.\n';
 
 export async function exportCardsCsv(): Promise<string> {
   const maps = await fetchDecksAndCards();
-  const rows = [formatRow(EXPORT_HEADERS, ','), ...maps.cards.map((c) => formatRow(cardToRow(c, maps), ','))];
+  const rows = [
+    formatRow(EXPORT_HEADERS, ','),
+    ...maps.cards.map((c) => formatRow(cardToRow(c, maps), ',')),
+  ];
   return CSV_WARNING + rows.join('\r\n');
 }
 
-const TSV_WARNING = '# WARNING: This is a human-readable export, not a full backup. Re-importing will lose review history, image assets, and FSRS parameters. Use JSON backup for a complete snapshot.\n';
+const TSV_WARNING =
+  '# WARNING: This is a human-readable export, not a full backup. Re-importing will lose review history, image assets, and FSRS parameters. Use JSON backup for a complete snapshot.\n';
 
 export async function exportCardsTsv(): Promise<string> {
   const maps = await fetchDecksAndCards();
-  const rows = [formatRow(EXPORT_HEADERS, '\t'), ...maps.cards.map((c) => formatRow(cardToRow(c, maps), '\t'))];
+  const rows = [
+    formatRow(EXPORT_HEADERS, '\t'),
+    ...maps.cards.map((c) => formatRow(cardToRow(c, maps), '\t')),
+  ];
   return TSV_WARNING + rows.join('\r\n');
 }
 
@@ -162,9 +170,7 @@ export function downloadTextFile(content: string, filename: string, mimeType: st
 }
 
 /** Export selected cards as a simple tab-separated plain text: front\tback per line. */
-export function exportCardsSimple(
-  cards: { front: string; back: string }[],
-): string {
+export function exportCardsSimple(cards: { front: string; back: string }[]): string {
   return cards
     .map((c) => {
       const front = escapeTsvCell(c.front);
@@ -222,10 +228,18 @@ export async function exportCardsJson(): Promise<string> {
 
 const REVIEW_HISTORY_HEADERS = [
   'timestamp',
+  'event_id',
+  'session_id',
+  'session_kind',
+  'revision_plan_id',
+  'revision_window_id',
   'deck_name',
   'card_front',
   'grade',
+  'grade_label',
+  'correct',
   'response_time_sec',
+  'hint_used',
   'distracted',
   'stability_before',
   'stability_after',
@@ -236,11 +250,16 @@ const REVIEW_HISTORY_HEADERS = [
 
 function gradeLabel(grade: number): string {
   switch (grade) {
-    case 1: return 'Again';
-    case 2: return 'Hard';
-    case 3: return 'Good';
-    case 4: return 'Easy';
-    default: return String(grade);
+    case 1:
+      return 'Again';
+    case 2:
+      return 'Hard';
+    case 3:
+      return 'Good';
+    case 4:
+      return 'Easy';
+    default:
+      return String(grade);
   }
 }
 
@@ -253,11 +272,19 @@ export async function exportReviewHistoryCsv(): Promise<string> {
     for (const log of card.history) {
       const front = card.front.slice(0, 120).replace(/\n/g, ' ');
       const row = [
-        new Date(log.timestamp).toISOString(),
+        String(log.timestamp),
+        log.eventId ?? '',
+        log.sessionId ?? '',
+        log.sessionKind ?? '',
+        log.revisionPlanId ?? '',
+        log.revisionWindowId ?? '',
         deckName,
         front,
+        String(log.grade),
         gradeLabel(log.grade),
+        (log.correct ?? log.grade > 1) ? 'yes' : 'no',
         String(log.responseTimeSec),
+        log.hintUsed ? 'yes' : 'no',
         log.distracted ? 'yes' : 'no',
         log.stabilityBefore?.toString() ?? '',
         String(log.stabilityAfter),
@@ -279,11 +306,19 @@ export async function exportReviewHistoryJson(): Promise<string> {
     const deckName = resolveDeckDisplay(card, maps).name;
     for (const log of card.history) {
       items.push({
+        eventId: log.eventId,
+        sessionId: log.sessionId,
+        sessionKind: log.sessionKind,
+        revisionPlanId: log.revisionPlanId,
+        revisionWindowId: log.revisionWindowId,
         timestamp: log.timestamp,
         deck: deckName,
         cardFront: card.front.slice(0, 120),
-        grade: gradeLabel(log.grade),
+        grade: log.grade,
+        gradeLabel: gradeLabel(log.grade),
+        correct: log.correct ?? log.grade > 1,
         responseTimeSec: log.responseTimeSec,
+        hintUsed: log.hintUsed ?? false,
         distracted: log.distracted,
         stabilityBefore: log.stabilityBefore,
         stabilityAfter: log.stabilityAfter,

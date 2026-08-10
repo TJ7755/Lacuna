@@ -47,6 +47,20 @@ describe('NewCourseForm', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/course/new-course');
   });
 
+  it('shows inline validation instead of silently ignoring a blank course', () => {
+    render(<NewCourseForm onClose={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText('Course name');
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Enter a course name before creating the course.',
+    );
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(input).toHaveFocus();
+    expect(mocks.createCourse).not.toHaveBeenCalled();
+  });
+
   it('offers share-code import and opens the imported course', async () => {
     const onClose = vi.fn();
     render(<NewCourseForm onClose={onClose} />);

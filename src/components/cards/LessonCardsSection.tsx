@@ -7,12 +7,14 @@ import { AnimatePresence } from 'motion/react';
 import { CardList } from './CardList';
 import { LinkCardsDialog } from './LinkCardsDialog';
 import { Button } from '../ui/Button';
+import { ConfirmInline } from '../ui/ConfirmInline';
 import { PlusIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
 import {
   useCourseCards,
   useLessonCardLinks,
   useLessons,
+  useOcclusions,
   useSequences,
 } from '../../state/useCourseData';
 import { db } from '../../db/schema';
@@ -22,15 +24,19 @@ import type { Card, Deck } from '../../db/types';
 interface LessonCardsSectionProps {
   courseId: string;
   lessonId: string;
+  /** Used only to label the back-link when the sequence editor is opened from here
+   *  (see the onEditSequence origin override below). */
+  lessonName: string;
   lessonCards: Card[];
   lessonDeck: Deck | undefined;
-  onNavigate: (path: string) => void;
+  onNavigate: (path: string, options?: { state?: unknown }) => void;
   className?: string;
 }
 
 export function LessonCardsSection({
   courseId,
   lessonId,
+  lessonName,
   lessonCards,
   lessonDeck,
   onNavigate,
@@ -38,7 +44,11 @@ export function LessonCardsSection({
 }: LessonCardsSectionProps) {
   const { notify } = useToast();
   const [linking, setLinking] = useState(false);
+  // A card pending unlink confirmation — only set when it has lesson-specific
+  // teaching progress that unlinking would reset (see handleUnlink below).
+  const [pendingUnlink, setPendingUnlink] = useState<Card | null>(null);
   const sequences = useSequences(courseId);
+  const occlusions = useOcclusions(courseId);
   const courseCards = useCourseCards(courseId);
   const lessons = useLessons(courseId);
   const links = useLessonCardLinks(lessonId);
@@ -47,32 +57,59 @@ export function LessonCardsSection({
   const linkCandidates = (courseCards ?? []).filter(
     (card) =>
       !lessonCardIds.has(card.id) &&
-      (card.sequenceItemId === null || card.sequenceItemId === undefined),
+      (card.sequenceItemId === null || card.sequenceItemId === undefined) &&
+      (card.occlusionRegionId === null || card.occlusionRegionId === undefined),
   );
 
   async function handleUnlink(card: Card) {
     const exposure = await db.lessonCardExposures.get([lessonId, card.id]);
-    if (
-      exposure &&
-      !window.confirm(
-        'Remove this card from the lesson? Its teaching progress in this lesson will be reset.',
-      )
-    ) {
+    if (exposure) {
+      setPendingUnlink(card);
       return;
     }
+    await doUnlink(card);
+  }
+
+  async function doUnlink(card: Card) {
     try {
       await unlinkCardFromLesson(lessonId, card.id);
       notify('Card removed from this lesson.', 'neutral');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not remove the card.', 'negative');
+    } finally {
+      setPendingUnlink(null);
     }
   }
 
   return (
     <section className={className}>
-      <h2 className="mb-4 font-display text-xl text-ink-soft">
-        Cards <span className="text-ink-faint">({lessonCards.length})</span>
-      </h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-xl text-ink-soft">
+          Cards <span className="text-ink-faint">({lessonCards.length})</span>
+        </h2>
+        {lessonCards.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
+          >
+            <PlusIcon width={16} height={16} />
+            New occlusion
+          </Button>
+        )}
+      </div>
+
+      {pendingUnlink && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2.5">
+          <span className="text-sm text-ink-soft">Remove card from this lesson?</span>
+          <ConfirmInline
+            message="Its teaching progress here will be reset."
+            confirmLabel="Remove"
+            onConfirm={() => void doUnlink(pendingUnlink)}
+            onCancel={() => setPendingUnlink(null)}
+          />
+        </div>
+      )}
 
       {lessonCards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-12 text-center">
@@ -91,6 +128,13 @@ export function LessonCardsSection({
             >
               <PlusIcon width={18} height={18} />
               Add a sequence
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
+            >
+              <PlusIcon width={18} height={18} />
+              Add an occlusion
             </Button>
             <Button variant="secondary" onClick={() => setLinking(true)}>
               <PlusIcon width={18} height={18} />
@@ -119,7 +163,22 @@ export function LessonCardsSection({
           linkedCardIds={linkedCardIds}
           onUnlinkCard={(card) => void handleUnlink(card)}
           sequences={sequences}
-          onEditSequence={(sequenceId) => onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
+          onEditSequence={(sequenceId) =>
+            // Sequence editing has no lesson-scoped edit route, so without an
+            // explicit origin the editor would default to the Question bank —
+            // override it to return here instead.
+            onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`, {
+              state: { origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName } },
+            })
+          }
+          occlusions={occlusions}
+          onEditOcclusion={(occlusionId) =>
+            // Mirrors onEditSequence above: occlusion editing has no lesson-scoped edit
+            // route either, so override the origin to return here instead.
+            onNavigate(`/course/${courseId}/occlusion/${occlusionId}/edit`, {
+              state: { origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName } },
+            })
+          }
         />
       )}
       <AnimatePresence>

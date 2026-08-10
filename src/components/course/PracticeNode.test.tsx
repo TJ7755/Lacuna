@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { PracticePathNode } from '../../course/path';
 import { PracticeNode } from './PracticeNode';
@@ -42,5 +42,27 @@ describe('PracticeNode', () => {
     expect(
       screen.getByRole('button', { name: 'Practice: Practice, 70% secured, completed' }),
     ).toHaveClass('shadow-[0_0_18px_color-mix(in_srgb,var(--color-accent)_32%,transparent)]');
+  });
+
+  it('names the urgent assessment and keeps its action distinct from Practice', () => {
+    const onPractice = vi.fn();
+    const onAssessment = vi.fn();
+    render(
+      <PracticeNode
+        node={node}
+        onClick={onPractice}
+        assessment={{
+          assessmentId: 'assessment-1',
+          name: 'Paper 1',
+          examDate: Date.now() + 86_400_000,
+          eligibleCount: 3,
+        }}
+        onAssessmentClick={onAssessment}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prioritise Paper 1' }));
+    expect(onAssessment).toHaveBeenCalledOnce();
+    expect(onPractice).not.toHaveBeenCalled();
   });
 });

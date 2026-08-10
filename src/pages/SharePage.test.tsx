@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SharePage } from './SharePage';
 import type { Card, Course } from '../db/types';
 import type { CourseSummary } from '../state/useCourseData';
@@ -14,6 +14,14 @@ vi.mock('../state/useCourseData', () => ({
   useCourses: () => mockCourses,
   useCourseSummaries: () => mockSummaries,
   useCourseCards: () => mockCourseCards,
+  useCourse: (courseId: string | undefined) =>
+    mockCourses?.find((course) => course.id === courseId) ?? null,
+}));
+
+vi.mock('../db/repository', () => ({
+  publishCourse: vi.fn(() =>
+    Promise.resolve({ lineageId: 'lineage-1', revision: 1, publishedAt: Date.now() }),
+  ),
 }));
 
 vi.mock('../components/ui/Toast', () => ({
@@ -26,10 +34,12 @@ vi.mock('../state/motionSpeed', () => ({
   speedMultiplier: () => 1,
 }));
 
+let mockDecodedPayload: Record<string, unknown> = {};
+
 vi.mock('../db/share', () => ({
   buildCourseShareCode: vi.fn(() => Promise.resolve('LAC2-test-code')),
   buildCourseShareCodeQR: vi.fn(() => Promise.resolve('LAC2-qr-code')),
-  decodeShare: vi.fn(() => Promise.resolve({})),
+  decodeShare: vi.fn(() => Promise.resolve(mockDecodedPayload)),
   importSharePayload: vi.fn(() => Promise.resolve({ courses: 1, lessons: 1, cards: 2 })),
   summariseShare: vi.fn(() => ({
     kind: 'course' as const,
@@ -40,7 +50,19 @@ vi.mock('../db/share', () => ({
     omittedImages: false,
     courseName: 'Test Course',
     lessonCount: 1,
+    noteCount: 3,
   })),
+}));
+
+let mockFindCourseForLineage: (() => Promise<Course | undefined>) | undefined;
+const mockMergeLineageUpdate = vi.fn();
+
+vi.mock('../db/mergeImport', () => ({
+  isLineagePayload: (payload: Record<string, unknown>) =>
+    payload.v === 2 && typeof payload.li === 'string' && typeof payload.rv === 'number',
+  findCourseForLineage: () =>
+    mockFindCourseForLineage ? mockFindCourseForLineage() : Promise.resolve(undefined),
+  mergeLineageUpdate: (...args: unknown[]) => mockMergeLineageUpdate(...args),
 }));
 
 vi.mock('../db/export', () => ({
@@ -105,6 +127,9 @@ beforeEach(() => {
   mockCourses = undefined;
   mockSummaries = undefined;
   mockCourseCards = [];
+  mockDecodedPayload = {};
+  mockFindCourseForLineage = undefined;
+  mockMergeLineageUpdate.mockReset();
 });
 
 describe('SharePage', () => {
@@ -147,31 +172,46 @@ describe('SharePage', () => {
     expect(generateBtn).toBeDisabled();
   });
 
-  it('shows an image-placeholder warning when the selected course has images', () => {
+  it('shows a media-placeholder warning and identifies affected cards', () => {
     mockCourses = [mockCourse];
     mockSummaries = { [mockCourse.id]: mockSummary };
     mockCourseCards = [
       {
+        id: 'media-card',
         front: 'What is shown? lacuna-asset://' + 'a'.repeat(64),
         back: 'Answer',
       } as Card,
     ];
     render(<SharePage />);
     fireEvent.click(screen.getByText('Test Course'));
-    expect(
-      screen.getByText(/This course contains images\. The share code will replace them/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/This course contains media in 1 card/)).toBeInTheDocument();
+    expect(screen.getByText('What is shown?')).toBeInTheDocument();
   });
 
-  it('does not show the image-placeholder warning when the selected course has no images', () => {
+  it('counts an occlusion card as media even though its diagram is not in the card text', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockCourseCards = [
+      {
+        id: 'occlusion-card',
+        front: 'Label 1 of 3 — Plant cell',
+        back: 'Label 1 of 3 — Plant cell\n\nNucleus',
+        occlusionRegionId: 'region-1',
+      } as Card,
+    ];
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(screen.getByText(/This course contains media in 1 card/)).toBeInTheDocument();
+    expect(screen.getByText('Label 1 of 3 — Plant cell')).toBeInTheDocument();
+  });
+
+  it('does not show the media-placeholder warning when the selected course has no media', () => {
     mockCourses = [mockCourse];
     mockSummaries = { [mockCourse.id]: mockSummary };
     mockCourseCards = [{ front: 'Plain text', back: 'Answer' } as Card];
     render(<SharePage />);
     fireEvent.click(screen.getByText('Test Course'));
-    expect(
-      screen.queryByText(/This course contains images\. The share code will replace them/),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/This course contains media in/)).not.toBeInTheDocument();
   });
 
   it('shows import section with textarea', () => {
@@ -183,5 +223,168 @@ describe('SharePage', () => {
       screen.getByText(/All Lacuna share-code encodings \(LAC0–LAC3\) are supported/),
     ).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Share code to import' })).toBeInTheDocument();
+  });
+
+  it('names generated share and plain-text exports', async () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockCourseCards = [{ front: 'Question', back: 'Answer' } as Card];
+    render(<SharePage />);
+
+    fireEvent.click(screen.getByText('Test Course'));
+    fireEvent.click(screen.getByText('Generate share code'));
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Generated share code' })).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByText('Export as plain text'));
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Generated plain-text export' })).toBeInTheDocument(),
+    );
+  });
+
+  it('shows the never-published publish state for a course with no distribution', () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(
+      screen.getByText('Publishing lets students receive updates when you share a new code.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Publish course')).toBeInTheDocument();
+    expect(screen.queryByText(/Revision/)).not.toBeInTheDocument();
+  });
+
+  it('shows the published state with revision and relative date for a published course', () => {
+    const published: Course = {
+      ...mockCourse,
+      distribution: { lineageId: 'lineage-1', revision: 3, publishedAt: Date.now() - 60_000 },
+    };
+    mockCourses = [published];
+    mockSummaries = { [published.id]: mockSummary };
+    render(<SharePage />);
+    fireEvent.click(screen.getByText('Test Course'));
+    expect(screen.getByText(/Revision 3 · published/)).toBeInTheDocument();
+    expect(screen.getByText('Publish update')).toBeInTheDocument();
+  });
+
+  describe('decode-time merge routing (Arc 7 §7.5)', () => {
+    async function inspectCode() {
+      render(<SharePage />);
+      fireEvent.change(
+        screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...'),
+        { target: { value: 'LAC2-some-code' } },
+      );
+      fireEvent.click(screen.getByText('Read code'));
+      await screen.findByRole('heading', { level: 3 });
+    }
+
+    it('a plain (non-distributed) import is unaffected', async () => {
+      mockDecodedPayload = { v: 2 };
+      await inspectCode();
+      expect(screen.getByText('Ready to import')).toBeInTheDocument();
+      expect(screen.getByText('Test Course').closest('p')).toHaveTextContent(
+        'Test Course — 1 lesson, 3 notes and 2 cards',
+      );
+      fireEvent.click(screen.getByText('Add to my courses'));
+      await waitFor(() => expect(mockNotify).toHaveBeenCalled());
+      expect(mockMergeLineageUpdate).not.toHaveBeenCalled();
+    });
+
+    it('routes to the merge importer when the payload lineage matches a local course', async () => {
+      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 2 };
+      const distributedCourse: Course = {
+        ...mockCourse,
+        id: 'course-2',
+        name: 'My Copy',
+        distributedCopy: {
+          lineageId: 'lineage-1',
+          revision: 1,
+          locked: true,
+          autoAcceptUpdates: false,
+        },
+      };
+      mockFindCourseForLineage = () => Promise.resolve(distributedCourse);
+      mockMergeLineageUpdate.mockResolvedValue({
+        createdLessons: 1,
+        createdNotes: 0,
+        createdCards: 2,
+        appliedUpdates: 0,
+        appliedRemovals: 0,
+        queuedForReview: false,
+        conflictCount: 0,
+      });
+
+      await inspectCode();
+      expect(screen.getByText('Course update')).toBeInTheDocument();
+      expect(screen.getByText('My Copy')).toBeInTheDocument();
+      expect(screen.getByText(/revision 1 → 2/)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Update course'));
+      await waitFor(() => expect(mockMergeLineageUpdate).toHaveBeenCalled());
+      expect(mockMergeLineageUpdate).toHaveBeenCalledWith('course-2', mockDecodedPayload);
+      await waitFor(() =>
+        expect(mockNotify).toHaveBeenCalledWith(expect.stringContaining('Updated the course'), 'positive'),
+      );
+    });
+
+    it('reports queued changes from a merge that needs review', async () => {
+      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 2 };
+      const distributedCourse: Course = {
+        ...mockCourse,
+        id: 'course-2',
+        name: 'My Copy',
+        distributedCopy: {
+          lineageId: 'lineage-1',
+          revision: 1,
+          locked: true,
+          autoAcceptUpdates: false,
+        },
+      };
+      mockFindCourseForLineage = () => Promise.resolve(distributedCourse);
+      mockMergeLineageUpdate.mockResolvedValue({
+        createdLessons: 0,
+        createdNotes: 0,
+        createdCards: 0,
+        appliedUpdates: 0,
+        appliedRemovals: 0,
+        queuedForReview: true,
+        conflictCount: 2,
+      });
+
+      await inspectCode();
+      fireEvent.click(screen.getByText('Update course'));
+      await waitFor(() =>
+        expect(mockNotify).toHaveBeenCalledWith(
+          expect.stringContaining('2 changes are waiting for your review.'),
+          'positive',
+        ),
+      );
+    });
+
+    it('guards against re-importing a code whose revision is not newer than the local copy', async () => {
+      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 1 };
+      const distributedCourse: Course = {
+        ...mockCourse,
+        id: 'course-2',
+        name: 'My Copy',
+        distributedCopy: {
+          lineageId: 'lineage-1',
+          revision: 1,
+          locked: true,
+          autoAcceptUpdates: false,
+        },
+      };
+      mockFindCourseForLineage = () => Promise.resolve(distributedCourse);
+
+      await inspectCode();
+      expect(
+        screen.getByText(/You already have the latest version of/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Update course')).not.toBeInTheDocument();
+      expect(screen.getByText('Close')).toBeInTheDocument();
+      expect(mockMergeLineageUpdate).not.toHaveBeenCalled();
+    });
   });
 });

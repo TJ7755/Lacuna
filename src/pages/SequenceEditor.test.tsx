@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import type { Ref } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { SequenceEditor } from './SequenceEditor';
@@ -105,16 +105,20 @@ function renderNew() {
     <MemoryRouter initialEntries={['/course/course-1/sequence/new']}>
       <Routes>
         <Route path="/course/:courseId/sequence/new" element={<SequenceEditor />} />
+        <Route path="/course/:courseId/bank" element={<p>Bank</p>} />
       </Routes>
     </MemoryRouter>,
   );
 }
 
-function renderEdit() {
+function renderEdit(state?: unknown) {
   return render(
-    <MemoryRouter initialEntries={['/course/course-1/sequence/seq-1/edit']}>
+    <MemoryRouter
+      initialEntries={[{ pathname: '/course/course-1/sequence/seq-1/edit', state }]}
+    >
       <Routes>
         <Route path="/course/:courseId/sequence/:sequenceId/edit" element={<SequenceEditor />} />
+        <Route path="/course/:courseId/bank" element={<p>Bank</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -142,8 +146,20 @@ describe('SequenceEditor', () => {
     renderNew();
     expect(screen.getByRole('heading', { name: 'New sequence' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('e.g. The Krebs cycle')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Sequence name' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Sequence description' })).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: 'Cue window' })).toBeInTheDocument();
     expect(itemsHeading(1)).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Item 1 content' })).toBeInTheDocument();
+  });
+
+  it('names chunk and item label fields', () => {
+    mockCourse = course;
+    renderNew();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add chunk' }));
+    expect(screen.getByRole('textbox', { name: 'Chunk 1' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Label for item 1' })).toBeInTheDocument();
   });
 
   it('adds an item beside the working position, focuses it and scrolls it into view', () => {
@@ -242,7 +258,7 @@ describe('SequenceEditor', () => {
     expect(first).toHaveFocus();
     expect(first).toHaveAttribute('aria-invalid', 'true');
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Enter item content before adding another.',
+      'Enter item content before saving or adding another.',
     );
 
     fireEvent.change(first, { target: { value: 'Now valid' } });
@@ -300,7 +316,7 @@ describe('SequenceEditor', () => {
     expect(screen.getByText('2 cards generated')).toBeInTheDocument();
   });
 
-  it('saves via createSequence and navigates back to the bank on Add sequence', () => {
+  it('saves via createSequence and navigates back to the bank on Add sequence', async () => {
     mockCourse = course;
     renderNew();
 
@@ -312,7 +328,12 @@ describe('SequenceEditor', () => {
     );
     fireEvent.change(values[0], { target: { value: 'First item' } });
 
-    fireEvent.click(screen.getByText('Add sequence'));
+    await act(async () => {
+      fireEvent.click(screen.getByText('Add sequence'));
+      await vi.waitFor(() => expect(createSequence).toHaveBeenCalled());
+      await Promise.resolve(createSequence.mock.results[0]?.value);
+    });
+    await screen.findByText('Bank');
     expect(createSequence).toHaveBeenCalledWith(
       'course-1',
       null,
@@ -320,6 +341,24 @@ describe('SequenceEditor', () => {
       expect.arrayContaining([expect.objectContaining({ value: 'First item' })]),
       expect.objectContaining({ cueWindow: 2, generateLabelCards: false, mode: 'list' }),
     );
+  });
+
+  it('shows inline validation instead of silently ignoring a blank sequence', () => {
+    mockCourse = course;
+    renderNew();
+
+    fireEvent.click(screen.getByText('Add sequence'));
+
+    expect(screen.getByRole('textbox', { name: 'Sequence name' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(screen.getByText('Enter a sequence name before saving.')).toBeInTheDocument();
+    expect(screen.getAllByRole('alert')[1]).toHaveTextContent(
+      'Enter item content before saving or adding another.',
+    );
+    expect(screen.getByRole('textbox', { name: 'Sequence name' })).toHaveFocus();
+    expect(createSequence).not.toHaveBeenCalled();
   });
 
   describe('lines mode', () => {
@@ -354,7 +393,7 @@ describe('SequenceEditor', () => {
       expect(screen.getByText('Add sequence')).not.toBeDisabled();
     });
 
-    it('saves with mode "lines" and the chosen mySpeaker', () => {
+    it('saves with mode "lines" and the chosen mySpeaker', async () => {
       mockCourse = course;
       renderNew();
       fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
@@ -369,7 +408,12 @@ describe('SequenceEditor', () => {
       fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'ALICE' } });
       fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'ALICE' } });
 
-      fireEvent.click(screen.getByText('Add sequence'));
+      await act(async () => {
+        fireEvent.click(screen.getByText('Add sequence'));
+        await vi.waitFor(() => expect(createSequence).toHaveBeenCalled());
+        await Promise.resolve(createSequence.mock.results[0]?.value);
+      });
+      await screen.findByText('Bank');
       expect(createSequence).toHaveBeenCalledWith(
         'course-1',
         null,
@@ -382,7 +426,7 @@ describe('SequenceEditor', () => {
     it.each([
       ['Poetry / verse', 'poetry'],
       ['Speech / presentation', 'speech'],
-    ] as const)('clears hidden speaker metadata when switching from Script to %s', (presetName, presetId) => {
+    ] as const)('clears hidden speaker metadata when switching from Script to %s', async (presetName, presetId) => {
       mockCourse = course;
       renderNew();
       fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
@@ -402,7 +446,12 @@ describe('SequenceEditor', () => {
       expect(screen.queryByPlaceholderText('Speaker')).not.toBeInTheDocument();
       expect(screen.getByText('1 card generated')).toBeInTheDocument();
       expect(screen.getByText('Add sequence')).not.toBeDisabled();
-      fireEvent.click(screen.getByText('Add sequence'));
+      await act(async () => {
+        fireEvent.click(screen.getByText('Add sequence'));
+        await vi.waitFor(() => expect(createSequence).toHaveBeenCalled());
+        await Promise.resolve(createSequence.mock.results[0]?.value);
+      });
+      await screen.findByText('Bank');
       expect(createSequence).toHaveBeenCalledWith(
         'course-1',
         null,
@@ -433,6 +482,40 @@ describe('SequenceEditor', () => {
     });
   });
 
+  describe('return-to-origin back-link', () => {
+    const editingSequence: Sequence = {
+      id: 'seq-1',
+      courseId: 'course-1',
+      primaryLessonId: 'lesson-1',
+      name: 'Scene one',
+      items: [{ id: 'item-1', value: 'Indeed I am.' }],
+      cueWindow: 2,
+      createdAt: Date.now(),
+    };
+
+    // Sequences have no lesson-scoped edit route, so the URL alone never signals a
+    // lesson origin — the caller must pass it via router state (see LessonCardsSection).
+    it('targets the lesson passed via router state when editing was opened from a lesson', () => {
+      mockCourse = course;
+      mockSequence = editingSequence;
+      renderEdit({ origin: { path: '/course/course-1/lesson/lesson-1', label: 'Cells' } });
+
+      const link = screen.getByRole('link', { name: 'Cells' });
+      expect(link).toHaveAttribute('href', '/course/course-1/lesson/lesson-1');
+    });
+
+    // A hard refresh drops router state entirely — the back-link must still land
+    // somewhere sensible (the course bank) rather than erroring.
+    it('falls back to the course bank when no origin state is present', () => {
+      mockCourse = course;
+      mockSequence = editingSequence;
+      renderEdit();
+
+      const link = screen.getByRole('link', { name: 'Question bank' });
+      expect(link).toHaveAttribute('href', '/course/course-1/bank');
+    });
+  });
+
   describe('re-pasting a script while editing', () => {
     const editingSequence: Sequence = {
       id: 'seq-1',
@@ -449,28 +532,27 @@ describe('SequenceEditor', () => {
     it('warns before opening the paste modal when the sequence already has items, and cancelling keeps it closed', () => {
       mockCourse = course;
       mockSequence = editingSequence;
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
       renderEdit();
 
       fireEvent.click(screen.getByText('Paste script…'));
 
-      expect(confirmSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/reset study progress/i),
-      );
+      const warning = screen.getByText(/reset study progress/i);
+      expect(warning).toBeInTheDocument();
       expect(screen.queryByLabelText('Paste script')).not.toBeInTheDocument();
-      confirmSpy.mockRestore();
+
+      fireEvent.click(warning.parentElement!.querySelector('button:last-of-type')!);
+      expect(screen.getByText('Paste script…')).toBeInTheDocument();
     });
 
     it('opens the paste modal once the warning is confirmed', () => {
       mockCourse = course;
       mockSequence = editingSequence;
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       renderEdit();
 
       fireEvent.click(screen.getByText('Paste script…'));
+      fireEvent.click(screen.getByText('Replace'));
 
       expect(screen.getByLabelText('Paste script')).toBeInTheDocument();
-      confirmSpy.mockRestore();
     });
   });
 });

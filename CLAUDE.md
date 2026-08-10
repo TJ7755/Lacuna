@@ -13,7 +13,7 @@
 
 1. **British English** in all writing (comments, docs, user-facing text). Use American English only where a language's syntax forces it for code identifiers.
 2. **No emojis**, anywhere. Express tone in words, unless explicitly allowed by the user. If there are existing emojis in the codebase, do NOT proactively remove them unless asked or confirmed by user.
-3. **Before writing a plan**, read the codebase *and* always ask the prompter about any genuine ambiguities. Do not ask gratuitous or obvious questions.
+3. **Before anything else** read the codebase *and* always ask the prompter about any ambiguities. Do not ask gratuitous questions.
 4. **Before implementing, reporting bugs, or suggesting features**, search the codebase (and the web where applicable) to check whether the functionality already exists.
 5. **Extend existing systems** rather than building parallel ones. **Follow existing conventions** — naming, file organisation, coding style. Do not introduce a different architectural pattern without strong reason.
 6. **Do not implement unrequested features** or speculative improvements. Suggest them instead; implement only with explicit approval.
@@ -21,16 +21,16 @@
 8. **Inspect surrounding code before changing behaviour.** Do not assume APIs, types, or files exist without checking.
 9. **No TODOs, placeholders, mock data, or stubs** unless explicitly requested.
 10. **Do not remove comments** unless incorrect, obsolete, or superseded. Update outdated comments rather than deleting them.
-11. **Fix incidental bugs** you find, even if it costs time. Mention each one, and commit it separately from the main task.
-12. **Update documentation** (SPEC.md, README.md, etc.) after any meaningful change. If the relevant documentation does not exist, ignore this.
-13. **UI changes must look native** — beautiful, seamless, never bolted on. Use the frontend-design skill and its principles. Keep user-facing text minimal and intentional; no cringe or design-commentary copy.
-14. **Avoid unnecessary dependencies.**
+11. **Fix incidental bugs** you find, even if it costs time. Mention each one, and commit it separately from the main task. If you don't want to clutter your context, feel free to use a sonnet subagent to fix.
+12. **Update documentation** (docs/SPEC.md, README.md, etc.) after any meaningful change. If the relevant documentation does not exist, ignore this.
+13. **UI changes must look native** — beautiful, seamless, never bolted on. Use the frontend-design skill (if it exists) and its principles. Keep user-facing text minimal and intentional; no cringe or design-commentary copy.
+14. **Avoid unnecessary dependencies.** - Keep dependencies up to date if possible and try to avoid security concerns.
 
 ---
 
 ## Guidelines
 
-1. **Be surgical.** Prefer the least code that achieves the functionality with the least future maintenance. Reducing code beats adding it. Fix incidental performance issues you find.
+1. **Be surgical.** Prefer the least code that achieves the functionality with the least future maintenance. Reducing code beats adding it. Fix incidental performance issues you find. Write tests (it helps with reducing future maintenance).
 2. **When multiple reasonable solutions exist**, explain the trade-offs and ask the prompter which they prefer — unless one is clearly superior, in which case say so and proceed.
 3. **Prioritise performance over aesthetics**, and make the trade-off explicit. If the performance difference is negligible, prefer aesthetics.
 4. **Complete the entire task list in one go** (where a list exists), except for asking questions. Do not stop after the first task unless blocked by ambiguity or errors.
@@ -39,5 +39,13 @@
 
 ---
 
+## Agent mailbox
+
+ For task agents only if orchestrator explicitly approves: derive a stable kebab-case slug from the task, write `<slug>-status.md` heartbeats, and finish with `<slug>-done.md` containing a summary and commit hash. When blocked, write `<slug>-question.md`, stop work, and poll for `<slug>-answer.md` rather than guessing or giving up early.
+
+The orchestrator polls the mailbox roughly every 20 seconds, so questions will be seen and answered quickly. It deletes consumed files; a status or completion file vanishing is normal. Runtime mailbox files are temporary, ignored by Git, and must not be committed. See `.agent-mail/README.md` for the full protocol.
+
+---
+
 ## Project Context
-Lacuna is a prototype alpha project. Suggest sweeping changes that affect the codebase optimised for long-term stability and performance as well as features.
+Lacuna is a prototype alpha project. Suggest changes that affect the codebase for long-term stability and performance as well as features, rather than short term niceness.

@@ -17,7 +17,6 @@ import {
   LacunaIcon,
   HelpIcon,
   MoonIcon,
-  PlayIcon,
   PlusIcon,
   SearchIcon,
   SettingsIcon,
@@ -32,6 +31,10 @@ interface SidebarProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   toggleLabel?: string;
+  /** Opens the command palette instead of routing to /search. When omitted
+   *  (surfaces without palette wiring, e.g. LearnMode's nav drawer) the
+   *  search item falls back to a plain link to the full search page. */
+  onOpenPalette?: () => void;
   collapseControl?: boolean;
 }
 
@@ -83,6 +86,45 @@ function NavItem({
         </>
       )}
     </NavLink>
+  );
+}
+
+/** The sidebar's search entry: opens the command palette rather than routing to a
+ *  page, with a visible ⌘K/Ctrl+K hint so the palette is discoverable without
+ *  reading the shortcuts cheatsheet first. */
+function SearchNavItem({
+  onOpenPalette,
+  collapsed,
+  compact,
+}: {
+  onOpenPalette: () => void;
+  collapsed: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpenPalette}
+      title={collapsed ? 'Search (Ctrl/Cmd+K)' : undefined}
+      className={cn(
+        'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',
+        compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
+        collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
+        'text-ink-soft hover:bg-ink/5 hover:text-ink',
+      )}
+    >
+      <span className="shrink-0">
+        <SearchIcon />
+      </span>
+      {!collapsed && (
+        <>
+          <span className="flex-1 truncate">Search</span>
+          <kbd className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
+            Ctrl/Cmd+K
+          </kbd>
+        </>
+      )}
+    </button>
   );
 }
 
@@ -312,6 +354,7 @@ export function Sidebar({
   collapsed,
   onToggleCollapsed,
   toggleLabel,
+  onOpenPalette,
   collapseControl = true,
 }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -406,38 +449,45 @@ export function Sidebar({
       <nav className={cn('flex flex-col gap-1 px-3', sidebarSettings.compactMode && 'gap-0')}>
         {sidebarSettings.navItems
           .filter((n) => n.visible)
-          .map((n) => (
-            <NavItem
-              key={n.id}
-              to={n.id === 'dashboard' ? '/' : n.id === 'learn' ? '/study' : `/${n.id}`}
-              end={n.id === 'dashboard'}
-              icon={
-                n.id === 'dashboard' ? (
-                  <DashboardIcon />
-                ) : n.id === 'learn' ? (
-                  <PlayIcon />
-                ) : n.id === 'search' ? (
-                  <SearchIcon />
-                ) : n.id === 'share' ? (
-                  <ShareIcon />
-                ) : n.id === 'analytics' ? (
-                  <ChartIcon />
-                ) : n.id === 'settings' ? (
-                  <SettingsIcon />
-                ) : n.id === 'help' ? (
-                  <HelpIcon />
-                ) : (
-                  <DashboardIcon />
-                )
-              }
-              label={n.label}
-              collapsed={collapsed}
-              compact={sidebarSettings.compactMode}
-              streakBadge={
-                n.id === 'learn' ? <StudyStreakBadge collapsed={collapsed} /> : undefined
-              }
-            />
-          ))}
+          .map((n) =>
+            n.id === 'search' && onOpenPalette ? (
+              <SearchNavItem
+                key={n.id}
+                onOpenPalette={onOpenPalette}
+                collapsed={collapsed}
+                compact={sidebarSettings.compactMode}
+              />
+            ) : (
+              <NavItem
+                key={n.id}
+                to={n.id === 'dashboard' ? '/' : `/${n.id}`}
+                end={n.id === 'dashboard'}
+                icon={
+                  n.id === 'dashboard' ? (
+                    <DashboardIcon />
+                  ) : n.id === 'search' ? (
+                    <SearchIcon />
+                  ) : n.id === 'share' ? (
+                    <ShareIcon />
+                  ) : n.id === 'analytics' ? (
+                    <ChartIcon />
+                  ) : n.id === 'settings' ? (
+                    <SettingsIcon />
+                  ) : n.id === 'help' ? (
+                    <HelpIcon />
+                  ) : (
+                    <DashboardIcon />
+                  )
+                }
+                label={n.label}
+                collapsed={collapsed}
+                compact={sidebarSettings.compactMode}
+                streakBadge={
+                  n.id === 'dashboard' ? <StudyStreakBadge collapsed={collapsed} /> : undefined
+                }
+              />
+            ),
+          )}
       </nav>
 
       {/* Course list */}

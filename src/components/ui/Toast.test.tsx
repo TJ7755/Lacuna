@@ -34,6 +34,21 @@ describe('ToastProvider', () => {
     await waitFor(() => expect(screen.getByText('Hello world', { selector: 'span' })).toBeInTheDocument());
   });
 
+  it('announces each toast through the visible notification stack only once', async () => {
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByText('Notify'));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Hello world', { selector: 'span' })).toHaveLength(1);
+    });
+    expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
+    expect(screen.getByLabelText('Notifications')).toHaveAttribute('aria-live', 'polite');
+  });
+
   it('shows different tones', async () => {
     render(
       <ToastProvider>
@@ -55,6 +70,13 @@ describe('ToastProvider', () => {
   });
 
   it('throws when useToast is called outside provider', () => {
-    expect(() => renderHook(() => useToast())).toThrow('useToast must be used within a ToastProvider');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(() => renderHook(() => useToast())).toThrow(
+        'useToast must be used within a ToastProvider',
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { globalTrajectorySeries, leechCountByCourse, lessonBreakdown } from './prepare';
+import {
+  globalTrajectorySeries,
+  leechCountByCourse,
+  lessonBreakdown,
+  retentionByAge,
+} from './prepare';
 import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
-import type { Card, Course, Lesson, SessionHistoryEntry } from '../../db/types';
+import type { Card, Course, Grade, Lesson, ReviewLog, SessionHistoryEntry } from '../../db/types';
 import { startOfDay } from '../../utils/datetime';
 
 // ---------------------------------------------------------------------------
@@ -54,6 +59,20 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
     history: [],
     createdAt: 0,
     ...overrides,
+  };
+}
+
+function makeReview(timestamp: number, grade: Grade): ReviewLog {
+  return {
+    timestamp,
+    grade,
+    responseTimeSec: 2,
+    distracted: false,
+    stabilityBefore: 1,
+    stabilityAfter: 2,
+    difficultyBefore: 5,
+    difficultyAfter: 5,
+    retrievabilityAtReview: null,
   };
 }
 
@@ -119,6 +138,39 @@ describe('leechCountByCourse', () => {
       { name: 'Biology', count: 1 },
       { name: 'Chemistry', count: 1 },
     ]);
+  });
+});
+
+describe('retentionByAge', () => {
+  it('counts every review at the card age when it happened', () => {
+    const day = 86_400_000;
+    const firstReview = Date.UTC(2026, 0, 1);
+    const card = makeCard({
+      id: 'card1',
+      deckId: 'd1',
+      // Deliberately out of order: card history must not make age depend on array order.
+      history: [
+        makeReview(firstReview + 10 * day, 3),
+        makeReview(firstReview, 1),
+        makeReview(firstReview + 3 * day, 3),
+        makeReview(firstReview + 31 * day, 1),
+      ],
+    });
+
+    const result = retentionByAge([card], firstReview + 40 * day);
+
+    expect(result.find((point) => point.ageLabel === '0–7 days')).toMatchObject({
+      retention: 50,
+      count: 2,
+    });
+    expect(result.find((point) => point.ageLabel === '7–30 days')).toMatchObject({
+      retention: 100,
+      count: 1,
+    });
+    expect(result.find((point) => point.ageLabel === '30–90 days')).toMatchObject({
+      retention: 0,
+      count: 1,
+    });
   });
 });
 

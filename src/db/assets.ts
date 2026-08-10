@@ -1,8 +1,17 @@
 import { db } from './schema';
-import type { BackupAsset, ImageAsset } from './types';
+import type { BackupAsset, MediaAsset } from './types';
 import { compressImageBlob } from '../utils/compressImage';
 
 export const ASSET_PROTOCOL = 'lacuna-asset://';
+export const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+export const SUPPORTED_AUDIO_MIME_TYPES = new Set([
+  'audio/mpeg',
+  'audio/mp4',
+  'audio/ogg',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/webm',
+]);
 const DATA_IMAGE_RE = /data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)/gi;
 const ASSET_RE = /lacuna-asset:\/\/([a-f0-9]{64})/gi;
 
@@ -120,14 +129,15 @@ export function referencedAssetHashesInCards(cards: { front: string; back: strin
   return [...hashes];
 }
 
-export function stripAssetImages(markdown: string): { markdown: string; stripped: boolean } {
+export function stripAssetMedia(markdown: string): { markdown: string; stripped: boolean } {
   let stripped = false;
   // Normalise line endings so every regex below can assume LF-only.
   const source = markdown.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  // Inline images: ![alt](lacuna-asset://hash)
+  // Inline media: ![alt](lacuna-asset://hash). Audio uses the reserved "audio" alt text.
   let next = source.replace(/!\[([^\]]*)\]\(lacuna-asset:\/\/[a-f0-9]{64}\)/gi, (_m, alt) => {
     stripped = true;
-    return `[Image omitted from share code: ${alt || 'image'}]`;
+    const kind = alt.toLowerCase() === 'audio' ? 'Audio' : 'Image';
+    return `[${kind} omitted from share code${alt ? `: ${alt}` : ''}]`;
   });
   // Reference-style images: ![alt][ref] where [ref]: lacuna-asset://hash
   const strippedRefs = new Set<string>();
@@ -164,14 +174,37 @@ export async function storeImageBlob(
   mimeType: string,
   width: number,
   height: number,
-): Promise<ImageAsset> {
+): Promise<MediaAsset> {
   const hash = await sha256Blob(blob);
-  const asset: ImageAsset = {
+  const asset: MediaAsset = {
     hash,
     blob: new Uint8Array(await blobToArrayBuffer(blob)),
     mimeType,
+    kind: 'image',
     width,
     height,
+    createdAt: Date.now(),
+  };
+  await db.assets.put(asset);
+  return asset;
+}
+
+export async function storeAudioBlob(blob: Blob, mimeType = blob.type): Promise<MediaAsset> {
+  const normalisedMimeType = mimeType.toLowerCase().split(';', 1)[0];
+  if (!SUPPORTED_AUDIO_MIME_TYPES.has(normalisedMimeType)) {
+    throw new Error('Use an MP3, M4A, MP4, Ogg, WAV or WebM audio file.');
+  }
+  if (blob.size > MAX_AUDIO_BYTES) {
+    throw new Error('Audio files must be 25 MB or smaller.');
+  }
+  if (blob.size === 0) throw new Error('The selected audio file is empty.');
+
+  const hash = await sha256Blob(blob);
+  const asset: MediaAsset = {
+    hash,
+    blob: new Uint8Array(await blobToArrayBuffer(blob)),
+    mimeType: normalisedMimeType,
+    kind: 'audio',
     createdAt: Date.now(),
   };
   await db.assets.put(asset);
@@ -194,7 +227,7 @@ async function getImageDimensions(blob: Blob): Promise<{ width: number; height: 
   });
 }
 
-async function assetFromDataUri(uri: string, mimeType: string): Promise<ImageAsset> {
+async function assetFromDataUri(uri: string, mimeType: string): Promise<MediaAsset> {
   const base64 = uri.slice(uri.indexOf(',') + 1);
   const bytes = base64ToBytes(base64);
   const blob = bytesToBlob(bytes, mimeType);
@@ -208,6 +241,7 @@ async function assetFromDataUri(uri: string, mimeType: string): Promise<ImageAss
         hash,
         blob: new Uint8Array(await blobToArrayBuffer(compressed.blob)),
         mimeType: compressed.blob.type || mimeType,
+        kind: 'image',
         width: compressed.width,
         height: compressed.height,
         createdAt: Date.now(),
@@ -221,6 +255,7 @@ async function assetFromDataUri(uri: string, mimeType: string): Promise<ImageAss
           hash,
           blob: new Uint8Array(await blobToArrayBuffer(blob)),
           mimeType,
+          kind: 'image',
           width: dims.width,
           height: dims.height,
           createdAt: Date.now(),
@@ -234,6 +269,7 @@ async function assetFromDataUri(uri: string, mimeType: string): Promise<ImageAss
     hash,
     blob: new Uint8Array(await blobToArrayBuffer(blob)),
     mimeType,
+    kind: mimeType.startsWith('audio/') ? 'audio' : 'image',
     width: 0,
     height: 0,
     createdAt: Date.now(),
@@ -242,7 +278,7 @@ async function assetFromDataUri(uri: string, mimeType: string): Promise<ImageAss
 
 export async function extractMarkdownAssets(
   markdown: string,
-  putAsset: (asset: ImageAsset) => Promise<unknown>,
+  putAsset: (asset: MediaAsset) => Promise<unknown>,
   knownHashes?: Set<string>,
 ): Promise<string> {
   const replacements: { from: string; to: string }[] = [];
@@ -286,6 +322,7 @@ export async function assetsForBackup(hashes: string[]): Promise<BackupAsset[]> 
       hash: asset.hash,
       data: bytesToBase64(new Uint8Array(await blobToArrayBuffer(asset.blob))),
       mimeType: asset.mimeType,
+      kind: asset.kind,
       width: asset.width,
       height: asset.height,
       createdAt: asset.createdAt,
@@ -293,11 +330,12 @@ export async function assetsForBackup(hashes: string[]): Promise<BackupAsset[]> 
   );
 }
 
-export function backupAssetToImageAsset(asset: BackupAsset): ImageAsset {
+export function backupAssetToMediaAsset(asset: BackupAsset): MediaAsset {
   return {
     hash: asset.hash,
     blob: base64ToBytes(asset.data),
     mimeType: asset.mimeType,
+    kind: asset.kind,
     width: asset.width,
     height: asset.height,
     createdAt: asset.createdAt,
@@ -340,6 +378,19 @@ export async function collectOrphanedAssets(): Promise<number> {
         referencedAssetHashes(note.content).forEach((h) => referenced.add(h));
       }
       noteOffset += batch.length;
+    }
+    // An occlusion's diagram is referenced solely by `Occlusion.assetHash`, not by any
+    // Markdown the regex above scans (its generated cards carry only a plain-text
+    // fallback, per occlusionGeneration.ts) — without this, GC would delete a diagram out
+    // from under the cards generated from it.
+    let occlusionOffset = 0;
+    for (;;) {
+      const batch = await db.occlusions.offset(occlusionOffset).limit(batchSize).toArray();
+      if (batch.length === 0) break;
+      for (const occlusion of batch) {
+        referenced.add(occlusion.assetHash);
+      }
+      occlusionOffset += batch.length;
     }
 
     // Stream asset keys and collect orphans without loading all keys at once.

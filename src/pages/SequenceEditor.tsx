@@ -7,10 +7,12 @@
 // and the lesson-scoped course/:courseId/lesson/:lessonId/sequence/new variant.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
+import { ConfirmInline } from '../components/ui/ConfirmInline';
+import { Select } from '../components/ui/Select';
 import { useToast } from '../components/ui/Toast';
 import { DangerZoneSection } from './settings/DangerZoneSection';
 import { SequenceItemRow } from '../components/sequences/SequenceItemRow';
@@ -29,6 +31,7 @@ import {
   updateSequence,
   type SequenceSnapshot,
 } from '../db/repository';
+import type { EditorOriginState } from '../utils/editorOrigin';
 import type { SequenceItem, SequencePresetId } from '../db/types';
 
 export function SequenceEditor() {
@@ -39,6 +42,7 @@ export function SequenceEditor() {
   }>();
   const lessonMode = Boolean(lessonId);
   const navigate = useNavigate();
+  const location = useLocation();
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -55,9 +59,12 @@ export function SequenceEditor() {
   const [presetId, setPresetId] = useState<SequencePresetId>('list');
   const [mySpeaker, setMySpeaker] = useState('');
   const [showScriptPaste, setShowScriptPaste] = useState(false);
+  const [confirmingPasteScript, setConfirmingPasteScript] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [invalidItems, setInvalidItems] = useState<Set<string>>(() => new Set());
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const preset = getPreset(presetId);
   const mode = preset.mode;
   const usesSpeakers = preset.usesSpeakers;
@@ -103,7 +110,13 @@ export function SequenceEditor() {
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/bank`;
-  const backPath = lessonMode ? lessonPath : bankPath;
+  // Where the caller navigated from, when that differs from what the route alone
+  // implies. Sequence editing has no lesson-scoped edit route (only "new" does),
+  // so origin state is the only signal that an edit was opened from a lesson —
+  // absent on direct loads and hard refreshes, which fall back to the bank.
+  const origin = (location.state as EditorOriginState | null)?.origin;
+  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
+  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Question bank');
 
   // Distinct speakers seen across items, in order of first appearance, for the
   // "my speaker" picker — populated by whichever items already carry a speaker,
@@ -193,7 +206,7 @@ export function SequenceEditor() {
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">
         <p className="mb-4 text-ink-soft">This sequence could not be found.</p>
         <Link to={backPath} className="text-accent underline">
-          Back to {lessonMode ? lesson?.name : 'Question bank'}
+          Back to {backLabel}
         </Link>
       </motion.div>
     );
@@ -287,20 +300,48 @@ export function SequenceEditor() {
     // Re-pasting a script while editing replaces the whole item list with fresh
     // ids, so saving treats every existing card as delete+create and wipes its
     // FSRS study progress. Warn before opening the modal when that's at stake.
-    if (
-      editing &&
-      items.length > 0 &&
-      !window.confirm(
-        'Replacing the script will reset study progress for this sequence’s cards. Continue?',
-      )
-    ) {
+    if (editing && items.length > 0) {
+      setConfirmingPasteScript(true);
       return;
     }
     setShowScriptPaste(true);
   }
 
+  function confirmPasteScript() {
+    setConfirmingPasteScript(false);
+    setShowScriptPaste(true);
+  }
+
   async function handleSave() {
-    if (!canSave || !courseId) return;
+    if (saving || !courseId) return;
+
+    const emptyItemIds = new Set(items.filter((item) => !item.value.trim()).map((item) => item.id));
+    const missingName = name.trim().length === 0;
+    const missingItems = items.length === 0 || emptyItemIds.size > 0;
+    const missingCards = items.length > 0 && emptyItemIds.size === 0 && preview.length === 0;
+    const missingSpeaker = usesSpeakers && mySpeaker.trim().length === 0;
+
+    setNameError(missingName ? 'Enter a sequence name before saving.' : null);
+    setInvalidItems(emptyItemIds);
+    setSaveError(
+      missingItems
+        ? null
+        : missingCards
+          ? `Add at least two ${preset.terminology.itemPlural.toLowerCase()} to generate cards.`
+          : missingSpeaker
+            ? 'Choose which speaker you are learning before saving.'
+            : null,
+    );
+
+    if (missingName || missingItems || missingCards || missingSpeaker || !canSave) {
+      if (missingName) {
+        document.getElementById('sequence-name')?.focus();
+      } else if (emptyItemIds.size > 0) {
+        itemInputs.current.get(emptyItemIds.values().next().value as string)?.focus();
+      }
+      return;
+    }
+
     setSaving(true);
     try {
       const opts = {
@@ -334,7 +375,7 @@ export function SequenceEditor() {
         </Link>
         <ChevronRight />
         <Link to={backPath} className="transition-colors hover:text-ink">
-          {lessonMode ? lesson?.name : 'Question bank'}
+          {backLabel}
         </Link>
         <ChevronRight />
         <span className="text-ink-soft">{editing ? 'Edit sequence' : 'New sequence'}</span>
@@ -369,18 +410,31 @@ export function SequenceEditor() {
           <div>
             <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Name</div>
             <input
+              id="sequence-name"
+              aria-label="Sequence name"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (e.target.value.trim()) setNameError(null);
+              }}
+              aria-invalid={nameError ? 'true' : undefined}
+              aria-describedby={nameError ? 'sequence-name-error' : undefined}
               placeholder="e.g. The Krebs cycle"
               className="w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
+            {nameError && (
+              <p id="sequence-name-error" role="alert" className="mt-2 text-sm text-negative">
+                {nameError}
+              </p>
+            )}
           </div>
           <div>
             <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
               Description <span className="normal-case text-ink-faint/70">(optional)</span>
             </div>
             <input
+              aria-label="Sequence description"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -449,6 +503,7 @@ export function SequenceEditor() {
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
+                          aria-label={`${preset.terminology.chunkLabel} ${i + 1}`}
                           value={label}
                           onChange={(e) => renameChunkLabel(i, e.target.value)}
                           className="flex-1 rounded-lg border border-line bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-accent"
@@ -475,6 +530,7 @@ export function SequenceEditor() {
               Cue window
               <input
                 type="number"
+                aria-label="Cue window"
                 min={1}
                 max={items.length || 1}
                 value={cueWindow}
@@ -489,6 +545,7 @@ export function SequenceEditor() {
             <label className="flex items-center gap-2 text-sm text-ink-soft">
               <input
                 type="checkbox"
+                aria-label="Also generate label to value cards"
                 checked={generateLabelCards}
                 onChange={(e) => setGenerateLabelCards(e.target.checked)}
                 className="accent-accent"
@@ -498,10 +555,11 @@ export function SequenceEditor() {
             {usesSpeakers && (
               <label className="flex items-center gap-2 text-sm text-ink-soft">
                 My speaker
-                <select
+                <Select
+                  aria-label="My speaker"
                   value={mySpeaker}
                   onChange={(e) => setMySpeaker(e.target.value)}
-                  className="min-w-[8rem] rounded-lg border border-line bg-transparent px-2 py-1 outline-none focus:border-accent"
+                  className="min-w-[8rem]"
                 >
                   <option value="">Choose…</option>
                   {speakers.map((speaker) => (
@@ -512,7 +570,7 @@ export function SequenceEditor() {
                   {mySpeaker && !speakers.includes(mySpeaker) && (
                     <option value={mySpeaker}>{mySpeaker}</option>
                   )}
-                </select>
+                </Select>
                 <span className="text-ink-faint">— only these lines get recall cards</span>
               </label>
             )}
@@ -525,11 +583,19 @@ export function SequenceEditor() {
                 {preset.terminology.itemPlural} <span className="text-ink-faint/70">({items.length})</span>
               </div>
               <div className="flex items-center gap-3">
-                {usesSpeakers && (
-                  <Button variant="ghost" size="sm" onClick={handlePasteScriptClick}>
-                    Paste script&hellip;
-                  </Button>
-                )}
+                {usesSpeakers &&
+                  (confirmingPasteScript ? (
+                    <ConfirmInline
+                      message="Reset study progress?"
+                      confirmLabel="Replace"
+                      onConfirm={confirmPasteScript}
+                      onCancel={() => setConfirmingPasteScript(false)}
+                    />
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={handlePasteScriptClick}>
+                      Paste script&hellip;
+                    </Button>
+                  ))}
                 <span className="text-xs text-ink-faint">
                   Ctrl/Cmd+Enter adds the next {preset.terminology.item}
                 </span>
@@ -590,7 +656,7 @@ export function SequenceEditor() {
                 className={cn(
                   'rounded-full px-3 py-1 text-sm font-medium',
                   preview.length > 30
-                    ? 'bg-amber-500/10 text-amber-600'
+                    ? 'bg-warning/10 text-warning-fg'
                     : 'bg-accent-soft text-accent',
                 )}
               >
@@ -640,7 +706,16 @@ export function SequenceEditor() {
           <Button variant="ghost" onClick={() => navigate(backPath)}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={!canSave || saving}>
+          {saveError && (
+            <p role="alert" className="max-w-xs text-right text-sm text-negative">
+              {saveError}
+            </p>
+          )}
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            disabled={saving || (usesSpeakers && (!mySpeaker.trim() || preview.length === 0))}
+          >
             {editing ? 'Save changes' : 'Add sequence'}
           </Button>
         </div>

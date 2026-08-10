@@ -49,7 +49,8 @@ describe('buildDiagnostics', () => {
         notes: 10,
         lessonCards: 3,
         practiceNodes: 1,
-        courseExamDates: 4,
+        courseAssessments: 4,
+        revisionPlans: 2,
       },
     });
     expect(bundle.data.courses).toBe(2);
@@ -57,7 +58,8 @@ describe('buildDiagnostics', () => {
     expect(bundle.data.notes).toBe(10);
     expect(bundle.data.lessonCards).toBe(3);
     expect(bundle.data.practiceNodes).toBe(1);
-    expect(bundle.data.courseExamDates).toBe(4);
+    expect(bundle.data.courseAssessments).toBe(4);
+    expect(bundle.data.revisionPlans).toBe(2);
   });
 
   it('includes a content sample only when one is supplied', () => {
@@ -100,7 +102,8 @@ describe('buildDiagnostics', () => {
           notes: 9,
           lessonCards: 2,
           practiceNodes: 1,
-          courseExamDates: 4,
+          courseAssessments: 4,
+          revisionPlans: 2,
         },
         now: 0,
       }),
@@ -108,6 +111,7 @@ describe('buildDiagnostics', () => {
     expect(text).toContain('3 courses');
     expect(text).toContain('6 lessons');
     expect(text).toContain('9 notes');
+    expect(text).toContain('2 revision plans');
   });
 });
 
@@ -123,7 +127,8 @@ describe('gatherCounts', () => {
       db.notes.clear(),
       db.lessonCards.clear(),
       db.practiceNodes.clear(),
-      db.courseExamDates.clear(),
+      db.courseAssessments.clear(),
+      db.revisionPlans.clear(),
     ]);
   });
 
@@ -132,6 +137,9 @@ describe('gatherCounts', () => {
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
     await recordReview({
       card,
+      eventId: 'event-diagnostics',
+      sessionId: 'session-diagnostics',
+      sessionKind: 'deck',
       deck,
       grade: 3,
       responseTimeSec: 2,
@@ -145,6 +153,7 @@ describe('gatherCounts', () => {
     expect(counts.reviews).toBe(1);
     expect(counts.courses).toBe(0);
     expect(counts.lessons).toBe(0);
+    expect(counts.revisionPlans).toBe(0);
 
     const sample = await gatherContentSample(5);
     expect(sample).toEqual([{ front: 'q', back: 'a' }]);

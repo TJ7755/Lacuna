@@ -2,18 +2,20 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QuestionBank } from './QuestionBank';
-import type { Card, Course, Deck, Lesson, Sequence } from '../db/types';
+import type { Card, Course, Deck, Lesson, Occlusion, Sequence } from '../db/types';
 
 let mockCourse: Course | undefined;
 let mockLessons: Lesson[] | undefined;
 let mockCards: Card[] | undefined;
 let mockSequences: Sequence[] | undefined = [];
+let mockOcclusions: Occlusion[] | undefined = [];
 
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
   useLessons: () => mockLessons,
   useCourseCards: () => mockCards,
   useSequences: () => mockSequences,
+  useOcclusions: () => mockOcclusions,
 }));
 
 const mockDeck: Deck = {
@@ -72,6 +74,16 @@ vi.mock('../components/ui/icons', () => ({
   ChevronLeftIcon: () => <svg data-testid="chevron-left" />,
   PlusIcon: () => <svg data-testid="plus-icon" />,
   SearchIcon: () => <svg data-testid="search-icon" />,
+  SparklesIcon: () => <svg data-testid="sparkles-icon" />,
+}));
+
+vi.mock('../components/items/BatchAuthoringPromptDialog', () => ({
+  BatchAuthoringPromptDialog: ({ courseName, onClose }: { courseName: string; onClose: () => void }) => (
+    <div role="dialog" aria-label="Generate item batch">
+      <span>{courseName}</span>
+      <button type="button" onClick={onClose}>close-batch</button>
+    </div>
+  ),
 }));
 
 const course: Course = {
@@ -141,6 +153,7 @@ function renderPage() {
     <MemoryRouter initialEntries={['/course/course-1/bank']}>
       <Routes>
         <Route path="/course/:courseId/bank" element={<QuestionBank />} />
+        <Route path="/course/:courseId/cards/new" element={<p>Card editor</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -151,9 +164,22 @@ beforeEach(() => {
   mockLessons = undefined;
   mockCards = undefined;
   mockSequences = [];
+  mockOcclusions = [];
 });
 
 describe('QuestionBank', () => {
+  it('opens the course-scoped batch authoring prompt', () => {
+    mockCourse = course;
+    mockLessons = [];
+    mockCards = [];
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate batch' }));
+    expect(screen.getByRole('dialog', { name: 'Generate item batch' })).toHaveTextContent(
+      'A-Level Economics',
+    );
+  });
+
   it('shows a skeleton while loading', () => {
     renderPage();
     expect(screen.queryByText('Question bank')).not.toBeInTheDocument();
@@ -225,8 +251,7 @@ describe('QuestionBank', () => {
     mockCards = [];
     renderPage();
     fireEvent.click(screen.getByText('Create your first card'));
-    // No assertion on navigation target beyond the click not throwing — routing is
-    // exercised end-to-end elsewhere; this covers the wiring of the click handler.
+    expect(screen.getByText('Card editor')).toBeInTheDocument();
   });
 
   it('filters cards by search text', () => {

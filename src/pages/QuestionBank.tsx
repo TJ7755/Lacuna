@@ -5,25 +5,50 @@
 
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useCourse, useLessons, useCourseCards, useSequences } from '../state/useCourseData';
+import { AnimatePresence } from 'motion/react';
+import {
+  useCourse,
+  useLessons,
+  useCourseCards,
+  useOcclusions,
+  useSequences,
+} from '../state/useCourseData';
 import { useDeck } from '../state/useData';
 import { CardList } from '../components/cards/CardList';
+import { CourseTabs } from '../components/course/CourseTabs';
 import { FadeInView } from '../components/ui/FadeInView';
 import { Button } from '../components/ui/Button';
-import { ChevronLeftIcon, PlusIcon, SearchIcon } from '../components/ui/icons';
-import type { Card, Lesson, Sequence } from '../db/types';
+import { BatchAuthoringPromptDialog } from '../components/items/BatchAuthoringPromptDialog';
+import { ChevronLeftIcon, PlusIcon, SearchIcon, SparklesIcon } from '../components/ui/icons';
+import type { Card, Lesson, Occlusion, Sequence } from '../db/types';
+
+// Editing a lesson-owned card still uses the lesson-scoped route (so the editor's
+// duplicate check and tag suggestions stay scoped to the lesson's own deck), but the
+// user opened it from here, so the back-link should return to the Question bank
+// rather than the lesson — see src/utils/editorOrigin.ts.
+function bankOrigin(courseId: string) {
+  return { origin: { path: `/course/${courseId}/bank`, label: 'Question bank' } };
+}
 
 export function QuestionBank() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [showBatchPrompt, setShowBatchPrompt] = useState(false);
 
   const course = useCourse(courseId);
   const lessons = useLessons(courseId);
   const cards = useCourseCards(courseId);
   const sequences = useSequences(courseId);
+  const occlusions = useOcclusions(courseId);
 
-  if (course === undefined || lessons === undefined || cards === undefined || sequences === undefined) {
+  if (
+    course === undefined ||
+    lessons === undefined ||
+    cards === undefined ||
+    sequences === undefined ||
+    occlusions === undefined
+  ) {
     return <QuestionBankSkeleton />;
   }
   if (course === null) {
@@ -63,13 +88,16 @@ export function QuestionBank() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
       {/* Breadcrumb */}
-      <Link
-        to={`/course/${courseId}`}
-        className="mb-6 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
-      >
-        <ChevronLeftIcon width={16} height={16} />
-        {course.name}
-      </Link>
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+        >
+          <ChevronLeftIcon width={16} height={16} />
+          All courses
+        </Link>
+        <CourseTabs courseId={courseId ?? ''} />
+      </div>
 
       {/* Header */}
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
@@ -79,10 +107,18 @@ export function QuestionBank() {
             {cards.length} card{cards.length === 1 ? '' : 's'} across {course.name}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => setShowBatchPrompt(true)}>
+            <SparklesIcon width={18} height={18} />
+            Generate batch
+          </Button>
           <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/sequence/new`)}>
             <PlusIcon width={18} height={18} />
             Create new sequence
+          </Button>
+          <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/occlusion/new`)}>
+            <PlusIcon width={18} height={18} />
+            Create new occlusion
           </Button>
           <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
             <PlusIcon width={18} height={18} />
@@ -121,6 +157,10 @@ export function QuestionBank() {
               <PlusIcon width={18} height={18} />
               Create a sequence
             </Button>
+            <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/occlusion/new`)}>
+              <PlusIcon width={18} height={18} />
+              Create an occlusion
+            </Button>
           </div>
         </div>
       ) : noMatches ? (
@@ -137,6 +177,7 @@ export function QuestionBank() {
                 cards={byLesson.get(lesson.id) ?? []}
                 assignableLessons={assignableLessons}
                 sequences={sequences.filter((s) => s.primaryLessonId === lesson.id)}
+                occlusions={occlusions.filter((o) => o.primaryLessonId === lesson.id)}
               />
             </FadeInView>
           ))}
@@ -147,11 +188,26 @@ export function QuestionBank() {
                 cards={unassigned}
                 assignableLessons={assignableLessons}
                 sequences={sequences.filter((s) => s.primaryLessonId === null)}
+                occlusions={occlusions.filter((o) => o.primaryLessonId === null)}
               />
             </FadeInView>
           )}
         </div>
       )}
+
+      <AnimatePresence>
+        {showBatchPrompt && (
+          <BatchAuthoringPromptDialog
+            courseId={course.id}
+            courseName={course.name}
+            examBoard={course.examBoard}
+            specification={course.specification}
+            lessons={lessons}
+            cards={cards}
+            onClose={() => setShowBatchPrompt(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -167,12 +223,14 @@ function LessonBucket({
   cards,
   assignableLessons,
   sequences,
+  occlusions,
 }: {
   courseId: string;
   lesson: Lesson;
   cards: Card[];
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
+  occlusions: Occlusion[];
 }) {
   const navigate = useNavigate();
   // Invariant (assignCardsToLesson): every card assigned to a lesson shares that
@@ -212,10 +270,14 @@ function LessonBucket({
           courseId={courseId}
           assignableLessons={assignableLessons}
           onEditCard={(card) =>
-            navigate(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`)
+            navigate(`/course/${courseId}/lesson/${lesson.id}/cards/${card.id}/edit`, {
+              state: bankOrigin(courseId),
+            })
           }
           sequences={sequences}
           onEditSequence={(sequenceId) => navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
+          occlusions={occlusions}
+          onEditOcclusion={(occlusionId) => navigate(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
         />
       )}
     </section>
@@ -227,11 +289,13 @@ function UnassignedBucket({
   cards,
   assignableLessons,
   sequences,
+  occlusions,
 }: {
   courseId: string;
   cards: Card[];
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
+  occlusions: Occlusion[];
 }) {
   const navigate = useNavigate();
   // Invariant (assignCardsToLesson): unassigned cards all share the course's lazy
@@ -269,6 +333,8 @@ function UnassignedBucket({
           onEditCard={(card) => navigate(`/course/${courseId}/cards/${card.id}/edit`)}
           sequences={sequences}
           onEditSequence={(sequenceId) => navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
+          occlusions={occlusions}
+          onEditOcclusion={(occlusionId) => navigate(`/course/${courseId}/occlusion/${occlusionId}/edit`)}
         />
       )}
     </section>

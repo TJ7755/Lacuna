@@ -22,7 +22,7 @@ import { sha256Blob } from './assets';
 export interface ApkgImportResult {
   deckName: string;
   cards: Card[];
-  /** Images extracted from the APKG, keyed by original filename. */
+  /** Supported media extracted from the APKG, keyed by original filename. */
   media: Map<string, Uint8Array>;
   /** How many Anki notes were skipped because their type is unsupported. */
   skippedNotes: number;
@@ -119,10 +119,11 @@ export async function parseApkg(
       type: 'module',
     });
     const cleanup = () => worker.terminate();
-    worker.onmessage = (event: MessageEvent<
-      | { type: 'done'; result: ApkgImportResult }
-      | { type: 'error'; message: string }
-    >) => {
+    worker.onmessage = (
+      event: MessageEvent<
+        { type: 'done'; result: ApkgImportResult } | { type: 'error'; message: string }
+      >,
+    ) => {
       cleanup();
       if (event.data.type === 'done') resolve(event.data.result);
       else reject(new Error(event.data.message));
@@ -177,7 +178,9 @@ function readMediaMap(zip: Unzipped): Map<string, string> {
 async function loadAnkiDatabase(zip: Unzipped, wasmUrl: string): Promise<Database> {
   const dbBytes = zip['collection.anki2'];
   if (!dbBytes) {
-    throw new Error('This file does not contain a valid Anki collection (collection.anki2 missing).');
+    throw new Error(
+      'This file does not contain a valid Anki collection (collection.anki2 missing).',
+    );
   }
 
   const SQL = await initSqlJs({
@@ -248,11 +251,7 @@ function extractFromDatabase(
     }
 
     for (const ankiCard of ankiCards) {
-      const card = buildLacunaCard(
-        ankiCard,
-        mapping,
-        revlogByCid.get(ankiCard.id) ?? [],
-      );
+      const card = buildLacunaCard(ankiCard, mapping, revlogByCid.get(ankiCard.id) ?? []);
       if (card) {
         lacunaCards.push(card);
       } else {
@@ -503,9 +502,10 @@ function buildLacunaCard(
   // Convert Anki due to epoch ms.
   // Anki due is: days since creation for reviews, or a Unix timestamp for learning.
   // For simplicity, we treat it as days for review cards and use today + days for new.
-  const due = ankiCard.due > 1000000000
-    ? ankiCard.due * 1000 // Unix timestamp
-    : now + ankiCard.due * 86400_000; // Days offset
+  const due =
+    ankiCard.due > 1000000000
+      ? ankiCard.due * 1000 // Unix timestamp
+      : now + ankiCard.due * 86400_000; // Days offset
 
   // Convert review logs.
   const history: ReviewLog[] = revlogs
@@ -603,27 +603,43 @@ function getImageDimensions(blob: Blob): Promise<{ width: number; height: number
   });
 }
 
-function replaceMediaRefs(text: string, mediaMap: Map<string, string>): string {
+interface ImportedMediaRef {
+  hash: string;
+  kind: 'image' | 'audio';
+}
+
+function replaceMediaRefs(text: string, mediaMap: Map<string, ImportedMediaRef>): string {
   let result = text;
+  // Anki's native audio marker.
+  result = result.replace(/\[sound:([^\]]+)\]/gi, (match, filename) => {
+    const media = mediaMap.get(filename);
+    if (!media || media.kind !== 'audio') return match;
+    return `![audio](lacuna-asset://${media.hash})`;
+  });
   // HTML img tags: <img src="filename.jpg">
   const imgRe = /<img\s+[^>]*src=["']([^"']+)["'][^>]*>/gi;
   result = result.replace(imgRe, (match, src) => {
-    const hash = mediaMap.get(src);
-    if (!hash) return match;
-    return `![image](lacuna-asset://${hash})`;
+    const media = mediaMap.get(src);
+    if (!media || media.kind !== 'image') return match;
+    return `![image](lacuna-asset://${media.hash})`;
   });
   // Markdown image syntax: ![alt](filename.jpg)
   const mdImgRe = /!\[([^\]]*)\]\(([^)]+)\)/g;
   result = result.replace(mdImgRe, (match, alt, src) => {
-    const hash = mediaMap.get(src);
-    if (!hash) return match;
-    return `![${alt}](lacuna-asset://${hash})`;
+    const media = mediaMap.get(src);
+    if (!media || media.kind !== 'image') return match;
+    return `![${alt}](lacuna-asset://${media.hash})`;
   });
   // Plain text references like filename.jpg (fallback for filenames embedded in text)
-  for (const [filename, hash] of mediaMap.entries()) {
+  for (const [filename, media] of mediaMap.entries()) {
     const escaped = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const plainRe = new RegExp(escaped, 'g');
-    result = result.replace(plainRe, `lacuna-asset://${hash}`);
+    result = result.replace(
+      plainRe,
+      media.kind === 'audio'
+        ? `![audio](lacuna-asset://${media.hash})`
+        : `lacuna-asset://${media.hash}`,
+    );
   }
   return result;
 }
@@ -642,16 +658,39 @@ export async function importApkgResult(
 ): Promise<{ deck: Deck; cards: Card[] }> {
   const { createDeck, createCards } = await import('./repository');
   const { db } = await import('./schema');
-  const { storeImageBlob } = await import('./assets');
+  const { storeAudioBlob, storeImageBlob } = await import('./assets');
 
-  let deck: Deck;
+  let deck: Deck | undefined;
   if (targetDeckId) {
     const existing = await db.decks.get(targetDeckId);
     if (!existing) throw new Error('Target deck not found.');
     deck = existing;
-  } else {
-    deck = await createDeck(result.deckName);
   }
+
+  // Ingest supported media before creating any deck or card records. Asset writes are
+  // content-addressed and harmless to retry; partially created imports are not.
+  const mediaEntries = await Promise.all(
+    [...result.media.entries()].map(async ([filename, bytes]) => {
+      const mime = guessMimeType(filename);
+      const blob = new Blob([new Uint8Array(bytes)], { type: mime });
+      if (mime.startsWith('image/')) {
+        const [hash, dims] = await Promise.all([sha256Blob(blob), getImageDimensions(blob)]);
+        await storeImageBlob(blob, mime, dims?.width ?? 0, dims?.height ?? 0);
+        return [filename, { hash, kind: 'image' as const }] as const;
+      }
+      if (mime.startsWith('audio/')) {
+        const asset = await storeAudioBlob(blob, mime);
+        return [filename, { hash: asset.hash, kind: 'audio' as const }] as const;
+      }
+      return null;
+    }),
+  );
+  const mediaHashMap = new Map<string, ImportedMediaRef>();
+  for (const entry of mediaEntries) {
+    if (entry) mediaHashMap.set(entry[0], entry[1]);
+  }
+
+  deck ??= await createDeck(result.deckName);
 
   // Assign deckId to all cards.
   const cards = result.cards.map((c) => ({ ...c, deckId: deck.id }));
@@ -670,52 +709,37 @@ export async function importApkgResult(
   // Persist imported scheduling state in one IndexedDB request rather than one
   // update per card.
   const scheduledCards = created.map((card, i) => {
-      const draft = cards[i];
-      return {
-        ...card,
-        stability: draft.stability,
-        difficulty: draft.difficulty,
-        lastReviewed: draft.lastReviewed,
-        reps: draft.reps,
-        lapses: draft.lapses,
-        state: draft.state,
-        due: draft.due,
-        scheduledDays: draft.scheduledDays,
-        learningSteps: draft.learningSteps,
-        history: draft.history,
-        createdAt: draft.createdAt,
-        suspended: draft.suspended,
-      };
+    const draft = cards[i];
+    return {
+      ...card,
+      stability: draft.stability,
+      difficulty: draft.difficulty,
+      lastReviewed: draft.lastReviewed,
+      reps: draft.reps,
+      lapses: draft.lapses,
+      state: draft.state,
+      due: draft.due,
+      scheduledDays: draft.scheduledDays,
+      learningSteps: draft.learningSteps,
+      history: draft.history,
+      createdAt: draft.createdAt,
+      suspended: draft.suspended,
+    };
   });
   if (scheduledCards.length > 0) await db.cards.bulkPut(scheduledCards);
-
-  // Ingest media images and build a filename -> hash map.
-  const mediaEntries = await Promise.all(
-    [...result.media.entries()].map(async ([filename, bytes]) => {
-      const mime = guessMimeType(filename);
-      if (!mime.startsWith('image/')) return null;
-      const blob = new Blob([new Uint8Array(bytes)], { type: mime });
-      const [hash, dims] = await Promise.all([sha256Blob(blob), getImageDimensions(blob)]);
-      await storeImageBlob(blob, mime, dims?.width ?? 0, dims?.height ?? 0);
-      return [filename, hash] as const;
-    }),
-  );
-  const mediaHashMap = new Map(
-    mediaEntries.filter((entry): entry is readonly [string, string] => entry !== null),
-  );
 
   // Replace media references in card text with Lacuna asset references.
   if (mediaHashMap.size > 0) {
     const rewritten: Card[] = [];
-      for (const card of scheduledCards) {
-        const newFront = replaceMediaRefs(card.front, mediaHashMap);
-        const newBack = replaceMediaRefs(card.back, mediaHashMap);
-        if (newFront !== card.front || newBack !== card.back) {
-          card.front = newFront;
-          card.back = newBack;
-          rewritten.push(card);
-        }
+    for (const card of scheduledCards) {
+      const newFront = replaceMediaRefs(card.front, mediaHashMap);
+      const newBack = replaceMediaRefs(card.back, mediaHashMap);
+      if (newFront !== card.front || newBack !== card.back) {
+        card.front = newFront;
+        card.back = newBack;
+        rewritten.push(card);
       }
+    }
     if (rewritten.length > 0) await db.cards.bulkPut(rewritten);
   }
 
@@ -735,7 +759,9 @@ function guessMimeType(filename: string): string {
     mp3: 'audio/mpeg',
     ogg: 'audio/ogg',
     wav: 'audio/wav',
-    mp4: 'video/mp4',
+    m4a: 'audio/mp4',
+    mp4: 'audio/mp4',
+    webm: 'audio/webm',
   };
   return map[ext] ?? 'application/octet-stream';
 }

@@ -4,8 +4,6 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { version } from './package.json';
 
-import { cloudflare } from '@cloudflare/vite-plugin';
-
 // Cross-origin isolation headers required by the FSRS WASM trainer worker.
 const crossOriginIsolationHeaders = {
   'Cross-Origin-Opener-Policy': 'same-origin',
@@ -56,10 +54,11 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: true,
+        // A development worker can cache Vite modules from different optimiser
+        // generations, leaving React and its renderer with incompatible instances.
+        enabled: false,
       },
     }),
-    cloudflare(),
   ],
   server: {
     port: 5173,
@@ -71,6 +70,12 @@ export default defineConfig({
   // Surface the package version to the app (used by the diagnostic bundle).
   define: {
     __APP_VERSION__: JSON.stringify(version),
+    // Vercel serves the analytics endpoint itself. Do not inject a script that
+    // will 404 on local previews, Electron or other static hosts.
+    __VERCEL_ANALYTICS_ENABLED__: JSON.stringify(process.env.VERCEL === '1'),
+  },
+  resolve: {
+    dedupe: ['react', 'react-dom', 'motion'],
   },
   // Pre-bundle the heavy dependencies up front so the dev server never pauses to
   // re-optimise (and full-page reload) the first time a lazy route pulls one in.
