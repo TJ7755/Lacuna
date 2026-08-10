@@ -961,7 +961,9 @@ function ShareCodeImport({
                 <p className="mb-3 text-sm leading-relaxed text-ink-soft">
                   <strong className="text-ink">{pending.summary.courseName}</strong> —{' '}
                   <strong className="text-ink">{pending.summary.lessonCount}</strong> lesson
-                  {pending.summary.lessonCount === 1 ? '' : 's'} and{' '}
+                  {pending.summary.lessonCount === 1 ? '' : 's'},{' '}
+                  <strong className="text-ink">{pending.summary.noteCount ?? 0}</strong> note
+                  {pending.summary.noteCount === 1 ? '' : 's'} and{' '}
                   <strong className="text-ink">{pending.summary.cardCount}</strong> card
                   {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
                   {formatDate(pending.summary.exportedAt)}.

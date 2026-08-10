@@ -50,6 +50,7 @@ vi.mock('../db/share', () => ({
     omittedImages: false,
     courseName: 'Test Course',
     lessonCount: 1,
+    noteCount: 3,
   })),
 }));
 
@@ -283,6 +284,9 @@ describe('SharePage', () => {
       mockDecodedPayload = { v: 2 };
       await inspectCode();
       expect(screen.getByText('Ready to import')).toBeInTheDocument();
+      expect(screen.getByText('Test Course').closest('p')).toHaveTextContent(
+        'Test Course — 1 lesson, 3 notes and 2 cards',
+      );
       fireEvent.click(screen.getByText('Add to my courses'));
       await waitFor(() => expect(mockNotify).toHaveBeenCalled());
       expect(mockMergeLineageUpdate).not.toHaveBeenCalled();

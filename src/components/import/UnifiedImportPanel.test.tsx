@@ -45,6 +45,7 @@ vi.mock('../../db/share', () => ({
     omittedImages: false,
     courseName: 'Test Course',
     lessonCount: 1,
+    noteCount: 3,
   })),
 }));
 

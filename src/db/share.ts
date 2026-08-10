@@ -507,6 +507,8 @@ export interface ShareSummary {
   courseName?: string;
   /** v2 only: number of lessons. */
   lessonCount?: number;
+  /** v2 only: number of notes across all lessons. */
+  noteCount?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -794,6 +796,7 @@ export function summariseShare(payload: SharePayload): ShareSummary {
       omittedImages,
       courseName: payload.course.n,
       lessonCount: payload.lessons.length,
+      noteCount: payload.lessons.reduce((count, lesson) => count + lesson.notes.length, 0),
     };
   }
 

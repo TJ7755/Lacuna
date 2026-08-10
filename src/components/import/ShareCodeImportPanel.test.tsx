@@ -26,6 +26,7 @@ describe('ShareCodeImportPanel', () => {
       kind: 'course',
       courseName: 'Imported biology',
       lessonCount: 1,
+      noteCount: 3,
       cardCount: 2,
       exportedAt: 1_700_000_000_000,
       deckCount: 0,
@@ -51,7 +52,9 @@ describe('ShareCodeImportPanel', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
 
-    expect(await screen.findByText('Imported biology')).toBeInTheDocument();
+    expect((await screen.findByText('Imported biology')).closest('p')).toHaveTextContent(
+      'Imported biology — 1 lesson, 3 notes and 2 cards',
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Add to my courses' }));
 
     await waitFor(() => expect(onShareImport).toHaveBeenCalledWith(1, 2, ['imported-course']));

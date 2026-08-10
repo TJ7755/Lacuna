@@ -471,6 +471,7 @@ describe('course share codes (v2)', () => {
     expect(summary.kind).toBe('course');
     expect(summary.courseName).toBe('Biology');
     expect(summary.lessonCount).toBe(2);
+    expect(summary.noteCount).toBe(2);
     expect(summary.cardCount).toBe(5); // front_back + cloze + front_back + reversible pair (2)
 
     const result = await importSharePayload(payload);

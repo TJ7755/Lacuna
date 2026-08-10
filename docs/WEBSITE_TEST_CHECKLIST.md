@@ -51,6 +51,20 @@ unchecked. Run destructive cases only against disposable courses and export a fu
   unchecked until every routed surface has been swept.
 - No browser console errors were captured during this continuation. The overall console checkbox
   remains unchecked until the complete route sweep finishes.
+- A full JSON backup downloaded as `lacuna-backup-2026-08-10.json`. Direct inspection found two
+  courses, seven lessons, three notes, 36 cards, one sequence, one manual practice node, three
+  assessments and both referenced seeded assets. After adding a seventh disposable card, Replace
+  restored the exported six-card state and removed only the post-export mutation; the note,
+  sequence, classic, numeric and working items remained.
+- The backup import preview incorrectly labelled its five internal backing decks as lessons rather
+  than reporting the seven course lessons. This release defect is fixed with regression coverage in
+  `7f92f8e`; the corrected preview still needs production-build verification.
+- The disposable course exported as a 1,272-character `LAC1` code. QR and plain-text variants
+  rendered, and the Copy control reported success. On the storage-isolated `127.0.0.1:4174` origin,
+  the preview named the course and reported three lessons and six cards, but omitted its note count.
+  Both import surfaces now report notes with regression coverage; production-build verification is
+  still required. Import created one course with all six cards in New state and no review history. A
+  malformed code produced explicit error feedback and left the two existing courses unchanged.
 
 ## 1. Release gate and test data
 
@@ -346,13 +360,13 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 
 ## 17. Sharing, publishing and lineage updates
 
-- [ ] Exporting a course produces a valid `LAC0`–`LAC3` share code and QR/plain-text controls.
+- [x] Exporting a course produces a valid `LAC0`–`LAC3` share code and QR/plain-text controls.
 - [ ] Copy and download actions confirm success; QR fits desktop and mobile screens.
 - [ ] Image-bearing content warns that share codes omit binary assets rather than silently promising
       otherwise.
 - [ ] Import preview names the course and counts lessons, notes and cards before writing.
-- [ ] Importing in a clean profile creates one complete course with no review history.
-- [ ] Invalid/truncated codes fail safely and do not create partial data.
+- [x] Importing in a clean profile creates one complete course with no review history.
+- [x] Invalid/truncated codes fail safely and do not create partial data.
 - [ ] Publishing assigns lineage/revision data and a later publish increments the revision.
 - [ ] Importing an update to known lineage opens merge review instead of duplicating the course.
 - [ ] Merge review distinguishes unchanged, local-only, incoming-only and conflicting fields.
@@ -368,9 +382,9 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 - [ ] APKG import handles supported basic/reversed/cloze notes, media and review history and reports
       skipped unsupported material.
 - [ ] Cancelling an import writes nothing; accepting writes only the previewed records.
-- [ ] Full JSON export contains courses, scheduling state, review logs and referenced image assets.
+- [x] Full JSON export contains courses, scheduling state, review logs and referenced image assets.
 - [ ] Markdown, CSV and Anki-text exports clearly warn that they are not complete backups.
-- [ ] Full-backup Replace restores the exact exported state in a disposable profile.
+- [x] Full-backup Replace restores the exact exported state in a disposable profile.
 - [ ] Full-backup Merge adds/merges content without overwriting newer local progress.
 - [ ] Daily automatic restore points are created, listed, restored and deleted correctly.
 - [ ] Pre-migration snapshots are available after a schema upgrade.
