@@ -6,6 +6,8 @@ import type { McpGrant } from './mcp/types';
 export {};
 
 declare global {
+  const __VERCEL_ANALYTICS_ENABLED__: boolean;
+
   interface Window {
     electronAPI?: {
       platform: string;

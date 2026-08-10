@@ -30,6 +30,7 @@ export function useDragX(
 
   const onPointerDown = useCallback(
     (e: ReactPointerEvent<SVGElement>) => {
+      e.currentTarget.focus();
       e.currentTarget.setPointerCapture(e.pointerId);
       setDragging(true);
       apply(e.clientX);

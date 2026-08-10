@@ -116,6 +116,7 @@ export function NumericAnswerEditor({ value, onChange, invalid = false }: Numeri
               </span>
               <input
                 type="number"
+                aria-label="Plus or minus"
                 min="0"
                 step="any"
                 value={Number.isFinite(value.tolerance) ? value.tolerance : ''}

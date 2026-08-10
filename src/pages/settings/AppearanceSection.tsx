@@ -113,7 +113,7 @@ export function AppearanceSection({ motionMultiplier }: { motionMultiplier: numb
                 onClick={() => setScale(step.value)}
                 aria-pressed={active}
                 className={cn(
-                  'flex-1 rounded-lg border px-3 py-2 text-sm transition-colors',
+                  'min-w-0 flex-1 rounded-lg border px-1.5 py-2 text-sm transition-colors',
                   active
                     ? 'border-accent bg-accent-soft text-accent'
                     : 'border-line text-ink-soft hover:border-line-strong',

@@ -129,6 +129,7 @@ export function StudySection({ motionMultiplier }: { motionMultiplier: number })
         <Toggle
           id="start-in-focus-mode"
           checked={startInFocusMode}
+          ariaLabel="Start Learn sessions in Focus Mode"
           onChange={setStartInFocusMode}
         />
       </div>
@@ -256,6 +257,7 @@ function NumberField({
       <div className="mt-2 flex items-center gap-2">
         <input
           type="number"
+          aria-label={label}
           min={min}
           max={max}
           value={value}

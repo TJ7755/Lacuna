@@ -27,5 +27,15 @@ describe('PracticeSettingsSection', () => {
     expect(screen.getByText('Threshold (exam near)')).toBeInTheDocument();
     expect(screen.getByText('Urgent window')).toBeInTheDocument();
     expect(screen.getByText('Maximum lesson gap')).toBeInTheDocument();
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Practice threshold when the exam is not near, in minutes',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Practice threshold when the exam is near, in minutes',
+      }),
+    ).toBeInTheDocument();
   });
 });

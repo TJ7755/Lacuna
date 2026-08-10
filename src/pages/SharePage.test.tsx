@@ -222,6 +222,25 @@ describe('SharePage', () => {
       screen.getByText(/All Lacuna share-code encodings \(LAC0–LAC3\) are supported/),
     ).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Share code to import' })).toBeInTheDocument();
+  });
+
+  it('names generated share and plain-text exports', async () => {
+    mockCourses = [mockCourse];
+    mockSummaries = { [mockCourse.id]: mockSummary };
+    mockCourseCards = [{ front: 'Question', back: 'Answer' } as Card];
+    render(<SharePage />);
+
+    fireEvent.click(screen.getByText('Test Course'));
+    fireEvent.click(screen.getByText('Generate share code'));
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Generated share code' })).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByText('Export as plain text'));
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Generated plain-text export' })).toBeInTheDocument(),
+    );
   });
 
   it('shows the never-published publish state for a course with no distribution', () => {

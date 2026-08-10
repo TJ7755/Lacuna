@@ -59,6 +59,7 @@ export function PracticeSettingsSection({
         Threshold (exam not near)
         <input
           type="number"
+          aria-label="Practice threshold when the exam is not near, in minutes"
           min={0}
           inputMode="numeric"
           value={practiceThresholdMinutesFar}
@@ -75,6 +76,7 @@ export function PracticeSettingsSection({
         Threshold (exam near)
         <input
           type="number"
+          aria-label="Practice threshold when the exam is near, in minutes"
           min={0}
           inputMode="numeric"
           value={practiceThresholdMinutesNear}
@@ -92,6 +94,7 @@ export function PracticeSettingsSection({
         Urgent window
         <input
           type="number"
+          aria-label="Practice urgent window, in days"
           min={0}
           inputMode="numeric"
           value={practiceUrgentWindowDays}
@@ -108,6 +111,7 @@ export function PracticeSettingsSection({
         Maximum lesson gap
         <input
           type="number"
+          aria-label="Maximum lesson gap for automatic practice"
           min={1}
           inputMode="numeric"
           value={practiceMaxGap}

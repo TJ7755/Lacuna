@@ -847,6 +847,12 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
 
 const VIRTUAL_THRESHOLD = 50;
 
+function cardTypeLabel(card: Card) {
+  if (card.sequenceItemId !== null && card.sequenceItemId !== undefined) return 'Sequence';
+  if (card.payload?.kind === 'working') return 'Working';
+  return card.type === 'cloze' ? 'Cloze' : 'Front / Back';
+}
+
 /** Renders the card list either as a simple grid (small decks) or a virtualised
  *  absolute-positioned list (large decks) to keep performance constant. Exported for
  *  reuse by {@link GeneratedCardGroup}, which renders a sequence's or occlusion's own
@@ -1318,7 +1324,7 @@ const CardRow = React.memo(function CardRow({
           <div className="min-w-0 flex-1">
             <div className="mb-1.5 flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-ink-faint">
-                {card.type === 'cloze' ? 'Cloze' : 'Front / Back'}
+                {cardTypeLabel(card)}
               </span>
               {showBack && (
                 <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
@@ -1351,8 +1357,8 @@ const CardRow = React.memo(function CardRow({
                 </span>
               )}
               {flagged && <FlagIcon width={13} height={13} className="text-accent" />}
-              {generated && (
-                <GeneratedCardBadge kind={isSequenceGenerated ? 'sequence' : 'occlusion'} />
+              {generated && !isSequenceGenerated && (
+                <GeneratedCardBadge kind="occlusion" />
               )}
               {linked && (
                 <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">

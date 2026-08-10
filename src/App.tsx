@@ -19,6 +19,7 @@ import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
 import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
 import { McpBridgeController } from './components/mcp/McpBridgeController';
+import { NotFound } from './pages/NotFound';
 
 function RouterWithQuotaWarning() {
   useStorageQuotaWarning();
@@ -267,6 +268,10 @@ const router = createHashRouter([
                 <OcclusionEditor />
               </Suspense>
             ),
+          },
+          {
+            path: '*',
+            element: <NotFound />,
           },
         ],
       },

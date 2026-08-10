@@ -147,6 +147,24 @@ describe('CardList', () => {
     expect(screen.getByText('geography')).toBeInTheDocument();
   });
 
+  it('uses the Working badge for working-item cards stored as front/back cards', () => {
+    const workingCard: Card = {
+      ...mockCard,
+      payload: { v: 1, kind: 'working', scheme: [] },
+    };
+    render(
+      <CardList
+        cards={[workingCard]}
+        deck={mockDeck}
+        allDecks={[mockDeck]}
+        onEditCard={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Working')).toBeInTheDocument();
+    expect(screen.queryByText('Front / Back')).not.toBeInTheDocument();
+  });
+
   it('shows select mode when Select button is clicked', () => {
     render(
       <CardList
@@ -396,6 +414,8 @@ describe('CardList', () => {
         />,
       );
       expect(screen.getByText('Sequence')).toBeInTheDocument();
+      expect(screen.getAllByText('Sequence')).toHaveLength(1);
+      expect(screen.getAllByText('Front / Back')).toHaveLength(1);
 
       fireEvent.click(screen.getByText('Select'));
       // Only the ordinary card is selectable: "Select all" only ever selects it.

@@ -28,7 +28,7 @@ function renderApp(): void {
     <StrictMode>
       <LazyMotion features={domAnimation}>
         <App />
-        <Analytics />
+        {__VERCEL_ANALYTICS_ENABLED__ && <Analytics />}
       </LazyMotion>
     </StrictMode>,
   );

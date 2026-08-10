@@ -92,6 +92,7 @@ export function SidebarSection({ motionMultiplier }: { motionMultiplier: number 
                 <Toggle
                   checked={item.visible}
                   disabled={!canHide}
+                  ariaLabel={`Show ${item.label}`}
                   onChange={(checked) => {
                     const next = sidebarSettings.navItems.map((navItem) =>
                       navItem.id === item.id ? { ...navItem, visible: checked } : navItem,

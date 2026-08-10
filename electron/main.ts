@@ -103,7 +103,7 @@ function installSecurityHeaders(): void {
     }
     if (!isDev) {
       headers['Content-Security-Policy'] = [
-        "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file:; img-src 'self' blob: data: app: file:; connect-src 'self';",
+        "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; connect-src 'self';",
       ];
     }
     callback({ responseHeaders: headers });

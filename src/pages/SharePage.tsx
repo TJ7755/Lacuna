@@ -602,6 +602,7 @@ export function SharePage() {
                     </div>
                     <textarea
                       readOnly
+                      aria-label="Generated share code"
                       value={code}
                       onFocus={(e) => e.currentTarget.select()}
                       rows={4}
@@ -684,6 +685,7 @@ export function SharePage() {
                     </div>
                     <textarea
                       readOnly
+                      aria-label="Generated plain-text export"
                       value={plainText}
                       onFocus={(e) => e.currentTarget.select()}
                       rows={6}
@@ -711,6 +713,7 @@ export function SharePage() {
 
         <div className="rounded-xl border border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
           <textarea
+            aria-label="Share code to import"
             value={input}
             onChange={(e) => {
               setInput(e.target.value);

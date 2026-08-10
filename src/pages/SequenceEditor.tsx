@@ -63,6 +63,8 @@ export function SequenceEditor() {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [invalidItems, setInvalidItems] = useState<Set<string>>(() => new Set());
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const preset = getPreset(presetId);
   const mode = preset.mode;
   const usesSpeakers = preset.usesSpeakers;
@@ -311,7 +313,35 @@ export function SequenceEditor() {
   }
 
   async function handleSave() {
-    if (!canSave || !courseId) return;
+    if (saving || !courseId) return;
+
+    const emptyItemIds = new Set(items.filter((item) => !item.value.trim()).map((item) => item.id));
+    const missingName = name.trim().length === 0;
+    const missingItems = items.length === 0 || emptyItemIds.size > 0;
+    const missingCards = items.length > 0 && emptyItemIds.size === 0 && preview.length === 0;
+    const missingSpeaker = usesSpeakers && mySpeaker.trim().length === 0;
+
+    setNameError(missingName ? 'Enter a sequence name before saving.' : null);
+    setInvalidItems(emptyItemIds);
+    setSaveError(
+      missingItems
+        ? null
+        : missingCards
+          ? `Add at least two ${preset.terminology.itemPlural.toLowerCase()} to generate cards.`
+          : missingSpeaker
+            ? 'Choose which speaker you are learning before saving.'
+            : null,
+    );
+
+    if (missingName || missingItems || missingCards || missingSpeaker || !canSave) {
+      if (missingName) {
+        document.getElementById('sequence-name')?.focus();
+      } else if (emptyItemIds.size > 0) {
+        itemInputs.current.get(emptyItemIds.values().next().value as string)?.focus();
+      }
+      return;
+    }
+
     setSaving(true);
     try {
       const opts = {
@@ -380,18 +410,31 @@ export function SequenceEditor() {
           <div>
             <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Name</div>
             <input
+              id="sequence-name"
+              aria-label="Sequence name"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (e.target.value.trim()) setNameError(null);
+              }}
+              aria-invalid={nameError ? 'true' : undefined}
+              aria-describedby={nameError ? 'sequence-name-error' : undefined}
               placeholder="e.g. The Krebs cycle"
               className="w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
+            {nameError && (
+              <p id="sequence-name-error" role="alert" className="mt-2 text-sm text-negative">
+                {nameError}
+              </p>
+            )}
           </div>
           <div>
             <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
               Description <span className="normal-case text-ink-faint/70">(optional)</span>
             </div>
             <input
+              aria-label="Sequence description"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -460,6 +503,7 @@ export function SequenceEditor() {
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
+                          aria-label={`${preset.terminology.chunkLabel} ${i + 1}`}
                           value={label}
                           onChange={(e) => renameChunkLabel(i, e.target.value)}
                           className="flex-1 rounded-lg border border-line bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-accent"
@@ -486,6 +530,7 @@ export function SequenceEditor() {
               Cue window
               <input
                 type="number"
+                aria-label="Cue window"
                 min={1}
                 max={items.length || 1}
                 value={cueWindow}
@@ -500,6 +545,7 @@ export function SequenceEditor() {
             <label className="flex items-center gap-2 text-sm text-ink-soft">
               <input
                 type="checkbox"
+                aria-label="Also generate label to value cards"
                 checked={generateLabelCards}
                 onChange={(e) => setGenerateLabelCards(e.target.checked)}
                 className="accent-accent"
@@ -510,6 +556,7 @@ export function SequenceEditor() {
               <label className="flex items-center gap-2 text-sm text-ink-soft">
                 My speaker
                 <Select
+                  aria-label="My speaker"
                   value={mySpeaker}
                   onChange={(e) => setMySpeaker(e.target.value)}
                   className="min-w-[8rem]"
@@ -659,7 +706,16 @@ export function SequenceEditor() {
           <Button variant="ghost" onClick={() => navigate(backPath)}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={!canSave || saving}>
+          {saveError && (
+            <p role="alert" className="max-w-xs text-right text-sm text-negative">
+              {saveError}
+            </p>
+          )}
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            disabled={saving || (usesSpeakers && (!mySpeaker.trim() || preview.length === 0))}
+          >
             {editing ? 'Save changes' : 'Add sequence'}
           </Button>
         </div>

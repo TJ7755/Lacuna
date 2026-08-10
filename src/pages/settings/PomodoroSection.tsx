@@ -85,6 +85,7 @@ function DurationInput({
       <div className="mt-2 flex items-center gap-2">
         <input
           type="number"
+          aria-label={`${label} duration, in minutes`}
           min={1}
           max={120}
           value={value}
