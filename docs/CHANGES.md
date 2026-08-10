@@ -1,5 +1,30 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Audit correctness fixes
+
+- Revalidated structured item payloads at the card repository, share-code and backup boundaries.
+  Empty or semantically invalid v1 working schemes are rejected, payloads cannot be attached to
+  cloze cards, and unknown future item versions remain intact for read-only fallback.
+
+## Unreleased — Confirmed release-defect fixes
+
+- Fixed the production CSP/font and analytics-load errors, restored mobile navigation focus,
+  added a branded not-found route, made Method controls keyboard-operable, and named Settings,
+  authoring and sharing controls.
+- Added inline validation for blank course and sequence creation, consolidated toast announcements
+  into one live region, corrected Working and Sequence card badges, and fixed iPhone SE Settings
+  text-size overflow.
+
+## Unreleased — Automated-test signal cleanup
+
+- Removed KaTeX quirks-mode, React Router future-flag, Recharts zero-size and Happy DOM iframe
+  fetch noise from the test harness and fixtures.
+- Awaited asynchronous editor, lesson-management, LearnMode and report transitions instead of
+  asserting before their user-visible state had settled.
+- Removed expected share-validation and error-boundary logging, completed the navigation fixture
+  for the Question Bank test, and closed pre-migration snapshot connections after each operation.
+- The full suite now passes with 198 files and 1,747 tests without stderr output.
+
 ## Unreleased — Browser QA fixes
 
 - Newly created lessons now open directly from single-lesson course views. Course and lesson

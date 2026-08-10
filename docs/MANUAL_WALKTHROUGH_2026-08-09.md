@@ -20,6 +20,52 @@ documentation produced by the run is committed as a single release record. Brows
 unable to send input during the first pass, then recovered in the T3 collaborative preview for two
 continuations. Untested cases are recorded as untested, not quietly promoted to passes.
 
+## Follow-up verification in the current working tree
+
+The nine confirmed release defects recorded below were fixed after the historical walkthrough and
+tested individually. These changes are not included in the evidence commit above, so the original
+observations remain below as audit history rather than being silently rewritten.
+
+1. CSP/font and production-load errors — fixed; build and production preview checked.
+2. Mobile navigation focus restoration — fixed; close, toggle, Escape and route-change regressions
+   covered by `src/components/layout/AppShell.test.tsx`.
+3. Branded not-found route — fixed; `src/pages/NotFound.test.tsx` covers the route, heading, path
+   and recovery link.
+4. Keyboard-operable Method sliders — fixed; arrow-key and pointer-focus regressions covered by
+   `src/components/method/interactiveCharts.test.tsx`.
+5. Accessible names for Settings, authoring and sharing controls — fixed; focused accessibility
+   tests pass across the affected pages and components.
+6. Inline validation for blank course and sequence creation — fixed; both forms now show focused,
+   announced validation errors without creating data.
+7. Duplicate live-region announcements — fixed; the toast stack is the single polite live region.
+8. Working and Sequence card badges — fixed; card-list tests distinguish the primary types.
+9. iPhone SE Settings clipping — fixed; the 375-pixel preview has no document or body overflow.
+
+The follow-up focused suite passed 88 tests across 12 files. The full build and typecheck passed.
+The warning inventory below is historical evidence from the original walkthrough; the automated-test
+signal cleanup was subsequently verified against the current working tree.
+
+### Automated-test signal cleanup
+
+The historical test stderr was cleaned up without hiding genuine failures. The test harness now runs
+in standards mode, supplies React Router's v7 future flags, gives Recharts a real chart height and
+keeps trusted video iframe fixtures local. Async editor and LearnMode assertions wait for their
+visible state transitions, complete route fixtures are mounted, expected share-validation and
+error-boundary output is silent, and pre-migration snapshot connections close after each operation.
+
+Current verification: `bun run test -- --reporter=dot` passed 198 files and 1,747 tests with no
+stderr output. `bun run lint`, `bun run typecheck` and `bun run build` also passed. The Vite build's
+dynamic-import and large-chunk diagnostics remain build-performance warnings, not test stderr.
+
+### Audit correctness finding: storage-boundary validation
+
+The first current-HEAD audit finding was reproduced before the fix: a v1 share code containing a
+working item with `scheme: []` decoded successfully and could be written to IndexedDB. The card
+repository now validates creates, bulk creates and updates; share decoding rejects malformed known
+payloads; and backup validation rejects them before a replace import can clear existing data.
+Unknown item versions and kinds remain importable for the documented read-only fallback. Focused
+coverage passed in `src/db/share.test.ts`, `src/db/repository.test.ts` and `src/db/portability.test.ts`.
+
 ## Release gates
 
 | Check | Result | Evidence and nitpicks |
