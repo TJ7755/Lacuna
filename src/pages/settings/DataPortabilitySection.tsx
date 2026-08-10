@@ -84,7 +84,8 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
               <h3 className="mb-3 font-display text-lg">Import data</h3>
               <div className="text-sm text-ink-soft">
                 <p className="mb-3">
-                  This backup contains <strong className="text-ink">{pending.decks.length}</strong> lessons and{' '}
+                  This backup contains{' '}
+                  <strong className="text-ink">{pending.lessons?.length ?? pending.decks.length}</strong> lessons and{' '}
                   <strong className="text-ink">{pending.cards.length}</strong> cards, exported on {formatDate(pending.exportedAt)}.
                 </p>
                 <ul className="space-y-2">

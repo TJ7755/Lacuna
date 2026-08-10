@@ -14,6 +14,7 @@
 - Added inline validation for blank course and sequence creation, consolidated toast announcements
   into one live region, corrected Working and Sequence card badges, and fixed iPhone SE Settings
   text-size overflow.
+- Corrected full-backup import previews to count course lessons rather than internal backing decks.
 
 ## Unreleased — Automated-test signal cleanup
 
