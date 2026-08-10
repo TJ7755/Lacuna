@@ -57,6 +57,19 @@ async function answerNo() {
   fireEvent.click(await screen.findByRole('button', { name: /^no$/i }));
 }
 
+async function answerYesAndWaitForExposure(lessonId: string) {
+  const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
+  fireEvent.click(revealCandidates.find((el) => el.tagName === 'BUTTON')!);
+  const yes = await screen.findByRole('button', { name: /^yes$/i });
+  await act(async () => {
+    fireEvent.click(yes);
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if ((await db.lessonCardExposures.where('lessonId').equals(lessonId).count()) === 1) return;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  });
+}
+
 async function continueFromNotes() {
   fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
 }
@@ -215,7 +228,7 @@ describe('LearnMode course/lesson scope', () => {
       position: 0,
     });
 
-    render(
+    const { unmount } = render(
       <ThemeProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
@@ -229,11 +242,11 @@ describe('LearnMode course/lesson scope', () => {
 
     await screen.findByRole('heading', { name: 'Kinematics' });
     await continueFromNotes();
-    await answerYes();
-
-    await waitFor(async () => {
-      expect(await db.lessonCardExposures.where('lessonId').equals(lesson1.id).count()).toBe(1);
+    await answerYesAndWaitForExposure(lesson1.id);
+    await screen.findByRole('heading', {
+      name: /Nice work|reached your goal|Time.s up|hit your daily limit/i,
     });
+    await act(async () => unmount());
     // Give any (incorrect) ratchet write a chance to land before asserting it didn't.
     await new Promise((r) => setTimeout(r, 50));
     expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
@@ -414,7 +427,12 @@ describe('LearnMode course/lesson scope', () => {
 
   it('never writes unlockedAt under open or linear unlock modes', async () => {
     for (const unlockMode of ['open', 'linear'] as const) {
-      await Promise.all([db.courses.clear(), db.lessons.clear(), db.cards.clear()]);
+      await Promise.all([
+        db.courses.clear(),
+        db.lessons.clear(),
+        db.cards.clear(),
+        db.lessonCardExposures.clear(),
+      ]);
       const course = await createCourse(`Mode ${unlockMode}`, { unlockMode });
       const lesson1 = await createLesson(course.id, 'First');
       const lesson2 = await createLesson(course.id, 'Second');
@@ -434,14 +452,13 @@ describe('LearnMode course/lesson scope', () => {
 
       await screen.findByRole('heading', { name: 'First' });
       await continueFromNotes();
-      await answerYes();
-
-      await waitFor(async () => {
-        expect(await db.lessonCardExposures.where('lessonId').equals(lesson1.id).count()).toBe(1);
+      await answerYesAndWaitForExposure(lesson1.id);
+      await screen.findByRole('heading', {
+        name: /Nice work|reached your goal|Time.s up|hit your daily limit/i,
       });
+      await act(async () => unmount());
       await new Promise((r) => setTimeout(r, 50));
       expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
-      unmount();
     }
   });
 
@@ -1092,7 +1109,7 @@ describe('LearnMode course/lesson scope', () => {
       payload: { v: 1, kind: 'scaffold' },
     });
 
-    render(
+    const { unmount } = render(
       <ThemeProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
@@ -1106,10 +1123,18 @@ describe('LearnMode course/lesson scope', () => {
 
     expect(await screen.findByText('Scaffold question')).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Bury until tomorrow' }));
+    const bury = await screen.findByRole('button', { name: 'Bury until tomorrow' });
+    await act(async () => {
+      fireEvent.click(bury);
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        if (screen.queryByText('Session complete')) break;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    });
 
     expect(await screen.findByText('Session complete')).toBeInTheDocument();
     expect((await db.cards.get(card.id))?.history ?? []).toHaveLength(0);
+    await act(async () => unmount());
   });
 
   it('does not create rigid progress slots from unavailable cards outside Simple mode', async () => {

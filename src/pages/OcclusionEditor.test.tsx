@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { OcclusionEditor } from './OcclusionEditor';
 import type { Course, Occlusion } from '../db/types';
@@ -71,6 +71,7 @@ function renderNew() {
     <MemoryRouter initialEntries={['/course/course-1/occlusion/new']}>
       <Routes>
         <Route path="/course/:courseId/occlusion/new" element={<OcclusionEditor />} />
+        <Route path="/course/:courseId/bank" element={<p>Bank</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -81,6 +82,7 @@ function renderEdit() {
     <MemoryRouter initialEntries={['/course/course-1/occlusion/occ-1/edit']}>
       <Routes>
         <Route path="/course/:courseId/occlusion/:occlusionId/edit" element={<OcclusionEditor />} />
+        <Route path="/course/:courseId/bank" element={<p>Bank</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -124,6 +126,7 @@ beforeEach(() => {
   snapshotOcclusion.mockClear();
   restoreOcclusion.mockClear();
   storeOcclusionDiagram.mockReset();
+  resolveAssetUrl.mockClear();
   resolveAssetUrl.mockResolvedValue('blob:diagram');
 });
 
@@ -193,9 +196,12 @@ describe('OcclusionEditor', () => {
     fireEvent.change(pairSelect, { target: { value: labelOption.value } });
 
     fireEvent.change(screen.getByPlaceholderText('e.g. The plant cell'), { target: { value: 'Plant cell' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add occlusion' }));
-
-    await vi.waitFor(() => expect(createOcclusion).toHaveBeenCalled());
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add occlusion' }));
+      await vi.waitFor(() => expect(createOcclusion).toHaveBeenCalled());
+      await Promise.resolve(createOcclusion.mock.results[0]?.value);
+    });
+    await screen.findByText('Bank');
     const [calledCourseId, calledLessonId, calledName, calledAssetHash, calledRegions] =
       createOcclusion.mock.calls[0];
     expect(calledCourseId).toBe('course-1');
@@ -231,12 +237,23 @@ describe('OcclusionEditor', () => {
     expect(screen.getByText('Regenerate every card in this occlusion?')).toBeInTheDocument();
     expect(storeOcclusionDiagram).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Replace' }));
+      await Promise.resolve(storeOcclusionDiagram.mock.results[0]?.value);
+    });
     await vi.waitFor(() => expect(storeOcclusionDiagram).toHaveBeenCalledWith(file));
     await vi.waitFor(() => expect(resolveAssetUrl).toHaveBeenCalledWith('hash-new'));
+    const hashNewCall = resolveAssetUrl.mock.calls.findIndex(([hash]) => hash === 'hash-new');
+    await act(async () => {
+      await Promise.resolve(resolveAssetUrl.mock.results[hashNewCall]?.value);
+    });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await vi.waitFor(() => expect(updateOcclusion).toHaveBeenCalled());
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+      await vi.waitFor(() => expect(updateOcclusion).toHaveBeenCalled());
+      await Promise.resolve(updateOcclusion.mock.results[0]?.value);
+    });
+    await screen.findByText('Bank');
     expect(updateOcclusion.mock.calls[0][0]).toMatchObject({ assetHash: 'hash-new' });
   });
 
@@ -254,9 +271,14 @@ describe('OcclusionEditor', () => {
     renderEdit();
     await screen.findByRole('img');
 
-    fireEvent.click(screen.getByText('Delete occlusion'));
-    await vi.waitFor(() => expect(snapshotOcclusion).toHaveBeenCalledWith('occ-1'));
-    await vi.waitFor(() => expect(deleteOcclusion).toHaveBeenCalledWith('occ-1'));
+    await act(async () => {
+      fireEvent.click(screen.getByText('Delete occlusion'));
+      await vi.waitFor(() => expect(snapshotOcclusion).toHaveBeenCalledWith('occ-1'));
+      await Promise.resolve(snapshotOcclusion.mock.results[0]?.value);
+      await vi.waitFor(() => expect(deleteOcclusion).toHaveBeenCalledWith('occ-1'));
+      await Promise.resolve(deleteOcclusion.mock.results[0]?.value);
+    });
+    await screen.findByText('Bank');
     expect(mockNotify).toHaveBeenCalledWith(
       expect.stringContaining('deleted'),
       'neutral',

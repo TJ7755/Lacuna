@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CourseSettings } from './CourseSettings';
@@ -22,8 +23,19 @@ let mockCards: Card[] | undefined;
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
+  function TestMemoryRouter(props: React.ComponentProps<typeof actual.MemoryRouter>) {
+    return React.createElement(actual.MemoryRouter, {
+      ...props,
+      future: {
+        ...props.future,
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      },
+    });
+  }
   return {
     ...actual,
+    MemoryRouter: TestMemoryRouter,
     useNavigate: () => mockNavigate,
   };
 });

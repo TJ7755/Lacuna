@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import type { Course } from '../db/types';
@@ -20,7 +21,17 @@ let mockFlows: FlowData[] = [];
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
-  return { ...actual, useNavigate: () => mockNavigate };
+  function TestMemoryRouter(props: React.ComponentProps<typeof actual.MemoryRouter>) {
+    return React.createElement(actual.MemoryRouter, {
+      ...props,
+      future: {
+        ...props.future,
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      },
+    });
+  }
+  return { ...actual, MemoryRouter: TestMemoryRouter, useNavigate: () => mockNavigate };
 });
 
 vi.mock('../state/useCourseStudyFlow', () => ({

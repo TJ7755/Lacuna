@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import * as React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import type { Card, Course, Lesson, Note, PendingMergeReview } from '../../db/types';
@@ -47,7 +48,22 @@ vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => notes }));
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
-  return { ...actual, useNavigate: () => mockNavigate, useParams: () => ({ courseId: 'c1' }) };
+  function TestMemoryRouter(props: React.ComponentProps<typeof actual.MemoryRouter>) {
+    return React.createElement(actual.MemoryRouter, {
+      ...props,
+      future: {
+        ...props.future,
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      },
+    });
+  }
+  return {
+    ...actual,
+    MemoryRouter: TestMemoryRouter,
+    useNavigate: () => mockNavigate,
+    useParams: () => ({ courseId: 'c1' }),
+  };
 });
 
 vi.mock('../../state/useCourseData', () => ({

@@ -153,6 +153,7 @@ function renderPage() {
     <MemoryRouter initialEntries={['/course/course-1/bank']}>
       <Routes>
         <Route path="/course/:courseId/bank" element={<QuestionBank />} />
+        <Route path="/course/:courseId/cards/new" element={<p>Card editor</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -250,8 +251,7 @@ describe('QuestionBank', () => {
     mockCards = [];
     renderPage();
     fireEvent.click(screen.getByText('Create your first card'));
-    // No assertion on navigation target beyond the click not throwing — routing is
-    // exercised end-to-end elsewhere; this covers the wiring of the click handler.
+    expect(screen.getByText('Card editor')).toBeInTheDocument();
   });
 
   it('filters cards by search text', () => {

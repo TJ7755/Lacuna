@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import { AddLessonControl, defaultLessonName } from './AddLessonControl';
 
 const createLesson = vi.fn().mockResolvedValue({
@@ -35,11 +35,17 @@ describe('AddLessonControl', () => {
     fireEvent.click(screen.getByRole('button', { name: /add lesson/i }));
     expect(screen.getByDisplayValue('Lesson 2')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /create lesson/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /create lesson/i }));
 
+      await vi.waitFor(() => {
+        expect(createLesson).toHaveBeenCalledWith('course-1', 'Lesson 2');
+        expect(onCreated).toHaveBeenCalled();
+      });
+      await Promise.resolve(createLesson.mock.results[0]?.value);
+    });
     await vi.waitFor(() => {
-      expect(createLesson).toHaveBeenCalledWith('course-1', 'Lesson 2');
-      expect(onCreated).toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: /add lesson/i })).toBeInTheDocument();
     });
   });
 });
