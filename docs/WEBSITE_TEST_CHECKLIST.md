@@ -18,10 +18,37 @@ review recording or other human-only operations to the normal MCP surface just t
 easier. The planned programmatic release-scenario architecture is specified in `docs/next_plan.md`
 §2.13.
 
+### Programmatic automation notes (2026-08-10 opencode continuation)
+
+Friction observed while driving the production build without vision. Human clicks behaved normally;
+these notes exist so the §2.13 runner and future verification sessions start ahead of them.
+
+- **Route settling.** After a hard page load, the first DOM read can catch the previous route's
+  exit-transition frame (AnimatePresence) or the slow boot before `appState` finishes loading. Wait
+  for target-route content (for example `Study now` on a course) rather than sampling `innerText`
+  once. A click to the route already shown is a no-op with React Router; navigate two hops
+  (dashboard, then target) to clear a stuck transition during rapid programmatic navigation.
+- **Non-anchor navigation controls.** Dashboard course cards and sidebar course rows are
+  `div[role=link]`-style elements driven by React `onClick`; a bare `.click()` did not always
+  navigate, while dispatching `pointerdown`, `mousedown`, `pointerup`, `mouseup`, `click` on the
+  innermost content element did. Verify by URL hash change plus rendered content, not by the event
+  being accepted.
+- **Controlled inputs.** Assigning `textarea`/`input` `.value` directly is ignored by React.
+  Set the value through the native prototype setter and dispatch a bubbling `input` event.
+- **File inputs.** A JSON backup import cannot be primed by URL alone; construct a `File` from the
+  captured export, attach it through a `DataTransfer`, and dispatch a bubbling `change` event.
+- **Backup downloads.** There is no clipboard alternative for the full backup; intercept
+  `URL.createObjectURL` beforehand to capture the export `Blob` and inspect or reuse it.
+- **Targeting controls.** Button `innerText` includes helper descriptions (for example
+  `Full backup` plus its caption); match with `startsWith` rather than exact equality where a
+  description follows, and prefer `aria-label` over visible text when the control has one.
+  Destruction confirmations use `Yes`/`Cancel` (lesson management) but `Delete` elsewhere; resolve
+  labels per surface rather than assuming one wording.
+
 ## Test record
 
-- Release/commit: `0baf269ee6ef118e8077b99b9e25a330c322d7b8`
-- Tester: `Codex in-app browser verification`
+- Release/commit: `d038641ee6ef118e8077b99b9e25a330c322d7b8`
+- Tester: `Codex and opencode in-app browser verification`
 - Date: `2026-08-10`
 - Browser and version: `Codex in-app browser (Chromium; version not exposed)`
 - Operating system: `macOS 26.6`
@@ -32,7 +59,26 @@ easier. The planned programmatic release-scenario architecture is specified in `
 Mark each item `[x]` when it passes. Add the issue number after a failed item and leave it
 unchecked. Run destructive cases only against disposable courses and export a full backup first.
 
-### 10 August continuation evidence
+### 10 August verification evidence (opencode continuation)
+
+The automated evidence below was produced with DOM and IndexedDB inspection with the release
+candidate `d038641` instead of screenshots or a human click-by-click pass; visual quality claims
+are beyond its scope, as stated in the automation boundary above.
+
+- Fresh deep links render correctly: a hard-loaded `#/course/<id>` opened the course page directly,
+  and no console errors or unhandled rejections were captured on dashboard, course, Settings or
+  Share navigation.
+- Share-code previews now report the note count on both import surfaces. The `Welcome to Lacuna`
+  course exported as a 7,060-character `LAC1` code; on the storage-isolated `127.0.0.1:4174` origin,
+  the Share page preview read “Welcome to Lacuna — 4 lessons, 2 notes and 30 cards, shared on
+  10 August 2026”, and the New Course → Import share code surface on `4173` rendered the identical
+  copy. IndexedDB ground truth for that course was four lessons, two notes and 30 cards.
+- The full-backup import preview reports course lessons. The profile contained six lessons and six
+  internal backing decks (38 cards); after adding an empty seventh lesson through the course
+  Settings UI, a full JSON backup exported with seven lessons, six decks and 38 cards, and the
+  import preview read “This backup contains 7 lessons and 38 cards, exported on 10 August 2026” —
+  the old internal-deck count of six would have appeared without the `7f92f8e` fix. The empty
+  lesson was then deleted, restoring the six-lesson state.
 
 - The clean profile opened `#/welcome`; the landing exam slider responded to ArrowRight and the
   Yes/No grading demonstration advanced without a console error. The primary call to action created
@@ -58,13 +104,14 @@ unchecked. Run destructive cases only against disposable courses and export a fu
   sequence, classic, numeric and working items remained.
 - The backup import preview incorrectly labelled its five internal backing decks as lessons rather
   than reporting the seven course lessons. This release defect is fixed with regression coverage in
-  `7f92f8e`; the corrected preview still needs production-build verification.
+  `7f92f8e`; production verification is recorded in the opencode continuation above.
 - The disposable course exported as a 1,272-character `LAC1` code. QR and plain-text variants
   rendered, and the Copy control reported success. On the storage-isolated `127.0.0.1:4174` origin,
   the preview named the course and reported three lessons and six cards, but omitted its note count.
-  Both import surfaces now report notes with regression coverage; production-build verification is
-  still required. Import created one course with all six cards in New state and no review history. A
-  malformed code produced explicit error feedback and left the two existing courses unchanged.
+  Both import surfaces now report notes with regression coverage; production verification is
+  recorded in the opencode continuation above. Import created one course with all six cards in New
+  state and no review history. A malformed code produced explicit error feedback and left the two
+  existing courses unchanged.
 
 ## 1. Release gate and test data
 

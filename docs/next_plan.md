@@ -776,6 +776,17 @@ normally running application. After that, provide a release-scenario command tha
 5. opens exact renderer routes for screenshot and interaction assertions; and
 6. destroys only the isolated profile after producing a machine-readable report and evidence index.
 
+The first scenario built against this command should exercise the two import preview defects
+verified manually in the `WEBSITE_TEST_CHECKLIST.md` continuation of 2026-08-10: share-code
+previews must report the seeded course's lesson, note and card counts on both import surfaces, and
+full-backup previews must report course lessons rather than internal backing decks, on a profile
+where the two counts differ by construction.
+
+The renderer-driving layer of this command should incorporate the programmatic automation notes in
+`WEBSITE_TEST_CHECKLIST.md` (route settling, pointer sequences for `role=link` controls, native
+setters for controlled inputs, `DataTransfer` for file inputs, `URL.createObjectURL` interception
+for downloads).
+
 Keep destructive targeting explicit and recoverable. The runner must reject the ordinary user
 profile, unresolved paths, broad deletion targets and schema-version mismatches. It must never expose
 raw FSRS field writes or let an agent record recall on a user's behalf.
