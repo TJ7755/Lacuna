@@ -4,7 +4,7 @@
 
 **Branch:** `refactor/course-domain-boundary`
 
-**Latest reviewed commit:** `ccc5078` (`docs: record export boundary cleanup`)
+**Latest reviewed commit:** `3a9bfb1` (`docs: qualify boundary completion scope`)
 
 **Original stop commit:** `9dd9107` (`refactor(course): remove singleton deck plumbing`)
 
