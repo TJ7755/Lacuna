@@ -40,7 +40,34 @@ test('starts a real lesson study interaction', async ({ page }) => {
   await page.getByRole('button', { name: /Start:|Continue:/ }).first().click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('button', { name: /Show answer/i }).last().click();
-  await expect(page.getByRole('button', { name: /Yes|Again/ }).first()).toBeVisible();
+  const card = page.locator('[data-study-card-id]').first();
+  const cardId = await card.getAttribute('data-study-card-id');
+  expect(cardId).not.toBeNull();
+  const centreSamples = page.evaluate(
+    () =>
+      new Promise<number[]>((resolve) => {
+        const samples: number[] = [];
+        const startedAt = performance.now();
+        function sample() {
+          const surface = document.querySelector('[data-study-card-id]');
+          if (surface) {
+            const bounds = surface.getBoundingClientRect();
+            samples.push(bounds.left + bounds.width / 2);
+          }
+          if (performance.now() - startedAt < 400) requestAnimationFrame(sample);
+          else resolve(samples);
+        }
+        requestAnimationFrame(sample);
+      }),
+  );
+  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await expect(page.locator('[data-study-card-id]').first()).not.toHaveAttribute(
+    'data-study-card-id',
+    cardId ?? '',
+  );
+  const centres = await centreSamples;
+  expect(centres.length).toBeGreaterThan(1);
+  expect(Math.max(...centres) - Math.min(...centres)).toBeLessThan(1);
 });
 
 test('downloads a full backup from recovery settings', async ({ page }) => {

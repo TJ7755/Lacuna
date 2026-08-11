@@ -831,7 +831,7 @@ describe('LearnMode course/lesson scope', () => {
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
   });
 
-  it('keeps practice-session chrome mounted while Yes and No advance the card surface', async () => {
+  it('keeps practice-session chrome mounted while Yes and No replace the card surface', async () => {
     const now = Date.now();
     const deck = await createDeck('Continuous practice');
     await db.decks.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
