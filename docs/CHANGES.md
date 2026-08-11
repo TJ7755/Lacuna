@@ -2,6 +2,13 @@
 
 ## Unreleased — Arc 14 flow simplification complete
 
+- Preserved published-course lineage on first import from both share-code entry points, so later
+  classroom revisions merge into the tracked recipient copy instead of silently creating another
+  course.
+- Routed dashboard cards with queued classroom changes to the update-review screen, including
+  single-lesson courses that otherwise skip the course overview.
+- Made the sequence-editor introduction follow the selected preset instead of retaining the ordered
+  list description after switching to script/dialogue mode.
 - Removed the horizontal card-exit/card-entry movement after grading. The next card now fades and
   settles in place instead of making the study surface twitch left and back.
 - Portalled the touch-first card-actions sheet out of the animated sticky header, so it anchors to

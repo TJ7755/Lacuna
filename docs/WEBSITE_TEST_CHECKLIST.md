@@ -75,6 +75,109 @@ Semantic browser automation is valid GUI evidence and a useful zero-install oper
 not replace MCP or test-only application services for deterministic data setup and domain-state
 assertions, and it does not replace human inspection for visual judgement.
 
+### Why browser automation cannot always operate Lacuna without vision
+
+The 11 August close-out pass deliberately used semantic browser controls wherever possible, then
+used visual inspection only where the DOM could not establish the result. These are practical
+limits, not excuses to give up on accessibility. Better names, real links and explicit state make
+far more of the application operable by an LLM, but HTML semantics cannot describe every rendered
+pixel or every operating-system surface.
+
+#### Rendered geometry and visual meaning
+
+- The accessibility tree can say that an occlusion has three regions, their types and their answer
+  text. It cannot prove that a rectangle covers the intended printed label, that two masks do not
+  overlap, or that a feature ring points at the right pixels. Those assertions require an image,
+  OCR/computer vision, or a separate machine-readable mapping supplied by the author.
+- Canvas and free-form pointer editors expose coordinates rather than meaningful targets. A
+  no-vision agent can draw a box only by inferring image bounds and sending pointer coordinates; it
+  cannot know whether those coordinates enclose a vein, label or empty background.
+- Coordinates are relative to the current viewport, scroll position, zoom, CSS transform and image
+  fit. In this pass an automatic scroll made previously calculated occlusion coordinates stale and
+  produced a visibly misplaced region. The DOM reported a valid new region because, structurally,
+  it was valid.
+- Responsive reflow, sticky controls, browser chrome, font loading and animation can move a target
+  between measurement and click. Coordinate actions therefore need a fresh measurement immediately
+  before use and still cannot establish visual correctness afterwards.
+- CSS 3D card faces are a poor source of semantic ground truth. Depending on `aria-hidden`, DOM
+  order and transform state, automation may read the hidden question face while the answer is
+  visible, or omit the visually rendered back face. A successful Reveal click is not proof that the
+  expected face is on screen.
+- Alt text describes the source image, not its current legibility after resizing or compression.
+  Printed labels, mask opacity, ring contrast, clipping, dark-theme treatment and 200% zoom remain
+  visual checks.
+- Typography, hierarchy, animation quality, colour contrast in context and whether a control feels
+  native are inherently rendered or subjective outcomes. Browser automation can detect CSS values
+  and overflow, but those are proxies rather than the result a person perceives.
+
+#### Browser and application state
+
+- IndexedDB, storage, permissions and service workers are isolated by exact origin and browser
+  profile. Two tabs on one origin are not two installations. This pass used `127.0.0.1` and
+  `localhost` against one server to obtain isolated recipient and source stores.
+- An agent-controlled browser cannot see the user's ordinary browser profile unless that profile is
+  explicitly exposed. A fresh automation session therefore cannot operate courses that exist only
+  in another profile, even when both windows display the same URL.
+- Starting two Vite servers from one checkout is not a safe substitute for two installations. Both
+  processes can rewrite the shared dependency cache; this pass produced mixed React chunks, failed
+  HMR sockets and a manufactured invalid-hook error. One server with distinct origins avoided that
+  false application failure.
+- A valid share code does not reveal its product meaning. A code generated before Publish was a
+  one-off copy, while a post-publish code carried revision lineage. Automation must assert the
+  authoritative preview (`revision 1 → 2`) and the recipient's shared-course settings, not merely
+  that decoding and import succeeded.
+- Async boot, lazy modules, route exit animations and HMR can leave the first DOM snapshot empty or
+  describing the previous route. Wait for a route-specific heading or state and confirm the URL;
+  arbitrary delays alone are brittle.
+- HMR invalidates element handles and can preserve application data while replacing the document.
+  Reload after code changes and resolve semantic locators again.
+- Browser-page evaluation may run in an isolated world without the page's IndexedDB or module
+  loader. It is not a universal escape hatch for reading hidden application state, and database
+  writes from it would bypass the very UI contract under test anyway.
+
+#### Controls, events and browser policy
+
+- React-controlled fields may ignore direct `.value` assignment. Native setters plus bubbling
+  `input`/`change` events are sometimes necessary, but this exercises framework plumbing rather
+  than the exact keyboard path a user takes.
+- Accessible names can concatenate every descendant label, count and helper paragraph. Exact text
+  selectors then become brittle, and duplicate visible names such as two `New occlusion` actions
+  require scope or context. Stable labels and actual links are the clean solution.
+- Hidden file inputs may reject or time out on a synthetic click even when their visible Upload
+  button works. The native chooser is browser-mediated, cannot be pre-filled by ordinary typing and
+  may reset an automation session while it waits.
+- Selecting a file proves only that a `File` reached the input. It does not prove image fidelity,
+  decoded orientation, compression quality, audio content or that the chosen file was meaningful
+  without inspecting the resulting media.
+- Clipboard reads, downloads, autoplay, camera, microphone, full-screen and folder access are
+  governed by browser policy and user activation. A semantic control may exist while the browser
+  still requires a real gesture, permission prompt or explicit hand-off.
+- Native menus, permission sheets and file/folder choosers are outside the page DOM. Browser
+  automation cannot inspect them; desktop computer control or a user must take over.
+- A semantic click being accepted is not proof of navigation or mutation. Confirm the resulting
+  URL, heading, count, toast and persisted state. Conversely, a locator timeout can be an automation
+  defect when the same visible control works normally.
+
+#### Product boundaries and fail-closed behaviour
+
+- Electron MCP connection, grant and consent UI is not part of the browser page surface. It required
+  desktop application control in this pass; a browser-only LLM could neither see the native window
+  nor approve its prompts.
+- MCP consent is deliberately bounded. The first manual attempt took too long to inspect and the
+  request timed out; clicking Allow afterwards could not resurrect the failed operation. Agents must
+  recognise and answer a current prompt within its window, then retry cleanly if it has expired.
+- Permission prompts can disappear when the requesting client disconnects, and grants are
+  connection-scoped. Cached locators and assumptions about retained access are therefore wrong by
+  design.
+- Physical touch quality, operating-system integration, PWA installation, offline recovery after
+  an actual network loss and hardware-backed camera/microphone behaviour cannot be fully established
+  by a desktop Chromium DOM session.
+
+The useful design target is not “make every visual judgement available as text”. It is to expose
+every consequential action and state through stable semantics, keep canvas/media work paired with
+machine-readable region data, and state honestly where pixel, hardware or operating-system evidence
+is still required.
+
 ## Test record
 
 - Release/commit: `d038641ee6ef118e8077b99b9e25a330c322d7b8`
@@ -100,6 +203,25 @@ unchecked. Run destructive cases only against disposable courses and export a fu
   production build, release scenario, and Chromium smoke paths.
 - Camera, PWA installation, folder permission, two-install merge, and Electron MCP visuals remain
   permission/platform-dependent manual checks; this record does not counterfeit those results.
+
+### 11 August Arc 14 close-out verification
+
+- Lines mode split a real three-line *Julius Caesar* exchange, generated exactly the two Brutus
+  learner cards, retained Cassius as cue context, rendered first-letter and first-word hints, and
+  completed both cards. The preset introduction now follows the selected mode instead of retaining
+  ordered-list copy.
+- Image occlusion used a real labelled leaf diagram. Two label targets and one paired feature
+  generated three cards; deleting and redrawing a bad region updated the count; question faces
+  masked both labels; the feature revealed only its paired label; and fractional masks stayed
+  aligned at a 390 × 844 viewport. Visual inspection was necessary to establish pixel alignment.
+- A published course moved from revision one to revision two across storage-isolated source and
+  recipient installations. First import now preserves distribution lineage, additive notes applied
+  immediately, the conflicting lesson rename queued for review, the dashboard opened that review,
+  and accepting it left the recipient up to date.
+- Electron exposed the connected `lacuna-smoke` client, global and per-course grants, and separate
+  write and destructive consent prompts. The 45-tool smoke run created a disposable course, proved
+  duplicate import idempotence, deleted it, exited successfully, and left no connected client or
+  retained grant.
 
 ### 10 August verification evidence (opencode continuation)
 
@@ -317,22 +439,22 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Add, edit, reorder and delete sequence items and chunks/scenes.
 - [ ] Cue-window changes update the generated-card preview.
 - [ ] The label-card option adds/removes only its intended generated card.
-- [ ] Script paste detects/splits lines, supports speaker selection and confirms into editable items.
-- [ ] Lines mode correctly distinguishes the learner's lines from other speakers.
+- [x] Script paste detects/splits lines, supports speaker selection and confirms into editable items.
+- [x] Lines mode correctly distinguishes the learner's lines from other speakers.
 - [ ] Validation blocks an unusable name, empty sequence and invalid cue settings.
-- [ ] Saving generates the expected cards without duplicating them.
+- [x] Saving generates the expected cards without duplicating them.
 - [ ] Editing and regenerating a sequence preserves scheduling state for unchanged generated cards.
 - [ ] Deleting a sequence uses explicit confirmation and removes its generated cards only.
 - [ ] Cancel and keyboard shortcuts return to the originating lesson or bank.
 
 ## 10a. Occlusion (diagram) editor and study
 
-- [ ] Upload a real labelled diagram; small printed labels remain legible after compression.
+- [x] Upload a real labelled diagram; small printed labels remain legible after compression.
 - [ ] Draw, move, resize and delete both label and feature boxes; pair a feature to a label.
-- [ ] The generated-card count in the footer tracks the region list.
-- [ ] Saving generates one card per region without duplicating them.
-- [ ] Every label is masked on every question face; the card's own region is ringed.
-- [ ] A feature card reveals its paired label; an unpaired feature falls back to its answer text.
+- [x] The generated-card count in the footer tracks the region list.
+- [x] Saving generates one card per region without duplicating them.
+- [x] Every label is masked on every question face; the card's own region is ringed.
+- [x] A feature card reveals its paired label; an unpaired feature falls back to its answer text.
 - [ ] Masks hold their position at every viewport width, at zoom, and in both themes.
 - [ ] Moving or resizing a region preserves scheduling state for that card.
 - [ ] Replacing the image warns before regenerating every card.
@@ -531,7 +653,7 @@ are beyond its scope, as stated in the automation boundary above.
 ## 22. Explicit non-web and deferred boundaries
 
 - [ ] Confirm the web build does **not** expose Electron MCP, process grants or auto-update controls.
-- [ ] If testing Electron separately, use the MCP smoke scripts and consent/grant tests documented in
+- [x] If testing Electron separately, use the MCP smoke scripts and consent/grant tests documented in
       `README.md`; do not record them as website failures.
 - [ ] Scaffold item authoring/study is reserved but not implemented.
 - [ ] The read-only face for an unsupported item payload is covered by unit tests only; no authoring

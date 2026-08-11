@@ -173,7 +173,13 @@ export function Dashboard() {
                 summary={summaries?.[course.id]}
                 cards={cardsByCourse[course.id]}
                 hasPendingUpdate={pendingUpdateIds?.has(course.id) ?? false}
-                onClick={() => navigate(`/course/${course.id}`)}
+                onClick={() =>
+                  navigate(
+                    pendingUpdateIds?.has(course.id)
+                      ? `/course/${course.id}/updates`
+                      : `/course/${course.id}`,
+                  )
+                }
                 onStudy={() => navigate(`/course/${course.id}/study`)}
                 onArchiveMenu={(position, trigger) => {
                   setArchiveTarget(null);

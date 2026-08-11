@@ -51,12 +51,14 @@ vi.mock('../../db/share', () => ({
 
 let mockFindCourseForLineage: (() => Promise<Course | undefined>) | undefined;
 const mockMergeLineageUpdate = vi.fn();
+const mockImportLineageFirstTime = vi.fn();
 
 vi.mock('../../db/mergeImport', () => ({
   isLineagePayload: (payload: Record<string, unknown>) =>
     payload.v === 2 && typeof payload.li === 'string' && typeof payload.rv === 'number',
   findCourseForLineage: () =>
     mockFindCourseForLineage ? mockFindCourseForLineage() : Promise.resolve(undefined),
+  importLineageFirstTime: (...args: unknown[]) => mockImportLineageFirstTime(...args),
   mergeLineageUpdate: (...args: unknown[]) => mockMergeLineageUpdate(...args),
 }));
 
@@ -109,6 +111,7 @@ const mockCourse: Course = {
 beforeEach(() => {
   mockDecodedPayload = {};
   mockFindCourseForLineage = undefined;
+  mockImportLineageFirstTime.mockReset();
   mockMergeLineageUpdate.mockReset();
 });
 
@@ -131,6 +134,26 @@ describe('UnifiedImportPanel share-code merge routing (Arc 7 §7.5)', () => {
     fireEvent.click(screen.getByText('Add to my courses'));
     await waitFor(() => expect(screen.queryByText('Ready to import')).not.toBeInTheDocument());
     expect(mockMergeLineageUpdate).not.toHaveBeenCalled();
+    expect(mockImportLineageFirstTime).not.toHaveBeenCalled();
+  });
+
+  it('preserves lineage tracking on the first import of a published course', async () => {
+    const onShareImport = vi.fn();
+    mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 1 };
+    mockImportLineageFirstTime.mockResolvedValue({ course: { ...mockCourse, id: 'shared-copy' } });
+
+    render(<UnifiedImportPanel onImport={vi.fn()} showShareImport onShareImport={onShareImport} />);
+    fireEvent.click(screen.getByText('Import share code'));
+    fireEvent.change(
+      screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...'),
+      { target: { value: 'LAC2-some-code' } },
+    );
+    fireEvent.click(screen.getByText('Read code'));
+    await screen.findByText('Ready to import');
+    fireEvent.click(screen.getByText('Add to my courses'));
+
+    await waitFor(() => expect(mockImportLineageFirstTime).toHaveBeenCalledWith(mockDecodedPayload));
+    expect(onShareImport).toHaveBeenCalledWith(1, 2, ['shared-copy']);
   });
 
   it('routes to the merge importer when the payload lineage matches a local course', async () => {

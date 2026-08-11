@@ -28,6 +28,7 @@ import {
 } from '../../db/share';
 import {
   findCourseForLineage,
+  importLineageFirstTime,
   isLineagePayload,
   mergeLineageUpdate,
   type MergeLineageResult,
@@ -400,6 +401,14 @@ export function UnifiedImportPanel({
         // fit onShareImport's (courses, cards) "new import" contract — show the
         // outcome inline instead.
         setShareNotice(describeMergeResult(result));
+      } else if (isLineagePayload(payload)) {
+        const { course } = await importLineageFirstTime(payload);
+        setSharePending(null);
+        setShareError(null);
+        setText('');
+        if (onShareImport) {
+          await onShareImport(1, sharePending.summary.cardCount, [course.id]);
+        }
       } else {
         const result = await importSharePayload(payload);
         setSharePending(null);

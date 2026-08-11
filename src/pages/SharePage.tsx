@@ -19,6 +19,7 @@ import { exportCardsSimple } from '../db/export';
 import { publishCourse } from '../db/repository';
 import {
   findCourseForLineage,
+  importLineageFirstTime,
   isLineagePayload,
   mergeLineageUpdate,
   type MergeLineageResult,
@@ -320,6 +321,12 @@ export function SharePage() {
       if (pending.merge) {
         const result = await mergeLineageUpdate(pending.merge.course.id, payload);
         notify(describeMergeResult(result), 'positive');
+      } else if (isLineagePayload(payload)) {
+        await importLineageFirstTime(payload);
+        notify(
+          `Added 1 course and ${pending.summary.cardCount} card${pending.summary.cardCount === 1 ? '' : 's'}.`,
+          'positive',
+        );
       } else {
         const { courses, cards: c } = await importSharePayload(payload);
         notify(

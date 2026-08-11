@@ -399,10 +399,7 @@ export function SequenceEditor() {
             <h1 className="font-display text-4xl tracking-tight md:text-5xl">
               {editing ? 'Edit sequence' : 'New sequence'}
             </h1>
-            <p className="mt-2 max-w-xl text-sm text-ink-soft">
-              An ordered list you memorise in order — each item&rsquo;s card cues on the ones before
-              it.
-            </p>
+            <p className="mt-2 max-w-xl text-sm text-ink-soft">{preset.description}</p>
           </div>
         </header>
 

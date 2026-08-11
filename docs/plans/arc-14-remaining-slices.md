@@ -53,5 +53,7 @@ points. It changes no scheduling semantics and adds no account, cloud, or integr
 - Final branch verification passed `bun run lint`, `bun run typecheck`, `bun run test`
   (205 files, 1,774 tests), `bun run build`, and `bun run release:scenario`.
 
-Permission-dependent camera, PWA, folder-picker, two-install classroom merge, and Electron MCP
-visual checks remain release-matrix work. They are not hidden behind an Arc 14 completion claim.
+The 11 August close-out pass also completed real-script lines mode, real-diagram image occlusion,
+the two-install classroom merge, and Electron MCP connection/grant/consent checks. Camera, PWA and
+folder-picker checks remain permission/platform-dependent release-matrix work rather than Arc 14
+implementation debt. Detailed evidence is in `docs/WEBSITE_TEST_CHECKLIST.md`.

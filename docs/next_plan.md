@@ -30,16 +30,9 @@ There is no active product implementation plan. Arc 14 has no remaining slices.
 
 ## Close-out queue
 
-These are verification debts for delivered work, not feature arcs. Complete them alongside
-or immediately after the active slice:
-
-1. Run lines mode end to end with a real script scene.
-2. Run image occlusion end to end with a real labelled diagram.
-3. Run the classroom re-import merge on two isolated installations.
-4. Visually verify MCP connection, grant and consent states in Electron.
-
-Failures are fixed with focused regression coverage. Passing checks are recorded in the
-relevant release evidence; they do not acquire another essay here.
+No Arc 14 verification debt remains. Lines mode, image occlusion, the two-install classroom merge,
+and Electron MCP connection/grant/consent states were verified on 11 August 2026. Evidence and the
+limits of no-vision browser automation are recorded in `docs/WEBSITE_TEST_CHECKLIST.md`.
 
 ## Next
 
