@@ -79,6 +79,10 @@ export function Dashboard() {
     }
     return sorted;
   }, [courses, summaries, dashboardSort]);
+  const archivedCourses = useMemo(
+    () => courses?.filter((course) => course.archived).sort((a, b) => a.name.localeCompare(b.name)),
+    [courses],
+  );
 
   // Cards grouped by course, for the card hover detail modules.
   const cardsByCourse = useMemo(() => {
@@ -179,6 +183,36 @@ export function Dashboard() {
             </motion.div>
           ))}
         </div>
+      )}
+
+      {archivedCourses && archivedCourses.length > 0 && (
+        <section className="mt-10 rounded-2xl border border-line bg-surface p-6">
+          <h2 className="font-display text-xl">Archived courses</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Archived courses stay on this device but are excluded from the dashboard and Review today.
+          </p>
+          <ul className="mt-4 flex flex-col gap-2">
+            {archivedCourses.map((course) => (
+              <li
+                key={course.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line px-4 py-3"
+              >
+                <span className="text-sm text-ink">{course.name}</span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    void updateCourse(course.id, { archived: false })
+                      .then(() => notify(`${course.name} restored to the dashboard`, 'positive'))
+                      .catch(() => notify(`Could not restore ${course.name}`, 'negative'));
+                  }}
+                >
+                  Unarchive
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {/* Review activity heatmap */}

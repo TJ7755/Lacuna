@@ -257,7 +257,7 @@ describe('OcclusionEditor', () => {
     expect(updateOcclusion.mock.calls[0][0]).toMatchObject({ assetHash: 'hash-new' });
   });
 
-  it('snapshots then deletes the occlusion immediately, with an undo toast', async () => {
+  it('confirms, snapshots, and deletes the occlusion with an undo toast', async () => {
     mockCourse = course;
     mockOcclusion = {
       id: 'occ-1',
@@ -270,6 +270,9 @@ describe('OcclusionEditor', () => {
     };
     renderEdit();
     await screen.findByRole('img');
+
+    fireEvent.click(screen.getByText('Delete occlusion'));
+    expect(snapshotOcclusion).not.toHaveBeenCalled();
 
     await act(async () => {
       fireEvent.click(screen.getByText('Delete occlusion'));

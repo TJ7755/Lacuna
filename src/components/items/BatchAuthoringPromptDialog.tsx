@@ -5,6 +5,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { buildBatchGenerationPrompt } from '../../items/prompts';
 import { ItemStagingReview } from './ItemStagingReview';
 import { Button } from '../ui/Button';
+import { ConfirmInline } from '../ui/ConfirmInline';
 import { useToast } from '../ui/Toast';
 import { CloseIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
@@ -37,7 +38,18 @@ export function BatchAuthoringPromptDialog({
   const [maxItems, setMaxItems] = useState<number | ''>('');
   const [conceptsPerItem, setConceptsPerItem] = useState<number | ''>('');
   const [mode, setMode] = useState<'prompt' | 'review'>('prompt');
+  const [reviewDirty, setReviewDirty] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
   const canCopy = notes.trim().length > 0 && topic.trim().length > 0 && level.trim().length > 0;
+  const hasDraft = notes.trim().length > 0 || topic.trim().length > 0 || level.trim().length > 0 || reviewDirty;
+
+  function requestClose() {
+    if (hasDraft) {
+      setConfirmClose(true);
+      return;
+    }
+    onClose();
+  }
 
   async function copyPrompt() {
     if (!canCopy) return;
@@ -72,7 +84,7 @@ export function BatchAuthoringPromptDialog({
         event.nativeEvent.stopImmediatePropagation();
         if (event.key === 'Escape') {
           event.preventDefault();
-          onClose();
+          requestClose();
         }
       }}
     >
@@ -105,7 +117,7 @@ export function BatchAuthoringPromptDialog({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Close"
             title="Close (Esc)"
             className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
@@ -139,7 +151,12 @@ export function BatchAuthoringPromptDialog({
 
         <div className="relative flex flex-col gap-5 overflow-y-auto px-6 py-6">
           {mode === 'review' ? (
-            <ItemStagingReview courseId={courseId} lessons={lessons} cards={cards} />
+            <ItemStagingReview
+              courseId={courseId}
+              lessons={lessons}
+              cards={cards}
+              onDirtyChange={setReviewDirty}
+            />
           ) : (
             <>
               <label className="flex flex-col gap-2 text-sm text-ink-soft">
@@ -239,11 +256,21 @@ export function BatchAuthoringPromptDialog({
 
         {mode === 'prompt' && (
           <footer className="relative flex justify-end gap-2 border-t border-line px-6 py-4">
-            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button variant="ghost" onClick={requestClose}>Cancel</Button>
             <Button variant="primary" disabled={!canCopy} onClick={() => void copyPrompt()}>
               Copy batch prompt
             </Button>
           </footer>
+        )}
+        {confirmClose && (
+          <div className="relative border-t border-warning/30 bg-warning/5 px-6 py-4">
+            <ConfirmInline
+              message="Discard this unsaved batch prompt and staging review?"
+              confirmLabel="Discard batch"
+              onCancel={() => setConfirmClose(false)}
+              onConfirm={onClose}
+            />
+          </div>
         )}
       </motion.div>
     </motion.div>

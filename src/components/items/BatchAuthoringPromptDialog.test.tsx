@@ -39,6 +39,29 @@ describe('BatchAuthoringPromptDialog', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it('warns before discarding an entered batch prompt', () => {
+    const onClose = vi.fn();
+    render(
+      <BatchAuthoringPromptDialog
+        courseId="course-1"
+        courseName="Economics"
+        lessons={[]}
+        cards={[]}
+        onClose={onClose}
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Paste the notes for one lesson or topic…'), {
+      target: { value: 'Unsaved notes' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText('Discard this unsaved batch prompt and staging review?')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard batch' }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it('switches from prompt building to the staging review', () => {
     render(
       <BatchAuthoringPromptDialog

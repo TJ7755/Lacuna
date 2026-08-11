@@ -84,7 +84,7 @@ export function BackupsSection({ motionMultiplier }: { motionMultiplier: number 
         <Button variant="secondary" size="sm" onClick={handleBackupNow}>Back up now</Button>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
-        Lacuna keeps the ten most recent restore points on this device and saves one automatically when you open it (at most once a day). Restoring replaces all current data with that snapshot.
+        Lacuna keeps the ten most recent restore points in this installation and saves one automatically when you open it (at most once a day). Restoring replaces every current local course and review record. It does not affect an account because Lacuna has no account.
       </p>
 
       {persistence && (
@@ -157,7 +157,7 @@ export function BackupsSection({ motionMultiplier }: { motionMultiplier: number 
               </div>
               {confirmRestore === backup.id ? (
                 <ConfirmInline
-                  message="Replace all data?"
+                  message="Replace all local data with this restore point?"
                   confirmLabel="Restore"
                   variant="default"
                   onCancel={() => setConfirmRestore(null)}

@@ -174,7 +174,7 @@ describe('QuestionBank', () => {
     mockCards = [];
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Generate batch' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Build external batch prompt' }));
     expect(screen.getByRole('dialog', { name: 'Generate item batch' })).toHaveTextContent(
       'A-Level Economics',
     );
@@ -191,7 +191,7 @@ describe('QuestionBank', () => {
     mockCards = [];
     renderPage();
     expect(screen.getByText('This course has no cards yet.')).toBeInTheDocument();
-    expect(screen.getByText('Create your first card')).toBeInTheDocument();
+    expect(screen.getAllByText('New card')).not.toHaveLength(0);
   });
 
   it('groups cards by lesson and shows counts', () => {
@@ -250,7 +250,7 @@ describe('QuestionBank', () => {
     mockLessons = [];
     mockCards = [];
     renderPage();
-    fireEvent.click(screen.getByText('Create your first card'));
+    fireEvent.click(screen.getAllByText('New card')[0]);
     expect(screen.getByText('Card editor')).toBeInTheDocument();
   });
 

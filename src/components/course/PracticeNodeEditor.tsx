@@ -1,8 +1,7 @@
 // Modal editor for a manual practice node, opened directly from the course path
 // (see CoursePath.tsx's insertion "+" affordance and the edit badge on PracticeNode).
-// Mirrors the chrome of CardEditOverlay; the fields themselves are shared with the
-// course-settings management list via PracticeNodeFields so the two entry points
-// stay in lockstep.
+// Mirrors the chrome of CardEditOverlay. The course path is the canonical editor;
+// Settings links back here instead of maintaining a competing management surface.
 //
 // British English throughout.
 
@@ -103,7 +102,7 @@ export function PracticeNodeEditor({
       <motion.div
         role="dialog"
         aria-modal="true"
-        aria-label={node ? 'Edit practice node' : 'Add practice node'}
+        aria-label={node ? 'Edit manual practice' : 'Add manual practice'}
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.98 }}

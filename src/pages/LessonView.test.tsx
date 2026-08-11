@@ -202,9 +202,9 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
   });
 
-  it('shows a Course settings link pointing at the course settings route', () => {
+  it('shows the course navigation with a Settings link', () => {
     renderInline();
-    const link = screen.getByLabelText('Course settings');
+    const link = screen.getByRole('link', { name: 'Settings' });
     expect(link).toHaveAttribute('href', '/course/course-1/settings');
   });
 

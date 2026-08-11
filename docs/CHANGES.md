@@ -1,5 +1,24 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Arc 14 flow simplification complete
+
+- Removed the horizontal card-exit/card-entry movement after grading. The next card now fades and
+  settles in place instead of making the study surface twitch left and back.
+- Portalled the touch-first card-actions sheet out of the animated sticky header, so it anchors to
+  the viewport instead of opening upwards from a header-height containing block.
+- Made the course path the canonical manual-practice editor, exposed labelled insertion controls,
+  and distinguished automatic from manual nodes without pretending custom filters are authorable.
+- Kept course tabs visible from lesson views and standardised card, sequence, occlusion, linking,
+  and card-import actions across lessons and the Question bank.
+- Separated course sharing, card/APKG import, external batch staging, full backup, merge, and local
+  replacement language. Media omissions now point directly to full backup and destructive local
+  replacement requires explicit confirmation.
+- Added persistent archived-course management, confirmation before course deletion, batch-discard
+  protection, and shortcut-conflict rejection.
+- Added targeted critical-domain coverage and a one-worker Chromium production smoke suite to CI,
+  capped Vitest and Playwright at one worker, and extracted practice persistence and Learn
+  card-capability rules from oversized modules.
+
 ## Unreleased — Roadmap consolidation
 
 - Replaced the 3,700-line combined roadmap and implementation diary with a short current
@@ -11,7 +30,7 @@
 - Portalled the New course overlay out of the mobile navigation drawer so the sidebar entry uses
   the full viewport instead of squeezing the modal into the transformed drawer width.
 - Replaced competing course-header Study actions with one **Study** entry. The course conductor
-  now distinguishes progression, study ahead, due review and named assessment revision before a
+  now distinguishes starting the next lesson, due review and named assessment revision before a
   session starts, while direct Practice-node and assessment selections retain their exact scope.
 - Exposed the existing cross-course session as **Review today** in the configurable sidebar and
   replaced bare “Today” and retired “deck” language on that flow.
@@ -54,7 +73,7 @@
   asserting before their user-visible state had settled.
 - Removed expected share-validation and error-boundary logging, completed the navigation fixture
   for the Question Bank test, and closed pre-migration snapshot connections after each operation.
-- The full suite now passes with 198 files and 1,747 tests without stderr output.
+- The full suite now passes with 205 files and 1,774 tests without stderr output.
 
 ## Unreleased — Browser QA fixes
 

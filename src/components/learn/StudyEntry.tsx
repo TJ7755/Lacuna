@@ -53,7 +53,7 @@ export function StudyEntry({
   const primaryLabel = nextIsDueReview
     ? 'Review due cards'
     : nextStep.kind === 'lesson' && !canReviewDueCards
-      ? `Study ahead: ${nextStep.label}`
+      ? `Start: ${nextStep.label}`
       : `Continue: ${nextStep.label}`;
 
   return (

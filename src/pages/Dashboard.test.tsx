@@ -210,6 +210,17 @@ describe('Dashboard', () => {
     expect(screen.getByTestId('course-card')).toBeInTheDocument();
   });
 
+  it('lists archived courses with a persistent Unarchive action', async () => {
+    setCourseData([{ ...mockCourse, archived: true }]);
+    render(<Dashboard />);
+
+    expect(screen.getByRole('heading', { name: 'Archived courses' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Unarchive' }));
+    await waitFor(() =>
+      expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: false }),
+    );
+  });
+
   it('navigates to course page when a course card is clicked', () => {
     mockCourseDashboardData = {
       courses: [mockCourse],

@@ -60,15 +60,13 @@ import {
   type GeneratedCardPayload,
 } from './sequenceGeneration';
 import { assertValidCardPayload } from '../items/payloadValidation';
-
-/** Convert low-level IndexedDB errors into user-friendly messages. */
-function friendlyDbError(err: unknown): Error {
-  if (err instanceof DOMException && err.name === 'QuotaExceededError') {
-    return new Error('Your browser storage is full. Free up space or export your data to a file.');
-  }
-  if (err instanceof Error) return err;
-  return new Error(String(err));
-}
+import { friendlyDbError } from './dbErrors';
+export {
+  createPracticeNode,
+  updatePracticeNode,
+  deletePracticeNode,
+  savePracticeMilestoneProgress,
+} from './practiceNodeRepository';
 
 // ---------------------------------------------------------------------------
 // Decks
@@ -1919,79 +1917,6 @@ export async function markLessonComplete(
   const completion = { lessonId, completedAt };
   await db.lessonCompletions.add(completion);
   return completion;
-}
-
-// ---------------------------------------------------------------------------
-// Practice nodes
-// ---------------------------------------------------------------------------
-
-export async function createPracticeNode(
-  courseId: string,
-  opts: Partial<PracticeNode> & Pick<PracticeNode, 'type' | 'name'>,
-): Promise<PracticeNode> {
-  try {
-    const node: PracticeNode = {
-      id: makeId(),
-      courseId,
-      createdAt: Date.now(),
-      ...opts,
-    };
-    await db.practiceNodes.add(node);
-    return node;
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
-}
-
-export async function updatePracticeNode(
-  id: string,
-  changes: Partial<PracticeNode>,
-): Promise<void> {
-  try {
-    await db.practiceNodes.update(id, changes);
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
-}
-
-export async function deletePracticeNode(id: string): Promise<void> {
-  await db.transaction('rw', db.practiceNodes, db.practiceMilestones, async () => {
-    await db.practiceMilestones.delete(id);
-    await db.practiceNodes.delete(id);
-  });
-}
-
-/**
- * Persist the last measured progress for a path node. Changing scopeVersion
- * atomically replaces stale progress for an older effective card scope.
- */
-export async function savePracticeMilestoneProgress(
-  nodeKey: string,
-  courseId: string,
-  scopeVersion: string,
-  securedCardCount: number,
-  totalCardCount: number,
-  completed: boolean = false,
-  now: number = Date.now(),
-): Promise<PracticeMilestone> {
-  const existing = await db.practiceMilestones.get(nodeKey);
-  const sameScope = existing?.scopeVersion === scopeVersion;
-  const milestone: PracticeMilestone = {
-    nodeKey,
-    courseId,
-    scopeVersion,
-    securedCardCount: Math.max(0, Math.min(securedCardCount, totalCardCount)),
-    totalCardCount: Math.max(0, totalCardCount),
-    updatedAt: now,
-    ...(completed || (sameScope && existing.completedAt !== undefined)
-      ? {
-          completedAt:
-            sameScope && existing?.completedAt !== undefined ? existing.completedAt : now,
-        }
-      : {}),
-  };
-  await db.practiceMilestones.put(milestone);
-  return milestone;
 }
 
 // ---------------------------------------------------------------------------

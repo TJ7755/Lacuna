@@ -90,7 +90,7 @@ const EXPORT_FORMATS: ExportFormatDef[] = [
   {
     id: 'plain-text',
     label: 'Plain text',
-    description: 'Human-readable Q:/A: format with deck and tag metadata.',
+    description: 'Human-readable Q:/A: format with course, lesson and tag metadata.',
     extension: 'txt',
     mimeType: 'text/plain',
     icon: <FileTextIcon width={18} height={18} />,
@@ -98,7 +98,7 @@ const EXPORT_FORMATS: ExportFormatDef[] = [
   {
     id: 'share-code',
     label: 'Share code',
-    description: 'A compact, copy-pasteable code for sharing decks. Text only, no images.',
+    description: 'A compact, copy-pasteable code for sharing course material. Text only, no media.',
     extension: 'txt',
     mimeType: 'text/plain',
     icon: <ShareIcon width={18} height={18} />,

@@ -1,5 +1,5 @@
 // Path-segment rendering for CoursePath.tsx: a single node, its connecting
-// line, and the hover-revealed "+" affordances for inserting a manual
+// line, and the labelled affordances for inserting a manual
 // practice node. Extracted out of the page so CoursePath.tsx stays focused on
 // data loading and layout.
 //
@@ -79,7 +79,7 @@ const NODE_REVEAL_STEP_MS = 55;
  * Renders a single path node followed by its connecting line (if not the last node).
  * The connecting line is accent-tinted when the preceding node is a completed lesson,
  * indicating the student has already cleared that stretch of the path. When
- * `lineInsert.insertable`, the line also carries a hover-revealed "+" affordance for
+ * `lineInsert.insertable`, the line also carries a labelled affordance for
  * inserting a manual practice node at that gap.
  *
  * The whole node also draws itself in on first paint — a short rise/fade
@@ -187,16 +187,17 @@ export function PathNodeWithLine({
   );
 }
 
-/** A hover-revealed "+" for inserting a manual practice node at a specific path gap. */
+/** A persistent control for inserting a manual practice node at a specific path gap. */
 function InsertButton({ onInsert }: { onInsert: () => void }) {
   return (
     <button
       type="button"
       onClick={onInsert}
-      aria-label="Insert practice node here"
-      className="absolute left-1/2 top-1/2 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-dashed border-line-strong bg-surface text-ink-faint opacity-0 transition-opacity duration-150 hover:opacity-100 hover:border-accent hover:text-accent focus-visible:opacity-100 focus-visible:outline-none touch-visible"
+      aria-label="Add manual practice here"
+      className="absolute left-1/2 top-1/2 z-10 flex h-7 -translate-x-1/2 -translate-y-1/2 items-center gap-1 whitespace-nowrap rounded-full border border-dashed border-line-strong bg-surface px-2 text-[0.65rem] font-medium text-ink-faint shadow-sm transition-colors hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
     >
       <PlusIcon width={12} height={12} />
+      Manual practice
     </button>
   );
 }

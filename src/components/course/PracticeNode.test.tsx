@@ -25,7 +25,10 @@ describe('PracticeNode', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Practice: Practice, 42% secured' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Automatic practice: Practice, 42% secured' }),
+    ).toBeEnabled();
+    expect(screen.getByText('Automatic')).toBeInTheDocument();
     const progressPath = container.querySelectorAll('polygon')[1];
     expect(Number(progressPath.getAttribute('stroke-dashoffset'))).toBeCloseTo(0.58);
   });
@@ -40,7 +43,9 @@ describe('PracticeNode', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'Practice: Practice, 70% secured, completed' }),
+      screen.getByRole('button', {
+        name: 'Automatic practice: Practice, 70% secured, completed',
+      }),
     ).toHaveClass('shadow-[0_0_18px_color-mix(in_srgb,var(--color-accent)_32%,transparent)]');
   });
 

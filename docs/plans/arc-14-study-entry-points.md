@@ -9,7 +9,7 @@
 ## Outcome
 
 A learner has one generic Study action for each course, can deliberately choose due review,
-course progression, study ahead or relevant assessment revision when those alternatives exist,
+course progression, starting the next lesson or relevant assessment revision when those alternatives exist,
 and can discover cross-course due review without knowing the hidden `/learn` route.
 
 This is an entry-flow repair. It does not change FSRS, card eligibility, curriculum progression,
@@ -48,7 +48,7 @@ No new route, scheduler, queue, persisted preference or study-mode abstraction i
 1. Replace the paired course-header actions with one **Study** action on multi-lesson and inline
    single-lesson course surfaces.
 2. Make generic conductor entry present genuine alternatives before starting a session:
-   curriculum progression, study ahead, due review and relevant named assessment revision.
+   curriculum progression, starting the next lesson, due review and relevant named assessment revision.
 3. Preserve direct `review=due`, `practiceNode` and `assessmentId` entry behaviour.
 4. Add **Review today** to the default configurable sidebar and route it to `/learn`.
 5. Align Learn header, Help, welcome and affected flow copy with the new labels.
@@ -60,7 +60,7 @@ No new route, scheduler, queue, persisted preference or study-mode abstraction i
 Automated coverage must prove:
 
 1. Generic Study offers curriculum progression and due review when both are eligible.
-2. A lesson is labelled **Study ahead** when no due review competes with it.
+2. A lesson is labelled **Start** when no due review competes with it.
 3. Named assessment revision remains an explicit alternative.
 4. Direct due-review, manual-Practice and assessment queries still enter their exact targets.
 5. Course headers no longer expose a second generic due-review action.
@@ -85,7 +85,7 @@ Check the production preview at desktop and iPhone SE widths:
 ## Success criteria
 
 1. The learner never chooses between two generic course-header Study buttons.
-2. Due review, course progression, study ahead and named revision are distinct when they compete.
+2. Due review, course progression, starting the next lesson and named revision are distinct when they compete.
 3. Manual Practice nodes and assessments retain direct, predictable entry.
 4. Cross-course review is discoverable as **Review today**.
 5. Scheduling and session semantics are unchanged.
@@ -95,7 +95,7 @@ Check the production preview at desktop and iPhone SE widths:
 Delivered on 11 August 2026. Lint, all TypeScript targets, the production build and the full suite
 of 202 test files and 1,764 tests passed. Production-browser verification passed at desktop and
 iPhone SE widths in light, dark and reduced-motion presentation. It covered Course Path, inline
-single-lesson and dashboard Study entry, Study ahead, Review today, direct assessment revision and
+single-lesson and dashboard Study entry, Start, Review today, direct assessment revision and
 stored-sidebar preference migration. Direct manual-Practice entry is covered by the focused
 component test because the production fixture has no active manual node.
 

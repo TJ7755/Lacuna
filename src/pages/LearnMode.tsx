@@ -488,9 +488,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   <motion.div
                     key={current.id}
                     data-study-card-id={current.id}
-                    initial={{ opacity: 0, x: 18, scale: 0.992 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={{ opacity: 0, x: -18, scale: 0.992 }}
+                    initial={{ opacity: 0, scale: 0.992 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.992 }}
                     transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
                     className="w-full"
                   >

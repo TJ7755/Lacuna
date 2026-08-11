@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
+import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { useToast } from '../../components/ui/Toast';
 
 export interface DangerZoneSectionProps {
@@ -23,8 +25,8 @@ export interface DangerZoneSectionProps {
 }
 
 /**
- * Danger-zone delete section shared by deck/course settings pages. Deletion is immediate
- * with an "Undo" toast rather than a blocking confirmation dialog.
+ * Danger-zone delete section shared by deck/course settings pages. Consequences are
+ * confirmed before the recoverable snapshot-and-delete operation runs.
  */
 export function DangerZoneSection({
   entityLabel,
@@ -36,6 +38,7 @@ export function DangerZoneSection({
   onDeleted,
 }: DangerZoneSectionProps) {
   const { notify } = useToast();
+  const [confirming, setConfirming] = useState(false);
 
   async function handleDelete() {
     const snap = await snapshot();
@@ -60,9 +63,18 @@ export function DangerZoneSection({
     <section className="rounded-2xl border border-negative/30 bg-negative/5 p-6 shadow-sm shadow-negative/10">
       <div className="mb-1 text-sm font-medium text-negative">Danger zone</div>
       <p className="mb-4 text-sm text-ink-soft">{description}</p>
-      <Button variant="danger" size="sm" onClick={handleDelete}>
-        Delete {entityLabel}
-      </Button>
+      {confirming ? (
+        <ConfirmInline
+          message={`Delete '${entityName}' and its local study data?`}
+          confirmLabel={`Delete ${entityLabel}`}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => void handleDelete()}
+        />
+      ) : (
+        <Button variant="danger" size="sm" onClick={() => setConfirming(true)}>
+          Delete {entityLabel}
+        </Button>
+      )}
     </section>
   );
 }

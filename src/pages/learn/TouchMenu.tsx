@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { m as motion, useMotionValue, useSpring } from 'motion/react';
 import { hapticLight } from '../../utils/haptic';
 import type { Card } from '../../db/types';
@@ -67,7 +68,7 @@ export function TouchMenuSheet({
     [dragY, onClose],
   );
 
-  return (
+  return createPortal(
     <motion.div
       ref={trapRef}
       initial={{ opacity: 0 }}
@@ -169,7 +170,8 @@ export function TouchMenuSheet({
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }
 

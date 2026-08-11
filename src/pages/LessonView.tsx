@@ -24,9 +24,10 @@ import { LessonNotesSection } from '../components/notes/LessonNotesSection';
 import { LessonNotesStudyView } from '../components/notes/LessonNotesStudyView';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsSummary } from '../components/cards/LessonCardsSummary';
-import { ChevronLeftIcon, PlayIcon, SettingsIcon } from '../components/ui/icons';
+import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { AddLessonControl } from '../components/course/AddLessonControl';
+import { CourseTabs } from '../components/course/CourseTabs';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
@@ -151,7 +152,10 @@ export function LessonView({
           <ChevronLeftIcon width={16} height={16} />
           {backLabel}
         </Link>
-        {isInline && courseId && (
+        {courseId && <CourseTabs courseId={courseId} />}
+      </div>
+      {isInline && courseId && (
+        <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
           <div className="flex items-center gap-4">
             <AddLessonControl
               courseId={courseId}
@@ -173,20 +177,9 @@ export function LessonView({
                 onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
               />
             )}
-            {/* Single-lesson courses skip CoursePath's header entirely (see
-                CoursePath.tsx's single-lesson branch), so this is the only
-                route to Course settings for them — mirror CoursePath's link. */}
-            <Link
-              to={`/course/${courseId}/settings`}
-              aria-label="Course settings"
-              title="Course settings"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center text-ink-faint transition-colors hover:text-ink active:text-ink"
-            >
-              <SettingsIcon width={18} height={18} />
-            </Link>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Header — title, a row of labelled stat pills (HeaderStats), and the
           Study action. */}
@@ -236,7 +229,7 @@ export function LessonView({
                 <p className="text-sm text-ink-faint">
                   {lessonCards.length === 0
                     ? 'Add cards to begin studying.'
-                    : 'Nothing due — study ahead.'}
+                    : 'Nothing due — next lesson available.'}
                 </p>
               )}
             </div>

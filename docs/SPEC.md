@@ -330,7 +330,8 @@ exam date, name, or created — Settings → Sidebar has no sort control; the so
 dashboard itself and persists to `localStorage`); and a review-activity heatmap for anyone
 arriving from Anki. Empty state invites creating the first course. All transitions between
 these regions are coordinated by `LayoutGroup` so adding or reordering courses does not
-stutter. Archived courses are excluded from the grid. A course card's context menu (right-click,
+stutter. Archived courses are excluded from the active grid and shown in a separate
+**Archived courses** section with an explicit **Unarchive** action. A course card's context menu (right-click,
 keyboard Context Menu key or Shift+F10) offers a confirmed **Archive** action which retains every
 lesson, card and review; the completion toast offers Undo by clearing the same `archived` flag.
 
@@ -360,7 +361,9 @@ An ordered path of lesson nodes, checkpoint assessments (informational, never bl
 and practice nodes, built by `src/course/path.ts`. The breadcrumb row pairs the "All
 courses" link with the shared `CourseTabs` component (`src/components/course/CourseTabs.tsx`:
 Path · Question bank · Analytics · Settings, active tab derived from the route), rendered
-on all four course surfaces so any section is one click from any other; `LessonViewModeToggle`
+on all four course surfaces and every normal or single-lesson view, so any section is one click
+from any other. Lesson URLs keep Path active because a lesson belongs to the path;
+`LessonViewModeToggle`
 stays CoursePath-only (it configures the path view, not the course) and sits in its own row
 above the header, right-aligned. That row also carries the `UpcomingAssessmentsStrip`
 (`src/components/course/UpcomingAssessmentsStrip.tsx`), left-aligned: compact date/name pills
@@ -411,12 +414,16 @@ conductor at `/course/:courseId/study`. The conductor rebuilds its next-step dec
 authoritative course state after every completed lesson or Practice step; it never stores a
 fixed queue. Lesson notes, Simple recall, curricular Practice, recurring Practice, transition
 reports and Pomodoro breaks therefore form one continuous study period rather than unrelated
-routes. Generic entry names the next curriculum step, labels lesson progression **Study ahead**
+routes. Generic entry names the next curriculum step, labels a lesson ready to begin **Start**
 when no due review competes with it, and otherwise offers due review separately. When an imminent
 assessment overlaps reached, exposed material and has useful work, the conductor also offers each
 applicable named assessment, ordered by date. Choosing a branch is temporary and is not retained
 as a preference. Selecting a visible manual Practice node or assessment on the path bypasses the
 generic choice and enters that exact scope.
+Manual-practice insertion controls are persistently labelled at each path boundary. Path nodes
+show **Manual** or **Automatic** explicitly. The path is the sole manual-node editor; Course
+Settings explains the distinction, lists manual nodes, states that stored custom card filters are
+not authorable in the current UI, and links back to the path instead of duplicating the form.
 The learner leaves only through an explicit finish action. The step union reserves an
 `exam-questions` member for a future engine, but this version creates no placeholder questions
 or empty exam UI. A completed lesson enters its transition report through a motion-speed-aware
@@ -1339,7 +1346,9 @@ each take one constant expression, so a multi-variable solution is written as on
 variable rather than as `x=6,y=4`. Lacuna sends no data to a model and stores no API key; the
 conversation remains in the tutor's chosen chatbot.
 
-The batch dialog's review step parses the versioned delimiter block and validates each
+The entry action is labelled **Build external batch prompt**, since Lacuna does not call a model.
+Closing after entering source text, pasting a reply, or staging candidates requires an explicit
+**Discard batch** confirmation. The batch dialog's review step parses the versioned delimiter block and validates each
 item independently. A block closed by a mirrored `<<<LACUNA_ITEMS_V1>>>` instead of
 `<<<END_LACUNA_ITEMS_V1>>>` is accepted, since the block is already open by that point and the
 closing delimiter does not contain the opening one as a substring; a correct closing delimiter still
@@ -1752,7 +1761,7 @@ A single, reusable export UI offering multiple output formats:
   Back, and Tags columns. Pipes in cell content are escaped.
 - **JSON array** (`exportCardsJson`) — array of objects with front, back, tags,
   deck, and type keys. Re-importable into Lacuna.
-- **Plain text** — human-readable Q:/A: format with deck and tag metadata.
+- **Plain text** — human-readable Q:/A: format with course, lesson, and tag metadata.
 - **Share code** (optional, requires deck selection) — compact, copy-pasteable
   code via `buildShareCode`.
 
@@ -1767,7 +1776,9 @@ A single, reusable export UI offering multiple output formats:
   Older backups that pre-date the course tables, sequences or occlusions still import
   cleanly: all these arrays are optional in `BackupFile`.
 - **Import modes:**
-  - **Replace all** — wipe then restore exactly. Every data table (including the six course
+  - **Replace** — wipe local installation data, then restore exactly. The UI calls this
+    **Replace local data**, explains that there is no account or cloud copy, and requires a second
+    explicit confirmation. Every data table (including the six course
     tables, `sequences` and `occlusions`) is cleared before the backup is written; each is
     restored only if the backup contains it.
   - **Merge** — fold in by id. Before committing, a **visible diff** summarises
@@ -2193,8 +2204,9 @@ scrollspy and its navigation cannot drift from the rendered sections.
   dashboard's own course-ordering control (recent / ready to study / mastery / exam
   date / name / created) is a separate, dashboard-local setting
   (`src/state/dashboardSort.ts`; §4.3), not part of this section.
-- **Import & export:** export all data; import from file with the inline
-  Merge / Replace-all chooser described in §13.
+- **Full backup & recovery:** export the entire local database; choose a full-backup file and use
+  the explicit **Merge backup** / **Replace local data** chooser described in §13. Course sharing
+  and text/CSV/JSON/APKG card import remain separate flows.
 - **Persistent storage:** the app requests `navigator.storage.persist()` on
   first run so the browser does not silently evict IndexedDB data under storage
   pressure. The result (persisted, denied, or unsupported) is surfaced honestly

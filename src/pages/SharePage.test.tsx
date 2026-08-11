@@ -238,7 +238,7 @@ describe('SharePage', () => {
       expect(screen.getByRole('textbox', { name: 'Generated share code' })).toBeInTheDocument(),
     );
 
-    fireEvent.click(screen.getByText('Export as plain text'));
+    fireEvent.click(screen.getByText('Export cards as plain text'));
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: 'Generated plain-text export' })).toBeInTheDocument(),
     );

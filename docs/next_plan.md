@@ -13,19 +13,20 @@ archive.
 
 ## Now
 
-### Arc 14, slice 2 — Study entry points
+### Arc 14 — Flow simplification
 
 **Status:** delivered.
 
-Course surfaces now expose one generic Study action. The course conductor distinguishes
-progression, study ahead, due review and named assessment revision, while specific Practice nodes
-and assessments retain direct entry. Cross-course review is visible as Review today.
+Course setup, study entry points, practice authoring, lesson navigation, creation controls,
+sharing/recovery language, archive management, destructive confirmations, shortcut conflicts,
+and release automation now follow one coherent product model.
 
-The delivered implementation specification is
-[Arc 14 — Study entry points](plans/arc-14-study-entry-points.md).
+The delivered implementation specifications are
+[course setup](plans/arc-14-course-setup.md),
+[study entry points](plans/arc-14-study-entry-points.md), and
+[the remaining flow repairs](plans/arc-14-remaining-slices.md).
 
-There is no active product implementation plan. The next slice needs a bounded specification
-against the delivered code before implementation starts.
+There is no active product implementation plan. Arc 14 has no remaining slices.
 
 ## Close-out queue
 
@@ -42,20 +43,8 @@ relevant release evidence; they do not acquire another essay here.
 
 ## Next
 
-Continue the flow-simplification work identified by
-[the UI flow catalogue](APP-FLOWS.md), in this order:
-
-1. **Practice-node management** — visible path authoring, one coherent editing model, and clear
-   automatic/manual terminology.
-2. **Course navigation and authoring consistency** — course tabs from lesson views and stable
-   card, sequence, occlusion, linking and import controls.
-3. **Import, export and recovery language** — distinguish sharing, backup, card import, APKG,
-   batch staging, archive, deletion and replacement before the user commits data.
-4. **Consolidation and release verification** — execute the maintenance and production-browser
-   work formerly described by Arc 13, then close the release checklist.
-
-Only the next slice receives a detailed implementation plan. Later slices remain outcomes until
-the preceding slice exposes the actual code and product constraints.
+Choose the next product arc from the candidates below. Do not smuggle another maintenance grab-bag
+in under Arc 14; it is closed.
 
 ## Later candidates
 

@@ -35,7 +35,10 @@ export function CourseTabs({ courseId }: { courseId: string }) {
         // The Path tab (empty suffix) must match exactly so it doesn't stay
         // "active" while on /bank, /analytics or /settings (all of which
         // start with the same base path).
-        const active = suffix === '' ? pathname === to : pathname.startsWith(to);
+        const active =
+          suffix === ''
+            ? pathname === to || pathname.startsWith(`${to}/lesson/`)
+            : pathname.startsWith(to);
         return (
           <Link
             key={label}

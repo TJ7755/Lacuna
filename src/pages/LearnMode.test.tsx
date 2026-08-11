@@ -171,11 +171,15 @@ describe('LearnMode course/lesson scope', () => {
     expect(flipCard).toHaveAttribute('tabindex', '0');
     fireEvent.keyDown(flipCard, { key: 'Enter' });
     expect(await screen.findByRole('button', { name: /^yes$/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^yes$/i }));
-
-    await waitFor(async () => {
-      expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(1);
+    const yes = screen.getByRole('button', { name: /^yes$/i });
+    await act(async () => {
+      fireEvent.click(yes);
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        if ((await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()) === 1) return;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
     });
+    expect(await db.lessonCardExposures.where('lessonId').equals(lesson.id).count()).toBe(1);
     expect(await db.sessionHistory.count()).toBe(0);
     expect((await db.cards.toArray())[0].state).toBe(0);
   });
@@ -827,7 +831,7 @@ describe('LearnMode course/lesson scope', () => {
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
   });
 
-  it('keeps practice-session chrome mounted while Yes and No advance the card surface', async () => {
+  it('keeps practice-session chrome mounted while Yes and No replace the card surface', async () => {
     const now = Date.now();
     const deck = await createDeck('Continuous practice');
     await db.decks.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
@@ -1323,6 +1327,29 @@ describe('LearnMode course/lesson scope', () => {
     } finally {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
     }
+  });
+
+  it('portals touch card actions outside the sticky study header', async () => {
+    localStorage.setItem('lacuna.inputMode', 'touch');
+    const deck = await createDeck('Touch actions');
+    await createCard(deck.id, 'front_back', 'Touch question', 'Touch answer');
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('Touch question')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Card actions' });
+    expect(dialog.parentElement).toBe(document.body);
   });
 
   it('does not reset an active session when the default Focus Mode preference changes', async () => {

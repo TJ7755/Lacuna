@@ -130,7 +130,7 @@ describe('CardList', () => {
       />
     );
     expect(screen.getByText('No cards yet.')).toBeInTheDocument();
-    expect(screen.getByText('Add your first card')).toBeInTheDocument();
+    expect(screen.getAllByText('New card')).not.toHaveLength(0);
   });
 
   it('renders cards with front content', () => {
@@ -222,7 +222,7 @@ describe('CardList', () => {
         onEditCard={vi.fn()}
       />
     );
-    fireEvent.click(screen.getByText('Import'));
+    fireEvent.click(screen.getByText('Import cards'));
     expect(screen.getByTestId('import-panel')).toBeInTheDocument();
   });
 
@@ -237,7 +237,7 @@ describe('CardList', () => {
       />
     );
     expect(screen.getByText('New card')).toBeInTheDocument();
-    expect(screen.getByText('Import')).toBeInTheDocument();
+    expect(screen.getByText('Import cards')).toBeInTheDocument();
   });
 
   it('calls onNewCard when New card button is clicked', () => {

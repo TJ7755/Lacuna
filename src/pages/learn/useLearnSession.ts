@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
 import { getCourse, listCourseAssessments } from '../../db/read';
-import { CURRENT_ITEM_PAYLOAD_VERSION } from '../../db/types';
 import type {
   Card,
   Course,
@@ -85,7 +84,6 @@ import {
 } from '../../fsrs/halfLifeLogisticModel';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { SessionEvent, SessionSummary } from '../../components/learn/types';
-import { clozeAnswerText } from '../../components/markdown/cloze';
 import type { useToast } from '../../components/ui/Toast';
 import { linesModeSequencesByCard } from '../../db/linesModeCards';
 import { occlusionDataByCard, type OcclusionCardData } from '../../db/occlusionStudy';
@@ -101,52 +99,11 @@ import type {
   SessionCardOutcome,
   StudyUnit,
 } from './types';
-
-/**
- * Whether a card can be answered by typing under the 'type' typing setting (see
- * src/state/typingSetting.ts). front_back and basic_reversed are answered against
- * their back; cloze is answered against its deletion text. Typing was previously
- * its own card type ('typing') — it is now a presentation mode that applies to
- * any of these card types.
- */
-export function isTypingEligible(card: Pick<Card, 'type' | 'payload'>): boolean {
-  return (
-    card.payload === undefined &&
-    (card.type === 'front_back' || card.type === 'basic_reversed' || card.type === 'cloze')
-  );
-}
-
-/**
- * The expected answer text a typed answer is compared against (see compareAnswer).
- * `occlusionAnswerText` overrides the card's own front/back-derived text for an
- * occlusion-generated card, whose plain-text `back` fallback (§6.4) is not a typing
- * target — see `resolveOcclusionAnswerText` in occlusionGeneration.ts.
- */
-export function typingExpectedAnswer(
-  card: Pick<Card, 'type' | 'front' | 'back'>,
-  occlusionAnswerText?: string,
-): string {
-  if (occlusionAnswerText !== undefined) return occlusionAnswerText;
-  return card.type === 'cloze' ? clozeAnswerText(card.front) : card.back;
-}
-
-function hasMachineMarkedPayload(card: Pick<Card, 'payload'> | null): boolean {
-  return (
-    card?.payload?.v === CURRENT_ITEM_PAYLOAD_VERSION &&
-    (card.payload.kind === 'numeric' || card.payload.kind === 'working')
-  );
-}
-
-/**
- * A payload the current client cannot render as a study face at all: present but not
- * machine-markable (unknown v, or a known-but-unbuilt kind such as `scaffold`). A falsy
- * (null or undefined) payload is treated as no payload, matching the ordinary card path.
- * Single source of truth for the read-only-render check and the grading guard below so
- * the two cannot drift apart.
- */
-function isUnrenderableItemPayload(card: Pick<Card, 'payload'> | null): boolean {
-  return !!card?.payload && !hasMachineMarkedPayload(card);
-}
+import {
+  hasMachineMarkedPayload,
+  isTypingEligible,
+  isUnrenderableItemPayload,
+} from './sessionCardCapabilities';
 
 /** What undoing the most recent answer needs to restore (DB + in-session state). */
 interface AnswerSnapshot {
