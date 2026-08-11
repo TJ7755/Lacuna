@@ -13,17 +13,6 @@ import { progressValue } from '../fsrs/objective';
 import { availableCards, studyPool } from '../fsrs/eligibility';
 import { computeStudyStats, type StudyStats } from '../fsrs/stats';
 
-export function useDecks(): Deck[] | undefined {
-  return useLiveQuery(() => db.decks.orderBy('createdAt').toArray(), []);
-}
-
-export function useDeck(deckId: string | undefined): Deck | undefined {
-  return useLiveQuery(
-    () => (deckId ? db.decks.get(deckId) : undefined),
-    [deckId],
-  );
-}
-
 export function useCard(cardId: string | undefined): Card | null | undefined {
   return useLiveQuery<Card | null>(
     () => (cardId ? db.cards.get(cardId).then((card) => card ?? null) : null),
