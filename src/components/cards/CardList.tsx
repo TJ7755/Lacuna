@@ -44,7 +44,8 @@ import { GeneratedCardGroup } from './GeneratedCardGroup';
 import { GeneratedCardBadge } from './GeneratedCardBadge';
 import type { ParsedCard } from '../../db/import';
 import { importApkgResult, type ApkgImportResult } from '../../db/apkgImport';
-import type { Card, Deck, Occlusion, Sequence } from '../../db/types';
+import type { Card, Deck, Occlusion, SchedulerConfig, Sequence } from '../../db/types';
+import type { CardListContext } from './cardListContext';
 
 /** A lesson a card can be bulk-assigned to, offered in the "Assign to lesson…" panel. */
 interface AssignableLesson {
@@ -52,11 +53,8 @@ interface AssignableLesson {
   name: string;
 }
 
-interface CardListProps {
+interface CardListBaseProps {
   cards: Card[];
-  deck: Deck;
-  /** Legacy sibling decks used by the optional "Move to…" action. */
-  allDecks?: Deck[];
   onNewCard?: () => void;
   /** Sibling to onNewCard: offers "New sequence" alongside "New card" when supplied. */
   onNewSequence?: () => void;
@@ -65,44 +63,31 @@ interface CardListProps {
   /** Opens a picker for adding existing course cards to this lesson without moving them. */
   onLinkExisting?: () => void;
   onEditCard: (card: Card) => void;
-  /** When true, suppresses the internal "Cards (N)" heading row. Use when the
-   *  parent already renders its own heading for the cards section. */
+  /** When true, suppresses the internal "Cards (N)" heading row. */
   hideHeader?: boolean;
-  /** Opens the card importer on first mount, used by an empty lesson after its backing deck is created. */
+  /** Opens the card importer on first mount. */
   initiallyImporting?: boolean;
-  /**
-   * When supplied together with courseId, the bulk toolbar gains an "Assign to
-   * lesson…" action that reassigns selected cards' primaryLessonId (and moves
-   * them to that lesson's backing deck). Used by the course Question Bank.
-   */
+  /** When supplied with courseId, enables bulk lesson assignment. */
   assignableLessons?: AssignableLesson[];
   courseId?: string;
-  /**
-   * Sequences in scope for these cards (same course/lesson). When supplied, generated
-   * cards with a sequence item ID are grouped under a header naming their owning
-   * sequence rather than listed loosely; a generated card whose sequence cannot be
-   * resolved (e.g. omitted here by mistake) still renders inline, badged and read-only.
-   */
   sequences?: Sequence[];
-  /** Navigates to the sequence editor for a generated-card group's "Edit sequence" affordance. */
   onEditSequence?: (sequenceId: string) => void;
-  /**
-   * Occlusions in scope for these cards (same course/lesson). When supplied, generated
-   * cards with an occlusion region ID are grouped under a header naming their owning
-   * occlusion rather than listed loosely; a generated card whose occlusion cannot be
-   * resolved (e.g. omitted here by mistake) still renders inline, badged and read-only.
-   */
   occlusions?: Occlusion[];
-  /** Navigates to the occlusion editor for a generated-card group's "Edit occlusion" affordance. */
   onEditOcclusion?: (occlusionId: string) => void;
-  /** Cards linked into the current lesson rather than owned by it. */
   linkedCardIds?: ReadonlySet<string>;
-  /** Removes one linked membership while preserving the underlying card. */
   onUnlinkCard?: (card: Card) => void;
 }
 
-export function CardList({ cards, deck, allDecks = [deck], onNewCard, onNewSequence, onNewOcclusion, onLinkExisting, onEditCard, hideHeader = false, initiallyImporting = false, assignableLessons, courseId, sequences, onEditSequence, occlusions, onEditOcclusion, linkedCardIds, onUnlinkCard }: CardListProps) {
+type CardListProps = CardListBaseProps &
+  (
+    | { deck: Deck; context?: never; allDecks?: Deck[] }
+    | { context: CardListContext; deck?: never; allDecks?: never }
+  );
+
+export function CardList({ cards, deck, context, allDecks = deck ? [deck] : [], onNewCard, onNewSequence, onNewOcclusion, onLinkExisting, onEditCard, hideHeader = false, initiallyImporting = false, assignableLessons, courseId, sequences, onEditSequence, occlusions, onEditOcclusion, linkedCardIds, onUnlinkCard }: CardListProps) {
   const { notify } = useToast();
+  const schedulingConfig: SchedulerConfig = context ? context.schedulingConfig : deck;
+  const importTargetName = context ? context.importTargetName : deck.name;
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [moving, setMoving] = useState(false);
@@ -120,12 +105,12 @@ export function CardList({ cards, deck, allDecks = [deck], onNewCard, onNewSeque
   const m = speedMultiplier(motionSpeed);
   useEffect(() => {
     setExpandedCardId(null);
-  }, [deck.id]);
+  }, [schedulingConfig.id]);
 
 
   const otherDecks = useMemo(
-    () => allDecks.filter((d) => d.id !== deck.id),
-    [allDecks, deck.id],
+    () => (context?.moveTargets ?? allDecks).filter((d) => d.id !== schedulingConfig.id),
+    [allDecks, context?.moveTargets, schedulingConfig.id],
   );
 
   // Existing tags across the deck, offered as suggestions in the bulk tag panel.
@@ -364,24 +349,36 @@ export function CardList({ cards, deck, allDecks = [deck], onNewCard, onNewSeque
     if (!moveTarget) return;
     const ids = [...selected];
     const snapshot = await snapshotCards(ids);
-    await moveCards(ids, moveTarget);
+    if (context) {
+      await context.onMove(ids, moveTarget);
+    } else {
+      await moveCards(ids, moveTarget);
+    }
     exitSelect();
     notify(`${ids.length} card${ids.length === 1 ? '' : 's'} moved.`, 'neutral', {
       actionLabel: 'Undo',
       onAction: () => {
-        void restoreCards(snapshot);
+        void (context ? context.onRestore(snapshot) : restoreCards(snapshot));
       },
     });
   }
 
   async function handleImport(cards: ParsedCard[]) {
-    await createCards(deck.id, cards);
+    if (context) {
+      await context.onImport(cards);
+    } else {
+      await createCards(deck.id, cards);
+    }
     setImporting(false);
     notify(`${cards.length} card${cards.length === 1 ? '' : 's'} imported.`, 'positive');
   }
 
   async function handleApkgImport(result: ApkgImportResult) {
-    await importApkgResult(result, deck.id);
+    if (context) {
+      await context.onApkgImport(result);
+    } else {
+      await importApkgResult(result, deck.id);
+    }
     setImporting(false);
     notify(`${result.cards.length} card${result.cards.length === 1 ? '' : 's'} imported from Anki.`, 'positive');
   }
@@ -494,13 +491,13 @@ export function CardList({ cards, deck, allDecks = [deck], onNewCard, onNewSeque
             className="overflow-hidden"
           >
             <div className="rounded-2xl border border-line-strong bg-surface p-5">
-              <h3 className="mb-1 font-display text-lg">Import cards into {deck.name}</h3>
+              <h3 className="mb-1 font-display text-lg">Import cards into {importTargetName}</h3>
               <p className="mb-4 text-sm text-ink-soft">
                 Paste card text or upload CSV, JSON or an Anki APKG. This adds cards; it does not
                 restore a full Lacuna backup or import a shared course.
               </p>
               <UnifiedImportPanel
-                deckId={deck.id}
+                deckId={context ? context.importTargetId : deck.id}
                 onImport={handleImport}
                 onCancel={() => setImporting(false)}
                 importLabel="Add cards"
@@ -826,7 +823,7 @@ export function CardList({ cards, deck, allDecks = [deck], onNewCard, onNewSeque
               kind={group.kind}
               owner={group.owner}
               cards={group.cards}
-              deck={deck}
+              schedulingConfig={schedulingConfig}
               onEditCard={onEditCard}
               onEditOwner={group.kind === 'sequence' ? onEditSequence : onEditOcclusion}
               onResume={handleResume}
@@ -839,7 +836,7 @@ export function CardList({ cards, deck, allDecks = [deck], onNewCard, onNewSeque
           {looseCards.length > 0 && (
             <CardListBody
               cards={looseCards}
-              deck={deck}
+              schedulingConfig={schedulingConfig}
               selectMode={selectMode}
               selected={selected}
               expandedCardId={expandedCardId}
@@ -874,7 +871,7 @@ function cardTypeLabel(card: Card) {
  *  generated cards through the same CardRow (and so gets its read-only treatment for free). */
 export function CardListBody({
   cards,
-  deck,
+  schedulingConfig,
   selectMode,
   selected,
   expandedCardId,
@@ -889,7 +886,7 @@ export function CardListBody({
   motionMultiplier,
 }: {
   cards: Card[];
-  deck: Deck;
+  schedulingConfig: SchedulerConfig;
   selectMode: boolean;
   selected: Set<string>;
   expandedCardId: string | null;
@@ -927,7 +924,7 @@ export function CardListBody({
           <CardRow
             key={card.id}
             card={card}
-            deck={deck}
+            schedulingConfig={schedulingConfig}
             index={i}
             selectMode={selectMode}
             selected={selected.has(card.id)}
@@ -964,7 +961,7 @@ export function CardListBody({
           >
             <CardRow
               card={card}
-              deck={deck}
+              schedulingConfig={schedulingConfig}
               index={index}
               selectMode={selectMode}
               selected={selected.has(card.id)}
@@ -991,7 +988,7 @@ export function CardListBody({
 
 const CardRow = React.memo(function CardRow({
   card,
-  deck,
+  schedulingConfig,
   index,
   selectMode,
   selected,
@@ -1008,7 +1005,7 @@ const CardRow = React.memo(function CardRow({
   skipAnimation,
 }: {
   card: Card;
-  deck: Deck;
+  schedulingConfig: SchedulerConfig;
   index: number;
   selectMode: boolean;
   selected: boolean;
@@ -1478,7 +1475,11 @@ const CardRow = React.memo(function CardRow({
               onClick={handleExpandedClick}
             >
               <div className="border-t border-line pt-4">
-                <CardAnalytics card={card} deck={deck} motionMultiplier={m} />
+                <CardAnalytics
+                  card={card}
+                  schedulingConfig={schedulingConfig}
+                  motionMultiplier={m}
+                />
               </div>
             </motion.div>
           )}
