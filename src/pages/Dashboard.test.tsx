@@ -20,10 +20,11 @@ vi.mock('react-router-dom', () => ({
 }));
 
 let mockCourseDashboardData: unknown = undefined;
+let mockPendingUpdateIds = new Set<string>();
 
 vi.mock('../state/useCourseData', () => ({
   useCourseDashboardData: () => mockCourseDashboardData,
-  usePendingUpdateCourseIds: () => new Set<string>(),
+  usePendingUpdateCourseIds: () => mockPendingUpdateIds,
 }));
 
 vi.mock('../state/motionSpeed', () => ({
@@ -164,6 +165,7 @@ beforeEach(() => {
   mockUpdateCourse.mockResolvedValue(undefined);
   mockNotify.mockReset();
   mockCourseDashboardData = undefined;
+  mockPendingUpdateIds = new Set<string>();
   mockActiveFlow = null;
 });
 
@@ -232,6 +234,16 @@ describe('Dashboard', () => {
     render(<Dashboard />);
     fireEvent.click(screen.getByTestId('course-card'));
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1');
+  });
+
+  it('navigates to update review when a course has pending changes', () => {
+    setCourseData();
+    mockPendingUpdateIds = new Set(['course-1']);
+
+    render(<Dashboard />);
+    fireEvent.click(screen.getByTestId('course-card'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/updates');
   });
 
   it('navigates to the course study flow when the Study action is used', () => {
