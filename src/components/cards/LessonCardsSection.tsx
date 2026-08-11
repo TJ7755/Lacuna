@@ -12,6 +12,7 @@ import { PlusIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
 import {
   useCourseCards,
+  useLessonBackingDeck,
   useLessonCardLinks,
   useLessons,
   useOcclusions,
@@ -21,7 +22,6 @@ import { db } from '../../db/schema';
 import { ensureLessonBackingDeck } from '../../db/backingDecks';
 import { unlinkCardFromLesson } from '../../db/repository';
 import type { Card, Deck } from '../../db/types';
-import { useDeck } from '../../state/useData';
 
 interface LessonCardsSectionProps {
   courseId: string;
@@ -46,8 +46,8 @@ export function LessonCardsSection({
 }: LessonCardsSectionProps) {
   const { notify } = useToast();
   const [linking, setLinking] = useState(false);
-  const [preparedDeckId, setPreparedDeckId] = useState<string>();
-  const preparedDeck = useDeck(preparedDeckId);
+  const [importReady, setImportReady] = useState(false);
+  const preparedDeck = useLessonBackingDeck(courseId, lessonId);
   // A card pending unlink confirmation — only set when it has lesson-specific
   // teaching progress that unlinking would reset (see handleUnlink below).
   const [pendingUnlink, setPendingUnlink] = useState<Card | null>(null);
@@ -87,7 +87,8 @@ export function LessonCardsSection({
 
   async function prepareEmptyImport() {
     try {
-      setPreparedDeckId(await ensureLessonBackingDeck(courseId, lessonId));
+      await ensureLessonBackingDeck(courseId, lessonId);
+      setImportReady(true);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not prepare the card import.', 'negative');
     }
@@ -123,7 +124,7 @@ export function LessonCardsSection({
         </div>
       )}
 
-      {lessonCards.length === 0 && preparedDeck ? (
+      {lessonCards.length === 0 && importReady && preparedDeck ? (
         <CardList
           cards={[]}
           deck={preparedDeck}
