@@ -3,6 +3,10 @@ dist/
 *.tsbuildinfo
 .vite/
 /dev-dist/
+/coverage/
+/playwright-report/
+/test-results/
+/artifacts/release-scenarios/
 .DS_Store
 .npmrc
 

@@ -9,9 +9,25 @@ export default defineConfig({
     environment: 'happy-dom',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     setupFiles: ['./vitest.setup.ts'],
-    // Bound parallelism so the suite is faster without starving timing-sensitive
-    // component tests on larger CI and developer machines.
+    // One worker keeps the suite inside the memory budget of supported developer
+    // machines and makes timing-sensitive component tests deterministic.
     minWorkers: 1,
-    maxWorkers: 4,
+    maxWorkers: 1,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: [
+        'src/course/path.ts',
+        'src/course/unlock.ts',
+        'src/fsrs/session.ts',
+        'src/db/lineageDiff.ts',
+      ],
+      thresholds: {
+        statements: 92,
+        branches: 85,
+        functions: 99,
+        lines: 92,
+      },
+    },
   },
 });
