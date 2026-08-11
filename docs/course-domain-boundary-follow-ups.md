@@ -4,7 +4,7 @@
 
 **Branch:** `refactor/course-domain-boundary`
 
-**Latest reviewed commit:** `27c7188` (`refactor(perf): name calibration key spaces`)
+**Latest reviewed commit:** `fd1a745` (`refactor(export): remove unused deck panel API`)
 
 **Original stop commit:** `9dd9107` (`refactor(course): remove singleton deck plumbing`)
 
@@ -55,6 +55,10 @@ The following changes are complete and reviewed, in small commits:
 - Separated `CardEditOverlay` draft keys from backing Deck identity in `fed66b9`: Course sessions
   use `bank:<courseId>` scope, Lesson sessions use `lessonId` scope, and global legacy sessions
   retain the `card.deckId` fallback. Added focused coverage for both explicit and fallback keys.
+- Removed the unused Deck-shaped `deckIds`/`showShareCode` props and dead share-code UI branch from
+  `UnifiedExportPanel` in `fd1a745`. Course `SharePage` sharing remains on `buildCourseShareCode`,
+  while legacy `buildShareCode` and its wire-compatibility tests remain unchanged. The checkpoint
+  passed 45 relevant tests, web typecheck, lint and whitespace validation.
 
 ## Remaining work
 
@@ -159,11 +163,15 @@ Do not merge the two lookup paths merely because both return `UserPerformance`.
 
 ### 5. Audit remaining course-facing export, share and import entry points
 
+**Progress:** the unused Deck-shaped export-panel API is removed in `fd1a745`; the Course SharePage
+and legacy wire-compatible share/backup/import paths remain intentionally separate.
+
 **Priority:** medium
 
 The generic portability APIs still use legacy identifiers in places, notably:
 
-- `src/components/import/UnifiedExportPanel.tsx` accepts `deckIds`;
+- `src/components/import/UnifiedExportPanel.tsx` no longer accepts `deckIds`; its full-backup and
+  card/review export surface is now Course-neutral;
 - `src/db/share.ts` exposes `buildShareCode(deckIds)`;
 - `src/db/portability.ts`, `src/db/export.ts`, `src/db/mergeImport.ts` and related tests retain
   Deck-shaped backup/share records for compatibility;
@@ -214,7 +222,8 @@ Do not start this storage migration as an incidental cleanup in the search or Ca
 
 This branch will finish workstreams 2–6 below. Workstream 2 has started with `4d7b482` and
 continued through `501120b`, `af7958a` and `fed66b9`; workstream 3 is delivered in `974d2e4`.
-The remaining workstreams are still pending.
+Workstream 4 has its naming slice delivered in `27c7188`/`2f53a40`, and workstream 5 has
+its unused export-panel API slice delivered in `fd1a745`; the remaining audit work is still pending.
 The eventual storage migration in workstream 7 is explicitly excluded from this PR because it
 requires a separate schema, rollback and release plan.
 
@@ -237,10 +246,10 @@ These are not unfinished implementation items for the paused branch:
 ## Suggested implementation order when resumed
 
 1. Remaining Course-facing CardList scheduling-context contract.
-2. UserPerformance naming/semantics decision and persistence tests.
-4. Course-facing export/share prop audit with compatibility tests.
-5. Explicit internal-boundary documentation and final containment audit.
-6. Separate proposal for the eventual storage migration (outside this PR).
+2. UserPerformance persistence/undo coverage and final semantics decision.
+3. Course-facing export/share/import compatibility audit.
+4. Explicit internal-boundary documentation and final containment audit.
+5. Separate proposal for the eventual storage migration (outside this PR).
 
 Each resumed slice should stay small, be validated with focused tests plus web typecheck/lint, and
 receive a code review before its own commit.
