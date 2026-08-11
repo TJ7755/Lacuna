@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { CardList } from './CardList';
+import { courseCardListContext } from './cardListContext';
 import { LinkCardsDialog } from './LinkCardsDialog';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
@@ -21,7 +22,7 @@ import {
 import { db } from '../../db/schema';
 import { ensureLessonBackingDeck } from '../../db/backingDecks';
 import { unlinkCardFromLesson } from '../../db/repository';
-import type { Card, Deck } from '../../db/types';
+import type { Card, SchedulerConfig } from '../../db/types';
 
 interface LessonCardsSectionProps {
   courseId: string;
@@ -30,7 +31,7 @@ interface LessonCardsSectionProps {
    *  (see the onEditSequence origin override below). */
   lessonName: string;
   lessonCards: Card[];
-  lessonDeck: Deck | undefined;
+  lessonSchedulingConfig: SchedulerConfig | undefined;
   onNavigate: (path: string, options?: { state?: unknown }) => void;
   className?: string;
 }
@@ -40,7 +41,7 @@ export function LessonCardsSection({
   lessonId,
   lessonName,
   lessonCards,
-  lessonDeck,
+  lessonSchedulingConfig,
   onNavigate,
   className,
 }: LessonCardsSectionProps) {
@@ -128,7 +129,12 @@ export function LessonCardsSection({
       {lessonCards.length === 0 && importReadyFor === importKey && preparedDeck ? (
         <CardList
           cards={[]}
-          deck={preparedDeck}
+          context={courseCardListContext({
+            schedulingConfig: preparedDeck,
+            courseId,
+            primaryLessonId: lessonId,
+            importTargetName: lessonName,
+          })}
           hideHeader
           initiallyImporting
           onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
@@ -171,7 +177,7 @@ export function LessonCardsSection({
             </Button>
           </div>
         </div>
-      ) : links === undefined || !lessonDeck ? (
+      ) : links === undefined || !lessonSchedulingConfig ? (
         // Membership determines whether a row may delete the underlying card. Never
         // render destructive controls until that membership query has resolved.
         <div className="space-y-3" aria-label="Loading lesson cards">
@@ -182,7 +188,12 @@ export function LessonCardsSection({
       ) : (
         <CardList
           cards={lessonCards}
-          deck={lessonDeck}
+          context={courseCardListContext({
+            schedulingConfig: lessonSchedulingConfig,
+            courseId,
+            primaryLessonId: lessonId,
+            importTargetName: lessonName,
+          })}
           hideHeader
           onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
           onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}

@@ -10,6 +10,7 @@ const mockUnlink = vi.fn();
 const mockEnsureLessonBackingDeck = vi.fn();
 const mockGetExposure = vi.fn();
 const mockNotify = vi.fn();
+const observedContexts: { importTargetName: string; hasImport: boolean; hasApkg: boolean; hasRestore: boolean }[] = [];
 
 vi.mock('../../state/useCourseData', () => ({
   useCourseCards: () => mockCourseCards,
@@ -32,6 +33,7 @@ vi.mock('../../db/schema', () => ({
 }));
 
 vi.mock('../../db/repository', () => ({
+  restoreCards: vi.fn(),
   unlinkCardFromLesson: (...args: unknown[]) => mockUnlink(...args),
 }));
 
@@ -54,19 +56,36 @@ vi.mock('./CardList', () => ({
     onLinkExisting,
     linkedCardIds,
     onUnlinkCard,
+    context,
   }: {
     onLinkExisting?: () => void;
     linkedCardIds?: ReadonlySet<string>;
     onUnlinkCard?: (card: Card) => void;
     initiallyImporting?: boolean;
-  }) => (
+    context?: {
+      importTargetName: string;
+      onImport: unknown;
+      onApkgImport: unknown;
+      onRestore: unknown;
+    };
+  }) => {
+    if (context) {
+      observedContexts.push({
+        importTargetName: context.importTargetName,
+        hasImport: typeof context.onImport === 'function',
+        hasApkg: typeof context.onApkgImport === 'function',
+        hasRestore: typeof context.onRestore === 'function',
+      });
+    }
+    return (
     <div>
       {initiallyImporting && <span data-testid="initially-importing">true</span>}
       <button type="button" onClick={onLinkExisting}>Open linked-card picker</button>
       <span data-testid="linked-ids">{[...(linkedCardIds ?? [])].join(',')}</span>
       <button type="button" onClick={() => onUnlinkCard?.(card)}>Remove linked card</button>
     </div>
-  ),
+    );
+  },
 }));
 
 const lesson = {
@@ -129,6 +148,7 @@ beforeEach(() => {
   mockUnlink.mockReset();
   mockEnsureLessonBackingDeck.mockReset();
   mockNotify.mockReset();
+  observedContexts.length = 0;
   mockUnlink.mockResolvedValue(undefined);
   mockGetExposure.mockReset();
   mockGetExposure.mockResolvedValue(undefined);
@@ -144,7 +164,7 @@ describe('LessonCardsSection', () => {
         lessonId="lesson-1"
         lessonName="Cells"
         lessonCards={[]}
-        lessonDeck={undefined}
+        lessonSchedulingConfig={undefined}
         onNavigate={vi.fn()}
       />,
     );
@@ -152,6 +172,9 @@ describe('LessonCardsSection', () => {
     fireEvent.click(screen.getByText('Import cards'));
     await waitFor(() => expect(mockEnsureLessonBackingDeck).toHaveBeenCalledWith('course-1', 'lesson-1'));
     expect(screen.getByTestId('initially-importing')).toHaveTextContent('true');
+    expect(observedContexts).toEqual([
+      { importTargetName: 'Cells', hasImport: true, hasApkg: true, hasRestore: true },
+    ]);
   });
 
   it('notifies when preparing an empty import fails', async () => {
@@ -162,7 +185,7 @@ describe('LessonCardsSection', () => {
         lessonId="lesson-1"
         lessonName="Cells"
         lessonCards={[]}
-        lessonDeck={undefined}
+        lessonSchedulingConfig={undefined}
         onNavigate={vi.fn()}
       />,
     );
@@ -179,7 +202,7 @@ describe('LessonCardsSection', () => {
         lessonId="lesson-1"
         lessonName="Cells"
         lessonCards={[]}
-        lessonDeck={undefined}
+        lessonSchedulingConfig={undefined}
         onNavigate={vi.fn()}
       />,
     );
@@ -195,11 +218,14 @@ describe('LessonCardsSection', () => {
         lessonId="lesson-1"
         lessonName="Cells"
         lessonCards={[card]}
-        lessonDeck={deck}
+        lessonSchedulingConfig={deck}
         onNavigate={vi.fn()}
       />,
     );
     expect(screen.getByTestId('linked-ids')).toHaveTextContent(card.id);
+    expect(observedContexts).toEqual([
+      { importTargetName: 'Cells', hasImport: true, hasApkg: true, hasRestore: true },
+    ]);
     fireEvent.click(screen.getByText('Open linked-card picker'));
     expect(screen.getByRole('dialog')).toHaveTextContent('Card picker');
   });
@@ -213,7 +239,7 @@ describe('LessonCardsSection', () => {
         lessonId="lesson-1"
         lessonName="Cells"
         lessonCards={[card]}
-        lessonDeck={deck}
+        lessonSchedulingConfig={deck}
         onNavigate={vi.fn()}
       />,
     );
@@ -234,7 +260,7 @@ describe('LessonCardsSection', () => {
         lessonId="lesson-1"
         lessonName="Cells"
         lessonCards={[card]}
-        lessonDeck={deck}
+        lessonSchedulingConfig={deck}
         onNavigate={vi.fn()}
       />,
     );
@@ -254,7 +280,7 @@ describe('LessonCardsSection', () => {
         lessonId="lesson-1"
         lessonName="Cells"
         lessonCards={[]}
-        lessonDeck={undefined}
+        lessonSchedulingConfig={undefined}
         onNavigate={vi.fn()}
       />,
     );
@@ -275,7 +301,7 @@ describe('LessonCardsSection', () => {
         lessonId="lesson-1"
         lessonName="Cells"
         lessonCards={[]}
-        lessonDeck={undefined}
+        lessonSchedulingConfig={undefined}
         onNavigate={vi.fn()}
       />,
     );

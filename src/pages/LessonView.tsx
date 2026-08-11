@@ -260,7 +260,7 @@ export function LessonView({
                 lessonId={lessonId}
                 lessonName={lesson.name}
                 lessonCards={lessonCards}
-                lessonDeck={lessonDeck}
+                lessonSchedulingConfig={lessonDeck}
                 onNavigate={navigate}
               />
             )}
