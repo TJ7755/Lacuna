@@ -65,7 +65,11 @@ export function StudyEntry({
           Continue through the course or choose focused review when it is useful.
         </p>
         <div className="mt-8 flex flex-col gap-3">
-          <Button variant="primary" size="lg" onClick={() => onContinue(nextStep)}>
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => (nextIsDueReview ? onReviewDueCards() : onContinue(nextStep))}
+          >
             {primaryLabel}
           </Button>
           {canReviewDueCards && (
