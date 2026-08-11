@@ -7,6 +7,7 @@ const getStatus = vi.fn();
 const getGrants = vi.fn();
 const grant = vi.fn();
 const revoke = vi.fn();
+const writeText = vi.fn();
 
 vi.mock('../../components/ui/Toast', () => ({ useToast: () => ({ notify }) }));
 vi.mock('../../state/useCourseData', () => ({
@@ -20,6 +21,8 @@ describe('McpSection', () => {
     getGrants.mockResolvedValue([{ courseId: 'course-1', scope: 'write', grantedAt: 1, label: 'Biology' }]);
     grant.mockResolvedValue({ courseId: 'course-1', scope: 'destructive', grantedAt: 2 });
     revoke.mockResolvedValue(undefined);
+    writeText.mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
     Object.defineProperty(window, 'electronAPI', {
       configurable: true,
       value: { isElectron: true, mcp: { getStatus, getGrants, grant, revoke } },
@@ -53,6 +56,21 @@ describe('McpSection', () => {
     const biologyRow = screen.getByText('Biology').closest('div.flex.flex-wrap')!;
     fireEvent.click(withinRow(biologyRow, 'Downgrade to write'));
     await waitFor(() => expect(grant).toHaveBeenCalledWith('course-1', 'write', 'Biology'));
+  });
+
+  it('copies a portable companion configuration', async () => {
+    getStatus.mockResolvedValue({
+      running: true,
+      toolCount: 46,
+      toolSurfaceVersion: 2,
+      companion: { command: '/Applications/Lacuna.app/Contents/MacOS/Lacuna', args: ['--mcp-companion'] },
+    });
+    render(<McpSection motionMultiplier={0} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(JSON.stringify({ mcpServers: { lacuna: {
+      command: '/Applications/Lacuna.app/Contents/MacOS/Lacuna',
+      args: ['--mcp-companion'],
+    } } }, null, 2)));
   });
 });
 

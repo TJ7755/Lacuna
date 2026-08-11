@@ -2,8 +2,8 @@
 export class ConsentCoordinator {
   private readonly pending = new Map<string, Promise<boolean>>();
 
-  request(courseId: string, scope: 'write' | 'destructive', prompt: () => Promise<boolean>): Promise<boolean> {
-    const key = `${courseId}\0${scope}`;
+  request(connectionId: string, courseId: string, scope: 'write' | 'destructive', prompt: () => Promise<boolean>): Promise<boolean> {
+    const key = `${connectionId}\0${courseId}\0${scope}`;
     const existing = this.pending.get(key);
     if (existing) return existing;
 

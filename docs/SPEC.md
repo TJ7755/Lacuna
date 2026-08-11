@@ -2359,10 +2359,19 @@ modifying the renderer source.
 
 ### Model Context Protocol server
 
-The Electron main process hosts a local MCP server over **stdio** using the pinned official
-TypeScript SDK. There is no listening socket, HTTP endpoint or browser MCP server. An MCP
-client launches the installed Lacuna executable as its server command; the normal renderer
-window must remain open because it owns IndexedDB.
+The Electron main process hosts the data-owning MCP bridge using the pinned official TypeScript
+SDK. A client launches the installed Lacuna executable with `--mcp-companion`; that disposable
+stdio companion attaches to the already-running application through a token-authenticated,
+user-local Unix-domain socket (macOS/Linux) or named pipe (Windows). There is no TCP/HTTP endpoint
+or browser MCP server. The normal renderer window must remain open because it owns IndexedDB.
+Modern SDK v2 and legacy stdio negotiation are both accepted.
+
+| Component | Pinned version | Compatibility |
+| --- | --- | --- |
+| `@modelcontextprotocol/core` | 2.0.0 | Shared protocol types and modern/legacy negotiation |
+| `@modelcontextprotocol/server` | 2.0.0 | Companion and embedded stdio server |
+| `@modelcontextprotocol/client` | 2.0.0 | Portable smoke client |
+| Lacuna companion protocol | 1 | Authenticated native-IPC relay; independent of MCP protocol version |
 
 The tool contract is transport-independent and versioned separately from the Dexie schema
 (`MCP_TOOL_SURFACE_VERSION`, currently 2 — additive tools never bump it). It exposes:
@@ -2382,11 +2391,12 @@ requests over the preload bridge to the renderer; a ten-second timeout turns a m
 not-ready renderer into a normal tool error. Tool inputs are resolved to their owning course
 before permission checks, and a call spanning more than one course is rejected.
 
-Permissions are process-scoped and ordinal: destructive implies write, which implies read.
+Permissions are connection-scoped and ordinal: destructive implies write, which implies read.
 The first read for a course is allowed with a non-blocking notice. The first write or
 destructive call blocks on an in-app consent prompt and fails closed if no decision arrives.
-Settings shows the current grants and can grant or revoke them manually. Destructive and
-bulk handlers capture repository snapshots; their internal undo payload never reaches the
+Settings identifies each live client, shows its current grants and can grant or revoke them
+manually. A client's grants are destroyed on disconnect. Destructive and bulk handlers capture
+repository snapshots; their internal undo payload never reaches the
 client, but drives an in-app undo toast after the action completes.
 
 `create_occlusion` takes the hash of a diagram already stored in this install: there is no
@@ -2399,13 +2409,16 @@ operations, note annotations and most curriculum-structure mutation. Streamable 
 companion process, durable client identity and plugin extension points remain deferred.
 
 These exclusions describe the shipped contract, not an instruction to bolt future operations onto
-the renderer through generic UI automation. The attachable local companion, programmatic release
-scenarios and proposed polished user-action surface — including the separate safety boundary for
-study-history writes — are specified as future work in `docs/next_plan.md` §§2.12–2.14.
+the renderer through generic UI automation. The attachable local companion and canonical
+programmatic release scenario implement the first §§2.12–2.13 slices. The broader proposed
+user-action surface — including the separate safety boundary for study-history writes — remains in
+`docs/next_plan.md` §2.14.
 
 ### Scripts
 
 - `bun run electron:dev` — runs Vite dev server and Electron in parallel.
+- `bun run release:scenario -- --scenario canonical` — runs the isolated canonical domain and
+  import-preview release checks and writes a machine-readable evidence report.
 - `bun run electron:build:win` — compiles the Electron TypeScript, builds the
   Vite SPA with `--base ./`, and packages via electron-builder (NSIS
   installer).

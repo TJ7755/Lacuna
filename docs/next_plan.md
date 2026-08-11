@@ -736,6 +736,28 @@ client-facing transport and relays requests to the single running Electron appli
 7. Update installation UX and Settings with copyable client configurations and connection
    status; the user should not have to discover executable internals by archaeology.
 
+**Browser operation is a separate first-class path.** A semantic, non-visual automation pass on
+11 August 2026 opened the public `https://lacuna-beta-one.vercel.app/` deployment in a background
+browser, entered the real `#/` application, opened the seeded course and created a new course
+without screenshots or coordinate input. A browser-capable agent can therefore operate Lacuna with
+no companion installation while the user watches and can intervene. This is useful product
+behaviour, not merely a release-testing curiosity, but it is not MCP: it drives the rendered
+application and can reach only the IndexedDB belonging to that exact origin and browser profile.
+
+The companion must complement that zero-install path rather than absorb it. The first §2.12 slice
+still fixes attachment to an already-running Electron application through authenticated native
+IPC. Its transport/router must remain runtime-neutral so a later browser runtime may register with
+the companion through an authenticated outbound loopback bridge, after an explicit cross-browser
+spike covering HTTPS-to-loopback policy, origin validation and local-network permissions. Do not
+make that hosted-web bridge a prerequisite for the Electron lifecycle fix or pretend that opening a
+public URL gives an agent access to data stored in the user's ordinary browser profile.
+
+The delivered first slice uses SDK v2's modern protocol negotiation with legacy stdio compatibility.
+It deliberately does not add Streamable HTTP: stateless HTTP would simplify server-side MCP session
+affinity, but would not remove Lacuna's application state, trusted consent UI, active renderer
+requirement or authenticated renderer registration. Add loopback HTTP only when a real client needs
+it; a second transport with no consumer is maintenance dressed as architecture.
+
 **Remote surfaces are a separate decision.** ChatGPT/API and other cloud-only MCP hosts need
 an authenticated, network-reachable Streamable HTTP endpoint. Serving that through an
 outbound tunnel or relay would move selected Lacuna data beyond the local machine and changes
@@ -766,15 +788,41 @@ The programmatic surface and GUI automation have different jobs:
 4. **Human review is reserved for judgement.** Typography, hierarchy, animation quality and platform
    feel remain a short visual sign-off rather than hundreds of repetitive data-entry steps.
 
-The attachable `lacuna-mcp` companion in §2.12 must land first so scenario setup can connect to a
-normally running application. After that, provide a release-scenario command that:
+**Semantic browser automation is a supported operating mode.** A browser-capable agent may drive
+the stable public Vercel origin through DOM roles, labels, text and native events without using
+screenshots or vision. The user-visible browser is an advantage: actions are observable and the
+user can interrupt them. Treat this as a zero-install alternative for ordinary GUI workflows and
+as valid GUI-automation evidence, not as a replacement for MCP domain assertions. A model opening
+the URL in a fresh or remote browser receives a fresh origin-scoped IndexedDB; it does not inherit
+courses from the user's Chrome, Safari or Electron installation.
+
+The 11 August 2026 trial proved background navigation, seeded-data access, semantic course
+navigation and course creation against `https://lacuna-beta-one.vercel.app/`. It also exposed two
+automation seams: the Welcome page's “Create your first course” control scrolls the demonstration
+rather than entering the real application, and one automation client's ordinary text-entry action
+closed the course dialog while the existing native-setter plus bubbling-`input` technique worked.
+The `div[role=link]` course navigation succeeded in this pass but remains less reliable than a real
+anchor. Reproduce each seam before classifying it as a product defect; tool-specific failure is not
+evidence that a human control is broken.
+
+The attachable `lacuna-mcp` companion in §2.12 now provides the lifecycle foundation. The delivered
+canonical `release:scenario` slice:
 
 1. creates an isolated profile or disposable database;
 2. seeds a canonical course containing every supported content and assessment type;
 3. runs named state transitions through MCP and the test-only runner;
 4. verifies persisted state and invariants through MCP reads;
-5. opens exact renderer routes for screenshot and interaction assertions; and
-6. destroys only the isolated profile after producing a machine-readable report and evidence index.
+5. runs semantic import-surface assertions without screenshots; and
+6. destroys only its isolated database/profile after producing a machine-readable report and
+   evidence index.
+
+For deterministic release runs, use a fixed origin and a fresh isolated browser profile. Do not use
+per-deployment preview origins interchangeably: IndexedDB is origin-scoped, so every changing URL is
+a different Lacuna installation. The runner should prefer MCP and test-only application services for
+scenario construction and persisted-state assertions, then use semantic browser automation for the
+GUI portion. A GUI-only agent may still execute exploratory or manual checklist passes against the
+public deployment, but its evidence must be labelled GUI automation and must not be counted as an
+independent domain-layer assertion.
 
 The first scenario built against this command should exercise the two import preview defects
 verified manually in the `WEBSITE_TEST_CHECKLIST.md` continuation of 2026-08-10: share-code

@@ -1,13 +1,16 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Client } from '@modelcontextprotocol/client';
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
 
-const root = '/Users/TJ7755/Documents/Coding/Lacuna';
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const profile = process.env.LACUNA_MCP_SMOKE_PROFILE;
 const transport = new StdioClientTransport({
   command: `${root}/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron`,
   args: [
-    '--remote-debugging-port=9223',
-    '--user-data-dir=/private/tmp/lacuna-mcp-smoke-profile',
     root,
+    '--mcp-companion',
+    ...(profile ? [`--user-data-dir=${profile}`] : []),
   ],
   stderr: 'inherit',
 });

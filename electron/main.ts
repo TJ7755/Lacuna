@@ -18,7 +18,12 @@ interface McpServerModule {
   getMcpStatus: () => { running: boolean; toolCount: number; toolSurfaceVersion: number };
 }
 
+interface McpCompanionModule {
+  startMcpCompanion: () => { close: () => Promise<void> };
+}
+
 const isDev = !app.isPackaged;
+const isMcpCompanionProcess = process.argv.includes('--mcp-companion');
 const VITE_DEV_URL = 'http://localhost:5173';
 let mainWindow: BrowserWindow | null = null;
 let mcpModule: McpServerModule | null = null;
@@ -288,9 +293,21 @@ function createWindow(): void {
 }
 
 /** Single instance lock — prevent multiple windows. */
-const gotTheLock = app.requestSingleInstanceLock();
+const gotTheLock = isMcpCompanionProcess ? false : app.requestSingleInstanceLock();
 
-if (!gotTheLock) {
+if (isMcpCompanionProcess) {
+  void app.whenReady().then(async () => {
+    const companionModulePath = './mcp/companion.js';
+    const companion = (await import(companionModulePath)) as McpCompanionModule;
+    const handle = companion.startMcpCompanion();
+    process.stdin.once('end', () => {
+      void handle.close().finally(() => app.quit());
+    });
+  }).catch((error) => {
+    process.stderr.write(`Could not start the Lacuna MCP companion: ${String(error)}\n`);
+    app.exit(1);
+  });
+} else if (!gotTheLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
@@ -334,10 +351,9 @@ if (!gotTheLock) {
       return mainWindow?.isMaximized() ?? false;
     });
 
-    // Starts the stdio MCP server unconditionally alongside the window (Arc 2 §2.6): the
-    // single-instance lock above already guarantees at most one main-process instance, so
-    // at most one stdio server ever runs. See electron/mcp/server.ts's module doc comment
-    // for the invocation command and the stdout-corruption mitigation.
+    // Starts the data-owning MCP bridge and authenticated local companion broker alongside
+    // the renderer. The embedded stdio transport remains for legacy cold-start clients;
+    // new clients launch the disposable --mcp-companion process instead.
     //
     // The specifier is built from a variable, not a string literal, so tsc does not
     // statically resolve and pull electron/mcp/server.ts (and, transitively, the whole
@@ -360,10 +376,12 @@ if (!gotTheLock) {
   });
 }
 
-app.on('window-all-closed', () => {
-  app.quit();
-});
+if (!isMcpCompanionProcess) {
+  app.on('window-all-closed', () => {
+    app.quit();
+  });
 
-app.on('before-quit', () => {
-  void mcpModule?.stopMcpServer();
-});
+  app.on('before-quit', () => {
+    void mcpModule?.stopMcpServer();
+  });
+}

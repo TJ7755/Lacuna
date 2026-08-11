@@ -9,9 +9,11 @@ type McpInvokeResponse =
   | { id: string; ok: true; result: unknown }
   | { id: string; ok: false; error: { kind: string; message: string } };
 type McpScope = 'read' | 'write' | 'destructive';
-type McpConsentRequest = { id: string; tool: string; courseId: string; scope: 'write' | 'destructive' };
+type McpClientIdentity = { connectionId: string; name: string; version?: string };
+type McpConsentRequest = { id: string; tool: string; courseId: string; scope: 'write' | 'destructive'; client?: McpClientIdentity };
 type McpConsentResponse = { id: string; approved: boolean };
-type McpGrantNotice = { courseId: string; tool: string };
+type McpGrantNotice = { courseId: string; tool: string; client?: McpClientIdentity };
+type McpClientConnection = McpClientIdentity & { connectedAt: number; lastActivityAt: number; grants: McpGrant[] };
 type McpScopeResolutionRequest = { id: string; tool: string; input: unknown };
 type McpScopeResolutionResponse = { id: string; ok: true; targets: { courseId: string; label?: string }[] } | { id: string; ok: false; error: { kind: string; message: string } };
 
@@ -37,6 +39,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     grant: (courseId: string, scope: McpScope, label?: string) =>
       ipcRenderer.invoke('mcp:grants:grant', courseId, scope, label),
     revoke: (courseId: string) => ipcRenderer.invoke('mcp:grants:revoke', courseId),
+    getConnections: (): Promise<McpClientConnection[]> => ipcRenderer.invoke('mcp:connections:list'),
+    grantConnection: (connectionId: string, courseId: string, scope: McpScope, label?: string) =>
+      ipcRenderer.invoke('mcp:connections:grant', connectionId, courseId, scope, label),
+    revokeConnection: (connectionId: string, courseId: string) =>
+      ipcRenderer.invoke('mcp:connections:revoke', connectionId, courseId),
     onConsentRequest: (callback: (request: McpConsentRequest) => void) => {
       const handler = (_event: unknown, request: McpConsentRequest) => callback(request);
       ipcRenderer.on('mcp:consent', handler);

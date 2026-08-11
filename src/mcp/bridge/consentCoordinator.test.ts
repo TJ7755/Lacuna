@@ -7,8 +7,8 @@ describe('ConsentCoordinator', () => {
     let decide!: (approved: boolean) => void;
     const prompt = vi.fn(() => new Promise<boolean>((resolve) => { decide = resolve; }));
 
-    const first = coordinator.request('course-1', 'write', prompt);
-    const second = coordinator.request('course-1', 'write', prompt);
+    const first = coordinator.request('client-1', 'course-1', 'write', prompt);
+    const second = coordinator.request('client-1', 'course-1', 'write', prompt);
     expect(prompt).toHaveBeenCalledOnce();
 
     decide(true);
@@ -20,13 +20,25 @@ describe('ConsentCoordinator', () => {
     const prompt = vi.fn().mockResolvedValue(true);
 
     await Promise.all([
-      coordinator.request('course-1', 'write', prompt),
-      coordinator.request('course-2', 'write', prompt),
-      coordinator.request('course-1', 'destructive', prompt),
+      coordinator.request('client-1', 'course-1', 'write', prompt),
+      coordinator.request('client-1', 'course-2', 'write', prompt),
+      coordinator.request('client-1', 'course-1', 'destructive', prompt),
     ]);
     expect(prompt).toHaveBeenCalledTimes(3);
 
-    await coordinator.request('course-1', 'write', prompt);
+    await coordinator.request('client-1', 'course-1', 'write', prompt);
     expect(prompt).toHaveBeenCalledTimes(4);
+  });
+
+  it('never shares a consent decision between clients', async () => {
+    const coordinator = new ConsentCoordinator();
+    const prompt = vi.fn().mockResolvedValue(true);
+
+    await Promise.all([
+      coordinator.request('codex', 'course-1', 'write', prompt),
+      coordinator.request('claude', 'course-1', 'write', prompt),
+    ]);
+
+    expect(prompt).toHaveBeenCalledTimes(2);
   });
 });
