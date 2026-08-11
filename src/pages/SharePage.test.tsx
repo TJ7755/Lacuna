@@ -56,12 +56,14 @@ vi.mock('../db/share', () => ({
 
 let mockFindCourseForLineage: (() => Promise<Course | undefined>) | undefined;
 const mockMergeLineageUpdate = vi.fn();
+const mockImportLineageFirstTime = vi.fn();
 
 vi.mock('../db/mergeImport', () => ({
   isLineagePayload: (payload: Record<string, unknown>) =>
     payload.v === 2 && typeof payload.li === 'string' && typeof payload.rv === 'number',
   findCourseForLineage: () =>
     mockFindCourseForLineage ? mockFindCourseForLineage() : Promise.resolve(undefined),
+  importLineageFirstTime: (...args: unknown[]) => mockImportLineageFirstTime(...args),
   mergeLineageUpdate: (...args: unknown[]) => mockMergeLineageUpdate(...args),
 }));
 
@@ -129,6 +131,7 @@ beforeEach(() => {
   mockCourseCards = [];
   mockDecodedPayload = {};
   mockFindCourseForLineage = undefined;
+  mockImportLineageFirstTime.mockReset();
   mockMergeLineageUpdate.mockReset();
 });
 
@@ -290,6 +293,18 @@ describe('SharePage', () => {
       fireEvent.click(screen.getByText('Add to my courses'));
       await waitFor(() => expect(mockNotify).toHaveBeenCalled());
       expect(mockMergeLineageUpdate).not.toHaveBeenCalled();
+      expect(mockImportLineageFirstTime).not.toHaveBeenCalled();
+    });
+
+    it('preserves lineage tracking on the first import of a published course', async () => {
+      mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 1 };
+      mockImportLineageFirstTime.mockResolvedValue({ course: { ...mockCourse, id: 'shared-copy' } });
+
+      await inspectCode();
+      fireEvent.click(screen.getByText('Add to my courses'));
+
+      await waitFor(() => expect(mockImportLineageFirstTime).toHaveBeenCalledWith(mockDecodedPayload));
+      expect(mockNotify).toHaveBeenCalledWith('Added 1 course and 2 cards.', 'positive');
     });
 
     it('routes to the merge importer when the payload lineage matches a local course', async () => {
