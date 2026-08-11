@@ -164,17 +164,20 @@ describe('schema v20: additive review history', () => {
       ...reviewHistoryEntriesForCard(card([review(200, { eventId: 'same-event' })]))[0],
       cardId: 'card-2',
     };
-    const resolved = resolveReviewHistoryCollisions([first, second]);
+    const state = {
+      usedIds: new Set<string>(),
+      eventOwners: new Map<string, string>(),
+      entryIdentities: new Map<string, string>(),
+    };
+    const resolved = [
+      ...resolveReviewHistoryCollisions([first], state),
+      ...resolveReviewHistoryCollisions([second], state),
+    ];
 
     expect(resolved).toHaveLength(2);
     expect(new Set(resolved.map((entry) => entry.cardId))).toEqual(new Set(['card-1', 'card-2']));
-    expect(
-      resolveReviewHistoryCollisions([second], {
-        usedIds: new Set(resolved.map((entry) => entry.id)),
-        eventOwners: new Map([['same-event', 'card-1']]),
-        entryIdentities: new Set(),
-      }),
-    ).toHaveLength(1);
+    expect(resolveReviewHistoryCollisions([second], state)).toHaveLength(0);
+    expect(resolveReviewHistoryCollisions([resolved[1]], state)).toHaveLength(0);
   });
 
   it('rebuilding the same projection is stable and bulkPut is idempotent', async () => {

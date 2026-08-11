@@ -62,7 +62,7 @@ export function reviewHistoryEntriesForCard(card: Card): ReviewHistoryEntry[] {
 export interface ReviewHistoryCollisionState {
   usedIds: Set<string>;
   eventOwners: Map<string, string>;
-  entryIdentities: Set<string>;
+  entryIdentities: Map<string, string>;
 }
 
 function reviewHistoryEntryIdentity(entry: ReviewHistoryEntry): string {
@@ -75,36 +75,42 @@ export function resolveReviewHistoryCollisions(
   state: ReviewHistoryCollisionState = {
     usedIds: new Set(),
     eventOwners: new Map(),
-    entryIdentities: new Set(),
+    entryIdentities: new Map(),
   },
 ): ReviewHistoryEntry[] {
   const resolved: ReviewHistoryEntry[] = [];
   for (const entry of entries) {
     const identity = reviewHistoryEntryIdentity(entry);
-    if (state.entryIdentities.has(identity)) continue;
+    if (state.usedIds.has(entry.id) && state.entryIdentities.get(entry.id) === identity) {
+      continue;
+    }
     const owner = entry.eventId ? state.eventOwners.get(entry.eventId) : undefined;
     if (owner && owner !== entry.cardId) {
       let collision = `${entry.id}:card:${encodeURIComponent(entry.cardId)}`;
-      let suffix = 1;
-      while (state.usedIds.has(collision)) collision = `${entry.id}:collision:${suffix++}`;
+      if (state.usedIds.has(collision)) {
+        if (state.entryIdentities.get(collision) === identity) continue;
+        let suffix = 1;
+        while (state.usedIds.has(collision)) collision = `${entry.id}:collision:${suffix++}`;
+      }
       const resolvedEntry = { ...entry, id: collision };
       state.usedIds.add(collision);
-      state.entryIdentities.add(identity);
+      state.entryIdentities.set(collision, identity);
       resolved.push(resolvedEntry);
       continue;
     }
     if (state.usedIds.has(entry.id)) {
+      if (state.entryIdentities.get(entry.id) === identity) continue;
       let collision = `${entry.id}:duplicate`;
       let suffix = 1;
       while (state.usedIds.has(collision)) collision = `${entry.id}:duplicate:${suffix++}`;
       const resolvedEntry = { ...entry, id: collision };
       state.usedIds.add(collision);
-      state.entryIdentities.add(identity);
+      state.entryIdentities.set(collision, identity);
       resolved.push(resolvedEntry);
       continue;
     }
     state.usedIds.add(entry.id);
-    state.entryIdentities.add(identity);
+    state.entryIdentities.set(entry.id, identity);
     resolved.push(entry);
     if (entry.eventId) state.eventOwners.set(entry.eventId, entry.cardId);
   }

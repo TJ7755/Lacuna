@@ -581,7 +581,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         const collisionState: ReviewHistoryCollisionState = {
           usedIds: new Set(),
           eventOwners: new Map(),
-          entryIdentities: new Set(),
+          entryIdentities: new Map(),
         };
         resolveReviewHistoryCollisions(existingReviewHistory, collisionState);
         const resolvedIncoming = resolveReviewHistoryCollisions(reviewHistory, collisionState);
