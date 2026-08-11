@@ -10,7 +10,7 @@ import { answerComparisonOptions } from '../../state/answerStrictness';
 import { compareAnswer } from '../../utils/answerComparison';
 import { cn } from '../../components/ui/cn';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
-import { typingExpectedAnswer } from './useLearnSession';
+import { typingExpectedAnswer } from './sessionCardCapabilities';
 import type { LearnModeType, Phase } from './types';
 import { isAudioCardFront } from '../../media/audio';
 
