@@ -6,6 +6,7 @@ import {
   ensureLessonBackingDeck,
   findBackingDeck,
   performanceForCourse,
+  performanceForSessionUnits,
 } from './backingDecks';
 import { createCourse, createLesson } from './repository';
 import type { Card } from './types';
@@ -71,6 +72,17 @@ describe('backing deck adapter', () => {
     const performance = await performanceForCourse(course.id, cards);
 
     expect(performance.map((row) => row.deckId).sort()).toEqual(['deck-1', 'deck-2']);
+  });
+
+  it('loads session calibration by the supplied unit keys', async () => {
+    await db.userPerformance.bulkPut([
+      { deckId: 'course-1', runningMeanResponseTime: 12, runningStdDevResponseTime: 1, m2: 1, totalCorrectReviews: 3 },
+      { deckId: 'deck-1', runningMeanResponseTime: 8, runningStdDevResponseTime: 1, m2: 1, totalCorrectReviews: 2 },
+    ]);
+
+    const performance = await performanceForSessionUnits(['course-1', 'missing', 'deck-1']);
+
+    expect(performance.map((row) => row?.deckId)).toEqual(['course-1', undefined, 'deck-1']);
   });
 
   it('finds a legacy lesson deck from a primary card in the same course', async () => {

@@ -1,7 +1,14 @@
 import 'fake-indexeddb/auto';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCard, createDeck } from '../../db/repository';
+import {
+  createCard,
+  createCourse,
+  createDeck,
+  createLesson,
+  createLessonCard,
+  upsertLessonCardExposure,
+} from '../../db/repository';
 import { db } from '../../db/schema';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import { useLearnSession } from './useLearnSession';
@@ -20,6 +27,10 @@ beforeEach(async () => {
     db.decks.clear(),
     db.sessionHistory.clear(),
     db.userPerformance.clear(),
+    db.courses.clear(),
+    db.lessons.clear(),
+    db.lessonCards.clear(),
+    db.courseAssessments.clear(),
   ]);
 });
 
@@ -69,6 +80,60 @@ describe('useLearnSession answer boundary', () => {
     expect(result.current.events.current).toHaveLength(0);
     expect((await db.cards.get(card.id))?.history).toHaveLength(0);
     expect(await db.sessionHistory.count()).toBe(0);
+  });
+
+  it('uses the course-keyed calibration row for a course session', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+    await upsertLessonCardExposure(lesson.id, card.id);
+    await db.userPerformance.put({
+      deckId: course.id,
+      runningMeanResponseTime: 20,
+      runningStdDevResponseTime: 1,
+      m2: 0,
+      totalCorrectReviews: 20,
+    });
+    const params = {
+      courseId: course.id,
+      lessonId: undefined,
+      sessionId: undefined,
+      tagFilter: null,
+      filterParams: [],
+      requestScopeLessonIds: undefined,
+      practiceNodeKeyParam: null,
+      requestAssessmentId: undefined,
+      requestPlanId: undefined,
+      requestWindowId: undefined,
+      plannedRevision: false,
+      reviewSessionKind: 'practice' as const,
+      isSimpleMode: false,
+      mode: 'fsrs' as const,
+      navigate: vi.fn(),
+      notify: vi.fn(),
+      distraction,
+      typingSetting: 'reveal' as const,
+      startInFocusMode: false,
+      m: 1,
+    };
+    const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(0);
+    let unmount: (() => void) | undefined;
+    try {
+      const rendered = renderHook(() => useLearnSession(params));
+      const { result } = rendered;
+      unmount = rendered.unmount;
+      await waitFor(() => expect(result.current.current?.id).toBe(card.id));
+      nowSpy.mockReturnValue(10_000);
+      act(() => result.current.reveal());
+      await waitFor(() => expect(result.current.phase).toBe('answer'));
+      await act(async () => {
+        await result.current.answer(true);
+      });
+      expect(result.current.events.current[0]?.grade).toBe(4);
+    } finally {
+      unmount?.();
+      nowSpy.mockRestore();
+    }
   });
 
   it('grades a card with a null payload like an ordinary card', async () => {

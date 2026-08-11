@@ -24,6 +24,7 @@ function ownedBackingDeck(
     .first();
 }
 
+/** Load backing-deck calibration rows for course pacing and workload estimates. */
 export async function performanceForCourse(
   courseId: string,
   cards: Card[],
@@ -32,6 +33,17 @@ export async function performanceForCourse(
   return deckIds.length > 0
     ? db.userPerformance.where('deckId').anyOf(deckIds).toArray()
     : [];
+}
+
+/**
+ * Load calibration rows for active study units. Course/lesson sessions pass a Course id;
+ * legacy deck sessions pass a Deck id. The shared UserPerformance table keeps both keys,
+ * so this adapter preserves that distinction without exposing the table to session code.
+ */
+export function performanceForSessionUnits(
+  unitIds: readonly string[],
+): Promise<Array<UserPerformance | undefined>> {
+  return Promise.all(unitIds.map((unitId) => db.userPerformance.get(unitId)));
 }
 
 export async function findBackingDeck(

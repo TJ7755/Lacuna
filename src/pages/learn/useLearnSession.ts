@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
+import { performanceForSessionUnits } from '../../db/backingDecks';
 import { getCourse, listCourseAssessments } from '../../db/read';
 import type {
   Card,
@@ -1069,7 +1070,7 @@ export function useLearnSession({
         );
       }
 
-      const perfs = await Promise.all(units.map((u) => db.userPerformance.get(u.id)));
+      const perfs = await performanceForSessionUnits(units.map((unit) => unit.id));
       const perfMap = new Map<string, UserPerformance>();
       units.forEach((u, i) => perfMap.set(u.id, perfs[i] ?? emptyPerformance(u.id)));
       perfRef.current = perfMap;
