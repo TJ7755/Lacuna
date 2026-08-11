@@ -1,10 +1,10 @@
 # Course/domain boundary follow-ups
 
-**Status:** in progress — five boundary workstreams; storage migration explicitly separate
+**Status:** scoped containment complete — seven boundary workstreams tracked; storage migration explicitly separate
 
 **Branch:** `refactor/course-domain-boundary`
 
-**Latest reviewed commit:** `fd1a745` (`refactor(export): remove unused deck panel API`)
+**Latest reviewed commit:** `ccc5078` (`docs: record export boundary cleanup`)
 
 **Original stop commit:** `9dd9107` (`refactor(course): remove singleton deck plumbing`)
 
@@ -46,7 +46,7 @@ The following changes are complete and reviewed, in small commits:
 - Migrated Question Bank lesson and unassigned buckets in `501120b` to the Course context adapter.
   Text and Course-context APKG imports now persist `courseId` and `primaryLessonId` through
   explicit import options, and the page tests assert the Course/Lesson import labels and
-  capabilities. The existing
+  capabilities.
 - Migrated `LessonCardsSection` in `af7958a`: both the prepared empty-lesson importer and the
   populated lesson-card list now use the explicit Course/Lesson context, while linking,
   generated-card filtering, loading guards and navigation behaviour remain unchanged.
@@ -96,25 +96,21 @@ CardEditOverlay draft-key separation are delivered in `4d7b482`, `501120b`, `af7
 
 **Priority:** high after search
 
-The generic card-management component still has a transitional Deck-shaped compatibility API:
-
-The Question Bank callers no longer pass a Deck-shaped prop; they resolve the hidden scheduling
-configuration only to construct the explicit context adapter. `LessonCardsSection` and the
-CardEditOverlay draft scope are now migrated; remaining Course/Lesson CardList callers and
-transitional APIs are next.
+The generic card-management component retains a transitional Deck-shaped compatibility API, but
+production Course/Lesson callers now use the explicit context branch. The final containment audit
+found no production Course/Lesson caller passing `deck` or `allDecks`; those props remain only for
+legacy callers and compatibility tests.
 
 - `src/components/cards/CardList.tsx` still accepts the legacy `deck: Deck` branch for import,
   analytics and scheduling operations, alongside the explicit context branch.
 - `src/components/cards/CardList.tsx` still accepts optional legacy `allDecks` for sibling-deck
-  moves.
-- Course-facing pages still ultimately provide hidden Deck objects to generic card components.
+  moves, defaulting to the single legacy deck where appropriate.
+- `src/components/cards/cardListContext.ts` is the shared Course/Lesson capability adapter; it
+  avoids a second card-list implementation while keeping scheduling configuration explicit.
 
-The next slice should separate the remaining Course/Lesson command surface from the legacy
-Deck-management surface without duplicating CardList behaviour. Prefer a small scheduling-context
-or adapter contract over a second card-list implementation. The contract must continue to support
-(the first seam currently covers import/APKG, analytics, move targets, move handling and move undo;
-remaining bulk scheduling capabilities are still repository-backed and must be addressed as Course
-callers migrate):
+This is the agreed stopping point for the UI boundary in this branch. Removing the compatibility
+union requires a separate caller inventory and migration of old deck-management surfaces; it must
+not be done by silently dropping legacy move, import or scheduling behaviour. The contract supports:
 
 - course/lesson card creation and import;
 - card analytics;
@@ -138,6 +134,8 @@ still used by the legacy dashboard and scheduler-compatible summary code. The ta
 `Deck` symbols; it is zero accidental Deck discovery in Course/Lesson UI code.
 
 ### 4. Clarify and test the two UserPerformance meanings
+
+**Status:** naming and focused persistence/undo coverage delivered; storage decision deferred
 
 **Priority:** medium, before any storage migration
 
@@ -220,12 +218,14 @@ Do not start this storage migration as an incidental cleanup in the search or Ca
 
 ## Agreed scope for this branch
 
-This branch will finish workstreams 2–6 below. Workstream 2 has started with `4d7b482` and
-continued through `501120b`, `af7958a` and `fed66b9`; workstream 3 is delivered in `974d2e4`.
-Workstream 4 has its naming slice delivered in `27c7188`/`2f53a40`, and workstream 5 has
-its unused export-panel API slice delivered in `fd1a745`; the remaining audit work is still pending.
-The eventual storage migration in workstream 7 is explicitly excluded from this PR because it
-requires a separate schema, rollback and release plan.
+This branch completes the scoped containment work in workstreams 2–6. Workstream 2 started with
+`4d7b482` and continued through `501120b`, `af7958a` and `fed66b9`; its production Course/Lesson
+callers now use the explicit context seam while the legacy CardList union remains intentionally
+available. Workstream 3 is delivered in `974d2e4`. Workstream 4's naming and persistence/undo
+coverage is recorded in `27c7188`/`2f53a40`; workstream 5's export-panel API slice is delivered in
+`fd1a745`/`ccc5078`; and workstream 6 is documented as ongoing internal containment. The eventual
+storage migration in workstream 7 is explicitly excluded from this PR because it requires a
+separate schema, rollback and release plan.
 
 The branch will continue using small implementation commits, focused validation and a code review
 at every commit boundary. This document will be updated after each meaningful slice.
@@ -243,13 +243,24 @@ These are not unfinished implementation items for the paused branch:
   accidental required prop.
 - Browser or product-feature work is outside this maintenance follow-up.
 
-## Suggested implementation order when resumed
+## Final checkpoint and deferred work
 
-1. Remaining Course-facing CardList scheduling-context contract.
-2. UserPerformance persistence/undo coverage and final semantics decision.
-3. Course-facing export/share/import compatibility audit.
-4. Explicit internal-boundary documentation and final containment audit.
-5. Separate proposal for the eventual storage migration (outside this PR).
+The final containment audit confirms that:
 
-Each resumed slice should stay small, be validated with focused tests plus web typecheck/lint, and
-receive a code review before its own commit.
+- production Course/Lesson CardList callers use `CardListContext` rather than Deck-shaped props;
+- the legacy `deck`/`allDecks` union is retained only for compatibility and is covered by legacy
+  CardList tests;
+- course-keyed and backing-Deck-keyed `UserPerformance` rows remain separate, with focused review,
+  undo, shadow-row and retry coverage already present;
+- Course sharing and full-backup wire formats remain behind their explicit compatibility boundaries;
+- `docs/PERFORMANCE.md` was already committed in `6e116d1` and had no pending change on this branch.
+
+Deferred work is deliberately separate from this PR:
+
+1. Decide the eventual `UserPerformance` storage semantics (course, lesson or scheduling-unit row).
+2. Migrate or remove the legacy CardList compatibility union after an old-caller inventory.
+3. Design and implement the full storage migration with schema, rollback, wire-compatibility and
+   release testing.
+
+Any future slice should remain small, use focused tests plus web typecheck/lint, and receive a code
+review before its own commit.
