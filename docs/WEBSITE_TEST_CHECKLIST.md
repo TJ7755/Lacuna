@@ -15,8 +15,9 @@ depends on physical touch, operating-system integration or subjective judgement.
 Record the evidence source for each automated result. A passing MCP call proves domain behaviour; it
 does not prove that the corresponding control is visible or usable. Do not add raw database writes,
 review recording or other human-only operations to the normal MCP surface just to make this checklist
-easier. The planned programmatic release-scenario architecture is specified in `docs/next_plan.md`
-§2.13.
+easier. Run the implemented canonical slice with
+`bun run release:scenario -- --scenario canonical`; the remaining architecture is specified in
+`docs/next_plan.md` §2.13.
 
 ### Programmatic automation notes (2026-08-10 opencode continuation)
 
@@ -44,6 +45,35 @@ these notes exist so the §2.13 runner and future verification sessions start ah
   description follows, and prefer `aria-label` over visible text when the control has one.
   Destruction confirmations use `Yes`/`Cancel` (lesson management) but `Delete` elsewhere; resolve
   labels per surface rather than assuming one wording.
+
+### Semantic browser trial (2026-08-11)
+
+The public `https://lacuna-beta-one.vercel.app/` deployment was operated in a background in-app
+browser using DOM text, roles, labels and native events only. No screenshots, image interpretation
+or coordinate clicks were used. The pass entered `#/`, loaded the seeded database, opened the
+`Welcome to Lacuna` course, opened the New Course dialog and created `Headless automation trial`,
+which reached its generated first lesson successfully.
+
+This proves that non-vision browser agents can perform meaningful Lacuna workflows through the
+public deployment. It does not prove access to another browser's data: IndexedDB belongs to the
+exact origin and browser profile under automation. A fresh agent browser therefore receives a fresh
+Lacuna installation.
+
+Observed friction:
+
+- The Welcome page's `Create your first course` button scrolled the product demonstration rather
+  than entering the real `#/` application, so the pass navigated to that hash directly.
+- The automation client's ordinary semantic typing action failed and dismissed the New Course
+  dialog. Reopening it and using the native `HTMLInputElement.value` setter followed by a bubbling
+  `input` event succeeded. Reproduce this with another automation client before reporting it as an
+  application defect.
+- The dashboard's `div[role=link]` course card responded to a semantic role click in this pass, but
+  real anchors remain the more reliable navigation contract and earlier automation needed a full
+  pointer-event sequence.
+
+Semantic browser automation is valid GUI evidence and a useful zero-install operating path. It does
+not replace MCP or test-only application services for deterministic data setup and domain-state
+assertions, and it does not replace human inspection for visual judgement.
 
 ## Test record
 

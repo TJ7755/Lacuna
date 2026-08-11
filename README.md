@@ -102,29 +102,42 @@ bun run electron:build:win  # build the Windows NSIS installer
 
 The Electron layer lives in `electron/` and adds a custom titlebar, local font
 bundling, Cross-Origin Isolation headers for WASM, and auto-updates via
-`electron-updater`. It also hosts a local **Model Context Protocol (MCP)** server over
-stdio, allowing an MCP-capable client to work with Lacuna's courses, lessons, notes, cards,
+`electron-updater`. It also hosts an authenticated local **Model Context Protocol (MCP)**
+companion, allowing an MCP-capable client to work with Lacuna's courses, lessons, notes, cards,
 sequences, image occlusions and summaries. Card creation and updates accept the same validated numeric and
 working payloads as the visual editor. The web version does not host MCP and is otherwise
 unaffected.
 
-To connect a client, configure a local stdio MCP server whose command is the installed
-Lacuna executable. For example, with Claude Code on macOS:
+Open Lacuna normally, then copy the JSON configuration from **Settings → MCP server** into
+your client's local stdio-server configuration. Its command is the installed Lacuna executable
+with `--mcp-companion` as its sole argument. For example, with Claude Code on macOS:
 
 ```bash
-claude mcp add lacuna -- /Applications/Lacuna.app/Contents/MacOS/Lacuna
+claude mcp add lacuna -- /Applications/Lacuna.app/Contents/MacOS/Lacuna --mcp-companion
 ```
 
-Use the equivalent installed executable path on Windows. Lacuna must keep its renderer
-window open because IndexedDB is owned by that process. Read access is granted implicitly
-per course with an in-app notice; the first write or destructive call blocks for approval.
-Current grants can be inspected, changed or revoked under **Settings → MCP server**, and all
-grants expire when Lacuna closes.
+Use the equivalent installed executable path on Windows. The companion attaches to the already
+running application through a token-authenticated Unix-domain socket or Windows named pipe; it
+does not open a network port or start another data-owning application. Lacuna must keep its renderer
+window open because IndexedDB is owned by that process. Each connected client has separate,
+ephemeral grants. Read access is granted implicitly per course with an in-app notice; the first
+write or destructive call blocks for approval. Current connections and grants can be inspected,
+changed or revoked under **Settings → MCP server**, and each client's grants expire on disconnect.
 
-The shipped MCP surface and its deliberate exclusions are specified in `docs/SPEC.md`. Planned
-connection polish, programmatic release scenarios and the broader user-action surface are documented
-in `docs/next_plan.md` §§2.12–2.14. Those roadmap sections are not descriptions of currently shipped
-tools.
+Run the isolated canonical release scenario with:
+
+```bash
+bun run release:scenario -- --scenario canonical
+```
+
+It builds disposable state through the real MCP tool handlers, verifies share and backup previews,
+replacement import and reload persistence, then writes a machine-readable evidence report under
+`artifacts/release-scenarios/`. Browser automation against the public Vercel deployment is a
+separate zero-install GUI path and sees only that browser profile's origin-scoped IndexedDB.
+
+The shipped MCP surface and its deliberate exclusions are specified in `docs/SPEC.md`. The delivered
+§§2.12–2.13 foundation and proposed broader user-action surface are documented in
+`docs/next_plan.md` §§2.12–2.14.
 
 ## How it works
 

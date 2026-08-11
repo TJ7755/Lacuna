@@ -16,7 +16,8 @@ export function McpConsentPrompt({ request, courseName, onDecision }: McpConsent
         Allow {destructive ? 'destructive' : 'write'} access to {courseName}?
       </h2>
       <p className="mt-2 text-sm text-ink-soft">
-        An MCP client wants to run <code className="text-ink">{request.tool}</code>. This permission lasts until Lacuna closes.
+        {request.client?.name ?? 'An MCP client'} wants to run <code className="text-ink">{request.tool}</code>.
+        {' '}This permission lasts until that client disconnects.
       </p>
       <ConfirmInline
         className="mt-4 justify-end"

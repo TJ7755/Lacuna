@@ -1,5 +1,4 @@
-// Bundles electron/mcp/server.ts into a single runnable ESM file (Arc 2 Section 2.6,
-// Task 9's build wiring).
+// Bundles the data-owning bridge and disposable stdio companion into runnable ESM files.
 //
 // Why esbuild rather than the plain `tsc` used for main.ts/preload.ts: server.ts pulls in
 // the whole src/mcp/registry.ts tool-definition graph (src/db/read.ts, src/db/repository.ts,
@@ -26,8 +25,11 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 await build({
-  entryPoints: [path.join(__dirname, 'server.ts')],
-  outfile: path.join(__dirname, '..', 'dist-electron', 'mcp', 'server.js'),
+  entryPoints: {
+    server: path.join(__dirname, 'server.ts'),
+    companion: path.join(__dirname, 'companion.ts'),
+  },
+  outdir: path.join(__dirname, '..', 'dist-electron', 'mcp'),
   bundle: true,
   platform: 'node',
   format: 'esm',

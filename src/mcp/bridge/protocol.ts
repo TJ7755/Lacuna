@@ -8,6 +8,7 @@
 // Electron renderer and the Cloudflare web build, and neither hosts a server.
 
 import type { McpGrant } from '../types';
+import type { McpClientIdentity } from '../connections';
 
 /** A tool invocation request sent from the main process to the renderer. */
 export interface McpInvokeRequest {
@@ -35,6 +36,7 @@ export interface McpConsentRequest {
   tool: string;
   courseId: string;
   scope: Exclude<McpScope, 'read'>;
+  client?: McpClientIdentity;
 }
 
 export interface McpConsentResponse {
@@ -45,6 +47,7 @@ export interface McpConsentResponse {
 export interface McpGrantNotice {
   courseId: string;
   tool: string;
+  client?: McpClientIdentity;
 }
 
 export interface McpScopeResolutionRequest {

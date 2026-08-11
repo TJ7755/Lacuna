@@ -58,7 +58,7 @@ export function McpBridgeController() {
     const detachConsent = mcp.onConsentRequest((request) => setQueue((items) => [...items, request]));
     const detachNotice = mcp.onGrantNotice((notice) => {
       void courseLabel(notice.courseId).then((name) => {
-        notify(`MCP read access granted for ${name}.`, 'neutral');
+        notify(`${notice.client?.name ?? 'MCP'} read access granted for ${name}.`, 'neutral');
       });
     });
     const detachScope = mcp.onScopeResolutionRequest((request) => {
