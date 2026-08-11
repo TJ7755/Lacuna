@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import { performanceForCourse } from '../db/backingDecks';
+import { performanceForCourseBackingDecks } from '../db/backingDecks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
@@ -100,7 +100,7 @@ export function useCourseStudyFlow(
         ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
         : [],
       lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-      performanceForCourse(courseId, cards),
+      performanceForCourseBackingDecks(courseId, cards),
     ]);
     return {
       course,

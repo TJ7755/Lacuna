@@ -5,8 +5,8 @@ import {
   ensureCourseBankBackingDeck,
   ensureLessonBackingDeck,
   findBackingDeck,
-  performanceForCourse,
-  performanceForSessionUnits,
+  performanceForCourseBackingDecks,
+  performanceForReviewUnits,
 } from './backingDecks';
 import { createCourse, createLesson } from './repository';
 import type { Card } from './types';
@@ -61,6 +61,7 @@ describe('backing deck adapter', () => {
       { deckId: 'deck-1', runningMeanResponseTime: 5, runningStdDevResponseTime: 1, m2: 1, totalCorrectReviews: 2 },
       { deckId: 'deck-2', runningMeanResponseTime: 6, runningStdDevResponseTime: 1, m2: 1, totalCorrectReviews: 2 },
       { deckId: 'other-deck', runningMeanResponseTime: 7, runningStdDevResponseTime: 1, m2: 1, totalCorrectReviews: 2 },
+      { deckId: course.id, runningMeanResponseTime: 99, runningStdDevResponseTime: 1, m2: 1, totalCorrectReviews: 2 },
     ]);
     const cards = [
       { id: 'one', courseId: course.id, deckId: 'deck-1' },
@@ -69,9 +70,10 @@ describe('backing deck adapter', () => {
       { id: 'four', courseId: otherCourse.id, deckId: 'other-deck' },
     ] as Card[];
 
-    const performance = await performanceForCourse(course.id, cards);
+    const performance = await performanceForCourseBackingDecks(course.id, cards);
 
     expect(performance.map((row) => row.deckId).sort()).toEqual(['deck-1', 'deck-2']);
+    expect(performance.some((row) => row.deckId === course.id)).toBe(false);
   });
 
   it('loads session calibration by the supplied unit keys', async () => {
@@ -80,7 +82,7 @@ describe('backing deck adapter', () => {
       { deckId: 'deck-1', runningMeanResponseTime: 8, runningStdDevResponseTime: 1, m2: 1, totalCorrectReviews: 2 },
     ]);
 
-    const performance = await performanceForSessionUnits(['course-1', 'missing', 'deck-1']);
+    const performance = await performanceForReviewUnits(['course-1', 'missing', 'deck-1']);
 
     expect(performance.map((row) => row?.deckId)).toEqual(['course-1', undefined, 'deck-1']);
   });

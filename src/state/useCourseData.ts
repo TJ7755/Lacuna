@@ -31,7 +31,10 @@ import { computeStudyStats, buildDeckSecondsMap, type StudyStats } from '../fsrs
 import { lessonCardMembership } from '../course/studyPools';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
-import { findBackingDeck, performanceForCourse } from '../db/backingDecks';
+import {
+  findBackingDeck,
+  performanceForCourseBackingDecks,
+} from '../db/backingDecks';
 
 // ---------------------------------------------------------------------------
 // Individual record hooks
@@ -111,7 +114,8 @@ export function useCoursePerformance(
   cards: Card[] | undefined,
 ): UserPerformance[] | undefined {
   return useLiveQuery(
-    () => (courseId && cards ? performanceForCourse(courseId, cards) : []),
+    () =>
+      courseId && cards ? performanceForCourseBackingDecks(courseId, cards) : [],
     [courseId, cards],
   );
 }

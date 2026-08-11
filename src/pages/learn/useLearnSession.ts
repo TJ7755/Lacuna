@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
 import {
-  performanceForCourse,
-  performanceForSessionUnits,
+  performanceForCourseBackingDecks,
+  performanceForReviewUnits,
 } from '../../db/backingDecks';
 import { getCourse, listCourseAssessments } from '../../db/read';
 import type {
@@ -457,7 +457,7 @@ export function useLearnSession({
         listCourseAssessments(cId),
         db.practiceMilestones.where('courseId').equals(cId).toArray(),
       ]);
-    const performance = await performanceForCourse(cId, courseCards);
+    const performance = await performanceForCourseBackingDecks(cId, courseCards);
     const lessonCardsById = new Map(
       lessons.map((lesson) => [lesson.id, lessonCardMembership(lesson.id, courseCards, links)]),
     );
@@ -1071,7 +1071,7 @@ export function useLearnSession({
         );
       }
 
-      const perfs = await performanceForSessionUnits(units.map((unit) => unit.id));
+      const perfs = await performanceForReviewUnits(units.map((unit) => unit.id));
       const perfMap = new Map<string, UserPerformance>();
       units.forEach((u, i) => perfMap.set(u.id, perfs[i] ?? emptyPerformance(u.id)));
       perfRef.current = perfMap;
