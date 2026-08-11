@@ -4,7 +4,7 @@
 
 **Branch:** `refactor/course-domain-boundary`
 
-**Latest reviewed commit:** `af7958a` (`refactor(cards): migrate lesson card context`)
+**Latest reviewed commit:** `fed66b9` (`refactor(learn): scope editor drafts by course`)
 
 **Original stop commit:** `9dd9107` (`refactor(course): remove singleton deck plumbing`)
 
@@ -51,6 +51,9 @@ The following changes are complete and reviewed, in small commits:
   generated-card filtering, loading guards and navigation behaviour remain unchanged.
   APKG helper remains compatible for legacy callers; its broader media/card transaction boundary
   remains part of the later portability/import audit.
+- Separated `CardEditOverlay` draft keys from backing Deck identity in `fed66b9`: Course sessions
+  use `bank:<courseId>` scope, Lesson sessions use `lessonId` scope, and global legacy sessions
+  retain the `card.deckId` fallback. Added focused coverage for both explicit and fallback keys.
 
 ## Remaining work
 
@@ -83,30 +86,30 @@ Do not remove `searchCards` or legacy storage until old backups and migrated rec
 
 ### 2. Remove remaining course-facing Deck-shaped APIs
 
-**Progress:** the first adapter seam, Question Bank migration and LessonCardsSection migration are
-  delivered in `4d7b482`, `501120b` and `af7958a`; CardEditOverlay draft-key separation remains.
+**Progress:** the first adapter seam, Question Bank migration, LessonCardsSection migration and
+CardEditOverlay draft-key separation are delivered in `4d7b482`, `501120b`, `af7958a` and `fed66b9`.
 
 **Priority:** high after search
 
 The generic card-management component still has a transitional Deck-shaped compatibility API:
 
 The Question Bank callers no longer pass a Deck-shaped prop; they resolve the hidden scheduling
-configuration only to construct the explicit context adapter. `LessonCardsSection` is now migrated; CardEditOverlay draft-key separation and any remaining
-Course/Lesson CardList callers are next.
+configuration only to construct the explicit context adapter. `LessonCardsSection` and the
+CardEditOverlay draft scope are now migrated; remaining Course/Lesson CardList callers and
+transitional APIs are next.
 
 - `src/components/cards/CardList.tsx` still accepts the legacy `deck: Deck` branch for import,
   analytics and scheduling operations, alongside the explicit context branch.
 - `src/components/cards/CardList.tsx` still accepts optional legacy `allDecks` for sibling-deck
   moves.
-- `src/components/cards/CardEditOverlay.tsx` still derives a draft-session key from
-  `card.deckId`.
 - Course-facing pages still ultimately provide hidden Deck objects to generic card components.
 
-The next slice should separate the Course/Lesson command surface from the legacy deck-management
-surface without duplicating CardList behaviour. Prefer a small scheduling-context or adapter
-contract over a second card-list implementation. The contract must continue to support (the first seam currently covers import/APKG, analytics,
-move targets, move handling and move undo; remaining bulk scheduling capabilities are still
-repository-backed and must be addressed as Course callers migrate):
+The next slice should separate the remaining Course/Lesson command surface from the legacy
+Deck-management surface without duplicating CardList behaviour. Prefer a small scheduling-context
+or adapter contract over a second card-list implementation. The contract must continue to support
+(the first seam currently covers import/APKG, analytics, move targets, move handling and move undo;
+remaining bulk scheduling capabilities are still repository-backed and must be addressed as Course
+callers migrate):
 
 - course/lesson card creation and import;
 - card analytics;
@@ -213,8 +216,9 @@ Do not start this storage migration as an incidental cleanup in the search or Ca
 ## Agreed scope for this branch
 
 This branch will finish workstreams 2–6 below. Workstream 2 has started with `4d7b482` and
-continued in `501120b`; the remaining workstreams are still pending. The eventual storage migration in workstream 7 is
-explicitly excluded from this PR because it requires a separate schema, rollback and release plan.
+continued through `501120b`, `af7958a` and `fed66b9`; the remaining workstreams are still pending.
+The eventual storage migration in workstream 7 is explicitly excluded from this PR because it
+requires a separate schema, rollback and release plan.
 
 The branch will continue using small implementation commits, focused validation and a code review
 at every commit boundary. This document will be updated after each meaningful slice.
@@ -234,7 +238,7 @@ These are not unfinished implementation items for the paused branch:
 
 ## Suggested implementation order when resumed
 
-1. Course-facing CardList/CardEdit scheduling-context contract.
+1. Remaining Course-facing CardList scheduling-context contract.
 2. Remaining `useData` caller classification and hook containment.
 3. UserPerformance naming/semantics decision and persistence tests.
 4. Course-facing export/share prop audit with compatibility tests.
