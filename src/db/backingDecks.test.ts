@@ -5,8 +5,10 @@ import {
   ensureCourseBankBackingDeck,
   ensureLessonBackingDeck,
   findBackingDeck,
+  performanceForCourse,
 } from './backingDecks';
 import { createCourse, createLesson } from './repository';
+import type { Card } from './types';
 
 async function reset(): Promise<void> {
   await Promise.all([
@@ -49,6 +51,26 @@ describe('backing deck adapter', () => {
       backingLessonId: null,
       name: 'Biology — Question bank',
     });
+  });
+
+  it('loads one performance row per backing deck for the requested course', async () => {
+    const course = await createCourse('Biology');
+    const otherCourse = await createCourse('Chemistry');
+    await db.userPerformance.bulkPut([
+      { deckId: 'deck-1', runningMeanResponseTime: 5, runningStdDevResponseTime: 1, m2: 1, totalCorrectReviews: 2 },
+      { deckId: 'deck-2', runningMeanResponseTime: 6, runningStdDevResponseTime: 1, m2: 1, totalCorrectReviews: 2 },
+      { deckId: 'other-deck', runningMeanResponseTime: 7, runningStdDevResponseTime: 1, m2: 1, totalCorrectReviews: 2 },
+    ]);
+    const cards = [
+      { id: 'one', courseId: course.id, deckId: 'deck-1' },
+      { id: 'two', courseId: course.id, deckId: 'deck-1' },
+      { id: 'three', courseId: course.id, deckId: 'deck-2' },
+      { id: 'four', courseId: otherCourse.id, deckId: 'other-deck' },
+    ] as Card[];
+
+    const performance = await performanceForCourse(course.id, cards);
+
+    expect(performance.map((row) => row.deckId).sort()).toEqual(['deck-1', 'deck-2']);
   });
 
   it('finds a legacy lesson deck from a primary card in the same course', async () => {

@@ -6,7 +6,7 @@
 // course-facing callers should use these helpers rather than resolving backing decks
 // themselves.
 
-import type { Course, Deck } from './types';
+import type { Card, Course, Deck, UserPerformance } from './types';
 import { db, makeId } from './schema';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
@@ -22,6 +22,16 @@ function ownedBackingDeck(
       (deck) => deck.backingCourseId === courseId && (deck.backingLessonId ?? null) === lessonId,
     )
     .first();
+}
+
+export async function performanceForCourse(
+  courseId: string,
+  cards: Card[],
+): Promise<UserPerformance[]> {
+  const deckIds = [...new Set(cards.filter((card) => card.courseId === courseId).map((card) => card.deckId))];
+  return deckIds.length > 0
+    ? db.userPerformance.where('deckId').anyOf(deckIds).toArray()
+    : [];
 }
 
 export async function findBackingDeck(

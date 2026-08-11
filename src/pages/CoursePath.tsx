@@ -12,6 +12,7 @@ import {
   useCourse,
   useCourseAssessments,
   useCourseCards,
+  useCoursePerformance,
   useCourseSummary,
   usePendingMergeReview,
   usePracticeNodes,
@@ -119,16 +120,9 @@ export function CoursePath() {
     () => (courseId ? db.practiceMilestones.where('courseId').equals(courseId).toArray() : []),
     [courseId],
   );
-  // Per-deck response-time calibration for the decks backing this course's cards,
-  // re-scoped into a single course-wide mean (see courseMeanReviewSeconds above).
-  const deckIds = useMemo(
-    () => (courseCards ? Array.from(new Set(courseCards.map((c) => c.deckId))) : []),
-    [courseCards],
-  );
-  const perf = useLiveQuery(
-    () => (deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : []),
-    [deckIds.join(',')],
-  );
+  // Per-deck response-time calibration is resolved behind the Course/Lesson
+  // boundary and re-scoped into one course-wide mean below.
+  const perf = useCoursePerformance(courseId, courseCards);
   const lessonViewMode = course ? resolveLessonViewMode(course) : 'study';
   const authoring = course ? isLessonAuthoringMode(course) : false;
   const notifyReorderError = useCallback(

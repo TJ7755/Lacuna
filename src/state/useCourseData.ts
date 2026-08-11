@@ -21,6 +21,7 @@ import type {
   RevisionPlan,
   Sequence,
   SessionHistoryEntry,
+  UserPerformance,
 } from '../db/types';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { progressValue } from '../fsrs/objective';
@@ -30,7 +31,7 @@ import { computeStudyStats, buildDeckSecondsMap, type StudyStats } from '../fsrs
 import { lessonCardMembership } from '../course/studyPools';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
-import { findBackingDeck } from '../db/backingDecks';
+import { findBackingDeck, performanceForCourse } from '../db/backingDecks';
 
 // ---------------------------------------------------------------------------
 // Individual record hooks
@@ -101,6 +102,17 @@ export function useCourseBankBackingDeck(courseId: string | undefined): Deck | u
   return useLiveQuery(
     () => (courseId ? findBackingDeck(courseId, null) : undefined),
     [courseId],
+  );
+}
+
+/** Load calibration rows for a course without exposing its backing deck ids. */
+export function useCoursePerformance(
+  courseId: string | undefined,
+  cards: Card[] | undefined,
+): UserPerformance[] | undefined {
+  return useLiveQuery(
+    () => (courseId && cards ? performanceForCourse(courseId, cards) : []),
+    [courseId, cards],
   );
 }
 
