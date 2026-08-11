@@ -294,8 +294,9 @@ export function HelpPage() {
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Course settings</h3>
                 <p className="text-sm text-ink-soft">
-                  Course Settings holds the exam date(s), study objective, scheduling optimisation,
-                  import/export and course deletion. Open it from the path page.
+                  Course Settings holds exam dates, the study objective, scheduling optimisation,
+                  lesson and manual-practice management, and course deletion. Full backup and
+                  recovery lives in global Settings; course sharing lives under Share.
                 </p>
               </div>
             </div>

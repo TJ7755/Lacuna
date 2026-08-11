@@ -18,8 +18,9 @@ import {
   useSequences,
 } from '../../state/useCourseData';
 import { db } from '../../db/schema';
-import { unlinkCardFromLesson } from '../../db/repository';
+import { ensureLessonDeck, unlinkCardFromLesson } from '../../db/repository';
 import type { Card, Deck } from '../../db/types';
+import { useDeck } from '../../state/useData';
 
 interface LessonCardsSectionProps {
   courseId: string;
@@ -44,6 +45,8 @@ export function LessonCardsSection({
 }: LessonCardsSectionProps) {
   const { notify } = useToast();
   const [linking, setLinking] = useState(false);
+  const [preparedDeckId, setPreparedDeckId] = useState<string>();
+  const preparedDeck = useDeck(preparedDeckId);
   // A card pending unlink confirmation — only set when it has lesson-specific
   // teaching progress that unlinking would reset (see handleUnlink below).
   const [pendingUnlink, setPendingUnlink] = useState<Card | null>(null);
@@ -81,6 +84,14 @@ export function LessonCardsSection({
     }
   }
 
+  async function prepareEmptyImport() {
+    try {
+      setPreparedDeckId(await ensureLessonDeck(courseId, lessonId));
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not prepare the card import.', 'negative');
+    }
+  }
+
   return (
     <section className={className}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -111,7 +122,20 @@ export function LessonCardsSection({
         </div>
       )}
 
-      {lessonCards.length === 0 ? (
+      {lessonCards.length === 0 && preparedDeck ? (
+        <CardList
+          cards={[]}
+          deck={preparedDeck}
+          allDecks={[preparedDeck]}
+          hideHeader
+          initiallyImporting
+          onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
+          onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
+          onNewOcclusion={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
+          onLinkExisting={() => setLinking(true)}
+          onEditCard={(card) => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)}
+        />
+      ) : lessonCards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-12 text-center">
           <p className="mb-4 text-sm text-ink-soft">No cards in this lesson yet.</p>
           <div className="flex flex-wrap items-center justify-center gap-2">
@@ -120,25 +144,28 @@ export function LessonCardsSection({
               onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
             >
               <PlusIcon width={18} height={18} />
-              Add your first card
+              New card
             </Button>
             <Button
               variant="secondary"
               onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
             >
               <PlusIcon width={18} height={18} />
-              Add a sequence
+              New sequence
             </Button>
             <Button
               variant="secondary"
               onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
             >
               <PlusIcon width={18} height={18} />
-              Add an occlusion
+              New occlusion
             </Button>
             <Button variant="secondary" onClick={() => setLinking(true)}>
               <PlusIcon width={18} height={18} />
               Link existing cards
+            </Button>
+            <Button variant="secondary" onClick={() => void prepareEmptyImport()}>
+              Import cards
             </Button>
           </div>
         </div>
@@ -158,6 +185,7 @@ export function LessonCardsSection({
           hideHeader
           onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
           onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
+          onNewOcclusion={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
           onLinkExisting={() => setLinking(true)}
           onEditCard={(card) => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)}
           linkedCardIds={linkedCardIds}

@@ -556,7 +556,7 @@ export function UnifiedImportPanel({
                 />
                 <Button size="sm" variant="ghost" onClick={() => fileInput.current?.click()}>
                   <UploadIcon width={14} height={14} />
-                  Upload file
+                  Upload cards or APKG
                 </Button>
               </div>
             </div>

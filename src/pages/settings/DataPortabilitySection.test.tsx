@@ -1,12 +1,15 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile } from '../../db/types';
 import { DataPortabilitySection } from './DataPortabilitySection';
 
-const readBackupFile = vi.fn();
+const { readBackupFile, importBackup } = vi.hoisted(() => ({
+  readBackupFile: vi.fn(),
+  importBackup: vi.fn(),
+}));
 
 vi.mock('../../db/portability', () => ({
-  importBackup: vi.fn(),
+  importBackup,
   readBackupFile: (...args: unknown[]) => readBackupFile(...args),
 }));
 
@@ -21,6 +24,26 @@ vi.mock('../../components/ui/Toast', () => ({
 describe('DataPortabilitySection', () => {
   beforeEach(() => {
     readBackupFile.mockReset();
+    importBackup.mockReset();
+  });
+
+  it('requires explicit confirmation before replacing local data', async () => {
+    readBackupFile.mockResolvedValue({
+      decks: [],
+      lessons: [],
+      cards: [],
+      exportedAt: Date.now(),
+    } as unknown as BackupFile);
+    const { container } = render(<DataPortabilitySection motionMultiplier={0} />);
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [new File(['{}'], 'backup.json')] } });
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace local data' }));
+    expect(importBackup).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Replace local data' }));
+    await waitFor(() => expect(importBackup).toHaveBeenCalledWith(expect.anything(), 'replace'));
   });
 
   it('reports the backup lesson count rather than the internal deck count', async () => {

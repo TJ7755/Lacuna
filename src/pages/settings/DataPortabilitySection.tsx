@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { UnifiedExportPanel } from '../../components/import/UnifiedExportPanel';
 import { Button } from '../../components/ui/Button';
+import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { UploadIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { importBackup, readBackupFile, type ImportMode } from '../../db/portability';
@@ -12,6 +13,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
   const { notify } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<BackupFile | null>(null);
+  const [confirmReplace, setConfirmReplace] = useState(false);
 
   async function handleFile(file: File) {
     try {
@@ -30,6 +32,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
       notify('Import failed.', 'negative');
     } finally {
       setPending(null);
+      setConfirmReplace(false);
     }
   }
 
@@ -43,19 +46,20 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
         <UploadIcon width={18} height={18} />
-        <h2 className="mb-1 font-display text-xl">Import &amp; export</h2>
+        <h2 className="mb-1 font-display text-xl">Full backup and recovery</h2>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
-        All your data lives locally in this browser. Export it in multiple formats for backup or transfer, and import to restore or merge.
+        A full JSON backup contains every local course, card, schedule and media file. Use this for
+        recovery or moving Lacuna between installations; course sharing and card import are separate flows.
       </p>
-      <div className="mb-6"><UnifiedExportPanel heading="Export your data" /></div>
+      <div className="mb-6"><UnifiedExportPanel heading="Export a full backup" /></div>
       <div className="border-t border-line pt-5">
-        <h3 className="mb-3 font-display text-lg">Import</h3>
-        <p className="mb-4 text-sm text-ink-soft">Import a full backup file (JSON) to restore or merge your data.</p>
+        <h3 className="mb-3 font-display text-lg">Recover from a full backup</h3>
+        <p className="mb-4 text-sm text-ink-soft">Choose a Lacuna full-backup JSON file, then merge it or replace this installation’s local data.</p>
         <div className="flex flex-wrap gap-3">
           <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
             <UploadIcon width={18} height={18} />
-            Import from file
+            Choose backup file
           </Button>
           <input
             ref={fileInputRef}
@@ -81,7 +85,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
             className="overflow-hidden"
           >
             <div className="rounded-xl border border-line-strong bg-surface-raised p-5">
-              <h3 className="mb-3 font-display text-lg">Import data</h3>
+              <h3 className="mb-3 font-display text-lg">Full-backup recovery</h3>
               <div className="text-sm text-ink-soft">
                 <p className="mb-3">
                   This backup contains{' '}
@@ -90,13 +94,22 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
                 </p>
                 <ul className="space-y-2">
                   <li><strong className="text-ink">Merge</strong> keeps your current data and folds in the backup, with the most recently updated copy winning any conflict.</li>
-                  <li><strong className="text-ink">Replace all</strong> deletes everything currently stored and restores the backup exactly.</li>
+                  <li><strong className="text-ink">Replace local data</strong> deletes every course and review record in this installation, then restores the backup exactly. Lacuna has no account or cloud copy to delete.</li>
                 </ul>
               </div>
               <div className="mt-5 flex flex-wrap justify-end gap-2">
-                <Button variant="ghost" onClick={() => setPending(null)}>Cancel</Button>
-                <Button variant="secondary" onClick={() => runImport('merge')}>Merge</Button>
-                <Button variant="primary" onClick={() => runImport('replace')}>Replace all</Button>
+                <Button variant="ghost" onClick={() => { setPending(null); setConfirmReplace(false); }}>Cancel</Button>
+                <Button variant="secondary" onClick={() => runImport('merge')}>Merge backup</Button>
+                {confirmReplace ? (
+                  <ConfirmInline
+                    message="Delete current local data and restore this backup?"
+                    confirmLabel="Replace local data"
+                    onCancel={() => setConfirmReplace(false)}
+                    onConfirm={() => void runImport('replace')}
+                  />
+                ) : (
+                  <Button variant="danger" onClick={() => setConfirmReplace(true)}>Replace local data</Button>
+                )}
               </div>
             </div>
           </motion.div>

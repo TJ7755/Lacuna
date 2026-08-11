@@ -110,19 +110,19 @@ export function QuestionBank() {
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={() => setShowBatchPrompt(true)}>
             <SparklesIcon width={18} height={18} />
-            Generate batch
+            Build external batch prompt
           </Button>
           <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/sequence/new`)}>
             <PlusIcon width={18} height={18} />
-            Create new sequence
+            New sequence
           </Button>
           <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/occlusion/new`)}>
             <PlusIcon width={18} height={18} />
-            Create new occlusion
+            New occlusion
           </Button>
           <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
             <PlusIcon width={18} height={18} />
-            Create new card
+            New card
           </Button>
         </div>
       </header>
@@ -151,15 +151,15 @@ export function QuestionBank() {
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button variant="primary" onClick={() => navigate(`/course/${courseId}/cards/new`)}>
               <PlusIcon width={18} height={18} />
-              Create your first card
+              New card
             </Button>
             <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/sequence/new`)}>
               <PlusIcon width={18} height={18} />
-              Create a sequence
+              New sequence
             </Button>
             <Button variant="secondary" onClick={() => navigate(`/course/${courseId}/occlusion/new`)}>
               <PlusIcon width={18} height={18} />
-              Create an occlusion
+              New occlusion
             </Button>
           </div>
         </div>
@@ -274,6 +274,21 @@ function LessonBucket({
               state: bankOrigin(courseId),
             })
           }
+          onNewCard={() =>
+            navigate(`/course/${courseId}/lesson/${lesson.id}/cards/new`, {
+              state: bankOrigin(courseId),
+            })
+          }
+          onNewSequence={() =>
+            navigate(`/course/${courseId}/lesson/${lesson.id}/sequence/new`, {
+              state: bankOrigin(courseId),
+            })
+          }
+          onNewOcclusion={() =>
+            navigate(`/course/${courseId}/lesson/${lesson.id}/occlusion/new`, {
+              state: bankOrigin(courseId),
+            })
+          }
           sequences={sequences}
           onEditSequence={(sequenceId) => navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}
           occlusions={occlusions}
@@ -330,6 +345,7 @@ function UnassignedBucket({
           assignableLessons={assignableLessons}
           onNewCard={() => navigate(`/course/${courseId}/cards/new`)}
           onNewSequence={() => navigate(`/course/${courseId}/sequence/new`)}
+          onNewOcclusion={() => navigate(`/course/${courseId}/occlusion/new`)}
           onEditCard={(card) => navigate(`/course/${courseId}/cards/${card.id}/edit`)}
           sequences={sequences}
           onEditSequence={(sequenceId) => navigate(`/course/${courseId}/sequence/${sequenceId}/edit`)}

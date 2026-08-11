@@ -53,6 +53,14 @@ export function ShortcutsSection({ motionMultiplier }: { motionMultiplier: numbe
         <KeyCaptureOverlay
           action={capturingAction}
           onCapture={(key) => {
+            const conflict = (Object.keys(shortcutBindings.bindings) as LearnAction[]).find(
+              (candidate) =>
+                candidate !== capturingAction && shortcutBindings.bindings[candidate] === key,
+            );
+            if (conflict) {
+              notify(`That key is already assigned to ${ACTION_LABELS[conflict]}.`, 'negative');
+              return;
+            }
             shortcutBindings.setBinding(capturingAction, key);
             setCapturingAction(null);
             notify('Shortcut updated.', 'positive');

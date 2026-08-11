@@ -24,7 +24,7 @@ const SETTINGS_SECTIONS = [
   ...(typeof window !== 'undefined' && window.electronAPI?.isElectron
     ? [{ id: 'settings-mcp', label: 'MCP server' }]
     : []),
-  { id: 'settings-export', label: 'Import & export' },
+  { id: 'settings-export', label: 'Full backup & recovery' },
   { id: 'settings-backups', label: 'Automatic backups' },
 ];
 

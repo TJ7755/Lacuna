@@ -37,7 +37,7 @@ export function DashboardSection({ motionMultiplier }: { motionMultiplier: numbe
         <h2 className="font-display text-xl">Dashboard</h2>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
-        Choose how courses are ordered on the dashboard. The top three active courses are shown.
+        Choose how all active courses are ordered on the dashboard.
       </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {SORT_OPTIONS.map((option) => {

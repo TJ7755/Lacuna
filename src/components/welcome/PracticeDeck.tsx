@@ -82,7 +82,7 @@ const CARDS: PracticeCard[] = [
   {
     name: 'Portable',
     detail:
-      'Import and export a whole course as a single JSON file — or bring an Anki deck across.',
+      'Share course material, recover the full local database from JSON, or import Anki cards.',
     face: (
       <svg
         viewBox="0 0 48 48"

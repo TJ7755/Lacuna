@@ -1,12 +1,12 @@
 # Lacuna UI flow catalogue
 
-Reviewed 11 August 2026.
+Reviewed and reconciled with delivered Arc 14 flows on 11 August 2026.
 
 This is a catalogue of the user-facing flows in the app, including the normal path, alternate entry points, empty and recovery states, duplicated paths, contradictions, and features implied by the interface but not implemented.
 
-The review is based on the current source and the app served from localhost:5173. The T3 preview reported the tab as available and loaded, but its snapshot, wait-for, and direct DOM-evaluation calls timed out in this session. That is a preview-client limitation, not evidence that the app or browser automation is broken. Permission-dependent browser controls were therefore not re-tested in this run. Findings from older repository QA records are labelled as prior QA rather than presented as current browser evidence.
-
-The review was read-only. The only file changed for this work is this document.
+The catalogue is source-backed and its critical production paths are exercised by the Chromium
+release smoke suite. Permission-dependent browser controls still require the release matrix;
+older repository QA records are labelled as prior QA rather than presented as current evidence.
 
 ## Status language
 
@@ -502,19 +502,20 @@ Image selection is permission-dependent. The split editor has a desktop-oriented
 
 The node appears on the path. Selecting it launches the course study conductor.
 
-### Add or edit a manual practice node from Settings
+### Find manual practice management from Settings
 
 1. Open Course Settings.
 2. Open Content and Practice nodes.
-3. Choose Add practice node, or edit an existing manual node.
-4. Use the same name, position, lesson scope, limit, and randomisation fields.
-5. Save, cancel, or delete with the inline Delete? confirmation.
+3. Review the explanation of automatic and manual nodes and the list of existing manual nodes.
+4. Choose Manage on Path.
+5. Add, edit, reposition, or delete manual practice from the course path.
 
-This is a second full authoring path for the same object. The editor component is shared, but the entry point and context are different.
+The path is the canonical editor. Settings does not maintain a second version of the same form.
 
 ### Automatic practice
 
-Automatic nodes are calculated from study progress and thresholds. They appear when relevant on the path, but they are not listed or edited in the Practice nodes settings list.
+Automatic nodes are calculated from study progress and thresholds and are labelled Automatic.
+Authored nodes are labelled Manual. Automatic nodes cannot be edited as if they were authored data.
 
 The data model supports card filters, but there is no builder for saving or editing those filters in the UI. The current manual-node form only exposes lesson scope, card limit, and randomisation.
 
@@ -527,12 +528,12 @@ The data model supports card filters, but there is no builder for saving or edit
 - Cards are grouped by lesson and Unassigned.
 - Open a lesson bucket or edit a card.
 - Generated sequence and occlusion cards are grouped under their owners.
-- Course-bank empty state offers Create new card, Create new sequence, and Create new occlusion.
-- Lesson buckets can import and bulk-manage cards; available create/link controls differ by bucket.
+- Course and lesson buckets use New card, New sequence, and New occlusion.
+- Lesson buckets consistently expose Link existing cards and Import cards where those actions apply.
 
 ### Import cards
 
-1. Choose Import from a card list.
+1. Choose Import cards.
 2. Paste text, choose a file, or drag and drop.
 3. Let the app detect CSV, TSV, Markdown table/list, JSON, plain text, or choose a format manually.
 4. For an Anki APKG, review the parsed preview including scheduling history and media.
@@ -553,7 +554,7 @@ Generated and already-linked cards are excluded from ordinary bulk selection. To
 
 ### Create a batch prompt
 
-1. Choose Generate batch.
+1. Choose Build external batch prompt.
 2. Enter lesson notes, topic, and level.
 3. Optionally set concepts per item and maximum items.
 4. Copy the generated prompt.
@@ -572,7 +573,9 @@ Generated and already-linked cards are excluded from ordinary bulk selection. To
 - Batch revision supports a complaint, copied revision prompt, pasted revised reply, and position-based Apply revisions.
 - Accepted cards are created in the target lesson.
 
-There is no integrated AI call, persistent staging area, saved prompt history, batch export, or explicit Reject all. Closing the dialog loses the staged batch.
+There is no integrated AI call, persistent staging area, saved prompt history, batch export, or
+explicit Reject all. Closing with entered notes, a response, or staged candidates requires an
+explicit Discard batch confirmation.
 
 ## 14. Study and learning flows
 
@@ -790,7 +793,8 @@ Settings changes are immediate:
 - Dashboard progress metric: Curriculum progress, Card coverage, or Today’s workload.
 - Hover detail for next review, breakdown, and recent activity.
 
-Settings text says the top three active courses are shown, but the current dashboard renders all active courses. This is a direct copy/behaviour contradiction.
+Settings correctly states that the dashboard renders all active courses. Archived courses have a
+persistent dashboard section with an Unarchive action.
 
 ### Study and scheduling defaults
 
@@ -821,7 +825,8 @@ The default registry includes:
 - R audio replay.
 - H sequence line hint.
 
-Click a shortcut row, press a key, then click outside or press Escape to cancel. Reset restores defaults. The current UI does not expose a visible conflict-resolution workflow when two actions are assigned the same key.
+Click a shortcut row, press a key, then click outside or press Escape to cancel. Reset restores
+defaults. A key already assigned to another action is rejected with a visible conflict message.
 
 ### Pomodoro
 
@@ -833,7 +838,7 @@ Set Focus, Short break, and Long break durations and Auto-start breaks. The time
 - Windows users may be directed to GitHub releases.
 - The app can request persistent storage and reports whether it was granted or denied.
 
-### Import and export
+### Full backup and recovery
 
 Global Settings exposes:
 
@@ -847,15 +852,16 @@ Global Settings exposes:
 
 Export creates a download or text output depending on the format. Settings does not expose the Share code format even though the shared export component supports it; share-code generation is separate under /share.
 
-Import from file accepts a JSON backup:
+Choose backup file accepts a full-backup JSON file:
 
 1. Choose a file.
 2. Review lesson, card, and date counts.
-3. Cancel, Merge, or Replace all.
+3. Cancel, Merge backup, or Replace local data.
 4. Merge uses the most recently updated record.
-5. Replace all deletes current local data and restores the backup.
+5. Replace local data deletes current installation data and restores the backup.
 
-Replace all is destructive and the preview is the main guard; it does not use the same explicit confirmation pattern as some other destructive flows.
+Replacement requires a second explicit consequence confirmation and states that Lacuna has no
+account or cloud copy to delete.
 
 ### Automatic backups and restore
 
@@ -865,7 +871,7 @@ Replace all is destructive and the preview is the main guard; it does not use th
 - Mirror to a folder when supported.
 - Choose a folder or Stop mirroring.
 - Delete an individual restore point.
-- Restore a point after confirming Replace all data?.
+- Restore a point after confirming replacement of current local data.
 
 Folder mirroring is permission-dependent and unavailable in browsers without the relevant file-system capability. There is no one-click Delete all local data flow separate from replacing data with an import or deleting courses individually.
 
@@ -893,10 +899,8 @@ Help is a hash-linkable documentation page covering:
 
 The right-hand section navigation tracks the current section. Footer links return to Settings, Analytics, Method, or Dashboard.
 
-Current copy mismatches:
-
-- Help says course settings contain import/export, while the current import/export controls are global Settings.
-- Some terminology still says deck where the main UI says course.
+Help distinguishes Course Settings, global Full backup & recovery, and course sharing. Remaining
+deck names in routes and storage documentation are compatibility terminology, not user actions.
 
 ### Method
 
@@ -954,35 +958,30 @@ It links back to the dashboard, welcome page, and help. It is explanatory, not a
 | Search | Full /search page and Ctrl/Cmd+K command palette | Two search behaviours to learn |
 | Course name | Inline path rename and Course Settings field | Same edit in two contexts |
 | Lesson creation | Path Add lesson, empty path Add lesson, and Settings lesson management | Several entry points with different navigation outcomes |
-| Practice nodes | Path gap plus controls and Settings Practice nodes section | Same object has two authoring flows |
-| Cards | Bank header, bank empty state, lesson empty state, populated CardList, and card routes | New card is not consistently in the same place |
-| Generated content | Sequence/occlusion controls vary between lesson and bank buckets | User may assume a missing control is unsupported |
-| Import | Share page, New course share-code import, global backup import, and CardList text/APKG import | “Import” does not mean one thing |
-| Export | Global formats versus Share page formats; Share code is hidden in global Settings | Users must know which page owns which export |
+| Practice nodes | Path editor and Settings explanation/link | One canonical editor, with Settings as orientation |
+| Cards | Bank, lesson, and populated-list controls | Stable New card/sequence/occlusion/link/import labels |
+| Generated content | Lesson and course-bank entry points | Stable ownership-aware creation controls |
+| Import | Course sharing, card/APKG import, and full-backup recovery | Entry copy names the data and consequence before import |
+| Export | Sharing formats versus full recovery | Share warns about omitted media and links to full backup |
 | Settings saves | Course settings commit immediately; card/sequence/occlusion editors use explicit Save | Save expectations change by route |
 | View mode | Path Read/Edit, Lesson Read/Edit, and Course Settings lesson view mode | Three places control related presentation state |
 | Assessments | Course creation and Final exam editing set the primary date; Add checkpoint creates intermediate assessments | The two assessment kinds use distinct actions |
-| Practice visibility | Auto nodes appear on the path but are absent from Practice node management | Automatic and manual nodes look like one system but are managed differently |
-| Navigation | Multi-lesson course tabs exist only on the path; normal Lesson view has no tabs | Moving from a lesson to bank/settings takes an extra step |
-| Destructive actions | Course deletion uses Undo, lesson deletion uses inline confirmation, restore uses Replace all confirmation | Risk signals are inconsistent |
-| Dashboard copy | Settings says top three courses; dashboard shows all active courses | Documentation and behaviour disagree |
-| Help | Help says course settings hold import/export; controls are global | Users are sent to the wrong page |
+| Practice visibility | Automatic and Manual labels share the path | Settings explains why only manual nodes are editable |
+| Navigation | Shared course tabs appear on course and lesson views | Lesson routes keep Path active and other sections one click away |
+| Destructive actions | Deletion and replacement state consequences before commit | Undo remains supplementary recovery where available |
+| Dashboard copy | Settings and dashboard both describe all active courses | Archived courses remain separately manageable |
+| Help | Course settings, sharing, and full recovery are named separately | Copy maps to reachable controls |
 
 ## 22. Broken, fragile, or unverified flows
 
 ### Current source-backed findings
 
 - There is no user-facing Add final exam flow.
-- There is no persistent archived-course management screen or obvious Unarchive action.
 - Manual practice nodes have no UI for the stored card-filter model.
-- Course Lesson views lack direct access to the course tabs.
-- Card and generated-content creation controls move between empty states, section headers, and list headers.
 - Global export and Share export overlap while exposing different formats.
 - Help contains stale location and terminology claims.
-- Dashboard settings text contradicts the current list rendering.
 - Course settings commit on change or blur with no Save changes action, while other authoring surfaces train the user to look for Save.
 - Occlusion editing permits unpaired features with an optional typed answer, but the consequences of that choice are not made clear.
-- Shortcut editing has no visible conflict-resolution state.
 - There is no direct one-click Delete all local data action; deletion is per-course or part of a replace/restore operation.
 
 ### Prior QA findings, not re-verified on localhost:5173 in this review
@@ -1018,7 +1017,6 @@ The interface, product language, data model, or help implies these capabilities,
 - LLM-graded scheduling.
 - A unified two-sided card object editor for reverse pairs.
 - Media-preserving share codes. Media requires full backup.
-- A dedicated archive manager and long-term unarchive action.
 - A separate delete-all-local-data control.
 - A browser MCP connection-management flow. MCP settings are Electron-only.
 
@@ -1044,12 +1042,8 @@ These are boundaries of the current product, not implementation instructions.
 5. Choose the node on the path.
 6. Complete or exit the resulting study session.
 
-Equivalent alternate entry:
-
-1. Course Settings → Content → Practice nodes.
-2. Add practice node.
-3. Configure the same fields.
-4. Save and return to the path.
+Course Settings → Content → Practice nodes explains the model and links back to this canonical
+path editor.
 
 ### Publish a course and receive an update
 
@@ -1066,9 +1060,9 @@ Media is not carried by the share code.
 
 ### Back up, delete, and restore
 
-1. Settings → Import & export → Full backup JSON, or Automatic backups → Back up now.
+1. Settings → Full backup & recovery → Full backup JSON, or Automatic backups → Back up now.
 2. Course Settings → Danger zone → Delete course.
 3. Use Undo while available, or Settings → Automatic backups → Restore.
-4. Confirm Replace all data?.
+4. Confirm replacement of current local data.
 
 There is no account-level deletion or cloud restore.

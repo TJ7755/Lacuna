@@ -89,6 +89,18 @@ assertions, and it does not replace human inspection for visual judgement.
 Mark each item `[x]` when it passes. Add the issue number after a failed item and leave it
 unchecked. Run destructive cases only against disposable courses and export a full backup first.
 
+### 11 August Arc 14 automated release evidence
+
+- The focused Arc 14 regression run passed 123 tests across 14 files without stderr output.
+- The critical-domain coverage gate passed 88 tests with 92.27% statements/lines, 85.34%
+  branches, and 100% functions across course path, unlock, study session, and lineage diff logic.
+- The one-worker Chromium production suite passed first run, course creation, lesson-level course
+  navigation, a real study interaction, and full-backup download.
+- Vitest and Playwright are capped at one worker. CI repeats the full unit suite, targeted coverage,
+  production build, release scenario, and Chromium smoke paths.
+- Camera, PWA installation, folder permission, two-install merge, and Electron MCP visuals remain
+  permission/platform-dependent manual checks; this record does not counterfeit those results.
+
 ### 10 August verification evidence (opencode continuation)
 
 The automated evidence below was produced with DOM and IndexedDB inspection with the release
@@ -247,7 +259,8 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Clearing search and filters restores the complete bank.
 - [ ] Card edit, delete, suspend, flag and bulk-management actions update the list without reload.
 - [ ] Create-card and create-sequence entry points return to the bank when launched there.
-- [ ] Generate batch opens a modal that cannot be dismissed by an accidental backdrop click.
+- [ ] Build external batch prompt cannot discard entered or staged work without explicit
+      confirmation.
 - [ ] Batch generation defaults to model-chosen concept density and item count.
 - [ ] Enabling constraints allows concepts-per-item and maximum-item count independently; blank
       constraints are omitted from the copied prompt and no hidden item cap is imposed.

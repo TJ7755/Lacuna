@@ -37,6 +37,7 @@ export function PracticeNode({
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const name = node.practiceNode?.name ?? 'Practice';
+  const kind = node.nodeType === 'practice-auto' ? 'Automatic' : 'Manual';
   const interactive = onClick !== undefined;
   const fraction = Math.max(0, Math.min(progress?.fraction ?? 0, 1));
   const percentage = Math.round(fraction * 100);
@@ -73,7 +74,7 @@ export function PracticeNode({
           type="button"
           onClick={onClick}
           disabled={!interactive}
-          aria-label={`Practice: ${name}, ${percentage}% secured${progress?.completed ? ', completed' : ''}`}
+          aria-label={`${kind} practice: ${name}, ${percentage}% secured${progress?.completed ? ', completed' : ''}`}
           whileTap={interactive ? { scale: 0.94 } : undefined}
           whileHover={interactive ? { scale: 1.05 } : undefined}
           transition={
@@ -101,6 +102,9 @@ export function PracticeNode({
       )}
       <span className="max-w-[7rem] text-center text-xs font-medium leading-tight text-ink-soft">
         {name}
+      </span>
+      <span className="-mt-1 text-[0.65rem] font-medium uppercase tracking-wide text-ink-faint">
+        {kind}
       </span>
       {assessment && onAssessmentClick && (
         <button

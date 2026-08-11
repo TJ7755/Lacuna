@@ -59,12 +59,16 @@ interface CardListProps {
   onNewCard?: () => void;
   /** Sibling to onNewCard: offers "New sequence" alongside "New card" when supplied. */
   onNewSequence?: () => void;
+  /** Offers an image-occlusion editor alongside the other authoring controls. */
+  onNewOcclusion?: () => void;
   /** Opens a picker for adding existing course cards to this lesson without moving them. */
   onLinkExisting?: () => void;
   onEditCard: (card: Card) => void;
   /** When true, suppresses the internal "Cards (N)" heading row. Use when the
    *  parent already renders its own heading for the cards section. */
   hideHeader?: boolean;
+  /** Opens the card importer on first mount, used by an empty lesson after its backing deck is created. */
+  initiallyImporting?: boolean;
   /**
    * When supplied together with courseId, the bulk toolbar gains an "Assign to
    * lesson…" action that reassigns selected cards' primaryLessonId (and moves
@@ -96,7 +100,7 @@ interface CardListProps {
   onUnlinkCard?: (card: Card) => void;
 }
 
-export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLinkExisting, onEditCard, hideHeader = false, assignableLessons, courseId, sequences, onEditSequence, occlusions, onEditOcclusion, linkedCardIds, onUnlinkCard }: CardListProps) {
+export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onNewOcclusion, onLinkExisting, onEditCard, hideHeader = false, initiallyImporting = false, assignableLessons, courseId, sequences, onEditSequence, occlusions, onEditOcclusion, linkedCardIds, onUnlinkCard }: CardListProps) {
   const { notify } = useToast();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -109,7 +113,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
   const [assigningLesson, setAssigningLesson] = useState(false);
   // Sentinel '' means "Unassigned" (primaryLessonId null); otherwise a lesson id.
   const [assignTarget, setAssignTarget] = useState<string>('');
-  const [importing, setImporting] = useState(false);
+  const [importing, setImporting] = useState(initiallyImporting);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -441,14 +445,10 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
               {selectMode ? 'Done' : 'Select'}
             </Button>
           )}
-          {!selectMode && (
-            <Button
-              variant={importing ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setImporting((v) => !v)}
-            >
-              <UploadIcon width={16} height={16} />
-              Import
+          {onNewCard && (
+            <Button variant="primary" size="sm" onClick={onNewCard}>
+              <PlusIcon width={16} height={16} />
+              New card
             </Button>
           )}
           {onNewSequence && (
@@ -457,16 +457,26 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
               New sequence
             </Button>
           )}
+          {onNewOcclusion && (
+            <Button variant="secondary" size="sm" onClick={onNewOcclusion}>
+              <PlusIcon width={16} height={16} />
+              New occlusion
+            </Button>
+          )}
           {onLinkExisting && (
             <Button variant="secondary" size="sm" onClick={onLinkExisting}>
               <PlusIcon width={16} height={16} />
               Link existing cards
             </Button>
           )}
-          {onNewCard && (
-            <Button variant="primary" size="sm" onClick={onNewCard}>
-              <PlusIcon width={16} height={16} />
-              New card
+          {!selectMode && (
+            <Button
+              variant={importing ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => setImporting((v) => !v)}
+            >
+              <UploadIcon width={16} height={16} />
+              Import cards
             </Button>
           )}
         </div>
@@ -483,7 +493,11 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
             className="overflow-hidden"
           >
             <div className="rounded-2xl border border-line-strong bg-surface p-5">
-              <h3 className="mb-4 font-display text-lg">Import cards into {deck.name}</h3>
+              <h3 className="mb-1 font-display text-lg">Import cards into {deck.name}</h3>
+              <p className="mb-4 text-sm text-ink-soft">
+                Paste card text or upload CSV, JSON or an Anki APKG. This adds cards; it does not
+                restore a full Lacuna backup or import a shared course.
+              </p>
               <UnifiedImportPanel
                 deckId={deck.id}
                 onImport={handleImport}
@@ -792,7 +806,7 @@ export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onLi
             {onNewCard && (
               <Button variant="primary" onClick={onNewCard}>
                 <PlusIcon width={18} height={18} />
-                Add your first card
+                New card
               </Button>
             )}
             {onNewSequence && (

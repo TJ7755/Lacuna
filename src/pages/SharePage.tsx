@@ -420,9 +420,14 @@ export function SharePage() {
           <h2 className="font-display text-xl">Export a course</h2>
         </div>
         <p className="mb-5 text-sm text-ink-soft">
-          Select a course, then generate a code to copy and share. Media files are not included
-          because they make pasteable codes too large; use a full backup when you need to transfer
-          images or audio.
+          Select a course, then generate a code to copy and share. This sends course material, not
+          a restorable backup: schedules stay private and media files are omitted. Use a full backup
+          when you need an exact transfer with images or audio.
+          {' '}
+          <a href="/settings#settings-export" className="text-accent underline underline-offset-2">
+            Open full backup and recovery
+          </a>
+          .
         </p>
 
         {!courses ? (
@@ -537,7 +542,7 @@ export function SharePage() {
                     {selectedMediaCards.length === 1 ? 'card' : 'cards'}. The share code cannot
                     carry the files: recipients get a placeholder in their place, and diagram
                     cards fall back to text with no image to label. Export a full backup from
-                    Settings to transfer the media too.
+                    Full backup and recovery in Settings to transfer the media too.
                   </p>
                   <ul className="mt-2 max-h-32 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-ink-faint">
                     {selectedMediaCards.map((card, index) => (
@@ -569,7 +574,7 @@ export function SharePage() {
                   disabled={!selectedCourseId || !selectedSummary?.cardCount}
                 >
                   <FileTextIcon width={18} height={18} />
-                  Export as plain text
+                  Export cards as plain text
                 </Button>
               </div>
             </div>
@@ -708,7 +713,7 @@ export function SharePage() {
         <p className="mb-5 text-sm text-ink-soft">
           Paste a share code below to add it as a new course of your own. This never
           overwrites your existing courses. All Lacuna share-code encodings (LAC0–LAC3)
-          are supported, including legacy deck exports and current course exports.
+          are supported, including older Lacuna exports and current course shares.
         </p>
 
         <div className="rounded-xl border border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
@@ -842,7 +847,7 @@ export function SharePage() {
                 {!pending.merge && pending.summary.omittedImages && (
                   <p className="mb-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink-soft">
                     This share code omitted media to keep the code small. Images and audio will
-                    appear as placeholders after import.
+                    appear as placeholders after import. Use a full backup for an exact transfer.
                   </p>
                 )}
                 <div className="flex flex-wrap justify-end gap-2">

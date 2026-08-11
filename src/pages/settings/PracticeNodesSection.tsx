@@ -1,87 +1,23 @@
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
-import { ConfirmInline } from '../../components/ui/ConfirmInline';
-import { useToast } from '../../components/ui/Toast';
-import { TrashIcon, EditIcon, PlusIcon } from '../../components/ui/icons';
+import { ChevronRightIcon } from '../../components/ui/icons';
 import { useLessons, usePracticeNodes } from '../../state/useCourseData';
-import { createPracticeNode, updatePracticeNode, deletePracticeNode } from '../../db/repository';
-import { PracticeNodeFields } from '../../components/course/PracticeNodeFields';
-import {
-  emptyPracticeNodeDraft,
-  draftFromPracticeNode,
-  parseCardCount,
-  type PracticeNodeDraft,
-} from '../../components/course/practiceNodeDraft';
 
 export interface PracticeNodesSectionProps {
   courseId: string;
 }
 
 /**
- * Course-only manual practice-node management: teacher-authored practice sessions
- * placed at a fixed gap on the course path (see src/course/path.ts's manual
- * placement rule). Auto-inserted practice slots are not listed here — they are
- * computed fresh on every path render from the live due-card backlog and are
- * never persisted (see PracticeNode.position's doc comment in db/types.ts).
- * Reads via usePracticeNodes/useLessons, writes directly to the repository —
- * mirrors ExamDatesSection's list/inline-edit shape.
+ * Practice-node summary. The path is the canonical authoring surface because
+ * placement is meaningless without seeing the curriculum around it. Settings
+ * explains the automatic/manual distinction and links to that editor rather
+ * than maintaining a second full editing workflow.
  */
 export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
-  const { notify } = useToast();
+  const navigate = useNavigate();
   const lessons = useLessons(courseId);
   const practiceNodes = usePracticeNodes(courseId);
   const manualNodes = practiceNodes?.filter((n) => n.type === 'manual');
-  const [editingId, setEditingId] = useState<string | 'new' | null>(null);
-  const [draft, setDraft] = useState<PracticeNodeDraft>(emptyPracticeNodeDraft());
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-
-  function startAdd() {
-    setDraft(emptyPracticeNodeDraft());
-    setEditingId('new');
-  }
-
-  function startEdit(id: string) {
-    const existing = manualNodes?.find((n) => n.id === id);
-    if (!existing) return;
-    setDraft(draftFromPracticeNode(existing));
-    setEditingId(id);
-  }
-
-  function cancel() {
-    setEditingId(null);
-    setDraft(emptyPracticeNodeDraft());
-  }
-
-  async function save() {
-    const name = draft.name.trim() || 'Practice';
-    const opts = {
-      position: draft.position,
-      lessonIds: draft.lessonIds,
-      cardCount: parseCardCount(draft.cardCount),
-      randomize: draft.randomize,
-    };
-    try {
-      if (editingId === 'new') {
-        await createPracticeNode(courseId, { type: 'manual', name, ...opts });
-      } else if (editingId) {
-        await updatePracticeNode(editingId, { name, ...opts });
-      }
-      cancel();
-    } catch (err) {
-      notify(err instanceof Error ? err.message : 'Could not save the practice node.', 'negative');
-    }
-  }
-
-  async function remove(id: string) {
-    try {
-      await deletePracticeNode(id);
-      if (editingId === id) cancel();
-    } catch (err) {
-      notify(err instanceof Error ? err.message : 'Could not delete the practice node.', 'negative');
-    } finally {
-      setConfirmDeleteId(null);
-    }
-  }
 
   function describePosition(position: number | undefined): string {
     if (position === undefined) return 'Start of course';
@@ -96,11 +32,12 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-ink-faint">
-        Teacher-placed practice sessions inserted at a fixed point on the course path,
-        alongside any practice slots the course inserts automatically.
+        Automatic practice appears when due work builds up and follows the thresholds above.
+        Manual practice is placed deliberately on the course path and can limit lessons, card count
+        and order. Custom card filters are not editable.
       </p>
 
-      {manualNodes?.length === 0 && !editingId && (
+      {manualNodes?.length === 0 && (
         <p className="text-xs text-ink-faint">No manual practice nodes yet.</p>
       )}
 
@@ -120,50 +57,18 @@ export function PracticeNodesSection({ courseId }: PracticeNodesSectionProps) {
               {node.randomize ? ' · randomised' : ''}
             </div>
           </div>
-          <div className="flex shrink-0 gap-1">
-            {confirmDeleteId === node.id ? (
-              <ConfirmInline
-                message="Delete?"
-                onConfirm={() => void remove(node.id)}
-                onCancel={() => setConfirmDeleteId(null)}
-              />
-            ) : (
-              <>
-                <Button variant="ghost" size="sm" onClick={() => startEdit(node.id)} aria-label={`Edit ${node.name}`}>
-                  <EditIcon width={16} height={16} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmDeleteId(node.id)}
-                  aria-label={`Delete ${node.name}`}
-                >
-                  <TrashIcon width={16} height={16} />
-                </Button>
-              </>
-            )}
-          </div>
         </div>
       ))}
 
-      {editingId ? (
-        <div className="flex flex-col gap-3 rounded-lg border border-line-strong bg-surface px-4 py-3">
-          <PracticeNodeFields draft={draft} onChange={setDraft} lessons={lessons ?? []} />
-          <div className="flex gap-2">
-            <Button variant="primary" size="sm" onClick={() => void save()}>
-              Save
-            </Button>
-            <Button variant="ghost" size="sm" onClick={cancel}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <Button variant="secondary" size="sm" onClick={startAdd} className="self-start">
-          <PlusIcon width={16} height={16} />
-          Add practice node
-        </Button>
-      )}
+      <Button
+        variant="secondary"
+        size="sm"
+        className="self-start"
+        onClick={() => navigate(`/course/${courseId}`)}
+      >
+        Manage on Path
+        <ChevronRightIcon width={16} height={16} />
+      </Button>
     </div>
   );
 }

@@ -1,5 +1,20 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Arc 14 flow simplification complete
+
+- Made the course path the canonical manual-practice editor, exposed labelled insertion controls,
+  and distinguished automatic from manual nodes without pretending custom filters are authorable.
+- Kept course tabs visible from lesson views and standardised card, sequence, occlusion, linking,
+  and card-import actions across lessons and the Question bank.
+- Separated course sharing, card/APKG import, external batch staging, full backup, merge, and local
+  replacement language. Media omissions now point directly to full backup and destructive local
+  replacement requires explicit confirmation.
+- Added persistent archived-course management, confirmation before course deletion, batch-discard
+  protection, and shortcut-conflict rejection.
+- Added targeted critical-domain coverage and a one-worker Chromium production smoke suite to CI,
+  capped Vitest and Playwright at one worker, and extracted practice persistence and Learn
+  card-capability rules from oversized modules.
+
 ## Unreleased — Roadmap consolidation
 
 - Replaced the 3,700-line combined roadmap and implementation diary with a short current
@@ -54,7 +69,7 @@
   asserting before their user-visible state had settled.
 - Removed expected share-validation and error-boundary logging, completed the navigation fixture
   for the Question Bank test, and closed pre-migration snapshot connections after each operation.
-- The full suite now passes with 198 files and 1,747 tests without stderr output.
+- The full suite now passes with 205 files and 1,774 tests without stderr output.
 
 ## Unreleased — Browser QA fixes
 

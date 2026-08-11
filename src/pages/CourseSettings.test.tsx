@@ -446,8 +446,9 @@ describe('CourseSettings', () => {
     );
   });
 
-  it('snapshots then deletes the course immediately, navigating away with an undo toast', async () => {
+  it('confirms, snapshots and deletes the course, then navigates away with an undo toast', async () => {
     renderPage();
+    fireEvent.click(screen.getByText('Delete course'));
     fireEvent.click(screen.getByText('Delete course'));
     await vi.waitFor(() => expect(mockSnapshotCourse).toHaveBeenCalledWith('course-1'));
     await vi.waitFor(() => expect(mockDeleteCourse).toHaveBeenCalledWith('course-1'));
@@ -461,6 +462,7 @@ describe('CourseSettings', () => {
 
   it('restores the course from its snapshot when the undo toast action fires', async () => {
     renderPage();
+    fireEvent.click(screen.getByText('Delete course'));
     fireEvent.click(screen.getByText('Delete course'));
     await vi.waitFor(() => expect(mockDeleteCourse).toHaveBeenCalledWith('course-1'));
     const [, , options] = mockNotify.mock.calls[mockNotify.mock.calls.length - 1];

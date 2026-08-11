@@ -26,12 +26,13 @@ interface ItemStagingReviewProps {
   courseId: string;
   lessons: Lesson[];
   cards: Card[];
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 type Decision = 'staged' | 'accepted' | 'rejected';
 type ProposedWithCandidateId = ProposedImportItem & { candidateId: string };
 
-export function ItemStagingReview({ courseId, lessons, cards }: ItemStagingReviewProps) {
+export function ItemStagingReview({ courseId, lessons, cards, onDirtyChange }: ItemStagingReviewProps) {
   const { notify } = useToast();
   const [source, setSource] = useState('');
   const [submittedSource, setSubmittedSource] = useState<string | null>(null);
@@ -43,6 +44,16 @@ export function ItemStagingReview({ courseId, lessons, cards }: ItemStagingRevie
   const [batchRevisionOpen, setBatchRevisionOpen] = useState(false);
   const [batchComplaint, setBatchComplaint] = useState('');
   const [batchRevisionSource, setBatchRevisionSource] = useState('');
+
+  useEffect(() => {
+    onDirtyChange?.(
+      source.trim().length > 0 ||
+        submittedSource !== null ||
+        edits.size > 0 ||
+        decisions.size > 0 ||
+        batchRevisionSource.trim().length > 0,
+    );
+  }, [batchRevisionSource, decisions, edits, onDirtyChange, source, submittedSource]);
 
   useEffect(() => {
     if (lessons.some((lesson) => lesson.id === targetLessonId)) return;

@@ -11,8 +11,8 @@ timer to infer the FSRS grade; structured numeric and working items are marked a
 All data lives locally in **IndexedDB**. The web app sends none of it to a Lacuna server
 because there is no Lacuna server. In the Electron build, an MCP client can access only the
 data you authorise for that local process; write and destructive access require explicit
-permission. Use **Settings → Import & export** to back up or move your data as a single JSON
-file.
+permission. Use **Settings → Full backup & recovery** to back up or move your data as a single
+JSON file.
 
 ## Highlights
 
@@ -171,4 +171,6 @@ react-markdown with remark-gfm / remark-math / rehype-katex / rehype-highlight.
 
 Vitest with `fake-indexeddb` for database and FSRS layer tests, `@testing-library/react` and
 `happy-dom` for UI component and hook tests. The test suite covers the FSRS engine, forward
-simulation, import/export, asset handling, and UI components. Run `bun run test` to execute.
+simulation, import/export, asset handling, and UI components. Run `bun run test` for the full
+one-worker suite, `bun run test:coverage` for the critical-domain coverage gate, and
+`bun run test:e2e:web` for the one-worker Chromium production smoke suite.
