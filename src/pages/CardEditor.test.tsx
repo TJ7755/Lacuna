@@ -1,10 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CardEditor } from './CardEditor';
-import type { Card, Course, Lesson, Occlusion, Sequence } from '../db/types';
+import type { Card, Course, Deck, Lesson, Occlusion, Sequence } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 
 const mockNavigate = vi.fn();
@@ -13,7 +13,9 @@ let mockCard: Card | null | undefined;
 let mockSequences: Sequence[] | undefined;
 let mockOcclusions: Occlusion[] | undefined;
 let mockLesson: Lesson | null | undefined;
+let mockBankBackingDeck: Deck | undefined;
 const updateCard = vi.fn().mockResolvedValue(undefined);
+const checkDuplicate = vi.fn().mockResolvedValue(null);
 const createCourseCard = vi.fn().mockResolvedValue(undefined);
 const writeClipboardText = vi.fn().mockResolvedValue(undefined);
 
@@ -41,6 +43,8 @@ vi.mock('../state/useCourseData', () => ({
   useCourseCards: () => [],
   useLesson: () => mockLesson,
   useLessonCards: () => (mockLesson ? [] : undefined),
+  useLessonBackingDeck: () => undefined,
+  useCourseBankBackingDeck: () => mockBankBackingDeck,
   useSequences: () => mockSequences,
   useOcclusions: () => mockOcclusions,
 }));
@@ -50,7 +54,7 @@ vi.mock('../components/ui/Toast', () => ({
 }));
 
 vi.mock('../db/repository', () => ({
-  checkDuplicate: vi.fn().mockResolvedValue(null),
+  checkDuplicate: (...args: unknown[]) => checkDuplicate(...args),
   createLessonCard: vi.fn(),
   createLessonCardWithReverse: vi.fn(),
   createLessonBasicReversedPair: vi.fn(),
@@ -180,14 +184,19 @@ function renderEditingViaLesson(state?: unknown) {
   );
 }
 
+afterEach(() => vi.useRealTimers());
+
 beforeEach(() => {
   mockCourse = course;
   mockCard = undefined;
   mockSequences = [];
   mockOcclusions = [];
   mockLesson = undefined;
+  mockBankBackingDeck = undefined;
   mockNavigate.mockClear();
   updateCard.mockClear();
+  checkDuplicate.mockClear();
+  checkDuplicate.mockResolvedValue(null);
   createCourseCard.mockClear();
   writeClipboardText.mockClear();
   Object.defineProperty(navigator, 'clipboard', {
@@ -251,6 +260,42 @@ describe('CardEditor — numeric items', () => {
           },
         }),
       ),
+    );
+  });
+});
+
+describe('CardEditor — backing-deck boundary', () => {
+  it('uses the course-bank backing deck for duplicate checks', async () => {
+    vi.useFakeTimers();
+    mockBankBackingDeck = {
+      id: 'bank-deck',
+      name: 'Question bank',
+      examDate: Date.now() + 86_400_000,
+      timeZone: 'UTC',
+      createdAt: Date.now(),
+      fsrsVersion: FSRS_VERSION,
+      fsrsParameters: defaultFsrsParameters(),
+      examObjective: 'expectedMarks',
+      lastInteractedAt: Date.now(),
+    };
+    renderNew();
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'What is demand?' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Answer. Markdown, maths and images are supported.'), {
+      target: { value: 'The quantity consumers will buy.' },
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(600);
+      await Promise.resolve();
+    });
+    expect(checkDuplicate).toHaveBeenCalledWith(
+      'bank-deck',
+      'front_back',
+      'What is demand?',
+      'The quantity consumers will buy.',
+      undefined,
     );
   });
 });

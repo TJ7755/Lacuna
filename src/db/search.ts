@@ -1,7 +1,7 @@
-// Plain, offline card search. A pure function over already-loaded cards and decks
-// so it needs no index server and is trivially testable. Matching is a
-// case- and diacritic-insensitive substring over the card front/back, the deck
-// name, and the card's tags.
+// Plain, offline search over already-loaded Course/Lesson content and cards.
+// It needs no index server and is trivially testable. Card matching is a
+// case- and diacritic-insensitive substring over the card front/back, its
+// Course or legacy Deck context, and the card's tags.
 
 import type { Card, Course, Deck, Lesson, Note } from './types';
 import { isLeech } from '../fsrs/leech';
@@ -9,6 +9,22 @@ import { isLeech } from '../fsrs/leech';
 export interface SearchResult {
   card: Card;
   deck: Deck;
+}
+
+export interface ScopedSearchResult {
+  card: Card;
+  /** Present for legacy cards or as compatibility context for course cards. */
+  deck?: Deck;
+  /** Present when the card belongs to a known Course. */
+  course?: Course;
+  /** User-facing context label; Course name takes precedence over Deck name. */
+  contextName: string;
+}
+
+export interface SearchScope {
+  cards: Card[];
+  decks: Deck[];
+  courses: Course[];
 }
 
 /** A course/lesson/note match, ranked alongside card results in the unified search UI. */
@@ -142,16 +158,14 @@ export function filterSessionCardPool(cards: Card[], options: SessionCardPoolOpt
 }
 
 /**
- * Find cards matching `query`. Results are ranked so that matches in the card's
- * front rank above matches found only in the back/deck/tags, and earlier matches
- * rank above later ones.
+ * Find cards in a Course-aware scope. Course names are the primary context for
+ * course cards; legacy Deck names remain a fallback for old or orphaned cards.
  */
-export function searchCards(
+export function searchCardsInScope(
   query: string,
-  cards: Card[],
-  decks: Deck[],
+  { cards, decks, courses }: SearchScope,
   options: SearchOptions = {},
-): SearchResult[] {
+): ScopedSearchResult[] {
   const now = options.now ?? Date.now();
   const parsed = options.parseQuery ? parseAdvancedQuery(query) : null;
   const filters = [...(options.filters ?? []), ...(parsed?.filters ?? [])];
@@ -160,11 +174,14 @@ export function searchCards(
   if (!q && filters.length === 0 && !parsed?.tags.length && !parsed?.decks.length) return [];
 
   const deckById = new Map(decks.map((d) => [d.id, d]));
-  const ranked: { card: Card; deck: Deck; score: number }[] = [];
+  const courseById = new Map(courses.map((course) => [course.id, course]));
+  const ranked: { result: ScopedSearchResult; score: number }[] = [];
 
   for (const card of cards) {
+    const course = card.courseId ? courseById.get(card.courseId) : undefined;
     const deck = deckById.get(card.deckId);
-    if (!deck) continue;
+    if (!course && !deck) continue;
+    const contextName = course?.name ?? deck?.name ?? '';
 
     // Every active filter must match (AND), narrowing the set before text ranking.
     if (filters.length && !filters.every((f) => matchesFilter(card, f, now))) continue;
@@ -175,15 +192,18 @@ export function searchCards(
       if (!parsed.tags.every((t) => cardTags.includes(t))) continue;
     }
 
-    // Inline deck operator.
+    // Inline deck operator is retained for compatibility and also matches Course names.
     if (parsed?.decks.length) {
-      if (!parsed.decks.some((d) => normalise(deck.name).includes(d))) continue;
+      const searchableContexts = [course?.name, deck?.name]
+        .filter((name): name is string => Boolean(name))
+        .map(normalise);
+      if (!parsed.decks.some((d) => searchableContexts.some((name) => name.includes(d)))) continue;
     }
 
     let score = 0;
     if (q) {
       const haystack = normalise(
-        [card.front, card.back, deck.name, ...(card.tags ?? [])].join('  '),
+        [card.front, card.back, contextName, deck?.name ?? '', ...(card.tags ?? [])].join('  '),
       );
       const idx = haystack.indexOf(q);
       if (idx === -1) continue;
@@ -194,12 +214,25 @@ export function searchCards(
       // overall match position (idx).
       score = frontIdx === -1 ? Number.MAX_SAFE_INTEGER / 2 + idx : frontIdx;
     }
-    ranked.push({ card, deck, score });
+    ranked.push({ result: { card, deck, course, contextName }, score });
   }
 
   // With a query, rank by match quality; filter-only results keep their input order.
   ranked.sort((a, b) => a.score - b.score);
-  return ranked.map(({ card, deck }) => ({ card, deck }));
+  return ranked.map(({ result }) => result);
+}
+
+/** Legacy adapter retained for callers that already provide only Deck data. */
+export function searchCards(
+  query: string,
+  cards: Card[],
+  decks: Deck[],
+  options: SearchOptions = {},
+): SearchResult[] {
+  return searchCardsInScope(query, { cards, decks, courses: [] }, options).map(({ card, deck }) => ({
+    card,
+    deck: deck!,
+  }));
 }
 
 /**

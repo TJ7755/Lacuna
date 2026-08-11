@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { filterSessionCardPool, searchCards } from './search';
+import { filterSessionCardPool, searchCards, searchCardsInScope } from './search';
 import { DEFAULT_LEECH_LAPSE_THRESHOLD } from '../fsrs/leech';
-import type { Card, Deck } from './types';
+import type { Card, Course, Deck } from './types';
 
 const NOW = 1_000_000_000_000;
 
@@ -104,6 +104,57 @@ describe('searchCards', () => {
     ];
     const results = searchCards('apple', cards, [deck], { filters: ['flagged'] });
     expect(results.map((r) => r.card.id)).toEqual(['a']);
+  });
+});
+
+describe('searchCardsInScope', () => {
+  const course: Course = {
+    id: 'course-1',
+    name: 'Ancient Rome',
+    description: '',
+    createdAt: NOW,
+    examDate: NOW + 100_000,
+    fsrsVersion: 6,
+    fsrsParameters: deck.fsrsParameters,
+    examObjective: 'expectedMarks',
+    unlockMode: 'open',
+    autoPractice: false,
+    practiceThresholdMinutesFar: 10,
+    practiceThresholdMinutesNear: 5,
+    practiceUrgentWindowDays: 7,
+    practiceMaxGap: 3,
+  };
+
+  it('uses the Course name when a course card has no backing Deck row', () => {
+    const courseCard = card('course-card', {
+      courseId: course.id,
+      deckId: 'missing-deck',
+      front: 'Roman senate',
+    });
+
+    const results = searchCardsInScope('Ancient Rome', {
+      cards: [courseCard],
+      decks: [],
+      courses: [course],
+    });
+
+    expect(results).toEqual([
+      expect.objectContaining({
+        card: courseCard,
+        course,
+        contextName: 'Ancient Rome',
+      }),
+    ]);
+  });
+
+  it('falls back to legacy Deck context for deck-only cards', () => {
+    const results = searchCardsInScope('Deck one', {
+      cards: [card('legacy')],
+      decks: [deck],
+      courses: [],
+    });
+
+    expect(results[0]).toMatchObject({ card: expect.objectContaining({ id: 'legacy' }), deck, contextName: 'Deck one' });
   });
 });
 

@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { m as motion } from 'motion/react';
-import { useAllCards, useDecks } from '../state/useData';
-import { useCourses, useAllLessons, useAllNotes } from '../state/useCourseData';
+import { useSearchData } from '../state/useSearchData';
 import {
   cardEditPath,
   plainPreview,
-  searchCards,
+  searchCardsInScope,
   searchCourseContent,
   type CardFilter,
   type CourseContentHit,
@@ -65,21 +64,26 @@ function courseHitMeta(hit: CourseContentHit) {
 export function SearchPage() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const decks = useDecks();
-  const cards = useAllCards();
-  const courses = useCourses();
-  const lessons = useAllLessons();
-  const notes = useAllNotes();
+  const searchData = useSearchData();
+  const cards = searchData?.cards;
+  const decks = searchData?.decks;
+  const courses = searchData?.courses;
+  const lessons = searchData?.lessons;
+  const notes = searchData?.notes;
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<Set<CardFilter>>(new Set());
 
   const results = useMemo(
     () =>
-      searchCards(query, cards ?? [], decks ?? [], {
+      searchCardsInScope(query, {
+        cards: cards ?? [],
+        decks: decks ?? [],
+        courses: courses ?? [],
+      }, {
         filters: [...filters],
       }),
-    [query, cards, decks, filters],
+    [query, cards, decks, courses, filters],
   );
 
   // Courses/lessons/notes have no due/new/flagged concept, so structured filters
@@ -168,7 +172,7 @@ export function SearchPage() {
         )}
       </div>
 
-      {!decks || !cards || !courses || !lessons || !notes ? (
+      {!searchData ? (
         <SearchSkeleton />
       ) : !active ? (
         <motion.div
@@ -259,7 +263,7 @@ export function SearchPage() {
                   </span>
                 )}
                 <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
-                  <span>{hit.deck.name}</span>
+                  <span>{hit.contextName}</span>
                   {hit.card.flagged && (
                     <FlagIcon width={12} height={12} className="text-accent" />
                   )}

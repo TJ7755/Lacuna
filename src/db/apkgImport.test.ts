@@ -95,6 +95,24 @@ describe('importApkgResult', () => {
     expect(persisted).toEqual(returned);
   });
 
+  it('persists Course metadata when importing into a Course/Lesson target', async () => {
+    const target = await createDeck('Lesson backing deck');
+
+    const imported = await importApkgResult(makeResult(), target.id, {
+      courseId: 'course-1',
+      primaryLessonId: 'lesson-1',
+    });
+
+    expect(imported.cards[0]).toMatchObject({
+      courseId: 'course-1',
+      primaryLessonId: 'lesson-1',
+    });
+    expect(await db.cards.get(imported.cards[0].id)).toMatchObject({
+      courseId: 'course-1',
+      primaryLessonId: 'lesson-1',
+    });
+  });
+
   it('reuses an existing target deck without creating another deck', async () => {
     const target = await createDeck('Existing deck');
 

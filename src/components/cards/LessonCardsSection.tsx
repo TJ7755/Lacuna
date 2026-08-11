@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { CardList } from './CardList';
+import { courseCardListContext } from './cardListContext';
 import { LinkCardsDialog } from './LinkCardsDialog';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
@@ -12,15 +13,16 @@ import { PlusIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
 import {
   useCourseCards,
+  useLessonBackingDeck,
   useLessonCardLinks,
   useLessons,
   useOcclusions,
   useSequences,
 } from '../../state/useCourseData';
 import { db } from '../../db/schema';
-import { ensureLessonDeck, unlinkCardFromLesson } from '../../db/repository';
-import type { Card, Deck } from '../../db/types';
-import { useDeck } from '../../state/useData';
+import { ensureLessonBackingDeck } from '../../db/backingDecks';
+import { unlinkCardFromLesson } from '../../db/repository';
+import type { Card, SchedulerConfig } from '../../db/types';
 
 interface LessonCardsSectionProps {
   courseId: string;
@@ -29,7 +31,7 @@ interface LessonCardsSectionProps {
    *  (see the onEditSequence origin override below). */
   lessonName: string;
   lessonCards: Card[];
-  lessonDeck: Deck | undefined;
+  lessonSchedulingConfig: SchedulerConfig | undefined;
   onNavigate: (path: string, options?: { state?: unknown }) => void;
   className?: string;
 }
@@ -39,14 +41,15 @@ export function LessonCardsSection({
   lessonId,
   lessonName,
   lessonCards,
-  lessonDeck,
+  lessonSchedulingConfig,
   onNavigate,
   className,
 }: LessonCardsSectionProps) {
   const { notify } = useToast();
   const [linking, setLinking] = useState(false);
-  const [preparedDeckId, setPreparedDeckId] = useState<string>();
-  const preparedDeck = useDeck(preparedDeckId);
+  const [importReadyFor, setImportReadyFor] = useState<string>();
+  const preparedDeck = useLessonBackingDeck(courseId, lessonId);
+  const importKey = `${courseId}:${lessonId}`;
   // A card pending unlink confirmation — only set when it has lesson-specific
   // teaching progress that unlinking would reset (see handleUnlink below).
   const [pendingUnlink, setPendingUnlink] = useState<Card | null>(null);
@@ -86,7 +89,8 @@ export function LessonCardsSection({
 
   async function prepareEmptyImport() {
     try {
-      setPreparedDeckId(await ensureLessonDeck(courseId, lessonId));
+      await ensureLessonBackingDeck(courseId, lessonId);
+      setImportReadyFor(importKey);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not prepare the card import.', 'negative');
     }
@@ -122,11 +126,15 @@ export function LessonCardsSection({
         </div>
       )}
 
-      {lessonCards.length === 0 && preparedDeck ? (
+      {lessonCards.length === 0 && importReadyFor === importKey && preparedDeck ? (
         <CardList
           cards={[]}
-          deck={preparedDeck}
-          allDecks={[preparedDeck]}
+          context={courseCardListContext({
+            schedulingConfig: preparedDeck,
+            courseId,
+            primaryLessonId: lessonId,
+            importTargetName: lessonName,
+          })}
           hideHeader
           initiallyImporting
           onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
@@ -169,7 +177,7 @@ export function LessonCardsSection({
             </Button>
           </div>
         </div>
-      ) : links === undefined || !lessonDeck ? (
+      ) : links === undefined || !lessonSchedulingConfig ? (
         // Membership determines whether a row may delete the underlying card. Never
         // render destructive controls until that membership query has resolved.
         <div className="space-y-3" aria-label="Loading lesson cards">
@@ -180,8 +188,12 @@ export function LessonCardsSection({
       ) : (
         <CardList
           cards={lessonCards}
-          deck={lessonDeck}
-          allDecks={[lessonDeck]}
+          context={courseCardListContext({
+            schedulingConfig: lessonSchedulingConfig,
+            courseId,
+            primaryLessonId: lessonId,
+            importTargetName: lessonName,
+          })}
           hideHeader
           onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
           onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}

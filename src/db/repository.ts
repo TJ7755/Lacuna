@@ -33,6 +33,10 @@ import type {
   UserPerformance,
 } from './types';
 import { courseToRecord, finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
+import {
+  ensureCourseBankBackingDeck,
+  ensureLessonBackingDeck,
+} from './backingDecks';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { emptyPerformance, updatePerformance } from '../fsrs/grading';
@@ -312,66 +316,8 @@ export async function createBasicReversedPair(
   });
 }
 
-async function ownedBackingDeck(
-  courseId: string,
-  lessonId: string | null,
-): Promise<Deck | undefined> {
-  return db.decks
-    .filter(
-      (deck) => deck.backingCourseId === courseId && (deck.backingLessonId ?? null) === lessonId,
-    )
-    .first();
-}
-
-async function hydratedCourseById(courseId: string): Promise<Course | undefined> {
-  const [record, assessments] = await Promise.all([
-    db.courses.get(courseId),
-    db.courseAssessments.where('courseId').equals(courseId).toArray(),
-  ]);
-  if (!record) return undefined;
-  return hydrateCourse(record, finalAssessmentForCourse(courseId, assessments));
-}
-
-/**
- * Every course card still needs a real backing Deck (recordReview and userPerformance
- * both key off deckId). This lazily creates one hidden deck per lesson, inheriting the
- * course's scheduling fields, and reuses it on subsequent calls for the same lesson. May
- * run inside an outer transaction (e.g. share import), so it never opens its own
- * `db.transaction` — only plain table operations.
- */
-export async function ensureLessonDeck(courseId: string, lessonId: string): Promise<string> {
-  const owned = await ownedBackingDeck(courseId, lessonId);
-  if (owned) return owned.id;
-  const existing = await db.cards.where('primaryLessonId').equals(lessonId).first();
-  if (existing) {
-    await db.decks.update(existing.deckId, {
-      backingCourseId: courseId,
-      backingLessonId: lessonId,
-    });
-    return existing.deckId;
-  }
-
-  const course = await hydratedCourseById(courseId);
-  const lesson = await db.lessons.get(lessonId);
-  const createdAt = Date.now();
-  const deck: Deck = {
-    id: makeId(),
-    name: lesson?.name ?? 'Untitled lesson',
-    examDate: course?.examDate ?? defaultExamDate(createdAt),
-    timeZone: course?.timeZone ?? getLocalTimeZone(),
-    createdAt,
-    fsrsVersion: course?.fsrsVersion ?? FSRS_VERSION,
-    fsrsParameters: course?.fsrsParameters ?? defaultFsrsParameters(),
-    examObjective: course?.examObjective ?? 'expectedMarks',
-    lastInteractedAt: createdAt,
-    backingCourseId: courseId,
-    backingLessonId: lessonId,
-    ...(course?.colour ? { colour: course.colour } : {}),
-  };
-  await db.decks.add(deck);
-  await db.userPerformance.add(emptyPerformance(deck.id));
-  return deck.id;
-}
+/** Resolve or create the hidden scheduling deck for one lesson. */
+export const ensureLessonDeck = ensureLessonBackingDeck;
 
 /** Create a card that belongs to a lesson, lazily creating the lesson's backing deck. */
 export async function createLessonCard(
@@ -418,44 +364,8 @@ export async function createLessonBasicReversedPair(
   });
 }
 
-/**
- * Every unassigned course card (primaryLessonId null) also needs a real backing Deck,
- * for the same reasons as {@link ensureLessonDeck}. Lazily creates one hidden "question
- * bank" deck per course and reuses it for every card in that course with no lesson.
- */
-export async function ensureCourseBankDeck(courseId: string): Promise<string> {
-  const owned = await ownedBackingDeck(courseId, null);
-  if (owned) return owned.id;
-  const existing = await db.cards
-    .where('courseId')
-    .equals(courseId)
-    .filter((c) => c.primaryLessonId === null || c.primaryLessonId === undefined)
-    .first();
-  if (existing) {
-    await db.decks.update(existing.deckId, { backingCourseId: courseId, backingLessonId: null });
-    return existing.deckId;
-  }
-
-  const course = await hydratedCourseById(courseId);
-  const createdAt = Date.now();
-  const deck: Deck = {
-    id: makeId(),
-    name: course ? `${course.name} — Question bank` : 'Question bank',
-    examDate: course?.examDate ?? defaultExamDate(createdAt),
-    timeZone: course?.timeZone ?? getLocalTimeZone(),
-    createdAt,
-    fsrsVersion: course?.fsrsVersion ?? FSRS_VERSION,
-    fsrsParameters: course?.fsrsParameters ?? defaultFsrsParameters(),
-    examObjective: course?.examObjective ?? 'expectedMarks',
-    lastInteractedAt: createdAt,
-    backingCourseId: courseId,
-    backingLessonId: null,
-    ...(course?.colour ? { colour: course.colour } : {}),
-  };
-  await db.decks.add(deck);
-  await db.userPerformance.add(emptyPerformance(deck.id));
-  return deck.id;
-}
+/** Resolve or create the hidden scheduling deck for unassigned course cards. */
+export const ensureCourseBankDeck = ensureCourseBankBackingDeck;
 
 /** Create a course-scoped card with no lesson, lazily creating the course's bank deck. */
 export async function createCourseCard(

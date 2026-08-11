@@ -3,7 +3,7 @@
 // Route: /course/:courseId/bank
 // British English throughout.
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import {
@@ -12,9 +12,11 @@ import {
   useCourseCards,
   useOcclusions,
   useSequences,
+  useLessonBackingDeck,
+  useCourseBankBackingDeck,
 } from '../state/useCourseData';
-import { useDeck } from '../state/useData';
 import { CardList } from '../components/cards/CardList';
+import { courseCardListContext } from '../components/cards/cardListContext';
 import { CourseTabs } from '../components/course/CourseTabs';
 import { FadeInView } from '../components/ui/FadeInView';
 import { Button } from '../components/ui/Button';
@@ -185,6 +187,7 @@ export function QuestionBank() {
             <FadeInView delay={lessonsWithCards.length * 0.04} y={12}>
               <UnassignedBucket
                 courseId={courseId!}
+                courseName={course.name}
                 cards={unassigned}
                 assignableLessons={assignableLessons}
                 sequences={sequences.filter((s) => s.primaryLessonId === null)}
@@ -233,20 +236,9 @@ function LessonBucket({
   occlusions: Occlusion[];
 }) {
   const navigate = useNavigate();
-  // Invariant (assignCardsToLesson): every card assigned to a lesson shares that
-  // lesson's single backing deck, so the bucket's deck can be read off the first card.
-  const deckId = cards[0]?.deckId;
-  if (import.meta.env.DEV) {
-    const stray = cards.find((c) => c.deckId !== deckId);
-    if (stray) {
-      console.error(
-        `QuestionBank: lesson "${lesson.name}" has cards from more than one deck ` +
-          `(expected ${deckId}, found ${stray.deckId} on card ${stray.id}).`,
-      );
-    }
-  }
-  const deck = useDeck(deckId);
-  const allDecks = useMemo(() => (deck ? [deck] : []), [deck]);
+  // Resolve the hidden scheduling deck through the Course/Lesson data boundary,
+  // rather than discovering it from card.deckId.
+  const deck = useLessonBackingDeck(courseId, lesson.id);
 
   return (
     <section>
@@ -264,8 +256,12 @@ function LessonBucket({
       {deck && (
         <CardList
           cards={cards}
-          deck={deck}
-          allDecks={allDecks}
+          context={courseCardListContext({
+            schedulingConfig: deck,
+            courseId,
+            primaryLessonId: lesson.id,
+            importTargetName: lesson.name,
+          })}
           hideHeader
           courseId={courseId}
           assignableLessons={assignableLessons}
@@ -301,32 +297,23 @@ function LessonBucket({
 
 function UnassignedBucket({
   courseId,
+  courseName,
   cards,
   assignableLessons,
   sequences,
   occlusions,
 }: {
   courseId: string;
+  courseName: string;
   cards: Card[];
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
   occlusions: Occlusion[];
 }) {
   const navigate = useNavigate();
-  // Invariant (assignCardsToLesson): unassigned cards all share the course's lazy
-  // bank deck, so the bucket's deck can be read off the first card.
-  const deckId = cards[0]?.deckId;
-  if (import.meta.env.DEV) {
-    const stray = cards.find((c) => c.deckId !== deckId);
-    if (stray) {
-      console.error(
-        `QuestionBank: Unassigned bucket has cards from more than one deck ` +
-          `(expected ${deckId}, found ${stray.deckId} on card ${stray.id}).`,
-      );
-    }
-  }
-  const deck = useDeck(deckId);
-  const allDecks = useMemo(() => (deck ? [deck] : []), [deck]);
+  // Resolve the hidden course-bank scheduling deck through the Course/Lesson data
+  // boundary, rather than discovering it from card.deckId.
+  const deck = useCourseBankBackingDeck(courseId);
 
   return (
     <section>
@@ -338,8 +325,12 @@ function UnassignedBucket({
       {deck && (
         <CardList
           cards={cards}
-          deck={deck}
-          allDecks={allDecks}
+          context={courseCardListContext({
+            schedulingConfig: deck,
+            courseId,
+            primaryLessonId: null,
+            importTargetName: courseName,
+          })}
           hideHeader
           courseId={courseId}
           assignableLessons={assignableLessons}

@@ -14,6 +14,8 @@ import type { Card, CardType } from '../../db/types';
 
 interface CardEditOverlayProps {
   card: Card;
+  /** Course/Lesson scope for drafts; omitted for legacy global Deck sessions. */
+  draftScope?: string;
   /** Existing tags across the deck, offered as suggestions in the tag input. */
   tagSuggestions?: string[];
   /** Called with the in-memory updated card once the change is persisted. */
@@ -29,6 +31,7 @@ interface CardEditOverlayProps {
  */
 export function CardEditOverlay({
   card,
+  draftScope,
   tagSuggestions = [],
   onSaved,
   onCancel,
@@ -45,7 +48,7 @@ export function CardEditOverlay({
   const frontRef = useRef<HTMLTextAreaElement>(null);
   const backRef = useRef<HTMLTextAreaElement>(null);
   const draftTimer = useRef<number>();
-  const draftKeyRef = useRef(draftKey(card.deckId, `session:${card.id}`));
+  const draftKeyRef = useRef(draftKey(draftScope ?? card.deckId, `session:${card.id}`));
 
   // Auto-restore a draft from a previous interrupted session.
   useEffect(() => {

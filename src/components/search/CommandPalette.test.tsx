@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CommandPalette } from './CommandPalette';
-import type { Card, Deck } from '../../db/types';
+import type { Card, Course, Deck, Lesson, Note } from '../../db/types';
 
 const mockDeck: Deck = {
   id: 'deck-1',
@@ -14,6 +14,24 @@ const mockDeck: Deck = {
   fsrsParameters: { requestRetention: 0.9, w: Array(21).fill(0), enable_fuzz: true, maximum_interval: 36500, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] },
   examObjective: 'expectedMarks',
   lastInteractedAt: Date.now(),
+};
+
+const mockCourse: Course = {
+  id: 'course-1',
+  name: 'Course Context',
+  description: '',
+  createdAt: Date.now(),
+  examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
+  timeZone: 'UTC',
+  fsrsVersion: 6,
+  fsrsParameters: mockDeck.fsrsParameters,
+  examObjective: 'expectedMarks',
+  unlockMode: 'open',
+  autoPractice: false,
+  practiceThresholdMinutesFar: 10,
+  practiceThresholdMinutesNear: 5,
+  practiceUrgentWindowDays: 7,
+  practiceMaxGap: 3,
 };
 
 const mockCard: Card = {
@@ -36,27 +54,23 @@ const mockCard: Card = {
 };
 
 const dataHooks = vi.hoisted(() => ({
-  useDecks: vi.fn((): Deck[] => []),
-  useAllCards: vi.fn((): Card[] => []),
-  useCourses: vi.fn(() => []),
-  useAllLessons: vi.fn(() => []),
-  useAllNotes: vi.fn(() => []),
+  useSearchData: vi.fn(() => ({
+    cards: [] as Card[],
+    decks: [] as Deck[],
+    courses: [] as Course[],
+    lessons: [] as Lesson[],
+    notes: [] as Note[],
+  })),
 }));
 
-vi.mock('../../state/useData', () => ({
-  useDecks: dataHooks.useDecks,
-  useAllCards: dataHooks.useAllCards,
-}));
-vi.mock('../../state/useCourseData', () => ({
-  useCourses: dataHooks.useCourses,
-  useAllLessons: dataHooks.useAllLessons,
-  useAllNotes: dataHooks.useAllNotes,
+vi.mock('../../state/useSearchData', () => ({
+  useSearchData: dataHooks.useSearchData,
 }));
 
 describe('CommandPalette', () => {
   it('does not subscribe to whole-database queries while closed', () => {
     render(<CommandPalette open={false} onClose={vi.fn()} />, { wrapper: MemoryRouter });
-    Object.values(dataHooks).forEach((hook) => expect(hook).not.toHaveBeenCalled());
+    expect(dataHooks.useSearchData).not.toHaveBeenCalled();
   });
 
   it('exposes an open palette as a focus-trapped modal', async () => {
@@ -65,7 +79,7 @@ describe('CommandPalette', () => {
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(dialog.style.opacity).toBe('');
     expect(screen.getByPlaceholderText(/search courses/i)).toHaveFocus();
-    Object.values(dataHooks).forEach((hook) => expect(hook).toHaveBeenCalled());
+    expect(dataHooks.useSearchData).toHaveBeenCalled();
   });
 
   it('updates search results without a fixed debounce delay', () => {
@@ -79,13 +93,17 @@ describe('CommandPalette', () => {
   });
 
   afterEach(() => {
-    dataHooks.useDecks.mockReturnValue([]);
-    dataHooks.useAllCards.mockReturnValue([]);
+    dataHooks.useSearchData.mockReturnValue({ cards: [], decks: [], courses: [], lessons: [], notes: [] });
   });
 
   it('badges a sequence-generated card hit', () => {
-    dataHooks.useDecks.mockReturnValue([mockDeck]);
-    dataHooks.useAllCards.mockReturnValue([{ ...mockCard, sequenceItemId: 'item-1' }]);
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [{ ...mockCard, sequenceItemId: 'item-1' }],
+      decks: [mockDeck],
+      courses: [],
+      lessons: [],
+      notes: [],
+    });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
     fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
@@ -95,9 +113,31 @@ describe('CommandPalette', () => {
     expect(screen.getByText('Sequence')).toBeInTheDocument();
   });
 
+  it('uses the Course name for a course card without a backing Deck row', () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [{ ...mockCard, deckId: 'missing-deck', courseId: mockCourse.id }],
+      decks: [],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+
+    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+      target: { value: 'Course Context' },
+    });
+
+    expect(screen.getAllByText('Course Context')).toHaveLength(2);
+  });
+
   it('badges an occlusion-generated card hit', () => {
-    dataHooks.useDecks.mockReturnValue([mockDeck]);
-    dataHooks.useAllCards.mockReturnValue([{ ...mockCard, occlusionRegionId: 'region-1' }]);
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [{ ...mockCard, occlusionRegionId: 'region-1' }],
+      decks: [mockDeck],
+      courses: [],
+      lessons: [],
+      notes: [],
+    });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
     fireEvent.change(screen.getByPlaceholderText(/search courses/i), {

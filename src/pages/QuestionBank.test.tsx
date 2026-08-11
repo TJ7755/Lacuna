@@ -9,6 +9,12 @@ let mockLessons: Lesson[] | undefined;
 let mockCards: Card[] | undefined;
 let mockSequences: Sequence[] | undefined = [];
 let mockOcclusions: Occlusion[] | undefined = [];
+let observedContexts: {
+  importTargetName?: string;
+  hasImport?: boolean;
+  hasApkg?: boolean;
+  hasRestore?: boolean;
+}[] = [];
 
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
@@ -16,6 +22,8 @@ vi.mock('../state/useCourseData', () => ({
   useCourseCards: () => mockCards,
   useSequences: () => mockSequences,
   useOcclusions: () => mockOcclusions,
+  useLessonBackingDeck: () => mockDeck,
+  useCourseBankBackingDeck: () => mockDeck,
 }));
 
 const mockDeck: Deck = {
@@ -30,10 +38,6 @@ const mockDeck: Deck = {
   lastInteractedAt: Date.now(),
 };
 
-vi.mock('../state/useData', () => ({
-  useDeck: () => mockDeck,
-}));
-
 // Stub out CardList: assert wiring (cards shown, courseId/assignableLessons passed
 // through) without exercising its own internals, which are covered by
 // CardList.test.tsx.
@@ -43,12 +47,28 @@ vi.mock('../components/cards/CardList', () => ({
     courseId,
     assignableLessons,
     onNewCard,
+    context,
   }: {
     cards: Card[];
     courseId?: string;
     assignableLessons?: { id: string; name: string }[];
     onNewCard?: () => void;
-  }) => (
+    context?: {
+      importTargetName: string;
+      onImport: unknown;
+      onApkgImport: unknown;
+      onRestore: unknown;
+    };
+  }) => {
+    if (context) {
+      observedContexts.push({
+        importTargetName: context.importTargetName,
+        hasImport: typeof context.onImport === 'function',
+        hasApkg: typeof context.onApkgImport === 'function',
+        hasRestore: typeof context.onRestore === 'function',
+      });
+    }
+    return (
     <div data-testid="card-list">
       <span data-testid="card-list-count">{cards.length}</span>
       <span data-testid="card-list-course">{courseId}</span>
@@ -59,7 +79,8 @@ vi.mock('../components/cards/CardList', () => ({
         </button>
       )}
     </div>
-  ),
+    );
+  },
 }));
 
 vi.mock('../components/ui/Button', () => ({
@@ -157,9 +178,8 @@ function renderPage() {
       </Routes>
     </MemoryRouter>,
   );
-}
-
-beforeEach(() => {
+}  beforeEach(() => {
+  observedContexts = [];
   mockCourse = undefined;
   mockLessons = undefined;
   mockCards = undefined;
@@ -243,6 +263,15 @@ describe('QuestionBank', () => {
     expect(courseIds.every((el) => el.textContent === 'course-1')).toBe(true);
     const assignable = screen.getAllByTestId('card-list-assignable');
     expect(assignable[0].textContent).toBe('Demand,Supply');
+    expect(observedContexts.map((context) => context.importTargetName)).toEqual([
+      'Demand',
+      'A-Level Economics',
+    ]);
+    expect(
+      observedContexts.every(
+        (context) => context.hasImport && context.hasApkg && context.hasRestore,
+      ),
+    ).toBe(true);
   });
 
   it('navigates to the course-scoped card editor when creating a card from the header', () => {

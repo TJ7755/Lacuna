@@ -406,6 +406,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               {editing && current && (
                 <CardEditOverlay
                   card={current}
+                  draftScope={lessonId ?? (courseId ? `bank:${courseId}` : undefined)}
                   tagSuggestions={[
                     ...new Set(
                       cardsRef.current

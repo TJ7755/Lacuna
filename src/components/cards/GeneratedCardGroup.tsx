@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { PathIcon, ImageIcon } from '../ui/icons';
 import { CardListBody } from './CardList';
-import type { Card, Deck } from '../../db/types';
+import type { Card, SchedulerConfig } from '../../db/types';
 
 /** The minimal shape of a generated card's owner (a Sequence or an Occlusion) this group needs. */
 interface GeneratedCardOwner {
@@ -22,7 +22,7 @@ interface GeneratedCardGroupProps {
   kind: 'sequence' | 'occlusion';
   owner: GeneratedCardOwner;
   cards: Card[];
-  deck: Deck;
+  schedulingConfig: SchedulerConfig;
   onEditCard: (card: Card) => void;
   onEditOwner?: (ownerId: string) => void;
   onResume: (card: Card) => void;
@@ -41,7 +41,7 @@ export function GeneratedCardGroup({
   kind,
   owner,
   cards,
-  deck,
+  schedulingConfig,
   onEditCard,
   onEditOwner,
   onResume,
@@ -76,7 +76,7 @@ export function GeneratedCardGroup({
       <div className="p-3">
         <CardListBody
           cards={cards}
-          deck={deck}
+          schedulingConfig={schedulingConfig}
           selectMode={false}
           selected={EMPTY_SELECTION}
           expandedCardId={expandedCardId}

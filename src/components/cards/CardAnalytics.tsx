@@ -15,24 +15,24 @@ import { useChartColours } from '../analytics/useChartColours';
 import { forgettingCurve } from '../../fsrs/forwardSim';
 import { decayOf } from '../../fsrs/fsrs';
 import { MS_PER_DAY } from '../../fsrs/params';
-import type { Card, Deck, Grade } from '../../db/types';
+import type { Card, Grade, SchedulerConfig } from '../../db/types';
 
 interface CardAnalyticsProps {
   card: Card;
-  deck: Deck;
+  schedulingConfig: SchedulerConfig;
   motionMultiplier?: number;
 }
 
-export function CardAnalytics({ card, deck, motionMultiplier }: CardAnalyticsProps) {
+export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: CardAnalyticsProps) {
   const m = motionMultiplier ?? 1;
   const c = useChartColours();
   const now = Date.now();
-  const decay = decayOf(deck.fsrsParameters);
+  const decay = decayOf(schedulingConfig.fsrsParameters);
 
   const curveData = useMemo(() => {
     if (card.stability === null || card.lastReviewed === null) return [];
     const start = card.lastReviewed;
-    const end = deck.examDate + 14 * MS_PER_DAY;
+    const end = schedulingConfig.examDate + 14 * MS_PER_DAY;
     const points: { t: number; r: number }[] = [];
     for (let t = start; t <= end; t += MS_PER_DAY) {
       const days = (t - card.lastReviewed) / MS_PER_DAY;
@@ -40,7 +40,7 @@ export function CardAnalytics({ card, deck, motionMultiplier }: CardAnalyticsPro
       points.push({ t, r: Math.round(r * 100) });
     }
     return points;
-  }, [card, deck.examDate, decay]);
+  }, [card, schedulingConfig.examDate, decay]);
 
   const reviewDots = useMemo(() => {
     const dots: { x: number; y: number; grade: Grade }[] = [];
@@ -73,7 +73,7 @@ export function CardAnalytics({ card, deck, motionMultiplier }: CardAnalyticsPro
       stats.push({ label: 'Current R', value: `${(r * 100).toFixed(0)}%` });
     }
     if (card.stability !== null && card.lastReviewed !== null) {
-      const days = Math.max(deck.examDate - card.lastReviewed, 0) / MS_PER_DAY;
+      const days = Math.max(schedulingConfig.examDate - card.lastReviewed, 0) / MS_PER_DAY;
       const r = forgettingCurve(days, card.stability, decay);
       stats.push({ label: 'Predicted exam R', value: `${(r * 100).toFixed(0)}%` });
     }
@@ -169,7 +169,7 @@ export function CardAnalytics({ card, deck, motionMultiplier }: CardAnalyticsPro
                   dot={false}
                 />
                 <ReferenceLine
-                  x={deck.examDate}
+                  x={schedulingConfig.examDate}
                   stroke={c.positive}
                   strokeDasharray="4 4"
                   label={{

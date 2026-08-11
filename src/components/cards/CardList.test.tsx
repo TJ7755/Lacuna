@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CardList } from './CardList';
 import type { Card, Deck, Occlusion, Sequence } from '../../db/types';
+import type { ApkgImportResult } from '../../db/apkgImport';
+import type { CardListContext } from './cardListContext';
 
 const mockNotify = vi.fn();
 
@@ -67,7 +69,34 @@ vi.mock('./CardAnalytics', () => ({
 }));
 
 vi.mock('../import/UnifiedImportPanel', () => ({
-  UnifiedImportPanel: () => <div data-testid="import-panel">Import Panel</div>,
+  UnifiedImportPanel: ({
+    deckId,
+    onImport,
+    onApkgImport,
+  }: {
+    deckId?: string;
+    onImport?: (cards: never[]) => void;
+    onApkgImport?: (result: ApkgImportResult) => void;
+  }) => (
+    <div data-testid="import-panel">
+      <span data-testid="import-target">{deckId}</span>
+      <button type="button" onClick={() => onImport?.([])}>Trigger import</button>
+      <button
+        type="button"
+        onClick={() =>
+          onApkgImport?.({
+            deckName: 'Imported',
+            cards: [],
+            media: new Map(),
+            skippedNotes: 0,
+            skippedCards: 0,
+          })
+        }
+      >
+        Trigger APKG import
+      </button>
+    </div>
+  ),
 }));
 
 const mockDeck: Deck = {
@@ -131,6 +160,90 @@ describe('CardList', () => {
     );
     expect(screen.getByText('No cards yet.')).toBeInTheDocument();
     expect(screen.getAllByText('New card')).not.toHaveLength(0);
+  });
+
+  it('defaults the legacy deck collection when omitted', () => {
+    render(
+      <CardList
+        cards={[mockCard]}
+        deck={mockDeck}
+        onEditCard={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('What is the capital of France?'));
+    expect(screen.getByTestId('card-analytics')).toBeInTheDocument();
+  });
+
+  it('accepts a domain-neutral context for analytics, import and legacy moves', async () => {
+    const onImport = vi.fn();
+    const onApkgImport = vi.fn();
+    const onMove = vi.fn();
+    const onRestore = vi.fn();
+    const context: CardListContext = {
+      schedulingConfig: mockDeck,
+      importTargetId: 'course-bank',
+      importTargetName: 'Course bank',
+      onImport,
+      onApkgImport,
+      moveTargets: [{ id: 'other-deck', name: 'Other deck' }],
+      onMove,
+      onRestore,
+    };
+    render(
+      <CardList
+        cards={[mockCard]}
+        context={context}
+        onEditCard={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('What is the capital of France?'));
+    expect(screen.getByTestId('card-analytics')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Import cards'));
+    expect(screen.getByText('Import cards into Course bank')).toBeInTheDocument();
+    expect(screen.getByTestId('import-target')).toHaveTextContent('course-bank');
+    fireEvent.click(screen.getByText('Trigger import'));
+    expect(onImport).toHaveBeenCalledWith([]);
+
+    fireEvent.click(screen.getByText('Select'));
+    fireEvent.click(screen.getByText('Select all'));
+    fireEvent.click(screen.getByText('Move to…'));
+    expect(screen.getByRole('option', { name: 'Other deck' })).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Move'));
+    await waitFor(() => expect(onMove).toHaveBeenCalledWith(['card-1'], 'other-deck'));
+    const moveNotice = mockNotify.mock.calls[mockNotify.mock.calls.length - 1]?.[2] as {
+      onAction: () => void;
+    };
+    moveNotice.onAction();
+    expect(onRestore).toHaveBeenCalledOnce();
+  });
+
+  it('routes APKG imports through the context capability', async () => {
+    const onApkgImport = vi.fn();
+    const context: CardListContext = {
+      schedulingConfig: mockDeck,
+      importTargetName: 'Course bank',
+      onImport: vi.fn(),
+      onApkgImport,
+      moveTargets: [],
+      onMove: vi.fn(),
+      onRestore: vi.fn(),
+    };
+    render(<CardList cards={[mockCard]} context={context} onEditCard={vi.fn()} />);
+
+    fireEvent.click(screen.getByText('Import cards'));
+    fireEvent.click(screen.getByText('Trigger APKG import'));
+    await waitFor(() =>
+      expect(onApkgImport).toHaveBeenCalledWith({
+        deckName: 'Imported',
+        cards: [],
+        media: new Map(),
+        skippedNotes: 0,
+        skippedCards: 0,
+      }),
+    );
   });
 
   it('renders cards with front content', () => {

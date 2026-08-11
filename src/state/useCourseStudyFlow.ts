@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
+import { performanceForCourseBackingDecks } from '../db/backingDecks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
@@ -93,14 +94,13 @@ export function useCourseStudyFlow(
       db.practiceMilestones.where('courseId').equals(courseId).toArray(),
     ]);
     const lessonIds = lessons.map((lesson) => lesson.id);
-    const deckIds = [...new Set(cards.map((card) => card.deckId))];
     const [links, exposures, completions, performance] = await Promise.all([
       lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
       lessonIds.length > 0
         ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
         : [],
       lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-      deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
+      performanceForCourseBackingDecks(courseId, cards),
     ]);
     return {
       course,

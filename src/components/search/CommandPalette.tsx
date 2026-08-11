@@ -1,15 +1,14 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { useAllCards, useDecks } from '../../state/useData';
-import { useCourses, useAllLessons, useAllNotes } from '../../state/useCourseData';
+import { useSearchData } from '../../state/useSearchData';
 import {
   cardEditPath,
   plainPreview,
-  searchCards,
+  searchCardsInScope,
   searchCourseContent,
   type CourseContentHit,
-  type SearchResult,
+  type ScopedSearchResult,
 } from '../../db/search';
 import { SearchIcon, GridIcon, FolderIcon, FileTextIcon } from '../ui/icons';
 import { GeneratedCardBadge } from '../cards/GeneratedCardBadge';
@@ -17,7 +16,7 @@ import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 /** A single, ordered list mixing course/lesson/note hits ahead of card hits. */
-type PaletteHit = ({ kind: 'card' } & SearchResult) | CourseContentHit;
+type PaletteHit = ({ kind: 'card' } & ScopedSearchResult) | CourseContentHit;
 
 /** Where a palette hit deep-links to. */
 function hitPath(hit: PaletteHit): string {
@@ -82,11 +81,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
 function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const decks = useDecks();
-  const cards = useAllCards();
-  const courses = useCourses();
-  const lessons = useAllLessons();
-  const notes = useAllNotes();
+  const searchData = useSearchData();
+  const cards = searchData?.cards;
+  const decks = searchData?.decks;
+  const courses = searchData?.courses;
+  const lessons = searchData?.lessons;
+  const notes = searchData?.notes;
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const trapRef = useFocusTrap(true, { autoFocusSelector: 'input' });
@@ -105,7 +105,10 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
       lessons ?? [],
       notes ?? [],
     );
-    const cardHits = searchCards(deferredQuery, cards ?? [], decks ?? []).map(
+    const cardHits = searchCardsInScope(
+      deferredQuery,
+      { cards: cards ?? [], decks: decks ?? [], courses: courses ?? [] },
+    ).map(
       (r): PaletteHit => ({ kind: 'card', ...r }),
     );
     return [...courseHits, ...cardHits].slice(0, MAX_RESULTS);
@@ -246,7 +249,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                                   />
                                 </span>
                                 <span className="flex items-center gap-2 text-xs text-ink-faint">
-                                  <span className="truncate">{hit.deck.name}</span>
+                                  <span className="truncate">{hit.contextName}</span>
                                   {(hit.card.tags ?? []).length > 0 && (
                                     <span className="truncate">
                                       · {hit.card.tags!.join(', ')}

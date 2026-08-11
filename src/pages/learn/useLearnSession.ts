@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
+import {
+  performanceForCourseBackingDecks,
+  performanceForReviewUnits,
+} from '../../db/backingDecks';
 import { getCourse, listCourseAssessments } from '../../db/read';
 import type {
   Card,
@@ -453,9 +457,7 @@ export function useLearnSession({
         listCourseAssessments(cId),
         db.practiceMilestones.where('courseId').equals(cId).toArray(),
       ]);
-    const deckIds = [...new Set(courseCards.map((card) => card.deckId))];
-    const performance =
-      deckIds.length > 0 ? await db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [];
+    const performance = await performanceForCourseBackingDecks(cId, courseCards);
     const lessonCardsById = new Map(
       lessons.map((lesson) => [lesson.id, lessonCardMembership(lesson.id, courseCards, links)]),
     );
@@ -1069,7 +1071,7 @@ export function useLearnSession({
         );
       }
 
-      const perfs = await Promise.all(units.map((u) => db.userPerformance.get(u.id)));
+      const perfs = await performanceForReviewUnits(units.map((unit) => unit.id));
       const perfMap = new Map<string, UserPerformance>();
       units.forEach((u, i) => perfMap.set(u.id, perfs[i] ?? emptyPerformance(u.id)));
       perfRef.current = perfMap;

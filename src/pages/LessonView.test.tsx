@@ -54,10 +54,7 @@ vi.mock('../state/useCourseData', () => ({
   useCourseCards: () => mockLessonCards,
   useSequences: () => [],
   useOcclusions: () => [],
-}));
-
-vi.mock('../state/useData', () => ({
-  useDeck: () => undefined,
+  useLessonBackingDeck: () => undefined,
 }));
 
 vi.mock('../db/repository', () => ({

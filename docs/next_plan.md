@@ -39,6 +39,11 @@ limits of no-vision browser automation are recorded in `docs/WEBSITE_TEST_CHECKL
 Choose the next product arc from the candidates below. Do not smuggle another maintenance grab-bag
 in under Arc 14; it is closed.
 
+The paused Course/Deck boundary maintenance pass is documented in
+[course-domain-boundary-follow-ups.md](course-domain-boundary-follow-ups.md). It stops at reviewed
+commit `9dd9107`; the remaining search, card-component, portability and eventual storage-migration
+work is explicitly deferred there and is not an active product arc.
+
 ## Later candidates
 
 These require a fresh product decision after flow simplification and release verification:
