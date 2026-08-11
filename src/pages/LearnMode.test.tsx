@@ -46,20 +46,17 @@ describe('LearnSkeleton', () => {
  * tap-to-flip), so the actual <button> element is picked out explicitly.
  */
 async function answerYes() {
-  const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
-  fireEvent.click(revealCandidates.find((el) => el.tagName === 'BUTTON')!);
+  fireEvent.click(await screen.findByText(/^show answer$/i, { selector: 'button' }));
   fireEvent.click(await screen.findByRole('button', { name: /^yes$/i }));
 }
 
 async function answerNo() {
-  const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
-  fireEvent.click(revealCandidates.find((el) => el.tagName === 'BUTTON')!);
+  fireEvent.click(await screen.findByText(/^show answer$/i, { selector: 'button' }));
   fireEvent.click(await screen.findByRole('button', { name: /^no$/i }));
 }
 
 async function answerYesAndWaitForExposure(lessonId: string) {
-  const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
-  fireEvent.click(revealCandidates.find((el) => el.tagName === 'BUTTON')!);
+  fireEvent.click(await screen.findByText(/^show answer$/i, { selector: 'button' }));
   const yes = await screen.findByRole('button', { name: /^yes$/i });
   await act(async () => {
     fireEvent.click(yes);
