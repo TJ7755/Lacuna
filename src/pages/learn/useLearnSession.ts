@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
-import { performanceForSessionUnits } from '../../db/backingDecks';
+import {
+  performanceForCourse,
+  performanceForSessionUnits,
+} from '../../db/backingDecks';
 import { getCourse, listCourseAssessments } from '../../db/read';
 import type {
   Card,
@@ -454,9 +457,7 @@ export function useLearnSession({
         listCourseAssessments(cId),
         db.practiceMilestones.where('courseId').equals(cId).toArray(),
       ]);
-    const deckIds = [...new Set(courseCards.map((card) => card.deckId))];
-    const performance =
-      deckIds.length > 0 ? await db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [];
+    const performance = await performanceForCourse(cId, courseCards);
     const lessonCardsById = new Map(
       lessons.map((lesson) => [lesson.id, lessonCardMembership(lesson.id, courseCards, links)]),
     );
