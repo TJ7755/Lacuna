@@ -9,7 +9,7 @@ interface UnknownItemFaceProps {
  * Read-only fallback for a card whose `payload` this client cannot render as a
  * study face — an unrecognised `v` or a known-but-unbuilt `kind` (e.g. `scaffold`,
  * reserved but not built in Arc 11 slice 1). Shows the `front` fallback the
- * payload doubles as (next_plan.md §11.2 rule 1) plus a plain notice, and takes
+ * payload doubles as (docs/archive/roadmap-2026-08-11.md §11.2 rule 1) plus a plain notice, and takes
  * no `onAnswer` callback at all — the absence of a grading path, not merely
  * hidden controls, is what guarantees this item is never mis-marked (§11.2
  * rule 3). The student's escape hatch is the existing bury/suspend actions in

@@ -408,7 +408,7 @@ export function FlipCard({
               </button>
             )}
             {/* Hint ladder for lines-mode sequence cards: two optional, ungraded steps
-                between question and reveal (see next_plan.md §1.5). Clicking the button
+                between question and reveal (see docs/archive/roadmap-2026-08-11.md §1.5). Clicking the button
                 must not flip the card, hence the pointer/click guards. */}
             {isLinesModeCard && !revealed && phase === 'question' && (
               <div

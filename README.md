@@ -137,7 +137,7 @@ separate zero-install GUI path and sees only that browser profile's origin-scope
 
 The shipped MCP surface and its deliberate exclusions are specified in `docs/SPEC.md`. The delivered
 §§2.12–2.13 foundation and proposed broader user-action surface are documented in
-`docs/next_plan.md` §§2.12–2.14.
+`docs/archive/roadmap-2026-08-11.md` §§2.12–2.14.
 
 ## How it works
 

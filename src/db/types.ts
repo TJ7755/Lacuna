@@ -93,7 +93,7 @@ export interface ReviewLog {
   retrievabilityAtReview: number | null;
   /**
    * Marks earned/available for a machine-verified `numeric`/`working` item response
-   * (Arc 11; next_plan.md §11.7). Optional and additive, matching the `hintUsed`/
+   * (Arc 11; docs/archive/roadmap-2026-08-11.md §11.7). Optional and additive, matching the `hintUsed`/
    * `retrievabilityAtReview` precedent above — absent for classic-type reviews and
    * for history written before this field existed. The grade mapping that derives
    * `grade` from these figures, and their test coverage, is Arc 11 slice-1 Task 4's
@@ -117,7 +117,7 @@ export interface ReviewLog {
 /**
  * The verdict for one student-written line within a `working` item, as produced by
  * `verifyWorkingLines` (Arc 11 slice-1 Task 2, `src/items/verify.ts`) and persisted
- * verbatim on `ReviewLog.lineVerdicts` (next_plan.md §11.7). Declared here, ahead of
+ * verbatim on `ReviewLog.lineVerdicts` (docs/archive/roadmap-2026-08-11.md §11.7). Declared here, ahead of
  * `verify.ts`'s implementation, so `ReviewLog`'s shape is frozen from Task 1 onward;
  * `verify.ts` is expected to produce values of this exact shape rather than a second,
  * incompatible one.
@@ -747,7 +747,7 @@ export interface PracticeMilestone {
  * `kind: 'waypoint'` checks equivalence of a checkpoint expression (order-tolerant:
  * a student's lines are matched against outstanding waypoints, not lockstep);
  * `kind: 'predicate'` checks a named predicate against the student's line. See
- * next_plan.md §11.4/§11.5.
+ * docs/archive/roadmap-2026-08-11.md §11.4/§11.5.
  */
 export type MarkSchemeLine =
   | { marks: number; label?: string; kind: 'waypoint'; expression: string }
@@ -755,7 +755,7 @@ export type MarkSchemeLine =
       marks: number;
       label?: string;
       kind: 'predicate';
-      /** v1 vocabulary only (next_plan.md §11.5/§11.9). */
+      /** v1 vocabulary only (docs/archive/roadmap-2026-08-11.md §11.5/§11.9). */
       predicate: 'equals' | 'within' | 'matches-one-of' | 'contains';
       /** Predicate arguments (e.g. the tolerance for `within`, the candidate set for `matches-one-of`). */
       args?: string[];
@@ -763,7 +763,7 @@ export type MarkSchemeLine =
 
 /**
  * A numeric answer specification for `ItemPayload` kind `'numeric'`: exact value,
- * value-with-tolerance, or match-one-of. See next_plan.md §11.2/§11.4.
+ * value-with-tolerance, or match-one-of. See docs/archive/roadmap-2026-08-11.md §11.2/§11.4.
  */
 export type NumericAnswerSpec =
   | { kind: 'exact'; value: string }
@@ -771,7 +771,7 @@ export type NumericAnswerSpec =
   | { kind: 'matches-one-of'; values: string[] };
 
 /**
- * A pinned sample answer used by the tutor's test harness (next_plan.md §11.6) to
+ * A pinned sample answer used by the tutor's test harness (docs/archive/roadmap-2026-08-11.md §11.6) to
  * regression-test a mark scheme or numeric spec on every edit. Fixtures travel in
  * the payload so a shared item carries its own tests.
  */
@@ -791,7 +791,7 @@ export interface ItemFixture {
 /**
  * The current `ItemPayload.v`. Single source of truth for "known version" checks at
  * study time (`useLearnSession`'s `hasMachineMarkedPayload`) and at share/backup
- * validation time (`db/share.ts`'s `KnownItemPayloadSchema`) — see next_plan.md
+ * validation time (`db/share.ts`'s `KnownItemPayloadSchema`) — see docs/archive/roadmap-2026-08-11.md
  * §11.2 rule 3.
  */
 export const CURRENT_ITEM_PAYLOAD_VERSION = 1 as const;
@@ -799,12 +799,12 @@ export const CURRENT_ITEM_PAYLOAD_VERSION = 1 as const;
 /**
  * Structured content for a practice item's kind, layered on top of `Card.front`
  * (which remains the Markdown question prompt, and doubles as the plain-text
- * fallback rendering for clients that don't understand the payload — next_plan.md
+ * fallback rendering for clients that don't understand the payload — docs/archive/roadmap-2026-08-11.md
  * §11.2 rule 1: no smuggling, structured content never lives in `front`). Absent on
  * every pre-Arc-11 card and on the four classic `CardType`s. Versioned independently
  * of the Dexie schema (`v`) so share codes and backups can validate
  * forward-compatibly: an unknown `v` or `kind` must render read-only with the
- * `front` fallback, never crash and never mis-mark (next_plan.md §11.2 rule 3; the
+ * `front` fallback, never crash and never mis-mark (docs/archive/roadmap-2026-08-11.md §11.2 rule 3; the
  * fallback itself is `UnknownItemFace`).
  *
  * `scaffold` is declared but not built in Arc 11 slice 1 (deferred — see
@@ -828,7 +828,7 @@ export type ItemPayload =
   | {
       v: typeof CURRENT_ITEM_PAYLOAD_VERSION;
       kind: 'scaffold';
-      /* Reserved: not built in Arc 11 slice 1. See next_plan.md §11.2 and
+      /* Reserved: not built in Arc 11 slice 1. See docs/archive/roadmap-2026-08-11.md §11.2 and
        * `.agent-mail/arc11-slice1-plan.md`'s deferrals section. */
     };
 
@@ -855,7 +855,7 @@ export interface Card {
    * Per-type structured content for practice item kinds (numeric/scaffold/working;
    * Arc 11). Absent on every pre-Arc-11 card and on the four classic `CardType`s.
    * Unindexed and optional, so no Dexie schema version bump is needed to add it —
-   * see `ItemPayload`'s doc comment and next_plan.md §11.2.
+   * see `ItemPayload`'s doc comment and docs/archive/roadmap-2026-08-11.md §11.2.
    */
   payload?: ItemPayload;
   /** FSRS stability in days (interval at which R = 0.90). Null until first review. */
@@ -1034,7 +1034,7 @@ export interface LineageIdMapping {
    * the just-applied content on every successful first import or merge — including for
    * entities the student's own edit left untouched, since "untouched" is exactly what a
    * matching snapshot records. Extends the v18 shape in place (Lacuna is pre-release,
-   * see next_plan.md §7 Task 5 notes) rather than a schema bump, since no index is
+   * see docs/archive/roadmap-2026-08-11.md §7 Task 5 notes) rather than a schema bump, since no index is
    * needed for these fields.
    */
   lessonSnapshots: Record<string, LineageLessonSnapshot>;

@@ -1,5 +1,5 @@
 // Hosts the Model Context Protocol stdio server inside the Electron main process
-// (next_plan.md Arc 2 Section 2.1/2.6, Task 9). Tool *definitions* live in
+// (docs/archive/roadmap-2026-08-11.md Arc 2 Section 2.1/2.6, Task 9). Tool *definitions* live in
 // src/mcp/registry.ts and their handlers run inside the renderer — the only process with
 // IndexedDB (Section 2.1's "Where tool handlers execute"). This module only registers each
 // definition's name/description/schema with the MCP SDK and relays invocations to the

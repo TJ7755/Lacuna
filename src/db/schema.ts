@@ -534,7 +534,7 @@ class LacunaDatabase extends Dexie {
     // tables: `lineageIdMappings` (the adopted-id membership registry for a
     // distributed course lineage) and `pendingMergeReviews` (queued merge decisions
     // awaiting student review). Purely additive — no `.upgrade()` data pass, same
-    // pattern as sequences' schema v11 (next_plan.md §1.2).
+    // pattern as sequences' schema v11 (docs/archive/roadmap-2026-08-11.md §1.2).
     this.version(18).stores({
       decks: 'id, createdAt, examDate, folderId',
       cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',

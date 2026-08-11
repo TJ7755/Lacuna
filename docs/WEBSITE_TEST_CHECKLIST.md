@@ -17,7 +17,7 @@ does not prove that the corresponding control is visible or usable. Do not add r
 review recording or other human-only operations to the normal MCP surface just to make this checklist
 easier. Run the implemented canonical slice with
 `bun run release:scenario -- --scenario canonical`; the remaining architecture is specified in
-`docs/next_plan.md` §2.13.
+`docs/archive/roadmap-2026-08-11.md` §2.13.
 
 ### Programmatic automation notes (2026-08-10 opencode continuation)
 

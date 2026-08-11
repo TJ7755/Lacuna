@@ -1,6 +1,6 @@
 // Transport-agnostic types shared by every tool definition under src/mcp/tools/. These
 // run inside the renderer (the only process with IndexedDB) and are ignorant of IPC or
-// the MCP SDK — see next_plan.md's Arc 2 §2.1 "Core module split".
+// the MCP SDK — see docs/archive/roadmap-2026-08-11.md's Arc 2 §2.1 "Core module split".
 
 import type { z } from 'zod';
 import type { McpToolError } from './bridge/protocol';

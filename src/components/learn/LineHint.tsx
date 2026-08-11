@@ -1,4 +1,4 @@
-// The hint ladder for lines-mode sequence cards (see next_plan.md §1.5): two optional,
+// The hint ladder for lines-mode sequence cards (see docs/archive/roadmap-2026-08-11.md §1.5): two optional,
 // ungraded steps between the question and full reveal —
 //   step 1: first letters of each word (firstLetterHint.ts)
 //   step 2: first word of each clause/sentence-chunk (firstWordsHint.ts)

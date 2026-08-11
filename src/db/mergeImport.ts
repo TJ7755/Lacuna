@@ -1,5 +1,5 @@
 /**
- * Arc 7 classroom-distribution merge importer (next_plan.md §7.5, Task 5).
+ * Arc 7 classroom-distribution merge importer (docs/archive/roadmap-2026-08-11.md §7.5, Task 5).
  *
  * Two entry points:
  *  - {@link importLineageFirstTime} — first import of a published lineage. Adopts every
@@ -109,7 +109,7 @@ function reverseCardId(primaryId: string): string {
 
 // ---------------------------------------------------------------------------
 // Adapting the real share payload shape to lineageDiff's input types (the two
-// diverge in field naming from what next_plan.md §7.2 originally specified — see
+// diverge in field naming from what docs/archive/roadmap-2026-08-11.md §7.2 originally specified — see
 // this task's brief. ShareLesson packs the originating id as `i`, ShareNote as `oi`
 // (its own `i` is taken by the image-omission flag), and ShareCard's existing `id`
 // field doubles as the originating card id for a published course, share.ts:68-74).

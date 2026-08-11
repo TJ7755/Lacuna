@@ -5,7 +5,7 @@
 // attachMcpBridge() looks the tool up in src/mcp/registry.ts, runs it through
 // `validateAndRun`, and replies with `mcp:invoke:reply`.
 //
-// Bridge-deadlock risk (next_plan.md Section 2.10): if a failure here never replies, the
+// Bridge-deadlock risk (docs/archive/roadmap-2026-08-11.md Section 2.10): if a failure here never replies, the
 // main process's request hangs until its own timeout fires (src/mcp/bridge/dispatcher.ts).
 // Every path below — unknown tool, validation/handler failure, or a genuinely unexpected
 // thrown error — is therefore wrapped so a reply is always sent.

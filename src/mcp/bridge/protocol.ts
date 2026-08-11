@@ -1,7 +1,7 @@
 // IPC envelope shared by the Electron main process (electron/mcp/server.ts, which owns
 // the MCP SDK's stdio transport) and the renderer (src/mcp/bridge/renderer.ts, which is
 // the only process with IndexedDB and therefore the only process that can execute a tool
-// handler). See next_plan.md's Arc 2 §2.1 "Core module split" for the full rationale.
+// handler). See docs/archive/roadmap-2026-08-11.md's Arc 2 §2.1 "Core module split" for the full rationale.
 //
 // This module is types only — no runtime transport code lives here. The MCP SDK itself
 // must never be imported from anywhere under src/, since src/ is bundled into both the

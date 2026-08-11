@@ -1,4 +1,4 @@
-// Arc 7 classroom-distribution merge tools (next_plan.md §7.6, Task 10). Two additive
+// Arc 7 classroom-distribution merge tools (docs/archive/roadmap-2026-08-11.md §7.6, Task 10). Two additive
 // tools sitting on top of the merge machinery `src/db/mergeImport.ts` (Task 5) and
 // `src/db/lineageDiff.ts` (Task 3) already own:
 //

@@ -1,5 +1,15 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Roadmap consolidation
+
+- Replaced the 3,700-line combined roadmap and implementation diary with a short current
+  roadmap, archived the historical arc specifications, and extracted Arc 14's course-setup
+  slice into the sole active implementation plan.
+- Updated historical section references throughout the repository to point at the archive.
+- Formally closed Arc 11. Its offline numeric/working authoring and grading scope is delivered;
+  the model-dependent ten-minute clipboard benchmark was retired as an invalid release gate,
+  while tuple answers, scaffold items and advanced maths-input work remain separate proposals.
+
 ## Unreleased — ADR for study-day time semantics
 
 - Added `docs/architecture/fsrs-time-semantics.md`: a proposed ADR for one global
@@ -147,7 +157,7 @@
   review logs without the flag are unaffected.
 - Renamed `equivalentByRandomEvaluation` to `compareByRandomEvaluation`, since it no longer answers
   a yes/no question. It had no callers outside `verify.ts` and its tests.
-- Recorded the greedy scheme-line matching limit in `next_plan.md` §11.9: a student line that
+- Recorded the greedy scheme-line matching limit in `docs/archive/roadmap-2026-08-11.md` §11.9: a student line that
   satisfies two scheme lines consumes whichever comes first, which can underscore a later line.
   Deferred deliberately, with the reproducing shape written down.
 - Staged batch items no longer report "0 of N fixtures pass" when the mark scheme itself failed to
@@ -277,7 +287,7 @@
 >   study loop; Basic, Reversed and Cloze cards with optional type-before-reveal feedback.
 >
 > **Note:** internal `decks`/`folders` tables remain as hidden backing storage; dropping them
-> is deferred to a later migration. See `next_plan.md` for Arc 1 (sequence learning).
+> is deferred to a later migration. See `docs/archive/roadmap-2026-08-11.md` for Arc 1 (sequence learning).
 >
 > **Full changelog below**
 
@@ -315,7 +325,7 @@ promotion to a numbered arc is a separate, later decision.
   CROHME are CC BY-NC-SA, HASYv2 is ODbL. Lacuna sells nothing so NonCommercial is not
   the obstacle; **ShareAlike** against the repository's MIT licence is. Irrelevant while
   nothing ships, decisive if handwriting input is ever promoted into `src/`.
-- **`next_plan.md` correction:** Arc 11 §11.3 claimed mathjs was "already shipped". It is
+- **`docs/archive/roadmap-2026-08-11.md` correction:** Arc 11 §11.3 claimed mathjs was "already shipped". It is
   not a dependency. The line now names adopting it as a decision the arc must make,
   weighed against a purpose-built parser, and pins the KaTeX claim to the packages that
   genuinely are present (`katex`, `rehype-katex`).
@@ -458,7 +468,7 @@ the cold-start renderer-not-ready case all behaved as designed.
 
 Adds overlapping-cloze **sequence learning**: authoring an ordered list once (the periodic
 table, a timeline, a chain of steps) generates a full set of ordinary FSRS cards, each
-cueing recall from a configurable window of preceding items. See `next_plan.md` Arc 1 for
+cueing recall from a configurable window of preceding items. See `docs/archive/roadmap-2026-08-11.md` Arc 1 for
 the design; the v2 lines-mode slice is not part of this release.
 
 - Added lesson edit-mode authoring for `LessonCardLink`: teachers can search and link
@@ -502,7 +512,7 @@ the design; the v2 lines-mode slice is not part of this release.
 Adds the **lines mode** skin to the existing overlapping-cloze `Sequence` model, for
 memorising scripted scenes: paste a script, tag each line's speaker, and only "your"
 lines generate recall cards — other speakers' lines are cue-only context. See
-`next_plan.md` §1.5. The study-flow half (first-letter hints, strict grading in Learn
+`docs/archive/roadmap-2026-08-11.md` §1.5. The study-flow half (first-letter hints, strict grading in Learn
 mode) is a separate, not-yet-started slice.
 
 - Added `Sequence.mode?: 'list' | 'lines'` and `Sequence.mySpeaker?: string`, plus
@@ -564,7 +574,7 @@ mode) is a separate, not-yet-started slice.
 ## 0.1.0 — Course architecture
 
 Completes the migration from `Folder -> Deck -> Card` to `Course -> Lesson -> Note + Card`
-(Arc 0 in `next_plan.md`). The course model is built, the UI is cut over, and legacy
+(Arc 0 in `docs/archive/roadmap-2026-08-11.md`). The course model is built, the UI is cut over, and legacy
 deck/folder surfaces are removed. Internal backing decks remain in storage only.
 
 - Added the course domain types in `src/db/types.ts`: `Course`, `CourseExamDate`,
@@ -770,7 +780,7 @@ deck/folder surfaces are removed. Internal backing decks remain in storage only.
   module (per-user configurable swipe actions) was removed alongside it, since it configured a
   deck-card affordance that no longer has a settings surface; swipe-to-study/archive on the
   dashboard course cards is now fixed behaviour. The `decks`/`folders` tables are untouched —
-  this was a UI-surface removal only (see `next_plan.md` §0.3).
+  this was a UI-surface removal only (see `docs/archive/roadmap-2026-08-11.md` §0.3).
 - Wired the dashboard's course-ordering control (recent / ready to study / mastery / exam date /
   name / created) and the Settings → Sidebar due-count and archived-course visibility toggles,
   which had stopped taking effect during the course-UI cutover. Compact mode and the

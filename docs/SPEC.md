@@ -8,7 +8,7 @@ never disagree. All data lives on-device (IndexedDB); there is no server, no acc
 network dependency. The application runs as a web SPA and packages as an Electron desktop app.
 
 **Course architecture.** The product was originally built around a flatter `Folder -> Deck ->
-Card` model. A staged migration (tracked in `next_plan.md`, Arc 0) introduced `Course ->
+Card` model. A staged migration (tracked in `docs/archive/roadmap-2026-08-11.md`, Arc 0) introduced `Course ->
 Lesson -> Note + Card` alongside it, then removed every Deck/Folder-facing UI surface once the
 new model covered the same ground. The Deck/Folder tables and the deck-shaped scheduling
 primitives (`Deck`, `SchedulerConfig`) still exist in storage — a lesson is, mechanically, a
@@ -821,7 +821,7 @@ per-course bank deck. No page, route or sidebar entry lets a user see, name or m
 or folder directly; `fsrsVersion`, `fsrsParameters`, `examObjective`, `newCardsPerDay`,
 `autoOptimise` and `colour` are the fields a lesson/course still reads and writes through this
 backing structure. Dropping these tables and folding the backing mechanism into the course
-tables outright is a deferred, later migration (`next_plan.md` §0.3) — not attempted while the
+tables outright is a deferred, later migration (`docs/archive/roadmap-2026-08-11.md` §0.3) — not attempted while the
 course UI is still soaking.
 
 ### Card
@@ -1833,7 +1833,7 @@ never one person's scheduling progress or review history.
   lesson study.
 - **Legacy v1 payload:** the original shape — a flat list of decks, each becoming its own
   single-lesson course on import — is still read for backward compatibility with codes
-  generated before the course model shipped (`next_plan.md` §0.3 keeps this support in
+  generated before the course model shipped (`docs/archive/roadmap-2026-08-11.md` §0.3 keeps this support in
   scope).
 - **Compression**, in order of impact:
   1. **Reverse-pair folding** — a front/back card and its exact mirror (one's front = the
@@ -2412,7 +2412,7 @@ These exclusions describe the shipped contract, not an instruction to bolt futur
 the renderer through generic UI automation. The attachable local companion and canonical
 programmatic release scenario implement the first §§2.12–2.13 slices. The broader proposed
 user-action surface — including the separate safety boundary for study-history writes — remains in
-`docs/next_plan.md` §2.14.
+`docs/archive/roadmap-2026-08-11.md` §2.14.
 
 ### Scripts
 

@@ -2,7 +2,7 @@
 // bridge (Arc 2 Section 2.1, Task 9). Deliberately free of any Electron or MCP SDK
 // dependency so it can run inside the normal Vitest suite (a fake `send` stands in for
 // `webContents.send`) rather than only being exercised by a manual smoke test — this is
-// the riskiest piece of Task 9's logic per next_plan.md Section 2.10, "Renderer-not-ready
+// the riskiest piece of Task 9's logic per docs/archive/roadmap-2026-08-11.md Section 2.10, "Renderer-not-ready
 // races".
 //
 // electron/mcp/server.ts is the sole real caller: it constructs one InvokeDispatcher per

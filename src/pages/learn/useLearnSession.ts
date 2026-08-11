@@ -195,7 +195,7 @@ export interface UseLearnSessionParams {
  * Owns Learn mode's session state and card-serving/answer/undo/cooldown/revision-plan
  * logic: everything from the initial deck/course/assessment load through grading,
  * undo, and session completion (including assessment revision-plan windows). Extracted
- * from LearnMode.tsx (see next_plan.md Arc 11 slice-1 Task 0) as a pure state/behaviour
+ * from LearnMode.tsx (see docs/archive/roadmap-2026-08-11.md Arc 11 slice-1 Task 0) as a pure state/behaviour
  * extraction — no logic changed, only relocated.
  */
 export function useLearnSession({
@@ -278,7 +278,7 @@ export function useLearnSession({
   const isMachineMarkedCard = hasMachineMarkedPayload(current);
   // A payload the current client cannot render as a study face at all: present but
   // not machine-markable (unknown v, or a known-but-unbuilt kind such as `scaffold`).
-  // Renders read-only via UnknownItemFace — never a wrong FSRS mark (next_plan.md
+  // Renders read-only via UnknownItemFace — never a wrong FSRS mark (docs/archive/roadmap-2026-08-11.md
   // §11.2 rule 3).
   const hasUnrenderableItemPayload = isUnrenderableItemPayload(current);
   // Whether the current card was generated from a lines-mode Sequence (see
