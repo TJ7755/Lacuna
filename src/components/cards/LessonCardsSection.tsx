@@ -129,7 +129,6 @@ export function LessonCardsSection({
         <CardList
           cards={[]}
           deck={preparedDeck}
-          allDecks={[preparedDeck]}
           hideHeader
           initiallyImporting
           onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
@@ -184,7 +183,6 @@ export function LessonCardsSection({
         <CardList
           cards={lessonCards}
           deck={lessonDeck}
-          allDecks={[lessonDeck]}
           hideHeader
           onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
           onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}

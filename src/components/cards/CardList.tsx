@@ -55,7 +55,8 @@ interface AssignableLesson {
 interface CardListProps {
   cards: Card[];
   deck: Deck;
-  allDecks: Deck[];
+  /** Legacy sibling decks used by the optional "Move to…" action. */
+  allDecks?: Deck[];
   onNewCard?: () => void;
   /** Sibling to onNewCard: offers "New sequence" alongside "New card" when supplied. */
   onNewSequence?: () => void;
@@ -100,7 +101,7 @@ interface CardListProps {
   onUnlinkCard?: (card: Card) => void;
 }
 
-export function CardList({ cards, deck, allDecks, onNewCard, onNewSequence, onNewOcclusion, onLinkExisting, onEditCard, hideHeader = false, initiallyImporting = false, assignableLessons, courseId, sequences, onEditSequence, occlusions, onEditOcclusion, linkedCardIds, onUnlinkCard }: CardListProps) {
+export function CardList({ cards, deck, allDecks = [deck], onNewCard, onNewSequence, onNewOcclusion, onLinkExisting, onEditCard, hideHeader = false, initiallyImporting = false, assignableLessons, courseId, sequences, onEditSequence, occlusions, onEditOcclusion, linkedCardIds, onUnlinkCard }: CardListProps) {
   const { notify } = useToast();
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());

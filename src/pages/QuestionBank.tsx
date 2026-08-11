@@ -237,7 +237,6 @@ function LessonBucket({
   // Resolve the hidden scheduling deck through the Course/Lesson data boundary,
   // rather than discovering it from card.deckId.
   const deck = useLessonBackingDeck(courseId, lesson.id);
-  const allDecks = deck ? [deck] : [];
 
   return (
     <section>
@@ -256,7 +255,6 @@ function LessonBucket({
         <CardList
           cards={cards}
           deck={deck}
-          allDecks={allDecks}
           hideHeader
           courseId={courseId}
           assignableLessons={assignableLessons}
@@ -307,7 +305,6 @@ function UnassignedBucket({
   // Resolve the hidden course-bank scheduling deck through the Course/Lesson data
   // boundary, rather than discovering it from card.deckId.
   const deck = useCourseBankBackingDeck(courseId);
-  const allDecks = deck ? [deck] : [];
 
   return (
     <section>
@@ -320,7 +317,6 @@ function UnassignedBucket({
         <CardList
           cards={cards}
           deck={deck}
-          allDecks={allDecks}
           hideHeader
           courseId={courseId}
           assignableLessons={assignableLessons}

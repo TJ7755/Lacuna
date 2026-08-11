@@ -133,6 +133,19 @@ describe('CardList', () => {
     expect(screen.getAllByText('New card')).not.toHaveLength(0);
   });
 
+  it('defaults the legacy deck collection when omitted', () => {
+    render(
+      <CardList
+        cards={[mockCard]}
+        deck={mockDeck}
+        onEditCard={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('What is the capital of France?'));
+    expect(screen.getByTestId('card-analytics')).toBeInTheDocument();
+  });
+
   it('renders cards with front content', () => {
     render(
       <CardList
