@@ -38,7 +38,7 @@ function computeHeaderInfo({
 }) {
   // unitDisplayName overrides the unit's own name for lesson scope, whose
   // scheduling unit is the parent Course rather than the lesson itself.
-  const deckName = unitDisplayName ?? (singleDeck ? singleDeck.name : 'Today · all decks');
+  const deckName = unitDisplayName ?? (singleDeck ? singleDeck.name : 'Review today · all courses');
   const tagPart = tagFilter ? `tag "${tagFilter}"` : '';
 
   const filterLabels = filterParams.map((f) => FILTER_LABELS[f] ?? f);
@@ -47,7 +47,7 @@ function computeHeaderInfo({
   switch (mode) {
     case 'simple':
       return {
-        title: singleDeck ? `${deckName} · Simple learn` : 'Simple learn · all decks',
+        title: singleDeck ? `${deckName} · Simple learn` : 'Simple learn · all courses',
         subtitle: 'Loop until every card is correct',
       };
     case 'cram':

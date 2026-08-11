@@ -1,6 +1,6 @@
 # Arc 14, slice 1 — Course setup and assessment language
 
-**Status:** in progress
+**Status:** delivered
 
 **Baseline:** `master` at `ad13c0b`
 
@@ -92,6 +92,14 @@ Check the production preview at desktop and iPhone SE widths:
 3. Final exam and checkpoint wording is unambiguous on every surface touched by the change.
 4. Existing imports, creation navigation and scheduling behaviour remain intact.
 5. Focused and full automated checks pass, followed by the browser checks above.
+
+## Delivery evidence
+
+Delivered on 11 August 2026. Focused and full automated checks passed. Production-browser
+verification passed at desktop and iPhone SE widths in light and dark themes, including the New
+course form from Dashboard and Sidebar, pointer and keyboard date handling, import isolation and
+the persisted Final exam instant. The outstanding reduced-motion presentation check was completed
+with macOS Reduce motion enabled and the original system preference restored afterwards.
 
 ## Out of scope
 

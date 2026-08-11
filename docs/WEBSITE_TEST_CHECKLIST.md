@@ -26,7 +26,7 @@ these notes exist so the §2.13 runner and future verification sessions start ah
 
 - **Route settling.** After a hard page load, the first DOM read can catch the previous route's
   exit-transition frame (AnimatePresence) or the slow boot before `appState` finishes loading. Wait
-  for target-route content (for example `Study now` on a course) rather than sampling `innerText`
+  for target-route content (for example `Study` on a course) rather than sampling `innerText`
   once. A click to the route already shown is a no-op with React Router; navigate two hops
   (dashboard, then target) to clear a stuck transition during rapid programmatic navigation.
 - **Non-anchor navigation controls.** Dashboard course cards and sidebar course rows are
@@ -204,7 +204,9 @@ are beyond its scope, as stated in the automation boundary above.
 
 - [x] Path, Question bank, Analytics and Settings tabs are visible and cross-link correctly.
 - [ ] The path header shows the course name, exam date and live progress without overflow.
-- [ ] Study now opens the persistent course study flow.
+- [ ] Study opens the persistent course study flow and exposes progression, study ahead, due
+      review and relevant named revision as distinct choices.
+- [ ] Review today in the default sidebar opens the cross-course review session.
 - [ ] Study mode renders the curriculum without authoring controls.
 - [ ] Edit mode exposes lesson and practice-node authoring controls.
 - [ ] Add a lesson at the beginning, middle and end; each appears in the intended order.

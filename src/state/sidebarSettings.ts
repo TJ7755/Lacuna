@@ -20,6 +20,7 @@ export interface SidebarSettings {
 
 export const DEFAULT_NAV_ITEMS: SidebarNavItem[] = [
   { id: 'dashboard', label: 'Dashboard', visible: true },
+  { id: 'today', label: 'Review today', visible: true },
   { id: 'search', label: 'Search', visible: true },
   { id: 'share', label: 'Share', visible: true },
   { id: 'analytics', label: 'Analytics', visible: true },

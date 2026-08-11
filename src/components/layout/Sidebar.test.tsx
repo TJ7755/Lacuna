@@ -16,6 +16,12 @@ vi.mock('../../state/useCourseData', () => ({
 }));
 
 describe('Sidebar', () => {
+  it('exposes cross-course review as Review today', () => {
+    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
+
+    expect(screen.getByRole('link', { name: 'Review today' })).toHaveAttribute('href', '/learn');
+  });
+
   it('opens the command palette from a visible search control showing the shortcut', () => {
     const onOpenPalette = vi.fn();
     render(

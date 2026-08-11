@@ -460,11 +460,13 @@ export function Sidebar({
             ) : (
               <NavItem
                 key={n.id}
-                to={n.id === 'dashboard' ? '/' : `/${n.id}`}
+                to={n.id === 'dashboard' ? '/' : n.id === 'today' ? '/learn' : `/${n.id}`}
                 end={n.id === 'dashboard'}
                 icon={
                   n.id === 'dashboard' ? (
                     <DashboardIcon />
+                  ) : n.id === 'today' ? (
+                    <CardsIcon />
                   ) : n.id === 'search' ? (
                     <SearchIcon />
                   ) : n.id === 'share' ? (

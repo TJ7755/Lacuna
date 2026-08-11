@@ -454,17 +454,8 @@ export function CoursePath() {
               }}
             >
               <PlayIcon width={18} height={18} />
-              Study now
+              Study
             </Button>
-            {(studyFlowSnapshot?.recurringPracticeEligibleCount ?? 0) > 0 && (
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={() => navigate(`/course/${courseId}/study?review=due`)}
-              >
-                Review due cards
-              </Button>
-            )}
             {pendingUpdate && (
               <Link
                 to={`/course/${courseId}/updates`}

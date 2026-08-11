@@ -225,7 +225,7 @@ export function useLearnSession({
   const reviewSessionIdRef = useRef(sessionId ?? makeId());
 
   // Exactly one of courseId/lessonId is set by the matching route (or neither,
-  // for the global "Today" session). The lesson route (/lesson/:lessonId/learn)
+  // for the cross-course Review today session). The lesson route (/lesson/:lessonId/learn)
   // carries no courseId, so it is resolved from the loaded lesson (see resolvedCourseId).
   const isLessonScoped = !!lessonId;
   const isCourseScoped = !!courseId && !lessonId;

@@ -310,8 +310,8 @@ export function HelpPage() {
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
               Lacuna offers several ways to study your cards. Each mode is designed for a different
-              purpose. You can start a session from a lesson, from the course path, or from the
-              global &lsquo;Today&rsquo; review across every course.
+              purpose. You can start a session from a lesson or the course path, or choose{' '}
+              <strong>Review today</strong> for a session across every course.
             </p>
             <div className="grid gap-3">
               <ModeCard
@@ -332,7 +332,7 @@ export function HelpPage() {
                 title="Assessment revision"
                 description="A time-budgeted revision plan for one named checkpoint or final exam."
                 whatItDoes="Uses the assessment’s covered lessons, removes excluded and unavailable cards, and limits revision to material you have reached and studied. Plans persist by day, can be left and resumed, and never complete a curriculum Practice milestone."
-                whenToUse="Choose it from a relevant Practice node, checkpoint details, or Study now when an upcoming assessment overlaps material you have reached."
+                whenToUse="Choose it from a relevant Practice node, checkpoint details, or Study when an upcoming assessment overlaps material you have reached."
                 tip="Set today’s time and edit future days before starting. The plan estimates each review’s assessment-day value and reports what was covered, improved, parked or not reached. If the model is unavailable, it says so and uses ordinary Practice ordering."
               />
             </div>

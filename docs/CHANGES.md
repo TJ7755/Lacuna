@@ -10,6 +10,11 @@
   with the chosen instant and time zone while preserving the initial Lesson 1 and share-code flow.
 - Portalled the New course overlay out of the mobile navigation drawer so the sidebar entry uses
   the full viewport instead of squeezing the modal into the transformed drawer width.
+- Replaced competing course-header Study actions with one **Study** entry. The course conductor
+  now distinguishes progression, study ahead, due review and named assessment revision before a
+  session starts, while direct Practice-node and assessment selections retain their exact scope.
+- Exposed the existing cross-course session as **Review today** in the configurable sidebar and
+  replaced bare “Today” and retired “deck” language on that flow.
 - Updated historical section references throughout the repository to point at the archive.
 - Formally closed Arc 11. Its offline numeric/working authoring and grading scope is delivered;
   the model-dependent ten-minute clipboard benchmark was retired as an invalid release gate,

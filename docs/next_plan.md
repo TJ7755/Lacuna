@@ -13,19 +13,19 @@ archive.
 
 ## Now
 
-### Arc 14, slice 1 — Course setup and assessment language
+### Arc 14, slice 2 — Study entry points
 
-**Status:** in progress.
+**Status:** delivered.
 
-Make the first real course setup coherent: collect the course name and primary exam date in
-one flow, show the existing seven-day default instead of silently inventing it, and distinguish
-the final exam from intermediate checkpoints.
+Course surfaces now expose one generic Study action. The course conductor distinguishes
+progression, study ahead, due review and named assessment revision, while specific Practice nodes
+and assessments retain direct entry. Cross-course review is visible as Review today.
 
-The active implementation specification is
-[Arc 14 — Course setup and assessment language](plans/arc-14-course-setup.md).
+The delivered implementation specification is
+[Arc 14 — Study entry points](plans/arc-14-study-entry-points.md).
 
-This is the only active product implementation plan. New roadmap work should not start until
-the slice is delivered and its browser checks pass.
+There is no active product implementation plan. The next slice needs a bounded specification
+against the delivered code before implementation starts.
 
 ## Close-out queue
 
@@ -42,19 +42,16 @@ relevant release evidence; they do not acquire another essay here.
 
 ## Next
 
-After Arc 14 slice 1, continue the flow-simplification work identified by
+Continue the flow-simplification work identified by
 [the UI flow catalogue](APP-FLOWS.md), in this order:
 
-1. **Study entry points** — one primary Study action; explicit due review, lesson progression,
-   study-ahead, manual-practice and assessment-revision alternatives; decide whether global
-   Today is visible or removed.
-2. **Practice-node management** — visible path authoring, one coherent editing model, and clear
+1. **Practice-node management** — visible path authoring, one coherent editing model, and clear
    automatic/manual terminology.
-3. **Course navigation and authoring consistency** — course tabs from lesson views and stable
+2. **Course navigation and authoring consistency** — course tabs from lesson views and stable
    card, sequence, occlusion, linking and import controls.
-4. **Import, export and recovery language** — distinguish sharing, backup, card import, APKG,
+3. **Import, export and recovery language** — distinguish sharing, backup, card import, APKG,
    batch staging, archive, deletion and replacement before the user commits data.
-5. **Consolidation and release verification** — execute the maintenance and production-browser
+4. **Consolidation and release verification** — execute the maintenance and production-browser
    work formerly described by Arc 13, then close the release checklist.
 
 Only the next slice receives a detailed implementation plan. Later slices remain outcomes until
