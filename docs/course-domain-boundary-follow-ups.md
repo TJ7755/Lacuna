@@ -4,7 +4,7 @@
 
 **Branch:** `refactor/course-domain-boundary`
 
-**Latest reviewed commit:** `fed66b9` (`refactor(learn): scope editor drafts by course`)
+**Latest reviewed commit:** `974d2e4` (`refactor(state): remove unused deck hooks`)
 
 **Original stop commit:** `9dd9107` (`refactor(course): remove singleton deck plumbing`)
 
@@ -124,18 +124,13 @@ silently lost as part of this boundary work.
 
 ### 3. Contain the remaining generic Deck hooks
 
-**Priority:** medium
+**Status:** delivered in `974d2e4`.
 
-`src/state/useData.ts` still exposes `useDecks()` and `useDeck()`. After SearchPage and
-CommandPalette are migrated, audit every remaining caller and classify it as one of:
-
-- legacy compatibility/import/export;
-- internal scheduling/diagnostics; or
-- an accidental user-facing Course/Lesson leak.
-
-Then keep the hooks only where the first two categories require them, or move those reads behind
-named adapters. The target is not necessarily zero `Deck` symbols; the target is zero accidental
-Deck discovery in Course/Lesson UI code.
+The repository-wide audit found no production or test callers for `useDecks()` or `useDeck()`;
+they were unused generic APIs rather than required compatibility paths, so both exports were
+removed. The `Deck` type and internal Deck-backed dashboard computations remain because they are
+still used by the legacy dashboard and scheduler-compatible summary code. The target is not zero
+`Deck` symbols; it is zero accidental Deck discovery in Course/Lesson UI code.
 
 ### 4. Clarify and test the two UserPerformance meanings
 
@@ -216,7 +211,8 @@ Do not start this storage migration as an incidental cleanup in the search or Ca
 ## Agreed scope for this branch
 
 This branch will finish workstreams 2–6 below. Workstream 2 has started with `4d7b482` and
-continued through `501120b`, `af7958a` and `fed66b9`; the remaining workstreams are still pending.
+continued through `501120b`, `af7958a` and `fed66b9`; workstream 3 is delivered in `974d2e4`.
+The remaining workstreams are still pending.
 The eventual storage migration in workstream 7 is explicitly excluded from this PR because it
 requires a separate schema, rollback and release plan.
 
@@ -239,8 +235,7 @@ These are not unfinished implementation items for the paused branch:
 ## Suggested implementation order when resumed
 
 1. Remaining Course-facing CardList scheduling-context contract.
-2. Remaining `useData` caller classification and hook containment.
-3. UserPerformance naming/semantics decision and persistence tests.
+2. UserPerformance naming/semantics decision and persistence tests.
 4. Course-facing export/share prop audit with compatibility tests.
 5. Explicit internal-boundary documentation and final containment audit.
 6. Separate proposal for the eventual storage migration (outside this PR).
