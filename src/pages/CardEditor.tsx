@@ -7,6 +7,8 @@ import {
   useCourseCards,
   useLesson,
   useLessonCards,
+  useLessonBackingDeck,
+  useCourseBankBackingDeck,
   useOcclusions,
   useSequences,
 } from '../state/useCourseData';
@@ -73,16 +75,15 @@ export function CardEditor() {
   const course = useCourse(courseId);
   const lesson = useLesson(lessonId);
   const lessonCards = useLessonCards(lessonId);
-  // All cards in a migrated lesson share one backing deck; undefined until the
-  // lesson's first card is created.
-  const lessonDeckId = lessonCards?.[0]?.deckId;
+  // Resolve the hidden scheduling deck through the Course/Lesson boundary.
+  const lessonDeck = useLessonBackingDeck(courseId, lessonId);
   // Course cards with no lesson share one "question bank" backing deck (bank mode only).
   const courseCards = useCourseCards(bankMode ? courseId : undefined);
   const bankCards = useMemo(
     () => courseCards?.filter((c) => !c.primaryLessonId) ?? [],
     [courseCards],
   );
-  const bankDeckId = bankCards[0]?.deckId;
+  const bankDeck = useCourseBankBackingDeck(bankMode ? courseId : undefined);
   const editing = Boolean(cardId);
   const card = useCard(cardId);
   // Only fetched for the read-only branch below (a generated card resolves its owning
@@ -299,7 +300,7 @@ export function CardEditor() {
 
   // Check for duplicate cards whenever front/back/type changes. A fresh, empty lesson
   // or bank has no backing deck yet, so there is nothing to check against.
-  const duplicateCheckDeckId = lessonMode ? lessonDeckId : bankDeckId;
+  const duplicateCheckDeckId = (lessonMode ? lessonDeck : bankDeck)?.id;
   useEffect(() => {
     if (!loaded || !duplicateCheckDeckId) return;
     if (editing && !card) return;
