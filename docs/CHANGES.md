@@ -2,6 +2,8 @@
 
 ## Unreleased — Course/Deck boundary follow-up paused
 
+- Hardened Course/Lesson backing-deck resolution against cross-course legacy adoption and
+  concurrent duplicate creation, preserving existing scheduling calibration rows.
 - Documented the reviewed stop point for the small Course/Lesson boundary pass at commit `9dd9107`.
   The remaining search, Deck-shaped component APIs, generic Deck hooks, dual UserPerformance
   semantics, portability surfaces and eventual storage migration are recorded in
