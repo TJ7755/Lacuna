@@ -27,8 +27,9 @@
  *
  * This module uses Dexie directly (never edits `src/db/repository.ts`, owned by a
  * concurrent Arc 7 task) but does import its existing, unmodified exports for creates,
- * updates and deletes wherever they already do the right thing — exactly as
- * `src/db/share.ts` imports `createCourse`/`createCards`/`ensureLessonDeck` today.
+ * updates and deletes wherever they already do the right thing. Hidden scheduling-deck
+ * resolution is kept in `src/db/backingDecks.ts`, alongside the equivalent share import
+ * path.
  */
 
 import { db, makeId } from './schema';
@@ -37,12 +38,12 @@ import {
   deleteCards,
   deleteLesson,
   deleteNote,
-  ensureLessonDeck,
   updateCard,
   updateLesson,
   updateNote,
   updateSequence,
 } from './repository';
+import { ensureLessonBackingDeck } from './backingDecks';
 import { updateOcclusion } from './occlusionRepository';
 import { assertValidCardPayload } from '../items/payloadValidation';
 import { diffLineage, jsonValuesEqual } from './lineageDiff';
@@ -438,7 +439,7 @@ async function applyCreates(
 
   const newCards: Card[] = [];
   for (const c of creates.cards) {
-    const deckId = await ensureLessonDeck(courseId, c.lessonId);
+    const deckId = await ensureLessonBackingDeck(courseId, c.lessonId);
     newCards.push({
       id: c.id,
       deckId,
@@ -561,7 +562,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
       const shareLesson = payload.lessons[lessonIndex];
       const lessonId = newLessons[lessonIndex].id;
       if (shareLesson.cards.every(isGeneratedShareCard)) continue;
-      const deckId = await ensureLessonDeck(course.id, lessonId);
+      const deckId = await ensureLessonBackingDeck(course.id, lessonId);
       let cardCreatedAt = createdAt;
       for (const shareCard of shareLesson.cards) {
         if (isGeneratedShareCard(shareCard)) continue;

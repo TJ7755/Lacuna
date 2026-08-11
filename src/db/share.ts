@@ -31,7 +31,11 @@
 
 import { z } from 'zod';
 import { db, makeId } from './schema';
-import { createCards, createCourse, ensureCourseBankDeck, ensureLessonDeck } from './repository';
+import { createCards, createCourse } from './repository';
+import {
+  ensureCourseBankBackingDeck,
+  ensureLessonBackingDeck,
+} from './backingDecks';
 import { clampRequestRetention, defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { emptyPerformance } from '../fsrs/grading';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
@@ -1390,7 +1394,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           })),
         );
         if (drafts.length === 0) continue;
-        const deckId = await ensureLessonDeck(course.id, lessonId);
+        const deckId = await ensureLessonBackingDeck(course.id, lessonId);
         const created = await createCards(
           deckId,
           drafts.map(({ draft }) => draft),
@@ -1418,7 +1422,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         unpackCard(shareCard).map((draft) => ({ draft, sourceCardId: shareCard.id })),
       );
       if (bankDrafts.length > 0) {
-        const bankDeckId = await ensureCourseBankDeck(course.id);
+        const bankDeckId = await ensureCourseBankBackingDeck(course.id);
         const created = await createCards(
           bankDeckId,
           bankDrafts.map(({ draft }) => draft),
