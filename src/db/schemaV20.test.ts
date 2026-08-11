@@ -172,6 +172,7 @@ describe('schema v20: additive review history', () => {
       resolveReviewHistoryCollisions([second], {
         usedIds: new Set(resolved.map((entry) => entry.id)),
         eventOwners: new Map([['same-event', 'card-1']]),
+        entryIdentities: new Set(),
       }),
     ).toHaveLength(1);
   });

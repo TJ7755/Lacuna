@@ -358,6 +358,62 @@ describe('importBackup', () => {
     ).toHaveLength(2);
   });
 
+  it('preserves same-event rows across separate backup merges', async () => {
+    const deck = await createDeck('MergeDeck');
+    const first = await createCard(deck.id, 'front_back', 'Q1', 'A1');
+    const second = await createCard(deck.id, 'front_back', 'Q2', 'A2');
+    const base = await exportDatabase();
+    const firstReview = {
+      eventId: 'cross-backup-event',
+      timestamp: 1000,
+      grade: 3 as const,
+      responseTimeSec: 2,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 2,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    };
+
+    await importBackup({ ...base, cards: [{ ...first, history: [firstReview] }] }, 'merge');
+    await importBackup(
+      { ...base, cards: [{ ...second, history: [{ ...firstReview, timestamp: 2000 }] }] },
+      'merge',
+    );
+
+    expect(
+      (await db.reviewHistory.toArray()).filter((entry) => entry.eventId === 'cross-backup-event'),
+    ).toHaveLength(2);
+  });
+
+  it('preserves distinct duplicate event rows on one card', async () => {
+    const deck = await createDeck('MergeDeck');
+    const card = await createCard(deck.id, 'front_back', 'Q1', 'A1');
+    const backup = await exportDatabase();
+    const review = {
+      eventId: 'duplicate-event',
+      timestamp: 1000,
+      grade: 3 as const,
+      responseTimeSec: 2,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 2,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    };
+
+    await importBackup(
+      { ...backup, cards: [{ ...card, history: [review, { ...review, timestamp: 2000 }] }] },
+      'merge',
+    );
+
+    expect(
+      (await db.reviewHistory.toArray()).filter((entry) => entry.eventId === 'duplicate-event'),
+    ).toHaveLength(2);
+  });
+
   it('adds missing cards in merge mode', async () => {
     const deck = await createDeck('MergeDeck');
     const card = await createCard(deck.id, 'front_back', 'Q1', 'A1');

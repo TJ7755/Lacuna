@@ -636,6 +636,7 @@ class LacunaDatabase extends Dexie {
         const collisionState = {
           usedIds: new Set<string>(),
           eventOwners: new Map<string, string>(),
+          entryIdentities: new Set<string>(),
         };
         let offset = 0;
         for (;;) {

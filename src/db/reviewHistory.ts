@@ -62,14 +62,26 @@ export function reviewHistoryEntriesForCard(card: Card): ReviewHistoryEntry[] {
 export interface ReviewHistoryCollisionState {
   usedIds: Set<string>;
   eventOwners: Map<string, string>;
+  entryIdentities: Set<string>;
+}
+
+function reviewHistoryEntryIdentity(entry: ReviewHistoryEntry): string {
+  const { id: _id, ...identity } = entry;
+  return JSON.stringify(identity);
 }
 
 export function resolveReviewHistoryCollisions(
   entries: ReviewHistoryEntry[],
-  state: ReviewHistoryCollisionState = { usedIds: new Set(), eventOwners: new Map() },
+  state: ReviewHistoryCollisionState = {
+    usedIds: new Set(),
+    eventOwners: new Map(),
+    entryIdentities: new Set(),
+  },
 ): ReviewHistoryEntry[] {
   const resolved: ReviewHistoryEntry[] = [];
   for (const entry of entries) {
+    const identity = reviewHistoryEntryIdentity(entry);
+    if (state.entryIdentities.has(identity)) continue;
     const owner = entry.eventId ? state.eventOwners.get(entry.eventId) : undefined;
     if (owner && owner !== entry.cardId) {
       let collision = `${entry.id}:card:${encodeURIComponent(entry.cardId)}`;
@@ -77,11 +89,22 @@ export function resolveReviewHistoryCollisions(
       while (state.usedIds.has(collision)) collision = `${entry.id}:collision:${suffix++}`;
       const resolvedEntry = { ...entry, id: collision };
       state.usedIds.add(collision);
+      state.entryIdentities.add(identity);
       resolved.push(resolvedEntry);
       continue;
     }
-    if (state.usedIds.has(entry.id)) continue;
+    if (state.usedIds.has(entry.id)) {
+      let collision = `${entry.id}:duplicate`;
+      let suffix = 1;
+      while (state.usedIds.has(collision)) collision = `${entry.id}:duplicate:${suffix++}`;
+      const resolvedEntry = { ...entry, id: collision };
+      state.usedIds.add(collision);
+      state.entryIdentities.add(identity);
+      resolved.push(resolvedEntry);
+      continue;
+    }
     state.usedIds.add(entry.id);
+    state.entryIdentities.add(identity);
     resolved.push(entry);
     if (entry.eventId) state.eventOwners.set(entry.eventId, entry.cardId);
   }

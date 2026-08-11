@@ -28,7 +28,12 @@ import type {
   MediaAsset,
   RevisionPlan,
 } from './types';
-import { mergeReviewHistoryEntries, type ReviewHistoryEntry } from './reviewHistory';
+import {
+  mergeReviewHistoryEntries,
+  resolveReviewHistoryCollisions,
+  type ReviewHistoryCollisionState,
+  type ReviewHistoryEntry,
+} from './reviewHistory';
 import {
   buildCourseAssessmentMigration,
   courseToRecord,
@@ -573,17 +578,15 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
 
       if (reviewHistory.length > 0) {
         const existingReviewHistory = await db.reviewHistory.toArray();
+        const collisionState: ReviewHistoryCollisionState = {
+          usedIds: new Set(),
+          eventOwners: new Map(),
+          entryIdentities: new Set(),
+        };
+        resolveReviewHistoryCollisions(existingReviewHistory, collisionState);
+        const resolvedIncoming = resolveReviewHistoryCollisions(reviewHistory, collisionState);
         const existingIds = new Set(existingReviewHistory.map((entry) => entry.id));
-        const existingEventOwners = new Map(
-          existingReviewHistory.flatMap((entry) =>
-            entry.eventId ? [[entry.eventId, entry.cardId] as const] : [],
-          ),
-        );
-        const missingReviewHistory = reviewHistory.filter(
-          (entry) =>
-            !existingIds.has(entry.id) &&
-            !(entry.eventId && existingEventOwners.get(entry.eventId) === entry.cardId),
-        );
+        const missingReviewHistory = resolvedIncoming.filter((entry) => !existingIds.has(entry.id));
         if (missingReviewHistory.length > 0) {
           await db.reviewHistory.bulkAdd(missingReviewHistory);
         }
