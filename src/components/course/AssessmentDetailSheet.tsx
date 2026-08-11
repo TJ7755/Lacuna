@@ -54,7 +54,7 @@ export function AssessmentDetailSheet({
         <header className="flex items-start justify-between border-b border-line px-6 py-5">
           <div>
             <p className="text-xs uppercase tracking-[0.16em] text-ink-faint">
-              {assessment.kind === 'final' ? 'Final assessment' : 'Checkpoint'}
+              {assessment.kind === 'final' ? 'Final exam' : 'Checkpoint'}
             </p>
             <h2 className="mt-1 font-display text-2xl">{assessment.name}</h2>
             <p className="mt-1 text-sm text-ink-soft">

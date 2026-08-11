@@ -5,6 +5,11 @@
 - Replaced the 3,700-line combined roadmap and implementation diary with a short current
   roadmap, archived the historical arc specifications, and extracted Arc 14's course-setup
   slice into the sole active implementation plan.
+- New course creation now shows the seven-day local Exam date before saving, allows it to be
+  changed in the same modal, rejects invalid local times, and creates the course's Final exam
+  with the chosen instant and time zone while preserving the initial Lesson 1 and share-code flow.
+- Portalled the New course overlay out of the mobile navigation drawer so the sidebar entry uses
+  the full viewport instead of squeezing the modal into the transformed drawer width.
 - Updated historical section references throughout the repository to point at the archive.
 - Formally closed Arc 11. Its offline numeric/working authoring and grading scope is delivered;
   the model-dependent ten-minute clipboard benchmark was retired as an invalid release gate,

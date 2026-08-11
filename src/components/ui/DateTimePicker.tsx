@@ -8,6 +8,7 @@ import { getComponentsInZone, fromDateTimeLocalValue } from '../../utils/datetim
 interface DateTimePickerProps {
   value: number;
   onChange: (epochMs: number) => void;
+  onValidityChange?: (valid: boolean) => void;
   label?: string;
   timeZone?: string;
 }
@@ -88,7 +89,13 @@ function resolveAdjacentMonth(
   return m > 11 ? { y: year + 1, m: 0 } : { y: year, m };
 }
 
-export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePickerProps) {
+export function DateTimePicker({
+  value,
+  onChange,
+  onValidityChange,
+  label,
+  timeZone,
+}: DateTimePickerProps) {
   const [open, setOpen] = useState(false);
   const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -122,6 +129,14 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
   const [hourDraft, setHourDraft] = useState(() => pad(selected.hours));
   const [minuteDraft, setMinuteDraft] = useState(() => pad(selected.minutes));
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  const reportValidity = useCallback(
+    (error: string | null) => {
+      setValidationError(error);
+      onValidityChange?.(error === null);
+    },
+    [onValidityChange],
+  );
 
   // Extract selected-date components in the target time zone
   const selectedDay = selected.day;
@@ -238,10 +253,10 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
         timeZone,
       );
       if (!Number.isFinite(ms)) {
-        setValidationError('That local date and time does not exist. Choose another time.');
+        reportValidity('That local date and time does not exist. Choose another time.');
         return;
       }
-      setValidationError(null);
+      reportValidity(null);
       if (ms !== latestValueRef.current) {
         latestValueRef.current = ms;
         onChange(ms);
@@ -252,7 +267,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
       }
       setView({ year: y, month: m });
     },
-    [year, month, hours, minutes, onChange, timeZone],
+    [year, month, hours, minutes, onChange, reportValidity, timeZone],
   );
 
   const setTime = useCallback(
@@ -262,24 +277,24 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
         timeZone,
       );
       if (!Number.isFinite(ms)) {
-        setValidationError('That local date and time does not exist. Choose another time.');
+        reportValidity('That local date and time does not exist. Choose another time.');
         return false;
       }
-      setValidationError(null);
+      reportValidity(null);
       if (ms !== latestValueRef.current) {
         latestValueRef.current = ms;
         onChange(ms);
       }
       return true;
     },
-    [selectedYear, selectedMonth, selectedDay, onChange, timeZone],
+    [selectedYear, selectedMonth, selectedDay, onChange, reportValidity, timeZone],
   );
 
   const commitTimeDrafts = useCallback(() => {
     const h = /^\d{1,2}$/.test(hourDraft) ? Number(hourDraft) : Number.NaN;
     const min = /^\d{1,2}$/.test(minuteDraft) ? Number(minuteDraft) : Number.NaN;
     if (!Number.isInteger(h) || h < 0 || h > 23 || !Number.isInteger(min) || min < 0 || min > 59) {
-      setValidationError('Enter a valid 24-hour time.');
+      reportValidity('Enter a valid 24-hour time.');
       return false;
     }
     const committed = setTime(h, min);
@@ -288,7 +303,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
       setMinuteDraft(pad(min));
     }
     return committed;
-  }, [hourDraft, minuteDraft, setTime]);
+  }, [hourDraft, minuteDraft, reportValidity, setTime]);
 
   // Outside dismissal commits a valid in-progress time. Invalid drafts keep the
   // picker open so the error is visible instead of being silently discarded.
@@ -512,7 +527,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
   };
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative" data-date-time-picker>
       {label && (
         <span id={labelId} className="mb-2 block text-sm text-ink-soft">
           {label}
@@ -531,7 +546,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
           setSlideDir(0);
           setHourDraft(pad(selected.hours));
           setMinuteDraft(pad(selected.minutes));
-          setValidationError(null);
+          reportValidity(null);
           dayRefs.current = [];
           pendingGridFocusRef.current = { mode: 'days', index: null };
           setOpen(true);
@@ -557,6 +572,13 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
             ref={dropdownRef}
             role="dialog"
             aria-label="Choose date and time"
+            data-date-time-picker-popover
+            onKeyDown={(event) => {
+              if (event.key !== 'Escape') return;
+              event.preventDefault();
+              event.stopPropagation();
+              if (commitTimeDrafts()) closePicker(true);
+            }}
             initial={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
@@ -787,9 +809,11 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                     aria-label="Hour"
                     maxLength={2}
                     value={hourDraft}
+                    aria-invalid={validationError ? 'true' : undefined}
                     onChange={(e) => {
                       if (/^\d{0,2}$/.test(e.target.value)) setHourDraft(e.target.value);
                       setValidationError(null);
+                      onValidityChange?.(false);
                     }}
                     onBlur={() => {
                       commitTimeDrafts();
@@ -809,9 +833,11 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                     aria-label="Minute"
                     maxLength={2}
                     value={minuteDraft}
+                    aria-invalid={validationError ? 'true' : undefined}
                     onChange={(e) => {
                       if (/^\d{0,2}$/.test(e.target.value)) setMinuteDraft(e.target.value);
                       setValidationError(null);
+                      onValidityChange?.(false);
                     }}
                     onBlur={() => {
                       commitTimeDrafts();
@@ -845,7 +871,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                     timeZone,
                   );
                   if (!Number.isFinite(ms)) return;
-                  setValidationError(null);
+                  reportValidity(null);
                   onChange(ms);
                   setView({ year: nowComponents.year, month: nowComponents.month });
                 }}
@@ -863,7 +889,7 @@ export function DateTimePicker({ value, onChange, label, timeZone }: DateTimePic
                     timeZone,
                   );
                   if (!Number.isFinite(ms)) return;
-                  setValidationError(null);
+                  reportValidity(null);
                   onChange(ms);
                   setView({ year: nowComponents.year, month: nowComponents.month });
                 }}

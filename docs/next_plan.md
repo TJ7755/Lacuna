@@ -15,7 +15,7 @@ archive.
 
 ### Arc 14, slice 1 — Course setup and assessment language
 
-**Status:** ready to implement.
+**Status:** in progress.
 
 Make the first real course setup coherent: collect the course name and primary exam date in
 one flow, show the existing seven-day default instead of silently inventing it, and distinguish

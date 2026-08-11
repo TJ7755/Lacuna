@@ -488,7 +488,7 @@ export function Welcome() {
             id="lesson-plan"
           >
             <p className="leading-relaxed text-ink-soft">
-              Name the assessment you are revising for — a checkpoint test or the final — and Lacuna
+              Name the assessment you are revising for — a checkpoint or the final exam — and Lacuna
               builds a multi-day plan around it: how much time you have each day, what has actually
               been taught and is fair game, and what is genuinely worth the next ten minutes. The
               plan adjusts as days pass and your performance changes, without ever reshuffling a
