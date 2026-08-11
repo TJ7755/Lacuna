@@ -421,7 +421,7 @@ export async function assignCardsToLesson(
   const deckId = lessonId
     ? await ensureLessonDeck(courseId, lessonId)
     : await ensureCourseBankDeck(courseId);
-  await db.transaction('rw', db.cards, db.lessonCardExposures, async () => {
+  await db.transaction('rw', db.cards, db.lessonCardExposures, db.reviewHistory, async () => {
     const cards = await db.cards.where('id').anyOf(ids).toArray();
     const removedPrimaryExposures = cards
       .filter(
@@ -432,6 +432,10 @@ export async function assignCardsToLesson(
       await db.lessonCardExposures.bulkDelete(removedPrimaryExposures);
     }
     await db.cards.where('id').anyOf(ids).modify({ primaryLessonId: lessonId, deckId });
+    await db.reviewHistory
+      .where('cardId')
+      .anyOf(ids)
+      .modify({ primaryLessonId: lessonId, deckId });
   });
 }
 
@@ -530,9 +534,10 @@ export async function restoreCards(cards: CardSnapshot): Promise<void> {
 }
 
 export async function moveCards(ids: string[], targetDeckId: string): Promise<void> {
-  await db.transaction('rw', db.cards, async () => {
+  await db.transaction('rw', db.cards, db.reviewHistory, async () => {
     await assertNoGeneratedCards(ids);
     await db.cards.where('id').anyOf(ids).modify({ deckId: targetDeckId });
+    await db.reviewHistory.where('cardId').anyOf(ids).modify({ deckId: targetDeckId });
   });
 }
 

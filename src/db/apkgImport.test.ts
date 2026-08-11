@@ -5,6 +5,7 @@ import { db } from './schema';
 import { importApkgResult, type ApkgImportResult } from './apkgImport';
 import { MAX_AUDIO_BYTES } from './assets';
 import { createDeck } from './repository';
+import { reviewHistoryEntryId } from './reviewHistory';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -60,6 +61,7 @@ async function resetDatabase() {
     db.cards.clear(),
     db.assets.clear(),
     db.userPerformance.clear(),
+    db.reviewHistory.clear(),
   ]);
 }
 
@@ -93,6 +95,14 @@ describe('importApkgResult', () => {
     });
     expect(persisted?.createdAt).toBe(1_699_000_000_000);
     expect(persisted).toEqual(returned);
+    expect(await db.reviewHistory.where('cardId').equals(returned.id).toArray()).toEqual([
+      expect.objectContaining({
+        id: reviewHistoryEntryId(returned.id, result.cards[0].history[0]),
+        cardId: returned.id,
+        deckId: returned.deckId,
+        timestamp: 1_700_000_000_000,
+      }),
+    ]);
   });
 
   it('persists Course metadata when importing into a Course/Lesson target', async () => {
@@ -128,6 +138,15 @@ describe('importApkgResult', () => {
       'Target deck not found.',
     );
     expect(await db.cards.count()).toBe(0);
+  });
+
+  it('rolls back a newly created deck when card persistence fails', async () => {
+    const bulkPut = vi.spyOn(db.reviewHistory, 'bulkPut').mockRejectedValueOnce(new Error('history write failed'));
+
+    await expect(importApkgResult(makeResult())).rejects.toThrow('history write failed');
+    expect(await db.decks.count()).toBe(0);
+    expect(await db.cards.count()).toBe(0);
+    bulkPut.mockRestore();
   });
 
   it('does not create a deck or cards when imported audio is rejected', async () => {

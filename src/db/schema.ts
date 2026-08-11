@@ -26,11 +26,7 @@ import type {
   PendingMergeReview,
   Occlusion,
 } from './types';
-import {
-  resolveReviewHistoryCollisions,
-  reviewHistoryEntriesForCard,
-  type ReviewHistoryEntry,
-} from './reviewHistory';
+import { reviewHistoryEntriesForCard, type ReviewHistoryEntry } from './reviewHistory';
 import {
   migrateCardRecord,
   migrateDeckRecord,
@@ -46,6 +42,47 @@ import {
   type LegacyAssessmentRecord,
   type LegacyCourseRecord,
 } from './assessmentMigration';
+
+/**
+ * Write one migration batch while checking only the destination keys needed for
+ * collision resolution. The destination table is the durable collision index, so
+ * migration does not need to retain every historical event in JavaScript memory.
+ */
+async function putMigratedReviewHistoryEntries(
+  table: Table<ReviewHistoryEntry, string>,
+  entries: ReviewHistoryEntry[],
+): Promise<void> {
+  const identityOf = (entry: ReviewHistoryEntry): string => {
+    const { id: _id, ...identity } = entry;
+    return JSON.stringify(identity);
+  };
+
+  for (const entry of entries) {
+    const identity = identityOf(entry);
+    let id = entry.id;
+    let existing = await table.get(id);
+    if (existing) {
+      if (identityOf(existing) === identity) continue;
+
+      const suffix = existing.cardId === entry.cardId
+        ? `${entry.id}:duplicate`
+        : `${entry.id}:card:${encodeURIComponent(entry.cardId)}`;
+      id = suffix;
+      existing = await table.get(id);
+      let collision = 1;
+      while (existing) {
+        if (identityOf(existing) === identity) {
+          id = '';
+          break;
+        }
+        id = `${suffix}:${collision++}`;
+        existing = await table.get(id);
+      }
+      if (!id) continue;
+    }
+    await table.put({ ...entry, id });
+  }
+}
 
 /**
  * Lacuna's IndexedDB database. A single Dexie instance owns every store.
@@ -633,22 +670,17 @@ class LacunaDatabase extends Dexie {
         const cardsTable = tx.table('cards');
         const reviewHistoryTable = tx.table('reviewHistory');
         const batchSize = 100;
-        const collisionState = {
-          usedIds: new Set<string>(),
-          eventOwners: new Map<string, string>(),
-          entryIdentities: new Map<string, string>(),
-        };
+        // Resolve collisions against rows already written to the destination table.
+        // This keeps migration memory bounded by the batch rather than retaining a
+        // process-wide index of every migrated event.
         let offset = 0;
         for (;;) {
           const cards = await cardsTable.offset(offset).limit(batchSize).toArray();
           if (cards.length === 0) break;
-          const entries = resolveReviewHistoryCollisions(
-            cards.flatMap((card) => reviewHistoryEntriesForCard(card as Card)),
-            collisionState,
+          const entries = cards.flatMap((card) =>
+            reviewHistoryEntriesForCard(card as Card),
           );
-          if (entries.length > 0) {
-            await reviewHistoryTable.bulkPut(entries);
-          }
+          await putMigratedReviewHistoryEntries(reviewHistoryTable, entries);
           offset += cards.length;
         }
       });

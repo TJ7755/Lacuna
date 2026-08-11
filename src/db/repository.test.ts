@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import {
   addTagToCards,
   buryCards,
@@ -30,6 +31,7 @@ describe('undoReview', () => {
       db.sessionHistory.clear(),
       db.userPerformance.clear(),
       db.assets.clear(),
+      db.reviewHistory.clear(),
     ]);
   });
 
@@ -403,6 +405,7 @@ describe('structured item payload validation', () => {
       db.cards.clear(),
       db.userPerformance.clear(),
       db.assets.clear(),
+      db.reviewHistory.clear(),
     ]);
   });
 
@@ -546,6 +549,35 @@ describe('bulk card actions', () => {
 
     await deleteCards([b.id]);
     expect(await db.cards.get(b.id)).toBeUndefined();
+  });
+
+  it('keeps canonical review-history ownership in sync when moving a card', async () => {
+    const deck = await createDeck('Bulk');
+    const other = await createDeck('Other');
+    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    await db.reviewHistory.add({
+      id: 'review:event:move-card',
+      eventId: 'move-card',
+      cardId: card.id,
+      deckId: deck.id,
+      timestamp: 1,
+      grade: 3,
+      responseTimeSec: 1,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 1,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    });
+
+    await moveCards([card.id], other.id);
+
+    expect(await db.reviewHistory.get('review:event:move-card')).toEqual(
+      expect.objectContaining({ deckId: other.id }),
+    );
+    const hydrated = await hydrateCardsWithHistory([(await db.cards.get(card.id))!]);
+    expect(hydrated[0].history).toHaveLength(1);
   });
 
   it('refuses to delete or move sequence-generated cards', async () => {

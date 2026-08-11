@@ -43,6 +43,7 @@ import {
 } from './repository';
 import { FSRS_VERSION } from '../fsrs/params';
 import { listLessons, listCardsForCourse } from './read';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 
 async function reset() {
@@ -61,6 +62,7 @@ async function reset() {
     db.userPerformance.clear(),
     db.sessionHistory.clear(),
     db.sequences.clear(),
+    db.reviewHistory.clear(),
     db.revisionPlans.clear(),
   ]);
 }
@@ -1170,6 +1172,43 @@ describe('createCourseCard', () => {
 
 describe('assignCardsToLesson', () => {
   beforeEach(reset);
+
+  it('keeps canonical review-history ownership in sync when assigning a reviewed card', async () => {
+    const course = await createCourse('Course');
+    const lessonA = await createLesson(course.id, 'Lesson A');
+    const lessonB = await createLesson(course.id, 'Lesson B');
+    const card = await createLessonCard(course.id, lessonA.id, 'front_back', 'q', 'a');
+    const oldDeckId = card.deckId;
+    await db.reviewHistory.add({
+      id: 'review:event:move',
+      eventId: 'move',
+      cardId: card.id,
+      deckId: oldDeckId,
+      courseId: course.id,
+      primaryLessonId: lessonA.id,
+      timestamp: 1,
+      grade: 3,
+      responseTimeSec: 1,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 1,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    });
+
+    await assignCardsToLesson([card.id], course.id, lessonB.id);
+
+    const updated = await db.cards.get(card.id);
+    const history = await db.reviewHistory.where('cardId').equals(card.id).toArray();
+    expect(updated?.deckId).toBe(await ensureLessonDeck(course.id, lessonB.id));
+    expect(updated?.primaryLessonId).toBe(lessonB.id);
+    expect(history).toEqual([
+      expect.objectContaining({ deckId: updated?.deckId, primaryLessonId: lessonB.id }),
+    ]);
+    const hydrated = await hydrateCardsWithHistory([updated!]);
+    expect(hydrated[0].history).toHaveLength(1);
+  });
 
   it('moves unassigned cards into a lesson and updates deckId to match', async () => {
     const course = await createCourse('Course');
