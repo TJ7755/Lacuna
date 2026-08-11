@@ -655,6 +655,7 @@ function replaceMediaRefs(text: string, mediaMap: Map<string, ImportedMediaRef>)
 export async function importApkgResult(
   result: ApkgImportResult,
   targetDeckId?: string,
+  cardOptions?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<{ deck: Deck; cards: Card[] }> {
   const { createDeck, createCards } = await import('./repository');
   const { db } = await import('./schema');
@@ -704,6 +705,7 @@ export async function importApkgResult(
       back: c.back,
       tags: c.tags,
     })),
+    cardOptions,
   );
 
   // Persist imported scheduling state in one IndexedDB request rather than one

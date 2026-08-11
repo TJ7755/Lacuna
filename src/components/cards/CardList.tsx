@@ -349,10 +349,12 @@ export function CardList({ cards, deck, context, allDecks = deck ? [deck] : [], 
     if (!moveTarget) return;
     const ids = [...selected];
     const snapshot = await snapshotCards(ids);
-    if (context) {
+    if (context?.onMove) {
       await context.onMove(ids, moveTarget);
-    } else {
+    } else if (!context) {
       await moveCards(ids, moveTarget);
+    } else {
+      return;
     }
     exitSelect();
     notify(`${ids.length} card${ids.length === 1 ? '' : 's'} moved.`, 'neutral', {
@@ -576,7 +578,7 @@ export function CardList({ cards, deck, context, allDecks = deck ? [deck] : [], 
               <Button
                 size="sm"
                 variant={moving ? 'primary' : 'secondary'}
-                disabled={selected.size === 0 || otherDecks.length === 0}
+                disabled={selected.size === 0 || otherDecks.length === 0 || (context !== undefined && context.onMove === undefined)}
                 onClick={() => (moving ? setMoving(false) : startMove())}
               >
                 Move to…

@@ -16,6 +16,7 @@ import {
   useCourseBankBackingDeck,
 } from '../state/useCourseData';
 import { CardList } from '../components/cards/CardList';
+import { courseCardListContext } from '../components/cards/cardListContext';
 import { CourseTabs } from '../components/course/CourseTabs';
 import { FadeInView } from '../components/ui/FadeInView';
 import { Button } from '../components/ui/Button';
@@ -186,6 +187,7 @@ export function QuestionBank() {
             <FadeInView delay={lessonsWithCards.length * 0.04} y={12}>
               <UnassignedBucket
                 courseId={courseId!}
+                courseName={course.name}
                 cards={unassigned}
                 assignableLessons={assignableLessons}
                 sequences={sequences.filter((s) => s.primaryLessonId === null)}
@@ -254,7 +256,12 @@ function LessonBucket({
       {deck && (
         <CardList
           cards={cards}
-          deck={deck}
+          context={courseCardListContext({
+            schedulingConfig: deck,
+            courseId,
+            primaryLessonId: lesson.id,
+            importTargetName: lesson.name,
+          })}
           hideHeader
           courseId={courseId}
           assignableLessons={assignableLessons}
@@ -290,12 +297,14 @@ function LessonBucket({
 
 function UnassignedBucket({
   courseId,
+  courseName,
   cards,
   assignableLessons,
   sequences,
   occlusions,
 }: {
   courseId: string;
+  courseName: string;
   cards: Card[];
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
@@ -316,7 +325,12 @@ function UnassignedBucket({
       {deck && (
         <CardList
           cards={cards}
-          deck={deck}
+          context={courseCardListContext({
+            schedulingConfig: deck,
+            courseId,
+            primaryLessonId: null,
+            importTargetName: courseName,
+          })}
           hideHeader
           courseId={courseId}
           assignableLessons={assignableLessons}
