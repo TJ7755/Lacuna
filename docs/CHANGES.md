@@ -1,5 +1,13 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Course/Deck boundary follow-up paused
+
+- Documented the reviewed stop point for the small Course/Lesson boundary pass at commit `9dd9107`.
+  The remaining search, Deck-shaped component APIs, generic Deck hooks, dual UserPerformance
+  semantics, portability surfaces and eventual storage migration are recorded in
+  `docs/course-domain-boundary-follow-ups.md`; no further production changes are included in
+  this paused pass.
+
 ## Unreleased — Arc 14 flow simplification complete
 
 - Preserved published-course lineage on first import from both share-code entry points, so later
