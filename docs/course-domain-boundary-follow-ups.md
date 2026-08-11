@@ -4,7 +4,7 @@
 
 **Branch:** `refactor/course-domain-boundary`
 
-**Latest reviewed commit:** `501120b` (`refactor(cards): migrate question bank context`)
+**Latest reviewed commit:** `af7958a` (`refactor(cards): migrate lesson card context`)
 
 **Original stop commit:** `9dd9107` (`refactor(course): remove singleton deck plumbing`)
 
@@ -46,6 +46,9 @@ The following changes are complete and reviewed, in small commits:
   Text and Course-context APKG imports now persist `courseId` and `primaryLessonId` through
   explicit import options, and the page tests assert the Course/Lesson import labels and
   capabilities. The existing
+- Migrated `LessonCardsSection` in `af7958a`: both the prepared empty-lesson importer and the
+  populated lesson-card list now use the explicit Course/Lesson context, while linking,
+  generated-card filtering, loading guards and navigation behaviour remain unchanged.
   APKG helper remains compatible for legacy callers; its broader media/card transaction boundary
   remains part of the later portability/import audit.
 
@@ -80,16 +83,16 @@ Do not remove `searchCards` or legacy storage until old backups and migrated rec
 
 ### 2. Remove remaining course-facing Deck-shaped APIs
 
-**Progress:** the first adapter seam and Question Bank migration are delivered in `4d7b482` and
-`501120b`; LessonCardsSection migration and CardEditOverlay draft-key separation remain.
+**Progress:** the first adapter seam, Question Bank migration and LessonCardsSection migration are
+  delivered in `4d7b482`, `501120b` and `af7958a`; CardEditOverlay draft-key separation remains.
 
 **Priority:** high after search
 
 The generic card-management component still has a transitional Deck-shaped compatibility API:
 
 The Question Bank callers no longer pass a Deck-shaped prop; they resolve the hidden scheduling
-configuration only to construct the explicit context adapter. `LessonCardsSection` remains the
-next direct Course/Lesson caller to migrate.
+configuration only to construct the explicit context adapter. `LessonCardsSection` is now migrated; CardEditOverlay draft-key separation and any remaining
+Course/Lesson CardList callers are next.
 
 - `src/components/cards/CardList.tsx` still accepts the legacy `deck: Deck` branch for import,
   analytics and scheduling operations, alongside the explicit context branch.
