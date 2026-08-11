@@ -27,6 +27,11 @@ import type {
   Occlusion,
 } from './types';
 import {
+  resolveReviewHistoryCollisions,
+  reviewHistoryEntriesForCard,
+  type ReviewHistoryEntry,
+} from './reviewHistory';
+import {
   migrateCardRecord,
   migrateDeckRecord,
   buildLessonCardExposureBackfill,
@@ -71,6 +76,7 @@ class LacunaDatabase extends Dexie {
   lineageIdMappings!: Table<LineageIdMapping, string>;
   pendingMergeReviews!: Table<PendingMergeReview, string>;
   occlusions!: Table<Occlusion, string>;
+  reviewHistory!: Table<ReviewHistoryEntry, string>;
 
   constructor() {
     super('lacuna');
@@ -566,7 +572,8 @@ class LacunaDatabase extends Dexie {
     // Purely additive — no `.upgrade()` data pass.
     this.version(19).stores({
       decks: 'id, createdAt, examDate, folderId',
-      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+      cards:
+        'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId, occlusionRegionId',
       sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
       userPerformance: 'deckId',
       backups: '++id, createdAt',
@@ -589,10 +596,65 @@ class LacunaDatabase extends Dexie {
       pendingMergeReviews: 'id, courseId',
       occlusions: 'id, courseId, primaryLessonId, createdAt',
     });
+
+    // Version 20: add the canonical review-event store. The migration copies every
+    // existing Card.history row without changing the Card projection or runtime
+    // readers/writers. Later slices will cut persistence and reads over behind an
+    // adapter once backup and undo coverage is in place.
+    this.version(20)
+      .stores({
+        decks: 'id, createdAt, examDate, folderId',
+        cards:
+          'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+        sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        folders: 'id, parentId, createdAt',
+        courses: 'id, createdAt',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+        lessonCompletions: 'lessonId, completedAt',
+        noteAnnotations: 'id, noteId, createdAt, updatedAt',
+        practiceNodes: 'id, courseId, position, createdAt',
+        practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+        courseAssessments: 'id, courseId, kind, examDate, createdAt',
+        sequences: 'id, courseId, primaryLessonId, createdAt',
+        revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+        lineageIdMappings: 'id, courseId',
+        pendingMergeReviews: 'id, courseId',
+        occlusions: 'id, courseId, primaryLessonId, createdAt',
+        reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, timestamp',
+      })
+      .upgrade(async (tx) => {
+        const cardsTable = tx.table('cards');
+        const reviewHistoryTable = tx.table('reviewHistory');
+        const batchSize = 100;
+        const collisionState = {
+          usedIds: new Set<string>(),
+          eventOwners: new Map<string, string>(),
+        };
+        let offset = 0;
+        for (;;) {
+          const cards = await cardsTable.offset(offset).limit(batchSize).toArray();
+          if (cards.length === 0) break;
+          const entries = resolveReviewHistoryCollisions(
+            cards.flatMap((card) => reviewHistoryEntriesForCard(card as Card)),
+            collisionState,
+          );
+          if (entries.length > 0) {
+            await reviewHistoryTable.bulkPut(entries);
+          }
+          offset += cards.length;
+        }
+      });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 19;
+const CURRENT_SCHEMA_VERSION = 20;
 
 export const db = new LacunaDatabase();
 
@@ -763,6 +825,7 @@ export async function readAllDataFromVersion(
     practiceMilestones: (raw.data['practiceMilestones'] ?? []) as PracticeMilestone[],
     courseAssessments: (raw.data['courseAssessments'] ?? []) as CourseAssessment[],
     revisionPlans: (raw.data['revisionPlans'] ?? []) as RevisionPlan[],
+    reviewHistory: (raw.data['reviewHistory'] ?? []) as ReviewHistoryEntry[],
     sequences: (raw.data['sequences'] ?? []) as Sequence[],
   };
 
