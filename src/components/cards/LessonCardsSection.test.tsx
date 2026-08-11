@@ -5,15 +5,23 @@ import type { Card, Deck, LessonCardLink } from '../../db/types';
 
 let mockLinks: LessonCardLink[] | undefined = [];
 let mockCourseCards: Card[] = [];
+let mockPreparedDeck: Deck | undefined;
 const mockUnlink = vi.fn();
+const mockEnsureLessonBackingDeck = vi.fn();
 const mockGetExposure = vi.fn();
+const mockNotify = vi.fn();
 
 vi.mock('../../state/useCourseData', () => ({
   useCourseCards: () => mockCourseCards,
+  useLessonBackingDeck: () => mockPreparedDeck,
   useLessonCardLinks: () => mockLinks,
   useLessons: () => [lesson],
   useSequences: () => [],
   useOcclusions: () => [],
+}));
+
+vi.mock('../../db/backingDecks', () => ({
+  ensureLessonBackingDeck: (...args: unknown[]) => mockEnsureLessonBackingDeck(...args),
 }));
 
 vi.mock('../../db/schema', () => ({
@@ -28,7 +36,7 @@ vi.mock('../../db/repository', () => ({
 }));
 
 vi.mock('../ui/Toast', () => ({
-  useToast: () => ({ notify: vi.fn() }),
+  useToast: () => ({ notify: mockNotify }),
 }));
 
 vi.mock('./LinkCardsDialog', () => ({
@@ -42,6 +50,7 @@ vi.mock('./LinkCardsDialog', () => ({
 
 vi.mock('./CardList', () => ({
   CardList: ({
+    initiallyImporting,
     onLinkExisting,
     linkedCardIds,
     onUnlinkCard,
@@ -49,8 +58,10 @@ vi.mock('./CardList', () => ({
     onLinkExisting?: () => void;
     linkedCardIds?: ReadonlySet<string>;
     onUnlinkCard?: (card: Card) => void;
+    initiallyImporting?: boolean;
   }) => (
     <div>
+      {initiallyImporting && <span data-testid="initially-importing">true</span>}
       <button type="button" onClick={onLinkExisting}>Open linked-card picker</button>
       <span data-testid="linked-ids">{[...(linkedCardIds ?? [])].join(',')}</span>
       <button type="button" onClick={() => onUnlinkCard?.(card)}>Remove linked card</button>
@@ -114,13 +125,53 @@ const card: Card = {
 beforeEach(() => {
   mockLinks = [];
   mockCourseCards = [card];
+  mockPreparedDeck = undefined;
   mockUnlink.mockReset();
+  mockEnsureLessonBackingDeck.mockReset();
+  mockNotify.mockReset();
   mockUnlink.mockResolvedValue(undefined);
   mockGetExposure.mockReset();
   mockGetExposure.mockResolvedValue(undefined);
+  mockEnsureLessonBackingDeck.mockResolvedValue(deck.id);
 });
 
 describe('LessonCardsSection', () => {
+  it('prepares and opens the importer for an empty lesson', async () => {
+    mockPreparedDeck = deck;
+    render(
+      <LessonCardsSection
+        courseId="course-1"
+        lessonId="lesson-1"
+        lessonName="Cells"
+        lessonCards={[]}
+        lessonDeck={undefined}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Import cards'));
+    await waitFor(() => expect(mockEnsureLessonBackingDeck).toHaveBeenCalledWith('course-1', 'lesson-1'));
+    expect(screen.getByTestId('initially-importing')).toHaveTextContent('true');
+  });
+
+  it('notifies when preparing an empty import fails', async () => {
+    mockEnsureLessonBackingDeck.mockRejectedValue(new Error('Could not prepare import.'));
+    render(
+      <LessonCardsSection
+        courseId="course-1"
+        lessonId="lesson-1"
+        lessonName="Cells"
+        lessonCards={[]}
+        lessonDeck={undefined}
+        onNavigate={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Import cards'));
+    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('Could not prepare import.', 'negative'));
+    expect(screen.queryByTestId('initially-importing')).not.toBeInTheDocument();
+  });
+
   it('opens the existing-card picker from an empty lesson', () => {
     render(
       <LessonCardsSection
