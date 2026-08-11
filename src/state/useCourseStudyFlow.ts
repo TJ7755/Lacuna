@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
+import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { performanceForCourseBackingDecks } from '../db/backingDecks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { availableCards, dueCards } from '../fsrs/eligibility';
@@ -87,12 +88,13 @@ export function useCourseStudyFlow(
       };
     }
     const course = hydrateCourse(courseRecord, finalAssessmentForCourse(courseId, assessments));
-    const [lessons, cards, practiceNodes, milestones] = await Promise.all([
+    const [lessons, rawCards, practiceNodes, milestones] = await Promise.all([
       db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
       db.cards.where('courseId').equals(courseId).toArray(),
       db.practiceNodes.where('courseId').equals(courseId).toArray(),
       db.practiceMilestones.where('courseId').equals(courseId).toArray(),
     ]);
+    const cards = await hydrateCardsWithHistory(rawCards);
     const lessonIds = lessons.map((lesson) => lesson.id);
     const [links, exposures, completions, performance] = await Promise.all([
       lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],

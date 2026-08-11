@@ -37,6 +37,7 @@ import {
   reviewHistoryEntryIdForEvent,
   type ReviewHistoryEntry,
 } from './reviewHistory';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { courseToRecord, finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
@@ -2101,6 +2102,7 @@ async function resolveCurrentRevisionInput(
       db.lessonCompletions.toArray(),
     ]);
   if (!courseRecord) throw new Error('The course could not be found.');
+  const hydratedCards = await hydrateCardsWithHistory(cards);
   const course = hydrateCourse(
     courseRecord,
     finalAssessmentForCourse(assessment.courseId, assessments),
@@ -2109,7 +2111,7 @@ async function resolveCurrentRevisionInput(
     course,
     assessments,
     lessons,
-    cards,
+    cards: hydratedCards,
     links,
     exposures,
     now,
@@ -2119,7 +2121,7 @@ async function resolveCurrentRevisionInput(
     resolved: resolveRevisionPlanInput({
       assessment,
       lessons,
-      cards,
+      cards: hydratedCards,
       links,
       exposures,
       completions,
@@ -2148,6 +2150,7 @@ export async function createOrResumeRevisionPlan(
         db.lessonCards,
         db.lessonCardExposures,
         db.lessonCompletions,
+        db.reviewHistory,
       ],
       async () => {
         const existing = await db.revisionPlans.where('assessmentId').equals(assessmentId).first();
@@ -2216,6 +2219,7 @@ export async function refreshRevisionPlan(
         db.lessonCards,
         db.lessonCardExposures,
         db.lessonCompletions,
+        db.reviewHistory,
       ],
       async () => {
         const plan = await db.revisionPlans.get(planId);

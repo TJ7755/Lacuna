@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
-import {
-  performanceForCourseBackingDecks,
-  performanceForReviewUnits,
-} from '../../db/backingDecks';
+import { performanceForCourseBackingDecks, performanceForReviewUnits } from '../../db/backingDecks';
 import { getCourse, listCourseAssessments } from '../../db/read';
+import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
 import type {
   Card,
   Course,
@@ -229,7 +227,8 @@ export function useLearnSession({
   // An occlusion-generated card's typing eligibility is decided per-card by whether its
   // region resolves an answerText, never by the blanket typingSetting check that applies
   // to ordinary front_back cards — its plain-text `back` fallback is not a typing target.
-  const currentOcclusionData = current !== null ? (occlusionMapRef.current.get(current.id) ?? null) : null;
+  const currentOcclusionData =
+    current !== null ? (occlusionMapRef.current.get(current.id) ?? null) : null;
   const isTypingCard =
     typingSetting === 'type' &&
     current !== null &&
@@ -443,7 +442,7 @@ export function useLearnSession({
     const lId = ratchetLessonIdRef.current;
     const now = Date.now();
     const lessonIds = coreLessons.map((lesson) => lesson.id);
-    const [courseCards, links, exposures, completions, practiceNodes, examDates, milestones] =
+    const [rawCourseCards, links, exposures, completions, practiceNodes, examDates, milestones] =
       await Promise.all([
         db.cards.where('courseId').equals(cId).toArray(),
         lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
@@ -457,6 +456,7 @@ export function useLearnSession({
         listCourseAssessments(cId),
         db.practiceMilestones.where('courseId').equals(cId).toArray(),
       ]);
+    const courseCards = await hydrateCardsWithHistory(rawCourseCards);
     const performance = await performanceForCourseBackingDecks(cId, courseCards);
     const lessonCardsById = new Map(
       lessons.map((lesson) => [lesson.id, lessonCardMembership(lesson.id, courseCards, links)]),
@@ -904,7 +904,7 @@ export function useLearnSession({
           return;
         }
         setResolvedCourseId(course.id);
-        const [courseLessons, examDates, links, allCourseCards, lessonExposures] =
+        const [courseLessons, examDates, links, rawAllCourseCards, lessonExposures] =
           await Promise.all([
             db.lessons.where('courseId').equals(course.id).toArray(),
             listCourseAssessments(course.id),
@@ -912,6 +912,7 @@ export function useLearnSession({
             db.cards.where('courseId').equals(course.id).toArray(),
             db.lessonCardExposures.where('lessonId').equals(lessonId).toArray(),
           ]);
+        const allCourseCards = await hydrateCardsWithHistory(rawAllCourseCards);
         const linkedCardIds = new Set(links.map((link) => link.cardId));
         const membership = lessonCardMembership(lessonId, allCourseCards, links);
         cards = lessonStudyPool(lessonId, allCourseCards, links, lessonExposures);
@@ -939,12 +940,13 @@ export function useLearnSession({
           else navigate('/');
           return;
         }
-        const [allCards, courseLessons, examDates, manualNodes] = await Promise.all([
+        const [rawAllCards, courseLessons, examDates, manualNodes] = await Promise.all([
           db.cards.where('courseId').equals(courseId).toArray(),
           db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
           listCourseAssessments(courseId),
           db.practiceNodes.where('courseId').equals(courseId).toArray(),
         ]);
+        const allCards = await hydrateCardsWithHistory(rawAllCards);
         const courseLessonIds = courseLessons.map((lesson) => lesson.id);
         const [courseLinks, courseExposures] = await Promise.all([
           courseLessonIds.length > 0
@@ -1058,7 +1060,7 @@ export function useLearnSession({
         const decks = await db.decks.toArray();
         units = decks;
         sessionUnits = decks;
-        cards = await db.cards.toArray();
+        cards = await hydrateCardsWithHistory(await db.cards.toArray());
       }
       if (cancelled) return;
 
@@ -1271,12 +1273,7 @@ export function useLearnSession({
 
         if (isSimpleMode) {
           const grade: Grade = machineMarked
-            ? gradeFromMarks(
-                machineMarked.marksEarned,
-                machineMarked.marksAvailable,
-                t,
-                false,
-              )
+            ? gradeFromMarks(machineMarked.marksEarned, machineMarked.marksAvailable, t, false)
             : correct
               ? 3
               : 1;
@@ -1333,12 +1330,7 @@ export function useLearnSession({
         // below (recordReview's responseTimeSec and updatePerformance).
         const hintUsed = hintStepRef.current > 0;
         const grade: Grade = machineMarked
-          ? gradeFromMarks(
-              machineMarked.marksEarned,
-              machineMarked.marksAvailable,
-              t,
-              false,
-            )
+          ? gradeFromMarks(machineMarked.marksEarned, machineMarked.marksAvailable, t, false)
           : (manualGrade ??
             gradeFromResponse(correct, hintUsed ? t + HINT_TIME_PENALTY_SEC : t, perf));
 
