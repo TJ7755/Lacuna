@@ -153,6 +153,16 @@ describe('SequenceEditor', () => {
     expect(screen.getByRole('textbox', { name: 'Item 1 content' })).toBeInTheDocument();
   });
 
+  it('updates the editor introduction when the preset changes', () => {
+    mockCourse = course;
+    renderNew();
+
+    fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
+    expect(screen.getByRole('heading', { name: 'New sequence' }).nextElementSibling).toHaveTextContent(
+      'A scripted scene — only your lines are recalled; other speakers cue them.',
+    );
+  });
+
   it('names chunk and item label fields', () => {
     mockCourse = course;
     renderNew();
