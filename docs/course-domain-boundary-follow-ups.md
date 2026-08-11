@@ -1,6 +1,6 @@
 # Course/domain boundary follow-ups
 
-**Status:** scoped containment complete — seven boundary workstreams tracked; storage migration explicitly separate
+**Status:** scoped UI containment complete — seven boundary workstreams tracked; internal scheduling containment and storage migration remain separate
 
 **Branch:** `refactor/course-domain-boundary`
 
@@ -218,7 +218,7 @@ Do not start this storage migration as an incidental cleanup in the search or Ca
 
 ## Agreed scope for this branch
 
-This branch completes the scoped containment work in workstreams 2–6. Workstream 2 started with
+This branch completes the scoped UI containment work in workstreams 2–6. Workstream 2 started with
 `4d7b482` and continued through `501120b`, `af7958a` and `fed66b9`; its production Course/Lesson
 callers now use the explicit context seam while the legacy CardList union remains intentionally
 available. Workstream 3 is delivered in `974d2e4`. Workstream 4's naming and persistence/undo
