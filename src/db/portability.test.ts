@@ -21,6 +21,7 @@ import {
   startRevisionWindow,
 } from './repository';
 import { createOcclusion } from './occlusionRepository';
+import { reviewHistoryEntryIdForEvent } from './reviewHistory';
 import { storeImageBlob } from './assets';
 
 async function reset() {
@@ -44,6 +45,7 @@ async function reset() {
     db.sequences.clear(),
     db.occlusions.clear(),
     db.revisionPlans.clear(),
+    db.reviewHistory.clear(),
   ]);
 }
 
@@ -63,6 +65,7 @@ describe('exportDatabase', () => {
     expect(backup.decks[0].name).toBe('Biology');
     expect(backup.cards).toHaveLength(1);
     expect(backup.cards[0].front).toBe('Q1');
+    expect(backup.reviewHistory).toEqual([]);
   });
 
   it('exports full assessment semantics and stable ids in version 9', async () => {
@@ -131,16 +134,21 @@ describe('exportDatabase', () => {
       distracted: false,
       hintUsed: true,
       correct: true,
-      checkerDisputes: [{
-        reportedAt: 1_725_123_456_789,
-        question: 'Q1',
-        studentLine: 'A1',
-        verdict: { correct: true, marksEarned: 1 },
-        checkerSeeds: [],
-      }],
+      checkerDisputes: [
+        {
+          reportedAt: 1_725_123_456_789,
+          question: 'Q1',
+          studentLine: 'A1',
+          verdict: { correct: true, marksEarned: 1 },
+          checkerSeeds: [],
+        },
+      ],
     });
 
     const backup = await exportDatabase();
+    expect(backup.reviewHistory).toEqual([
+      expect.objectContaining({ id: reviewHistoryEntryIdForEvent('event-portability') }),
+    ]);
     expect(backup.cards[0].history[0]).toEqual(
       expect.objectContaining({
         eventId: 'event-portability',
@@ -150,13 +158,15 @@ describe('exportDatabase', () => {
         revisionWindowId: 'window-1',
         correct: true,
         hintUsed: true,
-        checkerDisputes: [{
-          reportedAt: 1_725_123_456_789,
-          question: 'Q1',
-          studentLine: 'A1',
-          verdict: { correct: true, marksEarned: 1 },
-          checkerSeeds: [],
-        }],
+        checkerDisputes: [
+          {
+            reportedAt: 1_725_123_456_789,
+            question: 'Q1',
+            studentLine: 'A1',
+            verdict: { correct: true, marksEarned: 1 },
+            checkerSeeds: [],
+          },
+        ],
       }),
     );
     expect(backup.sessionHistory[0]).toEqual(
@@ -174,6 +184,9 @@ describe('exportDatabase', () => {
 
     const restored = await db.cards.toArray();
     expect(restored[0].history[0]).toEqual(backup.cards[0].history[0]);
+    expect(
+      await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-portability')),
+    ).toBeDefined();
   });
 
   it('round-trips complete revision-plan state through replace restore', async () => {
@@ -310,6 +323,95 @@ describe('importBackup', () => {
 
     const updated = await db.decks.get(deck.id);
     expect(updated!.examDate).toBe(deck.examDate + 1000); // local wins because more recently interacted
+  });
+
+  it('keeps same-event reviews from different cards when merging', async () => {
+    const deck = await createDeck('MergeDeck');
+    const first = await createCard(deck.id, 'front_back', 'Q1', 'A1');
+    const second = await createCard(deck.id, 'front_back', 'Q2', 'A2');
+    const base = await exportDatabase();
+    const event = {
+      eventId: 'same-event',
+      timestamp: 1000,
+      grade: 3 as const,
+      responseTimeSec: 2,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 2,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    };
+    await importBackup(
+      {
+        ...base,
+        cards: [
+          { ...first, history: [event] },
+          { ...second, history: [{ ...event, timestamp: 2000 }] },
+        ],
+      },
+      'merge',
+    );
+
+    expect(
+      (await db.reviewHistory.toArray()).filter((entry) => entry.eventId === 'same-event'),
+    ).toHaveLength(2);
+  });
+
+  it('preserves same-event rows across separate backup merges', async () => {
+    const deck = await createDeck('MergeDeck');
+    const first = await createCard(deck.id, 'front_back', 'Q1', 'A1');
+    const second = await createCard(deck.id, 'front_back', 'Q2', 'A2');
+    const base = await exportDatabase();
+    const firstReview = {
+      eventId: 'cross-backup-event',
+      timestamp: 1000,
+      grade: 3 as const,
+      responseTimeSec: 2,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 2,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    };
+
+    await importBackup({ ...base, cards: [{ ...first, history: [firstReview] }] }, 'merge');
+    await importBackup(
+      { ...base, cards: [{ ...second, history: [{ ...firstReview, timestamp: 2000 }] }] },
+      'merge',
+    );
+
+    expect(
+      (await db.reviewHistory.toArray()).filter((entry) => entry.eventId === 'cross-backup-event'),
+    ).toHaveLength(2);
+  });
+
+  it('preserves distinct duplicate event rows on one card', async () => {
+    const deck = await createDeck('MergeDeck');
+    const card = await createCard(deck.id, 'front_back', 'Q1', 'A1');
+    const backup = await exportDatabase();
+    const review = {
+      eventId: 'duplicate-event',
+      timestamp: 1000,
+      grade: 3 as const,
+      responseTimeSec: 2,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 2,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    };
+
+    await importBackup(
+      { ...backup, cards: [{ ...card, history: [review, { ...review, timestamp: 2000 }] }] },
+      'merge',
+    );
+
+    expect(
+      (await db.reviewHistory.toArray()).filter((entry) => entry.eventId === 'duplicate-event'),
+    ).toHaveLength(2);
   });
 
   it('adds missing cards in merge mode', async () => {
@@ -651,15 +753,11 @@ describe('importBackup', () => {
   it('clears plans when a legacy replace backup omits them', async () => {
     const course = await createCourse('Legacy');
     const assessment = await createCourseAssessment(course.id, 'Paper', Date.now() + 86_400_000);
-    await createOrResumeRevisionPlan(
-      assessment.id,
-      15,
-      {
-        projectionMode: 'fsrs-6-practice-fallback',
-        memoryModelVersion: 'fsrs-6',
-        fallbackReason: 'missing',
-      },
-    );
+    await createOrResumeRevisionPlan(assessment.id, 15, {
+      projectionMode: 'fsrs-6-practice-fallback',
+      memoryModelVersion: 'fsrs-6',
+      fallbackReason: 'missing',
+    });
     const backup = await exportDatabase();
     delete backup.revisionPlans;
 
@@ -735,7 +833,12 @@ describe('importBackup', () => {
       ),
       revisionPlans: backup.revisionPlans?.map((entry) =>
         entry.id === plan.id
-          ? { ...entry, id: 'remote-plan-id', assessmentId: remoteFinalId, updatedAt: entry.updatedAt + 1 }
+          ? {
+              ...entry,
+              id: 'remote-plan-id',
+              assessmentId: remoteFinalId,
+              updatedAt: entry.updatedAt + 1,
+            }
           : entry,
       ),
     };

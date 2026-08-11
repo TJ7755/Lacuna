@@ -26,6 +26,7 @@ import type {
   PendingMergeReview,
   Occlusion,
 } from './types';
+import { reviewHistoryEntriesForCard, type ReviewHistoryEntry } from './reviewHistory';
 import {
   migrateCardRecord,
   migrateDeckRecord,
@@ -41,6 +42,47 @@ import {
   type LegacyAssessmentRecord,
   type LegacyCourseRecord,
 } from './assessmentMigration';
+
+/**
+ * Write one migration batch while checking only the destination keys needed for
+ * collision resolution. The destination table is the durable collision index, so
+ * migration does not need to retain every historical event in JavaScript memory.
+ */
+async function putMigratedReviewHistoryEntries(
+  table: Table<ReviewHistoryEntry, string>,
+  entries: ReviewHistoryEntry[],
+): Promise<void> {
+  const identityOf = (entry: ReviewHistoryEntry): string => {
+    const { id: _id, ...identity } = entry;
+    return JSON.stringify(identity);
+  };
+
+  for (const entry of entries) {
+    const identity = identityOf(entry);
+    let id = entry.id;
+    let existing = await table.get(id);
+    if (existing) {
+      if (identityOf(existing) === identity) continue;
+
+      const suffix = existing.cardId === entry.cardId
+        ? `${entry.id}:duplicate`
+        : `${entry.id}:card:${encodeURIComponent(entry.cardId)}`;
+      id = suffix;
+      existing = await table.get(id);
+      let collision = 1;
+      while (existing) {
+        if (identityOf(existing) === identity) {
+          id = '';
+          break;
+        }
+        id = `${suffix}:${collision++}`;
+        existing = await table.get(id);
+      }
+      if (!id) continue;
+    }
+    await table.put({ ...entry, id });
+  }
+}
 
 /**
  * Lacuna's IndexedDB database. A single Dexie instance owns every store.
@@ -71,6 +113,7 @@ class LacunaDatabase extends Dexie {
   lineageIdMappings!: Table<LineageIdMapping, string>;
   pendingMergeReviews!: Table<PendingMergeReview, string>;
   occlusions!: Table<Occlusion, string>;
+  reviewHistory!: Table<ReviewHistoryEntry, string>;
 
   constructor() {
     super('lacuna');
@@ -566,7 +609,8 @@ class LacunaDatabase extends Dexie {
     // Purely additive — no `.upgrade()` data pass.
     this.version(19).stores({
       decks: 'id, createdAt, examDate, folderId',
-      cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+      cards:
+        'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId, occlusionRegionId',
       sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
       userPerformance: 'deckId',
       backups: '++id, createdAt',
@@ -589,10 +633,61 @@ class LacunaDatabase extends Dexie {
       pendingMergeReviews: 'id, courseId',
       occlusions: 'id, courseId, primaryLessonId, createdAt',
     });
+
+    // Version 20: add the canonical review-event store. The migration copies every
+    // existing Card.history row without changing the Card projection or runtime
+    // readers/writers. Later slices will cut persistence and reads over behind an
+    // adapter once backup and undo coverage is in place.
+    this.version(20)
+      .stores({
+        decks: 'id, createdAt, examDate, folderId',
+        cards:
+          'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+        sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        folders: 'id, parentId, createdAt',
+        courses: 'id, createdAt',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+        lessonCompletions: 'lessonId, completedAt',
+        noteAnnotations: 'id, noteId, createdAt, updatedAt',
+        practiceNodes: 'id, courseId, position, createdAt',
+        practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+        courseAssessments: 'id, courseId, kind, examDate, createdAt',
+        sequences: 'id, courseId, primaryLessonId, createdAt',
+        revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+        lineageIdMappings: 'id, courseId',
+        pendingMergeReviews: 'id, courseId',
+        occlusions: 'id, courseId, primaryLessonId, createdAt',
+        reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, timestamp',
+      })
+      .upgrade(async (tx) => {
+        const cardsTable = tx.table('cards');
+        const reviewHistoryTable = tx.table('reviewHistory');
+        const batchSize = 100;
+        // Resolve collisions against rows already written to the destination table.
+        // This keeps migration memory bounded by the batch rather than retaining a
+        // process-wide index of every migrated event.
+        let offset = 0;
+        for (;;) {
+          const cards = await cardsTable.offset(offset).limit(batchSize).toArray();
+          if (cards.length === 0) break;
+          const entries = cards.flatMap((card) =>
+            reviewHistoryEntriesForCard(card as Card),
+          );
+          await putMigratedReviewHistoryEntries(reviewHistoryTable, entries);
+          offset += cards.length;
+        }
+      });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 19;
+const CURRENT_SCHEMA_VERSION = 20;
 
 export const db = new LacunaDatabase();
 
@@ -763,6 +858,7 @@ export async function readAllDataFromVersion(
     practiceMilestones: (raw.data['practiceMilestones'] ?? []) as PracticeMilestone[],
     courseAssessments: (raw.data['courseAssessments'] ?? []) as CourseAssessment[],
     revisionPlans: (raw.data['revisionPlans'] ?? []) as RevisionPlan[],
+    reviewHistory: (raw.data['reviewHistory'] ?? []) as ReviewHistoryEntry[],
     sequences: (raw.data['sequences'] ?? []) as Sequence[],
   };
 

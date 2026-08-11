@@ -142,17 +142,19 @@ function toShareLessonInput(lesson: LineagePayload['lessons'][number]): ShareLes
       if (!note.oi) throw new Error('Lineage payload note is missing its originating id.');
       return { i: note.oi, n: note.n, c: note.c };
     }),
-    cards: lesson.cards.filter((card) => !isGeneratedShareCard(card)).map((card): ShareCardInput => {
-      if (!card.id) throw new Error('Lineage payload card is missing its originating id.');
-      return {
-        i: card.id,
-        k: card.k,
-        f: card.f,
-        b: card.b,
-        g: card.g,
-        p: card.p as ItemPayload | undefined,
-      };
-    }),
+    cards: lesson.cards
+      .filter((card) => !isGeneratedShareCard(card))
+      .map((card): ShareCardInput => {
+        if (!card.id) throw new Error('Lineage payload card is missing its originating id.');
+        return {
+          i: card.id,
+          k: card.k,
+          f: card.f,
+          b: card.b,
+          g: card.g,
+          p: card.p as ItemPayload | undefined,
+        };
+      }),
   };
 }
 
@@ -171,7 +173,13 @@ function toExistingLesson(lesson: Lesson): ExistingLesson {
 }
 
 function toExistingNote(note: Note): ExistingNote {
-  return { id: note.id, lessonId: note.lessonId, name: note.name, content: note.content, orderIndex: note.orderIndex };
+  return {
+    id: note.id,
+    lessonId: note.lessonId,
+    name: note.name,
+    content: note.content,
+    orderIndex: note.orderIndex,
+  };
 }
 
 function toExistingCard(card: Card): ExistingCard {
@@ -228,21 +236,33 @@ export function detectStudentEdits(
   for (const id of mapping.lessonIds) {
     const snapshot = mapping.lessonSnapshots[id];
     const current = lessonsById.get(id);
-    if (snapshot && current && !lessonSnapshotsEqual(snapshot, lessonSnapshot(toExistingLesson(current)))) {
+    if (
+      snapshot &&
+      current &&
+      !lessonSnapshotsEqual(snapshot, lessonSnapshot(toExistingLesson(current)))
+    ) {
       edited.add(id);
     }
   }
   for (const id of mapping.noteIds) {
     const snapshot = mapping.noteSnapshots[id];
     const current = notesById.get(id);
-    if (snapshot && current && !noteSnapshotsEqual(snapshot, noteSnapshot(toExistingNote(current)))) {
+    if (
+      snapshot &&
+      current &&
+      !noteSnapshotsEqual(snapshot, noteSnapshot(toExistingNote(current)))
+    ) {
       edited.add(id);
     }
   }
   for (const id of mapping.cardIds) {
     const snapshot = mapping.cardSnapshots[id];
     const current = cardsById.get(id);
-    if (snapshot && current && !cardSnapshotsEqual(snapshot, cardSnapshot(toExistingCard(current)))) {
+    if (
+      snapshot &&
+      current &&
+      !cardSnapshotsEqual(snapshot, cardSnapshot(toExistingCard(current)))
+    ) {
       edited.add(id);
     }
   }
@@ -299,6 +319,7 @@ const MERGE_TABLES = [
   db.courseAssessments,
   db.lineageIdMappings,
   db.pendingMergeReviews,
+  db.reviewHistory,
 ] as const;
 
 /** Empty membership/snapshot registry for a brand-new lineage mapping row. */
@@ -409,7 +430,11 @@ async function applyOcclusions(
 async function applyCreates(
   courseId: string,
   createdAt: number,
-  creates: { lessons: CreateLessonPayload[]; notes: CreateNotePayload[]; cards: CreateCardPayload[] },
+  creates: {
+    lessons: CreateLessonPayload[];
+    notes: CreateNotePayload[];
+    cards: CreateCardPayload[];
+  },
   mapping: LineageIdMapping,
 ): Promise<{ lessons: Lesson[]; notes: Note[]; cards: Card[] }> {
   const newLessons: Lesson[] = creates.lessons.map((l) => ({
@@ -735,8 +760,16 @@ export async function mergeLineageUpdate(
     // 2/3. Updates and removals: apply now if autoAcceptUpdates, otherwise queue.
     let appliedUpdates = 0;
     let appliedRemovals = 0;
-    const queuedUpdates = { lessons: diff.updates.lessons, notes: diff.updates.notes, cards: diff.updates.cards };
-    const queuedRemovals = { lessonIds: removalLessonIds, noteIds: removalNoteIds, cardIds: removalCardIds };
+    const queuedUpdates = {
+      lessons: diff.updates.lessons,
+      notes: diff.updates.notes,
+      cards: diff.updates.cards,
+    };
+    const queuedRemovals = {
+      lessonIds: removalLessonIds,
+      noteIds: removalNoteIds,
+      cardIds: removalCardIds,
+    };
 
     if (dc.autoAcceptUpdates) {
       for (const update of diff.updates.lessons) {
@@ -896,11 +929,19 @@ export interface MergeReviewItemRef {
 type PendingDiff = PendingMergeReview['diff'];
 
 function updatesBucket(diff: PendingDiff, kind: MergeReviewItemKind) {
-  return kind === 'lesson' ? diff.updates.lessons : kind === 'note' ? diff.updates.notes : diff.updates.cards;
+  return kind === 'lesson'
+    ? diff.updates.lessons
+    : kind === 'note'
+      ? diff.updates.notes
+      : diff.updates.cards;
 }
 
 function removalsBucket(diff: PendingDiff, kind: MergeReviewItemKind): string[] {
-  return kind === 'lesson' ? diff.removals.lessonIds : kind === 'note' ? diff.removals.noteIds : diff.removals.cardIds;
+  return kind === 'lesson'
+    ? diff.removals.lessonIds
+    : kind === 'note'
+      ? diff.removals.noteIds
+      : diff.removals.cardIds;
 }
 
 function diffIsEmpty(diff: PendingDiff): boolean {
@@ -934,7 +975,11 @@ function collectRefs(diff: PendingDiff, includeConflicts: boolean): MergeReviewI
 }
 
 /** Delete an accepted removal and drop it from the mapping registry + snapshots. */
-async function deleteAdoptedEntity(kind: MergeReviewItemKind, entityId: string, mapping: LineageIdMapping): Promise<void> {
+async function deleteAdoptedEntity(
+  kind: MergeReviewItemKind,
+  entityId: string,
+  mapping: LineageIdMapping,
+): Promise<void> {
   if (kind === 'lesson') {
     await deleteLesson(entityId);
     mapping.lessonIds = mapping.lessonIds.filter((x) => x !== entityId);
@@ -951,7 +996,11 @@ async function deleteAdoptedEntity(kind: MergeReviewItemKind, entityId: string, 
 }
 
 /** Refresh the mapping snapshot for an entity whose local content was just changed. */
-async function refreshSnapshot(kind: MergeReviewItemKind, entityId: string, mapping: LineageIdMapping): Promise<void> {
+async function refreshSnapshot(
+  kind: MergeReviewItemKind,
+  entityId: string,
+  mapping: LineageIdMapping,
+): Promise<void> {
   if (kind === 'lesson') {
     const lesson = await db.lessons.get(entityId);
     if (lesson) mapping.lessonSnapshots[entityId] = lessonSnapshot(toExistingLesson(lesson));
@@ -1085,13 +1134,19 @@ async function resolveMergeReviewItems(
 
 /** Accept the given items: apply teacher updates, perform accepted removals, and take the
  *  teacher's version on accepted conflicts. Resolved items leave the review row. */
-export async function acceptMergeReviewItems(reviewId: string, refs: MergeReviewItemRef[]): Promise<void> {
+export async function acceptMergeReviewItems(
+  reviewId: string,
+  refs: MergeReviewItemRef[],
+): Promise<void> {
   return resolveMergeReviewItems(reviewId, refs, true);
 }
 
 /** Reject the given items ("keep mine"): drop them from the review row, leaving the
  *  student's current version untouched. */
-export async function rejectMergeReviewItems(reviewId: string, refs: MergeReviewItemRef[]): Promise<void> {
+export async function rejectMergeReviewItems(
+  reviewId: string,
+  refs: MergeReviewItemRef[],
+): Promise<void> {
   return resolveMergeReviewItems(reviewId, refs, false);
 }
 

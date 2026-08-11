@@ -29,6 +29,12 @@ import type {
   RevisionPlan,
 } from './types';
 import {
+  mergeReviewHistoryEntries,
+  resolveReviewHistoryCollisions,
+  type ReviewHistoryCollisionState,
+  type ReviewHistoryEntry,
+} from './reviewHistory';
+import {
   buildCourseAssessmentMigration,
   courseToRecord,
   finalAssessmentForCourse,
@@ -66,6 +72,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     sequences,
     occlusions,
     revisionPlans,
+    reviewHistory,
   ] = await Promise.all([
     db.decks.toArray(),
     db.cards.toArray(),
@@ -84,6 +91,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.sequences.toArray(),
     db.occlusions.toArray(),
     db.revisionPlans.toArray(),
+    db.reviewHistory.toArray(),
   ]);
   const referencedHashes = new Set(referencedAssetHashesInCards(cards));
   for (const note of notes) {
@@ -116,6 +124,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     sequences,
     occlusions,
     revisionPlans,
+    reviewHistory: mergeReviewHistoryEntries(reviewHistory, cards),
   };
 }
 
@@ -219,6 +228,10 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     })),
   );
   const importedAssets = [...assets.map(backupAssetToMediaAsset), ...extractedAssets];
+  const reviewHistory: ReviewHistoryEntry[] = mergeReviewHistoryEntries(
+    backup.reviewHistory ?? [],
+    cards,
+  );
   const rawCourses = backup.courses ?? [];
   const currentAssessments = backup.courseAssessments;
   const assessmentMigration = currentAssessments
@@ -259,6 +272,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       db.sequences,
       db.occlusions,
       db.revisionPlans,
+      db.reviewHistory,
     ],
     async () => {
       // Deduplicate by hash so bulkPut never encounters a constraint conflict.
@@ -284,6 +298,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           db.sequences.clear(),
           db.occlusions.clear(),
           db.revisionPlans.clear(),
+          db.reviewHistory.clear(),
         ]);
         await db.decks.bulkAdd(decks);
         await db.cards.bulkAdd(cards);
@@ -333,6 +348,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         }
         if (backup.revisionPlans && backup.revisionPlans.length > 0) {
           await db.revisionPlans.bulkAdd(backup.revisionPlans);
+        }
+        if (reviewHistory.length > 0) {
+          await db.reviewHistory.bulkPut(reviewHistory);
         }
         return;
       }
@@ -556,6 +574,22 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           }
         }
         await db.occlusions.bulkPut(mergedOcclusions);
+      }
+
+      if (reviewHistory.length > 0) {
+        const existingReviewHistory = await db.reviewHistory.toArray();
+        const collisionState: ReviewHistoryCollisionState = {
+          usedIds: new Set(),
+          eventOwners: new Map(),
+          entryIdentities: new Map(),
+        };
+        resolveReviewHistoryCollisions(existingReviewHistory, collisionState);
+        const resolvedIncoming = resolveReviewHistoryCollisions(reviewHistory, collisionState);
+        const existingIds = new Set(existingReviewHistory.map((entry) => entry.id));
+        const missingReviewHistory = resolvedIncoming.filter((entry) => !existingIds.has(entry.id));
+        if (missingReviewHistory.length > 0) {
+          await db.reviewHistory.bulkAdd(missingReviewHistory);
+        }
       }
 
       if (backup.revisionPlans && backup.revisionPlans.length > 0) {

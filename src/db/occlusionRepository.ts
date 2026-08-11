@@ -8,11 +8,9 @@
 
 import { db, makeId } from './schema';
 import type { Card, LessonCardExposure, LessonCardLink, Occlusion, OcclusionRegion } from './types';
-import {
-  ensureCourseBankBackingDeck,
-  ensureLessonBackingDeck,
-} from './backingDecks';
+import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { scheduleAssetGc } from './assets';
+import { reviewHistoryEntriesForCard, type ReviewHistoryEntry } from './reviewHistory';
 import { diffRegeneration, generateCards, type GeneratedCardPayload } from './occlusionGeneration';
 
 /** Convert low-level IndexedDB errors into user-friendly messages (mirrors repository.ts's friendlyDbError). */
@@ -39,7 +37,11 @@ function nextOcclusionTimestamp(): number {
  * because the payload shapes differ in their anchor field (`occlusionRegionId` here vs
  * `sequenceItemId` there), so the sequence version's type cannot take this payload.
  */
-function generatedCardFromPayload(deckId: string, payload: GeneratedCardPayload, createdAt: number): Card {
+function generatedCardFromPayload(
+  deckId: string,
+  payload: GeneratedCardPayload,
+  createdAt: number,
+): Card {
   return {
     id: makeId(),
     deckId,
@@ -127,7 +129,17 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
   try {
     await db.transaction(
       'rw',
-      [db.occlusions, db.cards, db.lessonCards, db.lessonCardExposures, db.decks, db.userPerformance, db.courses, db.lessons],
+      [
+        db.occlusions,
+        db.cards,
+        db.lessonCards,
+        db.lessonCardExposures,
+        db.reviewHistory,
+        db.decks,
+        db.userPerformance,
+        db.courses,
+        db.lessons,
+      ],
       async () => {
         const previous = await db.occlusions.get(occlusion.id);
         const existingCards = previous ? await cardsForOcclusion(previous) : [];
@@ -162,6 +174,7 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
         if (diff.deletes.length > 0) {
           await db.lessonCards.where('cardId').anyOf(diff.deletes).delete();
           await db.lessonCardExposures.where('cardId').anyOf(diff.deletes).delete();
+          await db.reviewHistory.where('cardId').anyOf(diff.deletes).delete();
           await db.cards.bulkDelete(diff.deletes);
         }
         for (const update of diff.updates) {
@@ -173,7 +186,9 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
             ? await ensureLessonBackingDeck(cleaned.courseId, cleaned.primaryLessonId)
             : await ensureCourseBankBackingDeck(cleaned.courseId);
           const now = Date.now();
-          const newCards = diff.creates.map((payload, i) => generatedCardFromPayload(deckId, payload, now + i));
+          const newCards = diff.creates.map((payload, i) =>
+            generatedCardFromPayload(deckId, payload, now + i),
+          );
           await db.cards.bulkAdd(newCards);
         }
 
@@ -191,7 +206,7 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
 export async function deleteOcclusion(id: string): Promise<void> {
   await db.transaction(
     'rw',
-    [db.occlusions, db.cards, db.lessonCards, db.lessonCardExposures],
+    [db.occlusions, db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory],
     async () => {
       const occlusion = await db.occlusions.get(id);
       if (!occlusion) return;
@@ -202,6 +217,7 @@ export async function deleteOcclusion(id: string): Promise<void> {
           await db.lessonCards.where('cardId').anyOf(cardIds).delete();
           await db.lessonCardExposures.where('cardId').anyOf(cardIds).delete();
         }
+        await db.reviewHistory.where('cardId').anyOf(cardIds).delete();
         await db.cards.where('occlusionRegionId').anyOf(keys).delete();
       }
       await db.occlusions.delete(id);
@@ -221,6 +237,7 @@ export interface OcclusionSnapshot {
   cards: Card[];
   lessonCards: LessonCardLink[];
   lessonCardExposures: LessonCardExposure[];
+  reviewHistory: ReviewHistoryEntry[];
 }
 
 /** Capture an occlusion and its generated cards before deletion/regeneration, so the
@@ -230,14 +247,15 @@ export async function snapshotOcclusion(id: string): Promise<OcclusionSnapshot |
   if (!occlusion) return null;
   const cards = await cardsForOcclusion(occlusion);
   const cardIds = cards.map((card) => card.id);
-  const [lessonCards, lessonCardExposures] =
+  const [lessonCards, lessonCardExposures, reviewHistory] =
     cardIds.length > 0
       ? await Promise.all([
           db.lessonCards.where('cardId').anyOf(cardIds).toArray(),
           db.lessonCardExposures.where('cardId').anyOf(cardIds).toArray(),
+          db.reviewHistory.where('cardId').anyOf(cardIds).toArray(),
         ])
-      : [[], []];
-  return { occlusion, cards, lessonCards, lessonCardExposures };
+      : [[], [], []];
+  return { occlusion, cards, lessonCards, lessonCardExposures, reviewHistory };
 }
 
 /** Re-insert a previously captured OcclusionSnapshot (the inverse of deleteOcclusion/updateOcclusion). */
@@ -245,12 +263,16 @@ export async function restoreOcclusion(snapshot: OcclusionSnapshot): Promise<voi
   try {
     await db.transaction(
       'rw',
-      [db.occlusions, db.cards, db.lessonCards, db.lessonCardExposures],
+      [db.occlusions, db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory],
       async () => {
         await db.occlusions.put(snapshot.occlusion);
         await db.cards.bulkPut(snapshot.cards);
         await db.lessonCards.bulkPut(snapshot.lessonCards);
         await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
+        await db.reviewHistory.bulkPut(
+          snapshot.reviewHistory ??
+            snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card)),
+        );
       },
     );
   } catch (err) {

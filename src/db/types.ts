@@ -978,6 +978,8 @@ export interface BackupFile {
   exportedAt: number;
   decks: Deck[];
   cards: Card[];
+  /** Canonical review events when exported from schema v20 or later. */
+  reviewHistory?: import('./reviewHistory').ReviewHistoryEntry[];
   assets: BackupAsset[];
   sessionHistory: SessionHistoryEntry[];
   userPerformance: UserPerformance[];

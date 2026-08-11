@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
+import type { ReviewLog } from './types';
 import {
   createCourse,
   createCourseAssessment,
@@ -14,6 +15,7 @@ import {
 import {
   diagnosticsSummary,
   getCard,
+  hydrateCardsWithHistory,
   getCourse,
   getCourseStats,
   getLesson,
@@ -46,6 +48,7 @@ async function clearAll(): Promise<void> {
     db.sequences.clear(),
     db.revisionPlans.clear(),
     db.userPerformance.clear(),
+    db.reviewHistory.clear(),
   ]);
 }
 
@@ -55,15 +58,11 @@ describe('read.ts', () => {
   it('reads revision plans by id, assessment and course', async () => {
     const course = await createCourse('Biology');
     const assessment = await createCourseAssessment(course.id, 'Paper', Date.now() + 86_400_000);
-    const plan = await createOrResumeRevisionPlan(
-      assessment.id,
-      20,
-      {
-        projectionMode: 'fsrs-6-practice-fallback',
-        memoryModelVersion: 'fsrs-6',
-        fallbackReason: 'missing',
-      },
-    );
+    const plan = await createOrResumeRevisionPlan(assessment.id, 20, {
+      projectionMode: 'fsrs-6-practice-fallback',
+      memoryModelVersion: 'fsrs-6',
+      fallbackReason: 'missing',
+    });
     expect(await getRevisionPlan(plan.id)).toEqual(plan);
     expect(await getRevisionPlanForAssessment(assessment.id)).toEqual(plan);
     expect(await listRevisionPlansForCourse(course.id)).toEqual([plan]);
@@ -105,6 +104,61 @@ describe('read.ts', () => {
   });
 
   describe('cards', () => {
+    it('hydrates canonical review history and replaces a stale embedded projection', async () => {
+      const course = await createCourse('Course A');
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+      const stale: ReviewLog = {
+        timestamp: 999,
+        grade: 1,
+        responseTimeSec: 2,
+        distracted: false,
+        stabilityBefore: null,
+        stabilityAfter: 1,
+        difficultyBefore: null,
+        difficultyAfter: 5,
+        retrievabilityAtReview: null,
+      };
+      await db.cards.update(card.id, { history: [stale] });
+      await db.reviewHistory.add({
+        ...stale,
+        id: 'review:event:canonical',
+        eventId: 'canonical',
+        timestamp: 100,
+        cardId: card.id,
+        deckId: card.deckId,
+        courseId: course.id,
+        primaryLessonId: lesson.id,
+      });
+
+      const rawCard = await db.cards.get(card.id);
+      expect(rawCard).toBeDefined();
+      const hydrated = await hydrateCardsWithHistory([rawCard!]);
+      expect(hydrated[0].history.map((entry) => entry.eventId)).toEqual(['canonical', undefined]);
+      expect((await getCard(card.id))?.history[0].eventId).toBe('canonical');
+      expect((await getCard(card.id))?.history).toHaveLength(2);
+    });
+
+    it('falls back to embedded history for legacy-only cards', async () => {
+      const course = await createCourse('Course A');
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+      const legacy: ReviewLog = {
+        timestamp: 100,
+        grade: 3,
+        responseTimeSec: 2,
+        distracted: false,
+        stabilityBefore: null,
+        stabilityAfter: 1,
+        difficultyBefore: null,
+        difficultyAfter: 5,
+        retrievabilityAtReview: null,
+      };
+      await db.cards.update(card.id, { history: [legacy] });
+
+      expect((await listCardsForCourse(course.id))[0].history[0].timestamp).toBe(100);
+    });
+
     it('scopes listCardsForCourse to its own course', async () => {
       const a = await createCourse('Course A');
       const b = await createCourse('Course B');

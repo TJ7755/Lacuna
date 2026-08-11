@@ -12,7 +12,8 @@
 import { unzipSync, type Unzipped } from 'fflate';
 import initSqlJs, { type Database } from 'sql.js';
 import type { Card, CardType, Deck, ReviewLog } from './types';
-import { makeId } from './schema';
+import { makeId, db } from './schema';
+import { reviewHistoryEntriesForCard } from './reviewHistory';
 import { sha256Blob } from './assets';
 
 // ---------------------------------------------------------------------------
@@ -658,7 +659,6 @@ export async function importApkgResult(
   cardOptions?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<{ deck: Deck; cards: Card[] }> {
   const { createDeck, createCards } = await import('./repository');
-  const { db } = await import('./schema');
   const { storeAudioBlob, storeImageBlob } = await import('./assets');
 
   let deck: Deck | undefined;
@@ -691,44 +691,55 @@ export async function importApkgResult(
     if (entry) mediaHashMap.set(entry[0], entry[1]);
   }
 
-  deck ??= await createDeck(result.deckName);
+  let scheduledCards: Card[] = [];
 
-  // Assign deckId to all cards.
-  const cards = result.cards.map((c) => ({ ...c, deckId: deck.id }));
+  // Create the deck, cards, and both scheduling-history projections atomically.
+  // This prevents a failed canonical-history write from leaving a partial import.
+  await db.transaction(
+    'rw',
+    [db.decks, db.userPerformance, db.cards, db.reviewHistory],
+    async () => {
+      deck ??= await createDeck(result.deckName);
 
-  // Create cards in bulk.
-  const created = await createCards(
-    deck.id,
-    cards.map((c) => ({
-      type: c.type,
-      front: c.front,
-      back: c.back,
-      tags: c.tags,
-    })),
-    cardOptions,
+      // Assign deckId to all cards.
+      const importDeck = deck!;
+      const cards = result.cards.map((c) => ({ ...c, deckId: importDeck.id }));
+      const created = await createCards(
+        importDeck.id,
+        cards.map((c) => ({
+          type: c.type,
+          front: c.front,
+          back: c.back,
+          tags: c.tags,
+        })),
+        cardOptions,
+      );
+
+      scheduledCards = created.map((card, i) => {
+        const draft = cards[i];
+        return {
+          ...card,
+          stability: draft.stability,
+          difficulty: draft.difficulty,
+          lastReviewed: draft.lastReviewed,
+          reps: draft.reps,
+          lapses: draft.lapses,
+          state: draft.state,
+          due: draft.due,
+          scheduledDays: draft.scheduledDays,
+          learningSteps: draft.learningSteps,
+          history: draft.history,
+          createdAt: draft.createdAt,
+          suspended: draft.suspended,
+        };
+      });
+      if (scheduledCards.length > 0) {
+        await db.cards.bulkPut(scheduledCards);
+        const history = scheduledCards.flatMap((card) => reviewHistoryEntriesForCard(card));
+        if (history.length > 0) await db.reviewHistory.bulkPut(history);
+      }
+    },
   );
-
-  // Persist imported scheduling state in one IndexedDB request rather than one
-  // update per card.
-  const scheduledCards = created.map((card, i) => {
-    const draft = cards[i];
-    return {
-      ...card,
-      stability: draft.stability,
-      difficulty: draft.difficulty,
-      lastReviewed: draft.lastReviewed,
-      reps: draft.reps,
-      lapses: draft.lapses,
-      state: draft.state,
-      due: draft.due,
-      scheduledDays: draft.scheduledDays,
-      learningSteps: draft.learningSteps,
-      history: draft.history,
-      createdAt: draft.createdAt,
-      suspended: draft.suspended,
-    };
-  });
-  if (scheduledCards.length > 0) await db.cards.bulkPut(scheduledCards);
 
   // Replace media references in card text with Lacuna asset references.
   if (mediaHashMap.size > 0) {
@@ -745,7 +756,7 @@ export async function importApkgResult(
     if (rewritten.length > 0) await db.cards.bulkPut(rewritten);
   }
 
-  return { deck, cards: scheduledCards };
+  return { deck: deck!, cards: scheduledCards };
 }
 
 function guessMimeType(filename: string): string {

@@ -32,11 +32,14 @@ import type {
   SessionHistoryEntry,
   UserPerformance,
 } from './types';
-import { courseToRecord, finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 import {
-  ensureCourseBankBackingDeck,
-  ensureLessonBackingDeck,
-} from './backingDecks';
+  reviewHistoryEntriesForCard,
+  reviewHistoryEntryIdForEvent,
+  type ReviewHistoryEntry,
+} from './reviewHistory';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
+import { courseToRecord, finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
+import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { emptyPerformance, updatePerformance } from '../fsrs/grading';
@@ -117,6 +120,7 @@ export async function deleteDeck(id: string): Promise<void> {
       db.lessonCardExposures,
       db.sessionHistory,
       db.userPerformance,
+      db.reviewHistory,
     ],
     async () => {
       const cardIds = await db.cards.where('deckId').equals(id).primaryKeys();
@@ -125,6 +129,7 @@ export async function deleteDeck(id: string): Promise<void> {
         await db.lessonCardExposures.where('cardId').anyOf(cardIds).delete();
       }
       await db.cards.where('deckId').equals(id).delete();
+      await db.reviewHistory.where('cardId').anyOf(cardIds).delete();
       await db.sessionHistory.where('deckId').equals(id).delete();
       await db.userPerformance.delete(id);
       await db.decks.delete(id);
@@ -416,7 +421,7 @@ export async function assignCardsToLesson(
   const deckId = lessonId
     ? await ensureLessonDeck(courseId, lessonId)
     : await ensureCourseBankDeck(courseId);
-  await db.transaction('rw', db.cards, db.lessonCardExposures, async () => {
+  await db.transaction('rw', db.cards, db.lessonCardExposures, db.reviewHistory, async () => {
     const cards = await db.cards.where('id').anyOf(ids).toArray();
     const removedPrimaryExposures = cards
       .filter(
@@ -427,6 +432,10 @@ export async function assignCardsToLesson(
       await db.lessonCardExposures.bulkDelete(removedPrimaryExposures);
     }
     await db.cards.where('id').anyOf(ids).modify({ primaryLessonId: lessonId, deckId });
+    await db.reviewHistory
+      .where('cardId')
+      .anyOf(ids)
+      .modify({ primaryLessonId: lessonId, deckId });
   });
 }
 
@@ -473,47 +482,62 @@ async function assertNoGeneratedCards(ids: string[]): Promise<void> {
 
 export async function deleteCards(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  await db.transaction('rw', db.cards, db.lessonCards, db.lessonCardExposures, async () => {
-    await assertNoGeneratedCards(ids);
-    await db.lessonCards.where('cardId').anyOf(ids).delete();
-    await db.lessonCardExposures.where('cardId').anyOf(ids).delete();
-    await db.cards.bulkDelete(ids);
-  });
+  await db.transaction(
+    'rw',
+    [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory],
+    async () => {
+      await assertNoGeneratedCards(ids);
+      await db.lessonCards.where('cardId').anyOf(ids).delete();
+      await db.lessonCardExposures.where('cardId').anyOf(ids).delete();
+      await db.reviewHistory.where('cardId').anyOf(ids).delete();
+      await db.cards.bulkDelete(ids);
+    },
+  );
   scheduleAssetGc();
 }
 
 export type CardSnapshot = Card[] & {
   lessonCards: LessonCardLink[];
   lessonCardExposures: LessonCardExposure[];
+  reviewHistory: ReviewHistoryEntry[];
 };
 
 /** Capture card rows and dependent lesson progress before an undoable mutation. */
 export async function snapshotCards(ids: string[]): Promise<CardSnapshot> {
-  const [cards, lessonCards, lessonCardExposures] = await Promise.all([
+  const [cards, lessonCards, lessonCardExposures, reviewHistory] = await Promise.all([
     db.cards.where('id').anyOf(ids).toArray(),
     db.lessonCards.where('cardId').anyOf(ids).toArray(),
     db.lessonCardExposures.where('cardId').anyOf(ids).toArray(),
+    db.reviewHistory.where('cardId').anyOf(ids).toArray(),
   ]);
-  return Object.assign(cards, { lessonCards, lessonCardExposures });
+  return Object.assign(cards, { lessonCards, lessonCardExposures, reviewHistory });
 }
 
 /** Re-insert previously captured cards (the inverse of deleteCards). */
 export async function restoreCards(cards: CardSnapshot): Promise<void> {
   try {
-    await db.transaction('rw', db.cards, db.lessonCards, db.lessonCardExposures, async () => {
-      await db.cards.bulkPut(cards);
-      await db.lessonCards.bulkPut(cards.lessonCards);
-      await db.lessonCardExposures.bulkPut(cards.lessonCardExposures);
-    });
+    await db.transaction(
+      'rw',
+      [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory],
+      async () => {
+        await db.cards.bulkPut(cards);
+        await db.lessonCards.bulkPut(cards.lessonCards);
+        await db.lessonCardExposures.bulkPut(cards.lessonCardExposures);
+        await db.reviewHistory.bulkPut(
+          cards.reviewHistory ?? cards.flatMap((card) => reviewHistoryEntriesForCard(card)),
+        );
+      },
+    );
   } catch (err) {
     throw friendlyDbError(err);
   }
 }
 
 export async function moveCards(ids: string[], targetDeckId: string): Promise<void> {
-  await db.transaction('rw', db.cards, async () => {
+  await db.transaction('rw', db.cards, db.reviewHistory, async () => {
     await assertNoGeneratedCards(ids);
     await db.cards.where('id').anyOf(ids).modify({ deckId: targetDeckId });
+    await db.reviewHistory.where('cardId').anyOf(ids).modify({ deckId: targetDeckId });
   });
 }
 
@@ -712,7 +736,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
     let lastInteractedAtBefore: number | undefined;
     return await db.transaction(
       'rw',
-      [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance],
+      [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance, db.reviewHistory],
       async () => {
         const existingSession = await db.sessionHistory.where('eventId').equals(eventId).first();
         if (existingSession) {
@@ -789,6 +813,14 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         }
 
         await db.cards.put(updatedCard);
+        const updatedHistory = reviewHistoryEntriesForCard(updatedCard);
+        const reviewHistoryEntry = updatedHistory[updatedHistory.length - 1];
+        if (reviewHistoryEntry) {
+          await db.reviewHistory.put({
+            ...reviewHistoryEntry,
+            id: reviewHistoryEntryIdForEvent(eventId),
+          });
+        }
         if (kind === 'course') {
           lastInteractedAtBefore = (await db.courses.get(deck.id))?.lastInteractedAt;
           await db.courses.update(deck.id, { lastInteractedAt: now });
@@ -902,7 +934,7 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
   try {
     await db.transaction(
       'rw',
-      [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance],
+      [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance, db.reviewHistory],
       async () => {
         const session = await db.sessionHistory.get(undo.sessionHistoryId);
         if (!session) return;
@@ -922,6 +954,7 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
         } else {
           await db.decks.update(undo.deckId, { lastInteractedAt: undo.lastInteractedAtBefore });
         }
+        await db.reviewHistory.delete(reviewHistoryEntryIdForEvent(undo.eventId));
         await db.sessionHistory.delete(undo.sessionHistoryId);
       },
     );
@@ -1132,6 +1165,7 @@ export async function deleteCourse(id: string): Promise<void> {
       db.userPerformance,
       db.sequences,
       db.revisionPlans,
+      db.reviewHistory,
     ],
     async () => {
       const lessonIds = await db.lessons.where('courseId').equals(id).primaryKeys();
@@ -1162,6 +1196,7 @@ export async function deleteCourse(id: string): Promise<void> {
       await db.revisionPlans.where('courseId').equals(id).delete();
       await db.sequences.where('courseId').equals(id).delete();
       await db.cards.where('courseId').equals(id).delete();
+      await db.reviewHistory.where('courseId').equals(id).delete();
       if (deckIds.length > 0) {
         await db.decks.where('id').anyOf(deckIds).delete();
         await db.sessionHistory.where('deckId').anyOf(deckIds).delete();
@@ -1198,6 +1233,7 @@ export interface CourseSnapshot {
   decks: Deck[];
   sessionHistory: SessionHistoryEntry[];
   userPerformance: UserPerformance[];
+  reviewHistory: ReviewHistoryEntry[];
 }
 
 /**
@@ -1230,6 +1266,13 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.cards.where('courseId').equals(id).toArray(),
     db.userPerformance.get(id),
   ]);
+  const reviewHistoryForCourse =
+    cards.length > 0
+      ? await db.reviewHistory
+          .where('cardId')
+          .anyOf(cards.map((card) => card.id))
+          .toArray()
+      : [];
   const lessonIds = lessons.map((l) => l.id);
   const ownedDeckIds = await db.decks.filter((deck) => deck.backingCourseId === id).primaryKeys();
   const deckIds = [...new Set([...cards.map((c) => c.deckId), ...ownedDeckIds])];
@@ -1283,6 +1326,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     decks,
     sessionHistory: [...sessionHistoryById.values()],
     userPerformance: coursePerf ? [...deckPerf, coursePerf] : deckPerf,
+    reviewHistory: reviewHistoryForCourse,
   };
 }
 
@@ -1315,6 +1359,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.decks,
         db.sessionHistory,
         db.userPerformance,
+        db.reviewHistory,
       ],
       async () => {
         await Promise.all([
@@ -1333,6 +1378,10 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.cards.bulkPut(snapshot.cards),
           db.decks.bulkPut(snapshot.decks),
           db.userPerformance.bulkPut(snapshot.userPerformance),
+          db.reviewHistory.bulkPut(
+            snapshot.reviewHistory ??
+              snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card)),
+          ),
           // Drop the old auto-increment ids so Dexie reassigns them cleanly.
           db.sessionHistory.bulkAdd(
             snapshot.sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
@@ -1395,6 +1444,7 @@ export interface LessonSnapshot {
   sessionHistory: SessionHistoryEntry[];
   userPerformance: UserPerformance[];
   courseAssessments: CourseAssessment[];
+  reviewHistory: ReviewHistoryEntry[];
 }
 
 /** Capture a lesson and every row {@link deleteLesson} changes before deleting it. */
@@ -1425,10 +1475,16 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
   ]);
   const noteIds = notes.map((note) => note.id);
   const deckIds = decks.map((deck) => deck.id);
-  const [noteAnnotations, sessionHistory, userPerformance] = await Promise.all([
+  const [noteAnnotations, sessionHistory, userPerformance, reviewHistory] = await Promise.all([
     noteIds.length > 0 ? db.noteAnnotations.where('noteId').anyOf(noteIds).toArray() : [],
     deckIds.length > 0 ? db.sessionHistory.where('deckId').anyOf(deckIds).toArray() : [],
     deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
+    cards.length > 0
+      ? db.reviewHistory
+          .where('cardId')
+          .anyOf(cards.map((card) => card.id))
+          .toArray()
+      : [],
   ]);
 
   return {
@@ -1444,6 +1500,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     sessionHistory,
     userPerformance,
     courseAssessments,
+    reviewHistory,
   };
 }
 
@@ -1465,6 +1522,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
         db.sessionHistory,
         db.userPerformance,
         db.courseAssessments,
+        db.reviewHistory,
       ],
       async () => {
         await Promise.all([
@@ -1482,6 +1540,10 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
           db.sessionHistory.bulkPut(snapshot.sessionHistory),
           db.userPerformance.bulkPut(snapshot.userPerformance),
           db.courseAssessments.bulkPut(snapshot.courseAssessments),
+          db.reviewHistory.bulkPut(
+            snapshot.reviewHistory ??
+              snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card)),
+          ),
         ]);
       },
     );
@@ -1543,6 +1605,7 @@ export async function deleteLesson(id: string): Promise<void> {
       db.sessionHistory,
       db.userPerformance,
       db.courseAssessments,
+      db.reviewHistory,
     ],
     async () => {
       const noteIds = await db.notes.where('lessonId').equals(id).primaryKeys();
@@ -1554,10 +1617,20 @@ export async function deleteLesson(id: string): Promise<void> {
       await db.lessonCardExposures.where('lessonId').equals(id).delete();
       await db.lessonCompletions.delete(id);
       if (bankDeckId) {
+        const movedCards = await db.cards.where('primaryLessonId').equals(id).toArray();
         await db.cards
           .where('primaryLessonId')
           .equals(id)
           .modify({ primaryLessonId: null, deckId: bankDeckId });
+        if (movedCards.length > 0) {
+          await db.reviewHistory
+            .where('cardId')
+            .anyOf(movedCards.map((card) => card.id))
+            .modify({
+              primaryLessonId: null,
+              deckId: bankDeckId,
+            });
+        }
         await db.sequences.where('primaryLessonId').equals(id).modify({ primaryLessonId: null });
       }
       const backingDeckIds = await db.decks
@@ -2034,6 +2107,7 @@ async function resolveCurrentRevisionInput(
       db.lessonCompletions.toArray(),
     ]);
   if (!courseRecord) throw new Error('The course could not be found.');
+  const hydratedCards = await hydrateCardsWithHistory(cards);
   const course = hydrateCourse(
     courseRecord,
     finalAssessmentForCourse(assessment.courseId, assessments),
@@ -2042,7 +2116,7 @@ async function resolveCurrentRevisionInput(
     course,
     assessments,
     lessons,
-    cards,
+    cards: hydratedCards,
     links,
     exposures,
     now,
@@ -2052,7 +2126,7 @@ async function resolveCurrentRevisionInput(
     resolved: resolveRevisionPlanInput({
       assessment,
       lessons,
-      cards,
+      cards: hydratedCards,
       links,
       exposures,
       completions,
@@ -2081,6 +2155,7 @@ export async function createOrResumeRevisionPlan(
         db.lessonCards,
         db.lessonCardExposures,
         db.lessonCompletions,
+        db.reviewHistory,
       ],
       async () => {
         const existing = await db.revisionPlans.where('assessmentId').equals(assessmentId).first();
@@ -2149,6 +2224,7 @@ export async function refreshRevisionPlan(
         db.lessonCards,
         db.lessonCardExposures,
         db.lessonCompletions,
+        db.reviewHistory,
       ],
       async () => {
         const plan = await db.revisionPlans.get(planId);
@@ -2420,6 +2496,7 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
         db.userPerformance,
         db.courses,
         db.lessons,
+        db.reviewHistory,
       ],
       async () => {
         const previous = await db.sequences.get(sequence.id);
@@ -2431,6 +2508,7 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
         if (diff.deletes.length > 0) {
           await db.lessonCards.where('cardId').anyOf(diff.deletes).delete();
           await db.lessonCardExposures.where('cardId').anyOf(diff.deletes).delete();
+          await db.reviewHistory.where('cardId').anyOf(diff.deletes).delete();
           await db.cards.bulkDelete(diff.deletes);
         }
         for (const update of diff.updates) {
@@ -2462,7 +2540,7 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
 export async function deleteSequence(id: string): Promise<void> {
   await db.transaction(
     'rw',
-    [db.sequences, db.cards, db.lessonCards, db.lessonCardExposures],
+    [db.sequences, db.cards, db.reviewHistory, db.lessonCards, db.lessonCardExposures],
     async () => {
       const sequence = await db.sequences.get(id);
       if (!sequence) return;
@@ -2472,6 +2550,7 @@ export async function deleteSequence(id: string): Promise<void> {
         if (cardIds.length > 0) {
           await db.lessonCards.where('cardId').anyOf(cardIds).delete();
           await db.lessonCardExposures.where('cardId').anyOf(cardIds).delete();
+          await db.reviewHistory.where('cardId').anyOf(cardIds).delete();
         }
         await db.cards.where('sequenceItemId').anyOf(keys).delete();
       }
@@ -2492,6 +2571,7 @@ export interface SequenceSnapshot {
   cards: Card[];
   lessonCards: LessonCardLink[];
   lessonCardExposures: LessonCardExposure[];
+  reviewHistory?: ReviewHistoryEntry[];
 }
 
 /** Capture a sequence and its generated cards before deletion/regeneration, so the
@@ -2501,14 +2581,15 @@ export async function snapshotSequence(id: string): Promise<SequenceSnapshot | n
   if (!sequence) return null;
   const cards = await cardsForSequence(sequence);
   const cardIds = cards.map((card) => card.id);
-  const [lessonCards, lessonCardExposures] =
+  const [lessonCards, lessonCardExposures, reviewHistory] =
     cardIds.length > 0
       ? await Promise.all([
           db.lessonCards.where('cardId').anyOf(cardIds).toArray(),
           db.lessonCardExposures.where('cardId').anyOf(cardIds).toArray(),
+          db.reviewHistory.where('cardId').anyOf(cardIds).toArray(),
         ])
-      : [[], []];
-  return { sequence, cards, lessonCards, lessonCardExposures };
+      : [[], [], []];
+  return { sequence, cards, lessonCards, lessonCardExposures, reviewHistory };
 }
 
 /** Re-insert a previously captured SequenceSnapshot (the inverse of deleteSequence/updateSequence). */
@@ -2516,12 +2597,16 @@ export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void>
   try {
     await db.transaction(
       'rw',
-      [db.sequences, db.cards, db.lessonCards, db.lessonCardExposures],
+      [db.sequences, db.cards, db.reviewHistory, db.lessonCards, db.lessonCardExposures],
       async () => {
         await db.sequences.put(snapshot.sequence);
         await db.cards.bulkPut(snapshot.cards);
         await db.lessonCards.bulkPut(snapshot.lessonCards);
         await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
+        await db.reviewHistory.bulkPut(
+          snapshot.reviewHistory ??
+            snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card)),
+        );
       },
     );
   } catch (err) {
