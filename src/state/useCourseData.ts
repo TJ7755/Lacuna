@@ -4,6 +4,7 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
+import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import type {
   Card,
   Course,
@@ -31,10 +32,7 @@ import { computeStudyStats, buildDeckSecondsMap, type StudyStats } from '../fsrs
 import { lessonCardMembership } from '../course/studyPools';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
-import {
-  findBackingDeck,
-  performanceForCourseBackingDecks,
-} from '../db/backingDecks';
+import { findBackingDeck, performanceForCourseBackingDecks } from '../db/backingDecks';
 
 // ---------------------------------------------------------------------------
 // Individual record hooks
@@ -92,20 +90,14 @@ export function useLessonBackingDeck(
   lessonId: string | undefined,
 ): Deck | undefined {
   return useLiveQuery(
-    () =>
-      courseId && lessonId
-        ? findBackingDeck(courseId, lessonId)
-        : undefined,
+    () => (courseId && lessonId ? findBackingDeck(courseId, lessonId) : undefined),
     [courseId, lessonId],
   );
 }
 
 /** Resolve the hidden scheduling deck for cards not assigned to a lesson. */
 export function useCourseBankBackingDeck(courseId: string | undefined): Deck | undefined {
-  return useLiveQuery(
-    () => (courseId ? findBackingDeck(courseId, null) : undefined),
-    [courseId],
-  );
+  return useLiveQuery(() => (courseId ? findBackingDeck(courseId, null) : undefined), [courseId]);
 }
 
 /** Load calibration rows for a course without exposing its backing deck ids. */
@@ -114,8 +106,7 @@ export function useCoursePerformance(
   cards: Card[] | undefined,
 ): UserPerformance[] | undefined {
   return useLiveQuery(
-    () =>
-      courseId && cards ? performanceForCourseBackingDecks(courseId, cards) : [],
+    () => (courseId && cards ? performanceForCourseBackingDecks(courseId, cards) : []),
     [courseId, cards],
   );
 }
@@ -138,7 +129,8 @@ export function useSequences(courseId: string | undefined): Sequence[] | undefin
 
 export function useOcclusion(occlusionId: string | undefined): Occlusion | null | undefined {
   return useLiveQuery<Occlusion | null>(
-    () => (occlusionId ? db.occlusions.get(occlusionId).then((occlusion) => occlusion ?? null) : null),
+    () =>
+      occlusionId ? db.occlusions.get(occlusionId).then((occlusion) => occlusion ?? null) : null,
     [occlusionId],
   );
 }
@@ -186,7 +178,10 @@ export function usePendingUpdateCourseIds(): Set<string> | undefined {
 
 export function useCourseCards(courseId: string | undefined): Card[] | undefined {
   return useLiveQuery(
-    () => (courseId ? db.cards.where('courseId').equals(courseId).toArray() : []),
+    async () =>
+      courseId
+        ? hydrateCardsWithHistory(await db.cards.where('courseId').equals(courseId).toArray())
+        : [],
     [courseId],
   );
 }
@@ -206,9 +201,10 @@ export function useLessonCards(lessonId: string | undefined): Card[] | undefined
     const linkedCardIds = links.map((l) => l.cardId);
     const linkedCards =
       linkedCardIds.length > 0 ? await db.cards.where('id').anyOf(linkedCardIds).toArray() : [];
+    const hydratedCards = await hydrateCardsWithHistory([...primaryCards, ...linkedCards]);
     const seen = new Set<string>();
     const result: Card[] = [];
-    for (const card of [...primaryCards, ...linkedCards]) {
+    for (const card of hydratedCards) {
       if (!seen.has(card.id)) {
         seen.add(card.id);
         result.push(card);
@@ -431,7 +427,7 @@ export function useCourseSummaries(): Record<string, CourseSummary> | undefined 
     return computeCourseSummaries(
       hydrateCourses(records, assessments),
       lessons,
-      cards,
+      await hydrateCardsWithHistory(cards),
       assessments,
     );
   }, []);
@@ -454,7 +450,12 @@ export function useCourseSummary(courseId: string | undefined): CourseSummary | 
     ]);
     if (!record) return null;
     const course = hydrateCourse(record, finalAssessmentForCourse(courseId, assessments));
-    return computeCourseSummaries([course], lessons, cards, assessments)[courseId];
+    return computeCourseSummaries(
+      [course],
+      lessons,
+      await hydrateCardsWithHistory(cards),
+      assessments,
+    )[courseId];
   }, [courseId]);
 }
 
@@ -489,13 +490,21 @@ export function useCourseDashboardData():
         db.lessonCompletions.toArray(),
       ]);
     const courses = hydrateCourses(records, assessments);
-    const summaries = computeCourseSummaries(courses, lessons, cards, assessments, Date.now(), {
-      links,
-      exposures,
-      completions,
-    });
+    const hydratedCards = await hydrateCardsWithHistory(cards);
+    const summaries = computeCourseSummaries(
+      courses,
+      lessons,
+      hydratedCards,
+      assessments,
+      Date.now(),
+      {
+        links,
+        exposures,
+        completions,
+      },
+    );
     const deckSeconds = buildDeckSecondsMap(perf);
-    const stats = computeStudyStats(cards, deckSeconds);
-    return { courses, lessons, allCards: cards, summaries, stats };
+    const stats = computeStudyStats(hydratedCards, deckSeconds);
+    return { courses, lessons, allCards: hydratedCards, summaries, stats };
   }, []);
 }

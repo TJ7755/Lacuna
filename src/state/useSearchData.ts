@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
+import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import type { Card, Course, CourseAssessment, CourseRecord, Deck, Lesson, Note } from '../db/types';
 
@@ -33,7 +34,7 @@ export function useSearchData(): SearchData | undefined {
       db.notes.toArray(),
     ]);
     return {
-      cards,
+      cards: await hydrateCardsWithHistory(cards),
       decks,
       courses: hydrateCourses(records, assessments),
       lessons,

@@ -3,26 +3,27 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import type {
-  BackupSnapshot,
-  Card,
-  Deck,
-  SessionHistoryEntry,
-} from '../db/types';
+import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
+import type { BackupSnapshot, Card, Deck, SessionHistoryEntry } from '../db/types';
 import { progressValue } from '../fsrs/objective';
 import { availableCards, studyPool } from '../fsrs/eligibility';
 import { computeStudyStats, type StudyStats } from '../fsrs/stats';
 
 export function useCard(cardId: string | undefined): Card | null | undefined {
   return useLiveQuery<Card | null>(
-    () => (cardId ? db.cards.get(cardId).then((card) => card ?? null) : null),
+    () =>
+      cardId
+        ? db.cards
+            .get(cardId)
+            .then(async (card) => (card ? (await hydrateCardsWithHistory([card]))[0] : null))
+        : null,
     [cardId],
   );
 }
 
 /** Every card across all decks, for global search. */
 export function useAllCards(): Card[] | undefined {
-  return useLiveQuery(() => db.cards.toArray(), []);
+  return useLiveQuery(() => db.cards.toArray().then(hydrateCardsWithHistory), []);
 }
 
 /** Automatic-backup restore points, newest first. */
@@ -41,10 +42,8 @@ export function useAllSessionHistory(): SessionHistoryEntry[] | undefined {
  */
 export function useStudyStats(): StudyStats | undefined {
   return useLiveQuery(async () => {
-    const [cards, perf] = await Promise.all([
-      db.cards.toArray(),
-      db.userPerformance.toArray(),
-    ]);
+    const [rawCards, perf] = await Promise.all([db.cards.toArray(), db.userPerformance.toArray()]);
+    const cards = await hydrateCardsWithHistory(rawCards);
     // Only trust a deck's mean once it has at least one correct review to learn from.
     const deckSeconds = new Map<string, number>();
     for (const p of perf) {
@@ -67,10 +66,7 @@ interface DeckSummary {
 }
 
 /** Pure computation shared by combined hooks such as useDashboardData. */
-export function computeDeckSummaries(
-  decks: Deck[],
-  cards: Card[],
-): Record<string, DeckSummary> {
+export function computeDeckSummaries(decks: Deck[], cards: Card[]): Record<string, DeckSummary> {
   const deckById = new Map(decks.map((d) => [d.id, d]));
   const byDeck: Record<string, Card[]> = {};
   for (const card of cards) (byDeck[card.deckId] ??= []).push(card);
@@ -115,11 +111,12 @@ export function useDashboardData():
     }
   | undefined {
   return useLiveQuery(async () => {
-    const [decks, cards, perf] = await Promise.all([
+    const [decks, rawCards, perf] = await Promise.all([
       db.decks.toArray(),
       db.cards.toArray(),
       db.userPerformance.toArray(),
     ]);
+    const cards = await hydrateCardsWithHistory(rawCards);
     const summaries = computeDeckSummaries(decks, cards);
     const deckSeconds = new Map<string, number>();
     for (const p of perf) {
