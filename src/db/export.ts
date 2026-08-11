@@ -1,4 +1,5 @@
 import { db } from './schema';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 
 function escapeCsvCell(value: string): string {
   if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
@@ -24,12 +25,13 @@ function formatRow(values: string[], delimiter: ',' | '\t'): string {
 }
 
 async function fetchDecksAndCards() {
-  const [decks, cards, courses, lessons] = await Promise.all([
+  const [decks, rawCards, courses, lessons] = await Promise.all([
     db.decks.toArray(),
     db.cards.toArray(),
     db.courses.toArray(),
     db.lessons.toArray(),
   ]);
+  const cards = await hydrateCardsWithHistory(rawCards);
   const deckMap = new Map(decks.map((d) => [d.id, d.name]));
   const colourMap = new Map(decks.map((d) => [d.id, d.colour ?? '']));
   const courseNameMap = new Map(courses.map((c) => [c.id, c.name]));

@@ -15,6 +15,8 @@
 // ensureCourseBankDeck in repository.ts) and are irrelevant to read-side queries.
 
 import { db } from './schema';
+export { hydrateCardsWithHistory } from './reviewHistoryRead';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import type {
   Card,
   Course,
@@ -38,7 +40,10 @@ import { isLeech } from '../fsrs/leech';
 import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { courseHeaderStats, type CourseHeaderStats } from '../course/headerStats';
-import { resolveAssessmentCoverage, type AssessmentValidationIssue } from '../course/assessmentCoverage';
+import {
+  resolveAssessmentCoverage,
+  type AssessmentValidationIssue,
+} from '../course/assessmentCoverage';
 
 // ---------------------------------------------------------------------------
 // Courses / lessons
@@ -80,7 +85,7 @@ export async function getLesson(lessonId: string): Promise<Lesson | null> {
 
 /** Every card belonging to a course (mirrors useCourseCards). */
 export async function listCardsForCourse(courseId: string): Promise<Card[]> {
-  return db.cards.where('courseId').equals(courseId).toArray();
+  return hydrateCardsWithHistory(await db.cards.where('courseId').equals(courseId).toArray());
 }
 
 /**
@@ -96,9 +101,10 @@ export async function listCardsForLesson(lessonId: string): Promise<Card[]> {
   const linkedCardIds = links.map((link) => link.cardId);
   const linkedCards =
     linkedCardIds.length > 0 ? await db.cards.where('id').anyOf(linkedCardIds).toArray() : [];
+  const hydrated = await hydrateCardsWithHistory([...primaryCards, ...linkedCards]);
   const seen = new Set<string>();
   const result: Card[] = [];
-  for (const card of [...primaryCards, ...linkedCards]) {
+  for (const card of hydrated) {
     if (!seen.has(card.id)) {
       seen.add(card.id);
       result.push(card);
@@ -109,7 +115,9 @@ export async function listCardsForLesson(lessonId: string): Promise<Card[]> {
 
 /** A single card, or null if it does not exist. */
 export async function getCard(cardId: string): Promise<Card | null> {
-  return (await db.cards.get(cardId)) ?? null;
+  const card = await db.cards.get(cardId);
+  if (!card) return null;
+  return (await hydrateCardsWithHistory([card]))[0];
 }
 
 /**

@@ -22,6 +22,7 @@ async function reset() {
     db.courseAssessments.clear(),
     db.cards.clear(),
     db.decks.clear(),
+    db.reviewHistory.clear(),
   ]);
 }
 
