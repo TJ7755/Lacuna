@@ -4,7 +4,7 @@
 
 **Branch:** `refactor/course-domain-boundary`
 
-**Latest reviewed commit:** `4d7b482` (`refactor(cards): add explicit list capabilities`)
+**Latest reviewed commit:** `501120b` (`refactor(cards): migrate question bank context`)
 
 **Original stop commit:** `9dd9107` (`refactor(course): remove singleton deck plumbing`)
 
@@ -42,6 +42,12 @@ The following changes are complete and reviewed, in small commits:
   for scheduling configuration, import/APKG callbacks, move targets, move handling and move undo,
   while legacy Deck callers retain their existing API and repository-backed behaviour. Card
   analytics and generated-card rendering now consume `SchedulerConfig` rather than a full Deck.
+- Migrated Question Bank lesson and unassigned buckets in `501120b` to the Course context adapter.
+  Text and Course-context APKG imports now persist `courseId` and `primaryLessonId` through
+  explicit import options, and the page tests assert the Course/Lesson import labels and
+  capabilities. The existing
+  APKG helper remains compatible for legacy callers; its broader media/card transaction boundary
+  remains part of the later portability/import audit.
 
 ## Remaining work
 
@@ -74,15 +80,19 @@ Do not remove `searchCards` or legacy storage until old backups and migrated rec
 
 ### 2. Remove remaining course-facing Deck-shaped APIs
 
-**Progress:** first adapter seam delivered in `4d7b482`; Course/Lesson caller migration and
-CardEditOverlay draft-key separation remain.
+**Progress:** the first adapter seam and Question Bank migration are delivered in `4d7b482` and
+`501120b`; LessonCardsSection migration and CardEditOverlay draft-key separation remain.
 
 **Priority:** high after search
 
-The generic card-management component still has an internal Deck-shaped API:
+The generic card-management component still has a transitional Deck-shaped compatibility API:
 
-- `src/components/cards/CardList.tsx` still requires `deck: Deck` for import, analytics and
-  scheduling operations.
+The Question Bank callers no longer pass a Deck-shaped prop; they resolve the hidden scheduling
+configuration only to construct the explicit context adapter. `LessonCardsSection` remains the
+next direct Course/Lesson caller to migrate.
+
+- `src/components/cards/CardList.tsx` still accepts the legacy `deck: Deck` branch for import,
+  analytics and scheduling operations, alongside the explicit context branch.
 - `src/components/cards/CardList.tsx` still accepts optional legacy `allDecks` for sibling-deck
   moves.
 - `src/components/cards/CardEditOverlay.tsx` still derives a draft-session key from
@@ -199,8 +209,8 @@ Do not start this storage migration as an incidental cleanup in the search or Ca
 
 ## Agreed scope for this branch
 
-This branch will finish workstreams 2–6 below. Workstream 2 has started with `4d7b482`; the
-remaining workstreams are still pending. The eventual storage migration in workstream 7 is
+This branch will finish workstreams 2–6 below. Workstream 2 has started with `4d7b482` and
+continued in `501120b`; the remaining workstreams are still pending. The eventual storage migration in workstream 7 is
 explicitly excluded from this PR because it requires a separate schema, rollback and release plan.
 
 The branch will continue using small implementation commits, focused validation and a code review
