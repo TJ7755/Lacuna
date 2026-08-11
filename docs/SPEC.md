@@ -1677,7 +1677,12 @@ ordinary `front_back` cards to the scheduler.
   **"Assign to lesson…"** (reassigns selected cards' `primaryLessonId`, only offered where
   the list is passed a `courseId`). Clicking a card row expands it in-place to show a
   **per-card forgetting curve** and **vital statistics** (see §14, Per-card analysis).
-- Course creation can **start blank** or **import** material immediately (see §13).
+- Course creation can **start blank** or **import** material immediately (see §13). The blank
+  path collects the course name and visible **Exam date** in one modal. The date defaults to
+  seven days after creation at 23:59 in the learner's current IANA time zone; changing it preserves
+  that wall-clock choice when the course and its mandatory **Final exam** assessment are created.
+  Invalid or nonexistent local date-times block creation. The course still opens with an initial
+  **Lesson 1**, while the import tab remains independent of these creation-only fields.
 - **Sequences** (§5) have their own editor (`/course/:courseId/sequence/new`,
   `/course/:courseId/sequence/:sequenceId/edit`, and a lesson-scoped
   `/course/:courseId/lesson/:lessonId/sequence/new`), reached via "New sequence" entry

@@ -196,11 +196,14 @@ describe('DateTimePicker', () => {
 
   it('does not emit a nonexistent daylight-saving wall time', () => {
     const onChange = vi.fn();
+    const onValidityChange = vi.fn();
     render(
-      <ControlledPicker
-        initialValue={Date.parse('2026-03-07T07:30:00Z')}
+      <DateTimePicker
+        value={Date.parse('2026-03-07T07:30:00Z')}
         onChange={onChange}
+        onValidityChange={onValidityChange}
         timeZone="America/New_York"
+        label="Pick a date"
       />,
     );
     openPicker();
@@ -208,6 +211,7 @@ describe('DateTimePicker', () => {
     fireEvent.click(screen.getByRole('button', { name: '8 March 2026' }));
 
     expect(onChange).not.toHaveBeenCalled();
+    expect(onValidityChange).toHaveBeenLastCalledWith(false);
     expect(screen.getByRole('alert')).toHaveTextContent('does not exist');
   });
 

@@ -138,7 +138,7 @@ export function AssessmentEditor({
         <input
           value={draft.name}
           onChange={(event) => onChange({ ...draft, name: event.target.value })}
-          placeholder={kind === 'final' ? 'Final assessment' : 'e.g. Mock exam'}
+          placeholder={kind === 'final' ? 'Final exam' : 'e.g. Mock exam'}
           className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
         />
       </label>

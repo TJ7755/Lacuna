@@ -1,6 +1,6 @@
 # Arc 14, slice 1 — Course setup and assessment language
 
-**Status:** ready to implement
+**Status:** in progress
 
 **Baseline:** `master` at `ad13c0b`
 

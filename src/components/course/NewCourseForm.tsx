@@ -1,4 +1,5 @@
 import { lazy, Suspense, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -7,6 +8,8 @@ import { useToast } from '../ui/Toast';
 import { createCourse, createLesson } from '../../db/repository';
 import { cn } from '../ui/cn';
 import { CloseIcon } from '../ui/icons';
+import { DateTimePicker } from '../ui/DateTimePicker';
+import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 
 const ShareCodeImportPanel = lazy(() =>
   import('../import/UnifiedImportPanel').then((module) => ({
@@ -29,8 +32,12 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
   const navigate = useNavigate();
   const trapRef = useFocusTrap(true, { autoFocusSelector: 'input, textarea' });
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const datePickerRef = useRef<HTMLDivElement>(null);
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
+  const [timeZone] = useState(getLocalTimeZone);
+  const [examDate, setExamDate] = useState(defaultExamDate);
+  const [examDateValid, setExamDateValid] = useState(true);
   const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState<'create' | 'import'>('create');
 
@@ -44,10 +51,17 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
       nameInputRef.current?.focus();
       return;
     }
+    if (!examDateValid || !Number.isFinite(examDate)) {
+      const invalidControl =
+        datePickerRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      const trigger = datePickerRef.current?.querySelector<HTMLElement>('button');
+      (invalidControl ?? trigger)?.focus();
+      return;
+    }
     setNameError(null);
     setSaving(true);
     try {
-      const course = await createCourse(trimmedName);
+      const course = await createCourse(trimmedName, { examDate, timeZone });
       await createLesson(course.id, 'Lesson 1');
       onClose();
       navigate(`/course/${course.id}`);
@@ -67,7 +81,7 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
     if (courseId) navigate(`/course/${courseId}`);
   }
 
-  return (
+  return createPortal(
     <motion.div
       ref={trapRef}
       className="fixed inset-0 z-50 flex flex-col will-change-transform-opacity"
@@ -78,9 +92,11 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
         e.stopPropagation();
         e.nativeEvent.stopImmediatePropagation();
         if (e.key === 'Escape') {
+          if ((e.target as Element).closest('[data-date-time-picker-popover]')) return;
           e.preventDefault();
           onClose();
         } else if (mode === 'create' && e.key === 'Enter') {
+          if ((e.target as Element).closest('[data-date-time-picker]')) return;
           e.preventDefault();
           void handleCreate();
         }
@@ -98,7 +114,10 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
         transition={{ type: 'spring', stiffness: 320, damping: 30 }}
         className="relative z-10 m-auto flex w-full max-w-md flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
       >
-        <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20" aria-hidden="true" />
+        <div
+          className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20"
+          aria-hidden="true"
+        />
         <header className="flex items-center justify-between border-b border-line px-6 py-4">
           <h2 className="font-display text-xl">New course</h2>
           <button
@@ -143,35 +162,50 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
 
         {mode === 'create' ? (
           <>
-            <div className="flex flex-col gap-2 px-6 py-6">
-              <label className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-                Course name
-              </label>
-              <input
-                ref={nameInputRef}
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (e.target.value.trim()) setNameError(null);
-                }}
-                placeholder="Course name"
-                autoFocus
-                disabled={saving}
-                aria-invalid={nameError ? 'true' : undefined}
-                aria-describedby={nameError ? 'new-course-name-error' : undefined}
-                className={cn(
-                  'w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-ink',
-                  nameError ? 'border-negative' : 'border-line',
-                  'placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/60',
-                  'disabled:opacity-40',
+            <div className="flex flex-col gap-5 px-6 py-6">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+                  Course name
+                </label>
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (e.target.value.trim()) setNameError(null);
+                  }}
+                  placeholder="Course name"
+                  autoFocus
+                  disabled={saving}
+                  aria-invalid={nameError ? 'true' : undefined}
+                  aria-describedby={nameError ? 'new-course-name-error' : undefined}
+                  className={cn(
+                    'w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-ink',
+                    nameError ? 'border-negative' : 'border-line',
+                    'placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/60',
+                    'disabled:opacity-40',
+                  )}
+                />
+                {nameError && (
+                  <p id="new-course-name-error" role="alert" className="text-sm text-negative">
+                    {nameError}
+                  </p>
                 )}
-              />
-              {nameError && (
-                <p id="new-course-name-error" role="alert" className="text-sm text-negative">
-                  {nameError}
+              </div>
+
+              <div ref={datePickerRef}>
+                <DateTimePicker
+                  value={examDate}
+                  onChange={setExamDate}
+                  onValidityChange={setExamDateValid}
+                  timeZone={timeZone}
+                  label="Exam date"
+                />
+                <p className="mt-2 text-xs leading-relaxed text-ink-faint">
+                  Lacuna schedules this course towards your exam.
                 </p>
-              )}
+              </div>
             </div>
 
             <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
@@ -186,8 +220,8 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
         ) : (
           <div className="max-h-[65vh] overflow-y-auto px-6 py-6">
             <p className="mb-4 text-sm leading-relaxed text-ink-soft">
-              Paste a Lacuna share code to add a copy without changing existing courses.
-              LAC0–LAC3 codes are supported.
+              Paste a Lacuna share code to add a copy without changing existing courses. LAC0–LAC3
+              codes are supported.
             </p>
             <Suspense fallback={<p className="text-sm text-ink-faint">Loading importer…</p>}>
               <ShareCodeImportPanel onCancel={onClose} onShareImport={handleShareImport} />
@@ -195,6 +229,7 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
           </div>
         )}
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body,
   );
 }

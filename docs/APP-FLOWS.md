@@ -24,7 +24,7 @@ The current product model is:
 - A **course** contains lessons, notes, cards, assessments, and practice nodes.
 - A lesson can contain ordinary cards, generated sequence cards, generated occlusion cards, and linked cards from elsewhere in the same course.
 - The app still contains legacy **deck** terminology in internal routes, exports, help copy, and database compatibility code. Users create courses, not decks. The legacy route /deck/:deckId redirects to the dashboard.
-- An assessment is either the automatically-created final assessment or a user-created checkpoint. The interface calls the latter a checkpoint.
+- An assessment is either the automatically-created final exam or a user-created checkpoint. The interface calls the latter a checkpoint.
 - A practice node is either automatic, calculated from course progress, or manual, placed by the user on the path.
 - The app is local-first. Data is stored in IndexedDB in the browser. There is no account, login, password reset, cloud sync, or hosted collaboration flow in the web UI.
 - Electron exposes an additional session-only MCP settings surface. It is not a browser account or synchronisation service.
@@ -136,17 +136,18 @@ There is no account creation, profile setup, sync choice, notification permissio
 
 1. Choose New course on the dashboard or the sidebar.
 2. Enter a required course name.
-3. Press Enter or choose Create.
-4. Escape, Cancel, or the backdrop closes the form.
-5. The app creates the course and an initial “Lesson 1”.
-6. The app navigates to the new course.
+3. Review the visible Exam date, which defaults to seven days after creation at 23:59 in the current local time zone, and change it if needed.
+4. Press Enter outside the date picker or choose Create.
+5. Escape, Cancel, or the backdrop closes the form. Escape inside the open date picker closes the picker first.
+6. The app creates the course, its Final exam and an initial “Lesson 1”.
+7. The app navigates to the new course.
 
 Validation and recovery:
 
 - A blank name is rejected with “Enter a course name before creating the course.”
+- Invalid and nonexistent local date-times remain in the open picker and prevent persistence.
 - While saving, the button changes to Creating….
-- Course creation has no exam-date field.
-- The data layer gives a new course a default final exam date seven days after creation, at 23:59 local time. The user has to discover Course settings to change it.
+- The visible exam date and captured IANA time zone are passed to the atomic course and Final exam creation boundary.
 
 ### Import a course while creating
 
@@ -253,7 +254,7 @@ Manual nodes can be added in path gaps at the beginning, between lessons, and at
 5. Change its name if desired, date/time, placement, coverage, exclusions, and confirmation.
 6. Save.
 
-The final assessment is created automatically with the course. There is no Add final assessment action.
+The Final exam is created automatically with the course. There is no Add final exam action.
 
 ### Add a checkpoint
 
@@ -281,8 +282,8 @@ Checkpoint editing uses the same editor. Checkpoints can be deleted; the final a
 
 ### Assessment gaps
 
-- “Add exam date” is not the visible label. The user must find Add checkpoint or edit Final exam.
-- A course can have only one final assessment and there is no user flow to create a second final assessment.
+- “Add exam date” is not the visible label. The user must choose Add checkpoint for an intermediate assessment or edit Final exam for the primary date.
+- A course can have only one Final exam and there is no user flow to create a second one.
 - Assessment creation is not available directly from the path; it is nested in Course Settings.
 
 ## 8. Lesson flows
@@ -962,7 +963,7 @@ It links back to the dashboard, welcome page, and help. It is explanatory, not a
 | Study | Study now, Review due cards, Practice node, course Learn, lesson Learn, and global Today | Entry labels overlap but use different queues and reports |
 | Settings saves | Course settings commit immediately; card/sequence/occlusion editors use explicit Save | Save expectations change by route |
 | View mode | Path Read/Edit, Lesson Read/Edit, and Course Settings lesson view mode | Three places control related presentation state |
-| Assessments | Add checkpoint exists; final assessment is only editable | “Add exam date” is not a discoverable operation |
+| Assessments | Course creation and Final exam editing set the primary date; Add checkpoint creates intermediate assessments | The two assessment kinds use distinct actions |
 | Practice visibility | Auto nodes appear on the path but are absent from Practice node management | Automatic and manual nodes look like one system but are managed differently |
 | Navigation | Multi-lesson course tabs exist only on the path; normal Lesson view has no tabs | Moving from a lesson to bank/settings takes an extra step |
 | Destructive actions | Course deletion uses Undo, lesson deletion uses inline confirmation, restore uses Replace all confirmation | Risk signals are inconsistent |
@@ -974,8 +975,7 @@ It links back to the dashboard, welcome page, and help. It is explanatory, not a
 
 ### Current source-backed findings
 
-- The create-course flow hides the exam-date decision and silently supplies a seven-day default. A user asking to create a course and set its exam date must complete two separate flows.
-- There is no user-facing Add final assessment flow.
+- There is no user-facing Add final exam flow.
 - There is no persistent archived-course management screen or obvious Unarchive action.
 - Manual practice nodes have no UI for the stored card-filter model.
 - Global Today exists but is not discoverable in default navigation.
@@ -1011,7 +1011,7 @@ The interface, product language, data model, or help implies these capabilities,
 - Cloud sync across browsers or devices.
 - Shared live collaboration with user identity and permissions.
 - A first-class deck creation or deck-management workflow distinct from courses.
-- Add final assessment.
+- Add final exam.
 - A saved filter builder for custom practice nodes.
 - A visible global Today launcher in the standard navigation.
 - Integrated AI generation from the batch prompt dialog.
@@ -1031,19 +1031,14 @@ These are boundaries of the current product, not implementation instructions.
 
 ## 24. Short end-to-end scenarios
 
-### Create a course, add an exam date, and study
+### Create a course with its exam date and study
 
 1. Dashboard → New course.
-2. Enter a name → Create.
-3. Course path → Course Settings.
-4. Assessments → edit Final exam.
-5. Set date/time → Save.
-6. Content → add lessons and cards.
-7. Return to Path → Study now.
-8. Complete lesson study, practice, or revision.
-9. Review the Session report.
-
-The missing shortcut is a single creation wizard that asks for the exam date at course creation.
+2. Enter a name and review or change Exam date → Create.
+3. Content → add lessons and cards.
+4. Return to Path → Study now.
+5. Complete lesson study, practice, or revision.
+6. Review the Session report.
 
 ### Create a custom practice node
 
