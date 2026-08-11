@@ -577,7 +577,7 @@ export function DateTimePicker({
               if (event.key !== 'Escape') return;
               event.preventDefault();
               event.stopPropagation();
-              closePicker(true);
+              if (commitTimeDrafts()) closePicker(true);
             }}
             initial={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
