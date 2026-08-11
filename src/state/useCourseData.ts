@@ -7,6 +7,7 @@ import { db } from '../db/schema';
 import type {
   Card,
   Course,
+  Deck,
   CourseAssessment,
   CourseRecord,
   Lesson,
@@ -29,6 +30,7 @@ import { computeStudyStats, buildDeckSecondsMap, type StudyStats } from '../fsrs
 import { lessonCardMembership } from '../course/studyPools';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
+import { findBackingDeck } from '../db/backingDecks';
 
 // ---------------------------------------------------------------------------
 // Individual record hooks
@@ -77,6 +79,28 @@ export function useLesson(lessonId: string | undefined): Lesson | null | undefin
   return useLiveQuery<Lesson | null>(
     () => (lessonId ? db.lessons.get(lessonId).then((lesson) => lesson ?? null) : null),
     [lessonId],
+  );
+}
+
+/** Resolve the hidden scheduling deck for a lesson without exposing deck discovery to pages. */
+export function useLessonBackingDeck(
+  courseId: string | undefined,
+  lessonId: string | undefined,
+): Deck | undefined {
+  return useLiveQuery(
+    () =>
+      courseId && lessonId
+        ? findBackingDeck(courseId, lessonId)
+        : undefined,
+    [courseId, lessonId],
+  );
+}
+
+/** Resolve the hidden scheduling deck for cards not assigned to a lesson. */
+export function useCourseBankBackingDeck(courseId: string | undefined): Deck | undefined {
+  return useLiveQuery(
+    () => (courseId ? findBackingDeck(courseId, null) : undefined),
+    [courseId],
   );
 }
 

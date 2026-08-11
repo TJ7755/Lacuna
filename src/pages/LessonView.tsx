@@ -18,8 +18,8 @@ import {
   useLessonCards,
   useLessons,
   useCourseAssessments,
+  useLessonBackingDeck,
 } from '../state/useCourseData';
-import { useDeck } from '../state/useData';
 import { LessonNotesSection } from '../components/notes/LessonNotesSection';
 import { LessonNotesStudyView } from '../components/notes/LessonNotesStudyView';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
@@ -83,10 +83,9 @@ export function LessonView({
   const notes = useNotes(lessonId);
   const lessonCards = useLessonCards(lessonId);
 
-  // Derive the deck id from the lesson's cards (all cards in a migrated lesson share
-  // the same deckId). Used for the Study button bridge and CardList deck prop.
-  const lessonDeckId = lessonCards?.[0]?.deckId;
-  const lessonDeck = useDeck(lessonDeckId);
+  // Resolve the hidden scheduling deck through the Course/Lesson data boundary.
+  // Card membership remains independent from the scheduling implementation.
+  const lessonDeck = useLessonBackingDeck(courseId, lessonId);
 
   // Loading state.
   if (

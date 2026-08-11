@@ -16,6 +16,8 @@ vi.mock('../state/useCourseData', () => ({
   useCourseCards: () => mockCards,
   useSequences: () => mockSequences,
   useOcclusions: () => mockOcclusions,
+  useLessonBackingDeck: () => mockDeck,
+  useCourseBankBackingDeck: () => mockDeck,
 }));
 
 const mockDeck: Deck = {
@@ -29,10 +31,6 @@ const mockDeck: Deck = {
   examObjective: 'expectedMarks',
   lastInteractedAt: Date.now(),
 };
-
-vi.mock('../state/useData', () => ({
-  useDeck: () => mockDeck,
-}));
 
 // Stub out CardList: assert wiring (cards shown, courseId/assignableLessons passed
 // through) without exercising its own internals, which are covered by

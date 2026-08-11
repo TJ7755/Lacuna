@@ -3,7 +3,7 @@
 // Route: /course/:courseId/bank
 // British English throughout.
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import {
@@ -12,8 +12,9 @@ import {
   useCourseCards,
   useOcclusions,
   useSequences,
+  useLessonBackingDeck,
+  useCourseBankBackingDeck,
 } from '../state/useCourseData';
-import { useDeck } from '../state/useData';
 import { CardList } from '../components/cards/CardList';
 import { CourseTabs } from '../components/course/CourseTabs';
 import { FadeInView } from '../components/ui/FadeInView';
@@ -233,20 +234,10 @@ function LessonBucket({
   occlusions: Occlusion[];
 }) {
   const navigate = useNavigate();
-  // Invariant (assignCardsToLesson): every card assigned to a lesson shares that
-  // lesson's single backing deck, so the bucket's deck can be read off the first card.
-  const deckId = cards[0]?.deckId;
-  if (import.meta.env.DEV) {
-    const stray = cards.find((c) => c.deckId !== deckId);
-    if (stray) {
-      console.error(
-        `QuestionBank: lesson "${lesson.name}" has cards from more than one deck ` +
-          `(expected ${deckId}, found ${stray.deckId} on card ${stray.id}).`,
-      );
-    }
-  }
-  const deck = useDeck(deckId);
-  const allDecks = useMemo(() => (deck ? [deck] : []), [deck]);
+  // Resolve the hidden scheduling deck through the Course/Lesson data boundary,
+  // rather than discovering it from card.deckId.
+  const deck = useLessonBackingDeck(courseId, lesson.id);
+  const allDecks = deck ? [deck] : [];
 
   return (
     <section>
@@ -313,20 +304,10 @@ function UnassignedBucket({
   occlusions: Occlusion[];
 }) {
   const navigate = useNavigate();
-  // Invariant (assignCardsToLesson): unassigned cards all share the course's lazy
-  // bank deck, so the bucket's deck can be read off the first card.
-  const deckId = cards[0]?.deckId;
-  if (import.meta.env.DEV) {
-    const stray = cards.find((c) => c.deckId !== deckId);
-    if (stray) {
-      console.error(
-        `QuestionBank: Unassigned bucket has cards from more than one deck ` +
-          `(expected ${deckId}, found ${stray.deckId} on card ${stray.id}).`,
-      );
-    }
-  }
-  const deck = useDeck(deckId);
-  const allDecks = useMemo(() => (deck ? [deck] : []), [deck]);
+  // Resolve the hidden course-bank scheduling deck through the Course/Lesson data
+  // boundary, rather than discovering it from card.deckId.
+  const deck = useCourseBankBackingDeck(courseId);
+  const allDecks = deck ? [deck] : [];
 
   return (
     <section>

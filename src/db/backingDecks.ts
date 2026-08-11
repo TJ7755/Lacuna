@@ -24,6 +24,37 @@ function ownedBackingDeck(
     .first();
 }
 
+export async function findBackingDeck(
+  courseId: string,
+  lessonId: string | null,
+): Promise<Deck | undefined> {
+  const owned = await ownedBackingDeck(courseId, lessonId);
+  if (owned) return owned;
+
+  const card =
+    lessonId !== null
+      ? await db.cards
+          .where('primaryLessonId')
+          .equals(lessonId)
+          .filter((candidate) => candidate.courseId === courseId)
+          .first()
+      : await db.cards
+          .where('courseId')
+          .equals(courseId)
+          .filter((candidate) => candidate.primaryLessonId === null || candidate.primaryLessonId === undefined)
+          .first();
+  if (card) return db.decks.get(card.deckId);
+
+  if (lessonId !== null) {
+    const link = await db.lessonCards.where('lessonId').equals(lessonId).first();
+    if (link) {
+      const linkedCard = await db.cards.get(link.cardId);
+      if (linkedCard?.courseId === courseId) return db.decks.get(linkedCard.deckId);
+    }
+  }
+  return undefined;
+}
+
 async function courseWithAssessments(courseId: string): Promise<Course | undefined> {
   const [record, assessments] = await Promise.all([
     db.courses.get(courseId),
