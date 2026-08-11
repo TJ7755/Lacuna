@@ -4,7 +4,7 @@
 
 **Branch:** `refactor/course-domain-boundary`
 
-**Latest reviewed commit:** `974d2e4` (`refactor(state): remove unused deck hooks`)
+**Latest reviewed commit:** `27c7188` (`refactor(perf): name calibration key spaces`)
 
 **Original stop commit:** `9dd9107` (`refactor(course): remove singleton deck plumbing`)
 
@@ -28,9 +28,10 @@ The following changes are complete and reviewed, in small commits:
 - Migrated course card creation, lesson card creation, card editing, lesson card import, and
   Course/Lesson card consumers away from discovering backing deck ids from card rows.
 - Moved CoursePath and course-study-flow backing-performance reads behind the adapter.
-- Moved Learn session unit-performance loading behind `performanceForSessionUnits`, preserving the
-  distinction between Course-keyed calibration and legacy Deck-keyed calibration.
-- Moved the semi-linear unlock ratchet's backing-performance read behind `performanceForCourse`.
+- Moved Learn session review-unit performance loading behind `performanceForReviewUnits`, preserving
+  the distinction between Course-keyed calibration and legacy Deck-keyed calibration.
+- Moved the semi-linear unlock ratchet's backing-Deck performance read behind
+  `performanceForCourseBackingDecks`.
 - Added regression coverage for course scoping, backing-deck fallbacks, session calibration,
   lesson import preparation and editor duplicate checks.
 - Removed redundant singleton `allDecks={[deck]}` plumbing from Course/Lesson callers while
@@ -138,19 +139,20 @@ still used by the legacy dashboard and scheduler-compatible summary code. The ta
 
 The current table deliberately contains two key spaces:
 
-- backing-deck ids, used for course pacing/workload estimates by `performanceForCourse`;
-- Course ids, used for Course/Lesson review calibration by `recordReview` and
-  `performanceForSessionUnits`.
+- backing-Deck ids, used for Course pacing/workload estimates by
+  `performanceForCourseBackingDecks`;
+- Course ids (or legacy Deck ids for global sessions), used for review calibration by
+  `recordReview` and `performanceForReviewUnits`.
 
-This is intentional transitional behaviour, but the names are easy to confuse. Follow-up work
-should:
+This is intentional transitional behaviour, but the names are easy to confuse. The adapter
+names now make the two key spaces explicit, and focused tests prove that a Course-keyed row does
+not enter backing-Deck pacing or workload estimates. The checkpoint passed 20 relevant tests,
+web typecheck, lint and whitespace validation. Further work should:
 
-1. Rename or document the two adapter functions so their key semantics are unmistakable.
-2. Add tests proving that course-session grading does not accidentally use a shadow-deck row.
-3. Add tests proving CoursePath pacing continues to use backing-deck calibration rows.
-4. Check undo, course deletion, backup restore, merge import and course snapshot/restore for both
+1. Add tests proving that course-session grading does not accidentally use a shadow-deck row.
+2. Check undo, course deletion, backup restore, merge import and course snapshot/restore for both
    key spaces.
-5. Decide whether the product eventually needs one course-level calibration row, one row per
+3. Decide whether the product eventually needs one course-level calibration row, one row per
    lesson, or one row per backing scheduling unit. Record that decision before changing storage.
 
 Do not merge the two lookup paths merely because both return `UserPerformance`.
