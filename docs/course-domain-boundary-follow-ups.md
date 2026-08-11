@@ -1,10 +1,12 @@
 # Course/domain boundary follow-ups
 
-**Status:** paused after the reviewed Part 1 implementation stop point
+**Status:** in progress — five boundary workstreams; storage migration explicitly separate
 
 **Branch:** `refactor/course-domain-boundary`
 
-**Stop commit:** `9dd9107` (`refactor(course): remove singleton deck plumbing`)
+**Latest reviewed commit:** `a4330f4` (`refactor(search): contain legacy deck lookup`)
+
+**Original stop commit:** `9dd9107` (`refactor(course): remove singleton deck plumbing`)
 
 **Reviewed:** 11 August 2026
 
@@ -33,29 +35,36 @@ The following changes are complete and reviewed, in small commits:
   lesson import preparation and editor duplicate checks.
 - Removed redundant singleton `allDecks={[deck]}` plumbing from Course/Lesson callers while
   preserving the legacy sibling-deck `Move to…` behaviour for callers that still need it.
+- Completed the course-aware search boundary in `a4330f4`: SearchPage and CommandPalette now use
+  one contained search-data hook, Course names are preferred for Course cards, and legacy Deck-only
+  cards retain their compatibility path and result contract.
 
 ## Remaining work
 
 ### 1. Finish the course-aware search boundary
 
+**Status:** delivered in `a4330f4`.
+
 **Priority:** high for a complete UI boundary
 
-The following production surfaces still use the generic legacy deck search path:
+The following production surfaces used the generic legacy deck search path before `a4330f4`:
 
 - `src/pages/SearchPage.tsx`
 - `src/components/search/CommandPalette.tsx`
 - `src/state/useData.ts`
 - `src/db/search.ts`
 
-They still load `useDecks()` and pass `Deck[]` into `searchCards`. The follow-up should:
+They now use `useSearchData` and `searchCardsInScope`; the legacy `searchCards` adapter remains for
+other compatibility callers. The completed slice:
 
-1. Define one course-aware search result shape for courses, lessons, notes and cards.
-2. Move SearchPage and CommandPalette to that shape and keep their existing deep links and ranking.
-3. Resolve display labels from Course/Lesson data, not hidden backing-deck names.
-4. Keep a deliberate compatibility path for legacy deck-only cards and old stored data.
-5. Update the page, command-palette and search-unit tests, including mixed legacy/course data.
-6. Remove `useDecks()` from those user-facing surfaces once the compatibility path is contained in
-   the search adapter.
+1. Added a Course-aware card result shape alongside the existing legacy result contract.
+2. Moved SearchPage and CommandPalette to that shape while retaining their deep links and ranking.
+3. Resolved Course card labels from Course data rather than hidden backing-deck names.
+4. Retained a deliberate compatibility path for legacy deck-only cards and old stored data.
+5. Added page, command-palette and search-unit tests for mixed legacy/course data, including a
+   Course card whose backing Deck row is absent.
+6. Removed direct `useDecks()` usage from those user-facing surfaces; the compatibility read is now
+   contained in `useSearchData`.
 
 Do not remove `searchCards` or legacy storage until old backups and migrated records are covered.
 
@@ -179,12 +188,20 @@ need an explicit schema and rollback plan covering at least:
 
 Do not start this storage migration as an incidental cleanup in the search or CardList slices.
 
+## Agreed scope for this branch
+
+This branch will finish workstreams 2–6 below. The eventual storage migration in workstream 7 is
+explicitly excluded from this PR because it requires a separate schema, rollback and release plan.
+
+The branch will continue using small implementation commits, focused validation and a code review
+at every commit boundary. This document will be updated after each meaningful slice.
+
 ## Explicitly not left to do in this pass
 
 These are not unfinished implementation items for the paused branch:
 
-- Generic Search/Command Palette migration is documented above, but no further code should be
-  changed after the stop commit without a new small reviewed commit.
+- Generic Search/Command Palette migration is complete in `a4330f4`; no further search work is
+  required unless a later slice exposes a regression.
 - The internal `Deck` tables are not dead code and are not to be deleted now.
 - `db.userPerformance.get(deck.id)` in the post-review refresh path is an intentional lookup of
   the already-resolved review unit; it is not the initial Course/Lesson deck-discovery leak.
@@ -194,13 +211,12 @@ These are not unfinished implementation items for the paused branch:
 
 ## Suggested implementation order when resumed
 
-1. Course-aware SearchPage and CommandPalette adapter.
-2. Search and mixed legacy/course regression tests.
-3. Course-facing CardList/CardEdit scheduling-context contract.
-4. Remaining `useData` caller classification and hook containment.
-5. UserPerformance naming/semantics decision and persistence tests.
-6. Course-facing export/share prop audit with compatibility tests.
-7. Separate proposal for the eventual storage migration.
+1. Course-facing CardList/CardEdit scheduling-context contract.
+2. Remaining `useData` caller classification and hook containment.
+3. UserPerformance naming/semantics decision and persistence tests.
+4. Course-facing export/share prop audit with compatibility tests.
+5. Explicit internal-boundary documentation and final containment audit.
+6. Separate proposal for the eventual storage migration (outside this PR).
 
 Each resumed slice should stay small, be validated with focused tests plus web typecheck/lint, and
 receive a code review before its own commit.
