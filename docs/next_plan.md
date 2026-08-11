@@ -3,7 +3,8 @@
 ## Document purpose
 
 Successor to `new_features_list.md` (the Course Architecture Plan). Covers the close-out of
-that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in order:
+that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in broad order
+(with Arc 14 as a pre-sign-off gate for Arc 13):
 
 1. **Arc 0 — Course architecture close-out** (detailed)
 2. **Arc 1 — Sequence learning** (detailed; ordered lists first, lines mode as v2)
@@ -27,6 +28,8 @@ that plan (Phase 8 and its recorded deferrals) and the next feature arcs, in ord
     nothing)
 14. **Arc 13 — Codebase consolidation and release verification** (final cleanup arc;
     follows the feature arcs and finishes with the complete browser checklist)
+15. **Arc 14 — Flow simplification and discoverability** (follow-up to Arc 10; should
+    be completed before Arc 13's final browser sign-off)
 
 Plugins remain speculative pending a concrete pain point (see Arc 2). Sync/collaboration
 is no longer parked outright: Arc 8 un-parks it as a design question to be settled before
@@ -3250,6 +3253,160 @@ limitations and deliberately deferred features are recorded, not “fixed” by 
 
 ---
 
+# Arc 14 — Flow Simplification and Discoverability (follow-up to Arc 10)
+
+> **Status: proposed.** This is a follow-up usability arc, not a new feature grab-bag.
+> It records the remaining high-friction flows found in
+> [docs/APP-FLOWS.md](APP-FLOWS.md), including the flows that Arc 10's original
+> close-out claimed to consolidate but which still have duplicate, hidden, or
+> contradictory surfaces in the current UI.
+
+Arc 10 dealt with the largest navigation duplication. The remaining problem is more
+embarrassing: ordinary actions still require users to understand Lacuna's internal
+course, assessment, practice-node, and import models. A user should not need a product
+archaeology degree to set an exam date or work out which kind of study button to press.
+
+This arc is deliberately ordered before Arc 13's final browser sign-off. It must begin
+with a fresh comparison between the current product and the status claims in Arc 10;
+otherwise the plan will continue congratulating itself for flows that are still awkward.
+
+## 14.1 Priority flow repairs
+
+### P0 — Course setup and assessment language
+
+1. **Make exam-date setup explicit.** The New course flow currently creates a final
+   assessment with a hidden seven-day default. Add an obvious date/time decision to the
+   setup journey, or clearly explain the default and link directly to the final
+   assessment editor.
+2. **Separate final assessment and checkpoint concepts.** “Add checkpoint” is currently
+   the only creation label while the final assessment already exists and cannot be
+   added. Choose and document a user-facing model that makes “set the exam date” and
+   “add an intermediate checkpoint” unmistakably different.
+3. **Make the course setup journey complete.** A new-course user should be able to name
+   the course, set its primary exam date, add the first lesson, and understand where
+   cards and study begin without being bounced through unrelated settings sections.
+
+### P0 — Study entry points
+
+1. Define one primary Study action and distinguish its alternatives with precise labels:
+   due review, lesson progression, manual practice, study ahead, and assessment revision.
+2. Decide whether global Today remains a first-class flow. If it does, expose it in
+   persistent navigation; if it does not, remove the route/help claims rather than
+   leaving a hidden feature behind.
+3. Ensure every study entry explains its pool, limits, and next destination before the
+   session begins. “Study now” cannot continue to mean several different queues.
+
+### P0 — Practice-node management
+
+1. Give path plus controls a persistent, labelled affordance rather than relying on
+   hover/focus discovery.
+2. Keep the path and Settings editors consistent, or make one the canonical editor and
+   link to it from the other.
+3. Show the difference between automatic and manual nodes in the management surface.
+4. Either expose the stored card-filter capability or remove any implication that
+   custom card filters can be authored. A data model with no UI is not a feature.
+
+## 14.2 Navigation and authoring consistency
+
+1. **Persistent course navigation.** Make Path, Question bank, Analytics, and Settings
+   reachable from lesson views as well as the four course surfaces. The single-lesson
+   layout must not lose course navigation merely because the lesson is rendered inline.
+2. **Stable creation controls.** Standardise the location and wording of New card,
+   New sequence, New occlusion, Link existing cards, and Import across empty lessons,
+   populated lessons, question-bank buckets, and course-bank views.
+3. **One search mental model.** Keep the command palette and full Search page if both
+   are useful, but explain their difference and make the transition between them
+   obvious. Do not make users infer that Search in the sidebar means a different search
+   surface from /search.
+4. **Clarify editor exit paths.** Every card, sequence, and occlusion editor should
+   show the same return destination, preserve it across refresh where practical, and
+   make generated-content ownership explicit.
+
+## 14.3 Import, export, sharing, and batch wording
+
+1. Distinguish **course sharing**, **full backup**, **card import**, **APKG import**, and
+   **batch-response review** at the point of entry. “Import” by itself is uselessly broad.
+2. Explain that share codes omit media and put the full-backup alternative beside that
+   warning, not several screens away.
+3. Rename or remove remaining deck terminology in user-facing copy, exports, and help.
+4. Rename Generate batch to describe what it actually does, such as Build external
+   batch prompt, unless an integrated generation flow is deliberately added.
+5. If staged batch work remains intentionally ephemeral, warn before closing. Otherwise
+   add a recoverable draft/staging state. Silent data loss is not a workflow.
+
+## 14.4 Settings, deletion, and recovery consistency
+
+1. Make the save model obvious across settings and authoring. Instant commit is
+   acceptable, but the UI must say so and use the same rule everywhere practical.
+2. Standardise destructive actions around clear consequence text and a consistent
+   recovery strategy. Course deletion, lesson deletion, restore/replace, archive, and
+   generated-content deletion currently signal risk differently.
+3. Add a real archived-course management path with an obvious Unarchive action; an
+   Undo toast is a recovery mechanism, not archive management.
+4. Make Replace all data and local deletion explicit, reversible where possible, and
+   distinct from account deletion. There is no account in the local-first product, so
+   the UI must not imply that deleting a course deletes an account.
+5. Add visible shortcut-conflict handling or prevent conflicting assignments when a
+   shortcut is edited.
+
+## 14.5 Copy and documentation contract
+
+Treat [docs/APP-FLOWS.md](APP-FLOWS.md) as the audit baseline for this arc. Every
+user-facing claim must map to a reachable control or be labelled as planned.
+
+Correct at least:
+
+- Help's claim that import/export lives in Course Settings.
+- Help's hidden/global Today description.
+- Deck/course terminology drift.
+- Dashboard wording that says only the top three active courses are shown while the
+  current UI renders all active courses.
+- Assessment copy that makes the final exam and checkpoints look interchangeable.
+- Practice-node copy that does not distinguish automatic from manual nodes.
+
+The documentation pass must include the flow map, empty/error states, and any remaining
+deliberate non-features. Otherwise the app and the plan will drift again immediately.
+
+## 14.6 Explicitly out of scope
+
+- Accounts, cloud sync, live collaboration, or a hosted backend.
+- Integrated AI generation unless separately approved as a product arc.
+- Changes to FSRS, grading, revision allocation, or scheduling semantics.
+- A broad visual redesign unrelated to flow clarity.
+- Removing compatibility routes or storage solely to make the route table look tidy.
+
+## 14.7 Delivery sequence
+
+1. Re-run the highest-value scenarios from docs/APP-FLOWS.md against the current
+   production preview and mark each finding as fixed, still present, or intentionally
+   deferred.
+2. Make the course setup and assessment language decision before changing labels or
+   routes.
+3. Consolidate study entry points and practice-node management.
+4. Restore persistent course navigation from lesson views and standardise authoring
+   entry points.
+5. Repair import/export, batch, archive, deletion, shortcut, and help copy.
+6. Update docs/APP-FLOWS.md, Help, README/SPEC where relevant, and the website
+   checklist.
+7. Run the complete browser checklist before Arc 13 is allowed to close.
+
+## 14.8 Success criteria
+
+1. A new user can create a course and set its primary exam date without knowing that
+   the final assessment is an automatically-created internal record.
+2. Checkpoints, final assessment editing, manual practice, automatic practice, due
+   review, study-ahead, and assessment revision have distinct labels and predictable
+   destinations.
+3. The same course navigation and authoring controls are available from every relevant
+   course and lesson surface.
+4. Import, export, share, backup, APKG, and batch flows are distinguishable before the
+   user commits data.
+5. Archive, deletion, restore, and replace actions state their consequences and offer
+   a predictable recovery path.
+6. Help and dashboard copy match the controls that actually ship.
+7. The scenarios and regression checks in docs/APP-FLOWS.md pass on desktop and
+   mobile, with permission-dependent limitations recorded rather than hidden.
+
 # Cross-arc notes
 
 - All arcs follow existing conventions: additive schema migrations with pre-migration
@@ -3267,8 +3424,8 @@ limitations and deliberately deferred features are recorded, not “fixed” by 
   authoring-input follow-ups remain. Arc 12's receipts slice depends on Arc 11 only
   for mark-denominated figures (a retrievability-only receipt could ship independently),
   and its relay slice is deliberately shared infrastructure with Arc 8 option 4. Arc 13 follows
-  the feature arcs as a bounded consolidation and release-verification pass; it is not a reason to
-  defer ordinary maintenance or regression tests until the end of the roadmap.
+  the feature arcs and Arc 14 as a bounded consolidation and release-verification pass; it is
+  not a reason to defer ordinary maintenance or regression tests until the end of the roadmap.
 - **Arc 10 follow-on (role split, not yet an arc):** the de-clutter should anticipate a
   future author/student surface separation — one engine, two shells (study surfaces vs
   authoring/publish/triage surfaces), promoted from the existing `lessonViewMode`/
