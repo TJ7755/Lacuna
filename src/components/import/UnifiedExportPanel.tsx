@@ -1,11 +1,9 @@
-// Unified export panel: a single, powerful export UI that offers multiple
-// output formats (CSV, TSV, JSON backup, Markdown table, JSON array, plain
-// text, share code). Used in both the Share page and the Settings page.
+// Unified export panel: a single export UI for full backups and card/review formats.
+// Course share codes use the dedicated Course-facing Share page.
 
 import { useState } from 'react';
-import { m as motion, AnimatePresence } from 'motion/react';
-import { Button } from '../ui/Button';
-import { DownloadIcon, ShareIcon, CheckIcon, FileTextIcon } from '../ui/icons';
+import { m as motion } from 'motion/react';
+import { DownloadIcon, FileTextIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useToast } from '../ui/Toast';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -20,7 +18,6 @@ import {
   exportReviewHistoryJson,
 } from '../../db/export';
 import { downloadBackup } from '../../db/portability';
-import { buildShareCode } from '../../db/share';
 
 // ---------------------------------------------------------------------------
 // Export format definitions
@@ -33,7 +30,6 @@ type ExportFormat =
   | 'markdown-table'
   | 'json-array'
   | 'plain-text'
-  | 'share-code'
   | 'review-history-csv'
   | 'review-history-json';
 
@@ -96,14 +92,6 @@ const EXPORT_FORMATS: ExportFormatDef[] = [
     icon: <FileTextIcon width={18} height={18} />,
   },
   {
-    id: 'share-code',
-    label: 'Share code',
-    description: 'A compact, copy-pasteable code for sharing course material. Text only, no media.',
-    extension: 'txt',
-    mimeType: 'text/plain',
-    icon: <ShareIcon width={18} height={18} />,
-  },
-  {
     id: 'review-history-csv',
     label: 'Review history (CSV)',
     description: 'Every review log with timestamps, grades, and response times.',
@@ -126,10 +114,6 @@ const EXPORT_FORMATS: ExportFormatDef[] = [
 // ---------------------------------------------------------------------------
 
 interface UnifiedExportPanelProps {
-  /** IDs of the selected decks to export. If omitted, exports all decks. */
-  deckIds?: string[];
-  /** Whether to show the share-code option (requires deck selection). */
-  showShareCode?: boolean;
   /** Label shown above the format grid. */
   heading?: string;
 }
@@ -138,22 +122,14 @@ interface UnifiedExportPanelProps {
 // Component
 // ---------------------------------------------------------------------------
 
-export function UnifiedExportPanel({
-  deckIds,
-  showShareCode = false,
-  heading = 'Export your data',
-}: UnifiedExportPanelProps) {
+export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExportPanelProps) {
   const { notify } = useToast();
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [shareCode, setShareCode] = useState('');
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
   const stamp = new Date().toISOString().slice(0, 10);
-  const formats = showShareCode
-    ? EXPORT_FORMATS
-    : EXPORT_FORMATS.filter((f) => f.id !== 'share-code');
+  const formats = EXPORT_FORMATS;
 
   async function handleExport(format: ExportFormatDef) {
     setBusy(true);
@@ -187,12 +163,6 @@ export function UnifiedExportPanel({
           downloadTextFile(text, `lacuna-cards-${stamp}.txt`, format.mimeType);
           break;
         }
-        case 'share-code': {
-          if (!deckIds || deckIds.length === 0) break;
-          const code = await buildShareCode(deckIds);
-          setShareCode(code);
-          break;
-        }
         case 'review-history-csv': {
           const csv = await exportReviewHistoryCsv();
           downloadTextFile(csv, `lacuna-review-history-${stamp}.csv`, format.mimeType);
@@ -208,16 +178,6 @@ export function UnifiedExportPanel({
       notify(err instanceof Error ? err.message : 'Export failed.', 'negative');
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function handleCopyShareCode() {
-    try {
-      await navigator.clipboard.writeText(shareCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard API unavailable.
     }
   }
 
@@ -242,7 +202,7 @@ export function UnifiedExportPanel({
               ease: [0.16, 1, 0.3, 1],
             }}
             onClick={() => void handleExport(format)}
-            disabled={busy || (format.id === 'share-code' && (!deckIds || deckIds.length === 0))}
+            disabled={busy}
             className={cn(
               'group flex items-start gap-3.5 rounded-2xl border border-line bg-surface p-4 text-left transition-all',
               'hover:border-line-strong hover:bg-surface-raised/40 hover:shadow-sm hover:shadow-black/5',
@@ -264,54 +224,6 @@ export function UnifiedExportPanel({
         ))}
       </div>
 
-      {/* Share code display */}
-      <AnimatePresence>
-        {shareCode && (
-          <motion.div
-            initial={{ opacity: 0, height: 0, marginTop: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
-            exit={{ opacity: 0, height: 0, marginTop: 0 }}
-            transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-5 shadow-sm shadow-black/[0.03]">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">
-                  Share code · {shareCode.length.toLocaleString()} characters
-                </span>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={copied ? 'copied' : 'copy'}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.12 * m }}
-                  >
-                    <Button size="sm" variant="secondary" onClick={() => void handleCopyShareCode()}>
-                      {copied ? (
-                        <>
-                          <CheckIcon width={14} height={14} />
-                          Copied
-                        </>
-                      ) : (
-                        'Copy'
-                      )}
-                    </Button>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-              <textarea
-                readOnly
-                aria-label="Generated share code"
-                value={shareCode}
-                onFocus={(e) => e.currentTarget.select()}
-                rows={4}
-                className="w-full resize-none break-all rounded-xl border border-line bg-surface-raised/30 px-4 py-3 font-mono text-xs text-ink-soft outline-none transition-all focus:border-accent/40"
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
