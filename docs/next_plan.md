@@ -42,19 +42,21 @@ in under Arc 14; it is closed.
 The paused Course/Deck boundary maintenance pass is documented in
 [course-domain-boundary-follow-ups.md](course-domain-boundary-follow-ups.md). It stops at reviewed
 commit `9dd9107`; the remaining search, card-component, portability and eventual storage-migration
-work is explicitly deferred there and is not an active product arc.
+work is explicitly deferred there and is not an active product arc. The separate storage contract
+and implementation phases are recorded in [storage-migration.md](plans/storage-migration.md); it
+is a proposed maintenance plan, not an approval to remove compatibility stores yet.
 
 ## Later candidates
 
 These require a fresh product decision after flow simplification and release verification:
 
-| Candidate | Current position | Decision gate |
-| --- | --- | --- |
-| Multi-device sync | Designed, not approved for implementation | Confirm encrypted relay operation and maintenance cost; use [the Arc 8 design](arc8-sync-plan.html) |
-| Mobile reminders and PWA installation | Scoped only | Verify platform behaviour and whether reminders materially improve return rate |
-| Progress receipts and encrypted relay | Detailed outline only | Identify a real tutor/parent reporting workflow before infrastructure work |
-| Expanded MCP product surface | Foundation delivered; broad action inventory proposed | Prioritise concrete agent workflows instead of exposing every repository method |
-| Item-family and generated-practice work | Research direction | Prove authored mark-scheme demand and define stable skill identity first |
+| Candidate                               | Current position                                      | Decision gate                                                                                       |
+| --------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Multi-device sync                       | Designed, not approved for implementation             | Confirm encrypted relay operation and maintenance cost; use [the Arc 8 design](arc8-sync-plan.html) |
+| Mobile reminders and PWA installation   | Scoped only                                           | Verify platform behaviour and whether reminders materially improve return rate                      |
+| Progress receipts and encrypted relay   | Detailed outline only                                 | Identify a real tutor/parent reporting workflow before infrastructure work                          |
+| Expanded MCP product surface            | Foundation delivered; broad action inventory proposed | Prioritise concrete agent workflows instead of exposing every repository method                     |
+| Item-family and generated-practice work | Research direction                                    | Prove authored mark-scheme demand and define stable skill identity first                            |
 
 ## Parked
 

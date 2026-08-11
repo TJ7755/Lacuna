@@ -1,5 +1,12 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Storage migration contract
+
+- Recorded the first proposed migration boundary in `docs/plans/storage-migration.md`: Course-keyed
+  calibration remains separate from backing-Deck pacing performance, review events move towards
+  a dedicated recoverable event store, and no history pruning or legacy-store removal is proposed
+  until backup, restore, merge, optimisation and compatibility coverage is complete.
+
 ## Unreleased — Course/Deck boundary follow-up paused
 
 - Hardened Course/Lesson backing-deck resolution against cross-course legacy adoption and
