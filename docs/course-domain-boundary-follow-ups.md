@@ -4,7 +4,7 @@
 
 **Branch:** `refactor/course-domain-boundary`
 
-**Latest reviewed commit:** `a4330f4` (`refactor(search): contain legacy deck lookup`)
+**Latest reviewed commit:** `4d7b482` (`refactor(cards): add explicit list capabilities`)
 
 **Original stop commit:** `9dd9107` (`refactor(course): remove singleton deck plumbing`)
 
@@ -38,6 +38,10 @@ The following changes are complete and reviewed, in small commits:
 - Completed the course-aware search boundary in `a4330f4`: SearchPage and CommandPalette now use
   one contained search-data hook, Course names are preferred for Course cards, and legacy Deck-only
   cards retain their compatibility path and result contract.
+- Added the first CardList boundary seam in `4d7b482`: CardList now accepts a domain-neutral context
+  for scheduling configuration, import/APKG callbacks, move targets, move handling and move undo,
+  while legacy Deck callers retain their existing API and repository-backed behaviour. Card
+  analytics and generated-card rendering now consume `SchedulerConfig` rather than a full Deck.
 
 ## Remaining work
 
@@ -70,6 +74,9 @@ Do not remove `searchCards` or legacy storage until old backups and migrated rec
 
 ### 2. Remove remaining course-facing Deck-shaped APIs
 
+**Progress:** first adapter seam delivered in `4d7b482`; Course/Lesson caller migration and
+CardEditOverlay draft-key separation remain.
+
 **Priority:** high after search
 
 The generic card-management component still has an internal Deck-shaped API:
@@ -84,7 +91,9 @@ The generic card-management component still has an internal Deck-shaped API:
 
 The next slice should separate the Course/Lesson command surface from the legacy deck-management
 surface without duplicating CardList behaviour. Prefer a small scheduling-context or adapter
-contract over a second card-list implementation. The contract must continue to support:
+contract over a second card-list implementation. The contract must continue to support (the first seam currently covers import/APKG, analytics,
+move targets, move handling and move undo; remaining bulk scheduling capabilities are still
+repository-backed and must be addressed as Course callers migrate):
 
 - course/lesson card creation and import;
 - card analytics;
@@ -190,7 +199,8 @@ Do not start this storage migration as an incidental cleanup in the search or Ca
 
 ## Agreed scope for this branch
 
-This branch will finish workstreams 2–6 below. The eventual storage migration in workstream 7 is
+This branch will finish workstreams 2–6 below. Workstream 2 has started with `4d7b482`; the
+remaining workstreams are still pending. The eventual storage migration in workstream 7 is
 explicitly excluded from this PR because it requires a separate schema, rollback and release plan.
 
 The branch will continue using small implementation commits, focused validation and a code review
