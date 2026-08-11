@@ -59,14 +59,15 @@ describe('backing deck adapter', () => {
     const otherDeckId = await ensureLessonBackingDeck(otherCourse.id, lesson.id);
     await db.decks.update(deckId, { backingCourseId: undefined, backingLessonId: undefined });
     await db.decks.update(otherDeckId, { backingCourseId: undefined, backingLessonId: undefined });
+    // Insert the wrong-course row first so the course filter is genuinely exercised.
     await db.cards.add({
-      id: 'card-course',
-      deckId,
-      courseId: course.id,
+      id: 'card-other',
+      deckId: otherDeckId,
+      courseId: otherCourse.id,
       primaryLessonId: lesson.id,
       type: 'front_back',
-      front: 'A',
-      back: 'B',
+      front: 'C',
+      back: 'D',
       stability: null,
       difficulty: null,
       lastReviewed: null,
@@ -83,13 +84,13 @@ describe('backing deck adapter', () => {
       buriedUntil: null,
     });
     await db.cards.add({
-      id: 'card-other',
-      deckId: otherDeckId,
-      courseId: otherCourse.id,
+      id: 'card-course',
+      deckId,
+      courseId: course.id,
       primaryLessonId: lesson.id,
       type: 'front_back',
-      front: 'C',
-      back: 'D',
+      front: 'A',
+      back: 'B',
       stability: null,
       difficulty: null,
       lastReviewed: null,
