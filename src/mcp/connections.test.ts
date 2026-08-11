@@ -30,4 +30,23 @@ describe('McpConnectionStore', () => {
     store.touch('one', 30);
     expect(store.list()[0]).toMatchObject({ connectedAt: 10, lastActivityAt: 30 });
   });
+
+  it('rejects a duplicate live id without replacing its identity or grants', () => {
+    const store = new McpConnectionStore();
+    store.connect({ connectionId: 'shared', name: 'Codex', version: '1.0' }, 10);
+    store.setGrant('shared', 'course-1', 'write', 'Course One');
+
+    expect(() => store.connect({ connectionId: 'shared', name: 'Impostor' }, 20))
+      .toThrow('already active');
+    expect(store.list()).toEqual([
+      {
+        connectionId: 'shared',
+        name: 'Codex',
+        version: '1.0',
+        connectedAt: 10,
+        lastActivityAt: 10,
+        grants: [expect.objectContaining({ courseId: 'course-1', scope: 'write' })],
+      },
+    ]);
+  });
 });

@@ -25,6 +25,9 @@ export class McpConnectionStore {
   private readonly entries = new Map<string, ConnectionEntry>();
 
   connect(identity: McpClientIdentity, now = Date.now()): McpClientConnection {
+    if (this.entries.has(identity.connectionId)) {
+      throw new Error(`MCP connection "${identity.connectionId}" is already active.`);
+    }
     const entry: ConnectionEntry = {
       identity,
       connectedAt: now,

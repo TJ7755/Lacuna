@@ -99,65 +99,80 @@ async function startCompanionBroker(
     const decoder = new CompanionLineDecoder();
     let authenticated = false;
     let connectionId: string | null = null;
+    let processing = Promise.resolve();
+    let closing = false;
 
     const close = () => {
+      closing = true;
       companionSockets.delete(socket);
       if (connectionId) companionClients.disconnect(connectionId);
       connectionId = null;
+    };
+    const fail = (error: unknown) => {
+      if (closing) return;
+      closing = true;
+      sendCompanion(socket, {
+        type: 'fatal',
+        error: { kind: 'internal', message: error instanceof Error ? error.message : 'MCP companion connection failed.' },
+      });
+      socket.end();
+    };
+    const processMessage = async (value: unknown): Promise<void> => {
+      if (closing) return;
+      if (!isCompanionRequest(value)) throw new Error('Invalid MCP companion message.');
+      if (!authenticated) {
+        if (value.type !== 'hello' || !companionConnection ||
+          !tokensMatch(value.token, companionConnection.token)) {
+          sendCompanion(socket, { type: 'fatal', error: { kind: 'forbidden', message: 'MCP companion authentication failed.' } });
+          closing = true;
+          socket.end();
+          return;
+        }
+        companionClients.connect(value.client);
+        connectionId = value.client.connectionId;
+        authenticated = true;
+        sendCompanion(socket, {
+          type: 'ready',
+          protocolVersion: companionConnection.protocolVersion,
+          appVersion: companionConnection.appVersion,
+        });
+        return;
+      }
+      if (value.type !== 'call' || value.client.connectionId !== connectionId) {
+        throw new Error('MCP companion connection identity changed unexpectedly.');
+      }
+      companionClients.updateIdentity(value.client);
+      companionClients.touch(value.client.connectionId);
+      const tool = getTool(value.tool);
+      if (!tool) {
+        sendCompanion(socket, { type: 'result', id: value.id, ok: false, error: { kind: 'not_found', message: `Unknown tool "${value.tool}".` } });
+        return;
+      }
+      const result = await executeBridgedTool(
+        tool,
+        value.input,
+        companionClients.grants(value.client.connectionId),
+        invoke,
+        getWindow,
+        value.client,
+      );
+      sendCompanion(socket, { type: 'result', id: value.id, ok: true, result });
     };
     socket.once('close', close);
     socket.on('error', (error) => log.warn('MCP companion connection failed', error));
     socket.setEncoding('utf8');
     socket.on('data', (chunk: string) => {
-      void (async () => {
-        try {
-          for (const value of decoder.push(chunk)) {
-            if (!isCompanionRequest(value)) throw new Error('Invalid MCP companion message.');
-            if (!authenticated) {
-              if (value.type !== 'hello' || !companionConnection ||
-                !tokensMatch(value.token, companionConnection.token)) {
-                sendCompanion(socket, { type: 'fatal', error: { kind: 'forbidden', message: 'MCP companion authentication failed.' } });
-                socket.end();
-                return;
-              }
-              authenticated = true;
-              connectionId = value.client.connectionId;
-              companionClients.connect(value.client);
-              sendCompanion(socket, {
-                type: 'ready',
-                protocolVersion: companionConnection.protocolVersion,
-                appVersion: companionConnection.appVersion,
-              });
-              continue;
-            }
-            if (value.type !== 'call' || value.client.connectionId !== connectionId) {
-              throw new Error('MCP companion connection identity changed unexpectedly.');
-            }
-            companionClients.updateIdentity(value.client);
-            companionClients.touch(value.client.connectionId);
-            const tool = getTool(value.tool);
-            if (!tool) {
-              sendCompanion(socket, { type: 'result', id: value.id, ok: false, error: { kind: 'not_found', message: `Unknown tool "${value.tool}".` } });
-              continue;
-            }
-            const result = await executeBridgedTool(
-              tool,
-              value.input,
-              companionClients.grants(value.client.connectionId),
-              invoke,
-              getWindow,
-              value.client,
-            );
-            sendCompanion(socket, { type: 'result', id: value.id, ok: true, result });
-          }
-        } catch (error) {
-          sendCompanion(socket, {
-            type: 'fatal',
-            error: { kind: 'internal', message: error instanceof Error ? error.message : 'MCP companion connection failed.' },
-          });
-          socket.end();
-        }
-      })();
+      if (closing) return;
+      let messages: unknown[];
+      try {
+        messages = decoder.push(chunk);
+      } catch (error) {
+        processing = processing.then(() => { throw error; }).catch(fail);
+        return;
+      }
+      for (const message of messages) {
+        processing = processing.then(() => processMessage(message)).catch(fail);
+      }
     });
   });
 
