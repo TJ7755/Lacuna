@@ -18,7 +18,8 @@ import {
   useSequences,
 } from '../../state/useCourseData';
 import { db } from '../../db/schema';
-import { ensureLessonDeck, unlinkCardFromLesson } from '../../db/repository';
+import { ensureLessonBackingDeck } from '../../db/backingDecks';
+import { unlinkCardFromLesson } from '../../db/repository';
 import type { Card, Deck } from '../../db/types';
 import { useDeck } from '../../state/useData';
 
@@ -86,7 +87,7 @@ export function LessonCardsSection({
 
   async function prepareEmptyImport() {
     try {
-      setPreparedDeckId(await ensureLessonDeck(courseId, lessonId));
+      setPreparedDeckId(await ensureLessonBackingDeck(courseId, lessonId));
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not prepare the card import.', 'negative');
     }

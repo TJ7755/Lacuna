@@ -8,7 +8,10 @@
 
 import { db, makeId } from './schema';
 import type { Card, LessonCardExposure, LessonCardLink, Occlusion, OcclusionRegion } from './types';
-import { ensureCourseBankDeck, ensureLessonDeck } from './repository';
+import {
+  ensureCourseBankBackingDeck,
+  ensureLessonBackingDeck,
+} from './backingDecks';
 import { scheduleAssetGc } from './assets';
 import { diffRegeneration, generateCards, type GeneratedCardPayload } from './occlusionGeneration';
 
@@ -73,8 +76,8 @@ export async function cardsForOcclusion(occlusion: Occlusion): Promise<Card[]> {
 /**
  * Create an Occlusion and, in the same transaction, every card {@link generateCards}
  * derives from it. Cards get a real backing deck via the same lazy lesson/question-bank
- * deck as ordinary lesson/course cards (see {@link ensureLessonDeck} /
- * {@link ensureCourseBankDeck}), looked up before the transaction since those helpers may
+ * deck as ordinary lesson/course cards (see {@link ensureLessonBackingDeck} /
+ * {@link ensureCourseBankBackingDeck}), looked up before the transaction since those helpers may
  * open their own table writes.
  */
 export async function createOcclusion(
@@ -95,8 +98,8 @@ export async function createOcclusion(
       createdAt: nextOcclusionTimestamp(),
     };
     const deckId = primaryLessonId
-      ? await ensureLessonDeck(courseId, primaryLessonId)
-      : await ensureCourseBankDeck(courseId);
+      ? await ensureLessonBackingDeck(courseId, primaryLessonId)
+      : await ensureCourseBankBackingDeck(courseId);
     const payloads = generateCards(occlusion);
     const now = Date.now();
     const cards = payloads.map((payload, i) => generatedCardFromPayload(deckId, payload, now + i));
@@ -167,8 +170,8 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
         }
         if (diff.creates.length > 0) {
           const deckId = cleaned.primaryLessonId
-            ? await ensureLessonDeck(cleaned.courseId, cleaned.primaryLessonId)
-            : await ensureCourseBankDeck(cleaned.courseId);
+            ? await ensureLessonBackingDeck(cleaned.courseId, cleaned.primaryLessonId)
+            : await ensureCourseBankBackingDeck(cleaned.courseId);
           const now = Date.now();
           const newCards = diff.creates.map((payload, i) => generatedCardFromPayload(deckId, payload, now + i));
           await db.cards.bulkAdd(newCards);
