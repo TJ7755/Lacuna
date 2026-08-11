@@ -292,7 +292,7 @@ outside the shell. The shell is a flex row:
 | `/help`                                                 | Help                                                                    | yes       | eager   |
 | `/course/:courseId/learn`                               | Learn session (practice over every due card in the course)              | **no**    | lazy    |
 | `/lesson/:lessonId/learn`                               | Learn session (new cards for one lesson)                                | **no**    | lazy    |
-| `/learn`                                                | Learn session (every course, "Today")                                   | **no**    | lazy    |
+| `/learn`                                                | Review today session across every course                                | **no**    | lazy    |
 | `/deck/:deckId`                                         | Redirects to `/`                                                        | yes       | eager   |
 | `/study`                                                | Redirects to `/`                                                        | yes       | eager   |
 
@@ -340,7 +340,7 @@ lesson, card and review; the completion toast offers Undo by clearing the same `
 < All courses                     ( Path | Question bank | Analytics | Settings )
                                                           ( Read | Edit )
 Exam 14 Jun 2026, 23:59
-Organic Chemistry                                      [Study now]
+Organic Chemistry                                          [Study]
 [path] Lesson 4 of 9   [ring] Mastery 68%   [clock] Due today 12 cards
 
   (o) Lesson 1 -- completed
@@ -406,14 +406,17 @@ Checkpoint nodes open a detail sheet showing the assessment date, resolved lesso
 exclusions and validation state. Revision starts with that assessment's stable id; the final
 assessment uses the same authoring and resolution rules, and each course retains exactly one.
 
-The course header has one **Study now** action. It launches the persistent course study
+The course header has one **Study** action. It launches the persistent course study
 conductor at `/course/:courseId/study`. The conductor rebuilds its next-step decision from the
 authoritative course state after every completed lesson or Practice step; it never stores a
 fixed queue. Lesson notes, Simple recall, curricular Practice, recurring Practice, transition
 reports and Pomodoro breaks therefore form one continuous study period rather than unrelated
-routes. When an imminent assessment overlaps reached, exposed material and has useful work,
-the conductor explicitly offers the ordinary next step alongside each applicable assessment,
-ordered by date. Choosing either branch is temporary and is not retained as a preference.
+routes. Generic entry names the next curriculum step, labels lesson progression **Study ahead**
+when no due review competes with it, and otherwise offers due review separately. When an imminent
+assessment overlaps reached, exposed material and has useful work, the conductor also offers each
+applicable named assessment, ordered by date. Choosing a branch is temporary and is not retained
+as a preference. Selecting a visible manual Practice node or assessment on the path bypasses the
+generic choice and enters that exact scope.
 The learner leaves only through an explicit finish action. The step union reserves an
 `exam-questions` member for a future engine, but this version creates no placeholder questions
 or empty exam UI. A completed lesson enters its transition report through a motion-speed-aware
@@ -453,8 +456,10 @@ offline benchmark gate and owns short-horizon allocation through the model bound
 projection records its coefficient-derived version; invalid model data records the typed FSRS-6
 ordinary-Practice fallback instead of invented confidence.
 
-**Review due cards** is a separate ad-hoc course-wide action. It creates no path node or
-milestone, may be launched at any time, and returns to the same conductor afterwards.
+**Review due cards** is a separate ad-hoc course-wide choice inside the conductor. It creates no
+path node or milestone, may be launched whenever eligible, and returns to the same conductor
+afterwards. The default sidebar exposes the existing cross-course `/learn` session as **Review
+today**; it does not replace the course conductor or alter course progression.
 
 Lessons are intentionally authored as short teaching passes. Practice is correspondingly
 more frequent, using the existing `practiceMaxGap`, `practiceThresholdMinutesFar` and

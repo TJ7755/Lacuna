@@ -63,7 +63,7 @@ The absence of accounts is intentional in the current implementation, but it cre
 | /course/:courseId/study | Course study conductor | Lesson study, recurring practice, custom nodes, assessment revision |
 | /course/:courseId/learn | Course practice session | FSRS practice, filtered study, session report |
 | /lesson/:lessonId/learn | Lesson session | Simple lesson study |
-| /learn | Global Today session | Cross-course FSRS session |
+| /learn | Review today | Cross-course FSRS session |
 | any unmatched route | Not found | Branded recovery page with Back to dashboard |
 
 The app shell wraps most routes. Welcome, Method, course study, and Learn mode deliberately use a reduced or different shell.
@@ -121,12 +121,11 @@ There is no account creation, profile setup, sync choice, notification permissio
 - ? opens the keyboard-help overlay.
 - The command palette searches the same broad object types as Search, supports arrow-key navigation and Enter, and closes with Escape or the backdrop.
 - The Search sidebar item opens the command palette, not /search.
-- The default sidebar has no visible Today or Learn item even though /learn exists.
+- The default sidebar exposes the cross-course /learn session as Review today.
 
 ### Missing and awkward shell paths
 
 - Search has two parallel surfaces: the command palette and the full Search page.
-- The global Today session exists at /learn but is not a normal visible navigation item.
 - A normal multi-lesson Lesson view has a back-to-course action but not the course tabs. The user must return to the path before reaching Question bank, Analytics, or Settings.
 - The single-lesson course view is rendered inline inside the course route. It has a Settings icon and Add lesson, but still does not expose the complete course-tab navigation.
 
@@ -209,16 +208,14 @@ This deletion is less explicit than lesson, card, and shared-course destructive 
 
 ### Study entry from the path
 
-Depending on course state, the main action is one of:
+The header has one generic Study action. Depending on course state, the surrounding path can also show:
 
-- Study now.
-- Review due cards.
 - Review updates.
 - Add cards to begin studying.
 - Nothing due — study ahead.
 - A Next target lesson or practice node.
 
-Upcoming assessment pills open the assessment detail sheet. A path assessment can then start Revise for that assessment.
+Study opens the course conductor, which distinguishes progression, study ahead, due review and relevant named assessment revision before starting. Upcoming assessment pills open the assessment detail sheet. A path assessment can then start Revise for that assessment.
 
 ### Add a lesson from the path
 
@@ -583,12 +580,15 @@ There is no integrated AI call, persistent staging area, saved prompt history, b
 
 Course study starts at /course/:courseId/study and persists an active-flow identity so the dashboard can offer Resume.
 
-The entry query determines the first branch:
+Generic entry shows the authoritative next curriculum step before starting. It labels a lesson
+**Study ahead** when no due review competes with it, and otherwise offers due review separately.
+Relevant named assessments appear as revision alternatives.
+
+Specific entry queries bypass the generic choice:
 
 - review=due starts recurring due-card practice.
 - practiceNode=[id] starts a manual or automatic node.
 - assessmentId=[id] starts assessment revision setup.
-- No query lets the planner choose the next lesson or practice step.
 
 The planner can show:
 
@@ -619,7 +619,7 @@ The setup shows a read-only completed or archived state once the plan is complet
 
 ### Learn mode entry points
 
-- /learn is a global Today session across courses.
+- /learn is the cross-course Review today session and is visible in the default sidebar.
 - /course/:courseId/learn is course Practice.
 - /lesson/:lessonId/learn is Simple lesson study.
 - The course conductor also launches lesson-scoped Simple learn and course-scoped practice.
@@ -895,7 +895,6 @@ The right-hand section navigation tracks the current section. Footer links retur
 
 Current copy mismatches:
 
-- Help describes global Today as available, but the default sidebar does not expose a Today entry.
 - Help says course settings contain import/export, while the current import/export controls are global Settings.
 - Some terminology still says deck where the main UI says course.
 
@@ -960,7 +959,6 @@ It links back to the dashboard, welcome page, and help. It is explanatory, not a
 | Generated content | Sequence/occlusion controls vary between lesson and bank buckets | User may assume a missing control is unsupported |
 | Import | Share page, New course share-code import, global backup import, and CardList text/APKG import | “Import” does not mean one thing |
 | Export | Global formats versus Share page formats; Share code is hidden in global Settings | Users must know which page owns which export |
-| Study | Study now, Review due cards, Practice node, course Learn, lesson Learn, and global Today | Entry labels overlap but use different queues and reports |
 | Settings saves | Course settings commit immediately; card/sequence/occlusion editors use explicit Save | Save expectations change by route |
 | View mode | Path Read/Edit, Lesson Read/Edit, and Course Settings lesson view mode | Three places control related presentation state |
 | Assessments | Course creation and Final exam editing set the primary date; Add checkpoint creates intermediate assessments | The two assessment kinds use distinct actions |
@@ -969,7 +967,6 @@ It links back to the dashboard, welcome page, and help. It is explanatory, not a
 | Destructive actions | Course deletion uses Undo, lesson deletion uses inline confirmation, restore uses Replace all confirmation | Risk signals are inconsistent |
 | Dashboard copy | Settings says top three courses; dashboard shows all active courses | Documentation and behaviour disagree |
 | Help | Help says course settings hold import/export; controls are global | Users are sent to the wrong page |
-| Today | Help and route imply global Today; default navigation omits it | Existing feature is effectively hidden |
 
 ## 22. Broken, fragile, or unverified flows
 
@@ -978,7 +975,6 @@ It links back to the dashboard, welcome page, and help. It is explanatory, not a
 - There is no user-facing Add final exam flow.
 - There is no persistent archived-course management screen or obvious Unarchive action.
 - Manual practice nodes have no UI for the stored card-filter model.
-- Global Today exists but is not discoverable in default navigation.
 - Course Lesson views lack direct access to the course tabs.
 - Card and generated-content creation controls move between empty states, section headers, and list headers.
 - Global export and Share export overlap while exposing different formats.
@@ -1013,7 +1009,6 @@ The interface, product language, data model, or help implies these capabilities,
 - A first-class deck creation or deck-management workflow distinct from courses.
 - Add final exam.
 - A saved filter builder for custom practice nodes.
-- A visible global Today launcher in the standard navigation.
 - Integrated AI generation from the batch prompt dialog.
 - Persistent batch drafts, prompt history, batch export, or a staging inbox.
 - General paste/import for all sequence presets, rather than speaker-script paste only.
@@ -1036,7 +1031,7 @@ These are boundaries of the current product, not implementation instructions.
 1. Dashboard → New course.
 2. Enter a name and review or change Exam date → Create.
 3. Content → add lessons and cards.
-4. Return to Path → Study now.
+4. Return to Path → Study.
 5. Complete lesson study, practice, or revision.
 6. Review the Session report.
 

@@ -554,8 +554,8 @@ export function Welcome() {
               and revising one you half-remember are different jobs, so Lacuna treats them
               differently: first exposure is one relaxed, unscored pass, and only then does a card
               move into proper spaced revision against the exam it matters for. A single{' '}
-              <span className="font-medium text-ink">Study now</span> button always knows which of
-              the two you need next.
+              <span className="font-medium text-ink">Study</span> always knows which of the two you
+              need next.
             </p>
             <PracticeDeck ref={practiceDemoRef} onComplete={() => setPracticeDone(true)} />
           </PathNode>

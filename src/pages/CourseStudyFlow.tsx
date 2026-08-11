@@ -12,6 +12,7 @@ import type { StudyFlowStep } from '../course/studyFlowPlanner';
 import type { AssessmentPracticeOption } from '../course/assessmentPractice';
 import type { SessionSummary } from '../components/learn/types';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
+import { StudyEntry, StudyFlowMessage } from '../components/learn/StudyEntry';
 import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
 import { Button } from '../components/ui/Button';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
@@ -80,10 +81,9 @@ function CourseStudyFlowInner() {
   useEffect(() => {
     if (currentStep || transition || !flow) return;
     if (!entryConsumed) {
+      if (!entryPracticeNodeKey) return;
       setEntryConsumed(true);
-      const requestedPractice = entryPracticeNodeKey
-        ? flow.snapshot.practiceByKey.get(entryPracticeNodeKey)
-        : undefined;
+      const requestedPractice = flow.snapshot.practiceByKey.get(entryPracticeNodeKey);
       if (requestedPractice?.active) {
         setCurrentStep({
           kind: 'practice',
@@ -183,7 +183,7 @@ function CourseStudyFlowInner() {
 
   if (!courseId || flow === null) {
     return (
-      <FlowMessage
+      <StudyFlowMessage
         title="Course not found"
         detail="This study flow no longer has a course to follow."
         onExit={finishFlow}
@@ -193,6 +193,30 @@ function CourseStudyFlowInner() {
 
   if (flow === undefined || (transition && flow.generation !== refreshKey)) {
     return <CourseStudyFlowSkeleton />;
+  }
+
+  if (!entryConsumed) {
+    return (
+      <StudyEntry
+        courseName={flow.course.name}
+        decision={flow.decision}
+        recurringPracticeEligibleCount={flow.snapshot.recurringPracticeEligibleCount}
+        timeZone={flow.course.timeZone}
+        onContinue={(step) => {
+          setEntryConsumed(true);
+          setCurrentStep(step);
+        }}
+        onReviewDueCards={() => {
+          setEntryConsumed(true);
+          reviewDueCards();
+        }}
+        onAssessment={(assessment) => {
+          setEntryConsumed(true);
+          setCurrentStep(assessmentStep(assessment));
+        }}
+        onExit={finishFlow}
+      />
+    );
   }
 
   if (transition) {
@@ -254,15 +278,7 @@ function CourseStudyFlowInner() {
         assessments={choice.assessments}
         timeZone={flow.course.timeZone}
         onContinue={() => setCurrentStep(choice.step)}
-        onAssessment={(assessment) =>
-          setCurrentStep({
-            kind: 'practice',
-            nodeKey: `assessment-${assessment.assessmentId}`,
-            mode: 'assessment',
-            assessmentId: assessment.assessmentId,
-            label: assessment.name,
-          })
-        }
+        onAssessment={(assessment) => setCurrentStep(assessmentStep(assessment))}
         onExit={finishFlow}
       />
     );
@@ -270,7 +286,7 @@ function CourseStudyFlowInner() {
 
   if (flow.decision.kind === 'blocked') {
     return (
-      <FlowMessage
+      <StudyFlowMessage
         title="Nothing is available yet"
         detail={
           flow.decision.reason === 'archived'
@@ -283,7 +299,7 @@ function CourseStudyFlowInner() {
   }
 
   return (
-    <FlowMessage
+    <StudyFlowMessage
       title={flow.decision.kind === 'empty' ? 'This course is empty' : 'You are caught up'}
       detail={
         flow.decision.kind === 'empty'
@@ -293,6 +309,16 @@ function CourseStudyFlowInner() {
       onExit={finishFlow}
     />
   );
+}
+
+function assessmentStep(assessment: AssessmentPracticeOption): StudyFlowStep {
+  return {
+    kind: 'practice',
+    nodeKey: `assessment-${assessment.assessmentId}`,
+    mode: 'assessment',
+    assessmentId: assessment.assessmentId,
+    label: assessment.name,
+  };
 }
 
 function StudyChoice({
@@ -342,31 +368,6 @@ function StudyChoice({
             </Button>
           ))}
           <Button variant="ghost" size="lg" onClick={onExit}>
-            Done
-          </Button>
-        </div>
-      </main>
-    </div>
-  );
-}
-
-function FlowMessage({
-  title,
-  detail,
-  onExit,
-}: {
-  title: string;
-  detail: string;
-  onExit: () => void;
-}) {
-  return (
-    <div className="min-h-screen bg-paper px-6 py-10">
-      <main className="mx-auto flex min-h-[70vh] max-w-xl flex-col justify-center">
-        <p className="mb-2 text-sm uppercase tracking-[0.18em] text-ink-faint">Course study</p>
-        <h1 className="font-display text-4xl tracking-tight md:text-5xl">{title}</h1>
-        <p className="mt-4 text-ink-soft">{detail}</p>
-        <div className="mt-8">
-          <Button variant="primary" size="lg" onClick={onExit}>
             Done
           </Button>
         </div>

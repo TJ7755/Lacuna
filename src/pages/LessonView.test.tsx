@@ -139,11 +139,11 @@ function renderPage() {
   );
 }
 
-function renderInline() {
+function renderInline(showStudyNow = false) {
   return render(
     <MemoryRouter initialEntries={['/']}>
       <ToastProvider>
-        <LessonView courseId="course-1" lessonId="lesson-1" />
+        <LessonView courseId="course-1" lessonId="lesson-1" showStudyNow={showStudyNow} />
       </ToastProvider>
     </MemoryRouter>,
   );
@@ -195,6 +195,13 @@ describe('LessonView study mode', () => {
 });
 
 describe('LessonView inline (single-lesson course) rendering', () => {
+  it('shows one generic course Study action', () => {
+    renderInline(true);
+
+    expect(screen.getByRole('button', { name: 'Study' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
+  });
+
   it('shows a Course settings link pointing at the course settings route', () => {
     renderInline();
     const link = screen.getByLabelText('Course settings');

@@ -147,6 +147,7 @@ function practiceState(
 function snapshot(
   practices: StudyFlowPracticeState[] = [],
   assessmentOptions: AssessmentPracticeOption[] = [],
+  recurringPracticeEligibleCount = 0,
 ): CourseStudyFlowSnapshot {
   return {
     courseId: course.id,
@@ -155,7 +156,7 @@ function snapshot(
     practiceByKey: new Map(practices.map((practice) => [practice.nodeKey, practice])),
     activeManualNodeKeys: new Set(),
     completedManualNodeKeys: new Set(),
-    recurringPracticeEligibleCount: 0,
+    recurringPracticeEligibleCount,
     assessmentOptions,
   };
 }
@@ -217,6 +218,7 @@ describe('CourseStudyFlow', () => {
 
     renderFlow();
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Study ahead: Atomic structure' }));
     await screen.findByTestId('learn-request');
     expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' });
   });
@@ -230,6 +232,7 @@ describe('CourseStudyFlow', () => {
       ]),
     ];
     renderFlow();
+    fireEvent.click(await screen.findByRole('button', { name: 'Study ahead: Atomic structure' }));
     await screen.findByTestId('learn-request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
@@ -255,6 +258,7 @@ describe('CourseStudyFlow', () => {
       flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
     ];
     renderFlow();
+    fireEvent.click(await screen.findByRole('button', { name: 'Study ahead: Atomic structure' }));
     await screen.findByTestId('learn-request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause step' }));
@@ -277,6 +281,38 @@ describe('CourseStudyFlow', () => {
     });
   });
 
+  it('offers course progression and due review as distinct generic entry choices', async () => {
+    const entryFlow = flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0);
+    entryFlow.snapshot = snapshot([], [], 3);
+    mockFlows = [entryFlow];
+    renderFlow();
+
+    expect(
+      await screen.findByRole('button', { name: 'Continue: Atomic structure' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Review due cards 3/ }));
+
+    await waitFor(() =>
+      expect(request()).toEqual({ kind: 'practice', courseId: 'course-1', mode: 'ad-hoc' }),
+    );
+  });
+
+  it('starts an exact manual Practice node from its direct query', async () => {
+    const manual = practiceState('manual-1', 'Checkpoint', ['lesson-1']);
+    mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 0, [manual])];
+    renderFlow('/course/course-1/study?practiceNode=manual-1');
+
+    await screen.findByTestId('learn-request');
+    expect(request()).toEqual({
+      kind: 'practice',
+      courseId: 'course-1',
+      nodeKey: 'manual-1',
+      scopeLessonIds: ['lesson-1'],
+      mode: 'curricular',
+    });
+    expect(screen.queryByRole('heading', { name: 'Choose what to study' })).not.toBeInTheDocument();
+  });
+
   it('starts exact-assessment Practice from the assessment query', async () => {
     mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
     renderFlow('/course/course-1/study?assessmentId=paper-1');
@@ -293,7 +329,7 @@ describe('CourseStudyFlow', () => {
     });
   });
 
-  it('shows an explicit Study Now choice and preserves the curriculum branch', async () => {
+  it('shows an explicit Study choice and preserves the curriculum branch', async () => {
     const option = {
       assessmentId: 'paper-1',
       name: 'Paper 1',
@@ -308,8 +344,10 @@ describe('CourseStudyFlow', () => {
     mockFlows = [choiceFlow(lessonStep, 0, [option])];
     renderFlow();
 
-    expect(await screen.findByRole('heading', { name: 'Continue or revise' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Continue: Atomic structure' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Choose what to study' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Study ahead: Atomic structure' }));
     await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' }));
   });
 
@@ -358,6 +396,7 @@ describe('CourseStudyFlow', () => {
       flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
     ];
     renderFlow();
+    fireEvent.click(await screen.findByRole('button', { name: 'Study ahead: Atomic structure' }));
     await screen.findByTestId('learn-request');
     await waitFor(() => expect(localStorage.getItem('lacuna.activeStudyFlow')).not.toBeNull());
 
@@ -377,6 +416,7 @@ describe('CourseStudyFlow', () => {
       flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
     ];
     renderFlow();
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue: Checkpoint' }));
     await screen.findByTestId('learn-request');
     expect(request()).toMatchObject({ kind: 'practice', nodeKey: 'manual-1' });
     const sessionId = screen.getByTestId('learn-session').textContent;

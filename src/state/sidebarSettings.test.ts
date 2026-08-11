@@ -1,5 +1,11 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { readStored, writeSidebarSettings, useSidebarSettings, DEFAULT_NAV_ITEMS, DEFAULTS } from './sidebarSettings';
+import {
+  readStored,
+  writeSidebarSettings,
+  useSidebarSettings,
+  DEFAULT_NAV_ITEMS,
+  DEFAULTS,
+} from './sidebarSettings';
 import { renderHook, act } from '@testing-library/react';
 
 const KEY = 'lacuna.sidebarSettings';
@@ -18,11 +24,19 @@ describe('readStored', () => {
   });
 
   it('returns merged nav items when stored items are missing new defaults', () => {
-    const stored = { showDueCounts: false, navItems: [{ id: 'dashboard', label: 'Dashboard', visible: true }] };
+    const stored = {
+      showDueCounts: false,
+      navItems: [{ id: 'dashboard', label: 'Dashboard', visible: true }],
+    };
     localStorage.setItem(KEY, JSON.stringify(stored));
     const settings = readStored();
     expect(settings.showDueCounts).toBe(false);
     expect(settings.navItems.length).toBeGreaterThanOrEqual(DEFAULT_NAV_ITEMS.length);
+    expect(settings.navItems.find((item) => item.id === 'today')).toEqual({
+      id: 'today',
+      label: 'Review today',
+      visible: true,
+    });
   });
 
   it('falls back to defaults on invalid JSON', () => {
@@ -68,5 +82,3 @@ describe('writeSidebarSettings', () => {
     expect(parsed.compactMode).toBe(true);
   });
 });
-
-
