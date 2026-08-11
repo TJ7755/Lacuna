@@ -470,7 +470,7 @@ export function CoursePath() {
               <p className="text-sm text-ink-faint">
                 {courseCards.length === 0
                   ? 'Add cards to begin studying.'
-                  : 'Nothing due — study ahead.'}
+                  : 'Nothing due — next lesson available.'}
               </p>
             )}
           </div>

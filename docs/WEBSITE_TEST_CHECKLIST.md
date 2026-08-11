@@ -216,7 +216,7 @@ are beyond its scope, as stated in the automation boundary above.
 
 - [x] Path, Question bank, Analytics and Settings tabs are visible and cross-link correctly.
 - [ ] The path header shows the course name, exam date and live progress without overflow.
-- [ ] Study opens the persistent course study flow and exposes progression, study ahead, due
+- [ ] Study opens the persistent course study flow and exposes progression, starting the next lesson, due
       review and relevant named revision as distinct choices.
 - [ ] Review today in the default sidebar opens the cross-course review session.
 - [ ] Study mode renders the curriculum without authoring controls.

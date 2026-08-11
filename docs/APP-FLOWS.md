@@ -212,10 +212,10 @@ The header has one generic Study action. Depending on course state, the surround
 
 - Review updates.
 - Add cards to begin studying.
-- Nothing due — study ahead.
+- Nothing due — next lesson available.
 - A Next target lesson or practice node.
 
-Study opens the course conductor, which distinguishes progression, study ahead, due review and relevant named assessment revision before starting. Upcoming assessment pills open the assessment detail sheet. A path assessment can then start Revise for that assessment.
+Study opens the course conductor, which distinguishes starting the next lesson, due review and relevant named assessment revision before starting. Upcoming assessment pills open the assessment detail sheet. A path assessment can then start Revise for that assessment.
 
 ### Add a lesson from the path
 
@@ -584,7 +584,7 @@ explicit Discard batch confirmation.
 Course study starts at /course/:courseId/study and persists an active-flow identity so the dashboard can offer Resume.
 
 Generic entry shows the authoritative next curriculum step before starting. It labels a lesson
-**Study ahead** when no due review competes with it, and otherwise offers due review separately.
+**Start** when no due review competes with it, and otherwise offers due review separately.
 Relevant named assessments appear as revision alternatives.
 
 Specific entry queries bypass the generic choice:
@@ -927,11 +927,11 @@ It links back to the dashboard, welcome page, and help. It is explanatory, not a
 | No lessons | Empty path | Add lesson |
 | No cards | Lesson/question-bank empty state | Create, sequence, occlusion, link, or import |
 | No search matches | Search empty state | Clear query/filter |
-| No due cards | Nothing due — study ahead | Study ahead or return |
+| No due cards | Nothing due — next lesson available | Start or return |
 | Course empty on study | Cannot start normal curriculum | Add lesson |
 | Course archived on study | Nothing available | Return to course/dashboard |
 | Lesson locked | Study cannot advance | Return later or change unlocking settings |
-| Course caught up | You are caught up | Finish or study ahead |
+| Course caught up | You are caught up | Finish or start the next available lesson |
 | Missing course/lesson | Not-found recovery | Back to dashboard/course |
 | Missing card owner | Authoring error/read-only fallback | Return to owner or leave editor |
 | Invalid share code | Error message/toast | Correct code or cancel |

@@ -414,7 +414,7 @@ conductor at `/course/:courseId/study`. The conductor rebuilds its next-step dec
 authoritative course state after every completed lesson or Practice step; it never stores a
 fixed queue. Lesson notes, Simple recall, curricular Practice, recurring Practice, transition
 reports and Pomodoro breaks therefore form one continuous study period rather than unrelated
-routes. Generic entry names the next curriculum step, labels lesson progression **Study ahead**
+routes. Generic entry names the next curriculum step, labels a lesson ready to begin **Start**
 when no due review competes with it, and otherwise offers due review separately. When an imminent
 assessment overlaps reached, exposed material and has useful work, the conductor also offers each
 applicable named assessment, ordered by date. Choosing a branch is temporary and is not retained

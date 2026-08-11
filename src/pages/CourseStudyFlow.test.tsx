@@ -218,7 +218,7 @@ describe('CourseStudyFlow', () => {
 
     renderFlow();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Study ahead: Atomic structure' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
     await screen.findByTestId('learn-request');
     expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' });
   });
@@ -232,7 +232,7 @@ describe('CourseStudyFlow', () => {
       ]),
     ];
     renderFlow();
-    fireEvent.click(await screen.findByRole('button', { name: 'Study ahead: Atomic structure' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
     await screen.findByTestId('learn-request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
@@ -258,7 +258,7 @@ describe('CourseStudyFlow', () => {
       flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
     ];
     renderFlow();
-    fireEvent.click(await screen.findByRole('button', { name: 'Study ahead: Atomic structure' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
     await screen.findByTestId('learn-request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause step' }));
@@ -347,7 +347,7 @@ describe('CourseStudyFlow', () => {
     expect(
       await screen.findByRole('heading', { name: 'Choose what to study' }),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Study ahead: Atomic structure' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start: Atomic structure' }));
     await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' }));
   });
 
@@ -396,7 +396,7 @@ describe('CourseStudyFlow', () => {
       flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
     ];
     renderFlow();
-    fireEvent.click(await screen.findByRole('button', { name: 'Study ahead: Atomic structure' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
     await screen.findByTestId('learn-request');
     await waitFor(() => expect(localStorage.getItem('lacuna.activeStudyFlow')).not.toBeNull());
 

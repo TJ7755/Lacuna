@@ -26,7 +26,7 @@
 - Portalled the New course overlay out of the mobile navigation drawer so the sidebar entry uses
   the full viewport instead of squeezing the modal into the transformed drawer width.
 - Replaced competing course-header Study actions with one **Study** entry. The course conductor
-  now distinguishes progression, study ahead, due review and named assessment revision before a
+  now distinguishes starting the next lesson, due review and named assessment revision before a
   session starts, while direct Practice-node and assessment selections retain their exact scope.
 - Exposed the existing cross-course session as **Review today** in the configurable sidebar and
   replaced bare “Today” and retired “deck” language on that flow.
