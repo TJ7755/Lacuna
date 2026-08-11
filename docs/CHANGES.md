@@ -4,6 +4,8 @@
 
 - Removed the horizontal card-exit/card-entry movement after grading. The next card now fades and
   settles in place instead of making the study surface twitch left and back.
+- Portalled the touch-first card-actions sheet out of the animated sticky header, so it anchors to
+  the viewport instead of opening upwards from a header-height containing block.
 - Made the course path the canonical manual-practice editor, exposed labelled insertion controls,
   and distinguished automatic from manual nodes without pretending custom filters are authorable.
 - Kept course tabs visible from lesson views and standardised card, sequence, occlusion, linking,

@@ -1329,6 +1329,29 @@ describe('LearnMode course/lesson scope', () => {
     }
   });
 
+  it('portals touch card actions outside the sticky study header', async () => {
+    localStorage.setItem('lacuna.inputMode', 'touch');
+    const deck = await createDeck('Touch actions');
+    await createCard(deck.id, 'front_back', 'Touch question', 'Touch answer');
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('Touch question')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Card actions' });
+    expect(dialog.parentElement).toBe(document.body);
+  });
+
   it('does not reset an active session when the default Focus Mode preference changes', async () => {
     const course = await createCourse('Focus preferences');
     const lesson = await createLesson(course.id, 'Stable session');
