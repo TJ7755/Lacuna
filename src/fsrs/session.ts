@@ -87,15 +87,16 @@ interface SessionCardIndex {
 }
 
 function cardsForUnit(cards: Card[], unit: SessionDeckContext): Card[] {
-  switch (unit.scope.kind) {
+  const { scope } = unit;
+  switch (scope.kind) {
     case 'deck':
-      return cards.filter((card) => card.deckId === unit.scope.deckId);
+      return cards.filter((card) => card.deckId === scope.deckId);
     case 'course':
-      return cards.filter((card) => card.courseId === unit.scope.courseId);
+      return cards.filter((card) => card.courseId === scope.courseId);
     case 'lesson':
       return cards.filter(
         (card) =>
-          card.primaryLessonId === unit.scope.lessonId || unit.scope.linkedCardIds.has(card.id),
+          card.primaryLessonId === scope.lessonId || scope.linkedCardIds.has(card.id),
       );
   }
 }
@@ -314,7 +315,7 @@ export function selectNext(
   const poolIds = new Set(pool.map((card) => card.id));
   for (const dc of ctx.decks.values()) {
     const { deck, scope, oc } = dc;
-    const deckCards = (index.byUnit.get(unitKey(scope)) ?? []).filter((card) =>
+    const deckCards = (index!.byUnit.get(unitKey(scope)) ?? []).filter((card) =>
       poolIds.has(card.id),
     );
     if (deckCards.length === 0) continue;
