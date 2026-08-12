@@ -57,6 +57,25 @@ These require a fresh product decision after flow simplification and release ver
 | Progress receipts and encrypted relay   | Detailed outline only                                 | Identify a real tutor/parent reporting workflow before infrastructure work                          |
 | Expanded MCP product surface            | Foundation delivered; broad action inventory proposed | Prioritise concrete agent workflows instead of exposing every repository method                     |
 | Item-family and generated-practice work | Research direction                                    | Prove authored mark-scheme demand and define stable skill identity first                            |
+| Prediction calibration harness          | Considered 12 August 2026 and deferred; no data       | Accumulate a real review corpus first; see below                                                    |
+
+### Calibration harness — deferred, not rejected
+
+`docs/scientific-assessment.md` §5 names calibration measurement as the highest-value scientific
+step. It was considered on 12 August 2026 and deferred, because there is no real review corpus to
+measure: a harness built now would produce its first genuine answer at an unknown future date, which
+fails roadmap rule 6.
+
+Deferring costs nothing. `ReviewLog.retrievabilityAtReview` is already an honest ex-ante prediction
+and is included in full backups, so reviews recorded today remain fully analysable later. The gate is
+a real corpus — roughly a thousand reviews, enough to populate short-interval horizon bins — not any
+engineering prerequisite.
+
+Two findings worth carrying forward are recorded in `MEMORIES.md`: the missing FSRS weight-set
+provenance on review logs, and the fact that `tooling/short-term-memory/` is not a precedent for
+this work. Two methodological questions remain unanswered and should be settled before building
+anything: whether a scheduler can be validly evaluated on review data whose timing it chose, and
+whether long-horizon exam-day projection is measurable at all from observed intervals.
 
 ## Parked
 

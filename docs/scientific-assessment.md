@@ -198,6 +198,13 @@ heuristic in this population, with these card types and this exam objective.
 
 ## 5. What should be measured next
 
+**Status, 12 August 2026:** this section describes the right next scientific step, but it is
+deferred and not active work. There is currently no real review corpus to measure against, so a
+harness would measure nothing. Deferring is free: `ReviewLog.retrievabilityAtReview` is already an
+honest ex-ante prediction and is preserved in full backups, so reviews recorded now remain analysable
+whenever a corpus exists. Two methodological questions below are also unsettled — see the deferral
+note in [`next_plan.md`](next_plan.md).
+
 The next scientific step should be a shadow-mode or offline comparison using real, consented
 review data. It should measure both predictive quality and learner outcomes.
 

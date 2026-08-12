@@ -1,5 +1,29 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Calibration harness deferred
+
+No code changed. This entry records a decision and the findings behind it, so neither is re-derived.
+
+- Considered building the offline calibration harness that `docs/scientific-assessment.md` §5 names
+  as the highest-value scientific step, and deferred it: there is no real review corpus to measure,
+  so the harness would produce nothing until an unknown future date. Recorded the deferral and its
+  gate in `docs/next_plan.md`, and a status note at the head of §5 so the assessment does not read as
+  active work.
+- Confirmed that deferring is free. `ReviewLog.retrievabilityAtReview` is a genuine ex-ante
+  prediction, computed from pre-grade state in `applyReview` and persisted in the same transaction as
+  the grade, and full JSON backups preserve it. Reviews recorded now stay analysable indefinitely, so
+  no data is lost by waiting.
+- Noted that `src/fsrs/calibration.ts` already computes a per-day Brier score; a future harness
+  extends it with horizon bucketing, log loss, calibration bins and uncertainty rather than starting
+  fresh.
+- Recorded two durable facts in `MEMORIES.md`: review logs do not record which FSRS weight set
+  produced a prediction, which is unrecoverable once optimised weights are applied; and
+  `tooling/short-term-memory/` is an external-corpus Python project, not a precedent for analysing
+  Lacuna's own data.
+- Two methodological questions remain open and should be settled before any harness is built:
+  whether a scheduler can be validly evaluated on review data whose timing it chose, and whether
+  long-horizon exam-day projection is measurable from observed intervals at all.
+
 ## Unreleased — Agent instruction split
 
 - Split the agent instructions in two: `AGENTS.md` now holds the agent-agnostic house rules and the

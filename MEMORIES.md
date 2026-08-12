@@ -27,3 +27,27 @@ Only the orchestrator delegates. Every subagent brief must forbid nested spawnin
 Batch code review to the end of a task list rather than reviewing after each individual task. Per-task review on a multi-task run burns budget re-reading the same files and fragments the reviewer's picture of the change.
 
 This does not apply to Freebuff, which is deliberately told to spawn a reviewer on every commit — on free inference that cadence is what keeps the output honest.
+
+## Review predictions are already recorded honestly
+
+`ReviewLog.retrievabilityAtReview` is a genuine ex-ante prediction: `applyReview` in `src/fsrs/fsrs.ts`
+computes it from the pre-grade card state, and `src/db/repository.ts` persists it in the same
+transaction as the grade. It is null only for a card's first review and for Anki-imported history,
+which carries no FSRS equivalent. Full JSON backups include it.
+
+This matters because it means calibration analysis can be done at any point in the future against
+data recorded today. There is no closing window and no reason to rush a harness to "capture" data.
+
+## The FSRS weight set behind a prediction is not recorded
+
+A `ReviewLog` stores `stabilityBefore`/`After` and `difficultyBefore`/`After` but not which FSRS
+parameter set produced its prediction. If optimised weights are ever applied, older predictions came
+from different parameters and nothing distinguishes them afterwards. This is unrecoverable
+retrospectively, so add the provenance field *before* applying fitted weights, not after.
+
+## The short-term-memory harness is not a precedent for Lacuna-data analysis
+
+`tooling/short-term-memory/` is a standalone Python project over an external Anki corpus
+(`anki-revlogs-10k`) that ships a frozen coefficient JSON into the runtime. It never touches Lacuna's
+own review data. Any harness analysing Lacuna's own history is a different shape entirely —
+TypeScript reading a backup file — so do not model one on the other.
