@@ -506,6 +506,46 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(lessonAfter!.unlockedAt).toBe(unlockedAt);
   });
 
+  it('does not partially restore either key space when snapshot validation rejects', async () => {
+    const course = await createCourse('Invalid snapshot');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+    const backing = {
+      deckId: card.deckId,
+      runningMeanResponseTime: 31,
+      runningStdDevResponseTime: 2,
+      m2: 8,
+      totalCorrectReviews: 6,
+    };
+    const calibration = {
+      deckId: course.id,
+      runningMeanResponseTime: 17,
+      runningStdDevResponseTime: 3,
+      m2: 12,
+      totalCorrectReviews: 4,
+    };
+    await db.userPerformance.bulkPut([backing, calibration]);
+    const snapshot = await snapshotCourse(course.id);
+    await deleteCourse(course.id);
+
+    const staleBacking = { ...backing, runningMeanResponseTime: 901 };
+    const staleCalibration = { ...calibration, runningMeanResponseTime: 902 };
+    await db.userPerformance.bulkPut([staleBacking, staleCalibration]);
+    const invalidSnapshot = {
+      ...snapshot!,
+      courseAssessments: snapshot!.courseAssessments.map((assessment) => ({
+        ...assessment,
+        courseId: 'different-course',
+      })),
+    };
+
+    await expect(restoreCourse(invalidSnapshot)).rejects.toThrow();
+
+    expect(await db.courses.get(course.id)).toBeUndefined();
+    expect(await db.userPerformance.get(card.deckId)).toEqual(staleBacking);
+    expect(await db.userPerformance.get(course.id)).toEqual(staleCalibration);
+  });
+
   it('restores distinct pacing and calibration rows over stale values', async () => {
     const course = await createCourse('Key-space snapshot');
     const lesson = await createLesson(course.id, 'Lesson 1');
