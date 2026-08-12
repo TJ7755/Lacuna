@@ -26,6 +26,7 @@ import {
 } from './backingDecks';
 import { createOcclusion } from './occlusionRepository';
 import { reviewHistoryEntryIdForEvent } from './reviewHistory';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { storeImageBlob } from './assets';
 
 async function reset() {
@@ -192,6 +193,78 @@ describe('exportDatabase', () => {
       await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-portability')),
     ).toBeDefined();
   });
+
+  it.each(['replace', 'merge'] as const)(
+    'round-trips one review event exactly once in %s mode',
+    async (mode) => {
+      const deck = await createDeck('Review history portability');
+      const card = await createCard(deck.id, 'front_back', 'Q', 'A');
+      await recordReview({
+        card,
+        eventId: 'event-portability-consistency',
+        sessionId: 'session-portability-consistency',
+        sessionKind: 'deck',
+        deck,
+        grade: 3,
+        responseTimeSec: 2,
+        distracted: false,
+        correct: true,
+        now: 1_725_123_456_789,
+      });
+
+      const backup = await exportDatabase();
+      const exportedCard = backup.cards.find((candidate) => candidate.id === card.id)!;
+      const exportedEvent = backup.reviewHistory!.find(
+        (entry) => entry.eventId === 'event-portability-consistency',
+      )!;
+      await Promise.all([
+        db.cards.clear(),
+        db.decks.clear(),
+        db.reviewHistory.clear(),
+        db.sessionHistory.clear(),
+        db.userPerformance.clear(),
+      ]);
+
+      let localCardId: string | undefined;
+      if (mode === 'merge') {
+        const localDeck = await createDeck('Local merge data');
+        const localCard = await createCard(localDeck.id, 'front_back', 'Local Q', 'Local A');
+        await recordReview({
+          card: localCard,
+          eventId: 'event-local-merge-data',
+          sessionId: 'session-local-merge-data',
+          sessionKind: 'deck',
+          deck: localDeck,
+          grade: 3,
+          responseTimeSec: 1,
+          distracted: false,
+          correct: true,
+          now: 1_725_123_456_788,
+        });
+        localCardId = localCard.id;
+      }
+
+      await importBackup(backup, mode);
+      if (mode === 'merge') {
+        expect(await db.cards.get(localCardId!)).toBeDefined();
+        expect(
+          (await db.reviewHistory.toArray()).filter(
+            (entry) => entry.eventId === 'event-local-merge-data',
+          ).length,
+        ).toBe(1);
+        await importBackup(backup, mode);
+      }
+
+      const restoredCard = (await db.cards.get(card.id))!;
+      const restoredEvents = await db.reviewHistory.where('cardId').equals(card.id).toArray();
+      const hydrated = (await hydrateCardsWithHistory([restoredCard]))[0];
+      expect(restoredCard.history).toEqual(exportedCard.history);
+      expect(restoredCard.history).toHaveLength(1);
+      expect(restoredEvents).toEqual([exportedEvent]);
+      expect(hydrated.history).toHaveLength(1);
+      expect(hydrated.history[0]).toMatchObject(exportedCard.history[0]);
+    },
+  );
 
   it('round-trips complete revision-plan state through replace restore', async () => {
     const now = Date.parse('2026-07-17T08:00:00Z');

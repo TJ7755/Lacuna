@@ -11,12 +11,12 @@ function sortReviewHistory(entries: ReviewHistoryEntry[]): ReviewHistoryEntry[] 
 }
 
 /**
- * Merge canonical rows with card projections for reads. A canonical event row
- * suppresses only the matching projection for the same card/event; distinct
- * duplicate canonical rows remain available to portability and diagnostics.
+ * Merge canonical rows with card projections for compatibility reads. A canonical
+ * event row suppresses only the matching projection for the same card/event;
+ * legacy-only projection rows remain visible until the compatibility window closes.
  */
 function mergeReviewHistoryForRead(
-  canonical: ReviewHistoryEntry[],
+  canonical: readonly ReviewHistoryEntry[],
   cards: Card[],
 ): ReviewHistoryEntry[] {
   const canonicalEvents = new Set(
@@ -33,23 +33,37 @@ function mergeReviewHistoryForRead(
   return resolveReviewHistoryCollisions([...canonical, ...projections]);
 }
 
-/**
- * Read canonical events for a card set, retaining legacy-only projection rows
- * until every supported import path has passed the compatibility window.
- */
-export async function listReviewHistoryForCards(cards: Card[]): Promise<ReviewHistoryEntry[]> {
-  if (cards.length === 0) return [];
-  const canonical = await db.reviewHistory
-    .where('cardId')
-    .anyOf(cards.map((card) => card.id))
-    .toArray();
-  return sortReviewHistory(mergeReviewHistoryForRead(canonical, cards));
+/** Resolve an explicitly supplied canonical result without consulting projections. */
+function resolveExplicitReviewHistory(entries: readonly ReviewHistoryEntry[]): ReviewHistoryEntry[] {
+  return resolveReviewHistoryCollisions([...entries]);
 }
 
-/** Read all review events through the canonical adapter, with a legacy fallback. */
+/**
+ * Read review events for a card set. When `reviewHistory` is omitted, the adapter
+ * retains legacy-only projection rows for compatibility. When it is supplied,
+ * including as an explicit empty array, that canonical result is authoritative.
+ */
+export async function listReviewHistoryForCards(
+  cards: Card[],
+  reviewHistory?: readonly ReviewHistoryEntry[],
+): Promise<ReviewHistoryEntry[]> {
+  if (cards.length === 0) return [];
+  const canonical =
+    reviewHistory ??
+    (await db.reviewHistory.where('cardId').anyOf(cards.map((card) => card.id)).toArray());
+  const entries =
+    reviewHistory === undefined
+      ? mergeReviewHistoryForRead(canonical, cards)
+      : resolveExplicitReviewHistory(
+          canonical.filter((entry) => cards.some((card) => card.id === entry.cardId)),
+        );
+  return sortReviewHistory(entries);
+}
+
+/** Read all review events through the canonical adapter, with legacy compatibility fallback. */
 export async function listAllReviewHistory(): Promise<ReviewHistoryEntry[]> {
-  const [canonical, cards] = await Promise.all([db.reviewHistory.toArray(), db.cards.toArray()]);
-  return sortReviewHistory(mergeReviewHistoryForRead(canonical, cards));
+  const canonical = await db.reviewHistory.toArray();
+  return sortReviewHistory(mergeReviewHistoryForRead(canonical, await db.cards.toArray()));
 }
 
 /** Read one course's review events through the canonical adapter. */
@@ -61,14 +75,13 @@ export async function listReviewHistoryForCourse(courseId: string): Promise<Revi
   return sortReviewHistory(mergeReviewHistoryForRead(canonical, cards));
 }
 
-/**
- * Hydrate cards from the canonical review-history store. Canonical rows take
- * precedence when the same event is present in both sources, while legacy-only
- * rows are retained so a partially dual-written card remains lossless.
- */
-export async function hydrateCardsWithHistory(cards: Card[]): Promise<Card[]> {
+/** Hydrate cards from review history. An explicitly supplied empty canonical result clears history. */
+export async function hydrateCardsWithHistory(
+  cards: Card[],
+  reviewHistory?: readonly ReviewHistoryEntry[],
+): Promise<Card[]> {
   if (cards.length === 0) return [];
-  const entries = await listReviewHistoryForCards(cards);
+  const entries = await listReviewHistoryForCards(cards, reviewHistory);
   const byCard = new Map<string, ReviewHistoryEntry[]>();
   for (const entry of entries) {
     const history = byCard.get(entry.cardId) ?? [];
@@ -76,8 +89,5 @@ export async function hydrateCardsWithHistory(cards: Card[]): Promise<Card[]> {
     byCard.set(entry.cardId, history);
   }
 
-  return cards.map((card) => {
-    const canonical = byCard.get(card.id) ?? [];
-    return { ...card, history: canonical };
-  });
+  return cards.map((card) => ({ ...card, history: byCard.get(card.id) ?? [] }));
 }

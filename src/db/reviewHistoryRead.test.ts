@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { createCard, createCourse, createCourseCard, createDeck } from './repository';
 import {
+  hydrateCardsWithHistory,
   listAllReviewHistory,
   listReviewHistoryForCards,
   listReviewHistoryForCourse,
@@ -74,13 +75,55 @@ describe('review-history read adapter', () => {
     });
   });
 
+  it('uses canonical-only rows and falls back to projection-only rows when absent', async () => {
+    const deck = await createDeck('Read precedence');
+    const card = await createCard(deck.id, 'front_back', 'Question', 'Answer');
+    await db.reviewHistory.add({
+      ...review(100, 'canonical-only'),
+      id: reviewHistoryEntryIdForEvent('canonical-only'),
+      cardId: card.id,
+      deckId: card.deckId,
+    });
+
+    const canonicalHydrated = (await hydrateCardsWithHistory([(await db.cards.get(card.id))!]))[0];
+    expect(canonicalHydrated.history).toHaveLength(1);
+    expect(canonicalHydrated.history[0].eventId).toBe('canonical-only');
+
+    await db.reviewHistory.clear();
+    await db.cards.update(card.id, { history: [review(999, 'projection-only')] });
+    const projectionHydrated = (await hydrateCardsWithHistory([(await db.cards.get(card.id))!]))[0];
+
+    expect(projectionHydrated.history).toHaveLength(1);
+    expect(projectionHydrated.history[0].eventId).toBe('projection-only');
+
+    const explicitEmptyHydrated =
+      (await hydrateCardsWithHistory([(await db.cards.get(card.id))!], []))[0];
+    expect(explicitEmptyHydrated.history).toEqual([]);
+  });
+
   it('lists course events without leaking events from another course', async () => {
     const biology = await createCourse('Biology');
     const chemistry = await createCourse('Chemistry');
     const biologyCard = await createCourseCard(biology.id, 'front_back', 'Q1', 'A1');
     const chemistryCard = await createCourseCard(chemistry.id, 'front_back', 'Q2', 'A2');
-    await db.cards.update(biologyCard.id, { history: [review(200)] });
-    await db.cards.update(chemistryCard.id, { history: [review(300)] });
+    await db.cards.update(biologyCard.id, { history: [review(200, 'biology-event')] });
+    await db.cards.update(chemistryCard.id, { history: [review(300, 'chemistry-event')] });
+    await db.reviewHistory.bulkAdd([
+      {
+        ...review(200, 'biology-event'),
+        id: reviewHistoryEntryIdForEvent('biology-event'),
+        cardId: biologyCard.id,
+        deckId: biologyCard.deckId,
+        courseId: biology.id,
+      },
+      {
+        ...review(300, 'chemistry-event'),
+        id: reviewHistoryEntryIdForEvent('chemistry-event'),
+        cardId: chemistryCard.id,
+        deckId: chemistryCard.deckId,
+        courseId: chemistry.id,
+      },
+    ]);
 
     const events = await listReviewHistoryForCourse(biology.id);
 

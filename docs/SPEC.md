@@ -655,9 +655,11 @@ deterministic id with collision handling; it does not prune or discard history.
 
 New review writes, undo, snapshots, import and course/sequence/occlusion restore paths keep
 the canonical store in sync while retaining `Card.history` as a compatibility projection.
-Readers hydrate cards from the canonical rows and preserve any legacy-only rows. Full backups
-carry `reviewHistory` explicitly as well as the card projection, so review history remains
-recoverable across export, restore and merge.
+Readers hydrate cards from the canonical rows and preserve legacy-only projection rows during
+compatibility reads. When a caller supplies an explicit canonical result, including an empty one,
+that result is authoritative and stale projection rows are not resurrected. Full backups carry
+`reviewHistory` explicitly as well as the card projection, so review history remains recoverable
+across export, restore and merge.
 
 ### Sequences — overlapping-cloze sequence learning (schema v11)
 

@@ -506,6 +506,34 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(lessonAfter!.unlockedAt).toBe(unlockedAt);
   });
 
+  it('clears the card projection when a course snapshot omits canonical events', async () => {
+    const course = await createCourse('Course snapshot history boundary');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+    await recordReview({
+      card,
+      eventId: 'event-course-snapshot-history-boundary',
+      sessionId: 'session-course-snapshot-history-boundary',
+      sessionKind: 'lesson',
+      deck: course,
+      kind: 'course',
+      grade: 3,
+      responseTimeSec: 1,
+      distracted: false,
+      correct: true,
+    });
+
+    const snapshot = await snapshotCourse(course.id);
+    snapshot!.reviewHistory = [];
+    await deleteCourse(course.id);
+    await restoreCourse(snapshot!);
+
+    const restored = (await db.cards.get(card.id))!;
+    expect(restored.history).toEqual([]);
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
+    expect((await hydrateCardsWithHistory([restored]))[0].history).toEqual([]);
+  });
+
   it('does not partially restore either key space when snapshot validation rejects', async () => {
     const course = await createCourse('Invalid snapshot');
     const lesson = await createLesson(course.id, 'Lesson 1');
@@ -691,6 +719,35 @@ describe('deleteLesson', () => {
     expect((await db.sequences.get(sequence.id))?.primaryLessonId).toBe(lesson.id);
     expect(await db.decks.get(deckId)).toBeDefined();
     expect(await db.userPerformance.get(deckId)).toBeDefined();
+  });
+
+  it('clears the card projection when a lesson snapshot omits canonical events', async () => {
+    const course = await createCourse('Lesson snapshot history boundary');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+    await recordReview({
+      card,
+      eventId: 'event-lesson-snapshot-history-boundary',
+      sessionId: 'session-lesson-snapshot-history-boundary',
+      sessionKind: 'lesson',
+      deck: course,
+      kind: 'course',
+      grade: 3,
+      responseTimeSec: 1,
+      distracted: false,
+      correct: true,
+    });
+
+    const snapshot = await snapshotLesson(lesson.id);
+    snapshot!.reviewHistory = [];
+    await deleteLesson(lesson.id);
+    await db.reviewHistory.clear();
+    await restoreLesson(snapshot!);
+
+    const restored = (await db.cards.get(card.id))!;
+    expect(restored.history).toEqual([]);
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
+    expect((await hydrateCardsWithHistory([restored]))[0].history).toEqual([]);
   });
 
   it('retargets assessment placement to the preceding lesson and restores it on undo', async () => {

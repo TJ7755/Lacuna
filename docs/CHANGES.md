@@ -18,8 +18,11 @@
   Course-keyed; legacy Deck reviews remain Deck-keyed; backing-Deck pacing rows stay separate.
 - Kept the physical `userPerformance` table and deferred destructive Deck/Folder storage
   migration until backup, restore, merge, deletion and undo coverage justify it.
-+- Made canonical review events win over stale card projections even when the shared event id's
+- Made canonical review events win over stale card projections even when the shared event id's
   metadata differs, preventing compatibility reads from double-counting one review.
+- Made an explicitly supplied empty canonical history authoritative, including during snapshot
+  restores, so stale `Card.history` projections cannot resurrect deleted review events while
+  ordinary compatibility reads continue to preserve legacy-only history.
 
 ## Unreleased — Specification accuracy audit
 

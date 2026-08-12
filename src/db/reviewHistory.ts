@@ -55,6 +55,40 @@ export function reviewHistoryEntriesForCard(card: Card): ReviewHistoryEntry[] {
 }
 
 /**
+ * Rebuild card projections from an explicit canonical result. An explicit empty
+ * result clears every projection rather than falling back to stale Card.history.
+ */
+export function cardsWithReviewHistory(
+  cards: Card[],
+  entries: ReviewHistoryEntry[],
+): Card[] {
+  const byCard = new Map<string, ReviewHistoryEntry[]>();
+  for (const entry of entries) {
+    const history = byCard.get(entry.cardId) ?? [];
+    history.push(entry);
+    byCard.set(entry.cardId, history);
+  }
+
+  return cards.map((card) => {
+    const history = (byCard.get(card.id) ?? [])
+      .slice()
+      .sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id))
+      .map((entry): ReviewLog => {
+        const {
+          id: _id,
+          cardId: _cardId,
+          deckId: _deckId,
+          courseId: _courseId,
+          primaryLessonId: _primaryLessonId,
+          ...review
+        } = entry;
+        return review;
+      });
+    return { ...card, history };
+  });
+}
+
+/**
  * Union canonical rows with rows reconstructed from cards. Earlier entries win so
  * an existing canonical row is not overwritten by a stale card projection; event ids
  * also deduplicate rows whose legacy primary-key scheme differed across backups.

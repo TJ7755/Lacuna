@@ -10,7 +10,11 @@ import { db, makeId } from './schema';
 import type { Card, LessonCardExposure, LessonCardLink, Occlusion, OcclusionRegion } from './types';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { scheduleAssetGc } from './assets';
-import { reviewHistoryEntriesForCard, type ReviewHistoryEntry } from './reviewHistory';
+import {
+  cardsWithReviewHistory,
+  reviewHistoryEntriesForCard,
+  type ReviewHistoryEntry,
+} from './reviewHistory';
 import { diffRegeneration, generateCards, type GeneratedCardPayload } from './occlusionGeneration';
 
 /** Convert low-level IndexedDB errors into user-friendly messages (mirrors repository.ts's friendlyDbError). */
@@ -261,17 +265,21 @@ export async function snapshotOcclusion(id: string): Promise<OcclusionSnapshot |
 /** Re-insert a previously captured OcclusionSnapshot (the inverse of deleteOcclusion/updateOcclusion). */
 export async function restoreOcclusion(snapshot: OcclusionSnapshot): Promise<void> {
   try {
+    const cardsToRestore =
+      snapshot.reviewHistory === undefined
+        ? snapshot.cards
+        : cardsWithReviewHistory(snapshot.cards, snapshot.reviewHistory);
     await db.transaction(
       'rw',
       [db.occlusions, db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory],
       async () => {
         await db.occlusions.put(snapshot.occlusion);
-        await db.cards.bulkPut(snapshot.cards);
+        await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(snapshot.lessonCards);
         await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
         await db.reviewHistory.bulkPut(
           snapshot.reviewHistory ??
-            snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card)),
+            cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
         );
       },
     );

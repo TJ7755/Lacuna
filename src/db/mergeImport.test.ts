@@ -2,11 +2,14 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import type { ShareLesson, SharePayloadV2 } from './share';
+import type { Course } from './types';
 import { findCourseForLineage, importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
 import {
   performanceForCourseBackingDecks,
   performanceForReviewUnits,
 } from './backingDecks';
+import { recordReview } from './repository';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 
 // Arc 7 §7.7/§7.9 Task 5: mergeImport.ts. Payloads are built as plain object literals
 // (bypassing encode/decode, which Task 3 already tests) matching the real wire shape:
@@ -40,6 +43,16 @@ describe('mergeImport: first import of a lineage', () => {
   beforeEach(async () => {
     await db.delete();
     await db.open();
+  });
+
+  it('keeps a first lineage import empty in both review-history stores', async () => {
+    const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
+    const card = (await db.cards.get('card-1'))!;
+
+    expect(card.history).toEqual([]);
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
+    expect((await hydrateCardsWithHistory([card]))[0].history).toEqual([]);
+    expect(course.distributedCopy?.lineageId).toBe('lineage-1');
   });
 
   it('adopts originating ids and writes the LineageIdMapping registry', async () => {
@@ -174,11 +187,13 @@ describe('mergeImport: first import of a lineage', () => {
 
 describe('mergeImport: merge apply', () => {
   let courseId: string;
+  let course: Course;
 
   beforeEach(async () => {
     await db.delete();
     await db.open();
-    const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
+    const imported = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
+    course = imported.course;
     courseId = course.id;
   });
 
@@ -416,6 +431,59 @@ describe('mergeImport: merge apply', () => {
     expect(
       (await performanceForReviewUnits([courseId, card.deckId])).map((row) => row?.deckId),
     ).toEqual([courseId, card.deckId]);
+  });
+
+  it('preserves local review evidence through an auto-applied lineage update', async () => {
+    const card = (await db.cards.get('card-1'))!;
+    const result = await recordReview({
+      card,
+      eventId: 'event-lineage-consistency',
+      sessionId: 'session-lineage-consistency',
+      sessionKind: 'lesson',
+      deck: course,
+      kind: 'course',
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+      now: 1_725_123_456_789,
+    });
+    const reviewed = (await db.cards.get(card.id))!;
+    await db.courses.update(courseId, {
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: true,
+      },
+    });
+
+    await mergeLineageUpdate(
+      courseId,
+      coursePayload({
+        rv: 2,
+        lessons: [lessonOne({
+          cards: [{ id: 'card-1', k: 0 as const, f: 'Revised question?', b: 'The basic unit of life.' }],
+        })],
+      }),
+    );
+
+    const merged = (await db.cards.get(card.id))!;
+    const canonical = await db.reviewHistory.where('cardId').equals(card.id).first();
+    const hydrated = (await hydrateCardsWithHistory([merged]))[0];
+    expect(merged.history).toEqual(reviewed.history);
+    expect(canonical).toMatchObject({
+      eventId: 'event-lineage-consistency',
+      cardId: card.id,
+      deckId: merged.deckId,
+      timestamp: 1_725_123_456_789,
+    });
+    expect(hydrated.history).toHaveLength(1);
+    expect(hydrated.history[0]).toMatchObject({
+      eventId: 'event-lineage-consistency',
+      timestamp: 1_725_123_456_789,
+    });
+    expect(result.recorded).toBe(true);
   });
 
   it('never modifies FSRS/scheduling fields on an auto-applied card update', async () => {
