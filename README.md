@@ -29,7 +29,8 @@ JSON file.
   disagree. Choose per course: **Expected marks** (default) maximises mean predicted exam-day
   retrievability and serves the card with the greatest Delta-R; **Secure topics** maximises how many
   cards clear 90% on exam day and serves the cheapest card to secure next.
-- **Invisible rating engine** — Yes/No plus a hidden response timer, calibrated per course.
+- **Invisible rating engine** — Yes/No plus a hidden response timer, calibrated from the
+  current course/deck performance profile.
 - **Simple learn mode** — an algorithm-free YES/NO study loop with no FSRS scheduling, no DB writes,
   and shared in-session card progress. Cards loop until every one is marked correct.
 - **Recall and practice items** — Basic (front/back), Reversed and Cloze cards support an
@@ -159,8 +160,10 @@ The shipped MCP surface and its deliberate exclusions are specified in `docs/SPE
 | Learn session                            | `src/pages/LearnMode.tsx`                                                            |
 | Analytics charts                         | `src/components/analytics/`                                                          |
 
-See `docs/SPEC.md` for the full set of design decisions.
-Use `docs/WEBSITE_TEST_CHECKLIST.md` for the complete browser release-verification pass.
+See `docs/SPEC.md` for the full set of design decisions. The non-normative scientific assessment
+is in `docs/scientific-assessment.md`; it records evidence strength, modelling assumptions,
+and the limits of the current claims. Use `docs/WEBSITE_TEST_CHECKLIST.md` for the complete
+browser release-verification pass.
 
 ## Tech
 

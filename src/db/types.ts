@@ -3,6 +3,7 @@
 
 import type { CardFilter } from './search';
 import type { CardUpdate, LessonUpdate, LineageConflict, NoteUpdate } from './lineageDiff';
+import type { ReviewHistoryEntry } from './reviewHistory';
 
 export type CardType = 'front_back' | 'cloze' | 'basic_reversed';
 
@@ -979,7 +980,7 @@ export interface BackupFile {
   decks: Deck[];
   cards: Card[];
   /** Canonical review events when exported from schema v20 or later. */
-  reviewHistory?: import('./reviewHistory').ReviewHistoryEntry[];
+  reviewHistory?: ReviewHistoryEntry[];
   assets: BackupAsset[];
   sessionHistory: SessionHistoryEntry[];
   userPerformance: UserPerformance[];
