@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SharePayload } from './share';
 
 type WorkerMessage = {
   type: 'decode';
@@ -46,7 +47,7 @@ describe('share worker lifecycle', () => {
 
   it('terminates the worker after the last concurrent job succeeds', async () => {
     const share = await import('./share');
-    const payload: share.SharePayload = {
+    const payload: SharePayload = {
       v: 1,
       at: 1,
       decks: [],
