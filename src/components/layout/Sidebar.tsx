@@ -405,7 +405,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'relative z-20 flex h-screen flex-col border-r border-line bg-surface/80 backdrop-blur-xl transition-[width] duration-200 ease-out',
+        'relative z-20 flex h-screen flex-col border-r border-line bg-surface',
         collapsed ? 'w-[72px]' : 'w-[264px]',
       )}
     >

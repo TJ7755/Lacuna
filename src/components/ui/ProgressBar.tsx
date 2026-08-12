@@ -44,9 +44,12 @@ export function ProgressBar({
         aria-valuemax={100}
       >
         <motion.div
-          className={cn('absolute inset-y-0 left-0 overflow-hidden rounded-full', variantClass[variant])}
+          className={cn(
+            'absolute inset-y-0 left-0 w-full origin-left overflow-hidden rounded-full',
+            variantClass[variant],
+          )}
           initial={false}
-          animate={{ width: `${pct}%` }}
+          animate={{ scaleX: pct / 100 }}
           transition={{ type: 'spring', stiffness: 120, damping: 22 }}
         >
           {/* A slow sheen travels along filled bars, giving the accent a sense of depth

@@ -223,7 +223,7 @@ export function AppShell() {
           className="flex min-w-0 flex-1 flex-col"
         >
           {/* Mobile top bar */}
-          <div className="flex items-center gap-3 border-b border-line bg-surface/80 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur md:hidden">
+          <div className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden">
             <button
               ref={mobileTriggerRef}
               onClick={() => setMobileOpen(true)}

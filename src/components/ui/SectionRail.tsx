@@ -85,7 +85,7 @@ export function SectionRail({ sections, activeSection, onNavigate, motionMultipl
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
-          className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5 backdrop-blur-sm"
+          className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5"
         >
           {motionMultiplier > 0 && (
             <motion.div
@@ -202,7 +202,7 @@ export function SectionRailMobileJumper({ sections, activeSection, onNavigate, l
   if (isDesktop) return null;
 
   return (
-    <div className={cn('sticky top-0 z-10 mb-6 rounded-xl border border-line bg-surface/95 p-2 shadow-sm backdrop-blur-sm', className)}>
+    <div className={cn('sticky top-0 z-10 mb-6 rounded-xl border border-line bg-surface p-2 shadow-sm', className)}>
       <label className="relative flex items-center">
         <span className="sr-only">{label}</span>
         <select

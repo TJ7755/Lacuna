@@ -31,11 +31,12 @@ function MetricBar({
       aria-valuemax={max}
       aria-label={title}
       title={title}
-    >        <motion.div
+    >
+      <motion.div
         key={value}
-        className={cn('h-full rounded-full', colourClass)}
-        initial={{ width: 0 }}
-        animate={{ width: `${pct}%` }}
+        className={cn('h-full w-full origin-left rounded-full', colourClass)}
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: pct / 100 }}
         transition={{ duration: 0.6 * m, ease: [0.16, 1, 0.3, 1] }}
       />
     </div>
@@ -258,14 +259,14 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
                     >
                       {day.byDeck.length === 0 ? (
                         <motion.div
-                          initial={{ height: 0 }}
-                          animate={{ height: `${heightPct}%` }}
+                          initial={{ scaleY: 0 }}
+                          animate={{ scaleY: heightPct / 100 }}
                           transition={{
                             duration: 0.5 * m,
                             delay: (0.1 + i * 0.06) * m,
                             ease: [0.16, 1, 0.3, 1],
                           }}
-                          className="w-full rounded-md bg-ink/10"
+                          className="h-full w-full origin-bottom rounded-md bg-ink/10"
                         />
                       ) : (
                         <div className="flex h-full w-full flex-col-reverse justify-start rounded-md overflow-hidden">
@@ -278,18 +279,23 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
                             const pct = Math.max(sliceHeight, 1);
 
                             return (
-                              <motion.div
+                              <div
                                 key={slice.sourceId}
-                                initial={{ height: 0 }}
-                                animate={{ height: `${pct}%` }}
-                                transition={{
-                                  duration: 0.5 * m,
-                                  delay: (0.1 + i * 0.06 + si * 0.03) * m,
-                                  ease: [0.16, 1, 0.3, 1],
-                                }}
-                                className={cn('w-full', !colour && 'bg-accent/70')}
-                                style={colour ? { backgroundColor: colour, opacity: 0.7 } : undefined}
-                              />
+                                className="w-full shrink-0"
+                                style={{ height: `${pct}%` }}
+                              >
+                                <motion.div
+                                  initial={{ scaleY: 0 }}
+                                  animate={{ scaleY: 1 }}
+                                  transition={{
+                                    duration: 0.5 * m,
+                                    delay: (0.1 + i * 0.06 + si * 0.03) * m,
+                                    ease: [0.16, 1, 0.3, 1],
+                                  }}
+                                  className={cn('h-full w-full origin-bottom', !colour && 'bg-accent/70')}
+                                  style={colour ? { backgroundColor: colour, opacity: 0.7 } : undefined}
+                                />
+                              </div>
                             );
                           })}
                         </div>
@@ -426,10 +432,10 @@ function DayDetail({
                 <div className="h-1 w-full rounded-full bg-ink/5 overflow-hidden">
                   <motion.div
                     key={`${slice.sourceId}-${sliceTotal}`}
-                    className={cn('h-full rounded-full', !colour && 'bg-accent/60')}
+                    className={cn('h-full w-full origin-left rounded-full', !colour && 'bg-accent/60')}
                     style={colour ? { backgroundColor: colour, opacity: 0.6 } : undefined}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${barPct}%` }}
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: barPct / 100 }}
                     transition={{
                       duration: 0.5 * m,
                       delay: (0.08 + si * 0.04) * m,

@@ -173,10 +173,10 @@ function ComparisonBar({
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colourA }} />
           <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-ink/5">
             <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${widthA}%` }}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: widthA / 100 }}
               transition={{ duration: 0.6 * m, delay: (delay + 0.05) * m, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full rounded-full"
+              className="h-full w-full origin-left rounded-full"
               style={{ backgroundColor: colourA }}
             />
           </div>
@@ -189,10 +189,10 @@ function ComparisonBar({
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colourB }} />
           <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-ink/5">
             <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${widthB}%` }}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: widthB / 100 }}
               transition={{ duration: 0.6 * m, delay: (delay + 0.1) * m, ease: [0.16, 1, 0.3, 1] }}
-              className="h-full rounded-full"
+              className="h-full w-full origin-left rounded-full"
               style={{ backgroundColor: colourB }}
             />
           </div>
