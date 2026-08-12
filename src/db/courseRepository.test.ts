@@ -44,6 +44,10 @@ import {
 import { FSRS_VERSION } from '../fsrs/params';
 import { listLessons, listCardsForCourse } from './read';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
+import {
+  performanceForCourseBackingDecks,
+  performanceForReviewUnits,
+} from './backingDecks';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 
 async function reset() {
@@ -329,6 +333,62 @@ describe('deleteCourse cascade', () => {
     expect(await db.sessionHistory.where('courseId').equals(course.id).count()).toBe(0);
   });
 
+  it('removes only both performance key spaces owned by the deleted course', async () => {
+    const course = await createCourse('Deleted course');
+    const lesson = await createLesson(course.id, 'Deleted lesson');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+    const otherCourse = await createCourse('Retained course');
+    const otherLesson = await createLesson(otherCourse.id, 'Retained lesson');
+    const otherCard = await createLessonCard(
+      otherCourse.id,
+      otherLesson.id,
+      'front_back',
+      'q2',
+      'a2',
+    );
+    const deletedBacking = {
+      deckId: card.deckId,
+      runningMeanResponseTime: 21,
+      runningStdDevResponseTime: 1,
+      m2: 1,
+      totalCorrectReviews: 5,
+    };
+    const deletedCalibration = {
+      deckId: course.id,
+      runningMeanResponseTime: 22,
+      runningStdDevResponseTime: 1,
+      m2: 1,
+      totalCorrectReviews: 6,
+    };
+    const retainedBacking = {
+      deckId: otherCard.deckId,
+      runningMeanResponseTime: 23,
+      runningStdDevResponseTime: 1,
+      m2: 1,
+      totalCorrectReviews: 7,
+    };
+    const retainedCalibration = {
+      deckId: otherCourse.id,
+      runningMeanResponseTime: 24,
+      runningStdDevResponseTime: 1,
+      m2: 1,
+      totalCorrectReviews: 8,
+    };
+    await db.userPerformance.bulkPut([
+      deletedBacking,
+      deletedCalibration,
+      retainedBacking,
+      retainedCalibration,
+    ]);
+
+    await deleteCourse(course.id);
+
+    expect(await db.userPerformance.get(course.id)).toBeUndefined();
+    expect(await db.userPerformance.get(card.deckId)).toBeUndefined();
+    expect(await db.userPerformance.get(otherCourse.id)).toEqual(retainedCalibration);
+    expect(await db.userPerformance.get(otherCard.deckId)).toEqual(retainedBacking);
+  });
+
   it('removes empty owned backing decks and course sequences', async () => {
     const course = await createCourse('Empty ownership');
     const lesson = await createLesson(course.id, 'Lesson');
@@ -444,6 +504,95 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(cardAfter!.history).toEqual(cardBefore!.history);
     const lessonAfter = await db.lessons.get(lesson1.id);
     expect(lessonAfter!.unlockedAt).toBe(unlockedAt);
+  });
+
+  it('does not partially restore either key space when snapshot validation rejects', async () => {
+    const course = await createCourse('Invalid snapshot');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+    const backing = {
+      deckId: card.deckId,
+      runningMeanResponseTime: 31,
+      runningStdDevResponseTime: 2,
+      m2: 8,
+      totalCorrectReviews: 6,
+    };
+    const calibration = {
+      deckId: course.id,
+      runningMeanResponseTime: 17,
+      runningStdDevResponseTime: 3,
+      m2: 12,
+      totalCorrectReviews: 4,
+    };
+    await db.userPerformance.bulkPut([backing, calibration]);
+    const snapshot = await snapshotCourse(course.id);
+    await deleteCourse(course.id);
+
+    const staleBacking = { ...backing, runningMeanResponseTime: 901 };
+    const staleCalibration = { ...calibration, runningMeanResponseTime: 902 };
+    await db.userPerformance.bulkPut([staleBacking, staleCalibration]);
+    const invalidSnapshot = {
+      ...snapshot!,
+      courseAssessments: snapshot!.courseAssessments.map((assessment) => ({
+        ...assessment,
+        courseId: 'different-course',
+      })),
+    };
+
+    await expect(restoreCourse(invalidSnapshot)).rejects.toThrow();
+
+    expect(await db.courses.get(course.id)).toBeUndefined();
+    expect(await db.userPerformance.get(card.deckId)).toEqual(staleBacking);
+    expect(await db.userPerformance.get(course.id)).toEqual(staleCalibration);
+  });
+
+  it('restores distinct pacing and calibration rows over stale values', async () => {
+    const course = await createCourse('Key-space snapshot');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    const lessonCard = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+    const bankCard = await createCourseCard(course.id, 'front_back', 'q2', 'a2');
+    const backing = {
+      deckId: lessonCard.deckId,
+      runningMeanResponseTime: 31,
+      runningStdDevResponseTime: 2,
+      m2: 8,
+      totalCorrectReviews: 6,
+    };
+    const calibration = {
+      deckId: course.id,
+      runningMeanResponseTime: 17,
+      runningStdDevResponseTime: 3,
+      m2: 12,
+      totalCorrectReviews: 4,
+    };
+    await db.userPerformance.bulkPut([backing, calibration]);
+
+    const snapshot = await snapshotCourse(course.id);
+    expect(snapshot!.userPerformance).toEqual(
+      expect.arrayContaining([backing, calibration]),
+    );
+
+    await deleteCourse(course.id);
+    const staleBacking = { ...backing, runningMeanResponseTime: 901 };
+    const staleCalibration = { ...calibration, runningMeanResponseTime: 902 };
+    await db.userPerformance.bulkPut([staleBacking, staleCalibration]);
+
+    await restoreCourse(snapshot!);
+
+    expect(await db.userPerformance.get(lessonCard.deckId)).toEqual(backing);
+    expect(await db.userPerformance.get(course.id)).toEqual(calibration);
+    const restoredLessonCard = (await db.cards.get(lessonCard.id))!;
+    expect(
+      (await performanceForCourseBackingDecks(course.id, [restoredLessonCard])).map(
+        (row) => row.deckId,
+      ),
+    ).toEqual([lessonCard.deckId]);
+    expect(
+      (await performanceForReviewUnits([course.id, lessonCard.deckId])).map(
+        (row) => row?.deckId,
+      ),
+    ).toEqual([course.id, lessonCard.deckId]);
+    expect(await db.cards.get(bankCard.id)).toBeDefined();
   });
 });
 

@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import type { ShareLesson, SharePayloadV2 } from './share';
 import { findCourseForLineage, importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
+import {
+  performanceForCourseBackingDecks,
+  performanceForReviewUnits,
+} from './backingDecks';
 
 // Arc 7 §7.7/§7.9 Task 5: mergeImport.ts. Payloads are built as plain object literals
 // (bypassing encode/decode, which Task 3 already tests) matching the real wire shape:
@@ -65,6 +69,18 @@ describe('mergeImport: first import of a lineage', () => {
     expect(mapping?.lessonSnapshots['lesson-1']).toMatchObject({ name: 'Cells' });
 
     expect(await findCourseForLineage('lineage-1')).toMatchObject({ id: course.id });
+
+    const importedCard = (await db.cards.get('card-1'))!;
+    expect(await db.userPerformance.get(importedCard.deckId)).toBeDefined();
+    expect(await db.userPerformance.get(course.id)).toBeUndefined();
+    expect(
+      (await performanceForCourseBackingDecks(course.id, [importedCard])).map((row) => row.deckId),
+    ).toEqual([importedCard.deckId]);
+    expect(
+      (await performanceForReviewUnits([course.id, importedCard.deckId])).map(
+        (row) => row?.deckId,
+      ),
+    ).toEqual([undefined, importedCard.deckId]);
   });
 
   it('regenerates a sequence-generated card rather than also adopting the packed copy', async () => {
@@ -347,6 +363,59 @@ describe('mergeImport: merge apply', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].revision).toBe(3);
     expect(rows[0].diff.updates.lessons).toEqual([{ id: 'lesson-1', name: 'Cells v3' }]);
+  });
+
+  it('does not replace newer local performance rows during a lineage update', async () => {
+    const card = (await db.cards.get('card-1'))!;
+    const backing = {
+      deckId: card.deckId,
+      runningMeanResponseTime: 31,
+      runningStdDevResponseTime: 2,
+      m2: 8,
+      totalCorrectReviews: 6,
+    };
+    const calibration = {
+      deckId: courseId,
+      runningMeanResponseTime: 17,
+      runningStdDevResponseTime: 3,
+      m2: 12,
+      totalCorrectReviews: 4,
+    };
+    await db.userPerformance.bulkPut([backing, calibration]);
+    const backingDeck = (await db.decks.get(card.deckId))!;
+    const localCourse = (await db.courses.get(courseId))!;
+    const newerBackingInteraction =
+      (backingDeck.lastInteractedAt ?? backingDeck.createdAt) + 1000;
+    const newerCourseInteraction =
+      (localCourse.lastInteractedAt ?? localCourse.createdAt) + 1000;
+    await db.decks.update(card.deckId, { lastInteractedAt: newerBackingInteraction });
+    await db.courses.update(courseId, { lastInteractedAt: newerCourseInteraction });
+    expect((await db.decks.get(card.deckId))?.lastInteractedAt).toBe(newerBackingInteraction);
+    expect((await db.courses.get(courseId))?.lastInteractedAt).toBe(newerCourseInteraction);
+    await db.courses.update(courseId, {
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: true,
+      },
+    });
+
+    await mergeLineageUpdate(
+      courseId,
+      coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells revised' })] }),
+    );
+
+    expect((await db.decks.get(card.deckId))?.lastInteractedAt).toBe(newerBackingInteraction);
+    expect((await db.courses.get(courseId))?.lastInteractedAt).toBe(newerCourseInteraction);
+    expect(await db.userPerformance.get(card.deckId)).toEqual(backing);
+    expect(await db.userPerformance.get(courseId)).toEqual(calibration);
+    expect(
+      (await performanceForCourseBackingDecks(courseId, [card])).map((row) => row.deckId),
+    ).toEqual([card.deckId]);
+    expect(
+      (await performanceForReviewUnits([courseId, card.deckId])).map((row) => row?.deckId),
+    ).toEqual([courseId, card.deckId]);
   });
 
   it('never modifies FSRS/scheduling fields on an auto-applied card update', async () => {
