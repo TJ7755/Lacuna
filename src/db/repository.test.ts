@@ -226,6 +226,54 @@ describe('undoReview', () => {
     expect((await db.courses.get(c.id))!.lastInteractedAt).toBe(courseLastInteractedAtBefore);
   });
 
+  it('undoes course calibration without changing the backing-deck pacing profile', async () => {
+    const course = await createCourse('Course key-space undo');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+    const backingBefore = {
+      deckId: card.deckId,
+      runningMeanResponseTime: 31,
+      runningStdDevResponseTime: 2,
+      m2: 8,
+      totalCorrectReviews: 6,
+    };
+    const calibrationBefore = {
+      deckId: course.id,
+      runningMeanResponseTime: 17,
+      runningStdDevResponseTime: 3,
+      m2: 12,
+      totalCorrectReviews: 4,
+    };
+    await db.userPerformance.bulkPut([backingBefore, calibrationBefore]);
+
+    const cardBefore = (await db.cards.get(card.id))!;
+    const result = await recordReview({
+      card,
+      eventId: 'event-course-key-space-undo',
+      sessionId: 'session-course-key-space-undo',
+      sessionKind: 'lesson',
+      deck: course,
+      kind: 'course',
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+    });
+
+    await undoReview({
+      eventId: 'event-course-key-space-undo',
+      cardBefore,
+      perfBefore: calibrationBefore,
+      sessionHistoryId: result.sessionHistoryId,
+      deckId: course.id,
+      kind: 'course',
+      lastInteractedAtBefore: result.lastInteractedAtBefore,
+    });
+
+    expect(await db.userPerformance.get(course.id)).toEqual(calibrationBefore);
+    expect(await db.userPerformance.get(card.deckId)).toEqual(backingBefore);
+  });
+
   it('persists every provenance field and the exact attempt timestamp', async () => {
     const deck = await createDeck('Test deck');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
