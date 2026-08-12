@@ -1,5 +1,11 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Performance audit measurements
+
+- Added `bun run perf:audit` for repeatable production bundle, 10,000-card session,
+  and review-write measurements. The baseline values and timing protocol are recorded
+  in `docs/PERFORMANCE.md` so performance changes are compared against the same work.
+
 ## Unreleased — FSRS weight-set provenance
 
 - Recorded a short fingerprint of the `w` array on reviews written by the repository, and

@@ -19,6 +19,29 @@ First load (fresh browser, no service worker): **~1.44 MB raw / ~460 KB gz** Jav
 
 Measured navigation pipeline (fast laptop, warm cache): click → exit dead time 220 ms → chunk fetch+parse 5-200 ms → IndexedDB query waterfall 15-80 ms → entrance animation + stagger 220-900 ms. Slow network (first visit): CoursePath/QuestionBank navs add ~2 s of chunk download including the markdown stack.
 
+## Repeatable measurements
+
+Run `bun run build` followed by `bun run perf:audit`. The audit script reports the
+same production asset sizes from `dist/`, median 10,000-card session timings, and
+the latency of one 10,000-card `recordReview` write. The full Vitest suite is timed
+separately with `/usr/bin/time -p bun run test -- --reporter=dot`.
+
+The 12 Aug 2026 baseline on the performance branch was:
+
+| Measurement | Baseline |
+|---|---:|
+| Initial JavaScript | 1,449,886 bytes / 424,887 bytes gz |
+| Initial CSS | 139,566 bytes / 25,005 bytes gz |
+| `selectNext`, 10,000 cards | 20.41 ms median |
+| `sessionComplete`, 10,000 cards | 21.60 ms median |
+| `recordReview`, 10,000 cards | 37,793.71 ms |
+| Full Vitest suite | 150.68 s wall time; 1,835 tests |
+
+The build-report gzip values above use Vite's output from the baseline build; the
+script uses gzip level 9 for comparable output after each change. Hardware and
+browser navigation timings are not treated as regression gates because they are
+environment-dependent.
+
 ## Findings by area
 
 ### 1. Navigation latency (click → painted page)
