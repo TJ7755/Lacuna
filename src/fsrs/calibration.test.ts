@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, Grade, ReviewLog } from '../db/types';
+import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import { predictionAccuracySeries } from './calibration';
 
 const DAY = new Date(2026, 5, 4, 12).getTime();
@@ -55,5 +56,20 @@ describe('predictionAccuracySeries', () => {
     expect(series[0].predicted).toBeCloseTo(0.525);
     expect(series[0].actual).toBeCloseTo(0.5);
     expect(series[0].brier).toBeCloseTo(((0.8 - 1) ** 2 + (0.25 - 0) ** 2) / 2);
+  });
+
+  it('uses canonical event rows when the card projection is stale', () => {
+    const source = card([log(3, 0.8, 2), log(1, 0.25, 9, 1_000)]);
+    const reviewHistory: ReviewHistoryEntry[] = source.history.map((entry, index) => ({
+      ...entry,
+      id: `review:event:calibration-${index}`,
+      cardId: source.id,
+      deckId: source.deckId,
+    }));
+
+    const series = predictionAccuracySeries([{ ...source, history: [] }], reviewHistory);
+
+    expect(series[0].reviews).toBe(2);
+    expect(series[0].predicted).toBeCloseTo(0.525);
   });
 });
