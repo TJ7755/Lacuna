@@ -11,12 +11,14 @@ share/backup formats still contain Deck-shaped data.
 
 ## Result and counting rule
 
-The classifications below contain **10 wire-format entries (A), 7 internal-scheduling
-entries (B), and 9 safe-rename entries (C)**. A category C pass would touch **45 code sites**
-(calls, reads, writes and local bindings), including tests and test fixtures. The count excludes
-the C declarations themselves but includes local bindings where the proposed identifier changes.
-The count treats the same spelling in different roles as different qualified identifiers: for
-example, `BackupFile.decks` is a wire field, while `db.decks` is a storage table.
+The classifications below contain **10 wire-format entries (A), 8 internal-scheduling
+entries (B), and 10 safe-rename entries (C)**. A category C pass would touch **66 code update
+sites** across declarations, producers, local bindings, consumers, tests and fixtures. The
+count includes every source location that would need editing for the proposed rename; fixture
+fields whose value is already `course` and therefore needs no edit are listed as checked but are
+not counted. The count treats the same spelling in different roles as different qualified
+identifiers: for example, `BackupFile.decks` is a wire field, while `db.decks` is a storage
+table.
 
 No source code was changed by this audit. No wire-format rename is proposed.
 
@@ -33,6 +35,8 @@ No source code was changed by this audit. No wire-format rename is proposed.
   passes a backing-deck id only for duplicate detection.
 - `src/pages/settings/DataPortabilitySection.tsx:18-30,55-58` reaches
   `UnifiedExportPanel` and `importBackup` for full Course-inclusive backups.
+- `src/pages/Settings.tsx:64-65` renders the global `BackupsSection`; its restore-point count is
+  checked separately below because it is derived from backing Deck rows.
 - `src/components/import/UnifiedExportPanel.tsx:134-176` calls the generic card and
   review exporters and `downloadBackup`.
 - `src/components/import/MergeReviewPanel.tsx:1-5,240-245,356-364` is a Course-scoped
@@ -83,19 +87,23 @@ The physical Deck records remain part of the compatibility and scheduling bridge
 
 ### A3. Deck-keyed fields inside backup records
 
-- **Identifiers:** `Card.deckId`, `SessionHistoryEntry.deckId` and
-  `UserPerformance.deckId` when they travel inside a `BackupFile`.
-- **Locations:** `src/db/types.ts:842-850,905-923`; the merge/restore uses are visible in
-  `src/db/portability.ts:632-680`.
+- **Identifiers:** `Card.deckId`, `SessionHistoryEntry.deckId`, `UserPerformance.deckId` and
+  canonical `ReviewHistoryEntry.deckId` when they travel inside a `BackupFile`.
+- **Locations:** `src/db/types.ts:842-850,905-923,981-992`; `ReviewHistoryEntry` is defined
+  at `src/db/reviewHistory.ts:7-14`; the merge/restore uses are visible in
+  `src/db/portability.ts:231-234,632-680`.
 - **Serialisation/parse trace:** these records are members of the object returned at
   `src/db/portability.ts:105-128`, written by `JSON.stringify` at line 134, read by
-  `JSON.parse` at line 688, and restored/merged from `backup.userPerformance` and
-  `backup.sessionHistory` at `src/db/portability.ts:635-680`.
+  `JSON.parse` at line 688, and restored/merged from `backup.userPerformance`,
+  `backup.sessionHistory` and `backup.reviewHistory` at
+  `src/db/portability.ts:231-234,635-680,579-591`.
 
 `UserPerformance.deckId` is especially unsafe to rename: the transitional table can carry
   either a backing-Deck key or a Course review-unit key. The ambiguity is a storage decision
   already documented in `docs/course-domain-boundary-follow-ups.md`; it is not permission to
-  alter the backup contract.
+  alter the backup contract. Canonical review history also inherits `ReviewLog.sessionKind`; its
+  legacy `'deck'` value is emitted by the review-history exports below and remains part of the
+  compatibility surface.
 
 ### A4. Card CSV/TSV headers: `deck_name` and `deck_colour`
 
@@ -134,34 +142,36 @@ is not a Course-facing screen string.
   is serialised with `JSON.stringify` at line 224; `UnifiedExportPanel` downloads it at
   `src/components/import/UnifiedExportPanel.tsx:156-159`.
 
-### A8. Review-history CSV header: `deck_name`
+### A8. Review-history CSV headers and compatibility values
 
-- **Identifier:** `deck_name` in `REVIEW_HISTORY_HEADERS` at `src/db/export.ts:231-252`.
+- **Identifiers:** `deck_name` and `session_kind` in `REVIEW_HISTORY_HEADERS` at
+  `src/db/export.ts:231-252`; `session_kind` can contain the legacy `'deck'` value from
+  `ReviewSessionKind` at `src/db/types.ts:55-69`.
 - **Serialisation trace:** the header is emitted at `src/db/export.ts:270-302`, with the
-  resolved Course/Lesson display value in the same column at lines 274-284. The panel
-  downloads it at `src/components/import/UnifiedExportPanel.tsx:166-169`.
+  resolved Course/Lesson display value in the `deck_name` column at lines 274-284 and the
+  session value at lines 277-284. The panel downloads it at
+  `src/components/import/UnifiedExportPanel.tsx:166-169`.
 
-### A9. Review-history JSON property: `deck`
+### A9. Review-history JSON properties and compatibility values
 
-- **Identifier:** the JSON property `deck` at `src/db/export.ts:305-336`.
+- **Identifiers:** the JSON properties `deck` and `sessionKind` at `src/db/export.ts:305-336`;
+  `sessionKind` can contain the legacy `'deck'` value.
 - **Serialisation trace:** each review item receives `deck` at line 319 and the array is
-  serialised at line 336. The panel downloads it at
+  serialised at line 336; `sessionKind` is inserted at line 315. The panel downloads it at
   `src/components/import/UnifiedExportPanel.tsx:170-173`.
 
-### A10. Anki APKG source-deck metadata
+### A10. Anki APKG source-deck import payload
 
-- **Identifiers:** the external `decks` table and its source-deck name, normalised to
-  `ApkgImportResult.deckName` and displayed by `UnifiedImportPanel` at
-  `src/components/import/UnifiedImportPanel.tsx:775-780`.
+- **Identifiers:** the external `decks` table and its source-deck `name` field in the APKG
+  import payload.
 - **Import trace:** the APKG reader queries the source SQLite payload's `decks` table at
-  `src/db/apkgImport.ts:388-396`; `parseApkg` selects the first source deck at
+  `src/db/apkgImport.ts:388-396`; `extractFromDatabase` selects the first source deck at
   `src/db/apkgImport.ts:214-217` and returns its name at `src/db/apkgImport.ts:273-279`.
 
 This is Anki source vocabulary, not a Lacuna Course field. It must not be presented as
-evidence that the Course model has a Deck. The source term is verified in the import
-payload; the camel-case `deckName` is an adapter result field rather than a literal APKG
-key, so a future adapter-only rename would be a separate compatibility decision, not part
-of a Course storage rename.
+evidence that the Course model has a Deck. The raw table and column are part of the external
+import contract. `ApkgImportResult.deckName` is not part of this A entry: it is an in-memory
+adapter field, listed under C10 because it can be renamed without changing the APKG payload.
 
 ## B — Internal scheduling: correct as named
 
@@ -230,21 +240,32 @@ the Course share/import paths at `src/db/share.ts:35-38,1291-1321` and
 `src/db/mergeImport.ts:35-46,467-470,590-598`. The names state exactly what the helpers
 resolve. They are not leaked Course-facing API names.
 
+### B8. APKG legacy target-deck option
+
+`ApkgParseOptions.deckName` at `src/db/apkgImport.ts:34-39` is an explicit name for the
+physical target Deck used by the legacy APKG path. The Course-facing importer calls
+`parseApkg` with only `{ importScheduling: true }` at
+`src/components/import/UnifiedImportPanel.tsx:318`; no Course caller supplies this override.
+It is therefore not a Course name to rename. The separate result field shown in the Course
+import preview is `ApkgImportResult.deckName`, which is the safe adapter rename in C10.
+
 ## C — Safe rename: code-facing names that misdescribe Course data
 
 These names are not serialised fields and do not change storage. The following is the
-complete rename inventory. The call/reference lists include production code and tests; no
-rename has been applied.
+complete rename inventory. The update-site lists include declarations, producers, local
+bindings, consumers, tests and fixtures; no rename has been applied.
 
 ### C1. Legacy summary discriminator
 
 - **File/lines:** `src/db/share.ts:499,708`.
 - **Current name:** `ShareSummary.kind: 'deck' | 'course'`, with the v1 value `'deck'`.
 - **Proposed name:** keep `kind`, change the legacy value from `'deck'` to `'legacy'`.
-- **Call sites:** `src/db/share.test.ts:77` asserts the v1 value. The production callers
-  at `src/pages/SharePage.tsx:820` and
-  `src/components/import/UnifiedImportPanel.tsx:969` only test for `'course'` and need no
-  control-flow change, though their fixtures should be checked during the rename.
+- **Update sites:** `src/db/share.ts:499,708` and `src/db/share.test.ts:77`.
+- **Checked, no edit required:** the production callers at `src/pages/SharePage.tsx:820` and
+  `src/components/import/UnifiedImportPanel.tsx:969` only test for `'course'`; the fixtures at
+  `src/pages/SharePage.test.tsx:45`,
+  `src/components/import/UnifiedImportPanel.test.tsx:40` and
+  `src/components/import/ShareCodeImportPanel.test.tsx:26` also use `'course'`.
 
 The value is a derived preview discriminator, not a share-code field. The v1 wire remains
 `v: 1` with `decks`.
@@ -254,9 +275,10 @@ The value is a derived preview discriminator, not a share-code field. The v1 wir
 - **File/lines:** `src/db/share.ts:500,690,709`.
 - **Current name:** `deckCount`.
 - **Proposed name:** `groupCount` (v1 legacy groups and v2 lessons share this preview slot).
-- **Call sites:**
-  - `src/pages/SharePage.tsx:834-835`;
-  - `src/components/import/UnifiedImportPanel.tsx:983-984`;
+- **Update sites:**
+  - `src/db/share.ts:500,690,709`;
+  - `src/pages/SharePage.tsx:834,835`;
+  - `src/components/import/UnifiedImportPanel.tsx:983,984`;
   - `src/db/share.test.ts:78,165`;
   - `src/pages/SharePage.test.tsx:46`;
   - `src/components/import/UnifiedImportPanel.test.tsx:41`;
@@ -271,9 +293,10 @@ previews.
 - **File/lines:** `src/db/share.ts:503,693,702-704,712`.
 - **Current name:** `deckNames`.
 - **Proposed name:** `groupNames`.
-- **Call sites:**
-  - `src/pages/SharePage.tsx:842-844`;
-  - `src/components/import/UnifiedImportPanel.tsx:991-993`;
+- **Update sites:**
+  - `src/db/share.ts:503,693,702,704,712`;
+  - `src/pages/SharePage.tsx:842,844`;
+  - `src/components/import/UnifiedImportPanel.tsx:991,993`;
   - `src/db/share.test.ts:166`;
   - `src/pages/SharePage.test.tsx:49`;
   - `src/components/import/UnifiedImportPanel.test.tsx:44`;
@@ -287,7 +310,7 @@ preview API leak, not a wire-format leak.
 - **File/lines:** `src/db/share.ts:1088`.
 - **Current name:** `importDeckSharePayload`.
 - **Proposed name:** `importLegacySharePayload`.
-- **Call sites:** `src/db/share.ts:1483`.
+- **Update sites:** `src/db/share.ts:1088,1483`.
 
 The function is a retained compatibility adapter and must remain. Only its private code
 name is a safe rename: it accepts the v1 Deck payload but creates Course/Lesson rows and
@@ -298,7 +321,7 @@ returns `ImportShareResult`.
 - **File/lines:** `src/db/export.ts:27`.
 - **Current name:** `fetchDecksAndCards`.
 - **Proposed name:** `fetchExportData`.
-- **Call/reference sites:** `src/db/export.ts:52,87,89,117,129,138,194,216,271,307`.
+- **Update sites:** `src/db/export.ts:27,52,87,89,117,129,138,194,216,271,307`.
 
 The helper fetches Decks, Cards, Courses and Lessons and prefers Course/Lesson display data.
 Its current name is incomplete for the Course-aware export path and has no wire effect.
@@ -308,7 +331,7 @@ Its current name is incomplete for the Course-aware export path and has no wire 
 - **File/lines:** `src/db/export.ts:43-66`.
 - **Current name:** `resolveDeckDisplay`.
 - **Proposed name:** `resolveCardGroupingDisplay`.
-- **Call sites:** `src/db/export.ts:93,141,198,221,274,310`.
+- **Update sites:** `src/db/export.ts:49,93,141,198,221,274,310`.
 
 The function resolves `Course — Lesson`, Course-only, and legacy Deck-only names. Calling
 the whole operation Deck display is precisely the terminology leak this audit is meant to
@@ -319,7 +342,7 @@ record.
 - **File/lines:** `src/db/export.ts:142,274,310`.
 - **Current name:** `deckName`.
 - **Proposed name:** `displayName`.
-- **Call/reference sites:** `src/db/export.ts:145,284,319`.
+- **Update sites:** `src/db/export.ts:142,145,274,284,310,319`.
 
 The value is already a Course/Lesson display name for Course cards. The serialised `Deck:`
 line and JSON `deck` property listed in A5 and A7 would remain unchanged.
@@ -329,7 +352,7 @@ line and JSON `deck` property listed in A5 and A7 would remain unchanged.
 - **File/lines:** `src/db/export.ts:143`.
 - **Current name:** `deckColour`.
 - **Proposed name:** `displayColour`.
-- **Call sites:** `src/db/export.ts:146`.
+- **Update sites:** `src/db/export.ts:143,146`.
 
 The value is already selected from either Course or legacy Deck metadata. The output value
 and its position in the CSV/TSV contract remain unchanged.
@@ -339,10 +362,24 @@ and its position in the CSV/TSV contract remain unchanged.
 - **File/lines:** `src/db/export.ts:198`.
 - **Current name:** local `deck` variable.
 - **Proposed name:** `displayName`.
-- **Call site:** `src/db/export.ts:202`.
+- **Update sites:** `src/db/export.ts:198,202`.
 
 This local contains the result of `resolveDeckDisplay`, including Course/Lesson names. The
 serialised Markdown header remains `Deck` under A6.
+
+### C10. APKG result adapter field
+
+- **File/lines:** `src/db/apkgImport.ts:24,217,274,702`.
+- **Current name:** `ApkgImportResult.deckName` (with the local source name at line 217).
+- **Proposed name:** `sourceDeckName`.
+- **Update sites:** `src/db/apkgImport.ts:24,217,274,702`;
+  `src/components/import/UnifiedImportPanel.tsx:779`;
+  `src/components/cards/CardList.test.tsx:88,240`; and
+  `src/db/apkgImport.test.ts:49`.
+
+This is an in-memory adapter field, not an APKG key and not a Lacuna backup/share field. The
+rename would make the Course-facing preview's external Anki provenance explicit without
+changing the source payload, IndexedDB schema or legacy target-Deck behaviour.
 
 ## User-visible `deck` strings on Course-facing screens
 
@@ -370,6 +407,12 @@ code change is made here.
    `src/db/courseMigration.ts:138-157`. This is not a literal JSX label, but it can surface
    as a Course-facing name after import and should be treated as copy debt separately from
    the A1 `decks` wire key.
+
+Related Course-facing count defect without the literal word “deck”: automatic restore points
+display `{backup.deckCount} lessons` at `src/pages/settings/BackupsSection.tsx:150-156`, but
+`takeAutoBackup` derives that value from `payload.decks.length` at
+`src/db/backups.ts:105-115`. The displayed lesson count can therefore count hidden backing
+Decks rather than Course lessons. This is a data-label defect, not a wire rename.
 
 Checked clean in the scoped surfaces: `SharePage` already labels the legacy preview as
 “lesson” at `src/pages/SharePage.tsx:831-840`; `DataPortabilitySection` displays lesson
