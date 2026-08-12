@@ -1,5 +1,11 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Course-facing Deck terminology audit
+
+- Added `docs/course-terminology-audit.md`, tracing Course-facing Deck terminology into
+  wire-format, internal scheduling and safe-rename categories. No source code or wire format
+  changed.
+
 ## Unreleased — September phone performance pass
 
 - Removed the whole-card-pool aggregate scan from the `recordReview` write transaction.
