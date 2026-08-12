@@ -71,6 +71,14 @@ async function reset() {
   ]);
 }
 
+async function waitForSessionHistory(eventId: string): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (await db.sessionHistory.where('eventId').equals(eventId).count()) return;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error(`Timed out waiting for session history ${eventId}.`);
+}
+
 describe('createCourse', () => {
   beforeEach(reset);
 
@@ -322,6 +330,7 @@ describe('deleteCourse cascade', () => {
     expect(await db.decks.get(deckId)).toBeDefined();
     expect(await db.userPerformance.get(deckId)).toBeDefined();
     expect(await db.userPerformance.get(course.id)).toBeDefined();
+    await waitForSessionHistory('event-delete-course');
     expect(await db.sessionHistory.where('deckId').equals(deckId).count()).toBe(1);
 
     await deleteCourse(course.id);

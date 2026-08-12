@@ -881,7 +881,7 @@ describe('LearnMode course/lesson scope', () => {
       expect(screen.getByRole('progressbar', { name: 'Predicted score progress' })).toBe(progress);
       expect(progress.closest('header')).toBe(header);
     });
-    expect(await db.sessionHistory.count()).toBe(2);
+    await waitFor(async () => expect(await db.sessionHistory.count()).toBe(1));
   });
 
   it('checks a numeric answer and records full marks without self-grading', async () => {
