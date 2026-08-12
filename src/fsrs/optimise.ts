@@ -27,6 +27,7 @@ import {
 } from 'ts-fsrs';
 import { DEFAULT_REQUEST_RETENTION, MS_PER_DAY } from './params';
 import type { Card, Grade } from '../db/types';
+import type { ReviewHistoryEntry } from '../db/reviewHistory';
 
 /**
  * Minimum number of reviews before optimisation is worthwhile. Below this the fit
@@ -51,13 +52,32 @@ export interface BindingReviewData {
   deltaT: number;
 }
 
+function historyByCard(
+  reviewHistory: readonly ReviewHistoryEntry[],
+): Map<string, ReviewHistoryEntry[]> {
+  const byCard = new Map<string, ReviewHistoryEntry[]>();
+  for (const entry of reviewHistory) {
+    const history = byCard.get(entry.cardId) ?? [];
+    history.push(entry);
+    byCard.set(entry.cardId, history);
+  }
+  return byCard;
+}
+
 /** Extract the (timestamp, grade) sequences the optimiser replays. */
-export function reviewSequences(cards: Card[]): ReviewSequence[] {
+export function reviewSequences(
+  cards: Card[],
+  reviewHistory?: readonly ReviewHistoryEntry[],
+): ReviewSequence[] {
+  const history = reviewHistory ? historyByCard(reviewHistory) : undefined;
   return cards
-    .map((card) => ({
-      timestamps: card.history.map((h) => h.timestamp),
-      grades: card.history.map((h) => h.grade),
-    }))
+    .map((card) => {
+      const events = history?.get(card.id) ?? card.history;
+      return {
+        timestamps: events.map((event) => event.timestamp),
+        grades: events.map((event) => event.grade),
+      };
+    })
     .filter((seq) => seq.grades.length > 0);
 }
 
@@ -65,14 +85,16 @@ export function reviewSequences(cards: Card[]): ReviewSequence[] {
 export function sequenceToBindingReviews(seq: ReviewSequence): BindingReviewData[] {
   return seq.grades.map((grade, i) => ({
     rating: grade,
-    deltaT:
-      i === 0 ? 0 : (seq.timestamps[i] - seq.timestamps[i - 1]) / MS_PER_DAY,
+    deltaT: i === 0 ? 0 : (seq.timestamps[i] - seq.timestamps[i - 1]) / MS_PER_DAY,
   }));
 }
 
 /** Total reviews across the given cards. */
-export function countReviews(cards: Card[]): number {
-  return cards.reduce((sum, c) => sum + c.history.length, 0);
+export function countReviews(cards: Card[], reviewHistory?: readonly ReviewHistoryEntry[]): number {
+  return reviewSequences(cards, reviewHistory).reduce(
+    (sum, sequence) => sum + sequence.grades.length,
+    0,
+  );
 }
 
 /** Per-weight min/max bounds used by `clipParameters` (FSRS valid ranges). */
@@ -102,9 +124,7 @@ export function validateFittedWeights(w: number[]): void {
   for (let i = 0; i < w.length; i += 1) {
     const [min, max] = bounds[i];
     if (w[i] < min || w[i] > max) {
-      throw new Error(
-        `Weight w${i} (${w[i]}) is outside the FSRS valid range [${min}, ${max}].`,
-      );
+      throw new Error(`Weight w${i} (${w[i]}) is outside the FSRS valid range [${min}, ${max}].`);
     }
   }
 }
@@ -196,7 +216,14 @@ export function evaluateParameters(
   options?: EvaluateOptions,
 ): { logLoss: number; scored: number } {
   const engine = fsrs(
-    generatorParameters({ w, request_retention: requestRetention, enable_fuzz: false, maximum_interval: 36500, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] }),
+    generatorParameters({
+      w,
+      request_retention: requestRetention,
+      enable_fuzz: false,
+      maximum_interval: 36500,
+      learning_steps: ['1m', '10m'],
+      relearning_steps: ['10m'],
+    }),
   );
 
   let loss = 0;
@@ -208,7 +235,8 @@ export function evaluateParameters(
       const when = new Date(seq.timestamps[i]);
       if (
         hasPrior &&
-        (options?.scoreAfterTimestamp === undefined || seq.timestamps[i] > options.scoreAfterTimestamp)
+        (options?.scoreAfterTimestamp === undefined ||
+          seq.timestamps[i] > options.scoreAfterTimestamp)
       ) {
         const r = engine.get_retrievability(card, when, false);
         const p = Math.min(1 - EPS, Math.max(EPS, r));
@@ -237,6 +265,8 @@ type ComputeParametersFn = (
 
 export interface OptimiseOptions {
   requestRetention?: number;
+  /** Canonical event-store rows. Omit only for legacy callers using Card.history. */
+  reviewHistory?: readonly ReviewHistoryEntry[];
   /** Weight set to score the "before" metric (defaults to FSRS-6 defaults). */
   initialW?: number[];
   onProgress?: (fraction: number) => void;
@@ -261,7 +291,7 @@ export async function optimiseParameters(
   cards: Card[],
   options: OptimiseOptions,
 ): Promise<OptimiseResult> {
-  const allSequences = reviewSequences(cards);
+  const allSequences = reviewSequences(cards, options.reviewHistory);
   const requestRetention = options.requestRetention ?? DEFAULT_REQUEST_RETENTION;
   const initialW = clip(options.initialW ? [...options.initialW] : [...default_w]);
 
@@ -291,9 +321,7 @@ export async function optimiseParameters(
 
   const validation = tryValidateFittedWeights(rawW);
   if (!validation.ok) {
-    throw new Error(
-      `Trainer returned weights outside FSRS valid ranges: ${validation.message}`,
-    );
+    throw new Error(`Trainer returned weights outside FSRS valid ranges: ${validation.message}`);
   }
 
   const w = clip([...rawW]);

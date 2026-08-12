@@ -11,6 +11,7 @@ import { countReviews, MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimise';
 import { useOptimiser } from '../../state/useOptimiser';
 import { optimiseEnabledForDeck, useAutoOptimiseDefault } from '../../state/optimiseSetting';
 import type { Card, FsrsParameters } from '../../db/types';
+import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 
 /** Minimal shape an optimisable entity (deck or course) must provide. */
 interface OptimisableEntity {
@@ -22,6 +23,8 @@ interface OptimisableEntity {
 export interface OptimisationPanelProps {
   entity: OptimisableEntity;
   cards: Card[];
+  /** Canonical review events; omitted only for legacy callers. */
+  reviewHistory?: ReviewHistoryEntry[];
   /** Persist partial changes to the entity, e.g. via updateDeck or updateCourse. */
   onUpdate: (changes: Partial<OptimisableEntity>) => Promise<void>;
   /** Noun used in user-facing copy, e.g. "deck" or "course". Defaults to "deck". */
@@ -38,6 +41,7 @@ export interface OptimisationPanelProps {
 export function OptimisationPanel({
   entity,
   cards,
+  reviewHistory,
   onUpdate,
   entityLabel = 'deck',
 }: OptimisationPanelProps) {
@@ -55,7 +59,7 @@ export function OptimisationPanel({
     };
   }, [entity.id, resetOptimiser]);
 
-  const reviews = useMemo(() => countReviews(cards), [cards]);
+  const reviews = useMemo(() => countReviews(cards, reviewHistory), [cards, reviewHistory]);
   const enabled = optimiseEnabledForDeck(entity.autoOptimise, globalDefault);
   const enoughData = reviews >= MIN_OPTIMISE_REVIEWS;
 
@@ -106,8 +110,9 @@ export function OptimisationPanel({
         <div className="min-w-0">
           <h2 className="font-display text-xl">Scheduling optimisation</h2>
           <p className="mt-1 text-sm text-ink-soft">
-            Fit this {entityLabel}&apos;s FSRS weights to its own review history. Optimisation runs off the
-            main thread and is applied only when you confirm; a restore point is taken first.
+            Fit this {entityLabel}&apos;s FSRS weights to its own review history. Optimisation runs
+            off the main thread and is applied only when you confirm; a restore point is taken
+            first.
           </p>
         </div>
         <Toggle
@@ -128,9 +133,9 @@ export function OptimisationPanel({
               transition={{ duration: 0.16 * m }}
               className="text-sm text-ink-faint"
             >
-              Optimisation needs at least {MIN_OPTIMISE_REVIEWS} reviews so that a
-              held-out validation portion is large enough to judge the fit honestly.
-              This {entityLabel} has {reviews}. Keep revising and it will become available.
+              Optimisation needs at least {MIN_OPTIMISE_REVIEWS} reviews so that a held-out
+              validation portion is large enough to judge the fit honestly. This {entityLabel} has{' '}
+              {reviews}. Keep revising and it will become available.
             </motion.p>
           ) : !enabled ? (
             <motion.p
@@ -151,9 +156,7 @@ export function OptimisationPanel({
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.16 * m }}
             >
-              <p className="mb-2 text-sm text-ink-soft">
-                Optimising over {reviews} reviews…
-              </p>
+              <p className="mb-2 text-sm text-ink-soft">Optimising over {reviews} reviews…</p>
               <ProgressBar value={optimiser.progress} />
             </motion.div>
           ) : optimiser.status === 'done' && optimiser.result ? (
@@ -173,13 +176,13 @@ export function OptimisationPanel({
               </p>
               {optimiser.result.scored === 0 ? (
                 <p className="mb-3 text-sm text-ink-faint">
-                  Not enough recent reviews to validate out of sample. The default weights
-                  are recommended.
+                  Not enough recent reviews to validate out of sample. The default weights are
+                  recommended.
                 </p>
               ) : !optimiser.result.isOutOfSampleWin ? (
                 <p className="mb-3 text-sm text-negative">
-                  The fitted weights did not beat the defaults on unseen data. Keep the
-                  default weights for now.
+                  The fitted weights did not beat the defaults on unseen data. Keep the default
+                  weights for now.
                 </p>
               ) : null}
               <div className="flex flex-wrap gap-2">
@@ -201,9 +204,7 @@ export function OptimisationPanel({
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.16 * m }}
             >
-              <p className="mb-2 text-sm text-negative">
-                Optimisation failed: {optimiser.error}
-              </p>
+              <p className="mb-2 text-sm text-negative">Optimisation failed: {optimiser.error}</p>
               <Button variant="secondary" size="sm" onClick={() => optimiser.reset()}>
                 Dismiss
               </Button>
@@ -221,7 +222,7 @@ export function OptimisationPanel({
                 variant="secondary"
                 size="sm"
                 onClick={() =>
-                  optimiser.run(cards, entity.fsrsParameters.requestRetention)
+                  optimiser.run(cards, entity.fsrsParameters.requestRetention, reviewHistory)
                 }
               >
                 Optimise now
