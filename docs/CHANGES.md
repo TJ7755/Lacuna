@@ -20,7 +20,9 @@
 - Sections can also be swiped between on touch. The gesture is claimed only once movement is
   clearly horizontal, so vertical scrolling wins a close call, and it is inert outside an exact
   section route: deeper pages such as a lesson or the card editor are destinations within a
-  section rather than siblings of it.
+  section rather than siblings of it. The pointer is captured for the gesture and cancelled
+  gestures are discarded; once the threshold is crossed, easing the finger back cannot reverse
+  the selected direction.
 - `COURSE_SECTIONS` is now the single source of section order, shared by the tab bar, the
   transition and the swipe, since all three must agree on what the next section is.
 
@@ -69,10 +71,11 @@
 ## Unreleased — Loading placeholders and card entry animation
 
 - Loading placeholders no longer flash. `useDelayedPending` withholds a placeholder until
-  loading has lasted 250ms and then holds it for 300ms, and the `DelayedFallback` wrapper
-  applies it at all fifteen placeholder sites, fading the placeholder in rather than
-  snapping it on. Route chunks are prefetched, so warm navigation now shows no placeholder
-  at all; the placeholder remains for cold chunk fetches and large courses.
+  loading has lasted 250ms, and the `DelayedFallback` wrapper applies it at all fifteen
+  placeholder sites, fading the placeholder in rather than snapping it on. Route chunks are
+  prefetched, so warm navigation now shows no placeholder at all; the placeholder remains for
+  cold chunk fetches and large courses. The delay is the enforced guarantee; a child fallback
+  cannot enforce a minimum visible lifetime once its loading owner replaces it.
 - `DelayedFallback` is a wrapper component rather than a hook call at each site, because
   mounting a placeholder is itself the loading signal. This avoids hoisting a hook above the
   pre-existing early returns in fifteen components, which would have risked breaking the

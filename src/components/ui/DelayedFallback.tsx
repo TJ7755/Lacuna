@@ -5,7 +5,9 @@ import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 /**
  * Withholds a loading placeholder until loading has lasted long enough to be worth
- * acknowledging, then fades it in rather than snapping it on.
+ * acknowledging, then fades it in rather than snapping it on. The loading owner may
+ * replace it immediately once data resolves, so this component deliberately guarantees
+ * delay rather than a minimum visible lifetime.
  *
  * Mounting this component *is* the loading signal: a placeholder is only ever
  * rendered while its data is pending, so the wrapper needs no condition of its own

@@ -50,6 +50,7 @@ export function AppShell() {
   const mainRef = useRef<HTMLElement>(null);
   const appContentRef = useRef<HTMLDivElement>(null);
   const titlebarRef = useRef<HTMLDivElement>(null);
+  const bottomNavRef = useRef<HTMLDivElement>(null);
   const shellBodyRef = useRef<HTMLDivElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileWasOpenRef = useRef(false);
@@ -60,7 +61,7 @@ export function AppShell() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const [arrivedFromLanding] = useState(() => consumeLandingArrival());
-  const { onPointerDown, onPointerMove, onPointerUp, sectionDirection } =
+  const { onPointerDown, onPointerMove, onPointerUp, onPointerCancel, sectionDirection } =
     useCourseSectionSwipe();
 
   // Keep an icon rail visible on narrower desktop windows instead of spending a
@@ -94,23 +95,24 @@ export function AppShell() {
     setMobileOpen(false);
   }, [location.pathname]);
 
-  // Keep the page behind the modal drawer out of both keyboard navigation and
-  // the accessibility tree until the drawer closes.
+  // Keep the page behind either modal surface out of both keyboard navigation and
+  // the accessibility tree until the overlay closes. BottomNav is a sibling of the
+  // shell body, so it must be included explicitly rather than relying on the body
+  // region's inert attribute.
   useEffect(() => {
-    const content = appContentRef.current;
-    if (!content || !mobileOpen) return;
-    content.setAttribute('inert', '');
-    return () => content.removeAttribute('inert');
-  }, [mobileOpen]);
-
-  useEffect(() => {
-    if (!paletteOpen) return;
-    const background = [titlebarRef.current, shellBodyRef.current].filter(
-      (element): element is HTMLDivElement => element !== null,
-    );
+    const background = [
+      titlebarRef.current,
+      bottomNavRef.current,
+      ...(paletteOpen
+        ? [shellBodyRef.current]
+        : mobileOpen
+          ? [appContentRef.current]
+          : []),
+    ].filter((element): element is HTMLDivElement => element !== null);
+    if (!mobileOpen && !paletteOpen) return;
     background.forEach((element) => element.setAttribute('inert', ''));
     return () => background.forEach((element) => element.removeAttribute('inert'));
-  }, [paletteOpen]);
+  }, [mobileOpen, paletteOpen]);
 
   // Restore focus after the inert attribute has been removed. Returning it from
   // the trap cleanup is too early: browsers correctly refuse to focus an inert
@@ -259,11 +261,12 @@ export function AppShell() {
             ref={mainRef}
             // Bottom padding clears the mobile navigation bar, which is fixed and would
             // otherwise cover the last of the page's content.
-            className="min-w-0 flex-1 overflow-y-auto overscroll-y-none pb-[4.5rem] md:pb-0"
+            className="min-w-0 flex-1 overflow-y-auto overscroll-y-none pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0"
             style={{ touchAction: 'pan-y' }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
+            onPointerCancel={onPointerCancel}
           >
             <ErrorBoundary label="this page">
               {/* Ordinary navigation fades, scales and lifts in as the previous page settles
@@ -291,7 +294,9 @@ export function AppShell() {
           </main>
         </div>
       </div>
-      <BottomNav onOpenPalette={() => setPaletteOpen(true)} />
+      <div ref={bottomNavRef}>
+        <BottomNav onOpenPalette={() => setPaletteOpen(true)} />
+      </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
     </motion.div>

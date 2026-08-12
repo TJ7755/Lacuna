@@ -34,7 +34,7 @@ describe('useDelayedPending', () => {
     expect(result.current).toBe(true);
   });
 
-  it('holds a shown placeholder for its minimum lifetime', async () => {
+  it('hides immediately when loading resolves after the delay', async () => {
     const { result, rerender } = renderHook(({ pending }) => useDelayedPending(pending), {
       initialProps: { pending: true },
     });
@@ -42,31 +42,24 @@ describe('useDelayedPending', () => {
     await act(() => vi.advanceTimersByTime(250));
     expect(result.current).toBe(true);
 
-    // Resolves 50ms after appearing; the placeholder must not blink straight out.
-    await act(() => vi.advanceTimersByTime(50));
     rerender({ pending: false });
-    expect(result.current).toBe(true);
-
-    await act(() => vi.advanceTimersByTime(249));
-    expect(result.current).toBe(true);
-
-    await act(() => vi.advanceTimersByTime(1));
     expect(result.current).toBe(false);
   });
 
-  it('hides immediately once the minimum lifetime has already elapsed', async () => {
+  it('restarts the delay when loading begins again', async () => {
     const { result, rerender } = renderHook(({ pending }) => useDelayedPending(pending), {
       initialProps: { pending: true },
     });
 
-    // Advanced in two steps: the minimum-lifetime timer is only scheduled once
-    // React has flushed the effect that made the placeholder visible.
     await act(() => vi.advanceTimersByTime(250));
-    await act(() => vi.advanceTimersByTime(300));
     expect(result.current).toBe(true);
 
     rerender({ pending: false });
-    await act(() => vi.advanceTimersByTime(0));
+    rerender({ pending: true });
     expect(result.current).toBe(false);
+    await act(() => vi.advanceTimersByTime(249));
+    expect(result.current).toBe(false);
+    await act(() => vi.advanceTimersByTime(1));
+    expect(result.current).toBe(true);
   });
 });
