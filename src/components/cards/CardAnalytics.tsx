@@ -163,6 +163,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
                 <Area
                   type="monotone"
                   dataKey="r"
+                  isAnimationActive={false}
                   stroke={c.accent}
                   strokeWidth={2}
                   fill={`url(#card-traj-${card.id})`}
@@ -186,6 +187,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
                     <Scatter
                       key={g}
                       data={dots}
+                      isAnimationActive={false}
                       fill={gradeColours[g]}
                       shape="circle"
                     />

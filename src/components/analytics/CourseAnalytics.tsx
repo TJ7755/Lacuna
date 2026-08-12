@@ -97,6 +97,7 @@ export function CourseAnalytics({
               <Area
                 type="monotone"
                 dataKey="retrievability"
+                isAnimationActive={false}
                 stroke={c.accent}
                 strokeWidth={2}
                 fill="url(#courseTrajFill)"
@@ -137,12 +138,25 @@ export function CourseAnalytics({
                   return [`${v}%`, name === 'masteryPct' ? 'Mastery' : 'Completion'];
                 }}
               />
-              <Bar yAxisId="pct" dataKey="masteryPct" fill={c.accent} radius={[4, 4, 0, 0]} />
-              <Bar yAxisId="pct" dataKey="completionPct" fill={c.positive} radius={[4, 4, 0, 0]} />
+              <Bar
+                yAxisId="pct"
+                dataKey="masteryPct"
+                isAnimationActive={false}
+                fill={c.accent}
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar
+                yAxisId="pct"
+                dataKey="completionPct"
+                isAnimationActive={false}
+                fill={c.positive}
+                radius={[4, 4, 0, 0]}
+              />
               <Line
                 yAxisId="cards"
                 type="monotone"
                 dataKey="cardCount"
+                isAnimationActive={false}
                 stroke={c.inkFaint}
                 strokeDasharray="4 4"
                 dot={{ r: 2.5, fill: c.inkFaint, strokeWidth: 0 }}
@@ -170,7 +184,7 @@ export function CourseAnalytics({
                 cursor={{ fill: c.line, opacity: 0.4 }}
                 formatter={(v: number) => [v, 'Cards']}
               />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+              <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
                 {profile.map((entry, i) => (
                   <Cell key={i} fill={entry.range === 'New' ? c.inkFaint : c.accent} />
                 ))}
@@ -198,7 +212,12 @@ export function CourseAnalytics({
                 cursor={{ fill: c.line, opacity: 0.4 }}
                 formatter={(v: number) => [v, 'Reviews']}
               />
-              <Bar dataKey="reviews" fill={c.positive} radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey="reviews"
+                isAnimationActive={false}
+                fill={c.positive}
+                radius={[4, 4, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
