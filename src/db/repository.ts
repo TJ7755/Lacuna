@@ -39,10 +39,15 @@ import {
 } from './reviewHistory';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { courseToRecord, finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
-import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
+import {
+  ensureCourseBankBackingDeck,
+  ensureLessonBackingDeck,
+  restoreReviewUnitPerformance,
+  updateReviewUnitPerformance,
+} from './backingDecks';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import { emptyPerformance, updatePerformance } from '../fsrs/grading';
+import { emptyPerformance } from '../fsrs/grading';
 import { isLeech } from '../fsrs/leech';
 import { predictedRetrievabilityAtHorizon } from '../fsrs/progress';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
@@ -830,11 +835,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         }
 
         if (correct) {
-          // Per decision: UserPerformance keeps its existing deckId-named primary key;
-          // for course/lesson-scoped reviews we simply write the courseId string into
-          // that same field (no schema bump).
-          const perf = (await db.userPerformance.get(deck.id)) ?? emptyPerformance(deck.id);
-          await db.userPerformance.put(updatePerformance(perf, responseTimeSec));
+          await updateReviewUnitPerformance(deck.id, responseTimeSec);
         }
 
         // Read the unit's cards inside the transaction so concurrent reviews cannot
@@ -942,11 +943,7 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
           throw new Error('The review event no longer matches its session history entry.');
         }
         await db.cards.put(undo.cardBefore);
-        if (undo.perfBefore) {
-          await db.userPerformance.put(undo.perfBefore);
-        } else {
-          await db.userPerformance.delete(undo.deckId);
-        }
+        await restoreReviewUnitPerformance(undo.deckId, undo.perfBefore);
         // Dexie's update() deletes the property when the patch value is undefined, so
         // this also correctly restores "never interacted" (no prior lastInteractedAt).
         if (undo.kind === 'course') {

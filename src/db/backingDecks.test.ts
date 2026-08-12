@@ -6,7 +6,10 @@ import {
   ensureLessonBackingDeck,
   findBackingDeck,
   performanceForCourseBackingDecks,
+  performanceForReviewUnit,
   performanceForReviewUnits,
+  restoreReviewUnitPerformance,
+  updateReviewUnitPerformance,
 } from './backingDecks';
 import { createCourse, createLesson } from './repository';
 import type { Card } from './types';
@@ -210,6 +213,38 @@ describe('backing deck adapter', () => {
     const performance = await performanceForReviewUnits(['course-1', 'missing', 'deck-1']);
 
     expect(performance.map((row) => row?.deckId)).toEqual(['course-1', undefined, 'deck-1']);
+  });
+
+  it('updates and restores the supplied review unit without touching backing-deck calibration', async () => {
+    await db.userPerformance.put({
+      deckId: 'backing-deck',
+      runningMeanResponseTime: 20,
+      runningStdDevResponseTime: 0,
+      m2: 0,
+      totalCorrectReviews: 1,
+    });
+
+    const before = await performanceForReviewUnit('course-1');
+    const updated = await updateReviewUnitPerformance('course-1', 4);
+
+    expect(before).toBeUndefined();
+    expect(updated).toMatchObject({
+      deckId: 'course-1',
+      runningMeanResponseTime: 4,
+      totalCorrectReviews: 1,
+    });
+    expect(await db.userPerformance.get('backing-deck')).toMatchObject({
+      runningMeanResponseTime: 20,
+      totalCorrectReviews: 1,
+    });
+
+    await restoreReviewUnitPerformance('course-1', before ?? null);
+    expect(await db.userPerformance.get('course-1')).toBeUndefined();
+
+    const existing = await performanceForReviewUnit('backing-deck');
+    await updateReviewUnitPerformance('backing-deck', 10);
+    await restoreReviewUnitPerformance('backing-deck', existing ?? null);
+    expect(await db.userPerformance.get('backing-deck')).toEqual(existing);
   });
 
   it('finds a legacy lesson deck from a primary card in the same course', async () => {
