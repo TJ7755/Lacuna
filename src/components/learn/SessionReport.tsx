@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -30,40 +30,6 @@ const GRADE_LABELS: Record<number, string> = {
   3: 'Good',
   4: 'Easy',
 };
-
-/** A simple spring-driven count-up hook that animates a number from 0 to target. */
-function useCountUp(target: number, durationMs = 1200, delayMs = 0) {
-  const [value, setValue] = useState(0);
-  const raf = useRef<number | null>(null);
-  const startTime = useRef<number | null>(null);
-
-  useEffect(() => {
-    setValue(0);
-    startTime.current = null;
-    const delayId = window.setTimeout(() => {
-      const tick = (now: number) => {
-        if (startTime.current === null) startTime.current = now;
-        const elapsed = now - startTime.current;
-        const progress = Math.min(elapsed / durationMs, 1);
-        // Ease-out cubic
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const next = Math.round(eased * target);
-        setValue((prev) => (next !== prev ? next : prev));
-        if (progress < 1) {
-          raf.current = requestAnimationFrame(tick);
-        }
-      };
-      raf.current = requestAnimationFrame(tick);
-    }, delayMs);
-
-    return () => {
-      window.clearTimeout(delayId);
-      if (raf.current) cancelAnimationFrame(raf.current);
-    };
-  }, [target, durationMs, delayMs]);
-
-  return value;
-}
 
 /** Small burst of confetti particles that celebrate a reached goal. */
 function ConfettiBurst({ multiplier }: { multiplier: number }) {
@@ -153,11 +119,6 @@ export function SessionReport({
 
   const gradeColour = (g: number) =>
     g === 1 ? c.inkFaint : g === 2 ? c.inkSoft : g === 3 ? c.accent : c.positive;
-
-  const countTotal = useCountUp(total, 1000, 300);
-  const countAccuracy = useCountUp(accuracy, 1000, 450);
-  const countMean = useCountUp(Math.round(meanResponse * 10), 1000, 600);
-  const countFocus = useCountUp(Math.round(summary.focusFraction * 100), 1000, 750);
 
   // Animate progress bar from before to after over 1.2 seconds.
   const [animatedProgress, setAnimatedProgress] = useState(summary.masteryBefore);
@@ -276,12 +237,12 @@ export function SessionReport({
           </motion.div>
         </div>
 
-        {/* Stat tiles — revealed one after another with count-up numbers and icons. */}
+        {/* Stat tiles — revealed one after another with icons. */}
         <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <Stat
             index={0}
             label="Cards reviewed"
-            value={String(countTotal)}
+            value={String(total)}
             icon={<CardsIcon width={16} height={16} />}
             colour="accent"
             motionMultiplier={m}
@@ -289,7 +250,7 @@ export function SessionReport({
           <Stat
             index={1}
             label="Accuracy"
-            value={`${countAccuracy}%`}
+            value={`${accuracy}%`}
             icon={<CheckIcon width={16} height={16} />}
             colour="positive"
             motionMultiplier={m}
@@ -297,7 +258,7 @@ export function SessionReport({
           <Stat
             index={2}
             label="Mean time"
-            value={`${(countMean / 10).toFixed(1)}s`}
+            value={`${meanResponse.toFixed(1)}s`}
             icon={<ClockIcon width={16} height={16} />}
             colour="ink"
             motionMultiplier={m}
@@ -305,7 +266,7 @@ export function SessionReport({
           <Stat
             index={3}
             label="Focus"
-            value={`${countFocus}%`}
+            value={`${Math.round(summary.focusFraction * 100)}%`}
             icon={<InfoIcon width={16} height={16} />}
             colour="ink"
             motionMultiplier={m}

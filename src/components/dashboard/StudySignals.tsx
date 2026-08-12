@@ -5,7 +5,6 @@ import type { Course } from '../../db/types';
 import { FlameIcon, CalendarIcon, SparklesIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import { useCountUp } from '../../hooks/useCountUp';
 
 /** A thin horizontal animated bar used for streak and reviewed-today metrics. */
 function MetricBar({
@@ -74,10 +73,6 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
   const totalCards = forecast.reduce((sum, d) => sum + d.dueCount + d.newCount, 0);
   const maxMinutes = Math.max(1, ...forecast.map((d) => d.minutes));
   const lit = streak > 0;
-
-  // Count-up numbers for a satisfying entrance animation.
-  const countStreak = useCountUp(streak, 1000, 300, m);
-  const countReviewed = useCountUp(reviewedToday, 1000, 450, m);
 
   // Milestone celebration: subtle sparkles when streak hits a notable number.
   const milestone = streak > 0 && (streak === 7 || streak === 14 || streak === 30 || streak === 60 || streak === 100);
@@ -160,7 +155,7 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
                 transition={{ type: 'spring', stiffness: 500, damping: 18 }}
                 className="font-display text-xl tabular leading-none"
               >
-                {countStreak}
+                {streak}
               </motion.span>
               <span className="text-xs text-ink-soft">day{streak === 1 ? '' : 's'}</span>
             </div>
@@ -185,7 +180,7 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
         {/* Reviewed today */}
         <div>
           <div className="flex items-baseline gap-1">
-            <span className="font-display text-xl tabular leading-none">{countReviewed}</span>
+            <span className="font-display text-xl tabular leading-none">{reviewedToday}</span>
             <span className="text-xs text-ink-soft">card{reviewedToday === 1 ? '' : 's'}</span>
           </div>
           <MetricBar value={reviewedToday} max={100} colourClass="bg-accent/50" title={`${reviewedToday} cards reviewed today`} motionMultiplier={m} />
