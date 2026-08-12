@@ -108,7 +108,7 @@ async function measureRecordReview() {
 
   return {
     cardCount: CARD_COUNT,
-    recordReviewMs: performance.now() - started,
+    singleRecordReviewMs: performance.now() - started,
   };
 }
 
