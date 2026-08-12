@@ -1,5 +1,13 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Specification accuracy audit
+
+- Reconciled `docs/SPEC.md` with the current router, lazy-loading boundary, CourseAssessment
+  storage, schema-v20 canonical review history, backup/merge behaviour, generated-card component
+  names, explicit bulk selection, course archiving, motion controls and Electron MCP contract.
+- Marked the v0.0.2/v0.0.3 sections as historical release notes so their former Deck UI names are
+  not mistaken for current routes.
+
 ## Unreleased — Calibration harness deferred
 
 No code changed. This entry records a decision and the findings behind it, so neither is re-derived.
