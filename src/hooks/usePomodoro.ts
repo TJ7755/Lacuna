@@ -151,7 +151,7 @@ export function usePomodoro() {
     try {
       const runtime: PomodoroRuntime = {
         phase,
-        secondsLeft,
+        secondsLeft: secondsLeftRef.current,
         sessionsCompleted,
         pendingBreakPhase,
       };
