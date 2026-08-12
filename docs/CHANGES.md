@@ -1,5 +1,11 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Deployment planning
+
+- Recorded that Lacuna is not yet in real use and adjusted roadmap sequencing so data-integrity
+  work takes priority before the September 2026 start of genuine revision history; work measured
+  by observed usage remains deferred until then.
+
 ## Unreleased — Mobile navigation and course section transitions
 
 - Fixed header text wrapping at phone widths. The course tab labels wrapped inside their own
