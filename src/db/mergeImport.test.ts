@@ -382,6 +382,14 @@ describe('mergeImport: merge apply', () => {
       totalCorrectReviews: 4,
     };
     await db.userPerformance.bulkPut([backing, calibration]);
+    const backingDeck = (await db.decks.get(card.deckId))!;
+    const localCourse = (await db.courses.get(courseId))!;
+    await db.decks.update(card.deckId, {
+      lastInteractedAt: (backingDeck.lastInteractedAt ?? backingDeck.createdAt) + 1000,
+    });
+    await db.courses.update(courseId, {
+      lastInteractedAt: (localCourse.lastInteractedAt ?? localCourse.createdAt) + 1000,
+    });
     await db.courses.update(courseId, {
       distributedCopy: {
         lineageId: 'lineage-1',
