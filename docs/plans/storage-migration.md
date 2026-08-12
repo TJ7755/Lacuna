@@ -1,6 +1,6 @@
 # Storage and review-history migration
 
-**Status:** in progress on `feat/storage-migration`; additive target projection and Course/Lesson runtime-read checkpoints landed; destructive removal still gated
+**Status:** in progress on `feat/storage-migration`; target projection and Course/Lesson runtime-read checkpoints landed; destructive removal explicitly gated by remaining legacy product paths
 
 **Reviewed:** 12 August 2026
 
@@ -43,6 +43,10 @@ prove the semantics through adapters before choosing physical store names.
 
 The first implementation may retain the current table and add typed adapters. Splitting tables is
 not safe until backup, restore, merge, course deletion and undo have matching coverage.
+The destructive gate remains closed: active legacy Deck routes, global study/search/editing, MCP
+scope resolution, and legacy backup/import/share contracts still read Deck/Folder stores. The
+current branch therefore stops at target projection and Course/Lesson runtime cutover; removing
+those stores requires a later compatibility release rather than a silent schema-v22 deletion.
 
 ### Current compatibility checkpoint
 

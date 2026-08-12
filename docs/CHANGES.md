@@ -28,6 +28,9 @@
 - Cut active Course/Lesson Learn sessions over to the `schedulingUnits` configuration projection
   for FSRS scoring and review/time limits, with a source fallback for pre-projection databases;
   legacy global Deck sessions retain their existing configuration path.
+- Kept destructive Deck/Folder removal gated because active legacy routes, global study/search/editing,
+  MCP scope resolution and backup/import/share contracts still require those stores. This branch
+  deliberately ends at the reviewed additive cutover instead of shipping a breaking schema deletion.
 
 ## Unreleased — One place for study on the dashboard
 

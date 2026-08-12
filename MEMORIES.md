@@ -17,6 +17,13 @@ limits and goals; `Course` remains the source for path and assessment semantics.
 fallback for databases whose projection is absent, and do not apply this cutover to legacy global
 Deck sessions.
 
+## Do not delete Deck/Folder stores while legacy product paths remain active
+
+The destructive gate is still closed while `/deck/:deckId`, global study, search/editing, MCP scope
+resolution and legacy backup/import/share contracts depend on `db.decks` or `db.folders`. The safe
+migration endpoint is a reviewed additive projection until those paths have their own cutover and
+restore story.
+
 ## Lacuna is not yet in real use, and goes live in September 2026
 
 The prompter revises with other tools. Lacuna currently holds no irreplaceable study data, and
