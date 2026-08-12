@@ -1,5 +1,19 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — September phone performance pass
+
+- Removed the whole-card-pool aggregate scan from the `recordReview` write transaction.
+  Historical trajectory points are now sampled after commit at most once per local day;
+  an existing point is detected before the card read, and sampling failure never loses a
+  committed review. The benchmark now measures one call at 500, 2,000 and 10,000 cards
+  plus the separate once-daily sampling cost.
+- Disabled chart entry animations, moved progress bars from layout properties to
+  compositor transforms, and removed persistent chrome backdrop blurs.
+- Added lazy asynchronous image loading for Markdown card content and occlusion diagrams,
+  route-chunk prefetching for sidebar navigation, and one combined sidebar live data read.
+- Deferred Pomodoro tick isolation, virtual-list registry pruning and share-worker shutdown
+  until after September as directed.
+
 ## Unreleased — Performance audit measurements
 
 - Added `bun run perf:audit` for repeatable production bundle, 10,000-card session,

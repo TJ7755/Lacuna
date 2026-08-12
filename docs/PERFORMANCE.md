@@ -23,8 +23,10 @@ Measured navigation pipeline (fast laptop, warm cache): click → exit dead time
 
 Run `bun run build` followed by `bun run perf:audit`. The audit script reports the
 same production asset sizes from `dist/`, median 10,000-card session timings, and
-the latency of one single 10,000-card `recordReview` call (not a loop). The full Vitest suite is timed
-separately with `/usr/bin/time -p bun run test -- --reporter=dot`.
+one single `recordReview` call (not a loop) on 500, 2,000 and 10,000-card pools.
+Those calls use the common path where today's trajectory sample already exists. It
+also reports the separate one-off cost of taking the once-daily 10,000-card sample.
+The full Vitest suite is timed separately with `/usr/bin/time -p bun run test -- --reporter=dot`.
 
 The 12 Aug 2026 baseline on the performance branch was:
 
@@ -41,6 +43,47 @@ The build-report gzip values above use Vite's output from the baseline build; th
 script uses gzip level 9 for comparable output after each change. Hardware and
 browser navigation timings are not treated as regression gates because they are
 environment-dependent.
+
+The final performance branch build and audit run on 12 Aug 2026 measured:
+
+| Measurement | After |
+|---|---:|
+| Initial JavaScript | 784,726 bytes / 244,600 bytes gz |
+| Initial CSS | 138,632 bytes / 24,777 bytes gz |
+| `selectNext`, 10,000 cards | 19.75 ms median |
+| `sessionComplete`, 10,000 cards | 20.62 ms median |
+| One `recordReview`, 500 cards, sample already exists | 11.16 ms |
+| One `recordReview`, 2,000 cards, sample already exists | 8.66 ms |
+| One `recordReview`, 10,000 cards, sample already exists | 25.35 ms |
+| Once-daily trajectory sample, 10,000 cards | 123.50 ms |
+
+The old 10,000-card measurement was one cold `recordReview` call and took
+37,793.71 ms because it scanned the whole pool inside the write transaction. The
+new measurements are deliberately split: the review path is the human-facing
+latency, while the once-daily scan is deferred and non-blocking. The common-path
+measurements remain bounded in the tens of milliseconds rather than growing
+linearly with the pool; the larger 10,000-card value is IndexedDB table overhead in
+the fake-IndexedDB audit environment, not a card-pool scan.
+
+## September phone-priority changes
+
+- `recordReview` now writes the review transition and existing unit/performance
+  metadata, then schedules at most one `SessionHistory` trajectory sample per local
+  calendar day after commit.
+  The sample is skipped before reading cards when that day's point already exists;
+  failures cannot reject a committed review. Existing historical points and the
+  chart definition are unchanged.
+- Recharts graphical elements no longer animate on mount or data changes. Width and
+  height progress animations use compositor transforms, and persistent sidebar,
+  mobile-header, Learn-header and section-rail backdrop blurs are gone.
+- Card and occlusion images use `loading="lazy"` and `decoding="async"`.
+- Sidebar links prefetch their route chunks on pointer hover, keyboard focus or
+  pointer down, using the same loader functions as the router.
+- The always-mounted sidebar uses one combined live data query instead of separate
+  whole-database queries for streaks, course summaries and lessons.
+
+Pomodoro tick isolation, virtual-list registry pruning and share-worker shutdown
+remain deliberately deferred until after September.
 
 ## Findings by area
 
