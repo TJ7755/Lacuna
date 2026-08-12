@@ -22,6 +22,8 @@ async function reset(): Promise<void> {
     db.cards.clear(),
     db.decks.clear(),
     db.userPerformance.clear(),
+    db.coursePerformance.clear(),
+    db.schedulingPerformance.clear(),
     db.courseAssessments.clear(),
   ]);
 }
@@ -191,6 +193,59 @@ describe('backing deck adapter', () => {
 
     expect(performance.map((row) => row.deckId).sort()).toEqual(['deck-1', 'deck-2']);
     expect(performance.some((row) => row.deckId === course.id)).toBe(false);
+  });
+
+  it('uses target Course calibration and mirrors it for compatibility', async () => {
+    await db.coursePerformance.put({
+      courseId: 'course-1',
+      runningMeanResponseTime: 12,
+      runningStdDevResponseTime: 1,
+      m2: 1,
+      totalCorrectReviews: 3,
+    });
+
+    const before = await performanceForReviewUnit('course-1', 'course');
+    expect(before).toMatchObject({ deckId: 'course-1', totalCorrectReviews: 3 });
+
+    const updated = await updateReviewUnitPerformance('course-1', 4, 'course');
+    expect(updated.totalCorrectReviews).toBe(4);
+    expect(await db.coursePerformance.get('course-1')).toMatchObject({ totalCorrectReviews: 4 });
+    expect(await db.userPerformance.get('course-1')).toMatchObject({ totalCorrectReviews: 4 });
+
+    await restoreReviewUnitPerformance('course-1', before ?? null, 'course');
+    expect(await db.coursePerformance.get('course-1')).toMatchObject({ totalCorrectReviews: 3 });
+    expect(await db.userPerformance.get('course-1')).toMatchObject({ totalCorrectReviews: 3 });
+  });
+
+  it('prefers target scheduling pacing rows for Course workload estimates', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = {
+      id: 'card-1',
+      courseId: course.id,
+      deckId: 'deck-1',
+      schedulingUnitId: lesson.id,
+    } as Card;
+    await db.userPerformance.put({
+      deckId: card.deckId,
+      runningMeanResponseTime: 2,
+      runningStdDevResponseTime: 1,
+      m2: 1,
+      totalCorrectReviews: 1,
+    });
+    await db.schedulingPerformance.put({
+      schedulingUnitId: lesson.id,
+      courseId: course.id,
+      lessonId: lesson.id,
+      runningMeanResponseTime: 8,
+      runningStdDevResponseTime: 2,
+      m2: 4,
+      totalCorrectReviews: 8,
+    });
+
+    await expect(performanceForCourseBackingDecks(course.id, [card])).resolves.toEqual([
+      expect.objectContaining({ deckId: card.deckId, totalCorrectReviews: 8 }),
+    ]);
   });
 
   it('loads session calibration by the supplied unit keys', async () => {

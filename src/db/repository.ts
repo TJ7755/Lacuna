@@ -831,7 +831,15 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
     let lastInteractedAtBefore: number | undefined;
     const result = await db.transaction(
       'rw',
-      [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance, db.reviewHistory],
+      [
+        db.cards,
+        db.decks,
+        db.courses,
+        db.sessionHistory,
+        db.userPerformance,
+        db.coursePerformance,
+        db.reviewHistory,
+      ],
       async () => {
         const existingReview = await db.reviewHistory.get(reviewHistoryEntryIdForEvent(eventId));
         const existingSession = await db.sessionHistory.where('eventId').equals(eventId).first();
@@ -927,7 +935,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         }
 
         if (correct) {
-          await updateReviewUnitPerformance(deck.id, responseTimeSec);
+          await updateReviewUnitPerformance(deck.id, responseTimeSec, kind);
         }
 
         return {
@@ -1013,7 +1021,15 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
   try {
     await db.transaction(
       'rw',
-      [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance, db.reviewHistory],
+      [
+        db.cards,
+        db.decks,
+        db.courses,
+        db.sessionHistory,
+        db.userPerformance,
+        db.coursePerformance,
+        db.reviewHistory,
+      ],
       async () => {
         const session =
           (undo.sessionHistoryId === undefined
@@ -1026,7 +1042,7 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
           throw new Error('The review event no longer matches its session history entry.');
         }
         await db.cards.put(undo.cardBefore);
-        await restoreReviewUnitPerformance(undo.deckId, undo.perfBefore);
+        await restoreReviewUnitPerformance(undo.deckId, undo.perfBefore, undo.kind);
         // Dexie's update() deletes the property when the patch value is undefined, so
         // this also correctly restores "never interacted" (no prior lastInteractedAt).
         if (undo.kind === 'course') {

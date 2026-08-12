@@ -47,11 +47,14 @@ not safe until backup, restore, merge, course deletion and undo have matching co
 ### Current compatibility checkpoint
 
 The current implementation retains one physical `userPerformance` table while making its two
-meanings explicit. `performanceForCourseBackingDecks` reads backing-Deck rows for pacing and
-workload estimates. `performanceForReviewUnit`, `updateReviewUnitPerformance` and
-`restoreReviewUnitPerformance` handle the already-resolved calibration unit for review, record
-and undo paths: Course/Lesson sessions pass the Course id, while legacy Deck sessions pass the
-Deck id. These adapters must not infer a Course calibration key from `Card.deckId`.
+meanings explicit. Course-facing `performanceForCourseBackingDecks` now reads target
+`schedulingPerformance` rows and adapts them to the existing pacing consumer; legacy rows remain
+a fallback, and missing rows remain absent so downstream defaults still apply. Course review
+calibration reads `coursePerformance`, while `updateReviewUnitPerformance` and
+`restoreReviewUnitPerformance` dual-write or restore the compatibility row. Legacy Deck sessions
+continue to read and write `userPerformance` by Deck id. Course/Lesson sessions pass the Course id
+explicitly, while legacy Deck sessions pass the Deck id; the adapters reject an unproven legacy
+row when those key spaces collide and never infer a Course calibration key from `Card.deckId`.
 
 The dedicated `reviewHistory` store is now the explicit read source for FSRS optimisation,
 analytics and diagnostics, while `Card.history` remains a mirrored compatibility projection for
@@ -117,8 +120,10 @@ explicit compatibility tests.
 The first domain-storage slice is now approved for implementation on `feat/storage-migration`.
 Schema v21 adds `schedulingUnits`, `coursePerformance` and `schedulingPerformance`, backfills
 Course/Lesson and legacy compatibility units, and stamps cards and canonical review events with
-the resolved scheduling-unit id. The old stores remain readable at this checkpoint; no rollback
-or wire-compatibility path is removed until the later cutover slices have focused coverage.
+the resolved scheduling-unit id. The second slice cuts Course calibration and pacing reads over
+to the target stores, dual-writes the legacy calibration mirror for rollback, and includes review
+and undo transaction coverage. The old stores remain readable; no rollback or wire-compatibility
+path is removed until the later cutover slices have focused coverage.
 
 ## Phases
 
@@ -133,9 +138,11 @@ or wire-compatibility path is removed until the later cutover slices have focuse
    analytics and optimisation use the event adapter. Keep the Card projection until old backups
    and imported data have passed the compatibility window.
 5. **Domain storage migration** — in progress: explicit Course/Lesson scheduling units and
-   split performance stores are backfilled additively in schema v21. The next slices cut
-   course-facing readers and writers over, then remove hidden Deck/Folder stores only after
-   compatibility import, rollback, wire-format and release tests pass.
+   split performance stores are backfilled additively in schema v21. Course-facing performance
+   reads and review/undo writes now use the target stores with a compatibility mirror. The next
+   slices cut scheduling configuration and remaining course-facing readers/writers over, then
+   remove hidden Deck/Folder stores only after compatibility import, rollback, wire-format and
+   release tests pass.
 6. **Compaction decision** — measure real event-store size and choose, separately, whether any old
    events may be compacted. Compaction requires an export format and an explicit restore story.
    This is the only phase that may propose removing old event rows; it is not implied by the event

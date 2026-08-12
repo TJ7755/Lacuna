@@ -9,6 +9,10 @@
   stop discovering hidden backing Decks without changing scheduling behaviour in this checkpoint.
 - Kept legacy Deck/Folder stores, old backup/share/APKG formats and compatibility readers intact;
   this first slice is additive and rollback-safe rather than a premature destructive cutover.
+- Cut Course calibration reads and review/undo writes over to `coursePerformance`, while Course
+  pacing reads use `schedulingPerformance`. Course writes mirror the old calibration row for
+  rollback, and legacy Deck sessions retain their explicit Deck key space; missing pacing rows
+  continue to use downstream defaults rather than becoming zero-second estimates.
 
 ## Unreleased — One place for study on the dashboard
 

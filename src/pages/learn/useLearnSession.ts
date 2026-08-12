@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
-import { performanceForCourseBackingDecks, performanceForReviewUnits } from '../../db/backingDecks';
+import {
+  performanceForCourseBackingDecks,
+  performanceForReviewUnit,
+  performanceForReviewUnits,
+} from '../../db/backingDecks';
 import { getCourse, listCourseAssessments } from '../../db/read';
 import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
 import type {
@@ -1073,7 +1077,7 @@ export function useLearnSession({
         );
       }
 
-      const perfs = await performanceForReviewUnits(units.map((unit) => unit.id));
+      const perfs = await performanceForReviewUnits(units.map((unit) => unit.id), reviewKindRef.current);
       const perfMap = new Map<string, UserPerformance>();
       units.forEach((u, i) => perfMap.set(u.id, perfs[i] ?? emptyPerformance(u.id)));
       perfRef.current = perfMap;
@@ -1380,7 +1384,7 @@ export function useLearnSession({
         if (correct && perf) {
           const nextPerf = recorded
             ? updatePerformance(perf, t)
-            : await db.userPerformance.get(deck.id);
+            : await performanceForReviewUnit(deck.id, kind);
           if (nextPerf) perfRef.current.set(deck.id, nextPerf);
         }
 

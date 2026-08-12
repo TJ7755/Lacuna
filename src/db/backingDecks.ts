@@ -6,7 +6,13 @@
 // course-facing callers should use these helpers rather than resolving backing decks
 // themselves.
 
-import type { Card, Course, Deck, UserPerformance } from './types';
+import type {
+  Card,
+  Course,
+  CoursePerformance,
+  Deck,
+  UserPerformance,
+} from './types';
 import { db } from './schema';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
@@ -99,57 +105,136 @@ async function adoptableDeck(
   return ownedByScope || unowned ? deck : undefined;
 }
 
-/** Load backing-Deck calibration rows for Course pacing and workload estimates. */
+function userPerformanceFromStats(
+  unitId: string,
+  stats: Pick<
+    UserPerformance,
+    'runningMeanResponseTime' | 'runningStdDevResponseTime' | 'm2' | 'totalCorrectReviews'
+  >,
+  courseId?: string,
+): UserPerformance {
+  return {
+    deckId: unitId,
+    ...(courseId ? { courseId } : {}),
+    runningMeanResponseTime: stats.runningMeanResponseTime,
+    runningStdDevResponseTime: stats.runningStdDevResponseTime,
+    m2: stats.m2,
+    totalCorrectReviews: stats.totalCorrectReviews,
+  };
+}
+
+/** Load backing-unit pacing rows for Course workload estimates. */
 export async function performanceForCourseBackingDecks(
   courseId: string,
   cards: Card[],
 ): Promise<UserPerformance[]> {
-  const deckIds = [
-    ...new Set(cards.filter((card) => card.courseId === courseId).map((card) => card.deckId)),
-  ];
-  return deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [];
+  const courseCards = cards.filter((card) => card.courseId === courseId);
+  const deckIds = [...new Set(courseCards.map((card) => card.deckId))];
+  if (deckIds.length === 0) return [];
+
+  const [targetRows, legacyRows] = await Promise.all([
+    db.schedulingPerformance.where('courseId').equals(courseId).toArray(),
+    db.userPerformance.where('deckId').anyOf(deckIds).toArray(),
+  ]);
+  const targetByUnitId = new Map(targetRows.map((row) => [row.schedulingUnitId, row]));
+  const legacyByDeckId = new Map(legacyRows.map((row) => [row.deckId, row]));
+  const result: UserPerformance[] = [];
+  for (const deckId of deckIds) {
+    const card = courseCards.find((candidate) => candidate.deckId === deckId);
+    const targetUnitId = card?.schedulingUnitId ?? deckId;
+    const target = targetByUnitId.get(targetUnitId);
+    const legacy = legacyByDeckId.get(deckId);
+    if (target) {
+      result.push(userPerformanceFromStats(deckId, target, target.courseId));
+    } else if (legacy) {
+      result.push(legacy);
+    }
+  }
+  return result;
 }
+
+type ReviewPerformanceUnitKind = 'deck' | 'course';
 
 /**
  * Load calibration rows for active review units. Course/Lesson sessions pass a Course id;
- * legacy deck sessions pass a Deck id. The shared UserPerformance table keeps both keys,
- * so this adapter preserves that distinction without exposing the table to session code.
+ * legacy deck sessions pass a Deck id. Course rows are read from the target store and the
+ * legacy table remains a compatibility fallback while old databases are in the window.
  */
 export function performanceForReviewUnits(
   unitIds: readonly string[],
+  kind?: ReviewPerformanceUnitKind,
 ): Promise<Array<UserPerformance | undefined>> {
-  return Promise.all(unitIds.map((unitId) => performanceForReviewUnit(unitId)));
+  return Promise.all(unitIds.map((unitId) => performanceForReviewUnit(unitId, kind)));
 }
 
 /**
- * Load calibration for an already-resolved review unit. Course/Lesson reviews pass the
- * Course id; legacy Deck reviews pass the Deck id. The caller must resolve that unit
- * before entering this adapter: never derive a Course calibration key from card.deckId.
+ * Load calibration for an already-resolved review unit. The explicit kind prevents a
+ * Course id and a legacy Deck id with the same string from sharing a calibration row.
  */
-export function performanceForReviewUnit(unitId: string): Promise<UserPerformance | undefined> {
+export async function performanceForReviewUnit(
+  unitId: string,
+  kind: ReviewPerformanceUnitKind = 'deck',
+): Promise<UserPerformance | undefined> {
+  if (kind === 'course') {
+    const target = await db.coursePerformance.get(unitId);
+    if (target) return userPerformanceFromStats(unitId, target, unitId);
+    const compatibility = await db.userPerformance.get(unitId);
+    return compatibility?.courseId === unitId ? compatibility : undefined;
+  }
   return db.userPerformance.get(unitId);
 }
 
 /**
- * Update calibration for an already-resolved review unit. The shared table still names
- * its primary key deckId for compatibility, but the supplied key remains authoritative:
- * Course/Lesson reviews use a Course id and legacy Deck reviews use a Deck id.
+ * Update calibration for an already-resolved review unit. Course reviews write the target
+ * Course store first and mirror the compatibility row; legacy Deck reviews keep their
+ * existing key space until the compatibility route is retired.
  */
 export async function updateReviewUnitPerformance(
   unitId: string,
   responseTimeSec: number,
+  kind: ReviewPerformanceUnitKind = 'deck',
 ): Promise<UserPerformance> {
-  const current = (await performanceForReviewUnit(unitId)) ?? emptyPerformance(unitId);
+  const current = (await performanceForReviewUnit(unitId, kind)) ?? emptyPerformance(unitId);
   const next = updatePerformance(current, responseTimeSec);
-  await db.userPerformance.put(next);
-  return next;
+  const compatibilityNext = kind === 'course' ? { ...next, courseId: unitId } : next;
+  if (kind === 'course') {
+    const target: CoursePerformance = {
+      courseId: unitId,
+      runningMeanResponseTime: next.runningMeanResponseTime,
+      runningStdDevResponseTime: next.runningStdDevResponseTime,
+      m2: next.m2,
+      totalCorrectReviews: next.totalCorrectReviews,
+    };
+    await db.coursePerformance.put(target);
+    await db.userPerformance.put(compatibilityNext);
+  } else {
+    await db.userPerformance.put(compatibilityNext);
+  }
+  return compatibilityNext;
 }
 
 /** Restore the exact pre-review calibration row for an already-resolved review unit. */
 export async function restoreReviewUnitPerformance(
   unitId: string,
   previous: UserPerformance | null,
+  kind: ReviewPerformanceUnitKind = 'deck',
 ): Promise<void> {
+  if (kind === 'course') {
+    if (previous) {
+      await db.coursePerformance.put({
+        courseId: unitId,
+        runningMeanResponseTime: previous.runningMeanResponseTime,
+        runningStdDevResponseTime: previous.runningStdDevResponseTime,
+        m2: previous.m2,
+        totalCorrectReviews: previous.totalCorrectReviews,
+      });
+      await db.userPerformance.put(previous);
+    } else {
+      await db.coursePerformance.delete(unitId);
+      await db.userPerformance.delete(unitId);
+    }
+    return;
+  }
   if (previous) {
     await db.userPerformance.put(previous);
   } else {
