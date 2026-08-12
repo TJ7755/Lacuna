@@ -3,6 +3,7 @@
 // Route: /course/:courseId/bank
 // British English throughout.
 
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
@@ -87,7 +88,11 @@ export function QuestionBank() {
     sequences === undefined ||
     occlusions === undefined
   ) {
-    return <QuestionBankSkeleton />;
+    return (
+      <DelayedFallback>
+        <QuestionBankSkeleton />
+      </DelayedFallback>
+    );
   }
   if (course === null) {
     return (

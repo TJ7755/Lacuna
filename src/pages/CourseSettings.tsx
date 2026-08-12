@@ -1,3 +1,4 @@
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
@@ -137,7 +138,11 @@ export function CourseSettings() {
   }, [course, loaded]);
 
   if (course === undefined) {
-    return <CourseSettingsSkeleton />;
+    return (
+      <DelayedFallback>
+        <CourseSettingsSkeleton />
+      </DelayedFallback>
+    );
   }
   if (course === null) {
     return (

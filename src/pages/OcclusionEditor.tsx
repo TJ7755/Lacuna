@@ -7,6 +7,7 @@
 // Route: course/:courseId/occlusion/new, course/:courseId/occlusion/:occlusionId/edit,
 // and the lesson-scoped course/:courseId/lesson/:lessonId/occlusion/new variant.
 
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
@@ -122,7 +123,11 @@ export function OcclusionEditor() {
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
     (editing && occlusion === undefined && !loaded)
   ) {
-    return <OcclusionEditorSkeleton />;
+    return (
+      <DelayedFallback>
+        <OcclusionEditorSkeleton />
+      </DelayedFallback>
+    );
   }
   if (course === null) {
     return (

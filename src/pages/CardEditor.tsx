@@ -1,3 +1,4 @@
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -343,7 +344,11 @@ export function CardEditor() {
       : course === undefined) ||
     (editing && card === undefined && !loaded)
   ) {
-    return <CardEditorSkeleton />;
+    return (
+      <DelayedFallback>
+        <CardEditorSkeleton />
+      </DelayedFallback>
+    );
   }
   if (course === null) {
     return (

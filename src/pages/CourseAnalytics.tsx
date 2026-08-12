@@ -1,6 +1,7 @@
 // Course-scoped analytics page.
 // Route: /course/:courseId/analytics
 
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { Link, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import {
@@ -62,7 +63,9 @@ export function CourseAnalytics() {
   ) {
     return (
       <div role="status" aria-busy="true" aria-label="Loading course analytics">
-        <CourseAnalyticsSkeleton />
+        <DelayedFallback>
+          <CourseAnalyticsSkeleton />
+        </DelayedFallback>
       </div>
     );
   }

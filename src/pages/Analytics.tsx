@@ -1,3 +1,4 @@
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo } from 'react';
 import { m as motion } from 'motion/react';
 import {
@@ -165,7 +166,9 @@ export function Analytics() {
   ) {
     return (
       <div role="status" aria-busy="true" aria-label="Loading analytics">
-        <AnalyticsSkeleton />
+        <DelayedFallback>
+          <AnalyticsSkeleton />
+        </DelayedFallback>
       </div>
     );
   }

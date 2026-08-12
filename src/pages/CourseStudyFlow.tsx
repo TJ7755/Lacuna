@@ -1,3 +1,4 @@
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PomodoroProvider, usePomodoroFlowContext } from '../hooks/PomodoroContext';
@@ -192,7 +193,11 @@ function CourseStudyFlowInner() {
   }
 
   if (flow === undefined || (transition && flow.generation !== refreshKey)) {
-    return <CourseStudyFlowSkeleton />;
+    return (
+      <DelayedFallback>
+        <CourseStudyFlowSkeleton />
+      </DelayedFallback>
+    );
   }
 
   if (!entryConsumed) {

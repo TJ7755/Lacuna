@@ -1,3 +1,4 @@
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -151,7 +152,9 @@ export function Dashboard() {
 
       {/* Course grid */}
       {!activeCourses ? (
-        <CourseSkeleton motionMultiplier={m} />
+        <DelayedFallback>
+          <CourseSkeleton motionMultiplier={m} />
+        </DelayedFallback>
       ) : activeCourses.length === 0 ? (
         <EmptyState motionMultiplier={m} onCreateCourse={() => setCreatingCourse(true)} />
       ) : (

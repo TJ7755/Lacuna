@@ -8,6 +8,7 @@
 // (via optional courseId/lessonId props that take precedence over route params).
 // British English throughout.
 
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
@@ -96,7 +97,11 @@ export function LessonView({
     notes === undefined ||
     lessonCards === undefined
   ) {
-    return <LessonViewSkeleton />;
+    return (
+      <DelayedFallback>
+        <LessonViewSkeleton />
+      </DelayedFallback>
+    );
   }
 
   // Not found.

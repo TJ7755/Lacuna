@@ -1,3 +1,4 @@
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourse, useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
@@ -438,7 +439,9 @@ export function SharePage() {
         </p>
 
         {!courses ? (
-          <ShareSkeleton />
+          <DelayedFallback>
+            <ShareSkeleton />
+          </DelayedFallback>
         ) : courses.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}

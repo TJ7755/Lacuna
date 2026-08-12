@@ -1,3 +1,4 @@
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -255,7 +256,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   });
 
   if (phase === 'loading') {
-    return <LearnSkeleton mode={mode} />;
+    return (
+      <DelayedFallback>
+        <LearnSkeleton mode={mode} />
+      </DelayedFallback>
+    );
   }
 
   if (phase === 'notes' && lessonNotesScreen) {

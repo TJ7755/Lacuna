@@ -2,6 +2,7 @@
 // Route: /course/:courseId
 // British English throughout.
 
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -296,7 +297,11 @@ export function CoursePath() {
 
   // Loading state — a skeleton while course/lesson data resolves.
   if (!dataLoaded) {
-    return <CoursePathSkeleton />;
+    return (
+      <DelayedFallback>
+        <CoursePathSkeleton />
+      </DelayedFallback>
+    );
   }
 
   // Course not found.

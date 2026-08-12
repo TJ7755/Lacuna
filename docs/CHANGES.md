@@ -1,5 +1,27 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Loading placeholders and card entry animation
+
+- Loading placeholders no longer flash. `useDelayedPending` withholds a placeholder until
+  loading has lasted 250ms and then holds it for 300ms, and the `DelayedFallback` wrapper
+  applies it at all fifteen placeholder sites, fading the placeholder in rather than
+  snapping it on. Route chunks are prefetched, so warm navigation now shows no placeholder
+  at all; the placeholder remains for cold chunk fetches and large courses.
+- `DelayedFallback` is a wrapper component rather than a hook call at each site, because
+  mounting a placeholder is itself the loading signal. This avoids hoisting a hook above the
+  pre-existing early returns in fifteen components, which would have risked breaking the
+  rules of hooks for no gain.
+- Fixed the card entry animation in `CardList`. Rows animated the first time they entered the
+  virtual window, so whether a row faded in depended on how far the list had been scrolled,
+  and rows revealed by scrolling staggered on their absolute card index and so always waited
+  the capped delay. Rows now animate once as the list's own entrance, staggered by position
+  among the rendered rows; scrolling reveals rows immediately. The `index` prop is renamed
+  `staggerIndex`, since feeding it the absolute index is what caused the defect.
+- Not fixed yet: the placeholder-to-content swap is still a hard cut, which reads as a
+  flicker on a fast load. `AppShell` already crossfades route changes, but it animates the
+  placeholder rather than the content that replaces it. Recorded in
+  `docs/plans/learn-screen-redesign.md`.
+
 ## Unreleased — Course-facing Deck terminology audit
 
 - Added `docs/course-terminology-audit.md`, tracing Course-facing Deck terminology into

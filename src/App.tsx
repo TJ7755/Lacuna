@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { DelayedFallback } from './components/ui/DelayedFallback';
 import { m as motion } from 'motion/react';
 import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './state/ThemeContext';
@@ -70,14 +71,16 @@ const McpBridgeController = lazy(loadMcpBridgeController);
 
 function RouteFallback() {
   return (
-    <div className="flex h-[60vh] flex-col items-center justify-center gap-4 p-8">
-      <div className="w-full max-w-xs space-y-3">
-        <div className="h-8 w-3/4 animate-pulse rounded-lg bg-ink/5" />
-        <div className="h-4 w-full animate-pulse rounded-lg bg-ink/5" />
-        <div className="h-4 w-5/6 animate-pulse rounded-lg bg-ink/5" />
-        <div className="h-32 w-full animate-pulse rounded-xl bg-ink/5" />
+    <DelayedFallback>
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-4 p-8">
+        <div className="w-full max-w-xs space-y-3">
+          <div className="h-8 w-3/4 animate-pulse rounded-lg bg-ink/5" />
+          <div className="h-4 w-full animate-pulse rounded-lg bg-ink/5" />
+          <div className="h-4 w-5/6 animate-pulse rounded-lg bg-ink/5" />
+          <div className="h-32 w-full animate-pulse rounded-xl bg-ink/5" />
+        </div>
       </div>
-    </div>
+    </DelayedFallback>
   );
 }
 
