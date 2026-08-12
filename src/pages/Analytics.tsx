@@ -14,7 +14,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useAllCards, useAllSessionHistory } from '../state/useData';
+import { useAllCards, useAllReviewHistory, useAllSessionHistory } from '../state/useData';
 import { useCourses } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { ChartCard } from '../components/analytics/ChartCard';
@@ -68,6 +68,7 @@ export function Analytics() {
   const motionMult = speedMultiplier(motionSpeed);
   const courses = useCourses();
   const allCards = useAllCards();
+  const reviewHistory = useAllReviewHistory();
   const history = useAllSessionHistory();
   const c = useChartColours();
 
@@ -90,7 +91,9 @@ export function Analytics() {
     () =>
       (allCards ?? []).filter(
         (card) =>
-          card.courseId !== null && card.courseId !== undefined && activeCourseIds.has(card.courseId),
+          card.courseId !== null &&
+          card.courseId !== undefined &&
+          activeCourseIds.has(card.courseId),
       ),
     [allCards, activeCourseIds],
   );
@@ -99,24 +102,46 @@ export function Analytics() {
     () =>
       (history ?? []).filter(
         (entry) =>
-          entry.courseId !== null && entry.courseId !== undefined && activeCourseIds.has(entry.courseId),
+          entry.courseId !== null &&
+          entry.courseId !== undefined &&
+          activeCourseIds.has(entry.courseId),
       ),
     [history, activeCourseIds],
   );
 
+  const activeReviewHistory = useMemo(
+    () =>
+      (reviewHistory ?? []).filter(
+        (entry) =>
+          entry.courseId !== null &&
+          entry.courseId !== undefined &&
+          activeCourseIds.has(entry.courseId),
+      ),
+    [reviewHistory, activeCourseIds],
+  );
+
   const forecast = useMemo(() => forecastSeries(cards), [cards]);
-  const studyTime = useMemo(() => studyTimeSeries(cards), [cards]);
-  const volume = useMemo(() => reviewVolume(cards), [cards]);
-  const retention = useMemo(() => retentionByAge(cards), [cards]);
+  const studyTime = useMemo(
+    () => studyTimeSeries(cards, 30, Date.now(), activeReviewHistory),
+    [cards, activeReviewHistory],
+  );
+  const volume = useMemo(
+    () => reviewVolume(cards, 30, Date.now(), activeReviewHistory),
+    [cards, activeReviewHistory],
+  );
+  const retention = useMemo(
+    () => retentionByAge(cards, Date.now(), activeReviewHistory),
+    [cards, activeReviewHistory],
+  );
   const leeches = useMemo(() => leechCountByCourse(cards, courseMap), [cards, courseMap]);
   const profile = useMemo(() => stabilityProfile(cards), [cards]);
-  const prediction = useMemo(() => predictionAccuracySeries(cards), [cards]);
+  const prediction = useMemo(
+    () => predictionAccuracySeries(cards, activeReviewHistory),
+    [cards, activeReviewHistory],
+  );
   const trajectory = useMemo(() => globalTrajectorySeries(courseHistory), [courseHistory]);
 
-  const hasReviews = useMemo(
-    () => cards.some((card) => card.history.length > 0),
-    [cards],
-  );
+  const hasReviews = useMemo(() => activeReviewHistory.length > 0, [activeReviewHistory]);
 
   const axisProps = {
     stroke: c.inkFaint,
@@ -132,7 +157,12 @@ export function Analytics() {
     fontSize: 13,
   } as const;
 
-  if (courses === undefined || allCards === undefined || history === undefined) {
+  if (
+    courses === undefined ||
+    allCards === undefined ||
+    reviewHistory === undefined ||
+    history === undefined
+  ) {
     return (
       <div role="status" aria-busy="true" aria-label="Loading analytics">
         <AnalyticsSkeleton />
@@ -151,15 +181,17 @@ export function Analytics() {
         <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
         <div className="relative">
           <h1 className="font-display text-3xl tracking-tight">Analytics</h1>
-          <p className="mt-1 text-sm text-ink-soft">
-            Insights across every course.
-          </p>
+          <p className="mt-1 text-sm text-ink-soft">Insights across every course.</p>
         </div>
       </motion.header>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <FadeInView className="lg:col-span-2" delay={0} y={0}>
-          <CourseComparison courses={activeCourses} cards={cards} />
+          <CourseComparison
+            courses={activeCourses}
+            cards={cards}
+            reviewHistory={activeReviewHistory}
+          />
         </FadeInView>
 
         <FadeInView className="lg:col-span-2" delay={0.04} y={0}>
@@ -185,10 +217,7 @@ export function Analytics() {
                 <CartesianGrid stroke={c.line} vertical={false} />
                 <XAxis dataKey="label" {...axisProps} />
                 <YAxis allowDecimals={false} {...axisProps} width={40} />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  cursor={{ stroke: c.line }}
-                />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: c.line }} />
                 <Area
                   type="monotone"
                   dataKey="due"
@@ -218,33 +247,34 @@ export function Analytics() {
             emptyMessage="Study cards to start plotting your trajectory."
             delay={0.06}
           >
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={trajectory} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
-              <defs>
-                <linearGradient id="trajFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
-                  <stop offset="100%" stopColor={c.accent} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis dataKey="label" {...axisProps} />
-              <YAxis domain={[0, 100]} unit="%" {...axisProps} width={44} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(v: number) => [`${v}%`, 'Predicted']}
-                cursor={{ stroke: c.line }}
-              />
-              <Area
-                type="monotone"
-                dataKey="retrievability"
-                stroke={c.accent}
-                strokeWidth={2}
-                fill="url(#trajFill)"
-                dot={{ r: 2.5, fill: c.accent, strokeWidth: 0 }}
-                activeDot={{ r: 4 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>          </ChartCard>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={trajectory} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
+                <defs>
+                  <linearGradient id="trajFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={c.accent} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={c.line} vertical={false} />
+                <XAxis dataKey="label" {...axisProps} />
+                <YAxis domain={[0, 100]} unit="%" {...axisProps} width={44} />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(v: number) => [`${v}%`, 'Predicted']}
+                  cursor={{ stroke: c.line }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="retrievability"
+                  stroke={c.accent}
+                  strokeWidth={2}
+                  fill="url(#trajFill)"
+                  dot={{ r: 2.5, fill: c.accent, strokeWidth: 0 }}
+                  activeDot={{ r: 4 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>{' '}
+          </ChartCard>
         </FadeInView>
 
         <FadeInView delay={0.12} y={0}>
@@ -255,45 +285,49 @@ export function Analytics() {
             emptyMessage="Review cards with existing memory state to measure prediction accuracy."
             delay={0.12}
           >
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={prediction} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
-              <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis dataKey="label" {...axisProps} minTickGap={8} />
-              <YAxis yAxisId="score" domain={[0, 1]} {...axisProps} width={40} />
-              <YAxis yAxisId="recall" orientation="right" domain={[0, 1]} hide />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                cursor={{ stroke: c.line }}
-                formatter={(v: number, name: string) => {
-                  if (name === 'brier') return [v.toFixed(3), 'Brier score'];
-                  return [`${Math.round(v * 100)}%`, name === 'predicted' ? 'Predicted' : 'Actual'];
-                }}
-              />
-              <Line
-                yAxisId="score"
-                type="monotone"
-                dataKey="brier"
-                stroke={c.accent}
-                strokeWidth={2}
-                dot={{ r: 2.5, fill: c.accent, strokeWidth: 0 }}
-              />
-              <Line
-                yAxisId="recall"
-                type="monotone"
-                dataKey="predicted"
-                stroke={c.inkFaint}
-                strokeDasharray="4 4"
-                dot={false}
-              />
-              <Line
-                yAxisId="recall"
-                type="monotone"
-                dataKey="actual"
-                stroke={c.positive}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>          </ChartCard>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={prediction} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
+                <CartesianGrid stroke={c.line} vertical={false} />
+                <XAxis dataKey="label" {...axisProps} minTickGap={8} />
+                <YAxis yAxisId="score" domain={[0, 1]} {...axisProps} width={40} />
+                <YAxis yAxisId="recall" orientation="right" domain={[0, 1]} hide />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  cursor={{ stroke: c.line }}
+                  formatter={(v: number, name: string) => {
+                    if (name === 'brier') return [v.toFixed(3), 'Brier score'];
+                    return [
+                      `${Math.round(v * 100)}%`,
+                      name === 'predicted' ? 'Predicted' : 'Actual',
+                    ];
+                  }}
+                />
+                <Line
+                  yAxisId="score"
+                  type="monotone"
+                  dataKey="brier"
+                  stroke={c.accent}
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: c.accent, strokeWidth: 0 }}
+                />
+                <Line
+                  yAxisId="recall"
+                  type="monotone"
+                  dataKey="predicted"
+                  stroke={c.inkFaint}
+                  strokeDasharray="4 4"
+                  dot={false}
+                />
+                <Line
+                  yAxisId="recall"
+                  type="monotone"
+                  dataKey="actual"
+                  stroke={c.positive}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>{' '}
+          </ChartCard>
         </FadeInView>
 
         <FadeInView delay={0.18} y={0}>
@@ -304,19 +338,20 @@ export function Analytics() {
             emptyMessage="Your daily review counts will appear here."
             delay={0.18}
           >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={volume} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-              <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis dataKey="label" {...axisProps} interval={6} minTickGap={8} />
-              <YAxis allowDecimals={false} {...axisProps} width={32} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                cursor={{ fill: c.line, opacity: 0.4 }}
-                formatter={(v: number) => [v, 'Reviews']}
-              />
-              <Bar dataKey="reviews" fill={c.positive} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>          </ChartCard>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={volume} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+                <CartesianGrid stroke={c.line} vertical={false} />
+                <XAxis dataKey="label" {...axisProps} interval={6} minTickGap={8} />
+                <YAxis allowDecimals={false} {...axisProps} width={32} />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  cursor={{ fill: c.line, opacity: 0.4 }}
+                  formatter={(v: number) => [v, 'Reviews']}
+                />
+                <Bar dataKey="reviews" fill={c.positive} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>{' '}
+          </ChartCard>
         </FadeInView>
 
         <FadeInView delay={0.24} y={0}>
@@ -327,58 +362,60 @@ export function Analytics() {
             emptyMessage="Study time will appear after your first review sessions."
             delay={0.24}
           >
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={studyTime} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
-              <defs>
-                <linearGradient id="timeFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
-                  <stop offset="100%" stopColor={c.accent} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis dataKey="label" {...axisProps} interval={6} minTickGap={8} />
-              <YAxis allowDecimals={false} {...axisProps} width={40} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(v: number) => [`${v} min`, 'Time']}
-                cursor={{ stroke: c.line }}
-              />
-              <Area
-                type="monotone"
-                dataKey="minutes"
-                stroke={c.accent}
-                strokeWidth={2}
-                fill="url(#timeFill)"
-                dot={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>          </ChartCard>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={studyTime} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
+                <defs>
+                  <linearGradient id="timeFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={c.accent} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={c.accent} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={c.line} vertical={false} />
+                <XAxis dataKey="label" {...axisProps} interval={6} minTickGap={8} />
+                <YAxis allowDecimals={false} {...axisProps} width={40} />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(v: number) => [`${v} min`, 'Time']}
+                  cursor={{ stroke: c.line }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="minutes"
+                  stroke={c.accent}
+                  strokeWidth={2}
+                  fill="url(#timeFill)"
+                  dot={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>{' '}
+          </ChartCard>
         </FadeInView>
 
-        <FadeInView delay={0.30} y={0}>
+        <FadeInView delay={0.3} y={0}>
           <ChartCard
             title="Observed recall by card age"
             description="Every review, grouped by time since the card was first reviewed; n is shown in the tooltip."
             empty={!hasReviews}
             emptyMessage="Retention data will appear after your first reviews."
-            delay={0.30}
+            delay={0.3}
           >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={retention} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-              <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis dataKey="ageLabel" {...axisProps} interval={0} />
-              <YAxis domain={[0, 100]} unit="%" {...axisProps} width={40} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                cursor={{ fill: c.line, opacity: 0.4 }}
-                formatter={(value, _name, item) => [
-                  `${value}% (n=${item.payload?.count ?? 0})`,
-                  'Observed recall',
-                ]}
-              />
-              <Bar dataKey="retention" fill={c.accent} radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>          </ChartCard>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={retention} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+                <CartesianGrid stroke={c.line} vertical={false} />
+                <XAxis dataKey="ageLabel" {...axisProps} interval={0} />
+                <YAxis domain={[0, 100]} unit="%" {...axisProps} width={40} />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  cursor={{ fill: c.line, opacity: 0.4 }}
+                  formatter={(value, _name, item) => [
+                    `${value}% (n=${item.payload?.count ?? 0})`,
+                    'Observed recall',
+                  ]}
+                />
+                <Bar dataKey="retention" fill={c.accent} radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>{' '}
+          </ChartCard>
         </FadeInView>
 
         <FadeInView delay={0.36} y={0}>
@@ -389,19 +426,27 @@ export function Analytics() {
             emptyMessage="No leeches found — great job keeping up with reviews!"
             delay={0.36}
           >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={leeches} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-              <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis dataKey="name" {...axisProps} interval={0} angle={-30} textAnchor="end" height={60} />
-              <YAxis allowDecimals={false} {...axisProps} width={32} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                cursor={{ fill: c.line, opacity: 0.4 }}
-                formatter={(v: number) => [v, 'Leeches']}
-              />
-              <Bar dataKey="count" fill={c.accent} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>          </ChartCard>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={leeches} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+                <CartesianGrid stroke={c.line} vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  {...axisProps}
+                  interval={0}
+                  angle={-30}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis allowDecimals={false} {...axisProps} width={32} />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  cursor={{ fill: c.line, opacity: 0.4 }}
+                  formatter={(v: number) => [v, 'Leeches']}
+                />
+                <Bar dataKey="count" fill={c.accent} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>{' '}
+          </ChartCard>
         </FadeInView>
 
         <FadeInView delay={0.42} y={0}>
@@ -412,23 +457,24 @@ export function Analytics() {
             emptyMessage="Add cards to see their stability profile."
             delay={0.42}
           >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={profile} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
-              <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis dataKey="range" {...axisProps} interval={0} />
-              <YAxis allowDecimals={false} {...axisProps} width={32} />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                cursor={{ fill: c.line, opacity: 0.4 }}
-                formatter={(v: number) => [v, 'Cards']}
-              />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                {profile.map((entry, i) => (
-                  <Cell key={i} fill={entry.range === 'New' ? c.inkFaint : c.accent} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>          </ChartCard>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={profile} margin={{ top: 8, right: 12, bottom: 0, left: -16 }}>
+                <CartesianGrid stroke={c.line} vertical={false} />
+                <XAxis dataKey="range" {...axisProps} interval={0} />
+                <YAxis allowDecimals={false} {...axisProps} width={32} />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  cursor={{ fill: c.line, opacity: 0.4 }}
+                  formatter={(v: number) => [v, 'Cards']}
+                />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                  {profile.map((entry, i) => (
+                    <Cell key={i} fill={entry.range === 'New' ? c.inkFaint : c.accent} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>{' '}
+          </ChartCard>
         </FadeInView>
       </div>
     </div>

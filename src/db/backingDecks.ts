@@ -10,7 +10,7 @@ import type { Card, Course, Deck, UserPerformance } from './types';
 import { db } from './schema';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
-import { emptyPerformance } from '../fsrs/grading';
+import { emptyPerformance, updatePerformance } from '../fsrs/grading';
 import { finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 
 function ownedBackingDeck(courseId: string, lessonId: string | null): Promise<Deck | undefined> {
@@ -118,7 +118,43 @@ export async function performanceForCourseBackingDecks(
 export function performanceForReviewUnits(
   unitIds: readonly string[],
 ): Promise<Array<UserPerformance | undefined>> {
-  return Promise.all(unitIds.map((unitId) => db.userPerformance.get(unitId)));
+  return Promise.all(unitIds.map((unitId) => performanceForReviewUnit(unitId)));
+}
+
+/**
+ * Load calibration for an already-resolved review unit. Course/Lesson reviews pass the
+ * Course id; legacy Deck reviews pass the Deck id. The caller must resolve that unit
+ * before entering this adapter: never derive a Course calibration key from card.deckId.
+ */
+export function performanceForReviewUnit(unitId: string): Promise<UserPerformance | undefined> {
+  return db.userPerformance.get(unitId);
+}
+
+/**
+ * Update calibration for an already-resolved review unit. The shared table still names
+ * its primary key deckId for compatibility, but the supplied key remains authoritative:
+ * Course/Lesson reviews use a Course id and legacy Deck reviews use a Deck id.
+ */
+export async function updateReviewUnitPerformance(
+  unitId: string,
+  responseTimeSec: number,
+): Promise<UserPerformance> {
+  const current = (await performanceForReviewUnit(unitId)) ?? emptyPerformance(unitId);
+  const next = updatePerformance(current, responseTimeSec);
+  await db.userPerformance.put(next);
+  return next;
+}
+
+/** Restore the exact pre-review calibration row for an already-resolved review unit. */
+export async function restoreReviewUnitPerformance(
+  unitId: string,
+  previous: UserPerformance | null,
+): Promise<void> {
+  if (previous) {
+    await db.userPerformance.put(previous);
+  } else {
+    await db.userPerformance.delete(unitId);
+  }
 }
 
 export async function findBackingDeck(

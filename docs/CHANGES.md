@@ -1,5 +1,17 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Storage boundary follow-ups
+
+- Routed FSRS optimisation, review analytics and diagnostics through the canonical
+  `reviewHistory` event store, retaining `Card.history` as a compatibility projection while old
+  backups and callers remain supported.
+- Added named review-calibration read, update and undo adapters. Course/Lesson reviews remain
+  Course-keyed; legacy Deck reviews remain Deck-keyed; backing-Deck pacing rows stay separate.
+- Kept the physical `userPerformance` table and deferred destructive Deck/Folder storage
+  migration until backup, restore, merge, deletion and undo coverage justify it.
++- Made canonical review events win over stale card projections even when the shared event id's
+  metadata differs, preventing compatibility reads from double-counting one review.
+
 ## Unreleased — Specification accuracy audit
 
 - Reconciled `docs/SPEC.md` with the current router, lazy-loading boundary, CourseAssessment

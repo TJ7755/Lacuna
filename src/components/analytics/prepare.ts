@@ -3,13 +3,35 @@
 import { startOfDay } from '../../utils/datetime';
 import { isLeech } from '../../fsrs/leech';
 import { progressValue } from '../../fsrs/objective';
-import type { Card, Lesson, SchedulerConfig, SessionHistoryEntry } from '../../db/types';
+import type { Card, Lesson, ReviewLog, SchedulerConfig, SessionHistoryEntry } from '../../db/types';
+import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 
 /** DST-safe day offset: add/subtract whole days from a local-midnight epoch. */
 function addDays(dayStart: number, days: number): number {
   const d = new Date(dayStart);
   d.setDate(d.getDate() + days);
   return startOfDay(d.getTime());
+}
+
+interface CardReview {
+  card: Card;
+  log: ReviewLog;
+}
+
+function reviewsForCards(
+  cards: Card[],
+  reviewHistory?: readonly ReviewHistoryEntry[],
+): CardReview[] {
+  if (reviewHistory === undefined) {
+    return cards.flatMap((card) => card.history.map((log) => ({ card, log })));
+  }
+  const cardIds = new Set(cards.map((card) => card.id));
+  const cardsById = new Map(cards.map((card) => [card.id, card]));
+  return reviewHistory.flatMap((log) => {
+    if (!cardIds.has(log.cardId)) return [];
+    const card = cardsById.get(log.cardId);
+    return card ? [{ card, log }] : [];
+  });
 }
 
 export interface TrajectoryPoint {
@@ -76,15 +98,18 @@ export interface VolumePoint {
   reviews: number;
 }
 
-/** Daily review counts over the past `days` days, drawn from card review logs. */
-export function reviewVolume(cards: Card[], days = 30, now = Date.now()): VolumePoint[] {
+/** Daily review counts over the past `days` days, drawn from canonical review events. */
+export function reviewVolume(
+  cards: Card[],
+  days = 30,
+  now = Date.now(),
+  reviewHistory?: readonly ReviewHistoryEntry[],
+): VolumePoint[] {
   const today = startOfDay(now);
   const counts = new Map<number, number>();
-  for (const card of cards) {
-    for (const log of card.history) {
-      const day = startOfDay(log.timestamp);
-      counts.set(day, (counts.get(day) ?? 0) + 1);
-    }
+  for (const { log } of reviewsForCards(cards, reviewHistory)) {
+    const day = startOfDay(log.timestamp);
+    counts.set(day, (counts.get(day) ?? 0) + 1);
   }
   const points: VolumePoint[] = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -143,14 +168,17 @@ export interface StudyTimePoint {
 }
 
 /** Daily study time (minutes) over the past `days` days. */
-export function studyTimeSeries(cards: Card[], days = 30, now = Date.now()): StudyTimePoint[] {
+export function studyTimeSeries(
+  cards: Card[],
+  days = 30,
+  now = Date.now(),
+  reviewHistory?: readonly ReviewHistoryEntry[],
+): StudyTimePoint[] {
   const today = startOfDay(now);
   const counts = new Map<number, number>();
-  for (const card of cards) {
-    for (const log of card.history) {
-      const day = startOfDay(log.timestamp);
-      counts.set(day, (counts.get(day) ?? 0) + log.responseTimeSec);
-    }
+  for (const { log } of reviewsForCards(cards, reviewHistory)) {
+    const day = startOfDay(log.timestamp);
+    counts.set(day, (counts.get(day) ?? 0) + log.responseTimeSec);
   }
   const points: StudyTimePoint[] = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -172,7 +200,11 @@ export interface RetentionByAgePoint {
 }
 
 /** Observed recall rate for every review, grouped by the card's age at that review. */
-export function retentionByAge(cards: Card[], now = Date.now()): RetentionByAgePoint[] {
+export function retentionByAge(
+  cards: Card[],
+  now = Date.now(),
+  reviewHistory?: readonly ReviewHistoryEntry[],
+): RetentionByAgePoint[] {
   const dayMs = 86_400_000;
   const buckets = [
     { label: '0–7 days', min: 0, max: 7, total: 0, recalled: 0 },
@@ -181,10 +213,15 @@ export function retentionByAge(cards: Card[], now = Date.now()): RetentionByAgeP
     { label: '90–180 days', min: 90, max: 180, total: 0, recalled: 0 },
     { label: '180+ days', min: 180, max: Infinity, total: 0, recalled: 0 },
   ];
+  const historyByCard = new Map<string, ReviewLog[]>();
+  for (const { card, log } of reviewsForCards(cards, reviewHistory)) {
+    if (!Number.isFinite(log.timestamp) || log.timestamp > now) continue;
+    const history = historyByCard.get(card.id) ?? [];
+    history.push(log);
+    historyByCard.set(card.id, history);
+  }
   for (const card of cards) {
-    const reviews = card.history.filter(
-      (log) => Number.isFinite(log.timestamp) && log.timestamp <= now,
-    );
+    const reviews = historyByCard.get(card.id) ?? [];
     if (reviews.length === 0) continue;
     const firstReview = Math.min(...reviews.map((log) => log.timestamp));
     for (const log of reviews) {
@@ -306,9 +343,7 @@ export function lessonBreakdown(
         // than a hardcoded 0.
         masteryPct: Math.round(progressValue(lessonCards, scheduler) * 100),
         completionPct:
-          lessonCards.length > 0
-            ? Math.round((reviewed / lessonCards.length) * 100)
-            : 0,
+          lessonCards.length > 0 ? Math.round((reviewed / lessonCards.length) * 100) : 0,
       };
     });
 }

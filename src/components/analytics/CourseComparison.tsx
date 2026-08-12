@@ -6,10 +6,8 @@ import { useChartColours } from './useChartColours';
 import { ChartCard } from './ChartCard';
 import { Select } from '../ui/Select';
 import type { Course, Card } from '../../db/types';
-import {
-  averagePredictedRetrievability,
-  masteryFraction,
-} from '../../fsrs/progress';
+import type { ReviewHistoryEntry } from '../../db/reviewHistory';
+import { averagePredictedRetrievability, masteryFraction } from '../../fsrs/progress';
 import { isLeech } from '../../fsrs/leech';
 import { startOfDay } from '../../utils/datetime';
 
@@ -26,48 +24,44 @@ function computeMetrics(
   cardsA: Card[],
   courseB: Course,
   cardsB: Card[],
+  reviewHistory?: readonly ReviewHistoryEntry[],
 ): ComparisonMetric[] {
   const avgRetA = averagePredictedRetrievability(cardsA, courseA);
   const avgRetB = averagePredictedRetrievability(cardsB, courseB);
   const masteryA = masteryFraction(cardsA, courseA);
   const masteryB = masteryFraction(cardsB, courseB);
 
-  const reviewedA = cardsA.filter((c) => c.history.length > 0).length;
-  const reviewedB = cardsB.filter((c) => c.history.length > 0).length;
+  const cardIdsA = new Set(cardsA.map((card) => card.id));
+  const cardIdsB = new Set(cardsB.map((card) => card.id));
+  const historyA = reviewHistory
+    ? reviewHistory.filter((entry) => cardIdsA.has(entry.cardId))
+    : cardsA.flatMap((card) => card.history.map((log) => ({ ...log, cardId: card.id })));
+  const historyB = reviewHistory
+    ? reviewHistory.filter((entry) => cardIdsB.has(entry.cardId))
+    : cardsB.flatMap((card) => card.history.map((log) => ({ ...log, cardId: card.id })));
 
-  const totalReviewsA = cardsA.reduce((s, c) => s + c.history.length, 0);
-  const totalReviewsB = cardsB.reduce((s, c) => s + c.history.length, 0);
+  const reviewedA = new Set(historyA.map((entry) => entry.cardId)).size;
+  const reviewedB = new Set(historyB.map((entry) => entry.cardId)).size;
+
+  const totalReviewsA = historyA.length;
+  const totalReviewsB = historyB.length;
 
   const leechesA = cardsA.filter(isLeech).length;
   const leechesB = cardsB.filter(isLeech).length;
 
   const avgStabilityA =
-    cardsA.length > 0
-      ? cardsA.reduce((s, c) => s + (c.stability ?? 0), 0) / cardsA.length
-      : 0;
+    cardsA.length > 0 ? cardsA.reduce((s, c) => s + (c.stability ?? 0), 0) / cardsA.length : 0;
   const avgStabilityB =
-    cardsB.length > 0
-      ? cardsB.reduce((s, c) => s + (c.stability ?? 0), 0) / cardsB.length
-      : 0;
+    cardsB.length > 0 ? cardsB.reduce((s, c) => s + (c.stability ?? 0), 0) / cardsB.length : 0;
 
   const avgDifficultyA =
-    cardsA.length > 0
-      ? cardsA.reduce((s, c) => s + (c.difficulty ?? 5), 0) / cardsA.length
-      : 0;
+    cardsA.length > 0 ? cardsA.reduce((s, c) => s + (c.difficulty ?? 5), 0) / cardsA.length : 0;
   const avgDifficultyB =
-    cardsB.length > 0
-      ? cardsB.reduce((s, c) => s + (c.difficulty ?? 5), 0) / cardsB.length
-      : 0;
+    cardsB.length > 0 ? cardsB.reduce((s, c) => s + (c.difficulty ?? 5), 0) / cardsB.length : 0;
 
   const today = startOfDay(Date.now());
-  const reviewsTodayA = cardsA.reduce(
-    (s, c) => s + c.history.filter((h) => startOfDay(h.timestamp) === today).length,
-    0,
-  );
-  const reviewsTodayB = cardsB.reduce(
-    (s, c) => s + c.history.filter((h) => startOfDay(h.timestamp) === today).length,
-    0,
-  );
+  const reviewsTodayA = historyA.filter((entry) => startOfDay(entry.timestamp) === today).length;
+  const reviewsTodayB = historyB.filter((entry) => startOfDay(entry.timestamp) === today).length;
 
   return [
     { label: 'Cards', courseA: cardsA.length, courseB: cardsB.length, higherIsBetter: true },
@@ -86,8 +80,18 @@ function computeMetrics(
       higherIsBetter: true,
     },
     { label: 'Cards reviewed', courseA: reviewedA, courseB: reviewedB, higherIsBetter: true },
-    { label: 'Total reviews', courseA: totalReviewsA, courseB: totalReviewsB, higherIsBetter: true },
-    { label: 'Reviews today', courseA: reviewsTodayA, courseB: reviewsTodayB, higherIsBetter: true },
+    {
+      label: 'Total reviews',
+      courseA: totalReviewsA,
+      courseB: totalReviewsB,
+      higherIsBetter: true,
+    },
+    {
+      label: 'Reviews today',
+      courseA: reviewsTodayA,
+      courseB: reviewsTodayB,
+      higherIsBetter: true,
+    },
     { label: 'Leech cards', courseA: leechesA, courseB: leechesB, higherIsBetter: false },
     {
       label: 'Mean stability',
@@ -149,7 +153,13 @@ function ComparisonBar({
           <motion.span
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 * m, delay: (delay + 0.35) * m, type: 'spring', stiffness: 500, damping: 25 }}
+            transition={{
+              duration: 0.3 * m,
+              delay: (delay + 0.35) * m,
+              type: 'spring',
+              stiffness: 500,
+              damping: 25,
+            }}
             className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-sm"
             style={{ backgroundColor: winnerColour }}
             aria-label={winner === 'A' ? 'Course A leads' : 'Course B leads'}
@@ -199,10 +209,11 @@ function ComparisonBar({
 export interface CourseComparisonProps {
   courses: Course[];
   cards: Card[];
+  reviewHistory?: readonly ReviewHistoryEntry[];
 }
 
 /** Side-by-side statistics for two courses on the global analytics page. */
-export function CourseComparison({ courses, cards }: CourseComparisonProps) {
+export function CourseComparison({ courses, cards, reviewHistory }: CourseComparisonProps) {
   const [courseAId, setCourseAId] = useState<string>('');
   const [courseBId, setCourseBId] = useState<string>('');
   const [motionSpeed] = useMotionSpeed();
@@ -227,8 +238,8 @@ export function CourseComparison({ courses, cards }: CourseComparisonProps) {
 
   const metrics = useMemo(() => {
     if (!courseA || !courseB) return [];
-    return computeMetrics(courseA, cardsA, courseB, cardsB);
-  }, [courseA, courseB, cardsA, cardsB]);
+    return computeMetrics(courseA, cardsA, courseB, cardsB, reviewHistory);
+  }, [courseA, courseB, cardsA, cardsB, reviewHistory]);
 
   const maxByMetric = useMemo(() => {
     const map = new Map<string, number>();

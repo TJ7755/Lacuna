@@ -1,20 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
-import { useCourse, useCourseCards } from '../state/useCourseData';
+import { useCourse, useCourseCards, useCourseReviewHistory } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { CourseTabs } from '../components/course/CourseTabs';
 import { Toggle } from '../components/ui/Toggle';
 import { useToast } from '../components/ui/Toast';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
-import {
-  deleteCourse,
-  snapshotCourse,
-  restoreCourse,
-  updateCourse,
-} from '../db/repository';
+import { deleteCourse, snapshotCourse, restoreCourse, updateCourse } from '../db/repository';
 import type { CourseSnapshot } from '../db/repository';
-import { clampRequestRetention, defaultFsrsParameters, DEFAULT_REQUEST_RETENTION } from '../fsrs/params';
+import {
+  clampRequestRetention,
+  defaultFsrsParameters,
+  DEFAULT_REQUEST_RETENTION,
+} from '../fsrs/params';
 import { ChevronLeftIcon } from '../components/ui/icons';
 import type { CourseRecord, ExamObjective, FsrsParameters, UnlockMode } from '../db/types';
 import type { LessonViewMode } from '../state/lessonViewMode';
@@ -62,6 +61,7 @@ export function CourseSettings() {
   // undefined for a missing row, so useCourse alone cannot signal not-found.
   const course = useCourse(courseId);
   const cards = useCourseCards(courseId);
+  const reviewHistory = useCourseReviewHistory(courseId);
 
   const [name, setName] = useState('');
   const [examBoard, setExamBoard] = useState('');
@@ -253,9 +253,7 @@ export function CourseSettings() {
   function commitDailyReviewGoal() {
     const parsed = Math.floor(Number(dailyReviewGoal));
     const value =
-      dailyReviewGoal.trim() === '' || !Number.isFinite(parsed) || parsed <= 0
-        ? undefined
-        : parsed;
+      dailyReviewGoal.trim() === '' || !Number.isFinite(parsed) || parsed <= 0 ? undefined : parsed;
     commitCourse({ dailyReviewGoal: value });
   }
 
@@ -537,6 +535,7 @@ export function CourseSettings() {
                 <OptimisationPanel
                   entity={course}
                   cards={cards ?? []}
+                  reviewHistory={reviewHistory}
                   onUpdate={(changes) => updateCourse(course.id, changes)}
                   entityLabel="course"
                 />

@@ -3,15 +3,14 @@
 // and a final result; the caller (see src/state/useOptimiser.ts) owns confirmation
 // and persistence.
 
-import {
-  optimiseParameters,
-  type OptimiseResult,
-} from '../fsrs/optimise';
+import { optimiseParameters, type OptimiseResult } from '../fsrs/optimise';
 import { getBindingOptimiser } from '../fsrs/bindingOptimiser';
 import type { Card } from '../db/types';
+import type { ReviewHistoryEntry } from '../db/reviewHistory';
 
 export interface OptimiseRequest {
   cards: Card[];
+  reviewHistory?: ReviewHistoryEntry[];
   requestRetention: number;
 }
 
@@ -28,9 +27,10 @@ const ctx = globalThis as unknown as {
 ctx.onmessage = (event: MessageEvent<OptimiseRequest>) => {
   void (async () => {
     try {
-      const { cards, requestRetention } = event.data;
+      const { cards, reviewHistory, requestRetention } = event.data;
       const binding = await getBindingOptimiser();
       const result = await optimiseParameters(cards, {
+        reviewHistory,
         requestRetention,
         computeParameters: binding.computeParameters,
         createItem: (reviews) =>

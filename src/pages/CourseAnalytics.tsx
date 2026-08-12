@@ -7,6 +7,7 @@ import {
   useCourse,
   useLessons,
   useCourseCards,
+  useCourseReviewHistory,
   useCourseSessionHistory,
 } from '../state/useCourseData';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
@@ -49,12 +50,14 @@ export function CourseAnalytics() {
   const course = useCourse(courseId);
   const lessons = useLessons(courseId);
   const cards = useCourseCards(courseId);
+  const reviewHistory = useCourseReviewHistory(courseId);
   const history = useCourseSessionHistory(courseId);
 
   if (
     course === undefined ||
     lessons === undefined ||
     cards === undefined ||
+    reviewHistory === undefined ||
     history === undefined
   ) {
     return (
@@ -101,7 +104,13 @@ export function CourseAnalytics() {
         </div>
       </motion.header>
 
-      <CourseAnalyticsCharts course={course} lessons={lessons} cards={cards} history={history} />
+      <CourseAnalyticsCharts
+        course={course}
+        lessons={lessons}
+        cards={cards}
+        reviewHistory={reviewHistory}
+        history={history}
+      />
     </div>
   );
 }

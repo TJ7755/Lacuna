@@ -15,18 +15,15 @@ import {
 import { ChartCard } from './ChartCard';
 import { FadeInView } from '../ui/FadeInView';
 import { useChartColours } from './useChartColours';
-import {
-  lessonBreakdown,
-  reviewVolume,
-  stabilityProfile,
-  trajectorySeries,
-} from './prepare';
+import { lessonBreakdown, reviewVolume, stabilityProfile, trajectorySeries } from './prepare';
 import type { Card, Course, Lesson, SessionHistoryEntry } from '../../db/types';
+import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 
 interface CourseAnalyticsProps {
   course: Course;
   lessons: Lesson[];
   cards: Card[];
+  reviewHistory: ReviewHistoryEntry[];
   history: SessionHistoryEntry[];
 }
 
@@ -36,20 +33,26 @@ interface CourseAnalyticsProps {
  * same card pool `progressValue` and the path view's mastery figure use), plus a
  * per-lesson breakdown of card count, mastery and completion.
  */
-export function CourseAnalytics({ course, lessons, cards, history }: CourseAnalyticsProps) {
+export function CourseAnalytics({
+  course,
+  lessons,
+  cards,
+  reviewHistory,
+  history,
+}: CourseAnalyticsProps) {
   const c = useChartColours();
 
   const trajectory = useMemo(() => trajectorySeries(history), [history]);
   const profile = useMemo(() => stabilityProfile(cards), [cards]);
-  const volume = useMemo(() => reviewVolume(cards), [cards]);
+  const volume = useMemo(
+    () => reviewVolume(cards, 30, Date.now(), reviewHistory),
+    [cards, reviewHistory],
+  );
   const breakdown = useMemo(
     () => lessonBreakdown(lessons, cards, course),
     [lessons, cards, course],
   );
-  const hasReviews = useMemo(
-    () => cards.some((card) => card.history.length > 0),
-    [cards],
-  );
+  const hasReviews = useMemo(() => reviewHistory.length > 0, [reviewHistory]);
 
   const axisProps = {
     stroke: c.inkFaint,
@@ -116,7 +119,14 @@ export function CourseAnalytics({ course, lessons, cards, history }: CourseAnaly
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={breakdown} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
               <CartesianGrid stroke={c.line} vertical={false} />
-              <XAxis dataKey="name" {...axisProps} interval={0} angle={-20} textAnchor="end" height={50} />
+              <XAxis
+                dataKey="name"
+                {...axisProps}
+                interval={0}
+                angle={-20}
+                textAnchor="end"
+                height={50}
+              />
               <YAxis yAxisId="pct" domain={[0, 100]} unit="%" {...axisProps} width={40} />
               <YAxis yAxisId="cards" orientation="right" allowDecimals={false} hide />
               <Tooltip

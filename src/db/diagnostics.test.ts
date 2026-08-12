@@ -129,6 +129,7 @@ describe('gatherCounts', () => {
       db.practiceNodes.clear(),
       db.courseAssessments.clear(),
       db.revisionPlans.clear(),
+      db.reviewHistory.clear(),
     ]);
   });
 
@@ -151,6 +152,7 @@ describe('gatherCounts', () => {
     expect(counts.decks).toBe(1);
     expect(counts.cards).toBe(1);
     expect(counts.reviews).toBe(1);
+    expect(counts.reviewEvents).toBe(1);
     expect(counts.courses).toBe(0);
     expect(counts.lessons).toBe(0);
     expect(counts.revisionPlans).toBe(0);

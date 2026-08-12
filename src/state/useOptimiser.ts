@@ -3,12 +3,10 @@
 // the caller so optimised weights are never applied without explicit consent.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type {
-  OptimiseMessage,
-  OptimiseRequest,
-} from '../workers/optimise.worker';
+import type { OptimiseMessage, OptimiseRequest } from '../workers/optimise.worker';
 import type { OptimiseResult } from '../fsrs/optimise';
 import type { Card } from '../db/types';
+import type { ReviewHistoryEntry } from '../db/reviewHistory';
 
 type OptimiseStatus = 'idle' | 'running' | 'done' | 'error';
 
@@ -44,15 +42,14 @@ export function useOptimiser() {
   useEffect(() => terminate, [terminate]);
 
   const run = useCallback(
-    (cards: Card[], requestRetention: number) => {
+    (cards: Card[], requestRetention: number, reviewHistory?: ReviewHistoryEntry[]) => {
       terminate();
       if (mountedRef.current) {
         setState({ status: 'running', progress: 0, result: null, error: null });
       }
-      const worker = new Worker(
-        new URL('../workers/optimise.worker.ts', import.meta.url),
-        { type: 'module' },
-      );
+      const worker = new Worker(new URL('../workers/optimise.worker.ts', import.meta.url), {
+        type: 'module',
+      });
       workerRef.current = worker;
       worker.onmessage = (event: MessageEvent<OptimiseMessage>) => {
         const msg = event.data;
@@ -78,7 +75,7 @@ export function useOptimiser() {
         }
         terminate();
       };
-      const request: OptimiseRequest = { cards, requestRetention };
+      const request: OptimiseRequest = { cards, reviewHistory, requestRetention };
       worker.postMessage(request);
     },
     [terminate],

@@ -1,4 +1,5 @@
 import type { Card, ReviewLog } from '../db/types';
+import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import { startOfDay } from '../utils/datetime';
 
 export interface PredictionAccuracyPoint {
@@ -22,25 +23,31 @@ function recalled(log: ReviewLog): 0 | 1 {
 }
 
 /** Brier score by local day: lower means predicted retrievability matched recall better. */
-export function predictionAccuracySeries(cards: Card[]): PredictionAccuracyPoint[] {
+export function predictionAccuracySeries(
+  cards: Card[],
+  reviewHistory?: readonly ReviewHistoryEntry[],
+): PredictionAccuracyPoint[] {
   const buckets = new Map<
     number,
     { brier: number; predicted: number; actual: number; reviews: number }
   >();
 
-  for (const card of cards) {
-    for (const log of card.history) {
-      if (log.retrievabilityAtReview === null) continue;
-      const day = startOfDay(log.timestamp);
-      const actual = recalled(log);
-      const predicted = Math.max(0, Math.min(1, log.retrievabilityAtReview));
-      const bucket = buckets.get(day) ?? { brier: 0, predicted: 0, actual: 0, reviews: 0 };
-      bucket.brier += (predicted - actual) ** 2;
-      bucket.predicted += predicted;
-      bucket.actual += actual;
-      bucket.reviews += 1;
-      buckets.set(day, bucket);
-    }
+  const cardIds = new Set(cards.map((card) => card.id));
+  const events =
+    reviewHistory ??
+    cards.flatMap((card) => card.history.map((log) => ({ ...log, cardId: card.id })));
+  for (const log of events) {
+    if (!cardIds.has(log.cardId)) continue;
+    if (log.retrievabilityAtReview === null) continue;
+    const day = startOfDay(log.timestamp);
+    const actual = recalled(log);
+    const predicted = Math.max(0, Math.min(1, log.retrievabilityAtReview));
+    const bucket = buckets.get(day) ?? { brier: 0, predicted: 0, actual: 0, reviews: 0 };
+    bucket.brier += (predicted - actual) ** 2;
+    bucket.predicted += predicted;
+    bucket.actual += actual;
+    bucket.reviews += 1;
+    buckets.set(day, bucket);
   }
 
   return [...buckets.entries()]

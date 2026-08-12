@@ -3,10 +3,12 @@ import {
   globalTrajectorySeries,
   leechCountByCourse,
   lessonBreakdown,
+  reviewVolume,
   retentionByAge,
 } from './prepare';
 import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
 import type { Card, Course, Grade, Lesson, ReviewLog, SessionHistoryEntry } from '../../db/types';
+import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 import { startOfDay } from '../../utils/datetime';
 
 // ---------------------------------------------------------------------------
@@ -85,8 +87,20 @@ describe('lessonBreakdown', () => {
     const course = makeCourse({ id: 'c1' });
     const lesson = makeLesson({ id: 'l1', courseId: 'c1', name: 'Lesson one' });
     const cards = [
-      makeCard({ id: 'card1', deckId: 'd1', courseId: 'c1', primaryLessonId: 'l1', lastReviewed: 100 }),
-      makeCard({ id: 'card2', deckId: 'd1', courseId: 'c1', primaryLessonId: 'l1', lastReviewed: null }),
+      makeCard({
+        id: 'card1',
+        deckId: 'd1',
+        courseId: 'c1',
+        primaryLessonId: 'l1',
+        lastReviewed: 100,
+      }),
+      makeCard({
+        id: 'card2',
+        deckId: 'd1',
+        courseId: 'c1',
+        primaryLessonId: 'l1',
+        lastReviewed: null,
+      }),
     ];
     const [entry] = lessonBreakdown([lesson], cards, course);
     expect(entry.lessonId).toBe('l1');
@@ -98,9 +112,7 @@ describe('lessonBreakdown', () => {
   it('excludes extension lessons', () => {
     const course = makeCourse({ id: 'c1' });
     const extensionLesson = makeLesson({ id: 'l1', courseId: 'c1', isExtension: true });
-    const cards = [
-      makeCard({ id: 'card1', deckId: 'd1', courseId: 'c1', primaryLessonId: 'l1' }),
-    ];
+    const cards = [makeCard({ id: 'card1', deckId: 'd1', courseId: 'c1', primaryLessonId: 'l1' })];
     expect(lessonBreakdown([extensionLesson], cards, course)).toEqual([]);
   });
 
@@ -171,6 +183,49 @@ describe('retentionByAge', () => {
       retention: 0,
       count: 1,
     });
+  });
+
+  it('uses canonical event rows when the card projection is stale', () => {
+    const day = 86_400_000;
+    const firstReview = Date.UTC(2026, 0, 1);
+    const card = makeCard({ id: 'card1', deckId: 'd1', history: [] });
+    const reviewHistory: ReviewHistoryEntry[] = [
+      {
+        ...makeReview(firstReview, 3),
+        id: 'review:event:canonical',
+        cardId: card.id,
+        deckId: card.deckId,
+      },
+      {
+        ...makeReview(firstReview + 10 * day, 1),
+        id: 'review:event:canonical-2',
+        cardId: card.id,
+        deckId: card.deckId,
+      },
+    ];
+
+    const result = retentionByAge([card], firstReview + 20 * day, reviewHistory);
+
+    expect(result.find((point) => point.ageLabel === '0–7 days')?.count).toBe(1);
+    expect(result.find((point) => point.ageLabel === '7–30 days')).toMatchObject({
+      retention: 0,
+      count: 1,
+    });
+  });
+});
+
+describe('reviewVolume', () => {
+  it('counts canonical event rows when the card projection is empty', () => {
+    const timestamp = Date.UTC(2026, 0, 1, 12);
+    const card = makeCard({ id: 'card1', deckId: 'd1', history: [] });
+    const event: ReviewHistoryEntry = {
+      ...makeReview(timestamp, 3),
+      id: 'review:event:volume',
+      cardId: card.id,
+      deckId: card.deckId,
+    };
+
+    expect(reviewVolume([card], 1, timestamp, [event])[0].reviews).toBe(1);
   });
 });
 

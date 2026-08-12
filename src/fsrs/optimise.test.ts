@@ -18,6 +18,7 @@ import {
 } from './optimise';
 import { MS_PER_DAY } from './params';
 import type { Card, Grade, ReviewLog } from '../db/types';
+import type { ReviewHistoryEntry } from '../db/reviewHistory';
 
 /** A card carrying a synthetic grade/timestamp sequence (other fields are filler). */
 function cardWith(grades: Grade[], startMs: number, gapDays = 2): Card {
@@ -69,9 +70,7 @@ function syntheticDeck(): Card[] {
 const bindingDeps = {
   computeParameters,
   createItem: (reviews: { rating: number; deltaT: number }[]) =>
-    new FSRSBindingItem(
-      reviews.map((r) => new FSRSBindingReview(r.rating, r.deltaT)),
-    ),
+    new FSRSBindingItem(reviews.map((r) => new FSRSBindingReview(r.rating, r.deltaT))),
 };
 
 describe('history-to-binding conversion', () => {
@@ -85,6 +84,21 @@ describe('history-to-binding conversion', () => {
 });
 
 describe('review extraction and gating', () => {
+  it('uses canonical event rows when supplied instead of a stale card projection', () => {
+    const source = cardWith([3, 1, 4], Date.UTC(2026, 0, 1));
+    const card = { ...source, history: [source.history[0]] };
+    const reviewHistory: ReviewHistoryEntry[] = source.history.map((entry, index) => ({
+      ...entry,
+      id: `review:event:${index}`,
+      cardId: source.id,
+      deckId: source.deckId,
+    }));
+    const staleCard = { ...cardWith([2], Date.UTC(2026, 0, 20)), id: 'stale-card' };
+
+    expect(countReviews([card, staleCard], reviewHistory)).toBe(3);
+    expect(reviewSequences([card, staleCard], reviewHistory)[0].grades).toEqual([3, 1, 4]);
+  });
+
   it('counts every review and extracts non-empty sequences', () => {
     const cards = syntheticDeck();
     const totalGrades = 5 + 5 + 6 + 4 + 6 + 4;

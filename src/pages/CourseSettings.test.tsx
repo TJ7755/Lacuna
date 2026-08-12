@@ -43,6 +43,7 @@ vi.mock('react-router-dom', async () => {
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
   useCourseCards: () => mockCards,
+  useCourseReviewHistory: () => [],
   useCourseAssessments: () =>
     mockCourse
       ? [

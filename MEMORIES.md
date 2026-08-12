@@ -51,3 +51,9 @@ retrospectively, so add the provenance field *before* applying fitted weights, n
 (`anki-revlogs-10k`) that ships a frozen coefficient JSON into the runtime. It never touches Lacuna's
 own review data. Any harness analysing Lacuna's own history is a different shape entirely —
 TypeScript reading a backup file — so do not model one on the other.
+
+## Canonical review history is authoritative when supplied
+
+Consumers that receive an explicit `reviewHistory` result must use an empty sequence for cards
+with no matching event rows. Falling back per card to `Card.history` resurrects stale projection
+events; the card projection is only a compatibility fallback when no canonical result was supplied.
