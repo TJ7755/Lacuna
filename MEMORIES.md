@@ -125,3 +125,9 @@ Canonical review rows and Card projections may disagree temporarily on `deckId`,
 `primaryLessonId` or `schedulingUnitId` while a storage projection is being backfilled. Those fields
 must not distinguish duplicate copies of one event during portability; event content and event/card
 ownership still determine genuine duplicates and cross-card collisions.
+
+## Target pacing projections must combine duplicate legacy sources
+
+A migrated Course/Lesson scheduling unit can temporarily be represented by more than one legacy
+backing Deck. When rebuilding its target pacing row, combine the Welford summaries rather than
+selecting the first Deck, and preserve an existing legacy profile if the target row is missing.

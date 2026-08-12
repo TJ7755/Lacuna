@@ -31,6 +31,9 @@
 - Kept destructive Deck/Folder removal gated because active legacy routes, global study/search/editing,
   MCP scope resolution and backup/import/share contracts still require those stores. This branch
   deliberately ends at the reviewed additive cutover instead of shipping a breaking schema deletion.
++- Follow-up review fixes combine duplicate legacy performance profiles when several backing Decks
++  resolve to one target scheduling unit, preserve legacy calibration when rebuilding a missing target
++  row, and use constant-time scheduling-unit membership checks during schema upgrade.
 
 ## Unreleased — One place for study on the dashboard
 

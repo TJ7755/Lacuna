@@ -217,6 +217,30 @@ describe('backing deck adapter', () => {
     });
   });
 
+  it('rebuilds a missing target performance row from legacy calibration', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const deckId = await ensureLessonBackingDeck(course.id, lesson.id);
+
+    await db.userPerformance.put({
+      deckId,
+      runningMeanResponseTime: 42,
+      runningStdDevResponseTime: 3,
+      m2: 9,
+      totalCorrectReviews: 7,
+    });
+    await db.schedulingPerformance.delete(lesson.id);
+
+    await ensureLessonBackingDeck(course.id, lesson.id);
+
+    expect(await db.schedulingPerformance.get(lesson.id)).toMatchObject({
+      runningMeanResponseTime: 42,
+      runningStdDevResponseTime: 3,
+      m2: 9,
+      totalCorrectReviews: 7,
+    });
+  });
+
   it('shares one newly-created lesson deck across concurrent requests', async () => {
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Cells');

@@ -37,6 +37,39 @@ function statsFrom(performance: UserPerformance | undefined) {
     : emptyPerformanceStats();
 }
 
+/** Combine Welford summaries without expanding the underlying review history. */
+function combineStats(performances: UserPerformance[]) {
+  let count = 0;
+  let mean = 0;
+  let m2 = 0;
+
+  for (const performance of performances) {
+    const incomingCount = performance.totalCorrectReviews;
+    if (incomingCount <= 0) continue;
+    if (count === 0) {
+      count = incomingCount;
+      mean = performance.runningMeanResponseTime;
+      m2 = performance.m2;
+      continue;
+    }
+
+    const delta = performance.runningMeanResponseTime - mean;
+    const combinedCount = count + incomingCount;
+    mean += delta * (incomingCount / combinedCount);
+    m2 += performance.m2 + (delta * delta * count * incomingCount) / combinedCount;
+    count = combinedCount;
+  }
+
+  return count > 0
+    ? {
+        runningMeanResponseTime: mean,
+        runningStdDevResponseTime: Math.sqrt(m2 / count),
+        m2,
+        totalCorrectReviews: count,
+      }
+    : emptyPerformanceStats();
+}
+
 function unitFromLegacyDeck(deck: Deck): SchedulingUnitRecord {
   return {
     id: deck.id,
@@ -140,19 +173,28 @@ export function buildDomainStorageMigration(
   }
 
   const performanceByKey = new Map(userPerformance.map((performance) => [performance.deckId, performance]));
+  const performanceByUnitId = new Map<string, UserPerformance[]>();
+  for (const deck of decks) {
+    const unitId = schedulingUnitByDeckId.get(deck.id);
+    const performance = performanceByKey.get(deck.id);
+    if (!unitId || !performance) continue;
+    const sources = performanceByUnitId.get(unitId) ?? [];
+    sources.push(performance);
+    performanceByUnitId.set(unitId, sources);
+  }
+
   const schedulingPerformance: SchedulingPerformance[] = [];
   for (const unit of units.values()) {
-    const sourceDeck = decks.find((deck) => schedulingUnitByDeckId.get(deck.id) === unit.id);
-    const source = sourceDeck
-      ? performanceByKey.get(sourceDeck.id)
-      : unit.kind === 'legacy-deck'
-        ? performanceByKey.get(unit.id)
-        : undefined;
+    const sources = performanceByUnitId.get(unit.id) ?? [];
+    if (sources.length === 0 && unit.kind === 'legacy-deck') {
+      const performance = performanceByKey.get(unit.id);
+      if (performance) sources.push(performance);
+    }
     schedulingPerformance.push({
       schedulingUnitId: unit.id,
       ...(unit.courseId ? { courseId: unit.courseId } : {}),
       ...(unit.lessonId ? { lessonId: unit.lessonId } : {}),
-      ...statsFrom(source),
+      ...combineStats(sources),
     });
   }
 

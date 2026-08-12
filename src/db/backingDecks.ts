@@ -68,13 +68,17 @@ function isConstraintError(error: unknown): boolean {
 }
 
 async function ensurePerformanceRow(deckId: string): Promise<void> {
-  if (!(await db.userPerformance.get(deckId))) {
+  let legacyPerformance = await db.userPerformance.get(deckId);
+  if (!legacyPerformance) {
+    const empty = emptyPerformance(deckId);
     try {
-      await db.userPerformance.add(emptyPerformance(deckId));
+      await db.userPerformance.add(empty);
+      legacyPerformance = empty;
     } catch (error) {
       // Another context may have initialised the row between the read and add.
       // Never replace an existing calibration profile with an empty one.
       if (!isConstraintError(error)) throw error;
+      legacyPerformance = await db.userPerformance.get(deckId);
     }
   }
 
@@ -86,7 +90,14 @@ async function ensurePerformanceRow(deckId: string): Promise<void> {
     schedulingUnitId,
     courseId: deck.backingCourseId,
     ...(deck.backingLessonId ? { lessonId: deck.backingLessonId } : {}),
-    ...emptyPerformanceStats(),
+    ...(legacyPerformance
+      ? {
+          runningMeanResponseTime: legacyPerformance.runningMeanResponseTime,
+          runningStdDevResponseTime: legacyPerformance.runningStdDevResponseTime,
+          m2: legacyPerformance.m2,
+          totalCorrectReviews: legacyPerformance.totalCorrectReviews,
+        }
+      : emptyPerformanceStats()),
   });
 }
 

@@ -745,6 +745,7 @@ class LacunaDatabase extends Dexie {
           const schedulingUnitId = migration.schedulingUnitByCardId.get(card.id);
           if (schedulingUnitId) card.schedulingUnitId = schedulingUnitId;
         });
+        const schedulingUnitIds = new Set(migration.schedulingUnits.map((unit) => unit.id));
         const reviewUnitByEventId = new Map<string, string>();
         for (const entry of (await tx.table('reviewHistory').toArray()) as ReviewHistoryEntry[]) {
           if (entry.eventId) {
@@ -760,9 +761,7 @@ class LacunaDatabase extends Dexie {
           const schedulingUnitId =
             (entry.eventId ? reviewUnitByEventId.get(entry.eventId) : undefined) ??
             migration.schedulingUnitByDeckId.get(entry.deckId) ??
-            (entry.courseId && migration.schedulingUnits.some((unit) => unit.id === entry.courseId)
-              ? entry.courseId
-              : undefined);
+            (entry.courseId && schedulingUnitIds.has(entry.courseId) ? entry.courseId : undefined);
           if (schedulingUnitId) entry.schedulingUnitId = schedulingUnitId;
         });
       });

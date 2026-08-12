@@ -155,6 +155,30 @@ describe('buildDomainStorageMigration', () => {
     expect(result.schedulingUnitByDeckId.get('wrong-owner')).toBe('course-1');
   });
 
+  it('combines performance from duplicate decks mapped to one scheduling unit', () => {
+    const result = buildDomainStorageMigration(
+      [course('course-1')],
+      [lesson('course-1', 'lesson-1')],
+      [],
+      [deck('lesson-deck-a', 'course-1', 'lesson-1'), deck('lesson-deck-b', 'course-1', 'lesson-1')],
+      [],
+      [
+        performance('lesson-deck-a', 4),
+        {
+          ...performance('lesson-deck-b', 6),
+          runningMeanResponseTime: 8,
+          m2: 4,
+        },
+      ],
+    );
+
+    expect(result.schedulingPerformance.find((row) => row.schedulingUnitId === 'lesson-1')).toMatchObject({
+      totalCorrectReviews: 10,
+      runningMeanResponseTime: 5.6,
+      m2: 93.4,
+    });
+  });
+
   it('keeps a legacy deck as a compatibility scheduling unit when it has no course owner', () => {
     const result = buildDomainStorageMigration(
       [],
