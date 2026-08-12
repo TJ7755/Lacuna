@@ -747,7 +747,13 @@ describe('LearnMode course/lesson scope', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
 
-    expect(await screen.findByRole('button', { name: 'Enter Focus Mode' })).toBeInTheDocument();
+    // Entering focus mode now lives in the card-actions menu, so leaving it is observed
+    // by the study chrome becoming permanently visible rather than by a header toggle.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: 'Show study controls' }),
+      ).not.toBeInTheDocument();
+    });
     expect(localStorage.getItem('lacuna.startInFocusMode')).toBe('on');
   });
 
@@ -1323,7 +1329,11 @@ describe('LearnMode course/lesson scope', () => {
       expect(exitFocus).not.toHaveClass('hidden');
 
       fireEvent.click(exitFocus);
-      expect(await screen.findByRole('button', { name: 'Enter Focus Mode' })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('button', { name: 'Show study controls' }),
+        ).not.toBeInTheDocument();
+      });
     } finally {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
     }

@@ -169,14 +169,12 @@ export function LearnHeader({
       ? 1 - revisionSecondsRemaining / revisionWindowBudgetSeconds
       : 0
     : sessionProgress;
-  const percentage = Math.round(Math.max(0, Math.min(1, displayedProgress)) * 100);
   const progressName =
     mode === 'simple'
       ? 'Session progress'
       : singleDeck && progressNoun(singleDeck) === 'secured'
         ? 'Secured progress'
         : 'Predicted score progress';
-  const compactProgressNoun = progressName.replace(' progress', '').toLowerCase();
 
   return (
     <motion.header
@@ -216,22 +214,21 @@ export function LearnHeader({
               cardIds={sessionCardIds}
               outcomes={sessionCardOutcomes}
               currentCardId={currentCardId}
+              value={displayedProgress}
+              label={progressName}
             />
           ) : (
-            <ObjectiveProgressTrack value={displayedProgress} m={m} />
+            <ObjectiveProgressTrack value={displayedProgress} label={progressName} m={m} />
           )}
         </div>
 
-        <span className="hidden whitespace-nowrap text-sm tabular text-ink-soft sm:inline">
-          {plannedRevision
-            ? `${Math.max(0, Math.ceil(revisionSecondsRemaining / 60))} min left`
-            : `${percentage}%${mode === 'simple' ? '' : ` ${compactProgressNoun}`}`}
-        </span>
-        <SessionProgressRing
-          value={displayedProgress}
-          label={plannedRevision ? 'Revision window time' : progressName}
-          m={m}
-        />
+        {/* A planned revision window is a countdown rather than progress through a pile of
+            cards, so it has no equivalent in the track below the title and stays here. */}
+        {plannedRevision && (
+          <span className="hidden whitespace-nowrap text-sm tabular text-ink-soft sm:inline">
+            {`${Math.max(0, Math.ceil(revisionSecondsRemaining / 60))} min left`}
+          </span>
+        )}
 
         <div className="hidden min-[340px]:block">
           <PomodoroTimer />
@@ -258,6 +255,8 @@ export function LearnHeader({
                   onBury={onBury}
                   onSuspend={onSuspend}
                   onShowShortcuts={onShowShortcuts}
+                  onToggleFocus={onToggleFocus}
+                  focusMode={focusMode}
                   onClose={() => setMenuOpen(false)}
                   m={m}
                 />
@@ -293,6 +292,22 @@ export function LearnHeader({
                   />
                   <div className="border-t border-line" />
                   <MenuItem
+                    icon={<FocusIcon width={16} height={16} />}
+                    label={focusMode ? 'Leave focus mode' : 'Focus mode'}
+                    onClick={onToggleFocus}
+                  />
+                  <MenuItem
+                    icon={
+                      isFullscreen ? (
+                        <RestoreIcon width={16} height={16} />
+                      ) : (
+                        <FullscreenIcon width={16} height={16} />
+                      )
+                    }
+                    label={isFullscreen ? 'Leave full screen' : 'Full screen'}
+                    onClick={onToggleFullscreen}
+                  />
+                  <MenuItem
                     icon={<KeyboardIcon width={16} height={16} />}
                     label="Keyboard shortcuts"
                     onClick={onShowShortcuts}
@@ -302,33 +317,19 @@ export function LearnHeader({
           </AnimatePresence>
         </div>
 
-        <button
-          type="button"
-          onClick={onToggleFocus}
-          aria-label={focusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
-          title={focusMode ? 'Exit Focus Mode (F)' : 'Enter Focus Mode (F)'}
-          className={cn(
-            'h-11 w-11 shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-ink/5 active:bg-ink/10',
-            focusMode ? 'flex' : 'hidden sm:flex',
-            focusMode ? 'text-accent' : 'text-ink-soft hover:text-ink',
-          )}
-        >
-          <FocusIcon width={19} height={19} />
-        </button>
-
-        <button
-          type="button"
-          onClick={onToggleFullscreen}
-          aria-label={isFullscreen ? 'Leave full screen' : 'Enter full screen'}
-          title={isFullscreen ? 'Leave full screen' : 'Enter full screen'}
-          className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 sm:flex"
-        >
-          {isFullscreen ? (
-            <RestoreIcon width={19} height={19} />
-          ) : (
-            <FullscreenIcon width={19} height={19} />
-          )}
-        </button>
+        {/* Focus mode keeps a control of its own only while it is active, so there is a
+            visible way out of a chrome-less screen. Otherwise it lives in the menu. */}
+        {focusMode && (
+          <button
+            type="button"
+            onClick={onToggleFocus}
+            aria-label="Exit Focus Mode"
+            title="Exit Focus Mode (F)"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-ink/5 active:bg-ink/10"
+          >
+            <FocusIcon width={19} height={19} />
+          </button>
+        )}
 
         <Button variant="ghost" size="sm" onClick={onExit}>
           Exit
@@ -338,10 +339,27 @@ export function LearnHeader({
   );
 }
 
-function ObjectiveProgressTrack({ value, m }: { value: number; m: number }) {
+function ObjectiveProgressTrack({
+  value,
+  label,
+  m,
+}: {
+  value: number;
+  label: string;
+  m: number;
+}) {
   const progress = Math.max(0, Math.min(1, value));
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-ink/10" aria-hidden="true">
+    // This track is now the session's only progress indicator, so it carries the
+    // accessible name and value that the removed counter ring used to provide.
+    <div
+      className="h-2 w-full overflow-hidden rounded-full bg-ink/10"
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(progress * 100)}
+    >
       <motion.div
         initial={false}
         animate={{ scaleX: progress }}
@@ -356,10 +374,14 @@ function SessionSegments({
   cardIds,
   outcomes,
   currentCardId,
+  value,
+  label,
 }: {
   cardIds: string[];
   outcomes: Map<string, SessionCardOutcome>;
   currentCardId: string | null;
+  value: number;
+  label: string;
 }) {
   const statusFor = (id: string): SessionCardOutcome | 'current' | 'unseen' => {
     if (id === currentCardId) return 'current';
@@ -375,7 +397,17 @@ function SessionSegments({
   }
 
   return (
-    <div aria-label="Card progress" role="group" title={`${cardIds.length} cards in this session`}>
+    // The pip bar is the session's only progress indicator now that the counter ring
+    // has gone, so it carries the value itself rather than being a decorative group
+    // beside one. The live summary below still reports the per-card breakdown.
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(Math.max(0, Math.min(1, value)) * 100)}
+      title={`${cardIds.length} cards in this session`}
+    >
       <span className="sr-only" aria-live="polite">
         {statusSummary}
       </span>
@@ -409,40 +441,6 @@ function SessionSegments({
   );
 }
 
-function SessionProgressRing({ value, label, m }: { value: number; label: string; m: number }) {
-  const progress = Math.max(0, Math.min(1, value));
-  const radius = 15;
-  const circumference = 2 * Math.PI * radius;
-  const percentage = Math.round(progress * 100);
-  return (
-    <div
-      role="progressbar"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={percentage}
-      className="relative flex h-10 w-10 shrink-0 items-center justify-center"
-    >
-      <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden="true">
-        <circle cx="18" cy="18" r={radius} fill="none" className="stroke-ink/10" strokeWidth="3" />
-        <motion.circle
-          cx="18"
-          cy="18"
-          r={radius}
-          fill="none"
-          className="stroke-accent"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          initial={false}
-          animate={{ strokeDashoffset: circumference * (1 - progress) }}
-          transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
-        />
-      </svg>
-      <span className="text-[9px] font-semibold tabular text-ink-soft sm:hidden">{percentage}</span>
-    </div>
-  );
-}
 
 function MenuItem({
   icon,
