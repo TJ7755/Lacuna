@@ -1,5 +1,11 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Scientific assessment
+
+- Added `docs/scientific-assessment.md`, recording the evidence strength, modelling assumptions,
+  corrected literature framing and validation priorities for Lacuna's exam-driven scheduling,
+  response-time grading and assessment revision layers.
+
 ## Unreleased — Storage migration contract
 
 - Recorded the first proposed migration boundary in `docs/plans/storage-migration.md`: Course-keyed

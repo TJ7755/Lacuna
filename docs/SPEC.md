@@ -37,10 +37,13 @@ British English throughout. No emojis anywhere in the product or its copy.
    same module (`src/fsrs/objective.ts`) so they are guaranteed consistent — the core invariant
    of the app.
 3. **Invisible grading (with an opt-out).** By default the learner only ever presses "Yes" or
-   "No"; the four-point FSRS grade is inferred from correctness plus response time, calibrated
-   per deck. The inference is measurable, not assumed — a per-deck calibration metric scores
-   predicted vs actual recall (§14). A Settings toggle switches to manual four-point grading
-   (Again/Hard/Good/Easy with keyboard shortcuts) for users who prefer to grade themselves.
+   "No"; the four-point FSRS grade is inferred from correctness plus response time, using the
+   active scheduling context's performance profile. Course-scoped review uses a course-keyed
+   profile at the review boundary, while legacy/deck-shaped analytics and allocator paths still
+   consume deck-keyed rows during the staged migration. The inference is measurable, not
+   assumed — a calibration metric scores predicted vs actual recall (§14). A Settings toggle
+   switches to manual four-point grading (Again/Hard/Good/Easy with keyboard shortcuts) for
+   users who prefer to grade themselves.
 4. **Local and private.** Everything is stored on-device. Export, import, automatic restore
    points and optional folder mirroring are the backup story. The Electron MCP surface can
    expose authorised data to a local client process, but Lacuna itself has no remote server
@@ -868,11 +871,13 @@ createdAt`
 `{ id?, timestamp, deckId, averagePredictedRetrievability }` — written **per answered
 card**; analytics aggregate to the last snapshot per calendar day to plot the trajectory.
 
-### UserPerformance (per deck)
+### UserPerformance (transitional calibration profile)
 
-`{ deckId, runningMeanResponseTime, runningStdDevResponseTime, m2, totalCorrectReviews }`
-— a Welford running mean/variance over **correct (Yes) reviews only**, used to calibrate
-the invisible grader.
+`{ deckId, courseId?, runningMeanResponseTime, runningStdDevResponseTime, m2,
+totalCorrectReviews }` — a Welford running mean/variance over **correct (Yes) reviews only**,
+used to calibrate the invisible grader. Course-scoped review writes the course identity;
+legacy/deck-shaped reads remain during the staged Course/Deck migration, so the storage shape
+must not yet be treated as a settled scientific claim about the right calibration scope.
 
 ### MediaAsset / BackupAsset
 
