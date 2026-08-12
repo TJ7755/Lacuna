@@ -207,8 +207,37 @@ whenever another worker saves a file.
 - Prove the swipe threshold: a small drag must not grade; a committed swipe must be undoable.
 - Do not judge performance from this branch; those fixes live elsewhere.
 
-## Follow-ups, delegable once this lands
+## Follow-ups — reconciled 12 August 2026
+
+The three follow-ups below were delivered by work that landed after this plan. Each item is kept
+in place and marked here with its verdict and evidence, following this file's habit.
 
 1. Remove the "Choose what to study" screen when only one option is available.
+
+   **Delivered. Verified 12 August 2026.** The interstitial was replaced outright by a bottom sheet,
+   `src/components/learn/StudySheet.tsx`, opened via `StudySheetContext` from the sidebar
+   (`src/components/layout/AppShell.tsx`) and the course path (`src/pages/CoursePath.tsx:469`).
+   The old `StudyEntry` screen is no longer rendered anywhere; `src/pages/CourseStudyFlow.tsx:15`
+   imports only `StudyFlowMessage` from that file. A separate worker is removing the dead
+   component; the removal is not part of this plan.
+
 2. Landing page at 375px: the "SMOOTH SCROLL ON" pill overlaps the heading and obscures a word.
+
+   **Delivered. Verified 12 August 2026.** `src/pages/Welcome.tsx:329-346` now requires a
+   `wheel` event before the pill is ever revealed. Touch devices emit no wheel events, so the
+   pill has nothing to escape on a phone; revealing it on any scroll pinned a wide pill over the
+   heading, and the reasoning is recorded in the comment at that site. On touch it now never
+   appears.
+
 3. Dashboard: bring the study control above the fold on mobile.
+
+   **Partially delivered. Verified 12 August 2026.** With an interrupted study flow, the resume
+   control sits above the fold at `src/pages/Dashboard.tsx:137-156`, directly beneath a header
+   that is compact at phone width (`p-4`, `mb-6`), above the stats strip and the course grid.
+   But it is conditional on a resumable flow existing (`resumableCourse`); there is no
+   unconditional study control above the fold. With none, study is reached through the sidebar's
+   Review today control behind the hamburger drawer (`src/components/layout/AppShell.tsx:233-236`)
+   or a course card's Study action (`src/pages/Dashboard.tsx:196`), both of which cost an extra
+   tap and the first of which hides the control behind a menu. Whether an unconditional study
+   entry belongs on the dashboard is a live design question, owned by Claude Code and not
+   delegable, and is not resolved by this plan.

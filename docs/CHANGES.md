@@ -1,5 +1,26 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Learn screen follow-ups reconciled
+
+- Replaced the stale "Follow-ups, delegable once this lands" record in
+  `docs/plans/learn-screen-redesign.md` with an in-place reconciliation, dated 12 August 2026,
+  of all three items.
+- Follow-up 1, the "Choose what to study" screen: delivered. The interstitial was replaced by a
+  bottom sheet (`src/components/learn/StudySheet.tsx`) opened via `StudySheetContext` from the
+  sidebar and the course path; the old `StudyEntry` screen is no longer rendered anywhere, with
+  `CourseStudyFlow.tsx:15` importing only `StudyFlowMessage`. The dead component itself is being
+  removed by a separate worker.
+- Follow-up 2, the landing-page "SMOOTH SCROLL ON" pill: delivered. `Welcome.tsx:329-346`
+  requires a `wheel` event before the pill is revealed, so on touch it never appears.
+- Follow-up 3, the dashboard study control above the fold on mobile: partially delivered. The
+  resume-study control sits above the fold at `Dashboard.tsx:137-156` when a study flow is
+  interrupted, but it is conditional on `resumableCourse`; with none, study is reached through
+  the sidebar's Review today control behind the mobile hamburger drawer or a course card's Study
+  action. Whether an unconditional study entry belongs on the dashboard remains a live design
+  question for Claude Code.
+- Marked the learn screen redesign **delivered** in `docs/next_plan.md`, keeping only the one
+  remaining open design question rather than an implementation diary, per roadmap rule 5.
+
 ## Unreleased — Deployment planning
 
 - Recorded that Lacuna is not yet in real use and adjusted roadmap sequencing so data-integrity

@@ -30,13 +30,18 @@ Arc 14 has no remaining slices.
 
 ### Learn screen redesign
 
-**Status:** ready.
+**Status:** delivered.
 
-The active product implementation plan is
+The implementation plan is
 [the learn screen redesign](plans/learn-screen-redesign.md): the study card view, its overloaded
 header and swipe-to-grade safety, ahead of phone-primary use from the 2026–27 academic year.
 Evidence for each fault was gathered in a browser pass on 12 August 2026 and is recorded in
-that plan. It is design work and is not delegable to a mailbox worker.
+that plan.
+
+No verification debt remains from the plan itself. One follow-up is only partially delivered and
+carries a live design question: the dashboard study control is above the fold only when a study
+flow is interrupted, and whether an unconditional study entry belongs there is a Claude Code
+design decision, not delegable to a mailbox worker.
 
 ## Close-out queue
 
