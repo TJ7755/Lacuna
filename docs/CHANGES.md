@@ -15,10 +15,18 @@
 - A swipe-committed grade now offers Undo in a toast. Undo already existed but was reachable only
   by keyboard shortcut, which is no use to the phone user who made the accidental swipe.
   Deliberate taps on Yes and No do not raise the toast.
-- Corrected `docs/plans/learn-screen-redesign.md`. Its most serious finding claimed swipe-to-grade
-  had no answer-phase restriction, no commit threshold and no drag feedback. All three already
-  existed; only the undo gap was real. The entry is kept and marked, as a caution against acting
-  on browser-session findings without reading the handler.
+- Added a test asserting that touch grading controls live in a `fixed bottom-0` container, so the
+  thumb-zone property cannot regress unnoticed.
+- Corrected two findings in `docs/plans/learn-screen-redesign.md`, both wrong for the same reason.
+  The swipe finding claimed there was no answer-phase restriction, no commit threshold and no drag
+  feedback; all three already existed and only the undo gap was real. The thumb-zone finding
+  claimed the grading controls sat mid-screen on a phone; they are already anchored to the bottom,
+  and the measurement had been taken in a resized desktop browser, which reports no touch points
+  and so renders the pointer layout. Both entries are kept and marked rather than deleted.
+- **Lesson for future passes:** a browser session at phone width is not a phone. Input mode
+  resolves from reported touch points once on mount, so resizing a desktop window renders the
+  pointer layout however narrow it gets. Verify a finding against the code before planning work
+  from it.
 
 ## Unreleased — Loading placeholders and card entry animation
 

@@ -1,7 +1,10 @@
 # Learn screen redesign — card view, header and swipe
 
-**Status:** in progress on `refactor/learn-screen-redesign`. Scope items 2, 3 and 4 are done;
-item 1, the mobile thumb-zone layout, has not been started.
+**Status:** complete on `refactor/learn-screen-redesign`. Scope items 2, 3 and 4 are done and item 1
+was withdrawn as already-implemented. Two of this plan's five findings were wrong; both are marked
+in place rather than deleted, and the reason is the same in each case — they were written from a
+browser session without reading the code underneath. The remaining follow-ups at the end are
+unaffected and still worth doing.
 
 **Written:** 12 August 2026
 
@@ -43,10 +46,23 @@ card inside the page.
 
 ### The thumb zone is inverted (mobile)
 
-On an 812px-tall viewport every actionable element sits in the top two-thirds — controls at
-0–70px, card at 100–450px, the No/Yes buttons at roughly 475–545px. Below about 560px there is
-around 260px of dead space, exactly where a thumb rests. This is a desktop layout that happens to
-fit a phone.
+**Incorrect. Corrected 12 August 2026.**
+
+The original claim was that on an 812px-tall viewport the No/Yes buttons sat at roughly 475–545px
+with around 260px of dead space beneath them. On a phone this is not what happens:
+`TouchBottomSheet.tsx:34,64` is `fixed bottom-0 left-0 right-0` with 56px controls, and
+`LearnMode.tsx:512` reserves `pb-40` beneath the card for it. Grading already sits exactly where a
+thumb rests.
+
+The measurement was an artefact of how it was taken. Input mode defaults to `auto`, which resolves
+to touch only when the device reports touch points (`inputMode.ts:9-23`), and `useIsTouchMode`
+reads that once on mount. A desktop browser resized to 375px after the page had loaded therefore
+kept the pointer layout, in which the grading row *is* in the flow of the page and *does* sit
+mid-screen. The pass measured the pointer layout at phone width and recorded it as the phone
+layout.
+
+`LearnMode.test.tsx` now asserts that touch grading is anchored to a `fixed bottom-0` container, so
+this cannot regress unnoticed and cannot be mis-measured the same way again.
 
 ### Swipe grades silently — the most serious finding
 
@@ -104,9 +120,11 @@ explicitly out of scope for this plan.
 
 In scope:
 
-1. Rebuild the learn screen layout so the primary controls sit in the thumb zone on mobile and the
-   card occupies the space above, with the desktop layout kept coherent rather than merely
-   unbroken.
+1. ~~Rebuild the learn screen layout so the primary controls sit in the thumb zone on mobile and
+   the card occupies the space above.~~ **Withdrawn:** this was already the behaviour on a real
+   touch device; see the corrected finding above. The card-centring work under "Further findings"
+   covered the remaining part of this item, which was that the card sat high within the space
+   available to it.
 2. Reduce the header to what is needed during study — at most title, progress and exit — and move
    the remainder behind the existing overflow. Applies to both viewports.
 3. Make the card read as content rather than an empty container at both sizes.
