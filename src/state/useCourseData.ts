@@ -4,7 +4,8 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
+import { hydrateCardsWithHistory, listReviewHistoryForCourse } from '../db/reviewHistoryRead';
+import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import type {
   Card,
   Course,
@@ -184,6 +185,13 @@ export function useCourseCards(courseId: string | undefined): Card[] | undefined
         : [],
     [courseId],
   );
+}
+
+/** Review events for one course through the canonical event-store adapter. */
+export function useCourseReviewHistory(
+  courseId: string | undefined,
+): ReviewHistoryEntry[] | undefined {
+  return useLiveQuery(() => (courseId ? listReviewHistoryForCourse(courseId) : []), [courseId]);
 }
 
 /**

@@ -10,6 +10,7 @@
 // content sample remains a separate, explicit opt-in (see gatherContentSample).
 
 import { db } from './schema';
+import { listAllReviewHistory } from './reviewHistoryRead';
 import type { CourseAssessment } from './types';
 
 /** Build-time application version, injected by Vite (see vite.config.ts). */
@@ -29,6 +30,8 @@ export interface DiagnosticBundle {
   data: {
     decks: number;
     cards: number;
+    /** Count of canonical review events, including legacy-only fallback rows. */
+    reviewEvents?: number;
     reviews: number;
     backups: number;
     courses?: number;
@@ -53,6 +56,7 @@ export interface DiagnosticInput {
   counts: {
     decks: number;
     cards: number;
+    reviewEvents?: number;
     reviews: number;
     backups: number;
     courses?: number;
@@ -119,6 +123,9 @@ export function formatDiagnostics(bundle: DiagnosticBundle): string {
     ``,
     `Data: ${bundle.data.decks} decks, ${bundle.data.cards} cards, ` +
       `${bundle.data.reviews} reviews, ${bundle.data.backups} restore points` +
+      (bundle.data.reviewEvents !== undefined
+        ? `, ${bundle.data.reviewEvents} review events`
+        : '') +
       (bundle.data.courses !== undefined
         ? `, ${bundle.data.courses} courses, ${bundle.data.lessons ?? 0} lessons, ` +
           `${bundle.data.notes ?? 0} notes, ${bundle.data.lessonCards ?? 0} lesson card links, ` +
@@ -140,6 +147,7 @@ export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
     cards,
     backups,
     reviews,
+    reviewEvents,
     courses,
     lessons,
     notes,
@@ -154,6 +162,7 @@ export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
     db.cards.count(),
     db.backups.count(),
     db.sessionHistory.count(),
+    listAllReviewHistory().then((entries) => entries.length),
     db.courses.count(),
     db.lessons.count(),
     db.notes.count(),
@@ -167,6 +176,7 @@ export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
   return {
     decks,
     cards,
+    reviewEvents,
     reviews,
     backups,
     courses,

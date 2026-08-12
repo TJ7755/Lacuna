@@ -3,7 +3,8 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
-import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
+import { hydrateCardsWithHistory, listAllReviewHistory } from '../db/reviewHistoryRead';
+import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import type { BackupSnapshot, Card, Deck, SessionHistoryEntry } from '../db/types';
 import { progressValue } from '../fsrs/objective';
 import { availableCards, studyPool } from '../fsrs/eligibility';
@@ -24,6 +25,11 @@ export function useCard(cardId: string | undefined): Card | null | undefined {
 /** Every card across all decks, for global search. */
 export function useAllCards(): Card[] | undefined {
   return useLiveQuery(() => db.cards.toArray().then(hydrateCardsWithHistory), []);
+}
+
+/** All review events through the canonical event-store adapter. */
+export function useAllReviewHistory(): ReviewHistoryEntry[] | undefined {
+  return useLiveQuery(() => listAllReviewHistory(), []);
 }
 
 /** Automatic-backup restore points, newest first. */
