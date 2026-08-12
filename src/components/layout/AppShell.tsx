@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
 import { ErrorBoundary } from './ErrorBoundary';
 import { CommandPalette } from '../search/CommandPalette';
+import { BottomNav } from './BottomNav';
 import { KeyHints } from '../ui/KeyHints';
 import { CloseIcon, LacunaIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -244,7 +245,9 @@ export function AppShell() {
 
           <main
             ref={mainRef}
-            className="min-w-0 flex-1 overflow-y-auto overscroll-y-none"
+            // Bottom padding clears the mobile navigation bar, which is fixed and would
+            // otherwise cover the last of the page's content.
+            className="min-w-0 flex-1 overflow-y-auto overscroll-y-none pb-[4.5rem] md:pb-0"
             style={{ touchAction: 'pan-y' }}
           >
             <ErrorBoundary label="this page">
@@ -265,6 +268,7 @@ export function AppShell() {
           </main>
         </div>
       </div>
+      <BottomNav onOpenPalette={() => setPaletteOpen(true)} />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
     </motion.div>
