@@ -13,6 +13,9 @@ function Step({ name }: { name: string }) {
       <button type="button" onClick={pomodoro.startFocus}>
         Start focus
       </button>
+      <button type="button" onClick={pomodoro.pause}>
+        Pause
+      </button>
     </div>
   );
 }
@@ -50,5 +53,22 @@ describe('PomodoroProvider', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next step' }));
     expect(screen.getByText('Practice')).toBeInTheDocument();
     expect(screen.getByText('00:55')).toBeInTheDocument();
+  });
+
+  it('does not write the running countdown to localStorage every second', () => {
+    savePomodoroSettings({ workMinutes: 1 });
+    const writes = vi.spyOn(localStorage, 'setItem');
+    render(<FlowHarness />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start focus' }));
+    const writesAfterStart = writes.mock.calls.length;
+    act(() => {
+      vi.advanceTimersByTime(5_000);
+    });
+    expect(writes.mock.calls.length).toBe(writesAfterStart);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+    expect(writes.mock.calls.length).toBeGreaterThan(writesAfterStart);
+    writes.mockRestore();
   });
 });

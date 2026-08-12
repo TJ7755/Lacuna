@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { PomodoroProvider, usePomodoroContext } from '../hooks/PomodoroContext';
+import { PomodoroProvider, usePomodoroFlowContext } from '../hooks/PomodoroContext';
 import { useCourseStudyFlow } from '../state/useCourseStudyFlow';
 import {
   clearActiveStudyFlow,
@@ -66,7 +66,7 @@ function CourseStudyFlowInner() {
     planId: string;
     windowId: string;
   } | null>(null);
-  const pomodoro = usePomodoroContext();
+  const pomodoro = usePomodoroFlowContext();
 
   useEffect(() => {
     if (!courseId) return;
