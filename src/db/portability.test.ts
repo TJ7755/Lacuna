@@ -20,6 +20,10 @@ import {
   createOrResumeRevisionPlan,
   startRevisionWindow,
 } from './repository';
+import {
+  performanceForCourseBackingDecks,
+  performanceForReviewUnits,
+} from './backingDecks';
 import { createOcclusion } from './occlusionRepository';
 import { reviewHistoryEntryIdForEvent } from './reviewHistory';
 import { storeImageBlob } from './assets';
@@ -234,6 +238,70 @@ describe('exportDatabase', () => {
 
 describe('importBackup', () => {
   beforeEach(reset);
+
+  it.each(['replace', 'merge'] as const)(
+    'round-trips both UserPerformance key spaces distinctly in %s mode',
+    async (mode) => {
+      const course = await createCourse('Key-space portability');
+      const lesson = await createLesson(course.id, 'Lesson 1');
+      const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+      const backing = {
+        deckId: card.deckId,
+        runningMeanResponseTime: 41,
+        runningStdDevResponseTime: 2,
+        m2: 8,
+        totalCorrectReviews: 9,
+      };
+      const calibration = {
+        deckId: course.id,
+        runningMeanResponseTime: 73,
+        runningStdDevResponseTime: 3,
+        m2: 18,
+        totalCorrectReviews: 11,
+      };
+      await db.userPerformance.bulkPut([backing, calibration]);
+      const backup = await exportDatabase();
+
+      expect(backup.userPerformance).toEqual(expect.arrayContaining([backing, calibration]));
+
+      let expectedBacking = backing;
+      let expectedCalibration = calibration;
+      if (mode === 'merge') {
+        const backingDeck = (await db.decks.get(card.deckId))!;
+        const storedCourse = (await db.courses.get(course.id))!;
+        expectedBacking = { ...backing, runningMeanResponseTime: 101, totalCorrectReviews: 21 };
+        expectedCalibration = {
+          ...calibration,
+          runningMeanResponseTime: 202,
+          totalCorrectReviews: 22,
+        };
+        await db.decks.update(card.deckId, {
+          lastInteractedAt: (backingDeck.lastInteractedAt ?? backingDeck.createdAt) + 1000,
+        });
+        await db.courses.update(course.id, {
+          lastInteractedAt: (storedCourse.lastInteractedAt ?? storedCourse.createdAt) + 1000,
+        });
+        await db.userPerformance.put(expectedBacking);
+        await db.userPerformance.put(expectedCalibration);
+      }
+
+      await importBackup(backup, mode);
+
+      expect(await db.userPerformance.get(card.deckId)).toEqual(expectedBacking);
+      expect(await db.userPerformance.get(course.id)).toEqual(expectedCalibration);
+      const restoredCard = (await db.cards.get(card.id))!;
+      expect(
+        (await performanceForCourseBackingDecks(course.id, [restoredCard])).map(
+          (row) => row.deckId,
+        ),
+      ).toEqual([card.deckId]);
+      expect(
+        (await performanceForReviewUnits([course.id, card.deckId])).map(
+          (row) => row?.deckId,
+        ),
+      ).toEqual([course.id, card.deckId]);
+    },
+  );
 
   it('replaces the database in replace mode', async () => {
     const deck = await createDeck('Old');
