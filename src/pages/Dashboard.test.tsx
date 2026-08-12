@@ -71,6 +71,14 @@ vi.mock('../components/dashboard/StudySignals', () => ({
   StudySignals: () => <div data-testid="study-signals">Study Signals</div>,
 }));
 
+// The dashboard renders inside the app shell, which provides the study sheet. These tests
+// render the page alone, so the hook is mocked rather than wrapping every render.
+const { mockOpenStudySheet } = vi.hoisted(() => ({ mockOpenStudySheet: vi.fn() }));
+
+vi.mock('../components/learn/StudySheetContext', () => ({
+  useStudySheet: () => ({ openStudySheet: mockOpenStudySheet }),
+}));
+
 vi.mock('../components/dashboard/ReviewHeatmap', () => ({
   ReviewHeatmap: () => <div data-testid="review-heatmap">Review Heatmap</div>,
 }));
@@ -292,6 +300,32 @@ describe('Dashboard', () => {
     };
     render(<Dashboard />);
     expect(screen.queryByText('Resume study flow')).not.toBeInTheDocument();
+  });
+
+  it('offers the study sheet in the same place when there is no flow to resume', () => {
+    mockCourseDashboardData = {
+      courses: [mockCourse],
+      lessons: [],
+      allCards: [],
+      summaries: {},
+      stats: { reviewedToday: 0, streak: 0, forecast: [] },
+    };
+    render(<Dashboard />);
+    fireEvent.click(screen.getByText('Choose a course'));
+    expect(mockOpenStudySheet).toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('offers no study control until there is a course to study', () => {
+    mockCourseDashboardData = {
+      courses: [],
+      lessons: [],
+      allCards: [],
+      summaries: {},
+      stats: { reviewedToday: 0, streak: 0, forecast: [] },
+    };
+    render(<Dashboard />);
+    expect(screen.queryByText('Choose a course')).not.toBeInTheDocument();
   });
 
   it('shows page heading', () => {
