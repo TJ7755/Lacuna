@@ -12,7 +12,21 @@ import {
   restoreReviewUnitPerformance,
   updateReviewUnitPerformance,
 } from './backingDecks';
-import { createCourse, createLesson } from './repository';
+import {
+  createCourse,
+  createCourseAssessment,
+  createLesson,
+  deleteCourse,
+  deleteCourseAssessment,
+  deleteLesson,
+  restoreLesson,
+  snapshotCourse,
+  snapshotLesson,
+  restoreCourse,
+  updateCourse,
+  updateCourseAssessment,
+  updateLesson,
+} from './repository';
 import type { Card } from './types';
 
 async function reset(): Promise<void> {
@@ -25,11 +39,97 @@ async function reset(): Promise<void> {
     db.coursePerformance.clear(),
     db.schedulingPerformance.clear(),
     db.courseAssessments.clear(),
+    db.schedulingUnits.clear(),
   ]);
 }
 
 describe('backing deck adapter', () => {
   beforeEach(reset);
+
+  it('keeps Course and Lesson scheduling configuration synchronised', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+
+    const initialCourseUnit = await db.schedulingUnits.get(course.id);
+    expect(initialCourseUnit).toMatchObject({
+      kind: 'course',
+      name: 'Biology',
+      examDate: course.examDate,
+    });
+    expect(await db.schedulingPerformance.get(lesson.id)).toMatchObject({
+      schedulingUnitId: lesson.id,
+      totalCorrectReviews: 0,
+    });
+
+    await updateCourse(course.id, {
+      name: 'Biology (updated)',
+      maxReviewsPerDay: 30,
+      autoOptimise: false,
+    });
+    expect(await db.schedulingUnits.get(course.id)).toMatchObject({
+      name: 'Biology (updated)',
+      maxReviewsPerDay: 30,
+      autoOptimise: false,
+    });
+    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({
+      maxReviewsPerDay: 30,
+      autoOptimise: false,
+    });
+
+    const lessonDate = course.examDate + 86_400_000;
+    await updateLesson(lesson.id, { examDate: lessonDate, timeZone: 'Europe/London' });
+    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({
+      examDate: lessonDate,
+      timeZone: 'Europe/London',
+    });
+
+    const final = (await db.courseAssessments.where('courseId').equals(course.id).toArray())[0];
+    await updateCourseAssessment(final.id, { examDate: course.examDate + 2 * 86_400_000 });
+    expect(await db.schedulingUnits.get(course.id)).toMatchObject({
+      examDate: course.examDate + 2 * 86_400_000,
+    });
+    // A lesson override remains authoritative when the Course assessment changes.
+    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({ examDate: lessonDate });
+
+    const checkpoint = await createCourseAssessment(course.id, 'Mock', course.examDate + 3 * 86_400_000);
+    await deleteCourseAssessment(checkpoint.id);
+    expect(await db.schedulingUnits.get(course.id)).toMatchObject({
+      examDate: course.examDate + 2 * 86_400_000,
+    });
+  });
+
+  it('restores deleted Lesson target rows with its snapshot', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    await db.schedulingPerformance.update(lesson.id, { totalCorrectReviews: 4 });
+    const snapshot = await snapshotLesson(lesson.id);
+    expect(snapshot?.schedulingUnit).toBeDefined();
+
+    await deleteLesson(lesson.id);
+    expect(await db.schedulingUnits.get(lesson.id)).toBeUndefined();
+    expect(await db.schedulingPerformance.get(lesson.id)).toBeUndefined();
+
+    await restoreLesson(snapshot!);
+    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({ kind: 'lesson' });
+    expect(await db.schedulingPerformance.get(lesson.id)).toMatchObject({ totalCorrectReviews: 4 });
+  });
+
+  it('restores deleted Course target rows with its snapshot', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    await db.coursePerformance.update(course.id, { totalCorrectReviews: 5 });
+    const snapshot = await snapshotCourse(course.id);
+
+    await deleteCourse(course.id);
+    expect(await db.schedulingUnits.get(course.id)).toBeUndefined();
+    expect(await db.schedulingUnits.get(lesson.id)).toBeUndefined();
+    expect(await db.coursePerformance.get(course.id)).toBeUndefined();
+
+    await restoreCourse(snapshot!);
+    expect(await db.schedulingUnits.get(course.id)).toMatchObject({ kind: 'course' });
+    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({ kind: 'lesson' });
+    expect(await db.coursePerformance.get(course.id)).toMatchObject({ totalCorrectReviews: 5 });
+  });
 
   it('owns one scheduling deck for a lesson', async () => {
     const course = await createCourse('Biology');

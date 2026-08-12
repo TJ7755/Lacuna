@@ -96,3 +96,11 @@ do not put that aggregate back into the `recordReview` transaction or replace it
 The worker handles compression and encoding only; the main thread validates decoded payloads with
 the share schema. Importing the database module into the worker recreates the application's
 repository, validation and maths bundle for no useful reason.
+
+## Dexie projection helpers must inherit the caller's complete transaction scope
+
+A helper that reads or writes several Dexie tables can be called inside an existing transaction,
+but every table it touches must be listed by that caller. Omitting one does not always surface as
+Dexie's clearer transaction-scope error; fake-indexeddb can report a misleading missing object-store
+`NotFoundError`. Keep projection helpers free of nested transactions and expand the outer table list
+when their dependencies change.

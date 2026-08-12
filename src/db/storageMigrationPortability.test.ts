@@ -40,6 +40,15 @@ describe('domain storage portability', () => {
       m2: 2,
       totalCorrectReviews: 6,
     });
+    await db.schedulingPerformance.put({
+      schedulingUnitId: lesson.id,
+      courseId: course.id,
+      lessonId: lesson.id,
+      runningMeanResponseTime: 4,
+      runningStdDevResponseTime: 1,
+      m2: 2,
+      totalCorrectReviews: 6,
+    });
 
     const backup = await exportDatabase();
     expect(backup.schedulingUnits).toEqual(

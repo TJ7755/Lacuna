@@ -9,8 +9,12 @@
 import type {
   Card,
   Course,
+  CourseAssessment,
   CoursePerformance,
+  CourseRecord,
   Deck,
+  Lesson,
+  SchedulingPerformance,
   UserPerformance,
 } from './types';
 import { db } from './schema';
@@ -18,6 +22,7 @@ import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import { emptyPerformance, updatePerformance } from '../fsrs/grading';
 import { finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
+import { schedulingUnitFromCourse, schedulingUnitFromLesson } from './schedulingUnitBuilder';
 
 function ownedBackingDeck(courseId: string, lessonId: string | null): Promise<Deck | undefined> {
   return db.decks
@@ -417,6 +422,66 @@ export function ensureLessonBackingDeck(courseId: string, lessonId: string): Pro
 }
 
 /** Resolve or create the hidden scheduling deck for unassigned course cards. */
+/**
+ * Project one Course and all its Lessons into target scheduling-unit storage.
+ * Callers that are already in a Dexie transaction must include the source and target
+ * tables in that transaction; this helper deliberately does not open a nested one.
+ */
+export async function syncCourseSchedulingUnits(courseId: string): Promise<void> {
+  const [course, lessons, assessments] = await Promise.all([
+    db.courses.get(courseId),
+    db.lessons.where('courseId').equals(courseId).toArray(),
+    db.courseAssessments.where('courseId').equals(courseId).toArray(),
+  ]);
+  if (!course) return;
+
+  const courseUnit = schedulingUnitFromCourse(course as CourseRecord, assessments as CourseAssessment[]);
+  const lessonUnits = lessons.map((lesson) =>
+    schedulingUnitFromLesson(course as CourseRecord, lesson as Lesson, assessments as CourseAssessment[]),
+  );
+  await db.schedulingUnits.bulkPut([courseUnit, ...lessonUnits]);
+
+  const existingCoursePerformance = await db.coursePerformance.get(courseId);
+  if (!existingCoursePerformance) {
+    await db.coursePerformance.put({ courseId, ...emptyPerformanceStats() });
+  }
+  const unitIds = [courseId, ...lessons.map((lesson) => lesson.id)];
+  const existingSchedulingPerformance = await db.schedulingPerformance.bulkGet(unitIds);
+  const missingSchedulingPerformance: SchedulingPerformance[] = [];
+  if (!existingSchedulingPerformance[0]) {
+    missingSchedulingPerformance.push({
+      schedulingUnitId: courseId,
+      courseId,
+      ...emptyPerformanceStats(),
+    });
+  }
+  lessons.forEach((lesson, index) => {
+    if (existingSchedulingPerformance[index + 1]) return;
+    missingSchedulingPerformance.push({
+      schedulingUnitId: lesson.id,
+      courseId,
+      lessonId: lesson.id,
+      ...emptyPerformanceStats(),
+    });
+  });
+  if (missingSchedulingPerformance.length > 0) {
+    await db.schedulingPerformance.bulkPut(missingSchedulingPerformance);
+  }
+}
+
+/** Remove the target rows owned by one deleted Lesson. */
+export async function removeLessonSchedulingUnit(lessonId: string): Promise<void> {
+  await db.schedulingUnits.delete(lessonId);
+  await db.schedulingPerformance.delete(lessonId);
+}
+
+/** Remove all target rows owned by one deleted Course, including its Lessons. */
+export async function removeCourseSchedulingUnits(courseId: string, lessonIds: readonly string[]): Promise<void> {
+  await db.schedulingUnits.bulkDelete([courseId, ...lessonIds]);
+  await db.coursePerformance.delete(courseId);
+  await db.schedulingPerformance.bulkDelete([courseId, ...lessonIds]);
+}
+
 export function ensureCourseBankBackingDeck(courseId: string): Promise<string> {
   return withBackingDeckLock(`bank:${courseId}`, async () => {
     const owned = await ownedBackingDeck(courseId, null);

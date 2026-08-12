@@ -8,6 +8,7 @@ import type {
   CheckerDisputeReport,
   Course,
   CourseAssessment,
+  CoursePerformance,
   CourseRecord,
   Deck,
   Grade,
@@ -26,6 +27,8 @@ import type {
   RevisionPlan,
   RevisionPlanSession,
   RevisionProjection,
+  SchedulingPerformance,
+  SchedulingUnitRecord,
   SchedulerConfig,
   Sequence,
   SequenceItem,
@@ -43,7 +46,10 @@ import { courseToRecord, finalAssessmentForCourse, hydrateCourse } from './asses
 import {
   ensureCourseBankBackingDeck,
   ensureLessonBackingDeck,
+  removeCourseSchedulingUnits,
+  removeLessonSchedulingUnit,
   restoreReviewUnitPerformance,
+  syncCourseSchedulingUnits,
   updateReviewUnitPerformance,
 } from './backingDecks';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
@@ -1113,10 +1119,22 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
       createdAt: record.createdAt,
     };
     validateAssessmentStructure(finalAssessment);
-    await db.transaction('rw', db.courses, db.courseAssessments, async () => {
-      await db.courses.add(record);
-      await db.courseAssessments.add(finalAssessment);
-    });
+    await db.transaction(
+      'rw',
+      [
+        db.courses,
+        db.lessons,
+        db.courseAssessments,
+        db.schedulingUnits,
+        db.coursePerformance,
+        db.schedulingPerformance,
+      ],
+      async () => {
+        await db.courses.add(record);
+        await db.courseAssessments.add(finalAssessment);
+        await syncCourseSchedulingUnits(record.id);
+      },
+    );
     return hydrateCourse(record, finalAssessment);
   } catch (err) {
     throw friendlyDbError(err);
@@ -1153,7 +1171,21 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
     ) {
       throw new Error('Course examDate and timeZone are derived, read-only assessment values.');
     }
-    await db.courses.update(id, changes);
+    await db.transaction(
+      'rw',
+      [
+        db.courses,
+        db.lessons,
+        db.courseAssessments,
+        db.schedulingUnits,
+        db.coursePerformance,
+        db.schedulingPerformance,
+      ],
+      async () => {
+        await db.courses.update(id, changes);
+        await syncCourseSchedulingUnits(id);
+      },
+    );
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -1272,6 +1304,9 @@ export async function deleteCourse(id: string): Promise<void> {
       db.sequences,
       db.revisionPlans,
       db.reviewHistory,
+      db.schedulingUnits,
+      db.coursePerformance,
+      db.schedulingPerformance,
     ],
     async () => {
       const lessonIds = await db.lessons.where('courseId').equals(id).primaryKeys();
@@ -1312,6 +1347,7 @@ export async function deleteCourse(id: string): Promise<void> {
       // course id itself for course/lesson-scoped reviews (see recordReview).
       await db.userPerformance.delete(id);
       await db.sessionHistory.where('courseId').equals(id).delete();
+      await removeCourseSchedulingUnits(id, lessonIds.map(String));
       await db.courses.delete(id);
     },
   );
@@ -1340,6 +1376,9 @@ export interface CourseSnapshot {
   sessionHistory: SessionHistoryEntry[];
   userPerformance: UserPerformance[];
   reviewHistory: ReviewHistoryEntry[];
+  coursePerformance: CoursePerformance[];
+  schedulingUnits: SchedulingUnitRecord[];
+  schedulingPerformance: SchedulingPerformance[];
 }
 
 /**
@@ -1362,6 +1401,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     sequences,
     cards,
     coursePerf,
+    coursePerformance,
   ] = await Promise.all([
     db.lessons.where('courseId').equals(id).toArray(),
     db.practiceNodes.where('courseId').equals(id).toArray(),
@@ -1371,6 +1411,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.sequences.where('courseId').equals(id).toArray(),
     db.cards.where('courseId').equals(id).toArray(),
     db.userPerformance.get(id),
+    db.coursePerformance.where('courseId').equals(id).toArray(),
   ]);
   const reviewHistoryForCourse =
     cards.length > 0
@@ -1380,6 +1421,11 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
           .toArray()
       : [];
   const lessonIds = lessons.map((l) => l.id);
+  const targetIds = [id, ...lessonIds];
+  const [schedulingUnits, schedulingPerformance] = await Promise.all([
+    db.schedulingUnits.bulkGet(targetIds).then((rows) => rows.filter((row): row is SchedulingUnitRecord => row !== undefined)),
+    db.schedulingPerformance.bulkGet(targetIds).then((rows) => rows.filter((row): row is SchedulingPerformance => row !== undefined)),
+  ]);
   const ownedDeckIds = await db.decks.filter((deck) => deck.backingCourseId === id).primaryKeys();
   const deckIds = [...new Set([...cards.map((c) => c.deckId), ...ownedDeckIds])];
 
@@ -1433,6 +1479,9 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     sessionHistory: [...sessionHistoryById.values()],
     userPerformance: coursePerf ? [...deckPerf, coursePerf] : deckPerf,
     reviewHistory: reviewHistoryForCourse,
+    coursePerformance,
+    schedulingUnits,
+    schedulingPerformance,
   };
 }
 
@@ -1470,6 +1519,9 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.sessionHistory,
         db.userPerformance,
         db.reviewHistory,
+        db.schedulingUnits,
+        db.coursePerformance,
+        db.schedulingPerformance,
       ],
       async () => {
         await Promise.all([
@@ -1488,6 +1540,9 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.cards.bulkPut(cardsToRestore),
           db.decks.bulkPut(snapshot.decks),
           db.userPerformance.bulkPut(snapshot.userPerformance),
+          db.schedulingUnits.bulkPut(snapshot.schedulingUnits),
+          db.coursePerformance.bulkPut(snapshot.coursePerformance),
+          db.schedulingPerformance.bulkPut(snapshot.schedulingPerformance),
           db.reviewHistory.bulkPut(
             snapshot.reviewHistory ??
               cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
@@ -1525,7 +1580,21 @@ export async function createLesson(
       createdAt: Date.now(),
       ...opts,
     };
-    await db.lessons.add(lesson);
+    await db.transaction(
+      'rw',
+      [
+        db.courses,
+        db.lessons,
+        db.courseAssessments,
+        db.schedulingUnits,
+        db.coursePerformance,
+        db.schedulingPerformance,
+      ],
+      async () => {
+        await db.lessons.add(lesson);
+        await syncCourseSchedulingUnits(courseId);
+      },
+    );
     return lesson;
   } catch (err) {
     throw friendlyDbError(err);
@@ -1534,7 +1603,22 @@ export async function createLesson(
 
 export async function updateLesson(id: string, changes: Partial<Lesson>): Promise<void> {
   try {
-    await db.lessons.update(id, changes);
+    await db.transaction(
+      'rw',
+      [
+        db.courses,
+        db.lessons,
+        db.courseAssessments,
+        db.schedulingUnits,
+        db.coursePerformance,
+        db.schedulingPerformance,
+      ],
+      async () => {
+        await db.lessons.update(id, changes);
+        const lesson = await db.lessons.get(id);
+        if (lesson) await syncCourseSchedulingUnits(lesson.courseId);
+      },
+    );
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -1555,6 +1639,8 @@ export interface LessonSnapshot {
   userPerformance: UserPerformance[];
   courseAssessments: CourseAssessment[];
   reviewHistory: ReviewHistoryEntry[];
+  schedulingUnit?: SchedulingUnitRecord;
+  schedulingPerformance?: SchedulingPerformance;
 }
 
 /** Capture a lesson and every row {@link deleteLesson} changes before deleting it. */
@@ -1571,6 +1657,8 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     sequences,
     decks,
     courseAssessments,
+    schedulingUnit,
+    schedulingPerformance,
   ] = await Promise.all([
     db.notes.where('lessonId').equals(id).toArray(),
     db.lessonCards.where('lessonId').equals(id).toArray(),
@@ -1582,6 +1670,8 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
       .filter((deck) => deck.backingCourseId === lesson.courseId && deck.backingLessonId === id)
       .toArray(),
     db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
+    db.schedulingUnits.get(id),
+    db.schedulingPerformance.get(id),
   ]);
   const noteIds = notes.map((note) => note.id);
   const deckIds = decks.map((deck) => deck.id);
@@ -1611,6 +1701,8 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     userPerformance,
     courseAssessments,
     reviewHistory,
+    ...(schedulingUnit ? { schedulingUnit } : {}),
+    ...(schedulingPerformance ? { schedulingPerformance } : {}),
   };
 }
 
@@ -1637,6 +1729,8 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
         db.userPerformance,
         db.courseAssessments,
         db.reviewHistory,
+        db.schedulingUnits,
+        db.schedulingPerformance,
       ],
       async () => {
         await Promise.all([
@@ -1654,6 +1748,12 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
           db.sessionHistory.bulkPut(snapshot.sessionHistory),
           db.userPerformance.bulkPut(snapshot.userPerformance),
           db.courseAssessments.bulkPut(snapshot.courseAssessments),
+          snapshot.schedulingUnit
+            ? db.schedulingUnits.put(snapshot.schedulingUnit)
+            : Promise.resolve(),
+          snapshot.schedulingPerformance
+            ? db.schedulingPerformance.put(snapshot.schedulingPerformance)
+            : Promise.resolve(),
           db.reviewHistory.bulkPut(
             snapshot.reviewHistory ??
               cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
@@ -1707,6 +1807,7 @@ export async function deleteLesson(id: string): Promise<void> {
   await db.transaction(
     'rw',
     [
+      db.courses,
       db.lessons,
       db.notes,
       db.noteAnnotations,
@@ -1720,6 +1821,9 @@ export async function deleteLesson(id: string): Promise<void> {
       db.userPerformance,
       db.courseAssessments,
       db.reviewHistory,
+      db.schedulingUnits,
+      db.coursePerformance,
+      db.schedulingPerformance,
     ],
     async () => {
       const noteIds = await db.notes.where('lessonId').equals(id).primaryKeys();
@@ -1735,7 +1839,11 @@ export async function deleteLesson(id: string): Promise<void> {
         await db.cards
           .where('primaryLessonId')
           .equals(id)
-          .modify({ primaryLessonId: null, deckId: bankDeckId });
+          .modify({
+            primaryLessonId: null,
+            deckId: bankDeckId,
+            schedulingUnitId: lesson.courseId,
+          });
         if (movedCards.length > 0) {
           await db.reviewHistory
             .where('cardId')
@@ -1743,6 +1851,7 @@ export async function deleteLesson(id: string): Promise<void> {
             .modify({
               primaryLessonId: null,
               deckId: bankDeckId,
+              schedulingUnitId: lesson.courseId,
             });
         }
         await db.sequences.where('primaryLessonId').equals(id).modify({ primaryLessonId: null });
@@ -1750,6 +1859,7 @@ export async function deleteLesson(id: string): Promise<void> {
       const backingDeckIds = await db.decks
         .filter((deck) => deck.backingCourseId === lesson.courseId && deck.backingLessonId === id)
         .primaryKeys();
+      await removeLessonSchedulingUnit(id);
       if (backingDeckIds.length > 0) {
         await db.decks.bulkDelete(backingDeckIds);
         await db.sessionHistory.where('deckId').anyOf(backingDeckIds).delete();
@@ -1796,6 +1906,7 @@ export async function deleteLesson(id: string): Promise<void> {
         }
         await db.courseAssessments.put(updated);
       }
+      await syncCourseSchedulingUnits(lesson.courseId);
     },
   );
   scheduleAssetGc();
@@ -2093,7 +2204,16 @@ export async function createCourseAssessment(
     let entry: CourseAssessment | undefined;
     await db.transaction(
       'rw',
-      [db.courses, db.lessons, db.cards, db.lessonCards, db.courseAssessments],
+      [
+        db.courses,
+        db.lessons,
+        db.cards,
+        db.lessonCards,
+        db.courseAssessments,
+        db.schedulingUnits,
+        db.coursePerformance,
+        db.schedulingPerformance,
+      ],
       async () => {
         if (!(await db.courses.get(courseId))) throw new Error('The course could not be found.');
         const existing = await db.courseAssessments.where('courseId').equals(courseId).toArray();
@@ -2130,6 +2250,7 @@ export async function createCourseAssessment(
           throw new Error('A course must have exactly one final assessment.');
         }
         await db.courseAssessments.add(entry);
+        await syncCourseSchedulingUnits(courseId);
       },
     );
     return entry!;
@@ -2145,10 +2266,16 @@ export async function updateCourseAssessment(
   try {
     await db.transaction(
       'rw',
-      db.lessons,
-      db.cards,
-      db.lessonCards,
-      db.courseAssessments,
+      [
+        db.courses,
+        db.lessons,
+        db.cards,
+        db.lessonCards,
+        db.courseAssessments,
+        db.schedulingUnits,
+        db.coursePerformance,
+        db.schedulingPerformance,
+      ],
       async () => {
         const existing = await db.courseAssessments.get(id);
         if (!existing) throw new Error('The assessment could not be found.');
@@ -2176,6 +2303,7 @@ export async function updateCourseAssessment(
           throw new Error('A course must have exactly one final assessment.');
         }
         await db.courseAssessments.put(updated);
+        await syncCourseSchedulingUnits(existing.courseId);
       },
     );
   } catch (err) {
@@ -2185,7 +2313,18 @@ export async function updateCourseAssessment(
 
 export async function deleteCourseAssessment(id: string): Promise<void> {
   try {
-    await db.transaction('rw', db.courseAssessments, db.revisionPlans, async () => {
+    await db.transaction(
+      'rw',
+      [
+        db.courses,
+        db.lessons,
+        db.courseAssessments,
+        db.revisionPlans,
+        db.schedulingUnits,
+        db.coursePerformance,
+        db.schedulingPerformance,
+      ],
+      async () => {
       const assessment = await db.courseAssessments.get(id);
       if (!assessment) return;
       if (assessment.kind === 'final') {
@@ -2193,6 +2332,7 @@ export async function deleteCourseAssessment(id: string): Promise<void> {
       }
       await db.revisionPlans.where('assessmentId').equals(id).delete();
       await db.courseAssessments.delete(id);
+      await syncCourseSchedulingUnits(assessment.courseId);
     });
   } catch (err) {
     throw friendlyDbError(err);

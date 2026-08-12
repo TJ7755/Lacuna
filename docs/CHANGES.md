@@ -17,6 +17,10 @@
   pacing adapter. Newly-created Course cards now carry their scheduling-unit id, and newly-created
   backing units initialise target pacing rows, so fresh installs and upgraded databases share the
   same target-store path.
+- Kept target scheduling configuration current on repository Course, Lesson and assessment writes.
+  Course settings cascade to inherited Lesson units, lesson exam-date/time-zone overrides remain
+  authoritative, target performance rows initialise on fresh data, and Lesson/Course deletion
+  snapshots restore the target rows atomically. Legacy Deck/Folder stores remain untouched.
 
 ## Unreleased — One place for study on the dashboard
 

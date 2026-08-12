@@ -123,9 +123,11 @@ Course/Lesson and legacy compatibility units, and stamps cards and canonical rev
 the resolved scheduling-unit id. The second slice cuts Course calibration and pacing reads over
 to the target stores, dual-writes the legacy calibration mirror for rollback, and includes review
 and undo transaction coverage. Course dashboard/read models use the pacing adapter, and fresh
-Course cards/backing units now initialise their target projection fields. The old stores remain
-readable; no rollback or wire-compatibility path is removed until the later cutover slices have
-focused coverage.
+Course cards/backing units now initialise their target projection fields. The latest slice keeps
+Course/Lesson scheduling-unit configuration synchronised across repository Course, Lesson and
+assessment writes, including inherited settings, lesson date overrides, target performance
+initialisation, and deletion snapshots/restore. The old stores remain readable; no rollback or
+wire-compatibility path is removed until the later cutover slices have focused coverage.
 
 ## Phases
 
@@ -141,10 +143,11 @@ focused coverage.
    and imported data have passed the compatibility window.
 5. **Domain storage migration** — in progress: explicit Course/Lesson scheduling units and
    split performance stores are backfilled additively in schema v21. Course-facing performance
-   reads and review/undo writes now use the target stores with a compatibility mirror. The next
-   slices cut scheduling configuration and remaining course-facing readers/writers over, then
-   remove hidden Deck/Folder stores only after compatibility import, rollback, wire-format and
-   release tests pass.
+   reads and review/undo writes now use the target stores with a compatibility mirror. Repository
+   Course/Lesson and assessment writes now synchronise target scheduling configuration and retain
+   target rows through deletion undo. The next slices cut remaining course-facing readers/writers
+   over, then remove hidden Deck/Folder stores only after compatibility import, rollback,
+   wire-format and release tests pass.
 6. **Compaction decision** — measure real event-store size and choose, separately, whether any old
    events may be compacted. Compaction requires an export format and an explicit restore story.
    This is the only phase that may propose removing old event rows; it is not implied by the event
