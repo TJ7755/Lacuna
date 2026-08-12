@@ -26,6 +26,7 @@ import {
 import { useCourses, useCourseSummaries, useAllLessons } from '../../state/useCourseData';
 import { NewCourseForm } from '../course/NewCourseForm';
 import type { Lesson } from '../../db/types';
+import { prefetchRoute } from '../../routes/prefetch';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -61,6 +62,9 @@ function NavItem({
     <NavLink
       to={to}
       end={end}
+      onPointerEnter={() => prefetchRoute(to)}
+      onPointerDown={() => prefetchRoute(to)}
+      onFocus={() => prefetchRoute(to)}
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
         cn(
@@ -165,6 +169,9 @@ function LessonItem({ lesson, compact }: { lesson: Lesson; compact: boolean }) {
   return (
     <NavLink
       to={`/course/${lesson.courseId}/lesson/${lesson.id}`}
+      onPointerEnter={() => prefetchRoute(`/course/${lesson.courseId}/lesson/${lesson.id}`)}
+      onPointerDown={() => prefetchRoute(`/course/${lesson.courseId}/lesson/${lesson.id}`)}
+      onFocus={() => prefetchRoute(`/course/${lesson.courseId}/lesson/${lesson.id}`)}
       className={({ isActive }) =>
         cn(
           'flex min-h-10 items-center gap-3 rounded-lg transition-all duration-150',
@@ -234,6 +241,9 @@ const CourseRow = memo(function CourseRow({
     return (
       <NavLink
         to={`/course/${courseId}`}
+        onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
+        onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
+        onFocus={() => prefetchRoute(`/course/${courseId}`)}
         title={courseName}
         className={() =>
           cn(
@@ -255,6 +265,9 @@ const CourseRow = memo(function CourseRow({
     return (
       <NavLink
         to={`/course/${courseId}`}
+        onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
+        onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
+        onFocus={() => prefetchRoute(`/course/${courseId}`)}
         className={({ isActive }) =>
           cn(
             'flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
@@ -311,6 +324,9 @@ const CourseRow = memo(function CourseRow({
           role="link"
           tabIndex={0}
           onClick={() => navigate(`/course/${courseId}`)}
+          onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
+          onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
+          onFocus={() => prefetchRoute(`/course/${courseId}`)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();

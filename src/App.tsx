@@ -18,6 +18,27 @@ import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
 import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
 import { NotFound } from './pages/NotFound';
+import {
+  loadAnalytics,
+  loadCardEditor,
+  loadCourseAnalytics,
+  loadCoursePath,
+  loadCourseSettings,
+  loadCourseStudyFlow,
+  loadHelpPage,
+  loadLessonView,
+  loadLearnMode,
+  loadMcpBridgeController,
+  loadMergeReviewPanel,
+  loadMethod,
+  loadOcclusionEditor,
+  loadQuestionBank,
+  loadSearchPage,
+  loadSequenceEditor,
+  loadSettings,
+  loadSharePage,
+  loadWelcome,
+} from './routes/loaders';
 
 function RouterWithQuotaWarning() {
   useStorageQuotaWarning();
@@ -27,51 +48,25 @@ function RouterWithQuotaWarning() {
 // Keep the dashboard as the only eager page. Every other route is loaded on demand
 // so optional charts, importers, QR tooling and long-form settings/help content do
 // not increase launch parse time.
-const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
-const SearchPage = lazy(() =>
-  import('./pages/SearchPage').then((m) => ({ default: m.SearchPage })),
-);
-const SharePage = lazy(() => import('./pages/SharePage').then((m) => ({ default: m.SharePage })));
-const Analytics = lazy(() => import('./pages/Analytics').then((m) => ({ default: m.Analytics })));
-const HelpPage = lazy(() => import('./pages/HelpPage').then((m) => ({ default: m.HelpPage })));
-const LearnMode = lazy(() => import('./pages/LearnMode').then((m) => ({ default: m.LearnMode })));
-const CourseStudyFlow = lazy(() =>
-  import('./pages/CourseStudyFlow').then((m) => ({ default: m.CourseStudyFlow })),
-);
-const CardEditor = lazy(() =>
-  import('./pages/CardEditor').then((m) => ({ default: m.CardEditor })),
-);
-const SequenceEditor = lazy(() =>
-  import('./pages/SequenceEditor').then((m) => ({ default: m.SequenceEditor })),
-);
-const OcclusionEditor = lazy(() =>
-  import('./pages/OcclusionEditor').then((m) => ({ default: m.OcclusionEditor })),
-);
-const CourseSettings = lazy(() =>
-  import('./pages/CourseSettings').then((m) => ({ default: m.CourseSettings })),
-);
-const CourseAnalytics = lazy(() =>
-  import('./pages/CourseAnalytics').then((m) => ({ default: m.CourseAnalytics })),
-);
-const CoursePath = lazy(() =>
-  import('./pages/CoursePath').then((m) => ({ default: m.CoursePath })),
-);
-const LessonView = lazy(() =>
-  import('./pages/LessonView').then((m) => ({ default: m.LessonView })),
-);
-const QuestionBank = lazy(() =>
-  import('./pages/QuestionBank').then((m) => ({ default: m.QuestionBank })),
-);
-const MergeReviewPanel = lazy(() =>
-  import('./components/import/MergeReviewPanel').then((m) => ({ default: m.MergeReviewPanel })),
-);
-const Welcome = lazy(() => import('./pages/Welcome').then((m) => ({ default: m.Welcome })));
-const Method = lazy(() => import('./pages/Method').then((m) => ({ default: m.Method })));
-const McpBridgeController = lazy(() =>
-  import('./components/mcp/McpBridgeController').then((m) => ({
-    default: m.McpBridgeController,
-  })),
-);
+const Settings = lazy(loadSettings);
+const SearchPage = lazy(loadSearchPage);
+const SharePage = lazy(loadSharePage);
+const Analytics = lazy(loadAnalytics);
+const HelpPage = lazy(loadHelpPage);
+const LearnMode = lazy(loadLearnMode);
+const CourseStudyFlow = lazy(loadCourseStudyFlow);
+const CardEditor = lazy(loadCardEditor);
+const SequenceEditor = lazy(loadSequenceEditor);
+const OcclusionEditor = lazy(loadOcclusionEditor);
+const CourseSettings = lazy(loadCourseSettings);
+const CourseAnalytics = lazy(loadCourseAnalytics);
+const CoursePath = lazy(loadCoursePath);
+const LessonView = lazy(loadLessonView);
+const QuestionBank = lazy(loadQuestionBank);
+const MergeReviewPanel = lazy(loadMergeReviewPanel);
+const Welcome = lazy(loadWelcome);
+const Method = lazy(loadMethod);
+const McpBridgeController = lazy(loadMcpBridgeController);
 
 function RouteFallback() {
   return (
