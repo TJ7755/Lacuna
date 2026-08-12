@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { createCard, createCourse, createCourseCard, createDeck } from './repository';
 import {
+  hydrateCardsWithHistory,
   listAllReviewHistory,
   listReviewHistoryForCards,
   listReviewHistoryForCourse,
@@ -72,6 +73,31 @@ describe('review-history read adapter', () => {
       id: reviewHistoryEntryIdForEvent('same-event'),
       timestamp: 100,
     });
+  });
+
+  it('uses canonical-only rows when present and currently falls back to projection-only rows when absent', async () => {
+    const deck = await createDeck('Read precedence');
+    const card = await createCard(deck.id, 'front_back', 'Question', 'Answer');
+    await db.reviewHistory.add({
+      ...review(100, 'canonical-only'),
+      id: reviewHistoryEntryIdForEvent('canonical-only'),
+      cardId: card.id,
+      deckId: card.deckId,
+    });
+
+    const canonicalHydrated = (await hydrateCardsWithHistory([(await db.cards.get(card.id))!]))[0];
+    expect(canonicalHydrated.history).toHaveLength(1);
+    expect(canonicalHydrated.history[0].eventId).toBe('canonical-only');
+
+    await db.reviewHistory.clear();
+    await db.cards.update(card.id, { history: [review(999, 'projection-only')] });
+    const projectionHydrated = (await hydrateCardsWithHistory([(await db.cards.get(card.id))!]))[0];
+
+    // This is the current compatibility fallback, and is the divergence recorded
+    // in the findings report: an explicit canonical result with no matching row
+    // does not suppress the stale projection.
+    expect(projectionHydrated.history).toHaveLength(1);
+    expect(projectionHydrated.history[0].eventId).toBe('projection-only');
   });
 
   it('lists course events without leaking events from another course', async () => {
