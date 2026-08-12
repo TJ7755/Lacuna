@@ -48,14 +48,15 @@ The final performance branch build and audit run on 12 Aug 2026 measured:
 
 | Measurement | After |
 |---|---:|
-| Initial JavaScript | 784,726 bytes / 244,600 bytes gz |
+| Initial JavaScript | 784,692 bytes / 244,593 bytes gz |
 | Initial CSS | 138,632 bytes / 24,777 bytes gz |
-| `selectNext`, 10,000 cards | 19.75 ms median |
-| `sessionComplete`, 10,000 cards | 20.62 ms median |
-| One `recordReview`, 500 cards, sample already exists | 11.16 ms |
-| One `recordReview`, 2,000 cards, sample already exists | 8.66 ms |
-| One `recordReview`, 10,000 cards, sample already exists | 25.35 ms |
-| Once-daily trajectory sample, 10,000 cards | 123.50 ms |
+| `selectNext`, 10,000 cards | 22.86 ms median |
+| `sessionComplete`, 10,000 cards | 23.39 ms median |
+| One `recordReview`, 500 cards, sample already exists | 10.55 ms |
+| One `recordReview`, 2,000 cards, sample already exists | 6.71 ms |
+| One `recordReview`, 10,000 cards, sample already exists | 21.67 ms |
+| Once-daily trajectory sample, 10,000 cards | 108.45 ms |
+| Full Vitest suite | 149.28 s wall time; 1,839 tests |
 
 The old 10,000-card measurement was one cold `recordReview` call and took
 37,793.71 ms because it scanned the whole pool inside the write transaction. The

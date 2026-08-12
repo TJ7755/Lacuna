@@ -11,6 +11,7 @@
   compositor transforms, and removed persistent chrome backdrop blurs.
 - Added lazy asynchronous image loading for Markdown card content and occlusion diagrams,
   route-chunk prefetching for sidebar navigation, and one combined sidebar live data read.
+- Updated diagnostics to count canonical review events rather than daily trajectory samples.
 - Deferred Pomodoro tick isolation, virtual-list registry pruning and share-worker shutdown
   until after September as directed.
 
