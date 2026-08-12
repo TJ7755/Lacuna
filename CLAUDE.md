@@ -13,14 +13,11 @@ Throughout this file, "I", "me" and "my" mean Tom, the user. "You" means Claude,
 
 ## Delegation
 
-You may delegate without asking me, provided the worker is one of these:
-
-1. A Claude subagent on Sonnet — never Opus, never Haiku.
-2. A mailbox worker: Codex (see below) or DeepSeek.
+You may delegate without asking me, provided the worker is a mailbox worker: Codex (see below) or DeepSeek.
 
 Tell me when you are using one. For anything else — Opus subagents, Sol, or Codex on a model other than 5.6 Luna — ask me first and I will answer as quickly as I can. Concurrency limits are under Running workers.
 
-Keep in mind that I have usage limits, so ALWAYS be more economical. Luna is around as intelligent as Sonnet and is the cheapest thing I have that is any good.
+Keep in mind that I have usage limits, so ALWAYS be more economical. Luna is around as intelligent as Sonnet and is the cheapest thing I have that is any good. This means that you should probably NEVER EVER EVER use Sonnet (it's way too expensive) and probably always use Freebuff. When I ask for a subagent, don't ASSUME SONNET.
 
 Luna is not actually unlimited. It only feels that way under normal use. Do not hammer it — treat it as cheap, not free. OpenCode workers (DeepSeek) genuinely cannot bill me, so send bulk work there first and keep Luna for work that needs the extra care.
 
