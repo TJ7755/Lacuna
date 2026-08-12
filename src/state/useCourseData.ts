@@ -457,6 +457,35 @@ export function useCourseSummaries(): Record<string, CourseSummary> | undefined 
 }
 
 /**
+ * The always-mounted sidebar's combined data read. Keeping its cards, course summaries,
+ * lessons and streak in one live query avoids three independent whole-table reads and three
+ * separate recomputations after every review.
+ */
+export function useSidebarData():
+  | {
+      courses: Course[];
+      lessons: Lesson[];
+      summaries: Record<string, CourseSummary>;
+      stats: StudyStats;
+    }
+  | undefined {
+  return useLiveQuery(async () => {
+    const [records, lessons, cards, assessments, perf] = await Promise.all([
+      db.courses.toArray(),
+      db.lessons.toArray(),
+      db.cards.toArray(),
+      db.courseAssessments.toArray(),
+      db.userPerformance.toArray(),
+    ]);
+    const courses = hydrateCourses(records, assessments);
+    const hydratedCards = await hydrateCardsWithHistory(cards);
+    const summaries = computeCourseSummaries(courses, lessons, hydratedCards, assessments);
+    const stats = computeStudyStats(hydratedCards, buildDeckSecondsMap(perf));
+    return { courses, lessons, summaries, stats };
+  }, []);
+}
+
+/**
  * Per-course summary statistics for a single course, scoped to that course's own
  * lessons/cards rather than the whole app (contrast `useCourseSummaries`, which
  * reruns on any write anywhere). Use this wherever only one course's summary is
