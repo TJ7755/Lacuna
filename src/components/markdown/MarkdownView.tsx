@@ -13,6 +13,7 @@ import { cn } from '../ui/cn';
 import { ASSET_PROTOCOL } from '../../db/assets';
 import { resolveAssetMarkdownCached } from '../../db/assetCache';
 import { readAudioSettings } from '../../state/audioSettings';
+import 'katex/dist/katex.min.css';
 
 type ClozeMode = 'front' | 'back' | 'none';
 
