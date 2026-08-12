@@ -27,6 +27,7 @@ beforeEach(async () => {
     db.decks.clear(),
     db.sessionHistory.clear(),
     db.userPerformance.clear(),
+    db.coursePerformance.clear(),
     db.courses.clear(),
     db.lessons.clear(),
     db.lessonCards.clear(),
@@ -87,8 +88,8 @@ describe('useLearnSession answer boundary', () => {
     const lesson = await createLesson(course.id, 'Cells');
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
     await upsertLessonCardExposure(lesson.id, card.id);
-    await db.userPerformance.put({
-      deckId: course.id,
+    await db.coursePerformance.put({
+      courseId: course.id,
       runningMeanResponseTime: 20,
       runningStdDevResponseTime: 1,
       m2: 0,

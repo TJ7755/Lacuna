@@ -4,6 +4,7 @@ import { db } from './schema';
 import {
   ensureCourseBankBackingDeck,
   ensureLessonBackingDeck,
+  getSchedulingUnit,
   findBackingDeck,
   findBackingDecks,
   performanceForCourseBackingDecks,
@@ -12,7 +13,21 @@ import {
   restoreReviewUnitPerformance,
   updateReviewUnitPerformance,
 } from './backingDecks';
-import { createCourse, createLesson } from './repository';
+import {
+  createCourse,
+  createCourseAssessment,
+  createLesson,
+  deleteCourse,
+  deleteCourseAssessment,
+  deleteLesson,
+  restoreLesson,
+  snapshotCourse,
+  snapshotLesson,
+  restoreCourse,
+  updateCourse,
+  updateCourseAssessment,
+  updateLesson,
+} from './repository';
 import type { Card } from './types';
 
 async function reset(): Promise<void> {
@@ -22,12 +37,142 @@ async function reset(): Promise<void> {
     db.cards.clear(),
     db.decks.clear(),
     db.userPerformance.clear(),
+    db.coursePerformance.clear(),
+    db.schedulingPerformance.clear(),
     db.courseAssessments.clear(),
+    db.schedulingUnits.clear(),
   ]);
 }
 
 describe('backing deck adapter', () => {
   beforeEach(reset);
+
+  it('reads target scheduling configuration with a legacy-source fallback', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    await updateCourse(course.id, {
+      maxReviewsPerDay: 30,
+      dailyReviewGoal: 20,
+      sessionTimeLimitMinutes: 25,
+    });
+
+    expect(await getSchedulingUnit(course.id)).toMatchObject({
+      id: course.id,
+      kind: 'course',
+      maxReviewsPerDay: 30,
+      dailyReviewGoal: 20,
+      sessionTimeLimitMinutes: 25,
+    });
+    expect(await getSchedulingUnit(course.id, lesson.id)).toMatchObject({
+      id: lesson.id,
+      kind: 'lesson',
+      maxReviewsPerDay: 30,
+      dailyReviewGoal: 20,
+      sessionTimeLimitMinutes: 25,
+    });
+
+    await db.schedulingUnits.delete(course.id);
+    await db.schedulingUnits.delete(lesson.id);
+    expect(await getSchedulingUnit(course.id)).toMatchObject({
+      id: course.id,
+      kind: 'course',
+      maxReviewsPerDay: 30,
+      dailyReviewGoal: 20,
+      sessionTimeLimitMinutes: 25,
+    });
+    expect(await getSchedulingUnit(course.id, lesson.id)).toMatchObject({
+      id: lesson.id,
+      kind: 'lesson',
+      maxReviewsPerDay: 30,
+      dailyReviewGoal: 20,
+      sessionTimeLimitMinutes: 25,
+    });
+  });
+
+  it('keeps Course and Lesson scheduling configuration synchronised', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+
+    const initialCourseUnit = await db.schedulingUnits.get(course.id);
+    expect(initialCourseUnit).toMatchObject({
+      kind: 'course',
+      name: 'Biology',
+      examDate: course.examDate,
+    });
+    expect(await db.schedulingPerformance.get(lesson.id)).toMatchObject({
+      schedulingUnitId: lesson.id,
+      totalCorrectReviews: 0,
+    });
+
+    await updateCourse(course.id, {
+      name: 'Biology (updated)',
+      maxReviewsPerDay: 30,
+      autoOptimise: false,
+    });
+    expect(await db.schedulingUnits.get(course.id)).toMatchObject({
+      name: 'Biology (updated)',
+      maxReviewsPerDay: 30,
+      autoOptimise: false,
+    });
+    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({
+      maxReviewsPerDay: 30,
+      autoOptimise: false,
+    });
+
+    const lessonDate = course.examDate + 86_400_000;
+    await updateLesson(lesson.id, { examDate: lessonDate, timeZone: 'Europe/London' });
+    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({
+      examDate: lessonDate,
+      timeZone: 'Europe/London',
+    });
+
+    const final = (await db.courseAssessments.where('courseId').equals(course.id).toArray())[0];
+    await updateCourseAssessment(final.id, { examDate: course.examDate + 2 * 86_400_000 });
+    expect(await db.schedulingUnits.get(course.id)).toMatchObject({
+      examDate: course.examDate + 2 * 86_400_000,
+    });
+    // A lesson override remains authoritative when the Course assessment changes.
+    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({ examDate: lessonDate });
+
+    const checkpoint = await createCourseAssessment(course.id, 'Mock', course.examDate + 3 * 86_400_000);
+    await deleteCourseAssessment(checkpoint.id);
+    expect(await db.schedulingUnits.get(course.id)).toMatchObject({
+      examDate: course.examDate + 2 * 86_400_000,
+    });
+  });
+
+  it('restores deleted Lesson target rows with its snapshot', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    await db.schedulingPerformance.update(lesson.id, { totalCorrectReviews: 4 });
+    const snapshot = await snapshotLesson(lesson.id);
+    expect(snapshot?.schedulingUnit).toBeDefined();
+
+    await deleteLesson(lesson.id);
+    expect(await db.schedulingUnits.get(lesson.id)).toBeUndefined();
+    expect(await db.schedulingPerformance.get(lesson.id)).toBeUndefined();
+
+    await restoreLesson(snapshot!);
+    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({ kind: 'lesson' });
+    expect(await db.schedulingPerformance.get(lesson.id)).toMatchObject({ totalCorrectReviews: 4 });
+  });
+
+  it('restores deleted Course target rows with its snapshot', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    await db.coursePerformance.update(course.id, { totalCorrectReviews: 5 });
+    const snapshot = await snapshotCourse(course.id);
+
+    await deleteCourse(course.id);
+    expect(await db.schedulingUnits.get(course.id)).toBeUndefined();
+    expect(await db.schedulingUnits.get(lesson.id)).toBeUndefined();
+    expect(await db.coursePerformance.get(course.id)).toBeUndefined();
+
+    await restoreCourse(snapshot!);
+    expect(await db.schedulingUnits.get(course.id)).toMatchObject({ kind: 'course' });
+    expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({ kind: 'lesson' });
+    expect(await db.coursePerformance.get(course.id)).toMatchObject({ totalCorrectReviews: 5 });
+  });
 
   it('owns one scheduling deck for a lesson', async () => {
     const course = await createCourse('Biology');
@@ -41,6 +186,11 @@ describe('backing deck adapter', () => {
       backingCourseId: course.id,
       backingLessonId: lesson.id,
       name: 'Cells',
+    });
+    expect(await db.schedulingPerformance.get(lesson.id)).toMatchObject({
+      schedulingUnitId: lesson.id,
+      courseId: course.id,
+      lessonId: lesson.id,
     });
   });
 
@@ -63,6 +213,30 @@ describe('backing deck adapter', () => {
     await ensureLessonBackingDeck(course.id, lesson.id);
     expect(await db.userPerformance.get(deckId)).toMatchObject({
       runningMeanResponseTime: 42,
+      totalCorrectReviews: 7,
+    });
+  });
+
+  it('rebuilds a missing target performance row from legacy calibration', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const deckId = await ensureLessonBackingDeck(course.id, lesson.id);
+
+    await db.userPerformance.put({
+      deckId,
+      runningMeanResponseTime: 42,
+      runningStdDevResponseTime: 3,
+      m2: 9,
+      totalCorrectReviews: 7,
+    });
+    await db.schedulingPerformance.delete(lesson.id);
+
+    await ensureLessonBackingDeck(course.id, lesson.id);
+
+    expect(await db.schedulingPerformance.get(lesson.id)).toMatchObject({
+      runningMeanResponseTime: 42,
+      runningStdDevResponseTime: 3,
+      m2: 9,
       totalCorrectReviews: 7,
     });
   });
@@ -191,6 +365,59 @@ describe('backing deck adapter', () => {
 
     expect(performance.map((row) => row.deckId).sort()).toEqual(['deck-1', 'deck-2']);
     expect(performance.some((row) => row.deckId === course.id)).toBe(false);
+  });
+
+  it('uses target Course calibration and mirrors it for compatibility', async () => {
+    await db.coursePerformance.put({
+      courseId: 'course-1',
+      runningMeanResponseTime: 12,
+      runningStdDevResponseTime: 1,
+      m2: 1,
+      totalCorrectReviews: 3,
+    });
+
+    const before = await performanceForReviewUnit('course-1', 'course');
+    expect(before).toMatchObject({ deckId: 'course-1', totalCorrectReviews: 3 });
+
+    const updated = await updateReviewUnitPerformance('course-1', 4, 'course');
+    expect(updated.totalCorrectReviews).toBe(4);
+    expect(await db.coursePerformance.get('course-1')).toMatchObject({ totalCorrectReviews: 4 });
+    expect(await db.userPerformance.get('course-1')).toMatchObject({ totalCorrectReviews: 4 });
+
+    await restoreReviewUnitPerformance('course-1', before ?? null, 'course');
+    expect(await db.coursePerformance.get('course-1')).toMatchObject({ totalCorrectReviews: 3 });
+    expect(await db.userPerformance.get('course-1')).toMatchObject({ totalCorrectReviews: 3 });
+  });
+
+  it('prefers target scheduling pacing rows for Course workload estimates', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = {
+      id: 'card-1',
+      courseId: course.id,
+      deckId: 'deck-1',
+      schedulingUnitId: lesson.id,
+    } as Card;
+    await db.userPerformance.put({
+      deckId: card.deckId,
+      runningMeanResponseTime: 2,
+      runningStdDevResponseTime: 1,
+      m2: 1,
+      totalCorrectReviews: 1,
+    });
+    await db.schedulingPerformance.put({
+      schedulingUnitId: lesson.id,
+      courseId: course.id,
+      lessonId: lesson.id,
+      runningMeanResponseTime: 8,
+      runningStdDevResponseTime: 2,
+      m2: 4,
+      totalCorrectReviews: 8,
+    });
+
+    await expect(performanceForCourseBackingDecks(course.id, [card])).resolves.toEqual([
+      expect.objectContaining({ deckId: card.deckId, totalCorrectReviews: 8 }),
+    ]);
   });
 
   it('loads session calibration by the supplied unit keys', async () => {

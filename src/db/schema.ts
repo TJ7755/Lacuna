@@ -25,6 +25,9 @@ import type {
   LineageIdMapping,
   PendingMergeReview,
   Occlusion,
+  SchedulingUnitRecord,
+  CoursePerformance,
+  SchedulingPerformance,
 } from './types';
 import { reviewHistoryEntriesForCard, type ReviewHistoryEntry } from './reviewHistory';
 import {
@@ -42,6 +45,7 @@ import {
   type LegacyAssessmentRecord,
   type LegacyCourseRecord,
 } from './assessmentMigration';
+import { buildDomainStorageMigration } from './storageMigration';
 
 /**
  * Write one migration batch while checking only the destination keys needed for
@@ -114,6 +118,9 @@ class LacunaDatabase extends Dexie {
   pendingMergeReviews!: Table<PendingMergeReview, string>;
   occlusions!: Table<Occlusion, string>;
   reviewHistory!: Table<ReviewHistoryEntry, string>;
+  schedulingUnits!: Table<SchedulingUnitRecord, string>;
+  coursePerformance!: Table<CoursePerformance, string>;
+  schedulingPerformance!: Table<SchedulingPerformance, string>;
 
   constructor() {
     super('lacuna');
@@ -684,10 +691,84 @@ class LacunaDatabase extends Dexie {
           offset += cards.length;
         }
       });
+
+    // Version 21: materialise the target domain-storage concepts without deleting
+    // compatibility stores. Course/Lesson scheduling units and split performance
+    // profiles are backfilled from the already-migrated Course rows, cards and
+    // hidden backing Decks. Card and canonical-history rows receive the resolved
+    // unit id so later slices can cut readers and writers over atomically.
+    this.version(21)
+      .stores({
+        decks: 'id, createdAt, examDate, folderId',
+        cards:
+          'id, deckId, courseId, primaryLessonId, schedulingUnitId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+        sessionHistory: '++id, &eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        folders: 'id, parentId, createdAt',
+        courses: 'id, createdAt',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+        lessonCompletions: 'lessonId, completedAt',
+        noteAnnotations: 'id, noteId, createdAt, updatedAt',
+        practiceNodes: 'id, courseId, position, createdAt',
+        practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+        courseAssessments: 'id, courseId, kind, examDate, createdAt',
+        sequences: 'id, courseId, primaryLessonId, createdAt',
+        revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+        lineageIdMappings: 'id, courseId',
+        pendingMergeReviews: 'id, courseId',
+        occlusions: 'id, courseId, primaryLessonId, createdAt',
+        reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp',
+        schedulingUnits: 'id, kind, courseId, lessonId',
+        coursePerformance: 'courseId',
+        schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
+      })
+      .upgrade(async (tx) => {
+        const migration = buildDomainStorageMigration(
+          (await tx.table('courses').toArray()) as CourseRecord[],
+          (await tx.table('lessons').toArray()) as Lesson[],
+          (await tx.table('courseAssessments').toArray()) as CourseAssessment[],
+          (await tx.table('decks').toArray()) as Deck[],
+          (await tx.table('cards').toArray()) as Card[],
+          (await tx.table('userPerformance').toArray()) as UserPerformance[],
+        );
+        await tx.table('schedulingUnits').bulkPut(migration.schedulingUnits);
+        await tx.table('coursePerformance').bulkPut(migration.coursePerformance);
+        await tx.table('schedulingPerformance').bulkPut(migration.schedulingPerformance);
+
+        await tx.table('cards').toCollection().modify((card) => {
+          const schedulingUnitId = migration.schedulingUnitByCardId.get(card.id);
+          if (schedulingUnitId) card.schedulingUnitId = schedulingUnitId;
+        });
+        const schedulingUnitIds = new Set(migration.schedulingUnits.map((unit) => unit.id));
+        const reviewUnitByEventId = new Map<string, string>();
+        for (const entry of (await tx.table('reviewHistory').toArray()) as ReviewHistoryEntry[]) {
+          if (entry.eventId) {
+            const schedulingUnitId = migration.schedulingUnitByCardId.get(entry.cardId);
+            if (schedulingUnitId) reviewUnitByEventId.set(entry.eventId, schedulingUnitId);
+          }
+        }
+        await tx.table('reviewHistory').toCollection().modify((entry) => {
+          const schedulingUnitId = migration.schedulingUnitByCardId.get(entry.cardId);
+          if (schedulingUnitId) entry.schedulingUnitId = schedulingUnitId;
+        });
+        await tx.table('sessionHistory').toCollection().modify((entry) => {
+          const schedulingUnitId =
+            (entry.eventId ? reviewUnitByEventId.get(entry.eventId) : undefined) ??
+            migration.schedulingUnitByDeckId.get(entry.deckId) ??
+            (entry.courseId && schedulingUnitIds.has(entry.courseId) ? entry.courseId : undefined);
+          if (schedulingUnitId) entry.schedulingUnitId = schedulingUnitId;
+        });
+      });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 20;
+const CURRENT_SCHEMA_VERSION = 21;
 
 export const db = new LacunaDatabase();
 
@@ -859,6 +940,9 @@ export async function readAllDataFromVersion(
     courseAssessments: (raw.data['courseAssessments'] ?? []) as CourseAssessment[],
     revisionPlans: (raw.data['revisionPlans'] ?? []) as RevisionPlan[],
     reviewHistory: (raw.data['reviewHistory'] ?? []) as ReviewHistoryEntry[],
+    schedulingUnits: (raw.data['schedulingUnits'] ?? []) as SchedulingUnitRecord[],
+    coursePerformance: (raw.data['coursePerformance'] ?? []) as CoursePerformance[],
+    schedulingPerformance: (raw.data['schedulingPerformance'] ?? []) as SchedulingPerformance[],
     sequences: (raw.data['sequences'] ?? []) as Sequence[],
   };
 

@@ -40,6 +40,7 @@ import { isLeech } from '../fsrs/leech';
 import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { courseHeaderStats, type CourseHeaderStats } from '../course/headerStats';
+import { performanceForCourseBackingDecks } from './backingDecks';
 import {
   resolveAssessmentCoverage,
   type AssessmentValidationIssue,
@@ -210,12 +211,12 @@ export async function getCourseStats(
 ): Promise<CourseStats | null> {
   const course = await getCourse(courseId);
   if (!course) return null;
-  const [lessons, cards, assessments, perf] = await Promise.all([
+  const [lessons, cards, assessments] = await Promise.all([
     listLessons(courseId),
     listCardsForCourse(courseId),
     listCourseAssessments(courseId),
-    db.userPerformance.toArray(),
   ]);
+  const perf = await performanceForCourseBackingDecks(courseId, cards);
   const examDateContext = makeExamDateContext(course, lessons, assessments);
   const mastery = progressValue(availableCards(cards, now), course, now, examDateContext);
   const header = courseHeaderStats(course, assessments, cards, mastery, now);

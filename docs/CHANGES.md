@@ -1,5 +1,40 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Explicit domain storage migration
+
+- Began the approved full storage migration on `feat/storage-migration` with schema v21.
+  Course- and Lesson-owned scheduling units are now materialised alongside the compatibility
+  Deck rows, with separate Course calibration and scheduling-unit pacing stores. Cards and
+  canonical review events carry their resolved scheduling-unit id, so later cutover slices can
+  stop discovering hidden backing Decks without changing scheduling behaviour in this checkpoint.
+- Kept legacy Deck/Folder stores, old backup/share/APKG formats and compatibility readers intact;
+  this first slice is additive and rollback-safe rather than a premature destructive cutover.
+- Cut Course calibration reads and review/undo writes over to `coursePerformance`, while Course
+  pacing reads use `schedulingPerformance`. Course writes mirror the old calibration row for
+  rollback, and legacy Deck sessions retain their explicit Deck key space; missing pacing rows
+  continue to use downstream defaults rather than becoming zero-second estimates.
+- Routed the active Course dashboard, sidebar and read-side course statistics through the same
+  pacing adapter. Newly-created Course cards now carry their scheduling-unit id, and newly-created
+  backing units initialise target pacing rows, so fresh installs and upgraded databases share the
+  same target-store path.
+- Kept target scheduling configuration current on repository Course, Lesson and assessment writes.
+  Course settings cascade to inherited Lesson units, lesson exam-date/time-zone overrides remain
+  authoritative, target performance rows initialise on fresh data, and Lesson/Course deletion
+  snapshots restore the target rows atomically. Legacy Deck/Folder stores remain untouched.
+- Closed compatibility transaction gaps at Share, lineage-merge and occlusion boundaries by
+  including the target stores in their parent transactions. Added a Deck-only legacy-backup
+  round-trip assertion, and made canonical review-event deduplication ignore projected ownership
+  metadata so a later scheduling-unit stamp cannot duplicate one event.
+- Cut active Course/Lesson Learn sessions over to the `schedulingUnits` configuration projection
+  for FSRS scoring and review/time limits, with a source fallback for pre-projection databases;
+  legacy global Deck sessions retain their existing configuration path.
+- Kept destructive Deck/Folder removal gated because active legacy routes, global study/search/editing,
+  MCP scope resolution and backup/import/share contracts still require those stores. This branch
+  deliberately ends at the reviewed additive cutover instead of shipping a breaking schema deletion.
++- Follow-up review fixes combine duplicate legacy performance profiles when several backing Decks
++  resolve to one target scheduling unit, preserve legacy calibration when rebuilding a missing target
++  row, and use constant-time scheduling-unit membership checks during schema upgrade.
+
 ## Unreleased — One place for study on the dashboard
 
 - The dashboard's study control now holds the same position whether or not a study flow was

@@ -10,6 +10,20 @@ Keep each entry to a heading and a few lines. State the fact, then why it matter
 
 ---
 
+## Active Course/Lesson sessions read scheduling config through the target projection
+
+`useLearnSession` must feed Course/Lesson FSRS contexts from `schedulingUnits`, including inherited
+limits and goals; `Course` remains the source for path and assessment semantics. Keep a read-side
+fallback for databases whose projection is absent, and do not apply this cutover to legacy global
+Deck sessions.
+
+## Do not delete Deck/Folder stores while legacy product paths remain active
+
+The destructive gate is still closed while `/deck/:deckId`, global study, search/editing, MCP scope
+resolution and legacy backup/import/share contracts depend on `db.decks` or `db.folders`. The safe
+migration endpoint is a reviewed additive projection until those paths have their own cutover and
+restore story.
+
 ## Lacuna is not yet in real use, and goes live in September 2026
 
 The prompter revises with other tools. Lacuna currently holds no irreplaceable study data, and
@@ -96,3 +110,24 @@ do not put that aggregate back into the `recordReview` transaction or replace it
 The worker handles compression and encoding only; the main thread validates decoded payloads with
 the share schema. Importing the database module into the worker recreates the application's
 repository, validation and maths bundle for no useful reason.
+
+## Dexie projection helpers must inherit the caller's complete transaction scope
+
+A helper that reads or writes several Dexie tables can be called inside an existing transaction,
+but every table it touches must be listed by that caller. Omitting one does not always surface as
+Dexie's clearer transaction-scope error; fake-indexeddb can report a misleading missing object-store
+`NotFoundError`. Keep projection helpers free of nested transactions and expand the outer table list
+when their dependencies change.
+
+## Review-event identity excludes compatibility ownership metadata
+
+Canonical review rows and Card projections may disagree temporarily on `deckId`, `courseId`,
+`primaryLessonId` or `schedulingUnitId` while a storage projection is being backfilled. Those fields
+must not distinguish duplicate copies of one event during portability; event content and event/card
+ownership still determine genuine duplicates and cross-card collisions.
+
+## Target pacing projections must combine duplicate legacy sources
+
+A migrated Course/Lesson scheduling unit can temporarily be represented by more than one legacy
+backing Deck. When rebuilding its target pacing row, combine the Welford summaries rather than
+selecting the first Deck, and preserve an existing legacy profile if the target row is missing.

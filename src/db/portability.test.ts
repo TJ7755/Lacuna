@@ -269,9 +269,22 @@ describe('exportDatabase', () => {
       const hydrated = (await hydrateCardsWithHistory([restoredCard]))[0];
       expect(restoredCard.history).toEqual(exportedCard.history);
       expect(restoredCard.history).toHaveLength(1);
-      expect(restoredEvents).toEqual([exportedEvent]);
+      expect(restoredEvents).toHaveLength(1);
+      expect(restoredEvents[0]).toMatchObject({
+        ...exportedEvent,
+        schedulingUnitId: card.deckId,
+      });
+      const {
+        id: _eventId,
+        cardId: _eventCardId,
+        deckId: _eventDeckId,
+        courseId: _eventCourseId,
+        primaryLessonId: _eventLessonId,
+        schedulingUnitId: _eventSchedulingUnitId,
+        ...exportedEventContent
+      } = exportedEvent;
+      expect(hydrated.history[0]).toMatchObject(exportedEventContent);
       expect(hydrated.history).toHaveLength(1);
-      expect(hydrated.history[0]).toMatchObject(exportedCard.history[0]);
     },
   );
 

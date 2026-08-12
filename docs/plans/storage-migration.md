@@ -1,8 +1,8 @@
 # Storage and review-history migration
 
-**Status:** contract recorded; implementation follows in separately reviewed slices
+**Status:** in progress on `feat/storage-migration`; target projection and Course/Lesson runtime-read checkpoints landed; destructive removal explicitly gated by remaining legacy product paths
 
-**Reviewed:** 11 August 2026
+**Reviewed:** 12 August 2026
 
 ## Purpose
 
@@ -43,15 +43,26 @@ prove the semantics through adapters before choosing physical store names.
 
 The first implementation may retain the current table and add typed adapters. Splitting tables is
 not safe until backup, restore, merge, course deletion and undo have matching coverage.
+The destructive gate remains closed: active legacy Deck routes, global study/search/editing, MCP
+scope resolution, and legacy backup/import/share contracts still read Deck/Folder stores. The
+current branch therefore stops at target projection and Course/Lesson runtime cutover; removing
+those stores requires a later compatibility release rather than a silent schema-v22 deletion.
 
 ### Current compatibility checkpoint
 
 The current implementation retains one physical `userPerformance` table while making its two
-meanings explicit. `performanceForCourseBackingDecks` reads backing-Deck rows for pacing and
-workload estimates. `performanceForReviewUnit`, `updateReviewUnitPerformance` and
-`restoreReviewUnitPerformance` handle the already-resolved calibration unit for review, record
-and undo paths: Course/Lesson sessions pass the Course id, while legacy Deck sessions pass the
-Deck id. These adapters must not infer a Course calibration key from `Card.deckId`.
+meanings explicit. Course-facing `performanceForCourseBackingDecks` now reads target
+`schedulingPerformance` rows and adapts them to the existing pacing consumer; legacy rows remain
+a fallback, and missing rows remain absent so downstream defaults still apply. Course review
+calibration reads `coursePerformance`, while `updateReviewUnitPerformance` and
+`restoreReviewUnitPerformance` dual-write or restore the compatibility row. Legacy Deck sessions
+continue to read and write `userPerformance` by Deck id. Course/Lesson sessions pass the Course id
+explicitly, while legacy Deck sessions pass the Deck id; the adapters reject an unproven legacy
+row when those key spaces collide and never infer a Course calibration key from `Card.deckId`.
+Active Course/Lesson FSRS sessions now read their scheduling configuration from the target
+`schedulingUnits` projection, including inherited limits and goals; a source-row fallback remains
+for databases opened before projection materialisation. Legacy global sessions continue to read
+Deck configuration directly.
 
 The dedicated `reviewHistory` store is now the explicit read source for FSRS optimisation,
 analytics and diagnostics, while `Card.history` remains a mirrored compatibility projection for
@@ -112,6 +123,20 @@ explicit compatibility tests.
 | FSRS optimisation    | Card history via `src/fsrs/optimise.ts` and persistence helpers | Event-store query through the review-event adapter                         | Same training observations; cover with `src/fsrs/optimise.persistence.test.ts` |
 | Diagnostics          | Counts only                                                     | Counts plus event-store count                                              | No card content leakage                                                        |
 
+## Implementation status
+
+The first domain-storage slice is now approved for implementation on `feat/storage-migration`.
+Schema v21 adds `schedulingUnits`, `coursePerformance` and `schedulingPerformance`, backfills
+Course/Lesson and legacy compatibility units, and stamps cards and canonical review events with
+the resolved scheduling-unit id. The second slice cuts Course calibration and pacing reads over
+to the target stores, dual-writes the legacy calibration mirror for rollback, and includes review
+and undo transaction coverage. Course dashboard/read models use the pacing adapter, and fresh
+Course cards/backing units now initialise their target projection fields. The latest slice keeps
+Course/Lesson scheduling-unit configuration synchronised across repository Course, Lesson and
+assessment writes, including inherited settings, lesson date overrides, target performance
+initialisation, and deletion snapshots/restore. The old stores remain readable; no rollback or
+wire-compatibility path is removed until the later cutover slices have focused coverage.
+
 ## Phases
 
 1. **Contract and inventory** — this document; no data mutation.
@@ -124,9 +149,15 @@ explicit compatibility tests.
 4. **Dual-write and read cutover** — repository review writes, undo, snapshots, backups, merge,
    analytics and optimisation use the event adapter. Keep the Card projection until old backups
    and imported data have passed the compatibility window.
-5. **Domain storage migration** — only after event storage is stable: decide whether the hidden
-   scheduling Deck rows can be removed, migrate performance semantics, and preserve old wire
-   formats and bookmarks through adapters.
+5. **Domain storage migration** — in progress: explicit Course/Lesson scheduling units and
+   split performance stores are backfilled additively in schema v21. Course-facing performance
+   reads and review/undo writes now use the target stores with a compatibility mirror. Repository
+   Course/Lesson and assessment writes now synchronise target scheduling configuration and retain
+   target rows through deletion undo. Share, lineage merge and occlusion parent transactions now
+   include the target stores, and a Deck-only legacy-backup round trip is covered. Canonical event
+   identity ignores projected ownership metadata so target stamping cannot duplicate one review.
+   The next slices cut remaining course-facing readers/writers over, then remove hidden Deck/Folder
+   stores only after compatibility import, rollback, wire-format and release tests pass.
 6. **Compaction decision** — measure real event-store size and choose, separately, whether any old
    events may be compacted. Compaction requires an export format and an explicit restore story.
    This is the only phase that may propose removing old event rows; it is not implied by the event

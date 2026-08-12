@@ -48,6 +48,8 @@ async function clearAll(): Promise<void> {
     db.sequences.clear(),
     db.revisionPlans.clear(),
     db.userPerformance.clear(),
+    db.coursePerformance.clear(),
+    db.schedulingPerformance.clear(),
     db.reviewHistory.clear(),
   ]);
 }

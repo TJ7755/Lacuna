@@ -6,12 +6,24 @@
 // course-facing callers should use these helpers rather than resolving backing decks
 // themselves.
 
-import type { Card, Course, Deck, UserPerformance } from './types';
+import type {
+  Card,
+  Course,
+  CourseAssessment,
+  CoursePerformance,
+  CourseRecord,
+  Deck,
+  Lesson,
+  SchedulingPerformance,
+  SchedulingUnitRecord,
+  UserPerformance,
+} from './types';
 import { db } from './schema';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import { emptyPerformance, updatePerformance } from '../fsrs/grading';
 import { finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
+import { schedulingUnitFromCourse, schedulingUnitFromLesson } from './schedulingUnitBuilder';
 
 function ownedBackingDeck(courseId: string, lessonId: string | null): Promise<Deck | undefined> {
   return db.decks
@@ -56,14 +68,46 @@ function isConstraintError(error: unknown): boolean {
 }
 
 async function ensurePerformanceRow(deckId: string): Promise<void> {
-  if (await db.userPerformance.get(deckId)) return;
-  try {
-    await db.userPerformance.add(emptyPerformance(deckId));
-  } catch (error) {
-    // Another context may have initialised the row between the read and add.
-    // Never replace an existing calibration profile with an empty one.
-    if (!isConstraintError(error)) throw error;
+  let legacyPerformance = await db.userPerformance.get(deckId);
+  if (!legacyPerformance) {
+    const empty = emptyPerformance(deckId);
+    try {
+      await db.userPerformance.add(empty);
+      legacyPerformance = empty;
+    } catch (error) {
+      // Another context may have initialised the row between the read and add.
+      // Never replace an existing calibration profile with an empty one.
+      if (!isConstraintError(error)) throw error;
+      legacyPerformance = await db.userPerformance.get(deckId);
+    }
   }
+
+  const deck = await db.decks.get(deckId);
+  if (!deck?.backingCourseId) return;
+  const schedulingUnitId = deck.backingLessonId ?? deck.backingCourseId;
+  if (await db.schedulingPerformance.get(schedulingUnitId)) return;
+  await db.schedulingPerformance.put({
+    schedulingUnitId,
+    courseId: deck.backingCourseId,
+    ...(deck.backingLessonId ? { lessonId: deck.backingLessonId } : {}),
+    ...(legacyPerformance
+      ? {
+          runningMeanResponseTime: legacyPerformance.runningMeanResponseTime,
+          runningStdDevResponseTime: legacyPerformance.runningStdDevResponseTime,
+          m2: legacyPerformance.m2,
+          totalCorrectReviews: legacyPerformance.totalCorrectReviews,
+        }
+      : emptyPerformanceStats()),
+  });
+}
+
+function emptyPerformanceStats() {
+  return {
+    runningMeanResponseTime: 0,
+    runningStdDevResponseTime: 0,
+    m2: 0,
+    totalCorrectReviews: 0,
+  };
 }
 
 async function addBackingDeck(deck: Deck): Promise<string> {
@@ -99,57 +143,171 @@ async function adoptableDeck(
   return ownedByScope || unowned ? deck : undefined;
 }
 
-/** Load backing-Deck calibration rows for Course pacing and workload estimates. */
+function userPerformanceFromStats(
+  unitId: string,
+  stats: Pick<
+    UserPerformance,
+    'runningMeanResponseTime' | 'runningStdDevResponseTime' | 'm2' | 'totalCorrectReviews'
+  >,
+  courseId?: string,
+): UserPerformance {
+  return {
+    deckId: unitId,
+    ...(courseId ? { courseId } : {}),
+    runningMeanResponseTime: stats.runningMeanResponseTime,
+    runningStdDevResponseTime: stats.runningStdDevResponseTime,
+    m2: stats.m2,
+    totalCorrectReviews: stats.totalCorrectReviews,
+  };
+}
+
+/**
+ * Read the target scheduling configuration for one Course or Lesson.
+ *
+ * The source Course/Lesson rows remain authoritative for path and content semantics,
+ * while active FSRS sessions consume this projection. The source fallback keeps reads
+ * safe for databases opened before the projection was written; normal schema-v21
+ * databases take the target-store branch.
+ */
+export async function getSchedulingUnit(
+  courseId: string,
+  lessonId: string | null = null,
+): Promise<SchedulingUnitRecord | undefined> {
+  const target = await db.schedulingUnits.get(lessonId ?? courseId);
+  if (
+    target &&
+    target.courseId === courseId &&
+    (target.lessonId ?? null) === lessonId
+  ) {
+    return target;
+  }
+
+  const [course, assessments] = await Promise.all([
+    db.courses.get(courseId),
+    db.courseAssessments.where('courseId').equals(courseId).toArray(),
+  ]);
+  if (!course) return undefined;
+  if (lessonId === null) {
+    return schedulingUnitFromCourse(course, assessments);
+  }
+  const lesson = await db.lessons.get(lessonId);
+  return lesson && lesson.courseId === courseId
+    ? schedulingUnitFromLesson(course, lesson, assessments)
+    : undefined;
+}
+
+/** Load backing-unit pacing rows for Course workload estimates. */
 export async function performanceForCourseBackingDecks(
   courseId: string,
   cards: Card[],
 ): Promise<UserPerformance[]> {
-  const deckIds = [
-    ...new Set(cards.filter((card) => card.courseId === courseId).map((card) => card.deckId)),
-  ];
-  return deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [];
+  const courseCards = cards.filter((card) => card.courseId === courseId);
+  const deckIds = [...new Set(courseCards.map((card) => card.deckId))];
+  if (deckIds.length === 0) return [];
+
+  const [targetRows, legacyRows] = await Promise.all([
+    db.schedulingPerformance.where('courseId').equals(courseId).toArray(),
+    db.userPerformance.where('deckId').anyOf(deckIds).toArray(),
+  ]);
+  const targetByUnitId = new Map(targetRows.map((row) => [row.schedulingUnitId, row]));
+  const legacyByDeckId = new Map(legacyRows.map((row) => [row.deckId, row]));
+  const result: UserPerformance[] = [];
+  for (const deckId of deckIds) {
+    const card = courseCards.find((candidate) => candidate.deckId === deckId);
+    const targetUnitId = card?.schedulingUnitId ?? deckId;
+    const target = targetByUnitId.get(targetUnitId);
+    const legacy = legacyByDeckId.get(deckId);
+    if (target) {
+      result.push(userPerformanceFromStats(deckId, target, target.courseId));
+    } else if (legacy) {
+      result.push(legacy);
+    }
+  }
+  return result;
 }
+
+type ReviewPerformanceUnitKind = 'deck' | 'course';
 
 /**
  * Load calibration rows for active review units. Course/Lesson sessions pass a Course id;
- * legacy deck sessions pass a Deck id. The shared UserPerformance table keeps both keys,
- * so this adapter preserves that distinction without exposing the table to session code.
+ * legacy deck sessions pass a Deck id. Course rows are read from the target store and the
+ * legacy table remains a compatibility fallback while old databases are in the window.
  */
 export function performanceForReviewUnits(
   unitIds: readonly string[],
+  kind?: ReviewPerformanceUnitKind,
 ): Promise<Array<UserPerformance | undefined>> {
-  return Promise.all(unitIds.map((unitId) => performanceForReviewUnit(unitId)));
+  return Promise.all(unitIds.map((unitId) => performanceForReviewUnit(unitId, kind)));
 }
 
 /**
- * Load calibration for an already-resolved review unit. Course/Lesson reviews pass the
- * Course id; legacy Deck reviews pass the Deck id. The caller must resolve that unit
- * before entering this adapter: never derive a Course calibration key from card.deckId.
+ * Load calibration for an already-resolved review unit. The explicit kind prevents a
+ * Course id and a legacy Deck id with the same string from sharing a calibration row.
  */
-export function performanceForReviewUnit(unitId: string): Promise<UserPerformance | undefined> {
+export async function performanceForReviewUnit(
+  unitId: string,
+  kind: ReviewPerformanceUnitKind = 'deck',
+): Promise<UserPerformance | undefined> {
+  if (kind === 'course') {
+    const target = await db.coursePerformance.get(unitId);
+    if (target) return userPerformanceFromStats(unitId, target, unitId);
+    const compatibility = await db.userPerformance.get(unitId);
+    return compatibility?.courseId === unitId ? compatibility : undefined;
+  }
   return db.userPerformance.get(unitId);
 }
 
 /**
- * Update calibration for an already-resolved review unit. The shared table still names
- * its primary key deckId for compatibility, but the supplied key remains authoritative:
- * Course/Lesson reviews use a Course id and legacy Deck reviews use a Deck id.
+ * Update calibration for an already-resolved review unit. Course reviews write the target
+ * Course store first and mirror the compatibility row; legacy Deck reviews keep their
+ * existing key space until the compatibility route is retired.
  */
 export async function updateReviewUnitPerformance(
   unitId: string,
   responseTimeSec: number,
+  kind: ReviewPerformanceUnitKind = 'deck',
 ): Promise<UserPerformance> {
-  const current = (await performanceForReviewUnit(unitId)) ?? emptyPerformance(unitId);
+  const current = (await performanceForReviewUnit(unitId, kind)) ?? emptyPerformance(unitId);
   const next = updatePerformance(current, responseTimeSec);
-  await db.userPerformance.put(next);
-  return next;
+  const compatibilityNext = kind === 'course' ? { ...next, courseId: unitId } : next;
+  if (kind === 'course') {
+    const target: CoursePerformance = {
+      courseId: unitId,
+      runningMeanResponseTime: next.runningMeanResponseTime,
+      runningStdDevResponseTime: next.runningStdDevResponseTime,
+      m2: next.m2,
+      totalCorrectReviews: next.totalCorrectReviews,
+    };
+    await db.coursePerformance.put(target);
+    await db.userPerformance.put(compatibilityNext);
+  } else {
+    await db.userPerformance.put(compatibilityNext);
+  }
+  return compatibilityNext;
 }
 
 /** Restore the exact pre-review calibration row for an already-resolved review unit. */
 export async function restoreReviewUnitPerformance(
   unitId: string,
   previous: UserPerformance | null,
+  kind: ReviewPerformanceUnitKind = 'deck',
 ): Promise<void> {
+  if (kind === 'course') {
+    if (previous) {
+      await db.coursePerformance.put({
+        courseId: unitId,
+        runningMeanResponseTime: previous.runningMeanResponseTime,
+        runningStdDevResponseTime: previous.runningStdDevResponseTime,
+        m2: previous.m2,
+        totalCorrectReviews: previous.totalCorrectReviews,
+      });
+      await db.userPerformance.put(previous);
+    } else {
+      await db.coursePerformance.delete(unitId);
+      await db.userPerformance.delete(unitId);
+    }
+    return;
+  }
   if (previous) {
     await db.userPerformance.put(previous);
   } else {
@@ -311,6 +469,66 @@ export function ensureLessonBackingDeck(courseId: string, lessonId: string): Pro
 }
 
 /** Resolve or create the hidden scheduling deck for unassigned course cards. */
+/**
+ * Project one Course and all its Lessons into target scheduling-unit storage.
+ * Callers that are already in a Dexie transaction must include the source and target
+ * tables in that transaction; this helper deliberately does not open a nested one.
+ */
+export async function syncCourseSchedulingUnits(courseId: string): Promise<void> {
+  const [course, lessons, assessments] = await Promise.all([
+    db.courses.get(courseId),
+    db.lessons.where('courseId').equals(courseId).toArray(),
+    db.courseAssessments.where('courseId').equals(courseId).toArray(),
+  ]);
+  if (!course) return;
+
+  const courseUnit = schedulingUnitFromCourse(course as CourseRecord, assessments as CourseAssessment[]);
+  const lessonUnits = lessons.map((lesson) =>
+    schedulingUnitFromLesson(course as CourseRecord, lesson as Lesson, assessments as CourseAssessment[]),
+  );
+  await db.schedulingUnits.bulkPut([courseUnit, ...lessonUnits]);
+
+  const existingCoursePerformance = await db.coursePerformance.get(courseId);
+  if (!existingCoursePerformance) {
+    await db.coursePerformance.put({ courseId, ...emptyPerformanceStats() });
+  }
+  const unitIds = [courseId, ...lessons.map((lesson) => lesson.id)];
+  const existingSchedulingPerformance = await db.schedulingPerformance.bulkGet(unitIds);
+  const missingSchedulingPerformance: SchedulingPerformance[] = [];
+  if (!existingSchedulingPerformance[0]) {
+    missingSchedulingPerformance.push({
+      schedulingUnitId: courseId,
+      courseId,
+      ...emptyPerformanceStats(),
+    });
+  }
+  lessons.forEach((lesson, index) => {
+    if (existingSchedulingPerformance[index + 1]) return;
+    missingSchedulingPerformance.push({
+      schedulingUnitId: lesson.id,
+      courseId,
+      lessonId: lesson.id,
+      ...emptyPerformanceStats(),
+    });
+  });
+  if (missingSchedulingPerformance.length > 0) {
+    await db.schedulingPerformance.bulkPut(missingSchedulingPerformance);
+  }
+}
+
+/** Remove the target rows owned by one deleted Lesson. */
+export async function removeLessonSchedulingUnit(lessonId: string): Promise<void> {
+  await db.schedulingUnits.delete(lessonId);
+  await db.schedulingPerformance.delete(lessonId);
+}
+
+/** Remove all target rows owned by one deleted Course, including its Lessons. */
+export async function removeCourseSchedulingUnits(courseId: string, lessonIds: readonly string[]): Promise<void> {
+  await db.schedulingUnits.bulkDelete([courseId, ...lessonIds]);
+  await db.coursePerformance.delete(courseId);
+  await db.schedulingPerformance.bulkDelete([courseId, ...lessonIds]);
+}
+
 export function ensureCourseBankBackingDeck(courseId: string): Promise<string> {
   return withBackingDeckLock(`bank:${courseId}`, async () => {
     const owned = await ownedBackingDeck(courseId, null);

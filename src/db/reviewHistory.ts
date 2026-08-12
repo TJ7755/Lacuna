@@ -11,6 +11,7 @@ export interface ReviewHistoryEntry extends ReviewLog {
   deckId: string;
   courseId?: string | null;
   primaryLessonId?: string | null;
+  schedulingUnitId?: string;
 }
 
 /** Stable key for a review written after event ids became mandatory. */
@@ -50,6 +51,7 @@ export function reviewHistoryEntriesForCard(card: Card): ReviewHistoryEntry[] {
       deckId: card.deckId,
       courseId: card.courseId,
       primaryLessonId: card.primaryLessonId,
+      schedulingUnitId: card.schedulingUnitId,
     };
   });
 }
@@ -80,6 +82,7 @@ export function cardsWithReviewHistory(
           deckId: _deckId,
           courseId: _courseId,
           primaryLessonId: _primaryLessonId,
+          schedulingUnitId: _schedulingUnitId,
           ...review
         } = entry;
         return review;
@@ -105,7 +108,19 @@ export interface ReviewHistoryCollisionState {
 }
 
 function reviewHistoryEntryIdentity(entry: ReviewHistoryEntry): string {
-  const { id: _id, ...identity } = entry;
+  // These ownership fields are compatibility metadata projected from the Card. The
+  // canonical row may have been written before a later scheduling-unit backfill, so
+  // they must not make the same review event look like a distinct event during backup
+  // export/import. Event content and event ownership are handled separately below.
+  const {
+    id: _id,
+    cardId: _cardId,
+    deckId: _deckId,
+    courseId: _courseId,
+    primaryLessonId: _primaryLessonId,
+    schedulingUnitId: _schedulingUnitId,
+    ...identity
+  } = entry;
   return JSON.stringify(identity);
 }
 

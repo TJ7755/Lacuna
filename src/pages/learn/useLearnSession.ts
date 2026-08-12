@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
-import { performanceForCourseBackingDecks, performanceForReviewUnits } from '../../db/backingDecks';
+import {
+  getSchedulingUnit,
+  performanceForCourseBackingDecks,
+  performanceForReviewUnit,
+  performanceForReviewUnits,
+} from '../../db/backingDecks';
 import { getCourse, listCourseAssessments } from '../../db/read';
 import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
 import type {
@@ -13,6 +18,7 @@ import type {
   Sequence,
   ReviewSessionKind,
   RevisionPlan,
+  SchedulerConfig,
   UserPerformance,
 } from '../../db/types';
 import {
@@ -123,6 +129,11 @@ interface AnswerSnapshot {
   revisionFailures: Map<string, number>;
   revisionReviewEventIds: string[];
 }
+
+type SessionSchedulingConfig = SchedulerConfig & {
+  dailyReviewGoal?: number;
+  sessionTimeLimitMinutes?: number;
+};
 
 export interface UseLearnSessionParams {
   courseId: string | undefined;
@@ -326,6 +337,9 @@ export function useLearnSession({
   const cooldowns = useRef<CooldownMap>(new Map());
   const perfRef = useRef<Map<string, UserPerformance>>(new Map());
   const decksRef = useRef<Map<string, StudyUnit>>(new Map());
+  // Course/Lesson sessions score and enforce limits from the target scheduling
+  // projection; legacy global sessions continue to resolve their Deck directly.
+  const schedulingConfigRef = useRef<SessionSchedulingConfig | null>(null);
   const ctxRef = useRef<SessionContext | null>(null);
   // Whether reviews in this session should be recorded against a Course (course
   // and lesson scope) or a Deck (the global "Today" session).
@@ -841,6 +855,7 @@ export function useLearnSession({
     progressCacheRef.current = { dirty: true, value: 0 };
     perfRef.current = new Map();
     decksRef.current = new Map();
+    schedulingConfigRef.current = null;
     ctxRef.current = null;
     cardsRef.current = [];
     linesModeMapRef.current = new Map();
@@ -918,10 +933,11 @@ export function useLearnSession({
         cards = lessonStudyPool(lessonId, allCourseCards, links, lessonExposures);
         lessonHasMembersRef.current = membership.length > 0;
         const examDateContext = makeExamDateContext(course, courseLessons, examDates);
+        const schedulingUnit = (await getSchedulingUnit(course.id, lessonId)) ?? course;
         units = [course];
         sessionUnits = [
           {
-            config: course,
+            config: schedulingUnit,
             scope: { kind: 'lesson', courseId: course.id, lessonId, linkedCardIds },
             examDateContext,
           },
@@ -1033,11 +1049,15 @@ export function useLearnSession({
                 reachedLessonIds,
               })
           : eligiblePracticePool(fullScope, course, examDateContext);
-        const practiceCourse: Course = { ...course, newCardsPerDay: undefined };
+        const schedulingUnit = (await getSchedulingUnit(course.id)) ?? course;
+        const practiceConfig: SessionSchedulingConfig = {
+          ...schedulingUnit,
+          newCardsPerDay: undefined,
+        };
         units = [course];
         sessionUnits = [
           {
-            config: practiceCourse,
+            config: practiceConfig,
             scope: { kind: 'course', courseId },
             examDateContext,
           },
@@ -1073,11 +1093,15 @@ export function useLearnSession({
         );
       }
 
-      const perfs = await performanceForReviewUnits(units.map((unit) => unit.id));
+      const perfs = await performanceForReviewUnits(units.map((unit) => unit.id), reviewKindRef.current);
       const perfMap = new Map<string, UserPerformance>();
       units.forEach((u, i) => perfMap.set(u.id, perfs[i] ?? emptyPerformance(u.id)));
       perfRef.current = perfMap;
       decksRef.current = new Map(units.map((u) => [u.id, u]));
+      schedulingConfigRef.current =
+        sessionUnits.length === 1 && 'config' in sessionUnits[0]
+          ? sessionUnits[0].config
+          : null;
       const ctx = makeSessionContext(sessionUnits, 'objective');
       ctxRef.current = ctx;
       cardsRef.current = cards;
@@ -1318,7 +1342,10 @@ export function useLearnSession({
         const deck = isGlobal
           ? decksRef.current.get(cardNow.deckId)
           : decksRef.current.values().next().value;
-        if (!ctx || !deck) {
+        const schedulingConfig = isGlobal
+          ? deck
+          : schedulingConfigRef.current;
+        if (!ctx || !deck || !schedulingConfig) {
           submitting.current = false;
           return;
         }
@@ -1380,7 +1407,7 @@ export function useLearnSession({
         if (correct && perf) {
           const nextPerf = recorded
             ? updatePerformance(perf, t)
-            : await db.userPerformance.get(deck.id);
+            : await performanceForReviewUnit(deck.id, kind);
           if (nextPerf) perfRef.current.set(deck.id, nextPerf);
         }
 
@@ -1459,13 +1486,13 @@ export function useLearnSession({
 
         progressCacheRef.current.dirty = true;
 
-        const limit = deck.maxReviewsPerDay;
+        const limit = schedulingConfig.maxReviewsPerDay;
         if (!limitOverride && limit && limit > 0 && deckReviews >= limit) {
           finish(false, true);
           return;
         }
 
-        const goal = deck.dailyReviewGoal;
+        const goal = schedulingConfig.dailyReviewGoal;
         if (!limitOverride && goal && goal > 0 && deckReviews >= goal) {
           finish(true);
           return;
@@ -1484,7 +1511,7 @@ export function useLearnSession({
           return;
         }
 
-        const timeLimit = deck.sessionTimeLimitMinutes;
+        const timeLimit = schedulingConfig.sessionTimeLimitMinutes;
         if (!timeLimitOverride && timeLimit && timeLimit > 0 && sessionStartMs.current > 0) {
           const elapsedMinutes = (Date.now() - sessionStartMs.current) / 60000;
           if (elapsedMinutes >= timeLimit) {

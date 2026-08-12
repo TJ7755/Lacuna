@@ -470,15 +470,19 @@ export function useSidebarData():
     }
   | undefined {
   return useLiveQuery(async () => {
-    const [records, lessons, cards, assessments, perf] = await Promise.all([
+    const [records, lessons, cards, assessments] = await Promise.all([
       db.courses.toArray(),
       db.lessons.toArray(),
       db.cards.toArray(),
       db.courseAssessments.toArray(),
-      db.userPerformance.toArray(),
     ]);
     const courses = hydrateCourses(records, assessments);
     const hydratedCards = await hydrateCardsWithHistory(cards);
+    const perf = (
+      await Promise.all(
+        courses.map((course) => performanceForCourseBackingDecks(course.id, hydratedCards)),
+      )
+    ).flat();
     const summaries = computeCourseSummaries(courses, lessons, hydratedCards, assessments);
     const stats = computeStudyStats(hydratedCards, buildDeckSecondsMap(perf));
     return { courses, lessons, summaries, stats };
@@ -530,19 +534,23 @@ export function useCourseDashboardData():
     }
   | undefined {
   return useLiveQuery(async () => {
-    const [records, lessons, cards, assessments, perf, links, exposures, completions] =
+    const [records, lessons, cards, assessments, links, exposures, completions] =
       await Promise.all([
         db.courses.toArray(),
         db.lessons.toArray(),
         db.cards.toArray(),
         db.courseAssessments.toArray(),
-        db.userPerformance.toArray(),
         db.lessonCards.toArray(),
         db.lessonCardExposures.toArray(),
         db.lessonCompletions.toArray(),
       ]);
     const courses = hydrateCourses(records, assessments);
     const hydratedCards = await hydrateCardsWithHistory(cards);
+    const perf = (
+      await Promise.all(
+        courses.map((course) => performanceForCourseBackingDecks(course.id, hydratedCards)),
+      )
+    ).flat();
     const summaries = computeCourseSummaries(
       courses,
       lessons,
