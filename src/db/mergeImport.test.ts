@@ -384,12 +384,14 @@ describe('mergeImport: merge apply', () => {
     await db.userPerformance.bulkPut([backing, calibration]);
     const backingDeck = (await db.decks.get(card.deckId))!;
     const localCourse = (await db.courses.get(courseId))!;
-    await db.decks.update(card.deckId, {
-      lastInteractedAt: (backingDeck.lastInteractedAt ?? backingDeck.createdAt) + 1000,
-    });
-    await db.courses.update(courseId, {
-      lastInteractedAt: (localCourse.lastInteractedAt ?? localCourse.createdAt) + 1000,
-    });
+    const newerBackingInteraction =
+      (backingDeck.lastInteractedAt ?? backingDeck.createdAt) + 1000;
+    const newerCourseInteraction =
+      (localCourse.lastInteractedAt ?? localCourse.createdAt) + 1000;
+    await db.decks.update(card.deckId, { lastInteractedAt: newerBackingInteraction });
+    await db.courses.update(courseId, { lastInteractedAt: newerCourseInteraction });
+    expect((await db.decks.get(card.deckId))?.lastInteractedAt).toBe(newerBackingInteraction);
+    expect((await db.courses.get(courseId))?.lastInteractedAt).toBe(newerCourseInteraction);
     await db.courses.update(courseId, {
       distributedCopy: {
         lineageId: 'lineage-1',
@@ -404,6 +406,8 @@ describe('mergeImport: merge apply', () => {
       coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells revised' })] }),
     );
 
+    expect((await db.decks.get(card.deckId))?.lastInteractedAt).toBe(newerBackingInteraction);
+    expect((await db.courses.get(courseId))?.lastInteractedAt).toBe(newerCourseInteraction);
     expect(await db.userPerformance.get(card.deckId)).toEqual(backing);
     expect(await db.userPerformance.get(courseId)).toEqual(calibration);
     expect(
