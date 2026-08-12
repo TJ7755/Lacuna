@@ -162,7 +162,7 @@ describe('CardList', () => {
     expect(screen.getAllByText('New card')).not.toHaveLength(0);
   });
 
-  it('defaults the legacy deck collection when omitted', () => {
+  it('defaults the legacy deck collection when omitted', async () => {
     render(
       <CardList
         cards={[mockCard]}
@@ -171,8 +171,8 @@ describe('CardList', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('What is the capital of France?'));
-    expect(screen.getByTestId('card-analytics')).toBeInTheDocument();
+    fireEvent.click(await screen.findByText('What is the capital of France?'));
+    expect(await screen.findByTestId('card-analytics')).toBeInTheDocument();
   });
 
   it('accepts a domain-neutral context for analytics, import and legacy moves', async () => {
@@ -198,8 +198,8 @@ describe('CardList', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('What is the capital of France?'));
-    expect(screen.getByTestId('card-analytics')).toBeInTheDocument();
+    fireEvent.click(await screen.findByText('What is the capital of France?'));
+    expect(await screen.findByTestId('card-analytics')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Import cards'));
     expect(screen.getByText('Import cards into Course bank')).toBeInTheDocument();
@@ -246,7 +246,7 @@ describe('CardList', () => {
     );
   });
 
-  it('renders cards with front content', () => {
+  it('renders cards with front content', async () => {
     render(
       <CardList
         cards={[mockCard]}
@@ -256,7 +256,7 @@ describe('CardList', () => {
         onEditCard={vi.fn()}
       />
     );
-    expect(screen.getByText('What is the capital of France?')).toBeInTheDocument();
+    expect(await screen.findByText('What is the capital of France?')).toBeInTheDocument();
     expect(screen.getByText('geography')).toBeInTheDocument();
   });
 
@@ -319,7 +319,7 @@ describe('CardList', () => {
         onEditCard={vi.fn()}
       />
     );
-    const cardRow = screen.getByText('What is the capital of France?');
+    const cardRow = await screen.findByText('What is the capital of France?');
     fireEvent.click(cardRow);
     const analytics = await screen.findByTestId('card-analytics');
     expect(analytics).toBeInTheDocument();
@@ -483,7 +483,7 @@ describe('CardList', () => {
       sequenceItemId: 'item-1',
     };
 
-    it('groups a generated card under a sequence header with a card count', () => {
+    it('groups a generated card under a sequence header with a card count', async () => {
       render(
         <CardList
           cards={[mockCard, generatedCard]}
@@ -496,7 +496,7 @@ describe('CardList', () => {
       expect(screen.getByText('The alkali metals')).toBeInTheDocument();
       expect(screen.getByText('1 card')).toBeInTheDocument();
       // The ordinary card still renders in the loose list underneath.
-      expect(screen.getByText('What is the capital of France?')).toBeInTheDocument();
+      expect(await screen.findByText('What is the capital of France?')).toBeInTheDocument();
     });
 
     it('shows an "Edit sequence" link that calls onEditSequence with the sequence id', () => {

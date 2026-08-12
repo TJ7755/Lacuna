@@ -2,7 +2,7 @@
 // Route: /course/:courseId
 // British English throughout.
 
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
@@ -45,7 +45,6 @@ import { CourseHeader } from '../components/course/CourseHeader';
 import { CourseTabs } from '../components/course/CourseTabs';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
-import { LessonView } from './LessonView';
 import { Button } from '../components/ui/Button';
 import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
@@ -66,6 +65,10 @@ import type {
   PracticeMilestone,
   PracticeNode,
 } from '../db/types';
+
+const LazyLessonView = lazy(() =>
+  import('./LessonView').then((module) => ({ default: module.LessonView })),
+);
 
 interface PracticeNodeProgress {
   fraction: number;
@@ -319,7 +322,11 @@ export function CoursePath() {
   // Single-lesson branch (addendum E): render the lesson view directly rather than
   // showing a one-item path. No redirect — this is a rendering branch.
   if (lessons.length === 1) {
-    return <LessonView courseId={courseId} lessonId={lessons[0].id} showStudyNow />;
+    return (
+      <Suspense fallback={<div className="min-h-[50vh] animate-pulse rounded-2xl bg-ink/[0.03]" />}>
+        <LazyLessonView courseId={courseId} lessonId={lessons[0].id} showStudyNow />
+      </Suspense>
+    );
   }
 
   // Precomputed for the manual practice-node insertion affordances (see InsertGap/

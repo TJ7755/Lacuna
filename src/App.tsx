@@ -11,14 +11,12 @@ import { RouteTransition } from './components/layout/RouteTransition';
 import { LandingTransition } from './components/layout/LandingTransition';
 import { Dashboard } from './pages/Dashboard';
 import { isFirstRun, seedIfFirstRun } from './db/seed';
-import { autoBackupIfStale } from './db/backups';
 import { ensurePreMigrationSnapshot, openDatabase } from './db/schema';
 import { stampMissingLessonViewModes } from './db/repository';
 import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
 import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
-import { McpBridgeController } from './components/mcp/McpBridgeController';
 import { NotFound } from './pages/NotFound';
 
 function RouterWithQuotaWarning() {
@@ -69,6 +67,11 @@ const MergeReviewPanel = lazy(() =>
 );
 const Welcome = lazy(() => import('./pages/Welcome').then((m) => ({ default: m.Welcome })));
 const Method = lazy(() => import('./pages/Method').then((m) => ({ default: m.Method })));
+const McpBridgeController = lazy(() =>
+  import('./components/mcp/McpBridgeController').then((m) => ({
+    default: m.McpBridgeController,
+  })),
+);
 
 function RouteFallback() {
   return (
@@ -422,9 +425,11 @@ export function App() {
 
       setReady(true);
       // Take a daily restore point in the background; never blocks the UI.
-      void autoBackupIfStale().catch(() => {
-        // Background backup failures are non-fatal.
-      });
+      void import('./db/backups')
+        .then(({ autoBackupIfStale }) => autoBackupIfStale())
+        .catch(() => {
+          // Background backup failures are non-fatal.
+        });
     })();
   }, []);
 
@@ -482,7 +487,11 @@ export function App() {
         <AccentProvider>
           <FontScaleProvider>
             <ToastProvider>
-              {window.electronAPI?.isElectron && <McpBridgeController />}
+              {window.electronAPI?.isElectron && (
+                <Suspense fallback={null}>
+                  <McpBridgeController />
+                </Suspense>
+              )}
               <RouterWithQuotaWarning />
               <LandingTransition />
             </ToastProvider>
