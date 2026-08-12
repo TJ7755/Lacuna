@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
+import { reviewHistoryEntryIdForEvent } from './reviewHistory';
 import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
 import {
   performanceForCourseBackingDecks,
@@ -88,6 +89,48 @@ describe('undoReview', () => {
     expect(await db.sessionHistory.count()).toBe(0);
     expect((await db.userPerformance.get(deck.id))!.totalCorrectReviews).toBe(0);
     expect((await db.decks.get(deck.id))!.lastInteractedAt).toBe(deckLastInteractedAtBefore);
+  });
+
+  it('keeps the card projection and canonical event in sync through record and undo', async () => {
+    const deck = await createDeck('Review history consistency');
+    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    const perfBefore = (await db.userPerformance.get(deck.id)) ?? null;
+    const result = await recordReview({
+      card,
+      eventId: 'event-consistency',
+      sessionId: 'session-consistency',
+      sessionKind: 'deck',
+      deck,
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+    });
+
+    const recordedCard = (await db.cards.get(card.id))!;
+    const canonical = await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-consistency'));
+    expect(recordedCard.history).toHaveLength(1);
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(1);
+    expect(canonical).toMatchObject({
+      ...recordedCard.history[0],
+      cardId: card.id,
+      deckId: deck.id,
+    });
+
+    await undoReview({
+      eventId: 'event-consistency',
+      cardBefore: result.cardBefore,
+      perfBefore,
+      sessionHistoryId: result.sessionHistoryId,
+      deckId: deck.id,
+      kind: 'deck',
+      lastInteractedAtBefore: result.lastInteractedAtBefore,
+    });
+
+    const undoneCard = (await db.cards.get(card.id))!;
+    expect(undoneCard.history).toEqual([]);
+    expect(await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-consistency'))).toBeUndefined();
+    expect((await hydrateCardsWithHistory([undoneCard]))[0].history).toEqual([]);
   });
 
   it('records hintUsed on the review log, defaulting to false when omitted', async () => {
