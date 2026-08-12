@@ -399,7 +399,11 @@ export function CoursePath() {
           Lesson view mode configures the path view (not the course as a
           whole), so it stays here in the path's own header area rather than
           moving into CourseTabs (which is shared across all course surfaces). */}
-      <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
+      {/* justify-start, not justify-end: the strip's mr-auto already pushes the toggle
+          right while both share a line, and starting from the left means the toggle
+          aligns with everything else once the row wraps, instead of being stranded on
+          the right of its own line. */}
+      <div className="mb-3 flex flex-wrap items-center justify-start gap-3">
         <UpcomingAssessmentsStrip
           assessments={assessments}
           now={now}

@@ -66,10 +66,14 @@ export function HeaderStats({
   }
 
   // Pill count is always 3-5: due/mastery/days-to-go are permanent, unmapped
-  // and lesson-progress are conditional. Small screens wrap naturally because
-  // even three max-content pills cannot reliably fit inside the padded header.
-  // From sm upwards, keyed grid columns keep rows evenly balanced (e.g. 3+2,
-  // not a 4+1 orphan) without squeezing labels.
+  // and lesson-progress are conditional. From sm upwards, keyed grid columns keep
+  // rows evenly balanced (e.g. 3+2, not a 4+1 orphan) without squeezing labels.
+  //
+  // Below sm the pills used to wrap freely, which packed them one-and-two to a row
+  // by whatever happened to fit and read as ragged rather than deliberate. A plain
+  // two-column grid aligns them instead. It drops to one column under 360px, where
+  // two pills plus the touch font scale would overflow rather than wrap, since the
+  // pills themselves are whitespace-nowrap.
   const pillCount = 3 + (unseenCount > 0 ? 1 : 0) + (lessonProgress ? 1 : 0);
   const gridColsClass =
     pillCount === 5
@@ -79,7 +83,13 @@ export function HeaderStats({
         : 'sm:grid-cols-[repeat(3,max-content)]';
 
   return (
-    <div className={cn('flex max-w-full flex-wrap gap-2 sm:grid', gridColsClass, className)}>
+    <div
+      className={cn(
+        'grid max-w-full grid-cols-1 gap-2 min-[360px]:grid-cols-2',
+        gridColsClass,
+        className,
+      )}
+    >
       <Pill
         icon={<HourglassIcon width={15} height={15} />}
         value={dueCount === 0 ? 'Nothing' : String(dueCount)}
