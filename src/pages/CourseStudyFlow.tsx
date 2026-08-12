@@ -13,7 +13,7 @@ import type { StudyFlowStep } from '../course/studyFlowPlanner';
 import type { AssessmentPracticeOption } from '../course/assessmentPractice';
 import type { SessionSummary } from '../components/learn/types';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
-import { StudyEntry, StudyFlowMessage } from '../components/learn/StudyEntry';
+import { entryHasChoice, StudyEntry, StudyFlowMessage } from '../components/learn/StudyEntry';
 import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
 import { Button } from '../components/ui/Button';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
@@ -82,7 +82,18 @@ function CourseStudyFlowInner() {
   useEffect(() => {
     if (currentStep || transition || !flow) return;
     if (!entryConsumed) {
-      if (!entryPracticeNodeKey) return;
+      if (!entryPracticeNodeKey) {
+        // The entry screen exists to put a decision to the learner. With only one way
+        // into the course it is a gate tapped through on the way to every session, and
+        // the course page already names what Study will open, so go straight in. The
+        // screen's appearance then always means something needs choosing.
+        // Consuming the entry lets the `step` branch below open the only session, which
+        // is the same path taken once the screen has been tapped through by hand.
+        if (!entryHasChoice(flow.decision, flow.snapshot.recurringPracticeEligibleCount)) {
+          setEntryConsumed(true);
+        }
+        return;
+      }
       setEntryConsumed(true);
       const requestedPractice = flow.snapshot.practiceByKey.get(entryPracticeNodeKey);
       if (requestedPractice?.active) {

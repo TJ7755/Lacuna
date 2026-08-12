@@ -218,7 +218,8 @@ describe('CourseStudyFlow', () => {
 
     renderFlow();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
+    // No entry screen here: these flows offer a single way in, so the study flow
+    // opens the only session directly. See entryHasChoice in StudyEntry.
     await screen.findByTestId('learn-request');
     expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' });
   });
@@ -232,7 +233,6 @@ describe('CourseStudyFlow', () => {
       ]),
     ];
     renderFlow();
-    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
     await screen.findByTestId('learn-request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
@@ -258,7 +258,6 @@ describe('CourseStudyFlow', () => {
       flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
     ];
     renderFlow();
-    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
     await screen.findByTestId('learn-request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause step' }));
@@ -396,7 +395,6 @@ describe('CourseStudyFlow', () => {
       flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
     ];
     renderFlow();
-    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
     await screen.findByTestId('learn-request');
     await waitFor(() => expect(localStorage.getItem('lacuna.activeStudyFlow')).not.toBeNull());
 
@@ -416,7 +414,6 @@ describe('CourseStudyFlow', () => {
       flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
     ];
     renderFlow();
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue: Checkpoint' }));
     await screen.findByTestId('learn-request');
     expect(request()).toMatchObject({ kind: 'practice', nodeKey: 'manual-1' });
     const sessionId = screen.getByTestId('learn-session').textContent;

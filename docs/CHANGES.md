@@ -1,5 +1,19 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Study entry and landing-page scroll toggle
+
+- The study entry screen now appears only when there is a decision to make. With one way into
+  the course it was a full-screen gate whose only action was "continue", tapped through before
+  every session; the course page already names what Study will open and the learn header confirms
+  it. `entryHasChoice` lives beside the buttons it describes in `StudyEntry.tsx` so the skip
+  condition cannot drift from the screen it governs.
+- This was deliberately framed as a rule rather than an exception for the single-option case: the
+  screen's appearance now always means something needs choosing, so the first time an assessment
+  overlaps your material the screen carries information rather than being routine.
+- The landing page's smooth-scroll toggle is revealed by a wheel event rather than by any scroll.
+  `useSmoothScroll` only intercepts `wheel`, so on a phone the pill offered an escape from
+  behaviour that was never happening, while sitting pinned over the heading and covering a word.
+
 ## Unreleased — Learn screen: card, header and swipe undo
 
 - The study card sizes to its content behind a 12rem floor instead of a 29rem one, and the card

@@ -326,10 +326,23 @@ export function Welcome() {
   const checkpointOpen = pathDone || checkpointSkip;
 
   useEffect(() => {
-    const onScroll = () => setShowScrollToggle(window.scrollY > 96);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    // The toggle escapes weighted *wheel* scrolling, and useSmoothScroll only intercepts
+    // wheel events, so it has nothing to escape on a touch device. Revealing it on any
+    // scroll put a pinned, wide pill over the heading on a phone, offering a way out of
+    // behaviour that was never happening. Requiring a wheel first keeps it where it means
+    // something.
+    let wheeled = false;
+    const update = () => setShowScrollToggle(wheeled && window.scrollY > 96);
+    const onWheel = () => {
+      wheeled = true;
+      update();
+    };
+    window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('scroll', update, { passive: true });
+    return () => {
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('scroll', update);
+    };
   }, []);
 
   function toggleSmoothScroll() {
