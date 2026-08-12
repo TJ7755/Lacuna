@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import type { SessionHistoryEntry } from './types';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
@@ -24,6 +24,7 @@ import {
   recordReview,
   removeTagFromCards,
   rescheduleCards,
+  sampleReviewTrajectory,
   setCardsSuspended,
   undoReview,
   updateCard,
@@ -373,6 +374,49 @@ describe('undoReview', () => {
     await waitForTrajectorySample('event-replayed');
     expect(await db.sessionHistory.count()).toBe(1);
     expect((await db.userPerformance.get(deck.id))?.totalCorrectReviews).toBe(1);
+  });
+
+  it('skips the card scan when the unit already has a trajectory sample today', async () => {
+    const deck = await createDeck('Test deck');
+    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    const now = 1_725_123_456_789;
+
+    await db.sessionHistory.add({
+      eventId: 'existing-daily-sample',
+      sessionId: 'session-existing-daily-sample',
+      timestamp: now,
+      deckId: deck.id,
+      averagePredictedRetrievability: 0.5,
+    });
+    await recordReview({
+      card,
+      deck,
+      eventId: 'event-daily-sample-skip',
+      sessionId: 'session-daily-sample-skip',
+      sessionKind: 'deck',
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+      now,
+    });
+
+    const cardsWhere = vi.spyOn(db.cards, 'where');
+    try {
+      await sampleReviewTrajectory({
+        eventId: 'event-daily-sample-skip',
+        sessionId: 'session-daily-sample-skip',
+        timestamp: now,
+        deck,
+        kind: 'deck',
+        cardId: card.id,
+      });
+    } finally {
+      cardsWhere.mockRestore();
+    }
+
+    expect(cardsWhere).not.toHaveBeenCalled();
+    expect(await db.sessionHistory.count()).toBe(1);
   });
 
   it('makes repeated undo harmless and permits a genuine retry afterwards', async () => {

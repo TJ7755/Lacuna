@@ -6,13 +6,14 @@ import { defaultFsrsParameters } from '../src/fsrs/params';
 import { makeSessionContext, selectNext, sessionComplete } from '../src/fsrs/session';
 import type { Card, Deck } from '../src/db/types';
 
-const [{ createDeck, recordReview }, { db }] = await Promise.all([
+const [{ createDeck, recordReview, sampleReviewTrajectory }, { db }] = await Promise.all([
   import('../src/db/repository'),
   import('../src/db/schema'),
 ]);
 
 const NOW = Date.UTC(2026, 7, 12, 12);
-const CARD_COUNT = 10_000;
+const SESSION_CARD_COUNT = 10_000;
+const RECORD_REVIEW_CARD_COUNTS = [500, 2_000, 10_000] as const;
 
 function benchmark(fn: () => unknown, repetitions: number): number {
   const samples: number[] = [];
@@ -62,7 +63,7 @@ function makeBenchmarkCard(index: number, deckId: string): Card {
 
 async function measureSessionEngine() {
   const deck = makeBenchmarkDeck();
-  const cards = Array.from({ length: CARD_COUNT }, (_, index) =>
+  const cards = Array.from({ length: SESSION_CARD_COUNT }, (_, index) =>
     makeBenchmarkCard(index, deck.id),
   );
   const context = makeSessionContext([deck]);
@@ -72,7 +73,7 @@ async function measureSessionEngine() {
   sessionComplete(cards, context, NOW);
 
   return {
-    cardCount: CARD_COUNT,
+    cardCount: SESSION_CARD_COUNT,
     selectNextMsMedian: benchmark(
       () => selectNext(cards, context, cooldowns, NOW),
       5,
@@ -84,32 +85,94 @@ async function measureSessionEngine() {
   };
 }
 
-async function measureRecordReview() {
+async function resetBenchmarkDatabase(cardCount: number) {
   await db.delete();
   await db.open();
   const deck = await createDeck('Performance benchmark');
-  const cards = Array.from({ length: CARD_COUNT }, (_, index) =>
+  const cards = Array.from({ length: cardCount }, (_, index) =>
     makeBenchmarkCard(index, deck.id),
   );
   await db.cards.bulkAdd(cards);
+  return { deck, cards };
+}
 
-  const started = performance.now();
-  await recordReview({
-    card: cards[0],
+async function waitForDeferredSampling() {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 20));
+}
+
+async function addCurrentDaySample(deckId: string, eventId: string) {
+  await db.sessionHistory.add({
+    eventId,
+    sessionId: 'performance-seed-session',
+    timestamp: NOW,
+    deckId,
+    averagePredictedRetrievability: 0.5,
+  });
+}
+
+function reviewArgs(card: Card, deck: Deck, eventId: string) {
+  return {
+    card,
     deck,
-    eventId: 'performance-event',
-    sessionId: 'performance-session',
-    grade: 3,
+    eventId,
+    sessionId: `performance-session-${eventId}`,
+    grade: 3 as const,
     responseTimeSec: 1,
     distracted: false,
     correct: true,
     now: NOW,
+  };
+}
+
+async function measureCommonPath(cardCount: number) {
+  const { deck, cards } = await resetBenchmarkDatabase(cardCount);
+  await addCurrentDaySample(deck.id, `performance-seed-${cardCount}`);
+
+  const started = performance.now();
+  await recordReview(reviewArgs(cards[0], deck, `performance-event-${cardCount}`));
+
+  return {
+    cardCount,
+    singleRecordReviewMs: performance.now() - started,
+  };
+}
+
+async function measureOnceDailySampling() {
+  const { deck, cards } = await resetBenchmarkDatabase(SESSION_CARD_COUNT);
+  const eventId = 'performance-sampling-event';
+  const seedEventId = 'performance-sampling-seed';
+  await addCurrentDaySample(deck.id, seedEventId);
+  await recordReview(reviewArgs(cards[0], deck, eventId));
+  await waitForDeferredSampling();
+  await db.sessionHistory.where('eventId').equals(seedEventId).delete();
+
+  const started = performance.now();
+  await sampleReviewTrajectory({
+    eventId,
+    sessionId: `performance-session-${eventId}`,
+    timestamp: NOW,
+    deck,
+    kind: 'deck',
+    cardId: cards[0].id,
   });
 
   return {
-    cardCount: CARD_COUNT,
-    singleRecordReviewMs: performance.now() - started,
+    cardCount: SESSION_CARD_COUNT,
+    sampleCallMs: performance.now() - started,
   };
+}
+
+async function measureRecordReview() {
+  const commonPath: Array<{ cardCount: number; singleRecordReviewMs: number }> = [];
+  for (const cardCount of RECORD_REVIEW_CARD_COUNTS) {
+    commonPath.push(await measureCommonPath(cardCount));
+    await waitForDeferredSampling();
+  }
+
+  const onceDailySampling = await measureOnceDailySampling();
+  await waitForDeferredSampling();
+  return { commonPath, onceDailySampling };
 }
 
 async function measureBuildOutput() {
