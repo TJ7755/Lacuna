@@ -1,6 +1,9 @@
 # Lacuna CLAUDE.md
 
-#AGENTS.md
+@AGENTS.md
+
+<!-- Every other harness picks up AGENTS.md on its own. Claude Code only reads CLAUDE.md, so the
+     import above is what pulls the house rules in. Do not remove it. -->
 
 These are Claude-specific instructions. The house rules live in `AGENTS.md` and apply to you in full; this file only adds what is specific to Claude Code. Where the two conflict, ask.
 
