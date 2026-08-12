@@ -670,10 +670,13 @@ export async function decodeShareDirect(code: string): Promise<SharePayload> {
 // Worker offload for encode / decode
 // ---------------------------------------------------------------------------
 
-const canUseShareWorker = typeof Worker !== 'undefined';
-
 let shareWorker: Worker | null = null;
 let shareJobId = 0;
+let shareWorkerJobs = 0;
+
+function canUseShareWorker(): boolean {
+  return typeof Worker !== 'undefined';
+}
 
 function getShareWorker(): Worker {
   if (!shareWorker) {
@@ -682,6 +685,14 @@ function getShareWorker(): Worker {
     });
   }
   return shareWorker;
+}
+
+function releaseShareWorker(worker: Worker): void {
+  shareWorkerJobs -= 1;
+  if (shareWorkerJobs === 0 && shareWorker === worker) {
+    worker.terminate();
+    shareWorker = null;
+  }
 }
 
 function runShareWorker<T>(
@@ -693,11 +704,15 @@ function runShareWorker<T>(
   return new Promise((resolve, reject) => {
     const id = ++shareJobId;
     const w = getShareWorker();
+    shareWorkerJobs += 1;
     const TIMEOUT_MS = 30000; // 30 seconds
 
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let settled = false;
 
     function cleanup() {
+      if (settled) return;
+      settled = true;
       if (timeoutId !== null) {
         clearTimeout(timeoutId);
         timeoutId = null;
@@ -705,6 +720,7 @@ function runShareWorker<T>(
       w.removeEventListener('message', messageHandler);
       w.removeEventListener('error', errorHandler);
       w.removeEventListener('messageerror', messageErrorHandler);
+      releaseShareWorker(w);
     }
 
     const messageHandler = (event: MessageEvent) => {
@@ -725,33 +741,35 @@ function runShareWorker<T>(
 
     const errorHandler = (e: ErrorEvent) => {
       cleanup();
-      // Clear the cached worker so the next call creates a fresh one.
-      shareWorker = null;
       reject(new Error(`Share worker failed: ${e.message || 'unknown error'}`));
     };
 
     const messageErrorHandler = () => {
       cleanup();
-      shareWorker = null;
       reject(new Error('Share worker received an invalid message.'));
     };
 
     w.addEventListener('message', messageHandler);
     w.addEventListener('error', errorHandler);
     w.addEventListener('messageerror', messageErrorHandler);
-    w.postMessage({ ...message, id });
+    try {
+      w.postMessage({ ...message, id });
+    } catch (error) {
+      cleanup();
+      reject(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
 
     // Set timeout to force cleanup if the worker hangs
     timeoutId = setTimeout(() => {
       cleanup();
-      shareWorker = null;
       reject(new Error('Share worker timed out after 30 seconds.'));
     }, TIMEOUT_MS);
   });
 }
 
 async function encodeShare(payload: SharePayload): Promise<string> {
-  if (canUseShareWorker) {
+  if (canUseShareWorker()) {
     try {
       return await runShareWorker<string>({ type: 'encode', payload });
     } catch {
@@ -763,7 +781,7 @@ async function encodeShare(payload: SharePayload): Promise<string> {
 
 /** Decode a share code into its payload, throwing a readable error if it is invalid. */
 export async function decodeShare(code: string): Promise<SharePayload> {
-  if (canUseShareWorker) {
+  if (canUseShareWorker()) {
     try {
       return await runShareWorker<SharePayload>({ type: 'decode', code });
     } catch {
