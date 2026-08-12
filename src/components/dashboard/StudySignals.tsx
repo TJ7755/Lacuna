@@ -136,12 +136,6 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
                 'relative grid h-9 w-9 shrink-0 place-items-center rounded-full',
                 lit ? 'bg-accent-soft text-accent' : 'bg-ink/5 text-ink-faint',
               )}
-              animate={
-                lit
-                  ? { scale: [1, 1.08, 1], rotate: [0, -3, 3, 0] }
-                  : { scale: 1, rotate: 0 }
-              }
-              transition={lit ? { duration: 2.0 * m, repeat: Infinity, ease: 'easeInOut' } : undefined}
             >
               <FlameIcon width={18} height={18} />
               <AnimatePresence>
