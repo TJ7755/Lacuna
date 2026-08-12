@@ -63,3 +63,10 @@ events; the card projection is only a compatibility fallback when no canonical r
 `SessionHistoryEntry.averagePredictedRetrievability` is historical chart data, not a scheduler or
 unlock input. New points are sampled asynchronously at most once per local calendar day per unit;
 do not put that aggregate back into the `recordReview` transaction or replace it with a cache/table.
+
+## Share workers use a transport-only codec
+
+`src/workers/share.worker.ts` must import `src/db/shareCodec.ts`, not `src/db/share.ts`.
+The worker handles compression and encoding only; the main thread validates decoded payloads with
+the share schema. Importing the database module into the worker recreates the application's
+repository, validation and maths bundle for no useful reason.

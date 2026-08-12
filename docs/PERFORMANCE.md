@@ -44,7 +44,7 @@ script uses gzip level 9 for comparable output after each change. Hardware and
 browser navigation timings are not treated as regression gates because they are
 environment-dependent.
 
-The final performance branch build and audit run on 12 Aug 2026 measured:
+The PR #53 performance branch build and audit run on 12 Aug 2026 measured:
 
 | Measurement | After |
 |---|---:|
@@ -66,6 +66,29 @@ measurements remain bounded in the tens of milliseconds rather than growing
 linearly with the pool; the larger 10,000-card value is IndexedDB table overhead in
 the fake-IndexedDB audit environment, not a card-pool scan.
 
+The follow-up branch was measured before and after its changes. Each
+`recordReview` figure below is one call, never a loop, and all timings are median
+milliseconds from the audit script's fake-IndexedDB environment:
+
+| Measurement | Before follow-up | After follow-up |
+|---|---:|---:|
+| Initial JavaScript | 784,692 bytes / 244,593 bytes gz | 783,790 bytes / 244,168 bytes gz |
+| Initial CSS | 138,632 bytes / 24,777 bytes gz | 107,735 bytes / 16,210 bytes gz |
+| `selectNext`, 10,000 cards | 20.51 ms | 13.31 ms |
+| `sessionComplete`, 10,000 cards | 20.86 ms | 12.48 ms |
+| One `recordReview`, 500 cards, sample already exists | 13.03 ms | 9.59 ms |
+| One `recordReview`, 2,000 cards, sample already exists | 7.69 ms | 7.33 ms |
+| One `recordReview`, 10,000 cards, sample already exists | 26.77 ms | 16.48 ms |
+| Once-daily trajectory sample, 10,000 cards | 103.75 ms | 74.16 ms |
+| `share.worker` | ~358.07 KB / ~104.43 KB gz | 3,813 bytes / 1,416 bytes gz |
+| Full Vitest suite | 149.28 s; 211 files; 1,839 tests | 99.07 s; 212 files; 1,843 tests |
+
+The review measurements no longer show the former linear pool-size scaling because
+`recordReview` no longer reads the card pool. The 10,000-card value is still a
+single human-facing review write; the separate trajectory sample is the only
+operation in this audit that scans cards, and it runs after commit at most once per
+day per unit.
+
 ## September phone-priority changes
 
 - `recordReview` now writes the review transition and existing unit/performance
@@ -82,60 +105,64 @@ the fake-IndexedDB audit environment, not a card-pool scan.
   pointer down, using the same loader functions as the router.
 - The always-mounted sidebar uses one combined live data query instead of separate
   whole-database queries for streaks, course summaries and lessons.
+- The follow-up isolates Pomodoro flow consumers from the per-second countdown,
+  prunes virtual-list measurement callbacks, terminates idle share workers,
+  fast-paths single-unit session indexing, removes persistent decorative animation
+  loops and count-up rAFs, slows MCP polling to 10 seconds while visible, and
+  prunes old files from the backup-folder mirror.
+- The share worker now imports only a transport codec; payload validation remains
+  on the main thread. KaTeX CSS is loaded with the lazy Markdown chunk rather than
+  on the initial page.
 
-Pomodoro tick isolation, virtual-list registry pruning and share-worker shutdown
-remain deliberately deferred until after September.
+The remaining retention findings are deliberately deferred: pruning the compatible
+`Card.history` projection, choosing a `sessionHistory` horizon, and changing
+whole-table import/merge materialisation all alter storage or analytics semantics.
 
 ## Findings by area
 
 ### 1. Navigation latency (click → painted page)
 
-- **`AnimatePresence mode="wait"` serialises exit → lazy-chunk fetch → enter.** `src/components/layout/AppShell.tsx:253-262` keys the routed `motion.div` by `location.pathname` with `mode="wait"`. The old page's 0.22 s exit must complete before the new route mounts, and the new route's `React.lazy` import (App.tsx:32-71) does not start until that mount. Cost: 220 ms dead time on every navigation, plus a further 220 ms delay on the chunk fetch itself on slow connections.
-- **CoursePath statically imports LessonView** (`src/pages/CoursePath.tsx:48`), dragging the 778 KB / 233 KB gz markdown+katex chunk into every course-path navigation even when no card content renders. Confirmed in the built `CoursePath-*.js` chunk.
-- **QuestionBank reaches the same markdown chunk statically** via CardList → CardContent → MarkdownView.
-- **`charts` is `modulepreload`-ed at startup** (built `index.html`), so the 417 KB recharts chunk downloads on first paint even though no chart is on the Dashboard.
+- **Route exit sequencing is fixed.** `AppShell` mounts the incoming route without `mode="wait"`, so the old 220 ms dead time no longer blocks the lazy import.
+- **CoursePath's LessonView is lazy** and **QuestionBank's CardContent is lazy**, so the Markdown/Katex stack is not pulled into those route chunks before card content is actually rendered.
+- **The charts chunk is lazy.** The production HTML modulepreloads only the app and vendor entries; Recharts is not downloaded on Dashboard first paint.
 - **Double skeleton flash**: `RouteFallback` (App.tsx:73-84) swaps to the page's own skeleton mid-entrance animation.
 - **Stagger scales with content length**: CoursePath reveals nodes at 55 ms × index (CoursePathSegment.tsx:76) — a 10-node course is still animating at ~900 ms.
-- **No prefetching anywhere** (no hover prefetch, no `modulepreload` of lazy routes). The PWA only runtime-caches a route chunk after its first visit.
+- **Sidebar route prefetching is fixed** for hover, keyboard focus and pointer down. Other entry points still fetch on demand, which is expected.
 
 ### 2. Bundle weight
 
-- **mathjs (~153 KB min) enters the eager `app` chunk** through the backup-validation chain: `src/App.tsx:14` (auto-backup) → `src/db/backups.ts:6` → `src/db/portability.ts:149` → `src/items/payloadValidation.ts` → `src/items/verify.ts:16`. Used only on export/import.
-- **The MCP tool registry is statically bundled for all users, including web**: `src/App.tsx:21` imports `McpBridgeController` (rendered only under Electron), which pulls `src/mcp/registry.ts:8-12` and `src/mcp/tools/content.ts:16-18` — a second path into mathjs.
-- **Coarse `manualChunks` buckets**: `vite.config.ts:116-129` puts all of recharts in one chunk; an ~15-line `Object.assign` polyfill module co-resident with recharts forces the whole charts chunk into the eager graph.
-- **Worker duplication**: `share.worker` (356 KB) re-embeds zod, dexie and mathjs because `src/db/share.ts:149` runs `itemPayloadIsValid` inside the worker; the sql.js glue is compiled twice (`apkg.worker` and `UnifiedImportPanel`).
-- **KaTeX CSS is global**: `@import 'katex/dist/katex.min.css'` in `src/index.css` ships ~30 KB CSS plus 59 font assets to every page.
+- **The eager mathjs paths are split.** Backup validation is lazy, the MCP bridge is both lazy and gated on Electron, and the chart/manual-chunk boundary no longer drags Recharts into first paint.
+- **The share-worker duplication is fixed.** Its raw bundle fell from about 358 KB to 3.8 KB because it no longer imports the database, zod or mathjs. The separate sql.js duplication in APKG/import tooling remains a worker-boundary investigation, not part of this follow-up.
+- **KaTeX CSS is lazy.** It now ships in a 29,290-byte Markdown CSS chunk (8,070 bytes gz) instead of the 107,735-byte initial stylesheet.
 
 ### 3. Runtime render cost
 
-- **Pomodoro re-renders the whole study-flow tree every second**: `usePomodoro` ticks via `setInterval` (`src/hooks/usePomodoro.ts:183-185`), writes the runtime to localStorage on every tick (`:147-159`), and `PomodoroProvider` passes the whole controller as context value without `useMemo` (`src/hooks/PomodoroContext.tsx:9-10`). Consumed by `src/pages/CourseStudyFlow.tsx:69`, so LearnMode + FlipCard re-render 1/s while a focus timer runs.
-- **The always-mounted Sidebar runs three whole-table live queries**: `useStudyStats` (all cards × user performance), `useCourseSummaries`, `useAllLessons` (`src/components/layout/Sidebar.tsx:132, 361-363`). Every review anywhere re-runs full-table reads and O(cards) recomputation (useData.ts:35-47, 82-108).
-- **Per-review session re-scoring is O(pool) twice on every answer**: `selectNext` and `sessionComplete` re-index and re-score the entire remaining pool, including per-card exam-date resolution (`src/fsrs/session.ts:254, 351`; `src/course/path.ts` objective sorts; `src/fsrs/examDate.ts:82-88`; `src/pages/learn/useLearnSession.ts:796, 800`). Sub-millisecond at 100 cards; visible stutter at 10k.
-- **`recordReview` scans every card in the unit inside the write transaction** (`src/db/repository.ts:811-821`) to compute average retrievability — O(course) held under the read-write lock on every review.
-- **QuestionBank computes grouping per keystroke**: O(n) grouping plus per-bucket filters in the render body (`src/pages/QuestionBank.tsx:64-87, 179-191`), with one live query per lesson (`:239`).
-- **`McpSection` polls every 2 s** and re-renders unconditionally (`src/pages/settings/McpSection.tsx:43-50`).
+- **Pomodoro countdown isolation is fixed.** Only timer chrome consumes the ticking value; flow-level consumers receive break state and actions, and runtime storage writes happen at boundaries or unmount rather than every second.
+- **The always-mounted Sidebar now uses one combined live data read** for its review-dependent summaries.
+- **Single-unit objective sessions now bypass full unit-index construction.** Multi-unit and cram sessions still score their complete pool because that is their definition; the 10,000-card session benchmark is now about 12–13 ms.
+- **`recordReview` no longer scans the card pool.** It writes the reviewed card, event rows and performance row; the daily trajectory sample is scheduled after commit.
+- **QuestionBank grouping was already memoised** by `cards`, `lessons` and `query`; the original per-keystroke finding was stale.
+- **`McpSection` now refreshes every 10 seconds while visible**, and on visibility/focus changes.
 
 ### 4. Memory and retention
 
 - **`card.history` grows forever** (`src/db/repository.ts:773`, `history: [...cardBefore.history, log]`). Every review appends a ~25-field `ReviewLog` to the card row. This is the master multiplier: it inflates the cards table, every full-table read (dashboard/search/analytics/learn), and every backup snapshot. At 10k cards × 100 reviews, a full-table load exceeds 400 MB in JS heap.
 - **`sessionHistory` is unbounded** (`src/db/schema.ts`) and re-read wholesale by Analytics (`src/pages/Analytics.tsx:71`, `src/components/analytics/prepare.ts`).
-- **Auto-backups retain 10 full-DB snapshots** (`src/db/backups.ts:88-117`), each containing all history arrays, plus a pretty-printed `JSON.stringify(payload, null, 2)` folder mirror (`backups.ts:73`) that is never pruned.
-- **Deck study loads the entire cards table for a single-deck session** (`src/pages/learn/useLearnSession.ts:1057-1061`).
+- **Auto-backups retain 10 full-DB snapshots** (`src/db/backups.ts:88-117`), each containing all history arrays. The folder mirror is now pruned to the same ten Lacuna backup files without touching unrelated files.
+- **The alleged single-deck load is not a defect.** The no-course/no-lesson path is the deliberate cross-course “Review today” session, so it must consider all cards. Course and lesson sessions already use their scoped card queries.
 - **Import/backup-merge materialises whole tables into Maps** (`src/db/portability.ts:582-631`) inside one transaction — ≥2× live data transiently.
-- **`useVirtualList` measurement registry never prunes scrolled-out rows** (`src/hooks/useVirtualList.ts:109-128`).
-- **The share worker is never terminated on clean success** (`src/db/share.ts:675-751`).
+- **`useVirtualList` now removes callbacks and disconnects observers when rows unmount.**
+- **Share workers now terminate after the final concurrent job settles**, including error and timeout paths.
 - **Confirmed clean** (do not touch): assetCache is a bounded 200-entry LRU with URL revocation; MarkdownView's HTML cache is a bounded 600-entry LRU with TTL; every `addEventListener` has a matching removal; sql.js runs only inside `apkg.worker`; Apkg/optimise workers terminate on all paths; QR camera streams stop on unmount; PWA caches are all bounded.
 
 ### 5. GPU / CPU (paint and compositor work)
 
-- **All 13 recharts charts animate by default** — no `isAnimationActive` or `animationDuration` anywhere (`src/pages/Analytics.tsx:173-431`, `src/components/analytics/CourseAnalytics.tsx`, `src/components/cards/CardAnalytics.tsx`, `src/components/learn/SessionReport.tsx`). The whole chart grid re-animates on mount and on every data change.
-- **Layout animations instead of transforms**: StudySignals animates `width` and `height` (`src/components/dashboard/StudySignals.tsx:38, 262, 284, 432`); the sidebar collapse animates `width` (`src/components/layout/Sidebar.tsx:408`). Fix with `scaleX`/`scaleY` inside overflow-hidden tracks.
-- **Continuous `backdrop-blur` on always-mounted chrome**: Sidebar (`Sidebar.tsx:408`), mobile header (AppShell.tsx:226), LearnHeader (`src/pages/learn/LearnHeader.tsx:189`), SectionRail. Backdrop-filter repaints on every scroll during study.
-- **11-14 parallel section-reveal animations per navigation** on Settings/CourseSettings (`motion.section initial={{opacity:0,y:12}}` in every settings section); **six concurrent count-up rAF loops** on the CoursePath header (`src/components/course/HeaderStats.tsx:64-69`) plus two on the Dashboard and four in SessionReport.
-- **Infinite repeating animations on persistent chrome**: SectionRail has two infinite opacity pulses and an infinite gradient on the active pill (`src/components/ui/SectionRail.tsx:94-105, 176-178`); StudySignals runs an infinite flame scale/rotate (`StudySignals.tsx:138-143`).
+- **All chart animations are disabled** on the 13 Recharts instances.
+- **Persistent progress bars and dashboard bars use compositor transforms**, and the persistent Sidebar/Learn-header/mobile-header/SectionRail blurs are gone. Modal and loading overlays still use blur because they are not persistent scroll chrome.
+- **Decorative count-up rAF loops and persistent infinite effects are gone.** Settings section reveals and interactive editor/import height reveals remain one-shot work, not continuous review-path work.
 - **Height/margin reveals across editors and panels**: SequenceEditor, SharePage (5 sites), UnifiedImportPanel (8 sites), LessonNode hover expansion (`src/components/course/LessonNode.tsx:132-133`, which reflows the grid).
-- **Scroll-time layout reads**: `useVirtualList` performs two `getBoundingClientRect` reads per scroll tick; SectionRail reads a rect on every `mousemove` (`src/components/ui/SectionRail.tsx:148-152`).
-- **Images lack `loading="lazy"`/`decoding="async"`** in MarkdownView-generated `<img>` and `OcclusionMaskLayer`.
+- **Scroll-time layout reads are bounded.** Virtual-list reads remain necessary to map the scrolling container to content; SectionRail caches its button rect on pointer entry instead of reading it on every `mousemove`.
+- **Rendered card images now use `loading="lazy"` and `decoding="async"`**, including Markdown and occlusion surfaces.
 - **Confirmed cheap** (do not touch): transform-only entrance animations; reduced-motion honoured via `motionMultiplier`; virtualised lists above 50 rows with rAF coalescing; Welcome scroll using direct DOM transforms; one card face mounted at a time in LearnMode; heavy I/O off the main thread via workers.
 
 ## Priority list
@@ -144,19 +171,14 @@ Ordered by impact per effort.
 
 | # | Change | Location | Impact |
 |---|---|---|---|
-| 1 | Drop `mode="wait"` so the incoming route mounts immediately (or use `popLayout`) | AppShell.tsx:253 | Kills 220 ms+ dead time on every navigation |
-| 2 | Add `isAnimationActive={false}` to all 13 chart instances | pages/Analytics.tsx, components/analytics, components/cards/CardAnalytics.tsx, components/learn/SessionReport.tsx | Largest single GPU win |
-| 3 | Bound `card.history` retention (keep last N, or a separate table) and exclude full history from backup snapshots; prune the mirror folder | db/repository.ts:773, db/backups.ts:73-117 | Order-of-magnitude RAM + disk reduction; the only structural decision, worth making while schema migrations are young |
-| 4 | Memoise the Pomodoro context / split the ticking value to a leaf consumer; persist localStorage only on phase change | hooks/PomodoroContext.tsx:9-10, hooks/usePomodoro.ts:147-159 | Stops 1 Hz re-render of the study tree and per-second disk writes |
-| 5 | Dynamic-import the mathjs backup-validation path; gate `McpBridgeController` on `isElectron`; split the recharts polyfill helper out of `manualChunks.charts` | App.tsx:14, App.tsx:21, vite.config.ts:116-129 | Cuts the ~460 KB gz first load toward ~330 KB gz |
-| 6 | Make CoursePath's single-lesson LessonView lazy | pages/CoursePath.tsx:48 | Removes the 233 KB gz markdown stack from course-path navigations |
-| 7 | Convert bar/progress animations to `scaleX`/`scaleY`; drop the sidebar width transition and persistent backdrop-blurs | dashboard/StudySignals.tsx, layout/Sidebar.tsx:408, learn/LearnHeader.tsx:189 | Replaces per-frame layout reflow with compositor-only work |
-| 8 | Prefetch the destination route chunk on sidebar hover/pointerdown | components/layout/Sidebar.tsx | Hides chunk fetch behind the exit animation and human reaction time |
-| 9 | Scope session queries by deck before materialising; prune `useVirtualList`'s measurement registry; terminate the share worker on success | learn/useLearnSession.ts:1057-1061, hooks/useVirtualList.ts:109-128, db/share.ts:675-751 | Removes full-table loads and registry drift |
-| 10 | Add `loading="lazy"` / `decoding="async"` to rendered card images | components/markdown/MarkdownView.tsx, components/occlusion/OcclusionMaskLayer.tsx | Cheaper card-row mounts with image assets |
+| Done | Remove review-path aggregate scan and defer the daily trajectory sample | db/repository.ts | Removes the emergency write-path latency without changing the chart definition |
+| Done | Remove phone-visible chart, blur, layout and image costs; prefetch route chunks and combine Sidebar reads | UI routes and Sidebar | Reduces first paint, scroll paint and review-adjacent work |
+| Done | Isolate Pomodoro, virtual-list, share-worker and MCP background work | hooks, workers and settings | Removes invisible but persistent timers, registries and worker lifetimes |
+| Done | Split mathjs/MCP/Markdown/Share optional work from initial bundles | App.tsx, vite.config.ts, MarkdownView.tsx, shareCodec.ts | Initial CSS fell to 107,735 bytes; share worker to 3,813 bytes |
+| Deferred | Decide retention for `Card.history` and `sessionHistory` and reduce import/merge peak memory | repository.ts, schema.ts, portability.ts | Requires storage and analytics semantics, not another opportunistic cache |
 
 ## Scale verdict
 
-- **Today (≤2-5k cards):** functionally fine. The waste is real but invisible: the sidebar's on-every-review re-reads, the pomodoro tick, the eager charts chunk and the serialised exit. These should be fixed because they cost nothing to fix, not because they hurt today.
-- **10k cards:** per-review pool re-scoring and full-history table loads begin to stutter; first-load weight starts to matter on slow connections.
-- **100k cards:** the whole-table live-query architecture and unbounded history retention are a hard ceiling. Requires projected card rows (no inline history arrays) and a denormalised stats table before this point.
+- **Today (≤2–5k cards):** the phone-visible review path no longer carries the aggregate scan, per-second persistence or redundant Sidebar reads. Optional charts, Markdown and worker code stay off first paint.
+- **10k cards:** a single objective session selection/completion measured 13.31/12.48 ms, and one `recordReview` measured 16.48 ms. Inline history retention and multi-unit scoring remain the material costs.
+- **100k cards:** inline history and whole-table live-query/merge paths remain a hard ceiling. A retention and storage-projection decision is required before claiming support at that scale.
