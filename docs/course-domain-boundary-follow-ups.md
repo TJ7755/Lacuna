@@ -135,7 +135,7 @@ still used by the legacy dashboard and scheduler-compatible summary code. The ta
 
 ### 4. Clarify and test the two UserPerformance meanings
 
-**Status:** naming and focused persistence/undo coverage delivered; storage decision deferred
+**Status:** named adapters and focused persistence/undo coverage delivered; storage decision deferred
 
 **Priority:** medium, before any storage migration
 
@@ -147,14 +147,15 @@ The current table deliberately contains two key spaces:
   `recordReview` and `performanceForReviewUnits`.
 
 This is intentional transitional behaviour, but the names are easy to confuse. The adapter
-names now make the two key spaces explicit, and focused tests prove that a Course-keyed row does
-not enter backing-Deck pacing or workload estimates. The checkpoint passed 20 relevant tests,
-web typecheck, lint and whitespace validation. Further work should:
+names now make the two key spaces explicit, and review record/update/undo operations use the
+already-resolved review-unit key rather than reaching into the table directly. Focused tests prove
+that a Course-keyed row does not enter backing-Deck pacing or workload estimates, and that the
+review-unit adapter restores both missing and existing rows. The checkpoint passed 66 relevant
+tests and the web typecheck. Further work should:
 
-1. Add tests proving that course-session grading does not accidentally use a shadow-deck row.
-2. Check undo, course deletion, backup restore, merge import and course snapshot/restore for both
+1. Check undo, course deletion, backup restore, merge import and course snapshot/restore for both
    key spaces.
-3. Decide whether the product eventually needs one course-level calibration row, one row per
+2. Decide whether the product eventually needs one course-level calibration row, one row per
    lesson, or one row per backing scheduling unit. Record that decision before changing storage.
 
 Do not merge the two lookup paths merely because both return `UserPerformance`.

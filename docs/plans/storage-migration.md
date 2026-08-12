@@ -44,6 +44,19 @@ prove the semantics through adapters before choosing physical store names.
 The first implementation may retain the current table and add typed adapters. Splitting tables is
 not safe until backup, restore, merge, course deletion and undo have matching coverage.
 
+### Current compatibility checkpoint
+
+The current implementation retains one physical `userPerformance` table while making its two
+meanings explicit. `performanceForCourseBackingDecks` reads backing-Deck rows for pacing and
+workload estimates. `performanceForReviewUnit`, `updateReviewUnitPerformance` and
+`restoreReviewUnitPerformance` handle the already-resolved calibration unit for review, record
+and undo paths: Course/Lesson sessions pass the Course id, while legacy Deck sessions pass the
+Deck id. These adapters must not infer a Course calibration key from `Card.deckId`.
+
+The dedicated `reviewHistory` store is now the explicit read source for FSRS optimisation,
+analytics and diagnostics, while `Card.history` remains a mirrored compatibility projection for
+old backups and callers during the migration window.
+
 ### Review events move out of Card rows, but are not discarded
 
 `ReviewLog` is an append-only user record. The target is a dedicated `reviewHistory` store keyed
