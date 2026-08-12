@@ -1,5 +1,16 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Agent instruction split
+
+- Split the agent instructions in two: `AGENTS.md` now holds the agent-agnostic house rules and the
+  `.agent-mail` protocol, which every non-Claude worker uses by default, while `CLAUDE.md` holds only
+  the Claude-specific delegation, model-choice and worker-supervision rules.
+- Recorded Freebuff as the preferred delegation route ahead of Codex and OpenCode. It has no headless
+  mode, so Claude writes a mailbox-aware prompt for the prompter to run rather than driving it.
+- Removed GLM 5.2, which is no longer available.
+- Added `MEMORIES.md` as the agent-agnostic store of durable working facts, edited in place, distinct
+  from this chronological changelog.
+
 ## Unreleased — Scientific assessment
 
 - Added `docs/scientific-assessment.md`, recording the evidence strength, modelling assumptions,

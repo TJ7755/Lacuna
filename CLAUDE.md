@@ -1,51 +1,113 @@
 # Lacuna CLAUDE.md
 
-## Terminology
-- **Agent** — you, the AI receiving these instructions.
-- **Prompter** — the person giving you prompts.
+#AGENTS.md
 
-## How to read this file
-**Strict** instructions always apply. **Guidelines** apply by default but may be overridden by the agent where justified, or by an explicit prompt. If anything here is unclear, ask the prompter.
+These are Claude-specific instructions. The house rules live in `AGENTS.md` and apply to you in full; this file only adds what is specific to Claude Code. Where the two conflict, ask.
 
----
-
-## Strict instructions
-
-1. **British English** in all writing (comments, docs, user-facing text). Use American English only where a language's syntax forces it for code identifiers.
-2. **No emojis**, anywhere. Express tone in words, unless explicitly allowed by the user. If there are existing emojis in the codebase, do NOT proactively remove them unless asked or confirmed by user.
-3. **Before anything else** read the codebase *and* always ask the prompter about any ambiguities. Do not ask gratuitous questions.
-4. **Before implementing, reporting bugs, or suggesting features**, search the codebase (and the web where applicable) to check whether the functionality already exists.
-5. **Extend existing systems** rather than building parallel ones. **Follow existing conventions** — naming, file organisation, coding style. Do not introduce a different architectural pattern without strong reason.
-6. **Do not implement unrequested features** or speculative improvements. Suggest them instead; implement only with explicit approval.
-7. **Do not touch unrelated files.** Keep changes as small and local as possible.
-8. **Inspect surrounding code before changing behaviour.** Do not assume APIs, types, or files exist without checking.
-9. **No TODOs, placeholders, mock data, or stubs** unless explicitly requested.
-10. **Do not remove comments** unless incorrect, obsolete, or superseded. Update outdated comments rather than deleting them.
-11. **Fix incidental bugs** you find, even if it costs time. Mention each one, and commit it separately from the main task. If you don't want to clutter your context, feel free to use a sonnet subagent to fix.
-12. **Update documentation** (docs/SPEC.md, README.md, etc.) after any meaningful change. If the relevant documentation does not exist, ignore this.
-13. **UI changes must look native** — beautiful, seamless, never bolted on. Use the frontend-design skill (if it exists) and its principles. Keep user-facing text minimal and intentional; no cringe or design-commentary copy.
-14. **Avoid unnecessary dependencies.** - Keep dependencies up to date if possible and try to avoid security concerns.
+Throughout this file, "I", "me" and "my" mean Tom, the user. "You" means Claude, reading this. Never write about yourself in the first person here when I ask you to write to CLAUDE.md.
 
 ---
 
-## Guidelines
+## Delegation
 
-1. **Be surgical.** Prefer the least code that achieves the functionality with the least future maintenance. Reducing code beats adding it. Fix incidental performance issues you find. Write tests (it helps with reducing future maintenance).
-2. **When multiple reasonable solutions exist**, explain the trade-offs and ask the prompter which they prefer — unless one is clearly superior, in which case say so and proceed.
-3. **Prioritise performance over aesthetics**, and make the trade-off explicit. If the performance difference is negligible, prefer aesthetics.
-4. **Complete the entire task list in one go** (where a list exists), except for asking questions. Do not stop after the first task unless blocked by ambiguity or errors.
-5. **Extract rather than append.** When a change would push a file past ~500 lines, or adds a concern distinct from the file's main responsibility (e.g. gesture handling inside a page component), extract it into a new module instead of appending. Extending existing *systems* does not mean extending existing *files*.
-6. For any task touching more than ~5 files, or needing a multi-step research → plan → implement → review loop, follow the **subagent-orchestration** skill.
+You may delegate without asking me, provided the worker is one of these:
+
+1. A Claude subagent on Sonnet — never Opus, never Haiku.
+2. A mailbox worker: Codex (see below) or DeepSeek.
+
+Tell me when you are using one. For anything else — Opus subagents, Sol, or Codex on a model other than 5.6 Luna — ask me first and I will answer as quickly as I can. Concurrency limits are under Running workers.
+
+Keep in mind that I have usage limits, so ALWAYS be more economical. Luna is around as intelligent as Sonnet and is the cheapest thing I have that is any good.
+
+Luna is not actually unlimited. It only feels that way under normal use. Do not hammer it — treat it as cheap, not free. OpenCode workers (DeepSeek) genuinely cannot bill me, so send bulk work there first and keep Luna for work that needs the extra care.
+
+### Freebuff — the default hand-off
+
+Freebuff is the free tier of Codebuff. It is a full-screen TUI with no headless mode, so you cannot drive it: **I** run it, in my own terminal. It is nonetheless the preferred option, ahead of both Codex and OpenCode.
+
+So when work is delegable, the default is not to spawn a worker yourself. It is to write me a prompt I can paste into Freebuff. Write that prompt to run with minimal supervision:
+
+- State the task with the same bite-sized specificity you would give any slop-tier worker.
+- Include the `.agent-mail` protocol (slug, `-status.md`, `-question.md`, `-done.md`) so it reports progress and blocks on questions rather than guessing.
+- Tell it to commit regularly and to spawn a code-reviewer agent on every commit. On free inference that cadence is what keeps the output honest.
+- Name the files to touch and the existing code to imitate.
+
+Reach for Codex or DeepSeek instead only when I have explicitly told you to be autonomous.
+
+### Codex
+
+Use the Codex CLI ONLY on 5.6 Luna with Max thinking unless you get permission otherwise. Run it headlessly with `codex exec`; `-m` selects the model.
+
+Codex is the harness, not the model. It can run Luna, Terra or Sol. It is the most reliable harness — it follows a spec closely and its reply shape is enforced rather than requested. That is the harness, not the model. On Luna the code is still slop-tier by the standards below, and it has no taste in frontend, design or 3D. Review it like the rest. Sol is a different proposition entirely; see the table.
+
+### DeepSeek
+
+DeepSeek runs through OpenCode on `opencode/deepseek-v4-flash-free`, headlessly via `opencode run -m opencode/deepseek-v4-flash-free`. Cline cannot run it — Cline's DeepSeek provider needs a direct API key we do not have. The explicitly tagged `:0731` build exists solely on Ollama Cloud, which requires a paid subscription. The free OpenCode Zen build is very likely the same weights, but its slug carries no date, so treat the version as unconfirmed.
 
 ---
 
-## Agent mailbox
+## Choosing a model
 
- For task agents only if orchestrator explicitly approves: derive a stable kebab-case slug from the task, write `<slug>-status.md` heartbeats, and finish with `<slug>-done.md` containing a summary and commit hash. When blocked, write `<slug>-question.md`, stop work, and poll for `<slug>-answer.md` rather than guessing or giving up early.
+HIGHER is BETTER. These are vague values from personal experience. If you want to use models other than Luna or Sonnet, ask me.
 
-The orchestrator polls the mailbox roughly every 20 seconds, so questions will be seen and answered quickly. It deletes consumed files; a status or completion file vanishing is normal. Runtime mailbox files are temporary, ignored by Git, and must not be committed. See `.agent-mail/README.md` for the full protocol.
+| Model | Intelligence | Taste | 3D/Graphical | Cost | Speed |
+|--------|-------------:|------:|-------------:|-----:|------:|
+| Claude Opus 5 | 9 | 10 | 10 | 2 | 4 |
+| Claude Sonnet 5 | 6 | 7 | 0 | 5 | 3 |
+| Claude Haiku 4.5 *(don't use. Use DeepSeek or Luna)* | 0 | 0 | 0 | 7 | 5 |
+| GPT 5.6 Luna Max | 4.5 | 2 | 0 | 9 | 8 |
+| GPT 5.6 Terra Max | 7 | 5 | 0 | 4 | 7 |
+| GPT 5.6 Sol Medium *(use Medium for virtually everything; never above High)* | 9 | 6 | 6 | 4 | 9 |
+| DeepSeek V4 Flash *(free build via OpenCode Zen, likely the 0731 weights with enhanced coding)* | 4 | 3 | 0 | 10 | 4 |
+
+Freebuff sits outside the table because I drive it, not you. It runs Luna, so read it as the Luna row with a better price and a supervision cost paid by me rather than by my usage limits.
+
+3D and graphical work is effectively Opus 5 only. Sol can make a decent fist of it at a 6 and is the one fallback worth considering; everything else scores 0 and is not worth trying. Never delegate 3D, graphics or visual design to a Luna or DeepSeek worker, and never to a Sonnet subagent. Default to doing it yourself.
 
 ---
 
-## Project Context
-Lacuna is a prototype alpha project. Suggest changes that affect the codebase for long-term stability and performance as well as features, rather than short term niceness.
+## Keeping workers on a leash
+
+Anything below Opus 5 and GPT 5.6 Sol writes mediocre code. Luna and DeepSeek are the worst of it — standard code slop; Sonnet is slightly better and still not good. Left to run free they will turn this codebase into unmaintainable spaghetti, and I am (with your help) the one who maintains it.
+
+So when you delegate:
+
+- Keep tasks bite-sized and tightly specified. One clear change with a stated shape, not "implement the ration system".
+- Never hand them open-ended architectural or design decisions. Make those yourself, then hand over the mechanical work.
+- Tell them which files to touch and which patterns to follow. Point at existing code to imitate.
+- Read what comes back before you trust it. Treat a worker's output as a draft, not a result.
+- If a task cannot be made small and specific, do it yourself rather than delegate it badly.
+
+Sol is the exception to all of the above. It is a long-horizon worker: you can throw a whole feature at it and it will carry the thing to completion rather than needing it sliced up. The output is mediocre and needs polishing afterwards, but it is real work at real scale.
+
+Therefore, do not decompose for Sol — that is for the slop tier. Give it the full task, a clear spec and hard constraints, then review what comes back and polish it yourself. The leash on Sol is about constraints and review, not about task size.
+
+Sol's limits are real. It is not free and not unlimited, so do not treat it as a bottomless bucket the way you can with DeepSeek. Reach for it when the job genuinely warrants it, and send bulk grunt work to the free workers instead. Ask me before using it.
+
+The split worth remembering: Sol takes volume and endurance, you take taste, creativity and 3D. That is what keeps my Opus limits going on work only you can do.
+
+---
+
+## Running workers
+
+Every non-Claude worker communicates through `.agent-mail`; see `AGENTS.md` and `.agent-mail/README.md`. Background the wait so I can keep talking to you while a worker runs, and pick the reply up when it lands:
+
+```sh
+.agent-mail/bin/await-mail <task-slug> done 900
+```
+
+Concurrency — two per harness, not two overall. OpenCode and Codex are separate quotas, so two DeepSeeks compete with each other while a DeepSeek and a Codex do not. The old flat cap of two punished the safe case and permitted the risky one. Claude subagents keep their own cap of two, because that is real spend.
+
+The rule that actually matters is territory: never have two workers writing the same files at once. They share one working tree with no isolation. A rate limit is loud — it comes back as a blocked message you can simply resend. A write collision is quiet and expensive. This includes Freebuff: if I am running it, treat the files it owns as taken.
+
+Do not commit while workers are running, or the commit captures a half-written state.
+
+---
+
+## Other
+
+- Background as many commands as possible so I can keep chatting to you while they run.
+- Only use MCPs like browser use, Figma, Blender or computer use when I allow you to.
+- Ask me questions — loads of them. Make sure you know everything you need rather than making things up. If things are obvious, don't ask.
+- I have usage limits. Be terse with code, reasoning and output tokens. Suggest subagents liberally.
+- Update `docs/CHANGES.md` after any applicable change or lesson learned. It directly helps future models.
