@@ -33,7 +33,11 @@ import { computeStudyStats, buildDeckSecondsMap, type StudyStats } from '../fsrs
 import { lessonCardMembership } from '../course/studyPools';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
-import { findBackingDeck, performanceForCourseBackingDecks } from '../db/backingDecks';
+import {
+  findBackingDeck,
+  findBackingDecks,
+  performanceForCourseBackingDecks,
+} from '../db/backingDecks';
 
 // ---------------------------------------------------------------------------
 // Individual record hooks
@@ -99,6 +103,17 @@ export function useLessonBackingDeck(
 /** Resolve the hidden scheduling deck for cards not assigned to a lesson. */
 export function useCourseBankBackingDeck(courseId: string | undefined): Deck | undefined {
   return useLiveQuery(() => (courseId ? findBackingDeck(courseId, null) : undefined), [courseId]);
+}
+
+/** Resolve every lesson and unassigned backing deck for a Question Bank in one live query. */
+export function useCourseBankBackingDecks(
+  courseId: string | undefined,
+  lessonIds: readonly string[],
+): Map<string | null, Deck> | undefined {
+  return useLiveQuery(
+    () => (courseId ? findBackingDecks(courseId, lessonIds) : new Map<string | null, Deck>()),
+    [courseId, lessonIds],
+  );
 }
 
 /** Load calibration rows for a course without exposing its backing deck ids. */

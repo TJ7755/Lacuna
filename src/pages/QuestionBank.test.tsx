@@ -22,8 +22,7 @@ vi.mock('../state/useCourseData', () => ({
   useCourseCards: () => mockCards,
   useSequences: () => mockSequences,
   useOcclusions: () => mockOcclusions,
-  useLessonBackingDeck: () => mockDeck,
-  useCourseBankBackingDeck: () => mockDeck,
+  useCourseBankBackingDecks: () => new Map([[null, mockDeck], ['lesson-1', mockDeck]]),
 }));
 
 const mockDeck: Deck = {

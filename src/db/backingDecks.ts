@@ -191,6 +191,61 @@ export async function findBackingDeck(
   return undefined;
 }
 
+/** Resolve all backing decks needed by a course question bank in one read pass. */
+export async function findBackingDecks(
+  courseId: string,
+  lessonIds: readonly string[],
+): Promise<Map<string | null, Deck>> {
+  const lessonIdSet = new Set(lessonIds);
+  const [owned, cards, links] = await Promise.all([
+    db.decks
+      .filter(
+        (deck) =>
+          deck.backingCourseId === courseId &&
+          (deck.backingLessonId === null ||
+            deck.backingLessonId === undefined ||
+            lessonIdSet.has(deck.backingLessonId)),
+      )
+      .toArray(),
+    db.cards.where('courseId').equals(courseId).toArray(),
+    lessonIds.length > 0
+      ? db.lessonCards.where('lessonId').anyOf([...lessonIds]).toArray()
+      : [],
+  ]);
+
+  const result = new Map<string | null, Deck>();
+  for (const deck of owned) {
+    result.set(deck.backingLessonId ?? null, deck);
+  }
+
+  const deckIdsByScope = new Map<string | null, string>();
+  for (const card of cards) {
+    const scope =
+      card.primaryLessonId !== null &&
+      card.primaryLessonId !== undefined &&
+      lessonIdSet.has(card.primaryLessonId)
+        ? card.primaryLessonId
+        : card.primaryLessonId === null || card.primaryLessonId === undefined
+          ? null
+          : undefined;
+    if (scope !== undefined && !result.has(scope)) deckIdsByScope.set(scope, card.deckId);
+  }
+
+  for (const link of links) {
+    if (result.has(link.lessonId) || deckIdsByScope.has(link.lessonId)) continue;
+    const card = cards.find((candidate) => candidate.id === link.cardId);
+    if (card && card.primaryLessonId !== link.lessonId) deckIdsByScope.set(link.lessonId, card.deckId);
+  }
+
+  const deckIds = [...new Set(deckIdsByScope.values())];
+  const decks = deckIds.length > 0 ? await db.decks.bulkGet(deckIds) : [];
+  for (const [scope, deckId] of deckIdsByScope) {
+    const deck = decks[deckIds.indexOf(deckId)];
+    if (deck) result.set(scope, deck);
+  }
+  return result;
+}
+
 async function courseWithAssessments(courseId: string): Promise<Course | undefined> {
   const [record, assessments] = await Promise.all([
     db.courses.get(courseId),
