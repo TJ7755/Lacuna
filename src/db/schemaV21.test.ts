@@ -130,7 +130,7 @@ describe('schema v21 domain storage', () => {
         backingLessonId: null,
       },
     ]);
-    const review = { 
+    const review = {
       eventId: 'review-1',
       timestamp: 100,
       grade: 3,

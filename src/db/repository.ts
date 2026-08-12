@@ -2751,6 +2751,9 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
         db.courses,
         db.lessons,
         db.reviewHistory,
+        db.schedulingUnits,
+        db.coursePerformance,
+        db.schedulingPerformance,
       ],
       async () => {
         const previous = await db.sequences.get(sequence.id);
