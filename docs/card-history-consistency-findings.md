@@ -6,8 +6,9 @@
 lineage import/merge, and canonical review-history reads.
 
 **Method:** Focused Vitest tests were added to the existing repository, portability,
-course-repository, merge-import and review-history-read fixtures. No production code,
-Dexie schema, or wire format was changed.
+course-repository, merge-import and review-history-read fixtures. The review also repaired
+canonical-authority handling in the read adapter and snapshot restore paths; no Dexie schema or
+wire format changed.
 
 ## Findings
 
@@ -25,53 +26,50 @@ hydrated read is empty. The test also checks the deterministic event-backed cano
 
 ### 2. `exportDatabase` and `importBackup`
 
-**Result: consistent for both import modes tested.**
+**Result: consistent for replace and non-empty merge imports.**
 
-A reviewed card exported and imported through both `replace` and `merge` retains exactly
-one projection entry, exactly one canonical row, and one hydrated event. The canonical row
-matches the exported event, with no duplication or loss.
+A reviewed card exported and imported through both modes retains exactly one projection entry,
+exactly one canonical row, and one hydrated event. The merge case also starts with local review
+data and re-imports the same backup, proving that unrelated local evidence survives and the
+incoming event is not duplicated.
 
-- Test: `src/db/portability.test.ts:197-239`
+- Test: `src/db/portability.test.ts:197-270`
 - Export projection/canonical union: `src/db/portability.ts:56-127`
 - Import preparation: `src/db/portability.ts:231-234`
 - Merge canonical insertion and collision handling: `src/db/portability.ts:579-591`
 
 ### 3. `snapshotCourse`/`restoreCourse` and `snapshotLesson`/`restoreLesson`
 
-**Result: divergence observed when an explicit snapshot canonical result is empty.**
+**Result: consistent when an explicit canonical result is empty.**
 
-The focused tests remove the canonical event from an otherwise valid snapshot while
-retaining the event in the card projection. Restore then produces:
+The focused tests remove the canonical event from an otherwise valid snapshot while retaining the
+event in the card projection. Restore now treats the explicit canonical array as authoritative:
 
-- zero matching rows in `db.reviewHistory`;
-- one event in the restored `Card.history`; and
-- one event from `hydrateCardsWithHistory`.
+- zero matching rows are restored to `db.reviewHistory`;
+- the restored `Card.history` projection is empty; and
+- a hydrated read is empty.
 
-This is current behaviour, recorded rather than repaired. `restoreCourse` and
-`restoreLesson` both use the card projection as a fallback only when
-`snapshot.reviewHistory` is `undefined`, so an explicit empty array does not itself
-reconstruct a canonical row. The resurrected read comes from the separate read adapter's
-projection fallback.
+Snapshots from older callers that omit `reviewHistory` still reconstruct canonical rows from the
+card projection for compatibility. Explicitly supplied canonical results never resurrect stale
+projection events.
 
-- Course test: `src/db/courseRepository.test.ts:509-538`
-- Lesson test: `src/db/courseRepository.test.ts:729-757`
-- Course restore source: `src/db/repository.ts:1380-1383`
-- Lesson restore source: `src/db/repository.ts:2605-2608`
-- Read fallback source: `src/db/reviewHistoryRead.ts:18-33, 36-46, 64-81`
+- Course test: `src/db/courseRepository.test.ts:509-536`
+- Lesson test: `src/db/courseRepository.test.ts:729-755`
+- Restore projection normalisation: `src/db/reviewHistory.ts:61-89`
+- Restore paths: `src/db/repository.ts:523-540, 1333-1394, 1507-1552`
 
 ### 4. `importLineageFirstTime` and `mergeLineageUpdate`
 
 **Result: consistent for the review evidence represented by the lineage wire contract.**
 
-First lineage import creates a card with an empty projection and no canonical rows; the
-hydrated read is empty. An auto-applied lineage content update preserves a locally recorded
-review in both stores, including its event id, timestamp, card ownership and hydrated read.
+First lineage import creates a card with an empty projection and no canonical rows; the hydrated
+read is empty. An auto-applied lineage content update preserves a locally recorded review in both
+stores, including its event id, timestamp, card ownership and hydrated read.
 
 The merge test deliberately describes preservation rather than incoming-review conflict
-resolution: the current lineage payload shape does not carry review-history events, so it
-cannot compare newer local evidence with competing incoming review evidence. It proves that
-the content-only merge path does not overwrite existing local evidence or write one side
-only.
+resolution: the current lineage payload shape does not carry review-history events, so it cannot
+compare newer local evidence with competing incoming review evidence. It proves that the
+content-only merge path does not overwrite or write one side only.
 
 - First-import test: `src/db/mergeImport.test.ts:48-56`
 - Preservation test: `src/db/mergeImport.test.ts:436-487`
@@ -81,24 +79,23 @@ only.
 
 ### 5. Read precedence when only one side exists
 
-**Result: canonical rows win when present; projection-only rows currently win when the
-canonical query has no matching rows.**
+**Result: explicit canonical results are authoritative; default reads retain the compatibility
+fallback.**
 
-The canonical-only case hydrates the card from the event store even though its projection
-is empty. The reverse case hydrates the stale projection after `db.reviewHistory` is empty.
-That projection fallback is the observed divergence from the canonical-authority contract
-recorded in `MEMORIES.md`; no production fix was made in this audit.
+When a canonical row is present, hydration uses it even if the card projection is stale. The
+normal read adapter still retains legacy-only projection rows while the compatibility window is
+open. Callers that supply a canonical result, including an explicit empty array, bypass that
+fallback and receive exactly the supplied events. Snapshot restores use that explicit boundary
+to prevent stale projections from being written back.
 
-- Test: `src/db/reviewHistoryRead.test.ts:78-101`
-- Same-event canonical precedence coverage: `src/db/reviewHistoryRead.test.ts:58-76`
-- Projection fallback source: `src/db/reviewHistoryRead.ts:18-33`
-- Canonical query and merge: `src/db/reviewHistoryRead.ts:40-46`
-- Hydration assignment: `src/db/reviewHistoryRead.ts:69-81`
+- Tests: `src/db/reviewHistoryRead.test.ts:34-105`, `src/db/read.test.ts:126-151`
+- Read adapter: `src/db/reviewHistoryRead.ts:9-92`
+- Projection normalisation: `src/db/reviewHistory.ts:61-89`
 
 ## Validation
 
-The focused and full suites passed after each operation commit. Final full-suite results:
+The focused and full suites were run after the repair:
 
 - `bun run typecheck`
 - `bun run lint`
-- `bun run test` — 210 test files, 1,843 tests passed
+- `bun run test`

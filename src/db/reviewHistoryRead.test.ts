@@ -75,7 +75,7 @@ describe('review-history read adapter', () => {
     });
   });
 
-  it('uses canonical-only rows when present and currently falls back to projection-only rows when absent', async () => {
+  it('uses canonical-only rows and falls back to projection-only rows when absent', async () => {
     const deck = await createDeck('Read precedence');
     const card = await createCard(deck.id, 'front_back', 'Question', 'Answer');
     await db.reviewHistory.add({
@@ -93,11 +93,12 @@ describe('review-history read adapter', () => {
     await db.cards.update(card.id, { history: [review(999, 'projection-only')] });
     const projectionHydrated = (await hydrateCardsWithHistory([(await db.cards.get(card.id))!]))[0];
 
-    // This is the current compatibility fallback, and is the divergence recorded
-    // in the findings report: an explicit canonical result with no matching row
-    // does not suppress the stale projection.
     expect(projectionHydrated.history).toHaveLength(1);
     expect(projectionHydrated.history[0].eventId).toBe('projection-only');
+
+    const explicitEmptyHydrated =
+      (await hydrateCardsWithHistory([(await db.cards.get(card.id))!], []))[0];
+    expect(explicitEmptyHydrated.history).toEqual([]);
   });
 
   it('lists course events without leaking events from another course', async () => {
@@ -105,8 +106,24 @@ describe('review-history read adapter', () => {
     const chemistry = await createCourse('Chemistry');
     const biologyCard = await createCourseCard(biology.id, 'front_back', 'Q1', 'A1');
     const chemistryCard = await createCourseCard(chemistry.id, 'front_back', 'Q2', 'A2');
-    await db.cards.update(biologyCard.id, { history: [review(200)] });
-    await db.cards.update(chemistryCard.id, { history: [review(300)] });
+    await db.cards.update(biologyCard.id, { history: [review(200, 'biology-event')] });
+    await db.cards.update(chemistryCard.id, { history: [review(300, 'chemistry-event')] });
+    await db.reviewHistory.bulkAdd([
+      {
+        ...review(200, 'biology-event'),
+        id: reviewHistoryEntryIdForEvent('biology-event'),
+        cardId: biologyCard.id,
+        deckId: biologyCard.deckId,
+        courseId: biology.id,
+      },
+      {
+        ...review(300, 'chemistry-event'),
+        id: reviewHistoryEntryIdForEvent('chemistry-event'),
+        cardId: chemistryCard.id,
+        deckId: chemistryCard.deckId,
+        courseId: chemistry.id,
+      },
+    ]);
 
     const events = await listReviewHistoryForCourse(biology.id);
 

@@ -33,6 +33,7 @@ import type {
   UserPerformance,
 } from './types';
 import {
+  cardsWithReviewHistory,
   reviewHistoryEntriesForCard,
   reviewHistoryEntryIdForEvent,
   type ReviewHistoryEntry,
@@ -522,15 +523,19 @@ export async function snapshotCards(ids: string[]): Promise<CardSnapshot> {
 /** Re-insert previously captured cards (the inverse of deleteCards). */
 export async function restoreCards(cards: CardSnapshot): Promise<void> {
   try {
+    const cardsToRestore =
+      cards.reviewHistory === undefined
+        ? cards
+        : cardsWithReviewHistory(cards, cards.reviewHistory);
     await db.transaction(
       'rw',
       [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory],
       async () => {
-        await db.cards.bulkPut(cards);
+        await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(cards.lessonCards);
         await db.lessonCardExposures.bulkPut(cards.lessonCardExposures);
         await db.reviewHistory.bulkPut(
-          cards.reviewHistory ?? cards.flatMap((card) => reviewHistoryEntriesForCard(card)),
+          cards.reviewHistory ?? cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
         );
       },
     );
@@ -1333,6 +1338,10 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
 export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
   try {
     finalAssessmentForCourse(snapshot.course.id, snapshot.courseAssessments);
+    const cardsToRestore =
+      snapshot.reviewHistory === undefined
+        ? snapshot.cards
+        : cardsWithReviewHistory(snapshot.cards, snapshot.reviewHistory);
     for (const assessment of snapshot.courseAssessments) {
       if (assessment.courseId !== snapshot.course.id) {
         throw new Error('A course snapshot cannot contain assessments from another course.');
@@ -1374,12 +1383,12 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.courseAssessments.bulkPut(snapshot.courseAssessments),
           db.revisionPlans.bulkPut(snapshot.revisionPlans),
           db.sequences.bulkPut(snapshot.sequences),
-          db.cards.bulkPut(snapshot.cards),
+          db.cards.bulkPut(cardsToRestore),
           db.decks.bulkPut(snapshot.decks),
           db.userPerformance.bulkPut(snapshot.userPerformance),
           db.reviewHistory.bulkPut(
             snapshot.reviewHistory ??
-              snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card)),
+              cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
           ),
           // Drop the old auto-increment ids so Dexie reassigns them cleanly.
           db.sessionHistory.bulkAdd(
@@ -1506,6 +1515,10 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
 /** Restore a lesson snapshot captured immediately before {@link deleteLesson}. */
 export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
   try {
+    const cardsToRestore =
+      snapshot.reviewHistory === undefined
+        ? snapshot.cards
+        : cardsWithReviewHistory(snapshot.cards, snapshot.reviewHistory);
     await db.transaction(
       'rw',
       [
@@ -1533,7 +1546,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
           snapshot.lessonCompletion
             ? db.lessonCompletions.put(snapshot.lessonCompletion)
             : Promise.resolve(),
-          db.cards.bulkPut(snapshot.cards),
+          db.cards.bulkPut(cardsToRestore),
           db.sequences.bulkPut(snapshot.sequences),
           db.decks.bulkPut(snapshot.decks),
           db.sessionHistory.bulkPut(snapshot.sessionHistory),
@@ -1541,7 +1554,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
           db.courseAssessments.bulkPut(snapshot.courseAssessments),
           db.reviewHistory.bulkPut(
             snapshot.reviewHistory ??
-              snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card)),
+              cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
           ),
         ]);
       },
@@ -2594,17 +2607,21 @@ export async function snapshotSequence(id: string): Promise<SequenceSnapshot | n
 /** Re-insert a previously captured SequenceSnapshot (the inverse of deleteSequence/updateSequence). */
 export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void> {
   try {
+    const cardsToRestore =
+      snapshot.reviewHistory === undefined
+        ? snapshot.cards
+        : cardsWithReviewHistory(snapshot.cards, snapshot.reviewHistory);
     await db.transaction(
       'rw',
       [db.sequences, db.cards, db.reviewHistory, db.lessonCards, db.lessonCardExposures],
       async () => {
         await db.sequences.put(snapshot.sequence);
-        await db.cards.bulkPut(snapshot.cards);
+        await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(snapshot.lessonCards);
         await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
         await db.reviewHistory.bulkPut(
           snapshot.reviewHistory ??
-            snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card)),
+            cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
         );
       },
     );

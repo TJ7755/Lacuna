@@ -225,7 +225,35 @@ describe('exportDatabase', () => {
         db.userPerformance.clear(),
       ]);
 
+      let localCardId: string | undefined;
+      if (mode === 'merge') {
+        const localDeck = await createDeck('Local merge data');
+        const localCard = await createCard(localDeck.id, 'front_back', 'Local Q', 'Local A');
+        await recordReview({
+          card: localCard,
+          eventId: 'event-local-merge-data',
+          sessionId: 'session-local-merge-data',
+          sessionKind: 'deck',
+          deck: localDeck,
+          grade: 3,
+          responseTimeSec: 1,
+          distracted: false,
+          correct: true,
+          now: 1_725_123_456_788,
+        });
+        localCardId = localCard.id;
+      }
+
       await importBackup(backup, mode);
+      if (mode === 'merge') {
+        expect(await db.cards.get(localCardId!)).toBeDefined();
+        expect(
+          (await db.reviewHistory.toArray()).filter(
+            (entry) => entry.eventId === 'event-local-merge-data',
+          ).length,
+        ).toBe(1);
+        await importBackup(backup, mode);
+      }
 
       const restoredCard = (await db.cards.get(card.id))!;
       const restoredEvents = await db.reviewHistory.where('cardId').equals(card.id).toArray();

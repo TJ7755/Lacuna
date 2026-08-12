@@ -506,7 +506,7 @@ describe('snapshotCourse / restoreCourse', () => {
     expect(lessonAfter!.unlockedAt).toBe(unlockedAt);
   });
 
-  it('documents projection resurrection when a course snapshot omits canonical events', async () => {
+  it('clears the card projection when a course snapshot omits canonical events', async () => {
     const course = await createCourse('Course snapshot history boundary');
     const lesson = await createLesson(course.id, 'Lesson 1');
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
@@ -524,17 +524,14 @@ describe('snapshotCourse / restoreCourse', () => {
     });
 
     const snapshot = await snapshotCourse(course.id);
-    const projection = snapshot!.cards.find((candidate) => candidate.id === card.id)!.history;
     snapshot!.reviewHistory = [];
     await deleteCourse(course.id);
     await restoreCourse(snapshot!);
 
     const restored = (await db.cards.get(card.id))!;
-    expect(restored.history).toEqual(projection);
+    expect(restored.history).toEqual([]);
     expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
-    // Current read behaviour retains a projection-only event even though the
-    // explicit canonical result has no matching row.
-    expect((await hydrateCardsWithHistory([restored]))[0].history).toHaveLength(1);
+    expect((await hydrateCardsWithHistory([restored]))[0].history).toEqual([]);
   });
 
   it('does not partially restore either key space when snapshot validation rejects', async () => {
@@ -724,7 +721,7 @@ describe('deleteLesson', () => {
     expect(await db.userPerformance.get(deckId)).toBeDefined();
   });
 
-  it('documents projection resurrection when a lesson snapshot omits canonical events', async () => {
+  it('clears the card projection when a lesson snapshot omits canonical events', async () => {
     const course = await createCourse('Lesson snapshot history boundary');
     const lesson = await createLesson(course.id, 'Lesson 1');
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
@@ -742,18 +739,15 @@ describe('deleteLesson', () => {
     });
 
     const snapshot = await snapshotLesson(lesson.id);
-    const projection = snapshot!.cards.find((candidate) => candidate.id === card.id)!.history;
     snapshot!.reviewHistory = [];
     await deleteLesson(lesson.id);
     await db.reviewHistory.clear();
     await restoreLesson(snapshot!);
 
     const restored = (await db.cards.get(card.id))!;
-    expect(restored.history).toEqual(projection);
+    expect(restored.history).toEqual([]);
     expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
-    // Current read behaviour retains a projection-only event even though the
-    // explicit canonical result has no matching row.
-    expect((await hydrateCardsWithHistory([restored]))[0].history).toHaveLength(1);
+    expect((await hydrateCardsWithHistory([restored]))[0].history).toEqual([]);
   });
 
   it('retargets assessment placement to the preceding lesson and restores it on undo', async () => {
