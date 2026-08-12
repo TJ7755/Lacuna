@@ -1,5 +1,15 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Dead StudyEntry screen removed
+
+- Removed the unused "Choose what to study" entry screen. The study bottom sheet
+  (`StudySheet.tsx`) replaced it, so `StudyEntry` and its `entryHasChoice` helper had no
+  production callers left anywhere; both are deleted. The file now holds only
+  `StudyFlowMessage` and is renamed to `StudyFlowMessage.tsx`, which the course study flow
+  still renders for its empty, blocked and caught-up states. The single-option shortcut
+  documented in the "Study entry" section below is unchanged: a session with no decision
+  to make still opens directly.
+
 ## Unreleased — Learn screen follow-ups reconciled
 
 - Replaced the stale "Follow-ups, delegable once this lands" record in
