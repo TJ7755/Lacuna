@@ -17,11 +17,10 @@ export function CourseTabs({ courseId }: { courseId: string }) {
   return (
     <nav
       aria-label="Course sections"
-      // max-w-full with scroll is the last resort at very small widths or large font
+      // Hidden below sm, where CourseSectionBar carries these same sections within
+      // thumb reach instead. max-w-full with scroll is the last resort at large font
       // scales: the bar slides rather than wrapping its labels inside their pills.
-      // Taller and full width on a phone, where these were fiddly to hit accurately;
-      // the original compact pill returns from sm upwards.
-      className="flex h-12 w-full items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-ink/5 p-1 text-sm sm:inline-flex sm:h-9 sm:w-auto sm:max-w-full sm:shrink-0 sm:p-0.5"
+      className="hidden h-9 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-ink/5 p-0.5 text-sm sm:inline-flex"
     >
       {COURSE_SECTIONS.map(({ label, short, suffix }) => {
         const to = `${base}${suffix}`;
@@ -41,7 +40,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
             // mobile text is a visual abbreviation rather than a different control.
             aria-label={label}
             className={cn(
-              'flex h-full flex-1 items-center justify-center whitespace-nowrap rounded-full px-3 font-medium transition-colors sm:flex-none sm:justify-start',
+              'flex h-full items-center whitespace-nowrap rounded-full px-3 font-medium transition-colors',
               active ? 'bg-surface text-ink shadow-sm shadow-black/[0.04]' : 'text-ink-faint hover:text-ink',
             )}
           >

@@ -5,7 +5,9 @@ import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
 import { ErrorBoundary } from './ErrorBoundary';
 import { CommandPalette } from '../search/CommandPalette';
-import { BottomNav } from './BottomNav';
+import { CourseSectionBar } from '../course/CourseSectionBar';
+import { courseIdFromPath } from '../course/courseSections';
+import { cn } from '../ui/cn';
 import { useCourseSectionSwipe } from '../course/useCourseSectionSwipe';
 import { KeyHints } from '../ui/KeyHints';
 import { CloseIcon, LacunaIcon } from '../ui/icons';
@@ -63,6 +65,8 @@ export function AppShell() {
   const [arrivedFromLanding] = useState(() => consumeLandingArrival());
   const { onPointerDown, onPointerMove, onPointerUp, onPointerCancel, sectionDirection } =
     useCourseSectionSwipe();
+  // The section bar only exists inside a course, so only those pages need to clear it.
+  const inCourse = courseIdFromPath(location.pathname) !== null;
 
   // Keep an icon rail visible on narrower desktop windows instead of spending a
   // quarter of the viewport on the full sidebar. The user's preference resumes
@@ -96,9 +100,9 @@ export function AppShell() {
   }, [location.pathname]);
 
   // Keep the page behind either modal surface out of both keyboard navigation and
-  // the accessibility tree until the overlay closes. BottomNav is a sibling of the
-  // shell body, so it must be included explicitly rather than relying on the body
-  // region's inert attribute.
+  // the accessibility tree until the overlay closes. The course section bar is a
+  // sibling of the shell body, so it must be included explicitly rather than relying
+  // on the body region's inert attribute.
   useEffect(() => {
     const background = [
       titlebarRef.current,
@@ -261,7 +265,10 @@ export function AppShell() {
             ref={mainRef}
             // Bottom padding clears the mobile navigation bar, which is fixed and would
             // otherwise cover the last of the page's content.
-            className="min-w-0 flex-1 overflow-y-auto overscroll-y-none pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0"
+            className={cn(
+              'min-w-0 flex-1 overflow-y-auto overscroll-y-none',
+              inCourse && 'pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-0',
+            )}
             style={{ touchAction: 'pan-y' }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -295,7 +302,7 @@ export function AppShell() {
         </div>
       </div>
       <div ref={bottomNavRef}>
-        <BottomNav onOpenPalette={() => setPaletteOpen(true)} />
+        <CourseSectionBar />
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
