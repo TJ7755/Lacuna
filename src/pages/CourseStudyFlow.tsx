@@ -12,7 +12,7 @@ import {
 import type { StudyFlowStep } from '../course/studyFlowPlanner';
 import type { SessionSummary } from '../components/learn/types';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
-import { StudyFlowMessage } from '../components/learn/StudyEntry';
+import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
 import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
 

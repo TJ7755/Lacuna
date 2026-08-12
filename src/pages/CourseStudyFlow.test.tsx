@@ -219,7 +219,7 @@ describe('CourseStudyFlow', () => {
     renderFlow();
 
     // No entry screen here: these flows offer a single way in, so the study flow
-    // opens the only session directly. See entryHasChoice in StudyEntry.
+    // opens the only session directly.
     await screen.findByTestId('learn-request');
     expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' });
   });
