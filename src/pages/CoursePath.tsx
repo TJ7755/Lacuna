@@ -383,44 +383,46 @@ export function CoursePath() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      {/* Breadcrumb */}
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      {/* One row of chrome, not three. The back link, the section tabs and the lesson
+          view mode toggle all sit together, so the course card starts near the top of
+          the screen rather than below a stack of single-control rows. */}
+      <div className="mb-4 flex items-center justify-between gap-3">
         <Link
           to="/"
-          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
         >
           <ChevronLeftIcon width={16} height={16} />
           All courses
         </Link>
-        <CourseTabs courseId={courseId ?? ''} />
+        <div className="flex min-w-0 items-center gap-3">
+          <CourseTabs courseId={courseId ?? ''} />
+          {/* Lesson view mode configures the path view rather than the course as a
+              whole, so it stays in the path's own header rather than moving into
+              CourseTabs, which is shared across all four course surfaces. */}
+          {!canEditLessons(course) ? (
+            <span className="hidden text-xs text-ink-faint sm:inline">
+              Editing is locked for shared courses
+            </span>
+          ) : (
+            <LessonViewModeToggle
+              mode={lessonViewMode}
+              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Upcoming-assessment pills (left) and the lesson view mode toggle
-          (right, unchanged) share this row so the strip doesn't add height
-          of its own when there's room; it wraps below on narrow screens.
-          Lesson view mode configures the path view (not the course as a
-          whole), so it stays here in the path's own header area rather than
-          moving into CourseTabs (which is shared across all course surfaces). */}
-      {/* justify-start, not justify-end: the strip's mr-auto already pushes the toggle
-          right while both share a line, and starting from the left means the toggle
-          aligns with everything else once the row wraps, instead of being stranded on
-          the right of its own line. */}
-      <div className="mb-3 flex flex-wrap items-center justify-start gap-3">
+      {/* A single upcoming assessment is already named by the card's eyebrow and counted
+          by its days-to-go pill, so the strip would be a third copy of one date. It earns
+          its row only when there is a choice of assessment to select between. */}
+      {assessments.length > 1 && (
         <UpcomingAssessmentsStrip
           assessments={assessments}
           now={now}
           onSelect={setSelectedAssessmentId}
-          className="mr-auto"
+          className="mb-3"
         />
-        {!canEditLessons(course) ? (
-          <span className="text-xs text-ink-faint">Editing is locked for shared courses</span>
-        ) : (
-          <LessonViewModeToggle
-            mode={lessonViewMode}
-            onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-          />
-        )}
-      </div>
+      )}
 
       {/* Header — title, a row of labelled stat pills (HeaderStats), and the
           Study action. */}
