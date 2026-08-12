@@ -52,7 +52,8 @@ import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
 import { emptyPerformance } from '../fsrs/grading';
 import { isLeech } from '../fsrs/leech';
 import { predictedRetrievabilityAtHorizon } from '../fsrs/progress';
-import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
+import { addDays } from '../fsrs/heatmap';
+import { defaultExamDate, getLocalTimeZone, startOfDay } from '../utils/datetime';
 import { readPracticeDefaults } from '../state/practiceDefaults';
 import { readLessonViewMode } from '../state/lessonViewMode';
 import { scheduleAssetGc } from './assets';
@@ -73,7 +74,6 @@ import {
   LABEL_CARD_SUFFIX,
   type GeneratedCardPayload,
 } from './sequenceGeneration';
-import { assertValidCardPayload } from '../items/payloadValidation';
 import { friendlyDbError } from './dbErrors';
 export {
   createPracticeNode,
@@ -81,6 +81,12 @@ export {
   deletePracticeNode,
   savePracticeMilestoneProgress,
 } from './practiceNodeRepository';
+
+async function assertValidCardPayload(type: CardType, payload: unknown): Promise<void> {
+  if (payload === undefined || payload === null) return;
+  const { assertValidCardPayload: validate } = await import('../items/payloadValidation');
+  validate(type, payload);
+}
 
 // ---------------------------------------------------------------------------
 // Decks
@@ -208,7 +214,7 @@ export async function createCard(
   opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'payload'>,
 ): Promise<Card> {
   try {
-    assertValidCardPayload(type, opts?.payload);
+    await assertValidCardPayload(type, opts?.payload);
     const card: Card = {
       id: makeId(),
       deckId,
@@ -254,7 +260,7 @@ export async function createCards(
   opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<Card[]> {
   try {
-    for (const draft of drafts) assertValidCardPayload(draft.type, draft.payload);
+    for (const draft of drafts) await assertValidCardPayload(draft.type, draft.payload);
     const now = Date.now();
     const cards: Card[] = drafts.map((draft, i) => ({
       id: makeId(),
@@ -451,7 +457,7 @@ export async function updateCard(id: string, changes: Partial<Card>): Promise<vo
     if ('payload' in changes) {
       const card = await db.cards.get(id);
       if (card && changes.payload !== undefined) {
-        assertValidCardPayload(changes.type ?? card.type, changes.payload);
+        await assertValidCardPayload(changes.type ?? card.type, changes.payload);
       }
     }
     await db.cards.update(id, changes);
@@ -697,8 +703,8 @@ export interface RecordReviewResult {
   cardBefore: Card;
   /** False when this eventId had already been committed and no state changed. */
   recorded: boolean;
-  /** Id of the SessionHistory row written for this review, so it can be undone. */
-  sessionHistoryId: number;
+  /** Id of the SessionHistory row if the post-commit trajectory sample has completed. */
+  sessionHistoryId?: number;
   /** The review kind this was recorded against (see {@link RecordReviewArgs.kind}), so
    * the caller can carry it straight into {@link ReviewUndo} without re-deriving it. */
   kind: ReviewUnitKind;
@@ -710,12 +716,90 @@ export interface RecordReviewResult {
   lastInteractedAtBefore: number | undefined;
 }
 
+export interface ReviewTrajectorySampleArgs {
+  eventId: string;
+  sessionId: string;
+  revisionPlanId?: string;
+  revisionWindowId?: string;
+  timestamp: number;
+  deck: SchedulerConfig;
+  kind: ReviewUnitKind;
+  cardId: string;
+}
+
+function trajectoryUnitMatches(
+  entry: SessionHistoryEntry,
+  kind: ReviewUnitKind,
+  unitId: string,
+): boolean {
+  return kind === 'course' ? entry.courseId === unitId : entry.deckId === unitId && !entry.courseId;
+}
+
+async function hasTrajectorySampleForToday(
+  kind: ReviewUnitKind,
+  unitId: string,
+  now: number,
+): Promise<boolean> {
+  const dayStart = startOfDay(now);
+  const nextDay = addDays(dayStart, 1);
+  return Boolean(
+    await db.sessionHistory
+      .where('timestamp')
+      .between(dayStart, nextDay, true, false)
+      .filter((entry) => trajectoryUnitMatches(entry, kind, unitId))
+      .first(),
+  );
+}
+
+/** Write one historical trajectory sample after a review has committed. */
+export async function sampleReviewTrajectory(args: ReviewTrajectorySampleArgs): Promise<void> {
+  if (await hasTrajectorySampleForToday(args.kind, args.deck.id, args.timestamp)) return;
+
+  const cards =
+    args.kind === 'course'
+      ? await db.cards.where('courseId').equals(args.deck.id).toArray()
+      : await db.cards.where('deckId').equals(args.deck.id).toArray();
+  const total = cards.reduce(
+    (sum, card) => sum + predictedRetrievabilityAtHorizon(card, args.deck, args.timestamp),
+    0,
+  );
+  const averagePredictedRetrievability = cards.length > 0 ? total / cards.length : 1;
+
+  // Re-check inside the write transaction so concurrent reviews cannot create
+  // two same-day samples, and undo cannot resurrect a deleted review.
+  await db.transaction('rw', [db.reviewHistory, db.sessionHistory], async () => {
+    const event = await db.reviewHistory.get(reviewHistoryEntryIdForEvent(args.eventId));
+    if (!event || event.cardId !== args.cardId) return;
+    if (await hasTrajectorySampleForToday(args.kind, args.deck.id, args.timestamp)) return;
+    await db.sessionHistory.add({
+      eventId: args.eventId,
+      sessionId: args.sessionId,
+      revisionPlanId: args.revisionPlanId,
+      revisionWindowId: args.revisionWindowId,
+      timestamp: args.timestamp,
+      deckId: event.deckId,
+      ...(args.kind === 'course' ? { courseId: args.deck.id } : {}),
+      averagePredictedRetrievability,
+    });
+  });
+}
+
+function scheduleReviewTrajectorySample(args: ReviewTrajectorySampleArgs): void {
+  // Defer the read and scan until the caller has received the review result.
+  globalThis.setTimeout(() => {
+    void sampleReviewTrajectory(args).catch(() => {
+      // A missing analytics point must not reject a committed review.
+    });
+  }, 0);
+}
+
 /**
  * Record a single review: apply the FSRS update to the card, append a review log,
- * update the deck's calibration profile (correct reviews only), and write a
- * SessionHistory snapshot of the deck's average predicted exam-day retrievability.
- * Returns the updated card (for immediate re-scoring) and the SessionHistory id
- * (so the review can be undone, see undoReview).
+ * update the deck's calibration profile (correct reviews only), and schedule a
+ * once-daily SessionHistory trajectory sample after the transaction commits.
+ * Returns the updated card (for immediate re-scoring); the optional SessionHistory
+ * id is retained for compatibility with older callers and is not available on the
+ * immediate review path.
  */
 export async function recordReview(args: RecordReviewArgs): Promise<RecordReviewResult> {
   try {
@@ -745,12 +829,13 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
     }
 
     let lastInteractedAtBefore: number | undefined;
-    return await db.transaction(
+    const result = await db.transaction(
       'rw',
       [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance, db.reviewHistory],
       async () => {
+        const existingReview = await db.reviewHistory.get(reviewHistoryEntryIdForEvent(eventId));
         const existingSession = await db.sessionHistory.where('eventId').equals(eventId).first();
-        if (existingSession) {
+        if (existingReview || existingSession) {
           const persistedCard = await db.cards.get(card.id);
           if (!persistedCard?.history.some((entry) => entry.eventId === eventId)) {
             throw new Error(`Review event ${eventId} belongs to another attempt.`);
@@ -759,7 +844,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
             card: persistedCard,
             cardBefore: persistedCard,
             recorded: false,
-            sessionHistoryId: existingSession.id!,
+            sessionHistoryId: existingSession?.id,
             kind,
             lastInteractedAtBefore: undefined,
           };
@@ -845,56 +930,41 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           await updateReviewUnitPerformance(deck.id, responseTimeSec);
         }
 
-        // Read the unit's cards inside the transaction so concurrent reviews cannot
-        // race the average predicted retrievability calculation. Deck scope spans the
-        // deck's own cards; course scope spans every card in the course (across lessons).
-        let retrievabilityTotal = 0;
-        let cardCount = 0;
-        const unitCards =
-          kind === 'course'
-            ? db.cards.where('courseId').equals(deck.id)
-            : db.cards.where('deckId').equals(deck.id);
-        await unitCards.each((unitCard) => {
-          retrievabilityTotal += predictedRetrievabilityAtHorizon(unitCard, deck, now);
-          cardCount += 1;
-        });
-        const avgRetrievability = cardCount > 0 ? retrievabilityTotal / cardCount : 1;
-
-        const sessionHistoryId = await db.sessionHistory.add({
-          eventId,
-          sessionId,
-          revisionPlanId,
-          revisionWindowId,
-          timestamp: now,
-          // deckId always identifies the backing (possibly shadow) deck the card lives
-          // in; courseId is populated in addition for course/lesson-scoped reviews.
-          deckId: updatedCard.deckId,
-          ...(kind === 'course' ? { courseId: deck.id } : {}),
-          averagePredictedRetrievability: avgRetrievability,
-        });
-
         return {
           card: updatedCard,
           cardBefore,
           recorded: true,
-          sessionHistoryId,
           kind,
           lastInteractedAtBefore,
         };
       },
     );
+    if (result.recorded) {
+      scheduleReviewTrajectorySample({
+        eventId,
+        sessionId,
+        revisionPlanId,
+        revisionWindowId,
+        timestamp: now,
+        deck,
+        kind,
+        cardId: result.card.id,
+      });
+    }
+    return result;
   } catch (err) {
     // A transaction in another tab can win the unique eventId race after this
     // transaction's initial lookup. Resolve that replay as the same no-op result.
+    const existingReview = await db.reviewHistory.get(reviewHistoryEntryIdForEvent(args.eventId));
     const existingSession = await db.sessionHistory.where('eventId').equals(args.eventId).first();
-    if (existingSession) {
+    if (existingReview || existingSession) {
       const persistedCard = await db.cards.get(args.card.id);
       if (persistedCard?.history.some((entry) => entry.eventId === args.eventId)) {
         return {
           card: persistedCard,
           cardBefore: persistedCard,
           recorded: false,
-          sessionHistoryId: existingSession.id!,
+          sessionHistoryId: existingSession?.id,
           kind: args.kind ?? 'deck',
           lastInteractedAtBefore: undefined,
         };
@@ -912,8 +982,8 @@ export interface ReviewUndo {
   cardBefore: Card;
   /** The deck's calibration profile before the review (null if none existed). */
   perfBefore: UserPerformance | null;
-  /** The SessionHistory row id written by the review. */
-  sessionHistoryId: number;
+  /** The optional SessionHistory row id written by the daily post-commit sample. */
+  sessionHistoryId?: number;
   /**
    * The UserPerformance key of the unit that was reviewed (a deckId for deck scope,
    * or a courseId for course/lesson scope — see {@link RecordReviewArgs.kind}).
@@ -935,8 +1005,9 @@ export interface ReviewUndo {
 
 /**
  * Reverse the most recent review: restore the card and the deck's calibration
- * profile wholesale (no Welford inverse maths) and delete the SessionHistory row
- * the review appended. Single-step, used by the in-session Undo affordance.
+ * profile wholesale (no Welford inverse maths) and delete its review event and
+ * any post-commit SessionHistory sample. Single-step, used by the in-session Undo
+ * affordance.
  */
 export async function undoReview(undo: ReviewUndo): Promise<void> {
   try {
@@ -944,9 +1015,14 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
       'rw',
       [db.cards, db.decks, db.courses, db.sessionHistory, db.userPerformance, db.reviewHistory],
       async () => {
-        const session = await db.sessionHistory.get(undo.sessionHistoryId);
-        if (!session) return;
-        if (session.eventId !== undo.eventId) {
+        const session =
+          (undo.sessionHistoryId === undefined
+            ? await db.sessionHistory.where('eventId').equals(undo.eventId).first()
+            : await db.sessionHistory.get(undo.sessionHistoryId)) ??
+          (await db.sessionHistory.where('eventId').equals(undo.eventId).first());
+        const reviewEvent = await db.reviewHistory.get(reviewHistoryEntryIdForEvent(undo.eventId));
+        if (!session && !reviewEvent) return;
+        if (session && session.eventId !== undo.eventId) {
           throw new Error('The review event no longer matches its session history entry.');
         }
         await db.cards.put(undo.cardBefore);
@@ -959,7 +1035,7 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
           await db.decks.update(undo.deckId, { lastInteractedAt: undo.lastInteractedAtBefore });
         }
         await db.reviewHistory.delete(reviewHistoryEntryIdForEvent(undo.eventId));
-        await db.sessionHistory.delete(undo.sessionHistoryId);
+        if (session?.id !== undefined) await db.sessionHistory.delete(session.id);
       },
     );
   } catch (err) {

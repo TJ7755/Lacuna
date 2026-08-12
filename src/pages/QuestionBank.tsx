@@ -3,7 +3,7 @@
 // Route: /course/:courseId/bank
 // British English throughout.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'motion/react';
 import {
@@ -12,8 +12,7 @@ import {
   useCourseCards,
   useOcclusions,
   useSequences,
-  useLessonBackingDeck,
-  useCourseBankBackingDeck,
+  useCourseBankBackingDecks,
 } from '../state/useCourseData';
 import { CardList } from '../components/cards/CardList';
 import { courseCardListContext } from '../components/cards/cardListContext';
@@ -22,7 +21,7 @@ import { FadeInView } from '../components/ui/FadeInView';
 import { Button } from '../components/ui/Button';
 import { BatchAuthoringPromptDialog } from '../components/items/BatchAuthoringPromptDialog';
 import { ChevronLeftIcon, PlusIcon, SearchIcon, SparklesIcon } from '../components/ui/icons';
-import type { Card, Lesson, Occlusion, Sequence } from '../db/types';
+import type { Card, Deck, Lesson, Occlusion, Sequence } from '../db/types';
 
 // Editing a lesson-owned card still uses the lesson-scoped route (so the editor's
 // duplicate check and tag suggestions stay scoped to the lesson's own deck), but the
@@ -43,6 +42,43 @@ export function QuestionBank() {
   const cards = useCourseCards(courseId);
   const sequences = useSequences(courseId);
   const occlusions = useOcclusions(courseId);
+  const lessonIds = useMemo(() => lessons?.map((lesson) => lesson.id) ?? [], [lessons]);
+  const backingDecks = useCourseBankBackingDecks(courseId, lessonIds);
+  const query = search.trim().toLowerCase();
+  const assignableLessons = useMemo(
+    () => (lessons ?? []).map((lesson) => ({ id: lesson.id, name: lesson.name })),
+    [lessons],
+  );
+  const { byLesson, unassigned, lessonsWithCards } = useMemo(() => {
+    const availableLessons = lessons ?? [];
+    const availableCards = cards ?? [];
+    const lessonIdSet = new Set(availableLessons.map((lesson) => lesson.id));
+    const byLesson = new Map<string, Card[]>();
+    const unassigned: Card[] = [];
+    for (const card of availableCards) {
+      if (
+        query &&
+        !card.front.toLowerCase().includes(query) &&
+        !card.back.toLowerCase().includes(query)
+      ) {
+        continue;
+      }
+      if (card.primaryLessonId && lessonIdSet.has(card.primaryLessonId)) {
+        const bucket = byLesson.get(card.primaryLessonId) ?? [];
+        bucket.push(card);
+        byLesson.set(card.primaryLessonId, bucket);
+      } else {
+        unassigned.push(card);
+      }
+    }
+    return {
+      byLesson,
+      unassigned,
+      lessonsWithCards: availableLessons.filter(
+        (lesson) => (byLesson.get(lesson.id)?.length ?? 0) > 0,
+      ),
+    };
+  }, [cards, lessons, query]);
 
   if (
     course === undefined ||
@@ -62,28 +98,6 @@ export function QuestionBank() {
     );
   }
 
-  const query = search.trim().toLowerCase();
-  const matches = (card: Card) =>
-    !query || card.front.toLowerCase().includes(query) || card.back.toLowerCase().includes(query);
-
-  // Group cards by primaryLessonId, preserving lesson order; anything without a
-  // (recognised) lesson falls into the Unassigned bucket.
-  const lessonIds = new Set(lessons.map((l) => l.id));
-  const byLesson = new Map<string, Card[]>();
-  const unassigned: Card[] = [];
-  for (const card of cards) {
-    if (!matches(card)) continue;
-    if (card.primaryLessonId && lessonIds.has(card.primaryLessonId)) {
-      const bucket = byLesson.get(card.primaryLessonId) ?? [];
-      bucket.push(card);
-      byLesson.set(card.primaryLessonId, bucket);
-    } else {
-      unassigned.push(card);
-    }
-  }
-
-  const assignableLessons = lessons.map((l) => ({ id: l.id, name: l.name }));
-  const lessonsWithCards = lessons.filter((l) => (byLesson.get(l.id)?.length ?? 0) > 0);
   const isEmpty = cards.length === 0;
   const noMatches = !isEmpty && lessonsWithCards.length === 0 && unassigned.length === 0;
 
@@ -177,6 +191,7 @@ export function QuestionBank() {
                 courseId={courseId!}
                 lesson={lesson}
                 cards={byLesson.get(lesson.id) ?? []}
+                deck={backingDecks?.get(lesson.id)}
                 assignableLessons={assignableLessons}
                 sequences={sequences.filter((s) => s.primaryLessonId === lesson.id)}
                 occlusions={occlusions.filter((o) => o.primaryLessonId === lesson.id)}
@@ -189,6 +204,7 @@ export function QuestionBank() {
                 courseId={courseId!}
                 courseName={course.name}
                 cards={unassigned}
+                deck={backingDecks?.get(null)}
                 assignableLessons={assignableLessons}
                 sequences={sequences.filter((s) => s.primaryLessonId === null)}
                 occlusions={occlusions.filter((o) => o.primaryLessonId === null)}
@@ -224,6 +240,7 @@ function LessonBucket({
   courseId,
   lesson,
   cards,
+  deck,
   assignableLessons,
   sequences,
   occlusions,
@@ -231,15 +248,12 @@ function LessonBucket({
   courseId: string;
   lesson: Lesson;
   cards: Card[];
+  deck: Deck | undefined;
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
   occlusions: Occlusion[];
 }) {
   const navigate = useNavigate();
-  // Resolve the hidden scheduling deck through the Course/Lesson data boundary,
-  // rather than discovering it from card.deckId.
-  const deck = useLessonBackingDeck(courseId, lesson.id);
-
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
@@ -299,6 +313,7 @@ function UnassignedBucket({
   courseId,
   courseName,
   cards,
+  deck,
   assignableLessons,
   sequences,
   occlusions,
@@ -306,15 +321,12 @@ function UnassignedBucket({
   courseId: string;
   courseName: string;
   cards: Card[];
+  deck: Deck | undefined;
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
   occlusions: Occlusion[];
 }) {
   const navigate = useNavigate();
-  // Resolve the hidden course-bank scheduling deck through the Course/Lesson data
-  // boundary, rather than discovering it from card.deckId.
-  const deck = useCourseBankBackingDeck(courseId);
-
   return (
     <section>
       <div className="mb-4">

@@ -33,7 +33,11 @@ import { computeStudyStats, buildDeckSecondsMap, type StudyStats } from '../fsrs
 import { lessonCardMembership } from '../course/studyPools';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
-import { findBackingDeck, performanceForCourseBackingDecks } from '../db/backingDecks';
+import {
+  findBackingDeck,
+  findBackingDecks,
+  performanceForCourseBackingDecks,
+} from '../db/backingDecks';
 
 // ---------------------------------------------------------------------------
 // Individual record hooks
@@ -99,6 +103,17 @@ export function useLessonBackingDeck(
 /** Resolve the hidden scheduling deck for cards not assigned to a lesson. */
 export function useCourseBankBackingDeck(courseId: string | undefined): Deck | undefined {
   return useLiveQuery(() => (courseId ? findBackingDeck(courseId, null) : undefined), [courseId]);
+}
+
+/** Resolve every lesson and unassigned backing deck for a Question Bank in one live query. */
+export function useCourseBankBackingDecks(
+  courseId: string | undefined,
+  lessonIds: readonly string[],
+): Map<string | null, Deck> | undefined {
+  return useLiveQuery(
+    () => (courseId ? findBackingDecks(courseId, lessonIds) : new Map<string | null, Deck>()),
+    [courseId, lessonIds],
+  );
 }
 
 /** Load calibration rows for a course without exposing its backing deck ids. */
@@ -438,6 +453,35 @@ export function useCourseSummaries(): Record<string, CourseSummary> | undefined 
       await hydrateCardsWithHistory(cards),
       assessments,
     );
+  }, []);
+}
+
+/**
+ * The always-mounted sidebar's combined data read. Keeping its cards, course summaries,
+ * lessons and streak in one live query avoids three independent whole-table reads and three
+ * separate recomputations after every review.
+ */
+export function useSidebarData():
+  | {
+      courses: Course[];
+      lessons: Lesson[];
+      summaries: Record<string, CourseSummary>;
+      stats: StudyStats;
+    }
+  | undefined {
+  return useLiveQuery(async () => {
+    const [records, lessons, cards, assessments, perf] = await Promise.all([
+      db.courses.toArray(),
+      db.lessons.toArray(),
+      db.cards.toArray(),
+      db.courseAssessments.toArray(),
+      db.userPerformance.toArray(),
+    ]);
+    const courses = hydrateCourses(records, assessments);
+    const hydratedCards = await hydrateCardsWithHistory(cards);
+    const summaries = computeCourseSummaries(courses, lessons, hydratedCards, assessments);
+    const stats = computeStudyStats(hydratedCards, buildDeckSecondsMap(perf));
+    return { courses, lessons, summaries, stats };
   }, []);
 }
 

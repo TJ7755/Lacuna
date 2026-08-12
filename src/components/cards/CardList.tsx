@@ -1,13 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
-import { CardContent } from './CardContent';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
 import { hapticLight, hapticMedium } from '../../utils/haptic';
 import { UnifiedImportPanel } from '../import/UnifiedImportPanel';
-import { CardAnalytics } from './CardAnalytics';
 import {
   addTagToCards,
   assignCardsToLesson,
@@ -46,6 +44,13 @@ import type { ParsedCard } from '../../db/import';
 import { importApkgResult, type ApkgImportResult } from '../../db/apkgImport';
 import type { Card, Deck, Occlusion, SchedulerConfig, Sequence } from '../../db/types';
 import type { CardListContext } from './cardListContext';
+
+const CardContent = lazy(() =>
+  import('./CardContent').then((module) => ({ default: module.CardContent })),
+);
+const CardAnalytics = lazy(() =>
+  import('./CardAnalytics').then((module) => ({ default: module.CardAnalytics })),
+);
 
 /** A lesson a card can be bulk-assigned to, offered in the "Assign to lesson…" panel. */
 interface AssignableLesson {
@@ -1389,7 +1394,9 @@ const CardRow = React.memo(function CardRow({
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.12 * m }}
                 >
-                  <CardContent card={card} side={contentSide} />
+                  <Suspense fallback={<span className="inline-block h-4 w-24 animate-pulse rounded bg-ink/5" />}>
+                    <CardContent card={card} side={contentSide} />
+                  </Suspense>
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -1477,11 +1484,13 @@ const CardRow = React.memo(function CardRow({
               onClick={handleExpandedClick}
             >
               <div className="border-t border-line pt-4">
-                <CardAnalytics
-                  card={card}
-                  schedulingConfig={schedulingConfig}
-                  motionMultiplier={m}
-                />
+                <Suspense fallback={<div className="h-32 animate-pulse rounded-xl bg-ink/[0.03]" />}>
+                  <CardAnalytics
+                    card={card}
+                    schedulingConfig={schedulingConfig}
+                    motionMultiplier={m}
+                  />
+                </Suspense>
               </div>
             </motion.div>
           )}

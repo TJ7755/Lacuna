@@ -6,13 +6,8 @@ import { Sidebar } from './Sidebar';
 vi.mock('../../state/ThemeContext', () => ({
   useTheme: () => ({ resolvedTheme: 'light', toggleTheme: vi.fn() }),
 }));
-vi.mock('../../state/useData', () => ({
-  useStudyStats: () => ({ streak: 0 }),
-}));
 vi.mock('../../state/useCourseData', () => ({
-  useCourses: () => [],
-  useCourseSummaries: () => ({}),
-  useAllLessons: () => [],
+  useSidebarData: () => ({ courses: [], lessons: [], summaries: {}, stats: { streak: 0 } }),
 }));
 
 describe('Sidebar', () => {

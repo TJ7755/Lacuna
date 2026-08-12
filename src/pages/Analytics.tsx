@@ -221,6 +221,7 @@ export function Analytics() {
                 <Area
                   type="monotone"
                   dataKey="due"
+                  isAnimationActive={false}
                   stackId="1"
                   stroke={c.accent}
                   strokeWidth={2}
@@ -229,6 +230,7 @@ export function Analytics() {
                 <Area
                   type="monotone"
                   dataKey="newCards"
+                  isAnimationActive={false}
                   stackId="1"
                   stroke={c.positive}
                   strokeWidth={2}
@@ -266,6 +268,7 @@ export function Analytics() {
                 <Area
                   type="monotone"
                   dataKey="retrievability"
+                  isAnimationActive={false}
                   stroke={c.accent}
                   strokeWidth={2}
                   fill="url(#trajFill)"
@@ -306,6 +309,7 @@ export function Analytics() {
                   yAxisId="score"
                   type="monotone"
                   dataKey="brier"
+                  isAnimationActive={false}
                   stroke={c.accent}
                   strokeWidth={2}
                   dot={{ r: 2.5, fill: c.accent, strokeWidth: 0 }}
@@ -314,6 +318,7 @@ export function Analytics() {
                   yAxisId="recall"
                   type="monotone"
                   dataKey="predicted"
+                  isAnimationActive={false}
                   stroke={c.inkFaint}
                   strokeDasharray="4 4"
                   dot={false}
@@ -322,6 +327,7 @@ export function Analytics() {
                   yAxisId="recall"
                   type="monotone"
                   dataKey="actual"
+                  isAnimationActive={false}
                   stroke={c.positive}
                   dot={false}
                 />
@@ -348,7 +354,12 @@ export function Analytics() {
                   cursor={{ fill: c.line, opacity: 0.4 }}
                   formatter={(v: number) => [v, 'Reviews']}
                 />
-                <Bar dataKey="reviews" fill={c.positive} radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="reviews"
+                  isAnimationActive={false}
+                  fill={c.positive}
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>{' '}
           </ChartCard>
@@ -381,6 +392,7 @@ export function Analytics() {
                 <Area
                   type="monotone"
                   dataKey="minutes"
+                  isAnimationActive={false}
                   stroke={c.accent}
                   strokeWidth={2}
                   fill="url(#timeFill)"
@@ -412,7 +424,12 @@ export function Analytics() {
                     'Observed recall',
                   ]}
                 />
-                <Bar dataKey="retention" fill={c.accent} radius={[6, 6, 0, 0]} />
+                <Bar
+                  dataKey="retention"
+                  isAnimationActive={false}
+                  fill={c.accent}
+                  radius={[6, 6, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>{' '}
           </ChartCard>
@@ -443,7 +460,12 @@ export function Analytics() {
                   cursor={{ fill: c.line, opacity: 0.4 }}
                   formatter={(v: number) => [v, 'Leeches']}
                 />
-                <Bar dataKey="count" fill={c.accent} radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="count"
+                  isAnimationActive={false}
+                  fill={c.accent}
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>{' '}
           </ChartCard>
@@ -467,7 +489,7 @@ export function Analytics() {
                   cursor={{ fill: c.line, opacity: 0.4 }}
                   formatter={(v: number) => [v, 'Cards']}
                 />
-                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
                   {profile.map((entry, i) => (
                     <Cell key={i} fill={entry.range === 'New' ? c.inkFaint : c.accent} />
                   ))}

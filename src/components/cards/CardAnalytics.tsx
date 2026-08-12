@@ -163,6 +163,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
                 <Area
                   type="monotone"
                   dataKey="r"
+                  isAnimationActive={false}
                   stroke={c.accent}
                   strokeWidth={2}
                   fill={`url(#card-traj-${card.id})`}
@@ -186,6 +187,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
                     <Scatter
                       key={g}
                       data={dots}
+                      isAnimationActive={false}
                       fill={gradeColours[g]}
                       shape="circle"
                     />
@@ -228,13 +230,15 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
               return (
                 <div key={g} className="flex flex-1 flex-col items-center gap-1">
                   <div className="text-xs font-medium text-ink-soft">{count}</div>
-                  <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: heightPx }}
-                    transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
-                    className="w-full rounded-t-md"
-                    style={{ backgroundColor: gradeColours[g] }}
-                  />
+                  <div className="flex w-full items-end" style={{ height: maxBarHeight }}>
+                    <motion.div
+                      initial={{ scaleY: 0 }}
+                      animate={{ scaleY: heightPx / maxBarHeight }}
+                      transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
+                      className="h-full w-full origin-bottom rounded-t-md"
+                      style={{ backgroundColor: gradeColours[g] }}
+                    />
+                  </div>
                   <div className="text-[11px] text-ink-faint">{gradeLabels[g]}</div>
                 </div>
               );

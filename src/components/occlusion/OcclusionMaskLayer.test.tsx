@@ -23,6 +23,8 @@ describe('OcclusionMaskLayer', () => {
       'src',
       'blob:diagram',
     );
+    expect(screen.getByRole('img', { name: 'Labelled plant cell' })).toHaveAttribute('loading', 'lazy');
+    expect(screen.getByRole('img', { name: 'Labelled plant cell' })).toHaveAttribute('decoding', 'async');
   });
 
   it('shows a "?" mark on ringed target regions only', () => {

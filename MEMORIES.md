@@ -57,3 +57,9 @@ TypeScript reading a backup file — so do not model one on the other.
 Consumers that receive an explicit `reviewHistory` result must use an empty sequence for cards
 with no matching event rows. Falling back per card to `Card.history` resurrects stale projection
 events; the card projection is only a compatibility fallback when no canonical result was supplied.
+
+## Trajectory history is sampled daily after review commit
+
+`SessionHistoryEntry.averagePredictedRetrievability` is historical chart data, not a scheduler or
+unlock input. New points are sampled asynchronously at most once per local calendar day per unit;
+do not put that aggregate back into the `recordReview` transaction or replace it with a cache/table.

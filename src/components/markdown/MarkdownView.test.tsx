@@ -94,6 +94,17 @@ describe('MarkdownView — audio assets', () => {
   it('does not turn a remote image labelled audio into a player', () => {
     const { container } = render(<MarkdownView source="![audio](https://example.com/clip.mp3)" />);
     expect(container.querySelector('audio')).toBeNull();
-    expect(container.querySelector('img')).not.toBeNull();
+    expect(container.querySelector('img')).toMatchObject({
+      loading: 'lazy',
+      decoding: 'async',
+    });
+  });
+
+  it('defers ordinary card images until they are near the viewport', () => {
+    const { container } = render(<MarkdownView source="![Diagram](https://example.com/diagram.png)" />);
+    expect(container.querySelector('img')).toMatchObject({
+      loading: 'lazy',
+      decoding: 'async',
+    });
   });
 });

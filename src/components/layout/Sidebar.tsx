@@ -2,7 +2,6 @@ import { useState, useMemo, memo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useTheme } from '../../state/ThemeContext';
-import { useStudyStats } from '../../state/useData';
 import { useSidebarSettings } from '../../state/sidebarSettings';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -23,9 +22,11 @@ import {
   ShareIcon,
   SunIcon,
 } from '../ui/icons';
-import { useCourses, useCourseSummaries, useAllLessons } from '../../state/useCourseData';
+import { useSidebarData } from '../../state/useCourseData';
 import { NewCourseForm } from '../course/NewCourseForm';
 import type { Lesson } from '../../db/types';
+import type { StudyStats } from '../../fsrs/stats';
+import { prefetchRoute } from '../../routes/prefetch';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -61,6 +62,9 @@ function NavItem({
     <NavLink
       to={to}
       end={end}
+      onPointerEnter={() => prefetchRoute(to)}
+      onPointerDown={() => prefetchRoute(to)}
+      onFocus={() => prefetchRoute(to)}
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
         cn(
@@ -128,8 +132,7 @@ function SearchNavItem({
   );
 }
 
-function StudyStreakBadge({ collapsed }: { collapsed: boolean }) {
-  const stats = useStudyStats();
+function StudyStreakBadge({ collapsed, stats }: { collapsed: boolean; stats?: StudyStats }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const streak = stats?.streak ?? 0;
@@ -165,6 +168,9 @@ function LessonItem({ lesson, compact }: { lesson: Lesson; compact: boolean }) {
   return (
     <NavLink
       to={`/course/${lesson.courseId}/lesson/${lesson.id}`}
+      onPointerEnter={() => prefetchRoute(`/course/${lesson.courseId}/lesson/${lesson.id}`)}
+      onPointerDown={() => prefetchRoute(`/course/${lesson.courseId}/lesson/${lesson.id}`)}
+      onFocus={() => prefetchRoute(`/course/${lesson.courseId}/lesson/${lesson.id}`)}
       className={({ isActive }) =>
         cn(
           'flex min-h-10 items-center gap-3 rounded-lg transition-all duration-150',
@@ -234,6 +240,9 @@ const CourseRow = memo(function CourseRow({
     return (
       <NavLink
         to={`/course/${courseId}`}
+        onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
+        onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
+        onFocus={() => prefetchRoute(`/course/${courseId}`)}
         title={courseName}
         className={() =>
           cn(
@@ -255,6 +264,9 @@ const CourseRow = memo(function CourseRow({
     return (
       <NavLink
         to={`/course/${courseId}`}
+        onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
+        onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
+        onFocus={() => prefetchRoute(`/course/${courseId}`)}
         className={({ isActive }) =>
           cn(
             'flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
@@ -311,6 +323,9 @@ const CourseRow = memo(function CourseRow({
           role="link"
           tabIndex={0}
           onClick={() => navigate(`/course/${courseId}`)}
+          onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
+          onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
+          onFocus={() => prefetchRoute(`/course/${courseId}`)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
@@ -358,9 +373,10 @@ export function Sidebar({
   collapseControl = true,
 }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
-  const courses = useCourses();
-  const summaries = useCourseSummaries();
-  const allLessons = useAllLessons();
+  const data = useSidebarData();
+  const courses = data?.courses;
+  const summaries = data?.summaries;
+  const allLessons = data?.lessons;
   const [sidebarSettings] = useSidebarSettings();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -405,7 +421,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'relative z-20 flex h-screen flex-col border-r border-line bg-surface/80 backdrop-blur-xl transition-[width] duration-200 ease-out',
+        'relative z-20 flex h-screen flex-col border-r border-line bg-surface',
         collapsed ? 'w-[72px]' : 'w-[264px]',
       )}
     >
@@ -485,7 +501,9 @@ export function Sidebar({
                 collapsed={collapsed}
                 compact={sidebarSettings.compactMode}
                 streakBadge={
-                  n.id === 'dashboard' ? <StudyStreakBadge collapsed={collapsed} /> : undefined
+                  n.id === 'dashboard' ? (
+                    <StudyStreakBadge collapsed={collapsed} stats={data?.stats} />
+                  ) : undefined
                 }
               />
             ),

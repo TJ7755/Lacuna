@@ -186,7 +186,7 @@ export function LearnHeader({
       transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
       onPointerLeave={onPointerLeave}
       className={cn(
-        'left-0 right-0 top-0 z-20 border-b border-line bg-paper/92 backdrop-blur-xl',
+        'left-0 right-0 top-0 z-20 border-b border-line bg-paper',
         focusMode ? 'fixed shadow-lg shadow-black/5' : 'sticky',
       )}
     >
@@ -344,9 +344,9 @@ function ObjectiveProgressTrack({ value, m }: { value: number; m: number }) {
     <div className="h-2 w-full overflow-hidden rounded-full bg-ink/10" aria-hidden="true">
       <motion.div
         initial={false}
-        animate={{ width: `${progress * 100}%` }}
+        animate={{ scaleX: progress }}
         transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
-        className="h-full rounded-full bg-accent"
+        className="h-full w-full origin-left rounded-full bg-accent"
       />
     </div>
   );

@@ -901,7 +901,7 @@ export interface Card {
   createdAt: number;
 }
 
-/** A snapshot of a deck's predicted exam-day retrievability, written per answered card. */
+/** A sampled snapshot of a deck's predicted exam-day retrievability for historical charts. */
 export interface SessionHistoryEntry {
   id?: number;
   /** Links this aggregate to the ReviewLog without relying on the auto-increment id. */

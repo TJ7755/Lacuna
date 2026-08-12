@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
+import type { SessionHistoryEntry } from './types';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { reviewHistoryEntryIdForEvent } from './reviewHistory';
 import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
@@ -24,10 +25,22 @@ import {
   recordReview,
   removeTagFromCards,
   rescheduleCards,
+  sampleReviewTrajectory,
   setCardsSuspended,
   undoReview,
   updateCard,
 } from './repository';
+
+async function waitForTrajectorySample(
+  eventId: string,
+): Promise<SessionHistoryEntry & { id: number }> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const entry = await db.sessionHistory.where('eventId').equals(eventId).first();
+    if (entry?.id !== undefined) return entry as SessionHistoryEntry & { id: number };
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error(`Timed out waiting for trajectory sample ${eventId}.`);
+}
 
 describe('undoReview', () => {
   beforeEach(async () => {
@@ -51,7 +64,6 @@ describe('undoReview', () => {
 
     const {
       card: updated,
-      sessionHistoryId,
       lastInteractedAtBefore,
     } = await recordReview({
       card,
@@ -67,16 +79,20 @@ describe('undoReview', () => {
 
     // The review actually changed state.
     expect(updated.reps).toBe(1);
-    expect(await db.sessionHistory.count()).toBe(1);
+    expect(await db.sessionHistory.count()).toBe(0);
     expect((await db.userPerformance.get(deck.id))!.totalCorrectReviews).toBe(1);
     expect(lastInteractedAtBefore).toBe(deckLastInteractedAtBefore);
     expect((await db.decks.get(deck.id))!.lastInteractedAt).not.toBe(deckLastInteractedAtBefore);
+
+    const session = await waitForTrajectorySample('event-undo');
+    expect(await db.sessionHistory.count()).toBe(1);
+    expect(session.id).toBeDefined();
 
     await undoReview({
       eventId: 'event-undo',
       cardBefore,
       perfBefore,
-      sessionHistoryId,
+      sessionHistoryId: session.id,
       deckId: deck.id,
       kind: 'deck',
       lastInteractedAtBefore,
@@ -223,7 +239,6 @@ describe('undoReview', () => {
 
     const {
       card: updated,
-      sessionHistoryId,
       lastInteractedAtBefore,
     } = await recordReview({
       card,
@@ -240,7 +255,7 @@ describe('undoReview', () => {
 
     expect(updated.reps).toBe(1);
 
-    const historyRow = await db.sessionHistory.get(sessionHistoryId);
+    const historyRow = await waitForTrajectorySample('event-course');
     expect(historyRow?.courseId).toBe(c.id);
     expect(historyRow?.deckId).toBe(card.deckId);
 
@@ -260,7 +275,7 @@ describe('undoReview', () => {
       eventId: 'event-course',
       cardBefore,
       perfBefore,
-      sessionHistoryId,
+      sessionHistoryId: historyRow.id,
       deckId: c.id,
       kind: 'course',
       lastInteractedAtBefore,
@@ -268,7 +283,7 @@ describe('undoReview', () => {
 
     const restored = (await db.cards.get(card.id))!;
     expect(restored.reps).toBe(0);
-    expect(await db.sessionHistory.get(sessionHistoryId)).toBeUndefined();
+    expect(await db.sessionHistory.get(historyRow.id)).toBeUndefined();
     expect(await db.userPerformance.get(c.id)).toBeUndefined();
     expect((await db.courses.get(c.id))!.lastInteractedAt).toBe(courseLastInteractedAtBefore);
   });
@@ -366,7 +381,8 @@ describe('undoReview', () => {
         fsrsWeightsFingerprint: fsrsWeightsFingerprint(deck.fsrsParameters),
       }),
     );
-    expect(await db.sessionHistory.get(result.sessionHistoryId)).toEqual(
+    const historyRow = await waitForTrajectorySample('event-provenance');
+    expect(historyRow).toEqual(
       expect.objectContaining({
         eventId: 'event-provenance',
         sessionId: 'session-provenance',
@@ -398,8 +414,52 @@ describe('undoReview', () => {
     expect(results.map((result) => result.recorded).sort()).toEqual([false, true]);
     expect((await db.cards.get(card.id))?.reps).toBe(1);
     expect((await db.cards.get(card.id))?.history).toHaveLength(1);
+    await waitForTrajectorySample('event-replayed');
     expect(await db.sessionHistory.count()).toBe(1);
     expect((await db.userPerformance.get(deck.id))?.totalCorrectReviews).toBe(1);
+  });
+
+  it('skips the card scan when the unit already has a trajectory sample today', async () => {
+    const deck = await createDeck('Test deck');
+    const card = await createCard(deck.id, 'front_back', 'q', 'a');
+    const now = 1_725_123_456_789;
+
+    await db.sessionHistory.add({
+      eventId: 'existing-daily-sample',
+      sessionId: 'session-existing-daily-sample',
+      timestamp: now,
+      deckId: deck.id,
+      averagePredictedRetrievability: 0.5,
+    });
+    await recordReview({
+      card,
+      deck,
+      eventId: 'event-daily-sample-skip',
+      sessionId: 'session-daily-sample-skip',
+      sessionKind: 'deck',
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+      now,
+    });
+
+    const cardsWhere = vi.spyOn(db.cards, 'where');
+    try {
+      await sampleReviewTrajectory({
+        eventId: 'event-daily-sample-skip',
+        sessionId: 'session-daily-sample-skip',
+        timestamp: now,
+        deck,
+        kind: 'deck',
+        cardId: card.id,
+      });
+    } finally {
+      cardsWhere.mockRestore();
+    }
+
+    expect(cardsWhere).not.toHaveBeenCalled();
+    expect(await db.sessionHistory.count()).toBe(1);
   });
 
   it('makes repeated undo harmless and permits a genuine retry afterwards', async () => {
@@ -443,6 +503,7 @@ describe('undoReview', () => {
 
     expect(retried.recorded).toBe(true);
     expect((await db.cards.get(card.id))?.reps).toBe(1);
+    await waitForTrajectorySample('event-retry');
     expect(await db.sessionHistory.count()).toBe(1);
   });
 });

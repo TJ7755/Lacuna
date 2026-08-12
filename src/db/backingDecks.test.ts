@@ -5,6 +5,7 @@ import {
   ensureCourseBankBackingDeck,
   ensureLessonBackingDeck,
   findBackingDeck,
+  findBackingDecks,
   performanceForCourseBackingDecks,
   performanceForReviewUnit,
   performanceForReviewUnits,
@@ -343,5 +344,95 @@ describe('backing deck adapter', () => {
     });
 
     expect((await findBackingDeck(course.id, lesson.id))?.id).toBe(deckId);
+  });
+
+  it('resolves all question-bank scopes in one result', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const otherLesson = await createLesson(course.id, 'Revision');
+    const lessonDeck = await ensureLessonBackingDeck(course.id, lesson.id);
+    const bankDeck = await ensureCourseBankBackingDeck(course.id);
+    const linkedDeck = await ensureLessonBackingDeck(course.id, otherLesson.id);
+
+    await db.decks.update(lessonDeck, { backingCourseId: undefined, backingLessonId: undefined });
+    await db.decks.update(linkedDeck, { backingCourseId: undefined, backingLessonId: undefined });
+    await db.cards.bulkAdd([
+      {
+        id: 'lesson-card',
+        deckId: lessonDeck,
+        courseId: course.id,
+        primaryLessonId: lesson.id,
+        type: 'front_back',
+        front: 'A',
+        back: 'B',
+        stability: null,
+        difficulty: null,
+        lastReviewed: null,
+        reps: 0,
+        lapses: 0,
+        state: 0,
+        due: null,
+        scheduledDays: 0,
+        learningSteps: 0,
+        history: [],
+        createdAt: 1,
+        tags: [],
+        suspended: false,
+        buriedUntil: null,
+      },
+      {
+        id: 'linked-card',
+        deckId: linkedDeck,
+        courseId: course.id,
+        primaryLessonId: otherLesson.id,
+        type: 'front_back',
+        front: 'C',
+        back: 'D',
+        stability: null,
+        difficulty: null,
+        lastReviewed: null,
+        reps: 0,
+        lapses: 0,
+        state: 0,
+        due: null,
+        scheduledDays: 0,
+        learningSteps: 0,
+        history: [],
+        createdAt: 1,
+        tags: [],
+        suspended: false,
+        buriedUntil: null,
+      },
+      {
+        id: 'bank-card',
+        deckId: bankDeck,
+        courseId: course.id,
+        primaryLessonId: null,
+        type: 'front_back',
+        front: 'E',
+        back: 'F',
+        stability: null,
+        difficulty: null,
+        lastReviewed: null,
+        reps: 0,
+        lapses: 0,
+        state: 0,
+        due: null,
+        scheduledDays: 0,
+        learningSteps: 0,
+        history: [],
+        createdAt: 1,
+        tags: [],
+        suspended: false,
+        buriedUntil: null,
+      },
+    ]);
+    await db.lessonCards.add({ id: 'lesson-link', lessonId: otherLesson.id, cardId: 'linked-card', createdAt: 1 });
+
+    const resolved = await findBackingDecks(course.id, [lesson.id, otherLesson.id]);
+
+    expect(resolved.get(lesson.id)?.id).toBe(lessonDeck);
+    expect(resolved.get(otherLesson.id)?.id).toBe(linkedDeck);
+    expect(resolved.get(null)?.id).toBe(bankDeck);
   });
 });

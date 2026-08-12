@@ -82,7 +82,14 @@ export function OcclusionMaskLayer({
         className,
       )}
     >
-      <img src={assetUrl} alt={alt} className="block w-full select-none" draggable={false} />
+      <img
+        src={assetUrl}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        className="block w-full select-none"
+        draggable={false}
+      />
       {regions.map((region) => (
         <div
           key={region.id}

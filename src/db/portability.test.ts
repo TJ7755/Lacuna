@@ -54,6 +54,14 @@ async function reset() {
   ]);
 }
 
+async function waitForSessionHistory(eventId: string): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (await db.sessionHistory.where('eventId').equals(eventId).count()) return;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  throw new Error(`Timed out waiting for session history ${eventId}.`);
+}
+
 describe('exportDatabase', () => {
   beforeEach(reset);
 
@@ -150,6 +158,7 @@ describe('exportDatabase', () => {
       ],
     });
 
+    await waitForSessionHistory('event-portability');
     const backup = await exportDatabase();
     expect(backup.reviewHistory).toEqual([
       expect.objectContaining({ id: reviewHistoryEntryIdForEvent('event-portability') }),

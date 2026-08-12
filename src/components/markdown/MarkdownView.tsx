@@ -86,6 +86,10 @@ const REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   [rehypeHighlight, { detect: true, ignoreMissing: true }],
 ];
 
+const MARKDOWN_COMPONENTS: MarkdownProps['components'] = {
+  img: ({ node: _node, ...props }) => <img {...props} loading="lazy" decoding="async" />,
+};
+
 // ── Video embed plugin ────────────────────────────────────────────────────────
 
 /** Match a bare YouTube watch URL, capturing the video ID. */
@@ -350,6 +354,7 @@ function renderMarkdownToHtml(prepared: string, allowEmbeds: boolean): string {
     <ReactMarkdown
       remarkPlugins={REMARK_PLUGINS}
       rehypePlugins={rehypePlugins}
+      components={MARKDOWN_COMPONENTS}
       urlTransform={(url) => (url.startsWith('blob:') ? url : defaultUrlTransform(url))}
     >
       {prepared}

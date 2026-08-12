@@ -113,19 +113,34 @@ export default defineConfig({
         entryFileNames: 'assets/app-[hash].js',
         // Keep production chunks sensible: framework, charts and the markdown/maths
         // stack each get their own chunk so a page that needs none of them stays light.
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom', 'motion/react'],
-          charts: ['recharts'],
-          markdown: [
-            'react-markdown',
-            'remark-gfm',
-            'remark-math',
-            'rehype-katex',
-            'rehype-highlight',
-            'rehype-raw',
-            'katex',
-            'highlight.js',
-          ],
+        // A package-list object manual chunk also captures Rollup helpers generated for
+        // the eager entry. In this project that placed Object.assign beside recharts,
+        // making the chart chunk an eager dependency. Package-based routing keeps the
+        // helper with the entry while the actual chart library remains lazy.
+        manualChunks(id) {
+          if (id.includes('/node_modules/recharts/')) return 'charts';
+          if (
+            [
+              'react-markdown',
+              'remark-gfm',
+              'remark-math',
+              'rehype-katex',
+              'rehype-highlight',
+              'rehype-raw',
+              'katex',
+              'highlight.js',
+            ].some((packageName) => id.includes(`/node_modules/${packageName}/`))
+          ) {
+            return 'markdown';
+          }
+          if (
+            ['react', 'react-dom', 'react-router-dom', 'motion'].some((packageName) =>
+              id.includes(`/node_modules/${packageName}/`),
+            )
+          ) {
+            return 'vendor';
+          }
+          return undefined;
         },
       },
     },
