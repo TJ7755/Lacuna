@@ -93,9 +93,10 @@ describe('review extraction and gating', () => {
       cardId: source.id,
       deckId: source.deckId,
     }));
+    const staleCard = { ...cardWith([2], Date.UTC(2026, 0, 20)), id: 'stale-card' };
 
-    expect(countReviews([card], reviewHistory)).toBe(3);
-    expect(reviewSequences([card], reviewHistory)[0].grades).toEqual([3, 1, 4]);
+    expect(countReviews([card, staleCard], reviewHistory)).toBe(3);
+    expect(reviewSequences([card, staleCard], reviewHistory)[0].grades).toEqual([3, 1, 4]);
   });
 
   it('counts every review and extracts non-empty sequences', () => {

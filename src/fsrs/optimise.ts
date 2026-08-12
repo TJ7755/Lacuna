@@ -72,7 +72,7 @@ export function reviewSequences(
   const history = reviewHistory ? historyByCard(reviewHistory) : undefined;
   return cards
     .map((card) => {
-      const events = history?.get(card.id) ?? card.history;
+      const events = history ? (history.get(card.id) ?? []) : card.history;
       return {
         timestamps: events.map((event) => event.timestamp),
         grades: events.map((event) => event.grade),
