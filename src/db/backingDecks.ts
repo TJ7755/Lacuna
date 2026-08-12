@@ -15,6 +15,7 @@ import type {
   Deck,
   Lesson,
   SchedulingPerformance,
+  SchedulingUnitRecord,
   UserPerformance,
 } from './types';
 import { db } from './schema';
@@ -147,6 +148,41 @@ function userPerformanceFromStats(
     m2: stats.m2,
     totalCorrectReviews: stats.totalCorrectReviews,
   };
+}
+
+/**
+ * Read the target scheduling configuration for one Course or Lesson.
+ *
+ * The source Course/Lesson rows remain authoritative for path and content semantics,
+ * while active FSRS sessions consume this projection. The source fallback keeps reads
+ * safe for databases opened before the projection was written; normal schema-v21
+ * databases take the target-store branch.
+ */
+export async function getSchedulingUnit(
+  courseId: string,
+  lessonId: string | null = null,
+): Promise<SchedulingUnitRecord | undefined> {
+  const target = await db.schedulingUnits.get(lessonId ?? courseId);
+  if (
+    target &&
+    target.courseId === courseId &&
+    (target.lessonId ?? null) === lessonId
+  ) {
+    return target;
+  }
+
+  const [course, assessments] = await Promise.all([
+    db.courses.get(courseId),
+    db.courseAssessments.where('courseId').equals(courseId).toArray(),
+  ]);
+  if (!course) return undefined;
+  if (lessonId === null) {
+    return schedulingUnitFromCourse(course, assessments);
+  }
+  const lesson = await db.lessons.get(lessonId);
+  return lesson && lesson.courseId === courseId
+    ? schedulingUnitFromLesson(course, lesson, assessments)
+    : undefined;
 }
 
 /** Load backing-unit pacing rows for Course workload estimates. */

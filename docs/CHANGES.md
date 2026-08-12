@@ -25,6 +25,9 @@
   including the target stores in their parent transactions. Added a Deck-only legacy-backup
   round-trip assertion, and made canonical review-event deduplication ignore projected ownership
   metadata so a later scheduling-unit stamp cannot duplicate one event.
+- Cut active Course/Lesson Learn sessions over to the `schedulingUnits` configuration projection
+  for FSRS scoring and review/time limits, with a source fallback for pre-projection databases;
+  legacy global Deck sessions retain their existing configuration path.
 
 ## Unreleased — One place for study on the dashboard
 

@@ -10,6 +10,13 @@ Keep each entry to a heading and a few lines. State the fact, then why it matter
 
 ---
 
+## Active Course/Lesson sessions read scheduling config through the target projection
+
+`useLearnSession` must feed Course/Lesson FSRS contexts from `schedulingUnits`, including inherited
+limits and goals; `Course` remains the source for path and assessment semantics. Keep a read-side
+fallback for databases whose projection is absent, and do not apply this cutover to legacy global
+Deck sessions.
+
 ## Lacuna is not yet in real use, and goes live in September 2026
 
 The prompter revises with other tools. Lacuna currently holds no irreplaceable study data, and

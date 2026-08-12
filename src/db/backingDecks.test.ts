@@ -4,6 +4,7 @@ import { db } from './schema';
 import {
   ensureCourseBankBackingDeck,
   ensureLessonBackingDeck,
+  getSchedulingUnit,
   findBackingDeck,
   findBackingDecks,
   performanceForCourseBackingDecks,
@@ -45,6 +46,48 @@ async function reset(): Promise<void> {
 
 describe('backing deck adapter', () => {
   beforeEach(reset);
+
+  it('reads target scheduling configuration with a legacy-source fallback', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    await updateCourse(course.id, {
+      maxReviewsPerDay: 30,
+      dailyReviewGoal: 20,
+      sessionTimeLimitMinutes: 25,
+    });
+
+    expect(await getSchedulingUnit(course.id)).toMatchObject({
+      id: course.id,
+      kind: 'course',
+      maxReviewsPerDay: 30,
+      dailyReviewGoal: 20,
+      sessionTimeLimitMinutes: 25,
+    });
+    expect(await getSchedulingUnit(course.id, lesson.id)).toMatchObject({
+      id: lesson.id,
+      kind: 'lesson',
+      maxReviewsPerDay: 30,
+      dailyReviewGoal: 20,
+      sessionTimeLimitMinutes: 25,
+    });
+
+    await db.schedulingUnits.delete(course.id);
+    await db.schedulingUnits.delete(lesson.id);
+    expect(await getSchedulingUnit(course.id)).toMatchObject({
+      id: course.id,
+      kind: 'course',
+      maxReviewsPerDay: 30,
+      dailyReviewGoal: 20,
+      sessionTimeLimitMinutes: 25,
+    });
+    expect(await getSchedulingUnit(course.id, lesson.id)).toMatchObject({
+      id: lesson.id,
+      kind: 'lesson',
+      maxReviewsPerDay: 30,
+      dailyReviewGoal: 20,
+      sessionTimeLimitMinutes: 25,
+    });
+  });
 
   it('keeps Course and Lesson scheduling configuration synchronised', async () => {
     const course = await createCourse('Biology');

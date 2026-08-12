@@ -1,6 +1,6 @@
 # Storage and review-history migration
 
-**Status:** in progress on `feat/storage-migration`; additive domain-storage checkpoint landed first
+**Status:** in progress on `feat/storage-migration`; additive target projection and Course/Lesson runtime-read checkpoints landed; destructive removal still gated
 
 **Reviewed:** 12 August 2026
 
@@ -55,6 +55,10 @@ calibration reads `coursePerformance`, while `updateReviewUnitPerformance` and
 continue to read and write `userPerformance` by Deck id. Course/Lesson sessions pass the Course id
 explicitly, while legacy Deck sessions pass the Deck id; the adapters reject an unproven legacy
 row when those key spaces collide and never infer a Course calibration key from `Card.deckId`.
+Active Course/Lesson FSRS sessions now read their scheduling configuration from the target
+`schedulingUnits` projection, including inherited limits and goals; a source-row fallback remains
+for databases opened before projection materialisation. Legacy global sessions continue to read
+Deck configuration directly.
 
 The dedicated `reviewHistory` store is now the explicit read source for FSRS optimisation,
 analytics and diagnostics, while `Card.history` remains a mirrored compatibility projection for
