@@ -121,6 +121,7 @@ function NavItem({
   m: number;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
+  const bounds = useRef<DOMRect | null>(null);
   const isTouchMode = useIsTouchMode();
   const cursorFollowEnabled = m > 0 && !isTouchMode;
   const mouseX = useMotionValue(0);
@@ -129,8 +130,8 @@ function NavItem({
   const springY = useSpring(mouseY, { stiffness: 350, damping: 25 });
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!cursorFollowEnabled || !ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
+    const rect = bounds.current;
+    if (!cursorFollowEnabled || !rect) return;
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
     const distX = (e.clientX - centerX) * 0.12;
@@ -140,8 +141,13 @@ function NavItem({
   };
 
   const handleMouseLeave = () => {
+    bounds.current = null;
     mouseX.set(0);
     mouseY.set(0);
+  };
+
+  const handleMouseEnter = () => {
+    if (cursorFollowEnabled && ref.current) bounds.current = ref.current.getBoundingClientRect();
   };
 
   return (
@@ -149,6 +155,7 @@ function NavItem({
       ref={ref}
       type="button"
       onClick={onClick}
+      onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       style={{ x: cursorFollowEnabled ? springX : 0, y: cursorFollowEnabled ? springY : 0 }}
@@ -177,14 +184,6 @@ function NavItem({
             className="absolute inset-y-0 left-0 w-1 rounded-r-full bg-accent"
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           />
-          {m > 0 && (
-            <motion.div
-              aria-hidden
-              className="absolute inset-0 rounded-lg bg-gradient-to-r from-accent/10 via-accent/5 to-transparent"
-              animate={{ opacity: [0.3, 0.7, 0.3] }}
-              transition={{ duration: 2.5 * m, repeat: Infinity, ease: 'easeInOut' }}
-            />
-          )}
         </motion.div>
       )}
       <span className="relative z-10 truncate font-medium">{section.label}</span>
@@ -939,29 +938,6 @@ export function HelpPage() {
             transition={{ duration: 0.4 * m, ease: [0.16, 1, 0.3, 1] }}
             className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5 backdrop-blur-sm"
           >
-            {/* Ambient top glow that subtly pulses (disabled under reduced motion) */}
-            {m > 0 && (
-              <motion.div
-                aria-hidden
-                className="pointer-events-none absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent"
-                animate={{ opacity: [0.4, 0.8, 0.4] }}
-                transition={{ duration: 3 * m, repeat: Infinity, ease: 'easeInOut' }}
-              />
-            )}
-            {/* Soft radial ambient wash behind the card (disabled under reduced motion) */}
-            {m > 0 && (
-              <motion.div
-                aria-hidden
-                className="pointer-events-none absolute inset-0 rounded-2xl"
-                style={{
-                  background:
-                    'radial-gradient(circle at 50% 0%, hsl(var(--accent) / 0.06), transparent 55%)',
-                }}
-                animate={{ opacity: [0.5, 0.8, 0.5] }}
-                transition={{ duration: 5 * m, repeat: Infinity, ease: 'easeInOut' }}
-              />
-            )}
-
             <div className="relative mb-3 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-ink-faint">
               On this page
             </div>
