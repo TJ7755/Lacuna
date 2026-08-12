@@ -1,9 +1,36 @@
 import { db } from './schema';
-import { mergeReviewHistoryEntries, type ReviewHistoryEntry } from './reviewHistory';
+import {
+  resolveReviewHistoryCollisions,
+  reviewHistoryEntriesForCard,
+  type ReviewHistoryEntry,
+} from './reviewHistory';
 import type { Card } from './types';
 
 function sortReviewHistory(entries: ReviewHistoryEntry[]): ReviewHistoryEntry[] {
   return entries.sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id));
+}
+
+/**
+ * Merge canonical rows with card projections for reads. A canonical event row
+ * suppresses only the matching projection for the same card/event; distinct
+ * duplicate canonical rows remain available to portability and diagnostics.
+ */
+function mergeReviewHistoryForRead(
+  canonical: ReviewHistoryEntry[],
+  cards: Card[],
+): ReviewHistoryEntry[] {
+  const canonicalEvents = new Set(
+    canonical
+      .filter((entry) => entry.eventId)
+      .map((entry) => `${entry.cardId}\u0000${entry.eventId}`),
+  );
+  const projections = cards
+    .flatMap(reviewHistoryEntriesForCard)
+    .filter(
+      (entry) =>
+        !entry.eventId || !canonicalEvents.has(`${entry.cardId}\u0000${entry.eventId}`),
+    );
+  return resolveReviewHistoryCollisions([...canonical, ...projections]);
 }
 
 /**
@@ -16,13 +43,13 @@ export async function listReviewHistoryForCards(cards: Card[]): Promise<ReviewHi
     .where('cardId')
     .anyOf(cards.map((card) => card.id))
     .toArray();
-  return sortReviewHistory(mergeReviewHistoryEntries(canonical, cards));
+  return sortReviewHistory(mergeReviewHistoryForRead(canonical, cards));
 }
 
 /** Read all review events through the canonical adapter, with a legacy fallback. */
 export async function listAllReviewHistory(): Promise<ReviewHistoryEntry[]> {
   const [canonical, cards] = await Promise.all([db.reviewHistory.toArray(), db.cards.toArray()]);
-  return sortReviewHistory(mergeReviewHistoryEntries(canonical, cards));
+  return sortReviewHistory(mergeReviewHistoryForRead(canonical, cards));
 }
 
 /** Read one course's review events through the canonical adapter. */
@@ -31,7 +58,7 @@ export async function listReviewHistoryForCourse(courseId: string): Promise<Revi
     db.reviewHistory.where('courseId').equals(courseId).toArray(),
     db.cards.where('courseId').equals(courseId).toArray(),
   ]);
-  return sortReviewHistory(mergeReviewHistoryEntries(canonical, cards));
+  return sortReviewHistory(mergeReviewHistoryForRead(canonical, cards));
 }
 
 /**

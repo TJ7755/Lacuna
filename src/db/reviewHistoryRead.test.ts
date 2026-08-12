@@ -7,6 +7,7 @@ import {
   listReviewHistoryForCards,
   listReviewHistoryForCourse,
 } from './reviewHistoryRead';
+import { reviewHistoryEntryIdForEvent } from './reviewHistory';
 import type { ReviewLog } from './types';
 
 function review(timestamp: number, eventId?: string): ReviewLog {
@@ -51,6 +52,26 @@ describe('review-history read adapter', () => {
     expect(events.map((event) => event.timestamp)).toEqual([100, 999]);
     expect(events[0].eventId).toBe('canonical-event');
     expect(events[1].eventId).toBeUndefined();
+  });
+
+  it('prefers the canonical row over a stale projection for the same event', async () => {
+    const deck = await createDeck('Deck');
+    const card = await createCard(deck.id, 'front_back', 'Question', 'Answer');
+    await db.cards.update(card.id, { history: [review(999, 'same-event')] });
+    await db.reviewHistory.add({
+      ...review(100, 'same-event'),
+      id: reviewHistoryEntryIdForEvent('same-event'),
+      cardId: card.id,
+      deckId: card.deckId,
+    });
+
+    const events = await listReviewHistoryForCards([(await db.cards.get(card.id))!]);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      id: reviewHistoryEntryIdForEvent('same-event'),
+      timestamp: 100,
+    });
   });
 
   it('lists course events without leaking events from another course', async () => {
