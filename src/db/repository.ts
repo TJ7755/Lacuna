@@ -47,6 +47,7 @@ import {
 } from './backingDecks';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
+import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
 import { emptyPerformance } from '../fsrs/grading';
 import { isLeech } from '../fsrs/leech';
 import { predictedRetrievabilityAtHorizon } from '../fsrs/progress';
@@ -787,6 +788,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           difficultyBefore: cardBefore.difficulty,
           difficultyAfter: memory.difficulty,
           retrievabilityAtReview,
+          fsrsWeightsFingerprint: fsrsWeightsFingerprint(deck.fsrsParameters),
         };
         const updatedCard: Card = {
           ...cardBefore,

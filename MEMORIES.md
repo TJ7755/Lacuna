@@ -38,12 +38,12 @@ which carries no FSRS equivalent. Full JSON backups include it.
 This matters because it means calibration analysis can be done at any point in the future against
 data recorded today. There is no closing window and no reason to rush a harness to "capture" data.
 
-## The FSRS weight set behind a prediction is not recorded
+## The FSRS weight set behind a prediction is recorded from this change onward
 
-A `ReviewLog` stores `stabilityBefore`/`After` and `difficultyBefore`/`After` but not which FSRS
-parameter set produced its prediction. If optimised weights are ever applied, older predictions came
-from different parameters and nothing distinguishes them afterwards. This is unrecoverable
-retrospectively, so add the provenance field *before* applying fitted weights, not after.
+Reviews written by the repository now carry a short fingerprint of the FSRS `w` array that
+produced the prediction. Earlier reviews and imported history carry no fingerprint. The actual
+weight vectors are not stored: the current set is recoverable from the course row and the defaults
+from Git history.
 
 ## The short-term-memory harness is not a precedent for Lacuna-data analysis
 

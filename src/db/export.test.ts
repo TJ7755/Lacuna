@@ -135,6 +135,7 @@ describe('card exporters: course/lesson naming', () => {
           difficultyBefore: 5,
           difficultyAfter: 5.5,
           retrievabilityAtReview: 0.75,
+          fsrsWeightsFingerprint: 'w1:3f2a91c4',
         },
       ],
     });
@@ -143,7 +144,11 @@ describe('card exporters: course/lesson naming', () => {
     expect(csv).toContain(
       'timestamp,event_id,session_id,session_kind,revision_plan_id,revision_window_id',
     );
-    expect(csv).toContain('1725123456789,event-1,session-1,revision-plan,plan-1,window-1');
+    expect(csv).toContain('retrievability_at_review,fsrs_weights_fingerprint');
+    expect(csv).toContain(
+      '1725123456789,event-1,session-1,revision-plan,plan-1,window-1',
+    );
+    expect(csv).toContain('0.75,w1:3f2a91c4');
 
     const [json] = JSON.parse(await exportReviewHistoryJson());
     expect(json).toEqual(
@@ -160,6 +165,7 @@ describe('card exporters: course/lesson naming', () => {
         responseTimeSec: 1.25,
         distracted: true,
         hintUsed: true,
+        fsrsWeightsFingerprint: 'w1:3f2a91c4',
       }),
     );
   });

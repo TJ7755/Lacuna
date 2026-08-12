@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
+import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
 import {
   addTagToCards,
   buryCards,
@@ -260,6 +261,7 @@ describe('undoReview', () => {
         responseTimeSec: 3.125,
         distracted: true,
         hintUsed: true,
+        fsrsWeightsFingerprint: fsrsWeightsFingerprint(deck.fsrsParameters),
       }),
     );
     expect(await db.sessionHistory.get(result.sessionHistoryId)).toEqual(

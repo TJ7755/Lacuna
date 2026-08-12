@@ -1,5 +1,14 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — FSRS weight-set provenance
+
+- Recorded a short fingerprint of the `w` array on reviews written by the repository, and
+  surfaced it in review-history CSV and JSON exports. The fingerprint deliberately excludes
+  interval-choice settings such as `requestRetention` and does not store the weight vector.
+- Landed this before any optimised weights are applied so future calibration analysis can
+  attribute every new prediction to the weight set that produced it; older and imported history
+  remains valid but has no fingerprint.
+
 ## Unreleased — Storage boundary follow-ups
 
 - Routed FSRS optimisation, review analytics and diagnostics through the canonical

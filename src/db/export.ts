@@ -248,6 +248,7 @@ const REVIEW_HISTORY_HEADERS = [
   'difficulty_before',
   'difficulty_after',
   'retrievability_at_review',
+  'fsrs_weights_fingerprint',
 ];
 
 function gradeLabel(grade: number): string {
@@ -293,6 +294,7 @@ export async function exportReviewHistoryCsv(): Promise<string> {
         log.difficultyBefore?.toString() ?? '',
         String(log.difficultyAfter),
         log.retrievabilityAtReview?.toString() ?? '',
+        log.fsrsWeightsFingerprint ?? '',
       ];
       rows.push(formatRow(row, ','));
     }
@@ -327,6 +329,7 @@ export async function exportReviewHistoryJson(): Promise<string> {
         difficultyBefore: log.difficultyBefore,
         difficultyAfter: log.difficultyAfter,
         retrievabilityAtReview: log.retrievabilityAtReview,
+        fsrsWeightsFingerprint: log.fsrsWeightsFingerprint,
       });
     }
   }

@@ -93,6 +93,12 @@ export interface ReviewLog {
   /** Retrievability at the moment of review (null on a first review). */
   retrievabilityAtReview: number | null;
   /**
+   * Optional and additive fingerprint of the FSRS weight set that produced this
+   * prediction, so existing history and backups remain valid without a migration.
+   * Absent for imported history and reviews recorded before this field existed.
+   */
+  fsrsWeightsFingerprint?: string;
+  /**
    * Marks earned/available for a machine-verified `numeric`/`working` item response
    * (Arc 11; docs/archive/roadmap-2026-08-11.md §11.7). Optional and additive, matching the `hintUsed`/
    * `retrievabilityAtReview` precedent above — absent for classic-type reviews and
