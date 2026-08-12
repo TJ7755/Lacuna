@@ -44,6 +44,22 @@ No Arc 14 verification debt remains. Lines mode, image occlusion, the two-instal
 and Electron MCP connection/grant/consent states were verified on 11 August 2026. Evidence and the
 limits of no-vision browser automation are recorded in `docs/WEBSITE_TEST_CHECKLIST.md`.
 
+## Deployment status
+
+Recorded 12 August 2026. Lacuna is not yet in real use: the prompter revises with other tools, and
+this summer's work is to polish Lacuna for genuine use from the start of the 2026–27 academic year.
+There is currently no irreplaceable study data in the database.
+
+This sequences the work below, and both consequences are easy to get backwards.
+
+Work touching data integrity — destructive schema migrations, storage cutovers, and backup, restore
+and merge behaviour — is safest now, and that window closes permanently once a term of real revision
+history exists. Prefer it to work that can be done at any time.
+
+Work whose payoff is measured in observed usage cannot report before September 2026. Do not schedule
+a usage experiment as though it can return an answer this summer, and do not treat an empty review
+corpus as a problem to be engineered around.
+
 ## Next
 
 Choose the next product arc from the candidates below. Do not smuggle another maintenance grab-bag
@@ -63,18 +79,18 @@ These require a fresh product decision after flow simplification and release ver
 | Candidate                               | Current position                                      | Decision gate                                                                                       |
 | --------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | Multi-device sync                       | Designed, not approved for implementation             | Confirm encrypted relay operation and maintenance cost; use [the Arc 8 design](arc8-sync-plan.html) |
-| Mobile reminders and PWA installation   | Scoped only                                           | Verify platform behaviour and whether reminders materially improve return rate                      |
+| Mobile reminders and PWA installation   | Scoped only                                           | Verify platform behaviour; return rate is not measurable before September 2026                      |
 | Progress receipts and encrypted relay   | Detailed outline only                                 | Identify a real tutor/parent reporting workflow before infrastructure work                          |
 | Expanded MCP product surface            | Foundation delivered; broad action inventory proposed | Prioritise concrete agent workflows instead of exposing every repository method                     |
 | Item-family and generated-practice work | Research direction                                    | Prove authored mark-scheme demand and define stable skill identity first                            |
-| Prediction calibration harness          | Considered 12 August 2026 and deferred; no data       | Accumulate a real review corpus first; see below                                                    |
+| Prediction calibration harness          | Considered 12 August 2026 and deferred; no data       | A real corpus cannot exist before September 2026; see below                                         |
 
 ### Calibration harness — deferred, not rejected
 
 `docs/scientific-assessment.md` §5 names calibration measurement as the highest-value scientific
 step. It was considered on 12 August 2026 and deferred, because there is no real review corpus to
-measure: a harness built now would produce its first genuine answer at an unknown future date, which
-fails roadmap rule 6.
+measure: a harness built now would produce its first genuine answer no earlier than the 2026–27
+academic year, which fails roadmap rule 6. See Deployment status above.
 
 Deferring costs nothing. `ReviewLog.retrievabilityAtReview` is already an honest ex-ante prediction
 and is included in full backups, so reviews recorded today remain fully analysable later. The gate is

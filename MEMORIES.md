@@ -10,6 +10,18 @@ Keep each entry to a heading and a few lines. State the fact, then why it matter
 
 ---
 
+## Lacuna is not yet in real use, and goes live in September 2026
+
+The prompter revises with other tools. Lacuna currently holds no irreplaceable study data, and
+the summer's work is to polish it for genuine use from the start of the 2026–27 academic year.
+
+This governs the order of work, so do not plan around it being in daily use today. Two
+consequences follow. Anything touching data integrity — destructive schema migrations, storage
+cutovers, backup and restore changes — is far safer now than it will ever be again, and that
+window closes permanently once real revision history exists. Conversely, any plan whose payoff
+is measured in observed usage, such as return-rate or retention experiments, cannot produce an
+answer before September 2026 and should not be scheduled as though it can.
+
 ## Delegation goes through Freebuff first
 
 The preferred route for delegable work is a prompt written for the prompter to run in Freebuff, not a worker spawned directly. Freebuff is a TUI with no headless mode, so no agent can drive it — only the prompter can. Codex and DeepSeek are for when the prompter has explicitly asked for autonomy. Full rules in `CLAUDE.md`.
