@@ -104,3 +104,10 @@ but every table it touches must be listed by that caller. Omitting one does not 
 Dexie's clearer transaction-scope error; fake-indexeddb can report a misleading missing object-store
 `NotFoundError`. Keep projection helpers free of nested transactions and expand the outer table list
 when their dependencies change.
+
+## Review-event identity excludes compatibility ownership metadata
+
+Canonical review rows and Card projections may disagree temporarily on `deckId`, `courseId`,
+`primaryLessonId` or `schedulingUnitId` while a storage projection is being backfilled. Those fields
+must not distinguish duplicate copies of one event during portability; event content and event/card
+ownership still determine genuine duplicates and cross-card collisions.

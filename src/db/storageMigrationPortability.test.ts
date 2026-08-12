@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { exportDatabase, importBackup } from './portability';
 import { db } from './schema';
-import { createCard, createCourse, createLesson } from './repository';
+import { createCard, createCourse, createDeck, createLesson } from './repository';
 import { ensureLessonBackingDeck } from './backingDecks';
 import type { BackupFile } from './types';
 
@@ -64,6 +64,35 @@ describe('domain storage portability', () => {
     expect(await db.cards.get(card.id)).toMatchObject({ schedulingUnitId: lesson.id });
     expect(await db.schedulingUnits.get(lesson.id)).toMatchObject({ kind: 'lesson' });
     expect(await db.schedulingPerformance.get(lesson.id)).toMatchObject({ totalCorrectReviews: 6 });
+  });
+
+  it('reconstructs target projections when importing a legacy Deck-only backup', async () => {
+    const deck = await createDeck('Legacy deck');
+    const card = await createCard(deck.id, 'front_back', 'Q', 'A');
+    const current = await exportDatabase();
+    const {
+      courses: _courses,
+      lessons: _lessons,
+      courseAssessments: _assessments,
+      schedulingUnits: _units,
+      coursePerformance: _coursePerformance,
+      schedulingPerformance: _schedulingPerformance,
+      reviewHistory: _reviewHistory,
+      ...legacyBackup
+    } = current;
+
+    await reset();
+    await importBackup(legacyBackup as BackupFile, 'replace');
+
+    expect(await db.decks.get(deck.id)).toMatchObject({ name: 'Legacy deck' });
+    expect(await db.cards.get(card.id)).toMatchObject({ schedulingUnitId: deck.id });
+    expect(await db.schedulingUnits.get(deck.id)).toMatchObject({
+      id: deck.id,
+      kind: 'legacy-deck',
+    });
+    expect(await db.schedulingPerformance.get(deck.id)).toMatchObject({
+      schedulingUnitId: deck.id,
+    });
   });
 
   it('merges target projections idempotently without duplicating units', async () => {

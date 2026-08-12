@@ -145,9 +145,11 @@ wire-compatibility path is removed until the later cutover slices have focused c
    split performance stores are backfilled additively in schema v21. Course-facing performance
    reads and review/undo writes now use the target stores with a compatibility mirror. Repository
    Course/Lesson and assessment writes now synchronise target scheduling configuration and retain
-   target rows through deletion undo. The next slices cut remaining course-facing readers/writers
-   over, then remove hidden Deck/Folder stores only after compatibility import, rollback,
-   wire-format and release tests pass.
+   target rows through deletion undo. Share, lineage merge and occlusion parent transactions now
+   include the target stores, and a Deck-only legacy-backup round trip is covered. Canonical event
+   identity ignores projected ownership metadata so target stamping cannot duplicate one review.
+   The next slices cut remaining course-facing readers/writers over, then remove hidden Deck/Folder
+   stores only after compatibility import, rollback, wire-format and release tests pass.
 6. **Compaction decision** — measure real event-store size and choose, separately, whether any old
    events may be compacted. Compaction requires an export format and an explicit restore story.
    This is the only phase that may propose removing old event rows; it is not implied by the event

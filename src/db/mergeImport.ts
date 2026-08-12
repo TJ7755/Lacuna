@@ -320,6 +320,9 @@ const MERGE_TABLES = [
   db.lineageIdMappings,
   db.pendingMergeReviews,
   db.reviewHistory,
+  db.schedulingUnits,
+  db.coursePerformance,
+  db.schedulingPerformance,
 ] as const;
 
 /** Empty membership/snapshot registry for a brand-new lineage mapping row. */

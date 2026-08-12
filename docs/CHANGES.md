@@ -21,6 +21,10 @@
   Course settings cascade to inherited Lesson units, lesson exam-date/time-zone overrides remain
   authoritative, target performance rows initialise on fresh data, and Lesson/Course deletion
   snapshots restore the target rows atomically. Legacy Deck/Folder stores remain untouched.
+- Closed compatibility transaction gaps at Share, lineage-merge and occlusion boundaries by
+  including the target stores in their parent transactions. Added a Deck-only legacy-backup
+  round-trip assertion, and made canonical review-event deduplication ignore projected ownership
+  metadata so a later scheduling-unit stamp cannot duplicate one event.
 
 ## Unreleased — One place for study on the dashboard
 

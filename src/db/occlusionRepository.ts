@@ -143,6 +143,9 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
         db.userPerformance,
         db.courses,
         db.lessons,
+        db.schedulingUnits,
+        db.coursePerformance,
+        db.schedulingPerformance,
       ],
       async () => {
         const previous = await db.occlusions.get(occlusion.id);

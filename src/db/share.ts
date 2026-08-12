@@ -1200,6 +1200,9 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
       db.courseAssessments,
       db.sequences,
       db.occlusions,
+      db.schedulingUnits,
+      db.coursePerformance,
+      db.schedulingPerformance,
     ],
     async () => {
       // Pre-compute fresh ids for every incoming sequence and sequence item before any
