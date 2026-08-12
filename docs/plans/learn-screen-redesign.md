@@ -1,7 +1,7 @@
 # Learn screen redesign — card view, header and swipe
 
-**Status:** ready, open questions answered. Starts once the loading work on
-`fix/loading-placeholder-flash` has merged.
+**Status:** in progress on `refactor/learn-screen-redesign`. Scope items 2, 3 and 4 are done;
+item 1, the mobile thumb-zone layout, has not been started.
 
 **Written:** 12 August 2026
 
@@ -50,11 +50,26 @@ fit a phone.
 
 ### Swipe grades silently — the most serious finding
 
-A left drag across the card immediately committed a **No** grade: the progress pip turned dark red
-and the session advanced. There was no drag feedback, no commit threshold, no confirmation and no
-undo offered. On a real phone any stray horizontal movement — including an attempt to scroll a card
-longer than the viewport — will record a lapse and damage that card's scheduling, possibly without
-the learner noticing.
+**Largely incorrect. Corrected 12 August 2026 after reading `FlipCard.tsx`.**
+
+The original claim was that a left drag committed a **No** grade with no drag feedback, no commit
+threshold, no confirmation and no undo. Three of those four were already false:
+
+- Swipe-to-grade is already restricted to the answer phase (`FlipCard.tsx:171-175`), so a drag on
+  the question face does nothing.
+- There is already a 60px commit threshold with a spring-back below it, and the drag is clamped to
+  180px (`FlipCard.tsx:104-105,197-236`).
+- There is already drag feedback: the card tracks the finger and a directional glow appears past
+  half the threshold (`FlipCard.tsx:303-322`).
+
+Only the undo claim held, and only on touch: `undoLast` existed but was reachable **solely by
+keyboard shortcut**, which is no use to the phone user who made the accidental swipe. That gap is
+now closed — a swipe-committed grade raises a toast with an Undo action, while deliberate taps on
+Yes and No do not, so ordinary study is not interrupted on every card.
+
+This entry is left in place rather than deleted, as a caution: the original was written from a
+browser session without reading the handler, and it inverted the actual state of the code. Confirm
+findings against the source before acting on them.
 
 ### Route friction into the loop
 

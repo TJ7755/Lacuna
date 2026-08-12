@@ -1,8 +1,8 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
-import type { Card, ItemPayload, ReviewSessionKind } from '../db/types';
+import type { Card, Grade, ItemPayload, ReviewSessionKind } from '../db/types';
 import { markLessonComplete } from '../db/repository';
 import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
 import { CardEditOverlay } from '../components/cards/CardEditOverlay';
@@ -254,6 +254,23 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setFocusMode,
     setFocusChromeVisible,
   });
+
+  // A swipe can be begun by accident in a way a deliberate tap on Yes or No cannot,
+  // and an unnoticed lapse damages that card's scheduling. Undo already exists on the
+  // keyboard; this is its touch equivalent, offered only for swipe-committed grades so
+  // that ordinary tapping does not raise a toast on every card.
+  const answerBySwipe = useCallback(
+    (input: boolean | Grade) => {
+      void (async () => {
+        await answer(input, 'touch');
+        notify('Answer recorded', 'neutral', {
+          actionLabel: 'Undo',
+          onAction: () => void undoLast(),
+        });
+      })();
+    },
+    [answer, notify, undoLast],
+  );
 
   if (phase === 'loading') {
     return (
@@ -540,7 +557,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                         hintsOpen={hintsOpen}
                         onReveal={reveal}
                         onHide={hide}
-                        onAnswer={answer}
+                        onAnswer={answerBySwipe}
                         typedAnswer={typedAnswer}
                         isTypingCard={isTypingCard}
                         mode={mode}

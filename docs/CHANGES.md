@@ -1,5 +1,25 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Learn screen: card, header and swipe undo
+
+- The study card sizes to its content behind a 12rem floor instead of a 29rem one, and the card
+  and its controls centre together as one block. Previously the card was centred within the
+  region above the reveal button, so short cards floated in an oversized container while the
+  leftover height collected beneath the controls.
+- The study header no longer encodes progress three ways. The percentage readout and the counter
+  ring are gone; focus mode and full screen moved into the card-actions menu on both pointer and
+  touch. Focus mode keeps a header control while active so a chrome-less screen has a visible exit.
+- The surviving progress track and pip bar now carry `role="progressbar"` and the progress value
+  themselves. The removed ring had been the only accessible progress value, because the visual
+  tracks were `aria-hidden` or an unvalued group.
+- A swipe-committed grade now offers Undo in a toast. Undo already existed but was reachable only
+  by keyboard shortcut, which is no use to the phone user who made the accidental swipe.
+  Deliberate taps on Yes and No do not raise the toast.
+- Corrected `docs/plans/learn-screen-redesign.md`. Its most serious finding claimed swipe-to-grade
+  had no answer-phase restriction, no commit threshold and no drag feedback. All three already
+  existed; only the undo gap was real. The entry is kept and marked, as a caution against acting
+  on browser-session findings without reading the handler.
+
 ## Unreleased — Loading placeholders and card entry animation
 
 - Loading placeholders no longer flash. `useDelayedPending` withholds a placeholder until
