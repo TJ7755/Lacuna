@@ -4,6 +4,10 @@ import { db } from './schema';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
 import {
+  performanceForCourseBackingDecks,
+  performanceForReviewUnits,
+} from './backingDecks';
+import {
   addTagToCards,
   buryCards,
   createCard,
@@ -272,6 +276,13 @@ describe('undoReview', () => {
 
     expect(await db.userPerformance.get(course.id)).toEqual(calibrationBefore);
     expect(await db.userPerformance.get(card.deckId)).toEqual(backingBefore);
+    expect((await performanceForCourseBackingDecks(course.id, [card])).map((row) => row.deckId)).toEqual([
+      card.deckId,
+    ]);
+    expect((await performanceForReviewUnits([course.id, card.deckId])).map((row) => row?.deckId)).toEqual([
+      course.id,
+      card.deckId,
+    ]);
   });
 
   it('persists every provenance field and the exact attempt timestamp', async () => {
