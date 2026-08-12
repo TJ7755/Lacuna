@@ -891,6 +891,8 @@ export interface Card {
   sequenceItemId?: string;
   /** Id of the OcclusionRegion this card was generated from. Present iff the card was generated from an occlusion region. */
   occlusionRegionId?: string;
+  /** Explicit Course/Lesson scheduling unit. Added during the domain-storage migration. */
+  schedulingUnitId?: string;
   /** Epoch ms of the next scheduled review (= ts-fsrs `due`). Null until first review. */
   due: number | null;
   /** Days ts-fsrs last scheduled this card for (= ts-fsrs `scheduled_days`). */
@@ -913,6 +915,8 @@ export interface SessionHistoryEntry {
   deckId: string;
   /** The Course this entry belongs to, once sessions are course-scoped. */
   courseId?: string;
+  /** Explicit Course/Lesson scheduling unit for the trajectory sample. */
+  schedulingUnitId?: string;
   averagePredictedRetrievability: number;
 }
 
@@ -927,6 +931,48 @@ export interface UserPerformance {
   /** Welford aggregate of squared distances from the mean. */
   m2: number;
   totalCorrectReviews: number;
+}
+
+/** The physical scheduling unit introduced by the domain-storage migration. */
+export type SchedulingUnitKind = 'course' | 'lesson' | 'legacy-deck';
+
+/** Course/Lesson-owned scheduling configuration, replacing hidden backing Deck ownership. */
+export interface SchedulingUnitRecord extends SchedulerConfig {
+  /** Source record creation time, retained for deterministic merge resolution. */
+  createdAt: number;
+  /** Whether the source has answered or dismissed the exam-date prompt. */
+  examDatePromptDismissed?: boolean;
+  /** FSRS parameter schema version retained as target-store provenance. */
+  fsrsVersion: number;
+  kind: SchedulingUnitKind;
+  courseId: string | null;
+  lessonId: string | null;
+  name: string;
+  timeZone?: string;
+  autoOptimise?: boolean;
+  dailyReviewGoal?: number;
+  sessionTimeLimitMinutes?: number;
+  colour?: string;
+  lastInteractedAt?: number;
+}
+
+interface PerformanceStats {
+  runningMeanResponseTime: number;
+  runningStdDevResponseTime: number;
+  m2: number;
+  totalCorrectReviews: number;
+}
+
+/** Course-keyed calibration profile in the target storage model. */
+export interface CoursePerformance extends PerformanceStats {
+  courseId: string;
+}
+
+/** Scheduling-unit-keyed pacing profile in the target storage model. */
+export interface SchedulingPerformance extends PerformanceStats {
+  schedulingUnitId: string;
+  courseId?: string;
+  lessonId?: string;
 }
 
 /** Binary media asset stored separately from card Markdown and deduplicated by hash.
@@ -987,6 +1033,10 @@ export interface BackupFile {
   cards: Card[];
   /** Canonical review events when exported from schema v20 or later. */
   reviewHistory?: ReviewHistoryEntry[];
+  /** Target storage projections, optional while old backups are imported. */
+  schedulingUnits?: SchedulingUnitRecord[];
+  coursePerformance?: CoursePerformance[];
+  schedulingPerformance?: SchedulingPerformance[];
   assets: BackupAsset[];
   sessionHistory: SessionHistoryEntry[];
   userPerformance: UserPerformance[];

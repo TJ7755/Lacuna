@@ -27,6 +27,9 @@ import type {
   UserPerformance,
   MediaAsset,
   RevisionPlan,
+  SchedulingUnitRecord,
+  CoursePerformance,
+  SchedulingPerformance,
 } from './types';
 import {
   mergeReviewHistoryEntries,
@@ -49,6 +52,7 @@ import {
 } from './assets';
 import { mergeRevisionPlans } from '../course/revisionPlan';
 import { itemPayloadIsValid } from '../items/payloadValidation';
+import { buildDomainStorageMigration } from './storageMigration';
 
 export const BACKUP_VERSION = 9;
 
@@ -73,6 +77,9 @@ export async function exportDatabase(): Promise<BackupFile> {
     occlusions,
     revisionPlans,
     reviewHistory,
+    schedulingUnits,
+    coursePerformance,
+    schedulingPerformance,
   ] = await Promise.all([
     db.decks.toArray(),
     db.cards.toArray(),
@@ -92,8 +99,46 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.occlusions.toArray(),
     db.revisionPlans.toArray(),
     db.reviewHistory.toArray(),
+    db.schedulingUnits.toArray(),
+    db.coursePerformance.toArray(),
+    db.schedulingPerformance.toArray(),
   ]);
-  const referencedHashes = new Set(referencedAssetHashesInCards(cards));
+  const storageProjection =
+    schedulingUnits.length > 0 && coursePerformance.length > 0 && schedulingPerformance.length > 0
+      ? (() => {
+          const unitsById = new Map(schedulingUnits.map((unit) => [unit.id, unit]));
+          const schedulingUnitByCardId = new Map<string, string>();
+          for (const card of cards) {
+            const lessonUnit = card.primaryLessonId
+              ? unitsById.get(card.primaryLessonId)
+              : undefined;
+            const courseUnit = card.courseId ? unitsById.get(card.courseId) : undefined;
+            schedulingUnitByCardId.set(
+              card.id,
+              card.schedulingUnitId ??
+                (lessonUnit?.kind === 'lesson' &&
+                (!card.courseId || lessonUnit.courseId === card.courseId)
+                  ? lessonUnit.id
+                  : courseUnit?.kind === 'course'
+                    ? courseUnit.id
+                    : card.deckId),
+            );
+          }
+          return { schedulingUnits, coursePerformance, schedulingPerformance, schedulingUnitByCardId };
+        })()
+      : buildDomainStorageMigration(
+          courses,
+          lessons,
+          courseAssessments,
+          decks,
+          cards,
+          userPerformance,
+        );
+  const projectedCards = cards.map((card) => ({
+    ...card,
+    schedulingUnitId: storageProjection.schedulingUnitByCardId.get(card.id) ?? card.schedulingUnitId,
+  }));
+  const referencedHashes = new Set(referencedAssetHashesInCards(projectedCards));
   for (const note of notes) {
     for (const hash of referencedAssetHashes(note.content)) referencedHashes.add(hash);
   }
@@ -107,7 +152,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     version: BACKUP_VERSION,
     exportedAt: Date.now(),
     decks,
-    cards,
+    cards: projectedCards,
     assets,
     sessionHistory,
     userPerformance,
@@ -124,7 +169,10 @@ export async function exportDatabase(): Promise<BackupFile> {
     sequences,
     occlusions,
     revisionPlans,
-    reviewHistory: mergeReviewHistoryEntries(reviewHistory, cards),
+    reviewHistory: mergeReviewHistoryEntries(reviewHistory, projectedCards),
+    schedulingUnits: storageProjection.schedulingUnits,
+    coursePerformance: storageProjection.coursePerformance,
+    schedulingPerformance: storageProjection.schedulingPerformance,
   };
 }
 
@@ -250,6 +298,78 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
   const courses = assessmentMigration.courses;
   const courseAssessments = assessmentMigration.assessments;
   for (const course of courses) finalAssessmentForCourse(course.id, courseAssessments);
+  const hasCompleteTargetProjection =
+    backup.schedulingUnits !== undefined &&
+    backup.coursePerformance !== undefined &&
+    backup.schedulingPerformance !== undefined &&
+    backup.schedulingUnits.every((unit) => typeof unit.createdAt === 'number');
+  const storageProjection: ReturnType<typeof buildDomainStorageMigration> =
+    hasCompleteTargetProjection
+      ? (() => {
+          const unitsById = new Map(backup.schedulingUnits!.map((unit) => [unit.id, unit]));
+          const schedulingUnitByCardId = new Map<string, string>();
+          const schedulingUnitByDeckId = new Map<string, string>();
+          const candidatesByDeck = new Map<string, Set<string>>();
+          for (const card of cards) {
+            const lessonUnit = card.primaryLessonId
+              ? unitsById.get(card.primaryLessonId)
+              : undefined;
+            const courseUnit = card.courseId ? unitsById.get(card.courseId) : undefined;
+            const unitId =
+              (lessonUnit?.kind === 'lesson' &&
+              (!card.courseId || lessonUnit.courseId === card.courseId)
+                ? lessonUnit.id
+                : courseUnit?.kind === 'course'
+                  ? courseUnit.id
+                  : card.schedulingUnitId ?? card.deckId);
+            schedulingUnitByCardId.set(card.id, unitId);
+            const candidates = candidatesByDeck.get(card.deckId) ?? new Set<string>();
+            candidates.add(unitId);
+            candidatesByDeck.set(card.deckId, candidates);
+          }
+          for (const [deckId, candidates] of candidatesByDeck) {
+            if (candidates.size === 1) schedulingUnitByDeckId.set(deckId, [...candidates][0]);
+          }
+          return {
+            schedulingUnits: backup.schedulingUnits!,
+            coursePerformance: backup.coursePerformance!,
+            schedulingPerformance: backup.schedulingPerformance!,
+            schedulingUnitByCardId,
+            schedulingUnitByDeckId,
+          };
+        })()
+      : buildDomainStorageMigration(
+          courses,
+          backup.lessons ?? [],
+          courseAssessments,
+          decks,
+          cards,
+          backup.userPerformance,
+        );
+  for (const card of cards) {
+    const schedulingUnitId = storageProjection.schedulingUnitByCardId.get(card.id);
+    if (schedulingUnitId) card.schedulingUnitId = schedulingUnitId;
+  }
+  const hydratedReviewHistory = reviewHistory.map((entry) => ({
+    ...entry,
+    schedulingUnitId:
+      entry.schedulingUnitId ?? storageProjection.schedulingUnitByCardId.get(entry.cardId),
+  }));
+  const reviewUnitByEventId = new Map(
+    hydratedReviewHistory
+      .filter((entry) => entry.eventId && entry.schedulingUnitId)
+      .map((entry) => [entry.eventId!, entry.schedulingUnitId!]),
+  );
+  const sessionHistory = backup.sessionHistory.map((entry) => ({
+    ...entry,
+    schedulingUnitId:
+      entry.schedulingUnitId ??
+      (entry.eventId ? reviewUnitByEventId.get(entry.eventId) : undefined) ??
+      storageProjection.schedulingUnitByDeckId.get(entry.deckId) ??
+      (entry.courseId && storageProjection.schedulingUnits.some((unit) => unit.id === entry.courseId)
+        ? entry.courseId
+        : undefined),
+  }));
   await db.transaction(
     'rw',
     [
@@ -273,6 +393,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       db.occlusions,
       db.revisionPlans,
       db.reviewHistory,
+      db.schedulingUnits,
+      db.coursePerformance,
+      db.schedulingPerformance,
     ],
     async () => {
       // Deduplicate by hash so bulkPut never encounters a constraint conflict.
@@ -299,6 +422,9 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           db.occlusions.clear(),
           db.revisionPlans.clear(),
           db.reviewHistory.clear(),
+          db.schedulingUnits.clear(),
+          db.coursePerformance.clear(),
+          db.schedulingPerformance.clear(),
         ]);
         await db.decks.bulkAdd(decks);
         await db.cards.bulkAdd(cards);
@@ -306,7 +432,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         await db.userPerformance.bulkAdd(backup.userPerformance);
         // Drop incoming auto-increment ids so they are reassigned cleanly.
         await db.sessionHistory.bulkAdd(
-          backup.sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
+          sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
         );
         // Restore folders if present in the backup.
         if (backup.folders && backup.folders.length > 0) {
@@ -349,8 +475,17 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         if (backup.revisionPlans && backup.revisionPlans.length > 0) {
           await db.revisionPlans.bulkAdd(backup.revisionPlans);
         }
-        if (reviewHistory.length > 0) {
-          await db.reviewHistory.bulkPut(reviewHistory);
+        if (hydratedReviewHistory.length > 0) {
+          await db.reviewHistory.bulkPut(hydratedReviewHistory);
+        }
+        if (storageProjection.schedulingUnits.length > 0) {
+          await db.schedulingUnits.bulkPut(storageProjection.schedulingUnits);
+        }
+        if (storageProjection.coursePerformance.length > 0) {
+          await db.coursePerformance.bulkPut(storageProjection.coursePerformance);
+        }
+        if (storageProjection.schedulingPerformance.length > 0) {
+          await db.schedulingPerformance.bulkPut(storageProjection.schedulingPerformance);
         }
         return;
       }
@@ -576,7 +711,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         await db.occlusions.bulkPut(mergedOcclusions);
       }
 
-      if (reviewHistory.length > 0) {
+      if (hydratedReviewHistory.length > 0) {
         const existingReviewHistory = await db.reviewHistory.toArray();
         const collisionState: ReviewHistoryCollisionState = {
           usedIds: new Set(),
@@ -584,7 +719,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           entryIdentities: new Map(),
         };
         resolveReviewHistoryCollisions(existingReviewHistory, collisionState);
-        const resolvedIncoming = resolveReviewHistoryCollisions(reviewHistory, collisionState);
+        const resolvedIncoming = resolveReviewHistoryCollisions(hydratedReviewHistory, collisionState);
         const existingIds = new Set(existingReviewHistory.map((entry) => entry.id));
         const missingReviewHistory = resolvedIncoming.filter((entry) => !existingIds.has(entry.id));
         if (missingReviewHistory.length > 0) {
@@ -610,6 +745,61 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           return existing ? mergeRevisionPlans(existing, incoming) : incoming;
         });
         await db.revisionPlans.bulkPut(mergedPlans);
+      }
+
+      // Merge target projections by the source unit's interaction timestamp. A stale
+      // backup must never regress scheduling controls or pacing statistics that were
+      // changed locally after the backup was created.
+      const existingSchedulingUnits = new Map(
+        (await db.schedulingUnits.toArray()).map((unit) => [unit.id, unit]),
+      );
+      const mergedSchedulingUnits: SchedulingUnitRecord[] = storageProjection.schedulingUnits.map(
+        (incoming) => {
+          const existing = existingSchedulingUnits.get(incoming.id);
+          if (!existing) return incoming;
+          const incomingAt = incoming.lastInteractedAt ?? incoming.createdAt ?? 0;
+          const existingAt = existing.lastInteractedAt ?? existing.createdAt ?? 0;
+          return incomingAt > existingAt ? incoming : existing;
+        },
+      );
+      const mergedUnitsById = new Map(
+        mergedSchedulingUnits.map((unit) => [unit.id, unit]),
+      );
+      const existingCoursePerformance = new Map(
+        (await db.coursePerformance.toArray()).map((row) => [row.courseId, row]),
+      );
+      const mergedCoursePerformance: CoursePerformance[] = storageProjection.coursePerformance.map(
+        (incoming) => {
+          const existing = existingCoursePerformance.get(incoming.courseId);
+          if (!existing) return incoming;
+          const incomingUnit = mergedUnitsById.get(incoming.courseId);
+          const existingUnit = existingSchedulingUnits.get(incoming.courseId);
+          const incomingAt = incomingUnit?.lastInteractedAt ?? incomingUnit?.createdAt ?? 0;
+          const existingAt = existingUnit?.lastInteractedAt ?? existingUnit?.createdAt ?? 0;
+          return incomingAt > existingAt ? incoming : existing;
+        },
+      );
+      const existingSchedulingPerformance = new Map(
+        (await db.schedulingPerformance.toArray()).map((row) => [row.schedulingUnitId, row]),
+      );
+      const mergedSchedulingPerformance: SchedulingPerformance[] =
+        storageProjection.schedulingPerformance.map((incoming) => {
+          const existing = existingSchedulingPerformance.get(incoming.schedulingUnitId);
+          if (!existing) return incoming;
+          const incomingUnit = mergedUnitsById.get(incoming.schedulingUnitId);
+          const existingUnit = existingSchedulingUnits.get(incoming.schedulingUnitId);
+          const incomingAt = incomingUnit?.lastInteractedAt ?? incomingUnit?.createdAt ?? 0;
+          const existingAt = existingUnit?.lastInteractedAt ?? existingUnit?.createdAt ?? 0;
+          return incomingAt > existingAt ? incoming : existing;
+        });
+      if (mergedSchedulingUnits.length > 0) {
+        await db.schedulingUnits.bulkPut(mergedSchedulingUnits);
+      }
+      if (mergedCoursePerformance.length > 0) {
+        await db.coursePerformance.bulkPut(mergedCoursePerformance);
+      }
+      if (mergedSchedulingPerformance.length > 0) {
+        await db.schedulingPerformance.bulkPut(mergedSchedulingPerformance);
       }
 
       // Merge cards (most recent lastReviewed wins, falling back to createdAt).
@@ -667,7 +857,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           s.eventId ? `event:${s.eventId}` : `legacy:${s.timestamp}:${s.deckId}`,
         ),
       );
-      const toAdd = backup.sessionHistory.flatMap((entry) => {
+      const toAdd = sessionHistory.flatMap((entry) => {
         const key = entry.eventId
           ? `event:${entry.eventId}`
           : `legacy:${entry.timestamp}:${entry.deckId}`;

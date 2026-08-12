@@ -1,8 +1,8 @@
 # Storage and review-history migration
 
-**Status:** contract recorded; implementation follows in separately reviewed slices
+**Status:** in progress on `feat/storage-migration`; additive domain-storage checkpoint landed first
 
-**Reviewed:** 11 August 2026
+**Reviewed:** 12 August 2026
 
 ## Purpose
 
@@ -112,6 +112,14 @@ explicit compatibility tests.
 | FSRS optimisation    | Card history via `src/fsrs/optimise.ts` and persistence helpers | Event-store query through the review-event adapter                         | Same training observations; cover with `src/fsrs/optimise.persistence.test.ts` |
 | Diagnostics          | Counts only                                                     | Counts plus event-store count                                              | No card content leakage                                                        |
 
+## Implementation status
+
+The first domain-storage slice is now approved for implementation on `feat/storage-migration`.
+Schema v21 adds `schedulingUnits`, `coursePerformance` and `schedulingPerformance`, backfills
+Course/Lesson and legacy compatibility units, and stamps cards and canonical review events with
+the resolved scheduling-unit id. The old stores remain readable at this checkpoint; no rollback
+or wire-compatibility path is removed until the later cutover slices have focused coverage.
+
 ## Phases
 
 1. **Contract and inventory** — this document; no data mutation.
@@ -124,9 +132,10 @@ explicit compatibility tests.
 4. **Dual-write and read cutover** — repository review writes, undo, snapshots, backups, merge,
    analytics and optimisation use the event adapter. Keep the Card projection until old backups
    and imported data have passed the compatibility window.
-5. **Domain storage migration** — only after event storage is stable: decide whether the hidden
-   scheduling Deck rows can be removed, migrate performance semantics, and preserve old wire
-   formats and bookmarks through adapters.
+5. **Domain storage migration** — in progress: explicit Course/Lesson scheduling units and
+   split performance stores are backfilled additively in schema v21. The next slices cut
+   course-facing readers and writers over, then remove hidden Deck/Folder stores only after
+   compatibility import, rollback, wire-format and release tests pass.
 6. **Compaction decision** — measure real event-store size and choose, separately, whether any old
    events may be compacted. Compaction requires an export format and an explicit restore story.
    This is the only phase that may propose removing old event rows; it is not implied by the event

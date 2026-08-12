@@ -1,5 +1,15 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Explicit domain storage migration
+
+- Began the approved full storage migration on `feat/storage-migration` with schema v21.
+  Course- and Lesson-owned scheduling units are now materialised alongside the compatibility
+  Deck rows, with separate Course calibration and scheduling-unit pacing stores. Cards and
+  canonical review events carry their resolved scheduling-unit id, so later cutover slices can
+  stop discovering hidden backing Decks without changing scheduling behaviour in this checkpoint.
+- Kept legacy Deck/Folder stores, old backup/share/APKG formats and compatibility readers intact;
+  this first slice is additive and rollback-safe rather than a premature destructive cutover.
+
 ## Unreleased — One place for study on the dashboard
 
 - The dashboard's study control now holds the same position whether or not a study flow was
