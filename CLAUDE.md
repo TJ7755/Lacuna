@@ -19,7 +19,7 @@ Tell me when you are using one. For anything else — Opus subagents, Sol, or Co
 
 Keep in mind that I have usage limits, so ALWAYS be more economical. Luna is around as intelligent as Sonnet and is the cheapest thing I have that is any good. This means that you should probably NEVER EVER EVER use Sonnet (it's way too expensive) and probably always use Freebuff. When I ask for a subagent, don't ASSUME SONNET.
 
-Luna is not actually unlimited. It only feels that way under normal use. Do not hammer it — treat it as cheap, not free. OpenCode workers (DeepSeek) genuinely cannot bill me, so send bulk work there first and keep Luna for work that needs the extra care.
+Luna is not actually unlimited. It only feels that way under normal use. Do not hammer it — treat it as cheap, not free. OpenCode workers (DeepSeek) genuinely cannot bill me, so send bulk work there first and keep Luna for work that needs the extra care. The Cline route to DeepSeek goes through my authenticated Cline account rather than the free OpenCode Zen endpoint, so do not assume it is equally free; treat it as cheap but metered, and reach for OpenCode when the work is bulk.
 
 ### Freebuff — the default hand-off
 
@@ -42,7 +42,14 @@ Codex is the harness, not the model. It can run Luna, Terra or Sol. It is the mo
 
 ### DeepSeek
 
-DeepSeek runs through OpenCode on `opencode/deepseek-v4-flash-free`, headlessly via `opencode run -m opencode/deepseek-v4-flash-free`. Cline cannot run it — Cline's DeepSeek provider needs a direct API key we do not have. The explicitly tagged `:0731` build exists solely on Ollama Cloud, which requires a paid subscription. The free OpenCode Zen build is very likely the same weights, but its slug carries no date, so treat the version as unconfirmed.
+DeepSeek runs headlessly through two harnesses, and they are separate quotas — see Running workers.
+
+- **OpenCode**, on `opencode/deepseek-v4-flash-free`, via `opencode run -m opencode/deepseek-v4-flash-free`. This is the free OpenCode Zen build and genuinely cannot bill me. `opencode run` exposes no reasoning-effort flag, so this route always runs at the provider default.
+- **Cline**, on `deepseek/deepseek-v4-flash`, via `cline --thinking xhigh -m deepseek/deepseek-v4-flash --auto-approve true`. It reaches DeepSeek through the authenticated `cline` provider, so it needs no separate API key. `--thinking` takes `none|low|medium|high|xhigh`; use `xhigh`. Prefer this route when the task rewards care, and OpenCode for bulk.
+
+Older notes in this file claimed Cline could not run DeepSeek at all, on the grounds that it needed a direct API key. That was corrected on 12 August 2026 after checking `~/.cline/data/settings/providers.json`: the `cline` provider is authed and already configured for `deepseek/deepseek-v4-flash`.
+
+The explicitly tagged `:0731` build exists solely on Ollama Cloud, which requires a paid subscription. The free OpenCode Zen build is very likely the same weights, but its slug carries no date, so treat the version as unconfirmed.
 
 ---
 
@@ -96,7 +103,7 @@ Every non-Claude worker communicates through `.agent-mail`; see `AGENTS.md` and 
 .agent-mail/bin/await-mail <task-slug> done 900
 ```
 
-Concurrency — two per harness, not two overall. OpenCode and Codex are separate quotas, so two DeepSeeks compete with each other while a DeepSeek and a Codex do not. The old flat cap of two punished the safe case and permitted the risky one. Claude subagents keep their own cap of two, because that is real spend.
+Concurrency — two per harness, not two overall. OpenCode, Cline and Codex are separate quotas, so two OpenCode workers compete with each other while an OpenCode worker, a Cline worker and a Codex do not — even when two of them are running the same DeepSeek model. The old flat cap of two punished the safe case and permitted the risky one. Claude subagents keep their own cap of two, because that is real spend.
 
 The rule that actually matters is territory: never have two workers writing the same files at once. They share one working tree with no isolation. A rate limit is loud — it comes back as a blocked message you can simply resend. A write collision is quiet and expensive. This includes Freebuff: if I am running it, treat the files it owns as taken.
 

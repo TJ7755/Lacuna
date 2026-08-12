@@ -22,6 +22,20 @@ window closes permanently once real revision history exists. Conversely, any pla
 is measured in observed usage, such as return-rate or retention experiments, cannot produce an
 answer before September 2026 and should not be scheduled as though it can.
 
+## Verify a plan's follow-up list against the code before working it
+
+Follow-up lists in `docs/plans/` go stale quietly. They are written at the end of one arc and then
+delivered incidentally by the next, so the document keeps describing work that no longer exists.
+On 12 August 2026 all three follow-ups at the end of `plans/learn-screen-redesign.md` turned out to
+be already done — the study interstitial had been replaced by a bottom sheet, the landing-page pill
+overlap had been fixed by gating the pill behind a wheel event, and the dashboard study control had
+moved above the fold — while `next_plan.md` still recorded the plan itself as *ready*.
+
+The same plan already carried two findings that were wrong because they were written from a browser
+session without reading the handler underneath. The rule that covers both: confirm against the
+source before acting, and treat a plan as a record of intent at a past date rather than as current
+state.
+
 ## Delegation goes through Freebuff first
 
 The preferred route for delegable work is a prompt written for the prompter to run in Freebuff, not a worker spawned directly. Freebuff is a TUI with no headless mode, so no agent can drive it — only the prompter can. Codex and DeepSeek are for when the prompter has explicitly asked for autonomy. Full rules in `CLAUDE.md`.
