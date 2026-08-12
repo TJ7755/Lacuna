@@ -231,13 +231,23 @@ in place and marked here with its verdict and evidence, following this file's ha
 
 3. Dashboard: bring the study control above the fold on mobile.
 
-   **Partially delivered. Verified 12 August 2026.** With an interrupted study flow, the resume
-   control sits above the fold at `src/pages/Dashboard.tsx:137-156`, directly beneath a header
-   that is compact at phone width (`p-4`, `mb-6`), above the stats strip and the course grid.
-   But it is conditional on a resumable flow existing (`resumableCourse`); there is no
-   unconditional study control above the fold. With none, study is reached through the sidebar's
-   Review today control behind the hamburger drawer (`src/components/layout/AppShell.tsx:233-236`)
-   or a course card's Study action (`src/pages/Dashboard.tsx:196`), both of which cost an extra
-   tap and the first of which hides the control behind a menu. Whether an unconditional study
-   entry belongs on the dashboard is a live design question, owned by Claude Code and not
-   delegable, and is not resolved by this plan.
+   **Delivered 12 August 2026, in two parts.**
+
+   The first part was already in place: with an interrupted study flow, the resume control sat
+   above the fold in `src/pages/Dashboard.tsx`, directly beneath a header that is compact at
+   phone width (`p-4`, `mb-6`), above the stats strip and the course grid. But it was
+   conditional on `resumableCourse`, so in the ordinary case — nothing to resume — there was no
+   study control above the fold at all. Study was then reached through the sidebar's Review
+   today control behind the hamburger drawer (`src/components/layout/AppShell.tsx:233-236`) or a
+   course card's Study action, both an extra tap and the first hidden behind a menu.
+
+   The second part closed that gap. The control now holds its position whether or not a flow was
+   interrupted: it resumes when there is one, and otherwise opens the study sheet at its course
+   picker via `useStudySheet`. It stays hidden until at least one active course exists, so the
+   empty state still reads as create-a-course rather than offering study with nothing to study.
+
+   The design question this plan left open — whether an unconditional study entry belongs on the
+   dashboard — was answered yes, reusing the existing slot rather than adding a second control.
+   A separate button in the header would have competed with New course at phone width, where
+   wrapping was only recently fixed, and restoring a bottom-bar study entry would have undone the
+   deliberate change in `b7d6ee7` that gave the mobile bottom bar to course sections.

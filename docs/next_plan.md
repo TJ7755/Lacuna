@@ -38,10 +38,8 @@ header and swipe-to-grade safety, ahead of phone-primary use from the 2026–27 
 Evidence for each fault was gathered in a browser pass on 12 August 2026 and is recorded in
 that plan.
 
-No verification debt remains from the plan itself. One follow-up is only partially delivered and
-carries a live design question: the dashboard study control is above the fold only when a study
-flow is interrupted, and whether an unconditional study entry belongs there is a Claude Code
-design decision, not delegable to a mailbox worker.
+No verification debt remains. All three follow-ups are delivered; the last of them, an
+unconditional study control above the fold on the dashboard, landed on 12 August 2026.
 
 ## Close-out queue
 

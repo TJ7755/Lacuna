@@ -1,5 +1,17 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — One place for study on the dashboard
+
+- The dashboard's study control now holds the same position whether or not a study flow was
+  interrupted. It resumes when there is a flow to resume, and otherwise opens the study sheet at
+  its course picker. Previously it appeared only mid-flow, so the ordinary case reached study
+  through a course card or the sidebar's Review today — an extra tap, and on a phone one hidden
+  behind the hamburger drawer. The control stays hidden until at least one active course exists,
+  so the empty state still reads as create-a-course.
+- This closes the last of the learn screen redesign follow-ups. The alternatives were rejected
+  deliberately: a second button in the header competes with New course at phone width, and a
+  bottom-bar study entry would undo the change that gave the mobile bottom bar to course sections.
+
 ## Unreleased — Dead StudyEntry screen removed
 
 - Removed the unused "Choose what to study" entry screen. The study bottom sheet
