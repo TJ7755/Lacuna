@@ -6,6 +6,7 @@
 // Route: course/:courseId/sequence/new, course/:courseId/sequence/:sequenceId/edit,
 // and the lesson-scoped course/:courseId/lesson/:lessonId/sequence/new variant.
 
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
@@ -181,7 +182,11 @@ export function SequenceEditor() {
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
     (editing && sequence === undefined && !loaded)
   ) {
-    return <SequenceEditorSkeleton />;
+    return (
+      <DelayedFallback>
+        <SequenceEditorSkeleton />
+      </DelayedFallback>
+    );
   }
   if (course === null) {
     return (

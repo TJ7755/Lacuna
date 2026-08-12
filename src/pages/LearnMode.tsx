@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
-import type { Card, ItemPayload, ReviewSessionKind } from '../db/types';
+import type { Card, Grade, ItemPayload, ReviewSessionKind } from '../db/types';
 import { markLessonComplete } from '../db/repository';
 import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
 import { CardEditOverlay } from '../components/cards/CardEditOverlay';
@@ -254,8 +255,29 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setFocusChromeVisible,
   });
 
+  // A swipe can be begun by accident in a way a deliberate tap on Yes or No cannot,
+  // and an unnoticed lapse damages that card's scheduling. Undo already exists on the
+  // keyboard; this is its touch equivalent, offered only for swipe-committed grades so
+  // that ordinary tapping does not raise a toast on every card.
+  const answerBySwipe = useCallback(
+    (input: boolean | Grade) => {
+      void (async () => {
+        await answer(input, 'touch');
+        notify('Answer recorded', 'neutral', {
+          actionLabel: 'Undo',
+          onAction: () => void undoLast(),
+        });
+      })();
+    },
+    [answer, notify, undoLast],
+  );
+
   if (phase === 'loading') {
-    return <LearnSkeleton mode={mode} />;
+    return (
+      <DelayedFallback>
+        <LearnSkeleton mode={mode} />
+      </DelayedFallback>
+    );
   }
 
   if (phase === 'notes' && lessonNotesScreen) {
@@ -481,8 +503,13 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               )}
             </AnimatePresence>
             {/* Card — mode-aware border accent */}
+            {/* The card and its controls centre as one block. Centring the card alone
+                leaves it optically high, because the reveal and grade controls sit below
+                it and all the remaining height collects underneath them. When a card is
+                taller than the viewport this container simply grows, so nothing is
+                clipped and the page scrolls as before. */}
             <main
-              className={`mx-auto flex w-full max-w-4xl flex-1 flex-col px-6 py-8 md:py-12 ${isTouchMode && !suppressClassicGrading ? 'pb-40' : ''}`}
+              className={`mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center px-6 py-8 md:py-12 ${isTouchMode && !suppressClassicGrading ? 'pb-40' : ''}`}
             >
               <AnimatePresence initial={false} mode="popLayout">
                 {current && (
@@ -530,7 +557,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                         hintsOpen={hintsOpen}
                         onReveal={reveal}
                         onHide={hide}
-                        onAnswer={answer}
+                        onAnswer={answerBySwipe}
                         typedAnswer={typedAnswer}
                         isTypingCard={isTypingCard}
                         mode={mode}

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { LazyRoute } from './routes/LazyRoute';
 import { m as motion } from 'motion/react';
 import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './state/ThemeContext';
@@ -68,19 +69,6 @@ const Welcome = lazy(loadWelcome);
 const Method = lazy(loadMethod);
 const McpBridgeController = lazy(loadMcpBridgeController);
 
-function RouteFallback() {
-  return (
-    <div className="flex h-[60vh] flex-col items-center justify-center gap-4 p-8">
-      <div className="w-full max-w-xs space-y-3">
-        <div className="h-8 w-3/4 animate-pulse rounded-lg bg-ink/5" />
-        <div className="h-4 w-full animate-pulse rounded-lg bg-ink/5" />
-        <div className="h-4 w-5/6 animate-pulse rounded-lg bg-ink/5" />
-        <div className="h-32 w-full animate-pulse rounded-xl bg-ink/5" />
-      </div>
-    </div>
-  );
-}
-
 // Hash routing keeps the app deployable as plain static files with no server rewrites.
 const router = createHashRouter([
   {
@@ -98,41 +86,41 @@ const router = createHashRouter([
           {
             path: 'settings',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <Settings />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'search',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <SearchPage />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'share',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <SharePage />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'analytics',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <Analytics />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'help',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <HelpPage />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
@@ -142,129 +130,129 @@ const router = createHashRouter([
           {
             path: 'course/:courseId',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <CoursePath />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/lesson/:lessonId',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <LessonView />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/bank',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <QuestionBank />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/cards/new',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <CardEditor />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/cards/:cardId/edit',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <CardEditor />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/settings',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <CourseSettings />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/analytics',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <CourseAnalytics />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/updates',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <MergeReviewPanel />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/lesson/:lessonId/cards/new',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <CardEditor />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/lesson/:lessonId/cards/:cardId/edit',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <CardEditor />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/sequence/new',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <SequenceEditor />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/sequence/:sequenceId/edit',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <SequenceEditor />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/lesson/:lessonId/sequence/new',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <SequenceEditor />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/occlusion/new',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <OcclusionEditor />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/occlusion/:occlusionId/edit',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <OcclusionEditor />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
             path: 'course/:courseId/lesson/:lessonId/occlusion/new',
             element: (
-              <Suspense fallback={<RouteFallback />}>
+              <LazyRoute>
                 <OcclusionEditor />
-              </Suspense>
+              </LazyRoute>
             ),
           },
           {
@@ -278,9 +266,9 @@ const router = createHashRouter([
         path: '/welcome',
         element: (
           <ErrorBoundary label="the landing page">
-            <Suspense fallback={<RouteFallback />}>
+            <LazyRoute>
               <Welcome />
-            </Suspense>
+            </LazyRoute>
           </ErrorBoundary>
         ),
       },
@@ -289,9 +277,9 @@ const router = createHashRouter([
         path: '/method',
         element: (
           <ErrorBoundary label="the technical account">
-            <Suspense fallback={<RouteFallback />}>
+            <LazyRoute>
               <Method />
-            </Suspense>
+            </LazyRoute>
           </ErrorBoundary>
         ),
       },
@@ -301,9 +289,9 @@ const router = createHashRouter([
         path: '/course/:courseId/study',
         element: (
           <ErrorBoundary label="the course study flow">
-            <Suspense fallback={<RouteFallback />}>
+            <LazyRoute>
               <CourseStudyFlow />
-            </Suspense>
+            </LazyRoute>
           </ErrorBoundary>
         ),
       },
@@ -313,9 +301,9 @@ const router = createHashRouter([
         path: '/learn',
         element: (
           <ErrorBoundary label="the Learn session">
-            <Suspense fallback={<RouteFallback />}>
+            <LazyRoute>
               <LearnMode />
-            </Suspense>
+            </LazyRoute>
           </ErrorBoundary>
         ),
       },
@@ -324,9 +312,9 @@ const router = createHashRouter([
         path: '/course/:courseId/learn',
         element: (
           <ErrorBoundary label="the Learn session">
-            <Suspense fallback={<RouteFallback />}>
+            <LazyRoute>
               <LearnMode />
-            </Suspense>
+            </LazyRoute>
           </ErrorBoundary>
         ),
       },
@@ -335,9 +323,9 @@ const router = createHashRouter([
         path: '/lesson/:lessonId/learn',
         element: (
           <ErrorBoundary label="the Learn session">
-            <Suspense fallback={<RouteFallback />}>
+            <LazyRoute>
               <LearnMode />
-            </Suspense>
+            </LazyRoute>
           </ErrorBoundary>
         ),
       },

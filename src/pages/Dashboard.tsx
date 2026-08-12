@@ -1,3 +1,4 @@
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -102,15 +103,25 @@ export function Dashboard() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 md:px-10">
       {/* Page header */}
-      <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
+      {/* On a phone this header competed for about 280px of usable width between a 4xl
+          title and a button that would not shrink, so both labels wrapped and the card
+          grew to swallow the top of the screen. Tighter padding, a smaller title and
+          non-wrapping labels keep it to a single compact row; desktop is unchanged. */}
+      <header className="relative mb-6 overflow-hidden rounded-2xl border border-line bg-surface p-4 md:mb-10 md:p-8">
         <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
-        <div className="relative flex items-end justify-between gap-4">
-          <div>
-            <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Your revision</p>
-            <h1 className="font-display text-4xl tracking-tight md:text-6xl">Courses</h1>
+        <div className="relative flex items-center justify-between gap-3 md:items-end md:gap-4">
+          <div className="min-w-0">
+            <p className="mb-0.5 whitespace-nowrap text-xs uppercase tracking-[0.18em] text-ink-faint md:mb-1 md:text-sm">
+              Your revision
+            </p>
+            <h1 className="font-display text-3xl tracking-tight md:text-6xl">Courses</h1>
           </div>
           {activeCourses && activeCourses.length > 0 && (
-            <Button variant="primary" onClick={() => setCreatingCourse(true)}>
+            <Button
+              variant="primary"
+              onClick={() => setCreatingCourse(true)}
+              className="shrink-0 whitespace-nowrap"
+            >
               <PlusIcon width={16} height={16} />
               New course
             </Button>
@@ -151,7 +162,9 @@ export function Dashboard() {
 
       {/* Course grid */}
       {!activeCourses ? (
-        <CourseSkeleton motionMultiplier={m} />
+        <DelayedFallback>
+          <CourseSkeleton motionMultiplier={m} />
+        </DelayedFallback>
       ) : activeCourses.length === 0 ? (
         <EmptyState motionMultiplier={m} onCreateCourse={() => setCreatingCourse(true)} />
       ) : (

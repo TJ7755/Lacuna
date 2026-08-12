@@ -180,9 +180,18 @@ function setCourseData(courses: Course[] = [mockCourse]) {
 }
 
 describe('Dashboard', () => {
-  it('renders skeleton when data is loading', () => {
+  it('renders skeleton when data is loading', async () => {
     render(<Dashboard />);
-    expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
+    // The placeholder is withheld until loading has lasted long enough to be worth
+    // showing, so a load that resolves quickly never flashes one. See DelayedFallback.
+    await waitFor(() => {
+      expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
+    });
+  });
+
+  it('withholds the loading skeleton while a load could still finish instantly', () => {
+    render(<Dashboard />);
+    expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
   });
 
   it('renders empty state when no courses exist', () => {

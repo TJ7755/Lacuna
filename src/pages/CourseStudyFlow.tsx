@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PomodoroProvider, usePomodoroFlowContext } from '../hooks/PomodoroContext';
 import { useCourseStudyFlow } from '../state/useCourseStudyFlow';
@@ -9,12 +10,10 @@ import {
   touchActiveStudyFlow,
 } from '../state/activeStudyFlow';
 import type { StudyFlowStep } from '../course/studyFlowPlanner';
-import type { AssessmentPracticeOption } from '../course/assessmentPractice';
 import type { SessionSummary } from '../components/learn/types';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
-import { StudyEntry, StudyFlowMessage } from '../components/learn/StudyEntry';
+import { StudyFlowMessage } from '../components/learn/StudyEntry';
 import { RevisionPlanSetup } from '../components/learn/RevisionPlanSetup';
-import { Button } from '../components/ui/Button';
 import { LearnMode, type LearnSessionRequest } from './LearnMode';
 
 interface TransitionState {
@@ -58,9 +57,9 @@ function CourseStudyFlowInner() {
       : null;
   });
   const entryPracticeNodeKey = searchParams.get('practiceNode');
-  const [entryConsumed, setEntryConsumed] = useState(
-    searchParams.get('review') === 'due' || entryAssessmentId !== null,
-  );
+  // The choice is made in the study sheet before this route is entered and arrives as a
+  // query parameter, so the flow no longer presents an entry screen of its own.
+  const practiceNodeResolved = useRef(false);
   const [transition, setTransition] = useState<TransitionState | null>(null);
   const [revisionSession, setRevisionSession] = useState<{
     planId: string;
@@ -80,9 +79,10 @@ function CourseStudyFlowInner() {
 
   useEffect(() => {
     if (currentStep || transition || !flow) return;
-    if (!entryConsumed) {
-      if (!entryPracticeNodeKey) return;
-      setEntryConsumed(true);
+    // A deep link may name the practice node to run; honour it while it is still active,
+    // and otherwise fall through to whatever the planner says comes next.
+    if (entryPracticeNodeKey && !practiceNodeResolved.current) {
+      practiceNodeResolved.current = true;
       const requestedPractice = flow.snapshot.practiceByKey.get(entryPracticeNodeKey);
       if (requestedPractice?.active) {
         setCurrentStep({
@@ -94,10 +94,13 @@ function CourseStudyFlowInner() {
         return;
       }
     }
-    if (flow.decision.kind === 'step') {
+    // 'choice' means an assessment overlaps the next step. The sheet already offered
+    // that alternative before entry, and choosing it arrives as ?assessmentId, so
+    // reaching here means the curriculum branch was the one chosen.
+    if (flow.decision.kind === 'step' || flow.decision.kind === 'choice') {
       setCurrentStep(flow.decision.step);
     }
-  }, [currentStep, entryConsumed, entryPracticeNodeKey, flow, transition]);
+  }, [currentStep, entryPracticeNodeKey, flow, transition]);
 
   const finishFlow = useCallback(() => {
     clearActiveStudyFlow();
@@ -160,7 +163,9 @@ function CourseStudyFlowInner() {
       return;
     }
     if (flow?.generation !== refreshKey) return;
-    if (flow.decision.kind === 'step') {
+    // As on entry, a 'choice' decision continues the curriculum: the revision
+    // alternative is offered by the study sheet, not mid-flow.
+    if (flow.decision.kind === 'step' || flow.decision.kind === 'choice') {
       setCurrentStep(flow.decision.step);
       setTransition(null);
       return;
@@ -192,30 +197,10 @@ function CourseStudyFlowInner() {
   }
 
   if (flow === undefined || (transition && flow.generation !== refreshKey)) {
-    return <CourseStudyFlowSkeleton />;
-  }
-
-  if (!entryConsumed) {
     return (
-      <StudyEntry
-        courseName={flow.course.name}
-        decision={flow.decision}
-        recurringPracticeEligibleCount={flow.snapshot.recurringPracticeEligibleCount}
-        timeZone={flow.course.timeZone}
-        onContinue={(step) => {
-          setEntryConsumed(true);
-          setCurrentStep(step);
-        }}
-        onReviewDueCards={() => {
-          setEntryConsumed(true);
-          reviewDueCards();
-        }}
-        onAssessment={(assessment) => {
-          setEntryConsumed(true);
-          setCurrentStep(assessmentStep(assessment));
-        }}
-        onExit={finishFlow}
-      />
+      <DelayedFallback>
+        <CourseStudyFlowSkeleton />
+      </DelayedFallback>
     );
   }
 
@@ -270,20 +255,6 @@ function CourseStudyFlowInner() {
     );
   }
 
-  if (flow.decision.kind === 'choice') {
-    const choice = flow.decision;
-    return (
-      <StudyChoice
-        nextStep={choice.step}
-        assessments={choice.assessments}
-        timeZone={flow.course.timeZone}
-        onContinue={() => setCurrentStep(choice.step)}
-        onAssessment={(assessment) => setCurrentStep(assessmentStep(assessment))}
-        onExit={finishFlow}
-      />
-    );
-  }
-
   if (flow.decision.kind === 'blocked') {
     return (
       <StudyFlowMessage
@@ -308,71 +279,6 @@ function CourseStudyFlowInner() {
       }
       onExit={finishFlow}
     />
-  );
-}
-
-function assessmentStep(assessment: AssessmentPracticeOption): StudyFlowStep {
-  return {
-    kind: 'practice',
-    nodeKey: `assessment-${assessment.assessmentId}`,
-    mode: 'assessment',
-    assessmentId: assessment.assessmentId,
-    label: assessment.name,
-  };
-}
-
-function StudyChoice({
-  nextStep,
-  assessments,
-  timeZone,
-  onContinue,
-  onAssessment,
-  onExit,
-}: {
-  nextStep: StudyFlowStep;
-  assessments: AssessmentPracticeOption[];
-  timeZone?: string;
-  onContinue: () => void;
-  onAssessment: (assessment: AssessmentPracticeOption) => void;
-  onExit: () => void;
-}) {
-  return (
-    <div className="min-h-screen bg-paper px-6 py-10">
-      <main className="mx-auto flex min-h-[70vh] max-w-xl flex-col justify-center">
-        <p className="mb-2 text-sm uppercase tracking-[0.18em] text-ink-faint">
-          Choose what to study
-        </p>
-        <h1 className="font-display text-4xl tracking-tight md:text-5xl">Continue or revise</h1>
-        <p className="mt-4 text-ink-soft">
-          An upcoming assessment overlaps material you have reached.
-        </p>
-        <div className="mt-8 flex flex-col gap-3">
-          <Button variant="primary" size="lg" onClick={onContinue}>
-            Continue: {nextStep.label}
-          </Button>
-          {assessments.map((assessment) => (
-            <Button
-              key={assessment.assessmentId}
-              variant="secondary"
-              size="lg"
-              onClick={() => onAssessment(assessment)}
-            >
-              Revise for {assessment.name}
-              <span className="ml-2 text-sm opacity-70">
-                {new Intl.DateTimeFormat('en-GB', {
-                  day: 'numeric',
-                  month: 'short',
-                  timeZone,
-                }).format(assessment.examDate)}
-              </span>
-            </Button>
-          ))}
-          <Button variant="ghost" size="lg" onClick={onExit}>
-            Done
-          </Button>
-        </div>
-      </main>
-    </div>
   );
 }
 

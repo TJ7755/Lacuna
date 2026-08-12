@@ -1,3 +1,4 @@
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { m as motion } from 'motion/react';
@@ -173,7 +174,9 @@ export function SearchPage() {
       </div>
 
       {!searchData ? (
-        <SearchSkeleton />
+        <DelayedFallback>
+          <SearchSkeleton />
+        </DelayedFallback>
       ) : !active ? (
         <motion.div
           initial={{ opacity: 0, y: 8 }}

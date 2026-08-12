@@ -866,6 +866,13 @@ export function CardList({ cards, deck, context, allDecks = deck ? [deck] : [], 
 
 const VIRTUAL_THRESHOLD = 50;
 
+/** Longest possible entry animation: the capped stagger plus one row's fade. */
+const INTRO_WINDOW_MS = 420;
+
+/** Rows stagger by this much, up to STAGGER_CAP_S, so a full window still lands quickly. */
+const STAGGER_STEP_S = 0.03;
+const STAGGER_CAP_S = 0.25;
+
 function cardTypeLabel(card: Card) {
   if (card.sequenceItemId !== null && card.sequenceItemId !== undefined) return 'Sequence';
   if (card.payload?.kind === 'working') return 'Working';
@@ -916,13 +923,16 @@ export function CardListBody({
     enabled,
   });
 
-  // Track which cards have already mounted so we only animate once.
-  const mountedRef = useRef<Set<string>>(new Set());
-  const isFirstRender = useRef(true);
+  // Cards fade in once, as the list's own entrance, and never again. Scrolling a
+  // virtual window is not an entrance: rows revealed by scrolling previously
+  // animated on first sight, which made the effect look arbitrary because whether
+  // a given card faded depended on how far the list had been scrolled before.
+  const [introDone, setIntroDone] = useState(false);
   useEffect(() => {
-    isFirstRender.current = false;
-    cards.forEach((c) => mountedRef.current.add(c.id));
-  }, [cards]);
+    if (introDone || cards.length === 0) return;
+    const id = window.setTimeout(() => setIntroDone(true), INTRO_WINDOW_MS * motionMultiplier);
+    return () => window.clearTimeout(id);
+  }, [introDone, cards.length, motionMultiplier]);
 
   if (!enabled) {
     return (
@@ -932,7 +942,8 @@ export function CardListBody({
             key={card.id}
             card={card}
             schedulingConfig={schedulingConfig}
-            index={i}
+            staggerIndex={i}
+            skipAnimation={introDone}
             selectMode={selectMode}
             selected={selected.has(card.id)}
             expanded={expandedCardId === card.id}
@@ -955,10 +966,8 @@ export function CardListBody({
 
   return (
     <div ref={containerRef} className="relative" style={{ height: totalHeight }}>
-      {virtualItems.map(({ index, start }) => {
+      {virtualItems.map(({ index, start }, position) => {
         const card = cards[index];
-        const hasMounted = mountedRef.current.has(card.id);
-        if (!hasMounted) mountedRef.current.add(card.id);
         return (
           <div
             key={card.id}
@@ -969,7 +978,7 @@ export function CardListBody({
             <CardRow
               card={card}
               schedulingConfig={schedulingConfig}
-              index={index}
+              staggerIndex={position}
               selectMode={selectMode}
               selected={selected.has(card.id)}
               expanded={expandedCardId === card.id}
@@ -984,7 +993,7 @@ export function CardListBody({
               onUnlink={() => onUnlinkCard?.(card)}
               onToggleFlag={onToggleFlag}
               motionMultiplier={motionMultiplier}
-              skipAnimation={hasMounted && !isFirstRender.current}
+              skipAnimation={introDone}
             />
           </div>
         );
@@ -996,7 +1005,7 @@ export function CardListBody({
 const CardRow = React.memo(function CardRow({
   card,
   schedulingConfig,
-  index,
+  staggerIndex,
   selectMode,
   selected,
   expanded,
@@ -1013,7 +1022,8 @@ const CardRow = React.memo(function CardRow({
 }: {
   card: Card;
   schedulingConfig: SchedulerConfig;
-  index: number;
+  /** Position within the rendered rows, not within `cards`: it only paces the entry stagger. */
+  staggerIndex: number;
   selectMode: boolean;
   selected: boolean;
   expanded: boolean;
@@ -1310,7 +1320,14 @@ const CardRow = React.memo(function CardRow({
         style={{ x: springX, touchAction: 'pan-y' }}
         initial={skipAnimation ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: skipAnimation ? 0 : 0.16 * m, delay: Math.min(index * 0.03, 0.25) * m }}
+        transition={
+          skipAnimation
+            ? { duration: 0, delay: 0 }
+            : {
+                duration: 0.16 * m,
+                delay: Math.min(staggerIndex * STAGGER_STEP_S, STAGGER_CAP_S) * m,
+              }
+        }
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         onMouseEnter={handleMouseEnter}

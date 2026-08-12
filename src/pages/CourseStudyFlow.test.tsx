@@ -218,7 +218,8 @@ describe('CourseStudyFlow', () => {
 
     renderFlow();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
+    // No entry screen here: these flows offer a single way in, so the study flow
+    // opens the only session directly. See entryHasChoice in StudyEntry.
     await screen.findByTestId('learn-request');
     expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' });
   });
@@ -232,7 +233,6 @@ describe('CourseStudyFlow', () => {
       ]),
     ];
     renderFlow();
-    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
     await screen.findByTestId('learn-request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
@@ -258,7 +258,6 @@ describe('CourseStudyFlow', () => {
       flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
     ];
     renderFlow();
-    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
     await screen.findByTestId('learn-request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Pause step' }));
@@ -281,20 +280,16 @@ describe('CourseStudyFlow', () => {
     });
   });
 
-  it('offers course progression and due review as distinct generic entry choices', async () => {
+  it('runs due review rather than the next step when the sheet asked for it', async () => {
+    // Choosing between progression and due review is now the study sheet's job; what
+    // this route must still honour is the choice arriving as a query parameter.
     const entryFlow = flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0);
     entryFlow.snapshot = snapshot([], [], 3);
     mockFlows = [entryFlow];
-    renderFlow();
+    renderFlow('/course/course-1/study?review=due');
 
-    expect(
-      await screen.findByRole('button', { name: 'Continue: Atomic structure' }),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Review due cards 3/ }));
-
-    await waitFor(() =>
-      expect(request()).toEqual({ kind: 'practice', courseId: 'course-1', mode: 'ad-hoc' }),
-    );
+    await screen.findByTestId('learn-request');
+    expect(request()).toEqual({ kind: 'practice', courseId: 'course-1', mode: 'ad-hoc' });
   });
 
   it('starts an exact manual Practice node from its direct query', async () => {
@@ -344,11 +339,10 @@ describe('CourseStudyFlow', () => {
     mockFlows = [choiceFlow(lessonStep, 0, [option])];
     renderFlow();
 
-    expect(
-      await screen.findByRole('heading', { name: 'Choose what to study' }),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Start: Atomic structure' }));
-    await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' }));
+    // An overlapping assessment no longer diverts this route: the sheet offered the
+    // revision option before entry, so arriving here means the curriculum was chosen.
+    await screen.findByTestId('learn-request');
+    expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' });
   });
 
   it('starts the chosen assessment branch and does not retain it as a preference', async () => {
@@ -369,9 +363,10 @@ describe('CourseStudyFlow', () => {
       label: 'Bonding',
     };
     mockFlows = [choiceFlow(firstLesson, 0, [option]), choiceFlow(secondLesson, 1, [option])];
-    renderFlow();
+    // The revision branch is chosen in the study sheet, which enters the route with the
+    // assessment named in the query.
+    renderFlow('/course/course-1/study?assessmentId=paper-1');
 
-    fireEvent.click(await screen.findByRole('button', { name: /Revise for Paper 1/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Plan paper-1' }));
     await waitFor(() =>
       expect(request()).toEqual({
@@ -386,8 +381,9 @@ describe('CourseStudyFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
     fireEvent.click(await screen.findByRole('button', { name: /^Continue$/ }));
 
-    expect(await screen.findByRole('heading', { name: 'Continue or revise' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue: Bonding' })).toBeInTheDocument();
+    // Not retained as a preference: what follows is the curriculum's next step rather
+    // than another round of revision.
+    await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-2' }));
   });
 
   it('clears the active flow and returns to the course when finished', async () => {
@@ -396,7 +392,6 @@ describe('CourseStudyFlow', () => {
       flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
     ];
     renderFlow();
-    fireEvent.click(await screen.findByRole('button', { name: 'Start: Atomic structure' }));
     await screen.findByTestId('learn-request');
     await waitFor(() => expect(localStorage.getItem('lacuna.activeStudyFlow')).not.toBeNull());
 
@@ -416,7 +411,6 @@ describe('CourseStudyFlow', () => {
       flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1),
     ];
     renderFlow();
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue: Checkpoint' }));
     await screen.findByTestId('learn-request');
     expect(request()).toMatchObject({ kind: 'practice', nodeKey: 'manual-1' });
     const sessionId = screen.getByTestId('learn-session').textContent;

@@ -747,7 +747,13 @@ describe('LearnMode course/lesson scope', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
 
-    expect(await screen.findByRole('button', { name: 'Enter Focus Mode' })).toBeInTheDocument();
+    // Entering focus mode now lives in the card-actions menu, so leaving it is observed
+    // by the study chrome becoming permanently visible rather than by a header toggle.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: 'Show study controls' }),
+      ).not.toBeInTheDocument();
+    });
     expect(localStorage.getItem('lacuna.startInFocusMode')).toBe('on');
   });
 
@@ -1323,7 +1329,11 @@ describe('LearnMode course/lesson scope', () => {
       expect(exitFocus).not.toHaveClass('hidden');
 
       fireEvent.click(exitFocus);
-      expect(await screen.findByRole('button', { name: 'Enter Focus Mode' })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('button', { name: 'Show study controls' }),
+        ).not.toBeInTheDocument();
+      });
     } finally {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
     }
@@ -1350,6 +1360,37 @@ describe('LearnMode course/lesson scope', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
     const dialog = await screen.findByRole('dialog', { name: 'Card actions' });
     expect(dialog.parentElement).toBe(document.body);
+  });
+
+  it('anchors touch grading controls to the bottom of the viewport', async () => {
+    // The thumb rests at the bottom of a phone, so grading must live there rather than
+    // in the middle of the screen. Nothing else asserted this, and the redesign plan
+    // wrongly recorded the controls as mid-screen after measuring a resized desktop
+    // browser, which reports no touch points and so renders the pointer layout.
+    localStorage.setItem('lacuna.inputMode', 'touch');
+    const deck = await createDeck('Thumb zone');
+    await createCard(deck.id, 'front_back', 'Thumb question', 'Thumb answer');
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={['/learn']}>
+            <Routes>
+              <Route path="/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText('Thumb question')).toBeInTheDocument();
+    // The card surface is itself a button labelled "Show answer"; the grading control is
+    // the real <button> element.
+    const candidates = await screen.findAllByRole('button', { name: /show answer/i });
+    const reveal = candidates.find((element) => element.tagName === 'BUTTON')!;
+    const sheet = reveal.closest('.fixed');
+    expect(sheet).not.toBeNull();
+    expect(sheet).toHaveClass('bottom-0');
   });
 
   it('does not reset an active session when the default Focus Mode preference changes', async () => {

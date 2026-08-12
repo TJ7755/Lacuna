@@ -1,5 +1,96 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Mobile navigation and course section transitions
+
+- Fixed header text wrapping at phone widths. The course tab labels wrapped inside their own
+  pills, breaking the segmented control; the dashboard header competed for about 280px between a
+  4xl title and a button that would not shrink; the lesson view-mode toggle was stranded
+  right-aligned on its own line once its row wrapped; and the course stat pills packed one-and-two
+  to a row by whatever happened to fit. Tabs now abbreviate below sm while keeping their full
+  accessible name, and the pills use a two-column grid.
+- Added a mobile bottom navigation bar carrying Courses, Study, Search, Analytics and Settings.
+  Deliberately opaque rather than translucent: content scrolling under a blurred bar competes with
+  the icons. It mounts inside `AppShell`, so it is absent from Learn mode, which lives outside the
+  shell and already pins its own grading controls to the bottom of the screen.
+- Course tabs are a full-width 48px control below sm, returning to the compact pill above it.
+- Moving between a course's sections now slides sideways in the direction of travel through the
+  tab order, rather than using the standard page transition, so the sections read as one surface.
+  The direction is passed through `AnimatePresence`'s `custom`, because an exiting element
+  otherwise keeps the props it last rendered with and leaves towards the wrong side.
+- Sections can also be swiped between on touch. The gesture is claimed only once movement is
+  clearly horizontal, so vertical scrolling wins a close call, and it is inert outside an exact
+  section route: deeper pages such as a lesson or the card editor are destinations within a
+  section rather than siblings of it. The pointer is captured for the gesture and cancelled
+  gestures are discarded; once the threshold is crossed, easing the finger back cannot reverse
+  the selected direction.
+- `COURSE_SECTIONS` is now the single source of section order, shared by the tab bar, the
+  transition and the swipe, since all three must agree on what the next section is.
+
+## Unreleased — Study entry and landing-page scroll toggle
+
+- The study entry screen now appears only when there is a decision to make. With one way into
+  the course it was a full-screen gate whose only action was "continue", tapped through before
+  every session; the course page already names what Study will open and the learn header confirms
+  it. `entryHasChoice` lives beside the buttons it describes in `StudyEntry.tsx` so the skip
+  condition cannot drift from the screen it governs.
+- This was deliberately framed as a rule rather than an exception for the single-option case: the
+  screen's appearance now always means something needs choosing, so the first time an assessment
+  overlaps your material the screen carries information rather than being routine.
+- The landing page's smooth-scroll toggle is revealed by a wheel event rather than by any scroll.
+  `useSmoothScroll` only intercepts `wheel`, so on a phone the pill offered an escape from
+  behaviour that was never happening, while sitting pinned over the heading and covering a word.
+
+## Unreleased — Learn screen: card, header and swipe undo
+
+- The study card sizes to its content behind a 12rem floor instead of a 29rem one, and the card
+  and its controls centre together as one block. Previously the card was centred within the
+  region above the reveal button, so short cards floated in an oversized container while the
+  leftover height collected beneath the controls.
+- The study header no longer encodes progress three ways. The percentage readout and the counter
+  ring are gone; focus mode and full screen moved into the card-actions menu on both pointer and
+  touch. Focus mode keeps a header control while active so a chrome-less screen has a visible exit.
+- The surviving progress track and pip bar now carry `role="progressbar"` and the progress value
+  themselves. The removed ring had been the only accessible progress value, because the visual
+  tracks were `aria-hidden` or an unvalued group.
+- A swipe-committed grade now offers Undo in a toast. Undo already existed but was reachable only
+  by keyboard shortcut, which is no use to the phone user who made the accidental swipe.
+  Deliberate taps on Yes and No do not raise the toast.
+- Added a test asserting that touch grading controls live in a `fixed bottom-0` container, so the
+  thumb-zone property cannot regress unnoticed.
+- Corrected two findings in `docs/plans/learn-screen-redesign.md`, both wrong for the same reason.
+  The swipe finding claimed there was no answer-phase restriction, no commit threshold and no drag
+  feedback; all three already existed and only the undo gap was real. The thumb-zone finding
+  claimed the grading controls sat mid-screen on a phone; they are already anchored to the bottom,
+  and the measurement had been taken in a resized desktop browser, which reports no touch points
+  and so renders the pointer layout. Both entries are kept and marked rather than deleted.
+- **Lesson for future passes:** a browser session at phone width is not a phone. Input mode
+  resolves from reported touch points once on mount, so resizing a desktop window renders the
+  pointer layout however narrow it gets. Verify a finding against the code before planning work
+  from it.
+
+## Unreleased — Loading placeholders and card entry animation
+
+- Loading placeholders no longer flash. `useDelayedPending` withholds a placeholder until
+  loading has lasted 250ms, and the `DelayedFallback` wrapper applies it at all fifteen
+  placeholder sites, fading the placeholder in rather than snapping it on. Route chunks are
+  prefetched, so warm navigation now shows no placeholder at all; the placeholder remains for
+  cold chunk fetches and large courses. The delay is the enforced guarantee; a child fallback
+  cannot enforce a minimum visible lifetime once its loading owner replaces it.
+- `DelayedFallback` is a wrapper component rather than a hook call at each site, because
+  mounting a placeholder is itself the loading signal. This avoids hoisting a hook above the
+  pre-existing early returns in fifteen components, which would have risked breaking the
+  rules of hooks for no gain.
+- Fixed the card entry animation in `CardList`. Rows animated the first time they entered the
+  virtual window, so whether a row faded in depended on how far the list had been scrolled,
+  and rows revealed by scrolling staggered on their absolute card index and so always waited
+  the capped delay. Rows now animate once as the list's own entrance, staggered by position
+  among the rendered rows; scrolling reveals rows immediately. The `index` prop is renamed
+  `staggerIndex`, since feeding it the absolute index is what caused the defect.
+- Not fixed yet: the placeholder-to-content swap is still a hard cut, which reads as a
+  flicker on a fast load. `AppShell` already crossfades route changes, but it animates the
+  placeholder rather than the content that replaces it. Recorded in
+  `docs/plans/learn-screen-redesign.md`.
+
 ## Unreleased — Course-facing Deck terminology audit
 
 - Added `docs/course-terminology-audit.md`, tracing Course-facing Deck terminology into

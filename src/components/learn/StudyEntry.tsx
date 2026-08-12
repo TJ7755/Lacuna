@@ -2,6 +2,29 @@ import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import type { StudyFlowDecision, StudyFlowStep } from '../../course/studyFlowPlanner';
 import { Button } from '../ui/Button';
 
+/**
+ * Whether the entry screen has an actual decision to put to the learner: more than one
+ * way into the course, rather than a single action plus an exit.
+ *
+ * The study flow uses this to skip the screen entirely when there is nothing to choose,
+ * so that the screen's appearance always means something needs choosing rather than
+ * being a gate tapped through on the way to every session. It lives here, beside the
+ * buttons it describes, so the two cannot drift apart.
+ */
+export function entryHasChoice(
+  decision: StudyFlowDecision,
+  recurringPracticeEligibleCount: number,
+): boolean {
+  const nextStep = decision.kind === 'step' || decision.kind === 'choice' ? decision.step : null;
+  // With no next step the screen shows an explanatory message, which is not a choice but
+  // must still be seen.
+  if (!nextStep) return true;
+  const assessments = decision.kind === 'choice' ? decision.assessments : [];
+  const nextIsDueReview = nextStep.kind === 'practice' && nextStep.mode === 'recurring';
+  const canReviewDueCards = recurringPracticeEligibleCount > 0 && !nextIsDueReview;
+  return assessments.length > 0 || canReviewDueCards;
+}
+
 export function StudyEntry({
   courseName,
   decision,

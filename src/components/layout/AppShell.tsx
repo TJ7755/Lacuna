@@ -5,6 +5,12 @@ import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
 import { ErrorBoundary } from './ErrorBoundary';
 import { CommandPalette } from '../search/CommandPalette';
+import { StudySheet } from '../learn/StudySheet';
+import { StudySheetProvider, useStudySheetState } from '../learn/StudySheetContext';
+import { CourseSectionBar } from '../course/CourseSectionBar';
+import { courseIdFromPath } from '../course/courseSections';
+import { cn } from '../ui/cn';
+import { useCourseSectionSwipe } from '../course/useCourseSectionSwipe';
 import { KeyHints } from '../ui/KeyHints';
 import { CloseIcon, LacunaIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -13,6 +19,15 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
+
+/** Sideways for a move between course sections, the standard lift otherwise. */
+const ROUTE_VARIANTS = {
+  enter: (direction: number) =>
+    direction === 0 ? { opacity: 0, y: 12, scale: 0.995 } : { opacity: 0, x: 32 * direction },
+  center: { opacity: 1, x: 0, y: 0, scale: 1 },
+  exit: (direction: number) =>
+    direction === 0 ? { opacity: 0, y: -8, scale: 0.995 } : { opacity: 0, x: -32 * direction },
+};
 
 export function AppShell() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
@@ -39,6 +54,7 @@ export function AppShell() {
   const mainRef = useRef<HTMLElement>(null);
   const appContentRef = useRef<HTMLDivElement>(null);
   const titlebarRef = useRef<HTMLDivElement>(null);
+  const bottomNavRef = useRef<HTMLDivElement>(null);
   const shellBodyRef = useRef<HTMLDivElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileWasOpenRef = useRef(false);
@@ -49,6 +65,11 @@ export function AppShell() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const [arrivedFromLanding] = useState(() => consumeLandingArrival());
+  const { onPointerDown, onPointerMove, onPointerUp, onPointerCancel, sectionDirection } =
+    useCourseSectionSwipe();
+  // The section bar only exists inside a course, so only those pages need to clear it.
+  const inCourse = courseIdFromPath(location.pathname) !== null;
+  const studySheet = useStudySheetState();
 
   // Keep an icon rail visible on narrower desktop windows instead of spending a
   // quarter of the viewport on the full sidebar. The user's preference resumes
@@ -81,23 +102,20 @@ export function AppShell() {
     setMobileOpen(false);
   }, [location.pathname]);
 
-  // Keep the page behind the modal drawer out of both keyboard navigation and
-  // the accessibility tree until the drawer closes.
+  // Keep the page behind either modal surface out of both keyboard navigation and
+  // the accessibility tree until the overlay closes. The course section bar is a
+  // sibling of the shell body, so it must be included explicitly rather than relying
+  // on the body region's inert attribute.
   useEffect(() => {
-    const content = appContentRef.current;
-    if (!content || !mobileOpen) return;
-    content.setAttribute('inert', '');
-    return () => content.removeAttribute('inert');
-  }, [mobileOpen]);
-
-  useEffect(() => {
-    if (!paletteOpen) return;
-    const background = [titlebarRef.current, shellBodyRef.current].filter(
-      (element): element is HTMLDivElement => element !== null,
-    );
+    const background = [
+      titlebarRef.current,
+      bottomNavRef.current,
+      ...(paletteOpen ? [shellBodyRef.current] : mobileOpen ? [appContentRef.current] : []),
+    ].filter((element): element is HTMLDivElement => element !== null);
+    if (!mobileOpen && !paletteOpen) return;
     background.forEach((element) => element.setAttribute('inert', ''));
     return () => background.forEach((element) => element.removeAttribute('inert'));
-  }, [paletteOpen]);
+  }, [mobileOpen, paletteOpen]);
 
   // Restore focus after the inert attribute has been removed. Returning it from
   // the trap cleanup is too early: browsers correctly refuse to focus an inert
@@ -159,6 +177,7 @@ export function AppShell() {
             collapsed={!wideDesktop || collapsed}
             onToggleCollapsed={() => setCollapsed((c) => !c)}
             onOpenPalette={() => setPaletteOpen(true)}
+            onOpenStudySheet={() => studySheet.value.openStudySheet()}
             collapseControl={wideDesktop}
           />
         </div>
@@ -211,6 +230,10 @@ export function AppShell() {
                     setMobileOpen(false);
                     setPaletteOpen(true);
                   }}
+                  onOpenStudySheet={() => {
+                    setMobileOpen(false);
+                    studySheet.value.openStudySheet();
+                  }}
                 />
               </motion.div>
             </motion.div>
@@ -244,26 +267,51 @@ export function AppShell() {
 
           <main
             ref={mainRef}
-            className="min-w-0 flex-1 overflow-y-auto overscroll-y-none"
+            // Bottom padding clears the mobile navigation bar, which is fixed and would
+            // otherwise cover the last of the page's content.
+            className={cn(
+              'min-w-0 flex-1 overflow-y-auto overscroll-y-none',
+              inCourse && 'pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-0',
+            )}
             style={{ touchAction: 'pan-y' }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerCancel}
           >
             <ErrorBoundary label="this page">
-              {/* Each route fades, scales, and lifts in as the previous one settles out,
-                giving navigation a polished sense of place without slowing the user down. */}
-              <AnimatePresence initial={false}>
+              {/* Ordinary navigation fades, scales and lifts in as the previous page settles
+                  out. Moving between a course's sections slides sideways instead, in the
+                  direction of travel through the tab order, so the sections read as one
+                  surface rather than as unrelated pages.
+
+                  The direction goes through AnimatePresence's `custom` rather than being
+                  baked into the props, because an exiting element otherwise keeps the props
+                  it last rendered with and would leave towards the wrong side. */}
+              <AnimatePresence initial={false} custom={sectionDirection}>
                 <motion.div
                   key={location.pathname}
-                  initial={{ opacity: 0, y: 12, scale: 0.995 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.995 }}
+                  custom={sectionDirection}
+                  variants={ROUTE_VARIANTS}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
                   transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  {outlet}
+                  <StudySheetProvider value={studySheet.value}>{outlet}</StudySheetProvider>
                 </motion.div>
               </AnimatePresence>
             </ErrorBoundary>
           </main>
         </div>
+      </div>
+      <div ref={bottomNavRef}>
+        <CourseSectionBar />
+        <AnimatePresence>
+          {studySheet.open && (
+            <StudySheet courseId={studySheet.courseId} onClose={studySheet.close} />
+          )}
+        </AnimatePresence>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />

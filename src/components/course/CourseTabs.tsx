@@ -8,18 +8,7 @@
 
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../ui/cn';
-
-interface CourseTab {
-  label: string;
-  suffix: string;
-}
-
-const COURSE_TABS: CourseTab[] = [
-  { label: 'Path', suffix: '' },
-  { label: 'Question bank', suffix: '/bank' },
-  { label: 'Analytics', suffix: '/analytics' },
-  { label: 'Settings', suffix: '/settings' },
-];
+import { COURSE_SECTIONS } from './courseSections';
 
 export function CourseTabs({ courseId }: { courseId: string }) {
   const { pathname } = useLocation();
@@ -28,9 +17,12 @@ export function CourseTabs({ courseId }: { courseId: string }) {
   return (
     <nav
       aria-label="Course sections"
-      className="inline-flex h-9 shrink-0 items-center gap-0.5 rounded-full border border-line bg-ink/5 p-0.5 text-sm"
+      // Hidden below sm, where CourseSectionBar carries these same sections within
+      // thumb reach instead. max-w-full with scroll is the last resort at large font
+      // scales: the bar slides rather than wrapping its labels inside their pills.
+      className="hidden h-9 max-w-full shrink-0 items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-ink/5 p-0.5 text-sm sm:inline-flex"
     >
-      {COURSE_TABS.map(({ label, suffix }) => {
+      {COURSE_SECTIONS.map(({ label, short, suffix }) => {
         const to = `${base}${suffix}`;
         // The Path tab (empty suffix) must match exactly so it doesn't stay
         // "active" while on /bank, /analytics or /settings (all of which
@@ -44,12 +36,16 @@ export function CourseTabs({ courseId }: { courseId: string }) {
             key={label}
             to={to}
             aria-current={active ? 'page' : undefined}
+            // The accessible name stays the full label at every width, so the shortened
+            // mobile text is a visual abbreviation rather than a different control.
+            aria-label={label}
             className={cn(
-              'flex h-full items-center rounded-full px-3 font-medium transition-colors',
+              'flex h-full items-center whitespace-nowrap rounded-full px-3 font-medium transition-colors',
               active ? 'bg-surface text-ink shadow-sm shadow-black/[0.04]' : 'text-ink-faint hover:text-ink',
             )}
           >
-            {label}
+            <span className="sm:hidden">{short}</span>
+            <span className="hidden sm:inline">{label}</span>
           </Link>
         );
       })}

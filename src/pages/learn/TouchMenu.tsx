@@ -4,7 +4,14 @@ import { m as motion, useMotionValue, useSpring } from 'motion/react';
 import { hapticLight } from '../../utils/haptic';
 import type { Card } from '../../db/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { ClockIcon, EditIcon, FlagIcon, KeyboardIcon, PauseIcon } from '../../components/ui/icons';
+import {
+  ClockIcon,
+  EditIcon,
+  FlagIcon,
+  FocusIcon,
+  KeyboardIcon,
+  PauseIcon,
+} from '../../components/ui/icons';
 
 export function TouchMenuSheet({
   current,
@@ -13,6 +20,8 @@ export function TouchMenuSheet({
   onBury,
   onSuspend,
   onShowShortcuts,
+  onToggleFocus,
+  focusMode,
   onClose,
   m,
 }: {
@@ -22,6 +31,8 @@ export function TouchMenuSheet({
   onBury: () => void;
   onSuspend: () => void;
   onShowShortcuts: () => void;
+  onToggleFocus: () => void;
+  focusMode: boolean;
   onClose: () => void;
   m: number;
 }) {
@@ -139,6 +150,14 @@ export function TouchMenuSheet({
             onClick={() => {
               hapticLight();
               onBury();
+            }}
+          />
+          <TouchMenuButton
+            icon={<FocusIcon width={22} height={22} />}
+            label={focusMode ? 'Leave focus mode' : 'Focus mode'}
+            onClick={() => {
+              hapticLight();
+              onToggleFocus();
             }}
           />
           <TouchMenuButton

@@ -1,6 +1,10 @@
 # Learn screen redesign — card view, header and swipe
 
-**Status:** ready
+**Status:** complete on `refactor/learn-screen-redesign`. Scope items 2, 3 and 4 are done and item 1
+was withdrawn as already-implemented. Two of this plan's five findings were wrong; both are marked
+in place rather than deleted, and the reason is the same in each case — they were written from a
+browser session without reading the code underneath. The remaining follow-ups at the end are
+unaffected and still worth doing.
 
 **Written:** 12 August 2026
 
@@ -42,18 +46,46 @@ card inside the page.
 
 ### The thumb zone is inverted (mobile)
 
-On an 812px-tall viewport every actionable element sits in the top two-thirds — controls at
-0–70px, card at 100–450px, the No/Yes buttons at roughly 475–545px. Below about 560px there is
-around 260px of dead space, exactly where a thumb rests. This is a desktop layout that happens to
-fit a phone.
+**Incorrect. Corrected 12 August 2026.**
+
+The original claim was that on an 812px-tall viewport the No/Yes buttons sat at roughly 475–545px
+with around 260px of dead space beneath them. On a phone this is not what happens:
+`TouchBottomSheet.tsx:34,64` is `fixed bottom-0 left-0 right-0` with 56px controls, and
+`LearnMode.tsx:512` reserves `pb-40` beneath the card for it. Grading already sits exactly where a
+thumb rests.
+
+The measurement was an artefact of how it was taken. Input mode defaults to `auto`, which resolves
+to touch only when the device reports touch points (`inputMode.ts:9-23`), and `useIsTouchMode`
+reads that once on mount. A desktop browser resized to 375px after the page had loaded therefore
+kept the pointer layout, in which the grading row *is* in the flow of the page and *does* sit
+mid-screen. The pass measured the pointer layout at phone width and recorded it as the phone
+layout.
+
+`LearnMode.test.tsx` now asserts that touch grading is anchored to a `fixed bottom-0` container, so
+this cannot regress unnoticed and cannot be mis-measured the same way again.
 
 ### Swipe grades silently — the most serious finding
 
-A left drag across the card immediately committed a **No** grade: the progress pip turned dark red
-and the session advanced. There was no drag feedback, no commit threshold, no confirmation and no
-undo offered. On a real phone any stray horizontal movement — including an attempt to scroll a card
-longer than the viewport — will record a lapse and damage that card's scheduling, possibly without
-the learner noticing.
+**Largely incorrect. Corrected 12 August 2026 after reading `FlipCard.tsx`.**
+
+The original claim was that a left drag committed a **No** grade with no drag feedback, no commit
+threshold, no confirmation and no undo. Three of those four were already false:
+
+- Swipe-to-grade is already restricted to the answer phase (`FlipCard.tsx:171-175`), so a drag on
+  the question face does nothing.
+- There is already a 60px commit threshold with a spring-back below it, and the drag is clamped to
+  180px (`FlipCard.tsx:104-105,197-236`).
+- There is already drag feedback: the card tracks the finger and a directional glow appears past
+  half the threshold (`FlipCard.tsx:303-322`).
+
+Only the undo claim held, and only on touch: `undoLast` existed but was reachable **solely by
+keyboard shortcut**, which is no use to the phone user who made the accidental swipe. That gap is
+now closed — a swipe-committed grade raises a toast with an Undo action, while deliberate taps on
+Yes and No do not, so ordinary study is not interrupted on every card.
+
+This entry is left in place rather than deleted, as a caution: the original was written from a
+browser session without reading the handler, and it inverted the actual state of the code. Confirm
+findings against the source before acting on them.
 
 ### Route friction into the loop
 
@@ -88,9 +120,11 @@ explicitly out of scope for this plan.
 
 In scope:
 
-1. Rebuild the learn screen layout so the primary controls sit in the thumb zone on mobile and the
-   card occupies the space above, with the desktop layout kept coherent rather than merely
-   unbroken.
+1. ~~Rebuild the learn screen layout so the primary controls sit in the thumb zone on mobile and
+   the card occupies the space above.~~ **Withdrawn:** this was already the behaviour on a real
+   touch device; see the corrected finding above. The card-centring work under "Further findings"
+   covered the remaining part of this item, which was that the card sat high within the space
+   available to it.
 2. Reduce the header to what is needed during study — at most title, progress and exit — and move
    the remainder behind the existing overflow. Applies to both viewports.
 3. Make the card read as content rather than an empty container at both sizes.
@@ -99,16 +133,48 @@ In scope:
 Out of scope, and to be handled separately: the "Choose what to study" interstitial, the dashboard
 study entry being below the fold, and the landing-page overlap defect (see Follow-ups).
 
-## Open questions for the prompter
+## Answers to the open questions, given 12 August 2026
 
-1. Should the progress pips survive at all during study, or move behind the overflow? They are five
-   of the eleven header elements and are not needed to answer a card.
-2. Is the fullscreen/focus pair worth keeping on desktop, or is it redundant now that the header is
-   being thinned?
-3. Should swipe be available on the question face, or only once the answer is shown? Restricting it
-   to the answer face removes a whole class of accidental grading.
+The three questions this plan was blocked on have been answered by the prompter:
 
-Ask these before finalising the design; do not guess.
+1. **Progress keeps one form only.** The pip bar survives as the single progress indicator during
+   study. The percentage readout and the counter ring are redundant encodings of the same value and
+   move behind the existing overflow, along with the focus and fullscreen controls. The header
+   during study is title, pips and Exit.
+2. **The fullscreen/focus pair goes behind the overflow**, per the above. It is not removed.
+3. **Swipe is restricted to the answer face.** Grading before the answer is shown is rarely
+   intended, so this removes a whole class of accidental grading before the threshold work even
+   applies. The threshold, drag feedback and undo from the swipe decision above are still required
+   on the answer face.
+
+## Further findings, 12 August 2026
+
+Two defects found after the original browser pass, from a desktop screenshot of guided study.
+
+### The card is not centred, and there are two separate pools of dead space
+
+`FlipCard.tsx:377` sets `md:min-h-[29rem]`, a 464px floor regardless of content, so a two-line card
+floats in a box around three times the height it needs. That is dead space *inside* the card.
+
+Separately, `FlipCard.tsx:280` centres the card within a `flex-1` region, but the reveal button sits
+below that region in `LearnMode.tsx:485`. The card is therefore centred in the space *above the
+button* rather than in the viewport, and all remaining space collects beneath the button. That is
+dead space *outside* the card.
+
+**Decision:** the card shrinks to its content behind a modest floor of about 12rem, and the card and
+its reveal button are centred together as one optical block rather than the card being centred
+alone.
+
+### Fast loading transitions read as a flicker
+
+Route and data loads now resolve in tens of milliseconds, but the swap from placeholder to content
+is a hard cut. An instant change with no transition reads as a flicker rather than as speed, so
+making the load faster makes the effect worse rather than better. Hiding the placeholder on fast
+loads (`useDelayedPending`, on `fix/loading-placeholder-flash`) is necessary but not sufficient.
+
+**Decision:** route content crossfades in over a short duration, honouring `motionMultiplier` and
+reduced motion, so a fast load settles rather than snaps. This lands with the loading work, before
+this plan starts.
 
 ## Constraints
 

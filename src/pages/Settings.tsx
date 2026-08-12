@@ -10,6 +10,7 @@ import { McpSection } from './settings/McpSection';
 import { PomodoroSection } from './settings/PomodoroSection';
 import { ShortcutsSection } from './settings/ShortcutsSection';
 import { SidebarSection } from './settings/SidebarSection';
+import { CourseHeaderSection } from './settings/CourseHeaderSection';
 import { StudySection } from './settings/StudySection';
 
 const SETTINGS_SECTIONS = [
@@ -53,6 +54,7 @@ export function Settings() {
         <AppearanceSection motionMultiplier={motionMultiplier} />
         <InputModeSection motionMultiplier={motionMultiplier} />
         <SidebarSection motionMultiplier={motionMultiplier} />
+        <CourseHeaderSection motionMultiplier={motionMultiplier} />
         <DashboardSection motionMultiplier={motionMultiplier} />
         <StudySection motionMultiplier={motionMultiplier} />
         <ShortcutsSection motionMultiplier={motionMultiplier} />

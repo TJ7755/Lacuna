@@ -374,7 +374,10 @@ export function FlipCard({
             }}
             style={{ transformOrigin: 'center center', x: swipeXSpring }}
             className={cn(
-              'relative z-10 flex min-h-[22rem] flex-col items-center justify-center rounded-3xl border bg-surface px-6 py-10 md:min-h-[29rem] md:px-12 md:py-14',
+              // A modest floor keeps short cards from looking like a stray label without
+              // making a two-line card float in an otherwise empty container. Longer cards
+              // grow past it as before.
+              'relative z-10 flex min-h-[12rem] flex-col items-center justify-center rounded-3xl border bg-surface px-6 py-10 md:min-h-[14rem] md:px-12 md:py-14',
               modeBorderClass(mode, revealed),
             )}
           >

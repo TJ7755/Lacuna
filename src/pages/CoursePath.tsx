@@ -2,6 +2,7 @@
 // Route: /course/:courseId
 // British English throughout.
 
+import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -43,6 +44,7 @@ import {
 } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { CourseTabs } from '../components/course/CourseTabs';
+import { useStudySheet } from '../components/learn/StudySheetContext';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { Button } from '../components/ui/Button';
@@ -81,6 +83,7 @@ interface PracticeNodeProgress {
 export function CoursePath() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const { openStudySheet } = useStudySheet();
   const { notify } = useToast();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -296,7 +299,11 @@ export function CoursePath() {
 
   // Loading state — a skeleton while course/lesson data resolves.
   if (!dataLoaded) {
-    return <CoursePathSkeleton />;
+    return (
+      <DelayedFallback>
+        <CoursePathSkeleton />
+      </DelayedFallback>
+    );
   }
 
   // Course not found.
@@ -376,40 +383,46 @@ export function CoursePath() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
-      {/* Breadcrumb */}
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      {/* One row of chrome, not three. The back link, the section tabs and the lesson
+          view mode toggle all sit together, so the course card starts near the top of
+          the screen rather than below a stack of single-control rows. */}
+      <div className="mb-4 flex items-center justify-between gap-3">
         <Link
           to="/"
-          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
+          className="inline-flex min-h-11 shrink-0 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink active:text-ink"
         >
           <ChevronLeftIcon width={16} height={16} />
           All courses
         </Link>
-        <CourseTabs courseId={courseId ?? ''} />
+        <div className="flex min-w-0 items-center gap-3">
+          <CourseTabs courseId={courseId ?? ''} />
+          {/* Lesson view mode configures the path view rather than the course as a
+              whole, so it stays in the path's own header rather than moving into
+              CourseTabs, which is shared across all four course surfaces. */}
+          {!canEditLessons(course) ? (
+            <span className="hidden text-xs text-ink-faint sm:inline">
+              Editing is locked for shared courses
+            </span>
+          ) : (
+            <LessonViewModeToggle
+              mode={lessonViewMode}
+              onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Upcoming-assessment pills (left) and the lesson view mode toggle
-          (right, unchanged) share this row so the strip doesn't add height
-          of its own when there's room; it wraps below on narrow screens.
-          Lesson view mode configures the path view (not the course as a
-          whole), so it stays here in the path's own header area rather than
-          moving into CourseTabs (which is shared across all course surfaces). */}
-      <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
+      {/* A single upcoming assessment is already named by the card's eyebrow and counted
+          by its days-to-go pill, so the strip would be a third copy of one date. It earns
+          its row only when there is a choice of assessment to select between. */}
+      {assessments.length > 1 && (
         <UpcomingAssessmentsStrip
           assessments={assessments}
           now={now}
           onSelect={setSelectedAssessmentId}
-          className="mr-auto"
+          className="mb-3"
         />
-        {!canEditLessons(course) ? (
-          <span className="text-xs text-ink-faint">Editing is locked for shared courses</span>
-        ) : (
-          <LessonViewModeToggle
-            mode={lessonViewMode}
-            onChange={(mode) => void updateCourse(course.id, { lessonViewMode: mode })}
-          />
-        )}
-      </div>
+      )}
 
       {/* Header — title, a row of labelled stat pills (HeaderStats), and the
           Study action. */}
@@ -451,7 +464,9 @@ export function CoursePath() {
               disabled={!studyTarget}
               onClick={() => {
                 if (!studyTarget) return;
-                navigate(`/course/${courseId}/study`);
+                // Raises the study sheet rather than navigating: the choice is one tap
+                // to open and one to dismiss, and dismissing leaves this page in place.
+                openStudySheet(courseId);
               }}
             >
               <PlayIcon width={18} height={18} />
