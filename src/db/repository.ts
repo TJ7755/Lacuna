@@ -72,7 +72,6 @@ import {
   LABEL_CARD_SUFFIX,
   type GeneratedCardPayload,
 } from './sequenceGeneration';
-import { assertValidCardPayload } from '../items/payloadValidation';
 import { friendlyDbError } from './dbErrors';
 export {
   createPracticeNode,
@@ -80,6 +79,12 @@ export {
   deletePracticeNode,
   savePracticeMilestoneProgress,
 } from './practiceNodeRepository';
+
+async function assertValidCardPayload(type: CardType, payload: unknown): Promise<void> {
+  if (payload === undefined || payload === null) return;
+  const { assertValidCardPayload: validate } = await import('../items/payloadValidation');
+  validate(type, payload);
+}
 
 // ---------------------------------------------------------------------------
 // Decks
@@ -207,7 +212,7 @@ export async function createCard(
   opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'payload'>,
 ): Promise<Card> {
   try {
-    assertValidCardPayload(type, opts?.payload);
+    await assertValidCardPayload(type, opts?.payload);
     const card: Card = {
       id: makeId(),
       deckId,
@@ -253,7 +258,7 @@ export async function createCards(
   opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<Card[]> {
   try {
-    for (const draft of drafts) assertValidCardPayload(draft.type, draft.payload);
+    for (const draft of drafts) await assertValidCardPayload(draft.type, draft.payload);
     const now = Date.now();
     const cards: Card[] = drafts.map((draft, i) => ({
       id: makeId(),
@@ -450,7 +455,7 @@ export async function updateCard(id: string, changes: Partial<Card>): Promise<vo
     if ('payload' in changes) {
       const card = await db.cards.get(id);
       if (card && changes.payload !== undefined) {
-        assertValidCardPayload(changes.type ?? card.type, changes.payload);
+        await assertValidCardPayload(changes.type ?? card.type, changes.payload);
       }
     }
     await db.cards.update(id, changes);
