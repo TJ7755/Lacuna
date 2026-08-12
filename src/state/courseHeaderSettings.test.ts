@@ -42,7 +42,9 @@ describe('courseHeaderSettings', () => {
       'lacuna.courseHeaderSettings',
       JSON.stringify({ statPills: [{ id: 'retired', label: 'Retired', visible: true }] }),
     );
-    expect(readStored().statPills.some((pill) => pill.id === 'retired')).toBe(false);
+    expect(readStored().statPills).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'retired' })]),
+    );
   });
 
   it('falls back to defaults on unparseable storage', () => {

@@ -35,8 +35,8 @@ No source code was changed by this audit. No wire-format rename is proposed.
   passes a backing-deck id only for duplicate detection.
 - `src/pages/settings/DataPortabilitySection.tsx:18-30,55-58` reaches
   `UnifiedExportPanel` and `importBackup` for full Course-inclusive backups.
-- `src/pages/Settings.tsx:62-63` renders the Course-facing `BackupsSection`; its restore-point
-  count is checked separately below because it is derived from backing Deck rows.
+- `src/pages/Settings.tsx:64-65` renders the global `BackupsSection`; its restore-point count is
+  checked separately below because it is derived from backing Deck rows.
 - `src/components/import/UnifiedExportPanel.tsx:134-176` calls the generic card and
   review exporters and `downloadBackup`.
 - `src/components/import/MergeReviewPanel.tsx:1-5,240-245,356-364` is a Course-scoped
