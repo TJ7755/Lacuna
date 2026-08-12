@@ -1,6 +1,7 @@
 # Learn screen redesign — card view, header and swipe
 
-**Status:** ready
+**Status:** ready, open questions answered. Starts once the loading work on
+`fix/loading-placeholder-flash` has merged.
 
 **Written:** 12 August 2026
 
@@ -99,16 +100,48 @@ In scope:
 Out of scope, and to be handled separately: the "Choose what to study" interstitial, the dashboard
 study entry being below the fold, and the landing-page overlap defect (see Follow-ups).
 
-## Open questions for the prompter
+## Answers to the open questions, given 12 August 2026
 
-1. Should the progress pips survive at all during study, or move behind the overflow? They are five
-   of the eleven header elements and are not needed to answer a card.
-2. Is the fullscreen/focus pair worth keeping on desktop, or is it redundant now that the header is
-   being thinned?
-3. Should swipe be available on the question face, or only once the answer is shown? Restricting it
-   to the answer face removes a whole class of accidental grading.
+The three questions this plan was blocked on have been answered by the prompter:
 
-Ask these before finalising the design; do not guess.
+1. **Progress keeps one form only.** The pip bar survives as the single progress indicator during
+   study. The percentage readout and the counter ring are redundant encodings of the same value and
+   move behind the existing overflow, along with the focus and fullscreen controls. The header
+   during study is title, pips and Exit.
+2. **The fullscreen/focus pair goes behind the overflow**, per the above. It is not removed.
+3. **Swipe is restricted to the answer face.** Grading before the answer is shown is rarely
+   intended, so this removes a whole class of accidental grading before the threshold work even
+   applies. The threshold, drag feedback and undo from the swipe decision above are still required
+   on the answer face.
+
+## Further findings, 12 August 2026
+
+Two defects found after the original browser pass, from a desktop screenshot of guided study.
+
+### The card is not centred, and there are two separate pools of dead space
+
+`FlipCard.tsx:377` sets `md:min-h-[29rem]`, a 464px floor regardless of content, so a two-line card
+floats in a box around three times the height it needs. That is dead space *inside* the card.
+
+Separately, `FlipCard.tsx:280` centres the card within a `flex-1` region, but the reveal button sits
+below that region in `LearnMode.tsx:485`. The card is therefore centred in the space *above the
+button* rather than in the viewport, and all remaining space collects beneath the button. That is
+dead space *outside* the card.
+
+**Decision:** the card shrinks to its content behind a modest floor of about 12rem, and the card and
+its reveal button are centred together as one optical block rather than the card being centred
+alone.
+
+### Fast loading transitions read as a flicker
+
+Route and data loads now resolve in tens of milliseconds, but the swap from placeholder to content
+is a hard cut. An instant change with no transition reads as a flicker rather than as speed, so
+making the load faster makes the effect worse rather than better. Hiding the placeholder on fast
+loads (`useDelayedPending`, on `fix/loading-placeholder-flash`) is necessary but not sufficient.
+
+**Decision:** route content crossfades in over a short duration, honouring `motionMultiplier` and
+reduced motion, so a fast load settles rather than snaps. This lands with the loading work, before
+this plan starts.
 
 ## Constraints
 
