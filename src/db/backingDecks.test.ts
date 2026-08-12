@@ -44,6 +44,11 @@ describe('backing deck adapter', () => {
       backingLessonId: lesson.id,
       name: 'Cells',
     });
+    expect(await db.schedulingPerformance.get(lesson.id)).toMatchObject({
+      schedulingUnitId: lesson.id,
+      courseId: course.id,
+      lessonId: lesson.id,
+    });
   });
 
   it('repairs a missing performance row without replacing existing calibration', async () => {

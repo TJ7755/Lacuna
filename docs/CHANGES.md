@@ -13,6 +13,10 @@
   pacing reads use `schedulingPerformance`. Course writes mirror the old calibration row for
   rollback, and legacy Deck sessions retain their explicit Deck key space; missing pacing rows
   continue to use downstream defaults rather than becoming zero-second estimates.
+- Routed the active Course dashboard, sidebar and read-side course statistics through the same
+  pacing adapter. Newly-created Course cards now carry their scheduling-unit id, and newly-created
+  backing units initialise target pacing rows, so fresh installs and upgraded databases share the
+  same target-store path.
 
 ## Unreleased — One place for study on the dashboard
 

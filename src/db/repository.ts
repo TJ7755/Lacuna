@@ -235,6 +235,7 @@ export async function createCard(
       tags,
       suspended: false,
       buriedUntil: null,
+      ...(opts?.courseId ? { schedulingUnitId: opts.primaryLessonId ?? opts.courseId } : {}),
       ...opts,
     };
     await db.cards.add(card);
@@ -283,6 +284,7 @@ export async function createCards(
       tags: draft.tags ?? [],
       suspended: false,
       buriedUntil: null,
+      ...(opts?.courseId ? { schedulingUnitId: opts.primaryLessonId ?? opts.courseId } : {}),
       ...opts,
     }));
     await db.cards.bulkAdd(cards);
@@ -434,7 +436,10 @@ export async function assignCardsToLesson(
   const deckId = lessonId
     ? await ensureLessonDeck(courseId, lessonId)
     : await ensureCourseBankDeck(courseId);
-  await db.transaction('rw', db.cards, db.lessonCardExposures, db.reviewHistory, async () => {
+  await db.transaction(
+    'rw',
+    [db.cards, db.lessonCardExposures, db.reviewHistory],
+    async () => {
     const cards = await db.cards.where('id').anyOf(ids).toArray();
     const removedPrimaryExposures = cards
       .filter(
@@ -444,12 +449,17 @@ export async function assignCardsToLesson(
     if (removedPrimaryExposures.length > 0) {
       await db.lessonCardExposures.bulkDelete(removedPrimaryExposures);
     }
-    await db.cards.where('id').anyOf(ids).modify({ primaryLessonId: lessonId, deckId });
+    await db.cards.where('id').anyOf(ids).modify({
+      primaryLessonId: lessonId,
+      deckId,
+      schedulingUnitId: lessonId ?? courseId,
+    });
     await db.reviewHistory
       .where('cardId')
       .anyOf(ids)
-      .modify({ primaryLessonId: lessonId, deckId });
-  });
+      .modify({ primaryLessonId: lessonId, deckId, schedulingUnitId: lessonId ?? courseId });
+  },
+  );
 }
 
 export async function updateCard(id: string, changes: Partial<Card>): Promise<void> {

@@ -62,14 +62,35 @@ function isConstraintError(error: unknown): boolean {
 }
 
 async function ensurePerformanceRow(deckId: string): Promise<void> {
-  if (await db.userPerformance.get(deckId)) return;
-  try {
-    await db.userPerformance.add(emptyPerformance(deckId));
-  } catch (error) {
-    // Another context may have initialised the row between the read and add.
-    // Never replace an existing calibration profile with an empty one.
-    if (!isConstraintError(error)) throw error;
+  if (!(await db.userPerformance.get(deckId))) {
+    try {
+      await db.userPerformance.add(emptyPerformance(deckId));
+    } catch (error) {
+      // Another context may have initialised the row between the read and add.
+      // Never replace an existing calibration profile with an empty one.
+      if (!isConstraintError(error)) throw error;
+    }
   }
+
+  const deck = await db.decks.get(deckId);
+  if (!deck?.backingCourseId) return;
+  const schedulingUnitId = deck.backingLessonId ?? deck.backingCourseId;
+  if (await db.schedulingPerformance.get(schedulingUnitId)) return;
+  await db.schedulingPerformance.put({
+    schedulingUnitId,
+    courseId: deck.backingCourseId,
+    ...(deck.backingLessonId ? { lessonId: deck.backingLessonId } : {}),
+    ...emptyPerformanceStats(),
+  });
+}
+
+function emptyPerformanceStats() {
+  return {
+    runningMeanResponseTime: 0,
+    runningStdDevResponseTime: 0,
+    m2: 0,
+    totalCorrectReviews: 0,
+  };
 }
 
 async function addBackingDeck(deck: Deck): Promise<string> {

@@ -122,8 +122,10 @@ Schema v21 adds `schedulingUnits`, `coursePerformance` and `schedulingPerformanc
 Course/Lesson and legacy compatibility units, and stamps cards and canonical review events with
 the resolved scheduling-unit id. The second slice cuts Course calibration and pacing reads over
 to the target stores, dual-writes the legacy calibration mirror for rollback, and includes review
-and undo transaction coverage. The old stores remain readable; no rollback or wire-compatibility
-path is removed until the later cutover slices have focused coverage.
+and undo transaction coverage. Course dashboard/read models use the pacing adapter, and fresh
+Course cards/backing units now initialise their target projection fields. The old stores remain
+readable; no rollback or wire-compatibility path is removed until the later cutover slices have
+focused coverage.
 
 ## Phases
 
