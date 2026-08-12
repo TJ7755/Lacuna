@@ -5,13 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import {
   deleteBackup,
+  mirrorToFolder,
   restoreBackup,
   takeAutoBackup,
   autoBackupIfStale,
   __resetBackupThrottleForTests,
 } from './backups';
 import { createCard, createDeck } from './repository';
-import type { ItemPayload } from './types';
+import type { BackupFile, ItemPayload } from './types';
 
 describe('backups', () => {
   beforeEach(async () => {
@@ -149,5 +150,43 @@ describe('backups', () => {
     await takeAutoBackup(true);
 
     expect(await db.backups.count()).toBe(2);
+  });
+
+  it('prunes only old Lacuna backup files from the folder mirror', async () => {
+    const removeEntry = vi.fn(async () => undefined);
+    const names = [
+      'lacuna-backup-2026-08-01T00-00-00.json',
+      'lacuna-backup-2026-08-02T00-00-00.json',
+      'lacuna-backup-2026-08-03T00-00-00.json',
+      'lacuna-backup-2026-08-04T00-00-00.json',
+      'lacuna-backup-2026-08-05T00-00-00.json',
+      'lacuna-backup-2026-08-06T00-00-00.json',
+      'lacuna-backup-2026-08-07T00-00-00.json',
+      'lacuna-backup-2026-08-08T00-00-00.json',
+      'lacuna-backup-2026-08-09T00-00-00.json',
+      'lacuna-backup-2026-08-10T00-00-00.json',
+      'lacuna-backup-2026-08-11T00-00-00.json',
+      'lacuna-backup-2026-08-12T00-00-00.json',
+      'notes.txt',
+    ];
+    const handle = {
+      name: 'Backups',
+      queryPermission: vi.fn(async () => 'granted' as PermissionState),
+      getFileHandle: vi.fn(async () => ({
+        createWritable: async () => ({ write: vi.fn(async () => undefined), close: vi.fn(async () => undefined) }),
+      })),
+      async *values() {
+        for (const name of names) yield { kind: name === 'notes.txt' ? 'file' as const : 'file' as const, name };
+      },
+      removeEntry,
+    };
+    vi.spyOn(db.appState, 'get').mockResolvedValue({ key: 'backupFolderHandle', value: handle });
+
+    await mirrorToFolder({ exportedAt: Date.UTC(2026, 7, 12) } as BackupFile);
+
+    expect(removeEntry).toHaveBeenCalledTimes(2);
+    expect(removeEntry).toHaveBeenNthCalledWith(1, names[0]);
+    expect(removeEntry).toHaveBeenNthCalledWith(2, names[1]);
+    expect(removeEntry).not.toHaveBeenCalledWith('notes.txt');
   });
 });

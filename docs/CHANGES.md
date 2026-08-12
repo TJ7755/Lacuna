@@ -12,8 +12,26 @@
 - Added lazy asynchronous image loading for Markdown card content and occlusion diagrams,
   route-chunk prefetching for sidebar navigation, and one combined sidebar live data read.
 - Updated diagnostics to count canonical review events rather than daily trajectory samples.
-- Deferred Pomodoro tick isolation, virtual-list registry pruning and share-worker shutdown
-  until after September as directed.
+- Isolated Pomodoro flow consumers from the per-second countdown, pruned virtual-list
+  measurement callbacks, terminated idle share workers, fast-pathed single-unit session
+  indexing, removed persistent decorative animation loops and count-up rAFs, slowed MCP
+  polling while hidden, and pruned the backup-folder mirror.
+- Kept `Card.history` and `sessionHistory` retention unchanged because pruning them would
+  alter storage or analytics semantics while the storage migration is still in progress.
+
+## Unreleased — Remaining performance follow-up
+
+- Kept `recordReview` limited to the reviewed card, review event rows and performance row;
+  the average-retrievability trajectory is sampled after commit at most once per day per
+  unit, with no stored aggregate or cache.
+- Split the share worker onto a transport-only codec so payload validation stays on the
+  main thread without bundling the database, zod or mathjs into the worker.
+- Moved KaTeX CSS into the lazy Markdown chunk. The final audit measured initial CSS at
+  107,735 bytes / 16,210 bytes gz, down from 138,632 bytes / 24,777 bytes gz before this
+  follow-up; the Markdown CSS chunk is 29,290 bytes / 8,070 bytes gz.
+- Recorded the final before/after measurements in `docs/PERFORMANCE.md`: one
+  `recordReview` call at 500, 2,000 and 10,000 cards, session timings, bundle sizes,
+  worker size and the full test-suite result.
 
 ## Unreleased — Performance audit measurements
 

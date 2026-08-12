@@ -16,6 +16,7 @@ interface McpStatus {
   companion?: { command: string; args: string[] };
 }
 const SCOPES = ['read', 'write', 'destructive'] as const;
+const MCP_STATUS_POLL_MS = 10_000;
 const LOWER_SCOPE: Partial<Record<McpGrant['scope'], McpGrant['scope']>> = {
   write: 'read',
   destructive: 'write',
@@ -40,11 +41,28 @@ export function McpSection({ motionMultiplier }: { motionMultiplier: number }) {
     setConnections(nextConnections.length > 0 ? nextConnections : nextStatus.clients ?? []);
   }, [mcp]);
 
-  useEffect(() => {
-    void refresh().catch(() => notify('Could not read MCP server status.', 'negative'));
-    const timer = window.setInterval(() => { void refresh().catch(() => undefined); }, 2_000);
-    return () => window.clearInterval(timer);
+  const refreshWithNotice = useCallback(async () => {
+    try {
+      await refresh();
+    } catch {
+      notify('Could not read MCP server status.', 'negative');
+    }
   }, [notify, refresh]);
+
+  useEffect(() => {
+    void refreshWithNotice();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshWithNotice();
+    };
+    const timer = window.setInterval(refreshWhenVisible, MCP_STATUS_POLL_MS);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', refreshWhenVisible);
+    };
+  }, [refreshWithNotice]);
   if (!mcp) return null;
   const rows = [
     { id: GLOBAL_SCOPE_KEY, name: 'All Lacuna data' },

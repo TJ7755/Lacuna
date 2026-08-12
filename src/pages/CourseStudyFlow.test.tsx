@@ -40,7 +40,7 @@ vi.mock('../state/useCourseStudyFlow', () => ({
 
 vi.mock('../hooks/PomodoroContext', () => ({
   PomodoroProvider: ({ children }: { children: React.ReactNode }) => children,
-  usePomodoroContext: () => ({
+  usePomodoroFlowContext: () => ({
     breakPending: false,
     acceptBreak: mockAcceptBreak,
     deferBreak: mockDeferBreak,

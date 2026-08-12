@@ -1,12 +1,7 @@
 // Web Worker that handles share code encoding/decoding off the main thread.
 // Keeps the UI responsive when compressing large decks.
 
-import {
-  decodeShareDirect,
-  encodeShareDirect,
-  encodeShareQRDirect,
-  type SharePayload,
-} from '../db/share';
+import { decodeShareCode, encodeShareCode, encodeShareQrCode } from '../db/shareCodec';
 
 const ctx = globalThis as unknown as {
   postMessage: (message: unknown) => void;
@@ -24,13 +19,13 @@ ctx.onmessage = (event: MessageEvent) => {
   void (async () => {
     try {
       if (type === 'encode') {
-        const result = await encodeShareDirect(payload as SharePayload);
+        const result = await encodeShareCode(payload);
         ctx.postMessage({ type: 'result', result, id });
       } else if (type === 'encodeQR') {
-        const result = await encodeShareQRDirect(payload as SharePayload);
+        const result = await encodeShareQrCode(payload);
         ctx.postMessage({ type: 'result', result, id });
       } else if (type === 'decode') {
-        const result = await decodeShareDirect(code!);
+        const result = await decodeShareCode(code!);
         ctx.postMessage({ type: 'result', result, id });
       } else {
         ctx.postMessage({ type: 'error', error: `Unknown worker message type: ${String(type)}`, id });

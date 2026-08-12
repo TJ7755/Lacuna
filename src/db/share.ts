@@ -58,16 +58,11 @@ import type {
 } from './types';
 import { courseToRecord, finalAssessmentForCourse } from './assessmentMigration';
 import { stripAssetMedia } from './assets';
-import { bytesToBase45, base45ToBytes } from './base45';
+import { decodeShareCode, encodeShareCode, encodeShareQrCode } from './shareCodec';
 import { buildCourseMigration } from './courseMigration';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
 import { getPreset, presetForSequence } from './sequencePresets';
 import { itemPayloadIsValid, assertValidCardPayload } from '../items/payloadValidation';
-
-const PREFIX_BASE45_COMPRESSED = 'LAC2';
-const PREFIX_BASE45_PLAIN = 'LAC3';
-const PREFIX_COMPRESSED = 'LAC1';
-const PREFIX_PLAIN = 'LAC0';
 
 // ---------------------------------------------------------------------------
 // Zod runtime schema for share payloads
@@ -515,82 +510,17 @@ export interface ShareSummary {
   noteCount?: number;
 }
 
-// ---------------------------------------------------------------------------
-// Base64 and DEFLATE helpers (direct fallback when Worker is unavailable)
-// ---------------------------------------------------------------------------
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  const CHUNK = 0x8000; // chunk so very large images do not overflow the call stack
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)) as number[]);
-  }
-  return btoa(binary);
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
-async function pipeThrough(
-  bytes: Uint8Array,
-  stream: TransformStream<BufferSource, Uint8Array>,
-  maxBytes?: number,
-): Promise<Uint8Array> {
-  const writer = stream.writable.getWriter();
-  void writer.write(bytes as BufferSource);
-  void writer.close();
-  const reader = stream.readable.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (value) {
-      total += value.length;
-      if (maxBytes !== null && maxBytes !== undefined && total > maxBytes) {
-        await reader.cancel();
-        throw new Error('Share code is too large to decode safely.');
-      }
-      chunks.push(value);
-    }
-  }
-  const result = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return result;
-}
-
-const canCompress = typeof CompressionStream !== 'undefined';
-const canDecompress = typeof DecompressionStream !== 'undefined';
-
 export async function encodeShareDirect(payload: SharePayload): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify(payload));
-  if (canCompress) {
-    const deflated = await pipeThrough(bytes, new CompressionStream('deflate-raw'));
-    return PREFIX_COMPRESSED + bytesToBase64(deflated);
-  }
-  return PREFIX_PLAIN + bytesToBase64(bytes);
+  return encodeShareCode(payload);
 }
 
 /** Encode a share payload as a Base45 string optimised for QR code density. */
 export async function encodeShareQRDirect(payload: SharePayload): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify(payload));
-  if (canCompress) {
-    const deflated = await pipeThrough(bytes, new CompressionStream('deflate-raw'));
-    return PREFIX_BASE45_COMPRESSED + bytesToBase45(deflated);
-  }
-  return PREFIX_BASE45_PLAIN + bytesToBase45(bytes);
+  return encodeShareQrCode(payload);
 }
 
 export async function encodeShareQR(payload: SharePayload): Promise<string> {
-  if (canUseShareWorker) {
+  if (canUseShareWorker()) {
     try {
       return await runShareWorker<string>({ type: 'encodeQR', payload });
     } catch {
@@ -600,65 +530,7 @@ export async function encodeShareQR(payload: SharePayload): Promise<string> {
   return encodeShareQRDirect(payload);
 }
 
-const MAX_SHARE_BYTES = 5 * 1024 * 1024;
-
-export async function decodeShareDirect(code: string): Promise<SharePayload> {
-  const trimmed = code.trim();
-  let bytes: Uint8Array;
-
-  if (trimmed.startsWith(PREFIX_BASE45_COMPRESSED)) {
-    if (!canDecompress) {
-      throw new Error('This browser cannot read compressed share codes.');
-    }
-    const encoded = trimmed.slice(PREFIX_BASE45_COMPRESSED.length);
-    const compressed = base45ToBytes(encoded);
-    if (compressed.length > MAX_SHARE_BYTES) {
-      throw new Error('Share code is too large to decode safely.');
-    }
-    bytes = await pipeThrough(compressed, new DecompressionStream('deflate-raw'), MAX_SHARE_BYTES);
-  } else if (trimmed.startsWith(PREFIX_BASE45_PLAIN)) {
-    const encoded = trimmed.slice(PREFIX_BASE45_PLAIN.length);
-    bytes = base45ToBytes(encoded);
-    if (bytes.length > MAX_SHARE_BYTES) {
-      throw new Error('Share code is too large to decode safely.');
-    }
-  } else {
-    // Legacy base64 formats (LAC0 / LAC1) — strip whitespace before decoding
-    // because base64 never contains whitespace.
-    const stripped = trimmed.replace(/\s+/g, '');
-    if (stripped.startsWith(PREFIX_COMPRESSED)) {
-      if (!canDecompress) {
-        throw new Error('This browser cannot read compressed share codes.');
-      }
-      const compressed = base64ToBytes(stripped.slice(PREFIX_COMPRESSED.length));
-      if (compressed.length > MAX_SHARE_BYTES) {
-        throw new Error('Share code is too large to decode safely.');
-      }
-      bytes = await pipeThrough(
-        compressed,
-        new DecompressionStream('deflate-raw'),
-        MAX_SHARE_BYTES,
-      );
-    } else if (stripped.startsWith(PREFIX_PLAIN)) {
-      bytes = base64ToBytes(stripped.slice(PREFIX_PLAIN.length));
-      if (bytes.length > MAX_SHARE_BYTES) {
-        throw new Error('Share code is too large to decode safely.');
-      }
-    } else {
-      throw new Error('That does not look like a Lacuna share code.');
-    }
-  }
-
-  if (bytes.length > MAX_SHARE_BYTES) {
-    throw new Error('Share code is too large to decode safely.');
-  }
-
-  let payload: SharePayload;
-  try {
-    payload = JSON.parse(new TextDecoder().decode(bytes)) as SharePayload;
-  } catch {
-    throw new Error('The share code is corrupted and could not be read.');
-  }
+function parseSharePayload(payload: unknown): SharePayload {
   const parse = SharePayloadSchema.safeParse(payload);
   if (!parse.success) {
     throw new Error('This share code is from an unsupported version of Lacuna.');
@@ -666,14 +538,21 @@ export async function decodeShareDirect(code: string): Promise<SharePayload> {
   return parse.data;
 }
 
+export async function decodeShareDirect(code: string): Promise<SharePayload> {
+  return parseSharePayload(await decodeShareCode(code));
+}
+
 // ---------------------------------------------------------------------------
 // Worker offload for encode / decode
 // ---------------------------------------------------------------------------
 
-const canUseShareWorker = typeof Worker !== 'undefined';
-
 let shareWorker: Worker | null = null;
 let shareJobId = 0;
+let shareWorkerJobs = 0;
+
+function canUseShareWorker(): boolean {
+  return typeof Worker !== 'undefined';
+}
 
 function getShareWorker(): Worker {
   if (!shareWorker) {
@@ -682,6 +561,14 @@ function getShareWorker(): Worker {
     });
   }
   return shareWorker;
+}
+
+function releaseShareWorker(worker: Worker): void {
+  shareWorkerJobs -= 1;
+  if (shareWorkerJobs === 0 && shareWorker === worker) {
+    worker.terminate();
+    shareWorker = null;
+  }
 }
 
 function runShareWorker<T>(
@@ -693,11 +580,15 @@ function runShareWorker<T>(
   return new Promise((resolve, reject) => {
     const id = ++shareJobId;
     const w = getShareWorker();
+    shareWorkerJobs += 1;
     const TIMEOUT_MS = 30000; // 30 seconds
 
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let settled = false;
 
     function cleanup() {
+      if (settled) return;
+      settled = true;
       if (timeoutId !== null) {
         clearTimeout(timeoutId);
         timeoutId = null;
@@ -705,6 +596,7 @@ function runShareWorker<T>(
       w.removeEventListener('message', messageHandler);
       w.removeEventListener('error', errorHandler);
       w.removeEventListener('messageerror', messageErrorHandler);
+      releaseShareWorker(w);
     }
 
     const messageHandler = (event: MessageEvent) => {
@@ -725,33 +617,35 @@ function runShareWorker<T>(
 
     const errorHandler = (e: ErrorEvent) => {
       cleanup();
-      // Clear the cached worker so the next call creates a fresh one.
-      shareWorker = null;
       reject(new Error(`Share worker failed: ${e.message || 'unknown error'}`));
     };
 
     const messageErrorHandler = () => {
       cleanup();
-      shareWorker = null;
       reject(new Error('Share worker received an invalid message.'));
     };
 
     w.addEventListener('message', messageHandler);
     w.addEventListener('error', errorHandler);
     w.addEventListener('messageerror', messageErrorHandler);
-    w.postMessage({ ...message, id });
+    try {
+      w.postMessage({ ...message, id });
+    } catch (error) {
+      cleanup();
+      reject(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
 
     // Set timeout to force cleanup if the worker hangs
     timeoutId = setTimeout(() => {
       cleanup();
-      shareWorker = null;
       reject(new Error('Share worker timed out after 30 seconds.'));
     }, TIMEOUT_MS);
   });
 }
 
 async function encodeShare(payload: SharePayload): Promise<string> {
-  if (canUseShareWorker) {
+  if (canUseShareWorker()) {
     try {
       return await runShareWorker<string>({ type: 'encode', payload });
     } catch {
@@ -763,9 +657,9 @@ async function encodeShare(payload: SharePayload): Promise<string> {
 
 /** Decode a share code into its payload, throwing a readable error if it is invalid. */
 export async function decodeShare(code: string): Promise<SharePayload> {
-  if (canUseShareWorker) {
+  if (canUseShareWorker()) {
     try {
-      return await runShareWorker<SharePayload>({ type: 'decode', code });
+      return parseSharePayload(await runShareWorker<unknown>({ type: 'decode', code }));
     } catch {
       // Fall through to direct path if the worker fails.
     }

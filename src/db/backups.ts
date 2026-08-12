@@ -19,6 +19,8 @@ type DirHandle = {
   getFileHandle: (name: string, o?: { create?: boolean }) => Promise<{
     createWritable: () => Promise<{ write: (d: string) => Promise<void>; close: () => Promise<void> }>;
   }>;
+  values?: () => AsyncIterableIterator<{ kind: 'file' | 'directory'; name: string }>;
+  removeEntry?: (name: string) => Promise<void>;
 };
 
 /** Whether this browser supports the File System Access folder mirror. */
@@ -60,6 +62,20 @@ async function ensurePermission(handle: DirHandle): Promise<boolean> {
   return false;
 }
 
+async function pruneFolderMirror(handle: DirHandle): Promise<void> {
+  if (!handle.values || !handle.removeEntry) return;
+  const names: string[] = [];
+  for await (const entry of handle.values()) {
+    if (entry.kind === 'file' && entry.name.startsWith('lacuna-backup-') && entry.name.endsWith('.json')) {
+      names.push(entry.name);
+    }
+  }
+  names.sort();
+  for (const name of names.slice(0, Math.max(0, names.length - MAX_RESTORE_POINTS))) {
+    await handle.removeEntry(name).catch(() => undefined);
+  }
+}
+
 /** Best-effort folder mirror for a backup payload. Exported so pre-migration snapshots can reuse it. */
 export async function mirrorToFolder(payload: BackupFile): Promise<void> {
   const handle = await getFolderHandle();
@@ -72,6 +88,7 @@ export async function mirrorToFolder(payload: BackupFile): Promise<void> {
   const writable = await fileHandle.createWritable();
   await writable.write(JSON.stringify(payload, null, 2));
   await writable.close();
+  await pruneFolderMirror(handle);
 }
 
 let lastBackupAt = 0;

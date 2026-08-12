@@ -132,6 +132,7 @@ export function usePomodoro() {
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<number | null>(null);
   const secondsLeftRef = useRef(secondsLeft);
+  const hasMountedRef = useRef(false);
 
   const durationForPhase = useCallback(
     (p: PomodoroPhase) => {
@@ -144,11 +145,18 @@ export function usePomodoro() {
     secondsLeftRef.current = secondsLeft;
   }, [secondsLeft]);
 
+  // The running countdown is deliberately ephemeral. Persist at phase and
+  // pause/resume boundaries so a background timer does not serialise to
+  // localStorage every second; a restored timer is paused on app start anyway.
   useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
     try {
       const runtime: PomodoroRuntime = {
         phase,
-        secondsLeft,
+        secondsLeft: secondsLeftRef.current,
         sessionsCompleted,
         pendingBreakPhase,
       };
@@ -156,7 +164,20 @@ export function usePomodoro() {
     } catch {
       // Runtime persistence is optional; the timer still works without storage.
     }
-  }, [pendingBreakPhase, phase, secondsLeft, sessionsCompleted]);
+    return () => {
+      try {
+        const runtime: PomodoroRuntime = {
+          phase,
+          secondsLeft: secondsLeftRef.current,
+          sessionsCompleted,
+          pendingBreakPhase,
+        };
+        localStorage.setItem(RUNTIME_STORAGE_KEY, JSON.stringify(runtime));
+      } catch {
+        // Runtime persistence is optional; the timer still works without storage.
+      }
+    };
+  }, [isRunning, pendingBreakPhase, phase, sessionsCompleted]);
 
   // Sync settings when they change in another tab.
   useEffect(() => {

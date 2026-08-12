@@ -10,8 +10,6 @@ import {
   MilestoneIcon,
 } from '../ui/icons';
 import { cn } from '../ui/cn';
-import { useCountUp } from '../../hooks/useCountUp';
-import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 export interface HeaderStatsProps {
   dueCount: number;
@@ -59,15 +57,6 @@ export function HeaderStats({
   lessonProgress,
   className,
 }: HeaderStatsProps) {
-  const [motionSpeed] = useMotionSpeed();
-  const motionMultiplier = speedMultiplier(motionSpeed);
-  const animatedDueCount = useCountUp(dueCount, 1000, 300, motionMultiplier);
-  const animatedUnseenCount = useCountUp(unseenCount, 1000, 375, motionMultiplier);
-  const animatedMasteryPct = useCountUp(masteryPct, 1000, 450, motionMultiplier);
-  const animatedDaysToExam = useCountUp(Math.max(daysToExam, 0), 1000, 525, motionMultiplier);
-  const animatedReached = useCountUp(lessonProgress?.reached ?? 0, 1000, 600, motionMultiplier);
-  const animatedLessonTotal = useCountUp(lessonProgress?.total ?? 0, 1000, 600, motionMultiplier);
-
   if (totalCards === 0) {
     return (
       <p className={cn('max-w-prose text-sm text-ink-soft', className)}>
@@ -93,31 +82,31 @@ export function HeaderStats({
     <div className={cn('flex max-w-full flex-wrap gap-2 sm:grid', gridColsClass, className)}>
       <Pill
         icon={<HourglassIcon width={15} height={15} />}
-        value={dueCount === 0 ? 'Nothing' : String(animatedDueCount)}
+        value={dueCount === 0 ? 'Nothing' : String(dueCount)}
         label="due now"
         accent={dueCount > 0}
       />
       {unseenCount > 0 && (
         <Pill
           icon={<CompassIcon width={15} height={15} />}
-          value={String(animatedUnseenCount)}
+          value={String(unseenCount)}
           label="unmapped"
         />
       )}
       <Pill
         icon={<GaugeIcon width={15} height={15} />}
-        value={`${animatedMasteryPct}%`}
+        value={`${masteryPct}%`}
         label="mastery"
       />
       <Pill
         icon={<CalendarClockIcon width={15} height={15} />}
-        value={daysToExam <= 0 ? 'Exam day' : String(animatedDaysToExam)}
+        value={daysToExam <= 0 ? 'Exam day' : String(Math.max(daysToExam, 0))}
         label={daysToExam <= 0 ? 'is here' : daysToExam === 1 ? 'day to go' : 'days to go'}
       />
       {lessonProgress && (
         <Pill
           icon={<MilestoneIcon width={15} height={15} />}
-          value={`${animatedReached} of ${animatedLessonTotal}`}
+          value={`${lessonProgress.reached} of ${lessonProgress.total}`}
           label="lessons"
         />
       )}

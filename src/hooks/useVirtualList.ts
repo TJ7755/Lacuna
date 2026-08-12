@@ -111,7 +111,13 @@ export function useVirtualList({
           observer?.disconnect();
           observer = null;
           currentElement = el;
-          if (!el) return;
+          if (!el) {
+            // Virtualised rows are mounted and unmounted as the viewport moves.
+            // Retaining one callback closure per row defeats that lifecycle and
+            // keeps every ResizeObserver handle reachable indefinitely.
+            measureCallbacks.current.delete(index);
+            return;
+          }
           updateHeight(el.getBoundingClientRect().height);
           if (typeof ResizeObserver !== 'undefined') {
             observer = new ResizeObserver((entries) => {

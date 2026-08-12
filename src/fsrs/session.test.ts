@@ -81,6 +81,41 @@ describe('multi-deck session normalisation', () => {
   });
 });
 
+describe('single and multi-unit completion paths', () => {
+  it('treats an empty single-unit session as incomplete with full progress', () => {
+    const ctx = makeSessionContext([deck('empty', 10)]);
+
+    expect(sessionComplete([], ctx, NOW)).toBe(false);
+    expect(sessionProgress([], ctx, NOW)).toBe(1);
+  });
+
+  it('completes a multi-unit secured-topics session when every card is secure', () => {
+    const first = { ...deck('first', 1), examObjective: 'securedTopics' as const };
+    const second = { ...deck('second', 1), examObjective: 'securedTopics' as const };
+    const cards = [
+      card('first-card', first.id, {
+        stability: 10_000,
+        difficulty: 5,
+        lastReviewed: NOW,
+        reps: 1,
+        state: 2,
+      }),
+      card('second-card', second.id, {
+        stability: 10_000,
+        difficulty: 5,
+        lastReviewed: NOW,
+        reps: 1,
+        state: 2,
+      }),
+    ];
+    const ctx = makeSessionContext([first, second]);
+
+    expect(sessionComplete(cards, ctx, NOW)).toBe(true);
+    expect(sessionProgress(cards, ctx, NOW)).toBe(1);
+    expect(sessionProgress([], ctx, NOW)).toBe(1);
+  });
+});
+
 describe('cram sessions', () => {
   it('bypasses the new-card cap while excluding suspended and buried cards', () => {
     const capped = { ...deck('capped', 1), newCardsPerDay: 1 };

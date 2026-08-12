@@ -86,6 +86,21 @@ interface SessionCardIndex {
   unitsByCard: Map<string, SessionDeckContext[]>;
 }
 
+function cardsForUnit(cards: Card[], unit: SessionDeckContext): Card[] {
+  const { scope } = unit;
+  switch (scope.kind) {
+    case 'deck':
+      return cards.filter((card) => card.deckId === scope.deckId);
+    case 'course':
+      return cards.filter((card) => card.courseId === scope.courseId);
+    case 'lesson':
+      return cards.filter(
+        (card) =>
+          card.primaryLessonId === scope.lessonId || scope.linkedCardIds.has(card.id),
+      );
+  }
+}
+
 /**
  * Build the session context once from the units being studied. Accepts either the
  * legacy `Deck[]` (per-deck route and global "Today" session, unchanged) or an
@@ -219,6 +234,10 @@ export function sessionServePool(
   ctx: SessionContext,
   now: number = Date.now(),
 ): Card[] {
+  if (ctx.decks.size === 1) {
+    const unit = ctx.decks.values().next().value as SessionDeckContext;
+    return unitServePool(cardsForUnit(cards, unit), unit.deck, ctx.mode, now);
+  }
   return sessionServePoolFromIndex(indexSessionCards(cards, ctx), ctx, now);
 }
 
@@ -251,8 +270,13 @@ export function selectNext(
   cooldowns: CooldownMap,
   now: number = Date.now(),
 ): Card | null {
-  const index = indexSessionCards(cards, ctx);
-  const pool = sessionServePoolFromIndex(index, ctx, now);
+  const singleUnit = ctx.mode === 'objective' && ctx.decks.size === 1
+    ? (ctx.decks.values().next().value as SessionDeckContext)
+    : null;
+  const index = singleUnit ? null : indexSessionCards(cards, ctx);
+  const pool = singleUnit
+    ? unitServePool(cardsForUnit(cards, singleUnit), singleUnit.deck, ctx.mode, now)
+    : sessionServePoolFromIndex(index!, ctx, now);
   if (pool.length === 0) return null;
 
   if (ctx.mode === 'cram') {
@@ -260,7 +284,7 @@ export function selectNext(
     // the session. Cooldown-eligible cards win; otherwise serve the soonest.
     const cramPriority = new Map<string, number>();
     for (const card of pool) {
-      const units = indexedUnitsForCard(card, index);
+      const units = indexedUnitsForCard(card, index!);
       const dc =
         units.length <= 1
           ? units[0]
@@ -278,7 +302,7 @@ export function selectNext(
   }
 
   if (ctx.decks.size === 1) {
-    const only = ctx.decks.values().next().value as SessionDeckContext;
+    const only = singleUnit ?? (ctx.decks.values().next().value as SessionDeckContext);
     return selectNextCard(pool, only.oc, cooldowns, now);
   }
 
@@ -291,7 +315,7 @@ export function selectNext(
   const poolIds = new Set(pool.map((card) => card.id));
   for (const dc of ctx.decks.values()) {
     const { deck, scope, oc } = dc;
-    const deckCards = (index.byUnit.get(unitKey(scope)) ?? []).filter((card) =>
+    const deckCards = (index!.byUnit.get(unitKey(scope)) ?? []).filter((card) =>
       poolIds.has(card.id),
     );
     if (deckCards.length === 0) continue;
@@ -311,7 +335,7 @@ export function selectNext(
 
   const priority = new Map<string, number>();
   for (const card of pool) {
-    const units = indexedUnitsForCard(card, index);
+    const units = indexedUnitsForCard(card, index!);
     if (units.length === 0) continue;
     const dc =
       units.length === 1
@@ -348,6 +372,11 @@ export function sessionComplete(
   ctx: SessionContext,
   now: number = Date.now(),
 ): boolean {
+  if (ctx.decks.size === 1) {
+    const unit = ctx.decks.values().next().value as SessionDeckContext;
+    const served = unitServePool(cardsForUnit(cards, unit), unit.deck, ctx.mode, now);
+    return served.length > 0 && isObjectiveComplete(served, unit.oc, now);
+  }
   const index = indexSessionCards(cards, ctx);
   let anyPoolNonEmpty = false;
   for (const { deck, scope, oc } of ctx.decks.values()) {
@@ -373,6 +402,13 @@ export function sessionProgress(
   ctx: SessionContext,
   now: number = Date.now(),
 ): number {
+  if (ctx.decks.size === 1) {
+    const unit = ctx.decks.values().next().value as SessionDeckContext;
+    const available = availableCards(cardsForUnit(cards, unit), now);
+    return available.length > 0
+      ? progressValue(available, unit.deck, now, unit.oc.examDateContext)
+      : 1;
+  }
   const index = indexSessionCards(cards, ctx);
   let total = 0;
   let acc = 0;

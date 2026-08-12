@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { McpSection } from './McpSection';
 
 const notify = vi.fn();
@@ -27,6 +27,10 @@ describe('McpSection', () => {
       configurable: true,
       value: { isElectron: true, mcp: { getStatus, getGrants, grant, revoke } },
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('shows server status and current per-course grants', async () => {
@@ -71,6 +75,27 @@ describe('McpSection', () => {
       command: '/Applications/Lacuna.app/Contents/MacOS/Lacuna',
       args: ['--mcp-companion'],
     } } }, null, 2)));
+  });
+
+  it('polls status at a low cadence instead of every two seconds', async () => {
+    vi.useFakeTimers();
+    render(<McpSection motionMultiplier={0} />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    getStatus.mockClear();
+
+    await act(async () => {
+      vi.advanceTimersByTime(9_999);
+      await Promise.resolve();
+    });
+    expect(getStatus).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+      await Promise.resolve();
+    });
+    expect(getStatus).toHaveBeenCalledOnce();
   });
 });
 
