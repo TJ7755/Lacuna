@@ -6,6 +6,7 @@ import { Titlebar } from './Titlebar';
 import { ErrorBoundary } from './ErrorBoundary';
 import { CommandPalette } from '../search/CommandPalette';
 import { BottomNav } from './BottomNav';
+import { useCourseSectionSwipe } from '../course/useCourseSectionSwipe';
 import { KeyHints } from '../ui/KeyHints';
 import { CloseIcon, LacunaIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -14,6 +15,15 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
+
+/** Sideways for a move between course sections, the standard lift otherwise. */
+const ROUTE_VARIANTS = {
+  enter: (direction: number) =>
+    direction === 0 ? { opacity: 0, y: 12, scale: 0.995 } : { opacity: 0, x: 32 * direction },
+  center: { opacity: 1, x: 0, y: 0, scale: 1 },
+  exit: (direction: number) =>
+    direction === 0 ? { opacity: 0, y: -8, scale: 0.995 } : { opacity: 0, x: -32 * direction },
+};
 
 export function AppShell() {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
@@ -50,6 +60,8 @@ export function AppShell() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const [arrivedFromLanding] = useState(() => consumeLandingArrival());
+  const { onPointerDown, onPointerMove, onPointerUp, sectionDirection } =
+    useCourseSectionSwipe();
 
   // Keep an icon rail visible on narrower desktop windows instead of spending a
   // quarter of the viewport on the full sidebar. The user's preference resumes
@@ -249,16 +261,27 @@ export function AppShell() {
             // otherwise cover the last of the page's content.
             className="min-w-0 flex-1 overflow-y-auto overscroll-y-none pb-[4.5rem] md:pb-0"
             style={{ touchAction: 'pan-y' }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
           >
             <ErrorBoundary label="this page">
-              {/* Each route fades, scales, and lifts in as the previous one settles out,
-                giving navigation a polished sense of place without slowing the user down. */}
-              <AnimatePresence initial={false}>
+              {/* Ordinary navigation fades, scales and lifts in as the previous page settles
+                  out. Moving between a course's sections slides sideways instead, in the
+                  direction of travel through the tab order, so the sections read as one
+                  surface rather than as unrelated pages.
+
+                  The direction goes through AnimatePresence's `custom` rather than being
+                  baked into the props, because an exiting element otherwise keeps the props
+                  it last rendered with and would leave towards the wrong side. */}
+              <AnimatePresence initial={false} custom={sectionDirection}>
                 <motion.div
                   key={location.pathname}
-                  initial={{ opacity: 0, y: 12, scale: 0.995 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.995 }}
+                  custom={sectionDirection}
+                  variants={ROUTE_VARIANTS}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
                   transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
                 >
                   {outlet}

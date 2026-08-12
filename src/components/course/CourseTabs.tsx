@@ -8,20 +8,7 @@
 
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../ui/cn';
-
-interface CourseTab {
-  label: string;
-  /** Shown below sm, where the full set of labels cannot fit on one line. */
-  short: string;
-  suffix: string;
-}
-
-const COURSE_TABS: CourseTab[] = [
-  { label: 'Path', short: 'Path', suffix: '' },
-  { label: 'Question bank', short: 'Bank', suffix: '/bank' },
-  { label: 'Analytics', short: 'Analytics', suffix: '/analytics' },
-  { label: 'Settings', short: 'Settings', suffix: '/settings' },
-];
+import { COURSE_SECTIONS } from './courseSections';
 
 export function CourseTabs({ courseId }: { courseId: string }) {
   const { pathname } = useLocation();
@@ -36,7 +23,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
       // the original compact pill returns from sm upwards.
       className="flex h-12 w-full items-center gap-0.5 overflow-x-auto rounded-full border border-line bg-ink/5 p-1 text-sm sm:inline-flex sm:h-9 sm:w-auto sm:max-w-full sm:shrink-0 sm:p-0.5"
     >
-      {COURSE_TABS.map(({ label, short, suffix }) => {
+      {COURSE_SECTIONS.map(({ label, short, suffix }) => {
         const to = `${base}${suffix}`;
         // The Path tab (empty suffix) must match exactly so it doesn't stay
         // "active" while on /bank, /analytics or /settings (all of which

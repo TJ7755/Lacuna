@@ -1,5 +1,29 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Mobile navigation and course section transitions
+
+- Fixed header text wrapping at phone widths. The course tab labels wrapped inside their own
+  pills, breaking the segmented control; the dashboard header competed for about 280px between a
+  4xl title and a button that would not shrink; the lesson view-mode toggle was stranded
+  right-aligned on its own line once its row wrapped; and the course stat pills packed one-and-two
+  to a row by whatever happened to fit. Tabs now abbreviate below sm while keeping their full
+  accessible name, and the pills use a two-column grid.
+- Added a mobile bottom navigation bar carrying Courses, Study, Search, Analytics and Settings.
+  Deliberately opaque rather than translucent: content scrolling under a blurred bar competes with
+  the icons. It mounts inside `AppShell`, so it is absent from Learn mode, which lives outside the
+  shell and already pins its own grading controls to the bottom of the screen.
+- Course tabs are a full-width 48px control below sm, returning to the compact pill above it.
+- Moving between a course's sections now slides sideways in the direction of travel through the
+  tab order, rather than using the standard page transition, so the sections read as one surface.
+  The direction is passed through `AnimatePresence`'s `custom`, because an exiting element
+  otherwise keeps the props it last rendered with and leaves towards the wrong side.
+- Sections can also be swiped between on touch. The gesture is claimed only once movement is
+  clearly horizontal, so vertical scrolling wins a close call, and it is inert outside an exact
+  section route: deeper pages such as a lesson or the card editor are destinations within a
+  section rather than siblings of it.
+- `COURSE_SECTIONS` is now the single source of section order, shared by the tab bar, the
+  transition and the swipe, since all three must agree on what the next section is.
+
 ## Unreleased — Study entry and landing-page scroll toggle
 
 - The study entry screen now appears only when there is a decision to make. With one way into
