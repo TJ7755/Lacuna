@@ -28,8 +28,8 @@ export function CourseHeaderSection({ motionMultiplier }: { motionMultiplier: nu
         <h2 className="font-display text-xl">Course header</h2>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
-        Choose which figures appear beside a course title. Hiding the ones you do not act on
-        leaves the header easier to read at a glance.
+        Choose which figures appear beside a course title. Cards due and mastery are shown by
+        default; add the others if you act on them.
       </p>
 
       <div className="flex flex-col gap-2">

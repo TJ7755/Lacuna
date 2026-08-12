@@ -10,8 +10,11 @@ beforeEach(() => {
 });
 
 describe('courseHeaderSettings', () => {
-  it('shows every pill until the reader says otherwise', () => {
-    expect(readStored().statPills.every((pill) => pill.visible)).toBe(true);
+  it('shows due and mastery by default, and offers the rest', () => {
+    const visible = readStored()
+      .statPills.filter((pill) => pill.visible)
+      .map((pill) => pill.id);
+    expect(visible).toEqual(['due', 'mastery']);
   });
 
   it('keeps a hidden pill hidden across reads', () => {
@@ -31,7 +34,7 @@ describe('courseHeaderSettings', () => {
     const { statPills } = readStored();
     expect(statPills).toHaveLength(DEFAULT_STAT_PILLS.length);
     expect(statPills[0]).toMatchObject({ id: 'due', visible: false });
-    expect(statPills.find((pill) => pill.id === 'exam')?.visible).toBe(true);
+    expect(statPills.find((pill) => pill.id === 'exam')?.visible).toBe(false);
   });
 
   it('drops stored pills that no longer exist', () => {
