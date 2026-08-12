@@ -44,6 +44,7 @@ import {
 } from '../components/course/CoursePathSegment';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { CourseTabs } from '../components/course/CourseTabs';
+import { useStudySheet } from '../components/learn/StudySheetContext';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { Button } from '../components/ui/Button';
@@ -82,6 +83,7 @@ interface PracticeNodeProgress {
 export function CoursePath() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
+  const { openStudySheet } = useStudySheet();
   const { notify } = useToast();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -460,7 +462,9 @@ export function CoursePath() {
               disabled={!studyTarget}
               onClick={() => {
                 if (!studyTarget) return;
-                navigate(`/course/${courseId}/study`);
+                // Raises the study sheet rather than navigating: the choice is one tap
+                // to open and one to dismiss, and dismissing leaves this page in place.
+                openStudySheet(courseId);
               }}
             >
               <PlayIcon width={18} height={18} />

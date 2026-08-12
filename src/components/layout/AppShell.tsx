@@ -5,6 +5,8 @@ import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
 import { ErrorBoundary } from './ErrorBoundary';
 import { CommandPalette } from '../search/CommandPalette';
+import { StudySheet } from '../learn/StudySheet';
+import { StudySheetProvider, useStudySheetState } from '../learn/StudySheetContext';
 import { CourseSectionBar } from '../course/CourseSectionBar';
 import { courseIdFromPath } from '../course/courseSections';
 import { cn } from '../ui/cn';
@@ -67,6 +69,7 @@ export function AppShell() {
     useCourseSectionSwipe();
   // The section bar only exists inside a course, so only those pages need to clear it.
   const inCourse = courseIdFromPath(location.pathname) !== null;
+  const studySheet = useStudySheetState();
 
   // Keep an icon rail visible on narrower desktop windows instead of spending a
   // quarter of the viewport on the full sidebar. The user's preference resumes
@@ -107,11 +110,7 @@ export function AppShell() {
     const background = [
       titlebarRef.current,
       bottomNavRef.current,
-      ...(paletteOpen
-        ? [shellBodyRef.current]
-        : mobileOpen
-          ? [appContentRef.current]
-          : []),
+      ...(paletteOpen ? [shellBodyRef.current] : mobileOpen ? [appContentRef.current] : []),
     ].filter((element): element is HTMLDivElement => element !== null);
     if (!mobileOpen && !paletteOpen) return;
     background.forEach((element) => element.setAttribute('inert', ''));
@@ -178,6 +177,7 @@ export function AppShell() {
             collapsed={!wideDesktop || collapsed}
             onToggleCollapsed={() => setCollapsed((c) => !c)}
             onOpenPalette={() => setPaletteOpen(true)}
+            onOpenStudySheet={() => studySheet.value.openStudySheet()}
             collapseControl={wideDesktop}
           />
         </div>
@@ -229,6 +229,10 @@ export function AppShell() {
                   onOpenPalette={() => {
                     setMobileOpen(false);
                     setPaletteOpen(true);
+                  }}
+                  onOpenStudySheet={() => {
+                    setMobileOpen(false);
+                    studySheet.value.openStudySheet();
                   }}
                 />
               </motion.div>
@@ -294,7 +298,7 @@ export function AppShell() {
                   exit="exit"
                   transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  {outlet}
+                  <StudySheetProvider value={studySheet.value}>{outlet}</StudySheetProvider>
                 </motion.div>
               </AnimatePresence>
             </ErrorBoundary>
@@ -303,6 +307,11 @@ export function AppShell() {
       </div>
       <div ref={bottomNavRef}>
         <CourseSectionBar />
+        <AnimatePresence>
+          {studySheet.open && (
+            <StudySheet courseId={studySheet.courseId} onClose={studySheet.close} />
+          )}
+        </AnimatePresence>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />

@@ -36,6 +36,9 @@ interface SidebarProps {
    *  (surfaces without palette wiring, e.g. LearnMode's nav drawer) the
    *  search item falls back to a plain link to the full search page. */
   onOpenPalette?: () => void;
+  /** Raises the study sheet instead of routing to /learn. Omitted on surfaces without
+   *  sheet wiring, where Review today falls back to the full-screen session. */
+  onOpenStudySheet?: () => void;
   collapseControl?: boolean;
 }
 
@@ -90,6 +93,39 @@ function NavItem({
         </>
       )}
     </NavLink>
+  );
+}
+
+/** A sidebar entry that performs an action rather than routing, styled to sit with the
+ *  links around it. Used by Review today, which raises the study sheet. */
+function ActionNavItem({
+  onClick,
+  icon,
+  label,
+  collapsed,
+  compact,
+}: {
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  collapsed: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={collapsed ? label : undefined}
+      className={cn(
+        'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',
+        compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
+        collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
+        'text-ink-soft hover:bg-ink/5 hover:text-ink',
+      )}
+    >
+      <span className="shrink-0">{icon}</span>
+      {!collapsed && <span className="flex-1 truncate">{label}</span>}
+    </button>
   );
 }
 
@@ -370,6 +406,7 @@ export function Sidebar({
   onToggleCollapsed,
   toggleLabel,
   onOpenPalette,
+  onOpenStudySheet,
   collapseControl = true,
 }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -470,6 +507,15 @@ export function Sidebar({
               <SearchNavItem
                 key={n.id}
                 onOpenPalette={onOpenPalette}
+                collapsed={collapsed}
+                compact={sidebarSettings.compactMode}
+              />
+            ) : n.id === 'today' && onOpenStudySheet ? (
+              <ActionNavItem
+                key={n.id}
+                onClick={onOpenStudySheet}
+                icon={<CardsIcon />}
+                label={n.label}
                 collapsed={collapsed}
                 compact={sidebarSettings.compactMode}
               />
