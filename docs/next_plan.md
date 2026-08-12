@@ -26,7 +26,17 @@ The delivered implementation specifications are
 [study entry points](plans/arc-14-study-entry-points.md), and
 [the remaining flow repairs](plans/arc-14-remaining-slices.md).
 
-There is no active product implementation plan. Arc 14 has no remaining slices.
+Arc 14 has no remaining slices.
+
+### Learn screen redesign
+
+**Status:** ready.
+
+The active product implementation plan is
+[the learn screen redesign](plans/learn-screen-redesign.md): the study card view, its overloaded
+header and swipe-to-grade safety, ahead of phone-primary use from the 2026–27 academic year.
+Evidence for each fault was gathered in a browser pass on 12 August 2026 and is recorded in
+that plan. It is design work and is not delegable to a mailbox worker.
 
 ## Close-out queue
 
