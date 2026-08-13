@@ -38,12 +38,18 @@ limits and goals; `Course` remains the source for path and assessment semantics.
 fallback for databases whose projection is absent, and do not apply this cutover to legacy global
 Deck sessions.
 
-## Do not delete Deck/Folder stores while legacy product paths remain active
+## The Deck/Folder stores are gone; the legacy types are not
 
-The destructive gate is still closed while `/deck/:deckId`, global study, search/editing, MCP scope
-resolution and legacy backup/import/share contracts depend on `db.decks` or `db.folders`. The safe
-migration endpoint is a reviewed additive projection until those paths have their own cutover and
-restore story.
+Schema v22 set `decks` and `folders` to `null`, and no production code reads them. Global Today now
+reads `db.schedulingUnits`. But `LegacyDeckRecord` / `LegacyFolder` in `types.ts` are still the
+import boundary for pre-v22 backups and v1 share codes, `importDeckSharePayload` still synthesises
+them for `buildCourseMigration`, and the Dexie `version(1)`–`version(21)` chain must keep declaring
+the stores because Dexie replays it for every existing database. Retire those after go-live, when
+you are willing to refuse old files — not before.
+
+Much of what still reads as Deck is a name rather than a mechanism: `backingDecks.ts` no longer
+talks to a store, and `findBackingDeck` is an alias of `getSchedulingUnit`. Do not add new `Deck`
+names; do not spend a day renaming the old ones.
 
 ## Lacuna is not yet in real use, and goes live in September 2026
 
