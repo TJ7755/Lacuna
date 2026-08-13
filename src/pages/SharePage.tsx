@@ -403,10 +403,7 @@ export function SharePage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-10 md:px-10">
-      <motion.header
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24 * m, ease: [0.16, 1, 0.3, 1] }}
+      <header
         className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8"
       >
         <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
@@ -419,7 +416,7 @@ export function SharePage() {
             history stay private to each person.
           </p>
         </div>
-      </motion.header>
+      </header>
 
       {/* Export */}
       <section className="mb-8 rounded-2xl border border-line bg-surface p-6 shadow-sm">
@@ -443,10 +440,7 @@ export function SharePage() {
             <ShareSkeleton />
           </DelayedFallback>
         ) : courses.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24 * m, ease: [0.16, 1, 0.3, 1] }}
+          <div
             className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center"
           >
             <div className="mb-4 grid h-12 w-12 place-items-center rounded-xl bg-accent-soft text-accent">
@@ -456,11 +450,11 @@ export function SharePage() {
             <p className="max-w-sm text-sm text-ink-soft">
               Create a course first, then come back here to share it with others.
             </p>
-          </motion.div>
+          </div>
         ) : (
           <>
             <div className="flex flex-col gap-2">
-              {courses.map((course, index) => {
+              {courses.map((course) => {
                 const on = selectedCourseId === course.id;
                 const summary = summaries?.[course.id];
                 return (
@@ -469,10 +463,7 @@ export function SharePage() {
                     type="button"
                     onClick={() => select(course.id)}
                     aria-pressed={on}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.16 * m, delay: Math.min(index * 0.03, 0.15) * m }}
-                    whileHover={{ y: -2, transition: { duration: 0.1 * m } }}
+                    whileHover={m > 0 ? { y: -2, transition: { duration: 0.1 * m } } : undefined}
                     className={cn(
                       'flex items-center gap-3 rounded-xl border px-4 py-3 text-left shadow-sm transition-all duration-200',
                       on

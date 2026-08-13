@@ -362,22 +362,22 @@ export function CardEditor() {
   }
   if (lessonMode && lesson === null) {
     return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">
+      <div className="p-10">
         <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
         <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
           {courseId ? 'Back to course' : 'Back to dashboard'}
         </Link>
-      </motion.div>
+      </div>
     );
   }
   if (editing && card === null) {
     return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">
+      <div className="p-10">
         <p className="mb-4 text-ink-soft">This card could not be found.</p>
         <Link to={backPath} className="text-accent underline">
           Back to {backLabel}
         </Link>
-      </motion.div>
+      </div>
     );
   }
 
@@ -416,11 +416,7 @@ export function CardEditor() {
           <span className="text-ink-soft">Card</span>
         </nav>
 
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.16 }}
-        >
+        <div>
           <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
             <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
             <div className="relative">
@@ -492,7 +488,7 @@ export function CardEditor() {
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -618,11 +614,7 @@ export function CardEditor() {
         <span className="text-ink-soft">{editing ? 'Edit card' : 'New card'}</span>
       </nav>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-      >
+      <div>
         <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
           <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
           <div className="relative">
@@ -642,9 +634,9 @@ export function CardEditor() {
         <AnimatePresence>
           {draftPrompt && (
             <motion.div
-              initial={{ opacity: 0, y: -8, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.98 }}
+              initial={m > 0 ? { opacity: 0 } : false}
+              animate={{ opacity: 1 }}
+              exit={m > 0 ? { opacity: 0 } : undefined}
               transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
               className="mb-5 flex items-center gap-3 rounded-xl border border-accent/20 bg-accent-soft px-4 py-3"
             >
@@ -676,9 +668,9 @@ export function CardEditor() {
           <AnimatePresence>
             {duplicateWarning && (
               <motion.div
-                initial={{ opacity: 0, y: -8, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                initial={m > 0 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                exit={m > 0 ? { opacity: 0 } : undefined}
                 transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
                 className="flex items-center gap-3 rounded-xl border border-warning/20 bg-warning/5 px-4 py-3"
               >
@@ -876,16 +868,13 @@ export function CardEditor() {
             />
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Sticky action bar — fades into the page rather than sitting on a hard white slab.
           The wrapper ignores pointer events so the transparent fade never blocks the
           content scrolling beneath it; the button row re-enables themotion.
           In touch mode, the bar becomes a floating bottom-sheet with larger controls. */}
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.25 * m, ease: [0.16, 1, 0.3, 1] }}
+      <div
         role="region"
         aria-label="Card editor actions"
         className={cn(
@@ -989,7 +978,7 @@ export function CardEditor() {
             </Button>
           </div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

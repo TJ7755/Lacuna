@@ -10,7 +10,6 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { m as motion } from 'motion/react';
 import { useCourse, useLesson, useOcclusion } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
@@ -18,7 +17,6 @@ import { DangerZoneSection } from './settings/DangerZoneSection';
 import { OcclusionCanvas, type OcclusionDrawTool, type DrawnRegionRect } from '../components/occlusion/OcclusionCanvas';
 import { OcclusionRegionPane } from '../components/occlusion/OcclusionRegionPane';
 import { ChevronLeftIcon } from '../components/ui/icons';
-import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { makeId } from '../db/schema';
 import { generateCards } from '../db/occlusionGeneration';
 import { resolveAssetUrl } from '../db/assetCache';
@@ -61,8 +59,6 @@ export function OcclusionEditor() {
   const [uploading, setUploading] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [confirmingReplace, setConfirmingReplace] = useState(false);
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
 
   // Seed the form from the occlusion being edited once it has loaded.
   useEffect(() => {
@@ -139,22 +135,22 @@ export function OcclusionEditor() {
   }
   if (lessonMode && lesson === null) {
     return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">
+      <div className="p-10">
         <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
         <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
           {courseId ? 'Back to course' : 'Back to dashboard'}
         </Link>
-      </motion.div>
+      </div>
     );
   }
   if (editing && occlusion === null) {
     return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">
+      <div className="p-10">
         <p className="mb-4 text-ink-soft">This occlusion could not be found.</p>
         <Link to={backPath} className="text-accent underline">
           Back to {backLabel}
         </Link>
-      </motion.div>
+      </div>
     );
   }
 
@@ -257,11 +253,7 @@ export function OcclusionEditor() {
         <span className="text-ink-soft">{editing ? 'Edit occlusion' : 'New occlusion'}</span>
       </nav>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-      >
+      <div>
         <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
           <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
           <div className="relative">
@@ -342,13 +334,10 @@ export function OcclusionEditor() {
             />
           )}
         </div>
-      </motion.div>
+      </div>
 
       {/* Sticky action bar */}
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.25 * m, ease: [0.16, 1, 0.3, 1] }}
+      <div
         role="region"
         aria-label="Occlusion editor actions"
         className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10"
@@ -361,7 +350,7 @@ export function OcclusionEditor() {
             {editing ? 'Save changes' : 'Add occlusion'}
           </Button>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
