@@ -12,6 +12,7 @@ vi.mock('../../components/cards/CardContent', () => ({
 const card: Card = {
   id: 'audio-card',
   deckId: 'deck',
+  schedulingUnitId: 'deck',
   type: 'front_back',
   front: `Listen\n\n![audio](lacuna-asset://${'a'.repeat(64)})`,
   back: 'Answer',

@@ -32,6 +32,7 @@ function card(id: string, lessonId: string, overrides: Partial<Card> = {}): Card
   return {
     id,
     deckId: 'deck',
+    schedulingUnitId: 'deck',
     courseId: 'course',
     primaryLessonId: lessonId,
     type: 'front_back',

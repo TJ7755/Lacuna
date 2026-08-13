@@ -35,6 +35,7 @@ function card(
 ): Card {
   return {
     deckId: 'deck-1',
+    schedulingUnitId: 'deck-1',
     type: 'front_back',
     stability: 5,
     difficulty: 3,

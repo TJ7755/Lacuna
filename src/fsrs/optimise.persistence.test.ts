@@ -6,7 +6,7 @@ import {
   FSRSBindingReview,
 } from '@open-spaced-repetition/binding';
 import { db } from '../db/schema';
-import { createDeck, updateDeck } from '../db/repository';
+import { createCourse, updateCourse } from '../db/repository';
 import { makeEngine, applyReview } from './fsrs';
 import { optimiseParameters } from './optimise';
 import type { Card, Grade, ReviewLog } from '../db/types';
@@ -28,6 +28,7 @@ function cardWithHistory(deckId: string, grades: Grade[]): Card {
   return {
     id: 'card-1',
     deckId,
+    schedulingUnitId: deckId,
     type: 'front_back',
     front: 'q',
     back: 'a',
@@ -48,7 +49,7 @@ function cardWithHistory(deckId: string, grades: Grade[]): Card {
 describe('optimised weights persistence', () => {
   beforeEach(async () => {
     await Promise.all([
-      db.decks.clear(),
+      db.schedulingUnits.clear(),
       db.cards.clear(),
       db.sessionHistory.clear(),
       db.userPerformance.clear(),
@@ -56,7 +57,7 @@ describe('optimised weights persistence', () => {
   });
 
   it('applied weights persist on the deck and feed the scheduler', async () => {
-    const deck = await createDeck('Trainer deck');
+    const deck = await createCourse('Trainer deck');
     const card = cardWithHistory(deck.id, [3, 3, 4, 3, 2, 3, 4, 3]);
 
     const result = await optimiseParameters([card], {
@@ -69,11 +70,11 @@ describe('optimised weights persistence', () => {
 
     expect(typeof result.isOutOfSampleWin).toBe('boolean');
 
-    await updateDeck(deck.id, {
+    await updateCourse(deck.id, {
       fsrsParameters: { ...deck.fsrsParameters, w: result.w },
     });
 
-    const loaded = (await db.decks.get(deck.id))!;
+    const loaded = (await db.schedulingUnits.get(deck.id))!;
     expect(loaded.fsrsParameters.w).toEqual(result.w);
     expect(loaded.fsrsParameters.w).toHaveLength(21);
 

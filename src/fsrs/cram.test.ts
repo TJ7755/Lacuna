@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { examEveAvailable, EXAM_EVE_WINDOW_HOURS } from './cram';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from './params';
-import type { Deck, ExamObjective } from '../db/types';
+import type { LegacyDeckRecord, ExamObjective } from '../db/types';
 
 const HOUR = 60 * 60 * 1000;
 
-function makeDeck(objective: ExamObjective, examDate: number, overrides: Partial<Deck> = {}): Deck {
+function makeDeck(objective: ExamObjective, examDate: number, overrides: Partial<LegacyDeckRecord> = {}): LegacyDeckRecord {
   return {
     id: 'd1',
-    name: 'Deck',
+    name: 'LegacyDeckRecord',
     examDate,
     createdAt: 0,
     fsrsVersion: FSRS_VERSION,

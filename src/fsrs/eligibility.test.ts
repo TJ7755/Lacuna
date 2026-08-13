@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { isAvailable, studyPool } from './eligibility';
 import { MS_PER_DAY } from './params';
-import type { Card, Deck, ReviewLog } from '../db/types';
+import type { Card, LegacyDeckRecord, ReviewLog } from '../db/types';
 
 const NOW = new Date('2026-06-04T10:00:00').getTime();
 
 function makeCard(over: Partial<Card> & Pick<Card, 'id'>): Card {
   return {
     deckId: 'd1',
+    schedulingUnitId: 'd1',
     type: 'front_back',
     front: 'q',
     back: 'a',
@@ -43,9 +44,9 @@ function review(timestamp: number): ReviewLog {
   };
 }
 
-const deck = (newCardsPerDay?: number): Deck => ({
+const deck = (newCardsPerDay?: number): LegacyDeckRecord => ({
   id: 'd1',
-  name: 'Deck',
+  name: 'LegacyDeckRecord',
   examDate: NOW + 30 * MS_PER_DAY,
   createdAt: 0,
   fsrsVersion: 6,

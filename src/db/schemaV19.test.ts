@@ -39,10 +39,24 @@ describe('schema v19: image occlusion (additive)', () => {
       pendingMergeReviews: 'id, courseId',
     });
     await legacy.open();
+    await legacy.table('courses').add({
+      id: 'course-1',
+      name: 'Course',
+      createdAt: 1,
+    });
+    await legacy.table('decks').add({
+      id: 'deck-1',
+      name: 'Course bank',
+      examDate: 1000,
+      createdAt: 1,
+      backingCourseId: 'course-1',
+      backingLessonId: null,
+    });
     await legacy.table('cards').add({
       id: 'pre-migration-card',
       deckId: 'deck-1',
       courseId: 'course-1',
+      schedulingUnitId: 'course-1',
       type: 'front_back',
       front: 'Q',
       back: 'A',
@@ -61,6 +75,7 @@ describe('schema v19: image occlusion (additive)', () => {
     await legacy.table('sequences').add({
       id: 'pre-migration-sequence',
       courseId: 'course-1',
+      schedulingUnitId: 'course-1',
       primaryLessonId: null,
       name: 'Periodic table',
       items: [{ id: 'i0', value: 'Hydrogen' }],
@@ -110,6 +125,7 @@ describe('schema v19: image occlusion (additive)', () => {
       id: 'occlusion-card',
       deckId: 'deck-1',
       courseId: 'course-1',
+      schedulingUnitId: 'course-1',
       type: 'front_back',
       front: 'Label 1 of 1 — Nucleus',
       back: '',

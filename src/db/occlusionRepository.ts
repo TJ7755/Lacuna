@@ -49,6 +49,7 @@ function generatedCardFromPayload(
   return {
     id: makeId(),
     deckId,
+    schedulingUnitId: deckId,
     courseId: payload.courseId,
     primaryLessonId: payload.primaryLessonId,
     type: payload.type,
@@ -139,8 +140,6 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
         db.lessonCards,
         db.lessonCardExposures,
         db.reviewHistory,
-        db.decks,
-        db.userPerformance,
         db.courses,
         db.lessons,
         db.schedulingUnits,

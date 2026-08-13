@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, Deck } from '../db/types';
+import type { Card, LegacyDeckRecord } from '../db/types';
 import { makeObjectiveContext } from './objective';
 import { defaultFsrsParameters, MS_PER_DAY } from './params';
 import { applyCooldown, decrementCooldowns, selectNextCard } from './cooldown';
 
 const NOW = 10 * MS_PER_DAY;
 
-const deck: Deck = {
+const deck: LegacyDeckRecord = {
   id: 'deck',
-  name: 'Deck',
+  name: 'LegacyDeckRecord',
   examDate: NOW + 7 * MS_PER_DAY,
   createdAt: 0,
   fsrsVersion: 6,
@@ -20,6 +20,7 @@ function card(id: string, stability: number): Card {
   return {
     id,
     deckId: deck.id,
+    schedulingUnitId: deck.id,
     type: 'front_back',
     front: id,
     back: 'answer',

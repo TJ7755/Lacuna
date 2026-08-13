@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CardList } from './CardList';
-import type { Card, Deck, Occlusion, Sequence } from '../../db/types';
+import type { Card, LegacyDeckRecord, Occlusion, Sequence } from '../../db/types';
 import type { ApkgImportResult } from '../../db/apkgImport';
-import type { CardListContext } from './cardListContext';
+import { courseCardListContext, type CardListContext } from './cardListContext';
 
 const mockNotify = vi.fn();
 
@@ -99,9 +99,9 @@ vi.mock('../import/UnifiedImportPanel', () => ({
   ),
 }));
 
-const mockDeck: Deck = {
+const mockDeck: LegacyDeckRecord = {
   id: 'deck-1',
-  name: 'Test Deck',
+  name: 'Test LegacyDeckRecord',
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   createdAt: Date.now(),
@@ -114,6 +114,7 @@ const mockDeck: Deck = {
 const mockCard: Card = {
   id: 'card-1',
   deckId: 'deck-1',
+  schedulingUnitId: 'deck-1',
   type: 'front_back',
   front: 'What is the capital of France?',
   back: 'Paris',
@@ -141,6 +142,13 @@ const mockCard2: Card = {
   tags: ['math'],
 };
 
+const mockContext = courseCardListContext({
+  schedulingConfig: mockDeck,
+  courseId: 'course-1',
+  primaryLessonId: null,
+  importTargetName: mockDeck.name,
+});
+
 beforeEach(() => {
   mockNotify.mockClear();
 });
@@ -152,8 +160,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onNewCard={onNewCard}
         onEditCard={onEditCard}
       />
@@ -162,11 +169,11 @@ describe('CardList', () => {
     expect(screen.getAllByText('New card')).not.toHaveLength(0);
   });
 
-  it('defaults the legacy deck collection when omitted', async () => {
+  it('opens analytics with a Course card-list context', async () => {
     render(
       <CardList
         cards={[mockCard]}
-        deck={mockDeck}
+        context={mockContext}
         onEditCard={vi.fn()}
       />,
     );
@@ -250,8 +257,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[mockCard]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />
@@ -268,8 +274,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[workingCard]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onEditCard={vi.fn()}
       />,
     );
@@ -282,8 +287,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[mockCard, mockCard2]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />
@@ -298,8 +302,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[mockCard, mockCard2]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />
@@ -313,8 +316,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[mockCard]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />
@@ -329,8 +331,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />
@@ -343,8 +344,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[mockCard]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />
@@ -358,8 +358,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[mockCard]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onNewCard={onNewCard}
         onEditCard={vi.fn()}
       />
@@ -373,8 +372,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[mockCard]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onEditCard={vi.fn()}
         onLinkExisting={onLinkExisting}
       />,
@@ -389,8 +387,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[mockCard]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onEditCard={vi.fn()}
         linkedCardIds={new Set([mockCard.id])}
         onUnlinkCard={onUnlinkCard}
@@ -408,8 +405,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[mockCard, mockCard2]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />
@@ -423,8 +419,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[mockCard, mockCard2]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onNewCard={vi.fn()}
         onEditCard={vi.fn()}
         courseId="course-1"
@@ -446,8 +441,7 @@ describe('CardList', () => {
     render(
       <CardList
         cards={[mockCard]}
-        deck={mockDeck}
-        allDecks={[mockDeck]}
+        context={mockContext}
         onNewCard={vi.fn()}
         onEditCard={vi.fn()}
         courseId="course-1"
@@ -487,8 +481,7 @@ describe('CardList', () => {
       render(
         <CardList
           cards={[mockCard, generatedCard]}
-          deck={mockDeck}
-          allDecks={[mockDeck]}
+          context={mockContext}
           onEditCard={vi.fn()}
           sequences={[sequence]}
         />,
@@ -504,8 +497,7 @@ describe('CardList', () => {
       render(
         <CardList
           cards={[generatedCard]}
-          deck={mockDeck}
-          allDecks={[mockDeck]}
+          context={mockContext}
           onEditCard={vi.fn()}
           sequences={[sequence]}
           onEditSequence={onEditSequence}
@@ -519,8 +511,7 @@ describe('CardList', () => {
       render(
         <CardList
           cards={[mockCard, generatedCard]}
-          deck={mockDeck}
-          allDecks={[mockDeck]}
+          context={mockContext}
           onNewCard={vi.fn()}
           onEditCard={vi.fn()}
           sequences={[sequence]}
@@ -558,8 +549,7 @@ describe('CardList', () => {
       render(
         <CardList
           cards={[mockCard, occlusionCard]}
-          deck={mockDeck}
-          allDecks={[mockDeck]}
+          context={mockContext}
           onEditCard={vi.fn()}
           occlusions={[occlusion]}
           onEditOcclusion={onEditOcclusion}

@@ -10,7 +10,7 @@ async function reset() {
     db.courses.clear(),
     db.lessons.clear(),
     db.cards.clear(),
-    db.decks.clear(),
+    db.schedulingUnits.clear(),
     db.sequences.clear(),
   ]);
 }
@@ -57,6 +57,7 @@ describe('linesModeSequencesByCard', () => {
     await db.cards.add({
       id: 'plain-card',
       deckId: 'deck-1',
+      schedulingUnitId: 'deck-1',
       courseId: course.id,
       type: 'front_back',
       front: 'Q',

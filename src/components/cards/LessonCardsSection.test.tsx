@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LessonCardsSection } from './LessonCardsSection';
-import type { Card, Deck, LessonCardLink } from '../../db/types';
+import type { Card, LegacyDeckRecord, LessonCardLink } from '../../db/types';
 
 let mockLinks: LessonCardLink[] | undefined = [];
 let mockCourseCards: Card[] = [];
-let mockPreparedDeck: Deck | undefined;
+let mockPreparedDeck: LegacyDeckRecord | undefined;
 const mockUnlink = vi.fn();
 const mockEnsureLessonBackingDeck = vi.fn();
 const mockGetExposure = vi.fn();
@@ -98,7 +98,7 @@ const lesson = {
   isExtension: false,
 };
 
-const deck: Deck = {
+const deck: LegacyDeckRecord = {
   id: 'deck-1',
   name: 'Cells',
   examDate: Date.now(),
@@ -120,6 +120,7 @@ const deck: Deck = {
 const card: Card = {
   id: 'card-1',
   deckId: deck.id,
+  schedulingUnitId: deck.id,
   type: 'front_back',
   front: 'Cell membrane',
   back: 'Controls entry',

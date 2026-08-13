@@ -1,4 +1,10 @@
-import type { CheckerDisputeReport, Course, Deck, LineVerdict, Note } from '../../db/types';
+import type {
+  CheckerDisputeReport,
+  Course,
+  LineVerdict,
+  Note,
+  SchedulingUnitRecord,
+} from '../../db/types';
 
 export type Phase = 'loading' | 'notes' | 'question' | 'answer' | 'finished';
 export type SessionCardOutcome = 'correct' | 'wrong';
@@ -33,12 +39,12 @@ export const FILTER_LABELS: Record<string, string> = {
 };
 
 /**
- * The scheduling unit a session studies: a legacy Deck, or a Course (both the
+ * The scheduling unit a session studies: an explicit scheduling unit, or a Course (both the
  * course-wide practice scope and the lesson scope, which schedules against its
  * parent Course — see SessionUnitScope in fsrs/session.ts). Both shapes carry
  * the fields this component reads directly (name, dailyReviewGoal, etc).
  */
-export type StudyUnit = Deck | Course;
+export type StudyUnit = SchedulingUnitRecord | Course;
 
 /** The lesson notes shown before cards begin on a first-ever study of a lesson. */
 export interface LessonNotesScreen {

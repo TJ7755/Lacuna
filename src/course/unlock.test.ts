@@ -6,6 +6,7 @@ function makeCard(id: string): Card {
   return {
     id,
     deckId: 'd1',
+    schedulingUnitId: 'd1',
     type: 'front_back',
     front: '',
     back: '',

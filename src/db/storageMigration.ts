@@ -2,7 +2,7 @@ import type {
   Card,
   CourseAssessment,
   CourseRecord,
-  Deck,
+  LegacyDeckRecord,
   Lesson,
   UserPerformance,
 } from './types';
@@ -16,6 +16,8 @@ export interface DomainStorageMigrationResult {
   schedulingUnitByCardId: Map<string, string>;
   schedulingUnitByDeckId: Map<string, string>;
 }
+
+type StorageMigrationCard = Omit<Card, 'schedulingUnitId'> & { schedulingUnitId?: string };
 
 function emptyPerformanceStats() {
   return {
@@ -70,7 +72,7 @@ function combineStats(performances: UserPerformance[]) {
     : emptyPerformanceStats();
 }
 
-function unitFromLegacyDeck(deck: Deck): SchedulingUnitRecord {
+export function schedulingUnitFromLegacyDeck(deck: LegacyDeckRecord): SchedulingUnitRecord {
   return {
     id: deck.id,
     createdAt: deck.createdAt,
@@ -110,8 +112,8 @@ export function buildDomainStorageMigration(
   courses: CourseRecord[],
   lessons: Lesson[],
   assessments: CourseAssessment[],
-  decks: Deck[],
-  cards: Card[],
+  decks: LegacyDeckRecord[],
+  cards: StorageMigrationCard[],
   userPerformance: UserPerformance[],
 ): DomainStorageMigrationResult {
   const courseIds = new Set(courses.map((course) => course.id));
@@ -140,13 +142,15 @@ export function buildDomainStorageMigration(
       schedulingUnitByDeckId.set(deck.id, mappedUnitId);
       continue;
     }
-    if (!units.has(deck.id)) units.set(deck.id, unitFromLegacyDeck(deck));
+    if (!units.has(deck.id)) units.set(deck.id, schedulingUnitFromLegacyDeck(deck));
     schedulingUnitByDeckId.set(deck.id, deck.id);
   }
 
   const schedulingUnitByCardId = new Map<string, string>();
   const deckUnitCandidates = new Map<string, Set<string>>();
   for (const card of cards) {
+    const legacyDeckId = card.deckId ?? card.schedulingUnitId;
+    if (!legacyDeckId) continue;
     const primaryLesson = card.primaryLessonId ? lessonsById.get(card.primaryLessonId) : undefined;
     const lessonBelongsToCardCourse =
       primaryLesson !== undefined &&
@@ -156,11 +160,11 @@ export function buildDomainStorageMigration(
         ? primaryLesson.id
         : card.courseId && units.get(card.courseId)?.kind === 'course'
           ? card.courseId
-          : schedulingUnitByDeckId.get(card.deckId) ?? card.deckId;
+          : schedulingUnitByDeckId.get(legacyDeckId) ?? legacyDeckId;
     schedulingUnitByCardId.set(card.id, unitId);
-    const candidates = deckUnitCandidates.get(card.deckId) ?? new Set<string>();
+    const candidates = deckUnitCandidates.get(legacyDeckId) ?? new Set<string>();
     candidates.add(unitId);
-    deckUnitCandidates.set(card.deckId, candidates);
+    deckUnitCandidates.set(legacyDeckId, candidates);
   }
   // Legacy Deck ownership metadata is absent on some migrated records. If all cards
   // in such a deck resolve to one Course/Lesson unit, use that evidence to preserve

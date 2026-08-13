@@ -54,7 +54,7 @@ export interface BuildCourseStudyFlowSnapshotInput {
   now?: number;
 }
 
-/** Course-wide mean across the distinct decks backing its cards. */
+/** Course-wide mean across the distinct scheduling units owning its cards. */
 export function courseMeanReviewSeconds(
   cards: readonly Card[],
   deckSeconds: ReadonlyMap<string, number>,
@@ -63,9 +63,9 @@ export function courseMeanReviewSeconds(
   let count = 0;
   const seen = new Set<string>();
   for (const card of cards) {
-    if (seen.has(card.deckId)) continue;
-    seen.add(card.deckId);
-    const seconds = deckSeconds.get(card.deckId);
+    if (!card.schedulingUnitId || seen.has(card.schedulingUnitId)) continue;
+    seen.add(card.schedulingUnitId);
+    const seconds = deckSeconds.get(card.schedulingUnitId);
     if (seconds === undefined) continue;
     sum += seconds;
     count += 1;

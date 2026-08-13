@@ -25,32 +25,28 @@ function formatRow(values: string[], delimiter: ',' | '\t'): string {
 }
 
 async function fetchDecksAndCards() {
-  const [decks, rawCards, courses, lessons] = await Promise.all([
-    db.decks.toArray(),
+  const [rawCards, courses, lessons] = await Promise.all([
     db.cards.toArray(),
     db.courses.toArray(),
     db.lessons.toArray(),
   ]);
   const cards = await hydrateCardsWithHistory(rawCards);
-  const deckMap = new Map(decks.map((d) => [d.id, d.name]));
-  const colourMap = new Map(decks.map((d) => [d.id, d.colour ?? '']));
   const courseNameMap = new Map(courses.map((c) => [c.id, c.name]));
   const courseColourMap = new Map(courses.map((c) => [c.id, c.colour ?? '']));
   const lessonNameMap = new Map(lessons.map((l) => [l.id, l.name]));
-  return { deckMap, colourMap, courseNameMap, courseColourMap, lessonNameMap, cards };
+  return { courseNameMap, courseColourMap, lessonNameMap, cards };
 }
 
 /**
- * Resolve the display name and colour for a card's deck/course grouping.
+ * Resolve the display name and colour for a card's Course grouping.
  * Course-created cards resolve to "<Course name> — <Lesson name>" (or just the
- * course name when no lesson is set), taking precedence over the raw backing
- * deck name. Legacy deck-only cards fall back to the deck map unchanged.
+ * course name when no lesson is set).
  */
 function resolveDeckDisplay(
-  c: { deckId: string; courseId?: string | null; primaryLessonId?: string | null },
+  c: { courseId?: string | null; primaryLessonId?: string | null },
   maps: Pick<
     Awaited<ReturnType<typeof fetchDecksAndCards>>,
-    'deckMap' | 'colourMap' | 'courseNameMap' | 'courseColourMap' | 'lessonNameMap'
+    'courseNameMap' | 'courseColourMap' | 'lessonNameMap'
   >,
 ): { name: string; colour: string } {
   if (c.courseId) {
@@ -62,7 +58,7 @@ function resolveDeckDisplay(
       return { name, colour };
     }
   }
-  return { name: maps.deckMap.get(c.deckId) ?? '', colour: maps.colourMap.get(c.deckId) ?? '' };
+  return { name: '', colour: '' };
 }
 
 const EXPORT_HEADERS = [
@@ -87,7 +83,7 @@ function cardToRow(
   c: Awaited<ReturnType<typeof fetchDecksAndCards>>['cards'][number],
   maps: Pick<
     Awaited<ReturnType<typeof fetchDecksAndCards>>,
-    'deckMap' | 'colourMap' | 'courseNameMap' | 'courseColourMap' | 'lessonNameMap'
+    'courseNameMap' | 'courseColourMap' | 'lessonNameMap'
   >,
 ): string[] {
   const { name, colour } = resolveDeckDisplay(c, maps);

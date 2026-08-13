@@ -55,6 +55,7 @@ vi.mock('../ui/icons', () => ({
 const card: Card = {
   id: 'card-1',
   deckId: 'deck-1',
+  schedulingUnitId: 'unit-1',
   type: 'front_back',
   front: 'Front',
   back: 'Back',
@@ -101,7 +102,7 @@ describe('CardEditOverlay draft scope', () => {
     expect(localStorage.getItem('lacuna:draft:deck-1:session:card-1')).toBeNull();
   });
 
-  it('keeps the Deck scope as the compatibility fallback', async () => {
+  it('uses the card scheduling unit when no explicit scope is supplied', async () => {
     const { getByLabelText } = render(
       <CardEditOverlay card={card} onSaved={vi.fn()} onCancel={vi.fn()} />,
     );
@@ -109,6 +110,6 @@ describe('CardEditOverlay draft scope', () => {
     fireEvent.change(getByLabelText('Front'), { target: { value: 'Updated front' } });
     await act(() => vi.advanceTimersByTime(800));
 
-    expect(localStorage.getItem('lacuna:draft:deck-1:session:card-1')).not.toBeNull();
+    expect(localStorage.getItem('lacuna:draft:unit-1:session:card-1')).not.toBeNull();
   });
 });

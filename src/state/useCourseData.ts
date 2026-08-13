@@ -9,7 +9,6 @@ import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import type {
   Card,
   Course,
-  Deck,
   CourseAssessment,
   CourseRecord,
   Lesson,
@@ -23,6 +22,7 @@ import type {
   RevisionPlan,
   Sequence,
   SessionHistoryEntry,
+  SchedulingUnitRecord,
   UserPerformance,
 } from '../db/types';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
@@ -93,7 +93,7 @@ export function useLesson(lessonId: string | undefined): Lesson | null | undefin
 export function useLessonBackingDeck(
   courseId: string | undefined,
   lessonId: string | undefined,
-): Deck | undefined {
+): SchedulingUnitRecord | undefined {
   return useLiveQuery(
     () => (courseId && lessonId ? findBackingDeck(courseId, lessonId) : undefined),
     [courseId, lessonId],
@@ -101,7 +101,7 @@ export function useLessonBackingDeck(
 }
 
 /** Resolve the hidden scheduling deck for cards not assigned to a lesson. */
-export function useCourseBankBackingDeck(courseId: string | undefined): Deck | undefined {
+export function useCourseBankBackingDeck(courseId: string | undefined): SchedulingUnitRecord | undefined {
   return useLiveQuery(() => (courseId ? findBackingDeck(courseId, null) : undefined), [courseId]);
 }
 
@@ -109,9 +109,9 @@ export function useCourseBankBackingDeck(courseId: string | undefined): Deck | u
 export function useCourseBankBackingDecks(
   courseId: string | undefined,
   lessonIds: readonly string[],
-): Map<string | null, Deck> | undefined {
+): Map<string | null, SchedulingUnitRecord> | undefined {
   return useLiveQuery(
-    () => (courseId ? findBackingDecks(courseId, lessonIds) : new Map<string | null, Deck>()),
+    () => (courseId ? findBackingDecks(courseId, lessonIds) : new Map<string | null, SchedulingUnitRecord>()),
     [courseId, lessonIds],
   );
 }
@@ -330,8 +330,8 @@ const EMPTY_SUMMARY_PROGRESS: CourseSummaryProgress = {
 /**
  * Per-course summary statistics for dashboard and course-header surfaces.
  * Extension-lesson cards are excluded from card-level figures; cards with a null
- * or missing primaryLessonId are included. Mirrors computeDeckSummaries (including
- * the orphaned-card-set guard).
+ * or missing primaryLessonId are included. The orphaned-card-set guard prevents
+ * cards from leaking into unrelated course summaries.
  *
  * Pure — accepts only already-loaded arrays so it can be reused by combined hooks
  * and called in tests without a database. Exam dates are optional for backwards-
@@ -520,9 +520,8 @@ export function useCourseSummary(courseId: string | undefined): CourseSummary | 
  * all cards, per-course summaries and global study stats in one reactive read so a
  * shared transaction triggers only one re-render instead of five.
  *
- * Study stats use per-deck response-time calibration (keyed by deckId) because
- * computeStudyStats looks up by card.deckId; this matches useDashboardData exactly
- * and keeps the seven-day forecast behaviour identical.
+ * Study stats use Course calibration keyed by courseId. Scheduling-unit pacing
+ * remains separate and feeds workload planning, not response-time calibration.
  */
 export function useCourseDashboardData():
   | {
@@ -534,7 +533,7 @@ export function useCourseDashboardData():
     }
   | undefined {
   return useLiveQuery(async () => {
-    const [records, lessons, cards, assessments, links, exposures, completions] =
+    const [records, lessons, cards, assessments, links, exposures, completions, performance] =
       await Promise.all([
         db.courses.toArray(),
         db.lessons.toArray(),
@@ -543,14 +542,10 @@ export function useCourseDashboardData():
         db.lessonCards.toArray(),
         db.lessonCardExposures.toArray(),
         db.lessonCompletions.toArray(),
+        db.coursePerformance.toArray(),
       ]);
     const courses = hydrateCourses(records, assessments);
     const hydratedCards = await hydrateCardsWithHistory(cards);
-    const perf = (
-      await Promise.all(
-        courses.map((course) => performanceForCourseBackingDecks(course.id, hydratedCards)),
-      )
-    ).flat();
     const summaries = computeCourseSummaries(
       courses,
       lessons,
@@ -563,8 +558,13 @@ export function useCourseDashboardData():
         completions,
       },
     );
-    const deckSeconds = buildDeckSecondsMap(perf);
-    const stats = computeStudyStats(hydratedCards, deckSeconds);
+    const courseSeconds = new Map<string, number>();
+    for (const row of performance) {
+      if (row.totalCorrectReviews > 0 && row.runningMeanResponseTime > 0) {
+        courseSeconds.set(row.courseId, row.runningMeanResponseTime);
+      }
+    }
+    const stats = computeStudyStats(hydratedCards, courseSeconds);
     return { courses, lessons, allCards: hydratedCards, summaries, stats };
   }, []);
 }

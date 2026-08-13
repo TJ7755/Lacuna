@@ -31,6 +31,7 @@ function existingCard(front: string): Card {
   return {
     id: 'existing-card',
     deckId: 'deck-1',
+    schedulingUnitId: 'deck-1',
     type: 'front_back',
     front,
     back: '',

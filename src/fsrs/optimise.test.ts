@@ -36,6 +36,7 @@ function cardWith(grades: Grade[], startMs: number, gapDays = 2): Card {
   return {
     id: Math.random().toString(36).slice(2),
     deckId: 'd',
+    schedulingUnitId: 'd',
     type: 'front_back',
     front: '',
     back: '',
@@ -92,6 +93,7 @@ describe('review extraction and gating', () => {
       id: `review:event:${index}`,
       cardId: source.id,
       deckId: source.deckId,
+      schedulingUnitId: source.deckId,
     }));
     const staleCard = { ...cardWith([2], Date.UTC(2026, 0, 20)), id: 'stale-card' };
 

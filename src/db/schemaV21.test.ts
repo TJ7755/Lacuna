@@ -30,6 +30,7 @@ function legacyCard(history: ReviewLog[]): Card {
   return {
     id: 'card-1',
     deckId: 'lesson-deck',
+    schedulingUnitId: 'lesson-deck',
     courseId: 'course-1',
     primaryLessonId: 'lesson-1',
     type: 'front_back',
@@ -148,12 +149,14 @@ describe('schema v21 domain storage', () => {
       id: reviewHistoryEntryIdForEvent('review-1'),
       cardId: 'card-1',
       deckId: 'lesson-deck',
+      schedulingUnitId: 'lesson-deck',
       courseId: 'course-1',
       primaryLessonId: 'lesson-1',
     });
     await legacy.table('userPerformance').bulkAdd([
       {
         deckId: 'lesson-deck',
+        schedulingUnitId: 'lesson-deck',
         runningMeanResponseTime: 4,
         runningStdDevResponseTime: 1,
         m2: 2,
@@ -161,6 +164,7 @@ describe('schema v21 domain storage', () => {
       },
       {
         deckId: 'course-1',
+        schedulingUnitId: 'course-1',
         runningMeanResponseTime: 3,
         runningStdDevResponseTime: 1,
         m2: 1,
@@ -171,6 +175,7 @@ describe('schema v21 domain storage', () => {
       eventId: 'review-1',
       sessionId: 'session-1',
       deckId: 'lesson-deck',
+      schedulingUnitId: 'lesson-deck',
       courseId: 'course-1',
       timestamp: 100,
       averagePredictedRetrievability: 0.5,

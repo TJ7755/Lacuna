@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile } from '../../db/types';
 import { DataPortabilitySection } from './DataPortabilitySection';
 
-const { readBackupFile, importBackup } = vi.hoisted(() => ({
+const { readBackupFile, importBackup, notify } = vi.hoisted(() => ({
   readBackupFile: vi.fn(),
   importBackup: vi.fn(),
+  notify: vi.fn(),
 }));
 
 vi.mock('../../db/portability', () => ({
@@ -18,13 +19,14 @@ vi.mock('../../components/import/UnifiedExportPanel', () => ({
 }));
 
 vi.mock('../../components/ui/Toast', () => ({
-  useToast: () => ({ notify: vi.fn() }),
+  useToast: () => ({ notify }),
 }));
 
 describe('DataPortabilitySection', () => {
   beforeEach(() => {
     readBackupFile.mockReset();
     importBackup.mockReset();
+    notify.mockReset();
   });
 
   it('requires explicit confirmation before replacing local data', async () => {
@@ -52,7 +54,7 @@ describe('DataPortabilitySection', () => {
       lessons: Array.from({ length: 7 }),
       cards: Array.from({ length: 36 }),
       exportedAt: new Date(2026, 7, 10).getTime(),
-    } as BackupFile);
+    } as unknown as BackupFile);
 
     const { container } = render(<DataPortabilitySection motionMultiplier={0} />);
     const input = container.querySelector<HTMLInputElement>('input[type="file"]');
@@ -62,6 +64,27 @@ describe('DataPortabilitySection', () => {
 
     expect(await screen.findByText(/This backup contains/)).toHaveTextContent(
       'This backup contains 7 lessons and 36 cards',
+    );
+  });
+
+  it('reports folder names discarded while importing a legacy backup', async () => {
+    readBackupFile.mockResolvedValue({
+      decks: [{}],
+      cards: [],
+      exportedAt: Date.now(),
+    } as unknown as BackupFile);
+    importBackup.mockResolvedValue({ discardedFolderNames: ['Chemistry', 'Organic'] });
+    const { container } = render(<DataPortabilitySection motionMultiplier={0} />);
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    fireEvent.change(input, { target: { files: [new File(['{}'], 'backup.json')] } });
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Merge backup' }));
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        'Backup merged. Folder hierarchy was discarded: Chemistry, Organic.',
+        'positive',
+      ),
     );
   });
 });

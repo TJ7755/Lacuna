@@ -28,6 +28,7 @@ function card(history: ReviewLog[]): Card {
   return {
     id: Math.random().toString(36).slice(2),
     deckId: 'd1',
+    schedulingUnitId: 'd1',
     type: 'front_back',
     front: 'q',
     back: 'a',
@@ -65,6 +66,7 @@ describe('predictionAccuracySeries', () => {
       id: `review:event:calibration-${index}`,
       cardId: source.id,
       deckId: source.deckId,
+      schedulingUnitId: source.deckId,
     }));
 
     const series = predictionAccuracySeries([{ ...source, history: [] }], reviewHistory);

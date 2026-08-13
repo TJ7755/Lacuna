@@ -2,11 +2,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
-import type { Card, Course, CourseAssessment, CourseRecord, Deck, Lesson, Note } from '../db/types';
+import type { Card, Course, CourseAssessment, CourseRecord, Lesson, Note } from '../db/types';
 
 export interface SearchData {
   cards: Card[];
-  decks: Deck[];
   courses: Course[];
   lessons: Lesson[];
   notes: Note[];
@@ -19,15 +18,12 @@ function hydrateCourses(records: CourseRecord[], assessments: CourseAssessment[]
 }
 
 /**
- * All entities needed by the global search surfaces. The legacy deck read is kept
- * inside this compatibility boundary so Course/Lesson UI does not discover hidden
- * backing decks or depend on their shape.
+ * All Course/Lesson entities needed by the global search surfaces.
  */
 export function useSearchData(): SearchData | undefined {
   return useLiveQuery(async () => {
-    const [cards, decks, records, assessments, lessons, notes] = await Promise.all([
+    const [cards, records, assessments, lessons, notes] = await Promise.all([
       db.cards.toArray(),
-      db.decks.orderBy('createdAt').toArray(),
       db.courses.orderBy('createdAt').toArray(),
       db.courseAssessments.toArray(),
       db.lessons.orderBy('orderIndex').toArray(),
@@ -35,7 +31,6 @@ export function useSearchData(): SearchData | undefined {
     ]);
     return {
       cards: await hydrateCardsWithHistory(cards),
-      decks,
       courses: hydrateCourses(records, assessments),
       lessons,
       notes,

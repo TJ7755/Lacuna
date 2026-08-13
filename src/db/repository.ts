@@ -10,7 +10,6 @@ import type {
   CourseAssessment,
   CoursePerformance,
   CourseRecord,
-  Deck,
   Grade,
   ItemPayload,
   LineVerdict,
@@ -55,7 +54,6 @@ import {
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
-import { emptyPerformance } from '../fsrs/grading';
 import { isLeech } from '../fsrs/leech';
 import { predictedRetrievabilityAtHorizon } from '../fsrs/progress';
 import { addDays } from '../fsrs/heatmap';
@@ -95,69 +93,6 @@ async function assertValidCardPayload(type: CardType, payload: unknown): Promise
 }
 
 // ---------------------------------------------------------------------------
-// Decks
-// ---------------------------------------------------------------------------
-
-export async function createDeck(name: string, colour?: string): Promise<Deck> {
-  try {
-    const createdAt = Date.now();
-    const deck: Deck = {
-      id: makeId(),
-      name: name.trim() || 'Untitled deck',
-      examDate: defaultExamDate(createdAt),
-      timeZone: getLocalTimeZone(),
-      createdAt,
-      fsrsVersion: FSRS_VERSION,
-      fsrsParameters: defaultFsrsParameters(),
-      examObjective: 'expectedMarks',
-      lastInteractedAt: createdAt,
-      ...(colour ? { colour } : {}),
-    };
-    await db.decks.add(deck);
-    await db.userPerformance.add(emptyPerformance(deck.id));
-    return deck;
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
-}
-
-export async function updateDeck(id: string, changes: Partial<Deck>): Promise<void> {
-  try {
-    await db.decks.update(id, changes);
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
-}
-
-export async function deleteDeck(id: string): Promise<void> {
-  await db.transaction(
-    'rw',
-    [
-      db.decks,
-      db.cards,
-      db.lessonCards,
-      db.lessonCardExposures,
-      db.sessionHistory,
-      db.userPerformance,
-      db.reviewHistory,
-    ],
-    async () => {
-      const cardIds = await db.cards.where('deckId').equals(id).primaryKeys();
-      if (cardIds.length > 0) {
-        await db.lessonCards.where('cardId').anyOf(cardIds).delete();
-        await db.lessonCardExposures.where('cardId').anyOf(cardIds).delete();
-      }
-      await db.cards.where('deckId').equals(id).delete();
-      await db.reviewHistory.where('cardId').anyOf(cardIds).delete();
-      await db.sessionHistory.where('deckId').equals(id).delete();
-      await db.userPerformance.delete(id);
-      await db.decks.delete(id);
-    },
-  );
-  scheduleAssetGc();
-}
-
-// ---------------------------------------------------------------------------
 // Cards
 // ---------------------------------------------------------------------------
 
@@ -178,7 +113,7 @@ export async function checkDuplicate(
 ): Promise<Card | undefined> {
   const normalisedFront = normaliseCardText(front);
   const normalisedBack = normaliseCardText(back);
-  const existing = await db.cards.where('deckId').equals(deckId).toArray();
+  const existing = await db.cards.where('schedulingUnitId').equals(deckId).toArray();
   return existing.find((c) => {
     if (c.type !== type) return false;
     if (excludeId && c.id === excludeId) return false;
@@ -193,7 +128,7 @@ export async function checkDuplicatesBatch(
   deckId: string,
   drafts: { type: CardType; front: string; back: string }[],
 ): Promise<Set<number>> {
-  const existing = await db.cards.where('deckId').equals(deckId).toArray();
+  const existing = await db.cards.where('schedulingUnitId').equals(deckId).toArray();
   const existingSet = new Set(
     existing.map((c) => `${c.type}:${normaliseCardText(c.front)}:${normaliseCardText(c.back)}`),
   );
@@ -221,6 +156,11 @@ export async function createCard(
 ): Promise<Card> {
   try {
     await assertValidCardPayload(type, opts?.payload);
+    const unit = await db.schedulingUnits.get(deckId);
+    const ownership = opts ?? {
+      courseId: unit?.courseId,
+      primaryLessonId: unit?.lessonId,
+    };
     const card: Card = {
       id: makeId(),
       deckId,
@@ -241,8 +181,8 @@ export async function createCard(
       tags,
       suspended: false,
       buriedUntil: null,
-      ...(opts?.courseId ? { schedulingUnitId: opts.primaryLessonId ?? opts.courseId } : {}),
-      ...opts,
+      schedulingUnitId: deckId,
+      ...ownership,
     };
     await db.cards.add(card);
     return card;
@@ -268,6 +208,11 @@ export async function createCards(
 ): Promise<Card[]> {
   try {
     for (const draft of drafts) await assertValidCardPayload(draft.type, draft.payload);
+    const unit = await db.schedulingUnits.get(deckId);
+    const ownership = opts ?? {
+      courseId: unit?.courseId,
+      primaryLessonId: unit?.lessonId,
+    };
     const now = Date.now();
     const cards: Card[] = drafts.map((draft, i) => ({
       id: makeId(),
@@ -290,8 +235,8 @@ export async function createCards(
       tags: draft.tags ?? [],
       suspended: false,
       buriedUntil: null,
-      ...(opts?.courseId ? { schedulingUnitId: opts.primaryLessonId ?? opts.courseId } : {}),
-      ...opts,
+      schedulingUnitId: deckId,
+      ...ownership,
     }));
     await db.cards.bulkAdd(cards);
     return cards;
@@ -312,7 +257,7 @@ export async function createCardWithReverse(
   tags: string[] = [],
   opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<{ card: Card; reverse: Card }> {
-  return db.transaction('rw', db.cards, async () => {
+  return db.transaction('rw', [db.cards, db.schedulingUnits], async () => {
     const card = await createCard(deckId, 'front_back', front, back, tags, opts);
     const reverse = await createCard(deckId, 'front_back', back, front, tags, opts);
     return { card, reverse };
@@ -330,7 +275,7 @@ export async function createBasicReversedPair(
   tags: string[] = [],
   opts?: { courseId?: string | null; primaryLessonId?: string | null },
 ): Promise<{ card: Card; reverse: Card }> {
-  return db.transaction('rw', db.cards, async () => {
+  return db.transaction('rw', [db.cards, db.schedulingUnits], async () => {
     const reverse = await createCard(deckId, 'front_back', back, front, tags, opts);
     const card = await createCard(deckId, 'basic_reversed', front, back, tags, opts);
     await db.cards.update(card.id, { reverseCardId: reverse.id });
@@ -675,8 +620,8 @@ export async function setCardFlag(id: string, flagged: boolean): Promise<void> {
 // Reviews
 // ---------------------------------------------------------------------------
 
-/** Which table owns the reviewed unit: a legacy Deck, or a course/lesson-scoped Course. */
-type ReviewUnitKind = 'deck' | 'course';
+/** Which target table owns the reviewed unit. */
+type ReviewUnitKind = 'scheduling-unit' | 'course';
 
 export interface RecordReviewArgs {
   card: Card;
@@ -689,13 +634,13 @@ export interface RecordReviewArgs {
   revisionPlanId?: string;
   revisionWindowId?: string;
   /**
-   * The Deck (legacy per-deck/global-Today scope) or Course (course/lesson scope) this
+   * The scheduling unit (global-Today scope) or Course (course/lesson scope) this
    * review is scheduled and calibrated against. Both satisfy SchedulerConfig, so the
    * FSRS maths is identical either way; only the bookkeeping below (lastInteractedAt
    * table, and the card set the retrievability snapshot spans) differs by `kind`.
    */
   deck: SchedulerConfig;
-  /** Defaults to 'deck' so every existing Deck-keyed caller is unaffected. */
+  /** Defaults to the explicit scheduling-unit projection used by global sessions. */
   kind?: ReviewUnitKind;
   grade: Grade;
   responseTimeSec: number;
@@ -748,7 +693,9 @@ function trajectoryUnitMatches(
   kind: ReviewUnitKind,
   unitId: string,
 ): boolean {
-  return kind === 'course' ? entry.courseId === unitId : entry.deckId === unitId && !entry.courseId;
+  return kind === 'course'
+    ? entry.courseId === unitId
+    : entry.schedulingUnitId === unitId && !entry.courseId;
 }
 
 async function hasTrajectorySampleForToday(
@@ -774,7 +721,7 @@ export async function sampleReviewTrajectory(args: ReviewTrajectorySampleArgs): 
   const cards =
     args.kind === 'course'
       ? await db.cards.where('courseId').equals(args.deck.id).toArray()
-      : await db.cards.where('deckId').equals(args.deck.id).toArray();
+      : await db.cards.where('schedulingUnitId').equals(args.deck.id).toArray();
   const total = cards.reduce(
     (sum, card) => sum + predictedRetrievabilityAtHorizon(card, args.deck, args.timestamp),
     0,
@@ -793,8 +740,10 @@ export async function sampleReviewTrajectory(args: ReviewTrajectorySampleArgs): 
       revisionPlanId: args.revisionPlanId,
       revisionWindowId: args.revisionWindowId,
       timestamp: args.timestamp,
-      deckId: event.deckId,
-      ...(args.kind === 'course' ? { courseId: args.deck.id } : {}),
+      deckId: event.deckId ?? args.deck.id,
+      ...(args.kind === 'course'
+        ? { courseId: args.deck.id }
+        : { schedulingUnitId: args.deck.id }),
       averagePredictedRetrievability,
     });
   });
@@ -837,7 +786,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
       lineVerdicts,
       checkerDisputes,
     } = args;
-    const kind: ReviewUnitKind = args.kind ?? 'deck';
+    const kind: ReviewUnitKind = args.kind ?? 'scheduling-unit';
     const now = args.now ?? Date.now();
 
     if (!eventId.trim() || !sessionId.trim()) {
@@ -849,11 +798,11 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
       'rw',
       [
         db.cards,
-        db.decks,
         db.courses,
+        db.schedulingUnits,
         db.sessionHistory,
-        db.userPerformance,
         db.coursePerformance,
+        db.schedulingPerformance,
         db.reviewHistory,
       ],
       async () => {
@@ -946,8 +895,8 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           lastInteractedAtBefore = (await db.courses.get(deck.id))?.lastInteractedAt;
           await db.courses.update(deck.id, { lastInteractedAt: now });
         } else {
-          lastInteractedAtBefore = (await db.decks.get(deck.id))?.lastInteractedAt;
-          await db.decks.update(deck.id, { lastInteractedAt: now });
+          lastInteractedAtBefore = (await db.schedulingUnits.get(deck.id))?.lastInteractedAt;
+          await db.schedulingUnits.update(deck.id, { lastInteractedAt: now });
         }
 
         if (correct) {
@@ -989,7 +938,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           cardBefore: persistedCard,
           recorded: false,
           sessionHistoryId: existingSession?.id,
-          kind: args.kind ?? 'deck',
+          kind: args.kind ?? 'scheduling-unit',
           lastInteractedAtBefore: undefined,
         };
       }
@@ -1009,12 +958,11 @@ export interface ReviewUndo {
   /** The optional SessionHistory row id written by the daily post-commit sample. */
   sessionHistoryId?: number;
   /**
-   * The UserPerformance key of the unit that was reviewed (a deckId for deck scope,
-   * or a courseId for course/lesson scope — see {@link RecordReviewArgs.kind}).
+   * The UserPerformance-shaped key of the scheduling unit or Course reviewed.
    */
   deckId: string;
   /**
-   * Which table `deckId` belongs to: a legacy Deck, or a course/lesson-scoped Course.
+   * Which target table `deckId` belongs to: a scheduling unit or Course.
    * Recorded by `recordReview` (see {@link RecordReviewResult.kind}) so the
    * `lastInteractedAt` restore on undo knows which table to look the id up in.
    */
@@ -1039,11 +987,11 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
       'rw',
       [
         db.cards,
-        db.decks,
         db.courses,
+        db.schedulingUnits,
         db.sessionHistory,
-        db.userPerformance,
         db.coursePerformance,
+        db.schedulingPerformance,
         db.reviewHistory,
       ],
       async () => {
@@ -1064,7 +1012,9 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
         if (undo.kind === 'course') {
           await db.courses.update(undo.deckId, { lastInteractedAt: undo.lastInteractedAtBefore });
         } else {
-          await db.decks.update(undo.deckId, { lastInteractedAt: undo.lastInteractedAtBefore });
+          await db.schedulingUnits.update(undo.deckId, {
+            lastInteractedAt: undo.lastInteractedAtBefore,
+          });
         }
         await db.reviewHistory.delete(reviewHistoryEntryIdForEvent(undo.eventId));
         if (session?.id !== undefined) await db.sessionHistory.delete(session.id);
@@ -1298,9 +1248,7 @@ export async function deleteCourse(id: string): Promise<void> {
       db.practiceMilestones,
       db.courseAssessments,
       db.cards,
-      db.decks,
       db.sessionHistory,
-      db.userPerformance,
       db.sequences,
       db.revisionPlans,
       db.reviewHistory,
@@ -1320,16 +1268,6 @@ export async function deleteCourse(id: string): Promise<void> {
         await db.lessonCardExposures.where('lessonId').anyOf(lessonIds).delete();
         await db.lessonCompletions.where('lessonId').anyOf(lessonIds).delete();
       }
-      // Every course card has a hidden backing deck (see ensureLessonDeck /
-      // ensureCourseBankDeck); nothing else can reference those decks, so they and
-      // their per-deck calibration profiles must be swept up alongside the cards.
-      const cardDeckIds = (await db.cards.where('courseId').equals(id).toArray()).map(
-        (c) => c.deckId,
-      );
-      const ownedDeckIds = await db.decks
-        .filter((deck) => deck.backingCourseId === id)
-        .primaryKeys();
-      const deckIds = [...new Set([...cardDeckIds, ...ownedDeckIds])];
       await db.lessons.where('courseId').equals(id).delete();
       await db.practiceNodes.where('courseId').equals(id).delete();
       await db.practiceMilestones.where('courseId').equals(id).delete();
@@ -1338,14 +1276,8 @@ export async function deleteCourse(id: string): Promise<void> {
       await db.sequences.where('courseId').equals(id).delete();
       await db.cards.where('courseId').equals(id).delete();
       await db.reviewHistory.where('courseId').equals(id).delete();
-      if (deckIds.length > 0) {
-        await db.decks.where('id').anyOf(deckIds).delete();
-        await db.sessionHistory.where('deckId').anyOf(deckIds).delete();
-        await db.userPerformance.where('deckId').anyOf(deckIds).delete();
-      }
       // The course-level calibration profile and session history are keyed by the
       // course id itself for course/lesson-scoped reviews (see recordReview).
-      await db.userPerformance.delete(id);
       await db.sessionHistory.where('courseId').equals(id).delete();
       await removeCourseSchedulingUnits(id, lessonIds.map(String));
       await db.courses.delete(id);
@@ -1372,9 +1304,7 @@ export interface CourseSnapshot {
   revisionPlans: RevisionPlan[];
   sequences: Sequence[];
   cards: Card[];
-  decks: Deck[];
   sessionHistory: SessionHistoryEntry[];
-  userPerformance: UserPerformance[];
   reviewHistory: ReviewHistoryEntry[];
   coursePerformance: CoursePerformance[];
   schedulingUnits: SchedulingUnitRecord[];
@@ -1383,10 +1313,7 @@ export interface CourseSnapshot {
 
 /**
  * Capture a course plus everything {@link deleteCourse} removes, so the action can be
- * offered with an "Undo". Call this *before* deleteCourse. Also captures the lessons'
- * hidden backing decks (see {@link ensureLessonDeck} /
- * {@link ensureCourseBankDeck}) since deleteCourse removes those too. Returns null if the
- * course no longer exists.
+ * offered with an "Undo". Call this *before* deleteCourse.
  */
 export async function snapshotCourse(id: string): Promise<CourseSnapshot | null> {
   const course = await db.courses.get(id);
@@ -1400,7 +1327,6 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     revisionPlans,
     sequences,
     cards,
-    coursePerf,
     coursePerformance,
   ] = await Promise.all([
     db.lessons.where('courseId').equals(id).toArray(),
@@ -1410,7 +1336,6 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.revisionPlans.where('courseId').equals(id).toArray(),
     db.sequences.where('courseId').equals(id).toArray(),
     db.cards.where('courseId').equals(id).toArray(),
-    db.userPerformance.get(id),
     db.coursePerformance.where('courseId').equals(id).toArray(),
   ]);
   const reviewHistoryForCourse =
@@ -1426,27 +1351,18 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.schedulingUnits.bulkGet(targetIds).then((rows) => rows.filter((row): row is SchedulingUnitRecord => row !== undefined)),
     db.schedulingPerformance.bulkGet(targetIds).then((rows) => rows.filter((row): row is SchedulingPerformance => row !== undefined)),
   ]);
-  const ownedDeckIds = await db.decks.filter((deck) => deck.backingCourseId === id).primaryKeys();
-  const deckIds = [...new Set([...cards.map((c) => c.deckId), ...ownedDeckIds])];
-
   const [
     notes,
     lessonCards,
     lessonCardExposures,
     lessonCompletions,
-    decks,
-    deckSessionHistory,
     courseSessionHistory,
-    deckPerf,
   ] = await Promise.all([
     lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
     lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
     lessonIds.length > 0 ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray() : [],
     lessonIds.length > 0 ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray() : [],
-    deckIds.length > 0 ? db.decks.where('id').anyOf(deckIds).toArray() : [],
-    deckIds.length > 0 ? db.sessionHistory.where('deckId').anyOf(deckIds).toArray() : [],
     db.sessionHistory.where('courseId').equals(id).toArray(),
-    deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
   ]);
   const noteAnnotations =
     notes.length > 0
@@ -1455,11 +1371,6 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
           .anyOf(notes.map((note) => note.id))
           .toArray()
       : [];
-  // A backing deck's session history is always course-scoped too (see recordReview),
-  // so de-duplicate by row id between the deckId and courseId lookups.
-  const sessionHistoryById = new Map(
-    [...deckSessionHistory, ...courseSessionHistory].map((entry) => [entry.id, entry]),
-  );
 
   return {
     course,
@@ -1475,9 +1386,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     revisionPlans,
     sequences,
     cards,
-    decks,
-    sessionHistory: [...sessionHistoryById.values()],
-    userPerformance: coursePerf ? [...deckPerf, coursePerf] : deckPerf,
+    sessionHistory: courseSessionHistory,
     reviewHistory: reviewHistoryForCourse,
     coursePerformance,
     schedulingUnits,
@@ -1515,9 +1424,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.revisionPlans,
         db.sequences,
         db.cards,
-        db.decks,
         db.sessionHistory,
-        db.userPerformance,
         db.reviewHistory,
         db.schedulingUnits,
         db.coursePerformance,
@@ -1538,8 +1445,6 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.revisionPlans.bulkPut(snapshot.revisionPlans),
           db.sequences.bulkPut(snapshot.sequences),
           db.cards.bulkPut(cardsToRestore),
-          db.decks.bulkPut(snapshot.decks),
-          db.userPerformance.bulkPut(snapshot.userPerformance),
           db.schedulingUnits.bulkPut(snapshot.schedulingUnits),
           db.coursePerformance.bulkPut(snapshot.coursePerformance),
           db.schedulingPerformance.bulkPut(snapshot.schedulingPerformance),
@@ -1634,9 +1539,7 @@ export interface LessonSnapshot {
   lessonCompletion?: LessonCompletion;
   cards: Card[];
   sequences: Sequence[];
-  decks: Deck[];
   sessionHistory: SessionHistoryEntry[];
-  userPerformance: UserPerformance[];
   courseAssessments: CourseAssessment[];
   reviewHistory: ReviewHistoryEntry[];
   schedulingUnit?: SchedulingUnitRecord;
@@ -1655,7 +1558,6 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     lessonCompletion,
     cards,
     sequences,
-    decks,
     courseAssessments,
     schedulingUnit,
     schedulingPerformance,
@@ -1666,19 +1568,14 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     db.lessonCompletions.get(id),
     db.cards.where('primaryLessonId').equals(id).toArray(),
     db.sequences.where('primaryLessonId').equals(id).toArray(),
-    db.decks
-      .filter((deck) => deck.backingCourseId === lesson.courseId && deck.backingLessonId === id)
-      .toArray(),
     db.courseAssessments.where('courseId').equals(lesson.courseId).toArray(),
     db.schedulingUnits.get(id),
     db.schedulingPerformance.get(id),
   ]);
   const noteIds = notes.map((note) => note.id);
-  const deckIds = decks.map((deck) => deck.id);
-  const [noteAnnotations, sessionHistory, userPerformance, reviewHistory] = await Promise.all([
+  const [noteAnnotations, sessionHistory, reviewHistory] = await Promise.all([
     noteIds.length > 0 ? db.noteAnnotations.where('noteId').anyOf(noteIds).toArray() : [],
-    deckIds.length > 0 ? db.sessionHistory.where('deckId').anyOf(deckIds).toArray() : [],
-    deckIds.length > 0 ? db.userPerformance.where('deckId').anyOf(deckIds).toArray() : [],
+    db.sessionHistory.where('courseId').equals(lesson.courseId).toArray(),
     cards.length > 0
       ? db.reviewHistory
           .where('cardId')
@@ -1696,9 +1593,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     ...(lessonCompletion ? { lessonCompletion } : {}),
     cards,
     sequences,
-    decks,
     sessionHistory,
-    userPerformance,
     courseAssessments,
     reviewHistory,
     ...(schedulingUnit ? { schedulingUnit } : {}),
@@ -1724,9 +1619,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
         db.lessonCompletions,
         db.cards,
         db.sequences,
-        db.decks,
         db.sessionHistory,
-        db.userPerformance,
         db.courseAssessments,
         db.reviewHistory,
         db.schedulingUnits,
@@ -1744,9 +1637,7 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
             : Promise.resolve(),
           db.cards.bulkPut(cardsToRestore),
           db.sequences.bulkPut(snapshot.sequences),
-          db.decks.bulkPut(snapshot.decks),
           db.sessionHistory.bulkPut(snapshot.sessionHistory),
-          db.userPerformance.bulkPut(snapshot.userPerformance),
           db.courseAssessments.bulkPut(snapshot.courseAssessments),
           snapshot.schedulingUnit
             ? db.schedulingUnits.put(snapshot.schedulingUnit)
@@ -1816,9 +1707,7 @@ export async function deleteLesson(id: string): Promise<void> {
       db.lessonCompletions,
       db.cards,
       db.sequences,
-      db.decks,
       db.sessionHistory,
-      db.userPerformance,
       db.courseAssessments,
       db.reviewHistory,
       db.schedulingUnits,
@@ -1856,15 +1745,7 @@ export async function deleteLesson(id: string): Promise<void> {
         }
         await db.sequences.where('primaryLessonId').equals(id).modify({ primaryLessonId: null });
       }
-      const backingDeckIds = await db.decks
-        .filter((deck) => deck.backingCourseId === lesson.courseId && deck.backingLessonId === id)
-        .primaryKeys();
       await removeLessonSchedulingUnit(id);
-      if (backingDeckIds.length > 0) {
-        await db.decks.bulkDelete(backingDeckIds);
-        await db.sessionHistory.where('deckId').anyOf(backingDeckIds).delete();
-        await db.userPerformance.where('deckId').anyOf(backingDeckIds).delete();
-      }
       await db.lessons.delete(id);
 
       const [remainingLessons, courseCards, courseLinks, assessments] = await Promise.all([
@@ -2660,6 +2541,7 @@ function generatedCardFromPayload(
   return {
     id: makeId(),
     deckId,
+    schedulingUnitId: deckId,
     courseId: payload.courseId,
     primaryLessonId: payload.primaryLessonId,
     type: payload.type,
@@ -2746,8 +2628,6 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
         db.cards,
         db.lessonCards,
         db.lessonCardExposures,
-        db.decks,
-        db.userPerformance,
         db.courses,
         db.lessons,
         db.reviewHistory,

@@ -1,21 +1,25 @@
 // First-run seed data: one small, deletable example course so the app is never empty.
 
 import { db, makeId } from './schema';
-import type { Card, Course, CourseAssessment, Lesson, Note, Deck } from './types';
+import type { Card, Course, CourseAssessment, Lesson, Note } from './types';
 import { courseToRecord } from './assessmentMigration';
-import { emptyPerformance } from '../fsrs/grading';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { defaultExamDate } from '../utils/datetime';
 import { assetUrl, sha256Blob } from './assets';
+import { schedulingUnitFromCourse, schedulingUnitFromLesson } from './schedulingUnitBuilder';
 
 const FLAG_KEY = 'lacuna-seeded';
 const ASSET_REPAIR_FLAG_KEY = 'lacuna-seed-assets-v2';
 let seeding = false;
+const emptyStats = {
+  runningMeanResponseTime: 0,
+  runningStdDevResponseTime: 0,
+  m2: 0,
+  totalCorrectReviews: 0,
+};
 
-/** A lesson and the backing deck its cards are recorded against (see ensureLessonDeck). */
 interface SeedLesson {
   lesson: Lesson;
-  deck: Deck;
 }
 
 function exampleCard(
@@ -32,6 +36,7 @@ function exampleCard(
   return {
     id: makeId(),
     deckId,
+    schedulingUnitId: lessonId,
     courseId,
     primaryLessonId: lessonId,
     type,
@@ -124,11 +129,6 @@ async function repairSeededSvgAssets(): Promise<void> {
   }
 }
 
-/**
- * Build a lesson plus the hidden backing deck its cards are recorded against, mirroring
- * `ensureLessonDeck` in repository.ts (recordReview and userPerformance key off deckId,
- * so every lesson still needs one deck under the hood even though the UI is course/lesson-based).
- */
 function makeSeedLesson(
   course: Course,
   name: string,
@@ -146,19 +146,7 @@ function makeSeedLesson(
     createdAt,
     isExtension: false,
   };
-  const deck: Deck = {
-    id: makeId(),
-    name,
-    examDate: course.examDate,
-    timeZone: course.timeZone,
-    createdAt,
-    fsrsVersion: course.fsrsVersion,
-    fsrsParameters: course.fsrsParameters,
-    examObjective: course.examObjective,
-    lastInteractedAt: createdAt,
-    colour: course.colour,
-  };
-  return { lesson, deck };
+  return { lesson };
 }
 
 /**
@@ -289,7 +277,7 @@ export async function seedIfFirstRun(): Promise<void> {
     const cards: Card[] = [
       // Core concepts & rendering
       exampleCard(
-        lessonCore.deck.id,
+        lessonCore.lesson.id,
         course.id,
         lessonCore.lesson.id,
         'front_back',
@@ -299,7 +287,7 @@ export async function seedIfFirstRun(): Promise<void> {
         10,
       ),
       exampleCard(
-        lessonCore.deck.id,
+        lessonCore.lesson.id,
         course.id,
         lessonCore.lesson.id,
         'cloze',
@@ -309,7 +297,7 @@ export async function seedIfFirstRun(): Promise<void> {
         11,
       ),
       exampleCard(
-        lessonCore.deck.id,
+        lessonCore.lesson.id,
         course.id,
         lessonCore.lesson.id,
         'cloze',
@@ -319,7 +307,7 @@ export async function seedIfFirstRun(): Promise<void> {
         12,
       ),
       exampleCard(
-        lessonCore.deck.id,
+        lessonCore.lesson.id,
         course.id,
         lessonCore.lesson.id,
         'front_back',
@@ -329,7 +317,7 @@ export async function seedIfFirstRun(): Promise<void> {
         13,
       ),
       exampleCard(
-        lessonCore.deck.id,
+        lessonCore.lesson.id,
         course.id,
         lessonCore.lesson.id,
         'front_back',
@@ -341,7 +329,7 @@ export async function seedIfFirstRun(): Promise<void> {
 
       // Scheduling philosophy
       exampleCard(
-        lessonScheduling.deck.id,
+        lessonScheduling.lesson.id,
         course.id,
         lessonScheduling.lesson.id,
         'front_back',
@@ -351,7 +339,7 @@ export async function seedIfFirstRun(): Promise<void> {
         15,
       ),
       exampleCard(
-        lessonScheduling.deck.id,
+        lessonScheduling.lesson.id,
         course.id,
         lessonScheduling.lesson.id,
         'front_back',
@@ -361,7 +349,7 @@ export async function seedIfFirstRun(): Promise<void> {
         16,
       ),
       exampleCard(
-        lessonScheduling.deck.id,
+        lessonScheduling.lesson.id,
         course.id,
         lessonScheduling.lesson.id,
         'front_back',
@@ -371,7 +359,7 @@ export async function seedIfFirstRun(): Promise<void> {
         17,
       ),
       exampleCard(
-        lessonScheduling.deck.id,
+        lessonScheduling.lesson.id,
         course.id,
         lessonScheduling.lesson.id,
         'front_back',
@@ -383,7 +371,7 @@ export async function seedIfFirstRun(): Promise<void> {
 
       // Learn mode & grading
       exampleCard(
-        lessonLearn.deck.id,
+        lessonLearn.lesson.id,
         course.id,
         lessonLearn.lesson.id,
         'front_back',
@@ -393,7 +381,7 @@ export async function seedIfFirstRun(): Promise<void> {
         19,
       ),
       exampleCard(
-        lessonLearn.deck.id,
+        lessonLearn.lesson.id,
         course.id,
         lessonLearn.lesson.id,
         'front_back',
@@ -403,7 +391,7 @@ export async function seedIfFirstRun(): Promise<void> {
         20,
       ),
       exampleCard(
-        lessonLearn.deck.id,
+        lessonLearn.lesson.id,
         course.id,
         lessonLearn.lesson.id,
         'cloze',
@@ -413,7 +401,7 @@ export async function seedIfFirstRun(): Promise<void> {
         21,
       ),
       exampleCard(
-        lessonLearn.deck.id,
+        lessonLearn.lesson.id,
         course.id,
         lessonLearn.lesson.id,
         'front_back',
@@ -423,7 +411,7 @@ export async function seedIfFirstRun(): Promise<void> {
         22,
       ),
       exampleCard(
-        lessonLearn.deck.id,
+        lessonLearn.lesson.id,
         course.id,
         lessonLearn.lesson.id,
         'front_back',
@@ -435,7 +423,7 @@ export async function seedIfFirstRun(): Promise<void> {
 
       // Data, sharing & advanced features
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -445,7 +433,7 @@ export async function seedIfFirstRun(): Promise<void> {
         24,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -455,7 +443,7 @@ export async function seedIfFirstRun(): Promise<void> {
         25,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -465,7 +453,7 @@ export async function seedIfFirstRun(): Promise<void> {
         26,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -475,7 +463,7 @@ export async function seedIfFirstRun(): Promise<void> {
         27,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -485,7 +473,7 @@ export async function seedIfFirstRun(): Promise<void> {
         28,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -495,7 +483,7 @@ export async function seedIfFirstRun(): Promise<void> {
         29,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -505,7 +493,7 @@ export async function seedIfFirstRun(): Promise<void> {
         30,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -515,7 +503,7 @@ export async function seedIfFirstRun(): Promise<void> {
         31,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -525,7 +513,7 @@ export async function seedIfFirstRun(): Promise<void> {
         32,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -535,7 +523,7 @@ export async function seedIfFirstRun(): Promise<void> {
         33,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -545,7 +533,7 @@ export async function seedIfFirstRun(): Promise<void> {
         34,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -555,7 +543,7 @@ export async function seedIfFirstRun(): Promise<void> {
         35,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -565,7 +553,7 @@ export async function seedIfFirstRun(): Promise<void> {
         36,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -575,7 +563,7 @@ export async function seedIfFirstRun(): Promise<void> {
         37,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -585,7 +573,7 @@ export async function seedIfFirstRun(): Promise<void> {
         38,
       ),
       exampleCard(
-        lessonAdvanced.deck.id,
+        lessonAdvanced.lesson.id,
         course.id,
         lessonAdvanced.lesson.id,
         'front_back',
@@ -603,10 +591,11 @@ export async function seedIfFirstRun(): Promise<void> {
         db.courseAssessments,
         db.lessons,
         db.notes,
-        db.decks,
         db.cards,
-        db.userPerformance,
         db.assets,
+        db.schedulingUnits,
+        db.coursePerformance,
+        db.schedulingPerformance,
       ],
       async () => {
         const courseCount = await db.courses.count();
@@ -615,9 +604,22 @@ export async function seedIfFirstRun(): Promise<void> {
         await db.courseAssessments.add(finalAssessment);
         await db.lessons.bulkAdd(seedLessons.map((s) => s.lesson));
         await db.notes.bulkAdd(notes);
-        await db.decks.bulkAdd(seedLessons.map((s) => s.deck));
         await db.cards.bulkAdd(cards);
-        await db.userPerformance.bulkAdd(seedLessons.map((s) => emptyPerformance(s.deck.id)));
+        const record = courseToRecord(course);
+        const units = [
+          schedulingUnitFromCourse(record, [finalAssessment]),
+          ...seedLessons.map(({ lesson }) =>
+            schedulingUnitFromLesson(record, lesson, [finalAssessment]),
+          ),
+        ];
+        await db.schedulingUnits.bulkAdd(units);
+        await db.coursePerformance.add({ courseId: course.id, ...emptyStats });
+        await db.schedulingPerformance.bulkAdd(units.map((unit) => ({
+          schedulingUnitId: unit.id,
+          courseId: course.id,
+          ...(unit.lessonId ? { lessonId: unit.lessonId } : {}),
+          ...emptyStats,
+        })));
         await db.assets.bulkAdd([fcAsset.record, sampleAsset.record]);
       },
     );

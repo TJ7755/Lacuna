@@ -12,8 +12,7 @@ export interface CardMoveTarget {
 
 /**
  * The domain-neutral capabilities CardList needs from its surrounding surface.
- * Course/Lesson callers can provide this without exposing a hidden backing Deck;
- * legacy callers may continue using the Deck compatibility props for now.
+ * Course/Lesson callers provide this without exposing a hidden backing Deck.
  */
 export interface CardListContext {
   schedulingConfig: SchedulerConfig;
@@ -48,7 +47,7 @@ export function courseCardListContext({
       await createCards(schedulingConfig.id, cards, { courseId, primaryLessonId });
     },
     onApkgImport: async (result) => {
-      await importApkgResult(result, schedulingConfig.id, { courseId, primaryLessonId });
+      await importApkgResult(result, schedulingConfig.id);
     },
     onRestore: restoreCards,
   };

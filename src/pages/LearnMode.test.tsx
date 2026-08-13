@@ -9,7 +9,6 @@ import {
   createCard,
   createCourse,
   createCourseAssessment,
-  createDeck,
   createLesson,
   createLessonCard,
   createPracticeNode,
@@ -77,7 +76,7 @@ describe('LearnMode course/lesson scope', () => {
       db.courses.clear(),
       db.lessons.clear(),
       db.cards.clear(),
-      db.decks.clear(),
+      db.schedulingUnits.clear(),
       db.sessionHistory.clear(),
       db.userPerformance.clear(),
       db.lessonCards.clear(),
@@ -800,9 +799,9 @@ describe('LearnMode course/lesson scope', () => {
 
   it('shows scheduler progress instead of latest-answer progress in a global objective session', async () => {
     const now = Date.now();
-    const deck = await createDeck('Objective deck');
-    await db.decks.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
-    const configuredDeck = (await db.decks.get(deck.id))!;
+    const deck = await createCourse('Objective deck');
+    await db.schedulingUnits.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
+    const configuredDeck = (await db.schedulingUnits.get(deck.id))!;
     const card = await createCard(deck.id, 'front_back', 'Objective question', 'Answer');
     await db.cards.update(card.id, {
       stability: 2,
@@ -839,8 +838,8 @@ describe('LearnMode course/lesson scope', () => {
 
   it('keeps practice-session chrome mounted while Yes and No replace the card surface', async () => {
     const now = Date.now();
-    const deck = await createDeck('Continuous practice');
-    await db.decks.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
+    const deck = await createCourse('Continuous practice');
+    await db.schedulingUnits.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
     for (const question of ['First question', 'Second question', 'Third question']) {
       const card = await createCard(deck.id, 'front_back', question, 'Answer');
       await db.cards.update(card.id, {
@@ -892,7 +891,7 @@ describe('LearnMode course/lesson scope', () => {
 
   it('checks a numeric answer and records full marks without self-grading', async () => {
     const performanceNow = vi.spyOn(performance, 'now').mockReturnValue(0);
-    const deck = await createDeck('Numeric deck');
+    const deck = await createCourse('Numeric deck');
     const card = await createCard(deck.id, 'front_back', 'What is 8 / 2?', '', [], {
       payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
     });
@@ -938,7 +937,7 @@ describe('LearnMode course/lesson scope', () => {
   });
 
   it('grades an incorrect numeric answer as Again and clears it for the retry', async () => {
-    const deck = await createDeck('Numeric retry deck');
+    const deck = await createCourse('Numeric retry deck');
     const card = await createCard(deck.id, 'front_back', 'What is 3 squared?', '', [], {
       payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '9' } },
     });
@@ -973,7 +972,7 @@ describe('LearnMode course/lesson scope', () => {
 
   it('checks working lines and persists full marks with their verdicts', async () => {
     const performanceNow = vi.spyOn(performance, 'now').mockReturnValue(0);
-    const deck = await createDeck('Working deck');
+    const deck = await createCourse('Working deck');
     const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8.', '', [], {
       payload: {
         v: 1,
@@ -1018,7 +1017,7 @@ describe('LearnMode course/lesson scope', () => {
   });
 
   it('grades partial working as Again and clears it for the retry', async () => {
-    const deck = await createDeck('Working retry deck');
+    const deck = await createCourse('Working retry deck');
     const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8.', '', [], {
       payload: {
         v: 1,
@@ -1049,7 +1048,7 @@ describe('LearnMode course/lesson scope', () => {
   });
 
   it('renders a scaffold-kind item read-only, with no grading affordance and an empty history', async () => {
-    const deck = await createDeck('Scaffold deck');
+    const deck = await createCourse('Scaffold deck');
     const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8 by scaffold.', '', [], {
       payload: { v: 1, kind: 'scaffold' },
     });
@@ -1081,7 +1080,7 @@ describe('LearnMode course/lesson scope', () => {
   });
 
   it('falls back to the read-only face for an unknown payload version, not just an unknown kind', async () => {
-    const deck = await createDeck('Unknown version deck');
+    const deck = await createCourse('Unknown version deck');
     await createCard(deck.id, 'front_back', 'What is 8 / 2?', '', [], {
       // A hypothetical future `v: 2` numeric payload — the version guard, not the
       // kind check, is what must catch this.
@@ -1111,7 +1110,7 @@ describe('LearnMode course/lesson scope', () => {
   });
 
   it('buries a scaffold-kind item from its read-only face and advances the session', async () => {
-    const deck = await createDeck('Scaffold bury deck');
+    const deck = await createCourse('Scaffold bury deck');
     const card = await createCard(deck.id, 'front_back', 'Scaffold question', '', [], {
       payload: { v: 1, kind: 'scaffold' },
     });
@@ -1146,8 +1145,8 @@ describe('LearnMode course/lesson scope', () => {
 
   it('does not create rigid progress slots from unavailable cards outside Simple mode', async () => {
     const now = Date.now();
-    const deck = await createDeck('Eligibility deck');
-    await db.decks.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
+    const deck = await createCourse('Eligibility deck');
+    await db.schedulingUnits.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
     const available = await createCard(deck.id, 'front_back', 'Available question', 'Answer');
     const suspended = await createCard(deck.id, 'front_back', 'Suspended question', 'Answer');
     await db.cards.update(available.id, {
@@ -1180,8 +1179,8 @@ describe('LearnMode course/lesson scope', () => {
 
   it('uses the filtered card pool for scheduler-driven sessions', async () => {
     const now = Date.now();
-    const deck = await createDeck('Filtered deck');
-    await db.decks.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
+    const deck = await createCourse('Filtered deck');
+    await db.schedulingUnits.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
     const flagged = await createCard(deck.id, 'front_back', 'Flagged question', 'Answer');
     const unflagged = await createCard(deck.id, 'front_back', 'Unflagged question', 'Answer');
     const reviewState = {
@@ -1213,7 +1212,7 @@ describe('LearnMode course/lesson scope', () => {
   });
 
   it('does not report a suspended-only filtered pool as completed', async () => {
-    const deck = await createDeck('Suspended deck');
+    const deck = await createCourse('Suspended deck');
     const suspended = await createCard(deck.id, 'front_back', 'Suspended question', 'Answer');
     await db.cards.update(suspended.id, { suspended: true });
 
@@ -1341,7 +1340,7 @@ describe('LearnMode course/lesson scope', () => {
 
   it('portals touch card actions outside the sticky study header', async () => {
     localStorage.setItem('lacuna.inputMode', 'touch');
-    const deck = await createDeck('Touch actions');
+    const deck = await createCourse('Touch actions');
     await createCard(deck.id, 'front_back', 'Touch question', 'Touch answer');
 
     render(
@@ -1368,7 +1367,7 @@ describe('LearnMode course/lesson scope', () => {
     // wrongly recorded the controls as mid-screen after measuring a resized desktop
     // browser, which reports no touch points and so renders the pointer layout.
     localStorage.setItem('lacuna.inputMode', 'touch');
-    const deck = await createDeck('Thumb zone');
+    const deck = await createCourse('Thumb zone');
     await createCard(deck.id, 'front_back', 'Thumb question', 'Thumb answer');
 
     render(

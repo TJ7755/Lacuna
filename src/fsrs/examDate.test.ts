@@ -41,6 +41,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
   return {
     id: 'c1',
     deckId: 'd1',
+    schedulingUnitId: 'd1',
     courseId: 'course1',
     primaryLessonId: 'lesson1',
     type: 'front_back',

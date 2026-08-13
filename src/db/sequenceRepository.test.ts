@@ -20,7 +20,7 @@ async function reset() {
     db.courses.clear(),
     db.lessons.clear(),
     db.cards.clear(),
-    db.decks.clear(),
+    db.schedulingUnits.clear(),
     db.userPerformance.clear(),
     db.sessionHistory.clear(),
     db.sequences.clear(),

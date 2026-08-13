@@ -148,6 +148,7 @@ const mockCourse: Course = {
 const mockCard: Card = {
   id: 'card-1',
   deckId: 'deck-1',
+  schedulingUnitId: 'deck-1',
   type: 'front_back',
   front: 'Front',
   back: 'Back',

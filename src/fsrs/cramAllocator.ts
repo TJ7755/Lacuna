@@ -347,7 +347,7 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
       continue;
     }
     const responseTime = estimateResponseTime(
-      input.performanceByDeck?.get(card.deckId),
+      input.performanceByDeck?.get(card.schedulingUnitId!),
       responseCoefficients,
     );
     const expectedReviewSeconds =

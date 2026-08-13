@@ -61,6 +61,7 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
     history: [],
     createdAt: 0,
     ...overrides,
+    schedulingUnitId: overrides.schedulingUnitId ?? overrides.deckId ?? 'unit',
   };
 }
 
@@ -90,6 +91,7 @@ describe('lessonBreakdown', () => {
       makeCard({
         id: 'card1',
         deckId: 'd1',
+        schedulingUnitId: 'd1',
         courseId: 'c1',
         primaryLessonId: 'l1',
         lastReviewed: 100,
@@ -97,6 +99,7 @@ describe('lessonBreakdown', () => {
       makeCard({
         id: 'card2',
         deckId: 'd1',
+        schedulingUnitId: 'd1',
         courseId: 'c1',
         primaryLessonId: 'l1',
         lastReviewed: null,
@@ -138,6 +141,7 @@ describe('leechCountByCourse', () => {
       makeCard({
         id: 'card1',
         deckId: 'd1',
+        schedulingUnitId: 'd1',
         courseId: 'c1',
         lapses: 8,
         reps: 10,
@@ -160,6 +164,7 @@ describe('retentionByAge', () => {
     const card = makeCard({
       id: 'card1',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       // Deliberately out of order: card history must not make age depend on array order.
       history: [
         makeReview(firstReview + 10 * day, 3),
@@ -195,12 +200,14 @@ describe('retentionByAge', () => {
         id: 'review:event:canonical',
         cardId: card.id,
         deckId: card.deckId,
+        schedulingUnitId: card.deckId,
       },
       {
         ...makeReview(firstReview + 10 * day, 1),
         id: 'review:event:canonical-2',
         cardId: card.id,
         deckId: card.deckId,
+        schedulingUnitId: card.deckId,
       },
     ];
 
@@ -223,6 +230,7 @@ describe('reviewVolume', () => {
       id: 'review:event:volume',
       cardId: card.id,
       deckId: card.deckId,
+      schedulingUnitId: card.deckId,
     };
 
     expect(reviewVolume([card], 1, timestamp, [event])[0].reviews).toBe(1);
@@ -236,24 +244,28 @@ describe('globalTrajectorySeries', () => {
       {
         timestamp: day + 1000,
         deckId: 'd1',
+        schedulingUnitId: 'd1',
         courseId: 'c1',
         averagePredictedRetrievability: 0.8,
       },
       {
         timestamp: day + 2000,
         deckId: 'd2',
+        schedulingUnitId: 'd2',
         courseId: 'c1',
         averagePredictedRetrievability: 0.9,
       },
       {
         timestamp: day + 1500,
         deckId: 'd3',
+        schedulingUnitId: 'd3',
         courseId: 'c2',
         averagePredictedRetrievability: 0.6,
       },
       {
         timestamp: day + 500,
         deckId: 'legacy',
+        schedulingUnitId: 'legacy',
         averagePredictedRetrievability: 0.1,
       },
     ];

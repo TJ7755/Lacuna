@@ -1,5 +1,23 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Schema v22 storage cutover
+
+- Removed the hidden Deck and Folder IndexedDB stores. `schedulingUnits` is now the sole scheduling
+  record, with Course and scheduling-unit performance held in their explicit target stores.
+- Preserved legacy import compatibility through the existing `buildDomainStorageMigration` path.
+  Pre-v22 backups and `LAC0`–`LAC3` share codes convert on import without dropping, reordering or
+  re-identifying review events. Folder hierarchy is discarded and the import report names the
+  affected folders.
+- Changed untargeted Anki `.apkg` imports to create a Course named after the Anki deck and place its
+  cards in the Course question bank, rather than creating a Lacuna Deck.
+- Made the destructive upgrade contingent on a separately committed pre-migration snapshot. A
+  failed upgrade transaction leaves schema v21 readable. A successful upgrade has no in-place
+  downgrade; recovery requires the previous build and the pre-migration snapshot. See the
+  [schema v22 compatibility note](storage-v22-compatibility.md).
+- Added rollback coverage proving the two legacy stores and review history remain readable after an
+  aborted upgrade, plus successful-upgrade coverage proving review events remain byte-for-byte
+  unchanged when the stores are removed.
+
 ## Unreleased — Explicit domain storage migration
 
 - Began the approved full storage migration on `feat/storage-migration` with schema v21.

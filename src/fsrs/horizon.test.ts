@@ -3,12 +3,12 @@ import { cardSchedulingHorizon, schedulingHorizon, MAINTENANCE_HORIZON_DAYS } fr
 import { studyPool } from './eligibility';
 import { progressValue } from './objective';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from './params';
-import type { Card, Deck } from '../db/types';
+import type { Card, LegacyDeckRecord } from '../db/types';
 
-function makeDeck(overrides: Partial<Deck> = {}): Deck {
+function makeDeck(overrides: Partial<LegacyDeckRecord> = {}): LegacyDeckRecord {
   return {
     id: 'd1',
-    name: 'Deck',
+    name: 'LegacyDeckRecord',
     examDate: Date.now() + 5 * MS_PER_DAY,
     createdAt: Date.now(),
     fsrsVersion: FSRS_VERSION,
@@ -22,6 +22,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
   return {
     id: 'c1',
     deckId: 'd1',
+    schedulingUnitId: 'd1',
     type: 'front_back',
     front: 'q',
     back: 'a',
