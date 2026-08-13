@@ -288,10 +288,11 @@ export interface LegacyFolder {
 // ---------------------------------------------------------------------------
 // Course architecture (Course -> Lesson -> Note + Card).
 //
-// These tables sit alongside the legacy Deck/Folder model during the staged
-// migration: the data layer and FSRS engine become Course-capable first, while
-// the existing Deck-based UI keeps running. Field shapes follow the resolved
-// design in new_features_list.md (main plan plus addenda). British English.
+// These are the live domain tables. Schema v22 removed the hidden Deck and
+// Folder stores. LegacyDeckRecord and LegacyFolder above remain as the import
+// boundary for pre-v22 backups and v1 share codes; they are not live stores.
+// Field shapes follow the resolved design in new_features_list.md (main plan
+// plus addenda). British English.
 // ---------------------------------------------------------------------------
 
 /**

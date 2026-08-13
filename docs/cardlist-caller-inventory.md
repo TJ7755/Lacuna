@@ -2,8 +2,14 @@
 
 **Reviewed:** 12 August 2026
 
-**Scope:** `src/` references to the `CardList` component and its Deck-shaped compatibility
-branch. This is an inventory only; it does not remove, migrate or alter the compatibility union.
+**Current `CardListProps`:** `CardListBaseProps & { context: CardListContext }`.
+The `deck` / `allDecks` compatibility union is gone. Production and test callers
+pass `context`.
+
+**Scope:** `src/` references to the `CardList` component as of 12 August 2026,
+when the Deck-shaped compatibility branch still existed. The tables below are
+that inventory. They are a historical record of the pre-removal callers, not a
+description of the current module.
 
 ## Method and counting
 

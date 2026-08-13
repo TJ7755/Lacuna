@@ -1,5 +1,12 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Stale comment sweep after schema v22
+
+- Corrected comments and docs that still described the hidden Deck and Folder stores, global Today
+  recording against a Deck, CardList's `deck` / `allDecks` union, and UnifiedImportPanel as
+  Dashboard new-deck creation. The stores are gone; Today reads `schedulingUnits`; `CardListProps`
+  is `CardListBaseProps & { context: CardListContext }`. No behaviour change.
+
 ## Unreleased — Dead-code removal
 
 - Removed unused hooks: `useCountUp`, `useAllLessons`, `useAllNotes`, `useRevisionPlan`,
