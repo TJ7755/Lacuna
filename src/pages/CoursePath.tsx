@@ -521,7 +521,6 @@ export function CoursePath() {
             <PathNodeWithLine
               key={node.id}
               node={node}
-              index={i}
               isLast={i === visibleNodes.length - 1}
               lineInsert={lineInserts[i]}
               current={node.id === currentNodeId}
