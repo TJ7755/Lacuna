@@ -70,7 +70,7 @@ const Method = lazy(loadMethod);
 const McpBridgeController = lazy(loadMcpBridgeController);
 
 // Hash routing keeps the app deployable as plain static files with no server rewrites.
-const router = createHashRouter([
+export const router = createHashRouter([
   {
     element: <RouteTransition />,
     children: [
