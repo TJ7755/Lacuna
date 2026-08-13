@@ -109,11 +109,28 @@
   This document rebases that plan onto the current codebase and sequences the work
   so the next implementation slice can be approved before anyone writes code.</p>
   <div class="meta">
-    <span class="tag b">Status: approved — P3 in progress</span>
+    <span class="tag b">Status: P3 and P4 shipped — 13 August 2026</span>
     <span class="tag">Schema v22 &rarr; v23</span>
     <span class="tag">Backup 9 &rarr; 10</span>
-    <span class="tag">This approval: P3 only</span>
+    <span class="tag">Relay still gated</span>
   </div>
+  <p style="margin-top:1rem"><strong>Read this before working from the phase map below.</strong>
+  P3 (schema v23, timestamps, tombstones, backup version 10) and P4 (the pure
+  <code>mergeSnapshots</code> module) are implemented and merged to master. The
+  phase map still describes them as pending; treat it as the original plan of
+  record rather than current state.</p>
+  <p><strong>One thing shipped ahead of its gate.</strong> A manual two-device
+  merge now exists in Settings &mdash; a file picker that takes a forced restore
+  point, runs <code>mergeSnapshots</code> against the current database and
+  replace-imports the result, reported as kept/added/removed. That is the
+  <em>manual</em> half of P5's transport seam, built deliberately and with
+  approval on 13 August 2026 because it makes P4 usable with no hosting
+  commitment. It does not touch <code>importBackup(&hellip;, 'merge')</code>,
+  which keeps its previous behaviour for old backups.</p>
+  <p><strong>Still gated, and still requiring an explicit decision:</strong> the
+  relay (P1), crypto (P2), the HTTP transport and sync cycle (P5), pairing UI
+  (P6) and automatic triggers (P7). The maintenance-cost gate in &sect;9 stands
+  unchanged &mdash; none of those may start until it is answered.</p>
 </header>
 
 <nav>

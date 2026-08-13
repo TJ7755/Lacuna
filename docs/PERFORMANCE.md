@@ -17,7 +17,9 @@ First load (fresh browser, no service worker): **~1.44 MB raw / ~460 KB gz** Jav
 | `optimise.worker` + `wasi-worker` | 215 + 168 KB | worker |
 | `apkg.worker` | 171 KB | worker |
 
-Measured navigation pipeline (fast laptop, warm cache): click → exit dead time 220 ms → chunk fetch+parse 5-200 ms → IndexedDB query waterfall 15-80 ms → entrance animation + stagger 220-900 ms. Slow network (first visit): CoursePath/QuestionBank navs add ~2 s of chunk download including the markdown stack.
+Measured navigation pipeline (fast laptop, warm cache): click → exit dead time 220 ms → chunk fetch+parse 5-200 ms → IndexedDB query waterfall 15-80 ms → entrance animation 220 ms. Slow network (first visit): CoursePath/QuestionBank navs add ~2 s of chunk download including the markdown stack.
+
+The 220-900 ms figure previously recorded here included per-item entrance staggers. Those were removed with the transition work; see the note on course-path staggering below. The measurement predates that change and has not been retaken.
 
 ## Repeatable measurements
 

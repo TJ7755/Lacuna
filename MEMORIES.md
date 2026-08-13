@@ -10,6 +10,22 @@ Keep each entry to a heading and a few lines. State the fact, then why it matter
 
 ---
 
+## Replace-import does not clear `db.backups`, and that is load-bearing
+
+`importBackup(payload, 'replace')` clears the content tables but leaves `backups` alone, and
+`exportDatabase` does not serialise that table either. This is what makes the restore point taken
+before a manual two-device combine survive the very replace it protects against. Do not "tidy" the
+replace list by adding `backups` to it, and do not start exporting the table: either change would
+silently turn the safety net into decoration.
+
+## Recover-merge does not resolve conflicts on `updatedAt`
+
+`importBackup(payload, 'merge')` predates schema v23 and still compares `lastReviewed ?? createdAt`
+for cards and `createdAt` for most course tables. Only the peer merge in `src/sync/mergeSnapshots.ts`
+uses `updatedAt`. Settings copy and `docs/APP-FLOWS.md` both claimed recency wins here and both were
+wrong; a regression test now asserts that wording is absent. Do not reintroduce the claim, and do
+not assume the two merge paths behave alike — they answer different questions.
+
 ## `new Error(message, { cause })` does not typecheck
 
 The project TypeScript lib only accepts the single-argument `Error` constructor. Pass the
@@ -22,12 +38,18 @@ limits and goals; `Course` remains the source for path and assessment semantics.
 fallback for databases whose projection is absent, and do not apply this cutover to legacy global
 Deck sessions.
 
-## Do not delete Deck/Folder stores while legacy product paths remain active
+## The Deck/Folder stores are gone; the legacy types are not
 
-The destructive gate is still closed while `/deck/:deckId`, global study, search/editing, MCP scope
-resolution and legacy backup/import/share contracts depend on `db.decks` or `db.folders`. The safe
-migration endpoint is a reviewed additive projection until those paths have their own cutover and
-restore story.
+Schema v22 set `decks` and `folders` to `null`, and no production code reads them. Global Today now
+reads `db.schedulingUnits`. But `LegacyDeckRecord` / `LegacyFolder` in `types.ts` are still the
+import boundary for pre-v22 backups and v1 share codes, `importDeckSharePayload` still synthesises
+them for `buildCourseMigration`, and the Dexie `version(1)`–`version(21)` chain must keep declaring
+the stores because Dexie replays it for every existing database. Retire those after go-live, when
+you are willing to refuse old files — not before.
+
+Much of what still reads as Deck is a name rather than a mechanism: `backingDecks.ts` no longer
+talks to a store, and `findBackingDeck` is an alias of `getSchedulingUnit`. Do not add new `Deck`
+names; do not spend a day renaming the old ones.
 
 ## Lacuna is not yet in real use, and goes live in September 2026
 
