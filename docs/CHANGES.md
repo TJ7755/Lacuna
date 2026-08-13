@@ -1,5 +1,16 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync: manual two-device merge
+
+- Added `manualMerge` in `src/sync/manualMerge.ts`: take a forced restore point, export the
+  current database, run `mergeSnapshots(local, remote)`, then apply with
+  `importBackup(merged, 'replace')`. Returns before/after counts of cards, courses, lessons
+  and review events. A file that fails `validateBackup`, or a failed safety backup, aborts
+  before the import.
+- Settings > Full backup and recovery now has a **Merge from another device** action, distinct
+  from **Merge backup**. The confirmation states that data is combined, the newest edit wins,
+  deletions are honoured, and a backup of this device is taken first.
+
 ## Unreleased — Sync P4: peer merge
 
 - Added `mergeSnapshots` in `src/sync/mergeSnapshots.ts`: a pure function that takes two

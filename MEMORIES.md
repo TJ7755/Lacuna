@@ -10,6 +10,11 @@ Keep each entry to a heading and a few lines. State the fact, then why it matter
 
 ---
 
+## `new Error(message, { cause })` does not typecheck
+
+The project TypeScript lib only accepts the single-argument `Error` constructor. Pass the
+message through and, if you need a flag, put it on a subclass. `{ cause }` fails `typecheck:web`.
+
 ## Active Course/Lesson sessions read scheduling config through the target projection
 
 `useLearnSession` must feed Course/Lesson FSRS contexts from `schedulingUnits`, including inherited
