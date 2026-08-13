@@ -864,7 +864,7 @@ Recover this installation accepts a full-backup JSON file:
 1. Choose a file.
 2. Review lesson, card, and date counts.
 3. Cancel, Add from backup, or Replace local data.
-4. Add from backup folds the file in; existing local rows are not deleted; the more recently updated copy wins a conflict.
+4. Add from backup folds the file in; existing local rows are not deleted.
 5. Replace local data deletes current installation data and restores the backup.
 
 Replacement requires a second explicit consequence confirmation and states that Lacuna has no
