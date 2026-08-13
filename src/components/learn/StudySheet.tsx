@@ -204,9 +204,9 @@ function CourseStudyOptions({
         </Button>
       ) : (
         <p className="py-1 text-sm text-ink-soft">
-          {decision.kind === 'empty'
+          {flow.decision.kind === 'empty'
             ? 'This course has no cards yet.'
-            : decision.kind === 'blocked'
+            : flow.decision.kind === 'blocked'
               ? 'The next lesson is locked until earlier work is complete.'
               : 'Everything here is finished for now.'}
         </p>
