@@ -1,5 +1,18 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync: two-device combine in Settings
+
+- Full backup and recovery now names three jobs: export, combine with another device, and
+  recover this installation. The two-device action is **Another device** / **Combine**, not a
+  second merge. Recover's additive import is **Add from backup**; `importBackup(..., 'merge')`
+  is unchanged.
+- Combining is explained in the resting copy. Confirmation is the existing inline prompt,
+  naming the file's date and card count. The success notice reports cards kept, added and
+  removed — and reviews when those counts change — plus that a restore point was saved.
+- `takeAutoBackup` now returns the snapshot it stored. `manualMerge` applies that snapshot
+  instead of exporting the database a second time. The restore point is still taken before
+  anything is merged or imported.
+
 ## Unreleased — Sync: manual two-device merge
 
 - Added `manualMerge` in `src/sync/manualMerge.ts`: take a forced restore point, export the
