@@ -25,7 +25,9 @@ import {
   createSequence,
   deleteCards,
   deleteCourse,
+  deleteCourseAssessment,
   deleteLesson,
+  deleteNote,
   deleteSequence,
   linkCardsToLesson,
   markLessonComplete,
@@ -49,6 +51,7 @@ import {
   stampMissingLessonViewModes,
   startRevisionWindow,
   suspendCard,
+  unlinkCardFromLesson,
   unsuspendCard,
   updateCard,
   updateCourse,
@@ -66,6 +69,7 @@ import {
 } from './occlusionRepository';
 import {
   createPracticeNode,
+  deletePracticeNode,
   savePracticeMilestoneProgress,
   updatePracticeNode,
 } from './practiceNodeRepository';
@@ -680,5 +684,173 @@ describe('repository mutation stamps and tombstones', () => {
     expect(await db.cards.get(card.id)).toMatchObject({ id: card.id, primaryLessonId: null });
     expect(await db.tombstones.get(['cards', card.id])).toBeUndefined();
     expect(await db.tombstones.get(['lessons', lesson.id])).toMatchObject({ table: 'lessons' });
+  });
+
+  it('tombstones a deleted note without tombstoning its annotations', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Intro');
+    const note = await createNote(lesson.id, 'Notes', 'Body');
+    await db.noteAnnotations.add({
+      id: 'annotation-1',
+      noteId: note.id,
+      startOffset: 0,
+      endOffset: 4,
+      selectedText: 'Body',
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    await deleteNote(note.id);
+
+    expect(await db.notes.get(note.id)).toBeUndefined();
+    expect(await db.tombstones.get(['notes', note.id])).toMatchObject({
+      table: 'notes',
+      recordId: note.id,
+    });
+    expect(await db.tombstones.get(['noteAnnotations', 'annotation-1'])).toBeUndefined();
+    expect((await db.tombstones.toArray()).some((row) => row.table === 'noteAnnotations')).toBe(
+      false,
+    );
+  });
+
+  it('tombstones the link and exposure when unlinking a card from a lesson', async () => {
+    const course = await createCourse('Biology');
+    const primary = await createLesson(course.id, 'Cells');
+    const linked = await createLesson(course.id, 'Review');
+    const card = await createLessonCard(course.id, primary.id, 'front_back', 'Q', 'A');
+    const [link] = await linkCardsToLesson(linked.id, [card.id]);
+    await upsertLessonCardExposure(linked.id, card.id, 100);
+
+    await unlinkCardFromLesson(linked.id, card.id);
+
+    expect(await db.lessonCards.get(link.id)).toBeUndefined();
+    expect(await db.lessonCardExposures.get([linked.id, card.id])).toBeUndefined();
+    expect(await db.tombstones.get(['lessonCards', link.id])).toMatchObject({
+      table: 'lessonCards',
+      recordId: link.id,
+    });
+    expect(await db.tombstones.get(['lessonCardExposures', `${linked.id}:${card.id}`])).toMatchObject(
+      {
+        table: 'lessonCardExposures',
+        recordId: `${linked.id}:${card.id}`,
+      },
+    );
+    expect(await db.tombstones.get(['cards', card.id])).toBeUndefined();
+  });
+
+  it('tombstones the old primary exposure when assignCardsToLesson reassigns a card', async () => {
+    const course = await createCourse('Biology');
+    const first = await createLesson(course.id, 'Cells');
+    const second = await createLesson(course.id, 'Respiration');
+    const card = await createLessonCard(course.id, first.id, 'front_back', 'Q', 'A');
+    await upsertLessonCardExposure(first.id, card.id, 100);
+
+    await assignCardsToLesson([card.id], course.id, second.id);
+
+    expect(await db.lessonCardExposures.get([first.id, card.id])).toBeUndefined();
+    expect(await db.tombstones.get(['lessonCardExposures', `${first.id}:${card.id}`])).toMatchObject({
+      table: 'lessonCardExposures',
+      recordId: `${first.id}:${card.id}`,
+    });
+    expect(await db.tombstones.get(['cards', card.id])).toBeUndefined();
+  });
+
+  it('tombstones a deleted checkpoint and its cascaded revision plan', async () => {
+    const now = Date.parse('2026-07-17T08:00:00Z');
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q', 'A');
+    await upsertLessonCardExposure(lesson.id, card.id, now - 1_000);
+    const checkpoint = await createCourseAssessment(
+      course.id,
+      'Mock',
+      Date.parse('2026-07-19T12:00:00Z'),
+      { timeZone: 'UTC', afterLessonId: lesson.id },
+    );
+    const plan = await createOrResumeRevisionPlan(checkpoint.id, 20, revisionFallback, now);
+
+    await deleteCourseAssessment(checkpoint.id);
+
+    expect(await db.courseAssessments.get(checkpoint.id)).toBeUndefined();
+    expect(await db.revisionPlans.get(plan.id)).toBeUndefined();
+    expect(await db.tombstones.get(['courseAssessments', checkpoint.id])).toMatchObject({
+      table: 'courseAssessments',
+      recordId: checkpoint.id,
+    });
+    expect(await db.tombstones.get(['revisionPlans', plan.id])).toMatchObject({
+      table: 'revisionPlans',
+      recordId: plan.id,
+    });
+  });
+
+  it('tombstones a deleted practice node and its milestone', async () => {
+    const node = await createPracticeNode('course-1', { type: 'manual', name: 'Practice' });
+    await savePracticeMilestoneProgress(node.id, 'course-1', 'scope-1', 2, 3, true, 100);
+
+    await deletePracticeNode(node.id);
+
+    expect(await db.practiceNodes.get(node.id)).toBeUndefined();
+    expect(await db.practiceMilestones.get(node.id)).toBeUndefined();
+    expect(await db.tombstones.get(['practiceNodes', node.id])).toMatchObject({
+      table: 'practiceNodes',
+      recordId: node.id,
+    });
+    expect(await db.tombstones.get(['practiceMilestones', node.id])).toMatchObject({
+      table: 'practiceMilestones',
+      recordId: node.id,
+    });
+  });
+
+  it('tombstones a deleted sequence and the cards it generated', async () => {
+    const course = await createCourse('Chemistry');
+    const sequence = await createSequence(course.id, null, 'Halogens', [
+      { id: 'del-seq-0', value: 'F' },
+      { id: 'del-seq-1', value: 'Cl' },
+    ]);
+    const generated = await db.cards.where('sequenceItemId').anyOf(['del-seq-0', 'del-seq-1']).toArray();
+    expect(generated).toHaveLength(2);
+
+    await deleteSequence(sequence.id);
+
+    expect(await db.sequences.get(sequence.id)).toBeUndefined();
+    expect(await db.tombstones.get(['sequences', sequence.id])).toMatchObject({
+      table: 'sequences',
+      recordId: sequence.id,
+    });
+    for (const card of generated) {
+      expect(await db.cards.get(card.id)).toBeUndefined();
+      expect(await db.tombstones.get(['cards', card.id])).toMatchObject({
+        table: 'cards',
+        recordId: card.id,
+      });
+    }
+  });
+
+  it('tombstones a deleted occlusion and the cards it generated', async () => {
+    const course = await createCourse('Biology');
+    const occlusion = await createOcclusion(course.id, null, 'Cell', 'hash-del', [
+      labelRegion('del-occ-0'),
+      labelRegion('del-occ-1'),
+    ]);
+    const generated = await db.cards
+      .where('occlusionRegionId')
+      .anyOf(['del-occ-0', 'del-occ-1'])
+      .toArray();
+    expect(generated).toHaveLength(2);
+
+    await deleteOcclusion(occlusion.id);
+
+    expect(await db.occlusions.get(occlusion.id)).toBeUndefined();
+    expect(await db.tombstones.get(['occlusions', occlusion.id])).toMatchObject({
+      table: 'occlusions',
+      recordId: occlusion.id,
+    });
+    for (const card of generated) {
+      expect(await db.cards.get(card.id)).toBeUndefined();
+      expect(await db.tombstones.get(['cards', card.id])).toMatchObject({
+        table: 'cards',
+        recordId: card.id,
+      });
+    }
   });
 });
