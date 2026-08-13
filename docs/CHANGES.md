@@ -1,5 +1,12 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Stale comment sweep after schema v22
+
+- Corrected comments and docs that still described the hidden Deck and Folder stores, global Today
+  recording against a Deck, CardList's `deck` / `allDecks` union, and UnifiedImportPanel as
+  Dashboard new-deck creation. The stores are gone; Today reads `schedulingUnits`; `CardListProps`
+  is `CardListBaseProps & { context: CardListContext }`. No behaviour change.
+
 ## Unreleased — Sync: two-device combine in Settings
 
 - Full backup and recovery now names three jobs: export, combine with another device, and

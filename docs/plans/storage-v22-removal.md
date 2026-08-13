@@ -71,10 +71,9 @@ the tooling before harder work begins.
 
 ### Gate 2 — global `/learn` and `/study` sessions
 
-**Current state.** `src/pages/learn/useLearnSession.ts:1080` handles the global, cross-course
-"Today" session by reading `await db.decks.toArray()` and using every Deck as a session unit. This
-is the only remaining runtime path that treats Decks as scheduling units; Course and Lesson sessions
-already read `getSchedulingUnit`.
+**Current state.** `src/pages/learn/useLearnSession.ts:1079` handles the global, cross-course
+"Today" session by reading `await db.schedulingUnits.toArray()` and using every scheduling unit as
+a session unit. Course and Lesson sessions already read `getSchedulingUnit`. This gate is delivered.
 
 **Deleted.** The `db.decks.toArray()` branch and the `Deck[]`-typed `units`/`sessionUnits` locals it
 feeds.

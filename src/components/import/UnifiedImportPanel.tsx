@@ -1,7 +1,8 @@
 // Unified import panel: a single, powerful import UI that auto-detects the input
 // format (CSV, TSV, Markdown table, Markdown list, JSON, Anki text, share codes,
-// plain text Q&A) and shows a live preview. Used in both the Dashboard (new deck
-// creation) and the Share page (importing shared content).
+// plain text Q&A) and shows a live preview. Used by CardList to import cards into
+// a Course or Lesson, and (via ShareCodeImportPanel) by NewCourseForm when a
+// course is created from a share code. The Share page has its own importer.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';
