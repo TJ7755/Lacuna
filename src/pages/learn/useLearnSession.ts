@@ -341,7 +341,7 @@ export function useLearnSession({
   const schedulingConfigRef = useRef<SessionSchedulingConfig | null>(null);
   const ctxRef = useRef<SessionContext | null>(null);
   // Whether reviews in this session should be recorded against a Course (course
-  // and lesson scope) or a Deck (the global "Today" session).
+  // and lesson scope) or a scheduling unit (the global "Today" session).
   const reviewKindRef = useRef<'scheduling-unit' | 'course'>('scheduling-unit');
   // Set for course/lesson-scoped sessions so a completed session can evaluate the
   // semi-linear unlock ratchet (see ratchetUnlocks below). Null for deck/global sessions.
