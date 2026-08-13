@@ -41,6 +41,7 @@ function card(over: Partial<Card> = {}): Card {
     learningSteps: 0,
     history: [],
     createdAt: NOW,
+    updatedAt: NOW,
     ...over,
   };
 }

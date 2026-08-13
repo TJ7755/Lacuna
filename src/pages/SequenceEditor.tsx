@@ -149,6 +149,7 @@ export function SequenceEditor() {
       generateLabelCards,
       mySpeaker: usesSpeakers ? mySpeaker || undefined : undefined,
       createdAt: sequence?.createdAt ?? 0,
+      updatedAt: sequence?.updatedAt ?? sequence?.createdAt ?? 0,
     });
   }, [
     loaded,

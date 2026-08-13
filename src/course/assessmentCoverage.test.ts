@@ -9,6 +9,7 @@ const lessons: Lesson[] = ['one', 'two', 'three'].map((id, orderIndex) => ({
   orderIndex,
   isExtension: false,
   createdAt: orderIndex,
+  updatedAt: orderIndex,
 }));
 
 function assessment(overrides: Partial<CourseAssessment> = {}): CourseAssessment {
@@ -22,6 +23,7 @@ function assessment(overrides: Partial<CourseAssessment> = {}): CourseAssessment
     coverageMode: 'prefix',
     excludedCardIds: [],
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
   } as CourseAssessment;
 }
@@ -47,6 +49,7 @@ function card(id: string, primaryLessonId: string | null): Card {
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
   };
 }
 
@@ -97,8 +100,8 @@ describe('resolveAssessmentCoverage', () => {
   it('uses linked membership, deduplicates cards and applies exclusions', () => {
     const cards = [card('primary', 'one'), card('linked', 'three')];
     const links: LessonCardLink[] = [
-      { id: 'link-one', lessonId: 'one', cardId: 'linked', createdAt: 0 },
-      { id: 'link-two', lessonId: 'two', cardId: 'linked', createdAt: 1 },
+      { id: 'link-one', lessonId: 'one', cardId: 'linked', createdAt: 0, updatedAt: 0 },
+      { id: 'link-two', lessonId: 'two', cardId: 'linked', createdAt: 1, updatedAt: 1 },
     ];
     const result = resolveAssessmentCoverage(
       assessment({ excludedCardIds: ['primary'] }),

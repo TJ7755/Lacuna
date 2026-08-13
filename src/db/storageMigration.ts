@@ -76,6 +76,7 @@ export function schedulingUnitFromLegacyDeck(deck: LegacyDeckRecord): Scheduling
   return {
     id: deck.id,
     createdAt: deck.createdAt,
+    updatedAt: deck.createdAt,
     ...(deck.examDatePromptDismissed !== undefined
       ? { examDatePromptDismissed: deck.examDatePromptDismissed }
       : {}),
@@ -199,12 +200,14 @@ export function buildDomainStorageMigration(
       ...(unit.courseId ? { courseId: unit.courseId } : {}),
       ...(unit.lessonId ? { lessonId: unit.lessonId } : {}),
       ...combineStats(sources),
+      updatedAt: 0,
     });
   }
 
   const coursePerformance: CoursePerformance[] = courses.map((course) => ({
     courseId: course.id,
     ...statsFrom(performanceByKey.get(course.id)),
+    updatedAt: 0,
   }));
 
   return {

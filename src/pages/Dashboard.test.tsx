@@ -127,6 +127,7 @@ const mockCourse: Course = {
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   createdAt: Date.now(),
+  updatedAt: 1,
   fsrsVersion: 6,
   fsrsParameters: {
     requestRetention: 0.9,
@@ -163,6 +164,7 @@ const mockCard: Card = {
   learningSteps: 0,
   history: [],
   createdAt: Date.now(),
+  updatedAt: 1,
   tags: [],
   suspended: false,
   buriedUntil: null,

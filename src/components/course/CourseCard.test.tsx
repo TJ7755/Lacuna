@@ -26,6 +26,7 @@ const course: Course = {
   name: 'Biology',
   description: '',
   createdAt: 0,
+  updatedAt: 0,
   examDate: Date.now() + 7 * 86_400_000,
   fsrsVersion: FSRS_VERSION,
   fsrsParameters: defaultFsrsParameters(),

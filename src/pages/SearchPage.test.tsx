@@ -21,6 +21,7 @@ const mockCourse: Course = {
   name: 'Course Context',
   description: '',
   createdAt: Date.now(),
+  updatedAt: 1,
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   fsrsVersion: 6,
@@ -54,6 +55,7 @@ const mockCard: Card = {
   learningSteps: 0,
   history: [],
   createdAt: Date.now(),
+  updatedAt: 1,
 };
 
 const dataHooks = vi.hoisted(() => ({

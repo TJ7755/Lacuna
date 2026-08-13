@@ -70,6 +70,7 @@ const card: Card = {
   learningSteps: 0,
   history: [],
   createdAt: 1,
+  updatedAt: 1,
   tags: [],
   suspended: false,
   buriedUntil: null,

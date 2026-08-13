@@ -88,6 +88,7 @@ const mockCourse: Course = {
   name: 'Test Course',
   description: '',
   createdAt: Date.now(),
+  updatedAt: 1,
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   fsrsVersion: 6,

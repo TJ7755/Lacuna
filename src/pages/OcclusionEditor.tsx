@@ -112,6 +112,7 @@ export function OcclusionEditor() {
       assetHash: assetHash ?? '',
       regions,
       createdAt: occlusion?.createdAt ?? 0,
+      updatedAt: occlusion?.updatedAt ?? occlusion?.createdAt ?? 0,
     }),
     [occlusion, courseId, lessonId, name, assetHash, regions],
   );

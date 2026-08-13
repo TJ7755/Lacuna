@@ -40,6 +40,7 @@ const note: Note = {
   content: 'Alpha beta gamma',
   orderIndex: 0,
   createdAt: 1,
+  updatedAt: 1,
 };
 
 function selectText(node: Text, start: number, end: number) {

@@ -22,6 +22,7 @@ function makeCard(overrides: Partial<Card>): Card {
     learningSteps: 0,
     history: [],
     createdAt: Date.now(),
+    updatedAt: 1,
     tags: [],
     suspended: false,
     buriedUntil: null,

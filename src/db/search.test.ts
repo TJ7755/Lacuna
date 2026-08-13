@@ -30,6 +30,7 @@ function card(id: string, over: Partial<Card> = {}): Card {
     learningSteps: 0,
     history: [],
     createdAt: NOW,
+    updatedAt: NOW,
     ...over,
   };
 }
@@ -56,6 +57,7 @@ const course: Course = {
   name: 'Ancient Rome',
   description: '',
   createdAt: NOW,
+  updatedAt: NOW,
   examDate: NOW + 100_000,
   fsrsVersion: 6,
   fsrsParameters: deck.fsrsParameters,
@@ -74,6 +76,7 @@ const lesson: Lesson = {
   name: 'The Republic',
   orderIndex: 0,
   createdAt: NOW,
+  updatedAt: NOW,
   isExtension: false,
 };
 

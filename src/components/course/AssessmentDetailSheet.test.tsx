@@ -11,6 +11,7 @@ const lesson: Lesson = {
   orderIndex: 0,
   isExtension: false,
   createdAt: 1,
+  updatedAt: 1,
 };
 const card = {
   id: 'card-1',
@@ -23,6 +24,7 @@ const card = {
   type: 'front_back',
   tags: [],
   createdAt: 1,
+  updatedAt: 1,
   state: 0,
   stability: null,
   difficulty: null,
@@ -44,6 +46,7 @@ const assessment: CourseAssessment = {
   coverageMode: 'prefix',
   excludedCardIds: ['card-1'],
   createdAt: 1,
+  updatedAt: 1,
 };
 
 describe('checkpoint assessment details', () => {

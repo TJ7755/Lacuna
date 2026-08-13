@@ -43,6 +43,7 @@ function card(history: ReviewLog[]): Card {
     learningSteps: 0,
     history,
     createdAt: DAY,
+    updatedAt: DAY,
   };
 }
 

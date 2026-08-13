@@ -22,6 +22,7 @@ export function schedulingUnitFromCourse(
   return {
     id: course.id,
     createdAt: course.createdAt,
+    updatedAt: course.updatedAt,
     ...(course.examDatePromptDismissed !== undefined
       ? { examDatePromptDismissed: course.examDatePromptDismissed }
       : {}),
@@ -60,6 +61,7 @@ export function schedulingUnitFromLesson(
     ...courseUnit,
     id: lesson.id,
     createdAt: lesson.createdAt,
+    updatedAt: lesson.updatedAt,
     kind: 'lesson',
     lessonId: lesson.id,
     name: lesson.name,

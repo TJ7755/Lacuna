@@ -74,6 +74,7 @@ const course: Course = {
   name: 'A-Level Economics',
   description: '',
   createdAt: Date.now(),
+  updatedAt: 1,
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   fsrsVersion: 6,
@@ -501,6 +502,7 @@ describe('SequenceEditor', () => {
       items: [{ id: 'item-1', value: 'Indeed I am.' }],
       cueWindow: 2,
       createdAt: Date.now(),
+      updatedAt: 1,
     };
 
     // Sequences have no lesson-scoped edit route, so the URL alone never signals a
@@ -537,6 +539,7 @@ describe('SequenceEditor', () => {
       cueWindow: 2,
       mySpeaker: 'ALICE',
       createdAt: Date.now(),
+      updatedAt: 1,
     };
 
     it('warns before opening the paste modal when the sequence already has items, and cancelling keeps it closed', () => {

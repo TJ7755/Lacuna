@@ -19,12 +19,12 @@ export type { LegacyDeck } from './types';
  */
 export type LegacyCard = Omit<
   Card,
-  'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps' | 'type' | 'schedulingUnitId'
+  'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps' | 'type' | 'schedulingUnitId' | 'updatedAt'
 > &
   Partial<
     Pick<
       Card,
-      'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps'
+      'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps' | 'updatedAt'
     >
   > & { type: Card['type'] | 'typing'; schedulingUnitId?: string };
 
@@ -90,6 +90,7 @@ export function migrateCardRecord(card: LegacyCard): Card {
     tags: card.tags ?? [],
     suspended: card.suspended ?? false,
     buriedUntil: card.buriedUntil ?? null,
+    updatedAt: card.updatedAt ?? card.createdAt,
   };
 }
 
@@ -102,10 +103,12 @@ export function buildLessonCardExposureBackfill(
 ): LessonCardExposure[] {
   return cards.flatMap((card) => {
     if (card.state === 0 || typeof card.primaryLessonId !== 'string') return [];
+    const taughtAt = card.lastReviewed ?? card.createdAt;
     return [{
       lessonId: card.primaryLessonId,
       cardId: card.id,
-      taughtAt: card.lastReviewed ?? card.createdAt,
+      taughtAt,
+      updatedAt: taughtAt,
     }];
   });
 }

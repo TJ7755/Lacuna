@@ -37,6 +37,7 @@ function reviewedCard(id: string, stability: number, overrides: Partial<Card> = 
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
   };
 }
@@ -60,6 +61,7 @@ function newCard(id: string): Card {
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
   };
 }
 
@@ -123,6 +125,7 @@ describe('objective consistency: the bar matches the objective', () => {
             name: 'Near',
             orderIndex: 0,
             createdAt: 0,
+            updatedAt: 0,
             isExtension: false,
             examDate: nearDate,
           },
@@ -135,6 +138,7 @@ describe('objective consistency: the bar matches the objective', () => {
             name: 'Far',
             orderIndex: 1,
             createdAt: 0,
+            updatedAt: 0,
             isExtension: false,
             examDate: farDate,
           },
@@ -183,6 +187,7 @@ describe('scheduler scoring follows the objective', () => {
             name: 'Lesson',
             orderIndex: 0,
             createdAt: 0,
+            updatedAt: 0,
             isExtension: false,
             examDate: 30 * MS_PER_DAY,
           },

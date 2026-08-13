@@ -27,6 +27,7 @@ const card: Card = {
   learningSteps: 0,
   history: [],
   createdAt: 0,
+  updatedAt: 0,
 };
 
 function renderRevealed() {

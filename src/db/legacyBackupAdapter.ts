@@ -54,6 +54,7 @@ function courseFromStandaloneDeck(deck: LegacyDeckRecord, id: string): Course {
     name: deck.name,
     description: '',
     createdAt: deck.createdAt,
+    updatedAt: deck.createdAt,
     examDate: deck.examDate,
     ...(deck.timeZone ? { timeZone: deck.timeZone } : {}),
     ...(deck.examDatePromptDismissed !== undefined
@@ -158,6 +159,7 @@ export function adaptLegacyBackup(
       coverageMode: 'prefix',
       excludedCardIds: [],
       createdAt: deck.createdAt,
+      updatedAt: deck.createdAt,
     });
     return { ...deck, backingCourseId: courseId };
   });

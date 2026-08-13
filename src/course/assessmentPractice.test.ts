@@ -11,6 +11,7 @@ function course(): Course {
     name: 'Course',
     description: '',
     createdAt: 0,
+    updatedAt: 0,
     examDate: NOW + 30 * MS_PER_DAY,
     fsrsVersion: FSRS_VERSION,
     fsrsParameters: defaultFsrsParameters(),
@@ -25,7 +26,7 @@ function course(): Course {
 }
 
 function lesson(id: string, orderIndex: number): Lesson {
-  return { id, courseId: 'course', name: id, orderIndex, createdAt: 0, isExtension: false };
+  return { id, courseId: 'course', name: id, orderIndex, createdAt: 0, updatedAt: 0, isExtension: false };
 }
 
 function card(id: string, lessonId: string, overrides: Partial<Card> = {}): Card {
@@ -49,6 +50,7 @@ function card(id: string, lessonId: string, overrides: Partial<Card> = {}): Card
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
   };
 }
@@ -70,11 +72,12 @@ function assessment(
     lessonIds,
     excludedCardIds,
     createdAt: 0,
+    updatedAt: 0,
   };
 }
 
 function exposure(lessonId: string, cardId: string): LessonCardExposure {
-  return { lessonId, cardId, taughtAt: NOW };
+  return { lessonId, cardId, taughtAt: NOW, updatedAt: NOW };
 }
 
 describe('assessment Practice resolution', () => {

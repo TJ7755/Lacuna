@@ -73,6 +73,7 @@ describe('linesModeSequencesByCard', () => {
       learningSteps: 0,
       history: [],
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
     const card = await db.cards.get('plain-card');
     expect(card).toBeDefined();

@@ -176,7 +176,7 @@ describe('buildLessonCardExposureBackfill', () => {
       },
     ]);
 
-    expect(rows).toEqual([{ lessonId: 'primary', cardId: 'reviewed', taughtAt: 200 }]);
+    expect(rows).toEqual([{ lessonId: 'primary', cardId: 'reviewed', taughtAt: 200, updatedAt: 200 }]);
   });
 });
 

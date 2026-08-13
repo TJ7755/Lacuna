@@ -95,6 +95,7 @@ const lesson = {
   description: '',
   orderIndex: 0,
   createdAt: 1,
+  updatedAt: 1,
   isExtension: false,
 };
 
@@ -135,6 +136,7 @@ const card: Card = {
   learningSteps: 0,
   history: [],
   createdAt: 1,
+  updatedAt: 1,
   tags: [],
   suspended: false,
   buriedUntil: null,
@@ -212,7 +214,7 @@ describe('LessonCardsSection', () => {
   });
 
   it('opens the picker from a populated lesson and identifies linked membership', () => {
-    mockLinks = [{ id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1 }];
+    mockLinks = [{ id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1, updatedAt: 1 }];
     render(
       <LessonCardsSection
         courseId="course-1"
@@ -232,8 +234,8 @@ describe('LessonCardsSection', () => {
   });
 
   it('warns before unlinking a card with lesson-specific teaching progress', async () => {
-    mockLinks = [{ id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1 }];
-    mockGetExposure.mockResolvedValue({ lessonId: 'lesson-1', cardId: card.id, taughtAt: 1 });
+    mockLinks = [{ id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1, updatedAt: 1 }];
+    mockGetExposure.mockResolvedValue({ lessonId: 'lesson-1', cardId: card.id, taughtAt: 1, updatedAt: 1 });
     render(
       <LessonCardsSection
         courseId="course-1"

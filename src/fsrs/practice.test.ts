@@ -12,6 +12,7 @@ function makeCourse(overrides: Partial<Course> = {}): Course {
     name: 'Course',
     description: '',
     createdAt: NOW,
+    updatedAt: NOW,
     examDate: NOW + 30 * MS_PER_DAY, // far by default
     fsrsVersion: FSRS_VERSION,
     fsrsParameters: defaultFsrsParameters(),

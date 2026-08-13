@@ -57,6 +57,7 @@ vi.mock('../state/useCourseData', () => ({
             coverageMode: 'prefix',
             excludedCardIds: [],
             createdAt: mockCourse.createdAt,
+            updatedAt: mockCourse.createdAt,
           },
         ]
       : [],
@@ -108,6 +109,7 @@ const course: Course = {
   name: 'Original course',
   description: '',
   createdAt: Date.now(),
+  updatedAt: 1,
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   fsrsVersion: 6,

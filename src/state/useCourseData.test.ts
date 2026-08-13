@@ -14,6 +14,7 @@ function makeCourse(overrides: Partial<Course> & Pick<Course, 'id'>): Course {
     name: 'Test course',
     description: '',
     createdAt: 0,
+    updatedAt: 0,
     examDate: 7 * 24 * 60 * 60 * 1000,
     fsrsVersion: FSRS_VERSION,
     fsrsParameters: defaultFsrsParameters(),
@@ -33,6 +34,7 @@ function makeLesson(overrides: Partial<Lesson> & Pick<Lesson, 'id' | 'courseId'>
     name: 'Test lesson',
     orderIndex: 0,
     createdAt: 0,
+    updatedAt: 0,
     isExtension: false,
     ...overrides,
   };
@@ -54,6 +56,7 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
     schedulingUnitId: overrides.schedulingUnitId ?? overrides.deckId ?? 'unit',
   };
@@ -195,6 +198,7 @@ describe('computeCourseSummaries', () => {
         afterLessonId: 'near',
         excludedCardIds: [],
         createdAt: 0,
+        updatedAt: 0,
       },
     ];
     const context = makeExamDateContext(course, [nearLesson, farLesson], examDates);
@@ -305,12 +309,12 @@ describe('computeCourseSummaries', () => {
     ];
 
     const summary = computeCourseSummaries([course], lessons, cards, [], now, {
-      links: [{ id: 'link', lessonId: 'cards', cardId: 'linked', createdAt: 0 }],
+      links: [{ id: 'link', lessonId: 'cards', cardId: 'linked', createdAt: 0, updatedAt: 0 }],
       exposures: [
-        { lessonId: 'cards', cardId: 'primary', taughtAt: now },
-        { lessonId: 'cards', cardId: 'linked', taughtAt: now },
+        { lessonId: 'cards', cardId: 'primary', taughtAt: now, updatedAt: now },
+        { lessonId: 'cards', cardId: 'linked', taughtAt: now, updatedAt: now },
       ],
-      completions: [{ lessonId: 'cardless', completedAt: now }],
+      completions: [{ lessonId: 'cardless', completedAt: now, updatedAt: now }],
     })['c1'];
 
     expect(summary.completedLessonCount).toBe(2);

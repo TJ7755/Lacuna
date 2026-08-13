@@ -21,6 +21,7 @@ function makeSequence(overrides: Partial<Sequence> = {}): Sequence {
     items: [item('a', 'Helium'), item('b', 'Neon'), item('c', 'Argon')],
     cueWindow: 2,
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
   };
 }
@@ -42,6 +43,7 @@ function card(overrides: Partial<Card> & { id: string; sequenceItemId: string; f
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
   };
 }
@@ -265,6 +267,7 @@ describe('diffRegeneration (lines mode)', () => {
       ],
       cueWindow: 2,
       createdAt: 0,
+      updatedAt: 0,
       ...overrides,
     };
   }

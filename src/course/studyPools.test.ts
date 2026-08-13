@@ -42,6 +42,7 @@ function makeCard(id: string, primaryLessonId: string | null, overrides: Partial
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
   };
 }
@@ -52,6 +53,7 @@ function makeCourse(): Course {
     name: 'Course',
     description: '',
     createdAt: 0,
+    updatedAt: 0,
     examDate: NOW + 30 * MS_PER_DAY,
     fsrsVersion: FSRS_VERSION,
     fsrsParameters: defaultFsrsParameters(),
@@ -72,6 +74,7 @@ function makeLesson(id: string, examDate?: number): Lesson {
     name: id,
     orderIndex: Number(id.slice(1)),
     createdAt: 0,
+    updatedAt: 0,
     isExtension: false,
     examDate,
   };
@@ -82,11 +85,13 @@ const link = (lessonId: string, cardId: string): LessonCardLink => ({
   lessonId,
   cardId,
   createdAt: 0,
+  updatedAt: 0,
 });
 const exposure = (lessonId: string, cardId: string): LessonCardExposure => ({
   lessonId,
   cardId,
   taughtAt: NOW,
+  updatedAt: NOW,
 });
 
 describe('lesson pools', () => {
@@ -136,6 +141,7 @@ describe('practice pools', () => {
       cardCount: 1,
       randomize: true,
       createdAt: 0,
+      updatedAt: 0,
     };
     const args = [
       cards,

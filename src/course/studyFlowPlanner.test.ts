@@ -12,6 +12,7 @@ function lessonNode(id: string, status: 'completed' | 'available' | 'locked'): P
     name: `Lesson ${id}`,
     orderIndex: Number(id),
     createdAt: 0,
+    updatedAt: 0,
     isExtension: false,
   };
   return { id, nodeType: 'lesson', lesson, status };

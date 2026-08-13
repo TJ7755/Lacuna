@@ -1,5 +1,30 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P4: peer merge
+
+- Added `mergeSnapshots` in `src/sync/mergeSnapshots.ts`: a pure function that takes two
+  `BackupFile` values and returns a third. No Dexie, no I/O, no local/remote distinction.
+- Order is tombstone-union, newest-wins content by `updatedAt` (canonical JSON on a
+  same-millisecond tie), set-union of reviews by `eventId`, then FSRS replay with fuzz
+  forced off. Card scheduler fields are derived from the unioned history, never taken
+  from the newer card record.
+- `importBackup(..., 'merge')` is unchanged. The two-device dance is merge-then-replace
+  and belongs to a later slice.
+
+## Unreleased — Sync P3: mutation timestamps and tombstones
+
+- Schema v23 adds a `tombstones` table and a required `updatedAt` on every snapshot-carried
+  row. The upgrade backfills timestamps from `createdAt` (or `lastReviewed` for cards).
+- Every content write goes through one helper. Restores put the snapshotted timestamp back;
+  `stampMissingLessonViewModes` is not treated as an edit.
+- Snapshot-carried deletes write a tombstone in the same Dexie transaction. Course deletion
+  now also removes occlusions. Undoing a deletion clears those tombstones.
+- Tombstones older than 90 days are pruned after the database opens. A device offline longer
+  than that must reset from a pull rather than merge.
+- Backup version 10 carries tombstones. Older backups still import; merge-import unions
+  incoming tombstones without applying them as deletes. Pre-migration snapshots now include
+  occlusions.
+
 ## Unreleased — Schema v22 storage cutover
 
 - Removed the hidden Deck and Folder IndexedDB stores. `schedulingUnits` is now the sole scheduling

@@ -21,6 +21,7 @@ function makeCard(id: string): Card {
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
   };
 }
 
@@ -28,12 +29,13 @@ const exposure = (lessonId: string, cardId: string): LessonCardExposure => ({
   lessonId,
   cardId,
   taughtAt: 1,
+  updatedAt: 1,
 });
 
 describe('lessonTaught', () => {
   it('requires explicit completion for a cardless lesson', () => {
     expect(lessonTaught('l1', [], [], [])).toBe(false);
-    expect(lessonTaught('l1', [], [], [{ lessonId: 'l1', completedAt: 1 }])).toBe(true);
+    expect(lessonTaught('l1', [], [], [{ lessonId: 'l1', completedAt: 1, updatedAt: 1 }])).toBe(true);
   });
 
   it('requires an exposure in this lesson for every member card', () => {
@@ -62,7 +64,7 @@ describe('nextLessonUnlockCondition', () => {
   });
 
   it('supports a completed cardless lesson', () => {
-    const completions = [{ lessonId: 'l1', completedAt: 1 }];
+    const completions = [{ lessonId: 'l1', completedAt: 1, updatedAt: 1 }];
     expect(nextLessonUnlockCondition('l1', [], [], completions, undefined)).toBe(true);
     expect(nextLessonUnlockCondition('l1', [], [], completions, false)).toBe(false);
   });

@@ -46,6 +46,7 @@ function card(history: ReviewLog[]): Card {
     learningSteps: 0,
     history,
     createdAt: 1,
+    updatedAt: 1,
   };
 }
 

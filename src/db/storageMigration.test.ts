@@ -11,6 +11,7 @@ function course(id: string): CourseRecord {
     name: `Course ${id}`,
     description: '',
     createdAt: 1,
+    updatedAt: 1,
     fsrsVersion: 6,
     fsrsParameters: parameters,
     examObjective: 'expectedMarks',
@@ -30,7 +31,7 @@ function course(id: string): CourseRecord {
 }
 
 function lesson(courseId: string, id: string): Lesson {
-  return { id, courseId, name: `Lesson ${id}`, orderIndex: 0, createdAt: 1, isExtension: false };
+  return { id, courseId, name: `Lesson ${id}`, orderIndex: 0, createdAt: 1, updatedAt: 1, isExtension: false };
 }
 
 function deck(id: string, courseId: string, lessonId: string | null): LegacyDeckRecord {
@@ -68,6 +69,7 @@ function card(id: string, deckId: string, courseId: string | null, primaryLesson
     learningSteps: 0,
     history: [],
     createdAt: 1,
+    updatedAt: 1,
   };
 }
 
@@ -91,6 +93,7 @@ const finalAssessment = (courseId: string): CourseAssessment => ({
   coverageMode: 'prefix',
   excludedCardIds: [],
   createdAt: 1,
+  updatedAt: 1,
 });
 
 describe('buildDomainStorageMigration', () => {

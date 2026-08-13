@@ -117,6 +117,7 @@ describe('asset garbage collection', () => {
       content: `![pic](${assetUrl(asset.hash)})`,
       orderIndex: 0,
       createdAt: 1,
+      updatedAt: 1,
     });
 
     expect(await collectOrphanedAssets()).toBe(0);

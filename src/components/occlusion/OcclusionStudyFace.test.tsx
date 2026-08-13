@@ -25,6 +25,7 @@ function makeOcclusion(overrides: Partial<Occlusion> = {}): Occlusion {
       region('f1', 'feature', { x: 0.5, y: 0.5, w: 0.1, h: 0.1, pairedRegionId: 'l1' }),
     ],
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
   };
 }
@@ -50,6 +51,7 @@ function makeCard(occlusionRegionId: string, overrides: Partial<Card> = {}): Car
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
     tags: [],
     suspended: false,
     buriedUntil: null,

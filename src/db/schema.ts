@@ -28,6 +28,7 @@ import type {
   SchedulingUnitRecord,
   CoursePerformance,
   SchedulingPerformance,
+  Tombstone,
 } from './types';
 import { reviewHistoryEntriesForCard, type ReviewHistoryEntry } from './reviewHistory';
 import {
@@ -119,6 +120,7 @@ class LacunaDatabase extends Dexie {
   schedulingUnits!: Table<SchedulingUnitRecord, string>;
   coursePerformance!: Table<CoursePerformance, string>;
   schedulingPerformance!: Table<SchedulingPerformance, string>;
+  tombstones!: Table<Tombstone, [string, string]>;
 
   constructor() {
     super('lacuna');
@@ -808,10 +810,92 @@ class LacunaDatabase extends Dexie {
         }
       }
     });
+
+    // Version 23: mutation timestamps and deletion tombstones for multi-device
+    // merge. Additive. updatedAt is a record field, not an index. Tombstones
+    // are keyed by table + record id so a restore can delete the matching row.
+    this.version(23).stores({
+      cards:
+        'id, courseId, primaryLessonId, schedulingUnitId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      courses: 'id, createdAt',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+      lessonCompletions: 'lessonId, completedAt',
+      noteAnnotations: 'id, noteId, createdAt, updatedAt',
+      practiceNodes: 'id, courseId, position, createdAt',
+      practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      sequences: 'id, courseId, primaryLessonId, createdAt',
+      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+      lineageIdMappings: 'id, courseId',
+      pendingMergeReviews: 'id, courseId',
+      occlusions: 'id, courseId, primaryLessonId, createdAt',
+      reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp',
+      schedulingUnits: 'id, kind, courseId, lessonId',
+      coursePerformance: 'courseId',
+      schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
+      tombstones: '[table+recordId], deletedAt',
+    }).upgrade(async (tx) => {
+      const stampFromCreated = async (name: string) => {
+        await tx.table(name).toCollection().modify((row: { createdAt?: number; updatedAt?: number }) => {
+          if (typeof row.updatedAt !== 'number') row.updatedAt = row.createdAt ?? 0;
+        });
+      };
+      await stampFromCreated('courses');
+      await stampFromCreated('lessons');
+      await stampFromCreated('notes');
+      await stampFromCreated('lessonCards');
+      await stampFromCreated('practiceNodes');
+      await stampFromCreated('courseAssessments');
+      await stampFromCreated('sequences');
+      await stampFromCreated('occlusions');
+      await stampFromCreated('noteAnnotations');
+      await stampFromCreated('revisionPlans');
+      await tx.table('lessonCardExposures').toCollection().modify((row: { taughtAt?: number; updatedAt?: number }) => {
+        if (typeof row.updatedAt !== 'number') row.updatedAt = row.taughtAt ?? 0;
+      });
+      await tx.table('lessonCompletions').toCollection().modify((row: { completedAt?: number; updatedAt?: number }) => {
+        if (typeof row.updatedAt !== 'number') row.updatedAt = row.completedAt ?? 0;
+      });
+      await tx.table('cards').toCollection().modify((row: {
+        createdAt?: number;
+        lastReviewed?: number | null;
+        updatedAt?: number;
+      }) => {
+        if (typeof row.updatedAt !== 'number') {
+          row.updatedAt = Math.max(row.createdAt ?? 0, row.lastReviewed ?? 0);
+        }
+      });
+      await tx.table('schedulingUnits').toCollection().modify((row: {
+        createdAt?: number;
+        lastInteractedAt?: number;
+        updatedAt?: number;
+      }) => {
+        if (typeof row.updatedAt !== 'number') {
+          row.updatedAt = Math.max(row.createdAt ?? 0, row.lastInteractedAt ?? 0);
+        }
+      });
+      await tx.table('coursePerformance').toCollection().modify((row: { updatedAt?: number }) => {
+        if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
+      });
+      await tx.table('schedulingPerformance').toCollection().modify((row: { updatedAt?: number }) => {
+        if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
+      });
+      await tx.table('practiceMilestones').toCollection().modify((row: { updatedAt?: number }) => {
+        if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
+      });
+    });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 22;
+const CURRENT_SCHEMA_VERSION = 23;
 const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22]);
 
 export const db = new LacunaDatabase();
@@ -830,6 +914,9 @@ export type DbOpenResult =
 export async function openDatabase(): Promise<DbOpenResult> {
   try {
     await db.open();
+    void import('./tombstonePrune')
+      .then(({ pruneExpiredTombstones }) => pruneExpiredTombstones())
+      .catch(() => undefined);
     return { ok: true };
   } catch (err) {
     if (err instanceof DOMException && err.name === 'QuotaExceededError') {
@@ -1011,6 +1098,8 @@ export async function readAllDataFromVersion(
     coursePerformance: (raw.data['coursePerformance'] ?? []) as CoursePerformance[],
     schedulingPerformance: (raw.data['schedulingPerformance'] ?? []) as SchedulingPerformance[],
     sequences: (raw.data['sequences'] ?? []) as Sequence[],
+    occlusions: (raw.data['occlusions'] ?? []) as Occlusion[],
+    tombstones: (raw.data['tombstones'] ?? []) as Tombstone[],
   };
 
   // A v13 pre-migration snapshot must retain the retired store byte-for-byte.

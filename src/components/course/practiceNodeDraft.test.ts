@@ -55,6 +55,7 @@ describe('draftFromPracticeNode', () => {
     type: 'manual',
     name: 'Weekly review',
     createdAt: 0,
+    updatedAt: 0,
   };
 
   it('maps a fully-populated node into a draft', () => {

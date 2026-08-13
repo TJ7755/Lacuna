@@ -81,6 +81,7 @@ const course: Course = {
   name: 'A-Level Economics',
   description: '',
   createdAt: Date.now(),
+  updatedAt: 1,
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   fsrsVersion: FSRS_VERSION,
@@ -114,6 +115,7 @@ const generatedCard: Card = {
   learningSteps: 0,
   history: [],
   createdAt: Date.now(),
+  updatedAt: 1,
   sequenceItemId: 'item-1',
 };
 
@@ -125,6 +127,7 @@ const sequence: Sequence = {
   items: [{ id: 'item-1', value: 'Sodium' }],
   cueWindow: 2,
   createdAt: Date.now(),
+  updatedAt: 1,
 };
 
 const occlusionCard: Card = {
@@ -142,6 +145,7 @@ const occlusion: Occlusion = {
   assetHash: 'hash-1',
   regions: [{ id: 'region-1', role: 'label', shape: 'rectangle', x: 0, y: 0, w: 0.1, h: 0.1 }],
   createdAt: Date.now(),
+  updatedAt: 1,
 };
 
 function renderEditing() {
@@ -461,6 +465,7 @@ describe('CardEditor — return-to-origin back-link', () => {
     description: '',
     orderIndex: 0,
     createdAt: Date.now(),
+    updatedAt: 1,
     isExtension: false,
   };
 

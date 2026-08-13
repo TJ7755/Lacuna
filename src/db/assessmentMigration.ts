@@ -115,6 +115,7 @@ export function buildCourseAssessmentMigration(
     coverageMode: 'prefix',
     excludedCardIds: [],
     createdAt: course.createdAt,
+    updatedAt: course.createdAt,
   }));
 
   const checkpoints: CourseAssessment[] = legacyAssessments.map((assessment) => {
@@ -132,6 +133,7 @@ export function buildCourseAssessmentMigration(
       ),
       excludedCardIds: [...(assessment.excludedCardIds ?? [])],
       createdAt: assessment.createdAt,
+      updatedAt: assessment.createdAt,
     };
     return hasCustomCoverage
       ? { ...common, coverageMode: 'custom', lessonIds: [...assessment.lessonIds!] }
