@@ -24,6 +24,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\" \"*.cjs\" \".prettierrc\" \".eslintignore\"",
     "build:mcp": "node electron/mcp/build.mjs",
     "release:scenario": "node scripts/release-scenario.mjs",
+    "icons:generate": "bun scripts/generate-icons.ts",
     "electron:dev": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && bun run build:mcp && bun -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && bun run build:mcp && bun -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && vite build --mode production --base ./ && electron-builder --config electron/electron-builder.yml",
     "electron:build:win": "tsc -p electron/tsconfig.json && tsc -p electron/tsconfig.preload.json && bun run build:mcp && bun -e \"const fs=require('fs');const src='electron/dist-electron/preload.js';const dst='electron/dist-electron/preload.cjs';if(fs.existsSync(src)){if(fs.existsSync(dst))fs.unlinkSync(dst);fs.renameSync(src,dst);}\" && vite build --mode production --base ./ && electron-builder --win --config electron/electron-builder.yml"
@@ -91,6 +92,7 @@
     "happy-dom": "^20.10.2",
     "highlight.js": "^11.10.0",
     "prettier": "^3.3.0",
+    "sharp": "^0.35.3",
     "tailwindcss": "4.1.18",
     "typescript": "^5.6.3",
     "vite": "^6.0.3",
