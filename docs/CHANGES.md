@@ -1418,3 +1418,37 @@ commit by commit.
   union) is subsumed by gate 3 and must not be run as a separate pass.
 
 **Checks:** documentation only; no code changed.
+
+## PWA installation on iPhone
+
+**Outcome:** Lacuna installs to an iPhone home screen with its own icon, and the Settings panel
+teaches the gesture rather than claiming the browser cannot install web apps.
+
+The app was already a PWA — `vite-plugin-pwa`, a manifest, Apple meta tags and an install panel
+all existed. Two specific things were broken.
+
+- `index.html` pointed `apple-touch-icon` at an SVG. iOS silently ignores an SVG there and uses a
+  screenshot of the page as the home-screen icon instead. It now points at a 180px PNG.
+- `scripts/generate-icons.ts` rasterises `public/icon.svg` into `public/icons/` with `sharp`
+  (a devDependency; run `bun run icons:generate`). The maskable variant scales the artwork to 80%
+  on an opaque background so Android's circular mask cannot crop it.
+- `public/manifest.json`: split the single `"any maskable"` entry into separate `any` and
+  `maskable` icons, since one bitmap cannot serve both well. Added `id` and `scope`, and set
+  `start_url` to `/#/` to match the hash router.
+- `src/hooks/useInstallPrompt.ts`: iOS never fires `beforeinstallprompt`, so `isInstallable` was
+  permanently false there and the panel told iPhone users their browser was unsupported. The hook
+  now returns an `InstallMethod` discriminant (`prompt`, `manual-ios`, `unavailable`) and detects
+  iPadOS, which reports itself as `MacIntel` and is distinguished from a desktop Mac only by its
+  touch-point count. Installation is also detected through the legacy `navigator.standalone` flag.
+- `src/pages/settings/InstallSection.tsx`: shows the Share-sheet gesture on iOS, with a new
+  `IosShareIcon` inline so the button is recognisable on the user's own screen.
+- Tests: `src/release/pwaAssets.test.ts` asserts every manifest icon exists on disk, that the
+  Apple touch icon is a PNG that exists, and that exactly one icon is maskable — the last of which
+  is the regression that caused this work.
+
+**Deliberately not done:** `viewport-fit=cover` was not added. The status bar is already set to
+`black-translucent`, which only takes effect with `viewport-fit=cover`, and enabling it without
+matching `env(safe-area-inset-*)` padding in the stylesheet would push content under the notch.
+There is currently no safe-area handling anywhere in the CSS, so that is a separate piece of work.
+
+**Checks:** `typecheck`, `lint`, `test` and `build` pass.

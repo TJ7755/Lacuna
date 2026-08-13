@@ -29,8 +29,11 @@ So when work is delegable, the default is not to spawn a worker yourself. It is 
 
 - State the task with the same bite-sized specificity you would give any slop-tier worker.
 - Include the `.agent-mail` protocol (slug, `-status.md`, `-question.md`, `-done.md`) so it reports progress and blocks on questions rather than guessing.
-- Tell it to commit regularly and to spawn a code-reviewer agent on every commit. On free inference that cadence is what keeps the output honest.
+- Tell it to commit regularly, in small granular steps.
 - Name the files to touch and the existing code to imitate.
+- Give it an explicit permitted-paths list, and say which files another worker owns. A worker that finds a needed file missing from that list will stop and ask, which costs a round trip; a worker with no list at all will wander.
+
+**Codebuff appears to have removed the reviewer-agent capability.** As of 13 August 2026 a Freebuff worker reports that it cannot spawn one and falls back to checking its own diff, which is not review. The old instruction here was to tell it to spawn a code-reviewer on every commit; that instruction now produces no review at all, silently, because the worker follows the brief, fails to spawn, and carries on regardless. **So the review is yours.** Read every commit on the branch before it merges, and verify the checks yourself rather than trusting the completion message. Re-test this if Codebuff changes; if the capability returns, restore the per-commit cadence, because on free inference that is what keeps the output honest.
 
 Reach for Codex or DeepSeek instead only when I have explicitly told you to be autonomous.
 
