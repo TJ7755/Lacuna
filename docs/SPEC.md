@@ -134,10 +134,11 @@ Shared conventions:
 
 Specific motion (current state of the app):
 
-- **Page transitions:** shell pages fade and lift in (`y: 12 → 0`, exit `y: 0 → -8`, with a
-  slight scale settle) through `AppShell`; full-screen landing, method, conductor and Learn
-  routes use the outer `RouteTransition` boundary (`y: 8 → 0`, exit `y: 0 → -6`). Both use
-  `AnimatePresence mode="wait"`; the main scroll area resets to the top on every navigation.
+- **Page transitions:** shell pages crossfade in place through `AppShell` (`popLayout`, so
+  the outgoing page is taken out of flow and the two never stack). Moving between a course's
+  sections still slides sideways in the direction of travel. Full-screen landing, method,
+  conductor and Learn routes use the outer `RouteTransition` boundary, also a crossfade, with
+  `AnimatePresence mode="wait"`. The main scroll area resets to the top on every navigation.
 - **Buttons (`Button`):** spring `whileHover` scale 1.02 and `whileTap` scale 0.96; every
   variant enforces a 44px minimum touch height.
 - **Progress bar (`ProgressBar`):** the fill animates to its new width on a spring; a slow,
@@ -160,10 +161,13 @@ Specific motion (current state of the app):
 - **Flip card:** the question/answer faces swap with a 3-D `rotateX` flip (perspective 1600).
   Swipe gestures (right = Yes, left = No) share the same spring physics as the card-list row
   swipes; the flip card is the only place in the app that combines rotation with translation.
+- **In-place steps:** picker-to-options sheets, Learn reveal-to-grade, and other same-surface
+  steps keep their chrome still and crossfade the step (`StepSwap`). Forward and back take a
+  short sideways step; phase changes fade in place.
 - **Touch bottom sheets:** in touch mode, the Learn grading controls live in a fixed
-  bottom sheet that springs in and out, with a drag handle that closes the sheet when
-  dragged down past a threshold or flicked quickly. The card-actions menu is a similar
-  bottom sheet rather than a dropdown.
+  bottom sheet that springs in once; reveal and grade swap inside that sheet rather than
+  replacing it. The card-actions menu is a similar bottom sheet rather than a dropdown,
+  with a drag handle that closes it when dragged down past a threshold or flicked quickly.
 - **Session report:** the whole panel rises in; reaching the goal springs in a tick badge and fires a confetti burst; the four stat tiles reveal in sequence with count-up numbers; the progress bar animates from before to after with a delta badge; a grade-distribution bar chart shows the rating breakdown.
 - **Tabs / chips:** active-tab underlines are shared-layout elements, e.g. Settings'
   (`layoutId="activePill"`/`"activeBar"`) and Help's (`layoutId="helpActivePill"`/

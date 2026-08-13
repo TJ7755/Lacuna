@@ -219,7 +219,9 @@ describe('CourseStudyFlow', () => {
     renderFlow();
 
     // No entry screen here: these flows offer a single way in, so the study flow
-    // opens the only session directly.
+    // opens the only session directly. The planned step must be on the first
+    // paint — a later effect would flash "You are caught up" into Learn.
+    expect(screen.queryByRole('heading', { name: 'You are caught up' })).not.toBeInTheDocument();
     await screen.findByTestId('learn-request');
     expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' });
   });

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
+import { StepSwap } from '../ui/StepSwap';
 import { useToast } from '../ui/Toast';
 import { createCourse, createLesson } from '../../db/repository';
 import { cn } from '../ui/cn';
@@ -160,74 +161,76 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
           </button>
         </div>
 
-        {mode === 'create' ? (
-          <>
-            <div className="flex flex-col gap-5 px-6 py-6">
-              <div className="flex flex-col gap-2">
-                <label className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-                  Course name
-                </label>
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    if (e.target.value.trim()) setNameError(null);
-                  }}
-                  placeholder="Course name"
-                  autoFocus
-                  disabled={saving}
-                  aria-invalid={nameError ? 'true' : undefined}
-                  aria-describedby={nameError ? 'new-course-name-error' : undefined}
-                  className={cn(
-                    'w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-ink',
-                    nameError ? 'border-negative' : 'border-line',
-                    'placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/60',
-                    'disabled:opacity-40',
+        <StepSwap stepKey={mode} direction={mode === 'import' ? 1 : -1} moveFocus>
+          {mode === 'create' ? (
+            <>
+              <div className="flex flex-col gap-5 px-6 py-6">
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+                    Course name
+                  </label>
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (e.target.value.trim()) setNameError(null);
+                    }}
+                    placeholder="Course name"
+                    autoFocus
+                    disabled={saving}
+                    aria-invalid={nameError ? 'true' : undefined}
+                    aria-describedby={nameError ? 'new-course-name-error' : undefined}
+                    className={cn(
+                      'w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-ink',
+                      nameError ? 'border-negative' : 'border-line',
+                      'placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/60',
+                      'disabled:opacity-40',
+                    )}
+                  />
+                  {nameError && (
+                    <p id="new-course-name-error" role="alert" className="text-sm text-negative">
+                      {nameError}
+                    </p>
                   )}
-                />
-                {nameError && (
-                  <p id="new-course-name-error" role="alert" className="text-sm text-negative">
-                    {nameError}
+                </div>
+
+                <div ref={datePickerRef}>
+                  <DateTimePicker
+                    value={examDate}
+                    onChange={setExamDate}
+                    onValidityChange={setExamDateValid}
+                    timeZone={timeZone}
+                    label="Exam date"
+                  />
+                  <p className="mt-2 text-xs leading-relaxed text-ink-faint">
+                    Lacuna schedules this course towards your exam.
                   </p>
-                )}
+                </div>
               </div>
 
-              <div ref={datePickerRef}>
-                <DateTimePicker
-                  value={examDate}
-                  onChange={setExamDate}
-                  onValidityChange={setExamDateValid}
-                  timeZone={timeZone}
-                  label="Exam date"
-                />
-                <p className="mt-2 text-xs leading-relaxed text-ink-faint">
-                  Lacuna schedules this course towards your exam.
-                </p>
-              </div>
+              <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
+                <Button variant="ghost" onClick={onClose} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button variant="primary" onClick={() => void handleCreate()} disabled={!canCreate}>
+                  {saving ? 'Creating…' : 'Create'}
+                </Button>
+              </footer>
+            </>
+          ) : (
+            <div className="max-h-[65vh] overflow-y-auto px-6 py-6">
+              <p className="mb-4 text-sm leading-relaxed text-ink-soft">
+                Paste a Lacuna share code to add a copy without changing existing courses. LAC0–LAC3
+                codes are supported.
+              </p>
+              <Suspense fallback={<p className="text-sm text-ink-faint">Loading importer…</p>}>
+                <ShareCodeImportPanel onCancel={onClose} onShareImport={handleShareImport} />
+              </Suspense>
             </div>
-
-            <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
-              <Button variant="ghost" onClick={onClose} disabled={saving}>
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={() => void handleCreate()} disabled={!canCreate}>
-                {saving ? 'Creating…' : 'Create'}
-              </Button>
-            </footer>
-          </>
-        ) : (
-          <div className="max-h-[65vh] overflow-y-auto px-6 py-6">
-            <p className="mb-4 text-sm leading-relaxed text-ink-soft">
-              Paste a Lacuna share code to add a copy without changing existing courses. LAC0–LAC3
-              codes are supported.
-            </p>
-            <Suspense fallback={<p className="text-sm text-ink-faint">Loading importer…</p>}>
-              <ShareCodeImportPanel onCancel={onClose} onShareImport={handleShareImport} />
-            </Suspense>
-          </div>
-        )}
+          )}
+        </StepSwap>
       </motion.div>
     </motion.div>,
     document.body,

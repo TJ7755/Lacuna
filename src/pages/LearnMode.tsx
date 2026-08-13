@@ -8,6 +8,7 @@ import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
 import { CardEditOverlay } from '../components/cards/CardEditOverlay';
 import { KeyHints } from '../components/ui/KeyHints';
 import { Button } from '../components/ui/Button';
+import { StepSwap } from '../components/ui/StepSwap';
 import { SessionReport } from '../components/learn/SessionReport';
 import { useDistraction } from '../components/learn/useDistraction';
 import type { SessionSummary } from '../components/learn/types';
@@ -305,14 +306,14 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
 
   return (
     <div className="min-h-screen bg-paper">
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         {phase === 'finished' && summary ? (
           <motion.div
             key="finished"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.24 * m, ease: [0.16, 1, 0.3, 1] }}
             className="min-h-screen"
           >
             <SessionReport
@@ -356,10 +357,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
         ) : (
           <motion.div
             key="study"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.24 * m, ease: [0.16, 1, 0.3, 1] }}
             className="flex min-h-screen flex-col"
           >
             {/* Grading feedback: a directional glow that sweeps in from the side the user
@@ -614,16 +615,16 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 />
               ) : (
                 <div className="mt-8">
-                  <AnimatePresence mode="wait">
+                  <StepSwap
+                    stepKey={phase}
+                    className={
+                      phase === 'question'
+                        ? 'flex flex-col items-center gap-2'
+                        : 'flex flex-col items-center gap-3'
+                    }
+                  >
                     {phase === 'question' ? (
-                      <motion.div
-                        key="show"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                        className="flex flex-col items-center gap-2"
-                      >
+                      <>
                         {!isTypingCard && (
                           <Button
                             variant="primary"
@@ -634,16 +635,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                             Show answer
                           </Button>
                         )}
-                      </motion.div>
+                      </>
                     ) : (
-                      <motion.div
-                        key="grade"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                        className="flex flex-col items-center gap-3"
-                      >
+                      <>
                         {gradingMode === 'manual' ? (
                           <motion.div
                             className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4"
@@ -731,9 +725,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                             </motion.div>
                           </motion.div>
                         )}
-                      </motion.div>
+                      </>
                     )}
-                  </AnimatePresence>
+                  </StepSwap>
                 </div>
               ))}
             </main>

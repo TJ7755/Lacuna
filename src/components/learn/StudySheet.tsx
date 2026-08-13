@@ -6,16 +6,18 @@
 // leave — tap the backdrop, press Escape, or choose Done.
 //
 // Opened from the course page's Study button already scoped to that course, and from
-// Review today with no course, in which case it asks which course first.
+// Review today with no course, in which case it asks which course first. Picker and
+// course options share one sheet: the chrome stays put and the step crossfades.
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { m as motion } from 'motion/react';
-import { useCourses } from '../../state/useCourseData';
+import { useCourse, useCourses } from '../../state/useCourseData';
 import { useCourseStudyFlow } from '../../state/useCourseStudyFlow';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
+import { StepSwap } from '../ui/StepSwap';
 import { ChevronLeftIcon } from '../ui/icons';
 
 export function StudySheet({
@@ -28,6 +30,7 @@ export function StudySheet({
 }) {
   // Chosen within the sheet when it opened without a course.
   const [pickedCourseId, setPickedCourseId] = useState<string | null>(courseId);
+  const [stepDirection, setStepDirection] = useState(0);
   const scopedCourseId = courseId ?? pickedCourseId;
 
   useEffect(() => {
@@ -40,15 +43,35 @@ export function StudySheet({
 
   return (
     <Sheet onClose={onClose}>
-      {scopedCourseId ? (
-        <CourseStudyOptions
-          courseId={scopedCourseId}
-          onBack={courseId === null ? () => setPickedCourseId(null) : undefined}
-          onClose={onClose}
-        />
-      ) : (
-        <CoursePicker onPick={setPickedCourseId} onClose={onClose} />
-      )}
+      <StepSwap
+        stepKey={scopedCourseId ?? 'picker'}
+        direction={courseId === null ? stepDirection : 0}
+        className="flex flex-col gap-3"
+        moveFocus
+      >
+        {scopedCourseId ? (
+          <CourseStudyOptions
+            courseId={scopedCourseId}
+            onBack={
+              courseId === null
+                ? () => {
+                    setStepDirection(-1);
+                    setPickedCourseId(null);
+                  }
+                : undefined
+            }
+            onClose={onClose}
+          />
+        ) : (
+          <CoursePicker
+            onPick={(id) => {
+              setStepDirection(1);
+              setPickedCourseId(id);
+            }}
+            onClose={onClose}
+          />
+        )}
+      </StepSwap>
     </Sheet>
   );
 }
@@ -77,11 +100,11 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 120, opacity: 0 }}
         transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
-        className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-3xl border-t border-line-strong bg-surface px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-5 shadow-2xl shadow-black/20"
+        className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-t-3xl border-t border-line-strong bg-surface px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-5 shadow-2xl shadow-black/20"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-ink/15" aria-hidden="true" />
-        <div className="mx-auto flex max-w-xl flex-col gap-3">{children}</div>
+        <div className="mx-auto max-w-xl">{children}</div>
       </motion.div>
     </motion.div>
   );
@@ -136,18 +159,18 @@ function CourseStudyOptions({
   onClose: () => void;
 }) {
   const navigate = useNavigate();
+  const course = useCourse(courseId);
   const flow = useCourseStudyFlow(courseId);
+  const title = flow?.course.name ?? course?.name;
 
   // The choice is encoded in the URL rather than handed over in memory, so the study
   // flow starts already knowing what it is running and never shows an entry of its own.
   const start = (search: string) => navigate(`/course/${courseId}/study${search}`);
 
-  if (flow === undefined) {
-    return <p className="py-2 text-sm text-ink-faint">Working out what is next…</p>;
-  }
   if (flow === null) {
     return (
       <>
+        {onBack && <AllCoursesButton onClick={onBack} />}
         <SheetTitle>Course not found</SheetTitle>
         <Button variant="ghost" size="lg" onClick={onClose}>
           Done
@@ -156,27 +179,22 @@ function CourseStudyOptions({
     );
   }
 
-  const { decision, snapshot } = flow;
-  const nextStep = decision.kind === 'step' || decision.kind === 'choice' ? decision.step : null;
-  const assessments = decision.kind === 'choice' ? decision.assessments : [];
+  const decision = flow?.decision;
+  const snapshot = flow?.snapshot;
+  const nextStep = decision?.kind === 'step' || decision?.kind === 'choice' ? decision.step : null;
+  const assessments = decision?.kind === 'choice' ? decision.assessments : [];
   const nextIsDueReview = nextStep?.kind === 'practice' && nextStep.mode === 'recurring';
-  const canReviewDueCards = snapshot.recurringPracticeEligibleCount > 0 && !nextIsDueReview;
+  const canReviewDueCards =
+    snapshot !== undefined && snapshot.recurringPracticeEligibleCount > 0 && !nextIsDueReview;
 
   return (
     <>
-      {onBack && (
-        <button
-          type="button"
-          onClick={onBack}
-          className="-mt-1 mb-1 inline-flex items-center gap-1.5 self-start text-sm text-ink-faint transition-colors hover:text-ink"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          All courses
-        </button>
-      )}
-      <SheetTitle>{flow.course.name}</SheetTitle>
+      {onBack && <AllCoursesButton onClick={onBack} />}
+      <SheetTitle>{title ?? '\u00a0'}</SheetTitle>
 
-      {nextStep ? (
+      {flow === undefined ? (
+        <p className="py-2 text-sm text-ink-faint">Working out what is next…</p>
+      ) : nextStep ? (
         <Button
           variant="primary"
           size="lg"
@@ -197,9 +215,7 @@ function CourseStudyOptions({
       {canReviewDueCards && (
         <Button variant="secondary" size="lg" onClick={() => start('?review=due')}>
           Review due cards
-          <span className="ml-2 text-sm opacity-70">
-            {snapshot.recurringPracticeEligibleCount}
-          </span>
+          <span className="ml-2 text-sm opacity-70">{snapshot.recurringPracticeEligibleCount}</span>
         </Button>
       )}
 
@@ -221,6 +237,23 @@ function CourseStudyOptions({
   );
 }
 
+function AllCoursesButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="-mt-1 mb-1 inline-flex items-center gap-1.5 self-start text-sm text-ink-faint transition-colors hover:text-ink"
+    >
+      <ChevronLeftIcon width={16} height={16} />
+      All courses
+    </button>
+  );
+}
+
 function SheetTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="font-display text-2xl tracking-tight">{children}</h2>;
+  return (
+    <h2 tabIndex={-1} className="font-display text-2xl tracking-tight outline-none">
+      {children}
+    </h2>
+  );
 }

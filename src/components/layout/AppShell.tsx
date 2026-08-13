@@ -20,13 +20,13 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
 
-/** Sideways for a move between course sections, the standard lift otherwise. */
+/** Sideways for a move between course sections, a crossfade otherwise. */
 const ROUTE_VARIANTS = {
   enter: (direction: number) =>
-    direction === 0 ? { opacity: 0, y: 12, scale: 0.995 } : { opacity: 0, x: 32 * direction },
-  center: { opacity: 1, x: 0, y: 0, scale: 1 },
+    direction === 0 ? { opacity: 0 } : { opacity: 0, x: 24 * direction },
+  center: { opacity: 1, x: 0 },
   exit: (direction: number) =>
-    direction === 0 ? { opacity: 0, y: -8, scale: 0.995 } : { opacity: 0, x: -32 * direction },
+    direction === 0 ? { opacity: 0 } : { opacity: 0, x: -24 * direction },
 };
 
 export function AppShell() {
@@ -280,27 +280,34 @@ export function AppShell() {
             onPointerCancel={onPointerCancel}
           >
             <ErrorBoundary label="this page">
-              {/* Ordinary navigation fades, scales and lifts in as the previous page settles
-                  out. Moving between a course's sections slides sideways instead, in the
-                  direction of travel through the tab order, so the sections read as one
-                  surface rather than as unrelated pages.
+              {/* Ordinary navigation crossfades in place. Moving between a course's
+                  sections slides sideways instead, in the direction of travel through
+                  the tab order, so the sections read as one surface rather than as
+                  unrelated pages.
+
+                  popLayout takes the outgoing page out of flow so the two do not stack
+                  in the scroll area — that was the jarring jump. Incoming still mounts
+                  immediately, so lazy imports are not held behind an exit.
 
                   The direction goes through AnimatePresence's `custom` rather than being
                   baked into the props, because an exiting element otherwise keeps the props
                   it last rendered with and would leave towards the wrong side. */}
-              <AnimatePresence initial={false} custom={sectionDirection}>
-                <motion.div
-                  key={location.pathname}
-                  custom={sectionDirection}
-                  variants={ROUTE_VARIANTS}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <StudySheetProvider value={studySheet.value}>{outlet}</StudySheetProvider>
-                </motion.div>
-              </AnimatePresence>
+              <div className="relative min-h-full">
+                <AnimatePresence initial={false} custom={sectionDirection} mode="popLayout">
+                  <motion.div
+                    key={location.pathname}
+                    custom={sectionDirection}
+                    variants={ROUTE_VARIANTS}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+                    className="min-h-full w-full"
+                  >
+                    <StudySheetProvider value={studySheet.value}>{outlet}</StudySheetProvider>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             </ErrorBoundary>
           </main>
         </div>
