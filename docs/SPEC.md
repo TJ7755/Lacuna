@@ -135,10 +135,13 @@ Shared conventions:
 Specific motion (current state of the app):
 
 - **Page transitions:** shell pages crossfade in place through `AppShell` (`popLayout`, so
-  the outgoing page is taken out of flow and the two never stack). Moving between a course's
-  sections still slides sideways in the direction of travel. Full-screen landing, method,
-  conductor and Learn routes use the outer `RouteTransition` boundary, also a crossfade, with
-  `AnimatePresence mode="wait"`. The main scroll area resets to the top on every navigation.
+  the outgoing page is taken out of flow and the two never stack). A fade writes opacity
+  only — never a transform — so `position: fixed` descendants stay viewport-fixed.
+  Moving between a course's sections still slides sideways in the direction of travel.
+  Full-screen landing, method, conductor and Learn routes use the outer `RouteTransition`
+  boundary, also a crossfade, with `AnimatePresence mode="wait"`. Both boundaries skip
+  enter/exit when `prefers-reduced-motion` is on. The main scroll area resets to the top
+  on every navigation.
 - **Buttons (`Button`):** spring `whileHover` scale 1.02 and `whileTap` scale 0.96; every
   variant enforces a 44px minimum touch height.
 - **Progress bar (`ProgressBar`):** the fill animates to its new width on a spring; a slow,

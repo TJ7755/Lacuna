@@ -12,7 +12,11 @@
   complete / revision-plan scenes. The study sheet also keeps the course title up while
   its options load, so that step no longer snaps twice. The conductor now derives the
   first planned step during render, so Continue cannot flash "You are caught up" into
-  Learn.
+  Learn. The conductor then commits that same object as `currentStep`, so a practice-node
+  entry cannot rebuild the Learn request and restart the session. Shell fades no longer
+  write a transform, they skip enter/exit when motion is reduced, and the shell root
+  no longer keeps a standing scale except while settling in from the landing page.
+  Learn's grade buttons no longer lift again inside `StepSwap`.
 
 ## Unreleased — Schema v22 storage cutover
 
