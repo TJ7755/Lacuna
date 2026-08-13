@@ -11,7 +11,7 @@
 
 import { unzipSync, type Unzipped } from 'fflate';
 import initSqlJs, { type Database } from 'sql.js';
-import type { Card, CardType, Deck, ReviewLog } from './types';
+import type { Card, CardType, ReviewLog } from './types';
 import { makeId, db } from './schema';
 import { reviewHistoryEntriesForCard } from './reviewHistory';
 import { sha256Blob } from './assets';
@@ -650,22 +650,21 @@ function replaceMediaRefs(text: string, mediaMap: Map<string, ImportedMediaRef>)
 // ---------------------------------------------------------------------------
 
 /**
- * Create a Lacuna deck from an APKG result and insert everything into the database.
+ * Create a Lacuna Course from an APKG result and insert everything into its bank.
  * This is a high-level helper that wires the engine output to the repository layer.
  */
 export async function importApkgResult(
   result: ApkgImportResult,
-  targetDeckId?: string,
-  cardOptions?: { courseId?: string | null; primaryLessonId?: string | null },
-): Promise<{ deck: Deck; cards: Card[] }> {
-  const { createDeck, createCards } = await import('./repository');
+  targetSchedulingUnitId?: string,
+): Promise<{ courseId: string; cards: Card[] }> {
+  const { createCourse, createCards } = await import('./repository');
   const { storeAudioBlob, storeImageBlob } = await import('./assets');
 
-  let deck: Deck | undefined;
-  if (targetDeckId) {
-    const existing = await db.decks.get(targetDeckId);
-    if (!existing) throw new Error('Target deck not found.');
-    deck = existing;
+  let targetUnit = targetSchedulingUnitId
+    ? await db.schedulingUnits.get(targetSchedulingUnitId)
+    : undefined;
+  if (targetSchedulingUnitId && (!targetUnit || !targetUnit.courseId)) {
+    throw new Error('Target scheduling unit not found.');
   }
 
   // Ingest supported media before creating any deck or card records. Asset writes are
@@ -693,33 +692,39 @@ export async function importApkgResult(
 
   let scheduledCards: Card[] = [];
 
-  // Create the deck, cards, and both scheduling-history projections atomically.
+  // Create the Course, cards, and both scheduling-history projections atomically.
   // This prevents a failed canonical-history write from leaving a partial import.
+  let courseId = targetUnit?.courseId;
   await db.transaction(
     'rw',
     [
-      db.decks,
-      db.userPerformance,
+      db.courses,
+      db.lessons,
+      db.courseAssessments,
       db.cards,
       db.reviewHistory,
       db.schedulingUnits,
+      db.coursePerformance,
       db.schedulingPerformance,
     ],
     async () => {
-      deck ??= await createDeck(result.deckName);
+      if (!targetUnit) {
+        const course = await createCourse(result.deckName);
+        courseId = course.id;
+        targetUnit = await db.schedulingUnits.get(course.id);
+      }
+      if (!courseId || !targetUnit) throw new Error('The import Course could not be created.');
 
-      // Assign deckId to all cards.
-      const importDeck = deck!;
-      const cards = result.cards.map((c) => ({ ...c, deckId: importDeck.id }));
+      const cards = result.cards.map((card) => ({ ...card, deckId: targetUnit!.id }));
       const created = await createCards(
-        importDeck.id,
+        targetUnit.id,
         cards.map((c) => ({
           type: c.type,
           front: c.front,
           back: c.back,
           tags: c.tags,
         })),
-        cardOptions,
+        { courseId, primaryLessonId: targetUnit.lessonId },
       );
 
       scheduledCards = created.map((card, i) => {
@@ -763,7 +768,7 @@ export async function importApkgResult(
     if (rewritten.length > 0) await db.cards.bulkPut(rewritten);
   }
 
-  return { deck: deck!, cards: scheduledCards };
+  return { courseId: courseId!, cards: scheduledCards };
 }
 
 function guessMimeType(filename: string): string {

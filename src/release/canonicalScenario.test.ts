@@ -88,7 +88,7 @@ describe('canonical release scenario', () => {
 
     const backup = await exportDatabase();
     expect(backup.lessons).toHaveLength(2);
-    expect(backup.decks.length).not.toBe(backup.lessons?.length);
+    expect(backup.decks!.length).not.toBe(backup.lessons?.length);
     const beforePreview = await runTool<unknown[]>('lacuna.list_courses', {});
     const preview = await readBackupFile(new File([JSON.stringify(backup)], 'canonical-lacuna-backup.json', {
       type: 'application/json',

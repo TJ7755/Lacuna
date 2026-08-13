@@ -7,14 +7,9 @@
 // migration unit test and also run inside the Dexie upgrade hook (see schema.ts).
 
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import type { Card, CardType, Deck, LessonCardExposure } from './types';
+import type { Card, CardType, Deck, LegacyDeck, LessonCardExposure } from './types';
 
-/** A deck as stored before FSRS-6: the new fields may be absent. */
-export type LegacyDeck = Omit<
-  Deck,
-  'fsrsVersion' | 'fsrsParameters' | 'examObjective'
-> &
-  Partial<Pick<Deck, 'fsrsVersion' | 'fsrsParameters' | 'examObjective'>>;
+export type { LegacyDeck } from './types';
 
 /**
  * A card as stored before FSRS-6: the new memory fields may be absent. `type` is

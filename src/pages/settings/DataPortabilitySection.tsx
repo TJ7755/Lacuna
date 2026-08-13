@@ -26,8 +26,15 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
   async function runImport(mode: ImportMode) {
     if (!pending) return;
     try {
-      await importBackup(pending, mode);
-      notify(mode === 'replace' ? 'Data replaced from backup.' : 'Backup merged.', 'positive');
+      const report = await importBackup(pending, mode);
+      const folderNames = report?.discardedFolderNames ?? [];
+      const success = mode === 'replace' ? 'Data replaced from backup.' : 'Backup merged.';
+      notify(
+        folderNames.length > 0
+          ? `${success} Folder hierarchy was discarded: ${folderNames.join(', ')}.`
+          : success,
+        'positive',
+      );
     } catch {
       notify('Import failed.', 'negative');
     } finally {
@@ -89,7 +96,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
               <div className="text-sm text-ink-soft">
                 <p className="mb-3">
                   This backup contains{' '}
-                  <strong className="text-ink">{pending.lessons?.length ?? pending.decks.length}</strong> lessons and{' '}
+                  <strong className="text-ink">{pending.lessons?.length ?? pending.decks?.length ?? 0}</strong> lessons and{' '}
                   <strong className="text-ink">{pending.cards.length}</strong> cards, exported on {formatDate(pending.exportedAt)}.
                 </p>
                 <ul className="space-y-2">

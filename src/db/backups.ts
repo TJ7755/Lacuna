@@ -109,7 +109,7 @@ export async function takeAutoBackup(force = false): Promise<void> {
   const payload = await exportDatabase();
   const snapshot: BackupSnapshot = {
     createdAt: payload.exportedAt,
-    deckCount: payload.decks.length,
+    deckCount: payload.decks?.length ?? payload.courses?.length ?? 0,
     cardCount: payload.cards.length,
     payload,
   };

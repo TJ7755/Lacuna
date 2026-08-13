@@ -47,7 +47,7 @@ export function courseCardListContext({
       await createCards(schedulingConfig.id, cards, { courseId, primaryLessonId });
     },
     onApkgImport: async (result) => {
-      await importApkgResult(result, schedulingConfig.id, { courseId, primaryLessonId });
+      await importApkgResult(result, schedulingConfig.id);
     },
     onRestore: restoreCards,
   };

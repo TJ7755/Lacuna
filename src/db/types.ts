@@ -268,6 +268,13 @@ export interface Deck {
   sessionTimeLimitMinutes?: number;
 }
 
+/** A Deck row from a backup predating the current FSRS schema. */
+export type LegacyDeck = Omit<
+  Deck,
+  'fsrsVersion' | 'fsrsParameters' | 'examObjective'
+> &
+  Partial<Pick<Deck, 'fsrsVersion' | 'fsrsParameters' | 'examObjective'>>;
+
 /** A folder for grouping decks hierarchically. */
 export interface Folder {
   id: string;
@@ -1029,7 +1036,8 @@ export interface BackupFile {
   app: 'lacuna';
   version: number;
   exportedAt: number;
-  decks: Deck[];
+  /** Legacy import boundary. Current exports stop emitting this at schema v22. */
+  decks?: LegacyDeck[];
   cards: Card[];
   /** Canonical review events when exported from schema v20 or later. */
   reviewHistory?: ReviewHistoryEntry[];

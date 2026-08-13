@@ -42,6 +42,7 @@ import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import type { ParsedCard } from './import';
 import { CURRENT_ITEM_PAYLOAD_VERSION } from './types';
 import type {
+  BackupFile,
   Card,
   CourseAssessment,
   Deck,
@@ -63,6 +64,7 @@ import { buildCourseMigration } from './courseMigration';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
 import { getPreset, presetForSequence } from './sequencePresets';
 import { itemPayloadIsValid, assertValidCardPayload } from '../items/payloadValidation';
+import { adaptLegacyBackup } from './legacyBackupAdapter';
 
 // ---------------------------------------------------------------------------
 // Zod runtime schema for share payloads
@@ -1114,7 +1116,30 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
   }
 
   const migration = buildCourseMigration(decks, folders, makeId);
+  const courseRecords = migration.courses.map(courseToRecord);
+  const storedDecks = decks.map((deck) => ({
+    ...deck,
+    backingCourseId: migration.courseIdByDeckId.get(deck.id),
+    backingLessonId: migration.lessonIdByDeckId.get(deck.id),
+  }));
+  const performances = storedDecks.map((deck) => emptyPerformance(deck.id));
+  const finalAssessments: CourseAssessment[] = migration.courses.map((course) => ({
+    id: makeId(),
+    courseId: course.id,
+    name: 'Final exam',
+    kind: 'final',
+    examDate: course.examDate,
+    ...(course.timeZone ? { timeZone: course.timeZone } : {}),
+    afterLessonId:
+      migration.lessons
+        .filter((lesson) => lesson.courseId === course.id)
+        .sort((a, b) => b.orderIndex - a.orderIndex)[0]?.id ?? null,
+    coverageMode: 'prefix',
+    excludedCardIds: [],
+    createdAt: course.createdAt,
+  }));
   let cardCount = 0;
+  const importedCards: Card[] = [];
 
   await db.transaction(
     'rw',
@@ -1126,42 +1151,52 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
       db.courses,
       db.lessons,
       db.courseAssessments,
+      db.schedulingUnits,
+      db.coursePerformance,
+      db.schedulingPerformance,
     ],
     async () => {
-      for (let i = 0; i < decks.length; i++) {
-        const deck = decks[i];
+      for (let i = 0; i < storedDecks.length; i++) {
+        const deck = storedDecks[i];
         const drafts = payload.decks[i].cards.flatMap(unpackCard);
         await db.decks.add(deck);
-        await db.userPerformance.add(emptyPerformance(deck.id));
-        const cards = drafts.length > 0 ? await createCards(deck.id, drafts) : [];
+        await db.userPerformance.add(performances[i]);
         const courseId = migration.courseIdByDeckId.get(deck.id);
         const lessonId = migration.lessonIdByDeckId.get(deck.id);
-        if (courseId && lessonId && cards.length > 0) {
-          await db.cards
-            .where('id')
-            .anyOf(cards.map((c) => c.id))
-            .modify({ courseId, primaryLessonId: lessonId });
-        }
+        const cards =
+          drafts.length > 0
+            ? await createCards(deck.id, drafts, { courseId, primaryLessonId: lessonId })
+            : [];
+        importedCards.push(...cards);
         cardCount += cards.length;
       }
-      await db.courses.bulkAdd(migration.courses.map(courseToRecord));
+      await db.courses.bulkAdd(courseRecords);
       await db.lessons.bulkAdd(migration.lessons);
-      const finalAssessments: CourseAssessment[] = migration.courses.map((course) => ({
-        id: makeId(),
-        courseId: course.id,
-        name: 'Final exam',
-        kind: 'final',
-        examDate: course.examDate,
-        ...(course.timeZone ? { timeZone: course.timeZone } : {}),
-        afterLessonId:
-          migration.lessons
-            .filter((lesson) => lesson.courseId === course.id)
-            .sort((a, b) => b.orderIndex - a.orderIndex)[0]?.id ?? null,
-        coverageMode: 'prefix',
-        excludedCardIds: [],
-        createdAt: course.createdAt,
-      }));
       await db.courseAssessments.bulkAdd(finalAssessments);
+      const legacyPayload: BackupFile = {
+        app: 'lacuna',
+        version: 8,
+        exportedAt: payload.at,
+        decks: storedDecks,
+        cards: importedCards,
+        assets: [],
+        sessionHistory: [],
+        userPerformance: performances,
+        courses: courseRecords,
+        lessons: migration.lessons,
+        courseAssessments: finalAssessments,
+      };
+      const adapted = adaptLegacyBackup(legacyPayload, {
+        courses: courseRecords,
+        lessons: migration.lessons,
+        courseAssessments: finalAssessments,
+        cards: importedCards,
+        generateId: makeId,
+      });
+      await db.cards.bulkPut(adapted.cards);
+      await db.schedulingUnits.bulkPut(adapted.schedulingUnits);
+      await db.coursePerformance.bulkPut(adapted.coursePerformance);
+      await db.schedulingPerformance.bulkPut(adapted.schedulingPerformance);
     },
   );
 

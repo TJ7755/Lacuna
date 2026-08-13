@@ -34,7 +34,7 @@ describe('backups', () => {
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0].deckCount).toBe(1);
     expect(snapshots[0].payload).toBeDefined();
-    expect(snapshots[0].payload.decks[0].name).toBe('Alpha');
+    expect(snapshots[0].payload.decks![0].name).toBe('Alpha');
   });
 
   it('restoreBackup replaces the database from a stored snapshot', async () => {

@@ -3,9 +3,7 @@
 import { db, makeId } from './schema';
 import {
   migrateCardRecord,
-  migrateDeckRecord,
   type LegacyCard,
-  type LegacyDeck,
 } from './migrations';
 import type {
   BackupFile,
@@ -53,6 +51,7 @@ import {
 import { mergeRevisionPlans } from '../course/revisionPlan';
 import { itemPayloadIsValid } from '../items/payloadValidation';
 import { buildDomainStorageMigration } from './storageMigration';
+import { adaptLegacyBackup, type LegacyImportReport } from './legacyBackupAdapter';
 
 export const BACKUP_VERSION = 9;
 
@@ -210,7 +209,7 @@ export function validateBackup(data: unknown): data is BackupFile {
   return (
     b.app === 'lacuna' &&
     typeof b.version === 'number' &&
-    Array.isArray(b.decks) &&
+    (b.decks === undefined || Array.isArray(b.decks)) &&
     Array.isArray(b.cards) &&
     cardsHaveValidPayloads &&
     Array.isArray(b.assets) &&
@@ -227,18 +226,20 @@ export type ImportMode = 'replace' | 'merge';
  * SessionHistory is append-only and de-duplicated by stable event identity when
  * available, falling back to (timestamp, deckId) for legacy rows.
  */
-export async function importBackup(backup: BackupFile, mode: ImportMode): Promise<void> {
+export async function importBackup(
+  backup: BackupFile,
+  mode: ImportMode,
+): Promise<LegacyImportReport> {
   if (!validateBackup(backup)) {
     throw new Error('Invalid backup file.');
   }
 
   // Pre-process markdown assets outside the IndexedDB transaction so long-running
   // canvas compressions cannot auto-abort the import transaction.
-  const decks = backup.decks.map((d) => migrateDeckRecord(d as LegacyDeck));
   const assets = backup.assets;
   const knownHashes = new Set(backup.assets.map((a) => a.hash.toLowerCase()));
   const extractedAssets: MediaAsset[] = [];
-  const cards = await Promise.all(
+  const migratedCards = await Promise.all(
     backup.cards.map(async (c) => {
       const migrated = migrateCardRecord(c as LegacyCard);
       return {
@@ -276,10 +277,6 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
     })),
   );
   const importedAssets = [...assets.map(backupAssetToMediaAsset), ...extractedAssets];
-  const reviewHistory: ReviewHistoryEntry[] = mergeReviewHistoryEntries(
-    backup.reviewHistory ?? [],
-    cards,
-  );
   const rawCourses = backup.courses ?? [];
   const currentAssessments = backup.courseAssessments;
   const assessmentMigration = currentAssessments
@@ -295,61 +292,26 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         backup.courseExamDates ?? [],
         makeId,
       );
-  const courses = assessmentMigration.courses;
-  const courseAssessments = assessmentMigration.assessments;
+  const adaptation = adaptLegacyBackup(backup, {
+    courses: assessmentMigration.courses,
+    lessons: backup.lessons ?? [],
+    courseAssessments: assessmentMigration.assessments,
+    cards: migratedCards,
+    generateId: makeId,
+  });
+  const {
+    decks,
+    cards,
+    courses,
+    courseAssessments,
+    report,
+    ...storageProjection
+  } = adaptation;
   for (const course of courses) finalAssessmentForCourse(course.id, courseAssessments);
-  const hasCompleteTargetProjection =
-    backup.schedulingUnits !== undefined &&
-    backup.coursePerformance !== undefined &&
-    backup.schedulingPerformance !== undefined &&
-    backup.schedulingUnits.every((unit) => typeof unit.createdAt === 'number');
-  const storageProjection: ReturnType<typeof buildDomainStorageMigration> =
-    hasCompleteTargetProjection
-      ? (() => {
-          const unitsById = new Map(backup.schedulingUnits!.map((unit) => [unit.id, unit]));
-          const schedulingUnitByCardId = new Map<string, string>();
-          const schedulingUnitByDeckId = new Map<string, string>();
-          const candidatesByDeck = new Map<string, Set<string>>();
-          for (const card of cards) {
-            const lessonUnit = card.primaryLessonId
-              ? unitsById.get(card.primaryLessonId)
-              : undefined;
-            const courseUnit = card.courseId ? unitsById.get(card.courseId) : undefined;
-            const unitId =
-              (lessonUnit?.kind === 'lesson' &&
-              (!card.courseId || lessonUnit.courseId === card.courseId)
-                ? lessonUnit.id
-                : courseUnit?.kind === 'course'
-                  ? courseUnit.id
-                  : card.schedulingUnitId ?? card.deckId);
-            schedulingUnitByCardId.set(card.id, unitId);
-            const candidates = candidatesByDeck.get(card.deckId) ?? new Set<string>();
-            candidates.add(unitId);
-            candidatesByDeck.set(card.deckId, candidates);
-          }
-          for (const [deckId, candidates] of candidatesByDeck) {
-            if (candidates.size === 1) schedulingUnitByDeckId.set(deckId, [...candidates][0]);
-          }
-          return {
-            schedulingUnits: backup.schedulingUnits!,
-            coursePerformance: backup.coursePerformance!,
-            schedulingPerformance: backup.schedulingPerformance!,
-            schedulingUnitByCardId,
-            schedulingUnitByDeckId,
-          };
-        })()
-      : buildDomainStorageMigration(
-          courses,
-          backup.lessons ?? [],
-          courseAssessments,
-          decks,
-          cards,
-          backup.userPerformance,
-        );
-  for (const card of cards) {
-    const schedulingUnitId = storageProjection.schedulingUnitByCardId.get(card.id);
-    if (schedulingUnitId) card.schedulingUnitId = schedulingUnitId;
-  }
+  const reviewHistory: ReviewHistoryEntry[] = mergeReviewHistoryEntries(
+    backup.reviewHistory ?? [],
+    cards,
+  );
   const hydratedReviewHistory = reviewHistory.map((entry) => ({
     ...entry,
     schedulingUnitId:
@@ -870,6 +832,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       if (toAdd.length) await db.sessionHistory.bulkAdd(toAdd);
     },
   );
+  return report;
 }
 
 /** Read and parse a user-selected JSON backup file. */

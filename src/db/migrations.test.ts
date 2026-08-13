@@ -336,7 +336,7 @@ describe('pre-migration snapshot ordering', () => {
     const snapshot = await getPreMigrationSnapshot(4);
     expect(snapshot).toBeDefined();
     expect(snapshot!.payload.decks).toHaveLength(1);
-    expect(snapshot!.payload.decks[0].name).toBe('Pre-migration deck');
+    expect(snapshot!.payload.decks![0].name).toBe('Pre-migration deck');
     expect(snapshot!.payload.cards).toHaveLength(1);
     expect(snapshot!.payload.cards[0].front).toBe('question');
 

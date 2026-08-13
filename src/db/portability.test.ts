@@ -75,7 +75,7 @@ describe('exportDatabase', () => {
     expect(backup.version).toBe(BACKUP_VERSION);
     expect(validateBackup(backup)).toBe(true);
     expect(backup.decks).toHaveLength(1);
-    expect(backup.decks[0].name).toBe('Biology');
+    expect(backup.decks![0].name).toBe('Biology');
     expect(backup.cards).toHaveLength(1);
     expect(backup.cards[0].front).toBe('Q1');
     expect(backup.reviewHistory).toEqual([]);

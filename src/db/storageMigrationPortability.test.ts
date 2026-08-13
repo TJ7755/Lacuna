@@ -10,6 +10,7 @@ async function reset(): Promise<void> {
   await Promise.all([
     db.cards.clear(),
     db.decks.clear(),
+    db.folders.clear(),
     db.courses.clear(),
     db.lessons.clear(),
     db.courseAssessments.clear(),
@@ -86,12 +87,59 @@ describe('domain storage portability', () => {
 
     expect(await db.decks.get(deck.id)).toMatchObject({ name: 'Legacy deck' });
     expect(await db.cards.get(card.id)).toMatchObject({ schedulingUnitId: deck.id });
+    expect(await db.courses.get(deck.id)).toMatchObject({ id: deck.id, name: 'Legacy deck' });
     expect(await db.schedulingUnits.get(deck.id)).toMatchObject({
       id: deck.id,
-      kind: 'legacy-deck',
+      kind: 'course',
+      courseId: deck.id,
     });
     expect(await db.schedulingPerformance.get(deck.id)).toMatchObject({
       schedulingUnitId: deck.id,
+    });
+  });
+
+  it('promotes every foldered legacy Deck to a Course and reports the discarded hierarchy', async () => {
+    const first = await createDeck('Organic chemistry');
+    const second = await createDeck('Physical chemistry');
+    await db.folders.add({
+      id: 'chemistry-folder',
+      name: 'Chemistry',
+      parentId: null,
+      createdAt: first.createdAt - 1,
+    });
+    await db.decks.bulkUpdate([
+      { key: first.id, changes: { folderId: 'chemistry-folder' } },
+      { key: second.id, changes: { folderId: 'chemistry-folder' } },
+    ]);
+    const firstCard = await createCard(first.id, 'front_back', 'Alkane', 'CnH2n+2');
+    const secondCard = await createCard(second.id, 'front_back', 'Enthalpy', 'Heat content');
+    const current = await exportDatabase();
+    const {
+      courses: _courses,
+      lessons: _lessons,
+      courseAssessments: _assessments,
+      schedulingUnits: _units,
+      coursePerformance: _coursePerformance,
+      schedulingPerformance: _schedulingPerformance,
+      reviewHistory: _reviewHistory,
+      ...legacyBackup
+    } = current;
+
+    await reset();
+    const report = await importBackup(legacyBackup as BackupFile, 'replace');
+
+    expect(report).toEqual({ discardedFolderNames: ['Chemistry'] });
+    expect((await db.courses.toArray()).map((course) => course.name).sort()).toEqual([
+      'Organic chemistry',
+      'Physical chemistry',
+    ]);
+    expect(await db.cards.get(firstCard.id)).toMatchObject({
+      courseId: first.id,
+      schedulingUnitId: first.id,
+    });
+    expect(await db.cards.get(secondCard.id)).toMatchObject({
+      courseId: second.id,
+      schedulingUnitId: second.id,
     });
   });
 
