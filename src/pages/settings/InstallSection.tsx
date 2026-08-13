@@ -1,6 +1,6 @@
 import { m as motion } from 'motion/react';
 import { Button } from '../../components/ui/Button';
-import { DownloadIcon } from '../../components/ui/icons';
+import { DownloadIcon, IosShareIcon } from '../../components/ui/icons';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 
 export function InstallSection({ motionMultiplier }: { motionMultiplier: number }) {
@@ -23,17 +23,31 @@ export function InstallSection({ motionMultiplier }: { motionMultiplier: number 
 }
 
 function InstallPanel() {
-  const { isInstallable, isInstalled, promptInstall } = useInstallPrompt();
+  const { isInstalled, method, promptInstall } = useInstallPrompt();
   const isWindows = typeof navigator !== 'undefined' && navigator.platform?.startsWith('Win');
 
   if (isInstalled) {
     return <p className="text-sm text-ink-soft">Lacuna is installed on this device and can be used offline.</p>;
   }
 
-  if (!isInstallable) {
+  // iOS cannot offer a one-tap install, so the panel teaches the gesture instead. The
+  // glyph is shown inline because the user has to recognise that button on their own
+  // screen; naming it alone is not enough to find it.
+  if (method === 'manual-ios') {
+    return (
+      <p className="text-sm text-ink-soft">
+        Tap{' '}
+        <IosShareIcon width={16} height={16} className="inline-block align-text-bottom text-accent" />
+        <span className="sr-only">Share</span> in the Safari toolbar, then choose Add to Home
+        Screen. Lacuna opens like any other app and works offline.
+      </p>
+    );
+  }
+
+  if (method === 'unavailable') {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-ink-soft">Your browser does not support installing web apps, or Lacuna is already installed.</p>
+        <p className="text-sm text-ink-soft">This browser cannot install web apps.</p>
         {isWindows && <DesktopDownload />}
       </div>
     );

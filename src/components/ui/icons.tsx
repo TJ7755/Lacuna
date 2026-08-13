@@ -221,6 +221,17 @@ export const ShareIcon = (p: IconProps) => (
   </Icon>
 );
 
+// The iOS Share glyph, drawn to match Safari's own toolbar button. It is deliberately
+// distinct from ShareIcon above: this one only ever stands in for a control the user is
+// being asked to find on their own device, so it has to be recognisable as that button.
+export const IosShareIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 3v12" />
+    <path d="M8.5 6.5L12 3l3.5 3.5" />
+    <path d="M8 10H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-3" />
+  </Icon>
+);
+
 export const KeyboardIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="2" y="4" width="20" height="16" rx="2" />
