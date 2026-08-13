@@ -766,11 +766,11 @@ createdAt }` — `items` is ordered and stored inline (sequences are small); `pr
   item regenerates only the affected cue-window fronts (memory state kept, since the recall
   target is unchanged); a deleted item deletes its card. `sequenceForItemId` resolves which
   `Sequence` (if any) owns a generated card's `sequenceItemId`, for grouping/badging.
-- **Repository** (`src/db/repository.ts`): `createSequence`/`updateSequence`/
-  `deleteSequence`/`listSequences`, plus `snapshotSequence`/`restoreSequence` for the
-  standard undo pattern (a `SequenceSnapshot` captures the sequence and its generated
-  cards together). `createSequence` and `updateSequence` generate/regenerate cards in the
-  same transaction as the sequence write.
+- **Repository** (`src/db/sequenceRepository.ts`, re-exported from `src/db/repository.ts`):
+  `createSequence`/`updateSequence`/`deleteSequence`/`listSequences`, plus
+  `snapshotSequence`/`restoreSequence` for the standard undo pattern (a `SequenceSnapshot`
+  captures the sequence and its generated cards together). `createSequence` and
+  `updateSequence` generate/regenerate cards in the same transaction as the sequence write.
 - **Portability**: sequences ride through backup export/import (replace and merge, by the
   same per-table semantics as the other course-architecture tables), diagnostics bundles
   (`sequences` count), and course share codes as an **additive v2 field** (§13) — older v2
