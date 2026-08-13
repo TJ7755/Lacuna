@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import { createCard, createCourse, createCourseCard, createDeck, createLesson } from './repository';
+import { createCard, createCourseCard, createCourse, createLesson } from './repository';
 import {
   exportCardsCsv,
   exportCardsJson,
@@ -21,7 +21,7 @@ async function reset() {
     db.practiceNodes.clear(),
     db.courseAssessments.clear(),
     db.cards.clear(),
-    db.decks.clear(),
+    db.schedulingUnits.clear(),
     db.reviewHistory.clear(),
   ]);
 }
@@ -30,7 +30,7 @@ describe('card exporters: course/lesson naming', () => {
   beforeEach(reset);
 
   it('shows the legacy deck name unchanged for a deck-only card', async () => {
-    const deck = await createDeck('Legacy Deck', 'blue');
+    const deck = await createCourse('Legacy Deck', { colour: 'blue' });
     await createCard(deck.id, 'front_back', 'Q', 'A');
 
     const csv = await exportCardsCsv();
@@ -114,7 +114,7 @@ describe('card exporters: course/lesson naming', () => {
   });
 
   it('review history exporters include the complete non-secret event contract', async () => {
-    const deck = await createDeck('Biology');
+    const deck = await createCourse('Biology');
     const card = await createCard(deck.id, 'front_back', 'Q', 'A');
     await db.cards.update(card.id, {
       history: [

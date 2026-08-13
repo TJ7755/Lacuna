@@ -42,11 +42,10 @@ import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import type { ParsedCard } from './import';
 import { CURRENT_ITEM_PAYLOAD_VERSION } from './types';
 import type {
-  BackupFile,
   Card,
   CourseAssessment,
-  Deck,
-  Folder,
+  LegacyDeckRecord,
+  LegacyFolder,
   ItemPayload,
   Lesson,
   LessonCardLink,
@@ -802,15 +801,15 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
   return out;
 }
 
-/** Pack the given decks into a share payload, preserving order. */
+/** Pack the given scheduling units into a legacy-compatible share payload. */
 async function buildSharePayload(deckIds: string[]): Promise<SharePayload> {
-  const found = await db.decks.where('id').anyOf(deckIds).toArray();
+  const found = await db.schedulingUnits.where('id').anyOf(deckIds).toArray();
   const order = new Map(deckIds.map((id, i) => [id, i]));
   found.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 
   const decks: ShareDeck[] = [];
   for (const deck of found) {
-    const cards = await db.cards.where('deckId').equals(deck.id).sortBy('createdAt');
+    const cards = await db.cards.where('schedulingUnitId').equals(deck.id).sortBy('createdAt');
     decks.push({
       n: deck.name,
       o: deck.examObjective === 'securedTopics' ? 1 : 0,
@@ -1089,7 +1088,7 @@ export interface ImportShareResult {
  */
 async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportShareResult> {
   const now = Date.now();
-  const decks: Deck[] = payload.decks.map((d, i) => ({
+  const decks: LegacyDeckRecord[] = payload.decks.map((d, i) => ({
     id: makeId(),
     name: d.n || 'Shared deck',
     examDate: typeof d.e === 'number' && d.e > 0 ? d.e : defaultExamDate(now),
@@ -1108,9 +1107,9 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
   // Several decks in one payload were shared together (e.g. from a folder); give
   // them a synthetic folder so buildCourseMigration folds them into one course
   // with one lesson per deck, rather than N separate courses.
-  const folders: Folder[] = [];
+  const folders: LegacyFolder[] = [];
   if (decks.length > 1) {
-    const folder: Folder = { id: makeId(), name: 'Shared course', parentId: null, createdAt: now };
+    const folder: LegacyFolder = { id: makeId(), name: 'Shared course', parentId: null, createdAt: now };
     folders.push(folder);
     for (const deck of decks) deck.folderId = folder.id;
   }
@@ -1139,14 +1138,11 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
     createdAt: course.createdAt,
   }));
   let cardCount = 0;
-  const importedCards: Card[] = [];
 
   await db.transaction(
     'rw',
     [
-      db.decks,
       db.cards,
-      db.userPerformance,
       db.assets,
       db.courses,
       db.lessons,
@@ -1156,47 +1152,42 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
       db.schedulingPerformance,
     ],
     async () => {
-      for (let i = 0; i < storedDecks.length; i++) {
-        const deck = storedDecks[i];
-        const drafts = payload.decks[i].cards.flatMap(unpackCard);
-        await db.decks.add(deck);
-        await db.userPerformance.add(performances[i]);
-        const courseId = migration.courseIdByDeckId.get(deck.id);
-        const lessonId = migration.lessonIdByDeckId.get(deck.id);
-        const cards =
-          drafts.length > 0
-            ? await createCards(deck.id, drafts, { courseId, primaryLessonId: lessonId })
-            : [];
-        importedCards.push(...cards);
-        cardCount += cards.length;
-      }
       await db.courses.bulkAdd(courseRecords);
       await db.lessons.bulkAdd(migration.lessons);
       await db.courseAssessments.bulkAdd(finalAssessments);
-      const legacyPayload: BackupFile = {
+      const adapted = adaptLegacyBackup({
         app: 'lacuna',
         version: 8,
         exportedAt: payload.at,
         decks: storedDecks,
-        cards: importedCards,
+        cards: [],
         assets: [],
         sessionHistory: [],
         userPerformance: performances,
         courses: courseRecords,
         lessons: migration.lessons,
         courseAssessments: finalAssessments,
-      };
-      const adapted = adaptLegacyBackup(legacyPayload, {
+      }, {
         courses: courseRecords,
         lessons: migration.lessons,
         courseAssessments: finalAssessments,
-        cards: importedCards,
+        cards: [],
         generateId: makeId,
       });
-      await db.cards.bulkPut(adapted.cards);
       await db.schedulingUnits.bulkPut(adapted.schedulingUnits);
       await db.coursePerformance.bulkPut(adapted.coursePerformance);
       await db.schedulingPerformance.bulkPut(adapted.schedulingPerformance);
+      for (let i = 0; i < storedDecks.length; i++) {
+        const deck = storedDecks[i];
+        const drafts = payload.decks[i].cards.flatMap(unpackCard);
+        const courseId = migration.courseIdByDeckId.get(deck.id);
+        const lessonId = migration.lessonIdByDeckId.get(deck.id);
+        const cards =
+          drafts.length > 0
+            ? await createCards(lessonId ?? courseId!, drafts, { courseId, primaryLessonId: lessonId })
+            : [];
+        cardCount += cards.length;
+      }
     },
   );
 
@@ -1227,10 +1218,8 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
       db.courses,
       db.lessons,
       db.notes,
-      db.decks,
       db.cards,
       db.lessonCards,
-      db.userPerformance,
       db.assets,
       db.courseAssessments,
       db.sequences,

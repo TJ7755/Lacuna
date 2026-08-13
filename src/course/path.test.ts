@@ -68,6 +68,7 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
     history: [],
     createdAt: 0,
     ...overrides,
+    schedulingUnitId: overrides.schedulingUnitId ?? overrides.deckId ?? 'unit',
   };
 }
 

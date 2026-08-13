@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QuestionBank } from './QuestionBank';
-import type { Card, Course, Deck, Lesson, Occlusion, Sequence } from '../db/types';
+import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
 
 let mockCourse: Course | undefined;
 let mockLessons: Lesson[] | undefined;
@@ -25,7 +25,7 @@ vi.mock('../state/useCourseData', () => ({
   useCourseBankBackingDecks: () => new Map([[null, mockDeck], ['lesson-1', mockDeck]]),
 }));
 
-const mockDeck: Deck = {
+const mockDeck: LegacyDeckRecord = {
   id: 'deck-1',
   name: 'Lesson 1',
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
@@ -145,6 +145,7 @@ function makeCard(overrides: Partial<Card>): Card {
   return {
     id: 'card-1',
     deckId: 'deck-1',
+    schedulingUnitId: 'deck-1',
     type: 'front_back',
     front: 'Front text',
     back: 'Back text',

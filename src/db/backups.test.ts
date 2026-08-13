@@ -11,7 +11,7 @@ import {
   autoBackupIfStale,
   __resetBackupThrottleForTests,
 } from './backups';
-import { createCard, createDeck } from './repository';
+import { createCard, createCourse } from './repository';
 import type { BackupFile, ItemPayload } from './types';
 
 describe('backups', () => {
@@ -27,33 +27,34 @@ describe('backups', () => {
   });
 
   it('takeAutoBackup stores a snapshot in the backups table', async () => {
-    await createDeck('Alpha');
+    await createCourse('Alpha');
     await takeAutoBackup();
 
     const snapshots = await db.backups.toArray();
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0].deckCount).toBe(1);
     expect(snapshots[0].payload).toBeDefined();
-    expect(snapshots[0].payload.decks![0].name).toBe('Alpha');
+    expect(snapshots[0].payload.decks).toBeUndefined();
+    expect(snapshots[0].payload.courses?.[0].name).toBe('Alpha');
   });
 
   it('restoreBackup replaces the database from a stored snapshot', async () => {
-    await createDeck('Restoreable');
+    await createCourse('Restoreable');
     await takeAutoBackup();
     const [snapshot] = await db.backups.toArray();
 
-    await db.decks.clear();
-    expect(await db.decks.toArray()).toEqual([]);
+    await db.schedulingUnits.clear();
+    expect(await db.schedulingUnits.toArray()).toEqual([]);
 
     await restoreBackup(snapshot.id!);
 
-    const restored = await db.decks.toArray();
+    const restored = await db.schedulingUnits.toArray();
     expect(restored).toHaveLength(1);
     expect(restored[0].name).toBe('Restoreable');
   });
 
   it('round-trips a structured item payload through backup and restore', async () => {
-    const deck = await createDeck('Mathematics');
+    const deck = await createCourse('Mathematics');
     const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8.', 'x = 4');
     const payload: ItemPayload = {
       v: 1,
@@ -83,7 +84,7 @@ describe('backups', () => {
   });
 
   it('deleteBackup removes a stored restore point', async () => {
-    await createDeck('Disposable');
+    await createCourse('Disposable');
     await takeAutoBackup();
     const [snapshot] = await db.backups.toArray();
     expect(await db.backups.count()).toBe(1);
@@ -94,7 +95,7 @@ describe('backups', () => {
   });
 
   it('autoBackupIfStale skips backup when a recent restore point exists', async () => {
-    await createDeck('Fresh');
+    await createCourse('Fresh');
     await takeAutoBackup();
     const countBefore = await db.backups.count();
 

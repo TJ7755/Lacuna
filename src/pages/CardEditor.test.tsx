@@ -4,7 +4,7 @@ import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { CardEditor } from './CardEditor';
-import type { Card, Course, Deck, Lesson, Occlusion, Sequence } from '../db/types';
+import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 
 const mockNavigate = vi.fn();
@@ -13,7 +13,7 @@ let mockCard: Card | null | undefined;
 let mockSequences: Sequence[] | undefined;
 let mockOcclusions: Occlusion[] | undefined;
 let mockLesson: Lesson | null | undefined;
-let mockBankBackingDeck: Deck | undefined;
+let mockBankBackingDeck: LegacyDeckRecord | undefined;
 const updateCard = vi.fn().mockResolvedValue(undefined);
 const checkDuplicate = vi.fn().mockResolvedValue(null);
 const createCourseCard = vi.fn().mockResolvedValue(undefined);
@@ -97,6 +97,7 @@ const course: Course = {
 const generatedCard: Card = {
   id: 'card-1',
   deckId: 'deck-1',
+  schedulingUnitId: 'deck-1',
   courseId: 'course-1',
   primaryLessonId: null,
   type: 'front_back',

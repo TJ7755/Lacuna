@@ -4,7 +4,7 @@ import { db } from './schema';
 import { exportDatabase, importBackup, validateBackup, BACKUP_VERSION } from './portability';
 import {
   createCourse,
-  createDeck,
+
   createCard,
   createLesson,
   createNote,
@@ -31,12 +31,13 @@ import { storeImageBlob } from './assets';
 
 async function reset() {
   await Promise.all([
-    db.decks.clear(),
+    db.schedulingUnits.clear(),
+    db.coursePerformance.clear(),
+    db.schedulingPerformance.clear(),
     db.cards.clear(),
     db.sessionHistory.clear(),
     db.userPerformance.clear(),
     db.assets.clear(),
-    db.folders.clear(),
     db.courses.clear(),
     db.lessons.clear(),
     db.notes.clear(),
@@ -66,7 +67,7 @@ describe('exportDatabase', () => {
   beforeEach(reset);
 
   it('exports a valid BackupFile with the current version', async () => {
-    const deck = await createDeck('Biology');
+    const deck = await createCourse('Biology');
     await createCard(deck.id, 'front_back', 'Q1', 'A1');
 
     const backup = await exportDatabase();
@@ -74,8 +75,9 @@ describe('exportDatabase', () => {
     expect(backup.app).toBe('lacuna');
     expect(backup.version).toBe(BACKUP_VERSION);
     expect(validateBackup(backup)).toBe(true);
-    expect(backup.decks).toHaveLength(1);
-    expect(backup.decks![0].name).toBe('Biology');
+    expect(backup.decks).toBeUndefined();
+    expect(backup.courses).toHaveLength(1);
+    expect(backup.courses?.[0].name).toBe('Biology');
     expect(backup.cards).toHaveLength(1);
     expect(backup.cards[0].front).toBe('Q1');
     expect(backup.reviewHistory).toEqual([]);
@@ -132,7 +134,7 @@ describe('exportDatabase', () => {
   });
 
   it('round-trips complete review provenance through export and import', async () => {
-    const deck = await createDeck('Biology');
+    const deck = await createCourse('Biology');
     const card = await createCard(deck.id, 'front_back', 'Q1', 'A1');
     await recordReview({
       card,
@@ -193,7 +195,7 @@ describe('exportDatabase', () => {
     );
 
     await db.cards.clear();
-    await db.decks.clear();
+    await db.schedulingUnits.clear();
     await importBackup(backup, 'replace');
 
     const restored = await db.cards.toArray();
@@ -206,7 +208,7 @@ describe('exportDatabase', () => {
   it.each(['replace', 'merge'] as const)(
     'round-trips one review event exactly once in %s mode',
     async (mode) => {
-      const deck = await createDeck('Review history portability');
+      const deck = await createCourse('Review history portability');
       const card = await createCard(deck.id, 'front_back', 'Q', 'A');
       await recordReview({
         card,
@@ -228,7 +230,7 @@ describe('exportDatabase', () => {
       )!;
       await Promise.all([
         db.cards.clear(),
-        db.decks.clear(),
+        db.schedulingUnits.clear(),
         db.reviewHistory.clear(),
         db.sessionHistory.clear(),
         db.userPerformance.clear(),
@@ -236,7 +238,7 @@ describe('exportDatabase', () => {
 
       let localCardId: string | undefined;
       if (mode === 'merge') {
-        const localDeck = await createDeck('Local merge data');
+        const localDeck = await createCourse('Local merge data');
         const localCard = await createCard(localDeck.id, 'front_back', 'Local Q', 'Local A');
         await recordReview({
           card: localCard,
@@ -335,34 +337,39 @@ describe('importBackup', () => {
   beforeEach(reset);
 
   it.each(['replace', 'merge'] as const)(
-    'round-trips both UserPerformance key spaces distinctly in %s mode',
+    'round-trips course and scheduling-unit performance distinctly in %s mode',
     async (mode) => {
       const course = await createCourse('Key-space portability');
       const lesson = await createLesson(course.id, 'Lesson 1');
       const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
       const backing = {
-        deckId: card.deckId,
+        schedulingUnitId: card.schedulingUnitId,
+        courseId: course.id,
+        lessonId: lesson.id,
         runningMeanResponseTime: 41,
         runningStdDevResponseTime: 2,
         m2: 8,
         totalCorrectReviews: 9,
       };
       const calibration = {
-        deckId: course.id,
+        courseId: course.id,
         runningMeanResponseTime: 73,
         runningStdDevResponseTime: 3,
         m2: 18,
         totalCorrectReviews: 11,
       };
-      await db.userPerformance.bulkPut([backing, calibration]);
+      await db.schedulingPerformance.put(backing);
+      await db.coursePerformance.put(calibration);
       const backup = await exportDatabase();
 
-      expect(backup.userPerformance).toEqual(expect.arrayContaining([backing, calibration]));
+      expect(backup.userPerformance).toEqual([]);
+      expect(backup.schedulingPerformance).toEqual(expect.arrayContaining([backing]));
+      expect(backup.coursePerformance).toEqual(expect.arrayContaining([calibration]));
 
       let expectedBacking = backing;
       let expectedCalibration = calibration;
       if (mode === 'merge') {
-        const backingDeck = (await db.decks.get(card.deckId))!;
+        const backingDeck = (await db.schedulingUnits.get(card.schedulingUnitId))!;
         const storedCourse = (await db.courses.get(course.id))!;
         expectedBacking = { ...backing, runningMeanResponseTime: 101, totalCorrectReviews: 21 };
         expectedCalibration = {
@@ -370,26 +377,26 @@ describe('importBackup', () => {
           runningMeanResponseTime: 202,
           totalCorrectReviews: 22,
         };
-        await db.decks.update(card.deckId, {
+        await db.schedulingUnits.update(card.schedulingUnitId, {
           lastInteractedAt: (backingDeck.lastInteractedAt ?? backingDeck.createdAt) + 1000,
         });
         await db.courses.update(course.id, {
           lastInteractedAt: (storedCourse.lastInteractedAt ?? storedCourse.createdAt) + 1000,
         });
-        await db.userPerformance.put(expectedBacking);
-        await db.userPerformance.put(expectedCalibration);
+        await db.schedulingPerformance.put(expectedBacking);
+        await db.coursePerformance.put(expectedCalibration);
       }
 
       await importBackup(backup, mode);
 
-      expect(await db.userPerformance.get(card.deckId)).toEqual(expectedBacking);
-      expect(await db.userPerformance.get(course.id)).toEqual(expectedCalibration);
+      expect(await db.schedulingPerformance.get(card.schedulingUnitId)).toEqual(expectedBacking);
+      expect(await db.coursePerformance.get(course.id)).toEqual(expectedCalibration);
       const restoredCard = (await db.cards.get(card.id))!;
       expect(
         (await performanceForCourseBackingDecks(course.id, [restoredCard])).map(
           (row) => row.deckId,
         ),
-      ).toEqual([card.deckId]);
+      ).toEqual([card.schedulingUnitId]);
       expect(await performanceForReviewUnit(course.id, 'course')).toMatchObject({
         deckId: course.id,
       });
@@ -400,16 +407,16 @@ describe('importBackup', () => {
   );
 
   it('replaces the database in replace mode', async () => {
-    const deck = await createDeck('Old');
+    const deck = await createCourse('Old');
     await createCard(deck.id, 'front_back', 'Q1', 'A1');
     const backup = await exportDatabase();
 
-    await createDeck('Extra');
-    expect(await db.decks.count()).toBe(2);
+    await createCourse('Extra');
+    expect(await db.schedulingUnits.count()).toBe(2);
 
     await importBackup(backup, 'replace');
 
-    const decks = await db.decks.toArray();
+    const decks = await db.schedulingUnits.toArray();
     const cards = await db.cards.toArray();
     expect(decks).toHaveLength(1);
     expect(decks[0].name).toBe('Old');
@@ -418,7 +425,7 @@ describe('importBackup', () => {
   });
 
   it('rejects malformed structured payloads before replacing the database', async () => {
-    const deck = await createDeck('Protected');
+    const deck = await createCourse('Protected');
     const card = await createCard(deck.id, 'front_back', 'Q', 'A');
     const backup = await exportDatabase();
     backup.cards[0] = {
@@ -471,7 +478,7 @@ describe('importBackup', () => {
   });
 
   it('merges decks by interaction time in merge mode', async () => {
-    const deck = await createDeck('Biology');
+    const deck = await createCourse('Biology');
     const backup = await exportDatabase();
 
     // Simulate local activity so lastInteractedAt is strictly newer than the
@@ -479,18 +486,18 @@ describe('importBackup', () => {
     // on Date.now() advancing fails when both writes land in the same
     // millisecond (the merge tie-break favours the backup, so local must be
     // unambiguously newer).
-    await db.decks.update(deck.id, {
+    await db.schedulingUnits.update(deck.id, {
       examDate: deck.examDate + 1000,
       lastInteractedAt: (deck.lastInteractedAt ?? deck.createdAt) + 1000,
     });
     await importBackup(backup, 'merge');
 
-    const updated = await db.decks.get(deck.id);
+    const updated = await db.schedulingUnits.get(deck.id);
     expect(updated!.examDate).toBe(deck.examDate + 1000); // local wins because more recently interacted
   });
 
   it('keeps same-event reviews from different cards when merging', async () => {
-    const deck = await createDeck('MergeDeck');
+    const deck = await createCourse('MergeDeck');
     const first = await createCard(deck.id, 'front_back', 'Q1', 'A1');
     const second = await createCard(deck.id, 'front_back', 'Q2', 'A2');
     const base = await exportDatabase();
@@ -523,7 +530,7 @@ describe('importBackup', () => {
   });
 
   it('preserves same-event rows across separate backup merges', async () => {
-    const deck = await createDeck('MergeDeck');
+    const deck = await createCourse('MergeDeck');
     const first = await createCard(deck.id, 'front_back', 'Q1', 'A1');
     const second = await createCard(deck.id, 'front_back', 'Q2', 'A2');
     const base = await exportDatabase();
@@ -552,7 +559,7 @@ describe('importBackup', () => {
   });
 
   it('preserves distinct duplicate event rows on one card', async () => {
-    const deck = await createDeck('MergeDeck');
+    const deck = await createCourse('MergeDeck');
     const card = await createCard(deck.id, 'front_back', 'Q1', 'A1');
     const backup = await exportDatabase();
     const review = {
@@ -579,7 +586,7 @@ describe('importBackup', () => {
   });
 
   it('adds missing cards in merge mode', async () => {
-    const deck = await createDeck('MergeDeck');
+    const deck = await createCourse('MergeDeck');
     const card = await createCard(deck.id, 'front_back', 'Q1', 'A1');
     const backup = await exportDatabase();
 
@@ -594,12 +601,13 @@ describe('importBackup', () => {
   });
 
   it('appends non-duplicate session history in merge mode', async () => {
-    const deck = await createDeck('HistoryDeck');
+    const deck = await createCourse('HistoryDeck');
     const backup = await exportDatabase();
 
     await db.sessionHistory.add({
       timestamp: 1000,
       deckId: deck.id,
+      schedulingUnitId: deck.id,
       averagePredictedRetrievability: 0.5,
     });
 
@@ -619,13 +627,14 @@ describe('importBackup', () => {
   });
 
   it('deduplicates replayed event ids within and across merged backups', async () => {
-    const deck = await createDeck('HistoryDeck');
+    const deck = await createCourse('HistoryDeck');
     const backup = await exportDatabase();
     const event = {
       eventId: 'event-merge',
       sessionId: 'session-merge',
       timestamp: 1000,
       deckId: deck.id,
+      schedulingUnitId: deck.id,
       averagePredictedRetrievability: 0.5,
     };
     const duplicate = {
@@ -888,7 +897,7 @@ describe('importBackup', () => {
   });
 
   it('imports an older backup without an occlusions array cleanly', async () => {
-    const deck = await createDeck('Legacy');
+    const deck = await createCourse('Legacy');
     await createCard(deck.id, 'front_back', 'Q1', 'A1');
     const backup = await exportDatabase();
     const legacyBackup = { ...backup };
@@ -897,11 +906,11 @@ describe('importBackup', () => {
     await importBackup(legacyBackup, 'replace');
 
     expect(await db.occlusions.count()).toBe(0);
-    expect(await db.decks.count()).toBe(1);
+    expect(await db.schedulingUnits.count()).toBe(1);
   });
 
   it('imports an older backup without a sequences array cleanly', async () => {
-    const deck = await createDeck('Legacy');
+    const deck = await createCourse('Legacy');
     await createCard(deck.id, 'front_back', 'Q1', 'A1');
     const backup = await exportDatabase();
     const legacyBackup = { ...backup };
@@ -910,7 +919,7 @@ describe('importBackup', () => {
     await importBackup(legacyBackup, 'replace');
 
     expect(await db.sequences.count()).toBe(0);
-    const decks = await db.decks.toArray();
+    const decks = await db.schedulingUnits.toArray();
     expect(decks).toHaveLength(1);
   });
 
@@ -1017,7 +1026,7 @@ describe('importBackup', () => {
     const course = await createCourse('Legacy Course');
     const lesson = await createLesson(course.id, 'Legacy Lesson');
     const note = await createNote(lesson.id, 'Legacy Note', 'Cell membrane');
-    const deck = await createDeck('Legacy Deck');
+    const deck = await createCourse('Legacy Deck');
     const card = await createCard(deck.id, 'front_back', 'Q1', 'A1');
     const backup = await exportDatabase();
     const legacyBackup = { ...backup };

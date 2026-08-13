@@ -185,7 +185,8 @@ export interface SchedulerConfig {
   leechAction?: 'suspend' | 'tag' | 'none';
 }
 
-export interface Deck {
+/** Normalised Deck row accepted only at legacy migration and import boundaries. */
+export interface LegacyDeckRecord {
   id: string;
   name: string;
   /** Exam date/time as an epoch millisecond value, stored in UTC. Defaults to creation + 7 days at 23:59 local. */
@@ -270,13 +271,13 @@ export interface Deck {
 
 /** A Deck row from a backup predating the current FSRS schema. */
 export type LegacyDeck = Omit<
-  Deck,
+  LegacyDeckRecord,
   'fsrsVersion' | 'fsrsParameters' | 'examObjective'
 > &
-  Partial<Pick<Deck, 'fsrsVersion' | 'fsrsParameters' | 'examObjective'>>;
+  Partial<Pick<LegacyDeckRecord, 'fsrsVersion' | 'fsrsParameters' | 'examObjective'>>;
 
 /** A folder for grouping decks hierarchically. */
-export interface Folder {
+export interface LegacyFolder {
   id: string;
   name: string;
   /** Parent folder id, or null for a top-level folder. */
@@ -848,7 +849,8 @@ export type ItemPayload =
 
 export interface Card {
   id: string;
-  deckId: string;
+  /** Legacy import provenance only. Runtime ownership uses schedulingUnitId. */
+  deckId?: string;
   /**
    * The Course this card belongs to. Populated during the course migration and
    * for cards created through the course UI; null/undefined for legacy cards that
@@ -898,8 +900,8 @@ export interface Card {
   sequenceItemId?: string;
   /** Id of the OcclusionRegion this card was generated from. Present iff the card was generated from an occlusion region. */
   occlusionRegionId?: string;
-  /** Explicit Course/Lesson scheduling unit. Added during the domain-storage migration. */
-  schedulingUnitId?: string;
+  /** Required after schema v22; optional only while parsing legacy payloads. */
+  schedulingUnitId: string;
   /** Epoch ms of the next scheduled review (= ts-fsrs `due`). Null until first review. */
   due: number | null;
   /** Days ts-fsrs last scheduled this card for (= ts-fsrs `scheduled_days`). */
@@ -1048,7 +1050,7 @@ export interface BackupFile {
   assets: BackupAsset[];
   sessionHistory: SessionHistoryEntry[];
   userPerformance: UserPerformance[];
-  folders?: Folder[];
+  folders?: LegacyFolder[];
   // Course architecture tables. Optional so older backups still import cleanly.
   courses?: CourseRecord[];
   lessons?: Lesson[];

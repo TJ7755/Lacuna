@@ -7,14 +7,13 @@ import {
   createCourse,
   createCourseAssessment,
   createCourseCard,
-  createDeck,
   createLesson,
   createLessonCard,
   createNote,
   linkCardToLesson,
   createSequence,
   updateCourse,
-  updateDeck,
+
 } from './repository';
 import { createOcclusion } from './occlusionRepository';
 import {
@@ -35,7 +34,7 @@ import type { ItemPayload } from './types';
 
 async function reset() {
   await Promise.all([
-    db.decks.clear(),
+    db.schedulingUnits.clear(),
     db.cards.clear(),
     db.sessionHistory.clear(),
     db.userPerformance.clear(),
@@ -60,10 +59,9 @@ describe('share codes', () => {
   beforeEach(reset);
 
   it('round-trips a deck, preserving content, cloze, colour and the date due', async () => {
-    const deck = await createDeck('Chemistry');
-    await updateDeck(deck.id, {
+    const deck = await createCourse('Chemistry');
+    await updateCourse(deck.id, {
       examObjective: 'securedTopics',
-      examDate: 1_900_000_000_000,
       colour: '#e11d48',
     });
     await createCard(deck.id, 'front_back', 'What is water?', 'H2O', ['basics']);
@@ -81,15 +79,15 @@ describe('share codes', () => {
 
     await importSharePayload(payload);
 
-    const decks = await db.decks.toArray();
-    expect(decks).toHaveLength(2); // original + imported
-    const imported = decks.find((d) => d.id !== deck.id)!;
+    const decks = await db.schedulingUnits.toArray();
+    expect(decks).toHaveLength(3); // original Course + imported Course and Lesson
+    const imported = decks.find((d) => d.id !== deck.id && d.kind === 'course')!;
     expect(imported.name).toBe('Chemistry');
     expect(imported.examObjective).toBe('securedTopics');
-    expect(imported.examDate).toBe(1_900_000_000_000);
+    expect(imported.examDate).toBe(deck.examDate);
     expect(imported.colour).toBe('#e11d48');
 
-    const importedCards = await db.cards.where('deckId').equals(imported.id).toArray();
+    const importedCards = await db.cards.where('courseId').equals(imported.id).toArray();
     expect(importedCards).toHaveLength(2);
     expect(importedCards.some((c) => c.type === 'cloze')).toBe(true);
     expect(importedCards.some((c) => c.front === 'What is water?' && c.back === 'H2O')).toBe(true);
@@ -98,7 +96,7 @@ describe('share codes', () => {
   });
 
   it('round-trips a deck using the legacy LAC0 plain base64 format', async () => {
-    const deck = await createDeck('Legacy');
+    const deck = await createCourse('Legacy');
     await createCard(deck.id, 'front_back', 'Q', 'A');
 
     const payload = asV1(
@@ -119,7 +117,7 @@ describe('share codes', () => {
   });
 
   it('round-trips a deck using the legacy LAC1 compressed base64 format', async () => {
-    const deck = await createDeck('LegacyCompressed');
+    const deck = await createCourse('LegacyCompressed');
     await createCard(deck.id, 'front_back', 'Q', 'A');
 
     const code = await buildShareCode([deck.id]);
@@ -138,7 +136,7 @@ describe('share codes', () => {
   });
 
   it('compresses a reverse pair into one entry and expands it back into two cards', async () => {
-    const deck = await createDeck('Vocab');
+    const deck = await createCourse('Vocab');
     await createCardWithReverse(deck.id, 'chien', 'dog');
 
     const payload = asV1(await decodeShare(await buildShareCode([deck.id])));
@@ -148,16 +146,16 @@ describe('share codes', () => {
     expect(summariseShare(payload).cardCount).toBe(2);
 
     await importSharePayload(payload);
-    const imported = (await db.decks.toArray()).find((d) => d.id !== deck.id)!;
-    const cards = await db.cards.where('deckId').equals(imported.id).toArray();
+    const imported = (await db.schedulingUnits.toArray()).find((d) => d.id !== deck.id)!;
+    const cards = await db.cards.where('courseId').equals(imported.courseId!).toArray();
     expect(cards).toHaveLength(2);
     expect(cards.some((c) => c.front === 'chien' && c.back === 'dog')).toBe(true);
     expect(cards.some((c) => c.front === 'dog' && c.back === 'chien')).toBe(true);
   });
 
   it('bundles several decks in one code', async () => {
-    const a = await createDeck('One');
-    const b = await createDeck('Two');
+    const a = await createCourse('One');
+    const b = await createCourse('Two');
     await createCard(a.id, 'front_back', 'a', '1');
     await createCard(b.id, 'front_back', 'b', '2');
 
@@ -210,7 +208,7 @@ describe('share codes', () => {
   });
 
   it('produces shorter codes with Base64 (LAC1) than Base45 (LAC2) for the same payload', async () => {
-    const deck = await createDeck('Vocab');
+    const deck = await createCourse('Vocab');
     await createCard(deck.id, 'front_back', 'chien', 'dog');
     await createCard(deck.id, 'front_back', 'chat', 'cat');
     await createCard(deck.id, 'cloze', 'The capital of France is {{c1::Paris}}.', '');
@@ -231,7 +229,7 @@ describe('share codes', () => {
   });
 
   it('strips images from share codes and imports placeholders gracefully', async () => {
-    const deck = await createDeck('Image deck');
+    const deck = await createCourse('Image deck');
     const asset = await storeImageBlob(
       new Blob(['already-compressed'], { type: 'image/png' }),
       'image/png',
@@ -250,15 +248,15 @@ describe('share codes', () => {
     expect(JSON.stringify(payload)).toContain('Image omitted from share code');
 
     await importSharePayload(payload);
-    const imported = (await db.decks.toArray()).find((d) => d.id !== deck.id)!;
-    const cards = await db.cards.where('deckId').equals(imported.id).toArray();
+    const imported = (await db.schedulingUnits.toArray()).find((d) => d.id !== deck.id)!;
+    const cards = await db.cards.where('courseId').equals(imported.courseId!).toArray();
     expect(cards[0].front).toContain('Label');
     expect(cards[0].front).toContain('Image omitted from share code');
     expect(cards[0].back).toBe('Back text');
   });
 
   it('identifies stripped audio as audio while retaining the legacy omission flag', async () => {
-    const deck = await createDeck('Audio deck');
+    const deck = await createCourse('Audio deck');
     const asset = await storeAudioBlob(new Blob(['spoken'], { type: 'audio/mpeg' }));
     await createCard(deck.id, 'front_back', `Listen\n![audio](${assetUrl(asset.hash)})`, 'Answer');
 
@@ -269,13 +267,13 @@ describe('share codes', () => {
   });
 
   it('unpacks a legacy k:3 (typing) card as front_back for backward compatibility', async () => {
-    const deck = await createDeck('Typing deck');
+    const deck = await createCourse('Typing deck');
     const payload = asV1(await decodeShare(await buildShareCode([deck.id])));
     payload.decks[0].cards = [{ k: 3, f: 'What is the capital of Japan?', b: 'Tokyo' }];
 
     await importSharePayload(payload);
-    const imported = (await db.decks.toArray()).find((d) => d.id !== deck.id)!;
-    const cards = await db.cards.where('deckId').equals(imported.id).toArray();
+    const imported = (await db.schedulingUnits.toArray()).find((d) => d.id !== deck.id)!;
+    const cards = await db.cards.where('courseId').equals(imported.courseId!).toArray();
     expect(cards).toHaveLength(1);
     expect(cards[0].type).toBe('front_back');
     expect(cards[0].front).toBe('What is the capital of Japan?');
@@ -283,7 +281,7 @@ describe('share codes', () => {
   });
 
   it('imports a single shared deck as a single-lesson course, with cards stamped', async () => {
-    const deck = await createDeck('Standalone');
+    const deck = await createCourse('Standalone');
     await createCard(deck.id, 'front_back', 'Q', 'A');
 
     const payload = await decodeShare(await buildShareCode([deck.id]));
@@ -293,21 +291,21 @@ describe('share codes', () => {
     expect(result.cards).toBe(1);
 
     const courses = await db.courses.toArray();
-    expect(courses).toHaveLength(1);
-    expect(courses[0].name).toBe('Standalone');
-    expect(result.courseIds).toEqual([courses[0].id]);
+    expect(courses).toHaveLength(2);
+    const importedCourse = courses.find((course) => course.id === result.courseIds[0])!;
+    expect(importedCourse.name).toBe('Standalone');
 
-    const lessons = await db.lessons.where('courseId').equals(courses[0].id).toArray();
+    const lessons = await db.lessons.where('courseId').equals(importedCourse.id).toArray();
     expect(lessons).toHaveLength(1);
 
     const stampedCards = await db.cards.where('primaryLessonId').equals(lessons[0].id).toArray();
     expect(stampedCards).toHaveLength(1);
-    expect(stampedCards[0].courseId).toBe(courses[0].id);
+    expect(stampedCards[0].courseId).toBe(importedCourse.id);
   });
 
   it('imports several decks in one code as one course with N ordered lessons', async () => {
-    const a = await createDeck('First');
-    const b = await createDeck('Second');
+    const a = await createCourse('First');
+    const b = await createCourse('Second');
     await createCard(a.id, 'front_back', 'a', '1');
     await createCard(b.id, 'front_back', 'b', '2');
 
@@ -317,9 +315,10 @@ describe('share codes', () => {
     expect(result.lessons).toBe(2);
 
     const courses = await db.courses.toArray();
-    expect(courses).toHaveLength(1);
+    expect(courses).toHaveLength(3);
+    const importedCourse = courses.find((course) => course.id === result.courseIds[0])!;
 
-    const lessons = await db.lessons.where('courseId').equals(courses[0].id).sortBy('orderIndex');
+    const lessons = await db.lessons.where('courseId').equals(importedCourse.id).sortBy('orderIndex');
     expect(lessons).toHaveLength(2);
     expect(lessons.map((l) => l.name)).toEqual(['First', 'Second']);
     expect(lessons[0].orderIndex).toBeLessThan(lessons[1].orderIndex);

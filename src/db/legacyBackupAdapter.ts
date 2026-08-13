@@ -7,7 +7,7 @@ import type {
   Course,
   CourseAssessment,
   CourseRecord,
-  Deck,
+  LegacyDeckRecord,
   Lesson,
   SchedulingPerformance,
   SchedulingUnitRecord,
@@ -19,7 +19,7 @@ export interface LegacyImportReport {
 }
 
 export interface LegacyBackupAdaptation {
-  decks: Deck[];
+  decks: LegacyDeckRecord[];
   cards: Card[];
   courses: CourseRecord[];
   courseAssessments: CourseAssessment[];
@@ -48,7 +48,7 @@ const COURSE_PATH_DEFAULTS = {
   practiceMaxGap: 2,
 } as const;
 
-function courseFromStandaloneDeck(deck: Deck, id: string): Course {
+function courseFromStandaloneDeck(deck: LegacyDeckRecord, id: string): Course {
   return {
     id,
     name: deck.name,
@@ -109,9 +109,11 @@ export function adaptLegacyBackup(
   const lessonsById = new Map(options.lessons.map((lesson) => [lesson.id, lesson]));
   const cardsByDeckId = new Map<string, Card[]>();
   for (const card of options.cards) {
-    const deckCards = cardsByDeckId.get(card.deckId) ?? [];
+    const legacyDeckId = card.deckId ?? card.schedulingUnitId;
+    if (!legacyDeckId) continue;
+    const deckCards = cardsByDeckId.get(legacyDeckId) ?? [];
     deckCards.push(card);
-    cardsByDeckId.set(card.deckId, deckCards);
+    cardsByDeckId.set(legacyDeckId, deckCards);
   }
 
   const normalisedDecks = decks.map((deck) => {

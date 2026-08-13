@@ -46,6 +46,7 @@ function card(id: string, lessonId: string): Card {
   return {
     id,
     deckId: 'deck',
+    schedulingUnitId: 'deck',
     courseId: 'course',
     primaryLessonId: lessonId,
     type: 'front_back',
@@ -89,7 +90,11 @@ function assessment(id: string, examDate: number, afterLessonId: string): Course
 
 describe('buildCourseStudyFlowSnapshot', () => {
   it('averages review time once per backing deck', () => {
-    const cards = [card('c1', 'l1'), { ...card('c2', 'l1'), deckId: 'other' }, card('c3', 'l1')];
+    const cards = [
+      card('c1', 'l1'),
+      { ...card('c2', 'l1'), deckId: 'other', schedulingUnitId: 'other' },
+      card('c3', 'l1'),
+    ];
     expect(
       courseMeanReviewSeconds(
         cards,

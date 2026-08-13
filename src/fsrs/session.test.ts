@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, Deck, SchedulerConfig } from '../db/types';
+import type { Card, LegacyDeckRecord, SchedulerConfig } from '../db/types';
 import { defaultFsrsParameters, MS_PER_DAY } from './params';
 import {
   makeSessionContext,
@@ -12,7 +12,7 @@ import {
 
 const NOW = new Date(2026, 5, 4, 12).getTime();
 
-function deck(id: string, days: number): Deck {
+function deck(id: string, days: number): LegacyDeckRecord {
   return {
     id,
     name: id,
@@ -38,6 +38,7 @@ function card(id: string, deckId: string, extra?: Partial<Card>): Card {
   return {
     id,
     deckId,
+    schedulingUnitId: deckId,
     type: 'front_back',
     front: id,
     back: 'answer',

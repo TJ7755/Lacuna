@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import { createCard, createCourse, createCourseCard, createDeck } from './repository';
+import { createCard, createCourseCard, createCourse } from './repository';
 import {
   hydrateCardsWithHistory,
   listAllReviewHistory,
@@ -30,14 +30,14 @@ describe('review-history read adapter', () => {
   beforeEach(async () => {
     await Promise.all([
       db.cards.clear(),
-      db.decks.clear(),
+      db.schedulingUnits.clear(),
       db.courses.clear(),
       db.reviewHistory.clear(),
     ]);
   });
 
   it('returns canonical rows first and retains legacy-only projection rows', async () => {
-    const deck = await createDeck('Deck');
+    const deck = await createCourse('Deck');
     const card = await createCard(deck.id, 'front_back', 'Question', 'Answer');
     const legacy = review(999);
     await db.cards.update(card.id, { history: [legacy] });
@@ -46,6 +46,7 @@ describe('review-history read adapter', () => {
       id: 'review:event:canonical-event',
       cardId: card.id,
       deckId: card.deckId,
+      schedulingUnitId: card.deckId,
     });
 
     const events = await listReviewHistoryForCards([(await db.cards.get(card.id))!]);
@@ -56,7 +57,7 @@ describe('review-history read adapter', () => {
   });
 
   it('prefers the canonical row over a stale projection for the same event', async () => {
-    const deck = await createDeck('Deck');
+    const deck = await createCourse('Deck');
     const card = await createCard(deck.id, 'front_back', 'Question', 'Answer');
     await db.cards.update(card.id, { history: [review(999, 'same-event')] });
     await db.reviewHistory.add({
@@ -64,6 +65,7 @@ describe('review-history read adapter', () => {
       id: reviewHistoryEntryIdForEvent('same-event'),
       cardId: card.id,
       deckId: card.deckId,
+      schedulingUnitId: card.deckId,
     });
 
     const events = await listReviewHistoryForCards([(await db.cards.get(card.id))!]);
@@ -76,13 +78,14 @@ describe('review-history read adapter', () => {
   });
 
   it('uses canonical-only rows and falls back to projection-only rows when absent', async () => {
-    const deck = await createDeck('Read precedence');
+    const deck = await createCourse('Read precedence');
     const card = await createCard(deck.id, 'front_back', 'Question', 'Answer');
     await db.reviewHistory.add({
       ...review(100, 'canonical-only'),
       id: reviewHistoryEntryIdForEvent('canonical-only'),
       cardId: card.id,
       deckId: card.deckId,
+      schedulingUnitId: card.deckId,
     });
 
     const canonicalHydrated = (await hydrateCardsWithHistory([(await db.cards.get(card.id))!]))[0];
@@ -114,6 +117,7 @@ describe('review-history read adapter', () => {
         id: reviewHistoryEntryIdForEvent('biology-event'),
         cardId: biologyCard.id,
         deckId: biologyCard.deckId,
+        schedulingUnitId: biologyCard.deckId,
         courseId: biology.id,
       },
       {
@@ -121,6 +125,7 @@ describe('review-history read adapter', () => {
         id: reviewHistoryEntryIdForEvent('chemistry-event'),
         cardId: chemistryCard.id,
         deckId: chemistryCard.deckId,
+        schedulingUnitId: chemistryCard.deckId,
         courseId: chemistry.id,
       },
     ]);

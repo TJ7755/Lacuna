@@ -10,8 +10,6 @@ import type {
   Card,
   CourseAssessment,
   CourseRecord,
-  Deck,
-  Folder,
   Lesson,
   LessonCardExposure,
   LessonCardLink,
@@ -50,7 +48,6 @@ import {
 } from './assets';
 import { mergeRevisionPlans } from '../course/revisionPlan';
 import { itemPayloadIsValid } from '../items/payloadValidation';
-import { buildDomainStorageMigration } from './storageMigration';
 import { adaptLegacyBackup, type LegacyImportReport } from './legacyBackupAdapter';
 
 export const BACKUP_VERSION = 9;
@@ -58,11 +55,8 @@ export const BACKUP_VERSION = 9;
 /** Gather the whole database into a single backup object. */
 export async function exportDatabase(): Promise<BackupFile> {
   const [
-    decks,
     cards,
     sessionHistory,
-    userPerformance,
-    folders,
     courses,
     lessons,
     notes,
@@ -80,11 +74,8 @@ export async function exportDatabase(): Promise<BackupFile> {
     coursePerformance,
     schedulingPerformance,
   ] = await Promise.all([
-    db.decks.toArray(),
     db.cards.toArray(),
     db.sessionHistory.toArray(),
-    db.userPerformance.toArray(),
-    db.folders.toArray(),
     db.courses.toArray(),
     db.lessons.toArray(),
     db.notes.toArray(),
@@ -102,41 +93,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.coursePerformance.toArray(),
     db.schedulingPerformance.toArray(),
   ]);
-  const storageProjection =
-    schedulingUnits.length > 0 && coursePerformance.length > 0 && schedulingPerformance.length > 0
-      ? (() => {
-          const unitsById = new Map(schedulingUnits.map((unit) => [unit.id, unit]));
-          const schedulingUnitByCardId = new Map<string, string>();
-          for (const card of cards) {
-            const lessonUnit = card.primaryLessonId
-              ? unitsById.get(card.primaryLessonId)
-              : undefined;
-            const courseUnit = card.courseId ? unitsById.get(card.courseId) : undefined;
-            schedulingUnitByCardId.set(
-              card.id,
-              card.schedulingUnitId ??
-                (lessonUnit?.kind === 'lesson' &&
-                (!card.courseId || lessonUnit.courseId === card.courseId)
-                  ? lessonUnit.id
-                  : courseUnit?.kind === 'course'
-                    ? courseUnit.id
-                    : card.deckId),
-            );
-          }
-          return { schedulingUnits, coursePerformance, schedulingPerformance, schedulingUnitByCardId };
-        })()
-      : buildDomainStorageMigration(
-          courses,
-          lessons,
-          courseAssessments,
-          decks,
-          cards,
-          userPerformance,
-        );
-  const projectedCards = cards.map((card) => ({
-    ...card,
-    schedulingUnitId: storageProjection.schedulingUnitByCardId.get(card.id) ?? card.schedulingUnitId,
-  }));
+  const projectedCards = cards;
   const referencedHashes = new Set(referencedAssetHashesInCards(projectedCards));
   for (const note of notes) {
     for (const hash of referencedAssetHashes(note.content)) referencedHashes.add(hash);
@@ -150,12 +107,10 @@ export async function exportDatabase(): Promise<BackupFile> {
     app: 'lacuna',
     version: BACKUP_VERSION,
     exportedAt: Date.now(),
-    decks,
     cards: projectedCards,
     assets,
     sessionHistory,
-    userPerformance,
-    folders,
+    userPerformance: [],
     courses,
     lessons,
     notes,
@@ -169,9 +124,9 @@ export async function exportDatabase(): Promise<BackupFile> {
     occlusions,
     revisionPlans,
     reviewHistory: mergeReviewHistoryEntries(reviewHistory, projectedCards),
-    schedulingUnits: storageProjection.schedulingUnits,
-    coursePerformance: storageProjection.coursePerformance,
-    schedulingPerformance: storageProjection.schedulingPerformance,
+    schedulingUnits,
+    coursePerformance,
+    schedulingPerformance,
   };
 }
 
@@ -335,12 +290,10 @@ export async function importBackup(
   await db.transaction(
     'rw',
     [
-      db.decks,
       db.cards,
       db.sessionHistory,
       db.userPerformance,
       db.assets,
-      db.folders,
       db.courses,
       db.lessons,
       db.notes,
@@ -364,12 +317,10 @@ export async function importBackup(
       const dedupedAssets = Array.from(new Map(importedAssets.map((a) => [a.hash, a])).values());
       if (mode === 'replace') {
         await Promise.all([
-          db.decks.clear(),
           db.cards.clear(),
           db.sessionHistory.clear(),
           db.userPerformance.clear(),
           db.assets.clear(),
-          db.folders.clear(),
           db.courses.clear(),
           db.lessons.clear(),
           db.notes.clear(),
@@ -388,7 +339,6 @@ export async function importBackup(
           db.coursePerformance.clear(),
           db.schedulingPerformance.clear(),
         ]);
-        await db.decks.bulkAdd(decks);
         await db.cards.bulkAdd(cards);
         if (dedupedAssets.length) await db.assets.bulkPut(dedupedAssets);
         await db.userPerformance.bulkAdd(backup.userPerformance);
@@ -396,10 +346,6 @@ export async function importBackup(
         await db.sessionHistory.bulkAdd(
           sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
         );
-        // Restore folders if present in the backup.
-        if (backup.folders && backup.folders.length > 0) {
-          await db.folders.bulkAdd(backup.folders);
-        }
         // Restore course-architecture tables if present in the backup.
         if (courses.length > 0) {
           await db.courses.bulkAdd(courses);
@@ -452,48 +398,9 @@ export async function importBackup(
         return;
       }
 
-      // Merge decks field-by-field so local name/colour edits are not clobbered
-      // by an incoming backup whose examDate happens to be newer.
-      const existingDecks = new Map((await db.decks.toArray()).map((d) => [d.id, d]));
       const existingCourses = new Map((await db.courses.toArray()).map((c) => [c.id, c]));
       const incomingCourses = new Map(courses.map((c) => [c.id, c]));
-      const mergedDecks: Deck[] = [];
-      for (const incoming of decks) {
-        const existing = existingDecks.get(incoming.id);
-        if (!existing) {
-          mergedDecks.push(incoming);
-        } else {
-          const a = existing.lastInteractedAt ?? existing.createdAt;
-          const b = incoming.lastInteractedAt ?? incoming.createdAt;
-          const newer = b >= a ? incoming : existing;
-          const older = b >= a ? existing : incoming;
-          // Preserve local edits to name/colour while adopting newer scheduling state.
-          mergedDecks.push({
-            ...older,
-            ...newer,
-            name: newer.name || older.name,
-            colour: newer.colour ?? older.colour,
-          });
-        }
-      }
-      await db.decks.bulkPut(mergedDecks);
       if (dedupedAssets.length) await db.assets.bulkPut(dedupedAssets);
-
-      // Merge folders: add incoming folders that don't exist locally.
-      if (backup.folders && backup.folders.length > 0) {
-        const existingFolders = new Map((await db.folders.toArray()).map((f) => [f.id, f]));
-        const mergedFolders: Folder[] = [];
-        for (const incoming of backup.folders) {
-          const existing = existingFolders.get(incoming.id);
-          if (!existing) {
-            mergedFolders.push(incoming);
-          } else {
-            // Prefer newer folder (by createdAt) or keep existing on tie.
-            mergedFolders.push(incoming.createdAt > existing.createdAt ? incoming : existing);
-          }
-        }
-        await db.folders.bulkPut(mergedFolders);
-      }
 
       // Merge course-architecture tables: add incoming rows that don't exist locally,
       // preferring the newer record (by createdAt) when both sides have the same id.
@@ -791,20 +698,14 @@ export async function importBackup(
         if (!existing) {
           mergedPerf.push(incoming);
         } else {
-          const deck = existingDecks.get(incoming.deckId);
           const course = existingCourses.get(incoming.deckId);
           const localInteracted =
-            deck?.lastInteractedAt ??
             course?.lastInteractedAt ??
-            deck?.createdAt ??
             course?.createdAt ??
             0;
-          const remoteDeck = decks.find((d) => d.id === incoming.deckId);
           const remoteCourse = incomingCourses.get(incoming.deckId);
           const remoteInteracted =
-            remoteDeck?.lastInteractedAt ??
             remoteCourse?.lastInteractedAt ??
-            remoteDeck?.createdAt ??
             remoteCourse?.createdAt ??
             0;
           // Prefer whichever side has the more recent deck interaction.

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildCourseMigration } from './courseMigration';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import type { Card, Deck, Folder, SessionHistoryEntry, UserPerformance } from './types';
+import type { Card, LegacyDeckRecord, LegacyFolder, SessionHistoryEntry, UserPerformance } from './types';
 
 /** Deterministic id generator so assertions are stable across runs. */
 function sequentialIds(): () => string {
@@ -9,7 +9,7 @@ function sequentialIds(): () => string {
   return () => `id-${n++}`;
 }
 
-function makeDeck(overrides: Partial<Deck> & Pick<Deck, 'id' | 'name' | 'createdAt'>): Deck {
+function makeDeck(overrides: Partial<LegacyDeckRecord> & Pick<LegacyDeckRecord, 'id' | 'name' | 'createdAt'>): LegacyDeckRecord {
   return {
     examDate: 1000,
     fsrsVersion: FSRS_VERSION,
@@ -74,7 +74,7 @@ describe('buildCourseMigration', () => {
   });
 
   it('maps a folder with two decks to one course with two ordered lessons', () => {
-    const folder: Folder = { id: 'f1', name: 'Maths', parentId: null, createdAt: 10 };
+    const folder: LegacyFolder = { id: 'f1', name: 'Maths', parentId: null, createdAt: 10 };
     // Deliberately out of creation order to verify sorting.
     const later = makeDeck({
       id: 'd-late',
@@ -143,8 +143,8 @@ describe('buildCourseMigration', () => {
     );
 
     const card = { id: 'c1', deckId: 'd1' } as Card;
-    card.courseId = courseIdByDeckId.get(card.deckId) ?? null;
-    card.primaryLessonId = lessonIdByDeckId.get(card.deckId) ?? null;
+    card.courseId = courseIdByDeckId.get(card.deckId!) ?? null;
+    card.primaryLessonId = lessonIdByDeckId.get(card.deckId!) ?? null;
     expect(card.courseId).toBe(courseIdByDeckId.get('d1'));
     expect(card.primaryLessonId).toBe(lessonIdByDeckId.get('d1'));
 

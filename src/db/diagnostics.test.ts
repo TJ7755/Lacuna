@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import { createCard, createDeck, recordReview } from './repository';
+import { createCard, createCourse, recordReview } from './repository';
 import {
   buildDiagnostics,
   formatDiagnostics,
@@ -118,7 +118,7 @@ describe('buildDiagnostics', () => {
 describe('gatherCounts', () => {
   beforeEach(async () => {
     await Promise.all([
-      db.decks.clear(),
+      db.schedulingUnits.clear(),
       db.cards.clear(),
       db.sessionHistory.clear(),
       db.userPerformance.clear(),
@@ -134,7 +134,7 @@ describe('gatherCounts', () => {
   });
 
   it('reports real counts including total reviews', async () => {
-    const deck = await createDeck('Deck');
+    const deck = await createCourse('Deck');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
     await recordReview({
       card,
@@ -153,7 +153,7 @@ describe('gatherCounts', () => {
     expect(counts.cards).toBe(1);
     expect(counts.reviews).toBe(1);
     expect(counts.reviewEvents).toBe(1);
-    expect(counts.courses).toBe(0);
+    expect(counts.courses).toBe(1);
     expect(counts.lessons).toBe(0);
     expect(counts.revisionPlans).toBe(0);
 

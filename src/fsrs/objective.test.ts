@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { progressValue, scoreCard, makeObjectiveContext, isObjectiveComplete } from './objective';
 import { forgettingCurve } from './forwardSim';
 import { defaultFsrsParameters, MASTERY_R, MS_PER_DAY } from './params';
-import type { Card, Deck, ExamObjective } from '../db/types';
+import type { Card, LegacyDeckRecord, ExamObjective } from '../db/types';
 
 const DECAY = -defaultFsrsParameters().w[20];
 
-function makeDeck(objective: ExamObjective): Deck {
+function makeDeck(objective: ExamObjective): LegacyDeckRecord {
   return {
     id: 'd1',
-    name: 'Deck',
+    name: 'LegacyDeckRecord',
     examDate: 7 * MS_PER_DAY,
     createdAt: 0,
     fsrsVersion: 6,
@@ -22,6 +22,7 @@ function reviewedCard(id: string, stability: number, overrides: Partial<Card> = 
   return {
     id,
     deckId: 'd1',
+    schedulingUnitId: 'd1',
     type: 'front_back',
     front: '',
     back: '',
@@ -44,6 +45,7 @@ function newCard(id: string): Card {
   return {
     id,
     deckId: 'd1',
+    schedulingUnitId: 'd1',
     type: 'front_back',
     front: '',
     back: '',
@@ -153,7 +155,7 @@ describe('scheduler scoring follows the objective', () => {
   it('securedTopics ranks an already-secured card lowest and a securable card highest', () => {
     // Cards last reviewed 20 days ago (so they have decayed), exam 3 days out.
     const now = 20 * MS_PER_DAY;
-    const deck: Deck = { ...makeDeck('securedTopics'), examDate: now + 3 * MS_PER_DAY };
+    const deck: LegacyDeckRecord = { ...makeDeck('securedTopics'), examDate: now + 3 * MS_PER_DAY };
     const oc = makeObjectiveContext(deck);
 
     const alreadySecured = reviewedCard('hi', 100); // still ~0.97 on exam day

@@ -10,7 +10,7 @@ import { useCourseDashboardData } from './useCourseData';
 beforeEach(async () => {
   await Promise.all([
     db.cards.clear(),
-    db.decks.clear(),
+    db.schedulingUnits.clear(),
     db.courses.clear(),
     db.lessons.clear(),
     db.courseAssessments.clear(),
@@ -41,7 +41,7 @@ describe('useCourseDashboardData', () => {
       runningMeanResponseTime: 5,
       totalCorrectReviews: 5,
     });
-    await db.userPerformance.update(card.deckId, {
+    await db.userPerformance.update(card.deckId!, {
       runningMeanResponseTime: 7,
       totalCorrectReviews: 5,
     });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, CourseAssessment, CourseRecord, Deck, Lesson, UserPerformance } from './types';
+import type { Card, CourseAssessment, CourseRecord, LegacyDeckRecord, Lesson, UserPerformance } from './types';
 import { defaultFsrsParameters } from '../fsrs/params';
 import { buildDomainStorageMigration } from './storageMigration';
 
@@ -33,7 +33,7 @@ function lesson(courseId: string, id: string): Lesson {
   return { id, courseId, name: `Lesson ${id}`, orderIndex: 0, createdAt: 1, isExtension: false };
 }
 
-function deck(id: string, courseId: string, lessonId: string | null): Deck {
+function deck(id: string, courseId: string, lessonId: string | null): LegacyDeckRecord {
   return {
     id,
     name: id,
@@ -51,6 +51,7 @@ function card(id: string, deckId: string, courseId: string | null, primaryLesson
   return {
     id,
     deckId,
+    schedulingUnitId: deckId,
     courseId,
     primaryLessonId,
     type: 'front_back',

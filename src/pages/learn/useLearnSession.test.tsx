@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createCard,
   createCourse,
-  createDeck,
+
   createLesson,
   createLessonCard,
   upsertLessonCardExposure,
@@ -25,7 +25,7 @@ const distraction: DistractionTracker = {
 beforeEach(async () => {
   await Promise.all([
     db.cards.clear(),
-    db.decks.clear(),
+    db.schedulingUnits.clear(),
     db.sessionHistory.clear(),
     db.userPerformance.clear(),
     db.coursePerformance.clear(),
@@ -139,7 +139,7 @@ describe('useLearnSession answer boundary', () => {
       { v: 2, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
     ],
   ])('does not grade a card with %s', async (_label, payload) => {
-    const deck = await createDeck('Unsupported payload');
+    const deck = await createCourse('Unsupported payload');
     const card = await createCard(deck.id, 'front_back', 'Question', 'Answer', [], {
       payload: payload as never,
     });
@@ -234,7 +234,7 @@ describe('useLearnSession answer boundary', () => {
   });
 
   it('grades a card with a null payload like an ordinary card', async () => {
-    const deck = await createDeck('Null payload');
+    const deck = await createCourse('Null payload');
     const card = await createCard(deck.id, 'front_back', 'Question', 'Answer', [], {
       payload: null as never,
     });

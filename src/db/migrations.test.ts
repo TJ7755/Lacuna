@@ -75,6 +75,7 @@ describe('migrateCardRecord', () => {
     const migrated = migrateCardRecord({
       id: 'c1',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'front_back',
       front: 'q',
       back: 'a',
@@ -96,6 +97,7 @@ describe('migrateCardRecord', () => {
     const migrated = migrateCardRecord({
       id: 'c2',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'cloze',
       front: '{{c1::x}}',
       back: '',
@@ -115,6 +117,7 @@ describe('migrateCardRecord', () => {
     const migrated = migrateCardRecord({
       id: 'c3',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'typing',
       front: 'Capital of Japan?',
       back: 'Tokyo',
@@ -133,6 +136,7 @@ describe('migrateCardRecord', () => {
     const migrated = migrateCardRecord({
       id: 'c4',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'basic_reversed',
       front: 'q',
       back: 'a',
@@ -199,6 +203,7 @@ describe('Dexie upgrade from the old 17-parameter schema', () => {
     await v1.table('cards').add({
       id: 'c1',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'front_back',
       front: 'q',
       back: 'a',
@@ -282,6 +287,7 @@ describe('pre-migration snapshot ordering', () => {
     await v3.table('cards').add({
       id: 'c1',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'front_back',
       front: 'question',
       back: 'answer',
@@ -439,12 +445,23 @@ describe('Dexie upgrade to v13: retire the typing card type', () => {
 
     const legacy = new Dexie('lacuna');
     legacy.version(12).stores({
+      decks: 'id, createdAt, examDate, folderId',
       cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
     });
     await legacy.open();
+    await legacy.table('decks').add({
+      id: 'd1',
+      name: 'Legacy deck',
+      examDate: 1000,
+      createdAt: 0,
+      fsrsVersion: 6,
+      fsrsParameters: defaultFsrsParameters(),
+      examObjective: 'expectedMarks',
+    });
     await legacy.table('cards').add({
       id: 'typing-card',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'typing',
       front: 'Capital of Japan?',
       back: 'Tokyo',
@@ -463,6 +480,7 @@ describe('Dexie upgrade to v13: retire the typing card type', () => {
     await legacy.table('cards').add({
       id: 'front-back-card',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'front_back',
       front: 'q',
       back: 'a',
@@ -504,6 +522,7 @@ describe('Dexie upgrade to v16: stable review-event identity', () => {
     await legacy.open();
     await legacy.table('sessionHistory').add({
       deckId: 'deck-1',
+      schedulingUnitId: 'deck-1',
       timestamp: 1000,
       averagePredictedRetrievability: 0.5,
     });
@@ -523,6 +542,7 @@ describe('Dexie upgrade to v16: stable review-event identity', () => {
       eventId: 'event-1',
       sessionId: 'session-1',
       deckId: 'deck-1',
+      schedulingUnitId: 'deck-1',
       timestamp: 2000,
       averagePredictedRetrievability: 0.6,
     });
@@ -531,6 +551,7 @@ describe('Dexie upgrade to v16: stable review-event identity', () => {
         eventId: 'event-1',
         sessionId: 'session-1',
         deckId: 'deck-1',
+        schedulingUnitId: 'deck-1',
         timestamp: 3000,
         averagePredictedRetrievability: 0.7,
       }),

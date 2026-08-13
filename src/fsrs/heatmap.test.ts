@@ -7,6 +7,7 @@ function cardWith(timestamps: number[]): Card {
   return {
     id: 'c',
     deckId: 'd',
+    schedulingUnitId: 'd',
     type: 'front_back',
     front: '',
     back: '',

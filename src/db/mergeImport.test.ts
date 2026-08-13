@@ -84,11 +84,11 @@ describe('mergeImport: first import of a lineage', () => {
     expect(await findCourseForLineage('lineage-1')).toMatchObject({ id: course.id });
 
     const importedCard = (await db.cards.get('card-1'))!;
-    expect(await db.userPerformance.get(importedCard.deckId)).toBeDefined();
-    expect(await db.userPerformance.get(course.id)).toBeUndefined();
+    expect(await db.schedulingPerformance.get(importedCard.schedulingUnitId)).toBeDefined();
+    expect(await db.coursePerformance.get(course.id)).toBeDefined();
     expect(
       (await performanceForCourseBackingDecks(course.id, [importedCard])).map((row) => row.deckId),
-    ).toEqual([importedCard.deckId]);
+    ).toEqual([importedCard.schedulingUnitId]);
     expect(await performanceForReviewUnit(course.id, 'course')).toMatchObject({
       deckId: course.id,
       totalCorrectReviews: 0,
@@ -385,7 +385,7 @@ describe('mergeImport: merge apply', () => {
   it('does not replace newer local performance rows during a lineage update', async () => {
     const card = (await db.cards.get('card-1'))!;
     const backing = {
-      deckId: card.deckId,
+      deckId: card.deckId!,
       runningMeanResponseTime: 31,
       runningStdDevResponseTime: 2,
       m2: 8,
@@ -415,18 +415,18 @@ describe('mergeImport: merge apply', () => {
       m2: calibration.m2,
       totalCorrectReviews: calibration.totalCorrectReviews,
     });
-    const backingDeck = (await db.decks.get(card.deckId))!;
+    const backingDeck = (await db.schedulingUnits.get(card.schedulingUnitId))!;
     const localCourse = (await db.courses.get(courseId))!;
     const newerBackingInteraction =
       (backingDeck.lastInteractedAt ?? backingDeck.createdAt) + 1000;
     const newerCourseInteraction =
       (localCourse.lastInteractedAt ?? localCourse.createdAt) + 1000;
-    await db.decks.update(card.deckId, { lastInteractedAt: newerBackingInteraction });
+    await db.schedulingUnits.update(card.schedulingUnitId, { lastInteractedAt: newerBackingInteraction });
     await db.schedulingUnits.update(card.schedulingUnitId!, {
       lastInteractedAt: newerBackingInteraction,
     });
     await db.courses.update(courseId, { lastInteractedAt: newerCourseInteraction });
-    expect((await db.decks.get(card.deckId))?.lastInteractedAt).toBe(newerBackingInteraction);
+    expect((await db.schedulingUnits.get(card.schedulingUnitId))?.lastInteractedAt).toBe(newerBackingInteraction);
     expect((await db.schedulingUnits.get(card.schedulingUnitId!))?.lastInteractedAt).toBe(
       newerBackingInteraction,
     );
@@ -445,13 +445,13 @@ describe('mergeImport: merge apply', () => {
       coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells revised' })] }),
     );
 
-    expect((await db.decks.get(card.deckId))?.lastInteractedAt).toBe(newerBackingInteraction);
+    expect((await db.schedulingUnits.get(card.schedulingUnitId))?.lastInteractedAt).toBe(newerBackingInteraction);
     expect((await db.courses.get(courseId))?.lastInteractedAt).toBe(newerCourseInteraction);
-    expect(await db.userPerformance.get(card.deckId)).toEqual(backing);
+    expect(await db.userPerformance.get(card.deckId!)).toEqual(backing);
     expect(await db.userPerformance.get(courseId)).toEqual(calibration);
     expect(
       (await performanceForCourseBackingDecks(courseId, [card])).map((row) => row.deckId),
-    ).toEqual([card.deckId]);
+    ).toEqual([card.schedulingUnitId]);
     expect(await performanceForReviewUnit(courseId, 'course')).toMatchObject({
       deckId: courseId,
       runningMeanResponseTime: 17,
@@ -507,6 +507,7 @@ describe('mergeImport: merge apply', () => {
       eventId: 'event-lineage-consistency',
       cardId: card.id,
       deckId: merged.deckId,
+      schedulingUnitId: merged.deckId,
       timestamp: 1_725_123_456_789,
     });
     expect(hydrated.history).toHaveLength(1);

@@ -530,6 +530,7 @@ function buildLacunaCard(
   return {
     id: makeId(),
     deckId: '', // Filled in by the caller.
+    schedulingUnitId: '', // Filled in by the caller before persistence.
     type: mapping.type,
     front: mapping.front,
     back: mapping.back,

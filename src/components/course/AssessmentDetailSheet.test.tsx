@@ -17,6 +17,7 @@ const card = {
   courseId: 'c1',
   primaryLessonId: 'l1',
   deckId: 'd1',
+  schedulingUnitId: 'd1',
   front: 'What is a proton?',
   back: 'Positive',
   type: 'front_back',

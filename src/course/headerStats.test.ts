@@ -43,6 +43,7 @@ function makeCard(id: string, overrides: Partial<Card> = {}): Card {
   return {
     id,
     deckId: 'course',
+    schedulingUnitId: 'course',
     type: 'front_back',
     front: 'Question',
     back: 'Answer',

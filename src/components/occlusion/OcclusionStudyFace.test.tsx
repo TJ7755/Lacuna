@@ -33,6 +33,7 @@ function makeCard(occlusionRegionId: string, overrides: Partial<Card> = {}): Car
   return {
     id: 'card-1',
     deckId: 'deck-1',
+    schedulingUnitId: 'deck-1',
     courseId: 'course-1',
     primaryLessonId: null,
     type: 'front_back',

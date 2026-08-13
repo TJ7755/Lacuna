@@ -29,6 +29,7 @@ function card(history: ReviewLog[]): Card {
   return {
     id: 'card-1',
     deckId: 'deck-1',
+    schedulingUnitId: 'deck-1',
     courseId: 'course-1',
     primaryLessonId: 'lesson-1',
     type: 'front_back',
@@ -61,6 +62,7 @@ describe('review-history entry projection', () => {
     expect(entries[0]).toMatchObject({
       cardId: 'card-1',
       deckId: 'deck-1',
+      schedulingUnitId: 'deck-1',
       courseId: 'course-1',
       primaryLessonId: 'lesson-1',
       eventId: 'event-1',
@@ -117,12 +119,14 @@ describe('schema v20: additive review history', () => {
       eventId: 'session-event',
       sessionId: 'session-1',
       deckId: 'deck-1',
+      schedulingUnitId: 'deck-1',
       courseId: 'course-1',
       timestamp: 100,
       averagePredictedRetrievability: 0.5,
     });
     await legacy.table('userPerformance').add({
       deckId: 'course-1',
+      schedulingUnitId: 'course-1',
       runningMeanResponseTime: 2,
       runningStdDevResponseTime: 0,
       m2: 0,
@@ -138,7 +142,7 @@ describe('schema v20: additive review history', () => {
 
     const migratedCard = await db.cards.get('card-1');
     expect(migratedCard?.history).toEqual(history);
-    expect(await db.decks.get('deck-1')).toBeDefined();
+    expect(await db.schedulingUnits.get('deck-1')).toBeDefined();
     expect(await db.courses.get('course-1')).toBeDefined();
     expect(await db.sessionHistory.where('eventId').equals('session-event').count()).toBe(1);
     expect(await db.userPerformance.get('course-1')).toBeDefined();
@@ -199,6 +203,7 @@ describe('schema v20: additive review history', () => {
       id: reviewHistoryEntryIdForEvent('event-3'),
       cardId: 'card-2',
       deckId: 'deck-2',
+      schedulingUnitId: 'deck-2',
       courseId: null,
       primaryLessonId: null,
     });

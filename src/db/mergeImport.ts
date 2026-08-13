@@ -311,8 +311,6 @@ const MERGE_TABLES = [
   db.lessonCards,
   db.lessonCardExposures,
   db.lessonCompletions,
-  db.decks,
-  db.userPerformance,
   db.sessionHistory,
   db.sequences,
   db.occlusions,

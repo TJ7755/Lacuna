@@ -9,7 +9,6 @@ import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import type {
   Card,
   Course,
-  Deck,
   CourseAssessment,
   CourseRecord,
   Lesson,
@@ -23,6 +22,7 @@ import type {
   RevisionPlan,
   Sequence,
   SessionHistoryEntry,
+  SchedulingUnitRecord,
   UserPerformance,
 } from '../db/types';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
@@ -93,7 +93,7 @@ export function useLesson(lessonId: string | undefined): Lesson | null | undefin
 export function useLessonBackingDeck(
   courseId: string | undefined,
   lessonId: string | undefined,
-): Deck | undefined {
+): SchedulingUnitRecord | undefined {
   return useLiveQuery(
     () => (courseId && lessonId ? findBackingDeck(courseId, lessonId) : undefined),
     [courseId, lessonId],
@@ -101,7 +101,7 @@ export function useLessonBackingDeck(
 }
 
 /** Resolve the hidden scheduling deck for cards not assigned to a lesson. */
-export function useCourseBankBackingDeck(courseId: string | undefined): Deck | undefined {
+export function useCourseBankBackingDeck(courseId: string | undefined): SchedulingUnitRecord | undefined {
   return useLiveQuery(() => (courseId ? findBackingDeck(courseId, null) : undefined), [courseId]);
 }
 
@@ -109,9 +109,9 @@ export function useCourseBankBackingDeck(courseId: string | undefined): Deck | u
 export function useCourseBankBackingDecks(
   courseId: string | undefined,
   lessonIds: readonly string[],
-): Map<string | null, Deck> | undefined {
+): Map<string | null, SchedulingUnitRecord> | undefined {
   return useLiveQuery(
-    () => (courseId ? findBackingDecks(courseId, lessonIds) : new Map<string | null, Deck>()),
+    () => (courseId ? findBackingDecks(courseId, lessonIds) : new Map<string | null, SchedulingUnitRecord>()),
     [courseId, lessonIds],
   );
 }

@@ -7,7 +7,7 @@
 // migration unit test and also run inside the Dexie upgrade hook (see schema.ts).
 
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import type { Card, CardType, Deck, LegacyDeck, LessonCardExposure } from './types';
+import type { Card, CardType, LegacyDeck, LegacyDeckRecord, LessonCardExposure } from './types';
 
 export type { LegacyDeck } from './types';
 
@@ -19,21 +19,21 @@ export type { LegacyDeck } from './types';
  */
 export type LegacyCard = Omit<
   Card,
-  'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps' | 'type'
+  'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps' | 'type' | 'schedulingUnitId'
 > &
   Partial<
     Pick<
       Card,
       'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps'
     >
-  > & { type: Card['type'] | 'typing' };
+  > & { type: Card['type'] | 'typing'; schedulingUnitId?: string };
 
 /**
  * Bring a deck record up to the FSRS-6 schema. Decks tagged below FSRS-6 (or
  * with no parameters at all) are re-tagged `fsrsVersion = 6` and reseeded with
  * the default FSRS-6 parameter set; everything else about the deck is preserved.
  */
-export function migrateDeckRecord(deck: LegacyDeck): Deck {
+export function migrateDeckRecord(deck: LegacyDeck): LegacyDeckRecord {
   const needsReseed = (deck.fsrsVersion ?? 0) < FSRS_VERSION || !deck.fsrsParameters;
   const baseParams = needsReseed ? defaultFsrsParameters() : deck.fsrsParameters!;
   // Ensure new fields added in v0.0.3 are present even on decks with older FSRS parameters.
@@ -72,6 +72,7 @@ export function migrateCardRecord(card: LegacyCard): Card {
   const type: CardType = card.type === 'typing' ? 'front_back' : (card.type as CardType);
   return {
     ...card,
+    schedulingUnitId: card.schedulingUnitId ?? card.deckId ?? '',
     type,
     reps,
     lapses,

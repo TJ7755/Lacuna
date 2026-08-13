@@ -11,6 +11,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
   return {
     id: 'anki-card',
     deckId: '',
+    schedulingUnitId: '',
     type: 'front_back',
     front: 'Question',
     back: 'Answer',
@@ -57,7 +58,7 @@ function makeResult(overrides: Partial<ApkgImportResult> = {}): ApkgImportResult
 
 async function resetDatabase() {
   await Promise.all([
-    db.decks.clear(),
+    db.schedulingUnits.clear(),
     db.cards.clear(),
     db.assets.clear(),
     db.userPerformance.clear(),
@@ -112,6 +113,7 @@ describe('importApkgResult', () => {
         id: reviewHistoryEntryId(returned.id, result.cards[0].history[0]),
         cardId: returned.id,
         deckId: returned.deckId,
+        schedulingUnitId: returned.deckId,
         timestamp: 1_700_000_000_000,
       }),
     ]);

@@ -26,6 +26,7 @@ function card(over: Partial<Card> = {}): Card {
   return {
     id: Math.random().toString(36).slice(2),
     deckId: 'd1',
+    schedulingUnitId: 'd1',
     type: 'front_back',
     front: 'q',
     back: 'a',
@@ -115,15 +116,15 @@ describe('computeStudyStats — 7-day time forecast', () => {
     expect(forecast.reduce((s, d) => s + d.dueCount, 0)).toBe(0);
   });
 
-  it('groups forecast by source (courseId if set, otherwise deckId) in the byDeck breakdown', () => {
+  it('groups forecast by course or scheduling-unit source', () => {
     const cards = [
-      card({ deckId: 'd1', due: NOW }),
-      card({ deckId: 'd2', due: NOW }),
-      card({ deckId: 'd1', due: NOW + MS_PER_DAY }),
+      card({ schedulingUnitId: 'd1', due: NOW }),
+      card({ schedulingUnitId: 'd2', due: NOW }),
+      card({ schedulingUnitId: 'd1', due: NOW + MS_PER_DAY }),
     ];
     const { forecast } = computeStudyStats(cards, new Map(), NOW);
     expect(forecast[0].byDeck).toHaveLength(2);
-    // No courseId set on these test cards, so sourceId falls back to deckId.
+    // No courseId is set, so sourceId is the scheduling-unit id.
     expect(forecast[0].byDeck.find((d) => d.sourceId === 'd1')?.dueCount).toBe(1);
     expect(forecast[0].byDeck.find((d) => d.sourceId === 'd2')?.dueCount).toBe(1);
     expect(forecast[1].byDeck.find((d) => d.sourceId === 'd1')?.dueCount).toBe(1);

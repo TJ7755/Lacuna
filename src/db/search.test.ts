@@ -5,7 +5,7 @@ import {
   type SearchOptions,
 } from './search';
 import { DEFAULT_LEECH_LAPSE_THRESHOLD } from '../fsrs/leech';
-import type { Card, Course, Deck, Lesson } from './types';
+import type { Card, Course, LegacyDeckRecord, Lesson } from './types';
 
 const NOW = 1_000_000_000_000;
 
@@ -34,9 +34,9 @@ function card(id: string, over: Partial<Card> = {}): Card {
   };
 }
 
-const deck: Deck = {
+const deck: LegacyDeckRecord = {
   id: 'd1',
-  name: 'Deck one',
+  name: 'LegacyDeckRecord one',
   examDate: NOW,
   createdAt: NOW,
   fsrsVersion: 6,

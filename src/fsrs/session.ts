@@ -29,7 +29,7 @@ import { schedulingHorizon } from './horizon';
 import { cramScore } from './cram';
 import type { ExamDateContext } from './examDate';
 import { daysUntil } from '../utils/datetime';
-import type { Card, Deck, SchedulerConfig, SchedulingUnitRecord } from '../db/types';
+import type { Card, SchedulerConfig, SchedulingUnitRecord } from '../db/types';
 
 /** How a session orders cards: by the unit objective, or exam-eve cram (weakest first). */
 export type SessionMode = 'objective' | 'cram';
@@ -37,14 +37,12 @@ export type SessionMode = 'objective' | 'cram';
 /**
  * Which cards belong to a session unit, and the key under which its context is
  * stored in {@link SessionContext.decks}.
- *  - `deck`: the classic per-deck/global-Today scope — cards with a matching deckId.
  *  - `scheduling-unit`: cards owned by an explicit scheduling-unit projection.
  *  - `course`: every card in the course — cards with a matching courseId.
  *  - `lesson`: a single lesson's cards — primaryLessonId match, plus any cards
  *    linked in from elsewhere via LessonCardLink (see db/types.ts).
  */
 type SessionUnitScope =
-  | { kind: 'deck'; deckId: string }
   | { kind: 'scheduling-unit'; schedulingUnitId: string }
   | { kind: 'course'; courseId: string }
   | { kind: 'lesson'; courseId: string; lessonId: string; linkedCardIds: ReadonlySet<string> };
@@ -59,8 +57,6 @@ export interface SessionUnit {
 
 function unitKey(scope: SessionUnitScope): string {
   switch (scope.kind) {
-    case 'deck':
-      return scope.deckId;
     case 'scheduling-unit':
       return scope.schedulingUnitId;
     case 'course':
@@ -93,8 +89,6 @@ interface SessionCardIndex {
 function cardsForUnit(cards: Card[], unit: SessionDeckContext): Card[] {
   const { scope } = unit;
   switch (scope.kind) {
-    case 'deck':
-      return cards.filter((card) => card.deckId === scope.deckId);
     case 'scheduling-unit':
       return cards.filter((card) => card.schedulingUnitId === scope.schedulingUnitId);
     case 'course':
@@ -108,22 +102,16 @@ function cardsForUnit(cards: Card[], unit: SessionDeckContext): Card[] {
 }
 
 /**
- * Build the session context once from the units being studied. Accepts either the
- * legacy `Deck[]` (per-deck route and global "Today" session, unchanged) or an
- * explicit `SessionUnit[]` for course/lesson-scoped sessions.
+ * Build the session context once from scheduling units or explicit scoped units.
  */
 export function makeSessionContext(
-  units: Deck[] | SchedulingUnitRecord[] | SessionUnit[],
+  units: Array<(SchedulerConfig & { id: string }) | SchedulingUnitRecord | SessionUnit>,
   mode: SessionMode = 'objective',
 ): SessionContext {
   const map = new Map<string, SessionDeckContext>();
   for (const u of units) {
     const unit: SessionUnit =
-      'scope' in u
-        ? u
-        : 'kind' in u
-          ? { config: u, scope: { kind: 'scheduling-unit', schedulingUnitId: u.id } }
-          : { config: u, scope: { kind: 'deck', deckId: u.id } };
+      'scope' in u ? u : { config: u, scope: { kind: 'scheduling-unit', schedulingUnitId: u.id } };
     map.set(unitKey(unit.scope), {
       deck: unit.config,
       scope: unit.scope,
@@ -148,7 +136,6 @@ function urgency(deck: SchedulerConfig, now: number = Date.now()): number {
  */
 function indexSessionCards(cards: Card[], ctx: SessionContext): SessionCardIndex {
   const byUnit = new Map<string, Card[]>();
-  const unitsByDeck = new Map<string, SessionDeckContext[]>();
   const unitsBySchedulingUnit = new Map<string, SessionDeckContext[]>();
   const unitsByCourse = new Map<string, SessionDeckContext[]>();
   const unitsByPrimaryLesson = new Map<string, SessionDeckContext[]>();
@@ -167,9 +154,6 @@ function indexSessionCards(cards: Card[], ctx: SessionContext): SessionCardIndex
   for (const unit of ctx.decks.values()) {
     byUnit.set(unitKey(unit.scope), []);
     switch (unit.scope.kind) {
-      case 'deck':
-        addUnit(unitsByDeck, unit.scope.deckId, unit);
-        break;
       case 'scheduling-unit':
         addUnit(unitsBySchedulingUnit, unit.scope.schedulingUnitId, unit);
         break;
@@ -186,7 +170,6 @@ function indexSessionCards(cards: Card[], ctx: SessionContext): SessionCardIndex
   const unitsByCard = new Map<string, SessionDeckContext[]>();
   for (const card of cards) {
     const matches = new Set<SessionDeckContext>();
-    for (const unit of unitsByDeck.get(card.deckId) ?? []) matches.add(unit);
     if (card.schedulingUnitId) {
       for (const unit of unitsBySchedulingUnit.get(card.schedulingUnitId) ?? []) matches.add(unit);
     }

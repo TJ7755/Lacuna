@@ -157,7 +157,7 @@ export async function gatherCounts(): Promise<DiagnosticBundle['data']> {
     occlusions,
     revisionPlans,
   ] = await Promise.all([
-    db.decks.count(),
+    db.schedulingUnits.count(),
     db.cards.count(),
     db.backups.count(),
     listAllReviewHistory(),

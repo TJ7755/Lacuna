@@ -25,6 +25,7 @@ function makeCard(id: string, primaryLessonId: string | null, overrides: Partial
   return {
     id,
     deckId: 'course',
+    schedulingUnitId: 'course',
     courseId: 'course',
     primaryLessonId,
     type: 'front_back',

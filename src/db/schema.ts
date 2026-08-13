@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type {
-  Deck,
+  LegacyDeckRecord,
   Card,
   SessionHistoryEntry,
   UserPerformance,
@@ -8,7 +8,7 @@ import type {
   AppStateEntry,
   MediaAsset,
   BackupSnapshot,
-  Folder,
+  LegacyFolder,
   Course,
   CourseRecord,
   CourseAssessment,
@@ -94,14 +94,12 @@ async function putMigratedReviewHistoryEntries(
  * other properties are stored implicitly on the record.
  */
 class LacunaDatabase extends Dexie {
-  decks!: Table<Deck, string>;
   cards!: Table<Card, string>;
   sessionHistory!: Table<SessionHistoryEntry, number>;
   userPerformance!: Table<UserPerformance, string>;
   backups!: Table<BackupSnapshot, number>;
   appState!: Table<AppStateEntry, string>;
   assets!: Table<MediaAsset, string>;
-  folders!: Table<Folder, string>;
   courses!: Table<CourseRecord, string>;
   lessons!: Table<Lesson, string>;
   notes!: Table<Note, string>;
@@ -312,8 +310,8 @@ class LacunaDatabase extends Dexie {
         courseExamDates: 'id, courseId, examDate, createdAt',
       })
       .upgrade(async (tx) => {
-        const decks = (await tx.table('decks').toArray()) as Deck[];
-        const folders = (await tx.table('folders').toArray()) as Folder[];
+        const decks = (await tx.table('decks').toArray()) as LegacyDeckRecord[];
+        const folders = (await tx.table('folders').toArray()) as LegacyFolder[];
         const { courses, lessons, courseIdByDeckId, lessonIdByDeckId } = buildCourseMigration(
           decks,
           folders,
@@ -733,7 +731,7 @@ class LacunaDatabase extends Dexie {
           (await tx.table('courses').toArray()) as CourseRecord[],
           (await tx.table('lessons').toArray()) as Lesson[],
           (await tx.table('courseAssessments').toArray()) as CourseAssessment[],
-          (await tx.table('decks').toArray()) as Deck[],
+          (await tx.table('decks').toArray()) as LegacyDeckRecord[],
           (await tx.table('cards').toArray()) as Card[],
           (await tx.table('userPerformance').toArray()) as UserPerformance[],
         );
@@ -765,10 +763,55 @@ class LacunaDatabase extends Dexie {
           if (schedulingUnitId) entry.schedulingUnitId = schedulingUnitId;
         });
       });
+
+    // Version 22: remove the hidden Deck and Folder compatibility stores. All
+    // cards and review projections already carry explicit scheduling-unit ids.
+    this.version(22).stores({
+      decks: null,
+      cards:
+        'id, courseId, primaryLessonId, schedulingUnitId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp',
+      userPerformance: 'deckId',
+      backups: '++id, createdAt',
+      appState: 'key',
+      assets: 'hash, createdAt',
+      folders: null,
+      courses: 'id, createdAt',
+      lessons: 'id, courseId, orderIndex, createdAt',
+      notes: 'id, lessonId, orderIndex, createdAt',
+      lessonCards: 'id, lessonId, cardId',
+      lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+      lessonCompletions: 'lessonId, completedAt',
+      noteAnnotations: 'id, noteId, createdAt, updatedAt',
+      practiceNodes: 'id, courseId, position, createdAt',
+      practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+      courseAssessments: 'id, courseId, kind, examDate, createdAt',
+      sequences: 'id, courseId, primaryLessonId, createdAt',
+      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+      lineageIdMappings: 'id, courseId',
+      pendingMergeReviews: 'id, courseId',
+      occlusions: 'id, courseId, primaryLessonId, createdAt',
+      reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp',
+      schedulingUnits: 'id, kind, courseId, lessonId',
+      coursePerformance: 'courseId',
+      schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
+    }).upgrade(async (tx) => {
+      const schedulingUnitIds = new Set<string>(
+        await tx.table('schedulingUnits').toCollection().primaryKeys() as string[],
+      );
+      const cards = await tx.table('cards').toArray() as Card[];
+      for (const card of cards) {
+        if (!card.schedulingUnitId || !schedulingUnitIds.has(card.schedulingUnitId)) {
+          throw new Error(
+            `Cannot remove legacy storage: card ${card.id} has no valid scheduling unit`,
+          );
+        }
+      }
+    });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 21;
+const CURRENT_SCHEMA_VERSION = 22;
 const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22]);
 
 export const db = new LacunaDatabase();
@@ -925,12 +968,12 @@ export async function readAllDataFromVersion(
     app: 'lacuna',
     version: schemaVersion,
     exportedAt: Date.now(),
-    decks: (raw.data['decks'] ?? []) as Deck[],
+    decks: (raw.data['decks'] ?? []) as LegacyDeck[],
     cards: (raw.data['cards'] ?? []) as Card[],
     assets,
     sessionHistory: (raw.data['sessionHistory'] ?? []) as SessionHistoryEntry[],
     userPerformance: (raw.data['userPerformance'] ?? []) as UserPerformance[],
-    folders: (raw.data['folders'] ?? []) as Folder[],
+    folders: (raw.data['folders'] ?? []) as LegacyFolder[],
     courses: (raw.data['courses'] ?? []) as Course[],
     lessons: (raw.data['lessons'] ?? []) as Lesson[],
     notes: (raw.data['notes'] ?? []) as Note[],

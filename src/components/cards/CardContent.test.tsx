@@ -7,6 +7,7 @@ function makeCard(overrides: Partial<Card>): Card {
   return {
     id: 'card-1',
     deckId: 'deck-1',
+    schedulingUnitId: 'deck-1',
     type: 'front_back',
     front: 'Front text',
     back: 'Back text',

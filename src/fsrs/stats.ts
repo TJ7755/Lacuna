@@ -141,11 +141,9 @@ export function computeStudyStats(
     const secondsPerReview =
       (card.courseId ? deckSeconds.get(card.courseId) : undefined) ??
       (card.schedulingUnitId ? deckSeconds.get(card.schedulingUnitId) : undefined) ??
-      deckSeconds.get(card.deckId) ??
       DEFAULT_REVIEW_SECONDS;
     const minutes = secondsPerReview / 60;
-    // Group by courseId where available (new model); fall back to deckId for legacy cards.
-    const sourceId = card.courseId ?? card.deckId;
+    const sourceId = card.courseId ?? card.schedulingUnitId!;
 
     if (card.due === null || card.due === undefined) {
       // Never-reviewed card: count as new today only if not buried.
