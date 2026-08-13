@@ -112,6 +112,7 @@ describe('schema v19: image occlusion (additive)', () => {
         { id: 'region-1', role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.2, h: 0.1 },
       ],
       createdAt: 500,
+      updatedAt: 500,
     });
 
     expect(await db.occlusions.get('occlusion-1')).toMatchObject({ courseId: 'course-1', name: 'Plant cell' });
@@ -141,6 +142,7 @@ describe('schema v19: image occlusion (additive)', () => {
       learningSteps: 0,
       history: [],
       createdAt: 500,
+      updatedAt: 500,
     });
 
     const found = await db.cards.where('occlusionRegionId').equals('region-1').toArray();

@@ -42,7 +42,7 @@ describe('Arc 4 persistence', () => {
     await upsertLessonCardExposure(lesson.id, card.id, 200);
 
     expect(await lessonExposures(lesson.id)).toEqual([
-      { lessonId: lesson.id, cardId: card.id, taughtAt: 100 },
+      { lessonId: lesson.id, cardId: card.id, taughtAt: 100, updatedAt: 100 },
     ]);
   });
 
@@ -112,7 +112,7 @@ describe('Arc 4 persistence', () => {
     await db.open();
 
     expect(await db.lessonCardExposures.toArray()).toEqual([
-      { lessonId: 'primary', cardId: 'reviewed', taughtAt: 200 },
+      { lessonId: 'primary', cardId: 'reviewed', taughtAt: 200, updatedAt: 200 },
     ]);
   });
 

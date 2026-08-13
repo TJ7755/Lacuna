@@ -129,6 +129,7 @@ const mockCard: Card = {
   learningSteps: 0,
   history: [],
   createdAt: Date.now(),
+  updatedAt: 1,
   tags: ['geography'],
   suspended: false,
   buriedUntil: null,
@@ -468,6 +469,7 @@ describe('CardList', () => {
       items: [{ id: 'item-1', value: 'Sodium' }],
       cueWindow: 2,
       createdAt: Date.now(),
+      updatedAt: 1,
     };
     const generatedCard: Card = {
       ...mockCard,
@@ -535,6 +537,7 @@ describe('CardList', () => {
       assetHash: 'hash-1',
       regions: [{ id: 'region-1', role: 'label', shape: 'rectangle', x: 0, y: 0, w: 0.1, h: 0.1 }],
       createdAt: Date.now(),
+      updatedAt: 1,
     };
     const occlusionCard: Card = {
       ...mockCard,

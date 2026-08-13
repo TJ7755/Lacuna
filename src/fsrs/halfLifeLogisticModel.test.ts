@@ -45,6 +45,7 @@ function card(partial: Partial<Card> = {}): Card {
       },
     ],
     createdAt: 0,
+    updatedAt: 0,
     ...partial,
   };
 }

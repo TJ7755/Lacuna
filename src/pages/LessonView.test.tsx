@@ -73,6 +73,7 @@ const course: Course = {
   name: 'Test course',
   description: '',
   createdAt: 0,
+  updatedAt: 0,
   examDate: Date.now() + 7 * MS_PER_DAY,
   fsrsVersion: FSRS_VERSION,
   fsrsParameters: defaultFsrsParameters(),
@@ -91,6 +92,7 @@ const lesson: Lesson = {
   name: 'Test lesson',
   orderIndex: 0,
   createdAt: 0,
+  updatedAt: 0,
   isExtension: false,
 };
 
@@ -101,6 +103,7 @@ const note: Note = {
   content: 'Some **markdown** content',
   orderIndex: 0,
   createdAt: 0,
+  updatedAt: 0,
 };
 
 function makeCard(id: string): Card {
@@ -122,6 +125,7 @@ function makeCard(id: string): Card {
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
   };
 }
 

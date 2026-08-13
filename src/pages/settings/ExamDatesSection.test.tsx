@@ -33,6 +33,7 @@ const mockLesson: Lesson = {
   orderIndex: 0,
   isExtension: false,
   createdAt: Date.now(),
+  updatedAt: 1,
 };
 
 const mockExamDate: CourseAssessment = {
@@ -45,6 +46,7 @@ const mockExamDate: CourseAssessment = {
   coverageMode: 'prefix',
   excludedCardIds: [],
   createdAt: Date.now(),
+  updatedAt: 1,
 };
 
 const mockCard = {
@@ -58,6 +60,7 @@ const mockCard = {
   schedulingUnitId: 'deck-1',
   tags: [],
   createdAt: Date.now(),
+  updatedAt: 1,
   state: 0,
   stability: null,
   difficulty: null,

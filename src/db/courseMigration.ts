@@ -143,6 +143,7 @@ export function buildCourseMigration(
       name: deck.name,
       description: '',
       createdAt: deck.createdAt,
+      updatedAt: deck.createdAt,
       ...schedulingFromDeck(deck),
       ...COURSE_PATH_DEFAULTS,
     });
@@ -153,6 +154,7 @@ export function buildCourseMigration(
       name: deck.name,
       orderIndex: 0,
       createdAt: deck.createdAt,
+      updatedAt: deck.createdAt,
       isExtension: false,
     });
     courseIdByDeckId.set(deck.id, courseId);
@@ -173,6 +175,7 @@ export function buildCourseMigration(
       name: folder.name,
       description: '',
       createdAt: folder.createdAt,
+      updatedAt: folder.createdAt,
       ...scheduling,
       ...COURSE_PATH_DEFAULTS,
     });
@@ -185,6 +188,7 @@ export function buildCourseMigration(
         name: deck.name,
         orderIndex: index,
         createdAt: deck.createdAt,
+        updatedAt: deck.createdAt,
         isExtension: false,
       };
       // Preserve a deck's exam date as a per-lesson override when it differs

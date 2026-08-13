@@ -11,6 +11,7 @@ function makeCourse(overrides: Partial<Course> = {}): Course {
     name: 'Test course',
     description: '',
     createdAt: 0,
+    updatedAt: 0,
     examDate: NOW + 30 * MS_PER_DAY,
     fsrsVersion: FSRS_VERSION,
     fsrsParameters: defaultFsrsParameters(),
@@ -36,6 +37,7 @@ function makeExamDate(id: string, examDate: number): CourseAssessment {
     afterLessonId: null,
     excludedCardIds: [],
     createdAt: 0,
+    updatedAt: 0,
   };
 }
 
@@ -58,6 +60,7 @@ function makeCard(id: string, overrides: Partial<Card> = {}): Card {
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
   };
 }

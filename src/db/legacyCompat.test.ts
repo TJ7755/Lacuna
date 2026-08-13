@@ -100,6 +100,7 @@ const preCourseV21Backup = {
       learningSteps: 0,
       history: [],
       createdAt: 1_786_617_442_464,
+      updatedAt: 1_786_617_442_464,
       tags: [],
       suspended: false,
       buriedUntil: null,
@@ -160,6 +161,7 @@ const legacyV21BackingDeckBackup = {
       name: 'Biology',
       description: '',
       createdAt: 1_786_617_442_451,
+      updatedAt: 1_786_617_442_451,
       fsrsVersion: 6,
       fsrsParameters: preCourseV21Backup.decks[0].fsrsParameters,
       examObjective: 'expectedMarks',
@@ -178,6 +180,7 @@ const legacyV21BackingDeckBackup = {
       name: 'Cells',
       orderIndex: 0,
       createdAt: 1_786_617_442_452,
+      updatedAt: 1_786_617_442_452,
       isExtension: false,
     },
   ],
@@ -192,6 +195,7 @@ const legacyV21BackingDeckBackup = {
       coverageMode: 'prefix',
       excludedCardIds: [],
       createdAt: 1_786_617_442_453,
+      updatedAt: 1_786_617_442_453,
     },
   ],
   cards: [
@@ -215,6 +219,7 @@ const legacyV21BackingDeckBackup = {
       learningSteps: 0,
       history: reviews,
       createdAt: 1_786_617_442_454,
+      updatedAt: 1_786_617_442_454,
       tags: ['biology'],
       suspended: false,
       buriedUntil: null,
@@ -233,6 +238,7 @@ const legacyV21BackingDeckBackup = {
     {
       id: 'course-biology',
       createdAt: 1_786_617_442_451,
+      updatedAt: 1_786_617_442_451,
       kind: 'course',
       courseId: 'course-biology',
       lessonId: null,
@@ -246,6 +252,7 @@ const legacyV21BackingDeckBackup = {
     {
       id: 'lesson-cells',
       createdAt: 1_786_617_442_452,
+      updatedAt: 1_786_617_442_452,
       kind: 'lesson',
       courseId: 'course-biology',
       lessonId: 'lesson-cells',
@@ -264,6 +271,7 @@ const legacyV21BackingDeckBackup = {
       runningStdDevResponseTime: 1,
       m2: 2,
       totalCorrectReviews: 2,
+      updatedAt: 0,
     },
   ],
   schedulingPerformance: [
@@ -274,6 +282,7 @@ const legacyV21BackingDeckBackup = {
       runningStdDevResponseTime: 1,
       m2: 1,
       totalCorrectReviews: 1,
+      updatedAt: 0,
     },
     {
       schedulingUnitId: 'lesson-cells',
@@ -283,6 +292,7 @@ const legacyV21BackingDeckBackup = {
       runningStdDevResponseTime: 2,
       m2: 8,
       totalCorrectReviews: 3,
+      updatedAt: 0,
     },
   ],
   assets: [],
@@ -360,6 +370,7 @@ describe('legacy storage compatibility net', () => {
       runningStdDevResponseTime: 1,
       m2: 2,
       totalCorrectReviews: 2,
+      updatedAt: 0,
     });
     await db.schedulingPerformance.put({
       schedulingUnitId: lesson.id,
@@ -369,6 +380,7 @@ describe('legacy storage compatibility net', () => {
       runningStdDevResponseTime: 1,
       m2: 2,
       totalCorrectReviews: 2,
+      updatedAt: 0,
     });
 
     const backup = await exportDatabase();

@@ -9,6 +9,7 @@ const createLesson = vi.fn().mockResolvedValue({
   orderIndex: 1,
   isExtension: false,
   createdAt: Date.now(),
+  updatedAt: 1,
 });
 
 vi.mock('../../db/repository', () => ({

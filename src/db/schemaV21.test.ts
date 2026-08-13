@@ -14,6 +14,7 @@ function legacyCourse(): CourseRecord {
     name: 'Biology',
     description: '',
     createdAt: 1,
+    updatedAt: 1,
     fsrsVersion: 6,
     fsrsParameters: parameters,
     examObjective: 'expectedMarks',
@@ -47,6 +48,7 @@ function legacyCard(history: ReviewLog[]): Card {
     learningSteps: 0,
     history,
     createdAt: 1,
+    updatedAt: 1,
   };
 }
 
@@ -106,6 +108,7 @@ describe('schema v21 domain storage', () => {
       coverageMode: 'prefix',
       excludedCardIds: [],
       createdAt: 1,
+      updatedAt: 1,
     } satisfies CourseAssessment);
     await legacy.table('decks').bulkAdd([
       {

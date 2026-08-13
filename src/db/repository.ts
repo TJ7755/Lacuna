@@ -175,7 +175,7 @@ export async function createCard(
       primaryLessonId: unit?.lessonId,
     };
     const now = Date.now();
-    const card = stampUpdatedAt(
+    const card: Card = stampUpdatedAt(
       {
         id: makeId(),
         deckId,
@@ -197,8 +197,9 @@ export async function createCard(
         suspended: false,
         buriedUntil: null,
         schedulingUnitId: deckId,
+        updatedAt: now,
         ...ownership,
-      },
+      } as Card,
       now,
     );
     await db.cards.add(card);
@@ -255,8 +256,9 @@ export async function createCards(
           suspended: false,
           buriedUntil: null,
           schedulingUnitId: deckId,
+          updatedAt: now + i,
           ...ownership,
-        },
+        } as Card,
         now + i,
       ),
     );
@@ -1129,7 +1131,7 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
         lessonViewMode: 'edit',
         ...practiceDefaults,
         ...opts,
-      },
+      } as Course,
       createdAt,
     );
     const record = courseToRecord(course);
@@ -1145,6 +1147,7 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
         coverageMode: 'prefix',
         excludedCardIds: [],
         createdAt: record.createdAt,
+        updatedAt: createdAt,
       } as CourseAssessment,
       createdAt,
     );
@@ -2842,7 +2845,7 @@ export async function startRevisionWindow(
       {
         ...plan,
         windows: plan.windows.map((window) =>
-          window.id === windowId ? { ...window, status: 'active', startedAt } : window,
+          window.id === windowId ? { ...window, status: 'active' as const, startedAt } : window,
         ),
       },
       startedAt,
@@ -2873,7 +2876,7 @@ export async function completeRevisionWindow(
         ...plan,
         windows: plan.windows.map((candidate) =>
           candidate.id === windowId
-            ? { ...candidate, status: 'completed', completedAt: session.completedAt }
+            ? { ...candidate, status: 'completed' as const, completedAt: session.completedAt }
             : candidate,
         ),
         completedSessions: appendCompletedSession(plan.completedSessions, session),

@@ -22,6 +22,7 @@ const lessons: Lesson[] = ['One', 'Two', 'Three'].map((name, index) => ({
   orderIndex: index,
   isExtension: false,
   createdAt: 1,
+  updatedAt: 1,
 }));
 
 function touch(target: EventTarget, identifier: number, clientX: number, clientY: number): Touch {

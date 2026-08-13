@@ -38,6 +38,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
       },
     ],
     createdAt: 1_699_000_000_000,
+    updatedAt: 1_699_000_000_000,
     tags: ['imported'],
     suspended: true,
     buriedUntil: null,

@@ -111,6 +111,7 @@ const course: Course = {
   name: 'A-Level Economics',
   description: '',
   createdAt: Date.now(),
+  updatedAt: 1,
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   fsrsVersion: 6,
@@ -131,6 +132,7 @@ const lesson1: Lesson = {
   description: '',
   orderIndex: 0,
   createdAt: Date.now(),
+  updatedAt: 1,
   isExtension: false,
 };
 
@@ -160,6 +162,7 @@ function makeCard(overrides: Partial<Card>): Card {
     learningSteps: 0,
     history: [],
     createdAt: Date.now(),
+    updatedAt: 1,
     tags: [],
     suspended: false,
     buriedUntil: null,

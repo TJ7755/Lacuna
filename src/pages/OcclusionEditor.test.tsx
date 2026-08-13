@@ -46,6 +46,7 @@ const course: Course = {
   name: 'Biology',
   description: '',
   createdAt: Date.now(),
+  updatedAt: 1,
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   fsrsVersion: 6,
@@ -225,6 +226,7 @@ describe('OcclusionEditor', () => {
         { id: 'r1', role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.2, h: 0.2 },
       ],
       createdAt: 0,
+      updatedAt: 0,
     };
     renderEdit();
     await screen.findByRole('img');
@@ -267,6 +269,7 @@ describe('OcclusionEditor', () => {
       assetHash: 'hash-old',
       regions: [{ id: 'r1', role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.2, h: 0.2 }],
       createdAt: 0,
+      updatedAt: 0,
     };
     renderEdit();
     await screen.findByRole('img');

@@ -324,6 +324,7 @@ describe('read.ts', () => {
           content: '',
           orderIndex: 1,
           createdAt: Date.now(),
+          updatedAt: 1,
         })
         .then(() => 'n1');
       const note0 = await db.notes
@@ -334,6 +335,7 @@ describe('read.ts', () => {
           content: '',
           orderIndex: 0,
           createdAt: Date.now(),
+          updatedAt: 1,
         })
         .then(() => 'n0');
       await db.notes.add({
@@ -343,6 +345,7 @@ describe('read.ts', () => {
         content: '',
         orderIndex: 0,
         createdAt: Date.now(),
+        updatedAt: 1,
       });
 
       const notes = await listNotes(lesson.id);

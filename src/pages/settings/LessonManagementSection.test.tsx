@@ -19,6 +19,7 @@ const createLesson = vi.fn().mockResolvedValue({
   orderIndex: 2,
   isExtension: false,
   createdAt: Date.now(),
+  updatedAt: 1,
 });
 
 vi.mock('../../db/repository', () => ({
@@ -39,6 +40,7 @@ const lessonOne: Lesson = {
   orderIndex: 0,
   isExtension: false,
   createdAt: Date.now(),
+  updatedAt: 1,
 };
 const lessonTwo: Lesson = {
   id: 'lesson-2',
@@ -47,6 +49,7 @@ const lessonTwo: Lesson = {
   orderIndex: 1,
   isExtension: false,
   createdAt: Date.now(),
+  updatedAt: 1,
 };
 
 describe('LessonManagementSection', () => {

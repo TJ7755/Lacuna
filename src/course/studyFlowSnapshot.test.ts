@@ -24,6 +24,7 @@ function course(overrides: Partial<Course> = {}): Course {
     name: 'Course',
     description: '',
     createdAt: 0,
+    updatedAt: 0,
     examDate: NOW + 30 * MS_PER_DAY,
     fsrsVersion: FSRS_VERSION,
     fsrsParameters: defaultFsrsParameters(),
@@ -39,7 +40,7 @@ function course(overrides: Partial<Course> = {}): Course {
 }
 
 function lesson(id: string, orderIndex: number): Lesson {
-  return { id, courseId: 'course', name: id, orderIndex, createdAt: 0, isExtension: false };
+  return { id, courseId: 'course', name: id, orderIndex, createdAt: 0, updatedAt: 0, isExtension: false };
 }
 
 function card(id: string, lessonId: string): Card {
@@ -63,15 +64,16 @@ function card(id: string, lessonId: string): Card {
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
   };
 }
 
 function manual(id: string, position: number): PracticeNode {
-  return { id, courseId: 'course', type: 'manual', position, name: id, createdAt: 0 };
+  return { id, courseId: 'course', type: 'manual', position, name: id, createdAt: 0, updatedAt: 0 };
 }
 
 function exposure(lessonId: string, cardId: string): LessonCardExposure {
-  return { lessonId, cardId, taughtAt: NOW };
+  return { lessonId, cardId, taughtAt: NOW, updatedAt: NOW };
 }
 
 function assessment(id: string, examDate: number, afterLessonId: string): CourseAssessment {
@@ -85,6 +87,7 @@ function assessment(id: string, examDate: number, afterLessonId: string): Course
     coverageMode: 'prefix',
     excludedCardIds: [],
     createdAt: 0,
+    updatedAt: 0,
   };
 }
 

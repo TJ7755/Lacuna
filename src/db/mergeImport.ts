@@ -321,6 +321,7 @@ const MERGE_TABLES = [
   db.schedulingUnits,
   db.coursePerformance,
   db.schedulingPerformance,
+  db.tombstones,
 ] as const;
 
 /** Empty membership/snapshot registry for a brand-new lineage mapping row. */
@@ -355,6 +356,7 @@ async function applySequences(
   mapping: LineageIdMapping,
 ): Promise<void> {
   for (const shareSeq of payload.sequences ?? []) {
+    const createdAt = Date.now();
     const sequence: Sequence = {
       id: shareSeq.id,
       courseId,
@@ -373,7 +375,8 @@ async function applySequences(
       ...(shareSeq.lc === 1 ? { generateLabelCards: true } : {}),
       ...(shareSeq.m === 'lines' ? { mode: 'lines' as const } : {}),
       ...(shareSeq.ms ? { mySpeaker: shareSeq.ms } : {}),
-      createdAt: Date.now(),
+      createdAt,
+      updatedAt: createdAt,
     };
     await updateSequence(sequence);
     if (!mapping.sequenceIds.includes(sequence.id)) mapping.sequenceIds.push(sequence.id);
@@ -398,6 +401,7 @@ async function applyOcclusions(
   mapping: LineageIdMapping,
 ): Promise<void> {
   for (const shareOcc of payload.occlusions ?? []) {
+    const createdAt = Date.now();
     const occlusion: Occlusion = {
       id: shareOcc.id,
       courseId,
@@ -416,7 +420,8 @@ async function applyOcclusions(
         ...(region.p ? { pairedRegionId: region.p } : {}),
         ...(region.bn ? { backNote: region.bn } : {}),
       })),
-      createdAt: Date.now(),
+      createdAt,
+      updatedAt: createdAt,
     };
     await updateOcclusion(occlusion);
     const occlusionIds = (mapping.occlusionIds ??= []);
@@ -450,6 +455,7 @@ async function applyCreates(
     ...(l.sessionFilter ? { sessionFilter: l.sessionFilter } : {}),
     orderIndex: l.orderIndex,
     createdAt,
+    updatedAt: createdAt,
   }));
   if (newLessons.length > 0) await db.lessons.bulkAdd(newLessons);
 
@@ -460,6 +466,7 @@ async function applyCreates(
     content: n.content,
     orderIndex: n.orderIndex,
     createdAt,
+    updatedAt: createdAt,
   }));
   if (newNotes.length > 0) await db.notes.bulkAdd(newNotes);
 
@@ -486,6 +493,7 @@ async function applyCreates(
       learningSteps: 0,
       history: [],
       createdAt,
+      updatedAt: createdAt,
       tags: c.tags ?? [],
       payload: c.payload,
       suspended: false,
@@ -551,6 +559,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
         name: shareLesson.n.trim() || 'Untitled lesson',
         orderIndex,
         createdAt: createdAt + orderIndex,
+        updatedAt: createdAt + orderIndex,
         ...(shareLesson.d ? { description: shareLesson.d } : {}),
         isExtension: shareLesson.x === 1,
         ...(typeof shareLesson.rd === 'number' ? { releaseDate: shareLesson.rd } : {}),
@@ -575,6 +584,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
           content: shareNote.c,
           orderIndex,
           createdAt: createdAt + orderIndex,
+          updatedAt: createdAt + orderIndex,
         };
       }),
     );
@@ -626,7 +636,8 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
             type: 'front_back',
             front: shareCard.f,
             back,
-            createdAt: cardCreatedAt++,
+            createdAt: cardCreatedAt,
+            updatedAt: cardCreatedAt++,
             ...base,
           });
           newCards.push({
@@ -634,7 +645,8 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
             type: 'front_back',
             front: back,
             back: shareCard.f,
-            createdAt: cardCreatedAt++,
+            createdAt: cardCreatedAt,
+            updatedAt: cardCreatedAt++,
             ...base,
           });
         } else {
@@ -643,7 +655,8 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
             type,
             front: shareCard.f,
             back: shareCard.k === 1 ? '' : (shareCard.b ?? ''),
-            createdAt: cardCreatedAt++,
+            createdAt: cardCreatedAt,
+            updatedAt: cardCreatedAt++,
             ...base,
           });
         }

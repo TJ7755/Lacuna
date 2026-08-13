@@ -12,6 +12,7 @@ function makeCourse(overrides: Partial<Course> & Pick<Course, 'id'>): Course {
     name: 'Test course',
     description: '',
     createdAt: 0,
+    updatedAt: 0,
     examDate: 7 * MS_PER_DAY,
     fsrsVersion: FSRS_VERSION,
     fsrsParameters: defaultFsrsParameters(),

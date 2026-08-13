@@ -43,6 +43,7 @@ function cardWithHistory(deckId: string, grades: Grade[]): Card {
     learningSteps: 0,
     history,
     createdAt: start,
+    updatedAt: start,
   };
 }
 

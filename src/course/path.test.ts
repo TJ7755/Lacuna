@@ -27,6 +27,7 @@ function makeCourse(overrides: Partial<Course> & Pick<Course, 'id'>): Course {
     name: 'Test course',
     description: '',
     createdAt: 0,
+    updatedAt: 0,
     examDate: 7 * MS_PER_DAY,
     fsrsVersion: FSRS_VERSION,
     fsrsParameters: defaultFsrsParameters(),
@@ -46,6 +47,7 @@ function makeLesson(overrides: Partial<Lesson> & Pick<Lesson, 'id' | 'courseId'>
     name: 'Test lesson',
     orderIndex: 0,
     createdAt: 0,
+    updatedAt: 0,
     isExtension: false,
     ...overrides,
   };
@@ -67,6 +69,7 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
     schedulingUnitId: overrides.schedulingUnitId ?? overrides.deckId ?? 'unit',
   };
@@ -78,6 +81,7 @@ function makePracticeNode(
   return {
     name: 'Practice',
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
   };
 }
@@ -96,6 +100,7 @@ function makeExamDate(
     afterLessonId: null,
     excludedCardIds: [],
     createdAt: 0,
+    updatedAt: 0,
     ...overrides,
   } as CourseAssessment;
 }
@@ -285,7 +290,7 @@ describe('lessonStatus', () => {
 
   it('requires explicit completion for an unlocked lesson with zero cards', () => {
     expect(lessonStatus(true, 'l1', [], [], [])).toBe('available');
-    expect(lessonStatus(true, 'l1', [], [], [{ lessonId: 'l1', completedAt: 1 }])).toBe(
+    expect(lessonStatus(true, 'l1', [], [], [{ lessonId: 'l1', completedAt: 1, updatedAt: 1 }])).toBe(
       'completed',
     );
   });
@@ -301,8 +306,8 @@ describe('lessonStatus', () => {
         'l1',
         cards,
         [
-          { lessonId: 'l1', cardId: 'a', taughtAt: 1 },
-          { lessonId: 'l1', cardId: 'b', taughtAt: 1 },
+          { lessonId: 'l1', cardId: 'a', taughtAt: 1, updatedAt: 1 },
+          { lessonId: 'l1', cardId: 'b', taughtAt: 1, updatedAt: 1 },
         ],
         [],
       ),
@@ -320,8 +325,8 @@ describe('lessonStatus', () => {
         'l1',
         cards,
         [
-          { lessonId: 'other', cardId: 'a', taughtAt: 1 },
-          { lessonId: 'l1', cardId: 'b', taughtAt: 1 },
+          { lessonId: 'other', cardId: 'a', taughtAt: 1, updatedAt: 1 },
+          { lessonId: 'l1', cardId: 'b', taughtAt: 1, updatedAt: 1 },
         ],
         [],
       ),
@@ -404,7 +409,7 @@ describe('buildPath', () => {
       ['l2', [makeCard({ id: 'b', deckId: 'd', state: 0 })]], // locked anyway
     ]);
     const nodes = buildPath(course, lessons, [], cardsById, [], 0, 0, Date.now(), {
-      exposures: [{ lessonId: 'l1', cardId: 'a', taughtAt: 1 }],
+      exposures: [{ lessonId: 'l1', cardId: 'a', taughtAt: 1, updatedAt: 1 }],
       lessonCompletions: [],
       practiceMilestones: [],
     });
@@ -826,7 +831,7 @@ describe('pathPosition', () => {
       ['l1', [makeCard({ id: 'a', deckId: 'd', state: 2 })]], // completed
     ]);
     const nodes = buildPath(course, lessons, [], cardsById, [], 0, 0, Date.now(), {
-      exposures: [{ lessonId: 'l1', cardId: 'a', taughtAt: 1 }],
+      exposures: [{ lessonId: 'l1', cardId: 'a', taughtAt: 1, updatedAt: 1 }],
       lessonCompletions: [],
       practiceMilestones: [],
     });

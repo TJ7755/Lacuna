@@ -23,6 +23,7 @@ const lessons: Lesson[] = [
     description: '',
     orderIndex: 0,
     createdAt: 1,
+    updatedAt: 1,
     isExtension: false,
   },
 ];
@@ -46,6 +47,7 @@ function card(id: string, front: string, back: string, primaryLessonId: string |
     learningSteps: 0,
     history: [],
     createdAt: 1,
+    updatedAt: 1,
     tags: [],
     suspended: false,
     buriedUntil: null,

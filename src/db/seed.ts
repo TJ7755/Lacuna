@@ -33,6 +33,7 @@ function exampleCard(
   /** Milliseconds offset from base time so every card has a distinct createdAt. */
   timeOffset = 0,
 ): Card {
+  const createdAt = Date.now() + timeOffset;
   return {
     id: makeId(),
     deckId,
@@ -53,7 +54,8 @@ function exampleCard(
     learningSteps: 0,
     history: [],
     tags: tags ?? [],
-    createdAt: Date.now() + timeOffset,
+    createdAt,
+    updatedAt: createdAt,
     suspended: false,
     flagged: false,
     buriedUntil: null,
@@ -144,6 +146,7 @@ function makeSeedLesson(
     description,
     orderIndex,
     createdAt,
+    updatedAt: createdAt,
     isExtension: false,
   };
   return { lesson };
@@ -187,6 +190,7 @@ export async function seedIfFirstRun(): Promise<void> {
       name: 'Welcome to Lacuna',
       description: 'A short tour of Lacuna, taught the way you will actually use it.',
       createdAt,
+      updatedAt: createdAt,
       colour: '#0d9488',
       examDate: defaultExamDate(createdAt),
       fsrsVersion: FSRS_VERSION,
@@ -245,6 +249,7 @@ export async function seedIfFirstRun(): Promise<void> {
       coverageMode: 'prefix',
       excludedCardIds: [],
       createdAt,
+      updatedAt: createdAt,
     };
 
     const notes: Note[] = [
@@ -260,6 +265,7 @@ export async function seedIfFirstRun(): Promise<void> {
           'then generate or add cards for the parts you actually need to be quizzed on.',
         orderIndex: 0,
         createdAt: Date.now() + 4,
+        updatedAt: Date.now() + 4,
       },
       {
         id: makeId(),
@@ -271,6 +277,7 @@ export async function seedIfFirstRun(): Promise<void> {
           'review is chosen to maximise your predicted score on that day.',
         orderIndex: 0,
         createdAt: Date.now() + 5,
+        updatedAt: Date.now() + 5,
       },
     ];
 
@@ -613,12 +620,13 @@ export async function seedIfFirstRun(): Promise<void> {
           ),
         ];
         await db.schedulingUnits.bulkAdd(units);
-        await db.coursePerformance.add({ courseId: course.id, ...emptyStats });
+        await db.coursePerformance.add({ courseId: course.id, ...emptyStats, updatedAt: 0 });
         await db.schedulingPerformance.bulkAdd(units.map((unit) => ({
           schedulingUnitId: unit.id,
           courseId: course.id,
           ...(unit.lessonId ? { lessonId: unit.lessonId } : {}),
           ...emptyStats,
+          updatedAt: 0,
         })));
         await db.assets.bulkAdd([fcAsset.record, sampleAsset.record]);
       },

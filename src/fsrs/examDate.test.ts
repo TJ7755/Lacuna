@@ -11,6 +11,7 @@ function makeCourse(overrides: Partial<Course> = {}): Course {
     name: 'Course',
     description: '',
     createdAt: NOW,
+    updatedAt: NOW,
     examDate: NOW + 100 * MS_PER_DAY,
     fsrsVersion: FSRS_VERSION,
     fsrsParameters: defaultFsrsParameters(),
@@ -32,6 +33,7 @@ function makeLesson(overrides: Partial<Lesson> = {}): Lesson {
     name: 'Lesson',
     orderIndex: 0,
     createdAt: NOW,
+    updatedAt: NOW,
     isExtension: false,
     ...overrides,
   };
@@ -58,6 +60,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
     learningSteps: 0,
     history: [],
     createdAt: NOW,
+    updatedAt: NOW,
     ...overrides,
   };
 }
@@ -76,6 +79,7 @@ function makeExamDate(overrides: Partial<CourseAssessment> = {}): CourseAssessme
     afterLessonId: 'lesson1',
     excludedCardIds: [],
     createdAt: NOW,
+    updatedAt: NOW,
     ...overrides,
   } as CourseAssessment;
 }
@@ -157,7 +161,7 @@ describe('resolveCardExamDate', () => {
       course,
       [makeLesson({ examDate: NOW + 1 })],
       [checkpoint],
-      [{ id: 'link', lessonId: 'lesson1', cardId: 'c1', createdAt: NOW }],
+      [{ id: 'link', lessonId: 'lesson1', cardId: 'c1', createdAt: NOW, updatedAt: NOW }],
     );
     const card = makeCard({ primaryLessonId: null });
     expect(resolveCardExamDate(card, ctx, NOW)).toBe(checkpoint.examDate);

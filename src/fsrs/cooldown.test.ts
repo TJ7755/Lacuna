@@ -35,6 +35,7 @@ function card(id: string, stability: number): Card {
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
     suspended: false,
     buriedUntil: null,
   };

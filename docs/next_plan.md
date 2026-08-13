@@ -65,23 +65,27 @@ corpus as a problem to be engineered around.
 
 ## Next
 
-Choose the next product arc from the candidates below. Do not smuggle another maintenance grab-bag
-in under Arc 14; it is closed.
+### Multi-device sync — P3 in progress
+
+**Status:** in progress.
+
+Approved 13 August 2026. The execution plan is
+[sync-implementation.html](plans/sync-implementation.html). P3 (schema v23, timestamps,
+tombstones, backup version 10) is the authorised increment. P4 (pure merge module) is the
+automatic successor and is not yet sliced. The relay remains gated on a hosting decision;
+Electron starts unconfigured.
 
 The paused Course/Deck boundary maintenance pass is documented in
-[course-domain-boundary-follow-ups.md](course-domain-boundary-follow-ups.md). It stops at reviewed
-commit `9dd9107`; the remaining search, card-component, portability and eventual storage-migration
-work is explicitly deferred there and is not an active product arc. The separate storage contract
-and implementation phases are recorded in [storage-migration.md](plans/storage-migration.md); it
-is a proposed maintenance plan, not an approval to remove compatibility stores yet.
+[course-domain-boundary-follow-ups.md](course-domain-boundary-follow-ups.md). Schema v22 has
+removed the hidden Deck and Folder stores; that pass is not an active product arc.
 
 ## Later candidates
 
-These require a fresh product decision after flow simplification and release verification:
+These require a fresh product decision after the current sync increment:
 
 | Candidate                               | Current position                                      | Decision gate                                                                                       |
 | --------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Multi-device sync                       | Designed, not approved for implementation             | Confirm encrypted relay operation and maintenance cost; use [the Arc 8 design](arc8-sync-plan.html) |
+| Encrypted relay (sync P1/P2/P5–P7)      | Designed; not authorised                              | Confirm operation and maintenance cost; you host one Vercel Blob instance for yourself              |
 | Mobile reminders and PWA installation   | Scoped only                                           | Verify platform behaviour; return rate is not measurable before September 2026                      |
 | Progress receipts and encrypted relay   | Detailed outline only                                 | Identify a real tutor/parent reporting workflow before infrastructure work                          |
 | Expanded MCP product surface            | Foundation delivered; broad action inventory proposed | Prioritise concrete agent workflows instead of exposing every repository method                     |

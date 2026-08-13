@@ -23,6 +23,7 @@ function makeCard(over: Partial<Card> & Pick<Card, 'id'>): Card {
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
     tags: [],
     suspended: false,
     buriedUntil: null,

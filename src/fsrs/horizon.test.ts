@@ -37,6 +37,7 @@ function makeCard(overrides: Partial<Card> = {}): Card {
     learningSteps: 0,
     history: [],
     createdAt: Date.now(),
+    updatedAt: 1,
     ...overrides,
   };
 }
@@ -84,6 +85,7 @@ describe('cardSchedulingHorizon', () => {
             name: 'Lesson',
             orderIndex: 0,
             createdAt: now,
+            updatedAt: now,
             isExtension: false,
             examDate: lessonExamDate,
           },
@@ -110,6 +112,7 @@ describe('cardSchedulingHorizon', () => {
             name: 'Lesson',
             orderIndex: 0,
             createdAt: now,
+            updatedAt: now,
             isExtension: false,
             examDate: now - MS_PER_DAY,
           },

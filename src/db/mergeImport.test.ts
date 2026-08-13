@@ -407,6 +407,7 @@ describe('mergeImport: merge apply', () => {
       runningStdDevResponseTime: backing.runningStdDevResponseTime,
       m2: backing.m2,
       totalCorrectReviews: backing.totalCorrectReviews,
+      updatedAt: 0,
     });
     await db.coursePerformance.put({
       courseId,
@@ -414,6 +415,7 @@ describe('mergeImport: merge apply', () => {
       runningStdDevResponseTime: calibration.runningStdDevResponseTime,
       m2: calibration.m2,
       totalCorrectReviews: calibration.totalCorrectReviews,
+      updatedAt: 0,
     });
     const backingDeck = (await db.schedulingUnits.get(card.schedulingUnitId))!;
     const localCourse = (await db.courses.get(courseId))!;

@@ -190,6 +190,7 @@ describe('useLearnSession answer boundary', () => {
       runningStdDevResponseTime: 1,
       m2: 0,
       totalCorrectReviews: 20,
+      updatedAt: 0,
     });
     const params = {
       courseId: course.id,

@@ -98,6 +98,7 @@ const course: Course = {
   name: 'Chemistry',
   description: '',
   createdAt: 0,
+  updatedAt: 0,
   examDate: Date.now() + 86_400_000,
   timeZone: 'UTC',
   fsrsVersion: FSRS_VERSION,

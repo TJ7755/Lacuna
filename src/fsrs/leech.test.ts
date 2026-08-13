@@ -21,6 +21,7 @@ function cardWithLapses(lapses: number): Card {
     learningSteps: 0,
     history: [],
     createdAt: Date.now(),
+    updatedAt: 1,
   };
 }
 

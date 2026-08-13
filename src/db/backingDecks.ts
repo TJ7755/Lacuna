@@ -113,7 +113,15 @@ export async function restoreReviewUnitPerformance(
   // Undo of a review, not a user delete: restore the prior row unchanged and
   // do not tombstone a null previous (that is the undo of the first review).
   if (kind === 'course') {
-    if (previous) await db.coursePerformance.put({ courseId: id, ...previous });
+    if (previous) {
+      await db.coursePerformance.put({
+        courseId: id,
+        ...previous,
+        updatedAt: 'updatedAt' in previous && typeof previous.updatedAt === 'number'
+          ? previous.updatedAt
+          : 0,
+      });
+    }
     else await db.coursePerformance.delete(id);
     return;
   }
@@ -127,6 +135,9 @@ export async function restoreReviewUnitPerformance(
     ...(unit?.courseId ? { courseId: unit.courseId } : {}),
     ...(unit?.lessonId ? { lessonId: unit.lessonId } : {}),
     ...previous,
+    updatedAt: 'updatedAt' in previous && typeof previous.updatedAt === 'number'
+      ? previous.updatedAt
+      : 0,
   });
 }
 

@@ -43,6 +43,7 @@ function makeCard(partial: Partial<Card> = {}): Card {
     learningSteps: 0,
     history: [],
     createdAt: 0,
+    updatedAt: 0,
     ...partial,
   };
 }

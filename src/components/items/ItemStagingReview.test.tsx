@@ -24,6 +24,7 @@ const lesson: Lesson = {
   description: '',
   orderIndex: 0,
   createdAt: 1,
+  updatedAt: 1,
   isExtension: false,
 };
 
@@ -46,6 +47,7 @@ function existingCard(front: string): Card {
     learningSteps: 0,
     history: [],
     createdAt: 1,
+    updatedAt: 1,
     tags: [],
     suspended: false,
     buriedUntil: null,

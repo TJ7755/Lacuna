@@ -17,6 +17,7 @@ function legacyCourse(id: string, examDate: number): LegacyCourseRecord {
     name: `Course ${id}`,
     description: '',
     createdAt: 100,
+    updatedAt: 100,
     examDate,
     timeZone: 'Europe/London',
     fsrsVersion: FSRS_VERSION,
@@ -38,6 +39,7 @@ function lesson(id: string, courseId: string, orderIndex: number): Lesson {
     name: id,
     orderIndex,
     createdAt: orderIndex,
+    updatedAt: orderIndex,
     isExtension: false,
   };
 }
@@ -110,6 +112,7 @@ describe('course assessment migration', () => {
       lessonIds: ['first', 'middle'],
       excludedCardIds: ['card'],
       createdAt: 200,
+      updatedAt: 200,
     });
   });
 
@@ -161,6 +164,7 @@ describe('course assessment migration', () => {
       coverageMode: 'prefix',
       excludedCardIds: [],
       createdAt: 100,
+      updatedAt: 100,
     };
 
     expect(hydrateCourse(record, final)).toEqual(
