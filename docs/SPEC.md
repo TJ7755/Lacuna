@@ -961,7 +961,7 @@ shape of both manual exports and snapshot payloads. Current exports include cano
 `reviewHistory`, `courseAssessments`, `revisionPlans`, `sequences` and `occlusions`; the
 legacy `courseExamDates` field is accepted for old imports but is never emitted. `noteAnnotations`
 and lineage merge state are deliberately absent. `version` is the portability format version
-(currently 9), not the Dexie schema version. The optional arrays let older backups import cleanly.
+(currently 10), not the Dexie schema version. The optional arrays let older backups import cleanly.
 - `AppStateEntry { key, value }` — small persistent app state (e.g. the backup folder
   handle, sidebar settings, input mode, motion speed).
 
@@ -1770,7 +1770,7 @@ ordinary `front_back` cards to the scheduler.
 ## 13. Import, export & backups (`src/db/importEngine.ts`,
 
 `src/db/portability.ts`, `src/db/import.ts`, `src/db/export.ts`,
-`src/db/backups.ts`)
+`src/db/backups.ts`, `src/sync/mergeSnapshots.ts`, `src/sync/manualMerge.ts`)
 
 ### Unified import engine (`src/db/importEngine.ts`)
 
@@ -1848,6 +1848,14 @@ A single, reusable export UI offering multiple output formats:
     recency rules, review-history rows are deduplicated, and local rows absent from the backup
     are never deleted. The course tables, `sequences`, `occlusions` and `revisionPlans` follow
     the same additive per-table merge boundary.
+  - **Merge from another device** — a separate Settings action that does not call
+    `importBackup(..., 'merge')`. `manualMerge` takes a forced restore point
+    (`takeAutoBackup(true)`), exports the current database, runs `mergeSnapshots(local, remote)`,
+    then applies the result with `importBackup(merged, 'replace')`. The confirmation states that
+    data is combined, the newest edit wins, deletions from either device are honoured, and a
+    backup of this device is taken first. The toast reports card, course, lesson and review-event
+    counts before and after. A file that fails `validateBackup` is rejected before any write; a
+    failed safety backup aborts without applying.
 
 ### Automatic restore points & migration safety
 
@@ -2266,7 +2274,8 @@ scrollspy and its navigation cannot drift from the rendered sections.
   date / name / created) is a separate, dashboard-local setting
   (`src/state/dashboardSort.ts`; §4.3), not part of this section.
 - **Full backup & recovery:** export the entire local database; choose a full-backup file and use
-  the explicit **Merge backup** / **Replace local data** chooser described in §13. Course sharing
+  the explicit **Merge backup** / **Replace local data** chooser described in §13, or **Merge
+  from another device** to combine this installation with a peer snapshot. Course sharing
   and text/CSV/JSON/APKG card import remain separate flows.
 - **Persistent storage:** the app requests `navigator.storage.persist()` on
   first run so the browser does not silently evict IndexedDB data under storage

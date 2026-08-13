@@ -42,6 +42,7 @@ function makeBenchmarkCard(index: number, deckId: string): Card {
   return {
     id: `performance-card-${index}`,
     deckId,
+    schedulingUnitId: deckId,
     type: 'front_back',
     front: `Question ${index}`,
     back: 'Answer',
@@ -56,6 +57,7 @@ function makeBenchmarkCard(index: number, deckId: string): Card {
     learningSteps: 0,
     history: [],
     createdAt: NOW - index,
+    updatedAt: NOW - index,
     suspended: false,
     buriedUntil: null,
   };

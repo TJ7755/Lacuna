@@ -1,5 +1,41 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync: manual two-device merge
+
+- Added `manualMerge` in `src/sync/manualMerge.ts`: take a forced restore point, export the
+  current database, run `mergeSnapshots(local, remote)`, then apply with
+  `importBackup(merged, 'replace')`. Returns before/after counts of cards, courses, lessons
+  and review events. A file that fails `validateBackup`, or a failed safety backup, aborts
+  before the import.
+- Settings > Full backup and recovery now has a **Merge from another device** action, distinct
+  from **Merge backup**. The confirmation states that data is combined, the newest edit wins,
+  deletions are honoured, and a backup of this device is taken first.
+
+## Unreleased — Sync P4: peer merge
+
+- Added `mergeSnapshots` in `src/sync/mergeSnapshots.ts`: a pure function that takes two
+  `BackupFile` values and returns a third. No Dexie, no I/O, no local/remote distinction.
+- Order is tombstone-union, newest-wins content by `updatedAt` (canonical JSON on a
+  same-millisecond tie), set-union of reviews by `eventId`, then FSRS replay with fuzz
+  forced off. Card scheduler fields are derived from the unioned history, never taken
+  from the newer card record.
+- `importBackup(..., 'merge')` is unchanged. The two-device dance is merge-then-replace
+  and belongs to a later slice.
+
+## Unreleased — Sync P3: mutation timestamps and tombstones
+
+- Schema v23 adds a `tombstones` table and a required `updatedAt` on every snapshot-carried
+  row. The upgrade backfills timestamps from `createdAt` (or `lastReviewed` for cards).
+- Every content write goes through one helper. Restores put the snapshotted timestamp back;
+  `stampMissingLessonViewModes` is not treated as an edit.
+- Snapshot-carried deletes write a tombstone in the same Dexie transaction. Course deletion
+  now also removes occlusions. Undoing a deletion clears those tombstones.
+- Tombstones older than 90 days are pruned after the database opens. A device offline longer
+  than that must reset from a pull rather than merge.
+- Backup version 10 carries tombstones. Older backups still import; merge-import unions
+  incoming tombstones without applying them as deletes. Pre-migration snapshots now include
+  occlusions.
+
 ## Unreleased — Smoother in-place motion
 
 - Shell pages now crossfade instead of lifting in opposite directions, and `popLayout` stops

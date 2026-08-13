@@ -364,6 +364,7 @@ describe('deleteCourse cascade', () => {
       runningStdDevResponseTime: 1,
       m2: 1,
       totalCorrectReviews: 5,
+      updatedAt: 0,
     };
     const deletedCalibration = {
       courseId: course.id,
@@ -371,6 +372,7 @@ describe('deleteCourse cascade', () => {
       runningStdDevResponseTime: 1,
       m2: 1,
       totalCorrectReviews: 6,
+      updatedAt: 0,
     };
     const retainedBacking = {
       schedulingUnitId: otherCard.schedulingUnitId,
@@ -380,6 +382,7 @@ describe('deleteCourse cascade', () => {
       runningStdDevResponseTime: 1,
       m2: 1,
       totalCorrectReviews: 7,
+      updatedAt: 0,
     };
     const retainedCalibration = {
       courseId: otherCourse.id,
@@ -387,6 +390,7 @@ describe('deleteCourse cascade', () => {
       runningStdDevResponseTime: 1,
       m2: 1,
       totalCorrectReviews: 8,
+      updatedAt: 0,
     };
     await db.schedulingPerformance.bulkPut([deletedBacking, retainedBacking]);
     await db.coursePerformance.bulkPut([deletedCalibration, retainedCalibration]);
@@ -594,6 +598,7 @@ describe('snapshotCourse / restoreCourse', () => {
       runningStdDevResponseTime: 2,
       m2: 8,
       totalCorrectReviews: 6,
+      updatedAt: 0,
     };
     const calibration = {
       courseId: course.id,
@@ -601,6 +606,7 @@ describe('snapshotCourse / restoreCourse', () => {
       runningStdDevResponseTime: 3,
       m2: 12,
       totalCorrectReviews: 4,
+      updatedAt: 0,
     };
     await db.schedulingPerformance.put(backing);
     await db.coursePerformance.put(calibration);
@@ -709,7 +715,7 @@ describe('deleteLesson', () => {
       createdAt: 1,
       updatedAt: 1,
     });
-    await db.lessonCompletions.put({ lessonId: lesson.id, completedAt: 2 });
+    await db.lessonCompletions.put({ lessonId: lesson.id, completedAt: 2, updatedAt: 2 });
 
     const snapshot = await snapshotLesson(lesson.id);
     expect(snapshot).not.toBeNull();
@@ -722,6 +728,7 @@ describe('deleteLesson', () => {
     expect(await db.lessonCompletions.get(lesson.id)).toEqual({
       lessonId: lesson.id,
       completedAt: 2,
+      updatedAt: 2,
     });
     expect((await db.cards.get(card.id))?.primaryLessonId).toBe(lesson.id);
     expect((await db.sequences.get(sequence.id))?.primaryLessonId).toBe(lesson.id);

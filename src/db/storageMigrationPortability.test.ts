@@ -49,6 +49,7 @@ describe('domain storage portability', () => {
       runningStdDevResponseTime: 1,
       m2: 2,
       totalCorrectReviews: 6,
+      updatedAt: 0,
     });
 
     const backup = await exportDatabase();
@@ -105,6 +106,7 @@ describe('domain storage portability', () => {
       runningStdDevResponseTime: 2,
       m2: 4,
       totalCorrectReviews: 99,
+      updatedAt: 0,
     });
     await db.schedulingPerformance.put({
       schedulingUnitId: lesson.id,
@@ -114,6 +116,7 @@ describe('domain storage portability', () => {
       runningStdDevResponseTime: 2,
       m2: 4,
       totalCorrectReviews: 99,
+      updatedAt: 0,
     });
 
     await importBackup(backup, 'merge');

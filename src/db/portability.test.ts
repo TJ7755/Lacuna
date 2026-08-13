@@ -96,7 +96,7 @@ describe('exportDatabase', () => {
 
     const backup = await exportDatabase();
 
-    expect(backup.version).toBe(9);
+    expect(backup.version).toBe(BACKUP_VERSION);
     expect(backup.courses?.[0]).not.toHaveProperty('examDate');
     expect(backup.courseAssessments).toEqual(
       expect.arrayContaining([
@@ -350,6 +350,7 @@ describe('importBackup', () => {
         runningStdDevResponseTime: 2,
         m2: 8,
         totalCorrectReviews: 9,
+        updatedAt: 0,
       };
       const calibration = {
         courseId: course.id,
@@ -357,6 +358,7 @@ describe('importBackup', () => {
         runningStdDevResponseTime: 3,
         m2: 18,
         totalCorrectReviews: 11,
+        updatedAt: 0,
       };
       await db.schedulingPerformance.put(backing);
       await db.coursePerformance.put(calibration);

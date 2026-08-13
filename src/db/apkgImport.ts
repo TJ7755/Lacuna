@@ -545,6 +545,7 @@ function buildLacunaCard(
     learningSteps: ankiCard.left,
     history,
     createdAt: ankiCard.id,
+    updatedAt: ankiCard.id,
     tags: mapping.tags,
     suspended: ankiCard.queue === -1,
     buriedUntil: null,

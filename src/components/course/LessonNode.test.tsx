@@ -16,6 +16,7 @@ const lesson: Lesson = {
   orderIndex: 1,
   isExtension: false,
   createdAt: 1,
+  updatedAt: 1,
 };
 
 function reorderInteraction(): LessonReorderInteraction {

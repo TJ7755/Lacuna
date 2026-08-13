@@ -7,19 +7,60 @@ import { UploadIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { importBackup, readBackupFile, type ImportMode } from '../../db/portability';
 import type { BackupFile } from '../../db/types';
+import { manualMerge, type ManualMergeSummary } from '../../sync/manualMerge';
 import { formatDate } from '../../utils/datetime';
+
+function formatMergeSummary(summary: ManualMergeSummary): string {
+  const { before, after } = summary;
+  return (
+    `Merged. Cards ${before.cards} → ${after.cards}. ` +
+    `Courses ${before.courses} → ${after.courses}. ` +
+    `Lessons ${before.lessons} → ${after.lessons}. ` +
+    `Review events ${before.reviewEvents} → ${after.reviewEvents}.`
+  );
+}
 
 export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier: number }) {
   const { notify } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mergeInputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<BackupFile | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
+  const [pendingMerge, setPendingMerge] = useState<BackupFile | null>(null);
+  const [mergeBusy, setMergeBusy] = useState(false);
 
   async function handleFile(file: File) {
+    if (mergeBusy) return;
     try {
+      setPendingMerge(null);
       setPending(await readBackupFile(file));
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Invalid file.', 'negative');
+    }
+  }
+
+  async function handleMergeFile(file: File) {
+    if (mergeBusy) return;
+    try {
+      setPending(null);
+      setConfirmReplace(false);
+      setPendingMerge(await readBackupFile(file));
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Invalid file.', 'negative');
+    }
+  }
+
+  async function runManualMerge() {
+    if (!pendingMerge || mergeBusy) return;
+    setMergeBusy(true);
+    try {
+      const summary = await manualMerge(pendingMerge);
+      notify(formatMergeSummary(summary), 'positive');
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Merge failed.', 'negative');
+    } finally {
+      setMergeBusy(false);
+      setPendingMerge(null);
     }
   }
 
@@ -114,6 +155,66 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
                 ) : (
                   <Button variant="danger" onClick={() => setConfirmReplace(true)}>Replace local data</Button>
                 )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="mt-5 border-t border-line pt-5">
+        <h3 className="mb-3 font-display text-lg">Merge from another device</h3>
+        <p className="mb-4 text-sm text-ink-soft">
+          Combine this installation with a backup exported from another device. The newest version of each item is kept.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Button variant="secondary" onClick={() => mergeInputRef.current?.click()} disabled={mergeBusy}>
+            <UploadIcon width={18} height={18} />
+            Choose file to merge
+          </Button>
+          <input
+            ref={mergeInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            aria-label="Merge from another device"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void handleMergeFile(file);
+              event.target.value = '';
+            }}
+          />
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {pendingMerge && (
+          <motion.div
+            initial={motionMultiplier > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={motionMultiplier > 0 ? { opacity: 0 } : undefined}
+            transition={{ duration: 0.16 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-5"
+          >
+            <div className="rounded-xl border border-line-strong bg-surface-raised p-5">
+              <h3 className="mb-3 font-display text-lg">Merge from another device</h3>
+              <div className="text-sm text-ink-soft">
+                <p className="mb-3">
+                  This backup contains{' '}
+                  <strong className="text-ink">{pendingMerge.lessons?.length ?? pendingMerge.decks?.length ?? 0}</strong> lessons and{' '}
+                  <strong className="text-ink">{pendingMerge.cards.length}</strong> cards, exported on {formatDate(pendingMerge.exportedAt)}.
+                </p>
+                <ul className="space-y-2">
+                  <li>Data from both devices is combined.</li>
+                  <li>The newest edit of each item wins.</li>
+                  <li>Deletions from either device are honoured.</li>
+                  <li>A backup of this device is taken first.</li>
+                </ul>
+              </div>
+              <div className="mt-5 flex flex-wrap justify-end gap-2">
+                <Button variant="ghost" onClick={() => setPendingMerge(null)} disabled={mergeBusy}>Cancel</Button>
+                <Button variant="secondary" onClick={() => void runManualMerge()} disabled={mergeBusy}>
+                  {mergeBusy ? 'Merging…' : 'Merge'}
+                </Button>
               </div>
             </div>
           </motion.div>

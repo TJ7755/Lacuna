@@ -67,6 +67,7 @@ describe('undoReview', () => {
     const {
       card: updated,
       lastInteractedAtBefore,
+      updatedAtBefore,
     } = await recordReview({
       card,
       eventId: 'event-undo',
@@ -100,7 +101,10 @@ describe('undoReview', () => {
       deckId: deck.id,
       kind: 'scheduling-unit',
       lastInteractedAtBefore,
+      updatedAtBefore,
     });
+
+    expect((await db.schedulingUnits.get(deck.id))!.updatedAt).toBe(updatedAtBefore);
 
     const restored = (await db.cards.get(card.id))!;
     expect(restored.reps).toBe(0);
@@ -148,6 +152,7 @@ describe('undoReview', () => {
       deckId: deck.id,
       kind: 'scheduling-unit',
       lastInteractedAtBefore: result.lastInteractedAtBefore,
+      updatedAtBefore: result.updatedAtBefore,
     });
 
     const undoneCard = (await db.cards.get(card.id))!;
@@ -248,6 +253,7 @@ describe('undoReview', () => {
     const {
       card: updated,
       lastInteractedAtBefore,
+      updatedAtBefore,
     } = await recordReview({
       card,
       eventId: 'event-course',
@@ -286,6 +292,7 @@ describe('undoReview', () => {
       deckId: c.id,
       kind: 'course',
       lastInteractedAtBefore,
+      updatedAtBefore,
     });
 
     const restored = (await db.cards.get(card.id))!;
@@ -293,6 +300,7 @@ describe('undoReview', () => {
     expect(await db.sessionHistory.get(historyRow.id)).toBeUndefined();
     expect(await performanceForReviewUnit(c.id, 'course')).toEqual(coursePerformanceBefore);
     expect((await db.courses.get(c.id))!.lastInteractedAt).toBe(courseLastInteractedAtBefore);
+    expect((await db.courses.get(c.id))!.updatedAt).toBe(updatedAtBefore);
   });
 
   it('undoes course calibration without changing the backing-deck pacing profile', async () => {
@@ -337,6 +345,7 @@ describe('undoReview', () => {
       deckId: course.id,
       kind: 'course',
       lastInteractedAtBefore: result.lastInteractedAtBefore,
+      updatedAtBefore: result.updatedAtBefore,
     });
 
     expect(await db.userPerformance.get(course.id)).toEqual(calibrationBefore);
@@ -496,6 +505,7 @@ describe('undoReview', () => {
       schedulingUnitId: deck.id,
       kind: result.kind,
       lastInteractedAtBefore: result.lastInteractedAtBefore,
+      updatedAtBefore: result.updatedAtBefore,
     };
 
     await undoReview(undo);

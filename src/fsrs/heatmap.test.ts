@@ -32,6 +32,7 @@ function cardWith(timestamps: number[]): Card {
       retrievabilityAtReview: null,
     })),
     createdAt: 0,
+    updatedAt: 0,
   };
 }
 

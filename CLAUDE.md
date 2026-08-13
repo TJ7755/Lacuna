@@ -70,13 +70,22 @@ grok -p "<prompt>" -m grok-4.6 --effort high --permission-mode acceptEdits
 - `--tools` / `--disallowed-tools`, `--allow` / `--deny` and `--rules` scope what it may do and append to the system prompt. Give it a permitted-paths list through `--rules` the same way you would brief Freebuff.
 - `-w/--worktree` is **ignored in headless mode**. If a Grok worker needs isolation, create the worktree yourself first and point it there with `--cwd`.
 
+Two operational facts, learned 13 August 2026:
+
+- **A headless Grok often cannot publish.** Its auto-mode intermittently refuses `gh pr create` / `gh pr edit` as external publication, and refuses history rewrites such as `git reset --hard` and `git branch -f`. Brief it to write the exact command into its `-done.md` when that happens, and run it yourself. Do not treat the refusal as a failed task.
+- **It stops at guard rails rather than working around them**, reliably, across territory limits, refused commands and inherited work it was told not to touch. That is what makes it safe to run with `--permission-mode acceptEdits`. Give it an explicit permitted-paths list and it will ask rather than stray.
+
+Background every Grok worker and pick the reply up from the mailbox. Delete consumed mail as soon as you have acted on it — a `-question.md` left in place makes every subsequent watcher fire on it immediately.
+
 Intelligence is a 9, level with Opus 5 and Sol, and I suspect that is if anything too low. This is not a slop-tier worker and does not need the task decomposed the way Luna and DeepSeek do. Brief it like Sol: full task, clear spec, hard constraints.
 
 It is better than Sol on the way back, though. Sol's output is real work that still needs polishing; **Grok's code is usually mergeable as written**. So review it, but review it the way you would review a competent colleague's branch — looking for what is wrong with it — rather than expecting to rewrite it. If you find yourself polishing Grok output as a matter of course, that is worth telling me, because it contradicts this.
 
-The quota is generous. A first real session on 13 August 2026 registered 0% of the SuperGrok allowance, against roughly 5% had the same work gone to Claude. That is one data point rather than a measured ceiling, so the cost rating stays at 8 until I have pushed it harder — but it means you should not ration Grok the way you must ration Sol.
+The quota is generous, and a second session on 13 August 2026 confirmed it: a full afternoon of orchestrated work — two sync phases, two rounds of transition polish, a Settings redesign, three code reviews, branch surgery and four PRs — cost 20% of my usage, with Grok writing every line and Claude only reading plans, writing briefs and arbitrating. **Cost is therefore a 9.** Do not ration Grok. Ration Claude, and spend Grok freely on anything that can be briefed.
 
-**Its taste is a 6**, level with Sol. Its 3D and graphical ability is still unrated — see below.
+**Its taste is nominally a 6**, level with Sol, but that looks low. On 13 August 2026 it was given an open-ended design problem — the two-device sync UX, with the shape deliberately unspecified — and returned work that merged unchanged. It diagnosed the real fault itself (two Settings actions sharing the verb "merge" with opposite deletion semantics, and a confirmation panel doing the explaining the section should have done), and it rejected two of the orchestrator's own premises with better reasoning: a device concept is "a costume" without a relay, and the flow shape was fine while the framing was broken. It reviews well too, tracing a safety guarantee through the code rather than asserting it.
+
+One design task under a tight brief is not a taste rating, so the number stays at 6 pending more evidence. But brief it as though it can design, not merely implement, and see what comes back. Its 3D and graphical ability is still unrated — see below.
 
 ---
 
@@ -94,7 +103,7 @@ HIGHER is BETTER. These are vague values from personal experience. If you want t
 | GPT 5.6 Sol Medium *(use Medium for virtually everything; never above High)* | 9 | 6 | 6 | 4 | 9 |
 | DeepSeek V4 Flash *(free build via OpenCode Zen, likely the 0731 weights with enhanced coding)* | 4 | 3 | 0 | 10 | 4 |
 | DeepSeek V4 Pro *(0813 weights, ~1.6T parameters; available in Freebuff)* | 5? | ? | ? | ? | ? |
-| Grok 4.6 *(SuperGrok sub, via the `grok` CLI)* | 9 | 6 | ? | 8 | 8 |
+| Grok 4.6 *(SuperGrok sub, via the `grok` CLI)* | 9 | 6? | ? | 9 | 8 |
 
 Freebuff sits outside the table because I drive it, not you. It runs Luna, and as of 13 August 2026 it also offers DeepSeek V4 Pro. Either way, read it as that model's row with a better price and a supervision cost paid by me rather than by my usage limits.
 

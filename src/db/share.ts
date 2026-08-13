@@ -1136,6 +1136,7 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
     coverageMode: 'prefix',
     excludedCardIds: [],
     createdAt: course.createdAt,
+    updatedAt: course.createdAt,
   }));
   let cardCount = 0;
 
@@ -1280,6 +1281,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         name: shareLesson.n.trim() || 'Untitled lesson',
         orderIndex,
         createdAt: importedAt + orderIndex,
+        updatedAt: importedAt + orderIndex,
         ...(shareLesson.d ? { description: shareLesson.d } : {}),
         isExtension: shareLesson.x === 1,
         ...(typeof shareLesson.rd === 'number' ? { releaseDate: shareLesson.rd } : {}),
@@ -1299,6 +1301,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           content: shareNote.c,
           orderIndex,
           createdAt: importedAt + orderIndex,
+          updatedAt: importedAt + orderIndex,
         })),
       );
       if (importedNotes.length > 0) await db.notes.bulkAdd(importedNotes);
@@ -1360,7 +1363,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         const lessonId = lessonIds[link.l];
         const cardId = cardIdMap.get(link.c);
         return lessonId && cardId
-          ? [{ id: makeId(), lessonId, cardId, createdAt: importedAt }]
+          ? [{ id: makeId(), lessonId, cardId, createdAt: importedAt, updatedAt: importedAt }]
           : [];
       });
       if (importedLinks.length > 0) await db.lessonCards.bulkAdd(importedLinks);
@@ -1397,6 +1400,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
             kind: shareExam.k === 'f' ? ('final' as const) : ('checkpoint' as const),
             examDate: shareExam.e,
             createdAt: shareExam.c ?? importedAt + index,
+            updatedAt: shareExam.c ?? importedAt + index,
             afterLessonId,
             excludedCardIds: (shareExam.x ?? [])
               .map((id) => cardIdMap.get(id))
@@ -1450,6 +1454,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
           // 'list' rather than sticking around as an invalid presetId.
           ...(shareSeq.pr ? { presetId: getPreset(shareSeq.pr as SequencePresetId).id } : {}),
           createdAt: importedAt + index,
+          updatedAt: importedAt + index,
         };
       });
       if (importedSequences.length > 0) await db.sequences.bulkAdd(importedSequences);
@@ -1484,6 +1489,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
             ...(region.bn ? { backNote: region.bn } : {}),
           })),
           createdAt: importedAt + index,
+          updatedAt: importedAt + index,
         }),
       );
       if (importedOcclusions.length > 0) await db.occlusions.bulkAdd(importedOcclusions);

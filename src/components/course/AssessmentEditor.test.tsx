@@ -10,8 +10,8 @@ import {
 } from './AssessmentEditor';
 
 const lessons: Lesson[] = [
-  { id: 'l1', courseId: 'c1', name: 'Atoms', orderIndex: 0, isExtension: false, createdAt: 1 },
-  { id: 'l2', courseId: 'c1', name: 'Bonding', orderIndex: 1, isExtension: false, createdAt: 2 },
+  { id: 'l1', courseId: 'c1', name: 'Atoms', orderIndex: 0, isExtension: false, createdAt: 1, updatedAt: 1 },
+  { id: 'l2', courseId: 'c1', name: 'Bonding', orderIndex: 1, isExtension: false, createdAt: 2, updatedAt: 2 },
 ];
 
 function card(id: string, lessonId: string, front: string): Card {
@@ -26,6 +26,7 @@ function card(id: string, lessonId: string, front: string): Card {
     type: 'front_back',
     tags: [],
     createdAt: 1,
+    updatedAt: 1,
     state: 0,
     stability: null,
     difficulty: null,

@@ -18,6 +18,7 @@ function makeAssessment(
     coverageMode: 'prefix',
     excludedCardIds: [],
     createdAt: 1,
+    updatedAt: 1,
     ...overrides,
   };
 }

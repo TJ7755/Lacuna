@@ -315,6 +315,8 @@ export interface CourseRecord {
   examBoard?: string;
   specification?: string;
   createdAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from createdAt. */
+  updatedAt: number;
   colour?: string;
   // Scheduling (inherited from the old Deck).
   /** Set true once the exam-date prompt has been answered or dismissed. */
@@ -408,6 +410,8 @@ interface CourseAssessmentBase {
   /** Set when automatic repair after lesson deletion needs an author's review. */
   needsAuthorConfirmation?: boolean;
   createdAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from createdAt. */
+  updatedAt: number;
 }
 
 /**
@@ -584,6 +588,8 @@ export interface Sequence {
    */
   presetId?: SequencePresetId;
   createdAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from createdAt. */
+  updatedAt: number;
 }
 
 /** A single recallable unit within a Sequence. */
@@ -642,6 +648,8 @@ export interface Occlusion {
   /** Ordered; stored inline as occlusions are small. */
   regions: OcclusionRegion[];
   createdAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from createdAt. */
+  updatedAt: number;
 }
 
 /** A learning unit on the course path: notes plus the cards taught in it. */
@@ -653,6 +661,8 @@ export interface Lesson {
   /** Position on the path. */
   orderIndex: number;
   createdAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from createdAt. */
+  updatedAt: number;
   // Optional lesson-level exam-date override (highest scheduling priority).
   examDate?: number;
   timeZone?: string;
@@ -682,6 +692,8 @@ export interface Note {
   content: string;
   orderIndex: number;
   createdAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from createdAt. */
+  updatedAt: number;
 }
 
 /** Links a card into an additional lesson. Governs display/grouping only, never FSRS eligibility. */
@@ -690,6 +702,8 @@ export interface LessonCardLink {
   lessonId: string;
   cardId: string;
   createdAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from createdAt. */
+  updatedAt: number;
 }
 
 /** Records that a card has been successfully introduced in one specific lesson. */
@@ -697,12 +711,16 @@ export interface LessonCardExposure {
   lessonId: string;
   cardId: string;
   taughtAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from taughtAt. */
+  updatedAt: number;
 }
 
 /** Explicit completion for a lesson with no cards to expose. */
 export interface LessonCompletion {
   lessonId: string;
   completedAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from completedAt. */
+  updatedAt: number;
 }
 
 /**
@@ -738,6 +756,8 @@ export interface PracticeNode {
   cardCount?: number;
   randomize?: boolean;
   createdAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from createdAt. */
+  updatedAt: number;
 }
 
 /** Persisted progress for one stable practice path node and its current card scope. */
@@ -910,6 +930,8 @@ export interface Card {
   learningSteps: number;
   history: ReviewLog[];
   createdAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from createdAt or lastReviewed. */
+  updatedAt: number;
 }
 
 /** A sampled snapshot of a deck's predicted exam-day retrievability for historical charts. */
@@ -949,6 +971,8 @@ export type SchedulingUnitKind = 'course' | 'lesson' | 'legacy-deck';
 export interface SchedulingUnitRecord extends SchedulerConfig {
   /** Source record creation time, retained for deterministic merge resolution. */
   createdAt: number;
+  /** Last mutation time. Required after schema v23; backfilled from createdAt or lastInteractedAt. */
+  updatedAt: number;
   /** Whether the source has answered or dismissed the exam-date prompt. */
   examDatePromptDismissed?: boolean;
   /** FSRS parameter schema version retained as target-store provenance. */
@@ -975,6 +999,8 @@ interface PerformanceStats {
 /** Course-keyed calibration profile in the target storage model. */
 export interface CoursePerformance extends PerformanceStats {
   courseId: string;
+  /** Last mutation time. Required after schema v23; backfilled to 0 when unknown. */
+  updatedAt: number;
 }
 
 /** Scheduling-unit-keyed pacing profile in the target storage model. */
@@ -982,6 +1008,8 @@ export interface SchedulingPerformance extends PerformanceStats {
   schedulingUnitId: string;
   courseId?: string;
   lessonId?: string;
+  /** Last mutation time. Required after schema v23; backfilled to 0 when unknown. */
+  updatedAt: number;
 }
 
 /** Binary media asset stored separately from card Markdown and deduplicated by hash.
@@ -1033,6 +1061,27 @@ export interface AppStateEntry {
   value: unknown;
 }
 
+/** One deleted snapshot-carried row, kept so a peer merge can honour the deletion. */
+export interface Tombstone {
+  /** Dexie table name, e.g. `cards` or `courses`. */
+  table: string;
+  recordId: string;
+  deletedAt: number;
+}
+
+/**
+ * Local sync-channel bookkeeping. Stored under `appState` key `syncState`.
+ * Absent until a device is paired. P3 only introduces the slot; nothing writes
+ * a live channel until the relay work is authorised.
+ */
+export interface SyncState {
+  channelId?: string;
+  wrappedKeyMaterial?: string;
+  lastPushedGeneration?: string;
+  lastSuccessfulSyncAt?: number;
+  lastError?: string | null;
+}
+
 /** Shape of an exported/imported backup file. */
 export interface BackupFile {
   app: 'lacuna';
@@ -1069,6 +1118,11 @@ export interface BackupFile {
   sequences?: Sequence[];
   // Image occlusions. Optional so older backups still import cleanly.
   occlusions?: Occlusion[];
+  /**
+   * Deletion receipts. Optional so pre-v10 backups import unchanged; an absent
+   * array means none. Added at backup version 10 / schema v23.
+   */
+  tombstones?: Tombstone[];
 }
 
 /**

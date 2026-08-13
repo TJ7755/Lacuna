@@ -51,6 +51,7 @@ function cardWith(grades: Grade[], startMs: number, gapDays = 2): Card {
     learningSteps: 0,
     history,
     createdAt: startMs,
+    updatedAt: startMs,
   };
 }
 

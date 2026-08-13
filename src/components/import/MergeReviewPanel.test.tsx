@@ -21,12 +21,12 @@ const course = {
   distributedCopy: { lineageId: 'lin-1', revision: 3, locked: true, autoAcceptUpdates: false, sourceLabel: 'Ms Teacher' },
 } as Course;
 
-const lessons: Lesson[] = [{ id: 'lesson-1', courseId: 'c1', name: 'Cells', orderIndex: 0, isExtension: false, createdAt: 1 }];
+const lessons: Lesson[] = [{ id: 'lesson-1', courseId: 'c1', name: 'Cells', orderIndex: 0, isExtension: false, createdAt: 1, updatedAt: 1 }];
 const cards = [
-  { id: 'card-1', courseId: 'c1', primaryLessonId: 'lesson-1', deckId: 'd1', schedulingUnitId: 'lesson-1', front: 'Removed card', back: '', type: 'front_back', tags: [], createdAt: 1, state: 0, stability: null, difficulty: null, due: null, scheduledDays: 0, learningSteps: 0, lastReviewed: null, reps: 0, lapses: 0, history: [] },
-  { id: 'card-2', courseId: 'c1', primaryLessonId: 'lesson-1', deckId: 'd1', schedulingUnitId: 'lesson-1', front: 'Old front', back: 'Old back', type: 'front_back', tags: [], createdAt: 1, state: 0, stability: null, difficulty: null, due: null, scheduledDays: 0, learningSteps: 0, lastReviewed: null, reps: 0, lapses: 0, history: [] },
+  { id: 'card-1', courseId: 'c1', primaryLessonId: 'lesson-1', deckId: 'd1', schedulingUnitId: 'lesson-1', front: 'Removed card', back: '', type: 'front_back', tags: [], createdAt: 1, updatedAt: 1, state: 0, stability: null, difficulty: null, due: null, scheduledDays: 0, learningSteps: 0, lastReviewed: null, reps: 0, lapses: 0, history: [] },
+  { id: 'card-2', courseId: 'c1', primaryLessonId: 'lesson-1', deckId: 'd1', schedulingUnitId: 'lesson-1', front: 'Old front', back: 'Old back', type: 'front_back', tags: [], createdAt: 1, updatedAt: 1, state: 0, stability: null, difficulty: null, due: null, scheduledDays: 0, learningSteps: 0, lastReviewed: null, reps: 0, lapses: 0, history: [] },
 ] as Card[];
-const notes: Note[] = [{ id: 'note-1', lessonId: 'lesson-1', name: 'Intro', content: 'My own notes', orderIndex: 0, createdAt: 1 }];
+const notes: Note[] = [{ id: 'note-1', lessonId: 'lesson-1', name: 'Intro', content: 'My own notes', orderIndex: 0, createdAt: 1, updatedAt: 1 }];
 
 function fullReview(): PendingMergeReview {
   return {

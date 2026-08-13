@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lacuna — Sync implementation plan</title>
+<style>
+  :root {
+    --bg: #0e1013;
+    --panel: #14171c;
+    --panel-2: #191d23;
+    --line: #262c34;
+    --text: #dfe3e8;
+    --dim: #9aa4b1;
+    --dimmer: #6f7a88;
+    --accent: #7aa2f7;
+    --warn: #e0af68;
+    --bad: #f7768e;
+    --good: #9ece6a;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.62 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px 96px; display: grid; grid-template-columns: 218px 1fr; gap: 44px; }
+  header.top { grid-column: 1 / -1; padding: 52px 0 30px; border-bottom: 1px solid var(--line); margin-bottom: 36px; }
+  h1 { font-size: 27px; line-height: 1.25; margin: 0 0 10px; letter-spacing: -0.02em; font-weight: 640; }
+  .sub { color: var(--dim); font-size: 14.5px; max-width: 74ch; margin: 0; }
+  .meta { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag { font: 500 11.5px/1 var(--mono); letter-spacing: .04em; text-transform: uppercase;
+         padding: 6px 10px; border: 1px solid var(--line); border-radius: 5px; color: var(--dim); background: var(--panel); }
+  .tag.b { color: var(--accent); border-color: #2b3a55; }
+
+  nav { position: sticky; top: 26px; align-self: start; font-size: 13.5px; max-height: calc(100vh - 60px); overflow-y: auto; }
+  nav ol { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  nav li { counter-increment: s; }
+  nav a { display: block; color: var(--dim); text-decoration: none; padding: 5px 0 5px 26px; position: relative; border-left: 1px solid transparent; }
+  nav a::before { content: counter(s); position: absolute; left: 0; color: var(--dimmer); font: 500 11px/1.5 var(--mono); }
+  nav a:hover { color: var(--text); }
+
+  main { min-width: 0; }
+  section { margin-bottom: 46px; scroll-margin-top: 24px; }
+  h2 { font-size: 19px; margin: 0 0 14px; letter-spacing: -0.01em; font-weight: 620; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+  h2 .n { color: var(--dimmer); font: 500 13px/1 var(--mono); margin-right: 10px; }
+  h3 { font-size: 15px; margin: 26px 0 9px; font-weight: 620; color: #eef1f5; }
+  p { margin: 0 0 13px; max-width: 82ch; }
+  ul, ol { margin: 0 0 13px; padding-left: 20px; max-width: 82ch; }
+  li { margin-bottom: 6px; }
+  code { font: 500 12.6px/1.4 var(--mono); background: var(--panel-2); border: 1px solid var(--line);
+         border-radius: 4px; padding: 1.5px 5px; color: #c3ccd8; }
+  pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px;
+        overflow-x: auto; margin: 0 0 15px; }
+  pre code { background: none; border: 0; padding: 0; font-size: 12.4px; line-height: 1.65; color: #b9c2ce; }
+  .k { color: var(--accent); }
+  .c { color: var(--dimmer); font-style: italic; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 16px 18px; margin: 0 0 15px; }
+  .card > :last-child { margin-bottom: 0; }
+  .card h4 { margin: 0 0 8px; font-size: 13.5px; letter-spacing: .02em; text-transform: uppercase; color: var(--dim); font-weight: 600; }
+
+  .flag { border-left: 3px solid var(--warn); background: #1a1712; }
+  .flag h4 { color: var(--warn); }
+  .stop { border-left: 3px solid var(--bad); background: #1c1316; }
+  .stop h4 { color: var(--bad); }
+  .ok { border-left: 3px solid var(--good); background: #141a12; }
+  .ok h4 { color: var(--good); }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 13.7px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td code { font-size: 12px; }
+  tr:last-child td { border-bottom: 0; }
+
+  .phase { display: grid; grid-template-columns: 46px 1fr; gap: 16px; border: 1px solid var(--line);
+           border-radius: 9px; background: var(--panel); padding: 15px 17px; margin-bottom: 11px; }
+  .phase .id { font: 600 12px/1 var(--mono); color: var(--accent); background: var(--panel-2);
+               border: 1px solid var(--line); border-radius: 5px; height: 30px; display: grid; place-items: center; }
+  .phase h4 { margin: 0 0 5px; font-size: 14.5px; font-weight: 620; color: #eef1f5; text-transform: none; letter-spacing: 0; }
+  .phase p { margin: 0 0 7px; font-size: 13.8px; color: var(--dim); }
+  .phase p:last-child { margin-bottom: 0; }
+  .files { font: 500 11.8px/1.7 var(--mono); color: var(--dimmer); }
+
+  .dec { border-bottom: 1px solid var(--line); padding: 13px 0; display: grid; grid-template-columns: 168px 1fr; gap: 18px; }
+  .dec:last-child { border-bottom: 0; }
+  .dec dt { color: var(--dim); font-size: 13.5px; }
+  .dec dd { margin: 0; }
+  dl { margin: 0; }
+
+  footer { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 20px; color: var(--dimmer); font-size: 12.8px; }
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: 1fr; gap: 0; padding: 0 18px 60px; }
+    nav { position: static; margin-bottom: 34px; }
+    .dec { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>Sync implementation plan</h1>
+  <p class="sub">Execution plan after schema v22. Arc 8 remains the architecture.
+  This document rebases that plan onto the current codebase and sequences the work
+  so the next implementation slice can be approved before anyone writes code.</p>
+  <div class="meta">
+    <span class="tag b">Status: approved — P3 in progress</span>
+    <span class="tag">Schema v22 &rarr; v23</span>
+    <span class="tag">Backup 9 &rarr; 10</span>
+    <span class="tag">This approval: P3 only</span>
+  </div>
+</header>
+
+<nav>
+  <ol>
+    <li><a href="#s1">Status and the ask</a></li>
+    <li><a href="#s2">Why this, why now</a></li>
+    <li><a href="#s3">Not building yet</a></li>
+    <li><a href="#s4">Architecture reminder</a></li>
+    <li><a href="#s5">v22 blockers</a></li>
+    <li><a href="#s6">Phase map</a></li>
+    <li><a href="#s7">P3 — schema v23</a></li>
+    <li><a href="#s8">P4 — merge sketch</a></li>
+    <li><a href="#s9">Later phases</a></li>
+    <li><a href="#s10">Manual testing</a></li>
+    <li><a href="#s11">Risks</a></li>
+    <li><a href="#s12">Open questions</a></li>
+    <li><a href="#s13">Success</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="s1">
+  <h2><span class="n">01</span>Status and decision asked of Tom</h2>
+  <p>Status is <strong>approved</strong> as of 13 August 2026. This document
+  authorises <strong>P3 implementation</strong> — schema v23, one write helper,
+  tombstones, backup version 10. P4 is the automatic successor and is not
+  fully sliced yet. It does not authorise a Vercel Blob project, a relay,
+  pairing UI, or automatic pull-on-focus.</p>
+
+  <dl>
+    <div class="dec"><dt>Approve now</dt><dd>P3 as the next implementation work,
+      sliced as in §7, against the live v22 tree. Slices 1 and 2 are not
+      delegated. Slices 3–10 are mechanical once those exist.</dd></div>
+    <div class="dec"><dt>Confirm order</dt><dd>P4 next (pure merge module). Then
+      a separate maintenance-cost decision before P1/P2/P5/P6/P7. Automatic
+      triggers can slip; a live database that cannot record mutations or
+      deletions cannot.</dd></div>
+    <div class="dec"><dt>Answer</dt><dd>The four questions in §12. Nothing else
+      is open. Product decisions already taken are not being reopened.</dd></div>
+  </dl>
+
+  <div class="card ok">
+    <h4>What P3 + P4 buy without a relay</h4>
+    <p>They turn the existing export/import dance into a correct two-device
+    merge. P3 alone is not that merge: <code>importBackup(payload, 'merge')</code>
+    still compares <code>createdAt</code> on most tables. P4 is the merge.
+    September-safe increment is both, in that order, with no hosting.</p>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="n">02</span>Why this, why now</h2>
+  <ul>
+    <li>Go-live is September 2026. There is no irreplaceable study data yet.
+      Anything that changes how mutations and deletions are recorded is safer
+      now than it will ever be again.</li>
+    <li>The working shape is phone-primary study plus laptop authoring. Three
+      devices, one person. Copying <code>BackupFile</code> JSON around does
+      not keep them in step.</li>
+    <li>Schema v22 just landed. The dual Course/Deck model is gone.
+      <code>Deck</code> and <code>Folder</code> stores no longer exist.
+      Sync work can be written against the target model only.</li>
+    <li>PWA install already shipped. Calibration cannot report before a real
+      corpus exists and stays parked. Arc 14 and the learn-screen redesign
+      are delivered.</li>
+  </ul>
+</section>
+
+<section id="s3">
+  <h2><span class="n">03</span>What we are not building yet</h2>
+  <ul>
+    <li>Accounts, identity, or any Lacuna-hosted service that can read content.
+      A channel id is a capability.</li>
+    <li>CRDTs, live collaboration, folder-mirror, a companion process.</li>
+    <li>A review-only special case for the phone. Symmetric newest-wins from
+      day one.</li>
+    <li>Receipts, reminders, MCP expansion, item-families, calibration.</li>
+    <li>The relay. It is designed in Arc 8. This approval does not stand it
+      up, and does not authorise a Vercel Blob project.</li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="n">04</span>Architecture reminder</h2>
+  <p>Full design: <a href="../arc8-sync-plan.html">Arc 8</a>. This section
+  is only the parts P3 and P4 must not contradict.</p>
+<pre><code><span class="c">// Each device, on pull:</span>
+   local <span class="k">BackupFile</span>  ─┐
+                     ├─&gt; mergeSnapshots() ─&gt; merged ─&gt; importBackup(merged, <span class="k">'replace'</span>)
+   remote plaintext ─┘                          │
+                                                └─&gt; encrypt ─&gt; PUT (if changed)</code></pre>
+  <p>Pull-merge-push. Merge is a pure function on two <code>BackupFile</code>s
+  in <code>src/sync/mergeSnapshots.ts</code>. It has no Dexie access and does
+  not know which device produced either snapshot.</p>
+  <ul>
+    <li>Tombstones union first. A record id in the union is excluded unless
+      its <code>updatedAt</code> is strictly newer than <code>deletedAt</code>.</li>
+    <li>Content: newest-wins per record by <code>updatedAt</code>, whole-record
+      replacement, id as deterministic tiebreak.</li>
+    <li>Reviews: set-union on <code>eventId</code> across
+      <code>sessionHistory</code> / <code>reviewHistory</code> and
+      <code>Card.history[]</code>.</li>
+    <li><strong>Never merge card scheduler fields.</strong> Replay the unioned
+      history through <code>ts-fsrs</code> to derive stability, difficulty,
+      due and state.</li>
+    <li>Assets: union by content hash. Existing GC stays as it is.</li>
+  </ul>
+</section>
+
+<section id="s5">
+  <h2><span class="n">05</span>Current blockers in the v22 schema</h2>
+  <p><code>CURRENT_SCHEMA_VERSION</code> is 22 in
+  <code>src/db/schema.ts</code>. <code>BACKUP_VERSION</code> is 9 in
+  <code>src/db/portability.ts</code>. Neither field needed for newest-wins
+  or deletion exists on the tables that matter.</p>
+
+  <div class="card stop">
+    <h4>No updatedAt on most content tables</h4>
+    <p>Only <code>NoteAnnotation</code>, <code>RevisionPlan</code> and
+    <code>PracticeMilestone</code> carry <code>updatedAt</code> today.
+    <code>Card</code>, <code>CourseRecord</code>, <code>Lesson</code>,
+    <code>Note</code>, <code>LessonCardLink</code>,
+    <code>LessonCardExposure</code>, <code>LessonCompletion</code>,
+    <code>PracticeNode</code>, <code>CourseAssessment</code>,
+    <code>Sequence</code>, <code>Occlusion</code>,
+    <code>SchedulingUnitRecord</code>, <code>CoursePerformance</code> and
+    <code>SchedulingPerformance</code> have <code>createdAt</code> at best
+    — cards have <code>lastReviewed</code>, scheduling units have
+    <code>lastInteractedAt</code>. <code>importBackup(..., 'merge')</code>
+    already falls back to <code>createdAt</code> for those tables, which is
+    why an edited note never beats its older twin.</p>
+  </div>
+
+  <div class="card stop">
+    <h4>No tombstones</h4>
+    <p>Nothing in the schema matches <code>deletedAt</code> /
+    <code>tombstone</code> / <code>isDeleted</code>. A deleted course is
+    simply absent from a snapshot, so the device that still has it wins by
+    existing. Deleted courses resurrect. This is the way the feature looks
+    haunted, and it has to land in the same migration as the timestamps.</p>
+  </div>
+
+  <div class="card ok">
+    <h4>Review history is already sound</h4>
+    <p><code>sessionHistory</code> is indexed
+    <code>'++id, &amp;eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp'</code>.
+    <code>recordReview</code> rejects a duplicate <code>eventId</code> and
+    one belonging to another attempt. Canonical events live in
+    <code>reviewHistory</code>. Nothing in P3 touches either table.
+    Deleting a card cascades into its review events; those deletions follow
+    the card's tombstone rather than getting their own.</p>
+  </div>
+</section>
+
+<section id="s6">
+  <h2><span class="n">06</span>Phase map</h2>
+  <p>Arc 8 numbered P1 as the relay. That numbering stays in Arc 8. We are
+  deliberately executing P3 first: it is the data-integrity work that must
+  land before real revision history exists. A relay in front of a schema
+  that cannot express an edit or a delete is wasted infrastructure.</p>
+
+  <div class="phase"><div class="id">P3</div><div>
+    <h4>Schema v23, timestamps and tombstones — this approval</h4>
+    <p>Additive migration. One write helper. Tombstones on every
+    snapshot-carried delete, in the same Dexie transaction. Backup version
+    10. Independently useful as the prerequisite for a correct merge, and
+    as a live database that will not have to be reconstructed later.</p>
+    <p class="files">src/db/schema.ts · types.ts · repository.ts · backingDecks.ts · portability.ts · occlusionRepository.ts · practiceNodeRepository.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P4</div><div>
+    <h4>Merge module — next</h4>
+    <p>Pure <code>mergeSnapshots()</code>. Sketched in §8, not fully sliced.
+    Automatic successor once P3 is green. Still no relay.</p>
+    <p class="files">src/sync/mergeSnapshots.ts (+ tests)</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P1</div><div>
+    <h4>Relay service — gated</h4>
+    <p>Four endpoints, Vercel Blob, ETag generation guard. Blocked on an
+    explicit maintenance-cost decision. Not authorised by this document.</p>
+    <p class="files">relay/</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P2</div><div>
+    <h4>Crypto module — gated</h4>
+    <p>WebCrypto only. Channel key, AES-GCM, PBKDF2 keybag. Security review
+    before anything is pushed to a real channel.</p>
+    <p class="files">src/sync/crypto.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P5</div><div>
+    <h4>Transport seam and sync cycle — gated</h4>
+    <p><code>RelayProvider</code> with <code>manual</code> and
+    <code>http</code> implementations. Pull-merge-push, 412 retry,
+    single-flight, backup-before-apply.</p>
+    <p class="files">src/sync/relay.ts · src/sync/cycle.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P6</div><div>
+    <h4>Pairing UI — gated</h4>
+    <p>Settings section, QR and passphrase, unpair, delete channel, last-sync
+    status. Uses the QR libraries already in the tree.</p>
+    <p class="files">src/pages/settings/*</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P7</div><div>
+    <h4>Automatic triggers — gated</h4>
+    <p>Pull on focus, push after a study session ends. Deliberately last, and
+    allowed to slip past September if the manual export/import merge works.</p>
+    <p class="files">src/sync/triggers.ts · src/App.tsx</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P8</div><div>
+    <h4>Docs close-out — gated</h4>
+    <p>SPEC, CHANGES, README local-only paragraph, roadmap. After the
+    feature exists, not before.</p>
+    <p class="files">docs/SPEC.md · docs/CHANGES.md · README.md · docs/next_plan.md</p>
+  </div></div>
+
+  <div class="phase"><div class="id">P9</div><div>
+    <h4>Three-device manual pass — gated</h4>
+    <p>Not automatable. Specified in Arc 8 §14. Not invented here.</p>
+  </div></div>
+</section>
+
+<section id="s7">
+  <h2><span class="n">07</span>P3 — schema v23, timestamps and tombstones</h2>
+  <p>This is the specification this approval covers. Decisions below are
+  already taken. Workers must not reopen them. Slices 1 and 2 set the
+  pattern and are not delegated. Slices 3–10 are one commit each.</p>
+
+  <div class="card flag">
+    <h4>Rebased from the P3 markdown</h4>
+    <p><code>docs/plans/sync-p3-schema.md</code> remains the slice spec
+    workers will be briefed from, unless you ask to delete it. This page
+    is the review surface. Where that markdown disagrees with the live
+    v22 tree, the code wins. Corrections:</p>
+    <ul>
+      <li><code>src/db/courseRepository.ts</code> and
+        <code>src/db/sequenceRepository.ts</code> do not exist. Course,
+        lesson, note and sequence writes live in
+        <code>src/db/repository.ts</code>. The
+        <code>*Repository.test.ts</code> files already import from there.</li>
+      <li><code>src/db/export.ts</code> is CSV/TSV/markdown card export, not
+        the backup format. Slice 9 touches
+        <code>src/db/portability.ts</code> and
+        <code>src/db/types.ts</code> only.</li>
+      <li><code>noteAnnotations</code> are device-local and absent from
+        <code>BackupFile</code> / <code>exportDatabase()</code>. The
+        decision is “tombstone only snapshot-carried rows”, so they are
+        <em>not</em> tombstoned. Writes still go through the helper; they
+        already have <code>updatedAt</code>.</li>
+      <li><code>deleteLesson</code> does not delete cards. It sets
+        <code>primaryLessonId: null</code> and moves them onto the course
+        bank unit. Lesson-delete tombstones are the lesson, its notes,
+        links, exposures, completion, scheduling unit and scheduling
+        performance — not its cards.</li>
+      <li><code>deleteCourse</code> does not currently delete
+        <code>occlusions</code>, and <code>CourseSnapshot</code> does not
+        include them. Slice 7 closes that cascade so a deleted course
+        cannot leave orphan diagrams, and so those rows can be
+        tombstoned.</li>
+      <li><code>readAllDataFromVersion</code> in
+        <code>src/db/schema.ts</code> omits <code>occlusions</code> from
+        the pre-migration snapshot. Slice 1 adds them, or a failed v23
+        upgrade snapshot is missing diagrams.</li>
+      <li>Scheduling-unit and performance writes live in
+        <code>src/db/backingDecks.ts</code>
+        (<code>syncCourseSchedulingUnits</code>,
+        <code>removeLessonSchedulingUnit</code>,
+        <code>removeCourseSchedulingUnits</code>,
+        <code>restoreReviewUnitPerformance</code>). The markdown did not
+        name this file. Slices 5 and 7 must.</li>
+      <li><code>assetCache</code> is an in-memory LRU in
+        <code>src/db/assetCache.ts</code>, not a Dexie table. Still no
+        tombstone.</li>
+      <li>The markdown’s “99 delete call sites” count includes tests, cache
+        evictions and <code>db.delete()</code> wipes. Tombstones are
+        required only on the snapshot-carried paths listed below.</li>
+    </ul>
+  </div>
+
+  <h3>7.1 Decisions already taken</h3>
+  <dl>
+    <div class="dec"><dt>One write helper</dt><dd>Every write path stamps
+      <code>updatedAt</code> through a single helper. No scattered
+      <code>Date.now()</code> calls. Defined in slice 2; every later
+      slice imitates it.</dd></div>
+    <div class="dec"><dt>Tombstones cover cascades</dt><dd>Every deleted
+      snapshot-carried row gets its own tombstone, including cascaded
+      ones. The merge must not know the ownership graph.</dd></div>
+    <div class="dec"><dt>Same transaction</dt><dd><code>recordTombstone</code>
+      accepts the caller’s existing Dexie transaction. A tombstone
+      written in a different transaction from its delete can survive a
+      rollback and later delete a live record on every other device.</dd></div>
+    <div class="dec"><dt>Restore is not an edit</dt><dd>Restore from a
+      snapshot preserves the restored record’s original
+      <code>updatedAt</code>. Stamping it would make an old record beat
+      a newer one on another device.</dd></div>
+    <div class="dec"><dt>Undo is not a deletion</dt><dd>Undoing a deletion
+      must remove the tombstones written for that deletion. Leaving them
+      would delete the restored course on every other device at the next
+      sync.</dd></div>
+    <div class="dec"><dt>syncState</dt><dd>Lives under the existing
+      <code>appState</code> key-value table: channel id, wrapped key
+      material, last pushed generation, last successful sync, last error.
+      No new table.</dd></div>
+    <div class="dec"><dt>90-day prune</dt><dd>Tombstones older than 90 days
+      are dropped. Beyond that a stale device resets from a pull rather
+      than merging. Confirm or change in §12.</dd></div>
+    <div class="dec"><dt>Review history</dt><dd>Untouched in P3. Card
+      deletion tombstone covers cascaded review events.</dd></div>
+    <div class="dec"><dt>v23 is additive</dt><dd>Still take a pre-migration
+      snapshot via <code>ensurePreMigrationSnapshot</code>. Do
+      <em>not</em> add 23 to <code>DESTRUCTIVE_SCHEMA_VERSIONS</code>
+      (that set is currently <code>{22}</code>). If the upgrade pass
+      throws, Dexie rolls it back and the database stays readable at
+      v22.</dd></div>
+  </dl>
+
+  <h3>7.2 What is snapshot-carried</h3>
+  <p>A tombstone is required only where the deleted row appears in
+  <code>BackupFile</code> as emitted by <code>exportDatabase()</code>.</p>
+  <table>
+    <thead><tr><th>Required</th><th>Not required</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>cards, courses, lessons, notes, lessonCards,
+          lessonCardExposures, lessonCompletions, practiceNodes,
+          practiceMilestones, courseAssessments, sequences,
+          revisionPlans, occlusions, schedulingUnits,
+          coursePerformance, schedulingPerformance</td>
+        <td><code>backups</code> (local restore points);
+          <code>appState</code>; in-memory <code>assetCache</code>;
+          <code>undoReview</code> (removes a review event that was never
+          a user-visible deletion); <code>reviewHistory</code> /
+          <code>sessionHistory</code> (follow the card);
+          <code>noteAnnotations</code> (device-local, not in
+          <code>BackupFile</code>); <code>lineageIdMappings</code> /
+          <code>pendingMergeReviews</code> (classroom, not exported);
+          <code>userPerformance</code> (export always emits
+          <code>[]</code>); assets (union by hash; GC unchanged)</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Replace-import <code>clear()</code> and share-import assessment
+  replacement in <code>src/db/share.ts</code> are not user-visible
+  deletions. They do not write tombstones. Incoming tombstones on a
+  version-10 backup are stored, not applied; applying is P4.</p>
+
+  <h3>7.3 Helper and transaction rules</h3>
+  <div class="card stop">
+    <h4>Rules every later slice inherits</h4>
+    <ul>
+      <li>One stamp helper, one <code>recordTombstone</code> helper. Home
+        is <code>src/db/repository.ts</code> or a new
+        <code>src/db/mutationStamp.ts</code> if that reads better.
+        Slices 1 and 2 decide the shape; later slices do not invent a
+        second one.</li>
+      <li><code>recordTombstone</code> must take the caller’s open Dexie
+        transaction. It must not call <code>db.transaction</code>
+        itself.</li>
+      <li>Every transaction that deletes a snapshot-carried row must list
+        <code>db.tombstones</code> in its table list. Dexie helpers
+        inherit the caller’s complete scope; omitting a table does not
+        always fail loudly under fake-indexeddb.</li>
+      <li><code>restoreCards</code>, <code>restoreLesson</code>,
+        <code>restoreCourse</code>, <code>restoreSequence</code> and
+        <code>restoreOcclusion</code> put records as they were snapshotted
+        and delete the matching tombstones in the same transaction.</li>
+      <li><code>stampMissingLessonViewModes</code> is a one-shot display
+        migration, not an edit. It must not advance
+        <code>updatedAt</code>.</li>
+    </ul>
+  </div>
+
+  <h3>7.4 Slices</h3>
+
+  <div class="phase"><div class="id">1</div><div>
+    <h4>Schema v23 skeleton — not delegated</h4>
+    <p>Add the <code>tombstones</code> table, indexed
+    <code>'[table+recordId], deletedAt'</code>. Type
+    <code>updatedAt: number</code> as required on the content interfaces
+    listed in slices 3–5. Upgrade pass backfills from
+    <code>createdAt</code>, or from <code>lastReviewed</code> for cards
+    where that is later. Typed <code>syncState</code> reader/writer
+    against <code>appState</code> — no new table. Include
+    <code>occlusions</code> in <code>readAllDataFromVersion</code>.
+    Pre-migration snapshot. Upgrade abort leaves v22 readable. Test
+    pattern: <code>src/db/schemaV22.test.ts</code>.</p>
+    <p class="files">src/db/schema.ts · src/db/types.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">2</div><div>
+    <h4>The write helper — not delegated</h4>
+    <p>Stamp helper plus <code>recordTombstone(tx, table, recordId)</code>
+    that writes inside the caller’s transaction. This is the pattern
+    every later slice copies. A helper designed badly is inherited by
+    every slice after it.</p>
+    <p class="files">src/db/repository.ts or src/db/mutationStamp.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">3</div><div>
+    <h4>Stamp course, lesson and note writes</h4>
+    <p>Apply the helper to every write path for <code>courses</code>,
+    <code>lessons</code>, <code>notes</code> and
+    <code>noteAnnotations</code>: <code>createCourse</code>,
+    <code>updateCourse</code>, <code>publishCourse</code>,
+    <code>detachCourse</code>, <code>setCourseAutoAcceptUpdates</code>,
+    <code>createLesson</code>, <code>updateLesson</code>,
+    <code>ratchetLessonUnlock</code>, <code>reorderLessons</code>,
+    <code>createNote</code>, <code>updateNote</code>,
+    <code>reorderNotes</code>, <code>createNoteAnnotation</code>,
+    <code>updateNoteAnnotation</code>. Restore paths do not stamp.</p>
+    <p>Tests: each write path leaves <code>updatedAt</code> strictly
+    greater than it was before. A restore from snapshot preserves the
+    original <code>updatedAt</code>.</p>
+    <p class="files">src/db/repository.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">4</div><div>
+    <h4>Stamp card writes</h4>
+    <p>Every card write in <code>repository.ts</code>:
+    <code>createCard</code> / <code>createCards</code> and the reverse
+    helpers, the lesson- and course-scoped wrappers,
+    <code>assignCardsToLesson</code>, <code>updateCard</code>,
+    <code>moveCards</code>, <code>suspendCard</code> /
+    <code>unsuspendCard</code> / <code>setCardsSuspended</code>,
+    <code>addTagToCards</code> / <code>removeTagFromCards</code>,
+    <code>buryCard</code> / <code>buryCards</code>,
+    <code>rescheduleCards</code>, <code>setCardFlag</code>, and
+    <code>recordReview</code>. Generated-card creates in
+    <code>createSequence</code> / <code>updateSequence</code> are card
+    writes too.</p>
+    <p><code>recordReview</code> must stamp the card like any other write.
+    Safe because the merge derives scheduler state by replaying review
+    events rather than by taking the newer card record.</p>
+    <p>Tests: as slice 3, plus a review leaving <code>updatedAt</code>
+    advanced. <code>restoreCards</code> does not stamp.</p>
+    <p class="files">src/db/repository.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">5</div><div>
+    <h4>Stamp the remaining content tables</h4>
+    <p><code>createSequence</code> / <code>updateSequence</code>;
+    <code>createOcclusion</code> / <code>updateOcclusion</code> (and the
+    cards they generate); <code>createPracticeNode</code> /
+    <code>updatePracticeNode</code> /
+    <code>savePracticeMilestoneProgress</code>;
+    <code>createCourseAssessment</code> /
+    <code>updateCourseAssessment</code>; <code>linkCardsToLesson</code>;
+    <code>upsertLessonCardExposure</code> /
+    <code>markLessonComplete</code>; every revision-plan write
+    (<code>createOrResumeRevisionPlan</code>,
+    <code>refreshRevisionPlan</code>, <code>setRevisionDayBudget</code>,
+    <code>removeRevisionDay</code>, <code>startRevisionWindow</code>,
+    <code>completeRevisionWindow</code>);
+    <code>syncCourseSchedulingUnits</code> and the performance puts in
+    <code>backingDecks.ts</code>. <code>createCourse</code> also inserts
+    a <code>CourseAssessment</code> and scheduling units directly —
+    those rows stamp here.</p>
+    <p>Tests: one per table, asserting a write advances
+    <code>updatedAt</code>.</p>
+    <p class="files">src/db/repository.ts · src/db/occlusionRepository.ts · src/db/practiceNodeRepository.ts · src/db/backingDecks.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">6</div><div>
+    <h4>Tombstone card deletions</h4>
+    <p><code>deleteCards</code>, plus every path that removes a card:
+    <code>deleteSequence</code> / <code>updateSequence</code>
+    regeneration deletes, <code>deleteOcclusion</code> /
+    <code>updateOcclusion</code> regeneration deletes, and the card
+    cascade inside <code>deleteCourse</code>. Not
+    <code>deleteLesson</code> — that path does not remove cards.</p>
+    <p>Tests: deleting one card writes exactly one tombstone with the
+    correct table and record id; deleting two writes two; a rolled-back
+    delete leaves no tombstone.</p>
+    <p class="files">src/db/repository.ts · src/db/occlusionRepository.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">7</div><div>
+    <h4>Tombstone course and lesson cascades</h4>
+    <p>Depends on slice 6. <code>deleteCourse</code> today removes
+    lessons, notes, note annotations, lesson links, exposures,
+    completions, practice nodes and milestones, assessments, revision
+    plans, sequences, cards, review history, session history, scheduling
+    units and both performance tables. It does <em>not</em> remove
+    occlusions. Add that cascade, and carry occlusions on
+    <code>CourseSnapshot</code> / <code>snapshotCourse</code> /
+    <code>restoreCourse</code>, then tombstone every snapshot-carried
+    row the delete actually removes.</p>
+    <p><code>deleteLesson</code> tombstones the lesson, its notes, links,
+    exposures, completion, scheduling unit and scheduling performance.
+    It updates (does not delete) remaining assessments and unassigns
+    cards. Those updates stamp via the slice 3/4/5 helpers; they are
+    not tombstones.</p>
+    <p>Tests: deleting a course with two lessons, four notes, six cards
+    and one occlusion writes a tombstone for every removed
+    snapshot-carried row. Restoring that course from its undo snapshot
+    removes those tombstones again.</p>
+    <p class="files">src/db/repository.ts · src/db/backingDecks.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">8</div><div>
+    <h4>Remaining tombstone paths</h4>
+    <p><code>deleteNote</code>, <code>unlinkCardFromLesson</code>,
+    exposure deletes inside <code>assignCardsToLesson</code>,
+    <code>deleteCourseAssessment</code> (and its cascaded revision
+    plans), <code>deletePracticeNode</code> (and its milestone), the
+    sequence/occlusion rows themselves in
+    <code>deleteSequence</code> / <code>deleteOcclusion</code>. Card
+    rows on those paths are slice 6.</p>
+    <p>Tests: one per path.</p>
+    <p class="files">src/db/repository.ts · src/db/occlusionRepository.ts · src/db/practiceNodeRepository.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">9</div><div>
+    <h4>Backup format</h4>
+    <p><code>BACKUP_VERSION</code> 9 → 10. Add
+    <code>tombstones</code> to <code>BackupFile</code>,
+    <code>exportDatabase()</code> and <code>validateBackup()</code>.
+    Replace-import writes the array into the table. Merge-import unions
+    incoming tombstones into the table and does not apply them as
+    deletes. Older backups import unchanged; an absent array means
+    none. <code>src/db/legacyCompat.test.ts</code> still passes
+    unmodified.</p>
+    <p>Tests: a v9 backup imports cleanly; a v10 round trip preserves
+    tombstones.</p>
+    <p class="files">src/db/portability.ts · src/db/types.ts</p>
+  </div></div>
+
+  <div class="phase"><div class="id">10</div><div>
+    <h4>Tombstone pruning</h4>
+    <p>Prune tombstones older than 90 days. That window is the maximum
+    time a device may be offline and still merge correctly; beyond it
+    the stale device must be reset from a pull rather than merged.</p>
+    <p>Tests: a tombstone older than the window is pruned; one inside
+    it is kept.</p>
+    <p class="files">src/db/repository.ts or a small dedicated module</p>
+  </div></div>
+
+  <div class="card stop">
+    <h4>Territory</h4>
+    <p>Slices 3 through 8 all touch <code>src/db/repository.ts</code>.
+    Only one may run at a time. That constraint governs the schedule,
+    not model availability. Slices 3–5 are independent of each other
+    in substance; 7 depends on 6; 9 and 10 depend on 1.</p>
+  </div>
+
+  <p>Not in P3: the merge module, the relay, crypto, any UI, retiring
+  <code>Card.history</code>, or the pre-v16 <code>ReviewLog</code>
+  decision. That last one belongs with P4.</p>
+</section>
+
+<section id="s8">
+  <h2><span class="n">08</span>P4 — merge module, sketched not specified</h2>
+  <p>Not fully sliced. Enough to see what comes after P3, not enough to
+  brief a worker. Do not start this until P3 is green.</p>
+  <p>A pure module, <code>src/sync/mergeSnapshots.ts</code>, taking two
+  <code>BackupFile</code> values and returning a third. No Dexie, no I/O.
+  It does not extend <code>importBackup(payload, 'merge')</code>: that
+  function resolves a foreign import against local state; this resolves
+  two peers. After P4 the two-device dance is merge-then-replace-import.
+  How (or whether) <code>importBackup(..., 'merge')</code> starts calling
+  the new module is part of the slice work, not decided here.</p>
+  <p>Required properties, from Arc 8 §8:</p>
+  <ul>
+    <li>Commutativity: <code>merge(a, b)</code> equals
+      <code>merge(b, a)</code>. If this fails, two devices oscillate.</li>
+    <li>Idempotence: <code>merge(a, merge(a, b))</code> equals
+      <code>merge(a, b)</code>.</li>
+    <li>Tombstone-union first, then newest-wins content, then set-union
+      reviews, then FSRS replay. Never take the newer
+      <code>Card.stability</code> / <code>due</code> / state.</li>
+    <li>Same card reviewed on both devices offline, asserted against a
+      hand-computed <code>ts-fsrs</code> result.</li>
+    <li>Delete on A, untouched on B. Delete on A, edited later on B.
+      Edited on both. A device offline longer than the tombstone
+      window.</li>
+  </ul>
+
+  <div class="card flag">
+    <h4>Open decision, parked here</h4>
+    <p>Pre-v16 <code>ReviewLog</code> rows have no <code>eventId</code>
+    and cannot be deduplicated. Options: drop remote legacy rows, or
+    synthesise a deterministic id from
+    <code>cardId + timestamp + grade</code>. Decide now or with P4
+    (§12). Not a P3 blocker: P3 does not touch review history.</p>
+  </div>
+</section>
+
+<section id="s9">
+  <h2><span class="n">09</span>Later phases</h2>
+  <p>Each still lives in Arc 8. None of them are authorised by approving
+  this document. The hosting and maintenance-cost gate sits in front of
+  the relay; P2/P5/P6/P7 follow that decision, they do not precede it.</p>
+  <ul>
+    <li><strong>P1 relay.</strong> Own Vercel project, Blob storage, four
+      endpoints, ETag / If-Match, CORS because of COEP. Arc 8 §6.</li>
+    <li><strong>P2 crypto.</strong> One channel key, AES-GCM, PBKDF2
+      keybag, QR and passphrase yielding the same key. Human read plus
+      security review. Arc 8 §7.</li>
+    <li><strong>P5 transport.</strong> <code>RelayProvider</code> manual
+      + http. Always pull-merge-push. Backup-before-apply via
+      <code>takeAutoBackup(force)</code>. Arc 8 §9–10.</li>
+    <li><strong>P6 pairing UI.</strong> Settings section, QR on explicit
+      tap, passphrase as the recovery route. Arc 8 §11.</li>
+    <li><strong>P7 automatic triggers.</strong> Focus pull, session-end
+      push, debounce, single-flight. Can slip. Arc 8 §10.</li>
+    <li><strong>P8 docs, P9 three-device pass.</strong> Arc 8 §12 / §14.
+      Not rewritten here.</li>
+  </ul>
+  <p>Electron bundled relay URL versus start unconfigured waits with the
+  relay decision. It is not a P3 question.</p>
+</section>
+
+<section id="s10">
+  <h2><span class="n">10</span>Manual testing</h2>
+  <p>Tom tests manually, as usual. After the P3 slices land, walk this
+  in the running app. Automated coverage is named next to each step;
+  the rest is a click pass.</p>
+  <ol>
+    <li>Create a course, a lesson, a note and a card. Edit each once.
+      <em>Automated:</em> slice 3/4 write tests already assert
+      <code>updatedAt</code> advanced. <em>Click:</em> confirm the
+      records exist and edit cleanly.</li>
+    <li>Export a backup from Settings. Open the JSON. Confirm
+      <code>version</code> is 10, every content record you touched has
+      an <code>updatedAt</code>, and <code>tombstones</code> is an
+      array (empty if you have not deleted anything).
+      <em>Automated:</em> slice 9 round trip.
+      <em>Click:</em> this export.</li>
+    <li>Delete the course. Export again. Confirm a tombstone for the
+      course, each lesson, each note, each card, each link / exposure /
+      completion, the assessments, sequences, occlusions, scheduling
+      units and performance rows. Confirm there is no tombstone for
+      <code>reviewHistory</code>, <code>sessionHistory</code>,
+      <code>noteAnnotations</code> or assets.
+      <em>Automated:</em> slice 7 cascade test.
+      <em>Click:</em> this second export.</li>
+    <li>Undo that deletion (the existing undo toast / restore snapshot).
+      Export again. Confirm those tombstones have disappeared and the
+      restored records still carry their original
+      <code>updatedAt</code>, not a fresh stamp.
+      <em>Automated:</em> slice 7 restore test.
+      <em>Click:</em> undo, then this third export.</li>
+    <li>Import a pre-v10 backup (any current v9 export, or an older
+      fixture). Confirm it still loads.
+      <em>Automated:</em> slice 9 v9 import +
+      <code>legacyCompat.test.ts</code>.
+      <em>Click:</em> one real file through Settings.</li>
+    <li>If exercisable: force a failed v23 upgrade (the
+      <code>schemaV22.test.ts</code> abort pattern). Confirm the
+      database remains readable at v22.
+      <em>Automated only</em> unless a debug hook is added; do not
+      invent a UI for this.</li>
+  </ol>
+  <p>Later phases: Arc 8 §14 and P9. No walkthrough is invented here
+  for a relay that this document does not authorise.</p>
+</section>
+
+<section id="s11">
+  <h2><span class="n">11</span>Risks</h2>
+  <div class="card stop">
+    <h4>Missed write path</h4>
+    <p>One public mutation that does not go through the helper produces a
+    record that never wins a merge. It will present months later as “my
+    note edit did not reach the phone”. The helper plus one test per
+    public write is the mitigation. Slice 3–5 lists are from the live
+    functions, not from Arc 8’s v20 table list.</p>
+  </div>
+  <div class="card stop">
+    <h4>Tombstone / delete transaction split</h4>
+    <p>A tombstone committed without its delete, or a delete committed
+    without its tombstone, is silent and permanent once a second device
+    exists. <code>recordTombstone</code> takes the caller’s transaction.
+    Tests must roll a delete back and assert no tombstone remains.</p>
+  </div>
+  <div class="card stop">
+    <h4>Restore that restamps updatedAt</h4>
+    <p>An undone or restored record that looks “newer” than the live
+    edit on the other device will overwrite it on the next merge.
+    Restore paths put the snapshotted row unchanged.</p>
+  </div>
+  <div class="card stop">
+    <h4>Undone delete that leaves tombstones</h4>
+    <p>The restored course then dies on every other device at the next
+    sync. Restore must delete the tombstones written for that
+    deletion, in the same transaction as the puts.</p>
+  </div>
+  <div class="card flag">
+    <h4>90-day prune surprises a stale device</h4>
+    <p>A laptop left closed longer than the window cannot merge; it must
+    reset from a pull. That is the stated contract. Confirm the number
+    in §12. The UI for “this device is too stale” is P6, not P3.</p>
+  </div>
+  <p>COEP, concurrent-push 412, and snapshot-size risks stay in Arc 8
+  §13 until the relay is authorised. They are not P3 risks.</p>
+</section>
+
+<section id="s12">
+  <h2><span class="n">12</span>Open questions for Tom</h2>
+  <ol>
+    <li><strong>P3 now, P4 next.</strong> Approved 13 August 2026.</li>
+    <li><strong>90-day tombstone window: keep.</strong> A neglected device
+      older than a quarter resets from a pull. Raising later is easy;
+      cutting it after real data exists is not.</li>
+    <li><strong>Synthesise ids with the existing helper.</strong> P4 reuses
+      <code>reviewHistoryEntryId</code> from <code>src/db/reviewHistory.ts</code>.
+      Do not drop the other device’s old rows. Do not invent a weaker
+      <code>cardId + timestamp + grade</code> key.</li>
+    <li><strong>Electron starts unconfigured,</strong> same as the web build.
+      Do not bake a relay URL into the binary. Remember a pasted URL in
+      local Settings later if the typing bothers anyone.</li>
+  </ol>
+</section>
+
+<section id="s13">
+  <h2><span class="n">13</span>Success for this increment</h2>
+  <p>P3 is done when all of the following are true. P4 is not part of
+  this increment’s success.</p>
+  <ol>
+    <li>Every snapshot-carried write advances <code>updatedAt</code>
+      through the helper.</li>
+    <li>Every snapshot-carried delete writes a tombstone in the same
+      Dexie transaction, including cascaded rows, including the
+      occlusion cascade <code>deleteCourse</code> is missing today.</li>
+    <li>Restore and undo put original timestamps back and remove the
+      tombstones for that deletion.</li>
+    <li>Backups round-trip tombstones at version 10. Older backups still
+      import. <code>legacyCompat.test.ts</code> is unmodified and green.</li>
+    <li>A failed v23 upgrade leaves the database readable at v22.</li>
+    <li>The §10 export / delete / undo click pass matches the automated
+      tests.</li>
+  </ol>
+</section>
+
+</main>
+
+<footer>
+  Drafted 13 August 2026 against schema v22 on current <code>master</code>
+  after the origin pull that landed the v22 cutover. Implements Arc 8 P3
+  first. Supersedes <code>docs/plans/sync-p3-schema.md</code> as the review
+  surface; that markdown remains the slice spec workers will be briefed
+  from, unless Tom asks to delete it.
+</footer>
+
+</div>
+</body>
+</html>
