@@ -1841,20 +1841,22 @@ A single, reusable export UI offering multiple output formats:
     requires a second explicit confirmation. `noteAnnotations` is also cleared but is not
     restored because it is device-local. Lineage mappings and pending merge-review queues are
     not represented by `BackupFile` and are not currently exported or cleared.
-  - **Merge** — fold in by id. The Settings flow shows the backup's lesson/card counts and
-    applies the merge immediately when **Merge backup** is pressed; it does not currently show
-    a full add/change/overwrite diff or ask for a second merge confirmation. Incoming rows are
-    added when absent; conflicting decks/cards and course records use their table-specific
-    recency rules, review-history rows are deduplicated, and local rows absent from the backup
-    are never deleted. The course tables, `sequences`, `occlusions` and `revisionPlans` follow
-    the same additive per-table merge boundary.
-  - **Merge from another device** — a separate Settings action that does not call
+  - **Add from backup** — fold in by id (`importBackup(..., 'merge')`). The Settings recover
+    flow shows the backup's lesson/card counts and applies immediately when **Add from backup**
+    is pressed; it does not currently show a full add/change/overwrite diff or ask for a second
+    confirmation. Incoming rows are added when absent; conflicting decks/cards and course records
+    use their table-specific recency rules, review-history rows are deduplicated, and local rows
+    absent from the backup are never deleted. The course tables, `sequences`, `occlusions` and
+    `revisionPlans` follow the same additive per-table merge boundary. Old backups keep this
+    behaviour; only the Settings label changed.
+  - **Another device** — a separate Settings action that does not call
     `importBackup(..., 'merge')`. `manualMerge` takes a forced restore point
-    (`takeAutoBackup(true)`), exports the current database, runs `mergeSnapshots(local, remote)`,
-    then applies the result with `importBackup(merged, 'replace')`. The confirmation states that
-    data is combined, the newest edit wins, deletions from either device are honoured, and a
-    backup of this device is taken first. The toast reports card, course, lesson and review-event
-    counts before and after. A file that fails `validateBackup` is rejected before any write; a
+    (`takeAutoBackup(true)`), reuses that snapshot, runs `mergeSnapshots(local, remote)`,
+    then applies the result with `importBackup(merged, 'replace')`. The resting copy states
+    that cards and reviews from either side are kept and that a deletion on either is removed;
+    confirmation is the existing inline prompt naming the file's date and card count. The toast
+    reports cards kept, added and removed, plus reviews when those counts change, and that a
+    restore point was saved. A file that fails `validateBackup` is rejected before any write; a
     failed safety backup aborts without applying.
 
 ### Automatic restore points & migration safety
@@ -2273,9 +2275,9 @@ scrollspy and its navigation cannot drift from the rendered sections.
   dashboard's own course-ordering control (recent / ready to study / mastery / exam
   date / name / created) is a separate, dashboard-local setting
   (`src/state/dashboardSort.ts`; §4.3), not part of this section.
-- **Full backup & recovery:** export the entire local database; choose a full-backup file and use
-  the explicit **Merge backup** / **Replace local data** chooser described in §13, or **Merge
-  from another device** to combine this installation with a peer snapshot. Course sharing
+- **Full backup & recovery:** export the entire local database; **Another device** combines this
+  installation with a backup from a second device; **Recover this installation** offers the
+  explicit **Add from backup** / **Replace local data** chooser described in §13. Course sharing
   and text/CSV/JSON/APKG card import remain separate flows.
 - **Persistent storage:** the app requests `navigator.storage.persist()` on
   first run so the browser does not silently evict IndexedDB data under storage

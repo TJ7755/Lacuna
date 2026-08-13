@@ -852,12 +852,19 @@ Global Settings exposes:
 
 Export creates a download or text output depending on the format. Settings does not expose the Share code format even though the shared export component supports it; share-code generation is separate under /share.
 
-Choose backup file accepts a full-backup JSON file:
+Another device accepts a full-backup JSON file from a second installation:
+
+1. Choose a backup from another device.
+2. Confirm combining with that file (date and card count).
+3. Cards and reviews from either side are kept; a card deleted on either is removed.
+4. A restore point is saved first. The success notice reports what was kept, added and removed.
+
+Recover this installation accepts a full-backup JSON file:
 
 1. Choose a file.
 2. Review lesson, card, and date counts.
-3. Cancel, Merge backup, or Replace local data.
-4. Merge uses the most recently updated record.
+3. Cancel, Add from backup, or Replace local data.
+4. Add from backup folds the file in; existing local rows are not deleted.
 5. Replace local data deletes current installation data and restores the backup.
 
 Replacement requires a second explicit consequence confirmation and states that Lacuna has no

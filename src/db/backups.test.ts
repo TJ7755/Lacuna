@@ -28,7 +28,7 @@ describe('backups', () => {
 
   it('takeAutoBackup stores a snapshot in the backups table', async () => {
     await createCourse('Alpha');
-    await takeAutoBackup();
+    const payload = await takeAutoBackup();
 
     const snapshots = await db.backups.toArray();
     expect(snapshots).toHaveLength(1);
@@ -36,6 +36,7 @@ describe('backups', () => {
     expect(snapshots[0].payload).toBeDefined();
     expect(snapshots[0].payload.decks).toBeUndefined();
     expect(snapshots[0].payload.courses?.[0].name).toBe('Alpha');
+    expect(payload).toEqual(snapshots[0].payload);
   });
 
   it('restoreBackup replaces the database from a stored snapshot', async () => {
@@ -136,7 +137,7 @@ describe('backups', () => {
 
     await takeAutoBackup();
     now += 5 * 60 * 1000 - 1;
-    await takeAutoBackup();
+    expect(await takeAutoBackup()).toBeUndefined();
     expect(await db.backups.count()).toBe(1);
 
     now += 1;

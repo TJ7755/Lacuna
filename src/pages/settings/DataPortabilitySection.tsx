@@ -7,60 +7,89 @@ import { UploadIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { importBackup, readBackupFile, type ImportMode } from '../../db/portability';
 import type { BackupFile } from '../../db/types';
-import { manualMerge, type ManualMergeSummary } from '../../sync/manualMerge';
+import {
+  ManualMergeError,
+  manualMerge,
+  type ManualMergeSummary,
+  type MergeDelta,
+} from '../../sync/manualMerge';
 import { formatDate } from '../../utils/datetime';
 
-function formatMergeSummary(summary: ManualMergeSummary): string {
-  const { before, after } = summary;
-  return (
-    `Merged. Cards ${before.cards} → ${after.cards}. ` +
-    `Courses ${before.courses} → ${after.courses}. ` +
-    `Lessons ${before.lessons} → ${after.lessons}. ` +
-    `Review events ${before.reviewEvents} → ${after.reviewEvents}.`
-  );
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+function formatDelta(noun: string, delta: MergeDelta): string {
+  const parts = [`${plural(delta.kept, noun)} kept`];
+  if (delta.added > 0) parts.push(`${delta.added} added`);
+  if (delta.removed > 0) parts.push(`${delta.removed} removed`);
+  return parts.join(', ');
+}
+
+function formatCombineSummary(summary: ManualMergeSummary): string {
+  const bits = [`Combined. ${formatDelta('card', summary.cards)}.`];
+  if (summary.reviewEvents.added > 0 || summary.reviewEvents.removed > 0) {
+    const reviews: string[] = [];
+    if (summary.reviewEvents.added > 0) {
+      reviews.push(`${plural(summary.reviewEvents.added, 'review')} added`);
+    }
+    if (summary.reviewEvents.removed > 0) {
+      reviews.push(`${plural(summary.reviewEvents.removed, 'review')} removed`);
+    }
+    bits.push(`${reviews.join(', ')}.`);
+  }
+  bits.push('A restore point was saved.');
+  return bits.join(' ');
 }
 
 export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier: number }) {
   const { notify } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const mergeInputRef = useRef<HTMLInputElement>(null);
+  const recoverInputRef = useRef<HTMLInputElement>(null);
+  const combineInputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<BackupFile | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
-  const [pendingMerge, setPendingMerge] = useState<BackupFile | null>(null);
-  const [mergeBusy, setMergeBusy] = useState(false);
+  const [pendingCombine, setPendingCombine] = useState<BackupFile | null>(null);
+  const [combineBusy, setCombineBusy] = useState(false);
 
-  async function handleFile(file: File) {
-    if (mergeBusy) return;
+  async function handleRecoverFile(file: File) {
+    if (combineBusy) return;
     try {
-      setPendingMerge(null);
+      setPendingCombine(null);
       setPending(await readBackupFile(file));
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Invalid file.', 'negative');
     }
   }
 
-  async function handleMergeFile(file: File) {
-    if (mergeBusy) return;
+  async function handleCombineFile(file: File) {
+    if (combineBusy) return;
     try {
       setPending(null);
       setConfirmReplace(false);
-      setPendingMerge(await readBackupFile(file));
+      setPendingCombine(await readBackupFile(file));
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Invalid file.', 'negative');
     }
   }
 
-  async function runManualMerge() {
-    if (!pendingMerge || mergeBusy) return;
-    setMergeBusy(true);
+  async function runCombine() {
+    if (!pendingCombine || combineBusy) return;
+    setCombineBusy(true);
     try {
-      const summary = await manualMerge(pendingMerge);
-      notify(formatMergeSummary(summary), 'positive');
+      const summary = await manualMerge(pendingCombine);
+      notify(formatCombineSummary(summary), 'positive');
+      setPendingCombine(null);
     } catch (error) {
-      notify(error instanceof Error ? error.message : 'Merge failed.', 'negative');
+      const message = error instanceof Error ? error.message : 'Combine failed.';
+      const modified = error instanceof ManualMergeError && error.databaseModified;
+      notify(
+        modified
+          ? `${message} Restore from Automatic backups if this installation looks wrong.`
+          : message,
+        'negative',
+      );
     } finally {
-      setMergeBusy(false);
-      setPendingMerge(null);
+      setCombineBusy(false);
     }
   }
 
@@ -69,7 +98,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
     try {
       const report = await importBackup(pending, mode);
       const folderNames = report?.discardedFolderNames ?? [];
-      const success = mode === 'replace' ? 'Data replaced from backup.' : 'Backup merged.';
+      const success = mode === 'replace' ? 'Data replaced from backup.' : 'Backup added.';
       notify(
         folderNames.length > 0
           ? `${success} Folder hierarchy was discarded: ${folderNames.join(', ')}.`
@@ -94,26 +123,69 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
         <h2 className="mb-1 font-display text-xl">Full backup and recovery</h2>
       </div>
       <p className="mb-5 text-sm text-ink-soft">
-        A full JSON backup contains every local course, card, schedule and media file. Use this for
-        recovery or moving Lacuna between installations; course sharing and card import are separate flows.
+        A full JSON backup contains every local course, card, schedule and media file. Export one
+        to keep a copy, combine two devices, or recover this installation. Course sharing and card
+        import are separate flows.
       </p>
       <div className="mb-6"><UnifiedExportPanel heading="Export a full backup" /></div>
+
       <div className="border-t border-line pt-5">
-        <h3 className="mb-3 font-display text-lg">Recover from a full backup</h3>
-        <p className="mb-4 text-sm text-ink-soft">Choose a Lacuna full-backup JSON file, then merge it or replace this installation’s local data.</p>
+        <h3 className="mb-3 font-display text-lg">Another device</h3>
+        <p className="mb-4 text-sm text-ink-soft">
+          Combine this installation with a backup from another device. Cards and reviews from
+          either side are kept; a card deleted on either is removed. A restore point is saved first.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          {combineBusy ? (
+            <Button variant="secondary" disabled>Combining…</Button>
+          ) : pendingCombine ? (
+            <ConfirmInline
+              message={`Combine with the ${formatDate(pendingCombine.exportedAt)} backup (${plural(pendingCombine.cards.length, 'card')})?`}
+              confirmLabel="Combine"
+              variant="default"
+              onCancel={() => setPendingCombine(null)}
+              onConfirm={() => void runCombine()}
+            />
+          ) : (
+            <Button variant="secondary" onClick={() => combineInputRef.current?.click()}>
+              <UploadIcon width={18} height={18} />
+              Choose backup from another device
+            </Button>
+          )}
+          <input
+            ref={combineInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            aria-label="Backup from another device"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void handleCombineFile(file);
+              event.target.value = '';
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="mt-5 border-t border-line pt-5">
+        <h3 className="mb-3 font-display text-lg">Recover this installation</h3>
+        <p className="mb-4 text-sm text-ink-soft">
+          Choose a backup file to add its contents to this installation, or to replace everything here.
+        </p>
         <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+          <Button variant="secondary" onClick={() => recoverInputRef.current?.click()} disabled={combineBusy}>
             <UploadIcon width={18} height={18} />
             Choose backup file
           </Button>
           <input
-            ref={fileInputRef}
+            ref={recoverInputRef}
             type="file"
             accept="application/json,.json"
             className="hidden"
+            aria-label="Recover this installation"
             onChange={(event) => {
               const file = event.target.files?.[0];
-              if (file) void handleFile(file);
+              if (file) void handleRecoverFile(file);
               event.target.value = '';
             }}
           />
@@ -138,13 +210,13 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
                   <strong className="text-ink">{pending.cards.length}</strong> cards, exported on {formatDate(pending.exportedAt)}.
                 </p>
                 <ul className="space-y-2">
-                  <li><strong className="text-ink">Merge</strong> keeps your current data and folds in the backup, with the most recently updated copy winning any conflict.</li>
+                  <li><strong className="text-ink">Add from backup</strong> keeps your current data and folds in the backup; existing items are not deleted.</li>
                   <li><strong className="text-ink">Replace local data</strong> deletes every course and review record in this installation, then restores the backup exactly. Lacuna has no account or cloud copy to delete.</li>
                 </ul>
               </div>
               <div className="mt-5 flex flex-wrap justify-end gap-2">
                 <Button variant="ghost" onClick={() => { setPending(null); setConfirmReplace(false); }}>Cancel</Button>
-                <Button variant="secondary" onClick={() => runImport('merge')}>Merge backup</Button>
+                <Button variant="secondary" onClick={() => runImport('merge')}>Add from backup</Button>
                 {confirmReplace ? (
                   <ConfirmInline
                     message="Delete current local data and restore this backup?"
@@ -155,66 +227,6 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
                 ) : (
                   <Button variant="danger" onClick={() => setConfirmReplace(true)}>Replace local data</Button>
                 )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="mt-5 border-t border-line pt-5">
-        <h3 className="mb-3 font-display text-lg">Merge from another device</h3>
-        <p className="mb-4 text-sm text-ink-soft">
-          Combine this installation with a backup exported from another device. The newest version of each item is kept.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="secondary" onClick={() => mergeInputRef.current?.click()} disabled={mergeBusy}>
-            <UploadIcon width={18} height={18} />
-            Choose file to merge
-          </Button>
-          <input
-            ref={mergeInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            aria-label="Merge from another device"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void handleMergeFile(file);
-              event.target.value = '';
-            }}
-          />
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {pendingMerge && (
-          <motion.div
-            initial={motionMultiplier > 0 ? { opacity: 0 } : false}
-            animate={{ opacity: 1 }}
-            exit={motionMultiplier > 0 ? { opacity: 0 } : undefined}
-            transition={{ duration: 0.16 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-5"
-          >
-            <div className="rounded-xl border border-line-strong bg-surface-raised p-5">
-              <h3 className="mb-3 font-display text-lg">Merge from another device</h3>
-              <div className="text-sm text-ink-soft">
-                <p className="mb-3">
-                  This backup contains{' '}
-                  <strong className="text-ink">{pendingMerge.lessons?.length ?? pendingMerge.decks?.length ?? 0}</strong> lessons and{' '}
-                  <strong className="text-ink">{pendingMerge.cards.length}</strong> cards, exported on {formatDate(pendingMerge.exportedAt)}.
-                </p>
-                <ul className="space-y-2">
-                  <li>Data from both devices is combined.</li>
-                  <li>The newest edit of each item wins.</li>
-                  <li>Deletions from either device are honoured.</li>
-                  <li>A backup of this device is taken first.</li>
-                </ul>
-              </div>
-              <div className="mt-5 flex flex-wrap justify-end gap-2">
-                <Button variant="ghost" onClick={() => setPendingMerge(null)} disabled={mergeBusy}>Cancel</Button>
-                <Button variant="secondary" onClick={() => void runManualMerge()} disabled={mergeBusy}>
-                  {mergeBusy ? 'Merging…' : 'Merge'}
-                </Button>
               </div>
             </div>
           </motion.div>

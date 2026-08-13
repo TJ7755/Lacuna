@@ -3,11 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile, Card, CourseRecord, Lesson } from '../db/types';
 import { reviewHistoryEntryId, type ReviewHistoryEntry } from '../db/reviewHistory';
 import { defaultFsrsParameters } from '../fsrs/params';
-import { ManualMergeError, manualMerge } from './manualMerge';
+import { ManualMergeError, manualMerge, summariseMerge } from './manualMerge';
 
-const { takeAutoBackup, exportDatabase, importBackup } = vi.hoisted(() => ({
+const { takeAutoBackup, importBackup } = vi.hoisted(() => ({
   takeAutoBackup: vi.fn(),
-  exportDatabase: vi.fn(),
   importBackup: vi.fn(),
 }));
 
@@ -19,7 +18,6 @@ vi.mock('../db/portability', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../db/portability')>();
   return {
     ...actual,
-    exportDatabase,
     importBackup,
   };
 });
@@ -122,20 +120,17 @@ function reviewEvent(cardId: string, eventId: string, timestamp: number): Review
 describe('manualMerge', () => {
   beforeEach(() => {
     takeAutoBackup.mockReset();
-    exportDatabase.mockReset();
     importBackup.mockReset();
-    takeAutoBackup.mockResolvedValue(undefined);
+    takeAutoBackup.mockResolvedValue(backup());
     importBackup.mockResolvedValue({});
   });
 
-  it('takes a forced backup before exporting or applying', async () => {
+  it('takes a forced restore point and applies that same snapshot', async () => {
+    const local = backup({ exportedAt: 10, cards: [card('c1')] });
     const order: string[] = [];
     takeAutoBackup.mockImplementation(async () => {
       order.push('backup');
-    });
-    exportDatabase.mockImplementation(async () => {
-      order.push('export');
-      return backup();
+      return local;
     });
     importBackup.mockImplementation(async () => {
       order.push('import');
@@ -145,7 +140,13 @@ describe('manualMerge', () => {
     await manualMerge(backup());
 
     expect(takeAutoBackup).toHaveBeenCalledWith(true);
-    expect(order).toEqual(['backup', 'export', 'import']);
+    expect(order).toEqual(['backup', 'import']);
+    expect(importBackup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cards: [expect.objectContaining({ id: 'c1' })],
+      }),
+      'replace',
+    );
   });
 
   it('aborts without writing if the safety backup fails', async () => {
@@ -157,7 +158,17 @@ describe('manualMerge', () => {
       databaseModified: false,
       message: expect.stringContaining('IndexedDB unavailable'),
     });
-    expect(exportDatabase).not.toHaveBeenCalled();
+    expect(importBackup).not.toHaveBeenCalled();
+  });
+
+  it('aborts without writing if the forced restore point is skipped', async () => {
+    takeAutoBackup.mockResolvedValue(undefined);
+
+    await expect(manualMerge(backup())).rejects.toMatchObject({
+      name: 'ManualMergeError',
+      databaseModified: false,
+      message: 'A safety backup could not be taken, so the database was not modified.',
+    });
     expect(importBackup).not.toHaveBeenCalled();
   });
 
@@ -168,7 +179,6 @@ describe('manualMerge', () => {
       message: 'This file is not a valid Lacuna backup.',
     });
     expect(takeAutoBackup).not.toHaveBeenCalled();
-    expect(exportDatabase).not.toHaveBeenCalled();
     expect(importBackup).not.toHaveBeenCalled();
   });
 
@@ -187,7 +197,7 @@ describe('manualMerge', () => {
       lessons: [lesson('l2', { courseId: 'course-2' })],
       reviewHistory: [reviewEvent('c2', 'event-2', 200)],
     });
-    exportDatabase.mockResolvedValue(local);
+    takeAutoBackup.mockResolvedValue(local);
 
     const summary = await manualMerge(remote);
 
@@ -202,8 +212,58 @@ describe('manualMerge', () => {
       'replace',
     );
     expect(summary).toEqual({
-      before: { cards: 1, courses: 1, lessons: 1, reviewEvents: 1 },
-      after: { cards: 2, courses: 2, lessons: 2, reviewEvents: 2 },
+      cards: { kept: 1, added: 1, removed: 0 },
+      courses: { kept: 1, added: 1, removed: 0 },
+      lessons: { kept: 1, added: 1, removed: 0 },
+      reviewEvents: { kept: 1, added: 1, removed: 0 },
+    });
+  });
+
+  it('reports cards removed when the other snapshot carries a later tombstone', async () => {
+    const local = backup({
+      exportedAt: 10,
+      cards: [card('c1'), card('c2')],
+      courses: [course('course-1')],
+      lessons: [lesson('l1')],
+    });
+    const remote = backup({
+      exportedAt: 20,
+      cards: [card('c1', { updatedAt: 5 })],
+      courses: [course('course-1')],
+      lessons: [lesson('l1')],
+      tombstones: [{ table: 'cards', recordId: 'c2', deletedAt: 50 }],
+    });
+    takeAutoBackup.mockResolvedValue(local);
+
+    const summary = await manualMerge(remote);
+
+    expect(summary.cards).toEqual({ kept: 1, added: 0, removed: 1 });
+  });
+});
+
+describe('summariseMerge', () => {
+  it('counts kept, added and removed ids', () => {
+    const local = backup({
+      cards: [card('keep'), card('gone')],
+      courses: [course('course-1')],
+      lessons: [lesson('l1')],
+      reviewHistory: [reviewEvent('keep', 'event-1', 100)],
+    });
+    const merged = backup({
+      cards: [card('keep'), card('new')],
+      courses: [course('course-1'), course('course-2')],
+      lessons: [lesson('l1')],
+      reviewHistory: [
+        reviewEvent('keep', 'event-1', 100),
+        reviewEvent('new', 'event-2', 200),
+      ],
+    });
+
+    expect(summariseMerge(local, merged)).toEqual({
+      cards: { kept: 1, added: 1, removed: 1 },
+      courses: { kept: 1, added: 1, removed: 0 },
+      lessons: { kept: 1, added: 0, removed: 0 },
+      reviewEvents: { kept: 1, added: 1, removed: 0 },
     });
   });
 });
