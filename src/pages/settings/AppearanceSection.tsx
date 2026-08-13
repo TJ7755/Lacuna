@@ -1,4 +1,3 @@
-import { m as motion } from 'motion/react';
 import { MoonIcon, SunIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
 import { ACCENTS, useAccent } from '../../state/AccentContext';
@@ -7,22 +6,15 @@ import { useMotionSpeed } from '../../state/motionSpeed';
 import { useTheme, type Theme } from '../../state/ThemeContext';
 import { MotionSpeedControl } from './MotionSpeedControl';
 
-export function AppearanceSection({ motionMultiplier }: { motionMultiplier: number }) {
+export function AppearanceSection() {
   const [motionSpeed, setMotionSpeed] = useMotionSpeed();
   const { theme, resolvedTheme, setTheme } = useTheme();
   const { accent, setAccent } = useAccent();
   const { scale, setScale } = useFontScale();
 
   return (
-    <motion.section
+    <section
       id="settings-appearance"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.24 * motionMultiplier,
-        delay: 0.05 * motionMultiplier,
-        ease: [0.16, 1, 0.3, 1],
-      }}
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
@@ -144,6 +136,6 @@ export function AppearanceSection({ motionMultiplier }: { motionMultiplier: numb
           describedBy="animation-speed-description"
         />
       </div>
-    </motion.section>
+    </section>
   );
 }

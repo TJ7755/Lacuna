@@ -1,4 +1,3 @@
-import { m as motion } from 'motion/react';
 import { FlameIcon } from '../../components/ui/icons';
 import { Toggle } from '../../components/ui/Toggle';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimise';
@@ -11,7 +10,7 @@ import { useTypingSetting } from '../../state/typingSetting';
 import { cn } from '../../components/ui/cn';
 import { AUDIO_PLAYBACK_SPEEDS, useAudioSettings } from '../../state/audioSettings';
 
-export function StudySection({ motionMultiplier }: { motionMultiplier: number }) {
+export function StudySection() {
   const [gradingMode, setGradingMode] = useGradingMode();
   const [typingSetting, setTypingSetting] = useTypingSetting();
   const [answerStrictness, setAnswerStrictness] = useAnswerStrictness();
@@ -21,15 +20,8 @@ export function StudySection({ motionMultiplier }: { motionMultiplier: number })
   const [audioSettings, setAudioSettings] = useAudioSettings();
 
   return (
-    <motion.section
+    <section
       id="settings-study"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.24 * motionMultiplier,
-        delay: 0.25 * motionMultiplier,
-        ease: [0.16, 1, 0.3, 1],
-      }}
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
@@ -203,7 +195,7 @@ export function StudySection({ motionMultiplier }: { motionMultiplier: number })
           applies otherwise. Max gap forces a practice node after this many lessons without one.
         </p>
       </div>
-    </motion.section>
+    </section>
   );
 }
 

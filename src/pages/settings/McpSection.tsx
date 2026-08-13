@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { m as motion } from 'motion/react';
 import { Button } from '../../components/ui/Button';
 import { GridIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
@@ -22,7 +21,7 @@ const LOWER_SCOPE: Partial<Record<McpGrant['scope'], McpGrant['scope']>> = {
   destructive: 'write',
 };
 
-export function McpSection({ motionMultiplier }: { motionMultiplier: number }) {
+export function McpSection() {
   const mcp = window.electronAPI?.mcp;
   const courses = useCourses();
   const { notify } = useToast();
@@ -106,8 +105,7 @@ export function McpSection({ motionMultiplier }: { motionMultiplier: number }) {
   }
 
   return (
-    <motion.section id="settings-mcp" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * motionMultiplier, delay: 0.4 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
+    <section id="settings-mcp"
       className="mb-8 rounded-2xl border border-line bg-surface p-6">
       <div className="mb-1 flex items-center gap-2 text-accent"><GridIcon width={18} height={18} /><h2 className="font-display text-xl">MCP server</h2></div>
       <p className="mb-4 text-sm text-ink-soft">Control what connected MCP clients may read or change. Access is cleared when each client disconnects.</p>
@@ -147,6 +145,6 @@ export function McpSection({ motionMultiplier }: { motionMultiplier: number }) {
           </div>
         </div>)}
       </div>
-    </motion.section>
+    </section>
   );
 }

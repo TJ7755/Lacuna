@@ -51,18 +51,18 @@ export function Settings() {
           onNavigate={goToSection}
         />
 
-        <AppearanceSection motionMultiplier={motionMultiplier} />
-        <InputModeSection motionMultiplier={motionMultiplier} />
-        <SidebarSection motionMultiplier={motionMultiplier} />
-        <CourseHeaderSection motionMultiplier={motionMultiplier} />
-        <DashboardSection motionMultiplier={motionMultiplier} />
-        <StudySection motionMultiplier={motionMultiplier} />
-        <ShortcutsSection motionMultiplier={motionMultiplier} />
-        <PomodoroSection motionMultiplier={motionMultiplier} />
-        <InstallSection motionMultiplier={motionMultiplier} />
-        {window.electronAPI?.isElectron && <McpSection motionMultiplier={motionMultiplier} />}
+        <AppearanceSection />
+        <InputModeSection />
+        <SidebarSection />
+        <CourseHeaderSection />
+        <DashboardSection />
+        <StudySection />
+        <ShortcutsSection />
+        <PomodoroSection />
+        <InstallSection />
+        {window.electronAPI?.isElectron && <McpSection />}
         <DataPortabilitySection motionMultiplier={motionMultiplier} />
-        <BackupsSection motionMultiplier={motionMultiplier} />
+        <BackupsSection />
       </div>
 
       <SectionRail
