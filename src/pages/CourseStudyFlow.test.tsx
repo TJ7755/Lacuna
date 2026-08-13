@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import * as React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
@@ -18,6 +18,7 @@ const mockNavigate = vi.fn();
 const mockAcceptBreak = vi.fn();
 const mockDeferBreak = vi.fn();
 let mockFlows: FlowData[] = [];
+const seenLearnRequests: unknown[] = [];
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
@@ -76,21 +77,24 @@ vi.mock('./LearnMode', () => ({
     onStepFinished: (summary: SessionSummary) => void;
     onFlowExit: () => void;
     sessionId?: string;
-  }) => (
-    <div>
-      <pre data-testid="learn-request">{JSON.stringify(request)}</pre>
-      <span data-testid="learn-session">{sessionId}</span>
-      <button type="button" onClick={() => onStepFinished(summary(true))}>
-        Complete step
-      </button>
-      <button type="button" onClick={() => onStepFinished(summary(false))}>
-        Pause step
-      </button>
-      <button type="button" onClick={onFlowExit}>
-        Exit flow
-      </button>
-    </div>
-  ),
+  }) => {
+    seenLearnRequests.push(request);
+    return (
+      <div>
+        <pre data-testid="learn-request">{JSON.stringify(request)}</pre>
+        <span data-testid="learn-session">{sessionId}</span>
+        <button type="button" onClick={() => onStepFinished(summary(true))}>
+          Complete step
+        </button>
+        <button type="button" onClick={() => onStepFinished(summary(false))}>
+          Pause step
+        </button>
+        <button type="button" onClick={onFlowExit}>
+          Exit flow
+        </button>
+      </div>
+    );
+  },
 }));
 
 const course: Course = {
@@ -211,6 +215,7 @@ beforeEach(() => {
   mockAcceptBreak.mockClear();
   mockDeferBreak.mockClear();
   mockFlows = [];
+  seenLearnRequests.length = 0;
 });
 
 describe('CourseStudyFlow', () => {
@@ -220,7 +225,9 @@ describe('CourseStudyFlow', () => {
     renderFlow();
 
     // No entry screen here: these flows offer a single way in, so the study flow
-    // opens the only session directly.
+    // opens the only session directly. The planned step must be on the first
+    // paint — a later effect would flash "You are caught up" into Learn.
+    expect(screen.queryByRole('heading', { name: 'You are caught up' })).not.toBeInTheDocument();
     await screen.findByTestId('learn-request');
     expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' });
   });
@@ -307,6 +314,18 @@ describe('CourseStudyFlow', () => {
       mode: 'curricular',
     });
     expect(screen.queryByRole('heading', { name: 'Choose what to study' })).not.toBeInTheDocument();
+  });
+
+  it('does not rebuild the Learn request after committing a render-derived practice node', async () => {
+    const manual = practiceState('manual-1', 'Checkpoint', ['lesson-1']);
+    mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 0, [manual])];
+    renderFlow('/course/course-1/study?practiceNode=manual-1');
+
+    await screen.findByTestId('learn-request');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(new Set(seenLearnRequests).size).toBe(1);
   });
 
   it('starts exact-assessment Practice from the assessment query', async () => {

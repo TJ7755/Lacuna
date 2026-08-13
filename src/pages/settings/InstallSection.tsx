@@ -1,15 +1,11 @@
-import { m as motion } from 'motion/react';
 import { Button } from '../../components/ui/Button';
 import { DownloadIcon, IosShareIcon } from '../../components/ui/icons';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 
-export function InstallSection({ motionMultiplier }: { motionMultiplier: number }) {
+export function InstallSection() {
   return (
-    <motion.section
+    <section
       id="settings-install"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * motionMultiplier, delay: 0.4 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
@@ -18,7 +14,7 @@ export function InstallSection({ motionMultiplier }: { motionMultiplier: number 
       </div>
       <p className="mb-5 text-sm text-ink-soft">Add Lacuna to your home screen for quick access and offline use.</p>
       <InstallPanel />
-    </motion.section>
+    </section>
   );
 }
 

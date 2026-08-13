@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { m as motion } from 'motion/react';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../components/ui/cn';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
@@ -18,7 +17,7 @@ import { checkPersistentStorage, requestPersistentStorage, type StoragePersisten
 import { useBackups } from '../../state/useData';
 import { formatDateTime } from '../../utils/datetime';
 
-export function BackupsSection({ motionMultiplier }: { motionMultiplier: number }) {
+export function BackupsSection() {
   const { notify } = useToast();
   const backups = useBackups();
   const [persistence, setPersistence] = useState<StoragePersistenceState | null>(null);
@@ -69,11 +68,8 @@ export function BackupsSection({ motionMultiplier }: { motionMultiplier: number 
   }
 
   return (
-    <motion.section
+    <section
       id="settings-backups"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * motionMultiplier, delay: 0.5 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
       className="mt-8 rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
@@ -173,6 +169,6 @@ export function BackupsSection({ motionMultiplier }: { motionMultiplier: number 
           ))}
         </ul>
       )}
-    </motion.section>
+    </section>
   );
 }

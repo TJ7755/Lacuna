@@ -133,17 +133,13 @@ export function SessionReport({
         {summary.reachedGoal && <ConfettiBurst key="confetti" multiplier={m} />}
       </AnimatePresence>
 
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
-      >
+      <div>
         {/* Reaching the goal earns a badge that springs in — the moment worth savouring. */}
         {summary.reachedGoal && (
           <motion.div
-            initial={{ scale: 0, rotate: -25 }}
+            initial={m > 0 ? { scale: 0, rotate: -25 } : false}
             animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 16, delay: 0.15 }}
+            transition={m > 0 ? { type: 'spring', stiffness: 420, damping: 16, delay: 0.15 * m } : { duration: 0 }}
             className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-positive/15 text-positive"
           >
             <CheckIcon width={28} height={28} />
@@ -333,7 +329,7 @@ export function SessionReport({
             Done
           </Button>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

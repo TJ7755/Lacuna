@@ -105,11 +105,11 @@ export function LessonNotesSection({ lessonId, notes, className }: LessonNotesSe
       {/* New-note form */}
       {addingNote && (
         <motion.div
-          initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-          animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
-          exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-          transition={{ duration: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
-          className="overflow-hidden"
+          initial={m > 0 ? { opacity: 0 } : false}
+          animate={{ opacity: 1 }}
+          exit={m > 0 ? { opacity: 0 } : undefined}
+          transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-4"
         >
           <div className="rounded-2xl border border-line-strong bg-surface p-5">
             <LessonNoteEditor onSave={handleAddNote} onCancel={() => setAddingNote(false)} busy={noteBusy} />

@@ -38,8 +38,6 @@ export function Dashboard() {
   const allCards = data?.allCards;
   const pendingUpdateIds = usePendingUpdateCourseIds();
   const navigate = useNavigate();
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
   const [creatingCourse, setCreatingCourse] = useState(false);
   const [dashboardSort] = useDashboardSort();
   const { notify } = useToast();
@@ -171,24 +169,14 @@ export function Dashboard() {
       {/* Course grid */}
       {!activeCourses ? (
         <DelayedFallback>
-          <CourseSkeleton motionMultiplier={m} />
+          <CourseSkeleton />
         </DelayedFallback>
       ) : activeCourses.length === 0 ? (
-        <EmptyState motionMultiplier={m} onCreateCourse={() => setCreatingCourse(true)} />
+        <EmptyState onCreateCourse={() => setCreatingCourse(true)} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {activeCourses.map((course, i) => (
-            <motion.div
-              key={course.id}
-              className="h-full"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.24 * m,
-                delay: Math.min(i * 0.04, 0.2) * m,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-            >
+          {activeCourses.map((course) => (
+            <div key={course.id} className="h-full">
               <CourseCard
                 course={course}
                 summary={summaries?.[course.id]}
@@ -207,7 +195,7 @@ export function Dashboard() {
                   setCourseMenu({ course, position, trigger });
                 }}
               />
-            </motion.div>
+            </div>
           ))}
         </div>
       )}
@@ -363,6 +351,8 @@ function ArchiveCourseDialog({
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
 
   async function confirmArchive() {
     setBusy(true);
@@ -380,9 +370,10 @@ function ArchiveCourseDialog({
     <motion.div
       ref={trapRef}
       className="fixed inset-0 z-[70] flex items-center justify-center p-4"
-      initial={{ opacity: 0 }}
+      initial={m > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={m > 0 ? { opacity: 0 } : undefined}
+      transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       onKeyDown={(event) => {
         event.stopPropagation();
         if (event.key === 'Escape' && !busy) {
@@ -400,9 +391,10 @@ function ArchiveCourseDialog({
         aria-modal="true"
         aria-labelledby="archive-course-title"
         aria-describedby="archive-course-description"
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        initial={m > 0 ? { opacity: 0, y: 12, scale: 0.98 } : false}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
+        exit={m > 0 ? { opacity: 0, y: 12, scale: 0.98 } : undefined}
+        transition={m > 0 ? { type: 'spring', stiffness: 320, damping: 30 } : { duration: 0 }}
         className="relative z-10 w-full max-w-md rounded-2xl border border-line-strong bg-paper p-6 shadow-2xl shadow-black/20"
       >
         <h2 id="archive-course-title" className="font-display text-2xl">
@@ -436,16 +428,12 @@ function ArchiveCourseDialog({
   );
 }
 
-function CourseSkeleton({ motionMultiplier }: { motionMultiplier?: number }) {
-  const m = motionMultiplier ?? 1;
+function CourseSkeleton() {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <motion.div
+        <div
           key={i}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24 * m, delay: Math.min(i * 0.04, 0.2) * m }}
           className="flex h-full flex-col rounded-2xl border border-line bg-surface p-5"
         >
           <div className="mb-1 h-3 w-20 animate-pulse rounded bg-ink/10" />
@@ -457,37 +445,26 @@ function CourseSkeleton({ motionMultiplier }: { motionMultiplier?: number }) {
             </div>
             <div className="h-2 w-full animate-pulse rounded-full bg-ink/10" />
           </div>
-        </motion.div>
+        </div>
       ))}
     </div>
   );
 }
 
 function EmptyState({
-  motionMultiplier,
   onCreateCourse,
 }: {
-  motionMultiplier?: number;
   onCreateCourse: () => void;
 }) {
-  const m = motionMultiplier ?? 1;
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
+    <div
       className="relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-line-strong bg-surface/50 py-20 text-center"
     >
       <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
       <div className="relative">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.4 * m, ease: [0.16, 1, 0.3, 1], delay: 0.1 * m }}
-          className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm shadow-accent/20"
-        >
+        <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm shadow-accent/20">
           <LacunaIcon width={28} height={28} />
-        </motion.div>
+        </div>
         <h2 className="mb-2 font-display text-2xl">No courses yet</h2>
         <p className="mb-6 max-w-sm text-ink-soft">
           Start a course to organise your lessons and cards.
@@ -497,6 +474,6 @@ function EmptyState({
           New course
         </Button>
       </div>
-    </motion.div>
+    </div>
   );
 }

@@ -199,22 +199,22 @@ export function SequenceEditor() {
   }
   if (lessonMode && lesson === null) {
     return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">
+      <div className="p-10">
         <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
         <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
           {courseId ? 'Back to course' : 'Back to dashboard'}
         </Link>
-      </motion.div>
+      </div>
     );
   }
   if (editing && sequence === null) {
     return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-10">
+      <div className="p-10">
         <p className="mb-4 text-ink-soft">This sequence could not be found.</p>
         <Link to={backPath} className="text-accent underline">
           Back to {backLabel}
         </Link>
-      </motion.div>
+      </div>
     );
   }
 
@@ -387,11 +387,7 @@ export function SequenceEditor() {
         <span className="text-ink-soft">{editing ? 'Edit sequence' : 'New sequence'}</span>
       </nav>
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-      >
+      <div>
         <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
           <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
           <div className="relative">
@@ -497,11 +493,10 @@ export function SequenceEditor() {
                   {chunkLabels.map((label, i) => (
                     <motion.div
                       key={i}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                      className="overflow-hidden"
+                      initial={m > 0 ? { opacity: 0 } : false}
+                      animate={{ opacity: 1 }}
+                      exit={m > 0 ? { opacity: 0 } : undefined}
+                      transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
                     >
                       <div className="flex items-center gap-2">
                         <input
@@ -610,11 +605,10 @@ export function SequenceEditor() {
                   <motion.div
                     key={item.id}
                     layout={reduceMotion ? undefined : 'position'}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                    className="overflow-hidden"
+                    initial={m > 0 ? { opacity: 0 } : false}
+                    animate={{ opacity: 1 }}
+                    exit={m > 0 ? { opacity: 0 } : undefined}
+                    transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
                   >
                     <SequenceItemRow
                       item={item}
@@ -694,13 +688,10 @@ export function SequenceEditor() {
             />
           )}
         </div>
-      </motion.div>
+      </div>
 
       {/* Sticky action bar */}
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.25 * m, ease: [0.16, 1, 0.3, 1] }}
+      <div
         role="region"
         aria-label="Sequence editor actions"
         className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10"
@@ -722,7 +713,7 @@ export function SequenceEditor() {
             {editing ? 'Save changes' : 'Add sequence'}
           </Button>
         </div>
-      </motion.div>
+      </div>
 
       {showScriptPaste && (
         <ScriptPasteImport

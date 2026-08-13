@@ -1,4 +1,3 @@
-import { m as motion } from 'motion/react';
 import { KeyboardIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
 import { useInputMode, type InputMode } from '../../state/inputMode';
@@ -9,15 +8,12 @@ const INPUT_OPTIONS: { key: InputMode; label: string; desc: string }[] = [
   { key: 'auto', label: 'Auto', desc: 'Detect from the device' },
 ];
 
-export function InputModeSection({ motionMultiplier }: { motionMultiplier: number }) {
+export function InputModeSection() {
   const [inputMode, setInputMode] = useInputMode();
 
   return (
-    <motion.section
+    <section
       id="settings-input"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * motionMultiplier, delay: 0.1 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
@@ -52,6 +48,6 @@ export function InputModeSection({ motionMultiplier }: { motionMultiplier: numbe
           );
         })}
       </div>
-    </motion.section>
+    </section>
   );
 }

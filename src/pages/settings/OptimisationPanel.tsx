@@ -127,9 +127,9 @@ export function OptimisationPanel({
           {!enoughData ? (
             <motion.p
               key="not-enough"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.16 * m }}
               className="text-sm text-ink-faint"
             >
@@ -140,9 +140,9 @@ export function OptimisationPanel({
           ) : !enabled ? (
             <motion.p
               key="disabled"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.16 * m }}
               className="text-sm text-ink-faint"
             >
@@ -151,9 +151,9 @@ export function OptimisationPanel({
           ) : optimiser.status === 'running' ? (
             <motion.div
               key="running"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.16 * m }}
             >
               <p className="mb-2 text-sm text-ink-soft">Optimising over {reviews} reviews…</p>
@@ -162,9 +162,9 @@ export function OptimisationPanel({
           ) : optimiser.status === 'done' && optimiser.result ? (
             <motion.div
               key="done"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.16 * m }}
             >
               <p className="mb-2 text-sm text-ink-soft">
@@ -199,9 +199,9 @@ export function OptimisationPanel({
           ) : optimiser.status === 'error' ? (
             <motion.div
               key="error"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.16 * m }}
             >
               <p className="mb-2 text-sm text-negative">Optimisation failed: {optimiser.error}</p>
@@ -212,9 +212,9 @@ export function OptimisationPanel({
           ) : (
             <motion.div
               key="idle"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.16 * m }}
               className="flex flex-wrap gap-2"
             >

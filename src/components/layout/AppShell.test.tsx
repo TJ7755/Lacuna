@@ -114,4 +114,13 @@ describe('AppShell mobile navigation', () => {
     await waitFor(() => expect(trigger).toHaveFocus());
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument();
   });
+
+  it('does not leave the previous page stacked under the next one', async () => {
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Navigate page' }));
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole('button', { name: 'Navigate page' })).not.toBeInTheDocument();
+  });
 });

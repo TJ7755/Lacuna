@@ -34,7 +34,7 @@ describe('McpSection', () => {
   });
 
   it('shows server status and current per-course grants', async () => {
-    render(<McpSection motionMultiplier={0} />);
+    render(<McpSection />);
     expect(await screen.findByText('Running')).toBeInTheDocument();
     expect(screen.getByText('33 tools')).toBeInTheDocument();
     expect(screen.getByText('Biology')).toBeInTheDocument();
@@ -42,7 +42,7 @@ describe('McpSection', () => {
   });
 
   it('grants and revokes access through the narrow Electron API', async () => {
-    render(<McpSection motionMultiplier={0} />);
+    render(<McpSection />);
     await screen.findByText('write access');
     const biologyRow = screen.getByText('Biology').closest('div.flex.flex-wrap')!;
     fireEvent.click(withinRow(biologyRow, 'Destructive'));
@@ -55,7 +55,7 @@ describe('McpSection', () => {
     getGrants.mockResolvedValue([
       { courseId: 'course-1', scope: 'destructive', grantedAt: 1, label: 'Biology' },
     ]);
-    render(<McpSection motionMultiplier={0} />);
+    render(<McpSection />);
     await screen.findByText('destructive access');
     const biologyRow = screen.getByText('Biology').closest('div.flex.flex-wrap')!;
     fireEvent.click(withinRow(biologyRow, 'Downgrade to write'));
@@ -69,7 +69,7 @@ describe('McpSection', () => {
       toolSurfaceVersion: 2,
       companion: { command: '/Applications/Lacuna.app/Contents/MacOS/Lacuna', args: ['--mcp-companion'] },
     });
-    render(<McpSection motionMultiplier={0} />);
+    render(<McpSection />);
     fireEvent.click(await screen.findByRole('button', { name: 'Copy' }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(JSON.stringify({ mcpServers: { lacuna: {
       command: '/Applications/Lacuna.app/Contents/MacOS/Lacuna',
@@ -79,7 +79,7 @@ describe('McpSection', () => {
 
   it('polls status at a low cadence instead of every two seconds', async () => {
     vi.useFakeTimers();
-    render(<McpSection motionMultiplier={0} />);
+    render(<McpSection />);
     await act(async () => {
       await Promise.resolve();
     });

@@ -381,11 +381,10 @@ const CourseRow = memo(function CourseRow({
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
+            initial={m > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={m > 0 ? { opacity: 0 } : undefined}
+            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
           >
             {lessons.map((lesson) => (
               <LessonItem key={lesson.id} lesson={lesson} compact={compact} />

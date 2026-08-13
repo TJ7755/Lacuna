@@ -5,7 +5,6 @@
 //
 // British English throughout.
 
-import { m as motion } from 'motion/react';
 import type { Course } from '../../db/types';
 import type { PathNode, PracticePathNode } from '../../course/path';
 import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
@@ -13,7 +12,6 @@ import type { LessonNodeDetail } from './LessonNode';
 import { PathNodeView } from './PathNodeView';
 import { PathLine } from './PathLine';
 import { PlusIcon } from '../ui/icons';
-import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { formatDate } from '../../utils/datetime';
 import type { LessonReorderInteraction } from './useLessonPathReorder';
 
@@ -72,23 +70,15 @@ export function lockHintFor(
   }
 }
 
-/** Per-node stagger step (ms) for the initial path entrance — see PathNodeWithLine. */
-const NODE_REVEAL_STEP_MS = 55;
-
 /**
  * Renders a single path node followed by its connecting line (if not the last node).
  * The connecting line is accent-tinted when the preceding node is a completed lesson,
  * indicating the student has already cleared that stretch of the path. When
  * `lineInsert.insertable`, the line also carries a labelled affordance for
  * inserting a manual practice node at that gap.
- *
- * The whole node also draws itself in on first paint — a short rise/fade
- * staggered by its position on the path, so the path reads as travelled
- * top-to-bottom rather than appearing all at once.
  */
 export function PathNodeWithLine({
   node,
-  index,
   isLast,
   lineInsert,
   current,
@@ -106,7 +96,6 @@ export function PathNodeWithLine({
   lessonReorder,
 }: {
   node: PathNode;
-  index: number;
   isLast: boolean;
   lineInsert: LineInsert;
   current: boolean;
@@ -123,23 +112,13 @@ export function PathNodeWithLine({
   authoring: boolean;
   lessonReorder?: LessonReorderInteraction;
 }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
   // A segment is completed when the node it trails is a completed lesson.
   // Checkpoints and available/locked lessons leave the segment neutral.
   const segmentCompleted = !isLast && node.nodeType === 'lesson' && node.status === 'completed';
-  const revealDelay = index * NODE_REVEAL_STEP_MS;
 
   return (
-    <motion.div
+    <div
       className="relative flex flex-col items-center"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.32 * m,
-        delay: (revealDelay / 1000) * m,
-        ease: [0.22, 1, 0.36, 1],
-      }}
     >
       <PathNodeView
         node={node}
@@ -177,13 +156,13 @@ export function PathNodeWithLine({
       )}
       {!isLast && (
         <div className="relative">
-          <PathLine completed={segmentCompleted} revealDelay={revealDelay + NODE_REVEAL_STEP_MS} />
+          <PathLine completed={segmentCompleted} />
           {lineInsert.insertable && (
             <InsertButton onInsert={() => onInsertOnLine(lineInsert.position)} />
           )}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
 
