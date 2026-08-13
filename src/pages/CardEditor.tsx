@@ -913,10 +913,10 @@ export function CardEditor() {
                 <AnimatePresence>
                   {alsoReverse && (
                     <motion.span
-                      initial={{ scale: 0, rotate: -25 }}
+                      initial={m > 0 ? { scale: 0, rotate: -25 } : false}
                       animate={{ scale: 1, rotate: 0 }}
-                      exit={{ scale: 0 }}
-                      transition={{ type: 'spring', stiffness: 600, damping: 16 }}
+                      exit={m > 0 ? { scale: 0 } : undefined}
+                      transition={m > 0 ? { type: 'spring', stiffness: 600, damping: 16 } : { duration: 0 }}
                       className="inline-flex"
                     >
                       <CheckIcon width={11} height={11} />
@@ -935,16 +935,16 @@ export function CardEditor() {
           <AnimatePresence>
             {showSaved && (
               <motion.span
-                initial={{ scale: 0.6, opacity: 0 }}
+                initial={m > 0 ? { scale: 0.6, opacity: 0 } : false}
                 animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.6, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+                exit={m > 0 ? { scale: 0.6, opacity: 0 } : undefined}
+                transition={m > 0 ? { type: 'spring', stiffness: 500, damping: 20 } : { duration: 0 }}
                 className="inline-flex items-center gap-1.5 rounded-full bg-positive/15 px-3 py-1 text-sm font-medium text-positive"
               >
                 <motion.span
-                  initial={{ scale: 0, rotate: -25 }}
+                  initial={m > 0 ? { scale: 0, rotate: -25 } : false}
                   animate={{ scale: 1, rotate: 0 }}
-                  transition={{ delay: 0.06, type: 'spring', stiffness: 600, damping: 16 }}
+                  transition={m > 0 ? { delay: 0.06 * m, type: 'spring', stiffness: 600, damping: 16 } : { duration: 0 }}
                   className="inline-flex"
                 >
                   <CheckIcon width={16} height={16} />

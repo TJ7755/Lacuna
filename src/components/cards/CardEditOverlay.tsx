@@ -11,6 +11,7 @@ import { cn } from '../ui/cn';
 import { CloseIcon } from '../ui/icons';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../../utils/drafts';
 import type { Card, CardType } from '../../db/types';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 interface CardEditOverlayProps {
   card: Card;
@@ -38,6 +39,8 @@ export function CardEditOverlay({
 }: CardEditOverlayProps) {
   const { notify } = useToast();
   const trapRef = useFocusTrap(true);
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
   const [type, setType] = useState<CardType>(card.type);
   const [front, setFront] = useState(card.front);
   const [back, setBack] = useState(card.back);
@@ -103,9 +106,10 @@ export function CardEditOverlay({
   return (      <motion.div
       ref={trapRef}
       className="fixed inset-0 z-50 flex flex-col will-change-transform-opacity"
-      initial={{ opacity: 0 }}
+      initial={m > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={m > 0 ? { opacity: 0 } : undefined}
+      transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       // Keep the session's keyboard handler inert while editing: it checks `editing`,
       // but stop bubbling here too so nothing behind the overlay reacts to typing.
       onKeyDown={(e) => {
@@ -126,10 +130,10 @@ export function CardEditOverlay({
         role="dialog"
         aria-modal="true"
         aria-label="Edit card"
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        initial={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : false}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.98 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+        exit={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : undefined}
+        transition={m > 0 ? { type: 'spring', stiffness: 320, damping: 30 } : { duration: 0 }}
         className="relative z-10 m-auto flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
       >
         <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20" aria-hidden="true" />

@@ -191,9 +191,10 @@ export function AppShell() {
           {mobileOpen && (
             <motion.div
               className="fixed inset-0 z-40 md:hidden"
-              initial={{ opacity: 0 }}
+              initial={motionEnabled ? { opacity: 0 } : false}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              exit={motionEnabled ? { opacity: 0 } : undefined}
+              transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
             >
               <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -202,10 +203,14 @@ export function AppShell() {
               <motion.div
                 ref={mobileDrawerRef}
                 className="absolute inset-y-0 left-0"
-                initial={{ x: -280 }}
+                initial={motionEnabled ? { x: -280 } : false}
                 animate={{ x: 0 }}
-                exit={{ x: -280 }}
-                transition={{ type: 'spring', stiffness: 260, damping: 30 }}
+                exit={motionEnabled ? { x: -280 } : undefined}
+                transition={
+                  motionEnabled
+                    ? { type: 'spring', stiffness: 260, damping: 30 }
+                    : { duration: 0 }
+                }
                 role="dialog"
                 aria-modal="true"
                 aria-label="Navigation"

@@ -11,6 +11,7 @@ import { cn } from '../ui/cn';
 import { CloseIcon } from '../ui/icons';
 import { DateTimePicker } from '../ui/DateTimePicker';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 const ShareCodeImportPanel = lazy(() =>
   import('../import/UnifiedImportPanel').then((module) => ({
@@ -41,6 +42,8 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
   const [examDateValid, setExamDateValid] = useState(true);
   const [saving, setSaving] = useState(false);
   const [mode, setMode] = useState<'create' | 'import'>('create');
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
 
   const canCreate = !saving;
 
@@ -86,9 +89,10 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
     <motion.div
       ref={trapRef}
       className="fixed inset-0 z-50 flex flex-col will-change-transform-opacity"
-      initial={{ opacity: 0 }}
+      initial={m > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={m > 0 ? { opacity: 0 } : undefined}
+      transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       onKeyDown={(e) => {
         e.stopPropagation();
         e.nativeEvent.stopImmediatePropagation();
@@ -109,10 +113,10 @@ export function NewCourseForm({ onClose }: NewCourseFormProps) {
         role="dialog"
         aria-modal="true"
         aria-label="New course"
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        initial={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : false}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.98 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+        exit={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : undefined}
+        transition={m > 0 ? { type: 'spring', stiffness: 320, damping: 30 } : { duration: 0 }}
         className="relative z-10 m-auto flex w-full max-w-md flex-col overflow-hidden rounded-3xl border border-line-strong bg-paper shadow-2xl shadow-black/20"
       >
         <div
