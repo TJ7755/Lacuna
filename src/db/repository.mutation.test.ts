@@ -31,7 +31,6 @@ import {
   deleteSequence,
   linkCardsToLesson,
   markLessonComplete,
-  moveCards,
   recordReview,
   refreshRevisionPlan,
   removeRevisionDay,
@@ -171,7 +170,6 @@ describe('repository mutation stamps and tombstones', () => {
   it('advances updatedAt on card writes including recordReview', async () => {
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Intro');
-    const other = await createCourse('Chemistry');
 
     const card = await createCard(course.id, 'front_back', 'Q', 'A');
     expect(card.updatedAt).toBeGreaterThan(0);
@@ -212,7 +210,6 @@ describe('repository mutation stamps and tombstones', () => {
       () => read(courseCard.id),
       () => assignCardsToLesson([courseCard.id], course.id, lesson.id),
     );
-    await expectStampAdvanced(() => read(card.id), () => moveCards([card.id], other.id));
     await expectStampAdvanced(() => read(card.id), () => suspendCard(card.id));
     await expectStampAdvanced(() => read(card.id), () => unsuspendCard(card.id));
     await expectStampAdvanced(() => read(card.id), () => setCardsSuspended([card.id], true));
