@@ -94,7 +94,7 @@ HIGHER is BETTER. These are vague values from personal experience. If you want t
 | GPT 5.6 Sol Medium *(use Medium for virtually everything; never above High)* | 9 | 6 | 6 | 4 | 9 |
 | DeepSeek V4 Flash *(free build via OpenCode Zen, likely the 0731 weights with enhanced coding)* | 4 | 3 | 0 | 10 | 4 |
 | DeepSeek V4 Pro *(0813 weights, ~1.6T parameters; available in Freebuff)* | 5? | ? | ? | ? | ? |
-| Grok 4.6 *(SuperGrok sub, via the `grok` CLI)* | 9 | 7.5 | ? | 8 | 8 |
+| Grok 4.6 *(SuperGrok sub, via the `grok` CLI)* | 9 | 6 | ? | 8 | 8 |
 
 Freebuff sits outside the table because I drive it, not you. It runs Luna, and as of 13 August 2026 it also offers DeepSeek V4 Pro. Either way, read it as that model's row with a better price and a supervision cost paid by me rather than by my usage limits.
 
@@ -103,10 +103,6 @@ Freebuff sits outside the table because I drive it, not you. It runs Luna, and a
 One thing about Pro is already known, from its first outing on 13 August 2026: **it struggles to drive subagents.** Luna has never got that wrong. Since the Freebuff brief pattern depends on spawning a code-reviewer on every commit, and that cadence is what keeps free-tier output honest, Luna remains the default for Freebuff work. Do not write a brief that leans on subagents and hand it to Pro.
 
 Pro is a Freebuff option. The OpenCode Zen and Cline routes below still run Flash unless I tell you they have changed.
-
-**Grok 4.6's taste was rated on 13 August 2026 at 7.5**, on a from-scratch landing-page redesign: it was asked to replace a page it was told I disliked, and the idea it returned was genuinely creative rather than a restyling. I did not adopt the draft — I prefer the existing page — but the rating is about the thinking, not the outcome. So Grok is the first worker other than you that design work can go to.
-
-**Its 3D and graphical column is still unrated, and you must not guess it.** Taste in a flat editorial layout is not evidence about 3D. Ask me before sending it anything in that column.
 
 3D and graphical work is effectively Opus 5 only. Sol can make a decent fist of it at a 6 and is the one fallback worth considering; everything else scores 0 and is not worth trying. Never delegate 3D, graphics or visual design to a Luna or DeepSeek worker, and never to a Sonnet subagent. Default to doing it yourself.
 
