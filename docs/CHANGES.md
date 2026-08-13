@@ -1,5 +1,16 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P4: peer merge
+
+- Added `mergeSnapshots` in `src/sync/mergeSnapshots.ts`: a pure function that takes two
+  `BackupFile` values and returns a third. No Dexie, no I/O, no local/remote distinction.
+- Order is tombstone-union, newest-wins content by `updatedAt` (canonical JSON on a
+  same-millisecond tie), set-union of reviews by `eventId`, then FSRS replay with fuzz
+  forced off. Card scheduler fields are derived from the unioned history, never taken
+  from the newer card record.
+- `importBackup(..., 'merge')` is unchanged. The two-device dance is merge-then-replace
+  and belongs to a later slice.
+
 ## Unreleased — Sync P3: mutation timestamps and tombstones
 
 - Schema v23 adds a `tombstones` table and a required `updatedAt` on every snapshot-carried
