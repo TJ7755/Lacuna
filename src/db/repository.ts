@@ -81,6 +81,7 @@ import {
   type GeneratedCardPayload,
 } from './sequenceGeneration';
 import { friendlyDbError } from './dbErrors';
+import { schedulingUnitFromLegacyDeck } from './storageMigration';
 export {
   createPracticeNode,
   updatePracticeNode,
@@ -113,8 +114,23 @@ export async function createDeck(name: string, colour?: string): Promise<Deck> {
       lastInteractedAt: createdAt,
       ...(colour ? { colour } : {}),
     };
-    await db.decks.add(deck);
-    await db.userPerformance.add(emptyPerformance(deck.id));
+    const performance = emptyPerformance(deck.id);
+    await db.transaction(
+      'rw',
+      [db.decks, db.userPerformance, db.schedulingUnits, db.schedulingPerformance],
+      async () => {
+        await db.decks.add(deck);
+        await db.userPerformance.add(performance);
+        await db.schedulingUnits.add(schedulingUnitFromLegacyDeck(deck));
+        await db.schedulingPerformance.add({
+          schedulingUnitId: deck.id,
+          runningMeanResponseTime: performance.runningMeanResponseTime,
+          runningStdDevResponseTime: performance.runningStdDevResponseTime,
+          m2: performance.m2,
+          totalCorrectReviews: performance.totalCorrectReviews,
+        });
+      },
+    );
     return deck;
   } catch (err) {
     throw friendlyDbError(err);
@@ -123,7 +139,11 @@ export async function createDeck(name: string, colour?: string): Promise<Deck> {
 
 export async function updateDeck(id: string, changes: Partial<Deck>): Promise<void> {
   try {
-    await db.decks.update(id, changes);
+    await db.transaction('rw', [db.decks, db.schedulingUnits], async () => {
+      await db.decks.update(id, changes);
+      const deck = await db.decks.get(id);
+      if (deck) await db.schedulingUnits.put(schedulingUnitFromLegacyDeck(deck));
+    });
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -140,6 +160,8 @@ export async function deleteDeck(id: string): Promise<void> {
       db.sessionHistory,
       db.userPerformance,
       db.reviewHistory,
+      db.schedulingUnits,
+      db.schedulingPerformance,
     ],
     async () => {
       const cardIds = await db.cards.where('deckId').equals(id).primaryKeys();
@@ -151,6 +173,8 @@ export async function deleteDeck(id: string): Promise<void> {
       await db.reviewHistory.where('cardId').anyOf(cardIds).delete();
       await db.sessionHistory.where('deckId').equals(id).delete();
       await db.userPerformance.delete(id);
+      await db.schedulingPerformance.delete(id);
+      await db.schedulingUnits.delete(id);
       await db.decks.delete(id);
     },
   );
@@ -241,7 +265,7 @@ export async function createCard(
       tags,
       suspended: false,
       buriedUntil: null,
-      ...(opts?.courseId ? { schedulingUnitId: opts.primaryLessonId ?? opts.courseId } : {}),
+      schedulingUnitId: opts?.primaryLessonId ?? opts?.courseId ?? deckId,
       ...opts,
     };
     await db.cards.add(card);
@@ -290,7 +314,7 @@ export async function createCards(
       tags: draft.tags ?? [],
       suspended: false,
       buriedUntil: null,
-      ...(opts?.courseId ? { schedulingUnitId: opts.primaryLessonId ?? opts.courseId } : {}),
+      schedulingUnitId: opts?.primaryLessonId ?? opts?.courseId ?? deckId,
       ...opts,
     }));
     await db.cards.bulkAdd(cards);
@@ -675,8 +699,8 @@ export async function setCardFlag(id: string, flagged: boolean): Promise<void> {
 // Reviews
 // ---------------------------------------------------------------------------
 
-/** Which table owns the reviewed unit: a legacy Deck, or a course/lesson-scoped Course. */
-type ReviewUnitKind = 'deck' | 'course';
+/** Which target table owns the reviewed unit. */
+type ReviewUnitKind = 'scheduling-unit' | 'course';
 
 export interface RecordReviewArgs {
   card: Card;
@@ -689,13 +713,13 @@ export interface RecordReviewArgs {
   revisionPlanId?: string;
   revisionWindowId?: string;
   /**
-   * The Deck (legacy per-deck/global-Today scope) or Course (course/lesson scope) this
+   * The scheduling unit (global-Today scope) or Course (course/lesson scope) this
    * review is scheduled and calibrated against. Both satisfy SchedulerConfig, so the
    * FSRS maths is identical either way; only the bookkeeping below (lastInteractedAt
    * table, and the card set the retrievability snapshot spans) differs by `kind`.
    */
   deck: SchedulerConfig;
-  /** Defaults to 'deck' so every existing Deck-keyed caller is unaffected. */
+  /** Defaults to the explicit scheduling-unit projection used by global sessions. */
   kind?: ReviewUnitKind;
   grade: Grade;
   responseTimeSec: number;
@@ -748,7 +772,9 @@ function trajectoryUnitMatches(
   kind: ReviewUnitKind,
   unitId: string,
 ): boolean {
-  return kind === 'course' ? entry.courseId === unitId : entry.deckId === unitId && !entry.courseId;
+  return kind === 'course'
+    ? entry.courseId === unitId
+    : entry.schedulingUnitId === unitId && !entry.courseId;
 }
 
 async function hasTrajectorySampleForToday(
@@ -774,7 +800,7 @@ export async function sampleReviewTrajectory(args: ReviewTrajectorySampleArgs): 
   const cards =
     args.kind === 'course'
       ? await db.cards.where('courseId').equals(args.deck.id).toArray()
-      : await db.cards.where('deckId').equals(args.deck.id).toArray();
+      : await db.cards.where('schedulingUnitId').equals(args.deck.id).toArray();
   const total = cards.reduce(
     (sum, card) => sum + predictedRetrievabilityAtHorizon(card, args.deck, args.timestamp),
     0,
@@ -794,7 +820,9 @@ export async function sampleReviewTrajectory(args: ReviewTrajectorySampleArgs): 
       revisionWindowId: args.revisionWindowId,
       timestamp: args.timestamp,
       deckId: event.deckId,
-      ...(args.kind === 'course' ? { courseId: args.deck.id } : {}),
+      ...(args.kind === 'course'
+        ? { courseId: args.deck.id }
+        : { schedulingUnitId: args.deck.id }),
       averagePredictedRetrievability,
     });
   });
@@ -837,7 +865,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
       lineVerdicts,
       checkerDisputes,
     } = args;
-    const kind: ReviewUnitKind = args.kind ?? 'deck';
+    const kind: ReviewUnitKind = args.kind ?? 'scheduling-unit';
     const now = args.now ?? Date.now();
 
     if (!eventId.trim() || !sessionId.trim()) {
@@ -851,9 +879,11 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         db.cards,
         db.decks,
         db.courses,
+        db.schedulingUnits,
         db.sessionHistory,
         db.userPerformance,
         db.coursePerformance,
+        db.schedulingPerformance,
         db.reviewHistory,
       ],
       async () => {
@@ -946,8 +976,8 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           lastInteractedAtBefore = (await db.courses.get(deck.id))?.lastInteractedAt;
           await db.courses.update(deck.id, { lastInteractedAt: now });
         } else {
-          lastInteractedAtBefore = (await db.decks.get(deck.id))?.lastInteractedAt;
-          await db.decks.update(deck.id, { lastInteractedAt: now });
+          lastInteractedAtBefore = (await db.schedulingUnits.get(deck.id))?.lastInteractedAt;
+          await db.schedulingUnits.update(deck.id, { lastInteractedAt: now });
         }
 
         if (correct) {
@@ -989,7 +1019,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           cardBefore: persistedCard,
           recorded: false,
           sessionHistoryId: existingSession?.id,
-          kind: args.kind ?? 'deck',
+          kind: args.kind ?? 'scheduling-unit',
           lastInteractedAtBefore: undefined,
         };
       }
@@ -1009,12 +1039,11 @@ export interface ReviewUndo {
   /** The optional SessionHistory row id written by the daily post-commit sample. */
   sessionHistoryId?: number;
   /**
-   * The UserPerformance key of the unit that was reviewed (a deckId for deck scope,
-   * or a courseId for course/lesson scope — see {@link RecordReviewArgs.kind}).
+   * The UserPerformance-shaped key of the scheduling unit or Course reviewed.
    */
   deckId: string;
   /**
-   * Which table `deckId` belongs to: a legacy Deck, or a course/lesson-scoped Course.
+   * Which target table `deckId` belongs to: a scheduling unit or Course.
    * Recorded by `recordReview` (see {@link RecordReviewResult.kind}) so the
    * `lastInteractedAt` restore on undo knows which table to look the id up in.
    */
@@ -1041,9 +1070,11 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
         db.cards,
         db.decks,
         db.courses,
+        db.schedulingUnits,
         db.sessionHistory,
         db.userPerformance,
         db.coursePerformance,
+        db.schedulingPerformance,
         db.reviewHistory,
       ],
       async () => {
@@ -1064,7 +1095,9 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
         if (undo.kind === 'course') {
           await db.courses.update(undo.deckId, { lastInteractedAt: undo.lastInteractedAtBefore });
         } else {
-          await db.decks.update(undo.deckId, { lastInteractedAt: undo.lastInteractedAtBefore });
+          await db.schedulingUnits.update(undo.deckId, {
+            lastInteractedAt: undo.lastInteractedAtBefore,
+          });
         }
         await db.reviewHistory.delete(reviewHistoryEntryIdForEvent(undo.eventId));
         if (session?.id !== undefined) await db.sessionHistory.delete(session.id);

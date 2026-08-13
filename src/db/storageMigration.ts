@@ -70,7 +70,7 @@ function combineStats(performances: UserPerformance[]) {
     : emptyPerformanceStats();
 }
 
-function unitFromLegacyDeck(deck: Deck): SchedulingUnitRecord {
+export function schedulingUnitFromLegacyDeck(deck: Deck): SchedulingUnitRecord {
   return {
     id: deck.id,
     createdAt: deck.createdAt,
@@ -140,7 +140,7 @@ export function buildDomainStorageMigration(
       schedulingUnitByDeckId.set(deck.id, mappedUnitId);
       continue;
     }
-    if (!units.has(deck.id)) units.set(deck.id, unitFromLegacyDeck(deck));
+    if (!units.has(deck.id)) units.set(deck.id, schedulingUnitFromLegacyDeck(deck));
     schedulingUnitByDeckId.set(deck.id, deck.id);
   }
 

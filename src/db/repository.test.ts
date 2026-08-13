@@ -7,7 +7,7 @@ import { reviewHistoryEntryIdForEvent } from './reviewHistory';
 import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
 import {
   performanceForCourseBackingDecks,
-  performanceForReviewUnits,
+  performanceForReviewUnit,
 } from './backingDecks';
 import {
   addTagToCards,
@@ -51,6 +51,8 @@ describe('undoReview', () => {
       db.userPerformance.clear(),
       db.assets.clear(),
       db.reviewHistory.clear(),
+      db.schedulingUnits.clear(),
+      db.schedulingPerformance.clear(),
     ]);
   });
 
@@ -59,8 +61,8 @@ describe('undoReview', () => {
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
 
     const cardBefore = (await db.cards.get(card.id))!;
-    const perfBefore = (await db.userPerformance.get(deck.id)) ?? null;
-    const deckLastInteractedAtBefore = (await db.decks.get(deck.id))!.lastInteractedAt;
+    const perfBefore = (await performanceForReviewUnit(deck.id)) ?? null;
+    const unitLastInteractedAtBefore = (await db.schedulingUnits.get(deck.id))!.lastInteractedAt;
 
     const {
       card: updated,
@@ -80,9 +82,11 @@ describe('undoReview', () => {
     // The review actually changed state.
     expect(updated.reps).toBe(1);
     expect(await db.sessionHistory.count()).toBe(0);
-    expect((await db.userPerformance.get(deck.id))!.totalCorrectReviews).toBe(1);
-    expect(lastInteractedAtBefore).toBe(deckLastInteractedAtBefore);
-    expect((await db.decks.get(deck.id))!.lastInteractedAt).not.toBe(deckLastInteractedAtBefore);
+    expect((await db.schedulingPerformance.get(deck.id))!.totalCorrectReviews).toBe(1);
+    expect(lastInteractedAtBefore).toBe(unitLastInteractedAtBefore);
+    expect((await db.schedulingUnits.get(deck.id))!.lastInteractedAt).not.toBe(
+      unitLastInteractedAtBefore,
+    );
 
     const session = await waitForTrajectorySample('event-undo');
     expect(await db.sessionHistory.count()).toBe(1);
@@ -94,7 +98,7 @@ describe('undoReview', () => {
       perfBefore,
       sessionHistoryId: session.id,
       deckId: deck.id,
-      kind: 'deck',
+      kind: 'scheduling-unit',
       lastInteractedAtBefore,
     });
 
@@ -103,8 +107,10 @@ describe('undoReview', () => {
     expect(restored.state).toBe(0);
     expect(restored.lastReviewed).toBeNull();
     expect(await db.sessionHistory.count()).toBe(0);
-    expect((await db.userPerformance.get(deck.id))!.totalCorrectReviews).toBe(0);
-    expect((await db.decks.get(deck.id))!.lastInteractedAt).toBe(deckLastInteractedAtBefore);
+    expect((await db.schedulingPerformance.get(deck.id))!.totalCorrectReviews).toBe(0);
+    expect((await db.schedulingUnits.get(deck.id))!.lastInteractedAt).toBe(
+      unitLastInteractedAtBefore,
+    );
   });
 
   it('keeps the card projection and canonical event in sync through record and undo', async () => {
@@ -139,7 +145,7 @@ describe('undoReview', () => {
       perfBefore,
       sessionHistoryId: result.sessionHistoryId,
       deckId: deck.id,
-      kind: 'deck',
+      kind: 'scheduling-unit',
       lastInteractedAtBefore: result.lastInteractedAtBefore,
     });
 
@@ -337,10 +343,12 @@ describe('undoReview', () => {
     expect((await performanceForCourseBackingDecks(course.id, [card])).map((row) => row.deckId)).toEqual([
       card.deckId,
     ]);
-    expect((await performanceForReviewUnits([course.id, card.deckId])).map((row) => row?.deckId)).toEqual([
-      course.id,
-      card.deckId,
-    ]);
+    expect(await performanceForReviewUnit(course.id, 'course')).toMatchObject({
+      deckId: course.id,
+    });
+    expect(await performanceForReviewUnit(card.schedulingUnitId!)).toMatchObject({
+      deckId: card.schedulingUnitId,
+    });
   });
 
   it('persists every provenance field and the exact attempt timestamp', async () => {
@@ -416,7 +424,7 @@ describe('undoReview', () => {
     expect((await db.cards.get(card.id))?.history).toHaveLength(1);
     await waitForTrajectorySample('event-replayed');
     expect(await db.sessionHistory.count()).toBe(1);
-    expect((await db.userPerformance.get(deck.id))?.totalCorrectReviews).toBe(1);
+    expect((await db.schedulingPerformance.get(deck.id))?.totalCorrectReviews).toBe(1);
   });
 
   it('skips the card scan when the unit already has a trajectory sample today', async () => {
@@ -429,6 +437,7 @@ describe('undoReview', () => {
       sessionId: 'session-existing-daily-sample',
       timestamp: now,
       deckId: deck.id,
+      schedulingUnitId: deck.id,
       averagePredictedRetrievability: 0.5,
     });
     await recordReview({
@@ -451,7 +460,7 @@ describe('undoReview', () => {
         sessionId: 'session-daily-sample-skip',
         timestamp: now,
         deck,
-        kind: 'deck',
+        kind: 'scheduling-unit',
         cardId: card.id,
       });
     } finally {

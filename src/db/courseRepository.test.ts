@@ -46,7 +46,7 @@ import { listLessons, listCardsForCourse } from './read';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import {
   performanceForCourseBackingDecks,
-  performanceForReviewUnits,
+  performanceForReviewUnit,
 } from './backingDecks';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 
@@ -624,11 +624,10 @@ describe('snapshotCourse / restoreCourse', () => {
         (row) => row.deckId,
       ),
     ).toEqual([lessonCard.deckId]);
-    expect(
-      (await performanceForReviewUnits([course.id, lessonCard.deckId])).map(
-        (row) => row?.deckId,
-      ),
-    ).toEqual([course.id, lessonCard.deckId]);
+    expect(await performanceForReviewUnit(course.id, 'course')).toMatchObject({ deckId: course.id });
+    expect(await performanceForReviewUnit(restoredLessonCard.schedulingUnitId!)).toMatchObject({
+      deckId: restoredLessonCard.schedulingUnitId,
+    });
     expect(await db.cards.get(bankCard.id)).toBeDefined();
   });
 });

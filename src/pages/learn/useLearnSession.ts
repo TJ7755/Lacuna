@@ -12,13 +12,13 @@ import { hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
 import type {
   Card,
   Course,
-  Deck,
   Grade,
   Lesson,
   Sequence,
   ReviewSessionKind,
   RevisionPlan,
   SchedulerConfig,
+  SchedulingUnitRecord,
   UserPerformance,
 } from '../../db/types';
 import {
@@ -336,14 +336,13 @@ export function useLearnSession({
   // and so the stable callbacks below always read current values (no stale closures).
   const cooldowns = useRef<CooldownMap>(new Map());
   const perfRef = useRef<Map<string, UserPerformance>>(new Map());
-  const decksRef = useRef<Map<string, StudyUnit>>(new Map());
-  // Course/Lesson sessions score and enforce limits from the target scheduling
-  // projection; legacy global sessions continue to resolve their Deck directly.
+  const schedulingUnitsRef = useRef<Map<string, StudyUnit>>(new Map());
+  // Every session scores and enforces limits from the target scheduling projection.
   const schedulingConfigRef = useRef<SessionSchedulingConfig | null>(null);
   const ctxRef = useRef<SessionContext | null>(null);
   // Whether reviews in this session should be recorded against a Course (course
   // and lesson scope) or a Deck (the global "Today" session).
-  const reviewKindRef = useRef<'deck' | 'course'>('deck');
+  const reviewKindRef = useRef<'scheduling-unit' | 'course'>('scheduling-unit');
   // Set for course/lesson-scoped sessions so a completed session can evaluate the
   // semi-linear unlock ratchet (see ratchetUnlocks below). Null for deck/global sessions.
   const ratchetCourseIdRef = useRef<string | null>(null);
@@ -854,7 +853,7 @@ export function useLearnSession({
     progressBefore.current = 0;
     progressCacheRef.current = { dirty: true, value: 0 };
     perfRef.current = new Map();
-    decksRef.current = new Map();
+    schedulingUnitsRef.current = new Map();
     schedulingConfigRef.current = null;
     ctxRef.current = null;
     cardsRef.current = [];
@@ -891,7 +890,7 @@ export function useLearnSession({
     setTimeLimitOverride(false);
     sessionStartMs.current = 0;
     setPhase('loading');
-    reviewKindRef.current = 'deck';
+    reviewKindRef.current = 'scheduling-unit';
     ratchetCourseIdRef.current = null;
     ratchetLessonIdRef.current = null;
     setUnitDisplayName(null);
@@ -899,7 +898,7 @@ export function useLearnSession({
     setLessonNotesScreen(null);
     void (async () => {
       let units: StudyUnit[];
-      let sessionUnits: Deck[] | SessionUnit[];
+      let sessionUnits: SchedulingUnitRecord[] | SessionUnit[];
       let cards: Card[];
       // Set for lesson sessions so notes always precede the Simple-mode pass.
       let firstStudyLessonId: string | undefined;
@@ -1077,9 +1076,9 @@ export function useLearnSession({
           };
         }
       } else {
-        const decks = await db.decks.toArray();
-        units = decks;
-        sessionUnits = decks;
+        const schedulingUnits = await db.schedulingUnits.toArray();
+        units = schedulingUnits;
+        sessionUnits = schedulingUnits;
         cards = await hydrateCardsWithHistory(await db.cards.toArray());
       }
       if (cancelled) return;
@@ -1097,7 +1096,7 @@ export function useLearnSession({
       const perfMap = new Map<string, UserPerformance>();
       units.forEach((u, i) => perfMap.set(u.id, perfs[i] ?? emptyPerformance(u.id)));
       perfRef.current = perfMap;
-      decksRef.current = new Map(units.map((u) => [u.id, u]));
+      schedulingUnitsRef.current = new Map(units.map((u) => [u.id, u]));
       schedulingConfigRef.current =
         sessionUnits.length === 1 && 'config' in sessionUnits[0]
           ? sessionUnits[0].config
@@ -1335,13 +1334,13 @@ export function useLearnSession({
         }
 
         const ctx = ctxRef.current;
-        // Deck-scoped/global sessions key units by the card's own deckId; course
-        // and lesson scope are always single-unit sessions whose unit id (a
-        // Course id) never matches the card's backing (shadow) deckId, so the
-        // sole entry in decksRef is used directly instead.
+        // Global sessions key units by the card's explicit schedulingUnitId;
+        // course and lesson scope use their sole resolved target unit.
         const deck = isGlobal
-          ? decksRef.current.get(cardNow.deckId)
-          : decksRef.current.values().next().value;
+          ? cardNow.schedulingUnitId
+            ? schedulingUnitsRef.current.get(cardNow.schedulingUnitId)
+            : undefined
+          : schedulingUnitsRef.current.values().next().value;
         const schedulingConfig = isGlobal
           ? deck
           : schedulingConfigRef.current;
@@ -1447,7 +1446,7 @@ export function useLearnSession({
           // card's deck; course/lesson sessions are already scoped to their own
           // pool (see the loading effect), so the whole pool applies.
           const deckSize = isGlobal
-            ? nextCards.filter((c) => c.deckId === deck.id).length
+            ? nextCards.filter((c) => c.schedulingUnitId === deck.id).length
             : nextCards.length;
           applyCooldown(cooldowns.current, updated.id, deckSize);
         }

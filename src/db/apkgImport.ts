@@ -697,7 +697,14 @@ export async function importApkgResult(
   // This prevents a failed canonical-history write from leaving a partial import.
   await db.transaction(
     'rw',
-    [db.decks, db.userPerformance, db.cards, db.reviewHistory],
+    [
+      db.decks,
+      db.userPerformance,
+      db.cards,
+      db.reviewHistory,
+      db.schedulingUnits,
+      db.schedulingPerformance,
+    ],
     async () => {
       deck ??= await createDeck(result.deckName);
 

@@ -226,12 +226,11 @@ export async function performanceForCourseBackingDecks(
   return result;
 }
 
-type ReviewPerformanceUnitKind = 'deck' | 'course';
+type ReviewPerformanceUnitKind = 'scheduling-unit' | 'course';
 
 /**
  * Load calibration rows for active review units. Course/Lesson sessions pass a Course id;
- * legacy deck sessions pass a Deck id. Course rows are read from the target store and the
- * legacy table remains a compatibility fallback while old databases are in the window.
+ * global sessions pass a scheduling-unit id. Both paths read their target stores.
  */
 export function performanceForReviewUnits(
   unitIds: readonly string[],
@@ -246,7 +245,7 @@ export function performanceForReviewUnits(
  */
 export async function performanceForReviewUnit(
   unitId: string,
-  kind: ReviewPerformanceUnitKind = 'deck',
+  kind: ReviewPerformanceUnitKind = 'scheduling-unit',
 ): Promise<UserPerformance | undefined> {
   if (kind === 'course') {
     const target = await db.coursePerformance.get(unitId);
@@ -254,18 +253,18 @@ export async function performanceForReviewUnit(
     const compatibility = await db.userPerformance.get(unitId);
     return compatibility?.courseId === unitId ? compatibility : undefined;
   }
-  return db.userPerformance.get(unitId);
+  const target = await db.schedulingPerformance.get(unitId);
+  return target ? userPerformanceFromStats(unitId, target, target.courseId) : undefined;
 }
 
 /**
  * Update calibration for an already-resolved review unit. Course reviews write the target
- * Course store first and mirror the compatibility row; legacy Deck reviews keep their
- * existing key space until the compatibility route is retired.
+ * Course reviews write the Course store; global reviews write scheduling performance.
  */
 export async function updateReviewUnitPerformance(
   unitId: string,
   responseTimeSec: number,
-  kind: ReviewPerformanceUnitKind = 'deck',
+  kind: ReviewPerformanceUnitKind = 'scheduling-unit',
 ): Promise<UserPerformance> {
   const current = (await performanceForReviewUnit(unitId, kind)) ?? emptyPerformance(unitId);
   const next = updatePerformance(current, responseTimeSec);
@@ -281,7 +280,16 @@ export async function updateReviewUnitPerformance(
     await db.coursePerformance.put(target);
     await db.userPerformance.put(compatibilityNext);
   } else {
-    await db.userPerformance.put(compatibilityNext);
+    const unit = await db.schedulingUnits.get(unitId);
+    await db.schedulingPerformance.put({
+      schedulingUnitId: unitId,
+      ...(unit?.courseId ? { courseId: unit.courseId } : {}),
+      ...(unit?.lessonId ? { lessonId: unit.lessonId } : {}),
+      runningMeanResponseTime: next.runningMeanResponseTime,
+      runningStdDevResponseTime: next.runningStdDevResponseTime,
+      m2: next.m2,
+      totalCorrectReviews: next.totalCorrectReviews,
+    });
   }
   return compatibilityNext;
 }
@@ -290,7 +298,7 @@ export async function updateReviewUnitPerformance(
 export async function restoreReviewUnitPerformance(
   unitId: string,
   previous: UserPerformance | null,
-  kind: ReviewPerformanceUnitKind = 'deck',
+  kind: ReviewPerformanceUnitKind = 'scheduling-unit',
 ): Promise<void> {
   if (kind === 'course') {
     if (previous) {
@@ -309,9 +317,18 @@ export async function restoreReviewUnitPerformance(
     return;
   }
   if (previous) {
-    await db.userPerformance.put(previous);
+    const unit = await db.schedulingUnits.get(unitId);
+    await db.schedulingPerformance.put({
+      schedulingUnitId: unitId,
+      ...(unit?.courseId ? { courseId: unit.courseId } : {}),
+      ...(unit?.lessonId ? { lessonId: unit.lessonId } : {}),
+      runningMeanResponseTime: previous.runningMeanResponseTime,
+      runningStdDevResponseTime: previous.runningStdDevResponseTime,
+      m2: previous.m2,
+      totalCorrectReviews: previous.totalCorrectReviews,
+    });
   } else {
-    await db.userPerformance.delete(unitId);
+    await db.schedulingPerformance.delete(unitId);
   }
 }
 
@@ -486,7 +503,18 @@ export async function syncCourseSchedulingUnits(courseId: string): Promise<void>
   const lessonUnits = lessons.map((lesson) =>
     schedulingUnitFromLesson(course as CourseRecord, lesson as Lesson, assessments as CourseAssessment[]),
   );
-  await db.schedulingUnits.bulkPut([courseUnit, ...lessonUnits]);
+  const projectedUnits = [courseUnit, ...lessonUnits];
+  const existingUnits = await db.schedulingUnits.bulkGet(projectedUnits.map((unit) => unit.id));
+  await db.schedulingUnits.bulkPut(
+    projectedUnits.map((unit, index) => {
+      const existingInteraction = existingUnits[index]?.lastInteractedAt;
+      const projectedInteraction = unit.lastInteractedAt;
+      return existingInteraction !== undefined &&
+        (projectedInteraction === undefined || existingInteraction > projectedInteraction)
+        ? { ...unit, lastInteractedAt: existingInteraction }
+        : unit;
+    }),
+  );
 
   const existingCoursePerformance = await db.coursePerformance.get(courseId);
   if (!existingCoursePerformance) {

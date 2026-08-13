@@ -22,7 +22,7 @@ import {
 } from './repository';
 import {
   performanceForCourseBackingDecks,
-  performanceForReviewUnits,
+  performanceForReviewUnit,
 } from './backingDecks';
 import { createOcclusion } from './occlusionRepository';
 import { reviewHistoryEntryIdForEvent } from './reviewHistory';
@@ -390,11 +390,12 @@ describe('importBackup', () => {
           (row) => row.deckId,
         ),
       ).toEqual([card.deckId]);
-      expect(
-        (await performanceForReviewUnits([course.id, card.deckId])).map(
-          (row) => row?.deckId,
-        ),
-      ).toEqual([course.id, card.deckId]);
+      expect(await performanceForReviewUnit(course.id, 'course')).toMatchObject({
+        deckId: course.id,
+      });
+      expect(await performanceForReviewUnit(restoredCard.schedulingUnitId!)).toMatchObject({
+        deckId: restoredCard.schedulingUnitId,
+      });
     },
   );
 

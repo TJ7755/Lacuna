@@ -421,16 +421,16 @@ describe('backing deck adapter', () => {
   });
 
   it('loads session calibration by the supplied unit keys', async () => {
-    await db.userPerformance.bulkPut([
+    await db.schedulingPerformance.bulkPut([
       {
-        deckId: 'course-1',
+        schedulingUnitId: 'course-1',
         runningMeanResponseTime: 12,
         runningStdDevResponseTime: 1,
         m2: 1,
         totalCorrectReviews: 3,
       },
       {
-        deckId: 'deck-1',
+        schedulingUnitId: 'deck-1',
         runningMeanResponseTime: 8,
         runningStdDevResponseTime: 1,
         m2: 1,
@@ -467,12 +467,16 @@ describe('backing deck adapter', () => {
     });
 
     await restoreReviewUnitPerformance('course-1', before ?? null);
-    expect(await db.userPerformance.get('course-1')).toBeUndefined();
+    expect(await db.schedulingPerformance.get('course-1')).toBeUndefined();
 
     const existing = await performanceForReviewUnit('backing-deck');
     await updateReviewUnitPerformance('backing-deck', 10);
     await restoreReviewUnitPerformance('backing-deck', existing ?? null);
-    expect(await db.userPerformance.get('backing-deck')).toEqual(existing);
+    expect(await db.schedulingPerformance.get('backing-deck')).toBeUndefined();
+    expect(await db.userPerformance.get('backing-deck')).toMatchObject({
+      runningMeanResponseTime: 20,
+      totalCorrectReviews: 1,
+    });
   });
 
   it('finds a legacy lesson deck from a primary card in the same course', async () => {

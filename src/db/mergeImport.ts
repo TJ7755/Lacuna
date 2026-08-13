@@ -43,7 +43,7 @@ import {
   updateNote,
   updateSequence,
 } from './repository';
-import { ensureLessonBackingDeck } from './backingDecks';
+import { ensureLessonBackingDeck, syncCourseSchedulingUnits } from './backingDecks';
 import { updateOcclusion } from './occlusionRepository';
 import { assertValidCardPayload } from '../items/payloadValidation';
 import { diffLineage, jsonValuesEqual } from './lineageDiff';
@@ -473,6 +473,7 @@ async function applyCreates(
       deckId,
       courseId,
       primaryLessonId: c.lessonId,
+      schedulingUnitId: c.lessonId,
       type: c.type,
       front: c.front,
       back: c.back,
@@ -601,6 +602,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
           deckId,
           courseId: course.id,
           primaryLessonId: lessonId,
+          schedulingUnitId: lessonId,
           stability: null,
           difficulty: null,
           lastReviewed: null,
@@ -658,6 +660,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     const lessonIdByIndex = (index: number) => newLessons[index]?.id ?? null;
     await applySequences(payload, course.id, lessonIdByIndex, mapping);
     await applyOcclusions(payload, course.id, lessonIdByIndex, mapping);
+    await syncCourseSchedulingUnits(course.id);
 
     await db.lineageIdMappings.put(mapping);
     await db.pendingMergeReviews.where('courseId').equals(course.id).delete();
@@ -759,6 +762,7 @@ export async function mergeLineageUpdate(
     // 1. Creates are always applied immediately (§7.5 step 2) — purely additive.
     const createdAt = Date.now();
     const created = await applyCreates(courseId, createdAt, diff.creates, mapping);
+    if (created.lessons.length > 0) await syncCourseSchedulingUnits(courseId);
 
     // 2/3. Updates and removals: apply now if autoAcceptUpdates, otherwise queue.
     let appliedUpdates = 0;

@@ -12,6 +12,7 @@ import {
 import { db } from '../../db/schema';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import { useLearnSession } from './useLearnSession';
+import { makeSessionContext, selectNext, sessionServePool } from '../../fsrs/session';
 
 const distraction: DistractionTracker = {
   beginCard: vi.fn(),
@@ -28,6 +29,9 @@ beforeEach(async () => {
     db.sessionHistory.clear(),
     db.userPerformance.clear(),
     db.coursePerformance.clear(),
+    db.schedulingUnits.clear(),
+    db.schedulingPerformance.clear(),
+    db.reviewHistory.clear(),
     db.courses.clear(),
     db.lessons.clear(),
     db.lessonCards.clear(),
@@ -36,6 +40,98 @@ beforeEach(async () => {
 });
 
 describe('useLearnSession answer boundary', () => {
+  it('orders global Course cards by scheduling urgency and enforces each inherited new-card limit', async () => {
+    const nearCourse = await createCourse('Near course');
+    const farCourse = await createCourse('Far course');
+    const nearLesson = await createLesson(nearCourse.id, 'Near lesson');
+    const farLesson = await createLesson(farCourse.id, 'Far lesson');
+    const nearFirst = await createLessonCard(
+      nearCourse.id,
+      nearLesson.id,
+      'front_back',
+      'Near first',
+      'Answer',
+    );
+    const nearSecond = await createLessonCard(
+      nearCourse.id,
+      nearLesson.id,
+      'front_back',
+      'Near second',
+      'Answer',
+    );
+    const farFirst = await createLessonCard(
+      farCourse.id,
+      farLesson.id,
+      'front_back',
+      'Far first',
+      'Answer',
+    );
+    const farSecond = await createLessonCard(
+      farCourse.id,
+      farLesson.id,
+      'front_back',
+      'Far second',
+      'Answer',
+    );
+    await Promise.all([
+      db.cards.update(nearFirst.id, { createdAt: 1 }),
+      db.cards.update(nearSecond.id, { createdAt: 2 }),
+      db.cards.update(farFirst.id, { createdAt: 1 }),
+      db.cards.update(farSecond.id, { createdAt: 2 }),
+    ]);
+    const now = Date.now();
+    await db.schedulingUnits.update(nearLesson.id, {
+      examDate: now + 24 * 60 * 60 * 1000,
+      newCardsPerDay: 1,
+    });
+    await db.schedulingUnits.update(farLesson.id, {
+      examDate: now + 30 * 24 * 60 * 60 * 1000,
+      newCardsPerDay: 1,
+    });
+    const units = (await db.schedulingUnits.bulkGet([nearLesson.id, farLesson.id])).filter(
+      (unit): unit is NonNullable<typeof unit> => unit !== undefined,
+    );
+    const cards = [
+      { ...nearFirst, createdAt: 1 },
+      { ...nearSecond, createdAt: 2 },
+      { ...farFirst, createdAt: 1 },
+      { ...farSecond, createdAt: 2 },
+    ];
+    const serveable = sessionServePool(cards, makeSessionContext(units), now);
+    expect(new Set(serveable.map((card) => card.id))).toEqual(new Set([nearFirst.id, farFirst.id]));
+    expect(serveable.map((card) => card.id)).not.toContain(nearSecond.id);
+    expect(serveable.map((card) => card.id)).not.toContain(farSecond.id);
+    expect(selectNext(cards, makeSessionContext(units), new Map(), now)?.id).toBe(nearFirst.id);
+    const params = {
+      courseId: undefined,
+      lessonId: undefined,
+      sessionId: undefined,
+      tagFilter: null,
+      filterParams: [],
+      requestScopeLessonIds: undefined,
+      practiceNodeKeyParam: null,
+      requestAssessmentId: undefined,
+      requestPlanId: undefined,
+      requestWindowId: undefined,
+      plannedRevision: false,
+      reviewSessionKind: 'practice' as const,
+      isSimpleMode: false,
+      mode: 'fsrs' as const,
+      navigate: vi.fn(),
+      notify: vi.fn(),
+      distraction,
+      typingSetting: 'reveal' as const,
+      startInFocusMode: false,
+      m: 1,
+    };
+    const { result } = renderHook(() => useLearnSession(params));
+
+    await waitFor(() => expect(result.current.current?.id).toBe(nearFirst.id));
+    expect(result.current.sessionCardIds).toEqual(
+      expect.arrayContaining([nearFirst.id, farFirst.id]),
+    );
+  });
+
   it.each([
     ['an unsupported kind', { v: 1, kind: 'scaffold' }],
     [
