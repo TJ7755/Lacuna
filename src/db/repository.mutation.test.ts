@@ -393,6 +393,36 @@ describe('repository mutation stamps and tombstones', () => {
     });
   });
 
+  it('writes one card tombstone per deleted card', async () => {
+    const course = await createCourse('Biology');
+    const first = await createCard(course.id, 'front_back', 'Q1', 'A1');
+    const second = await createCard(course.id, 'front_back', 'Q2', 'A2');
+    await deleteCards([first.id, second.id]);
+
+    const cardTombstones = (await db.tombstones.toArray()).filter((row) => row.table === 'cards');
+    expect(cardTombstones).toHaveLength(2);
+    expect(cardTombstones.map((row) => row.recordId).sort()).toEqual([first.id, second.id].sort());
+    expect(await db.cards.bulkGet([first.id, second.id])).toEqual([undefined, undefined]);
+  });
+
+  it('leaves no tombstone when deleteCards rolls back', async () => {
+    const course = await createCourse('Biology');
+    const card = await createCard(course.id, 'front_back', 'Q', 'A');
+
+    const failCreating = () => {
+      throw new Error('rollback');
+    };
+    db.tombstones.hook('creating', failCreating);
+    try {
+      await expect(deleteCards([card.id])).rejects.toThrow('rollback');
+    } finally {
+      db.tombstones.hook('creating').unsubscribe(failCreating);
+    }
+
+    expect(await db.cards.get(card.id)).toMatchObject({ id: card.id });
+    expect(await db.tombstones.count()).toBe(0);
+  });
+
   it('tombstones every snapshot-carried row when deleting a course, including occlusions', async () => {
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Intro');
