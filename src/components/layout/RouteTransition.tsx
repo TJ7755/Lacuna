@@ -30,7 +30,8 @@ export function routeTransitionTiming(multiplier: number) {
 
 /**
  * Owns transitions between the persistent app shell and full-screen routes.
- * Route changes inside the shell remain the responsibility of AppShell.
+ * Those boundaries crossfade so the change reads as one app, not a new screen
+ * dropping in. Route changes inside the shell remain the responsibility of AppShell.
  */
 export function RouteTransition() {
   const location = useLocation();
@@ -44,9 +45,9 @@ export function RouteTransition() {
       <motion.div
         key={routeTransitionKey(location.pathname)}
         className="min-h-screen"
-        initial={motionEnabled ? { opacity: 0, y: 8 } : false}
-        animate={{ opacity: 1, y: 0 }}
-        exit={motionEnabled ? { opacity: 0, y: -6 } : undefined}
+        initial={motionEnabled ? { opacity: 0 } : false}
+        animate={{ opacity: 1 }}
+        exit={motionEnabled ? { opacity: 0 } : undefined}
         transition={routeTransitionTiming(multiplier)}
       >
         {outlet}

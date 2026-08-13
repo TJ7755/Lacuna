@@ -1,7 +1,8 @@
-import { AnimatePresence, m as motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { hapticLight, hapticMedium } from '../../utils/haptic';
 import type { Grade } from '../../db/types';
 import { Button } from '../../components/ui/Button';
+import { StepSwap } from '../../components/ui/StepSwap';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import type { Phase } from './types';
 
@@ -23,17 +24,18 @@ export function TouchBottomSheet({
   isTypingCard?: boolean;
 }) {
   return (
-    <AnimatePresence mode="wait">
-      {phase === 'question' ? (
-        <motion.div
-          key="touch-show"
-          initial={{ y: 80, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 80, opacity: 0 }}
-          transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed bottom-0 left-0 right-0 z-20 rounded-t-3xl border-t border-line-strong bg-surface px-6 py-6 shadow-2xl shadow-black/15"
-        >
-          <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
+    <motion.div
+      initial={{ y: 80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+      className="fixed bottom-0 left-0 right-0 z-20 overflow-hidden rounded-t-3xl border-t border-line-strong bg-surface px-6 py-6 shadow-2xl shadow-black/15"
+    >
+      <StepSwap
+        stepKey={phase}
+        className="mx-auto flex max-w-3xl flex-col items-center gap-3"
+      >
+        {phase === 'question' ? (
+          <>
             {isTypingCard ? (
               <p className="text-sm text-ink-faint">Type your answer above, then tap Check</p>
             ) : (
@@ -52,18 +54,9 @@ export function TouchBottomSheet({
                 Show answer
               </Button>
             )}
-          </div>
-        </motion.div>
-      ) : (
-        <motion.div
-          key="touch-grade"
-          initial={{ y: 80, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 80, opacity: 0 }}
-          transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed bottom-0 left-0 right-0 z-20 rounded-t-3xl border-t border-line-strong bg-surface px-6 py-6 shadow-2xl shadow-black/15"
-        >
-          <div className="mx-auto flex max-w-3xl flex-col items-center gap-3">
+          </>
+        ) : (
+          <>
             {gradingMode === 'manual' ? (
               <div className="grid w-full grid-cols-2 gap-3">
                 <Button
@@ -144,9 +137,9 @@ export function TouchBottomSheet({
             <Button variant="ghost" size="sm" onClick={onHide}>
               Hide answer
             </Button>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </>
+        )}
+      </StepSwap>
+    </motion.div>
   );
 }

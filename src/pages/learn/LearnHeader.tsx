@@ -178,9 +178,9 @@ export function LearnHeader({
 
   return (
     <motion.header
-      initial={{ opacity: 0, y: -12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
+      initial={m > 0 ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
+      exit={m > 0 ? { opacity: 0 } : undefined}
       transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
       onPointerLeave={onPointerLeave}
       className={cn(
@@ -262,9 +262,9 @@ export function LearnHeader({
                 />
               ) : (
                 <motion.div
-                  initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                  initial={m > 0 ? { opacity: 0, y: -4, scale: 0.98 } : false}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                  exit={m > 0 ? { opacity: 0, y: -4, scale: 0.98 } : undefined}
                   transition={{ duration: 0.12 * m }}
                   className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
                 >

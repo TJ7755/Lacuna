@@ -114,11 +114,8 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
   }
 
   return (
-    <motion.section
+    <section
       id="settings-export"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.24 * motionMultiplier, delay: 0.45 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
       className="rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
@@ -198,11 +195,11 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
       <AnimatePresence>
         {pending && (
           <motion.div
-            initial={{ opacity: 0, height: 0, marginTop: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
-            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+            initial={motionMultiplier > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={motionMultiplier > 0 ? { opacity: 0 } : undefined}
             transition={{ duration: 0.16 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
+            className="mt-5"
           >
             <div className="rounded-xl border border-line-strong bg-surface-raised p-5">
               <h3 className="mb-3 font-display text-lg">Full-backup recovery</h3>
@@ -235,6 +232,6 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.section>
+    </section>
   );
 }

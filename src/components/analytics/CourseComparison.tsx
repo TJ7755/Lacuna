@@ -297,11 +297,11 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
           {courseA && courseB && (
             <motion.div
               key={`${courseAId}-${courseBId}`}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="space-y-4 overflow-hidden"
+              initial={m > 0 ? { opacity: 0 } : false}
+              animate={{ opacity: 1 }}
+              exit={m > 0 ? { opacity: 0 } : undefined}
+              transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+              className="space-y-4"
             >
               <div className="flex items-center gap-3 text-sm">
                 <Link

@@ -82,9 +82,9 @@ export function TouchMenuSheet({
   return createPortal(
     <motion.div
       ref={trapRef}
-      initial={{ opacity: 0 }}
+      initial={m > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={m > 0 ? { opacity: 0 } : undefined}
       transition={{ duration: 0.15 * m }}
       className="fixed inset-0 z-40"
       role="dialog"
@@ -96,9 +96,9 @@ export function TouchMenuSheet({
       <motion.div
         ref={sheetRef}
         style={{ y: springY }}
-        initial={{ y: 120, opacity: 0 }}
+        initial={m > 0 ? { y: 120, opacity: 0 } : false}
         animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 120, opacity: 0 }}
+        exit={m > 0 ? { y: 120, opacity: 0 } : undefined}
         transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
         className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-line-strong bg-surface px-6 py-6 shadow-2xl shadow-black/20"
         onClick={(e) => e.stopPropagation()}

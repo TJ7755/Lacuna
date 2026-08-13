@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { m as motion } from 'motion/react';
 import { ClockIcon } from '../../components/ui/icons';
 import { Toggle } from '../../components/ui/Toggle';
 import {
@@ -8,7 +7,7 @@ import {
   type PomodoroSettings,
 } from '../../hooks/usePomodoro';
 
-export function PomodoroSection({ motionMultiplier }: { motionMultiplier: number }) {
+export function PomodoroSection() {
   const [settings, setSettings] = useState<PomodoroSettings>(loadPomodoroSettings);
 
   function update(next: PomodoroSettings) {
@@ -17,15 +16,8 @@ export function PomodoroSection({ motionMultiplier }: { motionMultiplier: number
   }
 
   return (
-    <motion.section
+    <section
       id="settings-pomodoro"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.24 * motionMultiplier,
-        delay: 0.35 * motionMultiplier,
-        ease: [0.16, 1, 0.3, 1],
-      }}
       className="mb-8 rounded-2xl border border-line bg-surface p-6"
     >
       <div className="mb-1 flex items-center gap-2 text-accent">
@@ -66,7 +58,7 @@ export function PomodoroSection({ motionMultiplier }: { motionMultiplier: number
           ariaLabel="Auto-start breaks"
         />
       </div>
-    </motion.section>
+    </section>
   );
 }
 

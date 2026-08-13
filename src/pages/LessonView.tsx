@@ -11,7 +11,6 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { m as motion } from 'motion/react';
 import { db } from '../db/schema';
 import {
   useCourse,
@@ -36,7 +35,6 @@ import { courseHeaderStats } from '../course/headerStats';
 import { canEditLessons, resolveLessonViewMode } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
-import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { updateCourse, updateLesson } from '../db/repository';
 import { formatDate } from '../utils/datetime';
 import type { Lesson } from '../db/types';
@@ -69,8 +67,6 @@ export function LessonView({
 
   const navigate = useNavigate();
   const { notify } = useToast();
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
 
   // Use a null-sentinel to distinguish loading (undefined) from not found (null).
   // When lessonId is absent the query resolves immediately to null.
@@ -107,10 +103,7 @@ export function LessonView({
   // Not found.
   if (lesson === null || course === null) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+      <div
         className="relative overflow-hidden rounded-2xl border border-line bg-surface p-10"
       >
         <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
@@ -124,7 +117,7 @@ export function LessonView({
             {courseId ? 'Back to course' : 'Back to dashboard'}
           </Link>
         </div>
-      </motion.div>
+      </div>
     );
   }
 
@@ -249,10 +242,7 @@ export function LessonView({
       {/* is read-only content plus a cards summary — see                    */}
       {/* src/course/lessonViewMode.ts for how the mode is resolved.         */}
       {/* ------------------------------------------------------------------ */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+      <div
         className="space-y-10 border-t border-line pt-8"
       >
         {viewMode === 'edit' ? (
@@ -280,7 +270,7 @@ export function LessonView({
             />
           </>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 }

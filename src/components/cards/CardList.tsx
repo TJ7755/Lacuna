@@ -472,11 +472,11 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
       <AnimatePresence>
         {importing && (
           <motion.div
-            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
-            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-            transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
+            initial={m > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={m > 0 ? { opacity: 0 } : undefined}
+            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="mb-4"
           >
             <div className="rounded-2xl border border-line-strong bg-surface p-5">
               <h3 className="mb-1 font-display text-lg">Import cards into {importTargetName}</h3>
@@ -594,11 +594,11 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
           <AnimatePresence>
             {tagging && selected.size > 0 && (
               <motion.div
-                initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
-                exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="overflow-hidden"
+                initial={m > 0 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                exit={m > 0 ? { opacity: 0 } : undefined}
+                transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                className="mt-3"
               >
                 <div className="border-t border-line pt-3">
                   <label className="block text-sm text-ink-soft">
@@ -652,11 +652,11 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
           <AnimatePresence>
             {rescheduling && selected.size > 0 && (
               <motion.div
-                initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
-                exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="overflow-hidden"
+                initial={m > 0 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                exit={m > 0 ? { opacity: 0 } : undefined}
+                transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                className="mt-3"
               >
                 <div className="border-t border-line pt-3">
                   <fieldset className="space-y-2">
@@ -703,11 +703,11 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
           <AnimatePresence>
             {moving && selected.size > 0 && otherDecks.length > 0 && (
               <motion.div
-                initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
-                exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="overflow-hidden"
+                initial={m > 0 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                exit={m > 0 ? { opacity: 0 } : undefined}
+                transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                className="mt-3"
               >
                 <div className="border-t border-line pt-3">
                   <label className="block text-sm text-ink-soft">
@@ -746,11 +746,11 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
           <AnimatePresence>
             {assigningLesson && selected.size > 0 && assignableLessons && courseId && (
               <motion.div
-                initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
-                exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="overflow-hidden"
+                initial={m > 0 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                exit={m > 0 ? { opacity: 0 } : undefined}
+                transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                className="mt-3"
               >
                 <div className="border-t border-line pt-3">
                   <label className="block text-sm text-ink-soft">
@@ -1474,11 +1474,11 @@ const CardRow = React.memo(function CardRow({
         <AnimatePresence>
           {expanded && (
             <motion.div
-              initial={{ opacity: 0, height: 0, marginTop: 0 }}
-              animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
-              exit={{ opacity: 0, height: 0, marginTop: 0 }}
-              transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden"
+              initial={m > 0 ? { opacity: 0 } : false}
+              animate={{ opacity: 1 }}
+              exit={m > 0 ? { opacity: 0 } : undefined}
+              transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+              className="mt-4"
               onClick={handleExpandedClick}
             >
               <div className="border-t border-line pt-4">

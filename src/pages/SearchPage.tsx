@@ -177,10 +177,7 @@ export function SearchPage() {
           <SearchSkeleton />
         </DelayedFallback>
       ) : !active ? (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24 * m }}
+        <div
           className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center"
         >
           <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm">
@@ -192,12 +189,9 @@ export function SearchPage() {
             tags of every card, or pick a filter above to browse due, new, flagged, suspended or
             leech cards.
           </p>
-        </motion.div>
+        </div>
       ) : results.length === 0 && courseResults.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24 * m }}
+        <div
           className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center"
         >
           <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm">
@@ -208,7 +202,7 @@ export function SearchPage() {
             Nothing matches{trimmed ? ` "${trimmed}"` : ' those filters'}.
             Try clearing your search or filters.
           </p>
-        </motion.div>
+        </div>
       ) : (
         <>
           <p className="mb-3 text-sm text-ink-soft">

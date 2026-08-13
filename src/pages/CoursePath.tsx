@@ -6,7 +6,7 @@ import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { m as motion, AnimatePresence } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
 import { db } from '../db/schema';
 import {
   useLessons,
@@ -49,7 +49,7 @@ import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle'
 import { HeaderStats } from '../components/course/HeaderStats';
 import { Button } from '../components/ui/Button';
 import { ChevronLeftIcon, PlayIcon } from '../components/ui/icons';
-import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+
 import { updateCourse } from '../db/repository';
 import {
   canEditLessons,
@@ -85,8 +85,7 @@ export function CoursePath() {
   const navigate = useNavigate();
   const { openStudySheet } = useStudySheet();
   const { notify } = useToast();
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
+
   // State for the manual practice-node editor modal (see PracticeNodeEditor):
   // 'new' with a seeded position when opened from a "+" insertion point, or an
   // existing PracticeNode when opened from a node's edit badge.
@@ -309,10 +308,7 @@ export function CoursePath() {
   // Course not found.
   if (course === null || summary === null) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+      <div
         className="relative overflow-hidden rounded-2xl border border-line bg-surface p-10"
       >
         <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
@@ -322,7 +318,7 @@ export function CoursePath() {
             Back to dashboard
           </Link>
         </div>
-      </motion.div>
+      </div>
     );
   }
 
@@ -525,7 +521,6 @@ export function CoursePath() {
             <PathNodeWithLine
               key={node.id}
               node={node}
-              index={i}
               isLast={i === visibleNodes.length - 1}
               lineInsert={lineInserts[i]}
               current={node.id === currentNodeId}

@@ -1,7 +1,6 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { m as motion } from 'motion/react';
 import { useCourse, useCourseCards, useCourseReviewHistory } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { CourseTabs } from '../components/course/CourseTabs';
@@ -289,15 +288,8 @@ export function CourseSettings() {
           <CourseTabs courseId={course.id} />
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 * m }}
-        >
-          <motion.header
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24 * m, ease: [0.16, 1, 0.3, 1] }}
+        <div>
+          <header
             className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8"
           >
             <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
@@ -305,7 +297,7 @@ export function CourseSettings() {
               <p className="mb-1 text-sm uppercase tracking-[0.18em] text-ink-faint">Course</p>
               <h1 className="font-display text-4xl tracking-tight md:text-5xl">Settings</h1>
             </div>
-          </motion.header>
+          </header>
 
           <SectionRailMobileJumper
             sections={COURSE_SETTINGS_SECTIONS}
@@ -316,10 +308,7 @@ export function CourseSettings() {
           <div className="flex flex-col gap-10">
             <div id="course-settings-basics" className="flex flex-col gap-6">
               <h2 className="font-display text-2xl">Basics</h2>
-              <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24 * m, delay: 0.05 * m, ease: [0.16, 1, 0.3, 1] }}
+              <section
                 className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
               >
                 <div className="flex flex-col gap-4">
@@ -373,15 +362,12 @@ export function CourseSettings() {
                     </div>
                   </div>
                 </div>
-              </motion.section>
+              </section>
             </div>
 
             <div id="course-settings-study" className="flex flex-col gap-6">
               <h2 className="font-display text-2xl">Study</h2>
-              <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24 * m, delay: 0.06 * m, ease: [0.16, 1, 0.3, 1] }}
+              <section
                 className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
               >
                 <h3 className="mb-4 font-display text-xl">Scheduling</h3>
@@ -430,12 +416,9 @@ export function CourseSettings() {
                     onSessionTimeLimitBlur={commitSessionTimeLimit}
                   />
                 </div>
-              </motion.section>
+              </section>
 
-              <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24 * m, delay: 0.08 * m, ease: [0.16, 1, 0.3, 1] }}
+              <section
                 className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
               >
                 <UnlockModeSection
@@ -456,12 +439,9 @@ export function CourseSettings() {
                   onIntervalDaysBlur={() => commitLinearCadence(linearCadence)}
                   timeZone={timeZone}
                 />
-              </motion.section>
+              </section>
 
-              <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24 * m, delay: 0.1 * m, ease: [0.16, 1, 0.3, 1] }}
+              <section
                 className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
               >
                 <h3 className="mb-4 font-display text-xl">Auto-practice</h3>
@@ -514,12 +494,9 @@ export function CourseSettings() {
                     })
                   }
                 />
-              </motion.section>
+              </section>
 
-              <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24 * m, delay: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
+              <section
                 className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
               >
                 <h3 className="mb-4 font-display text-xl">Lesson view</h3>
@@ -530,13 +507,9 @@ export function CourseSettings() {
                     commitCourse({ lessonViewMode: mode });
                   }}
                 />
-              </motion.section>
+              </section>
 
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24 * m, delay: 0.14 * m, ease: [0.16, 1, 0.3, 1] }}
-              >
+              <div>
                 <OptimisationPanel
                   entity={course}
                   cards={cards ?? []}
@@ -544,63 +517,46 @@ export function CourseSettings() {
                   onUpdate={(changes) => updateCourse(course.id, changes)}
                   entityLabel="course"
                 />
-              </motion.div>
+              </div>
             </div>
 
             <div id="course-settings-content" className="flex flex-col gap-6">
               <h2 className="font-display text-2xl">Content</h2>
-              <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24 * m, delay: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+              <section
                 className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
               >
                 <h3 className="mb-4 font-display text-xl">Lessons</h3>
                 <LessonManagementSection courseId={course.id} />
-              </motion.section>
+              </section>
 
-              <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24 * m, delay: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+              <section
                 className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
               >
                 <h3 className="mb-4 font-display text-xl">Practice nodes</h3>
                 <PracticeNodesSection courseId={course.id} />
-              </motion.section>
+              </section>
             </div>
 
             <div id="course-settings-assessments" className="flex flex-col gap-6">
               <h2 className="font-display text-2xl">Assessments</h2>
-              <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24 * m, delay: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
+              <section
                 className="rounded-2xl border border-line bg-surface p-6 shadow-sm shadow-black/[0.02]"
               >
                 <ExamDatesSection courseId={course.id} timeZone={timeZone} />
-              </motion.section>
+              </section>
             </div>
 
             <div id="course-settings-danger" className="flex flex-col gap-6">
               {course.distributedCopy?.locked === true && (
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.24 * m, delay: 0.21 * m, ease: [0.16, 1, 0.3, 1] }}
-                >
+                <div>
                   <DetachCourseSection
                     courseId={course.id}
                     autoAcceptUpdates={course.distributedCopy?.autoAcceptUpdates === true}
                   />
-                </motion.div>
+                </div>
               )}
 
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.24 * m, delay: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-              >
+              <div>
                 <DangerZoneSection
                   entityLabel="course"
                   entityName={course.name}
@@ -610,10 +566,10 @@ export function CourseSettings() {
                   onRestore={(snap) => restoreCourse(snap as CourseSnapshot)}
                   onDeleted={() => navigate('/')}
                 />
-              </motion.div>
+              </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       <SectionRail

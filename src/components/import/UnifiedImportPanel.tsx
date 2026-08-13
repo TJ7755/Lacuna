@@ -458,10 +458,10 @@ export function UnifiedImportPanel({
       <AnimatePresence>
         {text.length > MAX_IMPORT_CHARS && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
+            initial={m > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={m > 0 ? { opacity: 0 } : undefined}
+            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
           >
             <div className="rounded-2xl border border-negative/30 bg-negative/5 px-4 py-3 text-sm text-negative">
               Input truncated to {MAX_IMPORT_CHARS.toLocaleString()} characters to keep the import
@@ -473,10 +473,10 @@ export function UnifiedImportPanel({
       <AnimatePresence>
         {result.cards.length > MAX_IMPORT_ROWS && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
+            initial={m > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={m > 0 ? { opacity: 0 } : undefined}
+            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
           >
             <div className="rounded-2xl border border-negative/30 bg-negative/5 px-4 py-3 text-sm text-negative">
               Only the first {MAX_IMPORT_ROWS.toLocaleString()} cards will be imported.
@@ -696,11 +696,11 @@ export function UnifiedImportPanel({
             {hasText && (
               <motion.div
                 key="preview"
-                initial={{ opacity: 0, y: 8, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                exit={{ opacity: 0, y: -6, height: 0 }}
-                transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="overflow-hidden rounded-2xl border border-line bg-surface p-5 shadow-sm shadow-black/5"
+                initial={m > 0 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                exit={m > 0 ? { opacity: 0 } : undefined}
+                transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                className="rounded-2xl border border-line bg-surface p-5 shadow-sm shadow-black/5"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-xs font-medium text-ink-soft">
@@ -766,11 +766,11 @@ export function UnifiedImportPanel({
       <AnimatePresence>
         {apkgPending && (
           <motion.div
-            initial={{ opacity: 0, y: 8, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: -6, height: 0 }}
-            transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden rounded-2xl border border-accent/30 bg-accent-soft/30 p-5 shadow-sm shadow-accent/5"
+            initial={m > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={m > 0 ? { opacity: 0 } : undefined}
+            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-5 shadow-sm shadow-accent/5"
           >
             <h3 className="mb-2 font-display text-lg font-medium text-ink">Anki package ready</h3>
             <p className="mb-3 text-sm leading-relaxed text-ink-soft">
@@ -799,10 +799,10 @@ export function UnifiedImportPanel({
       <AnimatePresence>
         {shareError && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
+            initial={m > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={m > 0 ? { opacity: 0 } : undefined}
+            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
           >
             <div className="rounded-2xl border border-negative/30 bg-negative/5 px-4 py-3 text-sm text-negative">
               {shareError}
@@ -815,10 +815,10 @@ export function UnifiedImportPanel({
       <AnimatePresence>
         {apkgError && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
+            initial={m > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={m > 0 ? { opacity: 0 } : undefined}
+            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
           >
             <div className="rounded-2xl border border-negative/30 bg-negative/5 px-4 py-3 text-sm text-negative">
               {apkgError}
@@ -924,11 +924,11 @@ function ShareCodeImport({
       <AnimatePresence>
         {notice && (
           <motion.div
-            initial={{ opacity: 0, height: 0, marginTop: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
-            exit={{ opacity: 0, height: 0, marginTop: 0 }}
-            transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
+            initial={m > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={m > 0 ? { opacity: 0 } : undefined}
+            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-4"
           >
             <div className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-5 text-sm leading-relaxed text-ink-soft shadow-sm shadow-accent/5">
               {notice}
@@ -940,11 +940,11 @@ function ShareCodeImport({
       <AnimatePresence>
         {pending && (
           <motion.div
-            initial={{ opacity: 0, height: 0, marginTop: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
-            exit={{ opacity: 0, height: 0, marginTop: 0 }}
-            transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
+            initial={m > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={m > 0 ? { opacity: 0 } : undefined}
+            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-4"
           >
             <div className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-5 shadow-sm shadow-accent/5">
               <h3 className="mb-2 font-display text-lg font-medium text-ink">

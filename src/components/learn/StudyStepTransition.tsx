@@ -49,12 +49,7 @@ export function StudyStepTransition({
 
   return (
     <div className="min-h-screen bg-paper px-6 py-10">
-      <motion.main
-        initial={{ opacity: 0, y: 28, scale: 0.985 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.42 * m, ease: [0.16, 1, 0.3, 1] }}
-        className="mx-auto flex min-h-[70vh] max-w-2xl flex-col justify-center"
-      >
+      <main className="mx-auto flex min-h-[70vh] max-w-2xl flex-col justify-center">
         <div className="mb-6 flex items-center justify-between gap-4">
           <motion.span
             initial={{ opacity: 0, scale: 0.55, rotate: -8 }}
@@ -166,7 +161,7 @@ export function StudyStepTransition({
             </Button>
           </div>
         </motion.div>
-      </motion.main>
+      </main>
     </div>
   );
 }

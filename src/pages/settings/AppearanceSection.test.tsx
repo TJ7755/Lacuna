@@ -10,7 +10,7 @@ function renderAppearance() {
     <ThemeProvider>
       <AccentProvider>
         <FontScaleProvider>
-          <AppearanceSection motionMultiplier={1} />
+          <AppearanceSection />
         </FontScaleProvider>
       </AccentProvider>
     </ThemeProvider>,

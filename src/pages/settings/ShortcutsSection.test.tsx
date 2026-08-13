@@ -15,7 +15,7 @@ describe('ShortcutsSection', () => {
   });
 
   it('rejects a key already assigned to another study action', () => {
-    render(<ShortcutsSection motionMultiplier={0} />);
+    render(<ShortcutsSection />);
     fireEvent.click(screen.getByRole('button', { name: /Mark correct/ }));
     fireEvent.keyDown(window, { key: 'n' });
 

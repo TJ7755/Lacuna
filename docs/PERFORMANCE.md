@@ -122,11 +122,12 @@ whole-table import/merge materialisation all alter storage or analytics semantic
 
 ### 1. Navigation latency (click → painted page)
 
-- **Route exit sequencing is fixed.** `AppShell` mounts the incoming route without `mode="wait"`, so the old 220 ms dead time no longer blocks the lazy import.
+- **Route exit sequencing is fixed.** `AppShell` mounts the incoming route without `mode="wait"`, so the old 220 ms dead time no longer blocks the lazy import. It now uses `popLayout` for the same reason: the next page can start immediately, but the outgoing page is taken out of flow so the two do not stack.
 - **CoursePath's LessonView is lazy** and **QuestionBank's CardContent is lazy**, so the Markdown/Katex stack is not pulled into those route chunks before card content is actually rendered.
 - **The charts chunk is lazy.** The production HTML modulepreloads only the app and vendor entries; Recharts is not downloaded on Dashboard first paint.
 - **Double skeleton flash**: `RouteFallback` (App.tsx:73-84) swaps to the page's own skeleton mid-entrance animation.
-- **Stagger scales with content length**: CoursePath reveals nodes at 55 ms × index (CoursePathSegment.tsx:76) — a 10-node course is still animating at ~900 ms.
+- **Course-path node stagger is gone.** Nodes and connecting lines paint at once; a
+  10-node course is no longer still animating at ~900 ms.
 - **Sidebar route prefetching is fixed** for hover, keyboard focus and pointer down. Other entry points still fetch on demand, which is expected.
 
 ### 2. Bundle weight

@@ -111,13 +111,11 @@ function NavItem({
   section,
   active,
   onClick,
-  index,
   m,
 }: {
   section: (typeof HELP_SECTIONS)[number];
   active: boolean;
   onClick: () => void;
-  index: number;
   m: number;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
@@ -159,13 +157,6 @@ function NavItem({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       style={{ x: cursorFollowEnabled ? springX : 0, y: cursorFollowEnabled ? springY : 0 }}
-      initial={{ opacity: 0, x: 16 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{
-        delay: 0.04 * index * m,
-        duration: 0.35 * m,
-        ease: [0.16, 1, 0.3, 1],
-      }}
       whileHover={{ scale: 1.04 }}
       whileTap={{ scale: 0.96 }}
       className={cn(
@@ -856,11 +847,7 @@ export function HelpPage() {
           Back to dashboard
         </Link>
 
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 * m }}
-        >
+        <div>
           <header className="relative mb-10 overflow-hidden rounded-2xl border border-line bg-surface p-8 md:p-10">
             <div className="absolute inset-0 bg-dot-grid opacity-40" aria-hidden="true" />
             <div className="relative">
@@ -877,22 +864,15 @@ export function HelpPage() {
 
           {/* Sections */}
           <div className="flex flex-col gap-8">
-            {sections.map((s, i) => (
-              <motion.section
+            {sections.map((s) => (
+              <section
                 key={s.id}
                 id={s.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.24 * m,
-                  delay: Math.min(i * 0.04, 0.2) * m,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
               >
                 <SectionCard icon={s.icon} label={s.label}>
                   {s.content}
                 </SectionCard>
-              </motion.section>
+              </section>
             ))}
           </div>
 
@@ -926,16 +906,13 @@ export function HelpPage() {
               </Link>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Right-side section nav */}
       <aside className="hidden xl:block w-64 shrink-0">
         <div className="sticky top-24">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 * m, ease: [0.16, 1, 0.3, 1] }}
+          <div
             className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5 backdrop-blur-sm"
           >
             <div className="relative mb-3 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-ink-faint">
@@ -943,7 +920,7 @@ export function HelpPage() {
             </div>
             <LayoutGroup>
               <nav className="relative flex flex-col gap-1">
-                {HELP_SECTIONS.map((section, index) => (
+                {HELP_SECTIONS.map((section) => (
                   <NavItem
                     key={section.id}
                     section={section}
@@ -954,13 +931,12 @@ export function HelpPage() {
                         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }
                     }}
-                    index={index}
                     m={m}
                   />
                 ))}
               </nav>
             </LayoutGroup>
-          </motion.div>
+          </div>
         </div>
       </aside>
     </div>
