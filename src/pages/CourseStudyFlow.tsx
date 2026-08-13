@@ -1,5 +1,5 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PomodoroProvider, usePomodoroFlowContext } from '../hooks/PomodoroContext';
 import { useCourseStudyFlow } from '../state/useCourseStudyFlow';
@@ -69,7 +69,6 @@ function CourseStudyFlowInner() {
   const entryPracticeNodeKey = searchParams.get('practiceNode');
   // The choice is made in the study sheet before this route is entered and arrives as a
   // query parameter, so the flow no longer presents an entry screen of its own.
-  const practiceNodeResolved = useRef(false);
   const [transition, setTransition] = useState<TransitionState | null>(null);
   const [revisionSession, setRevisionSession] = useState<{
     planId: string;
@@ -81,31 +80,6 @@ function CourseStudyFlowInner() {
     if (!courseId) return;
     setFlowIdentity(identityFor(courseId));
   }, [courseId]);
-
-  useEffect(() => {
-    if (currentStep || transition || !flow) return;
-    // A deep link may name the practice node to run; honour it while it is still active,
-    // and otherwise fall through to whatever the planner says comes next.
-    if (entryPracticeNodeKey && !practiceNodeResolved.current) {
-      practiceNodeResolved.current = true;
-      const requestedPractice = flow.snapshot.practiceByKey.get(entryPracticeNodeKey);
-      if (requestedPractice?.active) {
-        setCurrentStep({
-          kind: 'practice',
-          nodeKey: requestedPractice.nodeKey,
-          mode: 'curricular',
-          label: requestedPractice.label,
-        });
-        return;
-      }
-    }
-    // 'choice' means an assessment overlaps the next step. The sheet already offered
-    // that alternative before entry, and choosing it arrives as ?assessmentId, so
-    // reaching here means the curriculum branch was the one chosen.
-    if (flow.decision.kind === 'step' || flow.decision.kind === 'choice') {
-      setCurrentStep(flow.decision.step);
-    }
-  }, [currentStep, entryPracticeNodeKey, flow, transition]);
 
   const finishFlow = useCallback(() => {
     clearActiveStudyFlow();
@@ -119,6 +93,8 @@ function CourseStudyFlowInner() {
   const displayStep = useMemo<StudyFlowStep | null>(() => {
     if (currentStep) return currentStep;
     if (transition || !flow) return null;
+    // A deep link may name the practice node to run; honour it while it is still active,
+    // and otherwise fall through to whatever the planner says comes next.
     if (entryPracticeNodeKey) {
       const requestedPractice = flow.snapshot.practiceByKey.get(entryPracticeNodeKey);
       if (requestedPractice?.active) {
@@ -130,11 +106,21 @@ function CourseStudyFlowInner() {
         };
       }
     }
+    // 'choice' means an assessment overlaps the next step. The sheet already offered
+    // that alternative before entry, and choosing it arrives as ?assessmentId, so
+    // reaching here means the curriculum branch was the one chosen.
     if (flow.decision.kind === 'step' || flow.decision.kind === 'choice') {
       return flow.decision.step;
     }
     return null;
   }, [currentStep, entryPracticeNodeKey, flow, transition]);
+
+  useEffect(() => {
+    if (currentStep || transition || !displayStep) return;
+    // Reuse the render-derived object. Building a second practice-node step here
+    // used to change `displayStep`'s identity, rebuild `request`, and restart Learn.
+    setCurrentStep(displayStep);
+  }, [currentStep, displayStep, transition]);
 
   const request = useMemo<LearnSessionRequest | null>(() => {
     if (!displayStep) return null;
