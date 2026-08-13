@@ -72,6 +72,23 @@ describe('resolveToolScopes', () => {
     });
   });
 
+  it('denies cards whose scheduling unit is missing or dangling', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q', 'A');
+
+    for (const schedulingUnitId of [undefined, 'missing-unit']) {
+      await db.cards.update(card.id, { schedulingUnitId });
+      expect(await resolveToolScopes({ cardId: card.id })).toEqual({
+        ok: false,
+        error: {
+          kind: 'not_found',
+          message: `Card scheduling unit "${schedulingUnitId ?? card.id}" was not found.`,
+        },
+      });
+    }
+  });
+
   it('rejects a missing explicit course id rather than treating it as global scope', async () => {
     for (const courseId of ['', '   ', null]) {
       expect(await resolveToolScopes({ courseId })).toEqual({

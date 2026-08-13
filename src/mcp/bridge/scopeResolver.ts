@@ -40,15 +40,14 @@ export async function resolveToolScopes(input: unknown): Promise<Resolution> {
     courseIds.add(courseId);
   };
   const addCardCourse = async (card: {
-    courseId?: string | null;
-    deckId: string;
+    id: string;
+    schedulingUnitId?: string;
   }): Promise<Resolution | undefined> => {
-    if (card.courseId) {
-      return addOwnedCourse(card.courseId);
-    }
-    const backingCourseId = (await db.decks.get(card.deckId))?.backingCourseId;
-    if (backingCourseId) return addOwnedCourse(backingCourseId);
-    return missing('Card course', card.deckId);
+    if (!card.schedulingUnitId) return missing('Card scheduling unit', card.id);
+    const schedulingUnit = await db.schedulingUnits.get(card.schedulingUnitId);
+    if (!schedulingUnit) return missing('Card scheduling unit', card.schedulingUnitId);
+    if (!schedulingUnit.courseId) return missing('Card course', card.schedulingUnitId);
+    return addOwnedCourse(schedulingUnit.courseId);
   };
   if (typeof value.cardId === 'string') {
     const card = await db.cards.get(value.cardId);
