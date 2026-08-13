@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Dexie from 'dexie';
 import {
   buildLessonCardExposureBackfill,
@@ -341,6 +341,62 @@ describe('pre-migration snapshot ordering', () => {
     expect(snapshot!.payload.cards[0].front).toBe('question');
 
     v4.close();
+  });
+
+  it('captures Deck and Folder rows from a v21 database before v22', async () => {
+    const dbName = `lacuna-v21-snapshot-${Date.now()}`;
+    const v21 = new Dexie(dbName);
+    v21.version(21).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      folders: 'id, parentId, createdAt',
+    });
+    await v21.open();
+    await v21.table('folders').add({ id: 'folder-1', name: 'Legacy folder', createdAt: 1 });
+    await v21.table('decks').add({
+      id: 'deck-1',
+      name: 'Legacy deck',
+      folderId: 'folder-1',
+      examDate: 1000,
+      createdAt: 2,
+    });
+    v21.close();
+
+    const { readAllDataFromVersion } = await import('./schema');
+    const payload = await readAllDataFromVersion(dbName, 21);
+
+    expect(payload.decks).toEqual([
+      expect.objectContaining({ id: 'deck-1', name: 'Legacy deck', folderId: 'folder-1' }),
+    ]);
+    expect(payload.folders).toEqual([
+      expect.objectContaining({ id: 'folder-1', name: 'Legacy folder' }),
+    ]);
+    await new Dexie(dbName).delete();
+  });
+
+  it('blocks a destructive v22 upgrade when its snapshot cannot be committed', async () => {
+    const dbName = `lacuna-v22-snapshot-failure-${Date.now()}`;
+    const v21 = new Dexie(dbName);
+    v21.version(21).stores({ decks: 'id, createdAt' });
+    await v21.open();
+    await v21.table('decks').add({ id: 'deck-1', name: 'Protected', createdAt: 1 });
+    v21.close();
+
+    const snapshotFailure = new Error('Snapshot storage unavailable');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { ensurePreMigrationSnapshot } = await import('./schema');
+    await expect(
+      ensurePreMigrationSnapshot(dbName, 22, async () => Promise.reject(snapshotFailure)),
+    ).rejects.toBe(snapshotFailure);
+    consoleError.mockRestore();
+
+    const unchanged = new Dexie(dbName);
+    unchanged.version(21).stores({ decks: 'id, createdAt' });
+    await unchanged.open();
+    expect(await unchanged.table('decks').get('deck-1')).toEqual(
+      expect.objectContaining({ name: 'Protected' }),
+    );
+    unchanged.close();
+    await unchanged.delete();
   });
 
   it('does not take a snapshot when the database is already at the target version', async () => {

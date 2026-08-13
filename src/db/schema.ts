@@ -769,6 +769,7 @@ class LacunaDatabase extends Dexie {
 }
 
 const CURRENT_SCHEMA_VERSION = 21;
+const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22]);
 
 export const db = new LacunaDatabase();
 
@@ -833,7 +834,7 @@ async function getCurrentDbVersion(name: string): Promise<number> {
     try {
       const dbs = await indexedDB.databases();
       const db = dbs.find((d) => d.name === name);
-      return db?.version ?? 0;
+      return db?.version ? db.version / 10 : 0;
     } catch {
       // Fall through to raw open fallback.
     }
@@ -900,8 +901,9 @@ export async function readAllDataFromVersion(
     req.onblocked = () => reject(new Error('Database is blocked by another connection'));
   });
 
-  if (expectedVersion !== undefined && raw.version !== expectedVersion) {
-    throw new Error(`Database version mismatch: expected ${expectedVersion}, found ${raw.version}`);
+  const schemaVersion = raw.version / 10;
+  if (expectedVersion !== undefined && schemaVersion !== expectedVersion) {
+    throw new Error(`Database version mismatch: expected ${expectedVersion}, found ${schemaVersion}`);
   }
 
   const assetsRaw = (raw.data['assets'] ?? []) as MediaAsset[];
@@ -921,7 +923,7 @@ export async function readAllDataFromVersion(
 
   const payload: BackupFile = {
     app: 'lacuna',
-    version: raw.version,
+    version: schemaVersion,
     exportedAt: Date.now(),
     decks: (raw.data['decks'] ?? []) as Deck[],
     cards: (raw.data['cards'] ?? []) as Card[],
@@ -960,6 +962,18 @@ export async function readAllDataFromVersion(
 // operation instead of racing or skipping.
 const snapshotPromises = new Map<string, Promise<void>>();
 
+export async function capturePreMigrationSnapshot(
+  dbName: string,
+  targetVersion: number,
+  saveSnapshot: typeof savePreMigrationSnapshot = savePreMigrationSnapshot,
+): Promise<void> {
+  const currentVersion = await getCurrentDbVersion(dbName);
+  if (currentVersion === 0 || currentVersion >= targetVersion) return;
+
+  const payload = await readAllDataFromVersion(dbName, currentVersion);
+  await saveSnapshot(targetVersion, payload);
+}
+
 /**
  * Detect a pending schema upgrade and, if one is pending, capture a full
  * pre-migration snapshot in a separate committed transaction before the
@@ -970,30 +984,29 @@ const snapshotPromises = new Map<string, Promise<void>>();
  * Concurrent calls for the same database name coalesce into a single snapshot
  * operation rather than racing each other.
  */
-export async function ensurePreMigrationSnapshot(dbName: string = 'lacuna'): Promise<void> {
-  const existing = snapshotPromises.get(dbName);
+export async function ensurePreMigrationSnapshot(
+  dbName: string = 'lacuna',
+  targetVersion: number = CURRENT_SCHEMA_VERSION,
+  saveSnapshot: typeof savePreMigrationSnapshot = savePreMigrationSnapshot,
+): Promise<void> {
+  const snapshotKey = `${dbName}:${targetVersion}`;
+  const existing = snapshotPromises.get(snapshotKey);
   if (existing) return existing;
 
   const promise = (async () => {
     try {
-      const targetVersion = CURRENT_SCHEMA_VERSION;
-      const currentVersion = await getCurrentDbVersion(dbName);
-
-      if (currentVersion > 0 && currentVersion < targetVersion) {
-        const payload = await readAllDataFromVersion(dbName, currentVersion);
-        await savePreMigrationSnapshot(targetVersion, payload);
-      }
+      await capturePreMigrationSnapshot(dbName, targetVersion, saveSnapshot);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Pre-migration snapshot failed:', e);
-      // Remove from cache so a future call can retry. Concurrent callers that
-      // already hold this promise will see a resolved value (the catch prevents
-      // the rejection from propagating to them).
-      snapshotPromises.delete(dbName);
+      // Remove from cache so a future call can retry. Destructive upgrades
+      // propagate the failure to every caller sharing this promise.
+      snapshotPromises.delete(snapshotKey);
+      if (DESTRUCTIVE_SCHEMA_VERSIONS.has(targetVersion)) throw e;
     }
   })();
 
-  snapshotPromises.set(dbName, promise);
+  snapshotPromises.set(snapshotKey, promise);
   return promise;
 }
 
