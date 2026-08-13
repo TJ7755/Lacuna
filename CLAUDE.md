@@ -76,7 +76,7 @@ It is better than Sol on the way back, though. Sol's output is real work that st
 
 The quota is generous. A first real session on 13 August 2026 registered 0% of the SuperGrok allowance, against roughly 5% had the same work gone to Claude. That is one data point rather than a measured ceiling, so the cost rating stays at 8 until I have pushed it harder — but it means you should not ration Grok the way you must ration Sol.
 
-**Its taste is a 7.5**, above Sol and below you, so it is the first worker other than yourself worth giving design work to. Its 3D and graphical ability is still unrated — see below.
+**Its taste is a 6**, level with Sol. Its 3D and graphical ability is still unrated — see below.
 
 ---
 
