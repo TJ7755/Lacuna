@@ -10,6 +10,22 @@ Keep each entry to a heading and a few lines. State the fact, then why it matter
 
 ---
 
+## Replace-import does not clear `db.backups`, and that is load-bearing
+
+`importBackup(payload, 'replace')` clears the content tables but leaves `backups` alone, and
+`exportDatabase` does not serialise that table either. This is what makes the restore point taken
+before a manual two-device combine survive the very replace it protects against. Do not "tidy" the
+replace list by adding `backups` to it, and do not start exporting the table: either change would
+silently turn the safety net into decoration.
+
+## Recover-merge does not resolve conflicts on `updatedAt`
+
+`importBackup(payload, 'merge')` predates schema v23 and still compares `lastReviewed ?? createdAt`
+for cards and `createdAt` for most course tables. Only the peer merge in `src/sync/mergeSnapshots.ts`
+uses `updatedAt`. Settings copy and `docs/APP-FLOWS.md` both claimed recency wins here and both were
+wrong; a regression test now asserts that wording is absent. Do not reintroduce the claim, and do
+not assume the two merge paths behave alike — they answer different questions.
+
 ## `new Error(message, { cause })` does not typecheck
 
 The project TypeScript lib only accepts the single-argument `Error` constructor. Pass the
