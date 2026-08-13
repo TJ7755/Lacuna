@@ -28,9 +28,7 @@ import {
   listDueCards,
   listLessons,
   listNotes,
-  listPracticeNodes,
   listSequences,
-  getRevisionPlan,
   getRevisionPlanForAssessment,
   listRevisionPlansForCourse,
 } from './read';
@@ -57,7 +55,7 @@ async function clearAll(): Promise<void> {
 describe('read.ts', () => {
   beforeEach(clearAll);
 
-  it('reads revision plans by id, assessment and course', async () => {
+  it('reads revision plans by assessment and course', async () => {
     const course = await createCourse('Biology');
     const assessment = await createCourseAssessment(course.id, 'Paper', Date.now() + 86_400_000);
     const plan = await createOrResumeRevisionPlan(assessment.id, 20, {
@@ -65,10 +63,9 @@ describe('read.ts', () => {
       memoryModelVersion: 'fsrs-6',
       fallbackReason: 'missing',
     });
-    expect(await getRevisionPlan(plan.id)).toEqual(plan);
     expect(await getRevisionPlanForAssessment(assessment.id)).toEqual(plan);
     expect(await listRevisionPlansForCourse(course.id)).toEqual([plan]);
-    expect(await getRevisionPlan('missing')).toBeNull();
+    expect(await getRevisionPlanForAssessment('missing')).toBeNull();
   });
 
   describe('courses / lessons', () => {
@@ -370,13 +367,15 @@ describe('read.ts', () => {
       const examDate = await createCourseAssessment(course.id, 'Mid-term', now + 1000);
       await createCourseAssessment(otherCourse.id, 'Other exam', now + 2000);
 
-      expect((await listPracticeNodes(course.id)).map((n) => n.id)).toEqual([node.id]);
+      expect(
+        (await db.practiceNodes.where('courseId').equals(course.id).toArray()).map((n) => n.id),
+      ).toEqual([node.id]);
       expect((await listCourseAssessments(course.id)).map((e) => e.id)).toContain(examDate.id);
     });
 
     it('returns empty lists for a course with none', async () => {
       const course = await createCourse('Course A');
-      expect(await listPracticeNodes(course.id)).toEqual([]);
+      expect(await db.practiceNodes.where('courseId').equals(course.id).toArray()).toEqual([]);
       expect(await listCourseAssessments(course.id)).toHaveLength(1);
     });
   });

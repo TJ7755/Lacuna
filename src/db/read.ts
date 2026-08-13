@@ -23,7 +23,6 @@ import type {
   CourseAssessment,
   Lesson,
   Occlusion,
-  PracticeNode,
   RevisionPlan,
   Sequence,
 } from './types';
@@ -252,18 +251,9 @@ export const listNotes = repositoryListNotes;
 // Practice / assessments
 // ---------------------------------------------------------------------------
 
-/** All practice nodes for a course (manual and auto). */
-export async function listPracticeNodes(courseId: string): Promise<PracticeNode[]> {
-  return db.practiceNodes.where('courseId').equals(courseId).toArray();
-}
-
 /** All assessments for a course, ordered by date ascending (mirrors useCourseAssessments). */
 export async function listCourseAssessments(courseId: string): Promise<CourseAssessment[]> {
   return db.courseAssessments.where('courseId').equals(courseId).sortBy('examDate');
-}
-
-export async function getRevisionPlan(planId: string): Promise<RevisionPlan | null> {
-  return (await db.revisionPlans.get(planId)) ?? null;
 }
 
 export async function getRevisionPlanForAssessment(
