@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PomodoroProvider, usePomodoroContext } from './PomodoroContext';
+import { PomodoroProvider, useOptionalPomodoroContext } from './PomodoroContext';
 import { savePomodoroSettings } from './usePomodoro';
 
 function Step({ name }: { name: string }) {
-  const pomodoro = usePomodoroContext();
+  const pomodoro = useOptionalPomodoroContext();
+  if (!pomodoro) throw new Error('expected PomodoroProvider');
   return (
     <div>
       <span>{name}</span>

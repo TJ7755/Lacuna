@@ -7,6 +7,18 @@
   Dashboard new-deck creation. The stores are gone; Today reads `schedulingUnits`; `CardListProps`
   is `CardListBaseProps & { context: CardListContext }`. No behaviour change.
 
+## Unreleased — Dead-code removal
+
+- Removed unused hooks: `useCountUp`, `useAllLessons`, `useAllNotes`, `useRevisionPlan`,
+  `useCourseRevisionPlans`, and `usePomodoroContext`. Production still uses
+  `usePomodoroFlowContext` and `useOptionalPomodoroContext`.
+- Removed unused `listRecordedUndos` / `clearRecordedUndos`. `recordUndo` remains.
+- Removed unused `marksAnalytics` (and its test) and the CardList **Move to…** control.
+  Production CardList callers never supplied `moveTargets` / `onMove`.
+- Removed `moveCards` after that UI, plus `getRevisionPlan` (by plan id) and
+  `listPracticeNodes`. Production uses `getRevisionPlanForAssessment` and
+  `usePracticeNodes` / direct Dexie reads.
+
 ## Unreleased — Sync: two-device combine in Settings
 
 - Full backup and recovery now names three jobs: export, combine with another device, and

@@ -19,7 +19,6 @@ import type {
   Occlusion,
   PendingMergeReview,
   PracticeNode,
-  RevisionPlan,
   Sequence,
   SessionHistoryEntry,
   SchedulingUnitRecord,
@@ -75,11 +74,6 @@ export function useLessons(courseId: string | undefined): Lesson[] | undefined {
     () => (courseId ? db.lessons.where('courseId').equals(courseId).sortBy('orderIndex') : []),
     [courseId],
   );
-}
-
-/** All lessons across every course, ordered by orderIndex (for the sidebar tree). */
-export function useAllLessons(): Lesson[] | undefined {
-  return useLiveQuery(() => db.lessons.orderBy('orderIndex').toArray(), []);
 }
 
 export function useLesson(lessonId: string | undefined): Lesson | null | undefined {
@@ -167,11 +161,6 @@ export function useNotes(lessonId: string | undefined): Note[] | undefined {
   );
 }
 
-/** All notes across every lesson (for global search, which has no single lessonId scope). */
-export function useAllNotes(): Note[] | undefined {
-  return useLiveQuery(() => db.notes.toArray(), []);
-}
-
 /** The outstanding merge review for a course, if a re-import has queued one (Arc 7 §7.5).
  *  `null` once loaded with nothing pending; `undefined` while loading. */
 export function usePendingMergeReview(
@@ -256,27 +245,6 @@ export function useCourseAssessments(courseId: string | undefined): CourseAssess
   return useLiveQuery(
     () =>
       courseId ? db.courseAssessments.where('courseId').equals(courseId).sortBy('examDate') : [],
-    [courseId],
-  );
-}
-
-export function useRevisionPlan(assessmentId: string | undefined): RevisionPlan | null | undefined {
-  return useLiveQuery<RevisionPlan | null>(
-    () =>
-      assessmentId
-        ? db.revisionPlans
-            .where('assessmentId')
-            .equals(assessmentId)
-            .first()
-            .then((plan) => plan ?? null)
-        : null,
-    [assessmentId],
-  );
-}
-
-export function useCourseRevisionPlans(courseId: string | undefined): RevisionPlan[] | undefined {
-  return useLiveQuery(
-    () => (courseId ? db.revisionPlans.where('courseId').equals(courseId).sortBy('updatedAt') : []),
     [courseId],
   );
 }

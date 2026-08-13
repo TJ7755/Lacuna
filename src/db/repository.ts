@@ -577,14 +577,6 @@ export async function restoreCards(cards: CardSnapshot): Promise<void> {
   }
 }
 
-export async function moveCards(ids: string[], targetDeckId: string): Promise<void> {
-  await db.transaction('rw', db.cards, db.reviewHistory, async () => {
-    await assertNoGeneratedCards(ids);
-    await db.cards.where('id').anyOf(ids).modify(stampUpdatedAt({ deckId: targetDeckId }));
-    await db.reviewHistory.where('cardId').anyOf(ids).modify({ deckId: targetDeckId });
-  });
-}
-
 /** Withhold a card from all study and from progress/objective until un-suspended. */
 export async function suspendCard(id: string): Promise<void> {
   await db.cards.update(id, stampUpdatedAt({ suspended: true }));

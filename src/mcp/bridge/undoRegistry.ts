@@ -4,10 +4,8 @@
 // MCP client should see or be able to replay. src/mcp/bridge/renderer.ts records it here,
 // keyed by the request id, instead of sending it back over `mcp:invoke:reply`.
 //
-// This module intentionally does nothing with the recorded payloads yet: Task 11 wires the
-// in-app undo toast (reusing the DangerZone pattern) that reads the most recent entry and
-// calls the matching `restore*` repository function named by `ToolUndoPayload.kind`. Until
-// then, entries just accumulate (bounded by MAX_ENTRIES) so nothing leaks memory.
+// renderer.ts records the payload here and also hands a copy to onUndoAvailable for the
+// in-app undo toast. Entries are bounded by MAX_ENTRIES.
 
 import type { ToolUndoPayload } from '../types';
 
@@ -28,14 +26,4 @@ export function recordUndo(requestId: string, toolName: string, payload: ToolUnd
   if (entries.length > MAX_ENTRIES) {
     entries.shift();
   }
-}
-
-/** All recorded undo entries, oldest first. For Task 11's undo toast. */
-export function listRecordedUndos(): readonly RecordedUndo[] {
-  return entries;
-}
-
-/** Test/dev helper to reset the in-memory registry between cases. */
-export function clearRecordedUndos(): void {
-  entries.length = 0;
 }
