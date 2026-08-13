@@ -22,8 +22,8 @@ export interface ManualMergeSummary {
 export class ManualMergeError extends Error {
   readonly databaseModified: boolean;
 
-  constructor(message: string, options: { databaseModified: boolean; cause?: unknown }) {
-    super(message, options.cause !== undefined ? { cause: options.cause } : undefined);
+  constructor(message: string, options: { databaseModified: boolean }) {
+    super(message);
     this.name = 'ManualMergeError';
     this.databaseModified = options.databaseModified;
   }
@@ -42,7 +42,7 @@ export async function manualMerge(remote: BackupFile): Promise<ManualMergeSummar
   } catch (error) {
     throw new ManualMergeError(
       `${messageOf(error)} A safety backup could not be taken, so the database was not modified.`,
-      { databaseModified: false, cause: error },
+      { databaseModified: false },
     );
   }
 
@@ -52,7 +52,7 @@ export async function manualMerge(remote: BackupFile): Promise<ManualMergeSummar
   } catch (error) {
     throw new ManualMergeError(
       `${messageOf(error)} The database was not modified.`,
-      { databaseModified: false, cause: error },
+      { databaseModified: false },
     );
   }
 
@@ -62,14 +62,14 @@ export async function manualMerge(remote: BackupFile): Promise<ManualMergeSummar
   } catch (error) {
     throw new ManualMergeError(
       `${messageOf(error)} The database was not modified.`,
-      { databaseModified: false, cause: error },
+      { databaseModified: false },
     );
   }
 
   try {
     await importBackup(merged, 'replace');
   } catch (error) {
-    throw new ManualMergeError(messageOf(error), { databaseModified: true, cause: error });
+    throw new ManualMergeError(messageOf(error), { databaseModified: true });
   }
 
   return { before: countsOf(local), after: countsOf(merged) };

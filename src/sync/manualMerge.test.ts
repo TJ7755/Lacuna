@@ -162,7 +162,7 @@ describe('manualMerge', () => {
   });
 
   it('rejects an invalid file before any write', async () => {
-    await expect(manualMerge({ app: 'not-lacuna' } as BackupFile)).rejects.toMatchObject({
+    await expect(manualMerge({ app: 'not-lacuna' } as unknown as BackupFile)).rejects.toMatchObject({
       name: 'ManualMergeError',
       databaseModified: false,
       message: 'This file is not a valid Lacuna backup.',
