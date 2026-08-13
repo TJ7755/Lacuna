@@ -20,11 +20,12 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
 
-/** Sideways for a move between course sections, a crossfade otherwise. */
+/** Sideways for a move between course sections, a crossfade otherwise.
+ *  Fade must not write a transform, or `position: fixed` descendants pin to this wrapper. */
 const ROUTE_VARIANTS = {
   enter: (direction: number) =>
     direction === 0 ? { opacity: 0 } : { opacity: 0, x: 24 * direction },
-  center: { opacity: 1, x: 0 },
+  center: (direction: number) => (direction === 0 ? { opacity: 1 } : { opacity: 1, x: 0 }),
   exit: (direction: number) =>
     direction === 0 ? { opacity: 0 } : { opacity: 0, x: -24 * direction },
 };
@@ -64,6 +65,7 @@ export function AppShell() {
   });
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const motionEnabled = m > 0;
   const [arrivedFromLanding] = useState(() => consumeLandingArrival());
   const { onPointerDown, onPointerMove, onPointerUp, onPointerCancel, sectionDirection } =
     useCourseSectionSwipe();
@@ -161,9 +163,11 @@ export function AppShell() {
   return (
     // Arriving from the landing page's Get Started transition, the shell
     // settles up from slightly under scale while the overlay halves part.
+    // Skip the scale entirely otherwise — a standing transform here would pin
+    // every `position: fixed` descendant to this wrapper.
     <motion.div
-      initial={arrivedFromLanding ? { scale: 0.96 } : false}
-      animate={{ scale: 1 }}
+      initial={arrivedFromLanding && motionEnabled ? { scale: 0.96 } : false}
+      animate={arrivedFromLanding && motionEnabled ? { scale: 1 } : undefined}
       transition={{ duration: 0.7 * m, delay: 0.3 * m, ease: [0.16, 1, 0.3, 1] }}
       className="flex h-screen overflow-hidden flex-col"
     >
@@ -298,9 +302,9 @@ export function AppShell() {
                     key={location.pathname}
                     custom={sectionDirection}
                     variants={ROUTE_VARIANTS}
-                    initial="enter"
+                    initial={motionEnabled ? 'enter' : false}
                     animate="center"
-                    exit="exit"
+                    exit={motionEnabled ? 'exit' : undefined}
                     transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
                     className="min-h-full w-full"
                   >
