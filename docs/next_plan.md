@@ -65,15 +65,31 @@ corpus as a problem to be engineered around.
 
 ## Next
 
-### Multi-device sync — P3 in progress
+### Multi-device sync — P3 and P4 delivered; the rest is gated
 
-**Status:** in progress.
+**Status:** at its decision gate.
 
-Approved 13 August 2026. The execution plan is
-[sync-implementation.html](plans/sync-implementation.html). P3 (schema v23, timestamps,
-tombstones, backup version 10) is the authorised increment. P4 (pure merge module) is the
-automatic successor and is not yet sliced. The relay remains gated on a hosting decision;
-Electron starts unconfigured.
+Approved and implemented on 13 August 2026. The execution plan is
+[sync-implementation.html](plans/sync-implementation.html). Delivered: P3 (schema v23, timestamps,
+tombstones, backup version 10), P4 (`src/sync/mergeSnapshots.ts`, the pure peer merge), and a manual
+two-device combine in Settings that takes a restore point, merges, and replace-imports. That last
+piece is the manual half of P5, built deliberately so P4 is usable with no hosting commitment.
+
+What remains — relay (P1), crypto (P2), HTTP transport and sync cycle (P5), pairing UI (P6),
+automatic triggers (P7) — is **entirely blocked on the hosting decision** below. No further sync work
+should start until that is answered.
+
+Never done: a real two-device merge against two installations (P9). Not automatable.
+
+The paused Course/Deck boundary maintenance pass is documented in
+[course-domain-boundary-follow-ups.md](course-domain-boundary-follow-ups.md). Schema v22 has
+removed the hidden Deck and Folder stores; that pass is not an active product arc.
+
+### No other arc is in flight
+
+Arc 14, the learn screen redesign and Arc 11 are all delivered with no verification debt. With sync
+at its gate, there is no queued product work. Everything under *Later candidates* needs a fresh
+product decision before it becomes an arc.
 
 The paused Course/Deck boundary maintenance pass is documented in
 [course-domain-boundary-follow-ups.md](course-domain-boundary-follow-ups.md). Schema v22 has
