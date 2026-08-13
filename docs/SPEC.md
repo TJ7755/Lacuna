@@ -141,17 +141,23 @@ Specific motion (current state of the app):
   Full-screen landing, method, conductor and Learn routes use the outer `RouteTransition`
   boundary, also a crossfade, with `AnimatePresence mode="wait"`. Both boundaries skip
   enter/exit when `prefers-reduced-motion` is on. The main scroll area resets to the top
-  on every navigation.
+  on every navigation. Incoming page content sits still inside that fade — settings
+  sections, dashboard cards, editor shells, Help and Share no longer hop up after the
+  route has already arrived.
 - **Buttons (`Button`):** spring `whileHover` scale 1.02 and `whileTap` scale 0.96; every
   variant enforces a 44px minimum touch height.
 - **Progress bar (`ProgressBar`):** the fill animates to its new width on a spring; a slow,
   looping sheen sweeps across any non-empty bar for a sense of depth.
 - **Sidebar:** width animates on collapse/expand (spring); the active-item marker is a
   shared-layout element (`layoutId="nav-active"`) that slides between items; items nudge
-  right slightly on hover. A collapsible drawer on mobile (§4.1).
-- **Course cards** (dashboard grid): staggered entrance, plus a `whileHover` lift (`y: -4`)
-  with a smooth shadow/border transition; a `whileTap` scale-down confirms the press. They do
-  not carry swipe gestures — that affordance lives on card-list rows instead (below).
+  right slightly on hover. Expanding a course's lesson list fades in place rather than
+  tweening height. A collapsible drawer on mobile (§4.1); the drawer overlay and panel
+  skip enter/exit when the motion multiplier is 0.
+- **Course cards** (dashboard grid): no arrival stagger (that competed with the shell
+  fade). A `whileHover` lift (`y: -4`) with a smooth shadow/border transition; a
+  `whileTap` scale-down confirms the press. They do not carry swipe gestures — that
+  affordance lives on card-list rows instead (below). Hover detail still grows the
+  card by height so the grid can follow the pointer.
 - **Card list rows** (`CardList`): in touch mode, each row supports a horizontal **swipe
   gesture** — drag left past a threshold to spring open a per-card action tray, drag right
   to quick-toggle the flag — backed by a `useSpring`-driven `useMotionValue` with a springy
@@ -2232,7 +2238,10 @@ scrollspy and its navigation cannot drift from the rendered sections.
 - **Motion:** a **motion-speed** setting with three steps (**Slow**, **Normal** and
   **Fast**) that multiplies animation and transition durations in the app by a single value.
   It is persisted to `localStorage`; the separate `prefers-reduced-motion` preference disables
-  motion regardless of this setting.
+  motion regardless of this setting. Overlay dialogs (new course, card edit, archive,
+  the mobile drawer, the Learn touch sheet) skip enter/exit when the multiplier is 0
+  rather than playing a zero-duration keyframe. Expanding panels (share codes, import
+  previews, card-list choosers) fade; they do not animate `height` or `margin`.
 - **Input mode** (v0.0.2): `auto` (default — `touch` on touch devices,
   `keyboard` otherwise), `touch`, or `keyboard`. The choice drives whether the
   app renders bottom sheets vs. dropdowns, shows or hides swipe hints, and swaps

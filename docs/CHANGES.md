@@ -17,6 +17,16 @@
   write a transform, they skip enter/exit when motion is reduced, and the shell root
   no longer keeps a standing scale except while settling in from the landing page.
   Learn's grade buttons no longer lift again inside `StepSwap`.
+- A second pass removed the leftover page hops that the first review listed.
+  Settings, course settings, dashboard cards/empty/skeleton, editor shells, Help,
+  Share, the Learn session report and the Learn header no longer lift after the
+  shell or `StepSwap` fade. Course-path nodes and lines no longer stagger in.
+  Share, import, card-list, sidebar lesson lists and a few sibling panels fade
+  instead of tweening height or margin. The mobile drawer, new-course and
+  card-edit overlays, and the Learn touch sheet skip enter/exit when motion is
+  reduced. Hover lifts, session-report stat choreography, and course-card hover
+  detail (which still grows by height so the card can follow the pointer) were
+  kept as in-scene motion.
 
 ## Unreleased — Schema v22 storage cutover
 
