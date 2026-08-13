@@ -66,8 +66,15 @@ HIGHER is BETTER. These are vague values from personal experience. If you want t
 | GPT 5.6 Terra Max | 7 | 5 | 0 | 4 | 7 |
 | GPT 5.6 Sol Medium *(use Medium for virtually everything; never above High)* | 9 | 6 | 6 | 4 | 9 |
 | DeepSeek V4 Flash *(free build via OpenCode Zen, likely the 0731 weights with enhanced coding)* | 4 | 3 | 0 | 10 | 4 |
+| DeepSeek V4 Pro *(0813 weights, ~1.6T parameters; available in Freebuff)* | 5? | ? | ? | ? | ? |
 
-Freebuff sits outside the table because I drive it, not you. It runs Luna, so read it as the Luna row with a better price and a supervision cost paid by me rather than by my usage limits.
+Freebuff sits outside the table because I drive it, not you. It runs Luna, and as of 13 August 2026 it also offers DeepSeek V4 Pro. Either way, read it as that model's row with a better price and a supervision cost paid by me rather than by my usage limits.
+
+**V4 Pro's ratings are pending, and you must not guess them.** It was released on 13 August 2026, so the row above carries only what is actually known: roughly 1.6T parameters against Flash's 280B, and an early third-party measurement showing about a one-point intelligence gain over Flash. Coding ability is unmeasured, and the other columns in this table were always anecdotal. Ask me for the real numbers rather than inferring them from the parameter count — a 5.7x size increase is not a claim about code quality, and until I have used it for a day the honest answer is that we do not know. Treat V4 Pro as slop-tier for leash purposes until I say otherwise.
+
+One thing about Pro is already known, from its first outing on 13 August 2026: **it struggles to drive subagents.** Luna has never got that wrong. Since the Freebuff brief pattern depends on spawning a code-reviewer on every commit, and that cadence is what keeps free-tier output honest, Luna remains the default for Freebuff work. Do not write a brief that leans on subagents and hand it to Pro.
+
+Pro is a Freebuff option. The OpenCode Zen and Cline routes below still run Flash unless I tell you they have changed.
 
 3D and graphical work is effectively Opus 5 only. Sol can make a decent fist of it at a 6 and is the one fallback worth considering; everything else scores 0 and is not worth trying. Never delegate 3D, graphics or visual design to a Luna or DeepSeek worker, and never to a Sonnet subagent. Default to doing it yourself.
 
