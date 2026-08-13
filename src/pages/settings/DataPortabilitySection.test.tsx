@@ -78,6 +78,17 @@ describe('DataPortabilitySection', () => {
     await waitFor(() => expect(importBackup).toHaveBeenCalledWith(expect.anything(), 'replace'));
   });
 
+  it('describes add-from-backup without a recency rule', async () => {
+    readBackupFile.mockResolvedValue(backupStub());
+    render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseRecoverFile();
+
+    expect(await screen.findByText(/keeps your current data and folds in the backup/)).toHaveTextContent(
+      'Add from backup keeps your current data and folds in the backup; existing items are not deleted.',
+    );
+    expect(screen.queryByText(/more recently updated/)).not.toBeInTheDocument();
+  });
+
   it('reports the backup lesson count rather than the internal deck count', async () => {
     readBackupFile.mockResolvedValue(backupStub({
       decks: Array.from({ length: 5 }),

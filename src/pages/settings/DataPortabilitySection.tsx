@@ -213,7 +213,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
                   <strong className="text-ink">{pending.cards.length}</strong> cards, exported on {formatDate(pending.exportedAt)}.
                 </p>
                 <ul className="space-y-2">
-                  <li><strong className="text-ink">Add from backup</strong> keeps your current data and folds in the backup. Existing items are not deleted; the more recently updated copy wins a conflict.</li>
+                  <li><strong className="text-ink">Add from backup</strong> keeps your current data and folds in the backup; existing items are not deleted.</li>
                   <li><strong className="text-ink">Replace local data</strong> deletes every course and review record in this installation, then restores the backup exactly. Lacuna has no account or cloud copy to delete.</li>
                 </ul>
               </div>

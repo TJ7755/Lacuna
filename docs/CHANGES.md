@@ -16,6 +16,8 @@
   state, that `importBackup(..., 'replace')` leaves the backups table in place, and that
   restoring from that snapshot returns the database to its pre-combine state. The same
   restore point remains usable if the replace-import fails.
+- Corrected the Recover **Add from backup** description. It no longer claims the more
+  recently updated copy wins a conflict. Existing items are not deleted.
 
 ## Unreleased — Sync: manual two-device merge
 
