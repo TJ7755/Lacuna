@@ -914,6 +914,9 @@ export type DbOpenResult =
 export async function openDatabase(): Promise<DbOpenResult> {
   try {
     await db.open();
+    void import('./tombstonePrune')
+      .then(({ pruneExpiredTombstones }) => pruneExpiredTombstones())
+      .catch(() => undefined);
     return { ok: true };
   } catch (err) {
     if (err instanceof DOMException && err.name === 'QuotaExceededError') {
