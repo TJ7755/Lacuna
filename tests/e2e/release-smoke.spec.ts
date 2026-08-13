@@ -36,7 +36,9 @@ test('opens a lesson with persistent course navigation', async ({ page }) => {
 test('starts a real lesson study interaction', async ({ page }) => {
   await openSeededDashboard(page);
   await page.getByText('Welcome to Lacuna', { exact: true }).first().click();
-  await page.getByRole('button', { name: 'Study' }).click();
+  // Exact, because the dashboard also carries "Study Choose a course" and a per-course
+  // "Study <name>" control. Without it, strict mode matches all three.
+  await page.getByRole('button', { name: 'Study', exact: true }).click();
   await page.getByRole('button', { name: /Start:|Continue:/ }).first().click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('button', { name: /Show answer/i }).last().click();
