@@ -1396,3 +1396,25 @@ create/revoke churn on every card flip in a fast Learn session.
   replacement, and revocation at teardown.
 
 **Checks:** `typecheck` and `test` pass.
+
+## Schema v22 removal contract
+
+**Outcome:** The destructive half of the storage migration now has a written contract, so the
+removal can be specified once and implemented against a fixed target rather than negotiated
+commit by commit.
+
+- `docs/plans/storage-v22-removal.md`: states, per gate-holder, what is deleted, what compatibility
+  adapter replaces it, and what must be tested before the deletion lands. Two decisions are fixed:
+  full removal of the hidden backing Deck (`schedulingUnits` becomes the sole scheduling record),
+  and conversion-on-import for pre-v22 backups and `LAC0`-`LAC3` share codes, reusing
+  `buildDomainStorageMigration` rather than a second implementation.
+- The contract requires the existing `ensurePreMigrationSnapshot` mechanism to be hardened rather
+  than replaced: its failure is currently caught and logged, which is acceptable for an additive
+  migration but not for a destructive one. For v22 a failed snapshot must block the upgrade.
+- Rollback is explicitly one-way. An aborted upgrade leaves the database at v21; a completed one
+  has no downgrade path, only snapshot restore under the previous build. The release note must say
+  so plainly.
+- Workstream 2 of `docs/course-domain-boundary-follow-ups.md` (the CardList legacy Deck-shaped
+  union) is subsumed by gate 3 and must not be run as a separate pass.
+
+**Checks:** documentation only; no code changed.
