@@ -29,13 +29,3 @@ export function recordUndo(requestId: string, toolName: string, payload: ToolUnd
     entries.shift();
   }
 }
-
-/** All recorded undo entries, oldest first. For Task 11's undo toast. */
-export function listRecordedUndos(): readonly RecordedUndo[] {
-  return entries;
-}
-
-/** Test/dev helper to reset the in-memory registry between cases. */
-export function clearRecordedUndos(): void {
-  entries.length = 0;
-}
