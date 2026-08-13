@@ -135,8 +135,10 @@ describe('DataPortabilitySection', () => {
   it('shows the merge summary on success', async () => {
     readBackupFile.mockResolvedValue(backupStub());
     manualMerge.mockResolvedValue({
-      before: { cards: 12, courses: 1, lessons: 3, reviewEvents: 40 },
-      after: { cards: 15, courses: 2, lessons: 5, reviewEvents: 52 },
+      cards: { kept: 12, added: 3, removed: 0 },
+      courses: { kept: 1, added: 1, removed: 0 },
+      lessons: { kept: 3, added: 2, removed: 0 },
+      reviewEvents: { kept: 40, added: 12, removed: 0 },
     });
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseMergeFile();
@@ -144,11 +146,31 @@ describe('DataPortabilitySection', () => {
 
     await waitFor(() =>
       expect(notify).toHaveBeenCalledWith(
-        'Merged. Cards 12 → 15. Courses 1 → 2. Lessons 3 → 5. Review events 40 → 52.',
+        'Combined. 12 cards kept, 3 added. 12 reviews added. A restore point was saved.',
         'positive',
       ),
     );
     expect(importBackup).not.toHaveBeenCalled();
+  });
+
+  it('names removed cards in the success notice', async () => {
+    readBackupFile.mockResolvedValue(backupStub());
+    manualMerge.mockResolvedValue({
+      cards: { kept: 12, added: 0, removed: 1 },
+      courses: { kept: 1, added: 0, removed: 0 },
+      lessons: { kept: 3, added: 0, removed: 0 },
+      reviewEvents: { kept: 40, added: 0, removed: 2 },
+    });
+    render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseMergeFile();
+    fireEvent.click(await screen.findByRole('button', { name: 'Merge' }));
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        'Combined. 12 cards kept, 1 removed. 2 reviews removed. A restore point was saved.',
+        'positive',
+      ),
+    );
   });
 
   it('rejects an invalid merge file without writing', async () => {
@@ -198,8 +220,10 @@ describe('DataPortabilitySection', () => {
 
     await act(async () => {
       resolveMerge({
-        before: { cards: 0, courses: 0, lessons: 0, reviewEvents: 0 },
-        after: { cards: 0, courses: 0, lessons: 0, reviewEvents: 0 },
+        cards: { kept: 0, added: 0, removed: 0 },
+        courses: { kept: 0, added: 0, removed: 0 },
+        lessons: { kept: 0, added: 0, removed: 0 },
+        reviewEvents: { kept: 0, added: 0, removed: 0 },
       });
     });
   });

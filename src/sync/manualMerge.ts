@@ -8,16 +8,17 @@ import { importBackup, validateBackup } from '../db/portability';
 import type { BackupFile } from '../db/types';
 import { mergeSnapshots } from './mergeSnapshots';
 
-export interface MergeCounts {
-  cards: number;
-  courses: number;
-  lessons: number;
-  reviewEvents: number;
+export interface MergeDelta {
+  kept: number;
+  added: number;
+  removed: number;
 }
 
 export interface ManualMergeSummary {
-  before: MergeCounts;
-  after: MergeCounts;
+  cards: MergeDelta;
+  courses: MergeDelta;
+  lessons: MergeDelta;
+  reviewEvents: MergeDelta;
 }
 
 export class ManualMergeError extends Error {
@@ -72,16 +73,33 @@ export async function manualMerge(remote: BackupFile): Promise<ManualMergeSummar
     throw new ManualMergeError(messageOf(error), { databaseModified: true });
   }
 
-  return { before: countsOf(local), after: countsOf(merged) };
+  return summariseMerge(local, merged);
 }
 
-function countsOf(snapshot: BackupFile): MergeCounts {
+/** Compare a local snapshot with the merge result by record id. */
+export function summariseMerge(local: BackupFile, merged: BackupFile): ManualMergeSummary {
   return {
-    cards: snapshot.cards.length,
-    courses: snapshot.courses?.length ?? 0,
-    lessons: snapshot.lessons?.length ?? 0,
-    reviewEvents: snapshot.reviewHistory?.length ?? 0,
+    cards: deltaOf(local.cards, merged.cards),
+    courses: deltaOf(local.courses, merged.courses),
+    lessons: deltaOf(local.lessons, merged.lessons),
+    reviewEvents: deltaOf(local.reviewHistory, merged.reviewHistory),
   };
+}
+
+function deltaOf(before: Array<{ id: string }> | undefined, after: Array<{ id: string }> | undefined): MergeDelta {
+  const beforeIds = new Set((before ?? []).map((row) => row.id));
+  const afterIds = new Set((after ?? []).map((row) => row.id));
+  let kept = 0;
+  let added = 0;
+  let removed = 0;
+  for (const id of afterIds) {
+    if (beforeIds.has(id)) kept += 1;
+    else added += 1;
+  }
+  for (const id of beforeIds) {
+    if (!afterIds.has(id)) removed += 1;
+  }
+  return { kept, added, removed };
 }
 
 function messageOf(error: unknown): string {

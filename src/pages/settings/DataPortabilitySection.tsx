@@ -7,17 +7,34 @@ import { UploadIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { importBackup, readBackupFile, type ImportMode } from '../../db/portability';
 import type { BackupFile } from '../../db/types';
-import { manualMerge, type ManualMergeSummary } from '../../sync/manualMerge';
+import { manualMerge, type ManualMergeSummary, type MergeDelta } from '../../sync/manualMerge';
 import { formatDate } from '../../utils/datetime';
 
-function formatMergeSummary(summary: ManualMergeSummary): string {
-  const { before, after } = summary;
-  return (
-    `Merged. Cards ${before.cards} → ${after.cards}. ` +
-    `Courses ${before.courses} → ${after.courses}. ` +
-    `Lessons ${before.lessons} → ${after.lessons}. ` +
-    `Review events ${before.reviewEvents} → ${after.reviewEvents}.`
-  );
+function plural(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`;
+}
+
+function formatDelta(noun: string, delta: MergeDelta): string {
+  const parts = [`${plural(delta.kept, noun)} kept`];
+  if (delta.added > 0) parts.push(`${delta.added} added`);
+  if (delta.removed > 0) parts.push(`${delta.removed} removed`);
+  return parts.join(', ');
+}
+
+function formatCombineSummary(summary: ManualMergeSummary): string {
+  const bits = [`Combined. ${formatDelta('card', summary.cards)}.`];
+  if (summary.reviewEvents.added > 0 || summary.reviewEvents.removed > 0) {
+    const reviews: string[] = [];
+    if (summary.reviewEvents.added > 0) {
+      reviews.push(`${plural(summary.reviewEvents.added, 'review')} added`);
+    }
+    if (summary.reviewEvents.removed > 0) {
+      reviews.push(`${plural(summary.reviewEvents.removed, 'review')} removed`);
+    }
+    bits.push(`${reviews.join(', ')}.`);
+  }
+  bits.push('A restore point was saved.');
+  return bits.join(' ');
 }
 
 export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier: number }) {
@@ -55,7 +72,7 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
     setMergeBusy(true);
     try {
       const summary = await manualMerge(pendingMerge);
-      notify(formatMergeSummary(summary), 'positive');
+      notify(formatCombineSummary(summary), 'positive');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Merge failed.', 'negative');
     } finally {
