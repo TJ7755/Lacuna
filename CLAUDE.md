@@ -13,7 +13,7 @@ Throughout this file, "I", "me" and "my" mean Tom, the user. "You" means Claude,
 
 ## Delegation
 
-You may delegate without asking me, provided the worker is a mailbox worker: Codex (see below) or DeepSeek.
+You may delegate without asking me, provided the worker is a mailbox worker: Codex (see below), DeepSeek or Grok.
 
 Tell me when you are using one. For anything else — Opus subagents, Sol, or Codex on a model other than 5.6 Luna — ask me first and I will answer as quickly as I can. Concurrency limits are under Running workers.
 
@@ -35,7 +35,7 @@ So when work is delegable, the default is not to spawn a worker yourself. It is 
 
 **Codebuff appears to have removed the reviewer-agent capability.** As of 13 August 2026 a Freebuff worker reports that it cannot spawn one and falls back to checking its own diff, which is not review. The old instruction here was to tell it to spawn a code-reviewer on every commit; that instruction now produces no review at all, silently, because the worker follows the brief, fails to spawn, and carries on regardless. **So the review is yours.** Read every commit on the branch before it merges, and verify the checks yourself rather than trusting the completion message. Re-test this if Codebuff changes; if the capability returns, restore the per-commit cadence, because on free inference that is what keeps the output honest.
 
-Reach for Codex or DeepSeek instead only when I have explicitly told you to be autonomous.
+Reach for Codex, DeepSeek or Grok instead only when I have explicitly told you to be autonomous.
 
 ### Codex
 
@@ -54,6 +54,30 @@ Older notes in this file claimed Cline could not run DeepSeek at all, on the gro
 
 The explicitly tagged `:0731` build exists solely on Ollama Cloud, which requires a paid subscription. The free OpenCode Zen build is very likely the same weights, but its slug carries no date, so treat the version as unconfirmed.
 
+### Grok
+
+Added 13 August 2026, on a SuperGrok subscription. The CLI is `grok` (Grok Build TUI, 1.0.3, at `~/.local/bin/grok`), signed in through grok.com OIDC with coding-data retention opted out. Models are `grok-4.6` (default, 500k context) and `grok-4.5`.
+
+It runs headlessly, so it is a mailbox worker you can drive yourself — the same standing as Codex, and unlike Freebuff:
+
+```sh
+grok -p "<prompt>" -m grok-4.6 --effort high --permission-mode acceptEdits
+```
+
+- `--effort` takes `low|medium|high|xhigh`; 4.6 defaults to `high` and the config sets `high`.
+- `--json-schema '<schema>'` constrains the reply and implies `--output-format json`. Use it whenever you need a parseable answer — like Codex, the shape is enforced rather than requested, which is the main reason to prefer this harness over the OpenCode and Cline routes for structured work.
+- `--output-format` also takes `plain`, `streaming-json` and `streaming-messages-json`.
+- `--tools` / `--disallowed-tools`, `--allow` / `--deny` and `--rules` scope what it may do and append to the system prompt. Give it a permitted-paths list through `--rules` the same way you would brief Freebuff.
+- `-w/--worktree` is **ignored in headless mode**. If a Grok worker needs isolation, create the worktree yourself first and point it there with `--cwd`.
+
+Intelligence is a 9, level with Opus 5 and Sol, and I suspect that is if anything too low. This is not a slop-tier worker and does not need the task decomposed the way Luna and DeepSeek do. Brief it like Sol: full task, clear spec, hard constraints.
+
+It is better than Sol on the way back, though. Sol's output is real work that still needs polishing; **Grok's code is usually mergeable as written**. So review it, but review it the way you would review a competent colleague's branch — looking for what is wrong with it — rather than expecting to rewrite it. If you find yourself polishing Grok output as a matter of course, that is worth telling me, because it contradicts this.
+
+The quota is generous. A first real session on 13 August 2026 registered 0% of the SuperGrok allowance, against roughly 5% had the same work gone to Claude. That is one data point rather than a measured ceiling, so the cost rating stays at 8 until I have pushed it harder — but it means you should not ration Grok the way you must ration Sol.
+
+**Its taste is unrated** — see below.
+
 ---
 
 ## Choosing a model
@@ -70,6 +94,7 @@ HIGHER is BETTER. These are vague values from personal experience. If you want t
 | GPT 5.6 Sol Medium *(use Medium for virtually everything; never above High)* | 9 | 6 | 6 | 4 | 9 |
 | DeepSeek V4 Flash *(free build via OpenCode Zen, likely the 0731 weights with enhanced coding)* | 4 | 3 | 0 | 10 | 4 |
 | DeepSeek V4 Pro *(0813 weights, ~1.6T parameters; available in Freebuff)* | 5? | ? | ? | ? | ? |
+| Grok 4.6 *(SuperGrok sub, via the `grok` CLI)* | 9 | ? | ? | 8 | 8 |
 
 Freebuff sits outside the table because I drive it, not you. It runs Luna, and as of 13 August 2026 it also offers DeepSeek V4 Pro. Either way, read it as that model's row with a better price and a supervision cost paid by me rather than by my usage limits.
 
@@ -79,13 +104,15 @@ One thing about Pro is already known, from its first outing on 13 August 2026: *
 
 Pro is a Freebuff option. The OpenCode Zen and Cline routes below still run Flash unless I tell you they have changed.
 
+**Grok 4.6's taste and 3D columns are pending, and the same rule applies: do not guess them.** The intelligence, cost and speed figures are mine, from 13 August 2026; I am still testing and have not formed a view on taste. A 9 for intelligence says nothing about whether it can judge a design, so until I give you a number, do not send it frontend, design or 3D work, and do not treat it as a fallback in the paragraph below. Ask me instead.
+
 3D and graphical work is effectively Opus 5 only. Sol can make a decent fist of it at a 6 and is the one fallback worth considering; everything else scores 0 and is not worth trying. Never delegate 3D, graphics or visual design to a Luna or DeepSeek worker, and never to a Sonnet subagent. Default to doing it yourself.
 
 ---
 
 ## Keeping workers on a leash
 
-Anything below Opus 5 and GPT 5.6 Sol writes mediocre code. Luna and DeepSeek are the worst of it — standard code slop; Sonnet is slightly better and still not good. Left to run free they will turn this codebase into unmaintainable spaghetti, and I am (with your help) the one who maintains it.
+Anything below Opus 5, GPT 5.6 Sol and Grok 4.6 writes mediocre code. Luna and DeepSeek are the worst of it — standard code slop; Sonnet is slightly better and still not good. Left to run free they will turn this codebase into unmaintainable spaghetti, and I am (with your help) the one who maintains it.
 
 So when you delegate:
 
@@ -95,7 +122,7 @@ So when you delegate:
 - Read what comes back before you trust it. Treat a worker's output as a draft, not a result.
 - If a task cannot be made small and specific, do it yourself rather than delegate it badly.
 
-Sol is the exception to all of the above. It is a long-horizon worker: you can throw a whole feature at it and it will carry the thing to completion rather than needing it sliced up. The output is mediocre and needs polishing afterwards, but it is real work at real scale.
+Sol and Grok are the exceptions to all of the above. Both are long-horizon workers: you can throw a whole feature at either and it will carry the thing to completion rather than needing it sliced up. Sol's output is mediocre and needs polishing afterwards, but it is real work at real scale. Grok's usually does not need the polish — see its section above.
 
 Therefore, do not decompose for Sol — that is for the slop tier. Give it the full task, a clear spec and hard constraints, then review what comes back and polish it yourself. The leash on Sol is about constraints and review, not about task size.
 
@@ -113,7 +140,7 @@ Every non-Claude worker communicates through `.agent-mail`; see `AGENTS.md` and 
 .agent-mail/bin/await-mail <task-slug> done 900
 ```
 
-Concurrency — two per harness, not two overall. OpenCode, Cline and Codex are separate quotas, so two OpenCode workers compete with each other while an OpenCode worker, a Cline worker and a Codex do not — even when two of them are running the same DeepSeek model. The old flat cap of two punished the safe case and permitted the risky one. Claude subagents keep their own cap of two, because that is real spend.
+Concurrency — two per harness, not two overall. OpenCode, Cline, Codex and Grok are separate quotas, so two OpenCode workers compete with each other while an OpenCode worker, a Cline worker, a Codex and a Grok do not — even when two of them are running the same DeepSeek model. The old flat cap of two punished the safe case and permitted the risky one. Claude subagents keep their own cap of two, because that is real spend.
 
 The rule that actually matters is territory: never have two workers writing the same files at once. They share one working tree with no isolation. A rate limit is loud — it comes back as a blocked message you can simply resend. A write collision is quiet and expensive. This includes Freebuff: if I am running it, treat the files it owns as taken.
 

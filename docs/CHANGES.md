@@ -1452,3 +1452,31 @@ matching `env(safe-area-inset-*)` padding in the stylesheet would push content u
 There is currently no safe-area handling anywhere in the CSS, so that is a separate piece of work.
 
 **Checks:** `typecheck`, `lint`, `test` and `build` pass.
+
+## Unreleased — Grok added as a delegation route
+
+**Outcome:** Grok 4.6 is available as a headless mailbox worker, driven by Claude directly rather
+than by the prompter.
+
+- A SuperGrok subscription was taken out on 13 August 2026. The `grok` CLI (Grok Build TUI 1.0.3,
+  at `~/.local/bin/grok`) is signed in through grok.com OIDC with coding-data retention opted out,
+  and offers `grok-4.6` (default, 500k context) and `grok-4.5`.
+- Verified headless operation with `grok -p`, so unlike Freebuff it needs no supervision from the
+  prompter. It supports `--effort low|medium|high|xhigh`, `--json-schema` for enforced structured
+  output, `--tools`/`--disallowed-tools` and `--rules` for scoping, and several streaming output
+  formats.
+- `-w/--worktree` is silently ignored under `-p`. A Grok worker that needs isolation must be given
+  a worktree created beforehand and pointed at it with `--cwd`.
+- `CLAUDE.md`: added a Grok section, a table row (intelligence 9, cost 8, speed 8), Grok to the
+  permitted-without-asking mailbox workers, and Grok as a fourth independent concurrency quota
+  alongside OpenCode, Cline and Codex.
+- Taste and 3D remain unrated and must not be guessed, on the same rule that already governs
+  DeepSeek V4 Pro. Until the prompter supplies a number, Grok gets no frontend, design or 3D work.
+  Its intelligence rating does put it out of the slop tier, so it takes whole tasks like Sol rather
+  than needing them decomposed — and unlike Sol, its output is usually mergeable as written rather
+  than needing a polishing pass. Review it as a competent colleague's branch, not as a draft.
+- A first real session registered 0% of the SuperGrok allowance, against an estimated 5% had the
+  same work gone to Claude. One data point, not a measured ceiling, so the cost rating stays at 8;
+  the practical consequence is that Grok need not be rationed the way Sol must be.
+
+**Checks:** documentation only; no code changed.
