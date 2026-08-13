@@ -138,7 +138,11 @@ export function computeStudyStats(
 
   for (const card of cards) {
     if (card.suspended) continue;
-    const secondsPerReview = deckSeconds.get(card.deckId) ?? DEFAULT_REVIEW_SECONDS;
+    const secondsPerReview =
+      (card.courseId ? deckSeconds.get(card.courseId) : undefined) ??
+      (card.schedulingUnitId ? deckSeconds.get(card.schedulingUnitId) : undefined) ??
+      deckSeconds.get(card.deckId) ??
+      DEFAULT_REVIEW_SECONDS;
     const minutes = secondsPerReview / 60;
     // Group by courseId where available (new model); fall back to deckId for legacy cards.
     const sourceId = card.courseId ?? card.deckId;

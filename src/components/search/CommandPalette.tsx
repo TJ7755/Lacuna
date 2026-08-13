@@ -83,7 +83,6 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   const m = speedMultiplier(motionSpeed);
   const searchData = useSearchData();
   const cards = searchData?.cards;
-  const decks = searchData?.decks;
   const courses = searchData?.courses;
   const lessons = searchData?.lessons;
   const notes = searchData?.notes;
@@ -107,12 +106,12 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
     );
     const cardHits = searchCardsInScope(
       deferredQuery,
-      { cards: cards ?? [], decks: decks ?? [], courses: courses ?? [] },
+      { cards: cards ?? [], courses: courses ?? [], lessons: lessons ?? [] },
     ).map(
       (r): PaletteHit => ({ kind: 'card', ...r }),
     );
     return [...courseHits, ...cardHits].slice(0, MAX_RESULTS);
-  }, [deferredQuery, cards, decks, courses, lessons, notes]);
+  }, [deferredQuery, cards, courses, lessons, notes]);
 
   // Reset and focus when the palette mounts.
   useEffect(() => {

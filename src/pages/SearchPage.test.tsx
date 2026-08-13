@@ -37,6 +37,8 @@ const mockCourse: Course = {
 const mockCard: Card = {
   id: 'card-1',
   deckId: 'deck-1',
+  courseId: mockCourse.id,
+  primaryLessonId: null,
   type: 'front_back',
   front: 'Palatine hill fortifications',
   back: 'Rome',
@@ -56,7 +58,6 @@ const mockCard: Card = {
 const dataHooks = vi.hoisted(() => ({
   useSearchData: vi.fn(() => ({
     cards: [] as Card[],
-    decks: [] as Deck[],
     courses: [] as Course[],
     lessons: [] as Lesson[],
     notes: [] as Note[],
@@ -71,8 +72,7 @@ describe('SearchPage', () => {
   it('badges a sequence-generated card result', () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [{ ...mockCard, sequenceItemId: 'item-1' }],
-      decks: [mockDeck],
-      courses: [],
+      courses: [mockCourse],
       lessons: [],
       notes: [],
     });
@@ -88,7 +88,6 @@ describe('SearchPage', () => {
   it('uses the Course name for a course card without a backing Deck row', () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [{ ...mockCard, deckId: 'missing-deck', courseId: mockCourse.id }],
-      decks: [],
       courses: [mockCourse],
       lessons: [],
       notes: [],
@@ -105,8 +104,7 @@ describe('SearchPage', () => {
   it('badges an occlusion-generated card result', () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [{ ...mockCard, occlusionRegionId: 'region-1' }],
-      decks: [mockDeck],
-      courses: [],
+      courses: [mockCourse],
       lessons: [],
       notes: [],
     });
