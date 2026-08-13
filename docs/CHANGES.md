@@ -54,6 +54,9 @@
 - Backup version 10 carries tombstones. Older backups still import; merge-import unions
   incoming tombstones without applying them as deletes. Pre-migration snapshots now include
   occlusions.
+- Tests now cover the remaining §7.4 contracts: one `updatedAt` assertion per remaining
+  public mutation, `deleteCards` counts and rollback, a full course-delete cascade fixture,
+  restore paths that must not restamp, and the leftover snapshot-carried tombstone writes.
 
 ## Unreleased — Smoother in-place motion
 
