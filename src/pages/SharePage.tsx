@@ -584,11 +584,11 @@ export function SharePage() {
             <AnimatePresence>
               {code && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                  animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
-                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  initial={m > 0 ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
+                  exit={m > 0 ? { opacity: 0 } : undefined}
                   transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                  className="overflow-hidden"
+                  className="mt-5"
                 >
                   <div className="rounded-xl border border-line-strong bg-surface-raised p-4 shadow-sm">
                     <div className="mb-2 flex items-center justify-between">
@@ -623,11 +623,11 @@ export function SharePage() {
             <AnimatePresence>
               {showQR && qrCode && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                  animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
-                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  initial={m > 0 ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
+                  exit={m > 0 ? { opacity: 0 } : undefined}
                   transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                  className="overflow-hidden"
+                  className="mt-5"
                 >
                   <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
                     <div className="mb-3 flex items-center justify-between">
@@ -666,11 +666,11 @@ export function SharePage() {
             <AnimatePresence>
               {plainText && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                  animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
-                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  initial={m > 0 ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
+                  exit={m > 0 ? { opacity: 0 } : undefined}
                   transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                  className="overflow-hidden"
+                  className="mt-5"
                 >
                   <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
                     <div className="mb-2 flex items-center justify-between">
@@ -749,11 +749,11 @@ export function SharePage() {
         <AnimatePresence>
           {scanning && (
             <motion.div
-              initial={{ opacity: 0, height: 0, marginTop: 0 }}
-              animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
-              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              initial={m > 0 ? { opacity: 0 } : false}
+              animate={{ opacity: 1 }}
+              exit={m > 0 ? { opacity: 0 } : undefined}
               transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden"
+              className="mt-5"
             >
               <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
                 <div className="mb-2 flex items-center justify-between">
@@ -785,11 +785,11 @@ export function SharePage() {
         <AnimatePresence>
           {pending && (
             <motion.div
-              initial={{ opacity: 0, height: 0, marginTop: 0 }}
-              animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
-              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              initial={m > 0 ? { opacity: 0 } : false}
+              animate={{ opacity: 1 }}
+              exit={m > 0 ? { opacity: 0 } : undefined}
               transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden"
+              className="mt-5"
             >
               <div className="rounded-xl border border-accent/40 bg-accent-soft/40 p-5">
                 <h3 className="mb-2 font-display text-lg">
