@@ -49,18 +49,6 @@ interface LearnModeProps {
   sessionId?: string;
 }
 
-function buttonReveal(m: number) {
-  return {
-    hidden: { opacity: 0, y: 12, scale: 0.96 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: { duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] },
-    },
-  };
-}
-
 export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
   const routeParams = useParams<{ courseId: string; lessonId: string }>();
   const courseId = request?.kind === 'practice' ? request.courseId : routeParams.courseId;
@@ -639,91 +627,63 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                     ) : (
                       <>
                         {gradingMode === 'manual' ? (
-                          <motion.div
-                            className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4"
-                            initial="hidden"
-                            animate="visible"
-                            variants={{
-                              hidden: {},
-                              visible: { transition: { staggerChildren: 0.04 } },
-                            }}
-                          >
-                            <motion.div variants={buttonReveal(m)}>
-                              <Button
-                                variant="danger"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => void answer(1, 'keyboard')}
-                              >
-                                <CloseIcon width={18} height={18} />
-                                Again
-                              </Button>
-                            </motion.div>
-                            <motion.div variants={buttonReveal(m)}>
-                              <Button
-                                variant="secondary"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => void answer(2, 'keyboard')}
-                              >
-                                Hard
-                              </Button>
-                            </motion.div>
-                            <motion.div variants={buttonReveal(m)}>
-                              <Button
-                                variant="secondary"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => void answer(3, 'keyboard')}
-                              >
-                                Good
-                              </Button>
-                            </motion.div>
-                            <motion.div variants={buttonReveal(m)}>
-                              <Button
-                                variant="primary"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => void answer(4, 'keyboard')}
-                              >
-                                <CheckIcon width={18} height={18} />
-                                Easy
-                              </Button>
-                            </motion.div>
-                          </motion.div>
+                          <div className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
+                            <Button
+                              variant="danger"
+                              size="lg"
+                              className="w-full"
+                              onClick={() => void answer(1, 'keyboard')}
+                            >
+                              <CloseIcon width={18} height={18} />
+                              Again
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="lg"
+                              className="w-full"
+                              onClick={() => void answer(2, 'keyboard')}
+                            >
+                              Hard
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="lg"
+                              className="w-full"
+                              onClick={() => void answer(3, 'keyboard')}
+                            >
+                              Good
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="lg"
+                              className="w-full"
+                              onClick={() => void answer(4, 'keyboard')}
+                            >
+                              <CheckIcon width={18} height={18} />
+                              Easy
+                            </Button>
+                          </div>
                         ) : (
-                          <motion.div
-                            className="flex w-full max-w-md gap-3"
-                            initial="hidden"
-                            animate="visible"
-                            variants={{
-                              hidden: {},
-                              visible: { transition: { staggerChildren: 0.05 } },
-                            }}
-                          >
-                            <motion.div variants={buttonReveal(m)} className="flex-1">
-                              <Button
-                                variant="danger"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => void answer(false, 'keyboard')}
-                              >
-                                <CloseIcon width={18} height={18} />
-                                No
-                              </Button>
-                            </motion.div>
-                            <motion.div variants={buttonReveal(m)} className="flex-1">
-                              <Button
-                                variant="primary"
-                                size="lg"
-                                className="w-full"
-                                onClick={() => void answer(true, 'keyboard')}
-                              >
-                                <CheckIcon width={18} height={18} />
-                                Yes
-                              </Button>
-                            </motion.div>
-                          </motion.div>
+                          <div className="flex w-full max-w-md gap-3">
+                            <Button
+                              variant="danger"
+                              size="lg"
+                              className="w-full flex-1"
+                              onClick={() => void answer(false, 'keyboard')}
+                            >
+                              <CloseIcon width={18} height={18} />
+                              No
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="lg"
+                              className="w-full flex-1"
+                              onClick={() => void answer(true, 'keyboard')}
+                            >
+                              <CheckIcon width={18} height={18} />
+                              Yes
+                            </Button>
+                          </div>
                         )}
                       </>
                     )}
