@@ -750,6 +750,11 @@ export interface RecordReviewResult {
    * restore it on undo.
    */
   lastInteractedAtBefore: number | undefined;
+  /**
+   * The unit's `updatedAt` immediately before this review overwrote it, so undo
+   * can rewind the stamp as well as `lastInteractedAt`.
+   */
+  updatedAtBefore: number | undefined;
 }
 
 export interface ReviewTrajectorySampleArgs {
@@ -869,6 +874,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
     }
 
     let lastInteractedAtBefore: number | undefined;
+    let updatedAtBefore: number | undefined;
     const result = await db.transaction(
       'rw',
       [
@@ -895,6 +901,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
             sessionHistoryId: existingSession?.id,
             kind,
             lastInteractedAtBefore: undefined,
+            updatedAtBefore: undefined,
           };
         }
 
@@ -968,10 +975,14 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           });
         }
         if (kind === 'course') {
-          lastInteractedAtBefore = (await db.courses.get(deck.id))?.lastInteractedAt;
+          const before = await db.courses.get(deck.id);
+          lastInteractedAtBefore = before?.lastInteractedAt;
+          updatedAtBefore = before?.updatedAt;
           await db.courses.update(deck.id, stampUpdatedAt({ lastInteractedAt: now }, now));
         } else {
-          lastInteractedAtBefore = (await db.schedulingUnits.get(deck.id))?.lastInteractedAt;
+          const before = await db.schedulingUnits.get(deck.id);
+          lastInteractedAtBefore = before?.lastInteractedAt;
+          updatedAtBefore = before?.updatedAt;
           await db.schedulingUnits.update(deck.id, stampUpdatedAt({ lastInteractedAt: now }, now));
         }
 
@@ -985,6 +996,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           recorded: true,
           kind,
           lastInteractedAtBefore,
+          updatedAtBefore,
         };
       },
     );
@@ -1016,6 +1028,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           sessionHistoryId: existingSession?.id,
           kind: args.kind ?? 'scheduling-unit',
           lastInteractedAtBefore: undefined,
+          updatedAtBefore: undefined,
         };
       }
     }
@@ -1049,6 +1062,11 @@ export interface ReviewUndo {
    * the unit had no prior interaction.
    */
   lastInteractedAtBefore: number | undefined;
+  /**
+   * The unit's `updatedAt` immediately before the review (see
+   * {@link RecordReviewResult.updatedAtBefore}), restored on undo.
+   */
+  updatedAtBefore: number | undefined;
 }
 
 /**
@@ -1086,10 +1104,14 @@ export async function undoReview(undo: ReviewUndo): Promise<void> {
         // Dexie's update() deletes the property when the patch value is undefined, so
         // this also correctly restores "never interacted" (no prior lastInteractedAt).
         if (undo.kind === 'course') {
-          await db.courses.update(undo.deckId, { lastInteractedAt: undo.lastInteractedAtBefore });
+          await db.courses.update(undo.deckId, {
+            lastInteractedAt: undo.lastInteractedAtBefore,
+            updatedAt: undo.updatedAtBefore,
+          });
         } else {
           await db.schedulingUnits.update(undo.deckId, {
             lastInteractedAt: undo.lastInteractedAtBefore,
+            updatedAt: undo.updatedAtBefore,
           });
         }
         await db.reviewHistory.delete(reviewHistoryEntryIdForEvent(undo.eventId));

@@ -200,6 +200,8 @@ describe('mergeImport: merge apply', () => {
   });
 
   it('re-importing an unchanged payload produces an empty diff (no queue, revision updated)', async () => {
+    const before = (await db.courses.get(courseId))!.updatedAt;
+    await new Promise((resolve) => setTimeout(resolve, 2));
     const result = await mergeLineageUpdate(courseId, coursePayload({ rv: 2, lessons: [lessonOne()] }));
     expect(result).toMatchObject({
       createdLessons: 0,
@@ -212,6 +214,7 @@ describe('mergeImport: merge apply', () => {
     });
     const course = await db.courses.get(courseId);
     expect(course?.distributedCopy?.revision).toBe(2);
+    expect(course?.updatedAt).toBeGreaterThan(before);
     expect(await db.pendingMergeReviews.where('courseId').equals(courseId).count()).toBe(0);
   });
 

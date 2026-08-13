@@ -44,6 +44,7 @@ import {
   updateSequence,
 } from './repository';
 import { ensureLessonBackingDeck, syncCourseSchedulingUnits } from './backingDecks';
+import { stampUpdatedAt } from './mutationStamp';
 import { updateOcclusion } from './occlusionRepository';
 import { assertValidCardPayload } from '../items/payloadValidation';
 import { diffLineage, jsonValuesEqual } from './lineageDiff';
@@ -869,9 +870,10 @@ export async function mergeLineageUpdate(
     await applyOcclusions(payload, courseId, lessonIdByIndex, mapping);
 
     // 6. Revision + mapping bookkeeping.
-    await db.courses.update(courseId, {
-      distributedCopy: { ...dc, revision: payload.rv },
-    });
+    await db.courses.update(
+      courseId,
+      stampUpdatedAt({ distributedCopy: { ...dc, revision: payload.rv } }),
+    );
     await db.lineageIdMappings.put(mapping);
 
     // Queue whatever remains unresolved, superseding any previous pending row for this

@@ -1383,6 +1383,7 @@ export function useLearnSession({
           sessionHistoryId,
           kind,
           lastInteractedAtBefore,
+          updatedAtBefore,
         } = await recordReview({
           card: cardNow,
           eventId,
@@ -1472,6 +1473,7 @@ export function useLearnSession({
                 deckId: deck.id,
                 kind,
                 lastInteractedAtBefore,
+                updatedAtBefore,
               },
               cooldowns: cooldownsSnapshot,
               eventsLen,
