@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile } from '../../db/types';
+import { ManualMergeError } from '../../sync/manualMerge';
 import { DataPortabilitySection } from './DataPortabilitySection';
 
 const { readBackupFile, importBackup, manualMerge, notify } = vi.hoisted(() => ({
@@ -15,9 +16,13 @@ vi.mock('../../db/portability', () => ({
   readBackupFile: (...args: unknown[]) => readBackupFile(...args),
 }));
 
-vi.mock('../../sync/manualMerge', () => ({
-  manualMerge: (...args: unknown[]) => manualMerge(...args),
-}));
+vi.mock('../../sync/manualMerge', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../sync/manualMerge')>();
+  return {
+    ...actual,
+    manualMerge: (...args: unknown[]) => manualMerge(...args),
+  };
+});
 
 vi.mock('../../components/import/UnifiedExportPanel', () => ({
   UnifiedExportPanel: () => null,
@@ -31,7 +36,7 @@ function backupStub(overrides: Partial<BackupFile> = {}): BackupFile {
   return {
     app: 'lacuna',
     version: 10,
-    exportedAt: Date.now(),
+    exportedAt: new Date(2026, 7, 12).getTime(),
     cards: [],
     assets: [],
     sessionHistory: [],
@@ -40,8 +45,15 @@ function backupStub(overrides: Partial<BackupFile> = {}): BackupFile {
   } as BackupFile;
 }
 
-async function chooseMergeFile() {
-  const input = screen.getByLabelText('Merge from another device');
+async function chooseRecoverFile() {
+  const input = screen.getByLabelText('Recover this installation');
+  await act(async () => {
+    fireEvent.change(input, { target: { files: [new File(['{}'], 'backup.json')] } });
+  });
+}
+
+async function chooseCombineFile() {
+  const input = screen.getByLabelText('Backup from another device');
   await act(async () => {
     fireEvent.change(input, { target: { files: [new File(['{}'], 'backup.json')] } });
   });
@@ -56,17 +68,9 @@ describe('DataPortabilitySection', () => {
   });
 
   it('requires explicit confirmation before replacing local data', async () => {
-    readBackupFile.mockResolvedValue({
-      decks: [],
-      lessons: [],
-      cards: [],
-      exportedAt: Date.now(),
-    } as unknown as BackupFile);
-    const { container } = render(<DataPortabilitySection motionMultiplier={0} />);
-    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await act(async () => {
-      fireEvent.change(input, { target: { files: [new File(['{}'], 'backup.json')] } });
-    });
+    readBackupFile.mockResolvedValue(backupStub());
+    render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseRecoverFile();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Replace local data' }));
     expect(importBackup).not.toHaveBeenCalled();
@@ -75,64 +79,68 @@ describe('DataPortabilitySection', () => {
   });
 
   it('reports the backup lesson count rather than the internal deck count', async () => {
-    readBackupFile.mockResolvedValue({
+    readBackupFile.mockResolvedValue(backupStub({
       decks: Array.from({ length: 5 }),
       lessons: Array.from({ length: 7 }),
       cards: Array.from({ length: 36 }),
       exportedAt: new Date(2026, 7, 10).getTime(),
-    } as unknown as BackupFile);
+    }) as BackupFile);
 
-    const { container } = render(<DataPortabilitySection motionMultiplier={0} />);
-    const input = container.querySelector<HTMLInputElement>('input[type="file"]');
-    expect(input).not.toBeNull();
-
-    fireEvent.change(input!, { target: { files: [new File(['{}'], 'backup.json')] } });
+    render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseRecoverFile();
 
     expect(await screen.findByText(/This backup contains/)).toHaveTextContent(
       'This backup contains 7 lessons and 36 cards',
     );
   });
 
-  it('reports folder names discarded while importing a legacy backup', async () => {
-    readBackupFile.mockResolvedValue({
+  it('reports folder names discarded while adding a legacy backup', async () => {
+    readBackupFile.mockResolvedValue(backupStub({
       decks: [{}],
       cards: [],
-      exportedAt: Date.now(),
-    } as unknown as BackupFile);
+    }) as BackupFile);
     importBackup.mockResolvedValue({ discardedFolderNames: ['Chemistry', 'Organic'] });
-    const { container } = render(<DataPortabilitySection motionMultiplier={0} />);
-    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
-    fireEvent.change(input, { target: { files: [new File(['{}'], 'backup.json')] } });
+    render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseRecoverFile();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Merge backup' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add from backup' }));
 
     await waitFor(() =>
       expect(notify).toHaveBeenCalledWith(
-        'Backup merged. Folder hierarchy was discarded: Chemistry, Organic.',
+        'Backup added. Folder hierarchy was discarded: Chemistry, Organic.',
         'positive',
       ),
     );
   });
 
-  it('requires confirmation before merging from another device', async () => {
+  it('requires confirmation before combining with another device', async () => {
     readBackupFile.mockResolvedValue(backupStub({
       lessons: Array.from({ length: 2 }),
       cards: Array.from({ length: 4 }),
     }));
     render(<DataPortabilitySection motionMultiplier={0} />);
-    await chooseMergeFile();
+    await chooseCombineFile();
 
-    expect(await screen.findByText(/Data from both devices is combined/)).toBeInTheDocument();
-    expect(screen.getByText(/The newest edit of each item wins/)).toBeInTheDocument();
-    expect(screen.getByText(/Deletions from either device are honoured/)).toBeInTheDocument();
-    expect(screen.getByText(/A backup of this device is taken first/)).toBeInTheDocument();
+    expect(await screen.findByText(/Combine with the 12 August 2026 backup \(4 cards\)\?/)).toBeInTheDocument();
+    expect(screen.queryByText(/Data from both devices is combined/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Merge' })).not.toBeInTheDocument();
     expect(manualMerge).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Combine' }));
     await waitFor(() => expect(manualMerge).toHaveBeenCalledTimes(1));
   });
 
-  it('shows the merge summary on success', async () => {
+  it('explains combining in the resting copy, not at the confirm', () => {
+    render(<DataPortabilitySection motionMultiplier={0} />);
+
+    expect(screen.getByRole('heading', { name: 'Another device' })).toBeInTheDocument();
+    expect(screen.getByText(/Cards and reviews from either side are kept/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Choose backup from another device' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Recover this installation' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add from backup' })).not.toBeInTheDocument();
+  });
+
+  it('shows the combine summary on success', async () => {
     readBackupFile.mockResolvedValue(backupStub());
     manualMerge.mockResolvedValue({
       cards: { kept: 12, added: 3, removed: 0 },
@@ -141,8 +149,8 @@ describe('DataPortabilitySection', () => {
       reviewEvents: { kept: 40, added: 12, removed: 0 },
     });
     render(<DataPortabilitySection motionMultiplier={0} />);
-    await chooseMergeFile();
-    fireEvent.click(await screen.findByRole('button', { name: 'Merge' }));
+    await chooseCombineFile();
+    fireEvent.click(await screen.findByRole('button', { name: 'Combine' }));
 
     await waitFor(() =>
       expect(notify).toHaveBeenCalledWith(
@@ -151,6 +159,7 @@ describe('DataPortabilitySection', () => {
       ),
     );
     expect(importBackup).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Choose backup from another device' })).toBeInTheDocument();
   });
 
   it('names removed cards in the success notice', async () => {
@@ -162,8 +171,8 @@ describe('DataPortabilitySection', () => {
       reviewEvents: { kept: 40, added: 0, removed: 2 },
     });
     render(<DataPortabilitySection motionMultiplier={0} />);
-    await chooseMergeFile();
-    fireEvent.click(await screen.findByRole('button', { name: 'Merge' }));
+    await chooseCombineFile();
+    fireEvent.click(await screen.findByRole('button', { name: 'Combine' }));
 
     await waitFor(() =>
       expect(notify).toHaveBeenCalledWith(
@@ -173,26 +182,27 @@ describe('DataPortabilitySection', () => {
     );
   });
 
-  it('rejects an invalid merge file without writing', async () => {
+  it('rejects an invalid combine file without writing', async () => {
     readBackupFile.mockRejectedValue(new Error('This file is not a valid Lacuna backup.'));
     render(<DataPortabilitySection motionMultiplier={0} />);
-    await chooseMergeFile();
+    await chooseCombineFile();
 
     expect(notify).toHaveBeenCalledWith('This file is not a valid Lacuna backup.', 'negative');
     expect(manualMerge).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button', { name: 'Merge' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Combine' })).not.toBeInTheDocument();
   });
 
-  it('surfaces a pre-import merge failure and leaves the existing import path unused', async () => {
+  it('surfaces a pre-import combine failure and leaves the file offered', async () => {
     readBackupFile.mockResolvedValue(backupStub());
     manualMerge.mockRejectedValue(
-      Object.assign(new Error('IndexedDB unavailable. A safety backup could not be taken, so the database was not modified.'), {
-        databaseModified: false,
-      }),
+      new ManualMergeError(
+        'IndexedDB unavailable. A safety backup could not be taken, so the database was not modified.',
+        { databaseModified: false },
+      ),
     );
     render(<DataPortabilitySection motionMultiplier={0} />);
-    await chooseMergeFile();
-    fireEvent.click(await screen.findByRole('button', { name: 'Merge' }));
+    await chooseCombineFile();
+    fireEvent.click(await screen.findByRole('button', { name: 'Combine' }));
 
     await waitFor(() =>
       expect(notify).toHaveBeenCalledWith(
@@ -201,9 +211,27 @@ describe('DataPortabilitySection', () => {
       ),
     );
     expect(importBackup).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Combine' })).toBeInTheDocument();
   });
 
-  it('disables the merge action while the merge is running', async () => {
+  it('points at restore points when combine writes then fails', async () => {
+    readBackupFile.mockResolvedValue(backupStub());
+    manualMerge.mockRejectedValue(
+      new ManualMergeError('The import did not finish.', { databaseModified: true }),
+    );
+    render(<DataPortabilitySection motionMultiplier={0} />);
+    await chooseCombineFile();
+    fireEvent.click(await screen.findByRole('button', { name: 'Combine' }));
+
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        'The import did not finish. Restore from Automatic backups if this installation looks wrong.',
+        'negative',
+      ),
+    );
+  });
+
+  it('disables the combine action while it is running', async () => {
     let resolveMerge: (value: unknown) => void = () => undefined;
     readBackupFile.mockResolvedValue(backupStub());
     manualMerge.mockImplementation(
@@ -212,11 +240,11 @@ describe('DataPortabilitySection', () => {
       }),
     );
     render(<DataPortabilitySection motionMultiplier={0} />);
-    await chooseMergeFile();
-    fireEvent.click(await screen.findByRole('button', { name: 'Merge' }));
+    await chooseCombineFile();
+    fireEvent.click(await screen.findByRole('button', { name: 'Combine' }));
 
-    expect(await screen.findByRole('button', { name: 'Merging…' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Combining…' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
 
     await act(async () => {
       resolveMerge({
