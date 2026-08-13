@@ -89,8 +89,6 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
   const importTargetName = context.importTargetName;
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [moving, setMoving] = useState(false);
-  const [moveTarget, setMoveTarget] = useState<string>('');
   const [tagging, setTagging] = useState(false);
   const [tagValue, setTagValue] = useState('');
   const [rescheduling, setRescheduling] = useState(false);
@@ -107,11 +105,6 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
   }, [schedulingConfig.id]);
 
 
-  const otherDecks = useMemo(
-    () => (context.moveTargets ?? []).filter((target) => target.id !== schedulingConfig.id),
-    [context.moveTargets, schedulingConfig.id],
-  );
-
   // Existing tags across the deck, offered as suggestions in the bulk tag panel.
   const tagSuggestions = useMemo(() => {
     const set = new Set<string>();
@@ -121,7 +114,7 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
 
   // Generated cards (a sequence item ID or an occlusion region ID) are managed exclusively
   // from their owning sequence/occlusion: they never take part in bulk selection
-  // (Tag/Suspend/Move/Delete/…), since content edits and deletes would desync or fight
+  // (Tag/Suspend/Delete/…), since content edits and deletes would desync or fight
   // with the next regeneration. Grouping them under a header naming their owner is purely
   // presentational — every card still flows through the same CardListBody/CardRow, which
   // independently enforces the read-only treatment (no checkbox, no delete) from
@@ -198,8 +191,6 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
   function exitSelect() {
     setSelectMode(false);
     setSelected(new Set());
-    setMoving(false);
-    setMoveTarget('');
     setTagging(false);
     setTagValue('');
     setRescheduling(false);
@@ -269,30 +260,19 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
     });
   }
 
-  function startMove() {
-    setTagging(false);
-    setRescheduling(false);
-    setAssigningLesson(false);
-    setMoveTarget(otherDecks[0]?.id ?? '');
-    setMoving(true);
-  }
-
   function startTag() {
-    setMoving(false);
     setRescheduling(false);
     setAssigningLesson(false);
     setTagging(true);
   }
 
   function startReschedule() {
-    setMoving(false);
     setTagging(false);
     setAssigningLesson(false);
     setRescheduling(true);
   }
 
   function startAssignLesson() {
-    setMoving(false);
     setTagging(false);
     setRescheduling(false);
     setAssignTarget(assignableLessons?.[0]?.id ?? '');
@@ -342,21 +322,6 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
         `${n} card${plural(n)} made due now.`,
       );
     }
-  }
-
-  async function handleMove() {
-    if (!moveTarget) return;
-    const ids = [...selected];
-    const snapshot = await snapshotCards(ids);
-    if (!context.onMove) return;
-    await context.onMove(ids, moveTarget);
-    exitSelect();
-    notify(`${ids.length} card${ids.length === 1 ? '' : 's'} moved.`, 'neutral', {
-      actionLabel: 'Undo',
-      onAction: () => {
-        void context.onRestore(snapshot);
-      },
-    });
   }
 
   async function handleImport(cards: ParsedCard[]) {
@@ -561,14 +526,6 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
               >
                 Reschedule…
               </Button>
-              <Button
-                size="sm"
-                variant={moving ? 'primary' : 'secondary'}
-                disabled={selected.size === 0 || otherDecks.length === 0 || (context !== undefined && context.onMove === undefined)}
-                onClick={() => (moving ? setMoving(false) : startMove())}
-              >
-                Move to…
-              </Button>
               {assignableLessons && courseId && (
                 <Button
                   size="sm"
@@ -692,49 +649,6 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
                     </Button>
                     <Button size="sm" variant="primary" onClick={handleReschedule}>
                       Reschedule
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Inline move chooser */}
-          <AnimatePresence>
-            {moving && selected.size > 0 && otherDecks.length > 0 && (
-              <motion.div
-                initial={m > 0 ? { opacity: 0 } : false}
-                animate={{ opacity: 1 }}
-                exit={m > 0 ? { opacity: 0 } : undefined}
-                transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="mt-3"
-              >
-                <div className="border-t border-line pt-3">
-                  <label className="block text-sm text-ink-soft">
-                    Move {selected.size} card{selected.size === 1 ? '' : 's'} to
-                    <Select
-                      value={moveTarget}
-                      onChange={(e) => setMoveTarget(e.target.value)}
-                      className="mt-2 w-full"
-                    >
-                      {otherDecks.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-                  <div className="mt-4 flex justify-end gap-2">
-                    <Button size="sm" variant="ghost" onClick={() => setMoving(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={handleMove}
-                      disabled={!moveTarget}
-                    >
-                      Move
                     </Button>
                   </div>
                 </div>

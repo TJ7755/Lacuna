@@ -26,7 +26,6 @@ vi.mock('../../db/repository', () => ({
   assignCardsToLesson: vi.fn(),
   createCards: vi.fn(),
   deleteCards: vi.fn(),
-  moveCards: vi.fn(),
   removeTagFromCards: vi.fn(),
   restoreCards: vi.fn(),
   setCardsSuspended: vi.fn(),
@@ -183,51 +182,6 @@ describe('CardList', () => {
     expect(await screen.findByTestId('card-analytics')).toBeInTheDocument();
   });
 
-  it('accepts a domain-neutral context for analytics, import and legacy moves', async () => {
-    const onImport = vi.fn();
-    const onApkgImport = vi.fn();
-    const onMove = vi.fn();
-    const onRestore = vi.fn();
-    const context: CardListContext = {
-      schedulingConfig: mockDeck,
-      importTargetId: 'course-bank',
-      importTargetName: 'Course bank',
-      onImport,
-      onApkgImport,
-      moveTargets: [{ id: 'other-deck', name: 'Other deck' }],
-      onMove,
-      onRestore,
-    };
-    render(
-      <CardList
-        cards={[mockCard]}
-        context={context}
-        onEditCard={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(await screen.findByText('What is the capital of France?'));
-    expect(await screen.findByTestId('card-analytics')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Import cards'));
-    expect(screen.getByText('Import cards into Course bank')).toBeInTheDocument();
-    expect(screen.getByTestId('import-target')).toHaveTextContent('course-bank');
-    fireEvent.click(screen.getByText('Trigger import'));
-    expect(onImport).toHaveBeenCalledWith([]);
-
-    fireEvent.click(screen.getByText('Select'));
-    fireEvent.click(screen.getByText('Select all'));
-    fireEvent.click(screen.getByText('Move to…'));
-    expect(screen.getByRole('option', { name: 'Other deck' })).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Move'));
-    await waitFor(() => expect(onMove).toHaveBeenCalledWith(['card-1'], 'other-deck'));
-    const moveNotice = mockNotify.mock.calls[mockNotify.mock.calls.length - 1]?.[2] as {
-      onAction: () => void;
-    };
-    moveNotice.onAction();
-    expect(onRestore).toHaveBeenCalledOnce();
-  });
-
   it('routes APKG imports through the context capability', async () => {
     const onApkgImport = vi.fn();
     const context: CardListContext = {
@@ -235,8 +189,6 @@ describe('CardList', () => {
       importTargetName: 'Course bank',
       onImport: vi.fn(),
       onApkgImport,
-      moveTargets: [],
-      onMove: vi.fn(),
       onRestore: vi.fn(),
     };
     render(<CardList cards={[mockCard]} context={context} onEditCard={vi.fn()} />);
