@@ -19,6 +19,7 @@ import type {
   LessonCompletion,
   Note,
   NoteAnnotation,
+  Occlusion,
   PracticeMilestone,
   PracticeNode,
   ReviewLog,
@@ -79,6 +80,13 @@ import {
   type GeneratedCardPayload,
 } from './sequenceGeneration';
 import { friendlyDbError } from './dbErrors';
+import {
+  stampUpdatedAt,
+  recordTombstone,
+  recordTombstones,
+  clearTombstone,
+  clearTombstones,
+} from './mutationStamp';
 export {
   createPracticeNode,
   updatePracticeNode,
@@ -90,6 +98,11 @@ async function assertValidCardPayload(type: CardType, payload: unknown): Promise
   if (payload === undefined || payload === null) return;
   const { assertValidCardPayload: validate } = await import('../items/payloadValidation');
   validate(type, payload);
+}
+
+/** Compound LessonCardExposure key as a single tombstone record id. */
+function lessonCardExposureId(lessonId: string, cardId: string): string {
+  return `${lessonId}:${cardId}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -161,29 +174,33 @@ export async function createCard(
       courseId: unit?.courseId,
       primaryLessonId: unit?.lessonId,
     };
-    const card: Card = {
-      id: makeId(),
-      deckId,
-      type,
-      front,
-      back,
-      stability: null,
-      difficulty: null,
-      lastReviewed: null,
-      reps: 0,
-      lapses: 0,
-      state: 0,
-      due: null,
-      scheduledDays: 0,
-      learningSteps: 0,
-      history: [],
-      createdAt: Date.now(),
-      tags,
-      suspended: false,
-      buriedUntil: null,
-      schedulingUnitId: deckId,
-      ...ownership,
-    };
+    const now = Date.now();
+    const card = stampUpdatedAt(
+      {
+        id: makeId(),
+        deckId,
+        type,
+        front,
+        back,
+        stability: null,
+        difficulty: null,
+        lastReviewed: null,
+        reps: 0,
+        lapses: 0,
+        state: 0,
+        due: null,
+        scheduledDays: 0,
+        learningSteps: 0,
+        history: [],
+        createdAt: now,
+        tags,
+        suspended: false,
+        buriedUntil: null,
+        schedulingUnitId: deckId,
+        ...ownership,
+      },
+      now,
+    );
     await db.cards.add(card);
     return card;
   } catch (err) {
@@ -214,30 +231,35 @@ export async function createCards(
       primaryLessonId: unit?.lessonId,
     };
     const now = Date.now();
-    const cards: Card[] = drafts.map((draft, i) => ({
-      id: makeId(),
-      deckId,
-      type: draft.type,
-      front: draft.front,
-      back: draft.back,
-      payload: draft.payload,
-      stability: null,
-      difficulty: null,
-      lastReviewed: null,
-      reps: 0,
-      lapses: 0,
-      state: 0,
-      due: null,
-      scheduledDays: 0,
-      learningSteps: 0,
-      history: [],
-      createdAt: now + i,
-      tags: draft.tags ?? [],
-      suspended: false,
-      buriedUntil: null,
-      schedulingUnitId: deckId,
-      ...ownership,
-    }));
+    const cards: Card[] = drafts.map((draft, i) =>
+      stampUpdatedAt(
+        {
+          id: makeId(),
+          deckId,
+          type: draft.type,
+          front: draft.front,
+          back: draft.back,
+          payload: draft.payload,
+          stability: null,
+          difficulty: null,
+          lastReviewed: null,
+          reps: 0,
+          lapses: 0,
+          state: 0,
+          due: null,
+          scheduledDays: 0,
+          learningSteps: 0,
+          history: [],
+          createdAt: now + i,
+          tags: draft.tags ?? [],
+          suspended: false,
+          buriedUntil: null,
+          schedulingUnitId: deckId,
+          ...ownership,
+        },
+        now + i,
+      ),
+    );
     await db.cards.bulkAdd(cards);
     return cards;
   } catch (err) {
@@ -278,11 +300,12 @@ export async function createBasicReversedPair(
   return db.transaction('rw', [db.cards, db.schedulingUnits], async () => {
     const reverse = await createCard(deckId, 'front_back', back, front, tags, opts);
     const card = await createCard(deckId, 'basic_reversed', front, back, tags, opts);
-    await db.cards.update(card.id, { reverseCardId: reverse.id });
-    await db.cards.update(reverse.id, { reverseCardId: card.id });
+    const now = Date.now();
+    await db.cards.update(card.id, stampUpdatedAt({ reverseCardId: reverse.id }, now));
+    await db.cards.update(reverse.id, stampUpdatedAt({ reverseCardId: card.id }, now));
     return {
-      card: { ...card, reverseCardId: reverse.id },
-      reverse: { ...reverse, reverseCardId: card.id },
+      card: stampUpdatedAt({ ...card, reverseCardId: reverse.id }, now),
+      reverse: stampUpdatedAt({ ...reverse, reverseCardId: card.id }, now),
     };
   });
 }
@@ -389,8 +412,8 @@ export async function assignCardsToLesson(
     : await ensureCourseBankDeck(courseId);
   await db.transaction(
     'rw',
-    [db.cards, db.lessonCardExposures, db.reviewHistory],
-    async () => {
+    [db.cards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
+    async (tx) => {
     const cards = await db.cards.where('id').anyOf(ids).toArray();
     const removedPrimaryExposures = cards
       .filter(
@@ -399,12 +422,21 @@ export async function assignCardsToLesson(
       .map((card) => [card.primaryLessonId as string, card.id] as [string, string]);
     if (removedPrimaryExposures.length > 0) {
       await db.lessonCardExposures.bulkDelete(removedPrimaryExposures);
+      await recordTombstones(
+        tx,
+        'lessonCardExposures',
+        removedPrimaryExposures.map(([removedLessonId, cardId]) =>
+          lessonCardExposureId(removedLessonId, cardId),
+        ),
+      );
     }
-    await db.cards.where('id').anyOf(ids).modify({
-      primaryLessonId: lessonId,
-      deckId,
-      schedulingUnitId: lessonId ?? courseId,
-    });
+    await db.cards.where('id').anyOf(ids).modify(
+      stampUpdatedAt({
+        primaryLessonId: lessonId,
+        deckId,
+        schedulingUnitId: lessonId ?? courseId,
+      }),
+    );
     await db.reviewHistory
       .where('cardId')
       .anyOf(ids)
@@ -421,7 +453,7 @@ export async function updateCard(id: string, changes: Partial<Card>): Promise<vo
         await assertValidCardPayload(changes.type ?? card.type, changes.payload);
       }
     }
-    await db.cards.update(id, changes);
+    await db.cards.update(id, stampUpdatedAt(changes));
     if ('front' in changes || 'back' in changes) {
       scheduleAssetGc();
     }
@@ -458,13 +490,28 @@ export async function deleteCards(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
   await db.transaction(
     'rw',
-    [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory],
-    async () => {
+    [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
+    async (tx) => {
       await assertNoGeneratedCards(ids);
+      const [lessonCards, exposures] = await Promise.all([
+        db.lessonCards.where('cardId').anyOf(ids).toArray(),
+        db.lessonCardExposures.where('cardId').anyOf(ids).toArray(),
+      ]);
       await db.lessonCards.where('cardId').anyOf(ids).delete();
       await db.lessonCardExposures.where('cardId').anyOf(ids).delete();
       await db.reviewHistory.where('cardId').anyOf(ids).delete();
       await db.cards.bulkDelete(ids);
+      await recordTombstones(tx, 'cards', ids);
+      await recordTombstones(
+        tx,
+        'lessonCards',
+        lessonCards.map((link) => link.id),
+      );
+      await recordTombstones(
+        tx,
+        'lessonCardExposures',
+        exposures.map((exposure) => lessonCardExposureId(exposure.lessonId, exposure.cardId)),
+      );
     },
   );
   scheduleAssetGc();
@@ -496,13 +543,30 @@ export async function restoreCards(cards: CardSnapshot): Promise<void> {
         : cardsWithReviewHistory(cards, cards.reviewHistory);
     await db.transaction(
       'rw',
-      [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory],
-      async () => {
+      [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
+      async (tx) => {
         await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(cards.lessonCards);
         await db.lessonCardExposures.bulkPut(cards.lessonCardExposures);
         await db.reviewHistory.bulkPut(
           cards.reviewHistory ?? cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
+        );
+        await clearTombstones(
+          tx,
+          'cards',
+          cardsToRestore.map((card) => card.id),
+        );
+        await clearTombstones(
+          tx,
+          'lessonCards',
+          cards.lessonCards.map((link) => link.id),
+        );
+        await clearTombstones(
+          tx,
+          'lessonCardExposures',
+          cards.lessonCardExposures.map((exposure) =>
+            lessonCardExposureId(exposure.lessonId, exposure.cardId),
+          ),
         );
       },
     );
@@ -514,25 +578,25 @@ export async function restoreCards(cards: CardSnapshot): Promise<void> {
 export async function moveCards(ids: string[], targetDeckId: string): Promise<void> {
   await db.transaction('rw', db.cards, db.reviewHistory, async () => {
     await assertNoGeneratedCards(ids);
-    await db.cards.where('id').anyOf(ids).modify({ deckId: targetDeckId });
+    await db.cards.where('id').anyOf(ids).modify(stampUpdatedAt({ deckId: targetDeckId }));
     await db.reviewHistory.where('cardId').anyOf(ids).modify({ deckId: targetDeckId });
   });
 }
 
 /** Withhold a card from all study and from progress/objective until un-suspended. */
 export async function suspendCard(id: string): Promise<void> {
-  await db.cards.update(id, { suspended: true });
+  await db.cards.update(id, stampUpdatedAt({ suspended: true }));
 }
 
 /** Return a suspended card to normal scheduling. */
 export async function unsuspendCard(id: string): Promise<void> {
-  await db.cards.update(id, { suspended: false });
+  await db.cards.update(id, stampUpdatedAt({ suspended: false }));
 }
 
 /** Suspend or un-suspend many cards at once (used by the card list's bulk actions). */
 export async function setCardsSuspended(ids: string[], suspended: boolean): Promise<void> {
   await db.transaction('rw', db.cards, async () => {
-    await db.cards.where('id').anyOf(ids).modify({ suspended });
+    await db.cards.where('id').anyOf(ids).modify(stampUpdatedAt({ suspended }));
   });
 }
 
@@ -540,6 +604,7 @@ export async function setCardsSuspended(ids: string[], suspended: boolean): Prom
 export async function addTagToCards(ids: string[], tag: string): Promise<void> {
   const clean = tag.trim();
   if (!clean) return;
+  const now = Date.now();
   await db.transaction('rw', db.cards, async () => {
     await db.cards
       .where('id')
@@ -547,31 +612,34 @@ export async function addTagToCards(ids: string[], tag: string): Promise<void> {
       .modify((card) => {
         const tags = card.tags ?? [];
         if (!tags.includes(clean)) card.tags = [...tags, clean];
+        card.updatedAt = stampUpdatedAt(card, now).updatedAt;
       });
   });
 }
 
 /** Remove a tag from many cards at once. */
 export async function removeTagFromCards(ids: string[], tag: string): Promise<void> {
+  const now = Date.now();
   await db.transaction('rw', db.cards, async () => {
     await db.cards
       .where('id')
       .anyOf(ids)
       .modify((card) => {
         if (card.tags?.length) card.tags = card.tags.filter((t) => t !== tag);
+        card.updatedAt = stampUpdatedAt(card, now).updatedAt;
       });
   });
 }
 
 /** Skip a card until the given instant (defaults to the caller-supplied next midnight). */
 export async function buryCard(id: string, until: number): Promise<void> {
-  await db.cards.update(id, { buriedUntil: until });
+  await db.cards.update(id, stampUpdatedAt({ buriedUntil: until }));
 }
 
 /** Skip many cards until the given instant. */
 export async function buryCards(ids: string[], until: number): Promise<void> {
   await db.transaction('rw', db.cards, async () => {
-    await db.cards.where('id').anyOf(ids).modify({ buriedUntil: until });
+    await db.cards.where('id').anyOf(ids).modify(stampUpdatedAt({ buriedUntil: until }));
   });
 }
 
@@ -590,9 +658,13 @@ export async function rescheduleCards(ids: string[], options: RescheduleOptions)
   if (options.due === undefined && !options.reset) {
     throw new Error('Reschedule requires either reset: true or a due date.');
   }
+  const now = Date.now();
   await db.transaction('rw', db.cards, async () => {
     if (options.due !== undefined) {
-      await db.cards.where('id').anyOf(ids).modify({ due: options.due, buriedUntil: null });
+      await db.cards
+        .where('id')
+        .anyOf(ids)
+        .modify(stampUpdatedAt({ due: options.due, buriedUntil: null }, now));
     } else if (options.reset) {
       await db.cards
         .where('id')
@@ -606,6 +678,7 @@ export async function rescheduleCards(ids: string[], options: RescheduleOptions)
           card.learningSteps = 0;
           card.lastReviewed = null;
           card.buriedUntil = null;
+          card.updatedAt = stampUpdatedAt(card, now).updatedAt;
         });
     }
   });
@@ -613,7 +686,7 @@ export async function rescheduleCards(ids: string[], options: RescheduleOptions)
 
 /** Set or clear a card's flag (a user marker for quick filtering and follow-up). */
 export async function setCardFlag(id: string, flagged: boolean): Promise<void> {
-  await db.cards.update(id, { flagged });
+  await db.cards.update(id, stampUpdatedAt({ flagged }));
 }
 
 // ---------------------------------------------------------------------------
@@ -882,8 +955,9 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
           }
         }
 
-        await db.cards.put(updatedCard);
-        const updatedHistory = reviewHistoryEntriesForCard(updatedCard);
+        const stampedCard = stampUpdatedAt(updatedCard, now);
+        await db.cards.put(stampedCard);
+        const updatedHistory = reviewHistoryEntriesForCard(stampedCard);
         const reviewHistoryEntry = updatedHistory[updatedHistory.length - 1];
         if (reviewHistoryEntry) {
           await db.reviewHistory.put({
@@ -893,10 +967,10 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         }
         if (kind === 'course') {
           lastInteractedAtBefore = (await db.courses.get(deck.id))?.lastInteractedAt;
-          await db.courses.update(deck.id, { lastInteractedAt: now });
+          await db.courses.update(deck.id, stampUpdatedAt({ lastInteractedAt: now }, now));
         } else {
           lastInteractedAtBefore = (await db.schedulingUnits.get(deck.id))?.lastInteractedAt;
-          await db.schedulingUnits.update(deck.id, { lastInteractedAt: now });
+          await db.schedulingUnits.update(deck.id, stampUpdatedAt({ lastInteractedAt: now }, now));
         }
 
         if (correct) {
@@ -904,7 +978,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         }
 
         return {
-          card: updatedCard,
+          card: stampedCard,
           cardBefore,
           recorded: true,
           kind,
@@ -1038,36 +1112,42 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
   try {
     const createdAt = Date.now();
     const practiceDefaults = readPracticeDefaults();
-    const course: Course = {
-      id: makeId(),
-      name: name.trim() || 'Untitled course',
-      description: '',
+    const course = stampUpdatedAt(
+      {
+        id: makeId(),
+        name: name.trim() || 'Untitled course',
+        description: '',
+        createdAt,
+        examDate: defaultExamDate(createdAt),
+        timeZone: getLocalTimeZone(),
+        fsrsVersion: FSRS_VERSION,
+        fsrsParameters: defaultFsrsParameters(),
+        examObjective: 'expectedMarks',
+        unlockMode: 'open',
+        // New courses default to edit mode (see src/course/lessonViewMode.ts).
+        // Share-code import (src/db/share.ts) overrides this to 'study' via opts.
+        lessonViewMode: 'edit',
+        ...practiceDefaults,
+        ...opts,
+      },
       createdAt,
-      examDate: defaultExamDate(createdAt),
-      timeZone: getLocalTimeZone(),
-      fsrsVersion: FSRS_VERSION,
-      fsrsParameters: defaultFsrsParameters(),
-      examObjective: 'expectedMarks',
-      unlockMode: 'open',
-      // New courses default to edit mode (see src/course/lessonViewMode.ts).
-      // Share-code import (src/db/share.ts) overrides this to 'study' via opts.
-      lessonViewMode: 'edit',
-      ...practiceDefaults,
-      ...opts,
-    };
+    );
     const record = courseToRecord(course);
-    const finalAssessment: CourseAssessment = {
-      id: makeId(),
-      courseId: record.id,
-      name: 'Final exam',
-      kind: 'final',
-      examDate: course.examDate,
-      ...(course.timeZone !== undefined ? { timeZone: course.timeZone } : {}),
-      afterLessonId: null,
-      coverageMode: 'prefix',
-      excludedCardIds: [],
-      createdAt: record.createdAt,
-    };
+    const finalAssessment = stampUpdatedAt(
+      {
+        id: makeId(),
+        courseId: record.id,
+        name: 'Final exam',
+        kind: 'final',
+        examDate: course.examDate,
+        ...(course.timeZone !== undefined ? { timeZone: course.timeZone } : {}),
+        afterLessonId: null,
+        coverageMode: 'prefix',
+        excludedCardIds: [],
+        createdAt: record.createdAt,
+      } as CourseAssessment,
+      createdAt,
+    );
     validateAssessmentStructure(finalAssessment);
     await db.transaction(
       'rw',
@@ -1132,7 +1212,7 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
         db.schedulingPerformance,
       ],
       async () => {
-        await db.courses.update(id, changes);
+        await db.courses.update(id, stampUpdatedAt(changes));
         await syncCourseSchedulingUnits(id);
       },
     );
@@ -1163,7 +1243,7 @@ export async function publishCourse(
         revision: (course.distribution?.revision ?? 0) + 1,
         publishedAt: Date.now(),
       };
-      await db.courses.update(courseId, { distribution });
+      await db.courses.update(courseId, stampUpdatedAt({ distribution }));
     });
     return distribution!;
   } catch (err) {
@@ -1192,7 +1272,7 @@ export async function detachCourse(courseId: string): Promise<void> {
         const course = await db.courses.get(courseId);
         if (!course) throw new Error('The course could not be found.');
         const lineageId = course.distributedCopy?.lineageId;
-        await db.courses.update(courseId, { distributedCopy: undefined });
+        await db.courses.update(courseId, stampUpdatedAt({ distributedCopy: undefined }));
         if (lineageId) {
           await db.lineageIdMappings.delete(lineageId);
         }
@@ -1218,9 +1298,9 @@ export async function setCourseAutoAcceptUpdates(
     const course = await db.courses.get(courseId);
     if (!course) throw new Error('The course could not be found.');
     if (!course.distributedCopy) throw new Error('This course is not a shared copy.');
-    await db.courses.update(courseId, {
+    await db.courses.update(courseId, stampUpdatedAt({
       distributedCopy: { ...course.distributedCopy, autoAcceptUpdates },
-    });
+    }));
   } catch (err) {
     throw friendlyDbError(err);
   }
@@ -1229,9 +1309,9 @@ export async function setCourseAutoAcceptUpdates(
 /**
  * Delete a course and cascade to all dependent rows in one transaction:
  * notes and lessonCard links belonging to the course's lessons, the lessons
- * themselves, practice nodes, course assessments, and cards whose courseId
- * matches. Cards are deleted (not unassigned) because they were created for
- * this course; the cascade mirrors deleteDeck deleting its cards.
+ * themselves, practice nodes, course assessments, occlusions, and cards whose
+ * courseId matches. Cards are deleted (not unassigned) because they were
+ * created for this course; the cascade mirrors deleteDeck deleting its cards.
  */
 export async function deleteCourse(id: string): Promise<void> {
   await db.transaction(
@@ -1251,18 +1331,65 @@ export async function deleteCourse(id: string): Promise<void> {
       db.sessionHistory,
       db.sequences,
       db.revisionPlans,
+      db.occlusions,
       db.reviewHistory,
       db.schedulingUnits,
       db.coursePerformance,
       db.schedulingPerformance,
+      db.tombstones,
     ],
-    async () => {
-      const lessonIds = await db.lessons.where('courseId').equals(id).primaryKeys();
+    async (tx) => {
+      const lessonIds = (await db.lessons.where('courseId').equals(id).primaryKeys()).map(String);
+      const noteIds =
+        lessonIds.length > 0
+          ? (await db.notes.where('lessonId').anyOf(lessonIds).primaryKeys()).map(String)
+          : [];
+      const lessonCards =
+        lessonIds.length > 0
+          ? await db.lessonCards.where('lessonId').anyOf(lessonIds).toArray()
+          : [];
+      const exposures =
+        lessonIds.length > 0
+          ? await db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
+          : [];
+      const completionIds =
+        lessonIds.length > 0
+          ? (await db.lessonCompletions.where('lessonId').anyOf(lessonIds).primaryKeys()).map(String)
+          : [];
+      const practiceNodeIds = (
+        await db.practiceNodes.where('courseId').equals(id).primaryKeys()
+      ).map(String);
+      const milestoneIds = (
+        await db.practiceMilestones.where('courseId').equals(id).primaryKeys()
+      ).map(String);
+      const assessmentIds = (
+        await db.courseAssessments.where('courseId').equals(id).primaryKeys()
+      ).map(String);
+      const revisionPlanIds = (
+        await db.revisionPlans.where('courseId').equals(id).primaryKeys()
+      ).map(String);
+      const sequenceIds = (await db.sequences.where('courseId').equals(id).primaryKeys()).map(
+        String,
+      );
+      const cardIds = (await db.cards.where('courseId').equals(id).primaryKeys()).map(String);
+      const occlusionIds = (await db.occlusions.where('courseId').equals(id).primaryKeys()).map(
+        String,
+      );
+      const schedulingTargetIds = [id, ...lessonIds];
+      const existingUnits = await db.schedulingUnits.bulkGet(schedulingTargetIds);
+      const schedulingUnitIds = existingUnits
+        .filter((unit): unit is SchedulingUnitRecord => unit !== undefined)
+        .map((unit) => unit.id);
+      const existingSchedulingPerf = await db.schedulingPerformance.bulkGet(schedulingTargetIds);
+      const schedulingPerformanceIds = existingSchedulingPerf
+        .filter((row): row is SchedulingPerformance => row !== undefined)
+        .map((row) => row.schedulingUnitId);
+      const coursePerformanceRow = await db.coursePerformance.get(id);
+
+      if (noteIds.length > 0) {
+        await db.noteAnnotations.where('noteId').anyOf(noteIds).delete();
+      }
       if (lessonIds.length > 0) {
-        const noteIds = await db.notes.where('lessonId').anyOf(lessonIds).primaryKeys();
-        if (noteIds.length > 0) {
-          await db.noteAnnotations.where('noteId').anyOf(noteIds).delete();
-        }
         await db.notes.where('lessonId').anyOf(lessonIds).delete();
         await db.lessonCards.where('lessonId').anyOf(lessonIds).delete();
         await db.lessonCardExposures.where('lessonId').anyOf(lessonIds).delete();
@@ -1274,13 +1401,39 @@ export async function deleteCourse(id: string): Promise<void> {
       await db.courseAssessments.where('courseId').equals(id).delete();
       await db.revisionPlans.where('courseId').equals(id).delete();
       await db.sequences.where('courseId').equals(id).delete();
+      await db.occlusions.where('courseId').equals(id).delete();
       await db.cards.where('courseId').equals(id).delete();
       await db.reviewHistory.where('courseId').equals(id).delete();
       // The course-level calibration profile and session history are keyed by the
       // course id itself for course/lesson-scoped reviews (see recordReview).
       await db.sessionHistory.where('courseId').equals(id).delete();
-      await removeCourseSchedulingUnits(id, lessonIds.map(String));
+      await removeCourseSchedulingUnits(id, lessonIds);
       await db.courses.delete(id);
+
+      await recordTombstone(tx, 'courses', id);
+      await recordTombstones(tx, 'lessons', lessonIds);
+      await recordTombstones(tx, 'notes', noteIds);
+      await recordTombstones(
+        tx,
+        'lessonCards',
+        lessonCards.map((link) => link.id),
+      );
+      await recordTombstones(
+        tx,
+        'lessonCardExposures',
+        exposures.map((exposure) => lessonCardExposureId(exposure.lessonId, exposure.cardId)),
+      );
+      await recordTombstones(tx, 'lessonCompletions', completionIds);
+      await recordTombstones(tx, 'practiceNodes', practiceNodeIds);
+      await recordTombstones(tx, 'practiceMilestones', milestoneIds);
+      await recordTombstones(tx, 'courseAssessments', assessmentIds);
+      await recordTombstones(tx, 'revisionPlans', revisionPlanIds);
+      await recordTombstones(tx, 'sequences', sequenceIds);
+      await recordTombstones(tx, 'cards', cardIds);
+      await recordTombstones(tx, 'occlusions', occlusionIds);
+      await recordTombstones(tx, 'schedulingUnits', schedulingUnitIds);
+      if (coursePerformanceRow) await recordTombstone(tx, 'coursePerformance', id);
+      await recordTombstones(tx, 'schedulingPerformance', schedulingPerformanceIds);
     },
   );
   // Deleting the course's cards may orphan image assets; reclaim them, as deleteDeck does.
@@ -1288,8 +1441,9 @@ export async function deleteCourse(id: string): Promise<void> {
 }
 
 /** A complete copy of a course and everything that hangs off it: lessons, notes,
- * lesson-card links, practice nodes, assessments, cards and their hidden backing decks
- * (plus the session history and calibration profiles keyed to either). */
+ * lesson-card links, practice nodes, assessments, occlusions, cards and their
+ * hidden backing decks (plus the session history and calibration profiles keyed
+ * to either). */
 export interface CourseSnapshot {
   course: CourseRecord;
   lessons: Lesson[];
@@ -1303,6 +1457,7 @@ export interface CourseSnapshot {
   courseAssessments: CourseAssessment[];
   revisionPlans: RevisionPlan[];
   sequences: Sequence[];
+  occlusions: Occlusion[];
   cards: Card[];
   sessionHistory: SessionHistoryEntry[];
   reviewHistory: ReviewHistoryEntry[];
@@ -1326,6 +1481,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     courseAssessments,
     revisionPlans,
     sequences,
+    occlusions,
     cards,
     coursePerformance,
   ] = await Promise.all([
@@ -1335,6 +1491,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     db.courseAssessments.where('courseId').equals(id).toArray(),
     db.revisionPlans.where('courseId').equals(id).toArray(),
     db.sequences.where('courseId').equals(id).toArray(),
+    db.occlusions.where('courseId').equals(id).toArray(),
     db.cards.where('courseId').equals(id).toArray(),
     db.coursePerformance.where('courseId').equals(id).toArray(),
   ]);
@@ -1385,6 +1542,7 @@ export async function snapshotCourse(id: string): Promise<CourseSnapshot | null>
     courseAssessments,
     revisionPlans,
     sequences,
+    occlusions,
     cards,
     sessionHistory: courseSessionHistory,
     reviewHistory: reviewHistoryForCourse,
@@ -1423,14 +1581,16 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
         db.courseAssessments,
         db.revisionPlans,
         db.sequences,
+        db.occlusions,
         db.cards,
         db.sessionHistory,
         db.reviewHistory,
         db.schedulingUnits,
         db.coursePerformance,
         db.schedulingPerformance,
+        db.tombstones,
       ],
-      async () => {
+      async (tx) => {
         await Promise.all([
           db.courses.put(snapshot.course),
           db.lessons.bulkPut(snapshot.lessons),
@@ -1444,6 +1604,7 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
           db.courseAssessments.bulkPut(snapshot.courseAssessments),
           db.revisionPlans.bulkPut(snapshot.revisionPlans),
           db.sequences.bulkPut(snapshot.sequences),
+          db.occlusions.bulkPut(snapshot.occlusions),
           db.cards.bulkPut(cardsToRestore),
           db.schedulingUnits.bulkPut(snapshot.schedulingUnits),
           db.coursePerformance.bulkPut(snapshot.coursePerformance),
@@ -1457,6 +1618,84 @@ export async function restoreCourse(snapshot: CourseSnapshot): Promise<void> {
             snapshot.sessionHistory.map(({ id: _id, ...rest }) => rest as SessionHistoryEntry),
           ),
         ]);
+        await clearTombstone(tx, 'courses', snapshot.course.id);
+        await clearTombstones(
+          tx,
+          'lessons',
+          snapshot.lessons.map((lesson) => lesson.id),
+        );
+        await clearTombstones(
+          tx,
+          'notes',
+          snapshot.notes.map((note) => note.id),
+        );
+        await clearTombstones(
+          tx,
+          'lessonCards',
+          snapshot.lessonCards.map((link) => link.id),
+        );
+        await clearTombstones(
+          tx,
+          'lessonCardExposures',
+          snapshot.lessonCardExposures.map((exposure) =>
+            lessonCardExposureId(exposure.lessonId, exposure.cardId),
+          ),
+        );
+        await clearTombstones(
+          tx,
+          'lessonCompletions',
+          snapshot.lessonCompletions.map((completion) => completion.lessonId),
+        );
+        await clearTombstones(
+          tx,
+          'practiceNodes',
+          snapshot.practiceNodes.map((node) => node.id),
+        );
+        await clearTombstones(
+          tx,
+          'practiceMilestones',
+          snapshot.practiceMilestones.map((milestone) => milestone.nodeKey),
+        );
+        await clearTombstones(
+          tx,
+          'courseAssessments',
+          snapshot.courseAssessments.map((assessment) => assessment.id),
+        );
+        await clearTombstones(
+          tx,
+          'revisionPlans',
+          snapshot.revisionPlans.map((plan) => plan.id),
+        );
+        await clearTombstones(
+          tx,
+          'sequences',
+          snapshot.sequences.map((sequence) => sequence.id),
+        );
+        await clearTombstones(
+          tx,
+          'occlusions',
+          snapshot.occlusions.map((occlusion) => occlusion.id),
+        );
+        await clearTombstones(
+          tx,
+          'cards',
+          cardsToRestore.map((card) => card.id),
+        );
+        await clearTombstones(
+          tx,
+          'schedulingUnits',
+          snapshot.schedulingUnits.map((unit) => unit.id),
+        );
+        await clearTombstones(
+          tx,
+          'coursePerformance',
+          snapshot.coursePerformance.map((row) => row.courseId),
+        );
+        await clearTombstones(
+          tx,
+          'schedulingPerformance',
+          snapshot.schedulingPerformance.map((row) => row.schedulingUnitId),
+        );
       },
     );
   } catch (err) {
@@ -1476,15 +1715,19 @@ export async function createLesson(
   try {
     const existing = await db.lessons.where('courseId').equals(courseId).toArray();
     const maxIndex = existing.reduce((m, l) => Math.max(m, l.orderIndex), -1);
-    const lesson: Lesson = {
-      id: makeId(),
-      courseId,
-      name: name.trim() || 'Untitled lesson',
-      orderIndex: maxIndex + 1,
-      isExtension: false,
-      createdAt: Date.now(),
-      ...opts,
-    };
+    const createdAt = Date.now();
+    const lesson = stampUpdatedAt(
+      {
+        id: makeId(),
+        courseId,
+        name: name.trim() || 'Untitled lesson',
+        orderIndex: maxIndex + 1,
+        isExtension: false,
+        createdAt,
+        ...opts,
+      },
+      createdAt,
+    );
     await db.transaction(
       'rw',
       [
@@ -1519,7 +1762,7 @@ export async function updateLesson(id: string, changes: Partial<Lesson>): Promis
         db.schedulingPerformance,
       ],
       async () => {
-        await db.lessons.update(id, changes);
+        await db.lessons.update(id, stampUpdatedAt(changes));
         const lesson = await db.lessons.get(id);
         if (lesson) await syncCourseSchedulingUnits(lesson.courseId);
       },
@@ -1624,8 +1867,9 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
         db.reviewHistory,
         db.schedulingUnits,
         db.schedulingPerformance,
+        db.tombstones,
       ],
-      async () => {
+      async (tx) => {
         await Promise.all([
           db.lessons.put(snapshot.lesson),
           db.notes.bulkPut(snapshot.notes),
@@ -1650,6 +1894,52 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
               cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
           ),
         ]);
+        await clearTombstone(tx, 'lessons', snapshot.lesson.id);
+        await clearTombstones(
+          tx,
+          'notes',
+          snapshot.notes.map((note) => note.id),
+        );
+        await clearTombstones(
+          tx,
+          'lessonCards',
+          snapshot.lessonCards.map((link) => link.id),
+        );
+        await clearTombstones(
+          tx,
+          'lessonCardExposures',
+          snapshot.lessonCardExposures.map((exposure) =>
+            lessonCardExposureId(exposure.lessonId, exposure.cardId),
+          ),
+        );
+        if (snapshot.lessonCompletion) {
+          await clearTombstone(tx, 'lessonCompletions', snapshot.lessonCompletion.lessonId);
+        }
+        await clearTombstones(
+          tx,
+          'cards',
+          cardsToRestore.map((card) => card.id),
+        );
+        await clearTombstones(
+          tx,
+          'sequences',
+          snapshot.sequences.map((sequence) => sequence.id),
+        );
+        await clearTombstones(
+          tx,
+          'courseAssessments',
+          snapshot.courseAssessments.map((assessment) => assessment.id),
+        );
+        if (snapshot.schedulingUnit) {
+          await clearTombstone(tx, 'schedulingUnits', snapshot.schedulingUnit.id);
+        }
+        if (snapshot.schedulingPerformance) {
+          await clearTombstone(
+            tx,
+            'schedulingPerformance',
+            snapshot.schedulingPerformance.schedulingUnitId,
+          );
+        }
       },
     );
   } catch (err) {
@@ -1673,7 +1963,7 @@ export async function ratchetLessonUnlock(
   await db.transaction('rw', db.lessons, async () => {
     const lesson = await db.lessons.get(lessonId);
     if (!lesson || lesson.unlockedAt !== undefined) return;
-    await db.lessons.update(lessonId, { unlockedAt: now });
+    await db.lessons.update(lessonId, stampUpdatedAt({ unlockedAt: now }, now));
   });
 }
 
@@ -1713,9 +2003,16 @@ export async function deleteLesson(id: string): Promise<void> {
       db.schedulingUnits,
       db.coursePerformance,
       db.schedulingPerformance,
+      db.tombstones,
     ],
-    async () => {
-      const noteIds = await db.notes.where('lessonId').equals(id).primaryKeys();
+    async (tx) => {
+      const now = Date.now();
+      const noteIds = (await db.notes.where('lessonId').equals(id).primaryKeys()).map(String);
+      const lessonCards = await db.lessonCards.where('lessonId').equals(id).toArray();
+      const exposures = await db.lessonCardExposures.where('lessonId').equals(id).toArray();
+      const completion = await db.lessonCompletions.get(id);
+      const schedulingUnit = await db.schedulingUnits.get(id);
+      const schedulingPerformance = await db.schedulingPerformance.get(id);
       if (noteIds.length > 0) {
         await db.noteAnnotations.where('noteId').anyOf(noteIds).delete();
       }
@@ -1728,11 +2025,16 @@ export async function deleteLesson(id: string): Promise<void> {
         await db.cards
           .where('primaryLessonId')
           .equals(id)
-          .modify({
-            primaryLessonId: null,
-            deckId: bankDeckId,
-            schedulingUnitId: lesson.courseId,
-          });
+          .modify(
+            stampUpdatedAt(
+              {
+                primaryLessonId: null,
+                deckId: bankDeckId,
+                schedulingUnitId: lesson.courseId,
+              },
+              now,
+            ),
+          );
         if (movedCards.length > 0) {
           await db.reviewHistory
             .where('cardId')
@@ -1743,10 +2045,28 @@ export async function deleteLesson(id: string): Promise<void> {
               schedulingUnitId: lesson.courseId,
             });
         }
-        await db.sequences.where('primaryLessonId').equals(id).modify({ primaryLessonId: null });
+        await db.sequences
+          .where('primaryLessonId')
+          .equals(id)
+          .modify(stampUpdatedAt({ primaryLessonId: null }, now));
       }
       await removeLessonSchedulingUnit(id);
       await db.lessons.delete(id);
+      await recordTombstone(tx, 'lessons', id);
+      await recordTombstones(tx, 'notes', noteIds);
+      await recordTombstones(
+        tx,
+        'lessonCards',
+        lessonCards.map((link) => link.id),
+      );
+      await recordTombstones(
+        tx,
+        'lessonCardExposures',
+        exposures.map((exposure) => lessonCardExposureId(exposure.lessonId, exposure.cardId)),
+      );
+      if (completion) await recordTombstone(tx, 'lessonCompletions', id);
+      if (schedulingUnit) await recordTombstone(tx, 'schedulingUnits', id);
+      if (schedulingPerformance) await recordTombstone(tx, 'schedulingPerformance', id);
 
       const [remainingLessons, courseCards, courseLinks, assessments] = await Promise.all([
         db.lessons.where('courseId').equals(lesson.courseId).toArray(),
@@ -1785,7 +2105,7 @@ export async function deleteLesson(id: string): Promise<void> {
             needsAuthorConfirmation: true,
           } as CourseAssessment;
         }
-        await db.courseAssessments.put(updated);
+        await db.courseAssessments.put(stampUpdatedAt(updated, now));
       }
       await syncCourseSchedulingUnits(lesson.courseId);
     },
@@ -1798,9 +2118,13 @@ export async function deleteLesson(id: string): Promise<void> {
  * orderedLessonIds, in one transaction.
  */
 export async function reorderLessons(_courseId: string, orderedLessonIds: string[]): Promise<void> {
+  const now = Date.now();
   await db.transaction('rw', db.lessons, async () => {
     await db.lessons.bulkUpdate(
-      orderedLessonIds.map((id, orderIndex) => ({ key: id, changes: { orderIndex } })),
+      orderedLessonIds.map((id, orderIndex) => ({
+        key: id,
+        changes: stampUpdatedAt({ orderIndex }, now),
+      })),
     );
   });
 }
@@ -1818,15 +2142,19 @@ export async function createNote(
   try {
     const existing = await db.notes.where('lessonId').equals(lessonId).toArray();
     const maxIndex = existing.reduce((m, n) => Math.max(m, n.orderIndex), -1);
-    const note: Note = {
-      id: makeId(),
-      lessonId,
-      name: name.trim() || 'Untitled note',
-      content: content ?? '',
-      orderIndex: maxIndex + 1,
-      createdAt: Date.now(),
-      ...opts,
-    };
+    const createdAt = Date.now();
+    const note = stampUpdatedAt(
+      {
+        id: makeId(),
+        lessonId,
+        name: name.trim() || 'Untitled note',
+        content: content ?? '',
+        orderIndex: maxIndex + 1,
+        createdAt,
+        ...opts,
+      },
+      createdAt,
+    );
     await db.notes.add(note);
     return note;
   } catch (err) {
@@ -1836,7 +2164,7 @@ export async function createNote(
 
 export async function updateNote(id: string, changes: Partial<Note>): Promise<void> {
   try {
-    await db.notes.update(id, changes);
+    await db.notes.update(id, stampUpdatedAt(changes));
     if ('content' in changes) scheduleAssetGc();
   } catch (err) {
     throw friendlyDbError(err);
@@ -1844,9 +2172,10 @@ export async function updateNote(id: string, changes: Partial<Note>): Promise<vo
 }
 
 export async function deleteNote(id: string): Promise<void> {
-  await db.transaction('rw', db.notes, db.noteAnnotations, async () => {
+  await db.transaction('rw', db.notes, db.noteAnnotations, db.tombstones, async (tx) => {
     await db.noteAnnotations.where('noteId').equals(id).delete();
     await db.notes.delete(id);
+    await recordTombstone(tx, 'notes', id);
   });
   scheduleAssetGc();
 }
@@ -1858,9 +2187,13 @@ export async function listNotes(lessonId: string): Promise<Note[]> {
 
 /** Assign a fresh orderIndex to each note based on its position in orderedNoteIds. */
 export async function reorderNotes(_lessonId: string, orderedNoteIds: string[]): Promise<void> {
+  const now = Date.now();
   await db.transaction('rw', db.notes, async () => {
     await db.notes.bulkUpdate(
-      orderedNoteIds.map((id, orderIndex) => ({ key: id, changes: { orderIndex } })),
+      orderedNoteIds.map((id, orderIndex) => ({
+        key: id,
+        changes: stampUpdatedAt({ orderIndex }, now),
+      })),
     );
   });
 }
@@ -1880,16 +2213,18 @@ export async function createNoteAnnotation(
     throw new Error('Annotation offsets must describe a non-empty source range.');
   }
   const now = Date.now();
-  const annotation: NoteAnnotation = {
-    id: makeId(),
-    noteId,
-    startOffset,
-    endOffset,
-    selectedText,
-    ...(body?.trim() ? { body: body.trim() } : {}),
-    createdAt: now,
-    updatedAt: now,
-  };
+  const annotation = stampUpdatedAt(
+    {
+      id: makeId(),
+      noteId,
+      startOffset,
+      endOffset,
+      selectedText,
+      ...(body?.trim() ? { body: body.trim() } : {}),
+      createdAt: now,
+    },
+    now,
+  );
   await db.noteAnnotations.add(annotation);
   return annotation;
 }
@@ -1898,7 +2233,7 @@ export async function updateNoteAnnotation(
   id: string,
   changes: Pick<Partial<NoteAnnotation>, 'body' | 'startOffset' | 'endOffset' | 'selectedText'>,
 ): Promise<void> {
-  await db.noteAnnotations.update(id, { ...changes, updatedAt: Date.now() });
+  await db.noteAnnotations.update(id, stampUpdatedAt(changes));
 }
 
 export async function deleteNoteAnnotation(id: string): Promise<void> {
@@ -1953,7 +2288,7 @@ export async function linkCardsToLesson(
       const now = Date.now();
       const created = uniqueCardIds
         .filter((cardId) => !existingByCardId.has(cardId))
-        .map((cardId) => ({ id: makeId(), lessonId, cardId, createdAt: now }));
+        .map((cardId) => stampUpdatedAt({ id: makeId(), lessonId, cardId, createdAt: now }, now));
       if (created.length > 0) await db.lessonCards.bulkAdd(created);
       for (const link of created) existingByCardId.set(link.cardId, link);
       return uniqueCardIds.map((cardId) => existingByCardId.get(cardId)!);
@@ -1971,13 +2306,27 @@ export async function linkCardToLesson(lessonId: string, cardId: string): Promis
 
 /** Remove a display link and the teaching progress specific to that link. */
 export async function unlinkCardFromLesson(lessonId: string, cardId: string): Promise<void> {
-  await db.transaction('rw', db.lessonCards, db.lessonCardExposures, async () => {
+  await db.transaction('rw', db.lessonCards, db.lessonCardExposures, db.tombstones, async (tx) => {
+    const links = await db.lessonCards
+      .where('lessonId')
+      .equals(lessonId)
+      .filter((link) => link.cardId === cardId)
+      .toArray();
+    const exposure = await db.lessonCardExposures.get([lessonId, cardId]);
     await db.lessonCards
       .where('lessonId')
       .equals(lessonId)
       .filter((link) => link.cardId === cardId)
       .delete();
     await db.lessonCardExposures.delete([lessonId, cardId]);
+    await recordTombstones(
+      tx,
+      'lessonCards',
+      links.map((link) => link.id),
+    );
+    if (exposure) {
+      await recordTombstone(tx, 'lessonCardExposures', lessonCardExposureId(lessonId, cardId));
+    }
   });
 }
 
@@ -1992,7 +2341,7 @@ export async function upsertLessonCardExposure(
 ): Promise<LessonCardExposure> {
   const existing = await db.lessonCardExposures.get([lessonId, cardId]);
   if (existing) return existing;
-  const exposure = { lessonId, cardId, taughtAt };
+  const exposure = stampUpdatedAt({ lessonId, cardId, taughtAt }, taughtAt);
   await db.lessonCardExposures.add(exposure);
   return exposure;
 }
@@ -2003,7 +2352,7 @@ export async function markLessonComplete(
 ): Promise<LessonCompletion> {
   const existing = await db.lessonCompletions.get(lessonId);
   if (existing) return existing;
-  const completion = { lessonId, completedAt };
+  const completion = stampUpdatedAt({ lessonId, completedAt }, completedAt);
   await db.lessonCompletions.add(completion);
   return completion;
 }
@@ -2113,18 +2462,22 @@ export async function createCourseAssessment(
           opts !== undefined && Object.prototype.hasOwnProperty.call(opts, 'afterLessonId')
             ? opts.afterLessonId!
             : inferredAnchor;
-        entry = {
-          kind: 'checkpoint',
-          excludedCardIds: [],
-          ...opts,
-          id: makeId(),
-          courseId,
-          name,
-          examDate,
-          afterLessonId,
-          coverageMode,
-          createdAt: Date.now(),
-        } as CourseAssessment;
+        const createdAt = Date.now();
+        entry = stampUpdatedAt(
+          {
+            kind: 'checkpoint',
+            excludedCardIds: [],
+            ...opts,
+            id: makeId(),
+            courseId,
+            name,
+            examDate,
+            afterLessonId,
+            coverageMode,
+            createdAt,
+          } as CourseAssessment,
+          createdAt,
+        );
         validateAssessmentStructure(entry);
         await validateAssessmentReferences(entry);
         if (entry.kind === 'final') {
@@ -2163,13 +2516,15 @@ export async function updateCourseAssessment(
         if (changes.courseId !== undefined && changes.courseId !== existing.courseId) {
           throw new Error('An assessment cannot move to another course.');
         }
-        const updated = {
-          ...existing,
-          ...changes,
-          id: existing.id,
-          courseId: existing.courseId,
-          createdAt: existing.createdAt,
-        } as CourseAssessment;
+        const updated = stampUpdatedAt(
+          {
+            ...existing,
+            ...changes,
+            id: existing.id,
+            courseId: existing.courseId,
+            createdAt: existing.createdAt,
+          } as CourseAssessment,
+        );
         validateAssessmentStructure(updated);
         await validateAssessmentReferences(updated);
         const assessments = await db.courseAssessments
@@ -2204,15 +2559,21 @@ export async function deleteCourseAssessment(id: string): Promise<void> {
         db.schedulingUnits,
         db.coursePerformance,
         db.schedulingPerformance,
+        db.tombstones,
       ],
-      async () => {
+      async (tx) => {
       const assessment = await db.courseAssessments.get(id);
       if (!assessment) return;
       if (assessment.kind === 'final') {
         throw new Error('The sole final assessment cannot be deleted.');
       }
+      const revisionPlanIds = (
+        await db.revisionPlans.where('assessmentId').equals(id).primaryKeys()
+      ).map(String);
       await db.revisionPlans.where('assessmentId').equals(id).delete();
       await db.courseAssessments.delete(id);
+      await recordTombstone(tx, 'courseAssessments', id);
+      await recordTombstones(tx, 'revisionPlans', revisionPlanIds);
       await syncCourseSchedulingUnits(assessment.courseId);
     });
   } catch (err) {
@@ -2303,8 +2664,10 @@ export async function createOrResumeRevisionPlan(
           const refreshed = applyRevisionPlanInput(existing, resolved, now);
           const updated =
             assessment.examDate <= now && refreshed.status !== 'completed'
-              ? { ...refreshed, status: 'completed' as const, updatedAt: now }
-              : refreshed;
+              ? stampUpdatedAt({ ...refreshed, status: 'completed' as const }, now)
+              : refreshed === existing
+                ? refreshed
+                : stampUpdatedAt(refreshed, now);
           if (updated !== existing) await db.revisionPlans.put(updated);
           return updated;
         }
@@ -2312,27 +2675,29 @@ export async function createOrResumeRevisionPlan(
           throw new Error('A revision plan cannot be created after its assessment deadline.');
         }
         const id = makeId();
-        const plan: RevisionPlan = {
-          id,
-          assessmentId,
-          courseId: assessment.courseId,
-          status: 'active',
-          revision: 1,
-          input: resolved.input,
-          scope: resolved.scope,
-          cardStates: resolved.cardStates,
-          windows: buildRevisionWindows(
+        const plan = stampUpdatedAt(
+          {
             id,
-            todayBudgetMinutes,
-            now,
-            assessment.examDate,
-            assessment.timeZone,
-          ),
-          completedSessions: [],
-          replans: [],
-          createdAt: now,
-          updatedAt: now,
-        };
+            assessmentId,
+            courseId: assessment.courseId,
+            status: 'active' as const,
+            revision: 1,
+            input: resolved.input,
+            scope: resolved.scope,
+            cardStates: resolved.cardStates,
+            windows: buildRevisionWindows(
+              id,
+              todayBudgetMinutes,
+              now,
+              assessment.examDate,
+              assessment.timeZone,
+            ),
+            completedSessions: [],
+            replans: [],
+            createdAt: now,
+          },
+          now,
+        );
         await db.revisionPlans.add(plan);
         return plan;
       },
@@ -2372,8 +2737,10 @@ export async function refreshRevisionPlan(
         const refreshed = applyRevisionPlanInput(plan, resolved, now);
         const updated =
           assessment.examDate <= now && refreshed.status !== 'completed'
-            ? { ...refreshed, status: 'completed' as const, updatedAt: now }
-            : refreshed;
+            ? stampUpdatedAt({ ...refreshed, status: 'completed' as const }, now)
+            : refreshed === plan
+              ? refreshed
+              : stampUpdatedAt(refreshed, now);
         if (updated !== plan) await db.revisionPlans.put(updated);
         return updated;
       },
@@ -2419,7 +2786,7 @@ export async function setRevisionDayBudget(
             planRevision: plan.revision,
           },
         ];
-    const updated = { ...plan, windows, status: 'active' as const, updatedAt: now };
+    const updated = stampUpdatedAt({ ...plan, windows, status: 'active' as const }, now);
     await db.revisionPlans.put(updated);
     return updated;
   });
@@ -2439,11 +2806,13 @@ export async function removeRevisionDay(
     if (window.status !== 'scheduled') {
       throw new Error('An active or completed revision window cannot be removed.');
     }
-    const updated: RevisionPlan = {
-      ...plan,
-      windows: plan.windows.filter((candidate) => candidate.id !== window.id),
-      updatedAt: now,
-    };
+    const updated = stampUpdatedAt(
+      {
+        ...plan,
+        windows: plan.windows.filter((candidate) => candidate.id !== window.id),
+      },
+      now,
+    );
     updated.status = planIsComplete(updated, now) ? 'completed' : 'active';
     await db.revisionPlans.put(updated);
     return updated;
@@ -2469,13 +2838,15 @@ export async function startRevisionWindow(
     if (plan.windows.some((window) => window.status === 'active')) {
       throw new Error('Another revision window is already active.');
     }
-    const updated: RevisionPlan = {
-      ...plan,
-      windows: plan.windows.map((window) =>
-        window.id === windowId ? { ...window, status: 'active', startedAt } : window,
-      ),
-      updatedAt: startedAt,
-    };
+    const updated = stampUpdatedAt(
+      {
+        ...plan,
+        windows: plan.windows.map((window) =>
+          window.id === windowId ? { ...window, status: 'active', startedAt } : window,
+        ),
+      },
+      startedAt,
+    );
     await db.revisionPlans.put(updated);
     return updated;
   });
@@ -2497,17 +2868,19 @@ export async function completeRevisionWindow(
       if (plan.completedSessions.some((existing) => existing.id === session.id)) return plan;
       throw new Error('A completed revision window cannot accept another session.');
     }
-    let updated: RevisionPlan = {
-      ...plan,
-      windows: plan.windows.map((candidate) =>
-        candidate.id === windowId
-          ? { ...candidate, status: 'completed', completedAt: session.completedAt }
-          : candidate,
-      ),
-      completedSessions: appendCompletedSession(plan.completedSessions, session),
-      updatedAt: now,
-    };
-    updated = applyPendingRevisionPlanInput(updated, now);
+    let updated = stampUpdatedAt(
+      {
+        ...plan,
+        windows: plan.windows.map((candidate) =>
+          candidate.id === windowId
+            ? { ...candidate, status: 'completed', completedAt: session.completedAt }
+            : candidate,
+        ),
+        completedSessions: appendCompletedSession(plan.completedSessions, session),
+      },
+      now,
+    );
+    updated = stampUpdatedAt(applyPendingRevisionPlanInput(updated, now), now);
     updated.status = planIsComplete(updated, now) ? 'completed' : 'active';
     await db.revisionPlans.put(updated);
     return updated;
@@ -2538,31 +2911,34 @@ function generatedCardFromPayload(
   payload: GeneratedCardPayload,
   createdAt: number,
 ): Card {
-  return {
-    id: makeId(),
-    deckId,
-    schedulingUnitId: deckId,
-    courseId: payload.courseId,
-    primaryLessonId: payload.primaryLessonId,
-    type: payload.type,
-    front: payload.front,
-    back: payload.back,
-    stability: null,
-    difficulty: null,
-    lastReviewed: null,
-    reps: 0,
-    lapses: 0,
-    state: 0,
-    due: null,
-    scheduledDays: 0,
-    learningSteps: 0,
-    history: [],
+  return stampUpdatedAt(
+    {
+      id: makeId(),
+      deckId,
+      schedulingUnitId: deckId,
+      courseId: payload.courseId,
+      primaryLessonId: payload.primaryLessonId,
+      type: payload.type,
+      front: payload.front,
+      back: payload.back,
+      stability: null,
+      difficulty: null,
+      lastReviewed: null,
+      reps: 0,
+      lapses: 0,
+      state: 0,
+      due: null,
+      scheduledDays: 0,
+      learningSteps: 0,
+      history: [],
+      createdAt,
+      tags: [],
+      suspended: false,
+      buriedUntil: null,
+      sequenceItemId: payload.sequenceItemId,
+    },
     createdAt,
-    tags: [],
-    suspended: false,
-    buriedUntil: null,
-    sequenceItemId: payload.sequenceItemId,
-  };
+  );
 }
 
 /** All cards ever generated from a sequence (positional and label cards alike). */
@@ -2586,16 +2962,20 @@ export async function createSequence(
   opts?: Partial<Sequence>,
 ): Promise<Sequence> {
   try {
-    const sequence: Sequence = {
-      id: makeId(),
-      courseId,
-      primaryLessonId,
-      name: name.trim() || 'Untitled sequence',
-      items,
-      cueWindow: 2,
-      createdAt: nextSequenceTimestamp(),
-      ...opts,
-    };
+    const createdAt = nextSequenceTimestamp();
+    const sequence = stampUpdatedAt(
+      {
+        id: makeId(),
+        courseId,
+        primaryLessonId,
+        name: name.trim() || 'Untitled sequence',
+        items,
+        cueWindow: 2,
+        createdAt,
+        ...opts,
+      },
+      createdAt,
+    );
     const deckId = primaryLessonId
       ? await ensureLessonDeck(courseId, primaryLessonId)
       : await ensureCourseBankDeck(courseId);
@@ -2634,23 +3014,42 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
         db.schedulingUnits,
         db.coursePerformance,
         db.schedulingPerformance,
+        db.tombstones,
       ],
-      async () => {
+      async (tx) => {
         const previous = await db.sequences.get(sequence.id);
         const existingCards = previous ? await cardsForSequence(previous) : [];
         const diff = diffRegeneration(sequence, existingCards);
+        const now = Date.now();
 
-        await db.sequences.put(sequence);
+        await db.sequences.put(stampUpdatedAt(sequence, now));
 
         if (diff.deletes.length > 0) {
+          const [removedLinks, removedExposures] = await Promise.all([
+            db.lessonCards.where('cardId').anyOf(diff.deletes).toArray(),
+            db.lessonCardExposures.where('cardId').anyOf(diff.deletes).toArray(),
+          ]);
           await db.lessonCards.where('cardId').anyOf(diff.deletes).delete();
           await db.lessonCardExposures.where('cardId').anyOf(diff.deletes).delete();
           await db.reviewHistory.where('cardId').anyOf(diff.deletes).delete();
           await db.cards.bulkDelete(diff.deletes);
+          await recordTombstones(tx, 'cards', diff.deletes);
+          await recordTombstones(
+            tx,
+            'lessonCards',
+            removedLinks.map((link) => link.id),
+          );
+          await recordTombstones(
+            tx,
+            'lessonCardExposures',
+            removedExposures.map((exposure) =>
+              lessonCardExposureId(exposure.lessonId, exposure.cardId),
+            ),
+          );
         }
         for (const update of diff.updates) {
           const { id, ...changes } = update;
-          await db.cards.update(id, changes);
+          await db.cards.update(id, stampUpdatedAt(changes, now));
         }
         if (diff.creates.length > 0) {
           const deckId = sequence.primaryLessonId
@@ -2677,21 +3076,41 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
 export async function deleteSequence(id: string): Promise<void> {
   await db.transaction(
     'rw',
-    [db.sequences, db.cards, db.reviewHistory, db.lessonCards, db.lessonCardExposures],
-    async () => {
+    [db.sequences, db.cards, db.reviewHistory, db.lessonCards, db.lessonCardExposures, db.tombstones],
+    async (tx) => {
       const sequence = await db.sequences.get(id);
       if (!sequence) return;
       const keys = sequenceItemKeys(sequence);
-      if (keys.length > 0) {
-        const cardIds = await db.cards.where('sequenceItemId').anyOf(keys).primaryKeys();
-        if (cardIds.length > 0) {
-          await db.lessonCards.where('cardId').anyOf(cardIds).delete();
-          await db.lessonCardExposures.where('cardId').anyOf(cardIds).delete();
-          await db.reviewHistory.where('cardId').anyOf(cardIds).delete();
-        }
+      const cardIds =
+        keys.length > 0
+          ? (await db.cards.where('sequenceItemId').anyOf(keys).primaryKeys()).map(String)
+          : [];
+      const [removedLinks, removedExposures] =
+        cardIds.length > 0
+          ? await Promise.all([
+              db.lessonCards.where('cardId').anyOf(cardIds).toArray(),
+              db.lessonCardExposures.where('cardId').anyOf(cardIds).toArray(),
+            ])
+          : [[], []];
+      if (cardIds.length > 0) {
+        await db.lessonCards.where('cardId').anyOf(cardIds).delete();
+        await db.lessonCardExposures.where('cardId').anyOf(cardIds).delete();
+        await db.reviewHistory.where('cardId').anyOf(cardIds).delete();
         await db.cards.where('sequenceItemId').anyOf(keys).delete();
       }
       await db.sequences.delete(id);
+      await recordTombstone(tx, 'sequences', id);
+      await recordTombstones(tx, 'cards', cardIds);
+      await recordTombstones(
+        tx,
+        'lessonCards',
+        removedLinks.map((link) => link.id),
+      );
+      await recordTombstones(
+        tx,
+        'lessonCardExposures',
+        removedExposures.map((exposure) => lessonCardExposureId(exposure.lessonId, exposure.cardId)),
+      );
     },
   );
   scheduleAssetGc();
@@ -2738,8 +3157,8 @@ export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void>
         : cardsWithReviewHistory(snapshot.cards, snapshot.reviewHistory);
     await db.transaction(
       'rw',
-      [db.sequences, db.cards, db.reviewHistory, db.lessonCards, db.lessonCardExposures],
-      async () => {
+      [db.sequences, db.cards, db.reviewHistory, db.lessonCards, db.lessonCardExposures, db.tombstones],
+      async (tx) => {
         await db.sequences.put(snapshot.sequence);
         await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(snapshot.lessonCards);
@@ -2747,6 +3166,24 @@ export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void>
         await db.reviewHistory.bulkPut(
           snapshot.reviewHistory ??
             cardsToRestore.flatMap((card) => reviewHistoryEntriesForCard(card)),
+        );
+        await clearTombstone(tx, 'sequences', snapshot.sequence.id);
+        await clearTombstones(
+          tx,
+          'cards',
+          cardsToRestore.map((card) => card.id),
+        );
+        await clearTombstones(
+          tx,
+          'lessonCards',
+          snapshot.lessonCards.map((link) => link.id),
+        );
+        await clearTombstones(
+          tx,
+          'lessonCardExposures',
+          snapshot.lessonCardExposures.map((exposure) =>
+            lessonCardExposureId(exposure.lessonId, exposure.cardId),
+          ),
         );
       },
     );
