@@ -76,7 +76,9 @@ export async function clearTombstones(
 
 export async function readSyncState(): Promise<SyncState | undefined> {
   const entry = await db.appState.get(SYNC_STATE_KEY);
-  if (!entry || entry.value == null || typeof entry.value !== 'object') return undefined;
+  if (!entry || entry.value === null || entry.value === undefined || typeof entry.value !== 'object') {
+    return undefined;
+  }
   return entry.value as SyncState;
 }
 

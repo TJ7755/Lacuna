@@ -14,7 +14,12 @@ function schedulingUnitMeaningfullyChanged(
     if (key === 'updatedAt') continue;
     const left = previous[key as keyof SchedulingUnitRecord];
     const right = next[key as keyof SchedulingUnitRecord];
-    if (Object.is(left, right) || (left == null && right == null)) continue;
+    if (
+      Object.is(left, right) ||
+      ((left === null || left === undefined) && (right === null || right === undefined))
+    ) {
+      continue;
+    }
     if (
       typeof left === 'object' &&
       left !== null &&
