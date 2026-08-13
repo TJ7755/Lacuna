@@ -95,10 +95,11 @@ describe('DataPortabilitySection', () => {
   });
 
   it('reports folder names discarded while adding a legacy backup', async () => {
-    readBackupFile.mockResolvedValue(backupStub({
+    readBackupFile.mockResolvedValue({
       decks: [{}],
       cards: [],
-    }) as BackupFile);
+      exportedAt: Date.now(),
+    } as unknown as BackupFile);
     importBackup.mockResolvedValue({ discardedFolderNames: ['Chemistry', 'Organic'] });
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseRecoverFile();
