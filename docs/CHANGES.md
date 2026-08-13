@@ -12,6 +12,10 @@
 - `takeAutoBackup` now returns the snapshot it stored. `manualMerge` applies that snapshot
   instead of exporting the database a second time. The restore point is still taken before
   anything is merged or imported.
+- Added a live-database test that `manualMerge`'s restore point is the pre-combine local
+  state, that `importBackup(..., 'replace')` leaves the backups table in place, and that
+  restoring from that snapshot returns the database to its pre-combine state. The same
+  restore point remains usable if the replace-import fails.
 
 ## Unreleased — Sync: manual two-device merge
 
