@@ -19,7 +19,6 @@ import type {
   Occlusion,
   PendingMergeReview,
   PracticeNode,
-  RevisionPlan,
   Sequence,
   SessionHistoryEntry,
   SchedulingUnitRecord,
