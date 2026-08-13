@@ -101,8 +101,9 @@ export function __resetBackupThrottleForTests(): void {
 
 /** Capture a full snapshot as a restore point, prune to the cap, and mirror if configured.
  *  Calls within the 5-minute throttle window are silently skipped so rapid mutations
- *  do not produce N backups per session. Pass `force: true` to bypass the throttle. */
-export async function takeAutoBackup(force = false): Promise<void> {
+ *  do not produce N backups per session. Pass `force: true` to bypass the throttle.
+ *  Returns the snapshot that was stored, or `undefined` when the throttle skipped. */
+export async function takeAutoBackup(force = false): Promise<BackupFile | undefined> {
   if (!force && Date.now() - lastBackupAt < MIN_BACKUP_INTERVAL) return;
   lastBackupAt = Date.now();
 
@@ -131,6 +132,8 @@ export async function takeAutoBackup(force = false): Promise<void> {
       console.warn('Folder mirror failed:', e);
     }
   });
+
+  return payload;
 }
 
 /** Take a backup only if the newest restore point is older than 24 hours. */

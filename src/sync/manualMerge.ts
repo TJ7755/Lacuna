@@ -1,9 +1,10 @@
 // Manual two-device merge. Given a parsed remote BackupFile, take a forced
-// local restore point, merge the two snapshots, then replace the database
-// with the result. P5 will reuse this seam; keep it free of React.
+// local restore point, merge that same snapshot with the remote file, then
+// replace the database with the result. P5 will reuse this seam; keep it free
+// of React.
 
 import { takeAutoBackup } from '../db/backups';
-import { exportDatabase, importBackup, validateBackup } from '../db/portability';
+import { importBackup, validateBackup } from '../db/portability';
 import type { BackupFile } from '../db/types';
 import { mergeSnapshots } from './mergeSnapshots';
 
@@ -37,21 +38,20 @@ export async function manualMerge(remote: BackupFile): Promise<ManualMergeSummar
     });
   }
 
-  try {
-    await takeAutoBackup(true);
-  } catch (error) {
-    throw new ManualMergeError(
-      `${messageOf(error)} A safety backup could not be taken, so the database was not modified.`,
-      { databaseModified: false },
-    );
-  }
-
   let local: BackupFile;
   try {
-    local = await exportDatabase();
+    const snapshot = await takeAutoBackup(true);
+    if (!snapshot) {
+      throw new ManualMergeError(
+        'A safety backup could not be taken, so the database was not modified.',
+        { databaseModified: false },
+      );
+    }
+    local = snapshot;
   } catch (error) {
+    if (error instanceof ManualMergeError) throw error;
     throw new ManualMergeError(
-      `${messageOf(error)} The database was not modified.`,
+      `${messageOf(error)} A safety backup could not be taken, so the database was not modified.`,
       { databaseModified: false },
     );
   }
