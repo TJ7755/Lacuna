@@ -1480,3 +1480,27 @@ than by the prompter.
   the practical consequence is that Grok need not be rationed the way Sol must be.
 
 **Checks:** documentation only; no code changed.
+
+## Unreleased — Grok 4.6 taste rating
+
+**Outcome:** Grok's taste column in `CLAUDE.md` is a 7.5, so design work can be delegated to a
+worker other than Claude for the first time.
+
+- Measured on 13 August 2026 with a from-scratch landing-page redesign, briefed as a replacement
+  for a page the prompter disliked. The returned concept set the product name as the word missing
+  from the headline and punched the forgetting curve into the sentence as the gap itself — an idea
+  rather than a restyling, and notably not the cream-and-serif look that LLM-authored landing pages
+  default to.
+- The draft was **not** adopted; the prompter prefers the existing `/welcome` page, and Grok deleted
+  `design/landing-draft/` and reverted its own changelog entry. The rating stands on the thinking,
+  not the outcome — a future agent reading the table should not infer that the work failed.
+- Defects found on review, recorded because they are the shape of mistake this tier still makes:
+  a visually-hidden chart description nested *inside* the `<h1>` and also referenced by the SVG's
+  `aria-labelledby`, so the heading's accessible name contained the whole description twice and
+  mutated live as the chart was dragged; one line of copy that broke the register; and three
+  Google Fonts families loaded from a third party on a page whose central claim is that nothing
+  leaves the device.
+- The 3D and graphical column remains unrated and must not be inferred from this. Taste in a flat
+  editorial layout is not evidence about 3D.
+
+**Checks:** documentation only; no code changed.
