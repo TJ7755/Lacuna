@@ -882,12 +882,34 @@ async function getCurrentDbVersion(name: string): Promise<number> {
       // Fall through to raw open fallback.
     }
   }
-  // Fallback for browsers that do not expose indexedDB.databases().
-  // We deliberately do not open the database here: doing so would create it at
-  // version 1 if it does not exist, which would then trigger a useless pre-migration
-  // snapshot and an unnecessary upgrade path (v1 -> v4). In browsers without
-  // databases(), we simply skip the snapshot — the upgrade itself is still safe.
-  return 0;
+
+  // Some browsers do not expose indexedDB.databases(). Opening without a version
+  // reads an existing database without upgrading it. If the name is new, the open
+  // creates a temporary v1 database; remove that probe before reporting no data.
+  return new Promise((resolve, reject) => {
+    let createdByProbe = false;
+    const request = indexedDB.open(name);
+    request.onupgradeneeded = (event) => {
+      createdByProbe = (event as IDBVersionChangeEvent).oldVersion === 0;
+    };
+    request.onsuccess = () => {
+      const opened = request.result;
+      const version = opened.version;
+      opened.close();
+      if (!createdByProbe) {
+        resolve(version / 10);
+        return;
+      }
+
+      const deletion = indexedDB.deleteDatabase(name);
+      deletion.onsuccess = () => resolve(0);
+      deletion.onerror = () => reject(deletion.error);
+      deletion.onblocked = () =>
+        reject(new Error('Temporary database probe could not be removed because it is blocked'));
+    };
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error('Database version probe is blocked'));
+  });
 }
 
 export async function readAllDataFromVersion(

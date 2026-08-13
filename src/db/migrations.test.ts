@@ -7,7 +7,7 @@ import {
   migrateCardRecord,
 } from './migrations';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import type { ReviewLog } from './types';
+import type { BackupFile, ReviewLog } from './types';
 import { getPreMigrationSnapshot, savePreMigrationSnapshot } from './preMigrationSnapshots';
 
 describe('migrateDeckRecord', () => {
@@ -377,6 +377,35 @@ describe('pre-migration snapshot ordering', () => {
       expect.objectContaining({ id: 'folder-1', name: 'Legacy folder' }),
     ]);
     await new Dexie(dbName).delete();
+  });
+
+  it('detects an existing database when indexedDB.databases is unavailable', async () => {
+    const dbName = `lacuna-v21-no-databases-api-${Date.now()}`;
+    const v21 = new Dexie(dbName);
+    v21.version(21).stores({ decks: 'id, createdAt' });
+    await v21.open();
+    await v21.table('decks').add({ id: 'deck-1', name: 'Protected', createdAt: 1 });
+    v21.close();
+
+    const originalDatabases = indexedDB.databases;
+    let payload: BackupFile | undefined;
+    Object.defineProperty(indexedDB, 'databases', { value: undefined, configurable: true });
+    try {
+      const { capturePreMigrationSnapshot } = await import('./schema');
+      await capturePreMigrationSnapshot(dbName, 22, async (_targetVersion, snapshot) => {
+        payload = snapshot;
+      });
+    } finally {
+      Object.defineProperty(indexedDB, 'databases', {
+        value: originalDatabases,
+        configurable: true,
+      });
+      await new Dexie(dbName).delete();
+    }
+
+    expect(payload?.decks).toEqual([
+      expect.objectContaining({ id: 'deck-1', name: 'Protected' }),
+    ]);
   });
 
   it('blocks a destructive v22 upgrade when its snapshot cannot be committed', async () => {

@@ -136,8 +136,207 @@ const preCourseV21Backup = {
   revisionPlans: [],
 } satisfies BackupFile;
 
+const legacyV21BackingDeckBackup = {
+  app: 'lacuna',
+  version: 9,
+  exportedAt: 1_786_617_442_500,
+  decks: [
+    {
+      id: 'deck-biology',
+      name: 'Biology backing deck',
+      examDate: 1_787_266_740_000,
+      timeZone: 'Europe/London',
+      createdAt: 1_786_617_442_450,
+      fsrsVersion: 6,
+      fsrsParameters: preCourseV21Backup.decks[0].fsrsParameters,
+      examObjective: 'expectedMarks',
+      backingCourseId: 'course-biology',
+      backingLessonId: 'lesson-cells',
+    },
+  ],
+  courses: [
+    {
+      id: 'course-biology',
+      name: 'Biology',
+      description: '',
+      createdAt: 1_786_617_442_451,
+      fsrsVersion: 6,
+      fsrsParameters: preCourseV21Backup.decks[0].fsrsParameters,
+      examObjective: 'expectedMarks',
+      unlockMode: 'open',
+      autoPractice: true,
+      practiceThresholdMinutesFar: 8,
+      practiceThresholdMinutesNear: 4,
+      practiceUrgentWindowDays: 7,
+      practiceMaxGap: 2,
+    },
+  ],
+  lessons: [
+    {
+      id: 'lesson-cells',
+      courseId: 'course-biology',
+      name: 'Cells',
+      orderIndex: 0,
+      createdAt: 1_786_617_442_452,
+      isExtension: false,
+    },
+  ],
+  courseAssessments: [
+    {
+      id: 'assessment-biology-final',
+      courseId: 'course-biology',
+      name: 'Final exam',
+      kind: 'final',
+      examDate: 1_787_266_740_000,
+      afterLessonId: 'lesson-cells',
+      coverageMode: 'prefix',
+      excludedCardIds: [],
+      createdAt: 1_786_617_442_453,
+    },
+  ],
+  cards: [
+    {
+      id: 'card-biology',
+      deckId: 'deck-biology',
+      courseId: 'course-biology',
+      primaryLessonId: 'lesson-cells',
+      schedulingUnitId: 'lesson-cells',
+      type: 'front_back',
+      front: 'What is a cell?',
+      back: 'The basic unit of life.',
+      stability: 3.1,
+      difficulty: 5.5,
+      lastReviewed: reviews[1].timestamp,
+      reps: reviews.length,
+      lapses: 1,
+      state: 2,
+      due: 1_700_172_800_000,
+      scheduledDays: 2,
+      learningSteps: 0,
+      history: reviews,
+      createdAt: 1_786_617_442_454,
+      tags: ['biology'],
+      suspended: false,
+      buriedUntil: null,
+    },
+  ],
+  reviewHistory: reviews.map((review) => ({
+    ...review,
+    id: `review:event:${review.eventId}`,
+    cardId: 'card-biology',
+    deckId: 'deck-biology',
+    courseId: 'course-biology',
+    primaryLessonId: 'lesson-cells',
+    schedulingUnitId: 'lesson-cells',
+  })),
+  schedulingUnits: [
+    {
+      id: 'course-biology',
+      createdAt: 1_786_617_442_451,
+      kind: 'course',
+      courseId: 'course-biology',
+      lessonId: null,
+      name: 'Biology',
+      examDate: 1_787_266_740_000,
+      timeZone: 'Europe/London',
+      fsrsVersion: 6,
+      fsrsParameters: preCourseV21Backup.decks[0].fsrsParameters,
+      examObjective: 'expectedMarks',
+    },
+    {
+      id: 'lesson-cells',
+      createdAt: 1_786_617_442_452,
+      kind: 'lesson',
+      courseId: 'course-biology',
+      lessonId: 'lesson-cells',
+      name: 'Cells',
+      examDate: 1_787_266_740_000,
+      timeZone: 'Europe/London',
+      fsrsVersion: 6,
+      fsrsParameters: preCourseV21Backup.decks[0].fsrsParameters,
+      examObjective: 'expectedMarks',
+    },
+  ],
+  coursePerformance: [
+    {
+      courseId: 'course-biology',
+      runningMeanResponseTime: 6,
+      runningStdDevResponseTime: 1,
+      m2: 2,
+      totalCorrectReviews: 2,
+    },
+  ],
+  schedulingPerformance: [
+    {
+      schedulingUnitId: 'course-biology',
+      courseId: 'course-biology',
+      runningMeanResponseTime: 4,
+      runningStdDevResponseTime: 1,
+      m2: 1,
+      totalCorrectReviews: 1,
+    },
+    {
+      schedulingUnitId: 'lesson-cells',
+      courseId: 'course-biology',
+      lessonId: 'lesson-cells',
+      runningMeanResponseTime: 7,
+      runningStdDevResponseTime: 2,
+      m2: 8,
+      totalCorrectReviews: 3,
+    },
+  ],
+  assets: [],
+  sessionHistory: [],
+  userPerformance: [
+    {
+      deckId: 'deck-biology',
+      runningMeanResponseTime: 7,
+      runningStdDevResponseTime: 2,
+      m2: 8,
+      totalCorrectReviews: 3,
+    },
+    {
+      deckId: 'course-biology',
+      runningMeanResponseTime: 4,
+      runningStdDevResponseTime: 1,
+      m2: 1,
+      totalCorrectReviews: 1,
+    },
+  ],
+  folders: [],
+} satisfies BackupFile;
+
 describe('legacy storage compatibility net', () => {
   beforeEach(resetDatabase);
+
+  it('imports a v21 backing-deck backup without changing review identity, order or performance', async () => {
+    await importBackup(legacyV21BackingDeckBackup, 'replace');
+
+    const restoredCard = await db.cards.get('card-biology');
+    expect(restoredCard).toMatchObject({
+      deckId: 'deck-biology',
+      courseId: 'course-biology',
+      primaryLessonId: 'lesson-cells',
+      schedulingUnitId: 'lesson-cells',
+    });
+    expect(restoredCard?.history).toEqual(reviews);
+
+    const restoredEvents = await db.reviewHistory
+      .where('cardId')
+      .equals('card-biology')
+      .sortBy('timestamp');
+    expect(restoredEvents).toEqual(legacyV21BackingDeckBackup.reviewHistory);
+    expect(restoredEvents.map((event) => event.eventId)).toEqual([
+      'event-first',
+      'event-second',
+    ]);
+    expect(await db.coursePerformance.get('course-biology')).toEqual(
+      legacyV21BackingDeckBackup.coursePerformance[0],
+    );
+    expect(await db.schedulingPerformance.get('lesson-cells')).toEqual(
+      legacyV21BackingDeckBackup.schedulingPerformance[1],
+    );
+  });
 
   it('round-trips a v21 Course backup without changing review identity, order or performance', async () => {
     const course = await createCourse('Biology');
