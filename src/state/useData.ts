@@ -5,10 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/schema';
 import { hydrateCardsWithHistory, listAllReviewHistory } from '../db/reviewHistoryRead';
 import type { ReviewHistoryEntry } from '../db/reviewHistory';
-import type { BackupSnapshot, Card, Deck, SessionHistoryEntry } from '../db/types';
-import { progressValue } from '../fsrs/objective';
-import { availableCards, studyPool } from '../fsrs/eligibility';
-import { computeStudyStats, type StudyStats } from '../fsrs/stats';
+import type { BackupSnapshot, Card, SessionHistoryEntry } from '../db/types';
 
 export function useCard(cardId: string | undefined): Card | null | undefined {
   return useLiveQuery<Card | null>(
@@ -40,97 +37,4 @@ export function useBackups(): BackupSnapshot[] | undefined {
 /** All session-history entries across every deck, sorted by timestamp. */
 export function useAllSessionHistory(): SessionHistoryEntry[] | undefined {
   return useLiveQuery(() => db.sessionHistory.orderBy('timestamp').toArray(), []);
-}
-
-/**
- * Dashboard study signals (streak, reviews today, seven-day time forecast), recomputed
- * reactively from review history, card due dates and per-deck response-time calibration.
- */
-export function useStudyStats(): StudyStats | undefined {
-  return useLiveQuery(async () => {
-    const [rawCards, perf] = await Promise.all([db.cards.toArray(), db.userPerformance.toArray()]);
-    const cards = await hydrateCardsWithHistory(rawCards);
-    // Only trust a deck's mean once it has at least one correct review to learn from.
-    const deckSeconds = new Map<string, number>();
-    for (const p of perf) {
-      if (p.totalCorrectReviews > 0 && p.runningMeanResponseTime > 0) {
-        deckSeconds.set(p.deckId, p.runningMeanResponseTime);
-      }
-    }
-    return computeStudyStats(cards, deckSeconds);
-  }, []);
-}
-
-interface DeckSummary {
-  count: number;
-  /** Objective-aware progress (0..1): mean predicted R, or fraction secured. */
-  mastery: number;
-  /** Number of cards that have never been reviewed. */
-  unreviewed: number;
-  /** Cards a session would serve today (available, new-card cap applied). */
-  eligible: number;
-}
-
-/** Pure computation shared by combined hooks such as useDashboardData. */
-export function computeDeckSummaries(decks: Deck[], cards: Card[]): Record<string, DeckSummary> {
-  const deckById = new Map(decks.map((d) => [d.id, d]));
-  const byDeck: Record<string, Card[]> = {};
-  for (const card of cards) (byDeck[card.deckId] ??= []).push(card);
-
-  const summaries: Record<string, DeckSummary> = {};
-  for (const deck of decks) {
-    const deckCards = byDeck[deck.id] ?? [];
-    // Suspended/buried cards are excluded entirely from the objective denominator.
-    const available = availableCards(deckCards);
-    summaries[deck.id] = {
-      count: deckCards.length,
-      mastery: progressValue(available, deck),
-      unreviewed: available.filter((c) => c.lastReviewed === null).length,
-      eligible: studyPool(deckCards, deck).length,
-    };
-  }
-  // Skip orphaned card sets whose deck was removed mid-transaction.
-  for (const [deckId, deckCards] of Object.entries(byDeck)) {
-    if (!deckById.has(deckId)) continue;
-    summaries[deckId] ??= {
-      count: deckCards.length,
-      mastery: 0,
-      unreviewed: deckCards.length,
-      eligible: 0,
-    };
-  }
-  return summaries;
-}
-
-/**
- * Single aggregated live query for the Dashboard. Returns decks, all cards,
- * per-deck summaries and global study stats in one reactive read so a shared
- * transaction (e.g. a review that touches cards + performance) triggers only one
- * re-render instead of four.
- */
-export function useDashboardData():
-  | {
-      decks: Deck[];
-      allCards: Card[];
-      summaries: Record<string, DeckSummary>;
-      stats: StudyStats;
-    }
-  | undefined {
-  return useLiveQuery(async () => {
-    const [decks, rawCards, perf] = await Promise.all([
-      db.decks.toArray(),
-      db.cards.toArray(),
-      db.userPerformance.toArray(),
-    ]);
-    const cards = await hydrateCardsWithHistory(rawCards);
-    const summaries = computeDeckSummaries(decks, cards);
-    const deckSeconds = new Map<string, number>();
-    for (const p of perf) {
-      if (p.totalCorrectReviews > 0 && p.runningMeanResponseTime > 0) {
-        deckSeconds.set(p.deckId, p.runningMeanResponseTime);
-      }
-    }
-    const stats = computeStudyStats(cards, deckSeconds);
-    return { decks, allCards: cards, summaries, stats };
-  }, []);
 }

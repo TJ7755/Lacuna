@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { filterSessionCardPool, searchCards, searchCardsInScope } from './search';
+import {
+  filterSessionCardPool,
+  searchCardsInScope,
+  type SearchOptions,
+} from './search';
 import { DEFAULT_LEECH_LAPSE_THRESHOLD } from '../fsrs/leech';
-import type { Card, Course, Deck } from './types';
+import type { Card, Course, LegacyDeckRecord, Lesson } from './types';
 
 const NOW = 1_000_000_000_000;
 
@@ -9,6 +13,9 @@ function card(id: string, over: Partial<Card> = {}): Card {
   return {
     id,
     deckId: 'd1',
+    courseId: 'course-1',
+    primaryLessonId: null,
+    schedulingUnitId: 'course-1',
     type: 'front_back',
     front: `front ${id}`,
     back: `back ${id}`,
@@ -27,9 +34,9 @@ function card(id: string, over: Partial<Card> = {}): Card {
   };
 }
 
-const deck: Deck = {
+const deck: LegacyDeckRecord = {
   id: 'd1',
-  name: 'Deck one',
+  name: 'LegacyDeckRecord one',
   examDate: NOW,
   createdAt: NOW,
   fsrsVersion: 6,
@@ -44,13 +51,43 @@ const deck: Deck = {
   examObjective: 'expectedMarks',
 };
 
+const course: Course = {
+  id: 'course-1',
+  name: 'Ancient Rome',
+  description: '',
+  createdAt: NOW,
+  examDate: NOW + 100_000,
+  fsrsVersion: 6,
+  fsrsParameters: deck.fsrsParameters,
+  examObjective: 'expectedMarks',
+  unlockMode: 'open',
+  autoPractice: false,
+  practiceThresholdMinutesFar: 10,
+  practiceThresholdMinutesNear: 5,
+  practiceUrgentWindowDays: 7,
+  practiceMaxGap: 3,
+};
+
+const lesson: Lesson = {
+  id: 'lesson-1',
+  courseId: course.id,
+  name: 'The Republic',
+  orderIndex: 0,
+  createdAt: NOW,
+  isExtension: false,
+};
+
+function searchCards(query: string, cards: Card[], options: SearchOptions = {}) {
+  return searchCardsInScope(query, { cards, courses: [course], lessons: [lesson] }, options);
+}
+
 describe('searchCards', () => {
   it('returns nothing without a query or filter', () => {
-    expect(searchCards('', [card('a')], [deck])).toEqual([]);
+    expect(searchCards('', [card('a')])).toEqual([]);
   });
 
   it('still substring-searches when given a query', () => {
-    const results = searchCards('front a', [card('a'), card('b')], [deck]);
+    const results = searchCards('front a', [card('a'), card('b')]);
     expect(results.map((r) => r.card.id)).toEqual(['a']);
   });
 
@@ -60,7 +97,7 @@ describe('searchCards', () => {
       card('later', { due: NOW + 100_000 }),
       card('fresh', { due: null, lastReviewed: null }),
     ];
-    const results = searchCards('', cards, [deck], { filters: ['due'], now: NOW });
+    const results = searchCards('', cards, { filters: ['due'], now: NOW });
     expect(results.map((r) => r.card.id)).toEqual(['due']);
   });
 
@@ -72,17 +109,17 @@ describe('searchCards', () => {
       card('susp', { suspended: true }),
       card('plain'),
     ];
-    expect(searchCards('', cards, [deck], { filters: ['new'] }).map((r) => r.card.id)).toEqual([
+    expect(searchCards('', cards, { filters: ['new'] }).map((r) => r.card.id)).toEqual([
       'new',
     ]);
-    expect(searchCards('', cards, [deck], { filters: ['leech'] }).map((r) => r.card.id)).toEqual([
+    expect(searchCards('', cards, { filters: ['leech'] }).map((r) => r.card.id)).toEqual([
       'leech',
     ]);
-    expect(searchCards('', cards, [deck], { filters: ['flagged'] }).map((r) => r.card.id)).toEqual([
+    expect(searchCards('', cards, { filters: ['flagged'] }).map((r) => r.card.id)).toEqual([
       'flag',
     ]);
     expect(
-      searchCards('', cards, [deck], { filters: ['suspended'] }).map((r) => r.card.id),
+      searchCards('', cards, { filters: ['suspended'] }).map((r) => r.card.id),
     ).toEqual(['susp']);
   });
 
@@ -92,7 +129,7 @@ describe('searchCards', () => {
       card('flagOnly', { flagged: true }),
       card('leechOnly', { lapses: DEFAULT_LEECH_LAPSE_THRESHOLD }),
     ];
-    const results = searchCards('', cards, [deck], { filters: ['flagged', 'leech'] });
+    const results = searchCards('', cards, { filters: ['flagged', 'leech'] });
     expect(results.map((r) => r.card.id)).toEqual(['both']);
   });
 
@@ -102,59 +139,31 @@ describe('searchCards', () => {
       card('b', { flagged: true, front: 'banana' }),
       card('c', { flagged: false, front: 'apple' }),
     ];
-    const results = searchCards('apple', cards, [deck], { filters: ['flagged'] });
+    const results = searchCards('apple', cards, { filters: ['flagged'] });
     expect(results.map((r) => r.card.id)).toEqual(['a']);
   });
 });
 
 describe('searchCardsInScope', () => {
-  const course: Course = {
-    id: 'course-1',
-    name: 'Ancient Rome',
-    description: '',
-    createdAt: NOW,
-    examDate: NOW + 100_000,
-    fsrsVersion: 6,
-    fsrsParameters: deck.fsrsParameters,
-    examObjective: 'expectedMarks',
-    unlockMode: 'open',
-    autoPractice: false,
-    practiceThresholdMinutesFar: 10,
-    practiceThresholdMinutesNear: 5,
-    practiceUrgentWindowDays: 7,
-    practiceMaxGap: 3,
-  };
-
-  it('uses the Course name when a course card has no backing Deck row', () => {
-    const courseCard = card('course-card', {
-      courseId: course.id,
-      deckId: 'missing-deck',
-      front: 'Roman senate',
+  it('returns Course, Lesson and bank cards with domain ownership labels', () => {
+    const courseCard = card('course', { primaryLessonId: null });
+    const lessonCard = card('lesson', {
+      primaryLessonId: lesson.id,
+      schedulingUnitId: lesson.id,
     });
+    const bankCard = card('bank', { primaryLessonId: null });
 
-    const results = searchCardsInScope('Ancient Rome', {
-      cards: [courseCard],
-      decks: [],
+    const results = searchCardsInScope('front', {
+      cards: [courseCard, lessonCard, bankCard],
       courses: [course],
+      lessons: [lesson],
     });
 
     expect(results).toEqual([
-      expect.objectContaining({
-        card: courseCard,
-        course,
-        contextName: 'Ancient Rome',
-      }),
+      expect.objectContaining({ card: courseCard, course, contextName: 'Ancient Rome' }),
+      expect.objectContaining({ card: lessonCard, course, lesson, contextName: 'The Republic' }),
+      expect.objectContaining({ card: bankCard, course, contextName: 'Ancient Rome' }),
     ]);
-  });
-
-  it('falls back to legacy Deck context for deck-only cards', () => {
-    const results = searchCardsInScope('Deck one', {
-      cards: [card('legacy')],
-      decks: [deck],
-      courses: [],
-    });
-
-    expect(results[0]).toMatchObject({ card: expect.objectContaining({ id: 'legacy' }), deck, contextName: 'Deck one' });
   });
 });
 

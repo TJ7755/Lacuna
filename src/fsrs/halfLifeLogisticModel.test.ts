@@ -17,6 +17,7 @@ function card(partial: Partial<Card> = {}): Card {
   return {
     id: 'card',
     deckId: 'deck',
+    schedulingUnitId: 'deck',
     type: 'front_back',
     front: 'Front',
     back: 'Back',

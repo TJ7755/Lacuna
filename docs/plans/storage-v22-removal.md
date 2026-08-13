@@ -1,6 +1,6 @@
 # Schema v22: removal of the hidden Deck and Folder stores
 
-**Status:** contract agreed, implementation not started
+**Status:** delivered in schema v22
 
 **Written:** 13 August 2026
 
@@ -288,3 +288,12 @@ Suggested commit order:
 
 Steps 1 through 4 are individually revertible. Step 5 is not, which is why everything that can
 precede it does.
+
+## Closing note
+
+The cutover landed in the six ordered stages above. The compatibility net needed one correction
+during the branch: commit `fd22d84` replaced fixtures that constructed data through the live v21
+API with literal serialised v21 backup and share payloads. The original test shape would have made
+the supposedly pre-removal net depend on APIs deleted by the removal itself, so it could not remain
+unchanged across the cutover. The serialised fixtures now test the actual compatibility boundary
+and remained unmodified through the v22 removal commit.

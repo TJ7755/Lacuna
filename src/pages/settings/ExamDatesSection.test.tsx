@@ -55,6 +55,7 @@ const mockCard = {
   back: 'Answer',
   type: 'front_back',
   deckId: 'deck-1',
+  schedulingUnitId: 'deck-1',
   tags: [],
   createdAt: Date.now(),
   state: 0,

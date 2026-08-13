@@ -8,7 +8,8 @@ export interface ReviewHistoryEntry extends ReviewLog {
   /** Stable store primary key. Event-backed rows use the event id directly. */
   id: string;
   cardId: string;
-  deckId: string;
+  /** Legacy import provenance only. */
+  deckId?: string;
   courseId?: string | null;
   primaryLessonId?: string | null;
   schedulingUnitId?: string;

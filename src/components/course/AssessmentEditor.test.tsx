@@ -20,6 +20,7 @@ function card(id: string, lessonId: string, front: string): Card {
     courseId: 'c1',
     primaryLessonId: lessonId,
     deckId: `deck-${lessonId}`,
+    schedulingUnitId: `deck-${lessonId}`,
     front,
     back: 'Answer',
     type: 'front_back',

@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import Dexie from 'dexie';
 import {
   buildLessonCardExposureBackfill,
@@ -7,7 +7,7 @@ import {
   migrateCardRecord,
 } from './migrations';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import type { ReviewLog } from './types';
+import type { BackupFile, ReviewLog } from './types';
 import { getPreMigrationSnapshot, savePreMigrationSnapshot } from './preMigrationSnapshots';
 
 describe('migrateDeckRecord', () => {
@@ -75,6 +75,7 @@ describe('migrateCardRecord', () => {
     const migrated = migrateCardRecord({
       id: 'c1',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'front_back',
       front: 'q',
       back: 'a',
@@ -96,6 +97,7 @@ describe('migrateCardRecord', () => {
     const migrated = migrateCardRecord({
       id: 'c2',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'cloze',
       front: '{{c1::x}}',
       back: '',
@@ -115,6 +117,7 @@ describe('migrateCardRecord', () => {
     const migrated = migrateCardRecord({
       id: 'c3',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'typing',
       front: 'Capital of Japan?',
       back: 'Tokyo',
@@ -133,6 +136,7 @@ describe('migrateCardRecord', () => {
     const migrated = migrateCardRecord({
       id: 'c4',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'basic_reversed',
       front: 'q',
       back: 'a',
@@ -199,6 +203,7 @@ describe('Dexie upgrade from the old 17-parameter schema', () => {
     await v1.table('cards').add({
       id: 'c1',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'front_back',
       front: 'q',
       back: 'a',
@@ -282,6 +287,7 @@ describe('pre-migration snapshot ordering', () => {
     await v3.table('cards').add({
       id: 'c1',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'front_back',
       front: 'question',
       back: 'answer',
@@ -336,11 +342,96 @@ describe('pre-migration snapshot ordering', () => {
     const snapshot = await getPreMigrationSnapshot(4);
     expect(snapshot).toBeDefined();
     expect(snapshot!.payload.decks).toHaveLength(1);
-    expect(snapshot!.payload.decks[0].name).toBe('Pre-migration deck');
+    expect(snapshot!.payload.decks![0].name).toBe('Pre-migration deck');
     expect(snapshot!.payload.cards).toHaveLength(1);
     expect(snapshot!.payload.cards[0].front).toBe('question');
 
     v4.close();
+  });
+
+  it('captures Deck and Folder rows from a v21 database before v22', async () => {
+    const dbName = `lacuna-v21-snapshot-${Date.now()}`;
+    const v21 = new Dexie(dbName);
+    v21.version(21).stores({
+      decks: 'id, createdAt, examDate, folderId',
+      folders: 'id, parentId, createdAt',
+    });
+    await v21.open();
+    await v21.table('folders').add({ id: 'folder-1', name: 'Legacy folder', createdAt: 1 });
+    await v21.table('decks').add({
+      id: 'deck-1',
+      name: 'Legacy deck',
+      folderId: 'folder-1',
+      examDate: 1000,
+      createdAt: 2,
+    });
+    v21.close();
+
+    const { readAllDataFromVersion } = await import('./schema');
+    const payload = await readAllDataFromVersion(dbName, 21);
+
+    expect(payload.decks).toEqual([
+      expect.objectContaining({ id: 'deck-1', name: 'Legacy deck', folderId: 'folder-1' }),
+    ]);
+    expect(payload.folders).toEqual([
+      expect.objectContaining({ id: 'folder-1', name: 'Legacy folder' }),
+    ]);
+    await new Dexie(dbName).delete();
+  });
+
+  it('detects an existing database when indexedDB.databases is unavailable', async () => {
+    const dbName = `lacuna-v21-no-databases-api-${Date.now()}`;
+    const v21 = new Dexie(dbName);
+    v21.version(21).stores({ decks: 'id, createdAt' });
+    await v21.open();
+    await v21.table('decks').add({ id: 'deck-1', name: 'Protected', createdAt: 1 });
+    v21.close();
+
+    const originalDatabases = indexedDB.databases;
+    let payload: BackupFile | undefined;
+    Object.defineProperty(indexedDB, 'databases', { value: undefined, configurable: true });
+    try {
+      const { capturePreMigrationSnapshot } = await import('./schema');
+      await capturePreMigrationSnapshot(dbName, 22, async (_targetVersion, snapshot) => {
+        payload = snapshot;
+      });
+    } finally {
+      Object.defineProperty(indexedDB, 'databases', {
+        value: originalDatabases,
+        configurable: true,
+      });
+      await new Dexie(dbName).delete();
+    }
+
+    expect(payload?.decks).toEqual([
+      expect.objectContaining({ id: 'deck-1', name: 'Protected' }),
+    ]);
+  });
+
+  it('blocks a destructive v22 upgrade when its snapshot cannot be committed', async () => {
+    const dbName = `lacuna-v22-snapshot-failure-${Date.now()}`;
+    const v21 = new Dexie(dbName);
+    v21.version(21).stores({ decks: 'id, createdAt' });
+    await v21.open();
+    await v21.table('decks').add({ id: 'deck-1', name: 'Protected', createdAt: 1 });
+    v21.close();
+
+    const snapshotFailure = new Error('Snapshot storage unavailable');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { ensurePreMigrationSnapshot } = await import('./schema');
+    await expect(
+      ensurePreMigrationSnapshot(dbName, 22, async () => Promise.reject(snapshotFailure)),
+    ).rejects.toBe(snapshotFailure);
+    consoleError.mockRestore();
+
+    const unchanged = new Dexie(dbName);
+    unchanged.version(21).stores({ decks: 'id, createdAt' });
+    await unchanged.open();
+    expect(await unchanged.table('decks').get('deck-1')).toEqual(
+      expect.objectContaining({ name: 'Protected' }),
+    );
+    unchanged.close();
+    await unchanged.delete();
   });
 
   it('does not take a snapshot when the database is already at the target version', async () => {
@@ -383,12 +474,23 @@ describe('Dexie upgrade to v13: retire the typing card type', () => {
 
     const legacy = new Dexie('lacuna');
     legacy.version(12).stores({
+      decks: 'id, createdAt, examDate, folderId',
       cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
     });
     await legacy.open();
+    await legacy.table('decks').add({
+      id: 'd1',
+      name: 'Legacy deck',
+      examDate: 1000,
+      createdAt: 0,
+      fsrsVersion: 6,
+      fsrsParameters: defaultFsrsParameters(),
+      examObjective: 'expectedMarks',
+    });
     await legacy.table('cards').add({
       id: 'typing-card',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'typing',
       front: 'Capital of Japan?',
       back: 'Tokyo',
@@ -407,6 +509,7 @@ describe('Dexie upgrade to v13: retire the typing card type', () => {
     await legacy.table('cards').add({
       id: 'front-back-card',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       type: 'front_back',
       front: 'q',
       back: 'a',
@@ -448,6 +551,7 @@ describe('Dexie upgrade to v16: stable review-event identity', () => {
     await legacy.open();
     await legacy.table('sessionHistory').add({
       deckId: 'deck-1',
+      schedulingUnitId: 'deck-1',
       timestamp: 1000,
       averagePredictedRetrievability: 0.5,
     });
@@ -467,6 +571,7 @@ describe('Dexie upgrade to v16: stable review-event identity', () => {
       eventId: 'event-1',
       sessionId: 'session-1',
       deckId: 'deck-1',
+      schedulingUnitId: 'deck-1',
       timestamp: 2000,
       averagePredictedRetrievability: 0.6,
     });
@@ -475,6 +580,7 @@ describe('Dexie upgrade to v16: stable review-event identity', () => {
         eventId: 'event-1',
         sessionId: 'session-1',
         deckId: 'deck-1',
+        schedulingUnitId: 'deck-1',
         timestamp: 3000,
         averagePredictedRetrievability: 0.7,
       }),

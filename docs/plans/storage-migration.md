@@ -1,8 +1,8 @@
 # Storage and review-history migration
 
-**Status:** in progress on `feat/storage-migration`; target projection and Course/Lesson runtime-read checkpoints landed; destructive removal explicitly gated by remaining legacy product paths
+**Status:** phase 5 closed in schema v22; hidden Deck and Folder stores removed after compatibility and rollback gates passed
 
-**Reviewed:** 12 August 2026
+**Reviewed:** 13 August 2026
 
 ## Purpose
 
@@ -149,15 +149,14 @@ wire-compatibility path is removed until the later cutover slices have focused c
 4. **Dual-write and read cutover** — repository review writes, undo, snapshots, backups, merge,
    analytics and optimisation use the event adapter. Keep the Card projection until old backups
    and imported data have passed the compatibility window.
-5. **Domain storage migration** — in progress: explicit Course/Lesson scheduling units and
-   split performance stores are backfilled additively in schema v21. Course-facing performance
-   reads and review/undo writes now use the target stores with a compatibility mirror. Repository
-   Course/Lesson and assessment writes now synchronise target scheduling configuration and retain
-   target rows through deletion undo. Share, lineage merge and occlusion parent transactions now
-   include the target stores, and a Deck-only legacy-backup round trip is covered. Canonical event
-   identity ignores projected ownership metadata so target stamping cannot duplicate one review.
-   The next slices cut remaining course-facing readers/writers over, then remove hidden Deck/Folder
-   stores only after compatibility import, rollback, wire-format and release tests pass.
+5. **Domain storage migration — closed.** Schema v21 backfilled explicit Course/Lesson scheduling
+   units and split performance stores. Schema v22 then cut the remaining global study, search,
+   editing, dashboard and MCP paths over before deleting the hidden `decks` and `folders` stores.
+   `schedulingUnits` is now the sole scheduling record. Old backups and `LAC0`–`LAC3` share codes
+   convert through `buildDomainStorageMigration` on import; review-event identity and order are
+   preserved. The destructive upgrade is blocked unless its separate pre-migration snapshot
+   commits, and a failed v22 transaction leaves the database readable at v21. A completed upgrade
+   has no in-place downgrade path; see [the compatibility release note](../storage-v22-compatibility.md).
 6. **Compaction decision** — measure real event-store size and choose, separately, whether any old
    events may be compacted. Compaction requires an export format and an explicit restore story.
    This is the only phase that may propose removing old event rows; it is not implied by the event

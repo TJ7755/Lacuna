@@ -38,7 +38,7 @@ async function reset() {
     db.cards.clear(),
     db.lessons.clear(),
     db.courses.clear(),
-    db.decks.clear(),
+    db.schedulingUnits.clear(),
     db.userPerformance.clear(),
     db.sessionHistory.clear(),
   ]);

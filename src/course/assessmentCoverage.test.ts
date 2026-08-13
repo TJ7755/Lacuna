@@ -30,6 +30,7 @@ function card(id: string, primaryLessonId: string | null): Card {
   return {
     id,
     deckId: 'deck',
+    schedulingUnitId: 'deck',
     courseId: 'course',
     primaryLessonId,
     type: 'front_back',

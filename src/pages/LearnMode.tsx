@@ -432,7 +432,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   tagSuggestions={[
                     ...new Set(
                       cardsRef.current
-                        .filter((c) => c.deckId === current.deckId)
+                        .filter((c) => c.schedulingUnitId === current.schedulingUnitId)
                         .flatMap((c) => c.tags ?? []),
                     ),
                   ].sort()}

@@ -22,7 +22,7 @@ import { FadeInView } from '../components/ui/FadeInView';
 import { Button } from '../components/ui/Button';
 import { BatchAuthoringPromptDialog } from '../components/items/BatchAuthoringPromptDialog';
 import { ChevronLeftIcon, PlusIcon, SearchIcon, SparklesIcon } from '../components/ui/icons';
-import type { Card, Deck, Lesson, Occlusion, Sequence } from '../db/types';
+import type { Card, Lesson, Occlusion, SchedulingUnitRecord, Sequence } from '../db/types';
 
 // Editing a lesson-owned card still uses the lesson-scoped route (so the editor's
 // duplicate check and tag suggestions stay scoped to the lesson's own deck), but the
@@ -253,7 +253,7 @@ function LessonBucket({
   courseId: string;
   lesson: Lesson;
   cards: Card[];
-  deck: Deck | undefined;
+  deck: SchedulingUnitRecord | undefined;
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
   occlusions: Occlusion[];
@@ -326,7 +326,7 @@ function UnassignedBucket({
   courseId: string;
   courseName: string;
   cards: Card[];
-  deck: Deck | undefined;
+  deck: SchedulingUnitRecord | undefined;
   assignableLessons: AssignableLesson[];
   sequences: Sequence[];
   occlusions: Occlusion[];

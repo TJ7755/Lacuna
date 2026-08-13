@@ -55,6 +55,7 @@ function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card 
     history: [],
     createdAt: 0,
     ...overrides,
+    schedulingUnitId: overrides.schedulingUnitId ?? overrides.deckId ?? 'unit',
   };
 }
 
@@ -158,6 +159,7 @@ describe('computeCourseSummaries', () => {
       makeCard({
         id: 'near-card',
         deckId: 'd1',
+        schedulingUnitId: 'd1',
         courseId: 'c1',
         primaryLessonId: 'near',
         stability: 10,
@@ -170,6 +172,7 @@ describe('computeCourseSummaries', () => {
       makeCard({
         id: 'far-card',
         deckId: 'd1',
+        schedulingUnitId: 'd1',
         courseId: 'c1',
         primaryLessonId: 'far',
         stability: 10,
@@ -215,6 +218,7 @@ describe('computeCourseSummaries', () => {
     const card = makeCard({
       id: 'card1',
       deckId: 'd1',
+      schedulingUnitId: 'd1',
       courseId: 'c1',
       primaryLessonId: 'l1',
       stability: 10,
@@ -238,6 +242,7 @@ describe('computeCourseSummaries', () => {
       makeCard({
         id: 'overdue',
         deckId: 'd1',
+        schedulingUnitId: 'd1',
         courseId: 'c1',
         primaryLessonId: 'l1',
         state: 2,
@@ -247,6 +252,7 @@ describe('computeCourseSummaries', () => {
       makeCard({
         id: 'future',
         deckId: 'd1',
+        schedulingUnitId: 'd1',
         courseId: 'c1',
         primaryLessonId: 'l1',
         state: 2,
@@ -273,6 +279,7 @@ describe('computeCourseSummaries', () => {
       makeCard({
         id: 'primary',
         deckId: 'd1',
+        schedulingUnitId: 'd1',
         courseId: 'c1',
         primaryLessonId: 'cards',
         lastReviewed: now - 1,
@@ -282,12 +289,14 @@ describe('computeCourseSummaries', () => {
       makeCard({
         id: 'linked',
         deckId: 'd1',
+        schedulingUnitId: 'd1',
         courseId: 'c1',
         primaryLessonId: null,
       }),
       makeCard({
         id: 'extension-card',
         deckId: 'd1',
+        schedulingUnitId: 'd1',
         courseId: 'c1',
         primaryLessonId: 'extension',
         lastReviewed: now - 1,

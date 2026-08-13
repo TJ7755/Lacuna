@@ -7,7 +7,7 @@ import { reviewHistoryEntryIdForEvent } from './reviewHistory';
 import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
 import {
   performanceForCourseBackingDecks,
-  performanceForReviewUnits,
+  performanceForReviewUnit,
 } from './backingDecks';
 import {
   addTagToCards,
@@ -16,7 +16,7 @@ import {
   createCards,
   createCardWithReverse,
   createCourse,
-  createDeck,
+
   createLesson,
   createLessonCard,
   deleteCards,
@@ -45,22 +45,24 @@ async function waitForTrajectorySample(
 describe('undoReview', () => {
   beforeEach(async () => {
     await Promise.all([
-      db.decks.clear(),
+      db.schedulingUnits.clear(),
       db.cards.clear(),
       db.sessionHistory.clear(),
       db.userPerformance.clear(),
       db.assets.clear(),
       db.reviewHistory.clear(),
+      db.schedulingUnits.clear(),
+      db.schedulingPerformance.clear(),
     ]);
   });
 
   it('fully reverses a review: card, calibration profile and session history', async () => {
-    const deck = await createDeck('Test deck');
+    const deck = await createCourse('Test deck');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
 
     const cardBefore = (await db.cards.get(card.id))!;
-    const perfBefore = (await db.userPerformance.get(deck.id)) ?? null;
-    const deckLastInteractedAtBefore = (await db.decks.get(deck.id))!.lastInteractedAt;
+    const perfBefore = (await performanceForReviewUnit(deck.id)) ?? null;
+    const unitLastInteractedAtBefore = (await db.schedulingUnits.get(deck.id))!.lastInteractedAt;
 
     const {
       card: updated,
@@ -80,9 +82,11 @@ describe('undoReview', () => {
     // The review actually changed state.
     expect(updated.reps).toBe(1);
     expect(await db.sessionHistory.count()).toBe(0);
-    expect((await db.userPerformance.get(deck.id))!.totalCorrectReviews).toBe(1);
-    expect(lastInteractedAtBefore).toBe(deckLastInteractedAtBefore);
-    expect((await db.decks.get(deck.id))!.lastInteractedAt).not.toBe(deckLastInteractedAtBefore);
+    expect((await db.schedulingPerformance.get(deck.id))!.totalCorrectReviews).toBe(1);
+    expect(lastInteractedAtBefore).toBe(unitLastInteractedAtBefore);
+    expect((await db.schedulingUnits.get(deck.id))!.lastInteractedAt).not.toBe(
+      unitLastInteractedAtBefore,
+    );
 
     const session = await waitForTrajectorySample('event-undo');
     expect(await db.sessionHistory.count()).toBe(1);
@@ -94,7 +98,7 @@ describe('undoReview', () => {
       perfBefore,
       sessionHistoryId: session.id,
       deckId: deck.id,
-      kind: 'deck',
+      kind: 'scheduling-unit',
       lastInteractedAtBefore,
     });
 
@@ -103,12 +107,14 @@ describe('undoReview', () => {
     expect(restored.state).toBe(0);
     expect(restored.lastReviewed).toBeNull();
     expect(await db.sessionHistory.count()).toBe(0);
-    expect((await db.userPerformance.get(deck.id))!.totalCorrectReviews).toBe(0);
-    expect((await db.decks.get(deck.id))!.lastInteractedAt).toBe(deckLastInteractedAtBefore);
+    expect((await db.schedulingPerformance.get(deck.id))!.totalCorrectReviews).toBe(0);
+    expect((await db.schedulingUnits.get(deck.id))!.lastInteractedAt).toBe(
+      unitLastInteractedAtBefore,
+    );
   });
 
   it('keeps the card projection and canonical event in sync through record and undo', async () => {
-    const deck = await createDeck('Review history consistency');
+    const deck = await createCourse('Review history consistency');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
     const perfBefore = (await db.userPerformance.get(deck.id)) ?? null;
     const result = await recordReview({
@@ -131,6 +137,7 @@ describe('undoReview', () => {
       ...recordedCard.history[0],
       cardId: card.id,
       deckId: deck.id,
+      schedulingUnitId: deck.id,
     });
 
     await undoReview({
@@ -139,7 +146,7 @@ describe('undoReview', () => {
       perfBefore,
       sessionHistoryId: result.sessionHistoryId,
       deckId: deck.id,
-      kind: 'deck',
+      kind: 'scheduling-unit',
       lastInteractedAtBefore: result.lastInteractedAtBefore,
     });
 
@@ -150,7 +157,7 @@ describe('undoReview', () => {
   });
 
   it('records hintUsed on the review log, defaulting to false when omitted', async () => {
-    const deck = await createDeck('Test deck');
+    const deck = await createCourse('Test deck');
     const cardWithHint = await createCard(deck.id, 'front_back', 'q1', 'a1');
     const cardWithoutHint = await createCard(deck.id, 'front_back', 'q2', 'a2');
 
@@ -183,7 +190,7 @@ describe('undoReview', () => {
   });
 
   it('records machine-awarded marks on the review log', async () => {
-    const deck = await createDeck('Test deck');
+    const deck = await createCourse('Test deck');
     const card = await createCard(deck.id, 'front_back', '2 + 2', '', [], {
       payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
     });
@@ -226,7 +233,7 @@ describe('undoReview', () => {
     });
   });
 
-  it('course-keyed review updates Course.lastInteractedAt, courseId-keyed userPerformance, and sessionHistory.courseId', async () => {
+  it('course-keyed review updates Course.lastInteractedAt, course performance and sessionHistory.courseId', async () => {
     await Promise.all([db.courses.clear(), db.lessons.clear()]);
 
     const c = await createCourse('Test course');
@@ -234,7 +241,8 @@ describe('undoReview', () => {
     const card = await createLessonCard(c.id, lesson.id, 'front_back', 'q', 'a');
 
     const cardBefore = (await db.cards.get(card.id))!;
-    const perfBefore = (await db.userPerformance.get(c.id)) ?? null;
+    const coursePerformanceBefore = await performanceForReviewUnit(c.id, 'course');
+    const perfBefore = coursePerformanceBefore ?? null;
     const courseLastInteractedAtBefore = (await db.courses.get(c.id))!.lastInteractedAt;
 
     const {
@@ -259,7 +267,7 @@ describe('undoReview', () => {
     expect(historyRow?.courseId).toBe(c.id);
     expect(historyRow?.deckId).toBe(card.deckId);
 
-    const perf = await db.userPerformance.get(c.id);
+    const perf = await performanceForReviewUnit(c.id, 'course');
     expect(perf?.totalCorrectReviews).toBe(1);
 
     const updatedCourse = await db.courses.get(c.id);
@@ -267,9 +275,8 @@ describe('undoReview', () => {
     expect(lastInteractedAtBefore).toBe(courseLastInteractedAtBefore);
     expect(updatedCourse?.lastInteractedAt).not.toBe(courseLastInteractedAtBefore);
 
-    // The card's own shadow deck (created empty by ensureLessonDeck) is untouched
-    // by the course-keyed review: its calibration row stays at zero reviews.
-    expect((await db.userPerformance.get(card.deckId))?.totalCorrectReviews).toBe(0);
+    // The lesson scheduling unit is untouched by a course-keyed review.
+    expect((await performanceForReviewUnit(card.schedulingUnitId))?.totalCorrectReviews).toBe(0);
 
     await undoReview({
       eventId: 'event-course',
@@ -284,7 +291,7 @@ describe('undoReview', () => {
     const restored = (await db.cards.get(card.id))!;
     expect(restored.reps).toBe(0);
     expect(await db.sessionHistory.get(historyRow.id)).toBeUndefined();
-    expect(await db.userPerformance.get(c.id)).toBeUndefined();
+    expect(await performanceForReviewUnit(c.id, 'course')).toEqual(coursePerformanceBefore);
     expect((await db.courses.get(c.id))!.lastInteractedAt).toBe(courseLastInteractedAtBefore);
   });
 
@@ -293,7 +300,7 @@ describe('undoReview', () => {
     const lesson = await createLesson(course.id, 'Lesson 1');
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
     const backingBefore = {
-      deckId: card.deckId,
+      deckId: card.deckId!,
       runningMeanResponseTime: 31,
       runningStdDevResponseTime: 2,
       m2: 8,
@@ -333,18 +340,20 @@ describe('undoReview', () => {
     });
 
     expect(await db.userPerformance.get(course.id)).toEqual(calibrationBefore);
-    expect(await db.userPerformance.get(card.deckId)).toEqual(backingBefore);
+    expect(await db.userPerformance.get(card.deckId!)).toEqual(backingBefore);
     expect((await performanceForCourseBackingDecks(course.id, [card])).map((row) => row.deckId)).toEqual([
-      card.deckId,
+      card.schedulingUnitId,
     ]);
-    expect((await performanceForReviewUnits([course.id, card.deckId])).map((row) => row?.deckId)).toEqual([
-      course.id,
-      card.deckId,
-    ]);
+    expect(await performanceForReviewUnit(course.id, 'course')).toMatchObject({
+      deckId: course.id,
+    });
+    expect(await performanceForReviewUnit(card.schedulingUnitId!)).toMatchObject({
+      deckId: card.schedulingUnitId,
+    });
   });
 
   it('persists every provenance field and the exact attempt timestamp', async () => {
-    const deck = await createDeck('Test deck');
+    const deck = await createCourse('Test deck');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
     const now = 1_725_123_456_789;
 
@@ -394,7 +403,7 @@ describe('undoReview', () => {
   });
 
   it('commits concurrent replays once and performs one FSRS transition', async () => {
-    const deck = await createDeck('Test deck');
+    const deck = await createCourse('Test deck');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
     const args = {
       card,
@@ -416,11 +425,11 @@ describe('undoReview', () => {
     expect((await db.cards.get(card.id))?.history).toHaveLength(1);
     await waitForTrajectorySample('event-replayed');
     expect(await db.sessionHistory.count()).toBe(1);
-    expect((await db.userPerformance.get(deck.id))?.totalCorrectReviews).toBe(1);
+    expect((await db.schedulingPerformance.get(deck.id))?.totalCorrectReviews).toBe(1);
   });
 
   it('skips the card scan when the unit already has a trajectory sample today', async () => {
-    const deck = await createDeck('Test deck');
+    const deck = await createCourse('Test deck');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
     const now = 1_725_123_456_789;
 
@@ -429,6 +438,7 @@ describe('undoReview', () => {
       sessionId: 'session-existing-daily-sample',
       timestamp: now,
       deckId: deck.id,
+      schedulingUnitId: deck.id,
       averagePredictedRetrievability: 0.5,
     });
     await recordReview({
@@ -451,7 +461,7 @@ describe('undoReview', () => {
         sessionId: 'session-daily-sample-skip',
         timestamp: now,
         deck,
-        kind: 'deck',
+        kind: 'scheduling-unit',
         cardId: card.id,
       });
     } finally {
@@ -463,7 +473,7 @@ describe('undoReview', () => {
   });
 
   it('makes repeated undo harmless and permits a genuine retry afterwards', async () => {
-    const deck = await createDeck('Test deck');
+    const deck = await createCourse('Test deck');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
     const perfBefore = (await db.userPerformance.get(deck.id)) ?? null;
     const result = await recordReview({
@@ -483,6 +493,7 @@ describe('undoReview', () => {
       perfBefore,
       sessionHistoryId: result.sessionHistoryId,
       deckId: deck.id,
+      schedulingUnitId: deck.id,
       kind: result.kind,
       lastInteractedAtBefore: result.lastInteractedAtBefore,
     };
@@ -542,11 +553,11 @@ describe('ratchetLessonUnlock', () => {
 
 describe('createCardWithReverse', () => {
   beforeEach(async () => {
-    await Promise.all([db.decks.clear(), db.cards.clear()]);
+    await Promise.all([db.schedulingUnits.clear(), db.cards.clear()]);
   });
 
   it('creates two independent cards with swapped sides and shared tags', async () => {
-    const deck = await createDeck('Vocab');
+    const deck = await createCourse('Vocab');
     const { card, reverse } = await createCardWithReverse(deck.id, 'bonjour', 'hello', ['french']);
 
     expect(card.front).toBe('bonjour');
@@ -559,14 +570,14 @@ describe('createCardWithReverse', () => {
     expect(reverse.lastReviewed).toBeNull();
     expect(card.tags).toEqual(['french']);
     expect(reverse.tags).toEqual(['french']);
-    expect(await db.cards.where('deckId').equals(deck.id).count()).toBe(2);
+    expect(await db.cards.where('schedulingUnitId').equals(deck.id).count()).toBe(2);
   });
 });
 
 describe('structured item payload validation', () => {
   beforeEach(async () => {
     await Promise.all([
-      db.decks.clear(),
+      db.schedulingUnits.clear(),
       db.cards.clear(),
       db.userPerformance.clear(),
       db.assets.clear(),
@@ -575,7 +586,7 @@ describe('structured item payload validation', () => {
   });
 
   it('rejects malformed payloads before create and update writes', async () => {
-    const deck = await createDeck('Payload validation');
+    const deck = await createCourse('Payload validation');
     const invalidPayload = { v: 1, kind: 'working', scheme: [] } as never;
 
     await expect(
@@ -591,7 +602,7 @@ describe('structured item payload validation', () => {
   });
 
   it('validates every draft before a bulk create and keeps payloads off cloze cards', async () => {
-    const deck = await createDeck('Payload validation');
+    const deck = await createCourse('Payload validation');
     const invalidPayload = { v: 1, kind: 'working', scheme: [] } as never;
 
     await expect(
@@ -612,11 +623,11 @@ describe('structured item payload validation', () => {
 
 describe('bulk card actions', () => {
   beforeEach(async () => {
-    await Promise.all([db.decks.clear(), db.cards.clear()]);
+    await Promise.all([db.schedulingUnits.clear(), db.cards.clear()]);
   });
 
   it('suspends and resumes many cards at once', async () => {
-    const deck = await createDeck('Bulk');
+    const deck = await createCourse('Bulk');
     const a = await createCard(deck.id, 'front_back', 'a', '1');
     const b = await createCard(deck.id, 'front_back', 'b', '2');
 
@@ -630,7 +641,7 @@ describe('bulk card actions', () => {
   });
 
   it('adds a tag without duplicating it and removes it again', async () => {
-    const deck = await createDeck('Bulk');
+    const deck = await createCourse('Bulk');
     const a = await createCard(deck.id, 'front_back', 'a', '1', ['keep']);
     const b = await createCard(deck.id, 'front_back', 'b', '2');
 
@@ -645,7 +656,7 @@ describe('bulk card actions', () => {
   });
 
   it('buries many cards until tomorrow', async () => {
-    const deck = await createDeck('Bulk');
+    const deck = await createCourse('Bulk');
     const a = await createCard(deck.id, 'front_back', 'a', '1');
     const b = await createCard(deck.id, 'front_back', 'b', '2');
     const until = Date.now() + 86400000;
@@ -656,7 +667,7 @@ describe('bulk card actions', () => {
   });
 
   it('resets many cards to new', async () => {
-    const deck = await createDeck('Bulk');
+    const deck = await createCourse('Bulk');
     const a = await createCard(deck.id, 'front_back', 'a', '1');
     // Simulate a reviewed card
     await db.cards.update(a.id, {
@@ -683,7 +694,7 @@ describe('bulk card actions', () => {
   });
 
   it('sets a custom due date on many cards and clears bury', async () => {
-    const deck = await createDeck('Bulk');
+    const deck = await createCourse('Bulk');
     const a = await createCard(deck.id, 'front_back', 'a', '1');
     const b = await createCard(deck.id, 'front_back', 'b', '2');
     await db.cards.update(a.id, { buriedUntil: Date.now() + 86400000 });
@@ -696,7 +707,7 @@ describe('bulk card actions', () => {
   });
 
   it('rejects reschedule with no options', async () => {
-    const deck = await createDeck('Bulk');
+    const deck = await createCourse('Bulk');
     const a = await createCard(deck.id, 'front_back', 'a', '1');
     await expect(rescheduleCards([a.id], {})).rejects.toThrow(
       'Reschedule requires either reset: true or a due date.',
@@ -704,8 +715,8 @@ describe('bulk card actions', () => {
   });
 
   it('deletes and moves ordinary cards', async () => {
-    const deck = await createDeck('Bulk');
-    const other = await createDeck('Other');
+    const deck = await createCourse('Bulk');
+    const other = await createCourse('Other');
     const a = await createCard(deck.id, 'front_back', 'a', '1');
     const b = await createCard(deck.id, 'front_back', 'b', '2');
 
@@ -717,14 +728,15 @@ describe('bulk card actions', () => {
   });
 
   it('keeps canonical review-history ownership in sync when moving a card', async () => {
-    const deck = await createDeck('Bulk');
-    const other = await createDeck('Other');
+    const deck = await createCourse('Bulk');
+    const other = await createCourse('Other');
     const card = await createCard(deck.id, 'front_back', 'q', 'a');
     await db.reviewHistory.add({
       id: 'review:event:move-card',
       eventId: 'move-card',
       cardId: card.id,
       deckId: deck.id,
+      schedulingUnitId: deck.id,
       timestamp: 1,
       grade: 3,
       responseTimeSec: 1,
@@ -746,8 +758,8 @@ describe('bulk card actions', () => {
   });
 
   it('refuses to delete or move sequence-generated cards', async () => {
-    const deck = await createDeck('Bulk');
-    const other = await createDeck('Other');
+    const deck = await createCourse('Bulk');
+    const other = await createCourse('Other');
     const a = await createCard(deck.id, 'front_back', 'a', '1');
     await db.cards.update(a.id, { sequenceItemId: 'seq-item-1' });
 

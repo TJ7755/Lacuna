@@ -50,16 +50,40 @@ describe('Arc 4 persistence', () => {
     await db.delete();
     const legacy = new Dexie('lacuna');
     legacy.version(11).stores({
+      decks: 'id, createdAt, examDate, folderId',
       cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId',
       lessonCards: 'id, lessonId, cardId',
+      courses: 'id, createdAt',
+      lessons: 'id, courseId, orderIndex, createdAt',
     });
     await legacy.open();
+    await legacy.table('courses').add({
+      id: 'course',
+      name: 'Course',
+      createdAt: 1,
+    });
+    await legacy.table('lessons').add({
+      id: 'primary',
+      courseId: 'course',
+      name: 'Primary',
+      orderIndex: 0,
+      createdAt: 1,
+    });
+    await legacy.table('decks').add({
+      id: 'deck',
+      name: 'Primary',
+      examDate: 1000,
+      createdAt: 1,
+      backingCourseId: 'course',
+      backingLessonId: 'primary',
+    });
     await legacy.table('cards').bulkAdd([
       {
         id: 'reviewed',
         deckId: 'deck',
         courseId: 'course',
         primaryLessonId: 'primary',
+        schedulingUnitId: 'primary',
         type: 'front_back',
         state: 2,
         lastReviewed: 200,
@@ -70,6 +94,7 @@ describe('Arc 4 persistence', () => {
         deckId: 'deck',
         courseId: 'course',
         primaryLessonId: 'primary',
+        schedulingUnitId: 'primary',
         type: 'front_back',
         state: 0,
         lastReviewed: null,

@@ -67,7 +67,6 @@ export function SearchPage() {
   const m = speedMultiplier(motionSpeed);
   const searchData = useSearchData();
   const cards = searchData?.cards;
-  const decks = searchData?.decks;
   const courses = searchData?.courses;
   const lessons = searchData?.lessons;
   const notes = searchData?.notes;
@@ -79,12 +78,12 @@ export function SearchPage() {
     () =>
       searchCardsInScope(query, {
         cards: cards ?? [],
-        decks: decks ?? [],
         courses: courses ?? [],
+        lessons: lessons ?? [],
       }, {
         filters: [...filters],
       }),
-    [query, cards, decks, courses, filters],
+    [query, cards, courses, lessons, filters],
   );
 
   // Courses/lessons/notes have no due/new/flagged concept, so structured filters

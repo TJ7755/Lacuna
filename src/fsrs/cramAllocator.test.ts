@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, Deck, Grade, ReviewLog, UserPerformance } from '../db/types';
+import type { Card, LegacyDeckRecord, Grade, ReviewLog, UserPerformance } from '../db/types';
 import {
   allocateCramReview,
   simulateReviewOutcomes,
@@ -28,10 +28,10 @@ const RESPONSE: ResponseTimeCoefficients = {
   failureFeedbackSeconds: 4,
 };
 
-function deck(objective: Deck['examObjective'] = 'expectedMarks'): Deck {
+function deck(objective: LegacyDeckRecord['examObjective'] = 'expectedMarks'): LegacyDeckRecord {
   return {
     id: 'deck',
-    name: 'Deck',
+    name: 'LegacyDeckRecord',
     examDate: ASSESSMENT,
     examObjective: objective,
     fsrsVersion: 6,
@@ -44,6 +44,7 @@ function card(id: string, partial: Partial<Card> = {}): Card {
   return {
     id,
     deckId: 'deck',
+    schedulingUnitId: 'deck',
     type: 'front_back',
     front: id,
     back: id,
@@ -104,7 +105,7 @@ function testModel(coefficients: TestCoefficients) {
 function allocationInput(
   cards: Card[],
   model: CramMemoryModel | undefined,
-  objective: Deck['examObjective'] = 'expectedMarks',
+  objective: LegacyDeckRecord['examObjective'] = 'expectedMarks',
 ) {
   return {
     cards,
@@ -214,7 +215,7 @@ describe('expected-gain allocator', () => {
         },
       ],
     ]);
-    const slow = card('slow', { deckId: 'slow-deck' });
+    const slow = card('slow', { deckId: 'slow-deck', schedulingUnitId: 'slow-deck' });
     const input = allocationInput([card('fast'), slow], model);
     const result = allocateCramReview({ ...input, performanceByDeck: performance });
     expect(result.mode).toBe('memory-model');

@@ -10,9 +10,7 @@ import {
   addTagToCards,
   assignCardsToLesson,
   buryCards,
-  createCards,
   deleteCards,
-  moveCards,
   removeTagFromCards,
   rescheduleCards,
   restoreCards,
@@ -41,8 +39,8 @@ import { occlusionForRegionId } from '../../db/occlusionGeneration';
 import { GeneratedCardGroup } from './GeneratedCardGroup';
 import { GeneratedCardBadge } from './GeneratedCardBadge';
 import type { ParsedCard } from '../../db/import';
-import { importApkgResult, type ApkgImportResult } from '../../db/apkgImport';
-import type { Card, Deck, Occlusion, SchedulerConfig, Sequence } from '../../db/types';
+import type { ApkgImportResult } from '../../db/apkgImport';
+import type { Card, Occlusion, SchedulerConfig, Sequence } from '../../db/types';
 import type { CardListContext } from './cardListContext';
 
 const CardContent = lazy(() =>
@@ -83,16 +81,12 @@ interface CardListBaseProps {
   onUnlinkCard?: (card: Card) => void;
 }
 
-type CardListProps = CardListBaseProps &
-  (
-    | { deck: Deck; context?: never; allDecks?: Deck[] }
-    | { context: CardListContext; deck?: never; allDecks?: never }
-  );
+type CardListProps = CardListBaseProps & { context: CardListContext };
 
-export function CardList({ cards, deck, context, allDecks = deck ? [deck] : [], onNewCard, onNewSequence, onNewOcclusion, onLinkExisting, onEditCard, hideHeader = false, initiallyImporting = false, assignableLessons, courseId, sequences, onEditSequence, occlusions, onEditOcclusion, linkedCardIds, onUnlinkCard }: CardListProps) {
+export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclusion, onLinkExisting, onEditCard, hideHeader = false, initiallyImporting = false, assignableLessons, courseId, sequences, onEditSequence, occlusions, onEditOcclusion, linkedCardIds, onUnlinkCard }: CardListProps) {
   const { notify } = useToast();
-  const schedulingConfig: SchedulerConfig = context ? context.schedulingConfig : deck;
-  const importTargetName = context ? context.importTargetName : deck.name;
+  const schedulingConfig = context.schedulingConfig;
+  const importTargetName = context.importTargetName;
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [moving, setMoving] = useState(false);
@@ -114,8 +108,8 @@ export function CardList({ cards, deck, context, allDecks = deck ? [deck] : [], 
 
 
   const otherDecks = useMemo(
-    () => (context?.moveTargets ?? allDecks).filter((d) => d.id !== schedulingConfig.id),
-    [allDecks, context?.moveTargets, schedulingConfig.id],
+    () => (context.moveTargets ?? []).filter((target) => target.id !== schedulingConfig.id),
+    [context.moveTargets, schedulingConfig.id],
   );
 
   // Existing tags across the deck, offered as suggestions in the bulk tag panel.
@@ -354,38 +348,25 @@ export function CardList({ cards, deck, context, allDecks = deck ? [deck] : [], 
     if (!moveTarget) return;
     const ids = [...selected];
     const snapshot = await snapshotCards(ids);
-    if (context?.onMove) {
-      await context.onMove(ids, moveTarget);
-    } else if (!context) {
-      await moveCards(ids, moveTarget);
-    } else {
-      return;
-    }
+    if (!context.onMove) return;
+    await context.onMove(ids, moveTarget);
     exitSelect();
     notify(`${ids.length} card${ids.length === 1 ? '' : 's'} moved.`, 'neutral', {
       actionLabel: 'Undo',
       onAction: () => {
-        void (context ? context.onRestore(snapshot) : restoreCards(snapshot));
+        void context.onRestore(snapshot);
       },
     });
   }
 
   async function handleImport(cards: ParsedCard[]) {
-    if (context) {
-      await context.onImport(cards);
-    } else {
-      await createCards(deck.id, cards);
-    }
+    await context.onImport(cards);
     setImporting(false);
     notify(`${cards.length} card${cards.length === 1 ? '' : 's'} imported.`, 'positive');
   }
 
   async function handleApkgImport(result: ApkgImportResult) {
-    if (context) {
-      await context.onApkgImport(result);
-    } else {
-      await importApkgResult(result, deck.id);
-    }
+    await context.onApkgImport(result);
     setImporting(false);
     notify(`${result.cards.length} card${result.cards.length === 1 ? '' : 's'} imported from Anki.`, 'positive');
   }
@@ -504,7 +485,7 @@ export function CardList({ cards, deck, context, allDecks = deck ? [deck] : [], 
                 restore a full Lacuna backup or import a shared course.
               </p>
               <UnifiedImportPanel
-                deckId={context ? context.importTargetId : deck.id}
+                deckId={context.importTargetId}
                 onImport={handleImport}
                 onCancel={() => setImporting(false)}
                 importLabel="Add cards"

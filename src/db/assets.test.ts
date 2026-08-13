@@ -9,7 +9,7 @@ import {
   storeAudioBlob,
   storeImageBlob,
 } from './assets';
-import { createCard, createCourse, createDeck, createLesson, createNote } from './repository';
+import { createCard, createCourse, createLesson, createNote } from './repository';
 import { exportDatabase, importBackup } from './portability';
 
 vi.mock('../utils/compressImage', () => ({
@@ -18,7 +18,7 @@ vi.mock('../utils/compressImage', () => ({
 
 async function reset() {
   await Promise.all([
-    db.decks.clear(),
+    db.schedulingUnits.clear(),
     db.cards.clear(),
     db.assets.clear(),
     db.sessionHistory.clear(),
@@ -67,7 +67,7 @@ describe('image assets', () => {
   });
 
   it('round-trips referenced assets through backup export and import', async () => {
-    const deck = await createDeck('Images');
+    const deck = await createCourse('Images');
     const asset = await storeImageBlob(
       new Blob(['backup-image'], { type: 'image/png' }),
       'image/png',
@@ -156,7 +156,7 @@ describe('audio assets', () => {
   });
 
   it('round-trips its kind and bytes through backup export and import', async () => {
-    const deck = await createDeck('Audio');
+    const deck = await createCourse('Audio');
     const asset = await storeAudioBlob(new Blob(['spoken'], { type: 'audio/ogg' }));
     await createCard(deck.id, 'front_back', `![audio](${assetUrl(asset.hash)})`, 'answer');
 

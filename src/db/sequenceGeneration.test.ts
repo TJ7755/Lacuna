@@ -29,6 +29,7 @@ function makeSequence(overrides: Partial<Sequence> = {}): Sequence {
 function card(overrides: Partial<Card> & { id: string; sequenceItemId: string; front: string; back: string }): Card {
   return {
     deckId: 'deck-1',
+    schedulingUnitId: 'deck-1',
     type: 'front_back',
     stability: 5,
     difficulty: 3,

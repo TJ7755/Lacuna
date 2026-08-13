@@ -2,11 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { SearchPage } from './SearchPage';
-import type { Card, Course, Deck, Lesson, Note } from '../db/types';
+import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../db/types';
 
-const mockDeck: Deck = {
+const mockDeck: LegacyDeckRecord = {
   id: 'deck-1',
-  name: 'Test Deck',
+  name: 'Test LegacyDeckRecord',
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   createdAt: Date.now(),
@@ -37,6 +37,9 @@ const mockCourse: Course = {
 const mockCard: Card = {
   id: 'card-1',
   deckId: 'deck-1',
+  schedulingUnitId: 'deck-1',
+  courseId: mockCourse.id,
+  primaryLessonId: null,
   type: 'front_back',
   front: 'Palatine hill fortifications',
   back: 'Rome',
@@ -56,7 +59,6 @@ const mockCard: Card = {
 const dataHooks = vi.hoisted(() => ({
   useSearchData: vi.fn(() => ({
     cards: [] as Card[],
-    decks: [] as Deck[],
     courses: [] as Course[],
     lessons: [] as Lesson[],
     notes: [] as Note[],
@@ -71,8 +73,7 @@ describe('SearchPage', () => {
   it('badges a sequence-generated card result', () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [{ ...mockCard, sequenceItemId: 'item-1' }],
-      decks: [mockDeck],
-      courses: [],
+      courses: [mockCourse],
       lessons: [],
       notes: [],
     });
@@ -85,10 +86,9 @@ describe('SearchPage', () => {
     expect(screen.getByText('Sequence')).toBeInTheDocument();
   });
 
-  it('uses the Course name for a course card without a backing Deck row', () => {
+  it('uses the Course name for a course card without a backing LegacyDeckRecord row', () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [{ ...mockCard, deckId: 'missing-deck', courseId: mockCourse.id }],
-      decks: [],
       courses: [mockCourse],
       lessons: [],
       notes: [],
@@ -105,8 +105,7 @@ describe('SearchPage', () => {
   it('badges an occlusion-generated card result', () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [{ ...mockCard, occlusionRegionId: 'region-1' }],
-      decks: [mockDeck],
-      courses: [],
+      courses: [mockCourse],
       lessons: [],
       notes: [],
     });

@@ -18,7 +18,7 @@ import * as tools from './destructive';
 
 async function clearAll(): Promise<void> {
   await Promise.all([
-    db.decks.clear(),
+    db.schedulingUnits.clear(),
     db.cards.clear(),
     db.courses.clear(),
     db.lessons.clear(),

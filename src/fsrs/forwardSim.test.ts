@@ -9,9 +9,9 @@ import {
 } from './forwardSim';
 import { makeEngine } from './fsrs';
 import { defaultFsrsParameters, MS_PER_DAY } from './params';
-import type { Card, Deck } from '../db/types';
+import type { Card, LegacyDeckRecord } from '../db/types';
 
-function makeDeck(partial: Partial<Deck> = {}): Deck {
+function makeDeck(partial: Partial<LegacyDeckRecord> = {}): LegacyDeckRecord {
   return {
     id: 'd1',
     name: 'Test deck',
@@ -28,6 +28,7 @@ function makeCard(partial: Partial<Card> = {}): Card {
   return {
     id: 'c1',
     deckId: 'd1',
+    schedulingUnitId: 'd1',
     type: 'front_back',
     front: '',
     back: '',

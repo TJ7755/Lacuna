@@ -10,7 +10,7 @@
 
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { defaultExamDate } from '../utils/datetime';
-import type { Course, Deck, Folder, Lesson } from './types';
+import type { Course, LegacyDeckRecord, LegacyFolder, Lesson } from './types';
 
 /** A function that produces a fresh, collision-resistant id (e.g. makeId). */
 export type IdGenerator = () => string;
@@ -55,7 +55,7 @@ const COURSE_PATH_DEFAULTS = {
 >;
 
 /** Copy a deck's scheduling fields verbatim into the Course-shaped subset. */
-function schedulingFromDeck(deck: Deck): CourseScheduling {
+function schedulingFromDeck(deck: LegacyDeckRecord): CourseScheduling {
   return {
     examDate: deck.examDate,
     timeZone: deck.timeZone,
@@ -110,8 +110,8 @@ export interface CourseMigrationResult {
  * are single-level in practice.
  */
 export function buildCourseMigration(
-  decks: Deck[],
-  folders: Folder[],
+  decks: LegacyDeckRecord[],
+  folders: LegacyFolder[],
   genId: IdGenerator,
 ): CourseMigrationResult {
   const courses: Course[] = [];
@@ -123,8 +123,8 @@ export function buildCourseMigration(
   // a folder that no longer exists (a dangling reference) — are treated as
   // standalone so no deck and none of its cards are dropped during migration.
   const folderIds = new Set(folders.map((f) => f.id));
-  const decksByFolder = new Map<string, Deck[]>();
-  const standaloneDecks: Deck[] = [];
+  const decksByFolder = new Map<string, LegacyDeckRecord[]>();
+  const standaloneDecks: LegacyDeckRecord[] = [];
   for (const deck of decks) {
     if (deck.folderId === null || deck.folderId === undefined || !folderIds.has(deck.folderId)) {
       standaloneDecks.push(deck);
