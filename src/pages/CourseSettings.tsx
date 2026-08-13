@@ -549,7 +549,7 @@ export function CourseSettings() {
             <div id="course-settings-danger" className="flex flex-col gap-6">
               {course.distributedCopy?.locked === true && (
                 <div>
-                  <DetachCourseSection>
+                  <DetachCourseSection
                     courseId={course.id}
                     autoAcceptUpdates={course.distributedCopy?.autoAcceptUpdates === true}
                   />
@@ -557,7 +557,7 @@ export function CourseSettings() {
               )}
 
               <div>
-                <DangerZoneSection>
+                <DangerZoneSection
                   entityLabel="course"
                   entityName={course.name}
                   description="Deleting this course removes all of its lessons, notes and card assignments."

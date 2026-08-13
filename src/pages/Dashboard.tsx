@@ -177,7 +177,7 @@ export function Dashboard() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {activeCourses.map((course) => (
             <div key={course.id} className="h-full">
-              <CourseCard>
+              <CourseCard
                 course={course}
                 summary={summaries?.[course.id]}
                 cards={cardsByCourse[course.id]}
