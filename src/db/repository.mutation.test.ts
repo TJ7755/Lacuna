@@ -56,6 +56,7 @@ import {
   savePracticeMilestoneProgress,
   updatePracticeNode,
 } from './practiceNodeRepository';
+import type { CourseSnapshot } from './repository';
 import type { OcclusionRegion, RevisionProjection } from './types';
 
 const revisionFallback: RevisionProjection = {
@@ -81,6 +82,40 @@ async function expectStampAdvanced(
   await waitForStamp();
   await mutate();
   expect(await read()).toBeGreaterThan(before!);
+}
+
+function tombstoneKey(table: string, recordId: string): string {
+  return `${table}\0${recordId}`;
+}
+
+function expectedCourseTombstoneKeys(snapshot: CourseSnapshot): Set<string> {
+  const keys = new Set<string>();
+  const add = (table: string, recordId: string) => keys.add(tombstoneKey(table, recordId));
+  add('courses', snapshot.course.id);
+  for (const lesson of snapshot.lessons) add('lessons', lesson.id);
+  for (const note of snapshot.notes) add('notes', note.id);
+  for (const link of snapshot.lessonCards) add('lessonCards', link.id);
+  for (const exposure of snapshot.lessonCardExposures) {
+    add('lessonCardExposures', `${exposure.lessonId}:${exposure.cardId}`);
+  }
+  for (const completion of snapshot.lessonCompletions) add('lessonCompletions', completion.lessonId);
+  for (const node of snapshot.practiceNodes) add('practiceNodes', node.id);
+  for (const milestone of snapshot.practiceMilestones) add('practiceMilestones', milestone.nodeKey);
+  for (const assessment of snapshot.courseAssessments) add('courseAssessments', assessment.id);
+  for (const plan of snapshot.revisionPlans) add('revisionPlans', plan.id);
+  for (const sequence of snapshot.sequences) add('sequences', sequence.id);
+  for (const occlusion of snapshot.occlusions) add('occlusions', occlusion.id);
+  for (const card of snapshot.cards) add('cards', card.id);
+  for (const unit of snapshot.schedulingUnits) add('schedulingUnits', unit.id);
+  for (const row of snapshot.coursePerformance) add('coursePerformance', row.courseId);
+  for (const row of snapshot.schedulingPerformance) add('schedulingPerformance', row.schedulingUnitId);
+  return keys;
+}
+
+async function actualTombstoneKeys(): Promise<Set<string>> {
+  return new Set(
+    (await db.tombstones.toArray()).map((row) => tombstoneKey(row.table, row.recordId)),
+  );
 }
 
 async function reset() {
@@ -420,6 +455,78 @@ describe('repository mutation stamps and tombstones', () => {
     }
 
     expect(await db.cards.get(card.id)).toMatchObject({ id: card.id });
+    expect(await db.tombstones.count()).toBe(0);
+  });
+
+  it('tombstones every snapshot-carried row in a full course cascade fixture', async () => {
+    const now = Date.parse('2026-07-17T08:00:00Z');
+    const course = await createCourse('Biology');
+    const first = await createLesson(course.id, 'Cells');
+    const second = await createLesson(course.id, 'Genetics');
+    await createNote(first.id, 'Note 1', 'Body 1');
+    await createNote(first.id, 'Note 2', 'Body 2');
+    await createNote(second.id, 'Note 3', 'Body 3');
+    await createNote(second.id, 'Note 4', 'Body 4');
+
+    const primary = await createLessonCard(course.id, first.id, 'front_back', 'Q1', 'A1');
+    await createLessonCard(course.id, first.id, 'front_back', 'Q2', 'A2');
+    await createLessonCard(course.id, second.id, 'front_back', 'Q3', 'A3');
+    await createLessonCard(course.id, second.id, 'front_back', 'Q4', 'A4');
+    await createCourseCard(course.id, 'front_back', 'Q5', 'A5');
+    await createCourseCard(course.id, 'front_back', 'Q6', 'A6');
+
+    await linkCardsToLesson(second.id, [primary.id]);
+    await upsertLessonCardExposure(first.id, primary.id, now);
+    await markLessonComplete(first.id, now);
+
+    const node = await createPracticeNode(course.id, { type: 'manual', name: 'Past paper' });
+    await savePracticeMilestoneProgress(node.id, course.id, 'scope-1', 1, 2, false, now);
+
+    const checkpoint = await createCourseAssessment(
+      course.id,
+      'Mock',
+      Date.parse('2026-07-19T12:00:00Z'),
+      { timeZone: 'UTC', afterLessonId: first.id },
+    );
+    await createOrResumeRevisionPlan(checkpoint.id, 20, revisionFallback, now);
+    await createSequence(course.id, first.id, 'Organelles', [{ id: 'seq-1', value: 'Nucleus' }]);
+    await createOcclusion(course.id, null, 'Diagram', 'hash-cascade', [labelRegion('occ-1')]);
+
+    const snapshot = await snapshotCourse(course.id);
+    expect(snapshot).not.toBeNull();
+    expect(snapshot!.lessons).toHaveLength(2);
+    expect(snapshot!.notes).toHaveLength(4);
+    expect(snapshot!.cards.length).toBeGreaterThanOrEqual(6);
+    expect(snapshot!.occlusions).toHaveLength(1);
+    expect(snapshot!.lessonCards.length).toBeGreaterThan(0);
+    expect(snapshot!.practiceNodes).toHaveLength(1);
+    expect(snapshot!.practiceMilestones).toHaveLength(1);
+    expect(snapshot!.courseAssessments.length).toBeGreaterThanOrEqual(2);
+    expect(snapshot!.revisionPlans).toHaveLength(1);
+    expect(snapshot!.sequences).toHaveLength(1);
+    expect(snapshot!.coursePerformance).toHaveLength(1);
+    expect(snapshot!.schedulingPerformance.length).toBeGreaterThan(0);
+
+    const expected = expectedCourseTombstoneKeys(snapshot!);
+    expect(expected.has(tombstoneKey('lessonCards', snapshot!.lessonCards[0].id))).toBe(true);
+    expect(expected.has(tombstoneKey('practiceNodes', node.id))).toBe(true);
+    expect(expected.has(tombstoneKey('courseAssessments', checkpoint.id))).toBe(true);
+    expect(expected.has(tombstoneKey('revisionPlans', snapshot!.revisionPlans[0].id))).toBe(true);
+    expect(expected.has(tombstoneKey('sequences', snapshot!.sequences[0].id))).toBe(true);
+    expect(expected.has(tombstoneKey('coursePerformance', course.id))).toBe(true);
+    expect(
+      expected.has(tombstoneKey('schedulingPerformance', snapshot!.schedulingPerformance[0].schedulingUnitId)),
+    ).toBe(true);
+
+    await deleteCourse(course.id);
+
+    expect(await actualTombstoneKeys()).toEqual(expected);
+    expect((await db.tombstones.toArray()).some((row) => row.table === 'noteAnnotations')).toBe(
+      false,
+    );
+
+    await restoreCourse(snapshot!);
+    expect((await db.courses.get(course.id))?.updatedAt).toBe(snapshot!.course.updatedAt);
     expect(await db.tombstones.count()).toBe(0);
   });
 
