@@ -96,7 +96,7 @@ describe('exportDatabase', () => {
 
     const backup = await exportDatabase();
 
-    expect(backup.version).toBe(9);
+    expect(backup.version).toBe(BACKUP_VERSION);
     expect(backup.courses?.[0]).not.toHaveProperty('examDate');
     expect(backup.courseAssessments).toEqual(
       expect.arrayContaining([

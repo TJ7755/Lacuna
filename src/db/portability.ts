@@ -26,6 +26,7 @@ import type {
   SchedulingUnitRecord,
   CoursePerformance,
   SchedulingPerformance,
+  Tombstone,
 } from './types';
 import {
   mergeReviewHistoryEntries,
@@ -50,7 +51,16 @@ import { mergeRevisionPlans } from '../course/revisionPlan';
 import { itemPayloadIsValid } from '../items/payloadValidation';
 import { adaptLegacyBackup, type LegacyImportReport } from './legacyBackupAdapter';
 
-export const BACKUP_VERSION = 9;
+export const BACKUP_VERSION = 10;
+
+function withUpdatedAt<T extends { updatedAt?: number }>(
+  row: T,
+  fallback: number,
+): T & { updatedAt: number } {
+  return typeof row.updatedAt === 'number'
+    ? (row as T & { updatedAt: number })
+    : { ...row, updatedAt: fallback };
+}
 
 /** Gather the whole database into a single backup object. */
 export async function exportDatabase(): Promise<BackupFile> {
@@ -73,6 +83,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     schedulingUnits,
     coursePerformance,
     schedulingPerformance,
+    tombstones,
   ] = await Promise.all([
     db.cards.toArray(),
     db.sessionHistory.toArray(),
@@ -92,6 +103,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.schedulingUnits.toArray(),
     db.coursePerformance.toArray(),
     db.schedulingPerformance.toArray(),
+    db.tombstones.toArray(),
   ]);
   const projectedCards = cards;
   const referencedHashes = new Set(referencedAssetHashesInCards(projectedCards));
@@ -127,6 +139,7 @@ export async function exportDatabase(): Promise<BackupFile> {
     schedulingUnits,
     coursePerformance,
     schedulingPerformance,
+    tombstones,
   };
 }
 
@@ -169,7 +182,8 @@ export function validateBackup(data: unknown): data is BackupFile {
     cardsHaveValidPayloads &&
     Array.isArray(b.assets) &&
     Array.isArray(b.sessionHistory) &&
-    Array.isArray(b.userPerformance)
+    Array.isArray(b.userPerformance) &&
+    (b.tombstones === undefined || Array.isArray(b.tombstones))
   );
 }
 
@@ -262,6 +276,54 @@ export async function importBackup(
     report,
     ...storageProjection
   } = adaptation;
+  for (const card of cards) {
+    Object.assign(
+      card,
+      withUpdatedAt(card, Math.max(card.createdAt ?? 0, card.lastReviewed ?? 0)),
+    );
+  }
+  for (const course of courses) {
+    Object.assign(course, withUpdatedAt(course, course.createdAt ?? 0));
+  }
+  for (const lesson of backup.lessons ?? []) {
+    Object.assign(lesson, withUpdatedAt(lesson, lesson.createdAt ?? 0));
+  }
+  for (const note of notes) {
+    Object.assign(note, withUpdatedAt(note, note.createdAt ?? 0));
+  }
+  for (const link of backup.lessonCards ?? []) {
+    Object.assign(link, withUpdatedAt(link, link.createdAt ?? 0));
+  }
+  for (const exposure of backup.lessonCardExposures ?? []) {
+    Object.assign(exposure, withUpdatedAt(exposure, exposure.taughtAt ?? 0));
+  }
+  for (const completion of backup.lessonCompletions ?? []) {
+    Object.assign(completion, withUpdatedAt(completion, completion.completedAt ?? 0));
+  }
+  for (const node of backup.practiceNodes ?? []) {
+    Object.assign(node, withUpdatedAt(node, node.createdAt ?? 0));
+  }
+  for (const assessment of courseAssessments) {
+    Object.assign(assessment, withUpdatedAt(assessment, assessment.createdAt ?? 0));
+  }
+  for (const sequence of backup.sequences ?? []) {
+    Object.assign(sequence, withUpdatedAt(sequence, sequence.createdAt ?? 0));
+  }
+  for (const occlusion of backup.occlusions ?? []) {
+    Object.assign(occlusion, withUpdatedAt(occlusion, occlusion.createdAt ?? 0));
+  }
+  for (const unit of storageProjection.schedulingUnits) {
+    Object.assign(
+      unit,
+      withUpdatedAt(unit, Math.max(unit.createdAt ?? 0, unit.lastInteractedAt ?? 0)),
+    );
+  }
+  for (const row of storageProjection.coursePerformance) {
+    Object.assign(row, withUpdatedAt(row, 0));
+  }
+  for (const row of storageProjection.schedulingPerformance) {
+    Object.assign(row, withUpdatedAt(row, 0));
+  }
   for (const course of courses) finalAssessmentForCourse(course.id, courseAssessments);
   const reviewHistory: ReviewHistoryEntry[] = mergeReviewHistoryEntries(
     backup.reviewHistory ?? [],
@@ -311,6 +373,7 @@ export async function importBackup(
       db.schedulingUnits,
       db.coursePerformance,
       db.schedulingPerformance,
+      db.tombstones,
     ],
     async () => {
       // Deduplicate by hash so bulkPut never encounters a constraint conflict.
@@ -338,6 +401,7 @@ export async function importBackup(
           db.schedulingUnits.clear(),
           db.coursePerformance.clear(),
           db.schedulingPerformance.clear(),
+          db.tombstones.clear(),
         ]);
         await db.cards.bulkAdd(cards);
         if (dedupedAssets.length) await db.assets.bulkPut(dedupedAssets);
@@ -394,6 +458,9 @@ export async function importBackup(
         }
         if (storageProjection.schedulingPerformance.length > 0) {
           await db.schedulingPerformance.bulkPut(storageProjection.schedulingPerformance);
+        }
+        if (backup.tombstones && backup.tombstones.length > 0) {
+          await db.tombstones.bulkAdd(backup.tombstones);
         }
         return;
       }
@@ -731,6 +798,24 @@ export async function importBackup(
         return [rest as SessionHistoryEntry];
       });
       if (toAdd.length) await db.sessionHistory.bulkAdd(toAdd);
+
+      // Store incoming tombstones. Do not apply them as deletes — that is P4.
+      if (backup.tombstones && backup.tombstones.length > 0) {
+        const existingTombstones = await db.tombstones.toArray();
+        const byKey = new Map(
+          existingTombstones.map((row) => [`${row.table}:${row.recordId}`, row]),
+        );
+        const merged: Tombstone[] = [];
+        for (const incoming of backup.tombstones) {
+          const key = `${incoming.table}:${incoming.recordId}`;
+          const existing = byKey.get(key);
+          if (!existing || incoming.deletedAt > existing.deletedAt) {
+            byKey.set(key, incoming);
+          }
+        }
+        for (const row of byKey.values()) merged.push(row);
+        await db.tombstones.bulkPut(merged);
+      }
     },
   );
   return report;
