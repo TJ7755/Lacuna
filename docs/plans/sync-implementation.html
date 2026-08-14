@@ -112,7 +112,7 @@
     <span class="tag b">Status: P3 and P4 shipped — 13 August 2026</span>
     <span class="tag">Schema v22 &rarr; v23</span>
     <span class="tag">Backup 9 &rarr; 10</span>
-    <span class="tag">Relay still gated</span>
+    <span class="tag b">Relay gate answered yes — 14 August 2026</span>
   </div>
   <p style="margin-top:1rem"><strong>Read this before working from the phase map below.</strong>
   P3 (schema v23, timestamps, tombstones, backup version 10) and P4 (the pure
@@ -127,10 +127,31 @@
   approval on 13 August 2026 because it makes P4 usable with no hosting
   commitment. It does not touch <code>importBackup(&hellip;, 'merge')</code>,
   which keeps its previous behaviour for old backups.</p>
-  <p><strong>Still gated, and still requiring an explicit decision:</strong> the
-  relay (P1), crypto (P2), the HTTP transport and sync cycle (P5), pairing UI
-  (P6) and automatic triggers (P7). The maintenance-cost gate in &sect;9 stands
-  unchanged &mdash; none of those may start until it is answered.</p>
+  <p><strong>The relay gate is answered.</strong> On 14 August 2026 Tom accepted
+  the standing maintenance commitment in &sect;9. P1 (the relay service) and P2
+  (crypto) are therefore authorised, and P5, P6 and P7 follow them in order.
+  Everywhere below that describes the relay as gated is the plan as drafted on
+  13 August; this paragraph is current state and wins.</p>
+  <p><strong>What that does not authorise.</strong> P1 is being built first and
+  alone. P2 carries its own review gate from Arc 8 &sect;7 &mdash; incorrect nonce
+  or KDF handling produces code that passes every test and is broken &mdash; so it
+  needs <code>/security-review</code> and a human read of the diff before anything
+  reaches a real channel. That gate is unaffected by this decision. P5, P6 and P7
+  are not started, and P7 may still slip past September if the manual Combine
+  keeps doing the job.</p>
+  <p><strong>Deployment is Tom's.</strong> Agents write <code>relay/</code>; they
+  have no Vercel credentials and must not attempt to authenticate or deploy.</p>
+  <p><strong>The 4.5 MB transport ceiling is accepted, 14 August 2026.</strong>
+  Arc 8 &sect;13.3 sets a 25 MB application cap on the snapshot, and the relay
+  handler enforces that. But Vercel Functions reject inbound request bodies above
+  4.5 MB at the platform, so a snapshot between those two numbers cannot transit
+  <code>PUT /c/:id/:slot</code> at all. Tom accepted this rather than build
+  client-direct Blob upload now. Consequences, so nobody rediscovers them the hard
+  way: snapshots must stay under 4.5 MB in practice; P5 should surface the current
+  snapshot size in the sync panel and fail a push with a message naming the
+  offending courses rather than a generic error; and the escape route, if inline
+  assets ever push past it, is uploading ciphertext to Blob from the client rather
+  than through the function. Do not pre-build that.</p>
 </header>
 
 <nav>
@@ -726,9 +747,11 @@
 
 <section id="s9">
   <h2><span class="n">09</span>Later phases</h2>
-  <p>Each still lives in Arc 8. None of them are authorised by approving
-  this document. The hosting and maintenance-cost gate sits in front of
-  the relay; P2/P5/P6/P7 follow that decision, they do not precede it.</p>
+  <p>Each still lives in Arc 8. <strong>The hosting and maintenance-cost gate
+  that sat in front of the relay was answered yes on 14 August 2026</strong>, so
+  P1 is authorised and under way, and P2/P5/P6/P7 follow it in order. The
+  paragraph that stood here previously said none of these were authorised; that
+  is no longer true and is kept only so the change is legible.</p>
   <ul>
     <li><strong>P1 relay.</strong> Own Vercel project, Blob storage, four
       endpoints, ETag / If-Match, CORS because of COEP. Arc 8 §6.</li>
