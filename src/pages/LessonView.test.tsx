@@ -210,28 +210,18 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     expect(link).toHaveAttribute('href', '/course/course-1/settings');
   });
 
-  it('opens a newly created lesson instead of returning to the course', async () => {
+  it('hides Add lesson in Read mode', () => {
     renderInline();
-    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
-
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
-    });
+    expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
+    expect(mockCreateLesson).not.toHaveBeenCalled();
   });
 });
 
 describe('LessonView title editing', () => {
-  it('renames the lesson from its header', async () => {
+  it('hides the lesson rename control in Read mode', () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Rename lesson' }));
-    const input = screen.getByRole('textbox', { name: 'lesson name' });
-    fireEvent.change(input, { target: { value: 'Renamed lesson' } });
-    fireEvent.blur(input);
-
-    await waitFor(() => {
-      expect(mockUpdateLesson).toHaveBeenCalledWith('lesson-1', { name: 'Renamed lesson' });
-    });
+    expect(screen.queryByRole('button', { name: 'Rename lesson' })).not.toBeInTheDocument();
+    expect(mockUpdateLesson).not.toHaveBeenCalled();
   });
 });
 
@@ -250,5 +240,28 @@ describe('LessonView edit mode', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: /Cards/ })).toBeInTheDocument();
     expect(screen.queryByText('Total')).not.toBeInTheDocument();
+  });
+
+  it('opens a newly created lesson from the inline path', async () => {
+    renderInline();
+    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
+
+    await waitFor(() => {
+      expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Lesson 2');
+      expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
+    });
+  });
+
+  it('renames the lesson from its header', async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Rename lesson' }));
+    const input = screen.getByRole('textbox', { name: 'lesson name' });
+    fireEvent.change(input, { target: { value: 'Renamed lesson' } });
+    fireEvent.blur(input);
+
+    await waitFor(() => {
+      expect(mockUpdateLesson).toHaveBeenCalledWith('lesson-1', { name: 'Renamed lesson' });
+    });
   });
 });
