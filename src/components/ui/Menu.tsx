@@ -65,6 +65,18 @@ export function Menu({ children, label, items, align = 'end', className }: MenuP
   }
 
   function onTriggerKeyDown(event: React.KeyboardEvent) {
+    // A pointer open leaves focus on the trigger, so Escape and Tab have to close from
+    // here too. Handling them only on the menu node means a clicked-open menu cannot be
+    // dismissed from the keyboard, and Tab walks focus away leaving it hanging open.
+    if (open && event.key === 'Escape') {
+      event.preventDefault();
+      close(false);
+      return;
+    }
+    if (open && event.key === 'Tab') {
+      close(false);
+      return;
+    }
     if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       openAt(0);

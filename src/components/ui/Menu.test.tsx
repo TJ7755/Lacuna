@@ -125,3 +125,26 @@ describe('Menu', () => {
     expect(screen.queryByLabelText('More ways to add cards')).not.toBeInTheDocument();
   });
 });
+
+describe('Menu opened by pointer', () => {
+  it('closes on Escape while focus is still on the trigger', () => {
+    const { trigger } = renderMenu();
+    // A real pointer click focuses the button; fireEvent.click does not, so do it explicitly.
+    trigger.focus();
+    fireEvent.click(trigger);
+    expect(document.activeElement).toBe(trigger);
+
+    fireEvent.keyDown(trigger, { key: 'Escape' });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('closes on Tab rather than leaving focus to walk away from an open menu', () => {
+    const { trigger } = renderMenu();
+    fireEvent.click(trigger);
+
+    fireEvent.keyDown(trigger, { key: 'Tab' });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+});
