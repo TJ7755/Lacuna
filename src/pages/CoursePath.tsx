@@ -428,7 +428,7 @@ export function CoursePath() {
         examUrgent={examUrgent}
         title={course.name}
         onRename={
-          canEditLessons(course)
+          authoring
             ? async (name) => {
                 try {
                   await updateCourse(course.id, { name });
