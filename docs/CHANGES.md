@@ -1,5 +1,15 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Read-mode authoring chrome
+
+- Read mode is a presentation and focus mode, not a write barrier. Path and
+  lesson authoring chrome now follows `isLessonAuthoringMode` (the existing
+  `authoring` flag): start/end and mid-path Manual practice, the practice-node
+  pencil, Add lesson on empty and populated paths and on a one-lesson course,
+  and the course/lesson header rename pencil. The controls are absent in Read
+  mode rather than disabled. Settings, the Question Bank, Analytics, the
+  command palette and the repository are unchanged.
+
 ## Unreleased — Sync P1: relay service
 
 - Added `relay/`, a separate Vercel project that stores opaque `state` and
