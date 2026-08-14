@@ -1,5 +1,5 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PomodoroProvider, usePomodoroFlowContext } from '../hooks/PomodoroContext';
 import { useCourseStudyFlow } from '../state/useCourseStudyFlow';
@@ -122,6 +122,27 @@ function CourseStudyFlowInner() {
     setCurrentStep(displayStep);
   }, [currentStep, displayStep, transition]);
 
+  // Freeze curricular scope ids with the committed step. An in-flight Learn
+  // request must not depend on the live practiceByKey map: answering writes a
+  // milestone, the live query emits a new Map, and a fresh scope array would
+  // restart the session.
+  const frozenScopeRef = useRef<{ step: StudyFlowStep | null; ids?: string[] }>({
+    step: null,
+  });
+  if (frozenScopeRef.current.step !== displayStep) {
+    frozenScopeRef.current = {
+      step: displayStep,
+      ids:
+        displayStep?.kind === 'practice' && displayStep.mode === 'curricular'
+          ? [
+              ...(flow?.snapshot.practiceByKey.get(displayStep.nodeKey)?.sessionScopeLessonIds ??
+                []),
+            ]
+          : undefined,
+    };
+  }
+  const committedScopeLessonIds = frozenScopeRef.current.ids;
+
   const request = useMemo<LearnSessionRequest | null>(() => {
     if (!displayStep) return null;
     if (displayStep.kind === 'lesson') {
@@ -139,23 +160,16 @@ function CourseStudyFlowInner() {
           windowId: revisionSession.windowId,
         };
       }
-      const scopeLessonIds =
-        displayStep.mode === 'curricular'
-          ? [
-              ...(flow?.snapshot.practiceByKey.get(displayStep.nodeKey)?.sessionScopeLessonIds ??
-                []),
-            ]
-          : undefined;
       return {
         kind: 'practice',
         courseId: courseId ?? '',
         nodeKey: displayStep.mode === 'curricular' ? displayStep.nodeKey : undefined,
-        scopeLessonIds,
+        scopeLessonIds: committedScopeLessonIds,
         mode: displayStep.nodeKey === 'ad-hoc' ? 'ad-hoc' : displayStep.mode,
       };
     }
     return null;
-  }, [courseId, displayStep, flow?.snapshot.practiceByKey, revisionSession]);
+  }, [committedScopeLessonIds, courseId, displayStep, revisionSession]);
 
   const handleStepFinished = useCallback(
     (summary: SessionSummary) => {

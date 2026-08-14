@@ -18,6 +18,7 @@ const mockNavigate = vi.fn();
 const mockAcceptBreak = vi.fn();
 const mockDeferBreak = vi.fn();
 let mockFlows: FlowData[] = [];
+const mockFlowListeners = new Set<() => void>();
 const seenLearnRequests: unknown[] = [];
 
 vi.mock('react-router-dom', async () => {
@@ -36,7 +37,15 @@ vi.mock('react-router-dom', async () => {
 });
 
 vi.mock('../state/useCourseStudyFlow', () => ({
-  useCourseStudyFlow: (_courseId: string | undefined, refreshKey = 0) => mockFlows[refreshKey],
+  useCourseStudyFlow: (_courseId: string | undefined, refreshKey = 0) => {
+    const subscribe = (onStoreChange: () => void) => {
+      mockFlowListeners.add(onStoreChange);
+      return () => {
+        mockFlowListeners.delete(onStoreChange);
+      };
+    };
+    return React.useSyncExternalStore(subscribe, () => mockFlows[refreshKey]);
+  },
 }));
 
 vi.mock('../hooks/PomodoroContext', () => ({
@@ -215,6 +224,7 @@ beforeEach(() => {
   mockAcceptBreak.mockClear();
   mockDeferBreak.mockClear();
   mockFlows = [];
+  mockFlowListeners.clear();
   seenLearnRequests.length = 0;
 });
 
@@ -324,6 +334,22 @@ describe('CourseStudyFlow', () => {
     await screen.findByTestId('learn-request');
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(new Set(seenLearnRequests).size).toBe(1);
+
+    // A live-query snapshot with a new Map identity but the same lesson ids
+    // must keep the in-flight Learn request. Identity is the property under
+    // test, not deep equality.
+    const sameIds = practiceState('manual-1', 'Checkpoint', ['lesson-1']);
+    mockFlows = [
+      flow(
+        { kind: 'practice', nodeKey: 'manual-1', mode: 'curricular', label: 'Checkpoint' },
+        0,
+        [sameIds],
+      ),
+    ];
+    await act(async () => {
+      mockFlowListeners.forEach((listener) => listener());
     });
     expect(new Set(seenLearnRequests).size).toBe(1);
   });
