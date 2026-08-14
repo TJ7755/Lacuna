@@ -837,7 +837,18 @@ export function useLearnSession({
   const serveNextRef = useRef(serveNext);
   serveNextRef.current = serveNext;
 
-  // Initial load: read a static snapshot of the deck(s) so the session is stable.
+  const finaliseSummaryRef = useRef(finaliseSummary);
+  finaliseSummaryRef.current = finaliseSummary;
+
+  const requestScopeLessonIdsKey =
+    requestScopeLessonIds === undefined ? undefined : requestScopeLessonIds.join('\0');
+  const filterParamsKey = filterParams.join('\0');
+
+  // Load when the session identity changes — course, lesson, practice node,
+  // filters, or assessment window. Serialised scope and filter keys mean a
+  // parent passing a new array of the same ids does not restart the session.
+  // Genuine navigation still resets session-local state first so the previous
+  // queue cannot leak.
   useEffect(() => {
     let cancelled = false;
     // Reset all session refs so navigating deck -> deck does not leave stale state.
@@ -1167,7 +1178,7 @@ export function useLearnSession({
         ];
         const filterLabel = filterParts.join(' and ');
         const filteredCardsUnavailable = isFiltered && cards.length > 0;
-        finaliseSummary({
+        finaliseSummaryRef.current({
           events: [],
           masteryBefore: reportProgress,
           masteryAfter: reportProgress,
@@ -1192,7 +1203,7 @@ export function useLearnSession({
 
       progressBefore.current = initialProgress;
       if (!plannedRevision && !isSimpleMode && sessionComplete(cards, ctx)) {
-        finaliseSummary({
+        finaliseSummaryRef.current({
           events: [],
           masteryBefore: progressBefore.current,
           masteryAfter: progressBefore.current,
@@ -1217,21 +1228,18 @@ export function useLearnSession({
     courseId,
     lessonId,
     tagFilter,
-    filterParams,
+    filterParamsKey,
     navigate,
     onFlowExit,
     isSimpleMode,
     mode,
     isGlobal,
     practiceNodeKeyParam,
-    requestScopeLessonIds,
+    requestScopeLessonIdsKey,
     requestAssessmentId,
     requestPlanId,
     requestWindowId,
     plannedRevision,
-    finaliseSummary,
-    persistPracticeMilestone,
-    ratchetUnlocks,
   ]);
 
   const reveal = useCallback(() => {
