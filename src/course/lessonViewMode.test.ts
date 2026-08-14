@@ -74,6 +74,21 @@ describe('resolveLessonViewMode', () => {
     const studyCourse = makeCourse({ id: 'c2', lessonViewMode: 'study' });
     expect(resolveLessonViewMode(studyCourse)).toBe('study');
   });
+
+  it('forces study for a locked distributed copy even when the stored mode is edit', () => {
+    const course = makeCourse({
+      id: 'c1',
+      lessonViewMode: 'edit',
+      distributedCopy: {
+        lineageId: 'lineage-1',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    });
+    expect(resolveLessonViewMode(course)).toBe('study');
+    expect(isLessonAuthoringMode(course)).toBe(false);
+  });
 });
 
 describe('isLessonAuthoringMode', () => {

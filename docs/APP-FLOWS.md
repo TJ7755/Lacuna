@@ -238,7 +238,7 @@ The path shows:
 
 Selecting a practice node enters the course study conductor with the node identifier. Selecting an assessment opens its detail sheet or assessment revision flow.
 
-In Edit mode, manual nodes can be added in path gaps at the beginning, between lessons, and at the end. The plus controls appear on hover, focus, and touch, then open the Practice node editor. They are absent in Read mode.
+In Edit mode, manual nodes can be added in path gaps at the beginning, between lessons, and at the end. A persistent labelled Manual practice control sits in each insertable gap and opens the Practice node editor. The controls are absent in Read mode.
 
 ## 7. Exam date and assessment flows
 
