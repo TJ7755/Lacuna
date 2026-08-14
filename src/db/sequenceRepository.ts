@@ -30,12 +30,8 @@ import {
   recordTombstones,
   clearTombstone,
   clearTombstones,
+  lessonCardExposureId,
 } from './mutationStamp';
-
-/** Compound LessonCardExposure key as a single tombstone record id. */
-function lessonCardExposureId(lessonId: string, cardId: string): string {
-  return `${lessonId}:${cardId}`;
-}
 
 // Guarantees `createSequence`'s createdAt strictly increases even when two sequences are
 // created within the same millisecond (e.g. back-to-back in a test or a scripted import),
