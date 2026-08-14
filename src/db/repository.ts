@@ -79,6 +79,7 @@ import {
   recordTombstones,
   clearTombstone,
   clearTombstones,
+  lessonCardExposureId,
 } from './mutationStamp';
 export {
   createPracticeNode,
@@ -101,11 +102,6 @@ async function assertValidCardPayload(type: CardType, payload: unknown): Promise
   if (payload === undefined || payload === null) return;
   const { assertValidCardPayload: validate } = await import('../items/payloadValidation');
   validate(type, payload);
-}
-
-/** Compound LessonCardExposure key as a single tombstone record id. */
-function lessonCardExposureId(lessonId: string, cardId: string): string {
-  return `${lessonId}:${cardId}`;
 }
 
 // ---------------------------------------------------------------------------
