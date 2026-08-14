@@ -1,5 +1,10 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Path Manual practice insert controls are persistent
+
+- `docs/APP-FLOWS.md` no longer says Manual practice insert controls appear on
+  hover, focus, and touch. `InsertButton` is a persistent labelled pill.
+
 ## Unreleased — Curricular practice no longer restarts the session on each answer
 
 - Answering a card in a curricular practice session no longer blanks the screen
