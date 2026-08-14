@@ -1,5 +1,11 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Extract sequence repository
+
+- Moved sequence CRUD, regeneration and snapshot/restore from `src/db/repository.ts` into
+  `src/db/sequenceRepository.ts`. Every moved name is re-exported from `repository.ts`; no
+  caller import changed.
+
 ## Unreleased — Stale comment sweep after schema v22
 
 - Corrected comments and docs that still described the hidden Deck and Folder stores, global Today
