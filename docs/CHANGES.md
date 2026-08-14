@@ -1,5 +1,11 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Shared lesson-card exposure id
+
+- `lessonCardExposureId` now lives in `src/db/mutationStamp.ts`. The copies in
+  `repository.ts`, `sequenceRepository.ts` and `occlusionRepository.ts` import it.
+  The string format is unchanged: it remains the tombstone matching key.
+
 ## Unreleased — Extract sequence repository
 
 - Moved sequence CRUD, regeneration and snapshot/restore from `src/db/repository.ts` into
