@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import {
   clearTombstone,
+  lessonCardExposureId,
   recordTombstone,
   recordTombstones,
   readSyncState,
@@ -15,6 +16,17 @@ describe('mutationStamp', () => {
     db.close();
     await db.delete();
     await db.open();
+  });
+
+  // This id is the tombstone matching key and is persisted in users' databases.
+  // Changing the format silently breaks deletion and restoration of existing rows.
+  // The test exists to make that change loud.
+  it('formats lessonCardExposureId as lessonId:cardId', () => {
+    expect(lessonCardExposureId('lesson-1', 'card-1')).toBe('lesson-1:card-1');
+    expect(lessonCardExposureId('', 'card-1')).toBe(':card-1');
+    expect(lessonCardExposureId('lesson-1', '')).toBe('lesson-1:');
+    expect(lessonCardExposureId('', '')).toBe(':');
+    expect(lessonCardExposureId('les:son', 'ca:rd')).toBe('les:son:ca:rd');
   });
 
   it('stamps updatedAt without mutating the original record', () => {
