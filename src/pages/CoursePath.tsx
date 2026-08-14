@@ -516,7 +516,9 @@ export function CoursePath() {
         </div>
       ) : (
         <div className="flex flex-col items-center">
-          <InsertGap onInsert={() => setEditorState({ mode: 'new', defaultPosition: undefined })} />
+          {authoring && (
+            <InsertGap onInsert={() => setEditorState({ mode: 'new', defaultPosition: undefined })} />
+          )}
           {visibleNodes.map((node, i) => (
             <PathNodeWithLine
               key={node.id}
@@ -571,9 +573,11 @@ export function CoursePath() {
               }
             />
           ))}
-          <InsertGap
-            onInsert={() => setEditorState({ mode: 'new', defaultPosition: lastLessonOrderIndex })}
-          />
+          {authoring && (
+            <InsertGap
+              onInsert={() => setEditorState({ mode: 'new', defaultPosition: lastLessonOrderIndex })}
+            />
+          )}
           <div className="mt-4 flex w-full justify-center">
             <AddLessonControl
               courseId={course.id}
