@@ -1,5 +1,19 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P1: relay service
+
+- Added `relay/`, a separate Vercel project that stores opaque `state` and
+  `keybag` ciphertext on Vercel Blob. Four endpoints: mint a channel, GET/PUT a
+  slot, DELETE the channel. Knowledge of the id is the read capability; writes
+  need the minted bearer token. No key material reaches the relay, request
+  bodies are never parsed, and channel ids are never logged.
+- PUT requires `If-Match` with the generation the client merged from (empty
+  slot is `"0"`). A mismatch is 412. Concurrent PUTs from the same generation
+  are decided by an exclusive create of the next generation key.
+- CORS and `Cross-Origin-Resource-Policy: cross-origin` are set on every
+  response, including 401/404/412, so COEP on the app origin does not turn a
+  relay error into an opaque network fault.
+
 ## Unreleased — Stale comment sweep after schema v22
 
 - Corrected comments and docs that still described the hidden Deck and Folder stores, global Today
