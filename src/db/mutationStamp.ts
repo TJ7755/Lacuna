@@ -29,6 +29,11 @@ export type SnapshotTable =
   | 'coursePerformance'
   | 'schedulingPerformance';
 
+/** Compound LessonCardExposure key as a single tombstone record id. */
+export function lessonCardExposureId(lessonId: string, cardId: string): string {
+  return `${lessonId}:${cardId}`;
+}
+
 export function stampUpdatedAt<T extends object>(
   record: T,
   now = Date.now(),

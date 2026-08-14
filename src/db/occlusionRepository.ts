@@ -17,6 +17,7 @@ import {
   recordTombstones,
   clearTombstone,
   clearTombstones,
+  lessonCardExposureId,
 } from './mutationStamp';
 import {
   cardsWithReviewHistory,
@@ -24,11 +25,6 @@ import {
   type ReviewHistoryEntry,
 } from './reviewHistory';
 import { diffRegeneration, generateCards, type GeneratedCardPayload } from './occlusionGeneration';
-
-/** Compound primary key, encoded so a tombstone can name one exposure row. */
-function exposureRecordId(exposure: Pick<LessonCardExposure, 'lessonId' | 'cardId'>): string {
-  return `${exposure.lessonId}:${exposure.cardId}`;
-}
 
 async function tombstoneGeneratedCardCascade(
   tx: Transaction,
@@ -41,7 +37,11 @@ async function tombstoneGeneratedCardCascade(
   ]);
   await recordTombstones(tx, 'cards', cardIds);
   await recordTombstones(tx, 'lessonCards', lessonCards.map((link) => link.id));
-  await recordTombstones(tx, 'lessonCardExposures', exposures.map(exposureRecordId));
+  await recordTombstones(
+    tx,
+    'lessonCardExposures',
+    exposures.map((exposure) => lessonCardExposureId(exposure.lessonId, exposure.cardId)),
+  );
 }
 
 async function clearGeneratedCardCascade(
@@ -52,7 +52,11 @@ async function clearGeneratedCardCascade(
 ): Promise<void> {
   await clearTombstones(tx, 'cards', cards.map((card) => card.id));
   await clearTombstones(tx, 'lessonCards', lessonCards.map((link) => link.id));
-  await clearTombstones(tx, 'lessonCardExposures', exposures.map(exposureRecordId));
+  await clearTombstones(
+    tx,
+    'lessonCardExposures',
+    exposures.map((exposure) => lessonCardExposureId(exposure.lessonId, exposure.cardId)),
+  );
 }
 
 /** Convert low-level IndexedDB errors into user-friendly messages (mirrors repository.ts's friendlyDbError). */

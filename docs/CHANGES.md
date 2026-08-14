@@ -9,10 +9,25 @@
   bodies are never parsed, and channel ids are never logged.
 - PUT requires `If-Match` with the generation the client merged from (empty
   slot is `"0"`). A mismatch is 412. Concurrent PUTs from the same generation
-  are decided by an exclusive create of the next generation key.
+  are decided by an exclusive create of the next generation key — exactly on the
+  in-memory seam the tests use, and on live Blob only if Vercel's
+  `allowOverwrite: false` is an atomic if-none-match, which it does not document.
+  The residual race is a last-body-wins clobber; see `relay/README.md`.
 - CORS and `Cross-Origin-Resource-Policy: cross-origin` are set on every
   response, including 401/404/412, so COEP on the app origin does not turn a
   relay error into an opaque network fault.
+
+## Unreleased — Shared lesson-card exposure id
+
+- `lessonCardExposureId` now lives in `src/db/mutationStamp.ts`. The copies in
+  `repository.ts`, `sequenceRepository.ts` and `occlusionRepository.ts` import it.
+  The string format is unchanged: it remains the tombstone matching key.
+
+## Unreleased — Extract sequence repository
+
+- Moved sequence CRUD, regeneration and snapshot/restore from `src/db/repository.ts` into
+  `src/db/sequenceRepository.ts`. Every moved name is re-exported from `repository.ts`; no
+  caller import changed.
 
 ## Unreleased — Stale comment sweep after schema v22
 
