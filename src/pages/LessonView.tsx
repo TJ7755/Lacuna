@@ -32,7 +32,7 @@ import { CourseHeader } from '../components/course/CourseHeader';
 import { LessonViewModeToggle } from '../components/course/LessonViewModeToggle';
 import { HeaderStats } from '../components/course/HeaderStats';
 import { courseHeaderStats } from '../course/headerStats';
-import { canEditLessons, resolveLessonViewMode } from '../course/lessonViewMode';
+import { canEditLessons, isLessonAuthoringMode, resolveLessonViewMode } from '../course/lessonViewMode';
 import { progressValue } from '../fsrs/objective';
 import { MS_PER_DAY } from '../fsrs/params';
 import { updateCourse, updateLesson } from '../db/repository';
@@ -137,6 +137,7 @@ export function LessonView({
     dueCardCount: lessonDueCount,
   } = courseHeaderStats(course, examDates, lessonCards, lessonMastery, now);
   const viewMode = resolveLessonViewMode(course);
+  const authoring = isLessonAuthoringMode(course);
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
@@ -154,13 +155,15 @@ export function LessonView({
       {isInline && courseId && (
         <div className="mb-6 flex flex-wrap items-center justify-end gap-4">
           <div className="flex items-center gap-4">
-            <AddLessonControl
-              courseId={courseId}
-              lessonCount={lessons.length}
-              onCreated={(createdLesson) =>
-                navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
-              }
-            />
+            {authoring && (
+              <AddLessonControl
+                courseId={courseId}
+                lessonCount={lessons.length}
+                onCreated={(createdLesson) =>
+                  navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
+                }
+              />
+            )}
             {!canEditLessons(course) ? (
               <Link
                 to={`/course/${courseId}/settings`}
@@ -186,7 +189,7 @@ export function LessonView({
         examUrgent={examUrgent}
         title={lesson.name}
         onRename={
-          canEditLessons(course)
+          authoring
             ? async (name) => {
                 try {
                   await updateLesson(lesson.id, { name });

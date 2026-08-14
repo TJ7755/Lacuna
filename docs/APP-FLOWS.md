@@ -127,7 +127,7 @@ There is no account creation, profile setup, sync choice, notification permissio
 
 - Search has two parallel surfaces: the command palette and the full Search page.
 - A normal multi-lesson Lesson view has a back-to-course action but not the course tabs. The user must return to the path before reaching Question bank, Analytics, or Settings.
-- The single-lesson course view is rendered inline inside the course route. It has a Settings icon and Add lesson, but still does not expose the complete course-tab navigation.
+- The single-lesson course view is rendered inline inside the course route. It has a Settings icon and, in Edit mode, Add lesson, but still does not expose the complete course-tab navigation.
 
 ## 5. Course lifecycle flows
 
@@ -219,7 +219,7 @@ Study opens the course conductor, which distinguishes starting the next lesson, 
 
 ### Add a lesson from the path
 
-1. Choose Add lesson, including the Add lesson control in an empty path.
+1. In Edit mode, choose Add lesson, including the Add lesson control in an empty path.
 2. The app proposes Lesson N.
 3. Enter a non-empty title.
 4. Enter commits; Escape or Cancel abandons it.
@@ -238,7 +238,7 @@ The path shows:
 
 Selecting a practice node enters the course study conductor with the node identifier. Selecting an assessment opens its detail sheet or assessment revision flow.
 
-Manual nodes can be added in path gaps at the beginning, between lessons, and at the end. The plus controls appear on hover, focus, and touch, then open the Practice node editor.
+In Edit mode, manual nodes can be added in path gaps at the beginning, between lessons, and at the end. The plus controls appear on hover, focus, and touch, then open the Practice node editor. They are absent in Read mode.
 
 ## 7. Exam date and assessment flows
 
@@ -931,7 +931,7 @@ It links back to the dashboard, welcome page, and help. It is explanatory, not a
 | App initialisation failure | Lacuna could not start | Reload |
 | No courses | Empty dashboard | New course or import |
 | Archived course hidden | Course absent from active dashboard | Enable archived courses in sidebar settings |
-| No lessons | Empty path | Add lesson |
+| No lessons | Empty path | Add lesson (Edit mode) |
 | No cards | Lesson/question-bank empty state | Create, sequence, occlusion, link, or import |
 | No search matches | Search empty state | Clear query/filter |
 | No due cards | Nothing due — next lesson available | Start or return |

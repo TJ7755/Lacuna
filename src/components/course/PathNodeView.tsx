@@ -94,7 +94,7 @@ export function PathNodeView({
           assessment={practiceAssessment}
           onAssessmentClick={onPracticeAssessmentClick}
           onEdit={
-            node.nodeType === 'practice-manual' && onPracticeEdit
+            authoring && node.nodeType === 'practice-manual' && onPracticeEdit
               ? () => onPracticeEdit(node)
               : undefined
           }

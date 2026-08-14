@@ -428,7 +428,7 @@ export function CoursePath() {
         examUrgent={examUrgent}
         title={course.name}
         onRename={
-          canEditLessons(course)
+          authoring
             ? async (name) => {
                 try {
                   await updateCourse(course.id, { name });
@@ -508,15 +508,19 @@ export function CoursePath() {
       {visibleNodes.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-line-strong py-16 text-center">
           <p className="text-sm text-ink-soft">This course has no lessons yet.</p>
-          <AddLessonControl
-            courseId={course.id}
-            lessonCount={lessons.length}
-            onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
-          />
+          {authoring && (
+            <AddLessonControl
+              courseId={course.id}
+              lessonCount={lessons.length}
+              onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
+            />
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center">
-          <InsertGap onInsert={() => setEditorState({ mode: 'new', defaultPosition: undefined })} />
+          {authoring && (
+            <InsertGap onInsert={() => setEditorState({ mode: 'new', defaultPosition: undefined })} />
+          )}
           {visibleNodes.map((node, i) => (
             <PathNodeWithLine
               key={node.id}
@@ -554,8 +558,11 @@ export function CoursePath() {
                 )
               }
               onCheckpointClick={setSelectedAssessmentId}
-              onPracticeEdit={(pn) =>
-                pn.practiceNode && setEditorState({ mode: 'edit', node: pn.practiceNode })
+              onPracticeEdit={
+                authoring
+                  ? (pn) =>
+                      pn.practiceNode && setEditorState({ mode: 'edit', node: pn.practiceNode })
+                  : undefined
               }
               onInsertOnLine={(position) =>
                 setEditorState({ mode: 'new', defaultPosition: position })
@@ -568,16 +575,20 @@ export function CoursePath() {
               }
             />
           ))}
-          <InsertGap
-            onInsert={() => setEditorState({ mode: 'new', defaultPosition: lastLessonOrderIndex })}
-          />
-          <div className="mt-4 flex w-full justify-center">
-            <AddLessonControl
-              courseId={course.id}
-              lessonCount={lessons.length}
-              onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
+          {authoring && (
+            <InsertGap
+              onInsert={() => setEditorState({ mode: 'new', defaultPosition: lastLessonOrderIndex })}
             />
-          </div>
+          )}
+          {authoring && (
+            <div className="mt-4 flex w-full justify-center">
+              <AddLessonControl
+                courseId={course.id}
+                lessonCount={lessons.length}
+                onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
+              />
+            </div>
+          )}
         </div>
       )}
 
