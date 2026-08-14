@@ -1224,6 +1224,11 @@ export function useLearnSession({
     return () => {
       cancelled = true;
     };
+    // The effect depends on session identity, not object identity, so the
+    // serialised keys are the triggers. The arrays are read for their values
+    // only; their content changing always changes the key, so the closure
+    // cannot go stale.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     courseId,
     lessonId,
