@@ -1,5 +1,13 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Path authoring-gate tests
+
+- `CoursePath` and `CoursePathSegment` now have tests for each Read/Edit
+  authoring control: start/end and mid-path Manual practice, the
+  practice-node pencil, Add lesson on empty and populated paths, and the
+  course title rename. Each control is asserted absent in Read mode and
+  present and usable in Edit mode.
+
 ## Unreleased — Curricular practice no longer restarts the session on each answer
 
 - Answering a card in a curricular practice session no longer blanks the screen
