@@ -44,6 +44,7 @@ vi.mock('../ui/icons', () => ({
   EditIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="edit-icon" {...props} />,
   FlagIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="flag-icon" {...props} />,
   ImageIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="image-icon" {...props} />,
+  MoreIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="more-icon" {...props} />,
   PathIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="path-icon" {...props} />,
   PlusIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="plus-icon" {...props} />,
   TagIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="tag-icon" {...props} />,
@@ -56,8 +57,15 @@ vi.mock('../markdown/MarkdownView', () => ({
 }));
 
 vi.mock('../ui/Button', () => ({
-  Button: ({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) => (
-    <button type="button" onClick={onClick} disabled={disabled} data-testid="button">
+  // Forwards the accessibility props too: an icon-only trigger has no text to query by,
+  // so dropping aria-label here would make it unreachable from a test.
+  Button: ({
+    children,
+    onClick,
+    disabled,
+    ...rest
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" onClick={onClick} disabled={disabled} data-testid="button" {...rest}>
       {children}
     </button>
   ),
@@ -153,6 +161,14 @@ beforeEach(() => {
   mockNotify.mockClear();
 });
 
+/**
+ * Opens the "More ways to add cards" menu. New card is the header's only primary action;
+ * sequences, occlusions, linking and importing sit behind this trigger.
+ */
+function openAddMenu() {
+  fireEvent.click(screen.getByLabelText('More ways to add cards'));
+}
+
 describe('CardList', () => {
   it('renders empty state when no cards', () => {
     const onNewCard = vi.fn();
@@ -193,6 +209,7 @@ describe('CardList', () => {
     };
     render(<CardList cards={[mockCard]} context={context} onEditCard={vi.fn()} />);
 
+    openAddMenu();
     fireEvent.click(screen.getByText('Import cards'));
     fireEvent.click(screen.getByText('Trigger APKG import'));
     await waitFor(() =>
@@ -289,6 +306,7 @@ describe('CardList', () => {
         onEditCard={vi.fn()}
       />
     );
+    openAddMenu();
     fireEvent.click(screen.getByText('Import cards'));
     expect(screen.getByTestId('import-panel')).toBeInTheDocument();
   });
@@ -302,7 +320,10 @@ describe('CardList', () => {
         onEditCard={vi.fn()}
       />
     );
+    // New card is the one primary action in the header; the rest live behind the menu.
     expect(screen.getByText('New card')).toBeInTheDocument();
+    expect(screen.queryByText('Import cards')).not.toBeInTheDocument();
+    openAddMenu();
     expect(screen.getByText('Import cards')).toBeInTheDocument();
   });
 
@@ -330,6 +351,7 @@ describe('CardList', () => {
         onLinkExisting={onLinkExisting}
       />,
     );
+    openAddMenu();
     fireEvent.click(screen.getByText('Link existing cards'));
     expect(onLinkExisting).toHaveBeenCalledOnce();
   });

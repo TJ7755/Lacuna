@@ -8,6 +8,17 @@
   course title rename. Each control is asserted absent in Read mode and
   present and usable in Edit mode.
 
+## Unreleased — Locked copies stay in study even when stored as edit
+
+- A locked distributed copy with `lessonViewMode: 'edit'` now has a
+  regression test that `resolveLessonViewMode` still returns `'study'`, so
+  `isLessonAuthoringMode` is false.
+
+## Unreleased — Path Manual practice insert controls are persistent
+
+- `docs/APP-FLOWS.md` no longer says Manual practice insert controls appear on
+  hover, focus, and touch. `InsertButton` is a persistent labelled pill.
+
 ## Unreleased — Curricular practice no longer restarts the session on each answer
 
 - Answering a card in a curricular practice session no longer blanks the screen
