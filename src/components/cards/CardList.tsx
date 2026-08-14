@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useStat
 
 import { AnimatePresence, m as motion, useMotionValue, useSpring } from 'motion/react';
 import { Button } from '../ui/Button';
+import { Menu, type MenuItem } from '../ui/Menu';
 import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
 import { hapticLight, hapticMedium } from '../../utils/haptic';
@@ -25,6 +26,7 @@ import {
   CloseIcon,
   EditIcon,
   FlagIcon,
+  MoreIcon,
   PlusIcon,
   TagIcon,
   TrashIcon,
@@ -371,6 +373,41 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
     });
   }, [notify]);
 
+  // Everything except "New card". Built from the callbacks the caller actually supplied, so a
+  // context that cannot make sequences simply has one fewer entry rather than a dead control.
+  const addMenuItems = useMemo<MenuItem[]>(() => {
+    const items: MenuItem[] = [];
+    if (onNewSequence) {
+      items.push({
+        label: 'New sequence',
+        icon: <PlusIcon width={16} height={16} />,
+        onSelect: onNewSequence,
+      });
+    }
+    if (onNewOcclusion) {
+      items.push({
+        label: 'New occlusion',
+        icon: <PlusIcon width={16} height={16} />,
+        onSelect: onNewOcclusion,
+      });
+    }
+    if (onLinkExisting) {
+      items.push({
+        label: 'Link existing cards',
+        icon: <PlusIcon width={16} height={16} />,
+        onSelect: onLinkExisting,
+      });
+    }
+    if (!selectMode) {
+      items.push({
+        label: importing ? 'Hide import panel' : 'Import cards',
+        icon: <UploadIcon width={16} height={16} />,
+        onSelect: () => setImporting((v) => !v),
+      });
+    }
+    return items;
+  }, [onNewSequence, onNewOcclusion, onLinkExisting, selectMode, importing]);
+
   return (
     <div>
       <div className={cn('mb-4 flex flex-wrap items-center gap-2', hideHeader && 'justify-end')}>
@@ -379,10 +416,10 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
             Cards <span className="text-ink-faint">({cards.length})</span>
           </h2>
         )}
-        <div className={cn('flex gap-2', !hideHeader && 'ml-auto')}>
+        <div className={cn('flex items-center gap-2', !hideHeader && 'ml-auto')}>
           {selectableCards.length > 0 && (
             <Button
-              variant={selectMode ? 'primary' : 'secondary'}
+              variant={selectMode ? 'primary' : 'ghost'}
               size="sm"
               onClick={() => {
                 if (selectMode) {
@@ -402,34 +439,15 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
               New card
             </Button>
           )}
-          {onNewSequence && (
-            <Button variant="secondary" size="sm" onClick={onNewSequence}>
-              <PlusIcon width={16} height={16} />
-              New sequence
-            </Button>
-          )}
-          {onNewOcclusion && (
-            <Button variant="secondary" size="sm" onClick={onNewOcclusion}>
-              <PlusIcon width={16} height={16} />
-              New occlusion
-            </Button>
-          )}
-          {onLinkExisting && (
-            <Button variant="secondary" size="sm" onClick={onLinkExisting}>
-              <PlusIcon width={16} height={16} />
-              Link existing cards
-            </Button>
-          )}
-          {!selectMode && (
-            <Button
-              variant={importing ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setImporting((v) => !v)}
-            >
-              <UploadIcon width={16} height={16} />
-              Import cards
-            </Button>
-          )}
+          {/*
+           * The other routes to adding cards sit behind one control rather than in the row.
+           * A card is what people make nearly every time; sequences, occlusions, linking and
+           * importing are the occasional cases, and giving all five equal weight made the
+           * header read as a toolbar dump with no primary action.
+           */}
+          <Menu label="More ways to add cards" items={addMenuItems}>
+            <MoreIcon width={16} height={16} />
+          </Menu>
         </div>
       </div>
 
