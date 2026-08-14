@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/channel", "destination": "/api/channel" },
+    { "source": "/c/:id", "destination": "/api/c/:id" },
+    { "source": "/c/:id/:slot", "destination": "/api/c/:id/:slot" }
+  ]
+}
