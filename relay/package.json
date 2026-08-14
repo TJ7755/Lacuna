@@ -1,0 +1,22 @@
+{
+  "name": "lacuna-relay",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Lacuna sync relay: opaque ciphertext over Vercel Blob.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
+  }
+}
