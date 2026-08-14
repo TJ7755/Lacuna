@@ -508,11 +508,13 @@ export function CoursePath() {
       {visibleNodes.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-line-strong py-16 text-center">
           <p className="text-sm text-ink-soft">This course has no lessons yet.</p>
-          <AddLessonControl
-            courseId={course.id}
-            lessonCount={lessons.length}
-            onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
-          />
+          {authoring && (
+            <AddLessonControl
+              courseId={course.id}
+              lessonCount={lessons.length}
+              onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
+            />
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center">
@@ -578,13 +580,15 @@ export function CoursePath() {
               onInsert={() => setEditorState({ mode: 'new', defaultPosition: lastLessonOrderIndex })}
             />
           )}
-          <div className="mt-4 flex w-full justify-center">
-            <AddLessonControl
-              courseId={course.id}
-              lessonCount={lessons.length}
-              onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
-            />
-          </div>
+          {authoring && (
+            <div className="mt-4 flex w-full justify-center">
+              <AddLessonControl
+                courseId={course.id}
+                lessonCount={lessons.length}
+                onCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
+              />
+            </div>
+          )}
         </div>
       )}
 
