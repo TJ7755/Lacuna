@@ -107,7 +107,7 @@ export function PathNodeWithLine({
   onPracticeClick: (node: PracticePathNode) => void;
   onPracticeAssessmentClick: (assessmentId: string) => void;
   onCheckpointClick: (assessmentId: string) => void;
-  onPracticeEdit: (node: PracticePathNode) => void;
+  onPracticeEdit?: (node: PracticePathNode) => void;
   onInsertOnLine: (position: number | undefined) => void;
   authoring: boolean;
   lessonReorder?: LessonReorderInteraction;
@@ -141,7 +141,7 @@ export function PathNodeWithLine({
         onCheckpointClick={
           node.nodeType === 'checkpoint' ? () => onCheckpointClick(node.assessment.id) : undefined
         }
-        onPracticeEdit={onPracticeEdit}
+        onPracticeEdit={authoring ? onPracticeEdit : undefined}
         authoring={authoring}
         lessonReorder={lessonReorder}
       />

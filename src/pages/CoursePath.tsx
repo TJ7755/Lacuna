@@ -554,8 +554,11 @@ export function CoursePath() {
                 )
               }
               onCheckpointClick={setSelectedAssessmentId}
-              onPracticeEdit={(pn) =>
-                pn.practiceNode && setEditorState({ mode: 'edit', node: pn.practiceNode })
+              onPracticeEdit={
+                authoring
+                  ? (pn) =>
+                      pn.practiceNode && setEditorState({ mode: 'edit', node: pn.practiceNode })
+                  : undefined
               }
               onInsertOnLine={(position) =>
                 setEditorState({ mode: 'new', defaultPosition: position })
