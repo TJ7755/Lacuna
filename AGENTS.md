@@ -60,3 +60,5 @@ Do not record what is already discoverable — architecture, file layout, past f
 
 ## Project Context
 Lacuna is a prototype alpha project. Suggest sweeping changes that affect the codebase optimised for long-term stability and performance as well as features.
+
+Mixed-model workflows: follow `.claude/skills/lmo/SKILL.md`. Start with `npx lmorchestrator` so the monitor opens.
