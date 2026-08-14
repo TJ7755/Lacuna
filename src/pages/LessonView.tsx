@@ -189,7 +189,7 @@ export function LessonView({
         examUrgent={examUrgent}
         title={lesson.name}
         onRename={
-          canEditLessons(course)
+          authoring
             ? async (name) => {
                 try {
                   await updateLesson(lesson.id, { name });
