@@ -1,5 +1,13 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Path authoring-gate tests
+
+- `CoursePath` and `CoursePathSegment` now have tests for each Read/Edit
+  authoring control: start/end and mid-path Manual practice, the
+  practice-node pencil, Add lesson on empty and populated paths, and the
+  course title rename. Each control is asserted absent in Read mode and
+  present and usable in Edit mode.
+
 ## Unreleased — Locked copies stay in study even when stored as edit
 
 - A locked distributed copy with `lessonViewMode: 'edit'` now has a
