@@ -23,6 +23,12 @@
   `repository.ts`, `sequenceRepository.ts` and `occlusionRepository.ts` import it.
   The string format is unchanged: it remains the tombstone matching key.
 
+## Unreleased — Extract note repository
+
+- Moved note CRUD and device-local note-annotation CRUD from `src/db/repository.ts` into
+  `src/db/noteRepository.ts`. Every moved name is re-exported from `repository.ts`; no
+  caller import changed. Note annotations remain un-tombstoned and absent from `BackupFile`.
+
 ## Unreleased — Extract sequence repository
 
 - Moved sequence CRUD, regeneration and snapshot/restore from `src/db/repository.ts` into
