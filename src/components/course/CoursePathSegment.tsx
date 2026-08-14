@@ -74,8 +74,8 @@ export function lockHintFor(
  * Renders a single path node followed by its connecting line (if not the last node).
  * The connecting line is accent-tinted when the preceding node is a completed lesson,
  * indicating the student has already cleared that stretch of the path. When
- * `lineInsert.insertable`, the line also carries a labelled affordance for
- * inserting a manual practice node at that gap.
+ * `lineInsert.insertable` and `authoring`, the line also carries a labelled
+ * affordance for inserting a manual practice node at that gap.
  */
 export function PathNodeWithLine({
   node,
@@ -107,7 +107,7 @@ export function PathNodeWithLine({
   onPracticeClick: (node: PracticePathNode) => void;
   onPracticeAssessmentClick: (assessmentId: string) => void;
   onCheckpointClick: (assessmentId: string) => void;
-  onPracticeEdit: (node: PracticePathNode) => void;
+  onPracticeEdit?: (node: PracticePathNode) => void;
   onInsertOnLine: (position: number | undefined) => void;
   authoring: boolean;
   lessonReorder?: LessonReorderInteraction;
@@ -141,7 +141,7 @@ export function PathNodeWithLine({
         onCheckpointClick={
           node.nodeType === 'checkpoint' ? () => onCheckpointClick(node.assessment.id) : undefined
         }
-        onPracticeEdit={onPracticeEdit}
+        onPracticeEdit={authoring ? onPracticeEdit : undefined}
         authoring={authoring}
         lessonReorder={lessonReorder}
       />
@@ -157,7 +157,7 @@ export function PathNodeWithLine({
       {!isLast && (
         <div className="relative">
           <PathLine completed={segmentCompleted} />
-          {lineInsert.insertable && (
+          {authoring && lineInsert.insertable && (
             <InsertButton onInsert={() => onInsertOnLine(lineInsert.position)} />
           )}
         </div>

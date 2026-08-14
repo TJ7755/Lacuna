@@ -529,7 +529,10 @@ modes resolved by `src/course/lessonViewMode.ts`:
   rather than an editable table.
 - **Edit**: the full notes/cards CRUD, extracted into `LessonNotesSection`
   (`src/components/notes/`) and `LessonCardsSection` (`src/components/cards/`) so the page
-  component stays a thin layout/data shell.
+  component stays a thin layout/data shell. Path authoring chrome — Add lesson, Manual
+  practice, the practice-node pencil, and inline course/lesson rename — is also gated on
+  `isLessonAuthoringMode` and is absent in Read mode. Settings, the Question Bank,
+  Analytics and the command palette are not.
 
 Every course carries its own explicit `Course.lessonViewMode` (`src/db/types.ts`) — no more
 site-wide default. It is set directly via a compact Read/Edit segmented control
@@ -618,11 +621,12 @@ authoring agents and button handlers can share the same layer without duplicatio
 
 `PracticeNode.type` is `'auto'` or `'manual'`. Auto nodes are never persisted — they are
 computed fresh on every path render from the live due-card backlog (§4.3's path diagram).
-Manual nodes are teacher-authored and persisted: a hover-revealed "+" between lesson nodes
-on `CoursePath` inserts one at a specific gap (`position`), and an edit badge on existing
-manual nodes lets a teacher reposition, rename or delete them (`PracticeNodeEditor`,
-`src/components/course/`); `PracticeNodesSection` in course settings mirrors the same
-create/edit/delete flow as a list (§15's Course settings section). Both surfaces share
+Manual nodes are teacher-authored and persisted: in Edit mode, a Manual practice control
+between lesson nodes on `CoursePath` inserts one at a specific gap (`position`), and an
+edit badge on existing manual nodes lets a teacher reposition, rename or delete them
+(`PracticeNodeEditor`, `src/components/course/`). Both are absent in Read mode.
+`PracticeNodesSection` in course settings mirrors the same create/edit/delete flow as a
+list (§15's Course settings section). Both surfaces share
 `practiceNodeDraft.ts`'s draft helpers. Filters (`CardFilter[]`) are supported in storage
 but intentionally left out of both forms — there is no existing filter-builder UI to reuse.
 
