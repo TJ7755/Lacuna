@@ -46,6 +46,15 @@ session, the dashboard and the card list. Ten minutes closes the largest remaini
 
 ## 2. Decisions only Tom can make
 
+**All three were answered on 14 August 2026.** The sections below are kept as the reasoning; the
+answers are here.
+
+| Question | Answer |
+| --- | --- |
+| 2.1 Relay hosting gate | **Yes.** Tom accepts the maintenance commitment. P1 and P2 are authorised; P5/P6/P7 follow. Recorded in `sync-implementation.html`, which is the doc agents actually read. |
+| 2.2 Is "kept" the right word? | **Accept it.** No change to the toast or the resting copy. Do not reopen this. |
+| 2.3 How far to take the `repository.ts` split | **Sequences and notes, then stop.** Two modules is the whole plan, not the first two of nine. Anything beyond notes needs a fresh decision. |
+
 Nothing below the line moves until these are answered.
 
 ### 2.1 The relay hosting gate — the big one

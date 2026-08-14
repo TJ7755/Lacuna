@@ -33,7 +33,9 @@ So when work is delegable, the default is not to spawn a worker yourself. It is 
 - Name the files to touch and the existing code to imitate.
 - Give it an explicit permitted-paths list, and say which files another worker owns. A worker that finds a needed file missing from that list will stop and ask, which costs a round trip; a worker with no list at all will wander.
 
-**Codebuff appears to have removed the reviewer-agent capability.** As of 13 August 2026 a Freebuff worker reports that it cannot spawn one and falls back to checking its own diff, which is not review. The old instruction here was to tell it to spawn a code-reviewer on every commit; that instruction now produces no review at all, silently, because the worker follows the brief, fails to spawn, and carries on regardless. **So the review is yours.** Read every commit on the branch before it merges, and verify the checks yourself rather than trusting the completion message. Re-test this if Codebuff changes; if the capability returns, restore the per-commit cadence, because on free inference that is what keeps the output honest.
+**Codebuff appears to have removed the reviewer-agent capability.** As of 13 August 2026 a Freebuff worker reports that it cannot spawn one and falls back to checking its own diff, which is not review. The old instruction here was to tell it to spawn a code-reviewer on every commit; that instruction now produces no review at all, silently, because the worker follows the brief, fails to spawn, and carries on regardless. **So Freebuff branches do not review themselves, and you must not assume otherwise from a clean completion message.** Re-test this if Codebuff changes; if the capability returns, restore the per-commit cadence, because on free inference that is what keeps the output honest.
+
+**The review is not yours.** This paragraph previously said it was, which was wrong and was corrected on 14 August 2026. Review is delegable work like any other: spawn a Grok reviewer with a brief naming the specific claims to test, and arbitrate its report. Reading the diff yourself is the thing to avoid — it is the most expensive way to get a review and not the best one. See Reviewing below.
 
 Reach for Codex, DeepSeek or Grok instead only when I have explicitly told you to be autonomous.
 
@@ -136,6 +138,26 @@ Therefore, do not decompose for Sol — that is for the slop tier. Give it the f
 Sol's limits are real. It is not free and not unlimited, so do not treat it as a bottomless bucket the way you can with DeepSeek. Reach for it when the job genuinely warrants it, and send bulk grunt work to the free workers instead. Ask me before using it.
 
 The split worth remembering: Sol takes volume and endurance, you take taste, creativity and 3D. That is what keeps my Opus limits going on work only you can do.
+
+---
+
+## Reviewing
+
+**You do not review code. A Grok worker does.** This holds even when the branch is small, even when you are curious, and even when you have just told me nothing merges until you have read it. Reading the diff yourself is the expensive path and not the best one. Established 14 August 2026.
+
+Your job at a landing is to spawn a reviewer, read its report, and decide what happens next. Arbitrating a report is direction; reading the diff is review.
+
+What makes a review brief work, learned from the PR #69 review that found the real answer on every question asked:
+
+- **Name the claims to test, not the files to look at.** "The author says this is a pure move — test that" produces a worker that extracts the original span and diffs it. "Review this PR" produces a worker that reads it and says it looks fine.
+- **Say what would be the most important finding**, so it knows what it is hunting. Telling it that a drifted copy of a tombstone key would be a live bug got it testing embedded colons and empty components unprompted.
+- **Demand a "verified clean" section** alongside the findings. What was established matters as much as what was wrong, and it is the half that tells you whether the review was real.
+- **Say plainly not to manufacture findings.** A reviewer with nothing to report should say so.
+- **Give it its own git worktree** if another worker holds the main tree, and tell it not to switch branches. Symlink `node_modules` in so it can run the checks.
+
+Batch reviews to the end of a group of related tasks rather than one per commit, except where a single change is risky enough to warrant its own pass. Crypto is the standing example: Arc 8 §7 requires `/security-review` and a human read, because incorrect nonce or KDF handling produces code that passes every test and is broken.
+
+**Briefs are not infallible, and workers who ignore them are sometimes right.** The PR #69 brief asked for three private helpers to be re-exported; doing so would have expanded the public API and broken the very claim the task was making. The implementer left them alone and the reviewer explained why. When a worker deviates and gives a reason, weigh the reason.
 
 ---
 
