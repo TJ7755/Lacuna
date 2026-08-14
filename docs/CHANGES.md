@@ -1,5 +1,11 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Locked copies stay in study even when stored as edit
+
+- A locked distributed copy with `lessonViewMode: 'edit'` now has a
+  regression test that `resolveLessonViewMode` still returns `'study'`, so
+  `isLessonAuthoringMode` is false.
+
 ## Unreleased — Path Manual practice insert controls are persistent
 
 - `docs/APP-FLOWS.md` no longer says Manual practice insert controls appear on
