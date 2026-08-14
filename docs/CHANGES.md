@@ -1,5 +1,15 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Curricular practice no longer restarts the session on each answer
+
+- Answering a card in a curricular practice session no longer blanks the screen
+  or resets the progress bar. The live study-flow snapshot was rebuilding a
+  fresh `scopeLessonIds` array, and `useLearnSession`'s load effect treated
+  that new array as a new session.
+- `CourseStudyFlow` now freezes the committed step's lesson ids, and the load
+  effect keys on serialised session identity (ids, filters, practice node)
+  rather than object identity. Changing course, node or filters still reloads.
+
 ## Unreleased — Read-mode authoring chrome
 
 - Read mode is a presentation and focus mode, not a write barrier. Path and

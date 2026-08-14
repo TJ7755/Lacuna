@@ -4,14 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createCard,
   createCourse,
-
   createLesson,
   createLessonCard,
+  createPracticeNode,
   upsertLessonCardExposure,
 } from '../../db/repository';
 import { db } from '../../db/schema';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
-import { useLearnSession } from './useLearnSession';
+import type { CardFilter } from '../../db/search';
+import { useLearnSession, type UseLearnSessionParams } from './useLearnSession';
 import { makeSessionContext, selectNext, sessionServePool } from '../../fsrs/session';
 
 const distraction: DistractionTracker = {
@@ -21,6 +22,56 @@ const distraction: DistractionTracker = {
   blurredMs: () => 0,
   sessionMs: () => 1,
 };
+
+// Stable empty filters. An inline `[]` on every render is the same object-identity
+// landmine as a rebuilt `scopeLessonIds` array and would reload the session forever.
+const emptyFilterParams: CardFilter[] = [];
+
+function sessionParams(overrides: Partial<UseLearnSessionParams> = {}): UseLearnSessionParams {
+  return {
+    courseId: undefined,
+    lessonId: undefined,
+    sessionId: undefined,
+    tagFilter: null,
+    filterParams: emptyFilterParams,
+    requestScopeLessonIds: undefined,
+    practiceNodeKeyParam: null,
+    requestAssessmentId: undefined,
+    requestPlanId: undefined,
+    requestWindowId: undefined,
+    plannedRevision: false,
+    reviewSessionKind: 'practice',
+    isSimpleMode: false,
+    mode: 'fsrs',
+    navigate: vi.fn(),
+    notify: vi.fn(),
+    distraction,
+    typingSetting: 'reveal',
+    startInFocusMode: false,
+    m: 1,
+    ...overrides,
+  };
+}
+
+async function seedCurricularPractice() {
+  const course = await createCourse('Chemistry');
+  const lesson = await createLesson(course.id, 'Atomic structure');
+  const first = await createLessonCard(course.id, lesson.id, 'front_back', 'Proton', 'Positive');
+  const second = await createLessonCard(course.id, lesson.id, 'front_back', 'Electron', 'Negative');
+  await upsertLessonCardExposure(lesson.id, first.id);
+  await upsertLessonCardExposure(lesson.id, second.id);
+  const node = await createPracticeNode(course.id, {
+    type: 'manual',
+    name: 'Checkpoint',
+    position: 0,
+  });
+  const otherNode = await createPracticeNode(course.id, {
+    type: 'manual',
+    name: 'Later checkpoint',
+    position: 0,
+  });
+  return { course, lesson, node, otherNode };
+}
 
 beforeEach(async () => {
   await Promise.all([
@@ -277,5 +328,96 @@ describe('useLearnSession answer boundary', () => {
     expect(result.current.phase).not.toBe('answer');
     expect(result.current.events.current).toHaveLength(1);
     expect((await db.cards.get(card.id))?.history).toHaveLength(1);
+  });
+});
+
+describe('useLearnSession load identity', () => {
+  beforeEach(async () => {
+    await Promise.all([
+      db.cards.clear(),
+      db.schedulingUnits.clear(),
+      db.sessionHistory.clear(),
+      db.userPerformance.clear(),
+      db.coursePerformance.clear(),
+      db.schedulingPerformance.clear(),
+      db.reviewHistory.clear(),
+      db.courses.clear(),
+      db.lessons.clear(),
+      db.lessonCards.clear(),
+      db.lessonCardExposures.clear(),
+      db.practiceNodes.clear(),
+      db.practiceMilestones.clear(),
+    ]);
+  });
+
+  it('does not reset progress or return to loading after answering when the scope array is rebuilt', async () => {
+    const { course, lesson, node } = await seedCurricularPractice();
+    const params = sessionParams({
+      courseId: course.id,
+      requestScopeLessonIds: [lesson.id],
+      practiceNodeKeyParam: node.id,
+    });
+    const { result, rerender } = renderHook(
+      (props: UseLearnSessionParams) => useLearnSession(props),
+      { initialProps: params },
+    );
+
+    await waitFor(() => expect(result.current.phase).toBe('question'));
+    act(() => {
+      result.current.reveal();
+    });
+    await waitFor(() => expect(result.current.phase).toBe('answer'));
+    await act(async () => {
+      await result.current.answer(true);
+    });
+
+    expect(result.current.phase).not.toBe('loading');
+    expect(result.current.events.current).toHaveLength(1);
+    const progressAfterAnswer = result.current.schedulerProgress;
+
+    rerender({
+      ...params,
+      requestScopeLessonIds: [lesson.id],
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.phase).not.toBe('loading');
+    expect(result.current.events.current).toHaveLength(1);
+    expect(result.current.schedulerProgress).toBe(progressAfterAnswer);
+  });
+
+  it('reloads when the practice node changes even if the lesson ids are unchanged', async () => {
+    const { course, lesson, node, otherNode } = await seedCurricularPractice();
+    const scopeLessonIds = [lesson.id];
+    const params = sessionParams({
+      courseId: course.id,
+      requestScopeLessonIds: scopeLessonIds,
+      practiceNodeKeyParam: node.id,
+    });
+    const { result, rerender } = renderHook(
+      (props: UseLearnSessionParams) => useLearnSession(props),
+      { initialProps: params },
+    );
+
+    await waitFor(() => expect(result.current.phase).toBe('question'));
+    act(() => {
+      result.current.reveal();
+    });
+    await waitFor(() => expect(result.current.phase).toBe('answer'));
+    await act(async () => {
+      await result.current.answer(true);
+    });
+    expect(result.current.events.current).toHaveLength(1);
+
+    rerender({
+      ...params,
+      requestScopeLessonIds: scopeLessonIds,
+      practiceNodeKeyParam: otherNode.id,
+    });
+
+    await waitFor(() => expect(result.current.events.current).toHaveLength(0));
+    await waitFor(() => expect(result.current.phase).toBe('question'));
   });
 });
