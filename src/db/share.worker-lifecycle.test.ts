@@ -48,9 +48,10 @@ describe('share worker lifecycle', () => {
   it('terminates the worker after the last concurrent job succeeds', async () => {
     const share = await import('./share');
     const payload: SharePayload = {
-      v: 1,
+      v: 2,
       at: 1,
-      decks: [],
+      course: { n: 'Shared', o: 0, c: 0, e: 0, um: 'open' },
+      lessons: [{ n: 'Lesson', notes: [], cards: [] }],
     };
     const code = await share.encodeShareDirect(payload);
 

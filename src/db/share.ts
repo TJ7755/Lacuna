@@ -25,7 +25,7 @@
 //   LAC3 = plain Base45 (legacy, uncompressed fallback)
 //
 // Payload version (the `v` field, unrelated to the LACn encoding prefix above):
-//   v1 = a flat list of decks (the original shape).
+//   v1 = a flat list of decks. Still parsed so an old code can be named, then refused.
 //   v2 = a single course: course metadata, ordered lessons, cards, assessment scope
 //        references and lesson-card links. PracticeNode remains device-local.
 
@@ -36,16 +36,12 @@ import {
   ensureCourseBankBackingDeck,
   ensureLessonBackingDeck,
 } from './backingDecks';
-import { clampRequestRetention, defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
-import { emptyPerformance } from '../fsrs/grading';
-import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
+import { clampRequestRetention, defaultFsrsParameters } from '../fsrs/params';
 import type { ParsedCard } from './import';
 import { CURRENT_ITEM_PAYLOAD_VERSION } from './types';
 import type {
   Card,
   CourseAssessment,
-  LegacyDeckRecord,
-  LegacyFolder,
   ItemPayload,
   Lesson,
   LessonCardLink,
@@ -56,14 +52,12 @@ import type {
   SequencePresetId,
   UnlockMode,
 } from './types';
-import { courseToRecord, finalAssessmentForCourse } from './assessmentMigration';
+import { finalAssessmentForCourse } from './assessmentMigration';
 import { stripAssetMedia } from './assets';
 import { decodeShareCode, encodeShareCode, encodeShareQrCode } from './shareCodec';
-import { buildCourseMigration } from './courseMigration';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
 import { getPreset, presetForSequence } from './sequencePresets';
 import { itemPayloadIsValid, assertValidCardPayload } from '../items/payloadValidation';
-import { adaptLegacyBackup } from './legacyBackupAdapter';
 
 // ---------------------------------------------------------------------------
 // Zod runtime schema for share payloads
@@ -531,10 +525,16 @@ export async function encodeShareQR(payload: SharePayload): Promise<string> {
   return encodeShareQRDirect(payload);
 }
 
+export const V1_SHARE_CODE_MESSAGE =
+  'This share code is a v1 deck share code and can no longer be imported.';
+
 function parseSharePayload(payload: unknown): SharePayload {
   const parse = SharePayloadSchema.safeParse(payload);
   if (!parse.success) {
     throw new Error('This share code is from an unsupported version of Lacuna.');
+  }
+  if (parse.data.v === 1) {
+    throw new Error(V1_SHARE_CODE_MESSAGE);
   }
   return parse.data;
 }
@@ -801,35 +801,6 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
   return out;
 }
 
-/** Pack the given scheduling units into a legacy-compatible share payload. */
-async function buildSharePayload(deckIds: string[]): Promise<SharePayload> {
-  const found = await db.schedulingUnits.where('id').anyOf(deckIds).toArray();
-  const order = new Map(deckIds.map((id, i) => [id, i]));
-  found.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-
-  const decks: ShareDeck[] = [];
-  for (const deck of found) {
-    const cards = await db.cards.where('schedulingUnitId').equals(deck.id).sortBy('createdAt');
-    decks.push({
-      n: deck.name,
-      o: deck.examObjective === 'securedTopics' ? 1 : 0,
-      c: deck.createdAt,
-      e: deck.examDate,
-      r: deck.fsrsParameters.requestRetention,
-      ...(deck.newCardsPerDay ? { p: deck.newCardsPerDay } : {}),
-      ...(deck.colour ? { l: deck.colour } : {}),
-      cards: packCards(cards),
-    });
-  }
-
-  return { v: 1, by: null, at: Date.now(), decks };
-}
-
-/** Build a single share code for the given decks, in the order supplied. */
-export async function buildShareCode(deckIds: string[]): Promise<string> {
-  return encodeShare(await buildSharePayload(deckIds));
-}
-
 // ---------------------------------------------------------------------------
 // Unpacking (code -> DB)
 // ---------------------------------------------------------------------------
@@ -1064,10 +1035,8 @@ export async function buildCourseShareCodeQR(courseId: string): Promise<string> 
 }
 
 // ---------------------------------------------------------------------------
-// Importing (code -> DB). Both v1 and v2 payloads land in the course model:
-// a shared course dashboard only shows courses/lessons, so a v1 (deck) code is
-// migrated on the fly via the same buildCourseMigration helper the schema
-// upgrade uses.
+// Importing (code -> DB). v2 payloads recreate a course directly. v1 deck
+// codes are parsed then refused.
 // ---------------------------------------------------------------------------
 
 /** The result of importing a share payload: everything created. */
@@ -1076,127 +1045,6 @@ export interface ImportShareResult {
   lessons: number;
   cards: number;
   courseIds: string[];
-}
-
-/**
- * Import a v1 (flat deck list) payload. Real decks are still created — course
- * cards need a backing deck for recordReview/userPerformance/the learn-mode
- * bridge — but they are also folded into a course via buildCourseMigration so
- * the imported content is visible on the course dashboard: a single shared deck
- * becomes a single-lesson course; several decks in one payload are treated as
- * one course with one ordered lesson per deck (mirroring how a folder migrates).
- */
-async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportShareResult> {
-  const now = Date.now();
-  const decks: LegacyDeckRecord[] = payload.decks.map((d, i) => ({
-    id: makeId(),
-    name: d.n || 'Shared deck',
-    examDate: typeof d.e === 'number' && d.e > 0 ? d.e : defaultExamDate(now),
-    timeZone: getLocalTimeZone(),
-    createdAt: now + i,
-    fsrsVersion: FSRS_VERSION,
-    fsrsParameters: {
-      ...defaultFsrsParameters(),
-      ...(typeof d.r === 'number' ? { requestRetention: clampRequestRetention(d.r) } : {}),
-    },
-    examObjective: d.o === 1 ? 'securedTopics' : 'expectedMarks',
-    ...(d.p && d.p > 0 ? { newCardsPerDay: d.p } : {}),
-    ...(d.l ? { colour: d.l } : {}),
-  }));
-
-  // Several decks in one payload were shared together (e.g. from a folder); give
-  // them a synthetic folder so buildCourseMigration folds them into one course
-  // with one lesson per deck, rather than N separate courses.
-  const folders: LegacyFolder[] = [];
-  if (decks.length > 1) {
-    const folder: LegacyFolder = { id: makeId(), name: 'Shared course', parentId: null, createdAt: now };
-    folders.push(folder);
-    for (const deck of decks) deck.folderId = folder.id;
-  }
-
-  const migration = buildCourseMigration(decks, folders, makeId);
-  const courseRecords = migration.courses.map(courseToRecord);
-  const storedDecks = decks.map((deck) => ({
-    ...deck,
-    backingCourseId: migration.courseIdByDeckId.get(deck.id),
-    backingLessonId: migration.lessonIdByDeckId.get(deck.id),
-  }));
-  const performances = storedDecks.map((deck) => emptyPerformance(deck.id));
-  const finalAssessments: CourseAssessment[] = migration.courses.map((course) => ({
-    id: makeId(),
-    courseId: course.id,
-    name: 'Final exam',
-    kind: 'final',
-    examDate: course.examDate,
-    ...(course.timeZone ? { timeZone: course.timeZone } : {}),
-    afterLessonId:
-      migration.lessons
-        .filter((lesson) => lesson.courseId === course.id)
-        .sort((a, b) => b.orderIndex - a.orderIndex)[0]?.id ?? null,
-    coverageMode: 'prefix',
-    excludedCardIds: [],
-    createdAt: course.createdAt,
-    updatedAt: course.createdAt,
-  }));
-  let cardCount = 0;
-
-  await db.transaction(
-    'rw',
-    [
-      db.cards,
-      db.assets,
-      db.courses,
-      db.lessons,
-      db.courseAssessments,
-      db.schedulingUnits,
-      db.coursePerformance,
-      db.schedulingPerformance,
-    ],
-    async () => {
-      await db.courses.bulkAdd(courseRecords);
-      await db.lessons.bulkAdd(migration.lessons);
-      await db.courseAssessments.bulkAdd(finalAssessments);
-      const adapted = adaptLegacyBackup({
-        app: 'lacuna',
-        version: 8,
-        exportedAt: payload.at,
-        decks: storedDecks,
-        cards: [],
-        assets: [],
-        sessionHistory: [],
-        userPerformance: performances,
-        courses: courseRecords,
-        lessons: migration.lessons,
-        courseAssessments: finalAssessments,
-      }, {
-        courses: courseRecords,
-        lessons: migration.lessons,
-        courseAssessments: finalAssessments,
-        cards: [],
-      });
-      await db.schedulingUnits.bulkPut(adapted.schedulingUnits);
-      await db.coursePerformance.bulkPut(adapted.coursePerformance);
-      await db.schedulingPerformance.bulkPut(adapted.schedulingPerformance);
-      for (let i = 0; i < storedDecks.length; i++) {
-        const deck = storedDecks[i];
-        const drafts = payload.decks[i].cards.flatMap(unpackCard);
-        const courseId = migration.courseIdByDeckId.get(deck.id);
-        const lessonId = migration.lessonIdByDeckId.get(deck.id);
-        const cards =
-          drafts.length > 0
-            ? await createCards(lessonId ?? courseId!, drafts, { courseId, primaryLessonId: lessonId })
-            : [];
-        cardCount += cards.length;
-      }
-    },
-  );
-
-  return {
-    courses: migration.courses.length,
-    lessons: migration.lessons.length,
-    cards: cardCount,
-    courseIds: migration.courses.map((course) => course.id),
-  };
 }
 
 /** Split a sequenceItemId into its base item id and, when present, the label-card suffix. */
@@ -1506,11 +1354,13 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
 
 /**
  * Import a decoded share payload into the course model. Imported content is always
- * new (sharing never overwrites existing data); a v1 deck payload is migrated into
- * a course on the fly, and a v2 payload recreates its course directly. All FSRS/
- * review state starts clean for the new owner.
+ * new (sharing never overwrites existing data). A v2 payload recreates its course
+ * directly. A v1 deck payload is refused. All FSRS/review state starts clean for
+ * the new owner.
  */
 export async function importSharePayload(payload: SharePayload): Promise<ImportShareResult> {
-  if (payload.v === 2) return importCourseSharePayload(payload);
-  return importDeckSharePayload(payload);
+  if (payload.v !== 2) {
+    throw new Error(V1_SHARE_CODE_MESSAGE);
+  }
+  return importCourseSharePayload(payload);
 }
