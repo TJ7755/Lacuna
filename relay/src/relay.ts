@@ -1,5 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import type { BlobStore } from './store';
+import { canonicalEtag, type BlobStore } from './store';
 
 /** Snapshots carry inline assets. Arc 8 §13.3: start at 25 MB and name the cap. */
 export const MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -10,6 +10,9 @@ export const MAX_BODY_BYTES = 25 * 1024 * 1024;
  * a blob that has sat untouched for that long.
  */
 export const CHANNEL_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+/** Unwritten-slot sentinel. Not a Blob ETag. */
+export const EMPTY_SLOT_ETAG = '"0"';
 
 const CHANNEL_ID_BYTES = 16;
 const WRITE_TOKEN_BYTES = 32;
@@ -57,8 +60,8 @@ async function handleChannel(store: BlobStore, request: Request): Promise<Respon
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const channelId = randomBytes(CHANNEL_ID_BYTES).toString('hex');
     const writeToken = randomBytes(WRITE_TOKEN_BYTES).toString('hex');
-    const created = await store.create(metaKey(channelId), hashToken(writeToken));
-    if (created) {
+    const created = await store.put(metaKey(channelId), hashToken(writeToken), { exclusive: true });
+    if (created.ok) {
       return json(201, request, { channelId, writeToken });
     }
   }
@@ -122,17 +125,16 @@ async function getSlot(
     return json(404, request, { error: 'not found' });
   }
 
-  const loaded = await loadSlot(store, id, slot);
-  if (loaded.generation === 0 || !loaded.body) {
+  const stored = await store.get(slotKey(id, slot));
+  if (!stored) {
     return json(404, request, { error: 'not found' });
   }
-  const { generation, body } = loaded;
 
   const headers = corsHeaders(request);
   headers.set('Content-Type', 'application/octet-stream');
   headers.set('Cache-Control', 'no-store');
-  headers.set('ETag', quoteGeneration(generation));
-  return new Response(Buffer.from(body), { status: 200, headers });
+  headers.set('ETag', quoteEtag(stored.etag));
+  return new Response(Buffer.from(stored.body), { status: 200, headers });
 }
 
 async function putSlot(
@@ -165,14 +167,9 @@ async function putSlot(
   if (ifMatch === null || ifMatch.trim() === '') {
     return json(428, request, { error: 'if-match required' });
   }
-  const expected = parseGeneration(ifMatch);
+  const expected = parseIfMatch(ifMatch);
   if (expected === null) {
     return json(400, request, { error: 'invalid if-match' });
-  }
-
-  const current = (await loadSlot(store, id, slot)).generation;
-  if (current !== expected) {
-    return json(412, request, { error: 'precondition failed' });
   }
 
   const body = new Uint8Array(await request.arrayBuffer());
@@ -180,17 +177,17 @@ async function putSlot(
     return json(400, request, { error: 'length mismatch' });
   }
 
-  const next = expected + 1;
-  const created = await store.create(slotKey(id, slot, next), body);
-  if (!created) {
+  const written =
+    expected === 'empty'
+      ? await store.put(slotKey(id, slot), body, { exclusive: true })
+      : await store.put(slotKey(id, slot), body, { ifMatch: expected });
+
+  if (!written.ok) {
     return json(412, request, { error: 'precondition failed' });
   }
 
-  await store.put(headKey(id, slot), encodeGeneration(next));
-  if (expected > 0) await store.del([slotKey(id, slot, expected)]);
-
   const headers = corsHeaders(request);
-  headers.set('ETag', quoteGeneration(next));
+  headers.set('ETag', quoteEtag(written.etag));
   return new Response(null, { status: 204, headers });
 }
 
@@ -256,87 +253,35 @@ function readContentLength(request: Request): number | 'missing' | 'invalid' {
   return value;
 }
 
-function parseGeneration(header: string): number | null {
+function parseIfMatch(header: string): 'empty' | string | null {
   const trimmed = header.trim();
   if (trimmed.startsWith('W/')) return null;
-  const inner =
-    trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2
-      ? trimmed.slice(1, -1)
-      : trimmed;
-  if (!/^[0-9]+$/.test(inner)) return null;
-  const value = Number(inner);
-  if (!Number.isSafeInteger(value) || value < 0) return null;
-  return value;
+  const bare = canonicalEtag(trimmed);
+  if (bare === '') return null;
+  if (bare === '0') return 'empty';
+  return trimmed;
 }
 
-function quoteGeneration(generation: number): string {
-  return `"${generation}"`;
+function quoteEtag(etag: string): string {
+  const bare = canonicalEtag(etag);
+  return `"${bare}"`;
 }
 
 function metaKey(id: string): string {
   return `c/${id}/meta`;
 }
 
-function slotKey(id: string, slot: Slot, generation: number): string {
-  return `c/${id}/${slot}/${generation}`;
-}
-
-function headKey(id: string, slot: Slot): string {
-  return `c/${id}/${slot}/head`;
+function slotKey(id: string, slot: Slot): string {
+  return `c/${id}/${slot}`;
 }
 
 function channelPrefix(id: string): string {
   return `c/${id}/`;
 }
 
-function encodeGeneration(generation: number): Uint8Array {
-  return new TextEncoder().encode(String(generation));
-}
-
-function decodeGeneration(body: Uint8Array): number | null {
-  const raw = new TextDecoder().decode(body);
-  if (!/^[0-9]+$/.test(raw)) return null;
-  const value = Number(raw);
-  if (!Number.isSafeInteger(value) || value < 0) return null;
-  return value;
-}
-
-async function readGeneration(store: BlobStore, id: string, slot: Slot): Promise<number> {
-  const stored = await store.get(headKey(id, slot));
-  if (!stored) return 0;
-  return decodeGeneration(stored.body) ?? 0;
-}
-
-/**
- * Read the slot, and finish a pointer write that crashed after the exclusive
- * create. Only looks one generation ahead at a time; a crash leaves at most
- * that one unpointed object.
- */
-async function loadSlot(
-  store: BlobStore,
-  id: string,
-  slot: Slot,
-): Promise<{ generation: number; body: Uint8Array | null }> {
-  let generation = await readGeneration(store, id, slot);
-  let body: Uint8Array | null = null;
-
-  for (;;) {
-    const newer = await store.get(slotKey(id, slot, generation + 1));
-    if (!newer) break;
-    generation += 1;
-    body = newer.body;
-    await store.put(headKey(id, slot), encodeGeneration(generation));
-  }
-
-  if (body) return { generation, body };
-  if (generation === 0) return { generation: 0, body: null };
-  const stored = await store.get(slotKey(id, slot, generation));
-  return { generation, body: stored?.body ?? null };
-}
-
 async function channelLive(store: BlobStore, id: string, now: () => number): Promise<boolean> {
   const stamps: number[] = [];
-  for (const key of [metaKey(id), headKey(id, 'state'), headKey(id, 'keybag')]) {
+  for (const key of [metaKey(id), slotKey(id, 'state'), slotKey(id, 'keybag')]) {
     const stored = await store.get(key);
     if (stored) stamps.push(stored.uploadedAt);
   }
@@ -363,7 +308,11 @@ function corsHeaders(request: Request): Headers {
   return headers;
 }
 
-function json(status: number, request: Request, body: { error?: string; channelId?: string; writeToken?: string }): Response {
+function json(
+  status: number,
+  request: Request,
+  body: { error?: string; channelId?: string; writeToken?: string },
+): Response {
   const headers = corsHeaders(request);
   headers.set('Content-Type', 'application/json');
   return new Response(JSON.stringify(body), { status, headers });
