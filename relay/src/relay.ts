@@ -58,6 +58,16 @@ async function handleChannel(store: BlobStore, request: Request): Promise<Respon
     return json(405, request, { error: 'method not allowed' });
   }
 
+  const secret = configuredMintSecret();
+  if (secret === null) {
+    console.error('RELAY_MINT_SECRET is unset; refusing to mint');
+    return json(503, request, { error: 'minting unavailable' });
+  }
+
+  if (!authorizeMint(request, secret)) {
+    return json(401, request, { error: 'unauthorized' });
+  }
+
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const channelId = randomBytes(CHANNEL_ID_BYTES).toString('hex');
     const writeToken = randomBytes(WRITE_TOKEN_BYTES).toString('hex');
@@ -206,6 +216,29 @@ async function authorize(
     return 401;
   }
   return 'ok';
+}
+
+/**
+ * Shared mint secret from the environment. Whitespace-only is treated as
+ * unset: a missing-secret-means-no-auth fallback is the mistake this exists
+ * to prevent.
+ */
+function configuredMintSecret(): string | null {
+  const raw = process.env.RELAY_MINT_SECRET;
+  if (raw === undefined) return null;
+  const secret = raw.trim();
+  return secret === '' ? null : secret;
+}
+
+function authorizeMint(request: Request, secret: string): boolean {
+  const token = bearerToken(request);
+  if (token === null) return false;
+  const presented = hashToken(token);
+  const expected = hashToken(secret);
+  if (presented.length !== expected.length || !timingSafeEqual(presented, expected)) {
+    return false;
+  }
+  return true;
 }
 
 export type Route =
