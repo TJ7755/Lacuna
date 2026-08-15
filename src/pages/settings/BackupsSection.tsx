@@ -44,8 +44,8 @@ export function BackupsSection() {
       await restoreBackup(id);
       setConfirmRestore(null);
       notify('Data restored from the selected point.', 'positive');
-    } catch {
-      notify('Restore failed.', 'negative');
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Restore failed.', 'negative');
     }
   }
 

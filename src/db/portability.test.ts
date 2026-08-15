@@ -1,7 +1,15 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import { exportDatabase, importBackup, validateBackup, BACKUP_VERSION } from './portability';
+import {
+  exportDatabase,
+  importBackup,
+  readBackupFile,
+  validateBackup,
+  BACKUP_VERSION,
+  PRE_V22_BACKUP_MESSAGE,
+} from './portability';
+import type { BackupFile } from './types';
 import {
   createCourse,
 
@@ -333,8 +341,49 @@ describe('exportDatabase', () => {
   });
 });
 
+function preV22Backup(overrides: Partial<BackupFile> = {}): BackupFile {
+  return {
+    app: 'lacuna',
+    version: 9,
+    exportedAt: 1,
+    cards: [],
+    assets: [],
+    sessionHistory: [],
+    userPerformance: [],
+    ...overrides,
+  };
+}
+
 describe('importBackup', () => {
   beforeEach(reset);
+
+  it('refuses a backup that still carries Deck rows', async () => {
+    const backup = preV22Backup({ decks: [{ id: 'old-deck' }] as BackupFile['decks'] });
+    await expect(importBackup(backup, 'replace')).rejects.toThrow(PRE_V22_BACKUP_MESSAGE);
+    await expect(readBackupFile(new File([JSON.stringify(backup)], 'old.json'))).rejects.toThrow(
+      PRE_V22_BACKUP_MESSAGE,
+    );
+  });
+
+  it('refuses a backup that still carries Folder rows', async () => {
+    const backup = preV22Backup({
+      folders: [{ id: 'old-folder', name: 'Chemistry', parentId: null, createdAt: 1 }],
+    });
+    await expect(importBackup(backup, 'merge')).rejects.toThrow(PRE_V22_BACKUP_MESSAGE);
+    await expect(readBackupFile(new File([JSON.stringify(backup)], 'old.json'))).rejects.toThrow(
+      PRE_V22_BACKUP_MESSAGE,
+    );
+  });
+
+  it('still accepts a current-shaped file with empty decks and folders arrays', async () => {
+    const course = await createCourse('Current');
+    await createCard(course.id, 'front_back', 'Q', 'A');
+    const backup = await exportDatabase();
+    backup.decks = [];
+    backup.folders = [];
+    await importBackup(backup, 'replace');
+    expect(await db.courses.count()).toBe(1);
+  });
 
   it.each(['replace', 'merge'] as const)(
     'round-trips course and scheduling-unit performance distinctly in %s mode',

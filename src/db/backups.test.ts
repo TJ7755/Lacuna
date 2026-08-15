@@ -12,6 +12,7 @@ import {
   __resetBackupThrottleForTests,
 } from './backups';
 import { createCard, createCourse } from './repository';
+import { PRE_V22_BACKUP_MESSAGE } from './portability';
 import type { BackupFile, ItemPayload } from './types';
 
 describe('backups', () => {
@@ -52,6 +53,38 @@ describe('backups', () => {
     const restored = await db.schedulingUnits.toArray();
     expect(restored).toHaveLength(1);
     expect(restored[0].name).toBe('Restoreable');
+  });
+
+  it('refuses to restore a pre-v22 snapshot and leaves the backups table untouched', async () => {
+    await createCourse('Current');
+    const id = await db.backups.add({
+      createdAt: Date.now(),
+      deckCount: 1,
+      cardCount: 0,
+      payload: {
+        app: 'lacuna',
+        version: 9,
+        exportedAt: 1,
+        decks: [{ id: 'old-deck' }],
+        cards: [],
+        assets: [],
+        sessionHistory: [],
+        userPerformance: [],
+      } as unknown as BackupFile,
+    });
+
+    try {
+      await restoreBackup(id);
+      throw new Error('expected restoreBackup to reject');
+    } catch (error) {
+      if (error instanceof Error && error.message === 'expected restoreBackup to reject') {
+        throw error;
+      }
+      // Same narrowing the restore UI uses: the specific refusal must reach the caller.
+      expect(error instanceof Error ? error.message : 'Restore failed.').toBe(PRE_V22_BACKUP_MESSAGE);
+    }
+    expect(await db.backups.count()).toBe(1);
+    expect(await db.courses.count()).toBe(1);
   });
 
   it('round-trips a structured item payload through backup and restore', async () => {

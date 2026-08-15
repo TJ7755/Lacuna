@@ -105,26 +105,6 @@ describe('DataPortabilitySection', () => {
     );
   });
 
-  it('reports folder names discarded while adding a legacy backup', async () => {
-    readBackupFile.mockResolvedValue({
-      decks: [{}],
-      cards: [],
-      exportedAt: Date.now(),
-    } as unknown as BackupFile);
-    importBackup.mockResolvedValue({ discardedFolderNames: ['Chemistry', 'Organic'] });
-    render(<DataPortabilitySection motionMultiplier={0} />);
-    await chooseRecoverFile();
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Add from backup' }));
-
-    await waitFor(() =>
-      expect(notify).toHaveBeenCalledWith(
-        'Backup added. Folder hierarchy was discarded: Chemistry, Organic.',
-        'positive',
-      ),
-    );
-  });
-
   it('requires confirmation before combining with another device', async () => {
     readBackupFile.mockResolvedValue(backupStub({
       lessons: Array.from({ length: 2 }),

@@ -1,5 +1,20 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Pre-v22 import boundary retired
+
+- Lacuna now refuses backup files that still carry Deck or Folder rows, and
+  refuses v1 deck share codes, with a specific error rather than converting
+  them. Current-shaped backups and v2 course share codes are unchanged.
+- Restoring a pre-v22 snapshot from Automatic backups now shows that same
+  specific refusal, rather than a flat "Restore failed."
+- Share decode still rejects a working item with no mark-scheme lines; the
+  regression test is restored against a v2 course code.
+- The Dexie `version(1)`–`version(21)` chain is untouched: existing databases
+  still replay it. Projection reconstruction for current-shaped files that
+  omit complete scheduling-unit rows is also unchanged.
+- `LegacyDeckRecord` / `LegacyFolder` stay as the Dexie-chain, snapshot-builder
+  and test-fixture shape. They are no longer an import path.
+
 ## Unreleased — Path authoring-gate tests
 
 - `CoursePath` and `CoursePathSegment` now have tests for each Read/Edit

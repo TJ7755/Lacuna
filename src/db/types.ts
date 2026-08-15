@@ -289,8 +289,9 @@ export interface LegacyFolder {
 // Course architecture (Course -> Lesson -> Note + Card).
 //
 // These are the live domain tables. Schema v22 removed the hidden Deck and
-// Folder stores. LegacyDeckRecord and LegacyFolder above remain as the import
-// boundary for pre-v22 backups and v1 share codes; they are not live stores.
+// Folder stores. LegacyDeckRecord and LegacyFolder remain as the Dexie
+// upgrade, snapshot-builder and test-fixture shape; they are not live stores
+// and are no longer an import boundary.
 // Field shapes follow the resolved design in new_features_list.md (main plan
 // plus addenda). British English.
 // ---------------------------------------------------------------------------
@@ -1088,7 +1089,7 @@ export interface BackupFile {
   app: 'lacuna';
   version: number;
   exportedAt: number;
-  /** Legacy import boundary. Current exports stop emitting this at schema v22. */
+  /** Pre-v22 Deck rows. Current exports omit this; a non-empty array is refused. */
   decks?: LegacyDeck[];
   cards: Card[];
   /** Canonical review events when exported from schema v20 or later. */
@@ -1100,6 +1101,7 @@ export interface BackupFile {
   assets: BackupAsset[];
   sessionHistory: SessionHistoryEntry[];
   userPerformance: UserPerformance[];
+  /** Pre-v22 Folder rows. Current exports omit this; a non-empty array is refused. */
   folders?: LegacyFolder[];
   // Course architecture tables. Optional so older backups still import cleanly.
   courses?: CourseRecord[];

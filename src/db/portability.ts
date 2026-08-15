@@ -49,7 +49,7 @@ import {
 } from './assets';
 import { mergeRevisionPlans } from '../course/revisionPlan';
 import { itemPayloadIsValid } from '../items/payloadValidation';
-import { adaptLegacyBackup, type LegacyImportReport } from './legacyBackupAdapter';
+import { adaptLegacyBackup } from './legacyBackupAdapter';
 
 export const BACKUP_VERSION = 10;
 
@@ -189,6 +189,20 @@ export function validateBackup(data: unknown): data is BackupFile {
 
 export type ImportMode = 'replace' | 'merge';
 
+export const PRE_V22_BACKUP_MESSAGE =
+  'This backup predates schema v22 and can no longer be imported.';
+
+/** True when the file still carries Deck or Folder rows from before schema v22. */
+export function isPreV22Backup(backup: BackupFile): boolean {
+  return (backup.decks?.length ?? 0) > 0 || (backup.folders?.length ?? 0) > 0;
+}
+
+function assertCurrentBackup(backup: BackupFile): void {
+  if (isPreV22Backup(backup)) {
+    throw new Error(PRE_V22_BACKUP_MESSAGE);
+  }
+}
+
 /**
  * Import a backup. In "replace" mode the database is cleared first; in "merge" mode
  * records are matched by id and the most recently touched copy wins each conflict.
@@ -198,10 +212,11 @@ export type ImportMode = 'replace' | 'merge';
 export async function importBackup(
   backup: BackupFile,
   mode: ImportMode,
-): Promise<LegacyImportReport> {
+): Promise<void> {
   if (!validateBackup(backup)) {
     throw new Error('Invalid backup file.');
   }
+  assertCurrentBackup(backup);
 
   // Pre-process markdown assets outside the IndexedDB transaction so long-running
   // canvas compressions cannot auto-abort the import transaction.
@@ -266,14 +281,11 @@ export async function importBackup(
     lessons: backup.lessons ?? [],
     courseAssessments: assessmentMigration.assessments,
     cards: migratedCards,
-    generateId: makeId,
   });
   const {
-    decks,
     cards,
     courses,
     courseAssessments,
-    report,
     ...storageProjection
   } = adaptation;
   for (const card of cards) {
@@ -818,7 +830,6 @@ export async function importBackup(
       }
     },
   );
-  return report;
 }
 
 /** Read and parse a user-selected JSON backup file. */
@@ -828,5 +839,6 @@ export async function readBackupFile(file: File): Promise<BackupFile> {
   if (!validateBackup(data)) {
     throw new Error('This file is not a valid Lacuna backup.');
   }
+  assertCurrentBackup(data);
   return data;
 }
