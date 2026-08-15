@@ -1,5 +1,34 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P1: live Blob concurrency evidence
+
+- The relay ran in production for the first time on 15 August 2026
+  (`lacuna-relay.vercel.app`, private Blob store `lacuna-sync`, region
+  `lhr1`, OIDC). Until that deploy it had never actually executed. Two
+  defects — single-segment `api/` routing, and ESM module load without a
+  `.js` specifier — were found only by deploying; both are recorded in
+  the routing entry below.
+- Against that deployment, 25 rounds of concurrent first writes
+  (`PUT /c/:id/state` with `If-Match: "0"` and distinct bodies, each on
+  a freshly minted channel): 10/10 two-racer rounds and 15/15
+  three-racer rounds produced exactly one 204 and the rest 412. Zero
+  multi-winner rounds, zero no-winner rounds. GET always returned the
+  winner's body. The winning racer varied across rounds.
+- That is empirical evidence that `allowOverwrite: false` behaved as an
+  atomic create on Vercel Blob as of that date. It is not a documented
+  platform guarantee. Do not read this as the race being closed.
+  Pairing (P6) is not blocked on pre-creating zero-byte slots at mint.
+- A smoke pass on the same host was correct: mint 201; first PUT
+  `If-Match: "0"` 204 with an ETag; GET 200 returning the exact bytes
+  with `cache-control: no-store`; stale `If-Match: "0"` 412; no auth
+  401; missing `If-Match` 428; unknown slot 400; DELETE 204 then GET
+  404. CORS and `Cross-Origin-Resource-Policy` present on writes.
+- Root CI does not run `relay/` tests. The app's vitest include is
+  `src/**/*.test.ts(x)`, and `bun run test` in CI is that suite. PR #81's
+  relay tests were run manually. Vercel preview deployments are behind
+  Deployment Protection (302 to SSO), so a preview cannot be
+  smoke-tested unauthenticated; production can.
+
 ## Unreleased — Sync P1: relay routing and operator errors
 
 - The relay is a non-framework Vercel project. `api/[...path].ts` is a single
@@ -26,6 +55,7 @@
 - Overwrite of an existing slot is native compare-and-swap. The first write
   into an empty slot is not: `allowOverwrite: false` atomicity remains
   undocumented, as PR #70 recorded. Do not read this as the race being closed.
+  Measured against live Blob on 15 August 2026; see the evidence entry above.
 - Blob reads pass `useCache: false`. A cached pull is a wrong merge base.
 
 ## Unreleased — Pre-v22 import boundary retired
