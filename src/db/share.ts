@@ -1173,7 +1173,6 @@ async function importDeckSharePayload(payload: SharePayloadV1): Promise<ImportSh
         lessons: migration.lessons,
         courseAssessments: finalAssessments,
         cards: [],
-        generateId: makeId,
       });
       await db.schedulingUnits.bulkPut(adapted.schedulingUnits);
       await db.coursePerformance.bulkPut(adapted.coursePerformance);

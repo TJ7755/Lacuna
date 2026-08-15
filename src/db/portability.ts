@@ -49,7 +49,7 @@ import {
 } from './assets';
 import { mergeRevisionPlans } from '../course/revisionPlan';
 import { itemPayloadIsValid } from '../items/payloadValidation';
-import { adaptLegacyBackup, type LegacyImportReport } from './legacyBackupAdapter';
+import { adaptLegacyBackup } from './legacyBackupAdapter';
 
 export const BACKUP_VERSION = 10;
 
@@ -212,7 +212,7 @@ function assertCurrentBackup(backup: BackupFile): void {
 export async function importBackup(
   backup: BackupFile,
   mode: ImportMode,
-): Promise<LegacyImportReport> {
+): Promise<void> {
   if (!validateBackup(backup)) {
     throw new Error('Invalid backup file.');
   }
@@ -281,14 +281,11 @@ export async function importBackup(
     lessons: backup.lessons ?? [],
     courseAssessments: assessmentMigration.assessments,
     cards: migratedCards,
-    generateId: makeId,
   });
   const {
-    decks,
     cards,
     courses,
     courseAssessments,
-    report,
     ...storageProjection
   } = adaptation;
   for (const card of cards) {
@@ -833,7 +830,6 @@ export async function importBackup(
       }
     },
   );
-  return report;
 }
 
 /** Read and parse a user-selected JSON backup file. */
