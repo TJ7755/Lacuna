@@ -459,7 +459,12 @@ export function Sidebar({
       className={cn(
         'relative z-20 flex h-screen flex-col border-r border-line bg-surface',
         'pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]',
-        collapsed ? 'w-[72px]' : 'w-[264px]',
+        // Grow the box by the left inset. Under border-box the padding would
+        // otherwise come out of the chrome (72px / 264px), which clips the
+        // collapsed rail on a landscape phone with the island on the left.
+        collapsed
+          ? 'w-[calc(72px+env(safe-area-inset-left))]'
+          : 'w-[calc(264px+env(safe-area-inset-left))]',
       )}
     >
       {/* Brand */}
