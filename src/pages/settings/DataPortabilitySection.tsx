@@ -96,15 +96,8 @@ export function DataPortabilitySection({ motionMultiplier }: { motionMultiplier:
   async function runImport(mode: ImportMode) {
     if (!pending) return;
     try {
-      const report = await importBackup(pending, mode);
-      const folderNames = report?.discardedFolderNames ?? [];
-      const success = mode === 'replace' ? 'Data replaced from backup.' : 'Backup added.';
-      notify(
-        folderNames.length > 0
-          ? `${success} Folder hierarchy was discarded: ${folderNames.join(', ')}.`
-          : success,
-        'positive',
-      );
+      await importBackup(pending, mode);
+      notify(mode === 'replace' ? 'Data replaced from backup.' : 'Backup added.', 'positive');
     } catch {
       notify('Import failed.', 'negative');
     } finally {
