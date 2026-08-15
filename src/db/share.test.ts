@@ -125,6 +125,24 @@ describe('share codes', () => {
     await expect(decodeShare(plain)).rejects.toThrow(/unsupported version/);
   });
 
+  it('rejects a working item with no mark-scheme lines', async () => {
+    const malformed = {
+      v: 2,
+      by: null,
+      at: Date.now(),
+      course: { n: 'Malformed item', o: 0, c: 0, e: 0, um: 'open' },
+      lessons: [{
+        n: 'Lesson',
+        notes: [],
+        cards: [
+          { k: 0, f: 'Solve 2x = 8.', b: '', p: { v: 1, kind: 'working', scheme: [] } },
+        ],
+      }],
+    };
+    const plain = 'LAC3' + bytesToBase45(new TextEncoder().encode(JSON.stringify(malformed)));
+    await expect(decodeShare(plain)).rejects.toThrow(/unsupported version/);
+  });
+
   it('produces shorter codes with Base64 (LAC1) than Base45 (LAC2) for the same payload', async () => {
     const course = await createCourse('Vocab');
     const lesson = await createLesson(course.id, 'Words');
