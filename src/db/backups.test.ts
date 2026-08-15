@@ -73,7 +73,16 @@ describe('backups', () => {
       } as unknown as BackupFile,
     });
 
-    await expect(restoreBackup(id)).rejects.toThrow(PRE_V22_BACKUP_MESSAGE);
+    try {
+      await restoreBackup(id);
+      throw new Error('expected restoreBackup to reject');
+    } catch (error) {
+      if (error instanceof Error && error.message === 'expected restoreBackup to reject') {
+        throw error;
+      }
+      // Same narrowing the restore UI uses: the specific refusal must reach the caller.
+      expect(error instanceof Error ? error.message : 'Restore failed.').toBe(PRE_V22_BACKUP_MESSAGE);
+    }
     expect(await db.backups.count()).toBe(1);
     expect(await db.courses.count()).toBe(1);
   });
