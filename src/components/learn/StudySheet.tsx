@@ -100,7 +100,7 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 120, opacity: 0 }}
         transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
-        className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-t-3xl border-t border-line-strong bg-surface px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-5 shadow-2xl shadow-black/20"
+        className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-t-3xl border-t border-line-strong bg-surface pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-5 shadow-2xl shadow-black/20"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-ink/15" aria-hidden="true" />

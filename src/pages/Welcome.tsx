@@ -353,14 +353,14 @@ export function Welcome() {
   }
 
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       {/* Accessibility escape hatch for the weighted wheel scrolling — appears after scroll. */}
       <button
         type="button"
         aria-pressed={smoothScroll}
         onClick={toggleSmoothScroll}
         className={
-          'fixed right-4 top-4 z-50 rounded-full border border-line-strong bg-paper/85 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft backdrop-blur transition-all hover:border-accent hover:text-ink ' +
+          'fixed right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] z-50 rounded-full border border-line-strong bg-paper/85 px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-ink-soft backdrop-blur transition-all hover:border-accent hover:text-ink ' +
           (showScrollToggle
             ? 'translate-y-0 opacity-100'
             : 'pointer-events-none -translate-y-2 opacity-0')
@@ -371,7 +371,7 @@ export function Welcome() {
 
       {/* ——— Hero: the course opens ——— */}
       <header className="bg-dot-grid relative overflow-hidden border-b border-line">
-        <div className="relative mx-auto flex min-h-[70dvh] max-w-3xl flex-col justify-center px-6 pb-10 pt-24 sm:px-10">
+        <div className="relative mx-auto flex min-h-[70dvh] max-w-3xl flex-col justify-center px-6 pb-10 pt-[max(6rem,calc(env(safe-area-inset-top)+3.5rem))] sm:px-10">
           <p
             className="hero-rise font-mono text-[11px] uppercase tracking-[0.18em] text-accent"
             style={{ animationDelay: '40ms' }}

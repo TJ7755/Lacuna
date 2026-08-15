@@ -227,7 +227,7 @@ export function AppShell() {
                   onClick={() => setMobileOpen(false)}
                   aria-label="Close navigation"
                   title="Close navigation (Esc)"
-                  className="absolute right-3 top-3 z-30 flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+                  className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
                 >
                   <CloseIcon width={18} height={18} />
                 </button>
@@ -255,7 +255,7 @@ export function AppShell() {
           className="flex min-w-0 flex-1 flex-col"
         >
           {/* Mobile top bar */}
-          <div className="flex items-center gap-3 border-b border-line bg-surface px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden">
+          <div className="flex items-center gap-3 border-b border-line bg-surface py-3 pt-[max(0.75rem,env(safe-area-inset-top))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] md:hidden">
             <button
               ref={mobileTriggerRef}
               onClick={() => setMobileOpen(true)}
@@ -280,6 +280,7 @@ export function AppShell() {
             // otherwise cover the last of the page's content.
             className={cn(
               'min-w-0 flex-1 overflow-y-auto overscroll-y-none',
+              'pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:pl-0',
               inCourse && 'pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:pb-0',
             )}
             style={{ touchAction: 'pan-y' }}

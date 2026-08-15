@@ -458,6 +458,7 @@ export function Sidebar({
     <aside
       className={cn(
         'relative z-20 flex h-screen flex-col border-r border-line bg-surface',
+        'pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]',
         collapsed ? 'w-[72px]' : 'w-[264px]',
       )}
     >
