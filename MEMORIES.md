@@ -48,6 +48,17 @@ place and Node's ESM resolver requires an extension on relative imports.
 TypeScript expects to emit. Vitest resolves the extensionless form, so tests
 cannot catch this unless `relay/tsconfig.json` stays on `NodeNext`.
 
+## Live Blob `allowOverwrite: false` was measured, not guaranteed
+
+On 15 August 2026, 25 concurrent first-write rounds against production
+(`lacuna-relay.vercel.app`, store `lacuna-sync`, region `lhr1`) produced
+exactly one 204 per round and no silent clobber. Pairing (P6) is not
+blocked on pre-creating zero-byte slots at mint. The evidence is
+empirical, not a platform guarantee: re-measure if Blob behaviour
+changes, or if a multi-writer scenario beyond two devices is ever
+contemplated. Do not reopen that hole from first principles, and do not
+implement pre-create-at-mint to close it.
+
 ## Root CI covers `relay/` only via the `relay` job
 
 Root `typecheck` / `lint` / `test` still ignore `relay/`. The `relay` job
