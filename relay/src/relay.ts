@@ -1,5 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { canonicalEtag, type BlobStore } from './store';
+import { canonicalEtag, type BlobStore } from './store.js';
 
 /** Snapshots carry inline assets. Arc 8 §13.3: start at 25 MB and name the cap. */
 export const MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -28,12 +28,12 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
   const now = opts.now ?? Date.now;
 
   return async function handle(request: Request): Promise<Response> {
-    if (request.method === 'OPTIONS') {
-      return empty(204, request);
-    }
-
-    const route = parseRoute(request.url);
     try {
+      if (request.method === 'OPTIONS') {
+        return empty(204, request);
+      }
+
+      const route = parseRoute(request.url);
       switch (route.kind) {
         case 'channel':
           return await handleChannel(store, request);
@@ -46,7 +46,8 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
         default:
           return json(404, request, { error: 'not found' });
       }
-    } catch {
+    } catch (err) {
+      console.error('relay internal error:', describeInternalError(err));
       return json(500, request, { error: 'internal error' });
     }
   };
@@ -207,16 +208,37 @@ async function authorize(
   return 'ok';
 }
 
-type Route =
+export type Route =
   | { kind: 'channel' }
   | { kind: 'item'; id: string }
   | { kind: 'slot'; id: string; slot: Slot }
   | { kind: 'slot-invalid' }
   | { kind: 'unknown' };
 
-function parseRoute(url: string): Route {
-  const path = new URL(url, 'http://relay.invalid').pathname;
-  const parts = path.split('/').filter(Boolean);
+/**
+ * Resolve a relay route from the URL the handler actually sees.
+ *
+ * After a Vercel rewrite to `/api`, unused path params become query params
+ * (`/c/:id/:slot` → `/api?id=&slot=`). We also stamp `__path` on every rewrite
+ * so `POST /channel` is not lost when the pathname collapses to `/api`. If
+ * `request.url` still carries the original public path, the pathname wins.
+ */
+export function parseRoute(url: string): Route {
+  const parsed = new URL(url, 'http://relay.invalid');
+  const fromPath = matchPath(parsed.pathname);
+  if (fromPath) return fromPath;
+
+  const hinted = parsed.searchParams.get('__path');
+  if (hinted) {
+    const fromHint = matchPath(hinted);
+    if (fromHint) return fromHint;
+  }
+
+  return matchRewriteQuery(parsed.searchParams) ?? { kind: 'unknown' };
+}
+
+function matchPath(pathname: string): Route | null {
+  const parts = pathname.split('/').filter(Boolean);
   if (parts[0] === 'api') parts.shift();
 
   if (parts.length === 1 && parts[0] === 'channel') return { kind: 'channel' };
@@ -230,7 +252,38 @@ function parseRoute(url: string): Route {
     }
     return { kind: 'slot-invalid' };
   }
-  return { kind: 'unknown' };
+  return null;
+}
+
+function matchRewriteQuery(params: URLSearchParams): Route | null {
+  const id = params.get('id');
+  const slot = params.get('slot');
+  if (id && slot) {
+    if (slot === 'state' || slot === 'keybag') return { kind: 'slot', id, slot };
+    return { kind: 'slot-invalid' };
+  }
+  if (id) return { kind: 'item', id };
+  return null;
+}
+
+/** Operator-facing error text. Strips hex that could be a channel id or token. */
+export function describeInternalError(err: unknown): string {
+  const parts: string[] = [];
+  let current: unknown = err;
+  for (let depth = 0; current !== undefined && current !== null && depth < 4; depth += 1) {
+    if (current instanceof Error) {
+      parts.push(current.name === 'Error' ? current.message : `${current.name}: ${current.message}`);
+      current = current.cause;
+      continue;
+    }
+    parts.push(typeof current);
+    break;
+  }
+  return redactCapabilities(parts.join(' | '));
+}
+
+function redactCapabilities(text: string): string {
+  return text.replace(/[0-9a-f]{32,}/gi, '[redacted]');
 }
 
 function bearerToken(request: Request): string | null {

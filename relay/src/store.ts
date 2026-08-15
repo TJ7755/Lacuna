@@ -147,8 +147,8 @@ export function createVercelStore(client: BlobClient = { get, put, del, list }):
           uploadedAt: result.blob.uploadedAt.getTime(),
           etag: result.blob.etag,
         };
-      } catch {
-        throw new Error('blob read failed');
+      } catch (err) {
+        throw new Error('blob read failed', { cause: err });
       }
     },
 
@@ -169,7 +169,7 @@ export function createVercelStore(client: BlobClient = { get, put, del, list }):
         return { ok: true, etag: result.etag };
       } catch (err) {
         if (isCreateConflict(err)) return { ok: false, reason: 'precondition' };
-        throw new Error('blob write failed');
+        throw new Error('blob write failed', { cause: err });
       }
     },
 
@@ -177,8 +177,8 @@ export function createVercelStore(client: BlobClient = { get, put, del, list }):
       if (keys.length === 0) return;
       try {
         await client.del(keys);
-      } catch {
-        throw new Error('blob delete failed');
+      } catch (err) {
+        throw new Error('blob delete failed', { cause: err });
       }
     },
 
@@ -197,8 +197,8 @@ export function createVercelStore(client: BlobClient = { get, put, del, list }):
           cursor = page.hasMore ? page.cursor : undefined;
         } while (cursor);
         return out;
-      } catch {
-        throw new Error('blob list failed');
+      } catch (err) {
+        throw new Error('blob list failed', { cause: err });
       }
     },
   };

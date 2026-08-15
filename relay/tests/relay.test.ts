@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
-import { CHANNEL_TTL_MS, EMPTY_SLOT_ETAG, MAX_BODY_BYTES, createHandler } from '../src/relay';
-import { MemoryStore } from '../src/store';
+import { describe, expect, it, vi } from 'vitest';
+import { CHANNEL_TTL_MS, EMPTY_SLOT_ETAG, MAX_BODY_BYTES, createHandler } from '../src/relay.js';
+import { MemoryStore } from '../src/store.js';
 
 const ORIGIN = 'https://app.example';
 
@@ -327,6 +327,78 @@ describe('relay', () => {
     );
     expect(got.status).toBe(200);
     expect(new Uint8Array(await got.arrayBuffer())).toEqual(new Uint8Array([7]));
+  });
+
+  it('mints and reads through a rewritten /api URL', async () => {
+    const ctx = await minted();
+    const mintedOnRewrite = await ctx.handle(
+      new Request('http://relay.test/api?__path=/channel', {
+        method: 'POST',
+        headers: { Origin: ORIGIN },
+      }),
+    );
+    expect(mintedOnRewrite.status).toBe(201);
+    const body = (await mintedOnRewrite.json()) as { channelId: string; writeToken: string };
+    const put = await ctx.handle(
+      new Request(`http://relay.test/api?__path=/c/${body.channelId}/state`, {
+        method: 'PUT',
+        headers: {
+          Origin: ORIGIN,
+          Authorization: `Bearer ${body.writeToken}`,
+          'If-Match': EMPTY_SLOT_ETAG,
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': '1',
+        },
+        body: new Uint8Array([9]),
+      }),
+    );
+    expect(put.status).toBe(204);
+    const got = await ctx.handle(
+      new Request(`http://relay.test/api?id=${body.channelId}&slot=state`, {
+        method: 'GET',
+        headers: { Origin: ORIGIN },
+      }),
+    );
+    expect(got.status).toBe(200);
+    expect(new Uint8Array(await got.arrayBuffer())).toEqual(new Uint8Array([9]));
+  });
+
+  it('returns a generic 500 and logs a redacted cause when the store throws', async () => {
+    const channelId = 'ab'.repeat(16);
+    const logged: string[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      logged.push(args.map(String).join(' '));
+    });
+    const handle = createHandler({
+      async get() {
+        throw new Error('blob read failed', {
+          cause: new Error(`Vercel Blob: missing token for c/${channelId}/state`),
+        });
+      },
+      async put() {
+        throw new Error('unused');
+      },
+      async del() {},
+      async list() {
+        return [];
+      },
+    });
+
+    const res = await handle(
+      new Request(`http://relay.test/c/${channelId}/state`, {
+        method: 'GET',
+        headers: { Origin: ORIGIN },
+      }),
+    );
+    spy.mockRestore();
+
+    expectCors(res);
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: 'internal error' });
+    const text = logged.join('\n');
+    expect(text).toContain('blob read failed');
+    expect(text).toContain('missing token');
+    expect(text).not.toContain(channelId);
   });
 
   it('does not store the write token in plaintext', async () => {

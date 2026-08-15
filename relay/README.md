@@ -32,7 +32,12 @@ This directory is its own Vercel project. Do not deploy it as part of the app.
 2. Create a private Blob store in the `lhr1` region and connect it to that
    project.
 3. Leave the runtime as Node.js on Fluid Compute. Do not set `runtime = 'edge'`.
-4. Deploy.
+4. Framework preset **Other**. The only function file is `api/index.ts`.
+   Public paths are rewritten onto `/api` in `vercel.json`. A non-framework
+   Vercel project does not treat `api/[...path].ts` as a catch-all — that
+   file matches one path segment, so `/c/:id/:slot` never reaches the
+   handler. Do not put the handler back in a bracketed filename.
+5. Deploy.
 
 The app sets `Cross-Origin-Embedder-Policy: require-corp`, so the relay must
 stay on a separate origin. CORS and `Cross-Origin-Resource-Policy: cross-origin`
@@ -112,3 +117,8 @@ bun install
 bun run typecheck
 bun run test
 ```
+
+Relative imports must end in `.js`. The package is ESM, Vercel emits
+extensionless TypeScript as `.js`, and Node will not resolve
+`'../src/relay'`. `typecheck` is on `NodeNext` so a missing specifier
+fails the build rather than the deployment.

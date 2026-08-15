@@ -6,7 +6,7 @@ import {
   canonicalEtag,
   createVercelStore,
   type BlobClient,
-} from '../src/store';
+} from '../src/store.js';
 
 describe('MemoryStore', () => {
   it('refuses a second exclusive create of the same key', async () => {
@@ -119,5 +119,41 @@ describe('createVercelStore', () => {
 
     expect(puts[0]).toEqual({ allowOverwrite: false, ifMatch: undefined });
     expect(puts[1]).toEqual({ allowOverwrite: true, ifMatch: '"abc"' });
+  });
+
+  it('keeps the original blob error as cause on read, write, delete and list', async () => {
+    const original = new Error('Vercel Blob: store not found');
+    const client: BlobClient = {
+      async get() {
+        throw original;
+      },
+      async put() {
+        throw original;
+      },
+      async del() {
+        throw original;
+      },
+      async list() {
+        throw original;
+      },
+    };
+    const store = createVercelStore(client);
+
+    await expect(store.get('c/x/state')).rejects.toMatchObject({
+      message: 'blob read failed',
+      cause: original,
+    });
+    await expect(store.put('c/x/state', new Uint8Array([1]), { exclusive: true })).rejects.toMatchObject({
+      message: 'blob write failed',
+      cause: original,
+    });
+    await expect(store.del(['c/x/state'])).rejects.toMatchObject({
+      message: 'blob delete failed',
+      cause: original,
+    });
+    await expect(store.list('c/x/')).rejects.toMatchObject({
+      message: 'blob list failed',
+      cause: original,
+    });
   });
 });
