@@ -48,6 +48,25 @@ place and Node's ESM resolver requires an extension on relative imports.
 TypeScript expects to emit. Vitest resolves the extensionless form, so tests
 cannot catch this unless `relay/tsconfig.json` stays on `NodeNext`.
 
+## Live Blob `allowOverwrite: false` was measured, not guaranteed
+
+On 15 August 2026, 25 concurrent first-write rounds against production
+(`lacuna-relay.vercel.app`, store `lacuna-sync`, region `lhr1`) produced
+exactly one 204 per round and no silent clobber. Pairing (P6) is not
+blocked on pre-creating zero-byte slots at mint. The evidence is
+empirical, not a platform guarantee: re-measure if Blob behaviour
+changes, or if a multi-writer scenario beyond two devices is ever
+contemplated. Do not reopen that hole from first principles, and do not
+implement pre-create-at-mint to close it.
+
+## Root CI does not run `relay/` tests
+
+The app's vitest include is `src/**/*.test.ts(x)`. CI's `bun run test` is
+that suite. `relay/` is a separate package; its tests ran manually on
+PR #81. A green CI check on a relay change does not mean the relay suite
+passed. Run `bun run typecheck` and `bun run test` inside `relay/`
+before merging relay work.
+
 ## Active Course/Lesson sessions read scheduling config through the target projection
 
 `useLearnSession` must feed Course/Lesson FSRS contexts from `schedulingUnits`, including inherited
