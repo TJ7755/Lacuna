@@ -1,7 +1,10 @@
 {
   "rewrites": [
-    { "source": "/channel", "destination": "/api/channel" },
-    { "source": "/c/:id", "destination": "/api/c/:id" },
-    { "source": "/c/:id/:slot", "destination": "/api/c/:id/:slot" }
+    { "source": "/channel", "destination": "/api?__path=/channel" },
+    { "source": "/c/:id", "destination": "/api?__path=/c/:id" },
+    { "source": "/c/:id/:slot", "destination": "/api?__path=/c/:id/:slot" },
+    { "source": "/api/channel", "destination": "/api?__path=/api/channel" },
+    { "source": "/api/c/:id", "destination": "/api?__path=/api/c/:id" },
+    { "source": "/api/c/:id/:slot", "destination": "/api?__path=/api/c/:id/:slot" }
   ]
 }

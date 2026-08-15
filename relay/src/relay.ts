@@ -1,5 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import type { BlobStore } from './store';
+import { canonicalEtag, type BlobStore } from './store.js';
 
 /** Snapshots carry inline assets. Arc 8 §13.3: start at 25 MB and name the cap. */
 export const MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -10,6 +10,9 @@ export const MAX_BODY_BYTES = 25 * 1024 * 1024;
  * a blob that has sat untouched for that long.
  */
 export const CHANNEL_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+/** Unwritten-slot sentinel. Not a Blob ETag. */
+export const EMPTY_SLOT_ETAG = '"0"';
 
 const CHANNEL_ID_BYTES = 16;
 const WRITE_TOKEN_BYTES = 32;
@@ -25,12 +28,12 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
   const now = opts.now ?? Date.now;
 
   return async function handle(request: Request): Promise<Response> {
-    if (request.method === 'OPTIONS') {
-      return empty(204, request);
-    }
-
-    const route = parseRoute(request.url);
     try {
+      if (request.method === 'OPTIONS') {
+        return empty(204, request);
+      }
+
+      const route = parseRoute(request.url);
       switch (route.kind) {
         case 'channel':
           return await handleChannel(store, request);
@@ -43,7 +46,8 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
         default:
           return json(404, request, { error: 'not found' });
       }
-    } catch {
+    } catch (err) {
+      console.error('relay internal error:', describeInternalError(err));
       return json(500, request, { error: 'internal error' });
     }
   };
@@ -57,8 +61,8 @@ async function handleChannel(store: BlobStore, request: Request): Promise<Respon
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const channelId = randomBytes(CHANNEL_ID_BYTES).toString('hex');
     const writeToken = randomBytes(WRITE_TOKEN_BYTES).toString('hex');
-    const created = await store.create(metaKey(channelId), hashToken(writeToken));
-    if (created) {
+    const created = await store.put(metaKey(channelId), hashToken(writeToken), { exclusive: true });
+    if (created.ok) {
       return json(201, request, { channelId, writeToken });
     }
   }
@@ -122,17 +126,16 @@ async function getSlot(
     return json(404, request, { error: 'not found' });
   }
 
-  const loaded = await loadSlot(store, id, slot);
-  if (loaded.generation === 0 || !loaded.body) {
+  const stored = await store.get(slotKey(id, slot));
+  if (!stored) {
     return json(404, request, { error: 'not found' });
   }
-  const { generation, body } = loaded;
 
   const headers = corsHeaders(request);
   headers.set('Content-Type', 'application/octet-stream');
   headers.set('Cache-Control', 'no-store');
-  headers.set('ETag', quoteGeneration(generation));
-  return new Response(Buffer.from(body), { status: 200, headers });
+  headers.set('ETag', quoteEtag(stored.etag));
+  return new Response(Buffer.from(stored.body), { status: 200, headers });
 }
 
 async function putSlot(
@@ -165,14 +168,9 @@ async function putSlot(
   if (ifMatch === null || ifMatch.trim() === '') {
     return json(428, request, { error: 'if-match required' });
   }
-  const expected = parseGeneration(ifMatch);
+  const expected = parseIfMatch(ifMatch);
   if (expected === null) {
     return json(400, request, { error: 'invalid if-match' });
-  }
-
-  const current = (await loadSlot(store, id, slot)).generation;
-  if (current !== expected) {
-    return json(412, request, { error: 'precondition failed' });
   }
 
   const body = new Uint8Array(await request.arrayBuffer());
@@ -180,17 +178,17 @@ async function putSlot(
     return json(400, request, { error: 'length mismatch' });
   }
 
-  const next = expected + 1;
-  const created = await store.create(slotKey(id, slot, next), body);
-  if (!created) {
+  const written =
+    expected === 'empty'
+      ? await store.put(slotKey(id, slot), body, { exclusive: true })
+      : await store.put(slotKey(id, slot), body, { ifMatch: expected });
+
+  if (!written.ok) {
     return json(412, request, { error: 'precondition failed' });
   }
 
-  await store.put(headKey(id, slot), encodeGeneration(next));
-  if (expected > 0) await store.del([slotKey(id, slot, expected)]);
-
   const headers = corsHeaders(request);
-  headers.set('ETag', quoteGeneration(next));
+  headers.set('ETag', quoteEtag(written.etag));
   return new Response(null, { status: 204, headers });
 }
 
@@ -210,16 +208,37 @@ async function authorize(
   return 'ok';
 }
 
-type Route =
+export type Route =
   | { kind: 'channel' }
   | { kind: 'item'; id: string }
   | { kind: 'slot'; id: string; slot: Slot }
   | { kind: 'slot-invalid' }
   | { kind: 'unknown' };
 
-function parseRoute(url: string): Route {
-  const path = new URL(url, 'http://relay.invalid').pathname;
-  const parts = path.split('/').filter(Boolean);
+/**
+ * Resolve a relay route from the URL the handler actually sees.
+ *
+ * After a Vercel rewrite to `/api`, unused path params become query params
+ * (`/c/:id/:slot` → `/api?id=&slot=`). We also stamp `__path` on every rewrite
+ * so `POST /channel` is not lost when the pathname collapses to `/api`. If
+ * `request.url` still carries the original public path, the pathname wins.
+ */
+export function parseRoute(url: string): Route {
+  const parsed = new URL(url, 'http://relay.invalid');
+  const fromPath = matchPath(parsed.pathname);
+  if (fromPath) return fromPath;
+
+  const hinted = parsed.searchParams.get('__path');
+  if (hinted) {
+    const fromHint = matchPath(hinted);
+    if (fromHint) return fromHint;
+  }
+
+  return matchRewriteQuery(parsed.searchParams) ?? { kind: 'unknown' };
+}
+
+function matchPath(pathname: string): Route | null {
+  const parts = pathname.split('/').filter(Boolean);
   if (parts[0] === 'api') parts.shift();
 
   if (parts.length === 1 && parts[0] === 'channel') return { kind: 'channel' };
@@ -233,7 +252,38 @@ function parseRoute(url: string): Route {
     }
     return { kind: 'slot-invalid' };
   }
-  return { kind: 'unknown' };
+  return null;
+}
+
+function matchRewriteQuery(params: URLSearchParams): Route | null {
+  const id = params.get('id');
+  const slot = params.get('slot');
+  if (id && slot) {
+    if (slot === 'state' || slot === 'keybag') return { kind: 'slot', id, slot };
+    return { kind: 'slot-invalid' };
+  }
+  if (id) return { kind: 'item', id };
+  return null;
+}
+
+/** Operator-facing error text. Strips hex that could be a channel id or token. */
+export function describeInternalError(err: unknown): string {
+  const parts: string[] = [];
+  let current: unknown = err;
+  for (let depth = 0; current !== undefined && current !== null && depth < 4; depth += 1) {
+    if (current instanceof Error) {
+      parts.push(current.name === 'Error' ? current.message : `${current.name}: ${current.message}`);
+      current = current.cause;
+      continue;
+    }
+    parts.push(typeof current);
+    break;
+  }
+  return redactCapabilities(parts.join(' | '));
+}
+
+function redactCapabilities(text: string): string {
+  return text.replace(/[0-9a-f]{32,}/gi, '[redacted]');
 }
 
 function bearerToken(request: Request): string | null {
@@ -256,87 +306,35 @@ function readContentLength(request: Request): number | 'missing' | 'invalid' {
   return value;
 }
 
-function parseGeneration(header: string): number | null {
+function parseIfMatch(header: string): 'empty' | string | null {
   const trimmed = header.trim();
   if (trimmed.startsWith('W/')) return null;
-  const inner =
-    trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2
-      ? trimmed.slice(1, -1)
-      : trimmed;
-  if (!/^[0-9]+$/.test(inner)) return null;
-  const value = Number(inner);
-  if (!Number.isSafeInteger(value) || value < 0) return null;
-  return value;
+  const bare = canonicalEtag(trimmed);
+  if (bare === '') return null;
+  if (bare === '0') return 'empty';
+  return trimmed;
 }
 
-function quoteGeneration(generation: number): string {
-  return `"${generation}"`;
+function quoteEtag(etag: string): string {
+  const bare = canonicalEtag(etag);
+  return `"${bare}"`;
 }
 
 function metaKey(id: string): string {
   return `c/${id}/meta`;
 }
 
-function slotKey(id: string, slot: Slot, generation: number): string {
-  return `c/${id}/${slot}/${generation}`;
-}
-
-function headKey(id: string, slot: Slot): string {
-  return `c/${id}/${slot}/head`;
+function slotKey(id: string, slot: Slot): string {
+  return `c/${id}/${slot}`;
 }
 
 function channelPrefix(id: string): string {
   return `c/${id}/`;
 }
 
-function encodeGeneration(generation: number): Uint8Array {
-  return new TextEncoder().encode(String(generation));
-}
-
-function decodeGeneration(body: Uint8Array): number | null {
-  const raw = new TextDecoder().decode(body);
-  if (!/^[0-9]+$/.test(raw)) return null;
-  const value = Number(raw);
-  if (!Number.isSafeInteger(value) || value < 0) return null;
-  return value;
-}
-
-async function readGeneration(store: BlobStore, id: string, slot: Slot): Promise<number> {
-  const stored = await store.get(headKey(id, slot));
-  if (!stored) return 0;
-  return decodeGeneration(stored.body) ?? 0;
-}
-
-/**
- * Read the slot, and finish a pointer write that crashed after the exclusive
- * create. Only looks one generation ahead at a time; a crash leaves at most
- * that one unpointed object.
- */
-async function loadSlot(
-  store: BlobStore,
-  id: string,
-  slot: Slot,
-): Promise<{ generation: number; body: Uint8Array | null }> {
-  let generation = await readGeneration(store, id, slot);
-  let body: Uint8Array | null = null;
-
-  for (;;) {
-    const newer = await store.get(slotKey(id, slot, generation + 1));
-    if (!newer) break;
-    generation += 1;
-    body = newer.body;
-    await store.put(headKey(id, slot), encodeGeneration(generation));
-  }
-
-  if (body) return { generation, body };
-  if (generation === 0) return { generation: 0, body: null };
-  const stored = await store.get(slotKey(id, slot, generation));
-  return { generation, body: stored?.body ?? null };
-}
-
 async function channelLive(store: BlobStore, id: string, now: () => number): Promise<boolean> {
   const stamps: number[] = [];
-  for (const key of [metaKey(id), headKey(id, 'state'), headKey(id, 'keybag')]) {
+  for (const key of [metaKey(id), slotKey(id, 'state'), slotKey(id, 'keybag')]) {
     const stored = await store.get(key);
     if (stored) stamps.push(stored.uploadedAt);
   }
@@ -363,7 +361,11 @@ function corsHeaders(request: Request): Headers {
   return headers;
 }
 
-function json(status: number, request: Request, body: { error?: string; channelId?: string; writeToken?: string }): Response {
+function json(
+  status: number,
+  request: Request,
+  body: { error?: string; channelId?: string; writeToken?: string },
+): Response {
   const headers = corsHeaders(request);
   headers.set('Content-Type', 'application/json');
   return new Response(JSON.stringify(body), { status, headers });

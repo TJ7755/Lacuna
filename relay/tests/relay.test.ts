@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
-import { CHANNEL_TTL_MS, MAX_BODY_BYTES, createHandler } from '../src/relay';
-import { MemoryStore } from '../src/store';
+import { describe, expect, it, vi } from 'vitest';
+import { CHANNEL_TTL_MS, EMPTY_SLOT_ETAG, MAX_BODY_BYTES, createHandler } from '../src/relay.js';
+import { MemoryStore } from '../src/store.js';
 
 const ORIGIN = 'https://app.example';
 
@@ -11,35 +11,41 @@ describe('relay', () => {
     const state = new Uint8Array([0xde, 0xad, 0x01]);
     const keybag = new Uint8Array([0xbe, 0xef, 0x02]);
 
-    const putState = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"0"', state));
+    const putState = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, state));
     expectCors(putState);
     expect(putState.status).toBe(204);
-    expect(putState.headers.get('ETag')).toBe('"1"');
+    const stateEtag = putState.headers.get('ETag');
+    expect(stateEtag).toMatch(/^"[^"]+"$/);
 
-    const putKeybag = await ctx.handle(putRequest(ctx.channelId, 'keybag', ctx.writeToken, '"0"', keybag));
+    const putKeybag = await ctx.handle(putRequest(ctx.channelId, 'keybag', ctx.writeToken, EMPTY_SLOT_ETAG, keybag));
     expectCors(putKeybag);
     expect(putKeybag.status).toBe(204);
-    expect(putKeybag.headers.get('ETag')).toBe('"1"');
+    const keybagEtag = putKeybag.headers.get('ETag');
+    expect(keybagEtag).toMatch(/^"[^"]+"$/);
+    expect(keybagEtag).not.toBe(stateEtag);
 
     const gotState = await ctx.handle(getRequest(ctx.channelId, 'state'));
     expectCors(gotState);
     expect(gotState.status).toBe(200);
-    expect(gotState.headers.get('ETag')).toBe('"1"');
+    expect(gotState.headers.get('ETag')).toBe(stateEtag);
     expect(gotState.headers.get('Content-Type')).toBe('application/octet-stream');
+    expect(gotState.headers.get('Cache-Control')).toBe('no-store');
     expect(new Uint8Array(await gotState.arrayBuffer())).toEqual(state);
 
     const gotKeybag = await ctx.handle(getRequest(ctx.channelId, 'keybag'));
     expectCors(gotKeybag);
     expect(gotKeybag.status).toBe(200);
-    expect(gotKeybag.headers.get('ETag')).toBe('"1"');
+    expect(gotKeybag.headers.get('ETag')).toBe(keybagEtag);
     expect(new Uint8Array(await gotKeybag.arrayBuffer())).toEqual(keybag);
 
     const next = new Uint8Array([0xca, 0xfe]);
-    const putAgain = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"1"', next));
+    const putAgain = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, stateEtag, next));
     expect(putAgain.status).toBe(204);
-    expect(putAgain.headers.get('ETag')).toBe('"2"');
+    const nextEtag = putAgain.headers.get('ETag');
+    expect(nextEtag).toMatch(/^"[^"]+"$/);
+    expect(nextEtag).not.toBe(stateEtag);
     const gotNext = await ctx.handle(getRequest(ctx.channelId, 'state'));
-    expect(gotNext.headers.get('ETag')).toBe('"2"');
+    expect(gotNext.headers.get('ETag')).toBe(nextEtag);
     expect(new Uint8Array(await gotNext.arrayBuffer())).toEqual(next);
   });
 
@@ -59,7 +65,7 @@ describe('relay', () => {
         method: 'PUT',
         headers: {
           Origin: ORIGIN,
-          'If-Match': '"0"',
+          'If-Match': EMPTY_SLOT_ETAG,
           'Content-Length': '1',
           'Content-Type': 'application/octet-stream',
         },
@@ -69,7 +75,7 @@ describe('relay', () => {
     expectCors(missing);
     expect(missing.status).toBe(401);
 
-    const wrong = await ctx.handle(putRequest(ctx.channelId, 'state', 'ab'.repeat(32), '"0"', body));
+    const wrong = await ctx.handle(putRequest(ctx.channelId, 'state', 'ab'.repeat(32), EMPTY_SLOT_ETAG, body));
     expectCors(wrong);
     expect(wrong.status).toBe(401);
   });
@@ -78,24 +84,31 @@ describe('relay', () => {
     const ctx = await minted();
     const first = new Uint8Array([1, 2, 3]);
     const stale = new Uint8Array([9, 9, 9]);
-    expect((await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"0"', first))).status).toBe(204);
+    const created = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, first));
+    expect(created.status).toBe(204);
+    const etag = created.headers.get('ETag');
+    expect(etag).toBeTruthy();
 
-    const res = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"0"', stale));
+    const res = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, stale));
     expectCors(res);
     expect(res.status).toBe(412);
 
+    const stillStale = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"not-the-etag"', stale));
+    expect(stillStale.status).toBe(412);
+
     const got = await ctx.handle(getRequest(ctx.channelId, 'state'));
+    expect(got.headers.get('ETag')).toBe(etag);
     expect(new Uint8Array(await got.arrayBuffer())).toEqual(first);
   });
 
-  it('lets exactly one of two same-generation PUTs succeed', async () => {
+  it('lets exactly one of two empty-slot PUTs succeed', async () => {
     const ctx = await minted();
     const bodyA = new Uint8Array([10, 11, 12]);
     const bodyB = new Uint8Array([20, 21, 22]);
 
     const [a, b] = await Promise.all([
-      ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"0"', bodyA)),
-      ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"0"', bodyB)),
+      ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, bodyA)),
+      ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, bodyB)),
     ]);
 
     const statuses = [a.status, b.status].sort((left, right) => left - right);
@@ -104,7 +117,7 @@ describe('relay', () => {
     const loser = a.status === 412 ? a : b;
     expectCors(winner);
     expectCors(loser);
-    expect(winner.headers.get('ETag')).toBe('"1"');
+    expect(winner.headers.get('ETag')).toMatch(/^"[^"]+"$/);
 
     const got = await ctx.handle(getRequest(ctx.channelId, 'state'));
     expect(got.status).toBe(200);
@@ -112,11 +125,47 @@ describe('relay', () => {
     expect(bytes.equals(Buffer.from(bodyA)) || bytes.equals(Buffer.from(bodyB))).toBe(true);
   });
 
+  it('lets exactly one of two same-etag overwrites succeed', async () => {
+    const ctx = await minted();
+    const first = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])),
+    );
+    expect(first.status).toBe(204);
+    const etag = first.headers.get('ETag');
+    expect(etag).toBeTruthy();
+
+    const bodyA = new Uint8Array([10, 11, 12]);
+    const bodyB = new Uint8Array([20, 21, 22]);
+    const [a, b] = await Promise.all([
+      ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, etag, bodyA)),
+      ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, etag, bodyB)),
+    ]);
+
+    const statuses = [a.status, b.status].sort((left, right) => left - right);
+    expect(statuses).toEqual([204, 412]);
+    const winner = a.status === 204 ? a : b;
+    expect(winner.headers.get('ETag')).toMatch(/^"[^"]+"$/);
+    expect(winner.headers.get('ETag')).not.toBe(etag);
+
+    const got = await ctx.handle(getRequest(ctx.channelId, 'state'));
+    expect(got.status).toBe(200);
+    const bytes = Buffer.from(await got.arrayBuffer());
+    expect(bytes.equals(Buffer.from(bodyA)) || bytes.equals(Buffer.from(bodyB))).toBe(true);
+    expect(got.headers.get('ETag')).toBe(winner.headers.get('ETag'));
+  });
+
   it('rejects PUT with no If-Match', async () => {
     const ctx = await minted();
     const res = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, null, new Uint8Array([1])));
     expectCors(res);
     expect(res.status).toBe(428);
+  });
+
+  it('rejects a weak If-Match', async () => {
+    const ctx = await minted();
+    const res = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, 'W/"1"', new Uint8Array([1])));
+    expectCors(res);
+    expect(res.status).toBe(400);
   });
 
   it('rejects oversize PUT before reading the body', async () => {
@@ -127,7 +176,7 @@ describe('relay', () => {
         headers: {
           Origin: ORIGIN,
           Authorization: `Bearer ${ctx.writeToken}`,
-          'If-Match': '"0"',
+          'If-Match': EMPTY_SLOT_ETAG,
           'Content-Length': String(MAX_BODY_BYTES + 1),
           'Content-Type': 'application/octet-stream',
         },
@@ -139,15 +188,33 @@ describe('relay', () => {
 
   it('rejects an invalid slot', async () => {
     const ctx = await minted();
-    const res = await ctx.handle(putRequest(ctx.channelId, 'notes', ctx.writeToken, '"0"', new Uint8Array([1])));
+    const res = await ctx.handle(putRequest(ctx.channelId, 'notes', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])));
     expectCors(res);
     expect(res.status).toBe(400);
   });
 
+  it('returns 404 for an unknown channel', async () => {
+    const ctx = await minted();
+    const missing = 'ab'.repeat(16);
+    const got = await ctx.handle(getRequest(missing, 'state'));
+    expectCors(got);
+    expect(got.status).toBe(404);
+
+    const put = await ctx.handle(putRequest(missing, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])));
+    expectCors(put);
+    expect(put.status).toBe(404);
+  });
+
   it('DELETE removes both slots and requires the token', async () => {
     const ctx = await minted();
-    expect((await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"0"', new Uint8Array([1])))).status).toBe(204);
-    expect((await ctx.handle(putRequest(ctx.channelId, 'keybag', ctx.writeToken, '"0"', new Uint8Array([2])))).status).toBe(204);
+    expect(
+      (await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1]))))
+        .status,
+    ).toBe(204);
+    expect(
+      (await ctx.handle(putRequest(ctx.channelId, 'keybag', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([2]))))
+        .status,
+    ).toBe(204);
 
     const denied = await ctx.handle(
       new Request(`http://relay.test/c/${ctx.channelId}`, {
@@ -204,7 +271,7 @@ describe('relay', () => {
         method: 'PUT',
         headers: {
           Origin: ORIGIN,
-          'If-Match': '"0"',
+          'If-Match': EMPTY_SLOT_ETAG,
           'Content-Length': '1',
         },
         body: new Uint8Array([1]),
@@ -213,8 +280,11 @@ describe('relay', () => {
     expect(noToken.status).toBe(401);
     expectCors(noToken);
 
-    expect((await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"0"', new Uint8Array([1])))).status).toBe(204);
-    const stale = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"0"', new Uint8Array([2])));
+    expect(
+      (await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1]))))
+        .status,
+    ).toBe(204);
+    const stale = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([2])));
     expect(stale.status).toBe(412);
     expectCors(stale);
   });
@@ -222,13 +292,16 @@ describe('relay', () => {
   it('treats an expired channel as gone', async () => {
     let now = 1_000_000;
     const ctx = await minted(() => now);
-    expect((await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"0"', new Uint8Array([1])))).status).toBe(204);
+    expect(
+      (await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1]))))
+        .status,
+    ).toBe(204);
 
     now += CHANNEL_TTL_MS;
     const expired = await ctx.handle(getRequest(ctx.channelId, 'state'));
     expect(expired.status).toBe(404);
 
-    const put = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '"0"', new Uint8Array([2])));
+    const put = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([2])));
     expect(put.status).toBe(404);
   });
 
@@ -243,7 +316,7 @@ describe('relay', () => {
     expect(mintedOnApi.status).toBe(201);
     const body = (await mintedOnApi.json()) as { channelId: string; writeToken: string };
     const put = await ctx.handle(
-      putRequest(body.channelId, 'state', body.writeToken, '"0"', new Uint8Array([7]), '/api'),
+      putRequest(body.channelId, 'state', body.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([7]), '/api'),
     );
     expect(put.status).toBe(204);
     const got = await ctx.handle(
@@ -254,6 +327,78 @@ describe('relay', () => {
     );
     expect(got.status).toBe(200);
     expect(new Uint8Array(await got.arrayBuffer())).toEqual(new Uint8Array([7]));
+  });
+
+  it('mints and reads through a rewritten /api URL', async () => {
+    const ctx = await minted();
+    const mintedOnRewrite = await ctx.handle(
+      new Request('http://relay.test/api?__path=/channel', {
+        method: 'POST',
+        headers: { Origin: ORIGIN },
+      }),
+    );
+    expect(mintedOnRewrite.status).toBe(201);
+    const body = (await mintedOnRewrite.json()) as { channelId: string; writeToken: string };
+    const put = await ctx.handle(
+      new Request(`http://relay.test/api?__path=/c/${body.channelId}/state`, {
+        method: 'PUT',
+        headers: {
+          Origin: ORIGIN,
+          Authorization: `Bearer ${body.writeToken}`,
+          'If-Match': EMPTY_SLOT_ETAG,
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': '1',
+        },
+        body: new Uint8Array([9]),
+      }),
+    );
+    expect(put.status).toBe(204);
+    const got = await ctx.handle(
+      new Request(`http://relay.test/api?id=${body.channelId}&slot=state`, {
+        method: 'GET',
+        headers: { Origin: ORIGIN },
+      }),
+    );
+    expect(got.status).toBe(200);
+    expect(new Uint8Array(await got.arrayBuffer())).toEqual(new Uint8Array([9]));
+  });
+
+  it('returns a generic 500 and logs a redacted cause when the store throws', async () => {
+    const channelId = 'ab'.repeat(16);
+    const logged: string[] = [];
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      logged.push(args.map(String).join(' '));
+    });
+    const handle = createHandler({
+      async get() {
+        throw new Error('blob read failed', {
+          cause: new Error(`Vercel Blob: missing token for c/${channelId}/state`),
+        });
+      },
+      async put() {
+        throw new Error('unused');
+      },
+      async del() {},
+      async list() {
+        return [];
+      },
+    });
+
+    const res = await handle(
+      new Request(`http://relay.test/c/${channelId}/state`, {
+        method: 'GET',
+        headers: { Origin: ORIGIN },
+      }),
+    );
+    spy.mockRestore();
+
+    expectCors(res);
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: 'internal error' });
+    const text = logged.join('\n');
+    expect(text).toContain('blob read failed');
+    expect(text).toContain('missing token');
+    expect(text).not.toContain(channelId);
   });
 
   it('does not store the write token in plaintext', async () => {

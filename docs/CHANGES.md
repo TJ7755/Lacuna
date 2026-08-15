@@ -1,5 +1,33 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P1: relay routing and operator errors
+
+- The relay is a non-framework Vercel project. `api/[...path].ts` is a single
+  dynamic segment there, not a catch-all, so every real route (`/c/:id/:slot`)
+  404'd before the handler ran. One function at `api/index.ts` now receives
+  every public path through `vercel.json` rewrites. `parseRoute` accepts the
+  original pathname, a `__path` query stamped by those rewrites, and the
+  `id`/`slot` query params Vercel adds when a rewrite drops path segments.
+- Relative runtime imports in `relay/` now carry a `.js` extension.
+  `"type": "module"` plus TypeScript's extensionless emit made the first
+  deployment fail at module load (`ERR_MODULE_NOT_FOUND`) on every path that
+  did reach the function, including `OPTIONS`. `relay/tsconfig.json` uses
+  `module`/`moduleResolution` `NodeNext` so a missing extension fails
+  `typecheck` instead of the deployment.
+- Blob store failures keep the original error as `cause`. The handler logs a
+  redacted form and still returns `{ error: "internal error" }` to the client.
+
+## Unreleased — Sync P1: Blob compare-and-swap
+
+- Replaced the relay's integer generation counter with Vercel Blob's native
+  `ifMatch` / `BlobPreconditionFailedError`. Each slot is one pathname;
+  `ETag` is the opaque Blob ETag. The empty-slot first write still uses
+  `If-Match: "0"` and `allowOverwrite: false`.
+- Overwrite of an existing slot is native compare-and-swap. The first write
+  into an empty slot is not: `allowOverwrite: false` atomicity remains
+  undocumented, as PR #70 recorded. Do not read this as the race being closed.
+- Blob reads pass `useCache: false`. A cached pull is a wrong merge base.
+
 ## Unreleased — Pre-v22 import boundary retired
 
 - Lacuna now refuses backup files that still carry Deck or Folder rows, and
