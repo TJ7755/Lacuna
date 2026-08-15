@@ -41,11 +41,10 @@ Deck sessions.
 ## The Deck/Folder stores are gone; the legacy types are not
 
 Schema v22 set `decks` and `folders` to `null`, and no production code reads them. Global Today now
-reads `db.schedulingUnits`. But `LegacyDeckRecord` / `LegacyFolder` in `types.ts` are still the
-import boundary for pre-v22 backups and v1 share codes, `importDeckSharePayload` still synthesises
-them for `buildCourseMigration`, and the Dexie `version(1)`–`version(21)` chain must keep declaring
-the stores because Dexie replays it for every existing database. Retire those after go-live, when
-you are willing to refuse old files — not before.
+reads `db.schedulingUnits`. Pre-v22 backup files and v1 share codes are refused. `LegacyDeckRecord`
+and `LegacyFolder` remain solely for the Dexie `version(1)`–`version(21)` chain (Dexie replays it
+for every existing database), the snapshot builder in `schema.ts`, and test fixtures. Do not delete
+those types, and do not collapse or edit that chain.
 
 Much of what still reads as Deck is a name rather than a mechanism: `backingDecks.ts` no longer
 talks to a store, and `findBackingDeck` is an alias of `getSchedulingUnit`. Do not add new `Deck`
