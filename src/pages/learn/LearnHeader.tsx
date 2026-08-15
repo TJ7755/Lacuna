@@ -185,6 +185,7 @@ export function LearnHeader({
       onPointerLeave={onPointerLeave}
       className={cn(
         'left-0 right-0 top-0 z-20 border-b border-line bg-paper',
+        'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]',
         focusMode ? 'fixed shadow-lg shadow-black/5' : 'sticky',
       )}
     >

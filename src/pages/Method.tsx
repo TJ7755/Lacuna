@@ -59,9 +59,9 @@ export function Method() {
   }, []);
 
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <header className="bg-dot-grid border-b border-line">
-        <div className="mx-auto max-w-3xl px-6 pb-16 pt-14 sm:px-10">
+        <div className="mx-auto max-w-3xl px-6 pb-16 pt-[max(3.5rem,calc(env(safe-area-inset-top)+1.25rem))] sm:px-10">
           <Link
             to="/welcome"
             className="hero-rise inline-flex min-h-10 items-center font-mono text-[11px] uppercase tracking-[0.18em] text-ink-faint transition-colors hover:text-accent"

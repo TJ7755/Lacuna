@@ -60,7 +60,7 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
       {open && (
         <motion.div
           ref={trapRef}
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center pt-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

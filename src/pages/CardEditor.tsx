@@ -880,7 +880,7 @@ export function CardEditor() {
         className={cn(
           'pointer-events-none z-30 mt-8',
           isTouchMode
-            ? 'fixed inset-x-0 bottom-0 rounded-t-3xl border-t border-line-strong bg-surface px-6 py-5 shadow-2xl shadow-black/15'
+            ? 'fixed inset-x-0 bottom-0 rounded-t-3xl border-t border-line-strong bg-surface pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl shadow-black/15'
             : 'sticky bottom-0 -mx-6 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10',
         )}
       >

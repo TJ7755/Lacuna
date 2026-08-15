@@ -30,7 +30,7 @@ export function CourseSectionBar() {
       aria-label="Course sections"
       // Opaque rather than translucent: content scrolling under a blurred bar competes
       // with the icons for legibility.
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:hidden"
     >
       <ul className="flex items-stretch">
         {COURSE_SECTIONS.map(({ label, short, suffix }, index) => {

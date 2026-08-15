@@ -105,7 +105,7 @@ export function CardEditOverlay({
 
   return (      <motion.div
       ref={trapRef}
-      className="fixed inset-0 z-50 flex flex-col will-change-transform-opacity"
+      className="fixed inset-0 z-50 flex flex-col pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] will-change-transform-opacity"
       initial={m > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
       exit={m > 0 ? { opacity: 0 } : undefined}

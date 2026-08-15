@@ -440,7 +440,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 aria-label="Show study controls"
                 onPointerEnter={() => setFocusChromeVisible(true)}
                 onClick={() => setFocusChromeVisible(true)}
-                className="fixed inset-x-0 top-0 z-20 h-3 text-transparent focus:h-11 focus:text-ink-faint"
+                className="fixed inset-x-0 top-0 z-20 h-[max(0.75rem,env(safe-area-inset-top))] text-transparent focus:h-11 focus:text-ink-faint"
               >
                 Show study controls
               </button>
@@ -498,7 +498,14 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 taller than the viewport this container simply grows, so nothing is
                 clipped and the page scrolls as before. */}
             <main
-              className={`mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center px-6 py-8 md:py-12 ${isTouchMode && !suppressClassicGrading ? 'pb-40' : ''}`}
+              className={
+                'mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center ' +
+                'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] ' +
+                'pt-8 md:pt-12 ' +
+                (isTouchMode && !suppressClassicGrading
+                  ? 'pb-[calc(10rem+env(safe-area-inset-bottom))]'
+                  : 'pb-[max(2rem,env(safe-area-inset-bottom))] md:pb-12')
+              }
             >
               <AnimatePresence initial={false} mode="popLayout">
                 {current && (
