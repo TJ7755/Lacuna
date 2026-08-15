@@ -20,9 +20,10 @@ export type PutResult = { ok: true; etag: string } | { ok: false; reason: 'preco
  *
  * Overwrite of an existing key is compare-and-swap on `ifMatch`. Exclusive
  * create (`exclusive: true`) is used for channel mint and for the first write
- * into an empty slot. Whether that create is atomic on live Blob is not
- * documented; the in-memory store is atomic only because the check and set
- * share a turn.
+ * into an empty slot. Whether that create is atomic is not documented.
+ * Measured as an atomic create on live Blob on 15 August 2026 (see
+ * `relay/README.md`); that is evidence, not a guarantee. The in-memory
+ * store is atomic only because the check and set share a turn.
  */
 export interface BlobStore {
   get(key: string): Promise<StoredObject | null>;

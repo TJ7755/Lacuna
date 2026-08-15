@@ -76,6 +76,10 @@ curl -sS -D - -X DELETE "$HOST/c/$ID" \
 A first `PUT` without `If-Match` is `428`. A `PUT` whose ETag has moved on is
 `412`. `GET` on an empty slot is `404`.
 
+Use the production host. Vercel preview deployments are behind Deployment
+Protection and redirect unauthenticated requests to SSO, so they cannot be
+smoke-tested this way.
+
 ## Delete a channel
 
 `DELETE /c/:id` with the bearer token removes the token hash and both slots.
@@ -94,12 +98,33 @@ gone. There is no cron: expiry is checked on the next request.
   becomes `412`. That compare-and-swap is what the later sync cycle's retry
   needs.
 - The first write into an empty slot still uses `If-Match: "0"` and
-  `allowOverwrite: false`, with no `ifMatch`. Whether that create is atomic
-  on live Blob is not documented. Two devices that both see an empty slot
-  and both PUT may still last-body-wins. The in-memory tests prove the
+  `allowOverwrite: false`, with no `ifMatch`. Vercel does not document
+  whether that create is an atomic if-none-match or a check-then-write.
+  Two devices that both see an empty slot and both PUT could, on a
+  check-then-write platform, last-body-wins. The in-memory tests prove the
   handler's intended 204/412 split, not the platform's create atomicity.
 
-Do not read this as "the race is closed".
+On 15 August 2026 this was measured against the production relay
+(`lacuna-relay.vercel.app`, private Blob store `lacuna-sync`, region
+`lhr1`). Twenty-five rounds of concurrent first writes, each against a
+freshly minted channel, all with `If-Match: "0"` and distinct bodies:
+
+- Ten rounds of two concurrent PUTs: 10/10 exactly one 204, the other 412.
+- Fifteen rounds of three concurrent PUTs: 15/15 exactly one 204, the
+  other two 412.
+- Multi-winner rounds: 0. No-winner rounds: 0.
+- In every round the body subsequently returned by GET was the winner's.
+  No silent clobber.
+- The winning racer varied unpredictably across rounds, so the requests
+  were genuinely concurrent rather than serialised by client-side jitter.
+
+That is evidence that, on Vercel Blob as of that date, `allowOverwrite:
+false` behaved as an atomic create. It is not a documented platform
+guarantee. Vercel could change the behaviour without notice. Twenty-five
+rounds argue against a wide race window; they are not a proof of
+atomicity. Do not read this as "the race is closed". Re-measure if Blob
+behaviour changes, or if a multi-writer scenario beyond two devices is
+ever contemplated.
 
 ## Caps
 
