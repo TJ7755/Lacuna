@@ -48,6 +48,14 @@ place and Node's ESM resolver requires an extension on relative imports.
 TypeScript expects to emit. Vitest resolves the extensionless form, so tests
 cannot catch this unless `relay/tsconfig.json` stays on `NodeNext`.
 
+## Root CI covers `relay/` only via the `relay` job
+
+Root `typecheck` / `lint` / `test` still ignore `relay/`. The `relay` job
+in `.github/workflows/ci.yml` runs those scripts inside `relay/` against
+its own lockfile. A green root check on a relay change is not a relay
+pass. That job catches a missing `.js` import specifier; it does not
+catch Vercel Other-framework routing.
+
 ## Active Course/Lesson sessions read scheduling config through the target projection
 
 `useLearnSession` must feed Course/Lesson FSRS contexts from `schedulingUnits`, including inherited

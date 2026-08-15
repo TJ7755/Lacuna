@@ -1,5 +1,10 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — CI: relay job
+
+- A `relay` job now runs `typecheck`, `lint` and `test` inside `relay/`
+  on every push and pull request. Root scripts remain app-only.
+
 ## Unreleased — Sync P1: relay routing and operator errors
 
 - The relay is a non-framework Vercel project. `api/[...path].ts` is a single
