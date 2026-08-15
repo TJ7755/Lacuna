@@ -27,8 +27,8 @@ export function LessonNotesIntro({
       transition={{ duration: 0.32 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
       className="flex min-h-screen flex-col bg-paper"
     >
-      <header className="sticky top-0 z-10 border-b border-line bg-paper/85 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-6 py-3">
+      <header className="sticky top-0 z-10 border-b border-line bg-paper/85 pt-[env(safe-area-inset-top)] backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 py-3 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))]">
           <p className="min-w-0 truncate text-sm text-ink-faint">{lessonName}</p>
           <div className="flex shrink-0 items-center gap-1">
             <PomodoroTimer />
@@ -42,7 +42,7 @@ export function LessonNotesIntro({
           </div>
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-8">
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col pt-8 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(2rem,env(safe-area-inset-bottom))]">
         <p className="mb-1 text-xs uppercase tracking-wide text-ink-faint">Lesson notes</p>
         <h1 className="mb-6 font-display text-2xl text-ink">{lessonName}</h1>
         <LessonNotesStudyView notes={notes} />

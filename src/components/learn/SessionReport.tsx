@@ -128,7 +128,7 @@ export function SessionReport({
   }, [summary.masteryAfter]);
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
+    <div className="mx-auto max-w-3xl pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[max(3rem,calc(env(safe-area-inset-top)+1.5rem))] pb-[max(3rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
       <AnimatePresence>
         {summary.reachedGoal && <ConfettiBurst key="confetti" multiplier={m} />}
       </AnimatePresence>

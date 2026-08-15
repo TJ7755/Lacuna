@@ -322,7 +322,7 @@ function CourseStudyFlowInner() {
 function CourseStudyFlowSkeleton() {
   return (
     <div
-      className="flex min-h-screen items-center justify-center bg-paper px-6"
+      className="flex min-h-screen items-center justify-center bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
       aria-label="Loading course study flow"
     >
       <div className="w-full max-w-xl space-y-4">
