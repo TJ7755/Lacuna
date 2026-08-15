@@ -1,9 +1,18 @@
 import { createHash } from 'node:crypto';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CHANNEL_TTL_MS, EMPTY_SLOT_ETAG, MAX_BODY_BYTES, createHandler } from '../src/relay.js';
 import { MemoryStore } from '../src/store.js';
 
 const ORIGIN = 'https://app.example';
+const MINT_SECRET = 'test-relay-mint-secret';
+
+beforeEach(() => {
+  vi.stubEnv('RELAY_MINT_SECRET', MINT_SECRET);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('relay', () => {
   it('mints a channel and round-trips PUT/GET on both slots', async () => {
@@ -310,7 +319,7 @@ describe('relay', () => {
     const mintedOnApi = await ctx.handle(
       new Request('http://relay.test/api/channel', {
         method: 'POST',
-        headers: { Origin: ORIGIN },
+        headers: { Origin: ORIGIN, Authorization: `Bearer ${MINT_SECRET}` },
       }),
     );
     expect(mintedOnApi.status).toBe(201);
@@ -334,7 +343,7 @@ describe('relay', () => {
     const mintedOnRewrite = await ctx.handle(
       new Request('http://relay.test/api?__path=/channel', {
         method: 'POST',
-        headers: { Origin: ORIGIN },
+        headers: { Origin: ORIGIN, Authorization: `Bearer ${MINT_SECRET}` },
       }),
     );
     expect(mintedOnRewrite.status).toBe(201);
@@ -411,6 +420,133 @@ describe('relay', () => {
     const hashed = createHash('sha256').update(ctx.writeToken, 'utf8').digest();
     expect(Buffer.from(stored!.body).equals(hashed)).toBe(true);
   });
+
+  it('mints a channel when the shared secret is presented', async () => {
+    const handle = createHandler(new MemoryStore());
+    const res = await handle(
+      new Request('http://relay.test/channel', {
+        method: 'POST',
+        headers: { Origin: ORIGIN, Authorization: `Bearer ${MINT_SECRET}` },
+      }),
+    );
+    expectCors(res);
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { channelId: string; writeToken: string; error?: string };
+    expect(body.channelId).toMatch(/^[0-9a-f]{32}$/);
+    expect(body.writeToken).toMatch(/^[0-9a-f]{64}$/);
+    expect(body.error).toBeUndefined();
+    expect(JSON.stringify(body)).not.toContain(MINT_SECRET);
+  });
+
+  it('rejects mint with a wrong secret or a missing header', async () => {
+    const handle = createHandler(new MemoryStore());
+
+    const missing = await handle(
+      new Request('http://relay.test/channel', {
+        method: 'POST',
+        headers: { Origin: ORIGIN },
+      }),
+    );
+    expectCors(missing);
+    expect(missing.status).toBe(401);
+    expect(await missing.json()).toEqual({ error: 'unauthorized' });
+
+    const wrongSecret = 'definitely-not-the-mint-secret';
+    const wrong = await handle(
+      new Request('http://relay.test/channel', {
+        method: 'POST',
+        headers: { Origin: ORIGIN, Authorization: `Bearer ${wrongSecret}` },
+      }),
+    );
+    expectCors(wrong);
+    expect(wrong.status).toBe(401);
+    const body = await wrong.json();
+    expect(body).toEqual({ error: 'unauthorized' });
+    expect(JSON.stringify(body)).not.toContain(wrongSecret);
+    expect(JSON.stringify(body)).not.toContain(MINT_SECRET);
+  });
+
+  it('refuses to mint when RELAY_MINT_SECRET is unset or empty', async () => {
+    const handle = createHandler(new MemoryStore());
+    const presented = 'should-not-appear-in-logs-or-body';
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    for (const value of ['', '   '] as const) {
+      vi.stubEnv('RELAY_MINT_SECRET', value);
+      const res = await handle(
+        new Request('http://relay.test/channel', {
+          method: 'POST',
+          headers: { Origin: ORIGIN, Authorization: `Bearer ${presented}` },
+        }),
+      );
+      expectCors(res);
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body).toEqual({ error: 'minting unavailable' });
+      expect(JSON.stringify(body)).not.toContain(presented);
+    }
+
+    vi.unstubAllEnvs();
+    delete process.env.RELAY_MINT_SECRET;
+    const unset = await handle(
+      new Request('http://relay.test/channel', {
+        method: 'POST',
+        headers: { Origin: ORIGIN, Authorization: `Bearer ${presented}` },
+      }),
+    );
+    expectCors(unset);
+    expect(unset.status).toBe(503);
+    expect(await unset.json()).toEqual({ error: 'minting unavailable' });
+
+    const logged = spy.mock.calls.map((args) => args.map(String).join(' ')).join('\n');
+    spy.mockRestore();
+    expect(logged).toContain('RELAY_MINT_SECRET');
+    expect(logged).toContain('unset');
+    expect(logged).not.toContain(presented);
+  });
+
+  it('does not gate GET, PUT or DELETE of an existing channel on the mint secret', async () => {
+    const ctx = await minted();
+    const payload = new Uint8Array([3, 1, 4]);
+
+    const emptyGet = await ctx.handle(getRequest(ctx.channelId, 'state'));
+    expectCors(emptyGet);
+    expect(emptyGet.status).toBe(404);
+
+    const mintAsWrite = await ctx.handle(
+      putRequest(ctx.channelId, 'state', MINT_SECRET, EMPTY_SLOT_ETAG, payload),
+    );
+    expectCors(mintAsWrite);
+    expect(mintAsWrite.status).toBe(401);
+
+    const put = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, payload));
+    expectCors(put);
+    expect(put.status).toBe(204);
+
+    const got = await ctx.handle(getRequest(ctx.channelId, 'state'));
+    expectCors(got);
+    expect(got.status).toBe(200);
+    expect(new Uint8Array(await got.arrayBuffer())).toEqual(payload);
+
+    const mintAsDelete = await ctx.handle(
+      new Request(`http://relay.test/c/${ctx.channelId}`, {
+        method: 'DELETE',
+        headers: { Origin: ORIGIN, Authorization: `Bearer ${MINT_SECRET}` },
+      }),
+    );
+    expectCors(mintAsDelete);
+    expect(mintAsDelete.status).toBe(401);
+
+    const gone = await ctx.handle(
+      new Request(`http://relay.test/c/${ctx.channelId}`, {
+        method: 'DELETE',
+        headers: { Origin: ORIGIN, Authorization: `Bearer ${ctx.writeToken}` },
+      }),
+    );
+    expectCors(gone);
+    expect(gone.status).toBe(204);
+    expect((await ctx.handle(getRequest(ctx.channelId, 'state'))).status).toBe(404);
+  });
 });
 
 async function minted(now?: () => number) {
@@ -419,7 +555,7 @@ async function minted(now?: () => number) {
   const res = await handle(
     new Request('http://relay.test/channel', {
       method: 'POST',
-      headers: { Origin: ORIGIN },
+      headers: { Origin: ORIGIN, Authorization: `Bearer ${MINT_SECRET}` },
     }),
   );
   expectCors(res);
