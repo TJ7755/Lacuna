@@ -1,5 +1,16 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P1: Blob compare-and-swap
+
+- Replaced the relay's integer generation counter with Vercel Blob's native
+  `ifMatch` / `BlobPreconditionFailedError`. Each slot is one pathname;
+  `ETag` is the opaque Blob ETag. The empty-slot first write still uses
+  `If-Match: "0"` and `allowOverwrite: false`.
+- Overwrite of an existing slot is native compare-and-swap. The first write
+  into an empty slot is not: `allowOverwrite: false` atomicity remains
+  undocumented, as PR #70 recorded. Do not read this as the race being closed.
+- Blob reads pass `useCache: false`. A cached pull is a wrong merge base.
+
 ## Unreleased — Path authoring-gate tests
 
 - `CoursePath` and `CoursePathSegment` now have tests for each Read/Edit
