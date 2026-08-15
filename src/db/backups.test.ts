@@ -70,7 +70,7 @@ describe('backups', () => {
         assets: [],
         sessionHistory: [],
         userPerformance: [],
-      } as BackupFile,
+      } as unknown as BackupFile,
     });
 
     await expect(restoreBackup(id)).rejects.toThrow(PRE_V22_BACKUP_MESSAGE);
