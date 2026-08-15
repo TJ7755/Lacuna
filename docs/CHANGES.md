@@ -1,5 +1,10 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — CI: relay job
+
+- A `relay` job now runs `typecheck`, `lint` and `test` inside `relay/`
+  on every push and pull request. Root scripts remain app-only.
+
 ## Unreleased — Sync P1: live Blob concurrency evidence
 
 - The relay ran in production for the first time on 15 August 2026

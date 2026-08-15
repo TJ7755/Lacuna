@@ -6,6 +6,7 @@
   "description": "Lacuna sync relay: opaque ciphertext over Vercel Blob.",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "lint": "eslint src api tests --ext .ts",
     "test": "vitest run"
   },
   "engines": {
@@ -16,6 +17,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.0.0",
     "typescript": "^5.6.3",
     "vitest": "^2.1.9"
   }

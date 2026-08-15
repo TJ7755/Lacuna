@@ -59,13 +59,13 @@ changes, or if a multi-writer scenario beyond two devices is ever
 contemplated. Do not reopen that hole from first principles, and do not
 implement pre-create-at-mint to close it.
 
-## Root CI does not run `relay/` tests
+## Root CI covers `relay/` only via the `relay` job
 
-The app's vitest include is `src/**/*.test.ts(x)`. CI's `bun run test` is
-that suite. `relay/` is a separate package; its tests ran manually on
-PR #81. A green CI check on a relay change does not mean the relay suite
-passed. Run `bun run typecheck` and `bun run test` inside `relay/`
-before merging relay work.
+Root `typecheck` / `lint` / `test` still ignore `relay/`. The `relay` job
+in `.github/workflows/ci.yml` runs those scripts inside `relay/` against
+its own lockfile. A green root check on a relay change is not a relay
+pass. That job catches a missing `.js` import specifier; it does not
+catch Vercel Other-framework routing.
 
 ## Active Course/Lesson sessions read scheduling config through the target projection
 
