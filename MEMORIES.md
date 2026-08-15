@@ -30,6 +30,23 @@ not assume the two merge paths behave alike — they answer different questions.
 
 The project TypeScript lib only accepts the single-argument `Error` constructor. Pass the
 message through and, if you need a flag, put it on a subclass. `{ cause }` fails `typecheck:web`.
+`relay/` is a separate TypeScript project with `lib: ES2022`, so `{ cause }` is valid there.
+
+## Vercel Other-framework `api/` is not Next.js routing
+
+A file named `api/[...path].ts` matches one path segment, not a catch-all.
+`/api/foo` reaches the function; `/api/foo/bar` 404s at the platform. Catch-all
+`[...slug]` is a Next.js convention. For this non-framework project, send every
+public path to `api/index.ts` with rewrites, or add one file per path depth.
+Do not restore a bracketed catch-all filename.
+
+## Relay ESM imports need a `.js` specifier
+
+`relay/package.json` has `"type": "module"`. Vercel compiles each `.ts` file in
+place and Node's ESM resolver requires an extension on relative imports.
+`'../src/relay'` fails at module load; `'../src/relay.js'` is the specifier
+TypeScript expects to emit. Vitest resolves the extensionless form, so tests
+cannot catch this unless `relay/tsconfig.json` stays on `NodeNext`.
 
 ## Active Course/Lesson sessions read scheduling config through the target projection
 

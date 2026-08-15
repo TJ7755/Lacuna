@@ -1,5 +1,22 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P1: relay routing and operator errors
+
+- The relay is a non-framework Vercel project. `api/[...path].ts` is a single
+  dynamic segment there, not a catch-all, so every real route (`/c/:id/:slot`)
+  404'd before the handler ran. One function at `api/index.ts` now receives
+  every public path through `vercel.json` rewrites. `parseRoute` accepts the
+  original pathname, a `__path` query stamped by those rewrites, and the
+  `id`/`slot` query params Vercel adds when a rewrite drops path segments.
+- Relative runtime imports in `relay/` now carry a `.js` extension.
+  `"type": "module"` plus TypeScript's extensionless emit made the first
+  deployment fail at module load (`ERR_MODULE_NOT_FOUND`) on every path that
+  did reach the function, including `OPTIONS`. `relay/tsconfig.json` uses
+  `module`/`moduleResolution` `NodeNext` so a missing extension fails
+  `typecheck` instead of the deployment.
+- Blob store failures keep the original error as `cause`. The handler logs a
+  redacted form and still returns `{ error: "internal error" }` to the client.
+
 ## Unreleased — Sync P1: Blob compare-and-swap
 
 - Replaced the relay's integer generation counter with Vercel Blob's native
