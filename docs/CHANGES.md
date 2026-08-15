@@ -1,5 +1,24 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Safe-area insets for standalone phone use
+
+- `index.html` now sets `viewport-fit=cover`, so `black-translucent` can paint
+  the status bar and the layout can extend to the screen edge. Insets of zero
+  leave existing spacing unchanged: every `env(safe-area-inset-*)` is wrapped
+  in `max()` or `calc()` against the previous padding.
+- Study chrome is the main change. The touch grading sheet, card-actions
+  sheet and sticky header clear the home indicator and notch. A grade control
+  under the home indicator was the misgrade risk this work exists to close.
+- Shell chrome: the mobile top bar, course section bar, drawer sidebar and
+  study-decision sheet already had some inset padding; they now also clear
+  landscape notches. `main` takes the left/right inset on small screens so
+  page content is not handled per-route.
+- Other edge-reaching surfaces: toasts, the MCP consent card, the card-editor
+  touch action bar, merge-review’s fixed footer, the assessment detail sheet,
+  Welcome / Method, and the study-adjacent overlays (shortcuts, palette,
+  in-session editor).
+- The earlier PWA note that deferred this work is superseded.
+
 ## Unreleased — CI: relay job
 
 - A `relay` job now runs `typecheck`, `lint` and `test` inside `relay/`
