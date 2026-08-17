@@ -1,5 +1,23 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P2 crypto review hardening
+
+- Keybag parsing now enforces the relay's canonical 32-byte bearer token
+  representation (64 lowercase hexadecimal characters) and rejects every
+  structurally impossible keybag before copying or deriving PBKDF2. Current
+  v1 keybags are exactly 162 bytes.
+- State and keybag AAD now require the relay's canonical 128-bit channel ID
+  representation (32 lowercase hexadecimal characters), preventing callers
+  from creating valid ciphertext under an ID the relay can never route.
+- The unwrap KDF cap is four times the current 600,000-iteration wrap cost,
+  rather than a 10,000,000-iteration migration allowance. It still requires a benchmark
+  on the slowest supported phone before the work factor or cap is raised.
+- The v1 frozen state and keybag vectors were independently recomputed with
+  a separate PBKDF2-HMAC-SHA-256/AES-GCM implementation. This module
+  deliberately does not provide snapshot freshness or rollback protection.
+  P5 must either make that relay threat-model exclusion explicit or add an
+  authenticated high-water mark to the sync cycle before deployment.
+
 ## Unreleased — CI: relay job
 
 - A `relay` job now runs `typecheck`, `lint` and `test` inside `relay/`

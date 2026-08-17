@@ -24,13 +24,16 @@ export const KDF_ID_PBKDF2_SHA256 = 1;
 // and would destroy the passphrase recovery path.
 //
 // PBKDF2_ITERATIONS_MAX is unwrap-DoS protection: a tampered header must
-// not be able to ask this device to run an unbounded derivation.
+// not be able to ask this device to run an unbounded derivation. Keep a
+// bounded migration headroom, then re-measure on the slowest supported phone
+// before raising either the wrap constant or this cap.
 export const PBKDF2_ITERATIONS = 600_000;
 export const PBKDF2_ITERATIONS_MIN = 600_000;
-export const PBKDF2_ITERATIONS_MAX = 10_000_000;
+export const PBKDF2_ITERATIONS_MAX = PBKDF2_ITERATIONS * 4;
 
-const WRITE_TOKEN_MIN_BYTES = 1;
-const WRITE_TOKEN_MAX_BYTES = 256;
+const CHANNEL_ID_RE = /^[0-9a-f]{32}$/;
+const WRITE_TOKEN_RE = /^[0-9a-f]{64}$/;
+const WRITE_TOKEN_BYTES = 64;
 
 const STATE_AAD_PREFIX = 'lacuna.sync.v1/state/';
 const KEYBAG_AAD_PREFIX = 'lacuna.sync.v1/keybag/';
@@ -42,7 +45,9 @@ const STATE_MIN_BYTES = 1 + NONCE_BYTES + GCM_TAG_BYTES;
 // keybag: version (1) || kdf (1) || iterations (4) || salt (16) ||
 //         confirm (16) || nonce (12) || ciphertext+tag
 const KEYBAG_HEADER_BYTES = 1 + 1 + 4 + SALT_BYTES + KEY_CONFIRMATION_BYTES + NONCE_BYTES;
-const KEYBAG_MIN_BYTES = KEYBAG_HEADER_BYTES + GCM_TAG_BYTES;
+const KEYBAG_PLAINTEXT_BYTES = CHANNEL_KEY_BYTES + WRITE_TOKEN_BYTES;
+export const KEYBAG_MIN_BYTES = KEYBAG_HEADER_BYTES + KEYBAG_PLAINTEXT_BYTES + GCM_TAG_BYTES;
+export const KEYBAG_MAX_BYTES = KEYBAG_MIN_BYTES;
 
 const KEYBAG_OFFSET_KDF = 1;
 const KEYBAG_OFFSET_ITERATIONS = 2;
@@ -95,6 +100,7 @@ export async function sealState(
   plaintext: Uint8Array,
   context: { channelId: string },
 ): Promise<Uint8Array> {
+  const channelId = requireChannelId(context.channelId);
   const key = requireChannelKey(channelKey);
   const plain = copyBytes(plaintext);
   // Fresh random 96-bit nonce on every seal. A counter would rewind if a
@@ -102,7 +108,7 @@ export async function sealState(
   // clone, or two writers. NIST SP 800-38D limits one key to 2^32 random
   // 96-bit IVs; a personal channel will not approach that.
   const nonce = randomBytes(NONCE_BYTES);
-  const ciphertext = await aesGcmSeal(key, nonce, plain, aadFor('state', context.channelId));
+  const ciphertext = await aesGcmSeal(key, nonce, plain, aadFor('state', channelId));
   return concatBytes(Uint8Array.of(FORMAT_VERSION), nonce, ciphertext);
 }
 
@@ -111,6 +117,7 @@ export async function openState(
   blob: Uint8Array,
   context: { channelId: string },
 ): Promise<Uint8Array> {
+  const channelId = requireChannelId(context.channelId);
   const key = requireChannelKey(channelKey);
   const bytes = copyBytes(blob);
   assertVersion(bytes);
@@ -119,7 +126,7 @@ export async function openState(
   }
   const nonce = bytes.subarray(1, 1 + NONCE_BYTES);
   const ciphertext = bytes.subarray(1 + NONCE_BYTES);
-  return aesGcmOpen(key, nonce, ciphertext, aadFor('state', context.channelId));
+  return aesGcmOpen(key, nonce, ciphertext, aadFor('state', channelId));
 }
 
 /**
@@ -141,19 +148,18 @@ export async function wrapKeybag(
   writeToken: string,
   context: { channelId: string },
 ): Promise<Uint8Array> {
+  const channelId = requireChannelId(context.channelId);
   const key = requireChannelKey(channelKey);
   const normalised = requirePassphrase(passphrase);
-  const tokenBytes = utf8(writeToken);
-  if (tokenBytes.byteLength < WRITE_TOKEN_MIN_BYTES || tokenBytes.byteLength > WRITE_TOKEN_MAX_BYTES) {
-    throw new SyncCryptoCorruptError('The write token is empty or too long.');
-  }
+  const token = requireWriteToken(writeToken);
+  const tokenBytes = utf8(token);
 
   const salt = randomBytes(SALT_BYTES);
   const nonce = randomBytes(NONCE_BYTES);
   const kek = await deriveKek(normalised, salt, PBKDF2_ITERATIONS);
   const confirm = await keyConfirmation(kek);
   const plaintext = concatBytes(key, tokenBytes);
-  const ciphertext = await aesGcmSeal(kek, nonce, plaintext, aadFor('keybag', context.channelId));
+  const ciphertext = await aesGcmSeal(kek, nonce, plaintext, aadFor('keybag', channelId));
 
   const blob = new Uint8Array(KEYBAG_HEADER_BYTES + ciphertext.byteLength);
   blob[0] = FORMAT_VERSION;
@@ -171,19 +177,16 @@ export async function unwrapKeybag(
   passphrase: string,
   context: { channelId: string },
 ): Promise<{ channelKey: Uint8Array; writeToken: string }> {
+  const channelId = requireChannelId(context.channelId);
   const normalised = requirePassphrase(passphrase);
-  const bytes = copyBytes(blob);
-  assertVersion(bytes);
-  if (bytes.byteLength < 2) {
+  if (blob.byteLength < KEYBAG_MIN_BYTES || blob.byteLength > KEYBAG_MAX_BYTES) {
     throw new SyncCryptoCorruptError('This sync blob is corrupt.');
   }
+  const bytes = copyBytes(blob);
+  assertVersion(bytes);
   if (bytes[KEYBAG_OFFSET_KDF] !== KDF_ID_PBKDF2_SHA256) {
     throw new SyncCryptoVersionError('This sync blob uses an unsupported format.');
   }
-  if (bytes.byteLength < KEYBAG_MIN_BYTES) {
-    throw new SyncCryptoCorruptError('This sync blob is corrupt.');
-  }
-
   const iterations = readUint32BE(bytes, KEYBAG_OFFSET_ITERATIONS);
   if (iterations < PBKDF2_ITERATIONS_MIN || iterations > PBKDF2_ITERATIONS_MAX) {
     throw new SyncCryptoCorruptError('This sync blob is corrupt.');
@@ -204,11 +207,8 @@ export async function unwrapKeybag(
     throw new SyncCryptoPassphraseError('The passphrase is incorrect.');
   }
 
-  const plain = await aesGcmOpen(kek, nonce, ciphertext, aadFor('keybag', context.channelId));
-  if (
-    plain.byteLength < CHANNEL_KEY_BYTES + WRITE_TOKEN_MIN_BYTES ||
-    plain.byteLength > CHANNEL_KEY_BYTES + WRITE_TOKEN_MAX_BYTES
-  ) {
+  const plain = await aesGcmOpen(kek, nonce, ciphertext, aadFor('keybag', channelId));
+  if (plain.byteLength !== KEYBAG_PLAINTEXT_BYTES) {
     throw new SyncCryptoCorruptError('This sync blob is corrupt.');
   }
 
@@ -219,7 +219,22 @@ export async function unwrapKeybag(
   } catch {
     throw new SyncCryptoCorruptError('This sync blob is corrupt.');
   }
+  requireWriteToken(writeToken);
   return { channelKey, writeToken };
+}
+
+function requireChannelId(channelId: string): string {
+  if (!CHANNEL_ID_RE.test(channelId)) {
+    throw new SyncCryptoCorruptError('The channel id is invalid.');
+  }
+  return channelId;
+}
+
+function requireWriteToken(writeToken: string): string {
+  if (!WRITE_TOKEN_RE.test(writeToken)) {
+    throw new SyncCryptoCorruptError('The write token is invalid.');
+  }
+  return writeToken;
 }
 
 function requireChannelKey(channelKey: Uint8Array): Uint8Array {

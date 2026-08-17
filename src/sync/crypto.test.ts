@@ -2,6 +2,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   CHANNEL_KEY_BYTES,
   FORMAT_VERSION,
+  KEYBAG_MAX_BYTES,
+  KEYBAG_MIN_BYTES,
   KDF_ID_PBKDF2_SHA256,
   PBKDF2_ITERATIONS,
   PBKDF2_ITERATIONS_MAX,
@@ -62,7 +64,7 @@ function writeUint32BE(bytes: Uint8Array, offset: number, value: number): void {
 }
 
 describe('generateChannelKey', () => {
-  it('returns 32 distinct random bytes', () => {
+  it('returns fresh 32-byte channel keys', () => {
     const first = generateChannelKey();
     const second = generateChannelKey();
     expect(first.byteLength).toBe(CHANNEL_KEY_BYTES);
@@ -83,6 +85,22 @@ describe('sealState / openState', () => {
     expect(first).not.toEqual(second);
     expect(await openState(channelKey, first, ctx)).toEqual(plaintext);
     expect(await openState(channelKey, second, ctx)).toEqual(plaintext);
+  });
+
+  it('round-trips empty state', async () => {
+    const sealed = await sealState(channelKey, new Uint8Array(), ctx);
+    expect(await openState(channelKey, sealed, ctx)).toEqual(new Uint8Array());
+  });
+
+  it('rejects a correct-length but incorrect state key', async () => {
+    await expect(openState(generateChannelKey(), stateBlob, ctx)).rejects.toBeInstanceOf(
+      SyncCryptoCorruptError,
+    );
+  });
+
+  it('fails closed on a tampered state nonce', async () => {
+    const tampered = flipByte(stateBlob, 1);
+    await expect(openState(channelKey, tampered, ctx)).rejects.toBeInstanceOf(SyncCryptoCorruptError);
   });
 
   it('fails closed on a tampered ciphertext', async () => {
@@ -135,11 +153,12 @@ describe('wrapKeybag / unwrapKeybag', () => {
     expect(opened.channelKey).toEqual(generated);
   }, SLOW);
 
-  it('rejects a wrong passphrase', async () => {
+  it('rejects a wrong passphrase without exposing secrets', async () => {
     const wrong = 'wrong-secret-passphrase-xyz';
-    await expect(unwrapKeybag(keybagBlob, wrong, ctx)).rejects.toBeInstanceOf(SyncCryptoPassphraseError);
+    const rejection = unwrapKeybag(keybagBlob, wrong, ctx);
+    await expect(rejection).rejects.toBeInstanceOf(SyncCryptoPassphraseError);
     try {
-      await unwrapKeybag(keybagBlob, wrong, ctx);
+      await rejection;
       throw new Error('expected unwrap to fail');
     } catch (error) {
       expect(error).toBeInstanceOf(SyncCryptoPassphraseError);
@@ -153,8 +172,21 @@ describe('wrapKeybag / unwrapKeybag', () => {
 
   it('fails closed on a tampered keybag ciphertext when confirmation is intact', async () => {
     const tampered = flipByte(keybagBlob, keybagBlob.byteLength - 1);
+    const rejection = unwrapKeybag(tampered, passphrase, ctx);
+    await expect(rejection).rejects.toBeInstanceOf(SyncCryptoCorruptError);
+    await expect(rejection).rejects.toMatchObject({ kind: 'corrupt' });
+  }, SLOW);
+
+  it('fails closed on a tampered keybag nonce after confirmation succeeds', async () => {
+    const tampered = flipByte(keybagBlob, 38);
     await expect(unwrapKeybag(tampered, passphrase, ctx)).rejects.toBeInstanceOf(SyncCryptoCorruptError);
-    await expect(unwrapKeybag(tampered, passphrase, ctx)).rejects.toMatchObject({ kind: 'corrupt' });
+  }, SLOW);
+
+  it('reports a tampered confirmation as a passphrase error', async () => {
+    const tampered = flipByte(keybagBlob, 22);
+    await expect(unwrapKeybag(tampered, passphrase, ctx)).rejects.toBeInstanceOf(
+      SyncCryptoPassphraseError,
+    );
   }, SLOW);
 
   it('reports a tampered header as a wrong passphrase', async () => {
@@ -185,6 +217,15 @@ describe('wrapKeybag / unwrapKeybag', () => {
     await expect(unwrapKeybag(stateBlob, passphrase, ctx)).rejects.toBeInstanceOf(SyncCryptoError);
   });
 
+  it('rejects non-canonical channel IDs before cryptographic work', async () => {
+    await expect(sealState(channelKey, plaintext, { channelId: 'A'.repeat(32) })).rejects.toBeInstanceOf(
+      SyncCryptoCorruptError,
+    );
+    await expect(wrapKeybag(channelKey, passphrase, writeToken, { channelId: 'short' })).rejects.toBeInstanceOf(
+      SyncCryptoCorruptError,
+    );
+  });
+
   it('rejects an empty passphrase on wrap and unwrap', async () => {
     await expect(wrapKeybag(channelKey, '', writeToken, ctx)).rejects.toBeInstanceOf(
       SyncCryptoPassphraseError,
@@ -205,13 +246,30 @@ describe('wrapKeybag / unwrapKeybag', () => {
     expect(opened.writeToken).toBe(writeToken);
   }, SLOW);
 
-  it('rejects an empty or overlong write token', async () => {
-    await expect(wrapKeybag(channelKey, passphrase, '', ctx)).rejects.toBeInstanceOf(
+  it('rejects a non-canonical write token', async () => {
+    await expect(wrapKeybag(channelKey, passphrase, 'x'.repeat(64), ctx)).rejects.toBeInstanceOf(
       SyncCryptoCorruptError,
     );
-    await expect(wrapKeybag(channelKey, passphrase, 'x'.repeat(257), ctx)).rejects.toBeInstanceOf(
+    await expect(wrapKeybag(channelKey, passphrase, 'a'.repeat(63), ctx)).rejects.toBeInstanceOf(
       SyncCryptoCorruptError,
     );
+    await expect(wrapKeybag(channelKey, passphrase, 'A'.repeat(64), ctx)).rejects.toBeInstanceOf(
+      SyncCryptoCorruptError,
+    );
+  });
+
+  it('rejects structurally impossible keybags before PBKDF2', async () => {
+    expect(keybagBlob.byteLength).toBe(KEYBAG_MIN_BYTES);
+    expect(KEYBAG_MAX_BYTES).toBe(KEYBAG_MIN_BYTES);
+    const deriveBits = vi.spyOn(crypto.subtle, 'deriveBits');
+
+    await expect(unwrapKeybag(new Uint8Array(KEYBAG_MIN_BYTES - 1), passphrase, ctx)).rejects.toBeInstanceOf(
+      SyncCryptoCorruptError,
+    );
+    await expect(unwrapKeybag(new Uint8Array(KEYBAG_MAX_BYTES + 1), passphrase, ctx)).rejects.toBeInstanceOf(
+      SyncCryptoCorruptError,
+    );
+    expect(deriveBits).not.toHaveBeenCalled();
   });
 
   it('rejects an iteration count below the unwrap floor or above the DoS cap', async () => {
@@ -226,8 +284,8 @@ describe('wrapKeybag / unwrapKeybag', () => {
 });
 
 describe('frozen v1 layout', () => {
-  // Generated once against this module after the format was frozen. A later
-  // silent change to AAD, KDF, confirmation, or field order must fail here.
+  // Independently recomputed with a separate PBKDF2/AES-GCM implementation.
+  // A later silent change to AAD, KDF, confirmation, or field order must fail here.
   const channelId = '0123456789abcdef0123456789abcdef';
   const frozenKey = hexToBytes(
     '031425364758697a8b9cadbecfe0f102132435465768798a9bacbdcedff00112',
