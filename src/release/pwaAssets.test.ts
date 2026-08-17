@@ -39,6 +39,11 @@ describe('PWA assets', () => {
     expect(existsSync(assetPath(href))).toBe(true);
   });
 
+  it('asks the viewport to cover the unsafe area so the translucent status bar can paint', async () => {
+    const html = await readFile(resolve(projectRoot, 'index.html'), 'utf8');
+    expect(html).toMatch(/name="viewport"[^>]*viewport-fit=cover/);
+  });
+
   it('declares exactly one maskable manifest icon', async () => {
     const manifest = JSON.parse(
       await readFile(resolve(projectRoot, 'public/manifest.json'), 'utf8'),

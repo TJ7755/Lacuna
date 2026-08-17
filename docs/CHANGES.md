@@ -17,6 +17,27 @@
   deliberately does not provide snapshot freshness or rollback protection.
   P5 must either make that relay threat-model exclusion explicit or add an
   authenticated high-water mark to the sync cycle before deployment.
+## Unreleased — Safe-area insets for standalone phone use
+
+- `index.html` now sets `viewport-fit=cover`, so `black-translucent` can paint
+  the status bar and the layout can extend to the screen edge. Insets of zero
+  leave existing spacing unchanged: every `env(safe-area-inset-*)` is wrapped
+  in `max()` or `calc()` against the previous padding.
+- Study chrome is the main change. The touch grading sheet, card-actions
+  sheet and sticky header clear the home indicator and notch. A grade control
+  under the home indicator was the misgrade risk this work exists to close.
+- Shell chrome: the mobile top bar, course section bar, drawer sidebar and
+  study-decision sheet already had some inset padding; they now also clear
+  landscape notches. `main` takes the left/right inset on small screens so
+  page content is not handled per-route. The collapsed (and expanded) sidebar
+  widths grow by `env(safe-area-inset-left)` rather than taking that padding
+  out of the 72px / 264px chrome — under `border-box` the previous form
+  left about 13px for icons on an iPhone 14 Pro in landscape.
+- Other edge-reaching surfaces: toasts, the MCP consent card, the card-editor
+  touch action bar, merge-review’s fixed footer, the assessment detail sheet,
+  Welcome / Method, and the study-adjacent overlays (shortcuts, palette,
+  in-session editor).
+- The earlier PWA note that deferred this work is superseded.
 
 ## Unreleased — CI: relay job
 

@@ -10,7 +10,7 @@ interface McpConsentPromptProps {
 export function McpConsentPrompt({ request, courseName, onDecision }: McpConsentPromptProps) {
   const destructive = request.scope === 'destructive';
   return (
-    <div className="fixed inset-x-4 bottom-6 z-[70] mx-auto max-w-xl rounded-2xl border border-line-strong bg-surface-raised p-5 shadow-2xl">
+    <div className="fixed left-[max(1rem,env(safe-area-inset-left))] right-[max(1rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[70] mx-auto max-w-xl rounded-2xl border border-line-strong bg-surface-raised p-5 shadow-2xl">
       <p className="text-xs font-medium uppercase tracking-[0.16em] text-accent">MCP access request</p>
       <h2 className="mt-1 font-display text-lg text-ink">
         Allow {destructive ? 'destructive' : 'write'} access to {courseName}?

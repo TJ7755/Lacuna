@@ -153,7 +153,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
           role="dialog"
           aria-modal="true"
           aria-label="Search"
-          className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]"
+          className="fixed inset-0 z-50 flex items-start justify-center pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(12vh,env(safe-area-inset-top))]"
         >
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"

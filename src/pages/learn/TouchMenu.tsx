@@ -100,7 +100,7 @@ export function TouchMenuSheet({
         animate={{ y: 0, opacity: 1 }}
         exit={m > 0 ? { y: 120, opacity: 0 } : undefined}
         transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
-        className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-line-strong bg-surface px-6 py-6 shadow-2xl shadow-black/20"
+        className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-line-strong bg-surface pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl shadow-black/20"
         onClick={(e) => e.stopPropagation()}
         onPointerMove={handleDragHandleMove}
         onPointerUp={handleDragHandleUp}

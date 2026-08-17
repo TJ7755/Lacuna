@@ -291,7 +291,7 @@ function PlanShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-paper px-6 py-10">
+    <div className="min-h-screen bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[max(2.5rem,calc(env(safe-area-inset-top)+1.5rem))] pb-[max(2.5rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
       <main className="mx-auto max-w-xl">
         <p className="text-sm uppercase tracking-[0.18em] text-ink-faint">Revision plan</p>
         <h1 className="mt-2 font-display text-4xl tracking-tight md:text-5xl">{title}</h1>

@@ -354,7 +354,7 @@ export function MergeReviewPanel() {
       )}
 
       {outstanding > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] backdrop-blur">
           <div className="mx-auto flex max-w-3xl items-center justify-end gap-2 px-6 py-3 md:px-10">
             <Button variant="ghost" onClick={() => navigate(backTo)}>
               Review later
