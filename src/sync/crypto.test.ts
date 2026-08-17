@@ -4,6 +4,10 @@ import {
   FORMAT_VERSION,
   KEYBAG_MAX_BYTES,
   KEYBAG_MIN_BYTES,
+  KEYBAG_OFFSET_CONFIRM,
+  KEYBAG_OFFSET_ITERATIONS,
+  KEYBAG_OFFSET_NONCE,
+  KEYBAG_OFFSET_SALT,
   KDF_ID_PBKDF2_SHA256,
   PBKDF2_ITERATIONS,
   PBKDF2_ITERATIONS_MAX,
@@ -178,19 +182,19 @@ describe('wrapKeybag / unwrapKeybag', () => {
   }, SLOW);
 
   it('fails closed on a tampered keybag nonce after confirmation succeeds', async () => {
-    const tampered = flipByte(keybagBlob, 38);
+    const tampered = flipByte(keybagBlob, KEYBAG_OFFSET_NONCE);
     await expect(unwrapKeybag(tampered, passphrase, ctx)).rejects.toBeInstanceOf(SyncCryptoCorruptError);
   }, SLOW);
 
   it('reports a tampered confirmation as a passphrase error', async () => {
-    const tampered = flipByte(keybagBlob, 22);
+    const tampered = flipByte(keybagBlob, KEYBAG_OFFSET_CONFIRM);
     await expect(unwrapKeybag(tampered, passphrase, ctx)).rejects.toBeInstanceOf(
       SyncCryptoPassphraseError,
     );
   }, SLOW);
 
   it('reports a tampered header as a wrong passphrase', async () => {
-    const tamperedSalt = flipByte(keybagBlob, 6);
+    const tamperedSalt = flipByte(keybagBlob, KEYBAG_OFFSET_SALT);
     await expect(unwrapKeybag(tamperedSalt, passphrase, ctx)).rejects.toBeInstanceOf(
       SyncCryptoPassphraseError,
     );
@@ -263,22 +267,24 @@ describe('wrapKeybag / unwrapKeybag', () => {
     expect(KEYBAG_MAX_BYTES).toBe(KEYBAG_MIN_BYTES);
     const deriveBits = vi.spyOn(crypto.subtle, 'deriveBits');
 
-    await expect(unwrapKeybag(new Uint8Array(KEYBAG_MIN_BYTES - 1), passphrase, ctx)).rejects.toBeInstanceOf(
-      SyncCryptoCorruptError,
-    );
-    await expect(unwrapKeybag(new Uint8Array(KEYBAG_MAX_BYTES + 1), passphrase, ctx)).rejects.toBeInstanceOf(
-      SyncCryptoCorruptError,
-    );
+    // Valid version bytes so the size bounds, not the version, are exercised.
+    const tooShort = new Uint8Array(KEYBAG_MIN_BYTES - 1);
+    tooShort[0] = FORMAT_VERSION;
+    const tooLong = new Uint8Array(KEYBAG_MAX_BYTES + 1);
+    tooLong[0] = FORMAT_VERSION;
+
+    await expect(unwrapKeybag(tooShort, passphrase, ctx)).rejects.toBeInstanceOf(SyncCryptoCorruptError);
+    await expect(unwrapKeybag(tooLong, passphrase, ctx)).rejects.toBeInstanceOf(SyncCryptoCorruptError);
     expect(deriveBits).not.toHaveBeenCalled();
   });
 
   it('rejects an iteration count below the unwrap floor or above the DoS cap', async () => {
     const tooLow = new Uint8Array(keybagBlob);
-    writeUint32BE(tooLow, 2, PBKDF2_ITERATIONS_MIN - 1);
+    writeUint32BE(tooLow, KEYBAG_OFFSET_ITERATIONS, PBKDF2_ITERATIONS_MIN - 1);
     await expect(unwrapKeybag(tooLow, passphrase, ctx)).rejects.toBeInstanceOf(SyncCryptoCorruptError);
 
     const tooHigh = new Uint8Array(keybagBlob);
-    writeUint32BE(tooHigh, 2, PBKDF2_ITERATIONS_MAX + 1);
+    writeUint32BE(tooHigh, KEYBAG_OFFSET_ITERATIONS, PBKDF2_ITERATIONS_MAX + 1);
     await expect(unwrapKeybag(tooHigh, passphrase, ctx)).rejects.toBeInstanceOf(SyncCryptoCorruptError);
   });
 });
@@ -300,16 +306,35 @@ describe('frozen v1 layout', () => {
     '01c0c1c2c3c4c5c6c7c8c9cacbc3f79571c7d2e1b3851df7e8f3335b2efac7aa11fcc9ae942998c50a1fcba564d17e',
   );
   const frozenKeybag = hexToBytes(
-    '0101000927c0a0a1a2a3a4a5a6a7a8a9aaabacadaeafdbf37228f40172a16c006bed0020e94bb0b1b2b3b4b5b6b7b8b9babb5467af2fd63ea09ae81b8e23f6326d5a7a56a135c9e0a85bb2b2b8b2205f4b1d808c1d9af799fa7aec7c3ceab7f97c343acb3133fcb3c747d254d2db602b7bed0164ef15b0f73436850e3373e0685bbeb9d071a86c82734c232279a353f6b5c4e30301615391b0342ffa04511a367e47',
+    '0101000927c0a0a1a2a3a4a5a6a7a8a9aaabacadaeafd43a3c789cea9b28d367c8b15186755eb0b1b2b3b4b5b6b7b8b9babb5467af2fd63ea09ae81b8e23f6326d5a7a56a135c9e0a85bb2b2b8b2205f4b1d808c1d9af799fa7aec7c3ceab7f97c343acb3133fcb3c747d254d2db602b7bed0164ef15b0f73436850e3373e0685bbeb9d071a86c82734c232279a353f6b5c4e30301615391b0342ffa04511a367e47',
+  );
+  // Wrapped at 900,000 iterations — above the current wrap constant but
+  // within the unwrap floor and DoS cap — with its own salt and nonce.
+  // Unwrap must keep accepting such keybags when the wrap constant rises.
+  const higherIterations = 900_000;
+  const frozenKeybagHigherIterations = hexToBytes(
+    '0101000dbba0d0d1d2d3d4d5d6d7d8d9dadbdcdddedffac5b59eebf012d9ffbac0de0cc62eabe0e1e2e3e4e5e6e7e8e9eaeb94d8bb181b1aaebdcae3cc0cafd18287c7907707ab64014f7a2b3c087c417050f11905d96746911380da6ab1062fbbfc4c46950845e716f089ed1945db7b9ab25f3b2b0758aa309c0441f6e61d49ccfcd669a8345d98e6b328566a2efb00c5210fa31f2036aef65923dd73854645aef2',
   );
 
   it('still opens the frozen blobs', async () => {
     expect(frozenKeybag[0]).toBe(FORMAT_VERSION);
     expect(frozenKeybag[1]).toBe(KDF_ID_PBKDF2_SHA256);
-    expect(new DataView(frozenKeybag.buffer).getUint32(2, false)).toBe(PBKDF2_ITERATIONS);
+    expect(new DataView(frozenKeybag.buffer).getUint32(KEYBAG_OFFSET_ITERATIONS, false)).toBe(PBKDF2_ITERATIONS);
 
     expect(await openState(frozenKey, frozenState, { channelId })).toEqual(frozenPlaintext);
     const opened = await unwrapKeybag(frozenKeybag, frozenPassphrase, { channelId });
+    expect(opened.channelKey).toEqual(frozenKey);
+    expect(opened.writeToken).toBe(frozenToken);
+  }, SLOW);
+
+  it('unwraps a frozen keybag wrapped at a non-default iteration count', async () => {
+    expect(higherIterations).toBeGreaterThan(PBKDF2_ITERATIONS);
+    expect(higherIterations).toBeLessThanOrEqual(PBKDF2_ITERATIONS_MAX);
+    expect(
+      new DataView(frozenKeybagHigherIterations.buffer).getUint32(KEYBAG_OFFSET_ITERATIONS, false),
+    ).toBe(higherIterations);
+
+    const opened = await unwrapKeybag(frozenKeybagHigherIterations, frozenPassphrase, { channelId });
     expect(opened.channelKey).toEqual(frozenKey);
     expect(opened.writeToken).toBe(frozenToken);
   }, SLOW);

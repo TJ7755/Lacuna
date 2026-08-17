@@ -14,6 +14,9 @@ export const GCM_TAG_BITS = 128;
 export const GCM_TAG_BYTES = 16;
 export const KEY_CONFIRMATION_BYTES = 16;
 export const KDF_ID_PBKDF2_SHA256 = 1;
+// 256-bit key-encryption key derived from the passphrase. The same length as
+// the channel key for AES-GCM, but distinct material.
+export const KEK_BYTES = 32;
 
 // PBKDF2_ITERATIONS is the wrap constant. It may rise later when OWASP
 // raises the PBKDF2-HMAC-SHA-256 recommendation.
@@ -37,7 +40,6 @@ const WRITE_TOKEN_BYTES = 64;
 
 const STATE_AAD_PREFIX = 'lacuna.sync.v1/state/';
 const KEYBAG_AAD_PREFIX = 'lacuna.sync.v1/keybag/';
-const CONFIRM_PREFIX = 'lacuna.sync.v1/confirm/';
 
 // state:  version (1) || nonce (12) || ciphertext+tag
 const STATE_MIN_BYTES = 1 + NONCE_BYTES + GCM_TAG_BYTES;
@@ -50,10 +52,10 @@ export const KEYBAG_MIN_BYTES = KEYBAG_HEADER_BYTES + KEYBAG_PLAINTEXT_BYTES + G
 export const KEYBAG_MAX_BYTES = KEYBAG_MIN_BYTES;
 
 const KEYBAG_OFFSET_KDF = 1;
-const KEYBAG_OFFSET_ITERATIONS = 2;
-const KEYBAG_OFFSET_SALT = 6;
-const KEYBAG_OFFSET_CONFIRM = 22;
-const KEYBAG_OFFSET_NONCE = 38;
+export const KEYBAG_OFFSET_ITERATIONS = 2;
+export const KEYBAG_OFFSET_SALT = 6;
+export const KEYBAG_OFFSET_CONFIRM = 22;
+export const KEYBAG_OFFSET_NONCE = 38;
 const KEYBAG_OFFSET_CIPHERTEXT = 50;
 
 export class SyncCryptoError extends Error {
@@ -156,8 +158,7 @@ export async function wrapKeybag(
 
   const salt = randomBytes(SALT_BYTES);
   const nonce = randomBytes(NONCE_BYTES);
-  const kek = await deriveKek(normalised, salt, PBKDF2_ITERATIONS);
-  const confirm = await keyConfirmation(kek);
+  const { kek, confirmation } = await deriveKek(normalised, salt, PBKDF2_ITERATIONS);
   const plaintext = concatBytes(key, tokenBytes);
   const ciphertext = await aesGcmSeal(kek, nonce, plaintext, aadFor('keybag', channelId));
 
@@ -166,7 +167,7 @@ export async function wrapKeybag(
   blob[KEYBAG_OFFSET_KDF] = KDF_ID_PBKDF2_SHA256;
   writeUint32BE(blob, KEYBAG_OFFSET_ITERATIONS, PBKDF2_ITERATIONS);
   blob.set(salt, KEYBAG_OFFSET_SALT);
-  blob.set(confirm, KEYBAG_OFFSET_CONFIRM);
+  blob.set(confirmation, KEYBAG_OFFSET_CONFIRM);
   blob.set(nonce, KEYBAG_OFFSET_NONCE);
   blob.set(ciphertext, KEYBAG_OFFSET_CIPHERTEXT);
   return blob;
@@ -179,11 +180,11 @@ export async function unwrapKeybag(
 ): Promise<{ channelKey: Uint8Array; writeToken: string }> {
   const channelId = requireChannelId(context.channelId);
   const normalised = requirePassphrase(passphrase);
-  if (blob.byteLength < KEYBAG_MIN_BYTES || blob.byteLength > KEYBAG_MAX_BYTES) {
-    throw new SyncCryptoCorruptError('This sync blob is corrupt.');
-  }
   const bytes = copyBytes(blob);
   assertVersion(bytes);
+  if (bytes.byteLength < KEYBAG_MIN_BYTES || bytes.byteLength > KEYBAG_MAX_BYTES) {
+    throw new SyncCryptoCorruptError('This sync blob is corrupt.');
+  }
   if (bytes[KEYBAG_OFFSET_KDF] !== KDF_ID_PBKDF2_SHA256) {
     throw new SyncCryptoVersionError('This sync blob uses an unsupported format.');
   }
@@ -197,13 +198,12 @@ export async function unwrapKeybag(
   const nonce = bytes.subarray(KEYBAG_OFFSET_NONCE, KEYBAG_OFFSET_CIPHERTEXT);
   const ciphertext = bytes.subarray(KEYBAG_OFFSET_CIPHERTEXT);
 
-  const kek = await deriveKek(normalised, salt, iterations);
-  const expectedConfirm = await keyConfirmation(kek);
+  const { kek, confirmation } = await deriveKek(normalised, salt, iterations);
   // A bit-flip in the stored salt or iteration count produces the wrong
   // KEK and therefore a passphrase error. A tampered header reads as a
   // wrong passphrase. That is a residual misreport: an honest mistype and
   // a truncated-or-edited header are indistinguishable to the caller.
-  if (!constantTimeEqual(storedConfirm, expectedConfirm)) {
+  if (!constantTimeEqual(storedConfirm, confirmation)) {
     throw new SyncCryptoPassphraseError('The passphrase is incorrect.');
   }
 
@@ -265,7 +265,11 @@ function aadFor(slot: 'state' | 'keybag', channelId: string): Uint8Array {
   return utf8(prefix + channelId);
 }
 
-async function deriveKek(passphrase: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
+async function deriveKek(
+  passphrase: string,
+  salt: Uint8Array,
+  iterations: number,
+): Promise<{ kek: Uint8Array; confirmation: Uint8Array }> {
   const material = await crypto.subtle.importKey(
     'raw',
     asBufferSource(utf8(passphrase)),
@@ -281,14 +285,15 @@ async function deriveKek(passphrase: string, salt: Uint8Array, iterations: numbe
       iterations,
     },
     material,
-    CHANNEL_KEY_BYTES * 8,
+    (KEK_BYTES + KEY_CONFIRMATION_BYTES) * 8,
   );
-  return new Uint8Array(bits);
-}
-
-async function keyConfirmation(kek: Uint8Array): Promise<Uint8Array> {
-  const digest = await crypto.subtle.digest('SHA-256', asBufferSource(concatBytes(utf8(CONFIRM_PREFIX), kek)));
-  return new Uint8Array(digest).subarray(0, KEY_CONFIRMATION_BYTES);
+  const derived = new Uint8Array(bits);
+  return {
+    kek: derived.subarray(0, KEK_BYTES),
+    // The confirmation is the tail of the same PBKDF2 output, not a
+    // function of the KEK, so neither value can be derived from the other.
+    confirmation: derived.subarray(KEK_BYTES),
+  };
 }
 
 async function aesGcmSeal(
