@@ -138,7 +138,7 @@ export async function pullRelaySlot(
     },
   );
   if (response.status === 404) return null;
-  if (!response.ok) throw httpError('pull', response);
+  if (!response.ok) throw await httpError('pull', response);
 
   const generation = response.headers.get('ETag');
   if (!generation || generation.trim() === '') {
@@ -187,7 +187,7 @@ export class HttpRelayProvider implements RelayProvider {
       body: new Blob([toArrayBuffer(bytes)], { type: 'application/octet-stream' }),
     });
     if (response.status === 412) throw new StaleGenerationError(generation);
-    if (!response.ok) throw httpError('push', response);
+    if (!response.ok) throw await httpError('push', response);
 
     const nextGeneration = response.headers.get('ETag');
     if (!nextGeneration || nextGeneration.trim() === '') {
@@ -203,7 +203,7 @@ export class HttpRelayProvider implements RelayProvider {
     });
     // Purge is idempotent: a channel already gone is in the desired state.
     if (response.status === 404) return;
-    if (!response.ok) throw httpError('purge', response);
+    if (!response.ok) throw await httpError('purge', response);
   }
 
   private slotUrl(slot: RelaySlot): string {
@@ -274,10 +274,17 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return buffer;
 }
 
-function httpError(operation: RelayOperation, response: Response): RelayHttpError {
+async function httpError(operation: RelayOperation, response: Response): Promise<RelayHttpError> {
   const detail = response.status === 413 ? ' The sync payload is too large for the relay.' : '';
+  let reason = '';
+  try {
+    const body = JSON.parse(await response.text()) as { error?: unknown };
+    if (typeof body?.error === 'string' && body.error !== '') reason = ` ${body.error}.`;
+  } catch {
+    // The platform may have answered without a readable body.
+  }
   return new RelayHttpError(
-    `Relay ${operation} failed with HTTP ${response.status}.${detail}`,
+    `Relay ${operation} failed with HTTP ${response.status}.${detail}${reason}`,
     operation,
     response.status,
   );

@@ -38,6 +38,18 @@ Keep each entry to a heading and a few lines. State the fact, then why it matter
 
 ---
 
+## The Vercel Functions body ceiling measures below 4.5 MB
+
+The nominal request-body limit for Vercel Functions is 4,500,000 bytes, but
+measured against the live relay on 18 August 2026: browser PUTs passed at
+4,490,000 bytes and died at 4,495,000. The platform's rejection carries no
+CORS headers, so the browser sees "Failed to fetch" and cannot read the
+status; a body the platform truncates mid-flight can still reach the relay
+short, which then answers 400 "length mismatch" with CORS headers — that is
+the "Relay push failed with HTTP 400" the sync UI showed. Keep
+`SYNC_PLATFORM_BODY_LIMIT_BYTES` below the measured boundary, not at the
+nominal one.
+
 ## Browser fetch rejects a detached `this`; Node and `vi.fn` mocks cannot catch it
 
 The WebIDL `fetch` operation throws "Failed to execute 'fetch' on 'Window':

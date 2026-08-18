@@ -152,6 +152,26 @@ describe('HttpRelayProvider', () => {
     await expect(provider(fetchImpl).pull('state')).rejects.toBeInstanceOf(RelayHttpError);
   });
 
+  it('includes the relay error body when a push is rejected with 400', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'length mismatch' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await expect(
+      provider(fetchImpl).push('state', new Uint8Array([1]), EMPTY_GENERATION),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        name: 'RelayHttpError',
+        status: 400,
+        operation: 'push',
+        message: 'Relay push failed with HTTP 400. length mismatch.',
+      }),
+    );
+  });
+
   it('requires a generation response from successful relay operations', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()

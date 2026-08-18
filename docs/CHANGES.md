@@ -1,5 +1,18 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync payload size gate hardening
+
+- The relay platform's real request-body limit measures below the nominal
+  4.5 MB: browser PUTs to the live relay passed at 4,490,000 bytes and died at
+  4,495,000, and a body the platform truncates mid-flight can still reach the
+  relay short, which answers 400 "length mismatch" — surfacing as the cryptic
+  "Relay push failed with HTTP 400" in Settings. The sync size gate now sits
+  at 4.4 MB, below the measured boundary with margin, so an oversized
+  snapshot fails locally with the offending course names instead.
+- Relay error responses now carry the relay's error reason into the sync
+  failure message (for example "Relay push failed with HTTP 400. length
+  mismatch."), so platform and protocol rejections stay diagnosable.
+
 ## Unreleased — Relay fetch binding fix
 
 - Fixed "Failed to execute 'fetch' on 'Window': Illegal invocation" on the

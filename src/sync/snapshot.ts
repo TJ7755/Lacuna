@@ -4,8 +4,16 @@
 import type { BackupFile, Card, SessionHistoryEntry } from '../db/types';
 import { isPreV22Backup, PRE_V22_BACKUP_MESSAGE, validateBackup } from '../db/portability';
 
-/** Vercel Functions reject request bodies above 4.5 MB before the relay runs. */
-export const SYNC_PLATFORM_BODY_LIMIT_BYTES = 4_500_000;
+/**
+ * Vercel Functions reject request bodies above 4.5 MB before the relay runs.
+ * The nominal limit is 4,500,000 bytes, but the platform was measured to kill
+ * browser PUTs from 4,495,000 bytes (4,490,000 still passed) on 18 August
+ * 2026, and a request it mangles mid-flight reaches the relay truncated, which
+ * the relay answers with 400 "length mismatch". The gate therefore sits below
+ * the measured boundary with margin, so oversized snapshots fail locally with
+ * the course names instead of surfacing as a cryptic relay 400.
+ */
+export const SYNC_PLATFORM_BODY_LIMIT_BYTES = 4_400_000;
 
 const ASSET_RE = /lacuna-asset:\/\/([a-f0-9]{64})/gi;
 
