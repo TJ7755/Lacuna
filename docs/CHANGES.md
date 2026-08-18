@@ -1,5 +1,12 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P5 transport and cycle
+
+- Added the transport-only `RelayProvider` seam with callback-based manual handoff and an HTTP relay adapter. HTTP writes use the relay's opaque `ETag` compare-and-swap generation; a stale generation is pulled and retried once rather than overwritten.
+- Added the encrypted pull-merge-push cycle. It validates and decrypts the remote snapshot, reuses `manualMerge` for the single replace-import path, takes a forced restore point before applying, avoids writes when merged state is unchanged, and shares overlapping calls through a single-flight guard.
+- Persisted last successful generation, timestamp, error and encrypted/plaintext snapshot sizes under `syncState`. Oversized outgoing snapshots fail before apply with the contributing course names; the accepted Vercel Functions ceiling is 4.5 MB.
+- P5 deliberately does not claim relay rollback protection: generations are opaque compare-and-swap values, not an authenticated monotonic clock. Pairing UI and automatic focus/session triggers remain P6/P7 work.
+
 ## Unreleased — Sync P2 review gate closed
 
 - Tom reviewed and merged PR #86 on 18 August 2026. The Arc 8 §7 gate on

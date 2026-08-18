@@ -85,6 +85,23 @@ Scripts: `dev`/`start` (Vite), `build` (`bun run typecheck && vite build`), `pre
 settings, search, share, analytics, help, course pages, editors, the course conductor and
 full-screen routes are lazy-loaded on demand.
 
+### Optional multi-device sync foundation
+
+The P5 sync foundation is optional and does not change the local-first product boundary. The
+existing Settings file-based Combine flow remains the manual fallback; the transport seam in
+`src/sync/relay.ts` also supports an HTTP relay that stores only opaque bytes. The cycle in
+`src/sync/cycle.ts` pulls the encrypted state blob, decrypts and validates it, merges it through
+the existing `manualMerge` replace-import path, then pushes only when the merged state changed.
+A forced restore point is taken before every peer apply, a stale relay generation is retried once,
+and overlapping cycles share one in-flight promise.
+
+The relay's opaque ETag is a compare-and-swap generation, not a freshness clock. P5 therefore does
+not claim rollback protection against replay of an older valid ciphertext. Outgoing encrypted state
+is capped at 4.5 MB because Vercel Functions reject larger request bodies; failures record the
+transport and plaintext sizes and name the contributing courses in `syncState`. Pairing UI,
+status presentation and automatic focus/session triggers are later phases, so the web UI remains
+usable without a relay or network.
+
 ---
 
 ## 3. Visual design system

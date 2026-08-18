@@ -109,7 +109,7 @@
   This document rebases that plan onto the current codebase and sequences the work
   so the next implementation slice can be approved before anyone writes code.</p>
   <div class="meta">
-    <span class="tag b">Status: P1–P4 shipped; P5 is next — 18 August 2026</span>
+    <span class="tag b">Status: P1–P5 shipped; P6 is next — 18 August 2026</span>
     <span class="tag">Schema v22 &rarr; v23</span>
     <span class="tag">Backup 9 &rarr; 10</span>
     <span class="tag b">Relay gate answered yes — 14 August 2026</span>
@@ -133,13 +133,14 @@
   (crypto) are therefore authorised, and P5, P6 and P7 follow them in order.
   Everywhere below that describes the relay as gated is the plan as drafted on
   13 August; this paragraph is current state and wins.</p>
-  <p><strong>P1 and P2 have shipped.</strong> The relay is live at
+  <p><strong>P1, P2 and P5 have shipped.</strong> The relay is live at
   <code>lacuna-relay.vercel.app</code>. P2 merged as PR #86; Tom reviewed it and
-  closed the Arc 8 &sect;7 gate on 18 August 2026. P5 may now consume
-  <code>src/sync/crypto.ts</code>. Further changes to nonce, AAD, KDF or keybag
-  layout still need the same review before they reach a real channel. P5, P6 and
-  P7 are not started, and P7 may still slip past September if the manual Combine
-  keeps doing the job.</p>
+  closed the Arc 8 &sect;7 gate on 18 August 2026. P5 now consumes
+  <code>src/sync/crypto.ts</code> through the transport and cycle seam, with
+  one stale-generation retry, backup-before-apply and durable size/error status.
+  Further changes to nonce, AAD, KDF or keybag layout still need the same review
+  before they reach a real channel. P6 and P7 are not started, and P7 may still
+  slip past September if the manual Combine keeps doing the job.</p>
   <p><strong>Deployment is Tom's.</strong> Agents write <code>relay/</code>; they
   have no Vercel credentials and must not attempt to authenticate or deploy.</p>
   <p><strong>The 4.5 MB transport ceiling is accepted, 14 August 2026.</strong>
@@ -148,9 +149,9 @@
   4.5 MB at the platform, so a snapshot between those two numbers cannot transit
   <code>PUT /c/:id/:slot</code> at all. Tom accepted this rather than build
   client-direct Blob upload now. Consequences, so nobody rediscovers them the hard
-  way: snapshots must stay under 4.5 MB in practice; P5 should surface the current
-  snapshot size in the sync panel and fail a push with a message naming the
-  offending courses rather than a generic error; and the escape route, if inline
+  way: snapshots must stay under 4.5 MB in practice; P5 records the current
+  snapshot size and fails before apply with a message naming the offending courses,
+  ready for the P6 sync panel; and the escape route, if inline
   assets ever push past it, is uploading ciphertext to Blob from the client rather
   than through the function. Do not pre-build that.</p>
 </header>
@@ -750,8 +751,8 @@
   <h2><span class="n">09</span>Later phases</h2>
   <p>Each still lives in Arc 8. <strong>The hosting and maintenance-cost gate
   that sat in front of the relay was answered yes on 14 August 2026</strong>.
-  P1 and P2 have since shipped; Tom closed the P2 review gate on 18 August 2026
-  (PR #86). P5 is next, then P6 and P7. The paragraph that stood here previously
+  P1, P2 and P5 have since shipped; Tom closed the P2 review gate on 18 August
+  2026 (PR #86). P6 is next, then P7. The paragraph that stood here previously
   said none of these were authorised; that is no longer true and is kept only so
   the change is legible.</p>
   <ul>
@@ -761,8 +762,9 @@
       keybag, QR and passphrase yielding the same key. Shipped; review gate
       closed 18 August 2026. Arc 8 §7.</li>
     <li><strong>P5 transport.</strong> <code>RelayProvider</code> manual
-      + http. Always pull-merge-push. Backup-before-apply via
-      <code>takeAutoBackup(force)</code>. Arc 8 §9–10.</li>
+      + http. Always pull-merge-push, with one 412 retry, single-flight,
+      backup-before-apply via <code>takeAutoBackup(force)</code>, and snapshot
+      size diagnostics. Shipped 18 August 2026. Arc 8 §9–10.</li>
     <li><strong>P6 pairing UI.</strong> Settings section, QR on explicit
       tap, passphrase as the recovery route. Arc 8 §11.</li>
     <li><strong>P7 automatic triggers.</strong> Focus pull, session-end
