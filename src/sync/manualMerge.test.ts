@@ -255,6 +255,17 @@ describe('manualMerge', () => {
     expect(importBackup).not.toHaveBeenCalled();
   });
 
+  it('preserves the cause and reports the database modified when the import fails', async () => {
+    const failure = new Error('IndexedDB write failed');
+    importBackup.mockRejectedValue(failure);
+
+    await expect(manualMerge(backup())).rejects.toMatchObject({
+      name: 'ManualMergeError',
+      databaseModified: true,
+      causeError: failure,
+    });
+  });
+
   it('reports cards removed when the other snapshot carries a later tombstone', async () => {
     const local = backup({
       exportedAt: 10,
