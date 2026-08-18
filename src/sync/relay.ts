@@ -29,10 +29,7 @@ export class RelayError extends Error {
   readonly operation: RelayOperation;
   readonly status?: number;
 
-  constructor(
-    message: string,
-    options: { operation: RelayOperation; status?: number },
-  ) {
+  constructor(message: string, options: { operation: RelayOperation; status?: number }) {
     super(message);
     this.name = 'RelayError';
     this.operation = options.operation;
@@ -79,7 +76,7 @@ export class RelayHttpError extends RelayError {
  * deliberately the same shape as RelayProvider so a future picker can hand
  * files to the cycle without making the cycle know about the DOM.
  */
-export interface ManualRelayAdapter extends RelayProvider {}
+export type ManualRelayAdapter = RelayProvider;
 
 export class ManualRelayProvider implements RelayProvider {
   private readonly adapter: ManualRelayAdapter;
@@ -196,7 +193,11 @@ function normaliseRelayUrl(value: string): string {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new RelayConfigurationError('The relay URL must use HTTP or HTTPS.');
   }
-  return url.toString().replace(/\/+$/, '');
+  if (url.search || url.hash) {
+    throw new RelayConfigurationError('The relay URL must not contain a query or fragment.');
+  }
+  const path = url.pathname.replace(/\/+$/, '');
+  return `${url.origin}${path}`;
 }
 
 function requireChannelId(value: string): string {

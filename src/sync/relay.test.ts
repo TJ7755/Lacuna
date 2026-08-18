@@ -31,8 +31,13 @@ describe('ManualRelayProvider', () => {
     const relay = new ManualRelayProvider(adapter);
     const bytes = new Uint8Array([2, 3]);
 
-    await expect(relay.pull('state')).resolves.toEqual({ bytes: new Uint8Array([1]), generation: 'manual-1' });
-    await expect(relay.push('state', bytes, EMPTY_GENERATION)).resolves.toEqual({ generation: 'manual-2' });
+    await expect(relay.pull('state')).resolves.toEqual({
+      bytes: new Uint8Array([1]),
+      generation: 'manual-1',
+    });
+    await expect(relay.push('state', bytes, EMPTY_GENERATION)).resolves.toEqual({
+      generation: 'manual-2',
+    });
     await relay.purge();
 
     expect(adapter.pull).toHaveBeenCalledWith('state');
@@ -55,10 +60,13 @@ describe('HttpRelayProvider', () => {
       bytes: new Uint8Array([1, 2, 3]),
       generation: '"generation-1"',
     });
-    expect(fetchImpl).toHaveBeenCalledWith('https://relay.example/c/0123456789abcdef0123456789abcdef/state', {
-      method: 'GET',
-      cache: 'no-store',
-    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://relay.example/c/0123456789abcdef0123456789abcdef/state',
+      {
+        method: 'GET',
+        cache: 'no-store',
+      },
+    );
   });
 
   it('treats an empty slot as absent', async () => {
@@ -95,20 +103,24 @@ describe('HttpRelayProvider', () => {
   it('maps a compare-and-swap conflict to StaleGenerationError', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 412 }));
 
-    await expect(provider(fetchImpl).push('state', new Uint8Array([1]), '"old"')).rejects.toMatchObject({
+    await expect(
+      provider(fetchImpl).push('state', new Uint8Array([1]), '"old"'),
+    ).rejects.toMatchObject({
       name: 'StaleGenerationError',
       status: 412,
       attemptedGeneration: '"old"',
     });
-    await expect(provider(fetchImpl).push('state', new Uint8Array([1]), '"old"')).rejects.toBeInstanceOf(
-      StaleGenerationError,
-    );
+    await expect(
+      provider(fetchImpl).push('state', new Uint8Array([1]), '"old"'),
+    ).rejects.toBeInstanceOf(StaleGenerationError);
   });
 
   it('reports an oversized relay response without reading a misleading body', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 413 }));
 
-    await expect(provider(fetchImpl).push('state', new Uint8Array([1]), EMPTY_GENERATION)).rejects.toEqual(
+    await expect(
+      provider(fetchImpl).push('state', new Uint8Array([1]), EMPTY_GENERATION),
+    ).rejects.toEqual(
       expect.objectContaining({
         name: 'RelayHttpError',
         status: 413,
@@ -120,7 +132,9 @@ describe('HttpRelayProvider', () => {
   });
 
   it('requires a generation response from successful relay operations', async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(new Uint8Array([1]), { status: 200 }));
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(new Uint8Array([1]), { status: 200 }));
 
     await expect(provider(fetchImpl).pull('state')).rejects.toBeInstanceOf(RelayProtocolError);
   });
@@ -158,6 +172,15 @@ describe('HttpRelayProvider', () => {
         new HttpRelayProvider({
           relayUrl: 'https://relay.example',
           channelId: 'not-a-channel',
+          writeToken: WRITE_TOKEN,
+          fetchImpl,
+        }),
+    ).toThrow(RelayConfigurationError);
+    expect(
+      () =>
+        new HttpRelayProvider({
+          relayUrl: 'https://relay.example?debug=1',
+          channelId: CHANNEL_ID,
           writeToken: WRITE_TOKEN,
           fetchImpl,
         }),
