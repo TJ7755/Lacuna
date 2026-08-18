@@ -173,11 +173,13 @@ describe('manualMerge', () => {
   });
 
   it('rejects an invalid file before any write', async () => {
-    await expect(manualMerge({ app: 'not-lacuna' } as unknown as BackupFile)).rejects.toMatchObject({
-      name: 'ManualMergeError',
-      databaseModified: false,
-      message: 'This file is not a valid Lacuna backup.',
-    });
+    await expect(manualMerge({ app: 'not-lacuna' } as unknown as BackupFile)).rejects.toMatchObject(
+      {
+        name: 'ManualMergeError',
+        databaseModified: false,
+        message: 'This file is not a valid Lacuna backup.',
+      },
+    );
     expect(takeAutoBackup).not.toHaveBeenCalled();
     expect(importBackup).not.toHaveBeenCalled();
   });
@@ -219,6 +221,40 @@ describe('manualMerge', () => {
     });
   });
 
+  it('runs the pre-apply hook before replacing the database', async () => {
+    const order: string[] = [];
+    const beforeApply = vi.fn(async () => {
+      order.push('before-apply');
+    });
+    importBackup.mockImplementation(async () => {
+      order.push('import');
+    });
+
+    await manualMerge(backup(), { beforeApply });
+
+    expect(beforeApply).toHaveBeenCalledWith(
+      expect.objectContaining({ app: 'lacuna', version: 10 }),
+    );
+    expect(order).toEqual(['before-apply', 'import']);
+  });
+
+  it('does not import when the pre-apply hook rejects', async () => {
+    const failure = new Error('snapshot rejected');
+
+    await expect(
+      manualMerge(backup(), {
+        beforeApply: () => {
+          throw failure;
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: 'ManualMergeError',
+      databaseModified: false,
+      causeError: failure,
+    });
+    expect(importBackup).not.toHaveBeenCalled();
+  });
+
   it('reports cards removed when the other snapshot carries a later tombstone', async () => {
     const local = backup({
       exportedAt: 10,
@@ -253,10 +289,7 @@ describe('summariseMerge', () => {
       cards: [card('keep'), card('new')],
       courses: [course('course-1'), course('course-2')],
       lessons: [lesson('l1')],
-      reviewHistory: [
-        reviewEvent('keep', 'event-1', 100),
-        reviewEvent('new', 'event-2', 200),
-      ],
+      reviewHistory: [reviewEvent('keep', 'event-1', 100), reviewEvent('new', 'event-2', 200)],
     });
 
     expect(summariseMerge(local, merged)).toEqual({

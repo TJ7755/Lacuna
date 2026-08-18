@@ -23,16 +23,26 @@ export interface ManualMergeSummary {
 
 export class ManualMergeError extends Error {
   readonly databaseModified: boolean;
+  readonly causeError?: unknown;
 
-  constructor(message: string, options: { databaseModified: boolean }) {
+  constructor(message: string, options: { databaseModified: boolean; causeError?: unknown }) {
     super(message);
     this.name = 'ManualMergeError';
     this.databaseModified = options.databaseModified;
+    this.causeError = options.causeError;
   }
 }
 
+export interface ManualMergeOptions {
+  /** Run after merging but before replace-import, while the database is untouched. */
+  beforeApply?: (merged: BackupFile) => void | Promise<void>;
+}
+
 /** Combine the current local database with a backup exported from another device. */
-export async function manualMerge(remote: BackupFile): Promise<ManualMergeSummary> {
+export async function manualMerge(
+  remote: BackupFile,
+  options: ManualMergeOptions = {},
+): Promise<ManualMergeSummary> {
   if (!validateBackup(remote)) {
     throw new ManualMergeError('This file is not a valid Lacuna backup.', {
       databaseModified: false,
@@ -61,16 +71,21 @@ export async function manualMerge(remote: BackupFile): Promise<ManualMergeSummar
   try {
     merged = mergeSnapshots(local, remote);
   } catch (error) {
-    throw new ManualMergeError(
-      `${messageOf(error)} The database was not modified.`,
-      { databaseModified: false },
-    );
+    throw new ManualMergeError(`${messageOf(error)} The database was not modified.`, {
+      databaseModified: false,
+    });
+  }
+
+  try {
+    await options.beforeApply?.(merged);
+  } catch (error) {
+    throw new ManualMergeError(messageOf(error), { databaseModified: false, causeError: error });
   }
 
   try {
     await importBackup(merged, 'replace');
   } catch (error) {
-    throw new ManualMergeError(messageOf(error), { databaseModified: true });
+    throw new ManualMergeError(messageOf(error), { databaseModified: true, causeError: error });
   }
 
   return summariseMerge(local, merged);
@@ -86,7 +101,10 @@ export function summariseMerge(local: BackupFile, merged: BackupFile): ManualMer
   };
 }
 
-function deltaOf(before: Array<{ id: string }> | undefined, after: Array<{ id: string }> | undefined): MergeDelta {
+function deltaOf(
+  before: Array<{ id: string }> | undefined,
+  after: Array<{ id: string }> | undefined,
+): MergeDelta {
   const beforeIds = new Set((before ?? []).map((row) => row.id));
   const afterIds = new Set((after ?? []).map((row) => row.id));
   let kept = 0;
