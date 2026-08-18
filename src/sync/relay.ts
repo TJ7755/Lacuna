@@ -105,6 +105,40 @@ export interface HttpRelayProviderOptions {
   fetchImpl?: typeof fetch;
 }
 
+/**
+ * Read an unauthenticated relay slot before the write token is available.
+ * This is used by the passphrase join path to fetch the encrypted keybag.
+ */
+export async function pullRelaySlot(
+  relayUrl: string,
+  channelId: string,
+  slot: RelaySlot,
+  fetchImpl?: typeof fetch,
+): Promise<RelayBlob | null> {
+  const fetcher = fetchImpl ?? globalThis.fetch;
+  if (typeof fetcher !== 'function') {
+    throw new RelayConfigurationError('This device does not provide fetch for relay sync.');
+  }
+  const response = await fetcher(
+    `${normaliseRelayUrl(relayUrl)}/c/${requireChannelId(channelId)}/${slot}`,
+    {
+      method: 'GET',
+      cache: 'no-store',
+    },
+  );
+  if (response.status === 404) return null;
+  if (!response.ok) throw httpError('pull', response);
+
+  const generation = response.headers.get('ETag');
+  if (!generation || generation.trim() === '') {
+    throw new RelayProtocolError('The relay response did not include a generation.', 'pull');
+  }
+  return {
+    bytes: new Uint8Array(await response.arrayBuffer()),
+    generation,
+  };
+}
+
 /** HTTP adapter for the standalone Lacuna relay. */
 export class HttpRelayProvider implements RelayProvider {
   private readonly relayUrl: string;
@@ -122,22 +156,8 @@ export class HttpRelayProvider implements RelayProvider {
     }
   }
 
-  async pull(slot: RelaySlot): Promise<RelayBlob | null> {
-    const response = await this.fetchImpl(this.slotUrl(slot), {
-      method: 'GET',
-      cache: 'no-store',
-    });
-    if (response.status === 404) return null;
-    if (!response.ok) throw httpError('pull', response);
-
-    const generation = response.headers.get('ETag');
-    if (!generation || generation.trim() === '') {
-      throw new RelayProtocolError('The relay response did not include a generation.', 'pull');
-    }
-    return {
-      bytes: new Uint8Array(await response.arrayBuffer()),
-      generation,
-    };
+  pull(slot: RelaySlot): Promise<RelayBlob | null> {
+    return pullRelaySlot(this.relayUrl, this.channelId, slot, this.fetchImpl);
   }
 
   async push(slot: RelaySlot, bytes: Uint8Array, ifMatch: string): Promise<RelayPushResult> {
@@ -183,7 +203,7 @@ export class HttpRelayProvider implements RelayProvider {
   }
 }
 
-function normaliseRelayUrl(value: string): string {
+export function normaliseRelayUrl(value: string): string {
   let url: URL;
   try {
     url = new URL(value);

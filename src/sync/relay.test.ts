@@ -7,6 +7,7 @@ import {
   RelayHttpError,
   RelayProtocolError,
   StaleGenerationError,
+  pullRelaySlot,
 } from './relay';
 
 const CHANNEL_ID = '0123456789abcdef0123456789abcdef';
@@ -73,6 +74,26 @@ describe('HttpRelayProvider', () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 404 }));
 
     await expect(provider(fetchImpl).pull('keybag')).resolves.toBeNull();
+  });
+
+  it('reads a keybag before a write token is available', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(new Uint8Array([7, 8]), {
+        status: 200,
+        headers: { ETag: '"keybag-1"' },
+      }),
+    );
+
+    await expect(
+      pullRelaySlot('https://relay.example///', CHANNEL_ID, 'keybag', fetchImpl),
+    ).resolves.toEqual({
+      bytes: new Uint8Array([7, 8]),
+      generation: '"keybag-1"',
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://relay.example/c/0123456789abcdef0123456789abcdef/keybag',
+      { method: 'GET', cache: 'no-store' },
+    );
   });
 
   it('pushes bytes with bearer authorisation and the pulled generation', async () => {

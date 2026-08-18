@@ -1077,7 +1077,10 @@ export interface Tombstone {
  * a live channel until the relay work is authorised.
  */
 export interface SyncState {
+  /** Relay origin used by this device to reach the channel. */
+  relayUrl?: string;
   channelId?: string;
+  /** Hex-encoded passphrase-wrapped channel key and write token. */
   wrappedKeyMaterial?: string;
   lastPushedGeneration?: string;
   lastSuccessfulSyncAt?: number;

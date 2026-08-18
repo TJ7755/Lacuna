@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import {
+  clearSyncState,
   clearTombstone,
   lessonCardExposureId,
   recordTombstone,
@@ -63,9 +64,15 @@ describe('mutationStamp', () => {
     expect(await db.tombstones.count()).toBe(0);
   });
 
-  it('reads and writes syncState under appState', async () => {
+  it('reads, writes and clears syncState under appState', async () => {
     expect(await readSyncState()).toBeUndefined();
-    await writeSyncState({ channelId: 'ch-1', lastError: null });
-    expect(await readSyncState()).toEqual({ channelId: 'ch-1', lastError: null });
+    await writeSyncState({ relayUrl: 'https://relay.example', channelId: 'ch-1', lastError: null });
+    expect(await readSyncState()).toEqual({
+      relayUrl: 'https://relay.example',
+      channelId: 'ch-1',
+      lastError: null,
+    });
+    await clearSyncState();
+    expect(await readSyncState()).toBeUndefined();
   });
 });

@@ -81,7 +81,12 @@ export async function clearTombstones(
 
 export async function readSyncState(): Promise<SyncState | undefined> {
   const entry = await db.appState.get(SYNC_STATE_KEY);
-  if (!entry || entry.value === null || entry.value === undefined || typeof entry.value !== 'object') {
+  if (
+    !entry ||
+    entry.value === null ||
+    entry.value === undefined ||
+    typeof entry.value !== 'object'
+  ) {
     return undefined;
   }
   return entry.value as SyncState;
@@ -89,4 +94,8 @@ export async function readSyncState(): Promise<SyncState | undefined> {
 
 export async function writeSyncState(state: SyncState): Promise<void> {
   await db.appState.put({ key: SYNC_STATE_KEY, value: state });
+}
+
+export async function clearSyncState(): Promise<void> {
+  await db.appState.delete(SYNC_STATE_KEY);
 }
