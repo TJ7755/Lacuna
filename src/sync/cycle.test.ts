@@ -8,7 +8,12 @@ import {
   type SyncCycleOptions,
 } from './cycle';
 import { EMPTY_GENERATION, StaleGenerationError, type RelayProvider } from './relay';
-import { decodeSnapshot, encodeSnapshot, SyncSnapshotTooLargeError } from './snapshot';
+import {
+  decodeSnapshot,
+  encodeSnapshot,
+  SYNC_PLATFORM_BODY_LIMIT_BYTES,
+  SyncSnapshotTooLargeError,
+} from './snapshot';
 
 const {
   exportDatabaseMock,
@@ -18,8 +23,18 @@ const {
   MockManualMergeError,
 } = vi.hoisted(() => {
   class ManualMergeErrorForTest extends Error {
-    readonly databaseModified = false;
+    readonly databaseModified: boolean;
     readonly causeError?: unknown;
+
+    constructor(
+      message: string,
+      options: { databaseModified?: boolean; causeError?: unknown } = {},
+    ) {
+      super(message);
+      this.name = 'ManualMergeError';
+      this.databaseModified = options.databaseModified ?? false;
+      this.causeError = options.causeError;
+    }
   }
   return {
     exportDatabaseMock: vi.fn(),
@@ -157,7 +172,20 @@ describe('syncCycle', () => {
   });
 
   it('merges a remote snapshot but avoids a write when the merged state is unchanged', async () => {
-    const remoteSnapshot = backup({ exportedAt: 20 });
+    const remoteSnapshot = backup({
+      exportedAt: 20,
+      lessons: [
+        {
+          id: 'lesson-1',
+          courseId: 'course-1',
+          name: 'Lesson 1',
+          orderIndex: 0,
+          createdAt: 5,
+          updatedAt: 5,
+          isExtension: false,
+        },
+      ],
+    });
     const relay = provider({ pull: vi.fn().mockResolvedValue(await remoteBlob(remoteSnapshot)) });
 
     manualMergeMock.mockImplementationOnce(
@@ -165,7 +193,25 @@ describe('syncCycle', () => {
         _remote: BackupFile,
         mergeOptions: { beforeApply?: (candidate: BackupFile) => unknown },
       ) => {
-        await mergeOptions.beforeApply?.({ ...remoteSnapshot, exportedAt: 999 });
+        const candidate = {
+          ...remoteSnapshot,
+          exportedAt: 999,
+          lessons: [
+            {
+              id: 'lesson-1',
+              courseId: 'course-1',
+              name: 'Lesson 1',
+              orderIndex: 0,
+              createdAt: 5,
+              isExtension: false,
+            },
+          ],
+        } as unknown as BackupFile;
+        await mergeOptions.beforeApply?.(candidate);
+        // importBackup normalises rows in place after the pre-apply hook
+        // returns; stamping updatedAt makes the applied state match the
+        // remote, so the cycle must compare and seal the post-import object.
+        candidate.lessons![0]!.updatedAt = 5;
         return {
           cards: { kept: 0, added: 0, removed: 0 },
           courses: { kept: 0, added: 0, removed: 0 },
@@ -296,28 +342,43 @@ describe('syncCycle', () => {
     await expect(first).resolves.toMatchObject({ pushed: true });
   });
 
+  it('rejects an overlapping caller that asks for a different channel', async () => {
+    let releasePull: ((value: null) => void) | undefined;
+    const relay = provider({
+      pull: vi.fn().mockImplementation(
+        () =>
+          new Promise<null>((resolve) => {
+            releasePull = resolve;
+          }),
+      ),
+    });
+
+    const first = syncCycle(options(relay));
+    const second = syncCycle(
+      options(relay, { channelId: 'ffffffffffffffffffffffffffffffff' }),
+    );
+    await expect(second).rejects.toThrow('different channel');
+    expect(relay.pull).toHaveBeenCalledTimes(1);
+
+    releasePull?.(null);
+    await expect(first).resolves.toMatchObject({ pushed: true });
+  });
+
   it('rejects an oversized merged snapshot before applying or pushing it', async () => {
     const remoteSnapshot = backup({ exportedAt: 20 });
-    const hugeCourse = {
-      id: 'course-huge',
-      name: 'Organic Chemistry',
-      description: 'x'.repeat(4_600_000),
-    } as CourseRecord;
     const relay = provider({ pull: vi.fn().mockResolvedValue(await remoteBlob(remoteSnapshot)) });
 
-    manualMergeMock.mockImplementationOnce(
-      async (
-        _remote: BackupFile,
-        mergeOptions: { beforeApply?: (candidate: BackupFile) => unknown },
-      ) => {
-        await mergeOptions.beforeApply?.(backup({ courses: [hugeCourse] }));
-        return {
-          cards: { kept: 0, added: 0, removed: 0 },
-          courses: { kept: 0, added: 1, removed: 0 },
-          lessons: { kept: 0, added: 0, removed: 0 },
-          reviewEvents: { kept: 0, added: 0, removed: 0 },
-        };
-      },
+    const sizeError = new SyncSnapshotTooLargeError({
+      plaintextBytes: 1_234,
+      transportBytes: 4_600_001,
+      limitBytes: SYNC_PLATFORM_BODY_LIMIT_BYTES,
+      courseNames: ['Organic Chemistry'],
+    });
+    manualMergeMock.mockRejectedValueOnce(
+      new MockManualMergeError('This sync snapshot is too large.', {
+        databaseModified: false,
+        causeError: sizeError,
+      }),
     );
 
     const result = syncCycle(options(relay));

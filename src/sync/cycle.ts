@@ -56,10 +56,22 @@ export interface SyncResult {
 }
 
 let inFlight: Promise<SyncResult> | null = null;
+let inFlightOptions: SyncCycleOptions | null = null;
 
-/** Run one device sync; overlapping callers share the same promise. */
+/**
+ * Run one device sync; overlapping callers share the same promise. A caller
+ * that asks for a different channel while one is in flight is rejected rather
+ * than handed another channel's result.
+ */
 export function syncCycle(options: SyncCycleOptions): Promise<SyncResult> {
-  if (inFlight) return inFlight;
+  if (inFlight) {
+    if (!inFlightOptions || !sameChannel(inFlightOptions, options)) {
+      return Promise.reject(
+        new Error('Another sync is already in progress on a different channel.'),
+      );
+    }
+    return inFlight;
+  }
 
   const promise = executeSync(options)
     .catch(async (error: unknown) => {
@@ -67,9 +79,13 @@ export function syncCycle(options: SyncCycleOptions): Promise<SyncResult> {
       throw error;
     })
     .finally(() => {
-      if (inFlight === promise) inFlight = null;
+      if (inFlight === promise) {
+        inFlight = null;
+        inFlightOptions = null;
+      }
     });
   inFlight = promise;
+  inFlightOptions = options;
   return promise;
 }
 
@@ -79,6 +95,18 @@ export const runSyncCycle = syncCycle;
 /** Reset the module-level single-flight guard between isolated tests. */
 export function __resetSyncFlightForTests(): void {
   inFlight = null;
+  inFlightOptions = null;
+}
+
+function sameChannel(left: SyncCycleOptions, right: SyncCycleOptions): boolean {
+  if (left.channelId !== right.channelId) return false;
+  const leftKey = left.channelKey;
+  const rightKey = right.channelKey;
+  if (leftKey.length !== rightKey.length) return false;
+  for (let index = 0; index < leftKey.length; index += 1) {
+    if (leftKey[index] !== rightKey[index]) return false;
+  }
+  return true;
 }
 
 async function executeSync(options: SyncCycleOptions): Promise<SyncResult> {
@@ -105,23 +133,32 @@ async function executeAttempt(options: SyncCycleOptions, attempt: number): Promi
 
   const remoteSnapshot = await openRemoteSnapshot(remote, options);
   let mergedSnapshot: BackupFile | undefined;
-  let sealed: PreparedSnapshot | undefined;
   let mergeSummary: ManualMergeSummary;
 
   try {
     mergeSummary = await manualMerge(remoteSnapshot, {
       beforeApply: async (candidate) => {
         mergedSnapshot = candidate;
-        sealed = await prepareSnapshot(candidate, options);
+        // Size-gate before the database is replaced. These sealed bytes are
+        // for measurement only: importBackup normalises the candidate in
+        // place after this hook returns, so the push payload is sealed again
+        // below from the state that was actually applied.
+        const plaintext = encodeSnapshot(candidate);
+        const bytes = await sealState(options.channelKey, plaintext, {
+          channelId: options.channelId,
+        });
+        assertSnapshotSize(candidate, bytes.byteLength, plaintext.byteLength);
       },
     });
   } catch (error) {
     throw unwrapManualMergeError(error);
   }
 
-  if (!mergedSnapshot || !sealed) {
+  if (!mergedSnapshot) {
     throw new Error('The sync merge did not produce a snapshot.');
   }
+
+  const sealed = await prepareSnapshot(mergedSnapshot, options);
 
   if (snapshotsEquivalent(mergedSnapshot, remoteSnapshot)) {
     await recordSuccess(options, remote.generation, sealed);
@@ -144,7 +181,7 @@ async function prepareSnapshot(
 ): Promise<PreparedSnapshot> {
   const plaintext = encodeSnapshot(snapshot);
   const bytes = await sealState(options.channelKey, plaintext, { channelId: options.channelId });
-  const size = assertSnapshotSize(snapshot, bytes.byteLength);
+  const size = assertSnapshotSize(snapshot, bytes.byteLength, plaintext.byteLength);
   return { bytes, size };
 }
 
