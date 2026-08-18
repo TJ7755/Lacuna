@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BackupFile, CourseRecord } from '../db/types';
+import { PRE_V22_BACKUP_MESSAGE } from '../db/portability';
 import {
   assertSnapshotSize,
   decodeSnapshot,
@@ -37,6 +38,15 @@ describe('snapshot wire helpers', () => {
     ).toThrow(SyncPayloadError);
   });
 
+  it('rejects pre-v22 backups with the compatibility message', () => {
+    const preV22 = backup({
+      version: 21,
+      decks: [{ id: 'deck-1', name: 'Legacy deck' }],
+    } as unknown as Partial<BackupFile>);
+
+    expect(() => decodeSnapshot(encodeSnapshot(preV22))).toThrow(PRE_V22_BACKUP_MESSAGE);
+  });
+
   it('treats export time, object order, array order, and absent optional tables as non-state', () => {
     const left = backup({
       exportedAt: 1,
@@ -72,12 +82,13 @@ describe('snapshot wire helpers', () => {
     });
 
     try {
-      assertSnapshotSize(snapshot, 101, 100);
+      assertSnapshotSize(snapshot, 101, 50, 100);
       throw new Error('expected the size check to fail');
     } catch (error) {
       expect(error).toBeInstanceOf(SyncSnapshotTooLargeError);
       expect(error).toMatchObject({
         report: expect.objectContaining({
+          plaintextBytes: 50,
           transportBytes: 101,
           limitBytes: 100,
           courseNames: ['Organic Chemistry'],

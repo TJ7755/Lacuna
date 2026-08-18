@@ -63,10 +63,11 @@ export function decodeSnapshot(bytes: Uint8Array): BackupFile {
 export function assertSnapshotSize(
   snapshot: BackupFile,
   transportBytes: number,
+  plaintextBytes: number,
   limitBytes = SYNC_PLATFORM_BODY_LIMIT_BYTES,
 ): SnapshotSizeReport {
   const report: SnapshotSizeReport = {
-    plaintextBytes: encodeSnapshot(snapshot).byteLength,
+    plaintextBytes,
     transportBytes,
     limitBytes,
     courseNames: courseContributors(snapshot),
@@ -254,9 +255,17 @@ function canonicalJson(value: unknown): string {
 function sortKeys(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value;
   if (Array.isArray(value)) {
+    // Serialise each element once, then sort on the precomputed key. Sorting
+    // inside the comparator would re-serialise both operands for every one of
+    // the n log n comparisons. A plain code-unit comparison also keeps the
+    // canonical form stable across locales, unlike localeCompare.
     return value
-      .map(sortKeys)
-      .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+      .map((entry) => {
+        const sorted = sortKeys(entry);
+        return { sorted, key: JSON.stringify(sorted) ?? '' };
+      })
+      .sort((left, right) => (left.key < right.key ? -1 : left.key > right.key ? 1 : 0))
+      .map((entry) => entry.sorted);
   }
   const record = value as Record<string, unknown>;
   const sorted: Record<string, unknown> = {};
