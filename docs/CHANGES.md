@@ -17,12 +17,18 @@
 - Single-flight sync now rejects an overlapping caller that asks for a
   different channel or key instead of returning the first caller's result.
 
+## Unreleased — Sync P6 pairing and status
+
+- Added a Device sync section in Settings for first-device channel setup, QR or passphrase pairing, deliberate Sync now, last-sync and snapshot-size status, local unpairing and separately confirmed shared-channel deletion.
+- Enforced a real recovery-passphrase policy of at least 16 characters. The relay mint secret is entered only while creating a channel; it is not persisted or placed in the pairing QR.
+- Reused the existing QR display and camera-scanner packages. Pairing QR capabilities are shown only after an explicit action and are dismissed on window blur or visibility change. P7 automatic triggers and real multi-device verification remain outstanding.
+
 ## Unreleased — Sync P5 transport and cycle
 
 - Added the transport-only `RelayProvider` seam with callback-based manual handoff and an HTTP relay adapter. HTTP writes use the relay's opaque `ETag` compare-and-swap generation; a stale generation is pulled and retried once rather than overwritten.
 - Added the encrypted pull-merge-push cycle. It validates and decrypts the remote snapshot, reuses `manualMerge` for the single replace-import path, takes a forced restore point before applying, avoids writes when merged state is unchanged, and shares overlapping calls through a single-flight guard.
 - Persisted last successful generation, timestamp, error and encrypted/plaintext snapshot sizes under `syncState`. Oversized outgoing snapshots fail before apply with the contributing course names; the accepted Vercel Functions ceiling is 4.5 MB.
-- P5 deliberately does not claim relay rollback protection: generations are opaque compare-and-swap values, not an authenticated monotonic clock. Pairing UI and automatic focus/session triggers remain P6/P7 work.
+- P5 deliberately does not claim relay rollback protection: generations are opaque compare-and-swap values, not an authenticated monotonic clock. P6 pairing does not change that boundary; automatic focus/session triggers remain P7 work.
 
 ## Unreleased — Sync P2 review gate closed
 

@@ -95,12 +95,20 @@ the existing `manualMerge` replace-import path, then pushes only when the merged
 A forced restore point is taken before every peer apply, a stale relay generation is retried once,
 and overlapping cycles share one in-flight promise.
 
-The relay's opaque ETag is a compare-and-swap generation, not a freshness clock. P5 therefore does
+P6 adds the Settings Device sync section. First-device setup mints a channel, generates a channel
+key, wraps the key and write token in a recovery keybag and pushes the first state. Other devices
+join either by scanning an explicit QR capability or by entering the relay URL, channel id and
+recovery passphrase. The QR carries the relay origin, channel id, write token and channel key; the
+mint secret is never persisted or included. Recovery passphrases must contain at least 16
+characters. Settings exposes last successful sync, encrypted/plaintext snapshot sizes, the last
+error, a deliberate Sync now action, local unpairing and a separately confirmed channel purge.
+
+The relay's opaque ETag is a compare-and-swap generation, not a freshness clock. P5/P6 therefore do
 not claim rollback protection against replay of an older valid ciphertext. Outgoing encrypted state
 is capped at 4.5 MB because Vercel Functions reject larger request bodies; failures record the
-transport and plaintext sizes and name the contributing courses in `syncState`. Pairing UI,
-status presentation and automatic focus/session triggers are later phases, so the web UI remains
-usable without a relay or network.
+transport and plaintext sizes and name the contributing courses in `syncState`. Automatic
+focus/session triggers and real two- and three-device verification remain later work, so the web
+UI remains usable without a relay or network.
 
 ---
 

@@ -8,9 +8,10 @@ made of **lessons** studied in order along a path; every card is scheduled to pe
 course's exam day. Classic recall cards use a single **Yes / No** and an invisible response
 timer to infer the FSRS grade; structured numeric and working items are marked automatically.
 
-All data lives locally in **IndexedDB**. The web app sends none of it to a Lacuna server
-because there is no Lacuna server. In the Electron build, an MCP client can access only the
-data you authorise for that local process; write and destructive access require explicit
+All data lives locally in **IndexedDB**. The web app sends none of it to an application server
+unless you explicitly pair it with an optional sync relay; that relay receives encrypted snapshots
+and cannot read your courses or review history. In the Electron build, an MCP client can access only
+the data you authorise for that local process; write and destructive access require explicit
 permission. Use **Settings → Full backup & recovery** to back up or move your data as a single
 JSON file.
 

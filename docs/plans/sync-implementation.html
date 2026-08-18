@@ -109,7 +109,7 @@
   This document rebases that plan onto the current codebase and sequences the work
   so the next implementation slice can be approved before anyone writes code.</p>
   <div class="meta">
-    <span class="tag b">Status: P1–P5 shipped; P6 is next — 18 August 2026</span>
+    <span class="tag b">Status: P1–P6 shipped; P7 is next — 18 August 2026</span>
     <span class="tag">Schema v22 &rarr; v23</span>
     <span class="tag">Backup 9 &rarr; 10</span>
     <span class="tag b">Relay gate answered yes — 14 August 2026</span>
@@ -138,8 +138,9 @@
   <code>src/sync/crypto.ts</code> through the transport and cycle seam, with
   one stale-generation retry, backup-before-apply and durable size/error status.
   Further changes to nonce, AAD, KDF or keybag layout still need the same review
-  before they reach a real channel. P6 and P7 are not started, and P7 may still
-  slip past September if the manual Combine keeps doing the job.</p>
+  before they reach a real channel. P6 has shipped its Settings pairing/status
+  surface; P7 is not started and may still slip past September if deliberate
+  Sync now keeps doing the job.</p>
   <p><strong>Deployment is Tom's.</strong> Agents write <code>relay/</code>; they
   have no Vercel credentials and must not attempt to authenticate or deploy.</p>
   <p><strong>The 4.5 MB transport ceiling is accepted, 14 August 2026.</strong>
@@ -355,10 +356,11 @@
   </div></div>
 
   <div class="phase"><div class="id">P6</div><div>
-    <h4>Pairing UI — next</h4>
-    <p>Settings section, QR and passphrase, unpair, delete channel, last-sync
-    status. Uses the QR libraries already in the tree.</p>
-    <p class="files">src/pages/settings/*</p>
+    <h4>Pairing UI — shipped 18 August 2026</h4>
+    <p>Settings section, first-device minting, explicit QR display and camera
+    scan, passphrase join, local unpair, destructive channel delete, and
+    last-sync/error/size status. Uses the QR libraries already in the tree.</p>
+    <p class="files">src/sync/pairing.ts · src/pages/settings/SyncSection.tsx · src/pages/settings/SyncPairingFlow.tsx</p>
   </div></div>
 
   <div class="phase"><div class="id">P7</div><div>
@@ -751,8 +753,8 @@
   <h2><span class="n">09</span>Later phases</h2>
   <p>Each still lives in Arc 8. <strong>The hosting and maintenance-cost gate
   that sat in front of the relay was answered yes on 14 August 2026</strong>.
-  P1, P2 and P5 have since shipped; Tom closed the P2 review gate on 18 August
-  2026 (PR #86). P6 is next, then P7. The paragraph that stood here previously
+  P1, P2, P5 and P6 have since shipped; Tom closed the P2 review gate on 18 August
+  2026 (PR #86). P7 is next. The paragraph that stood here previously
   said none of these were authorised; that is no longer true and is kept only so
   the change is legible.</p>
   <ul>
@@ -765,8 +767,9 @@
       + http. Always pull-merge-push, with one 412 retry, single-flight,
       backup-before-apply via <code>takeAutoBackup(force)</code>, and snapshot
       size diagnostics. Shipped 18 August 2026. Arc 8 §9–10.</li>
-    <li><strong>P6 pairing UI.</strong> Settings section, QR on explicit
-      tap, passphrase as the recovery route. Arc 8 §11.</li>
+    <li><strong>P6 pairing UI.</strong> Settings section, first-device mint,
+      QR display/scan on explicit action, passphrase recovery route, visible
+      status, local unpair and channel purge. Shipped 18 August 2026. Arc 8 §11.</li>
     <li><strong>P7 automatic triggers.</strong> Focus pull, session-end
       push, debounce, single-flight. Can slip. Arc 8 §10.</li>
     <li><strong>P8 docs, P9 three-device pass.</strong> Arc 8 §12 / §14.

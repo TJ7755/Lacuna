@@ -17,6 +17,10 @@ The v1 crypto boundary accepts only 32 lowercase-hex channel IDs and 64 lowercas
 
 The relay's ETag is an opaque compare-and-swap generation. `src/sync/cycle.ts` retries one stale generation but deliberately does not treat it as an authenticated monotonic clock, so P5 provides no rollback protection against replay of an older valid ciphertext. Do not present the relay as a freshness authority until a high-water-mark design is explicitly approved.
 
+## P6 pairing QR is a short-lived display of bearer capability
+
+`src/sync/pairing.ts` encodes the relay URL, channel id, write token and channel key in the QR; the relay mint secret is intentionally absent and is never persisted by the app. Settings reveals the QR only after an explicit action and hides it on blur or visibility loss. Do not turn the QR into a background-rendered status decoration or add the mint secret to its payload.
+
 This file is not a changelog. `docs/CHANGES.md` records **what changed and why**, in chronological order, and grows forever. This file records **what is true now**, and is edited in place: when a fact stops being true, correct or delete the entry rather than appending a newer one below it. If something belongs in both, it goes in `docs/CHANGES.md` and is summarised here only if a future agent would get it wrong without being told.
 
 Do not record what the codebase already states. Architecture, file layout, past fixes and commit history are discoverable by reading; the rules in `AGENTS.md` and `CLAUDE.md` are already injected. What belongs here is the non-obvious: things that have caught agents out before, constraints not visible from the code, and decisions whose reasoning would otherwise be lost.
