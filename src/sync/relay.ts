@@ -193,11 +193,26 @@ function normaliseRelayUrl(value: string): string {
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new RelayConfigurationError('The relay URL must use HTTP or HTTPS.');
   }
+  // The write token rides in the Authorization header on push and purge, so
+  // plaintext HTTP is only acceptable when the relay is this device itself.
+  if (url.protocol === 'http:' && !isLoopbackHost(url.hostname)) {
+    throw new RelayConfigurationError(
+      'The relay URL must use HTTPS unless it points at this device.',
+    );
+  }
   if (url.search || url.hash) {
     throw new RelayConfigurationError('The relay URL must not contain a query or fragment.');
   }
   const path = url.pathname.replace(/\/+$/, '');
   return `${url.origin}${path}`;
+}
+
+/** Loopback only: localhost, the 127.0.0.0/8 family and IPv6 ::1. */
+function isLoopbackHost(hostname: string): boolean {
+  const lower = hostname.toLowerCase();
+  if (lower === 'localhost' || lower === '[::1]') return true;
+  const octets = lower.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  return octets !== null && octets[1] === '127';
 }
 
 function requireChannelId(value: string): string {

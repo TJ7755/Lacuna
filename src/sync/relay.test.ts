@@ -170,9 +170,27 @@ describe('HttpRelayProvider', () => {
     expect(
       () =>
         new HttpRelayProvider({
+          relayUrl: 'http://relay.example',
+          channelId: CHANNEL_ID,
+          writeToken: WRITE_TOKEN,
+          fetchImpl,
+        }),
+    ).toThrow(RelayConfigurationError);
+    expect(
+      () =>
+        new HttpRelayProvider({
           relayUrl: 'https://relay.example',
           channelId: 'not-a-channel',
           writeToken: WRITE_TOKEN,
+          fetchImpl,
+        }),
+    ).toThrow(RelayConfigurationError);
+    expect(
+      () =>
+        new HttpRelayProvider({
+          relayUrl: 'https://relay.example',
+          channelId: CHANNEL_ID,
+          writeToken: 'zz',
           fetchImpl,
         }),
     ).toThrow(RelayConfigurationError);
@@ -186,5 +204,26 @@ describe('HttpRelayProvider', () => {
         }),
     ).toThrow(RelayConfigurationError);
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('accepts plain HTTP only for loopback relay hosts', async () => {
+    for (const relayUrl of ['http://localhost:8787', 'http://127.0.0.1:8787', 'http://[::1]:8787']) {
+      const fetchImpl = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(new Response(null, { status: 404 }));
+      const relay = new HttpRelayProvider({
+        relayUrl,
+        channelId: CHANNEL_ID,
+        writeToken: WRITE_TOKEN,
+        fetchImpl,
+      });
+
+      await relay.pull('state');
+
+      expect(fetchImpl).toHaveBeenCalledWith(`${relayUrl}/c/${CHANNEL_ID}/state`, {
+        method: 'GET',
+        cache: 'no-store',
+      });
+    }
   });
 });
