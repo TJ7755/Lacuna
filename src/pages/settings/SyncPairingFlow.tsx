@@ -95,8 +95,12 @@ export function SyncPairingFlow({
           },
         );
       } catch (error) {
-        if (cancelled) return;
+        if (scanner) {
+          await stop(scanner);
+          scanner = null;
+        }
         scannerRef.current = null;
+        if (cancelled) return;
         setScanning(false);
         setScanError(
           error instanceof Error ? error.message : 'Could not start the camera scanner.',
