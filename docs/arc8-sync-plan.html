@@ -510,7 +510,8 @@ keybag blob = AES-GCM(KEK, nonce, { CK, writeToken })</code></pre>
   <div class="phase"><div class="id">P2</div><div>
     <h4>Crypto module, then security review</h4>
     <p>CK generation, AES-GCM seal and open, PBKDF2 wrap and unwrap, keybag encode. Pure, tested
-    against known vectors. Gate: <code>/security-review</code> plus a human read before P5.</p>
+    against known vectors. Gate: <code>/security-review</code> plus a human read before P5.
+    Closed 18 August 2026 when Tom reviewed and merged PR #86.</p>
     <p class="files">src/sync/crypto.ts</p>
   </div></div>
 

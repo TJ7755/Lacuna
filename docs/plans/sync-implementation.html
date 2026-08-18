@@ -109,10 +109,11 @@
   This document rebases that plan onto the current codebase and sequences the work
   so the next implementation slice can be approved before anyone writes code.</p>
   <div class="meta">
-    <span class="tag b">Status: P3 and P4 shipped — 13 August 2026</span>
+    <span class="tag b">Status: P1–P4 shipped; P5 is next — 18 August 2026</span>
     <span class="tag">Schema v22 &rarr; v23</span>
     <span class="tag">Backup 9 &rarr; 10</span>
     <span class="tag b">Relay gate answered yes — 14 August 2026</span>
+    <span class="tag b">P2 review gate closed — 18 August 2026</span>
   </div>
   <p style="margin-top:1rem"><strong>Read this before working from the phase map below.</strong>
   P3 (schema v23, timestamps, tombstones, backup version 10) and P4 (the pure
@@ -132,12 +133,12 @@
   (crypto) are therefore authorised, and P5, P6 and P7 follow them in order.
   Everywhere below that describes the relay as gated is the plan as drafted on
   13 August; this paragraph is current state and wins.</p>
-  <p><strong>What that does not authorise.</strong> P1 is being built first and
-  alone. P2 carries its own review gate from Arc 8 &sect;7 &mdash; incorrect nonce
-  or KDF handling produces code that passes every test and is broken &mdash; so it
-  needs <code>/security-review</code> and a human read of the diff before anything
-  reaches a real channel. That gate is unaffected by this decision. P5, P6 and P7
-  are not started, and P7 may still slip past September if the manual Combine
+  <p><strong>P1 and P2 have shipped.</strong> The relay is live at
+  <code>lacuna-relay.vercel.app</code>. P2 merged as PR #86; Tom reviewed it and
+  closed the Arc 8 &sect;7 gate on 18 August 2026. P5 may now consume
+  <code>src/sync/crypto.ts</code>. Further changes to nonce, AAD, KDF or keybag
+  layout still need the same review before they reach a real channel. P5, P6 and
+  P7 are not started, and P7 may still slip past September if the manual Combine
   keeps doing the job.</p>
   <p><strong>Deployment is Tom's.</strong> Agents write <code>relay/</code>; they
   have no Vercel credentials and must not attempt to authenticate or deploy.</p>
@@ -748,16 +749,17 @@
 <section id="s9">
   <h2><span class="n">09</span>Later phases</h2>
   <p>Each still lives in Arc 8. <strong>The hosting and maintenance-cost gate
-  that sat in front of the relay was answered yes on 14 August 2026</strong>, so
-  P1 is authorised and under way, and P2/P5/P6/P7 follow it in order. The
-  paragraph that stood here previously said none of these were authorised; that
-  is no longer true and is kept only so the change is legible.</p>
+  that sat in front of the relay was answered yes on 14 August 2026</strong>.
+  P1 and P2 have since shipped; Tom closed the P2 review gate on 18 August 2026
+  (PR #86). P5 is next, then P6 and P7. The paragraph that stood here previously
+  said none of these were authorised; that is no longer true and is kept only so
+  the change is legible.</p>
   <ul>
     <li><strong>P1 relay.</strong> Own Vercel project, Blob storage, four
-      endpoints, ETag / If-Match, CORS because of COEP. Arc 8 §6.</li>
+      endpoints, ETag / If-Match, CORS because of COEP. Shipped. Arc 8 §6.</li>
     <li><strong>P2 crypto.</strong> One channel key, AES-GCM, PBKDF2
-      keybag, QR and passphrase yielding the same key. Human read plus
-      security review. Arc 8 §7.</li>
+      keybag, QR and passphrase yielding the same key. Shipped; review gate
+      closed 18 August 2026. Arc 8 §7.</li>
     <li><strong>P5 transport.</strong> <code>RelayProvider</code> manual
       + http. Always pull-merge-push. Backup-before-apply via
       <code>takeAutoBackup(force)</code>. Arc 8 §9–10.</li>

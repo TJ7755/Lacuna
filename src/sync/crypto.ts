@@ -2,9 +2,9 @@
 // snapshots, the relay, or Dexie. One 256-bit channel key encrypts `state`.
 // The passphrase path wraps that same key (and the write token) into `keybag`.
 //
-// Gated by Arc 8 §7: this file needs /security-review and a human read of the
-// diff before it touches a real channel. Incorrect nonce or KDF handling
-// produces code that passes every test and is broken.
+// Arc 8 §7 gate closed 18 August 2026: Tom reviewed and merged PR #86.
+// Further changes to nonce, AAD, KDF or keybag layout need the same
+// /security-review plus a human read before they reach a real channel.
 
 export const CHANNEL_KEY_BYTES = 32;
 export const NONCE_BYTES = 12;

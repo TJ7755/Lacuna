@@ -155,7 +155,7 @@ What makes a review brief work, learned from the PR #69 review that found the re
 - **Say plainly not to manufacture findings.** A reviewer with nothing to report should say so.
 - **Give it its own git worktree** if another worker holds the main tree, and tell it not to switch branches. Symlink `node_modules` in so it can run the checks.
 
-Batch reviews to the end of a group of related tasks rather than one per commit, except where a single change is risky enough to warrant its own pass. Crypto is the standing example: Arc 8 §7 requires `/security-review` and a human read, because incorrect nonce or KDF handling produces code that passes every test and is broken.
+Batch reviews to the end of a group of related tasks rather than one per commit, except where a single change is risky enough to warrant its own pass. Crypto is the standing example: P2's Arc 8 §7 gate closed when Tom reviewed and merged PR #86 (18 August 2026). Further changes to nonce, AAD, KDF or keybag layout still need `/security-review` and a human read, because incorrect handling produces code that passes every test and is broken.
 
 **Briefs are not infallible, and workers who ignore them are sometimes right.** The PR #69 brief asked for three private helpers to be re-exported; doing so would have expanded the public API and broken the very claim the task was making. The implementer left them alone and the reviewer explained why. When a worker deviates and gives a reason, weigh the reason.
 

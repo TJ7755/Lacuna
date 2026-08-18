@@ -1,5 +1,12 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P2 review gate closed
+
+- Tom reviewed and merged PR #86 on 18 August 2026. The Arc 8 §7 gate on
+  `src/sync/crypto.ts` is closed. P5 may consume the module. Further changes
+  to nonce, AAD, KDF or keybag layout still need the same review before they
+  reach a real channel.
+
 ## Unreleased — Sync P2 crypto review hardening
 
 - Keybag parsing now enforces the relay's canonical 32-byte bearer token
