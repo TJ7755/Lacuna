@@ -125,7 +125,7 @@ export async function setupFirstDevice(
   const provider = createProvider(credentials, options.fetchImpl);
   await provider.push('keybag', keybag, EMPTY_GENERATION);
   await persistPairing(credentials, keybag);
-  const result = await runWithCredentials(credentials, options.now);
+  const result = await runWithCredentials(credentials, options.now, options.fetchImpl);
   return session(credentials, result);
 }
 

@@ -11,6 +11,7 @@ import {
   type SyncCredentials,
 } from './pairing';
 import type { SyncResult } from './cycle';
+import type { RelayProvider } from './relay';
 
 const { readSyncStateMock, writeSyncStateMock, syncCycleMock } = vi.hoisted(() => ({
   readSyncStateMock: vi.fn(),
@@ -114,19 +115,28 @@ describe('setupFirstDevice', () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(response(201, { channelId: CHANNEL_ID, writeToken: WRITE_TOKEN }))
-      .mockResolvedValueOnce(response(204, undefined, { ETag: '"keybag-1"' }));
+      .mockResolvedValueOnce(response(204, undefined, { ETag: '"keybag-1"' }))
+      .mockResolvedValueOnce(response(404));
+    syncCycleMock.mockImplementationOnce(async ({ provider }: { provider: RelayProvider }) => {
+      await provider.pull('state');
+      return syncResult;
+    });
 
     const session = await setupFirstDevice(DEFAULT_RELAY_URL, 'mint-secret-for-tests', PASSPHRASE, {
       fetchImpl,
       now: () => 1_700_000_000_000,
     });
 
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
     expect(fetchImpl.mock.calls[0]).toEqual([
       `${DEFAULT_RELAY_URL}/channel`,
       { method: 'POST', headers: { Authorization: 'Bearer mint-secret-for-tests' } },
     ]);
     expect(fetchImpl.mock.calls[1]?.[0]).toBe(`${DEFAULT_RELAY_URL}/c/${CHANNEL_ID}/keybag`);
+    expect(fetchImpl.mock.calls[2]).toEqual([
+      `${DEFAULT_RELAY_URL}/c/${CHANNEL_ID}/state`,
+      { method: 'GET', cache: 'no-store' },
+    ]);
     expect(fetchImpl.mock.calls[1]?.[1]).toMatchObject({
       method: 'PUT',
       headers: expect.objectContaining({
