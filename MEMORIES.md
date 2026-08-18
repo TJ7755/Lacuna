@@ -2,9 +2,24 @@
 
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
+## Relay URLs must be HTTPS outside loopback
+
+`normaliseRelayUrl` in `src/sync/relay.ts` rejects plain HTTP for any host that is not a loopback
+address (localhost, 127.0.0.0/8, ::1) because the write token travels in the Authorization header.
+P6's relay-URL entry UI must explain this rule to the user rather than echoing a generic URL
+error, and any fixture pointing at `http://...` for a remote relay is wrong by construction.
+
 ## Sync P2 keybags follow the relay's canonical bearer formats
 
 The v1 crypto boundary accepts only 32 lowercase-hex channel IDs and 64 lowercase-hex characters for the relay's 32-byte write token, matching `relay/src/relay.ts`. Keybags are therefore fixed at 162 bytes, and malformed lengths must be rejected before PBKDF2; loosening either format requires an explicit wire-format decision.
+
+## P5 relay generations are CAS, not freshness
+
+The relay's ETag is an opaque compare-and-swap generation. `src/sync/cycle.ts` retries one stale generation but deliberately does not treat it as an authenticated monotonic clock, so P5 provides no rollback protection against replay of an older valid ciphertext. Do not present the relay as a freshness authority until a high-water-mark design is explicitly approved.
+
+## P6 pairing QR is a short-lived display of bearer capability
+
+`src/sync/pairing.ts` encodes the relay URL, channel id, write token and channel key in the QR; the relay mint secret is intentionally absent and is never persisted by the app. Settings reveals the QR only after an explicit action and hides it on blur or visibility loss. Do not turn the QR into a background-rendered status decoration or add the mint secret to its payload.
 
 This file is not a changelog. `docs/CHANGES.md` records **what changed and why**, in chronological order, and grows forever. This file records **what is true now**, and is edited in place: when a fact stops being true, correct or delete the entry rather than appending a newer one below it. If something belongs in both, it goes in `docs/CHANGES.md` and is summarised here only if a future agent would get it wrong without being told.
 

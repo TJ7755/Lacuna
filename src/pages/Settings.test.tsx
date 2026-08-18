@@ -30,6 +30,7 @@ vi.mock('../state/FontScaleContext', () => ({
 }));
 
 vi.mock('../state/useData', () => ({ useBackups: () => [] }));
+vi.mock('../db/mutationStamp', () => ({ readSyncState: () => new Promise(() => {}) }));
 vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: vi.fn() }) }));
 vi.mock('../components/import/UnifiedExportPanel', () => ({ UnifiedExportPanel: () => null }));
 vi.mock('../state/gradingMode', () => ({ useGradingMode: () => ['silent', vi.fn()] }));

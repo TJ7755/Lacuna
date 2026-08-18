@@ -1073,14 +1073,21 @@ export interface Tombstone {
 
 /**
  * Local sync-channel bookkeeping. Stored under `appState` key `syncState`.
- * Absent until a device is paired. P3 only introduces the slot; nothing writes
- * a live channel until the relay work is authorised.
+ * Absent until a device is paired; the P6 Settings flow owns pairing and
+ * stores only the local recovery copy and relay origin here.
  */
 export interface SyncState {
+  /** Relay origin used by this device to reach the channel. */
+  relayUrl?: string;
   channelId?: string;
+  /** Hex-encoded passphrase-wrapped channel key and write token. */
   wrappedKeyMaterial?: string;
   lastPushedGeneration?: string;
   lastSuccessfulSyncAt?: number;
+  /** Last encrypted snapshot size, retained for the Settings sync status panel. */
+  lastSnapshotBytes?: number;
+  /** Last JSON snapshot size before encryption. */
+  lastSnapshotPlaintextBytes?: number;
   lastError?: string | null;
 }
 

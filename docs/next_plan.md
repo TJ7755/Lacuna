@@ -1,6 +1,6 @@
 # Lacuna roadmap
 
-Reviewed 11 August 2026.
+Reviewed 18 August 2026.
 
 This file is the current decision surface: what is active, what follows it, and what is
 deliberately parked. Detailed specifications, implementation diaries and completed arcs do
@@ -65,21 +65,27 @@ corpus as a problem to be engineered around.
 
 ## Next
 
-### Multi-device sync — P3 and P4 delivered; the rest is gated
+### Multi-device sync — P1–P6 delivered; P7 is next
 
-**Status:** at its decision gate.
+**Status:** in progress.
 
-Approved and implemented on 13 August 2026. The execution plan is
-[sync-implementation.html](plans/sync-implementation.html). Delivered: P3 (schema v23, timestamps,
-tombstones, backup version 10), P4 (`src/sync/mergeSnapshots.ts`, the pure peer merge), and a manual
-two-device combine in Settings that takes a restore point, merges, and replace-imports. That last
-piece is the manual half of P5, built deliberately so P4 is usable with no hosting commitment.
+The execution plan is [sync-implementation.html](plans/sync-implementation.html). Delivered: P3
+(schema v23, timestamps, tombstones, backup version 10), P4 (`mergeSnapshots`), the manual Combine
+in Settings, P1 (live relay at `lacuna-relay.vercel.app`), P2 (`src/sync/crypto.ts`, PR #86), and
+P5 (`src/sync/relay.ts`, `snapshot.ts` and `cycle.ts`) and P6 (`src/sync/pairing.ts` and the
+Settings Device sync section). Tom reviewed and merged #86 on 18 August 2026; the Arc 8 §7 gate
+is closed.
 
-What remains — relay (P1), crypto (P2), HTTP transport and sync cycle (P5), pairing UI (P6),
-automatic triggers (P7) — is **entirely blocked on the hosting decision** below. No further sync work
-should start until that is answered.
+P5 provides the manual/HTTP transport seam and pull-merge-push cycle: encrypted snapshots,
+backup-before-apply through the existing `manualMerge` path, one stale-generation retry,
+single-flight protection, durable status and the accepted 4.5 MB platform-ceiling diagnostic. P6
+adds first-device minting, QR or passphrase pairing, a 16-character recovery-passphrase policy,
+explicit QR reveal/scanning, last-sync and size/error status, local unpairing and separate channel
+purging. Relay generations remain compare-and-swap only; neither phase provides rollback protection.
 
-Never done: a real two-device merge against two installations (P9). Not automatable.
+**Next is P7** — automatic focus/session-end triggers (which may slip past September), followed by
+P8 docs close-out and P9 a real two- then three-device pass. P9 has never been done and is not
+automatable.
 
 The paused Course/Deck boundary maintenance pass is documented in
 [course-domain-boundary-follow-ups.md](course-domain-boundary-follow-ups.md). Schema v22 has
@@ -87,13 +93,8 @@ removed the hidden Deck and Folder stores; that pass is not an active product ar
 
 ### No other arc is in flight
 
-Arc 14, the learn screen redesign and Arc 11 are all delivered with no verification debt. With sync
-at its gate, there is no queued product work. Everything under *Later candidates* needs a fresh
-product decision before it becomes an arc.
-
-The paused Course/Deck boundary maintenance pass is documented in
-[course-domain-boundary-follow-ups.md](course-domain-boundary-follow-ups.md). Schema v22 has
-removed the hidden Deck and Folder stores; that pass is not an active product arc.
+Arc 14, the learn screen redesign and Arc 11 are all delivered with no verification debt.
+Everything under *Later candidates* still needs a fresh product decision before it becomes an arc.
 
 ## Later candidates
 
@@ -101,7 +102,6 @@ These require a fresh product decision after the current sync increment:
 
 | Candidate                               | Current position                                      | Decision gate                                                                                       |
 | --------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Encrypted relay (sync P1/P2/P5–P7)      | Designed; not authorised                              | Confirm operation and maintenance cost; you host one Vercel Blob instance for yourself              |
 | Mobile reminders and PWA installation   | Scoped only                                           | Verify platform behaviour; return rate is not measurable before September 2026                      |
 | Progress receipts and encrypted relay   | Detailed outline only                                 | Identify a real tutor/parent reporting workflow before infrastructure work                          |
 | Expanded MCP product surface            | Foundation delivered; broad action inventory proposed | Prioritise concrete agent workflows instead of exposing every repository method                     |
@@ -120,9 +120,9 @@ and is included in full backups, so reviews recorded today remain fully analysab
 a real corpus — roughly a thousand reviews, enough to populate short-interval horizon bins — not any
 engineering prerequisite.
 
-Two findings worth carrying forward are recorded in `MEMORIES.md`: the missing FSRS weight-set
-provenance on review logs, and the fact that `tooling/short-term-memory/` is not a precedent for
-this work. Two methodological questions remain unanswered and should be settled before building
+Two findings worth carrying forward are recorded in `MEMORIES.md`: review logs now carry a short
+fingerprint of the FSRS `w` array that produced the prediction, and `tooling/short-term-memory/`
+is not a precedent for a Lacuna-data harness. Two methodological questions remain unanswered and should be settled before building
 anything: whether a scheduler can be validly evaluated on review data whose timing it chose, and
 whether long-horizon exam-day projection is measurable at all from observed intervals.
 

@@ -500,7 +500,7 @@ keybag blob = AES-GCM(KEK, nonce, { CK, writeToken })</code></pre>
   </div></div>
 
   <div class="phase"><div class="id">P1</div><div>
-    <h4>Relay service</h4>
+    <h4>Relay service — shipped (PR #84)</h4>
     <p>Four endpoints, Vercel Blob, ETag generation guard, size cap, TTL, CORS. Its own Vercel
     project and its own README covering self-hosting. Deployed and reachable before any app code
     depends on it.</p>
@@ -508,14 +508,15 @@ keybag blob = AES-GCM(KEK, nonce, { CK, writeToken })</code></pre>
   </div></div>
 
   <div class="phase"><div class="id">P2</div><div>
-    <h4>Crypto module, then security review</h4>
+    <h4>Crypto module, then security review — shipped</h4>
     <p>CK generation, AES-GCM seal and open, PBKDF2 wrap and unwrap, keybag encode. Pure, tested
-    against known vectors. Gate: <code>/security-review</code> plus a human read before P5.</p>
+    against known vectors. Gate: <code>/security-review</code> plus a human read before P5.
+    Closed 18 August 2026 when Tom reviewed and merged PR #86.</p>
     <p class="files">src/sync/crypto.ts</p>
   </div></div>
 
   <div class="phase"><div class="id">P3</div><div>
-    <h4>Schema v20</h4>
+    <h4>Schema v20 — shipped as v23</h4>
     <p><code>updatedAt</code> across content tables with a single write helper, the
     <code>tombstones</code> table wired into every delete path, <code>syncState</code>,
     <code>BACKUP_VERSION</code> 10. Pre-migration snapshot per existing convention. Largest and
@@ -524,7 +525,7 @@ keybag blob = AES-GCM(KEK, nonce, { CK, writeToken })</code></pre>
   </div></div>
 
   <div class="phase"><div class="id">P4</div><div>
-    <h4>Merge module</h4>
+    <h4>Merge module — shipped</h4>
     <p>Pure <code>mergeSnapshots()</code> with the full §8.2 test matrix, including the
     commutativity and idempotence properties. No UI, no transport, no Dexie. This is the phase
     worth over-testing; everything else is replaceable and this is not.</p>
@@ -532,14 +533,14 @@ keybag blob = AES-GCM(KEK, nonce, { CK, writeToken })</code></pre>
   </div></div>
 
   <div class="phase"><div class="id">P5</div><div>
-    <h4>Transport seam and sync cycle</h4>
+    <h4>Transport seam and sync cycle — shipped (PR #87)</h4>
     <p><code>RelayProvider</code> with manual and http implementations, the pull-merge-push cycle,
-    backup-before-apply, 412 retry, single-flight guard.</p>
+    backup-before-apply, 412 retry, single-flight guard. Plain HTTP is refused outside loopback.</p>
     <p class="files">src/sync/relay.ts · src/sync/cycle.ts</p>
   </div></div>
 
   <div class="phase"><div class="id">P6</div><div>
-    <h4>Pairing UI and status panel</h4>
+    <h4>Pairing UI and status panel — next</h4>
     <p>Settings section, QR display and scan, passphrase entry, unpair, delete channel, last-sync
     and error surface.</p>
     <p class="files">src/pages/settings/*</p>

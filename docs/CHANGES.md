@@ -1,5 +1,42 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P5 review hardening
+
+- The HTTP relay adapter now refuses plaintext URLs unless the host is
+  loopback (localhost, 127.0.0.0/8 or ::1). The write token rides in the
+  Authorization header on push and purge, so non-loopback HTTP would send
+  it in the clear. HTTPS remains the only accepted transport for a real
+  relay.
+- The sync cycle now seals the snapshot it actually pushes after the merge
+  has applied, rather than reusing bytes measured before replace-import
+  normalised the merged object. The size gate still runs before the
+  database is touched. Snapshot size accounting takes the already-encoded
+  plaintext length instead of re-encoding, and canonical snapshot
+  comparison serialises each array element once with a locale-stable
+  code-unit sort.
+- Single-flight sync now rejects an overlapping caller that asks for a
+  different channel or key instead of returning the first caller's result.
+
+## Unreleased — Sync P6 pairing and status
+
+- Added a Device sync section in Settings for first-device channel setup, QR or passphrase pairing, deliberate Sync now, last-sync and snapshot-size status, local unpairing and separately confirmed shared-channel deletion.
+- Enforced a real recovery-passphrase policy of at least 16 characters. The relay mint secret is entered only while creating a channel; it is not persisted or placed in the pairing QR.
+- Reused the existing QR display and camera-scanner packages. Pairing QR capabilities are shown only after an explicit action and are dismissed on window blur or visibility change. P7 automatic triggers and real multi-device verification remain outstanding.
+
+## Unreleased — Sync P5 transport and cycle
+
+- Added the transport-only `RelayProvider` seam with callback-based manual handoff and an HTTP relay adapter. HTTP writes use the relay's opaque `ETag` compare-and-swap generation; a stale generation is pulled and retried once rather than overwritten.
+- Added the encrypted pull-merge-push cycle. It validates and decrypts the remote snapshot, reuses `manualMerge` for the single replace-import path, takes a forced restore point before applying, avoids writes when merged state is unchanged, and shares overlapping calls through a single-flight guard.
+- Persisted last successful generation, timestamp, error and encrypted/plaintext snapshot sizes under `syncState`. Oversized outgoing snapshots fail before apply with the contributing course names; the accepted Vercel Functions ceiling is 4.5 MB.
+- P5 deliberately does not claim relay rollback protection: generations are opaque compare-and-swap values, not an authenticated monotonic clock. P6 pairing does not change that boundary; automatic focus/session triggers remain P7 work.
+
+## Unreleased — Sync P2 review gate closed
+
+- Tom reviewed and merged PR #86 on 18 August 2026. The Arc 8 §7 gate on
+  `src/sync/crypto.ts` is closed. P5 may consume the module. Further changes
+  to nonce, AAD, KDF or keybag layout still need the same review before they
+  reach a real channel.
+
 ## Unreleased — Sync P2 crypto review hardening
 
 - Keybag parsing now enforces the relay's canonical 32-byte bearer token
