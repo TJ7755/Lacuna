@@ -22,6 +22,7 @@ import {
   type PairingSession,
   type SyncCredentials,
 } from '../../sync/pairing';
+import { allowRelayConnect } from '../../sync/csp';
 import { SyncField } from './SyncField';
 import { SyncPairingFlow, type SyncPairingBusy, type SyncPairingMode } from './SyncPairingFlow';
 
@@ -161,6 +162,7 @@ export function SyncSection() {
   async function handleSetup(relayUrl: string, mintSecret: string, passphrase: string) {
     setBusy('setup');
     try {
+      allowRelayConnect(relayUrl);
       const session = await setupFirstDevice(relayUrl, mintSecret, passphrase);
       applySession(session);
       notify('Sync is ready. Pair another device with the QR code.', 'positive');
@@ -175,6 +177,7 @@ export function SyncSection() {
   async function handleManualJoin(relayUrl: string, channelId: string, passphrase: string) {
     setBusy('join');
     try {
+      allowRelayConnect(relayUrl);
       const session = await joinWithPassphrase(relayUrl, channelId, passphrase);
       applySession(session);
       notify('This device is now paired.', 'positive');
@@ -189,6 +192,7 @@ export function SyncSection() {
   async function handleQrJoin(payload: PairingPayload, passphrase: string) {
     setBusy('join');
     try {
+      allowRelayConnect(payload.relayUrl);
       const session = await joinFromPairingCode(payload, passphrase);
       applySession(session);
       notify('This device is now paired.', 'positive');
@@ -209,6 +213,7 @@ export function SyncSection() {
     }
     setBusy('sync');
     try {
+      if (syncState.relayUrl) allowRelayConnect(syncState.relayUrl);
       const session = await syncWithPassphrase(syncState, actionPassphrase);
       applySession(session);
       notify(session.result.pushed ? 'Sync complete.' : 'Already up to date.', 'positive');
@@ -265,6 +270,7 @@ export function SyncSection() {
     }
     setBusy('delete');
     try {
+      if (syncState.relayUrl) allowRelayConnect(syncState.relayUrl);
       await deleteChannel(syncState, actionPassphrase);
       setSyncState(null);
       setUnlocked(null);

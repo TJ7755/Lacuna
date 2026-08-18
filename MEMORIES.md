@@ -21,6 +21,15 @@ The relay's ETag is an opaque compare-and-swap generation. `src/sync/cycle.ts` r
 
 `src/sync/pairing.ts` encodes the relay URL, channel id, write token and channel key in the QR; the relay mint secret is intentionally absent and is never persisted by the app. Settings reveals the QR only after an explicit action and hides it on blur or visibility loss. Do not turn the QR into a background-rendered status decoration or add the mint secret to its payload.
 
+## Sync relay origins must be listed in the renderer CSP
+
+Both `index.html` (web) and the `electron/main.ts` production header ship `connect-src 'self'`,
+and the relay is a separate origin, so every relay fetch is refused until its origin is allowed.
+The web meta policy is extended at runtime by `allowRelayConnect` (`src/sync/csp.ts`) from the
+Settings sync flow; Electron's injected header is static and lists only the default relay. Do not
+tighten `connect-src` back to `'self'` without restoring these origins, and keep the two static
+policies in step with `DEFAULT_RELAY_URL` in `src/sync/pairing.ts`.
+
 This file is not a changelog. `docs/CHANGES.md` records **what changed and why**, in chronological order, and grows forever. This file records **what is true now**, and is edited in place: when a fact stops being true, correct or delete the entry rather than appending a newer one below it. If something belongs in both, it goes in `docs/CHANGES.md` and is summarised here only if a future agent would get it wrong without being told.
 
 Do not record what the codebase already states. Architecture, file layout, past fixes and commit history are discoverable by reading; the rules in `AGENTS.md` and `CLAUDE.md` are already injected. What belongs here is the non-obvious: things that have caught agents out before, constraints not visible from the code, and decisions whose reasoning would otherwise be lost.

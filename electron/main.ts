@@ -107,8 +107,12 @@ function installSecurityHeaders(): void {
       headers['Access-Control-Allow-Origin'] = ['*'];
     }
     if (!isDev) {
+      // The sync relay is a separate origin; connect-src must list it. Keep this in step with
+      // src/sync/pairing.ts DEFAULT_RELAY_URL and the index.html meta policy. This header is
+      // static, so custom relays entered in Settings are web-only; the web meta policy is
+      // extended at runtime by src/sync/csp.ts.
       headers['Content-Security-Policy'] = [
-        "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; connect-src 'self';",
+        "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; connect-src 'self' https://lacuna-relay.vercel.app;",
       ];
     }
     callback({ responseHeaders: headers });

@@ -1,5 +1,16 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync relay CSP
+
+- The web and packaged-app CSPs now allow connections to the default relay
+  (`https://lacuna-relay.vercel.app`). Previously `connect-src 'self'` made the
+  browser refuse every relay fetch, so pairing and sync failed before any
+  request left the page.
+- The web meta policy is extended at runtime to any relay URL entered in the
+  Settings pairing flow, so a custom relay origin works in the web app as well.
+  The Electron production header stays static and covers the default relay
+  only.
+
 ## Unreleased — Sync P5 review hardening
 
 - The HTTP relay adapter now refuses plaintext URLs unless the host is
