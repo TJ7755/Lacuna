@@ -1,5 +1,22 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync P5 review hardening
+
+- The HTTP relay adapter now refuses plaintext URLs unless the host is
+  loopback (localhost, 127.0.0.0/8 or ::1). The write token rides in the
+  Authorization header on push and purge, so non-loopback HTTP would send
+  it in the clear. HTTPS remains the only accepted transport for a real
+  relay.
+- The sync cycle now seals the snapshot it actually pushes after the merge
+  has applied, rather than reusing bytes measured before replace-import
+  normalised the merged object. The size gate still runs before the
+  database is touched. Snapshot size accounting takes the already-encoded
+  plaintext length instead of re-encoding, and canonical snapshot
+  comparison serialises each array element once with a locale-stable
+  code-unit sort.
+- Single-flight sync now rejects an overlapping caller that asks for a
+  different channel or key instead of returning the first caller's result.
+
 ## Unreleased — Sync P5 transport and cycle
 
 - Added the transport-only `RelayProvider` seam with callback-based manual handoff and an HTTP relay adapter. HTTP writes use the relay's opaque `ETag` compare-and-swap generation; a stale generation is pulled and retried once rather than overwritten.

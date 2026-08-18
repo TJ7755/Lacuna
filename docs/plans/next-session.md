@@ -1,7 +1,8 @@
 # Next session plan — 18 August 2026
 
 Written after Tom reviewed and merged PR #86. Supersedes the 15 August plan: P1 is live, P2 is
-reviewed, and the Arc 8 §7 gate is closed.
+reviewed, and the Arc 8 §7 gate is closed. PR #87 delivered P5 later the same day, so the next
+session is P6.
 
 Same pattern as the last sessions: Claude reads plans, writes briefs, arbitrates territory and
 merges; Grok workers write every line of code **and every review**. Claude does not review diffs.
@@ -10,17 +11,18 @@ merges; Grok workers write every line of code **and every review**. Claude does 
 
 ## 1. Where things actually stand
 
-**On `master` as of 18 August:**
+**On `master` as of 18 August (after PR #87):**
 
 | | |
 | --- | --- |
 | P3 / P4 | Schema v23, tombstones, `mergeSnapshots`, manual Combine in Settings |
 | P1 | Live relay at `lacuna-relay.vercel.app`; mint secret required (PR #84) |
 | P2 | `src/sync/crypto.ts`, PR #86. Tom reviewed and merged it. Gate closed. |
+| P5 | Relay transport and sync cycle, PR #87. Size-gated, 412 retry, single-flight. |
 | Safe-area | Standalone phone insets (PR #85) |
 
-**Next is P5.** A brief already exists at `.agent-mail/p5-transport-brief.md`. Branch from current
-`master`, not from `feat/sync-crypto`.
+**Next is P6.** Pairing UI on top of the shipped transport. Branch from `master` once PR #87
+merges, not from `feat/sync-p5-transport`.
 
 ### What is verified, and what is merely tested
 
@@ -45,25 +47,23 @@ must not type that secret.
 
 ## 3. The work, in recommended order
 
-### P5 — transport and sync cycle
+### P5 — transport and sync cycle (shipped in PR #87)
 
 `RelayProvider` with `manual` and `http` implementations; pull-merge-push; 412 retry; single-flight;
 backup-before-apply via `takeAutoBackup(force)`. Reuse `manualMerge`; do not write a second apply
 path. Arc 8 §9–10. Files: `src/sync/relay.ts`, `src/sync/cycle.ts`.
 
-Two things it must carry:
-
-- **Surface the snapshot size**, and fail a push with a message naming the offending courses. The
-  4.5 MB platform ceiling is a real user-facing limit.
-- **Snapshot freshness.** P2 does not provide rollback protection. P5 must either add an
-  authenticated high-water mark or make that relay threat-model exclusion explicit.
-
-Channel minting, pairing UI and `visibilitychange` / session-end hooks are not P5.
+Both carry-overs landed: pushes fail with a message naming the offending courses against the
+4.5 MB platform ceiling, and the lack of rollback protection is an explicit relay threat-model
+exclusion. Plain HTTP is refused outside loopback because the write token rides in the
+Authorization header.
 
 ### Then P6, then P7
 
-P6 pairing must enforce a real passphrase policy (P2 accepts any non-empty string, and
-`GET /c/:id/keybag` is unauthenticated) and carry `RELAY_MINT_SECRET` alongside the relay URL.
+P6 pairing is next: Settings section, QR display and scan, passphrase entry, unpair, delete
+channel, last-sync and error surface. It must enforce a real passphrase policy (P2 accepts any
+non-empty string, and `GET /c/:id/keybag` is unauthenticated), carry `RELAY_MINT_SECRET`
+alongside the relay URL, and surface the HTTPS-only relay rule when a URL is typed.
 
 P7 (focus pull, session-end push) may slip past September if Combine keeps doing the job.
 

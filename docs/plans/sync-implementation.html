@@ -116,10 +116,9 @@
     <span class="tag b">P2 review gate closed — 18 August 2026</span>
   </div>
   <p style="margin-top:1rem"><strong>Read this before working from the phase map below.</strong>
-  P3 (schema v23, timestamps, tombstones, backup version 10) and P4 (the pure
-  <code>mergeSnapshots</code> module) are implemented and merged to master. The
-  phase map still describes them as pending; treat it as the original plan of
-  record rather than current state.</p>
+  The phase map records status as of 18 August 2026: P1&ndash;P5 are shipped
+  and P6 is next. Wording inside the cards that still reads as gated is the
+  original plan of record rather than current state.</p>
   <p><strong>One thing shipped ahead of its gate.</strong> A manual two-device
   merge now exists in Settings &mdash; a file picker that takes a forced restore
   point, runs <code>mergeSnapshots</code> against the current database and
@@ -317,7 +316,7 @@
   that cannot express an edit or a delete is wasted infrastructure.</p>
 
   <div class="phase"><div class="id">P3</div><div>
-    <h4>Schema v23, timestamps and tombstones — this approval</h4>
+    <h4>Schema v23, timestamps and tombstones — shipped</h4>
     <p>Additive migration. One write helper. Tombstones on every
     snapshot-carried delete, in the same Dexie transaction. Backup version
     10. Independently useful as the prerequisite for a correct merge, and
@@ -326,36 +325,37 @@
   </div></div>
 
   <div class="phase"><div class="id">P4</div><div>
-    <h4>Merge module — next</h4>
-    <p>Pure <code>mergeSnapshots()</code>. Sketched in §8, not fully sliced.
-    Automatic successor once P3 is green. Still no relay.</p>
+    <h4>Merge module — shipped</h4>
+    <p>Pure <code>mergeSnapshots()</code> with the §8.2 test matrix, delivered
+    with the manual Combine flow in Settings. Still no relay.</p>
     <p class="files">src/sync/mergeSnapshots.ts (+ tests)</p>
   </div></div>
 
   <div class="phase"><div class="id">P1</div><div>
-    <h4>Relay service — gated</h4>
-    <p>Four endpoints, Vercel Blob, ETag generation guard. Blocked on an
-    explicit maintenance-cost decision. Not authorised by this document.</p>
+    <h4>Relay service — shipped</h4>
+    <p>Four endpoints, Vercel Blob, ETag generation guard. Live at
+    <code>lacuna-relay.vercel.app</code> (PR #84).</p>
     <p class="files">relay/</p>
   </div></div>
 
   <div class="phase"><div class="id">P2</div><div>
-    <h4>Crypto module — gated</h4>
-    <p>WebCrypto only. Channel key, AES-GCM, PBKDF2 keybag. Security review
-    before anything is pushed to a real channel.</p>
+    <h4>Crypto module — shipped</h4>
+    <p>WebCrypto only. Channel key, AES-GCM, PBKDF2 keybag. Reviewed and
+    merged in PR #86; review gate closed 18 August 2026.</p>
     <p class="files">src/sync/crypto.ts</p>
   </div></div>
 
   <div class="phase"><div class="id">P5</div><div>
-    <h4>Transport seam and sync cycle — gated</h4>
+    <h4>Transport seam and sync cycle — shipped</h4>
     <p><code>RelayProvider</code> with <code>manual</code> and
     <code>http</code> implementations. Pull-merge-push, 412 retry,
-    single-flight, backup-before-apply.</p>
+    single-flight, backup-before-apply. Delivered in PR #87; plain HTTP is
+    refused outside loopback.</p>
     <p class="files">src/sync/relay.ts · src/sync/cycle.ts</p>
   </div></div>
 
   <div class="phase"><div class="id">P6</div><div>
-    <h4>Pairing UI — gated</h4>
+    <h4>Pairing UI — next</h4>
     <p>Settings section, QR and passphrase, unpair, delete channel, last-sync
     status. Uses the QR libraries already in the tree.</p>
     <p class="files">src/pages/settings/*</p>

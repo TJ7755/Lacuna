@@ -2,6 +2,13 @@
 
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
+## Relay URLs must be HTTPS outside loopback
+
+`normaliseRelayUrl` in `src/sync/relay.ts` rejects plain HTTP for any host that is not a loopback
+address (localhost, 127.0.0.0/8, ::1) because the write token travels in the Authorization header.
+P6's relay-URL entry UI must explain this rule to the user rather than echoing a generic URL
+error, and any fixture pointing at `http://...` for a remote relay is wrong by construction.
+
 ## Sync P2 keybags follow the relay's canonical bearer formats
 
 The v1 crypto boundary accepts only 32 lowercase-hex channel IDs and 64 lowercase-hex characters for the relay's 32-byte write token, matching `relay/src/relay.ts`. Keybags are therefore fixed at 162 bytes, and malformed lengths must be rejected before PBKDF2; loosening either format requires an explicit wire-format decision.
