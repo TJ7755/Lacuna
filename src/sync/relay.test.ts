@@ -247,4 +247,28 @@ describe('HttpRelayProvider', () => {
       });
     }
   });
+
+  it('never invokes fetch with the provider as `this` (browser WebIDL brand check)', async () => {
+    const thisValues: unknown[] = [];
+    const fetchImpl = vi.fn(function (this: unknown, _input: unknown, init?: RequestInit) {
+      thisValues.push(this);
+      if (init?.method === 'GET') {
+        return Promise.resolve(new Response(null, { status: 404 }));
+      }
+      return Promise.resolve(new Response(null, { status: 204, headers: { ETag: '"g"' } }));
+    }) as unknown as typeof fetch;
+    const relay = provider(fetchImpl);
+
+    await relay.push('state', new Uint8Array([1]), EMPTY_GENERATION);
+    await relay.purge();
+    await expect(relay.pull('state')).resolves.toBeNull();
+    await expect(
+      pullRelaySlot('https://relay.example', CHANNEL_ID, 'keybag', fetchImpl),
+    ).resolves.toBeNull();
+
+    expect(thisValues).toHaveLength(4);
+    for (const value of thisValues) {
+      expect(value).toBe(globalThis);
+    }
+  });
 });

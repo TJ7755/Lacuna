@@ -106,6 +106,17 @@ export interface HttpRelayProviderOptions {
 }
 
 /**
+ * Capture `fetch` with the global bound as `this`. The WebIDL `fetch`
+ * operation rejects a `this` that is not the Window or WorkerGlobalScope
+ * with "Illegal invocation"; calling a stored reference later as an object
+ * method, or bare in strict mode, can trip that check on some engines.
+ * Callers must have already confirmed the reference is a function.
+ */
+export function bindFetch(fetchImpl: typeof fetch): typeof fetch {
+  return fetchImpl.bind(globalThis);
+}
+
+/**
  * Read an unauthenticated relay slot before the write token is available.
  * This is used by the passphrase join path to fetch the encrypted keybag.
  */
@@ -119,7 +130,7 @@ export async function pullRelaySlot(
   if (typeof fetcher !== 'function') {
     throw new RelayConfigurationError('This device does not provide fetch for relay sync.');
   }
-  const response = await fetcher(
+  const response = await bindFetch(fetcher)(
     `${normaliseRelayUrl(relayUrl)}/c/${requireChannelId(channelId)}/${slot}`,
     {
       method: 'GET',
@@ -150,10 +161,11 @@ export class HttpRelayProvider implements RelayProvider {
     this.relayUrl = normaliseRelayUrl(options.relayUrl);
     this.channelId = requireChannelId(options.channelId);
     this.writeToken = requireWriteToken(options.writeToken);
-    this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
-    if (typeof this.fetchImpl !== 'function') {
+    const fetcher = options.fetchImpl ?? globalThis.fetch;
+    if (typeof fetcher !== 'function') {
       throw new RelayConfigurationError('This device does not provide fetch for relay sync.');
     }
+    this.fetchImpl = bindFetch(fetcher);
   }
 
   pull(slot: RelaySlot): Promise<RelayBlob | null> {

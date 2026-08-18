@@ -38,6 +38,17 @@ Keep each entry to a heading and a few lines. State the fact, then why it matter
 
 ---
 
+## Browser fetch rejects a detached `this`; Node and `vi.fn` mocks cannot catch it
+
+The WebIDL `fetch` operation throws "Failed to execute 'fetch' on 'Window':
+Illegal invocation" when called with a `this` that is not the Window or
+WorkerGlobalScope — for example a stored reference invoked as an object method
+(`provider.fetchImpl(url)`). Node's undici `fetch` and `vi.fn<typeof fetch>()`
+mocks never enforce the brand check, so such a bug passes unit tests and blows
+up only in a real browser. Capture `fetch` with `.bind(globalThis)` at the
+point of storing it. This shipped in P5/P6 and was only found by running the
+app; the relay and sync tests cannot substitute for a browser pass.
+
 ## Replace-import does not clear `db.backups`, and that is load-bearing
 
 `importBackup(payload, 'replace')` clears the content tables but leaves `backups` alone, and

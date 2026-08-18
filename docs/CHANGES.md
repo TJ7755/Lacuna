@@ -1,5 +1,18 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Relay fetch binding fix
+
+- Fixed "Failed to execute 'fetch' on 'Window': Illegal invocation" on the
+  pairing and sync flows in the browser. The HTTP relay adapter called the
+  stored `fetch` reference as a method of the provider, so `this` was the
+  provider rather than the Window the WebIDL brand check demands; the error
+  was thrown before any request left the page. All captured `fetch`
+  references (adapter pull/push/purge and channel mint) are now bound to
+  the global at capture time. Node's undici `fetch` and `vi.fn` mocks do
+  not enforce the brand check, so the previous unit tests stayed green; a
+  new regression test asserts the captured reference is never invoked with
+  the provider as `this`.
+
 ## Unreleased — Sync relay CSP
 
 - The web and packaged-app CSPs now allow connections to the default relay

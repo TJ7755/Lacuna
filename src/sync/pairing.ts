@@ -8,6 +8,7 @@ import { syncCycle, type SyncResult } from './cycle';
 import {
   EMPTY_GENERATION,
   HttpRelayProvider,
+  bindFetch,
   normaliseRelayUrl,
   pullRelaySlot,
   type RelayProvider,
@@ -244,7 +245,7 @@ async function mintChannel(
   if (typeof fetcher !== 'function') {
     throw new SyncPairingError('This device does not provide network access for sync setup.');
   }
-  const response = await fetcher(`${relayUrl}/channel`, {
+  const response = await bindFetch(fetcher)(`${relayUrl}/channel`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${mintSecret.trim()}` },
   });
