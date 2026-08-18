@@ -12,6 +12,7 @@ import { ShortcutsSection } from './settings/ShortcutsSection';
 import { SidebarSection } from './settings/SidebarSection';
 import { CourseHeaderSection } from './settings/CourseHeaderSection';
 import { StudySection } from './settings/StudySection';
+import { SyncSection } from './settings/SyncSection';
 
 const SETTINGS_SECTIONS = [
   { id: 'settings-appearance', label: 'Appearance' },
@@ -22,6 +23,7 @@ const SETTINGS_SECTIONS = [
   { id: 'settings-shortcuts', label: 'Keyboard shortcuts' },
   { id: 'settings-pomodoro', label: 'Pomodoro timer' },
   { id: 'settings-install', label: 'Install' },
+  { id: 'settings-sync', label: 'Device sync' },
   ...(typeof window !== 'undefined' && window.electronAPI?.isElectron
     ? [{ id: 'settings-mcp', label: 'MCP server' }]
     : []),
@@ -60,6 +62,7 @@ export function Settings() {
         <ShortcutsSection />
         <PomodoroSection />
         <InstallSection />
+        <SyncSection />
         {window.electronAPI?.isElectron && <McpSection />}
         <DataPortabilitySection motionMultiplier={motionMultiplier} />
         <BackupsSection />
