@@ -11,7 +11,10 @@
   the global at capture time. Node's undici `fetch` and `vi.fn` mocks do
   not enforce the brand check, so the previous unit tests stayed green; a
   new regression test asserts the captured reference is never invoked with
-  the provider as `this`.
+  the provider as `this`. A browser-level Playwright spec also drives the
+  real pairing UI through first-device setup against a stubbed loopback
+  relay, so WebIDL brand-check failures surface in CI rather than only on a
+  live deployment.
 
 ## Unreleased — Sync relay CSP
 
