@@ -141,7 +141,7 @@ export async function pullRelaySlot(
   if (!response.ok) throw await httpError('pull', response);
 
   const generation = response.headers.get('ETag');
-  if (!generation || generation.trim() === '') {
+  if (!generation || emptyGeneration(generation)) {
     throw new RelayProtocolError('The relay response did not include a generation.', 'pull');
   }
   return {
@@ -190,7 +190,7 @@ export class HttpRelayProvider implements RelayProvider {
     if (!response.ok) throw await httpError('push', response);
 
     const nextGeneration = response.headers.get('ETag');
-    if (!nextGeneration || nextGeneration.trim() === '') {
+    if (!nextGeneration || emptyGeneration(nextGeneration)) {
       throw new RelayProtocolError('The relay response did not include a generation.', 'push');
     }
     return { generation: nextGeneration };
@@ -262,10 +262,20 @@ function requireWriteToken(value: string): string {
 }
 
 function requireGeneration(value: string): string {
-  if (value.trim() === '') {
+  if (emptyGeneration(value)) {
     throw new RelayProtocolError('The sync generation is empty.', 'push');
   }
   return value;
+}
+
+/**
+ * A usable generation is a quoted tag with content. The quoted-empty `""` is
+ * what a relay serves when a blob's store metadata lost its ETag; sending it
+ * back would be rejected by the relay protocol, so treat it as absent.
+ */
+function emptyGeneration(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed === '' || trimmed === '""';
 }
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {

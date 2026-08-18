@@ -141,10 +141,22 @@ async function getSlot(
     return json(404, request, { error: 'not found' });
   }
 
+  // A blob whose store metadata lost its ETag cannot anchor compare-and-swap:
+  // its generation would round-trip as the empty tag `""`, which the protocol
+  // rejects on the next push. Rewrite the same bytes once to regenerate one.
+  let etag = stored.etag;
+  if (canonicalEtag(etag) === '') {
+    const healed = await store.put(slotKey(id, slot), stored.body, { overwrite: true });
+    if (!healed.ok || canonicalEtag(healed.etag) === '') {
+      return json(500, request, { error: 'internal error' });
+    }
+    etag = healed.etag;
+  }
+
   const headers = corsHeaders(request);
   headers.set('Content-Type', 'application/octet-stream');
   headers.set('Cache-Control', 'no-store');
-  headers.set('ETag', quoteEtag(stored.etag));
+  headers.set('ETag', quoteEtag(etag));
   return new Response(Buffer.from(stored.body), { status: 200, headers });
 }
 
@@ -197,8 +209,19 @@ async function putSlot(
     return json(412, request, { error: 'precondition failed' });
   }
 
+  // Regenerate the ETag if the store returned none: an empty generation would
+  // round-trip as `""` and be rejected by the protocol on the next push.
+  let etag = written.etag;
+  if (canonicalEtag(etag) === '') {
+    const healed = await store.put(slotKey(id, slot), body, { overwrite: true });
+    if (!healed.ok || canonicalEtag(healed.etag) === '') {
+      return json(500, request, { error: 'internal error' });
+    }
+    etag = healed.etag;
+  }
+
   const headers = corsHeaders(request);
-  headers.set('ETag', quoteEtag(written.etag));
+  headers.set('ETag', quoteEtag(etag));
   return new Response(null, { status: 204, headers });
 }
 

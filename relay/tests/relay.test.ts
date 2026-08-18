@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CHANNEL_TTL_MS, EMPTY_SLOT_ETAG, MAX_BODY_BYTES, createHandler } from '../src/relay.js';
-import { MemoryStore } from '../src/store.js';
+import { MemoryStore, type BlobStore, type PutOptions } from '../src/store.js';
 
 const ORIGIN = 'https://app.example';
 const MINT_SECRET = 'test-relay-mint-secret';
@@ -175,6 +175,14 @@ describe('relay', () => {
     const res = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, 'W/"1"', new Uint8Array([1])));
     expectCors(res);
     expect(res.status).toBe(400);
+  });
+
+  it('rejects the quoted-empty If-Match that a missing ETag produces', async () => {
+    const ctx = await minted();
+    const res = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, '""', new Uint8Array([1])));
+    expectCors(res);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'invalid if-match' });
   });
 
   it('rejects oversize PUT before reading the body', async () => {
@@ -372,6 +380,80 @@ describe('relay', () => {
     expect(new Uint8Array(await got.arrayBuffer())).toEqual(new Uint8Array([9]));
   });
 
+  it('heals a blob whose store ETag is missing, serving a fresh generation on read', async () => {
+    const inner = new MemoryStore();
+    const flaky = flakyStore(inner);
+    const ctx = await mintOn(createHandler(flaky.store));
+    const body = new Uint8Array([5, 6, 7]);
+
+    const created = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, body),
+    );
+    expect(created.status).toBe(204);
+    expect(statePuts(flaky)).toEqual([{ exclusive: true }]);
+
+    // The blob's metadata loses its ETag; reads now report an empty one.
+    flaky.lost = true;
+    const got = await ctx.handle(getRequest(ctx.channelId, 'state'));
+    expectCors(got);
+    expect(got.status).toBe(200);
+    const healedEtag = got.headers.get('ETag');
+    expect(healedEtag).toMatch(/^"[^"]+"$/);
+    expect(new Uint8Array(await got.arrayBuffer())).toEqual(body);
+    expect(statePuts(flaky)).toEqual([{ exclusive: true }, { overwrite: true }]);
+
+    // The heal sticks: a second read serves the same generation without rewriting.
+    const again = await ctx.handle(getRequest(ctx.channelId, 'state'));
+    expect(again.status).toBe(200);
+    expect(again.headers.get('ETag')).toBe(healedEtag);
+    expect(statePuts(flaky)).toEqual([{ exclusive: true }, { overwrite: true }]);
+
+    // A push against the healed generation now succeeds (the recovery path).
+    flaky.lost = false;
+    const pushed = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, healedEtag!, new Uint8Array([8])),
+    );
+    expect(pushed.status).toBe(204);
+  });
+
+  it('regenerates a missing store ETag on write', async () => {
+    const inner = new MemoryStore();
+    const emptyFirst = emptyFirstStatePut(inner);
+    const ctx = await mintOn(createHandler(emptyFirst.store));
+
+    const res = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([9])),
+    );
+    expectCors(res);
+    expect(res.status).toBe(204);
+    const etag = res.headers.get('ETag');
+    expect(etag).toMatch(/^"[^"]+"$/);
+    expect(statePuts(emptyFirst)).toEqual([{ exclusive: true }, { overwrite: true }]);
+
+    const got = await ctx.handle(getRequest(ctx.channelId, 'state'));
+    expect(got.status).toBe(200);
+    expect(got.headers.get('ETag')).toBe(etag);
+  });
+
+  it('returns 500 when a blob ETag cannot be regenerated', async () => {
+    const inner = new MemoryStore();
+    const flaky = flakyStore(inner);
+    const ctx = await mintOn(createHandler(flaky.store));
+    const body = new Uint8Array([1, 2, 3]);
+
+    const created = await ctx.handle(
+      putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, body),
+    );
+    expect(created.status).toBe(204);
+
+    flaky.lost = true;
+    flaky.putBroken = true;
+    const got = await ctx.handle(getRequest(ctx.channelId, 'state'));
+    expectCors(got);
+    expect(got.status).toBe(500);
+    expect(await got.json()).toEqual({ error: 'internal error' });
+  });
+
   it('returns a generic 500 and logs a redacted cause when the store throws', async () => {
     const channelId = 'ab'.repeat(16);
     const logged: string[] = [];
@@ -564,6 +646,107 @@ async function minted(now?: () => number) {
   expect(body.channelId).toMatch(/^[0-9a-f]{32}$/);
   expect(body.writeToken).toMatch(/^[0-9a-f]{64}$/);
   return { handle, store, channelId: body.channelId, writeToken: body.writeToken };
+}
+
+async function mintOn(handle: (request: Request) => Promise<Response>) {
+  const res = await handle(
+    new Request('http://relay.test/channel', {
+      method: 'POST',
+      headers: { Origin: ORIGIN, Authorization: `Bearer ${MINT_SECRET}` },
+    }),
+  );
+  expectCors(res);
+  expect(res.status).toBe(201);
+  const body = (await res.json()) as { channelId: string; writeToken: string };
+  expect(body.channelId).toMatch(/^[0-9a-f]{32}$/);
+  expect(body.writeToken).toMatch(/^[0-9a-f]{64}$/);
+  return { handle, channelId: body.channelId, writeToken: body.writeToken };
+}
+
+/**
+ * A store wrapper that can report a missing ETag for the state slot, as if the
+ * blob's metadata lost it. While `lost` is true, reads of the state slot carry
+ * an empty ETag; while `putBroken` is true, writes return an empty one too, so
+ * the relay's self-heal can be made to fail. Records every put it receives.
+ */
+function flakyStore(inner: MemoryStore): {
+  store: BlobStore;
+  puts: { key: string; opts: PutOptions }[];
+  lost: boolean;
+  putBroken: boolean;
+} {
+  let lost = false;
+  let putBroken = false;
+  const puts: { key: string; opts: PutOptions }[] = [];
+  return {
+    store: {
+      async get(key) {
+        const stored = await inner.get(key);
+        if (stored && key.endsWith('/state') && lost) {
+          return { body: stored.body, uploadedAt: stored.uploadedAt, etag: '' };
+        }
+        return stored;
+      },
+      async put(key, body, opts) {
+        puts.push({ key, opts });
+        const result = await inner.put(key, body, opts);
+        // An unconditional rewrite regenerates the metadata, so the loss ends.
+        if ('overwrite' in opts && key.endsWith('/state')) lost = false;
+        if (putBroken) return { ok: true, etag: '' };
+        return result;
+      },
+      async del(keys) {
+        await inner.del(keys);
+      },
+      async list(prefix) {
+        return inner.list(prefix);
+      },
+    },
+    puts,
+    get lost() {
+      return lost;
+    },
+    set lost(value: boolean) {
+      lost = value;
+    },
+    get putBroken() {
+      return putBroken;
+    },
+    set putBroken(value: boolean) {
+      putBroken = value;
+    },
+  };
+}
+
+/** The put options recorded for the state slot, in order. */
+function statePuts(store: { puts: { key: string; opts: PutOptions }[] }): PutOptions[] {
+  return store.puts.filter((entry) => entry.key.endsWith('/state')).map((entry) => entry.opts);
+}
+
+/** A store whose first write to the state slot returns no ETag, as if the blob was born without one. */
+function emptyFirstStatePut(inner: MemoryStore): {
+  store: BlobStore;
+  puts: { key: string; opts: PutOptions }[];
+} {
+  let first = true;
+  const puts: { key: string; opts: PutOptions }[] = [];
+  return {
+    store: {
+      get: (key) => inner.get(key),
+      async put(key, body, opts) {
+        puts.push({ key, opts });
+        const result = await inner.put(key, body, opts);
+        if (first && key.endsWith('/state')) {
+          first = false;
+          return { ok: true, etag: '' };
+        }
+        return result;
+      },
+      del: (keys) => inner.del(keys),
+      list: (prefix) => inner.list(prefix),
+    },
+    puts,
+  };
 }
 
 function getRequest(id: string, slot: string): Request {

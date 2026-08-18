@@ -11,7 +11,7 @@ export interface ListedObject {
   uploadedAt: number;
 }
 
-export type PutOptions = { exclusive: true } | { ifMatch: string };
+export type PutOptions = { exclusive: true } | { ifMatch: string } | { overwrite: true };
 
 export type PutResult = { ok: true; etag: string } | { ok: false; reason: 'precondition' };
 
@@ -55,7 +55,7 @@ export class MemoryStore implements BlobStore {
   async put(key: string, body: Uint8Array, opts: PutOptions): Promise<PutResult> {
     if ('exclusive' in opts) {
       if (this.objects.has(key)) return { ok: false, reason: 'precondition' };
-    } else {
+    } else if ('ifMatch' in opts) {
       const current = this.objects.get(key);
       if (!current || canonicalEtag(current.etag) !== canonicalEtag(opts.ifMatch)) {
         return { ok: false, reason: 'precondition' };
@@ -159,6 +159,13 @@ export function createVercelStore(client: BlobClient = { get, put, del, list }):
           const result = await client.put(key, Buffer.from(body), {
             ...putBase,
             allowOverwrite: false,
+          });
+          return { ok: true, etag: result.etag };
+        }
+        if ('overwrite' in opts) {
+          const result = await client.put(key, Buffer.from(body), {
+            ...putBase,
+            allowOverwrite: true,
           });
           return { ok: true, etag: result.etag };
         }

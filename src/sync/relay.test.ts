@@ -180,6 +180,24 @@ describe('HttpRelayProvider', () => {
     await expect(provider(fetchImpl).pull('state')).rejects.toBeInstanceOf(RelayProtocolError);
   });
 
+  it('rejects a quoted-empty generation from a pull (missing store ETag)', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(new Uint8Array([1]), { status: 200, headers: { ETag: '""' } }),
+    );
+
+    await expect(provider(fetchImpl).pull('state')).rejects.toBeInstanceOf(RelayProtocolError);
+  });
+
+  it('rejects a quoted-empty generation from a push response', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(null, { status: 204, headers: { ETag: '""' } }),
+    );
+
+    await expect(
+      provider(fetchImpl).push('state', new Uint8Array([1]), EMPTY_GENERATION),
+    ).rejects.toBeInstanceOf(RelayProtocolError);
+  });
+
   it('purges a channel with the write token and treats a missing channel as already purged', async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()

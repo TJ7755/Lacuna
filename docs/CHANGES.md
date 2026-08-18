@@ -1,5 +1,19 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Missing blob ETag self-heal
+
+- The live relay served `ETag: ""` for a channel's state slot: the blob's
+  Vercel Blob metadata carried no etag (the same first-write path the README
+  documents as measured, not guaranteed). The app accepted the quoted-empty
+  `""` as a generation — its guard only rejected the truly empty string — and
+  the next push sent `If-Match: ""`, which the relay rejects as "invalid
+  if-match". That produced "Relay push failed with HTTP 400. Invalid if-match"
+  in Settings on every sync after the first, regardless of content size. The
+  relay now regenerates a missing store ETag by rewriting the same bytes once
+  on read or write (unconditional overwrite), so affected channels repair
+  themselves on the next pull, and the app rejects quoted-empty generations
+  on pull and push as protocol errors instead of sending them.
+
 ## Unreleased — Sync payload size gate hardening
 
 - The relay platform's real request-body limit measures below the nominal

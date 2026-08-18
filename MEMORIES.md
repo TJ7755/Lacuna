@@ -99,6 +99,18 @@ place and Node's ESM resolver requires an extension on relative imports.
 TypeScript expects to emit. Vitest resolves the extensionless form, so tests
 cannot catch this unless `relay/tsconfig.json` stays on `NodeNext`.
 
+## Vercel Blob can hold a blob with no ETag; never serve or accept an empty generation
+
+Observed live on 18 August 2026: a channel's state blob had real content but
+no etag in its Vercel Blob metadata, so the relay served `ETag: ""`. The app
+stored that quoted-empty `""` as its generation (a naive `trim() === ''` guard
+misses it) and the next push sent `If-Match: ""`, which the relay rejects as
+"invalid if-match" — "Relay push failed with HTTP 400" on every sync after the
+first. The relay now self-heals: when a store ETag canonicalises empty, it
+rewrites the same bytes once with an unconditional overwrite to regenerate
+one, on both read and write. Do not reintroduce a path that hands out an
+empty ETag, and keep the app's generation guard treating `""` as absent.
+
 ## Live Blob `allowOverwrite: false` was measured, not guaranteed
 
 On 15 August 2026, 25 concurrent first-write rounds against production
