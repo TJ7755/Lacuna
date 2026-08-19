@@ -1,5 +1,11 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Cloud PR filing test
+
+- No functional change. This entry exists to verify that Claude Code running
+  in the cloud environment can commit, push and open a pull request against
+  this repository end to end. Safe to revert or squash away.
+
 ## Unreleased — Missing blob ETag self-heal
 
 - The live relay served `ETag: ""` for a channel's state slot: the blob's
