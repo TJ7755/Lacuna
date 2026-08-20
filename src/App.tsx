@@ -18,6 +18,7 @@ import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
 import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
+import { installSyncTriggers } from './sync/triggers';
 import { NotFound } from './pages/NotFound';
 import {
   loadAnalytics,
@@ -425,6 +426,12 @@ export function App() {
       window.removeEventListener('pagehide', handler);
     };
   }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    const dispose = installSyncTriggers();
+    return dispose;
+  }, [ready]);
 
   if (initError) {
     return (

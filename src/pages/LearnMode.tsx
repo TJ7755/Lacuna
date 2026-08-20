@@ -1,5 +1,5 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card, Grade, ItemPayload, ReviewSessionKind } from '../db/types';
@@ -243,6 +243,12 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setFocusMode,
     setFocusChromeVisible,
   });
+
+  useEffect(() => {
+    if (phase === 'finished' && summary) {
+      window.dispatchEvent(new CustomEvent('lacuna:study-session-end'));
+    }
+  }, [phase, summary]);
 
   // A swipe can be begun by accident in a way a deliberate tap on Yes or No cannot,
   // and an unnoticed lapse damages that card's scheduling. Undo already exists on the

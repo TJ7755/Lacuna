@@ -154,6 +154,9 @@ export function SyncPairingFlow({
   const cameraAvailable =
     typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
 
+  const isDefaultRelay = relayUrl.trim() === '' || relayUrl.trim() === DEFAULT_RELAY_URL;
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   if (mode === 'setup') {
     return (
       <form onSubmit={handleSetup} className="space-y-5">
@@ -163,23 +166,33 @@ export function SyncPairingFlow({
             This device will create the private channel and publish the first encrypted snapshot.
           </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SyncField
-            id="sync-setup-relay"
-            label="Relay URL"
-            value={relayUrl}
-            onChange={setRelayUrl}
-            placeholder={DEFAULT_RELAY_URL}
-          />
+        <SyncField
+          id="sync-setup-relay"
+          label="Relay URL"
+          value={relayUrl}
+          onChange={setRelayUrl}
+          placeholder={DEFAULT_RELAY_URL}
+        />
+        {!isDefaultRelay || showAdvanced ? (
           <SyncField
             id="sync-mint-secret"
-            label="Relay mint secret"
+            label="Relay mint secret (private relays only)"
             value={mintSecret}
             onChange={setMintSecret}
             type="password"
             autoComplete="off"
+            placeholder={isDefaultRelay ? 'Leave empty for the default relay' : 'Required for this relay'}
           />
-        </div>
+        ) : null}
+        {!isDefaultRelay ? null : (
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((value) => !value)}
+            className="text-left text-xs text-accent hover:underline"
+          >
+            {showAdvanced ? 'Hide advanced' : 'Advanced: use a private relay'}
+          </button>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <SyncField
             id="sync-setup-passphrase"

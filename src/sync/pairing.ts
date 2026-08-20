@@ -109,9 +109,6 @@ export async function setupFirstDevice(
 ): Promise<PairingSession> {
   const url = requireRelayUrl(relayUrl);
   requirePassphrase(passphrase);
-  if (mintSecret.trim().length === 0) {
-    throw new SyncPairingError('Enter the relay mint secret to create a channel.');
-  }
 
   const minted = await mintChannel(url, mintSecret, options.fetchImpl);
   const credentials: SyncCredentials = {
@@ -196,6 +193,15 @@ export async function syncWithPassphrase(
   return session(credentials, result);
 }
 
+/** Run a sync with already-unlocked credentials (no passphrase prompt). */
+export async function syncWithCredentials(
+  credentials: SyncCredentials,
+  options: PairingOperationOptions = {},
+): Promise<PairingSession> {
+  const result = await runWithCredentials(credentials, options.now, options.fetchImpl);
+  return session(credentials, result);
+}
+
 /** Open the locally stored keybag without running a sync, for destructive actions. */
 export async function unlockSyncState(
   state: SyncState,
@@ -245,11 +251,15 @@ async function mintChannel(
   if (typeof fetcher !== 'function') {
     throw new SyncPairingError('This device does not provide network access for sync setup.');
   }
+  const trimmedSecret = mintSecret.trim();
+  const headers: Record<string, string> = {};
+  if (trimmedSecret !== '') headers.Authorization = `Bearer ${trimmedSecret}`;
   const response = await bindFetch(fetcher)(`${relayUrl}/channel`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${mintSecret.trim()}` },
+    headers,
   });
   if (response.status === 401) throw new SyncPairingError('The relay mint secret was rejected.');
+  if (response.status === 429) throw new SyncPairingError('Too many sync channels created recently. Try again later.');
   if (response.status === 503) {
     throw new SyncPairingError('Channel creation is not available on this relay.');
   }

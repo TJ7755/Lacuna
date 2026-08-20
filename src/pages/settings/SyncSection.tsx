@@ -12,6 +12,7 @@ import {
   deleteChannel,
   encodePairingCode,
   setupFirstDevice,
+  syncWithCredentials,
   syncWithPassphrase,
   unpair,
   unlockSyncState,
@@ -23,6 +24,7 @@ import {
   type SyncCredentials,
 } from '../../sync/pairing';
 import { allowRelayConnect } from '../../sync/csp';
+import { publishUnlockedCredentials } from '../../sync/triggers';
 import { SyncField } from './SyncField';
 import { SyncPairingFlow, type SyncPairingBusy, type SyncPairingMode } from './SyncPairingFlow';
 
@@ -127,6 +129,10 @@ export function SyncSection() {
     };
   }, [showQr]);
 
+  useEffect(() => {
+    publishUnlockedCredentials(unlocked);
+  }, [unlocked]);
+
   async function refreshState(): Promise<SyncState | null> {
     const next = await readSyncState();
     setSyncState(next ?? null);
@@ -206,6 +212,25 @@ export function SyncSection() {
 
   async function handleSync() {
     if (!syncState) return;
+    const isUnlocked =
+      unlocked !== null &&
+      syncState.channelId === unlocked.channelId &&
+      (syncState.relayUrl ?? '') === (unlocked.relayUrl ?? '');
+    if (isUnlocked) {
+      setBusy('sync');
+      try {
+        if (syncState.relayUrl) allowRelayConnect(syncState.relayUrl);
+        const session = await syncWithCredentials(unlocked);
+        applySession(session);
+        notify(session.result.pushed ? 'Sync complete.' : 'Already up to date.', 'positive');
+      } catch (error) {
+        await refreshState().catch(() => undefined);
+        notify(errorMessage(error, 'Sync could not be completed.'), 'negative');
+      } finally {
+        setBusy(null);
+      }
+      return;
+    }
     const passphraseError = validateRecoveryPassphrase(actionPassphrase);
     if (passphraseError) {
       notify(passphraseError, 'negative');
@@ -241,6 +266,16 @@ export function SyncSection() {
       setShowQr(true);
     } catch (error) {
       notify(errorMessage(error, 'Could not unlock the pairing QR code.'), 'negative');
+    }
+  }
+
+  async function handleCopyPairingLink() {
+    if (!qrValue) return;
+    try {
+      await navigator.clipboard.writeText(qrValue);
+      notify('Pairing link copied.', 'positive');
+    } catch {
+      notify('Could not copy the pairing link.', 'negative');
     }
   }
 
@@ -319,20 +354,29 @@ export function SyncSection() {
             </Button>
           </div>
 
-          <div className="mb-5 rounded-xl border border-line bg-surface-raised/30 p-4">
-            <SyncField
-              id="sync-action-passphrase"
-              label="Recovery passphrase"
-              value={actionPassphrase}
-              onChange={setActionPassphrase}
-              type="password"
-              autoComplete="current-password"
-              placeholder="Needed to sync, show the QR or delete the channel"
-            />
-            <p className="mt-2 text-xs text-ink-faint">
-              This is used locally to open the encrypted recovery key. It is never sent to Lacuna.
-            </p>
-          </div>
+          {unlocked ? (
+            <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-positive/30 bg-positive/5 px-4 py-3">
+              <p className="text-sm text-positive">Unlocked — Sync now and Show QR work without the passphrase.</p>
+              <Button variant="ghost" size="sm" onClick={() => setUnlocked(null)} disabled={busy !== null}>
+                Lock
+              </Button>
+            </div>
+          ) : (
+            <div className="mb-5 rounded-xl border border-line bg-surface-raised/30 p-4">
+              <SyncField
+                id="sync-action-passphrase"
+                label="Recovery passphrase"
+                value={actionPassphrase}
+                onChange={setActionPassphrase}
+                type="password"
+                autoComplete="current-password"
+                placeholder="Needed to sync, show the QR or delete the channel"
+              />
+              <p className="mt-2 text-xs text-ink-faint">
+                This is used locally to open the encrypted recovery key. It is never sent to Lacuna.
+              </p>
+            </div>
+          )}
 
           {showQr && qrValue && (
             <motion.div
@@ -375,9 +419,12 @@ export function SyncSection() {
                     fgColor="#000000"
                   />
                 </div>
+                <Button variant="secondary" size="sm" onClick={() => void handleCopyPairingLink()}>
+                  Copy pairing link
+                </Button>
                 <p className="max-w-sm text-center text-xs text-ink-faint">
                   This QR contains the channel access key. It is not a backup and should not be
-                  shared publicly.
+                  shared publicly. Copy the link for devices without a camera.
                 </p>
               </div>
             </motion.div>

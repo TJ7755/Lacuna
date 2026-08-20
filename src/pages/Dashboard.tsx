@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
 import { StudySignals } from '../components/dashboard/StudySignals';
+import { SyncStatus } from '../components/dashboard/SyncStatus';
 import { ReviewHeatmap } from '../components/dashboard/ReviewHeatmap';
 import { Button } from '../components/ui/Button';
 import { ChevronRightIcon, LacunaIcon, PlayIcon, PlusIcon } from '../components/ui/icons';
@@ -160,6 +161,8 @@ export function Dashboard() {
           <ChevronRightIcon width={18} height={18} className="shrink-0 text-accent" />
         </button>
       )}
+
+      <SyncStatus />
 
       {/* Motivation strip: streak, reviews today, seven-day time forecast */}
       {stats && activeCourses && activeCourses.length > 0 && (

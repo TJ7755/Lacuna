@@ -53,6 +53,33 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
   };
 }
 
+const MINT_RATE_LIMIT = 10;
+const MINT_WINDOW_MS = 60 * 60 * 1000;
+const mintAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function getClientIp(request: Request): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0]?.trim() ?? 'unknown';
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) return realIp.trim();
+  return 'unknown';
+}
+
+function isRateLimited(ip: string, now: number): boolean {
+  const entry = mintAttempts.get(ip);
+  if (!entry || now >= entry.resetAt) {
+    mintAttempts.set(ip, { count: 1, resetAt: now + MINT_WINDOW_MS });
+    return false;
+  }
+  if (entry.count >= MINT_RATE_LIMIT) return true;
+  entry.count += 1;
+  return false;
+}
+
+export function __resetMintRateLimitForTests(): void {
+  mintAttempts.clear();
+}
+
 async function handleChannel(store: BlobStore, request: Request): Promise<Response> {
   if (request.method !== 'POST') {
     return json(405, request, { error: 'method not allowed' });
@@ -64,8 +91,15 @@ async function handleChannel(store: BlobStore, request: Request): Promise<Respon
     return json(503, request, { error: 'minting unavailable' });
   }
 
-  if (!authorizeMint(request, secret)) {
-    return json(401, request, { error: 'unauthorized' });
+  const authHeader = request.headers.get('Authorization');
+  const hasValidSecret = authorizeMint(request, secret);
+  if (authHeader) {
+    if (!hasValidSecret) return json(401, request, { error: 'unauthorized' });
+  } else {
+    const ip = getClientIp(request);
+    if (isRateLimited(ip, Date.now())) {
+      return json(429, request, { error: 'too many requests' });
+    }
   }
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
