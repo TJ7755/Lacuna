@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CHANNEL_TTL_MS, EMPTY_SLOT_ETAG, MAX_BODY_BYTES, createHandler } from '../src/relay.js';
+import {
+  CHANNEL_TTL_MS,
+  EMPTY_SLOT_ETAG,
+  MAX_BODY_BYTES,
+  __resetMintRateLimitForTests,
+  createHandler,
+} from '../src/relay.js';
 import { MemoryStore, type BlobStore, type PutOptions } from '../src/store.js';
 
 const ORIGIN = 'https://app.example';
@@ -8,10 +14,12 @@ const MINT_SECRET = 'test-relay-mint-secret';
 
 beforeEach(() => {
   vi.stubEnv('RELAY_MINT_SECRET', MINT_SECRET);
+  __resetMintRateLimitForTests();
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  __resetMintRateLimitForTests();
 });
 
 describe('relay', () => {
@@ -531,18 +539,20 @@ describe('relay', () => {
     expect(JSON.stringify(body)).not.toContain(MINT_SECRET);
   });
 
-  it('rejects mint with a wrong secret or a missing header', async () => {
+  it('mints without a secret via the rate-limited public path, but rejects a wrong secret', async () => {
     const handle = createHandler(new MemoryStore());
 
-    const missing = await handle(
+    const publicMint = await handle(
       new Request('http://relay.test/channel', {
         method: 'POST',
         headers: { Origin: ORIGIN },
       }),
     );
-    expectCors(missing);
-    expect(missing.status).toBe(401);
-    expect(await missing.json()).toEqual({ error: 'unauthorized' });
+    expectCors(publicMint);
+    expect(publicMint.status).toBe(201);
+    const publicBody = (await publicMint.json()) as { channelId: string; writeToken: string };
+    expect(publicBody.channelId).toMatch(/^[0-9a-f]{32}$/);
+    expect(publicBody.writeToken).toMatch(/^[0-9a-f]{64}$/);
 
     const wrongSecret = 'definitely-not-the-mint-secret';
     const wrong = await handle(
@@ -557,6 +567,28 @@ describe('relay', () => {
     expect(body).toEqual({ error: 'unauthorized' });
     expect(JSON.stringify(body)).not.toContain(wrongSecret);
     expect(JSON.stringify(body)).not.toContain(MINT_SECRET);
+  });
+
+  it('rate-limits public minting', async () => {
+    const handle = createHandler(new MemoryStore());
+    for (let index = 0; index < 10; index += 1) {
+      const res = await handle(
+        new Request('http://relay.test/channel', {
+          method: 'POST',
+          headers: { Origin: ORIGIN, 'x-forwarded-for': '198.51.100.77' },
+        }),
+      );
+      expect(res.status).toBe(201);
+    }
+    const limited = await handle(
+      new Request('http://relay.test/channel', {
+        method: 'POST',
+        headers: { Origin: ORIGIN, 'x-forwarded-for': '198.51.100.77' },
+      }),
+    );
+    expectCors(limited);
+    expect(limited.status).toBe(429);
+    expect(await limited.json()).toEqual({ error: 'too many requests' });
   });
 
   it('refuses to mint when RELAY_MINT_SECRET is unset or empty', async () => {
