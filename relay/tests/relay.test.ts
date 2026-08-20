@@ -591,43 +591,49 @@ describe('relay', () => {
     expect(await limited.json()).toEqual({ error: 'too many requests' });
   });
 
-  it('refuses to mint when RELAY_MINT_SECRET is unset or empty', async () => {
+  it('allows public minting when RELAY_MINT_SECRET is unset or empty', async () => {
     const handle = createHandler(new MemoryStore());
     const presented = 'should-not-appear-in-logs-or-body';
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     for (const value of ['', '   '] as const) {
       vi.stubEnv('RELAY_MINT_SECRET', value);
-      const res = await handle(
+      const publicRes = await handle(
+        new Request('http://relay.test/channel', {
+          method: 'POST',
+          headers: { Origin: ORIGIN },
+        }),
+      );
+      expectCors(publicRes);
+      expect(publicRes.status).toBe(201);
+      const authRes = await handle(
         new Request('http://relay.test/channel', {
           method: 'POST',
           headers: { Origin: ORIGIN, Authorization: `Bearer ${presented}` },
         }),
       );
-      expectCors(res);
-      expect(res.status).toBe(503);
-      const body = await res.json();
-      expect(body).toEqual({ error: 'minting unavailable' });
-      expect(JSON.stringify(body)).not.toContain(presented);
+      expectCors(authRes);
+      expect(authRes.status).toBe(401);
+      expect(JSON.stringify(await authRes.json())).not.toContain(presented);
     }
 
     vi.unstubAllEnvs();
     delete process.env.RELAY_MINT_SECRET;
-    const unset = await handle(
+    const publicUnset = await handle(
+      new Request('http://relay.test/channel', {
+        method: 'POST',
+        headers: { Origin: ORIGIN },
+      }),
+    );
+    expectCors(publicUnset);
+    expect(publicUnset.status).toBe(201);
+    const authUnset = await handle(
       new Request('http://relay.test/channel', {
         method: 'POST',
         headers: { Origin: ORIGIN, Authorization: `Bearer ${presented}` },
       }),
     );
-    expectCors(unset);
-    expect(unset.status).toBe(503);
-    expect(await unset.json()).toEqual({ error: 'minting unavailable' });
-
-    const logged = spy.mock.calls.map((args) => args.map(String).join(' ')).join('\n');
-    spy.mockRestore();
-    expect(logged).toContain('RELAY_MINT_SECRET');
-    expect(logged).toContain('unset');
-    expect(logged).not.toContain(presented);
+    expectCors(authUnset);
+    expect(authUnset.status).toBe(401);
   });
 
   it('does not gate GET, PUT or DELETE of an existing channel on the mint secret', async () => {

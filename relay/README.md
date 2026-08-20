@@ -21,14 +21,17 @@ On Vercel, connect a **private** Blob store to the project. The platform
 injects `BLOB_STORE_ID`, `VERCEL_OIDC_TOKEN` and `BLOB_WEBHOOK_PUBLIC_KEY`.
 `@vercel/blob` reads them automatically.
 
-`RELAY_MINT_SECRET` is required. `POST /channel` compares
-`Authorization: Bearer <secret>` against it and refuses minting until the
-variable is set to a non-empty value. An unset or empty secret fails closed
-with `503`; a missing or wrong bearer is `401`. Reading, writing and deleting
-an existing channel are unchanged: `GET` stays unauthenticated, and
-`PUT` / `DELETE` still use the per-channel write token.
+`RELAY_MINT_SECRET` is optional. `POST /channel` without `Authorization`
+creates a channel via the public rate-limited path (`10`/hour/IP, `429` when
+exceeded). `POST` with `Authorization: Bearer <secret>` bypasses that limit
+when `RELAY_MINT_SECRET` is set and the bearer matches; a wrong bearer is
+still `401`. An unset or empty secret simply means every mint is public —
+there is no `503` closed state. Reading, writing and deleting an existing
+channel are unchanged: `GET` stays unauthenticated, and `PUT` / `DELETE`
+still use the per-channel write token.
 
-Generate a value and set it on the Vercel project. Do not commit it.
+To keep a private relay or to give an operator bypass, generate a value
+and set it on the Vercel project. Do not commit it.
 
 ```sh
 openssl rand -hex 32
@@ -37,7 +40,7 @@ openssl rand -hex 32
 In the Vercel dashboard: the relay project → **Settings** → **Environment
 Variables** → name `RELAY_MINT_SECRET`, paste the generated value, apply to
 Production (and Preview if you mint from previews). Redeploy after setting
-it; a live deployment cannot mint until this is done.
+or removing it. With the variable absent the relay still mints publicly.
 
 To run the same functions **off Vercel** against a Blob store, set
 `BLOB_READ_WRITE_TOKEN` instead. The SDK uses OIDC when those variables are
@@ -56,8 +59,7 @@ This directory is its own Vercel project. Do not deploy it as part of the app.
    Vercel project does not treat `api/[...path].ts` as a catch-all — that
    file matches one path segment, so `/c/:id/:slot` never reaches the
    handler. Do not put the handler back in a bracketed filename.
-5. Set `RELAY_MINT_SECRET` on the project (see Environment). Minting is
-   refused until this is set.
+5. Optionally set `RELAY_MINT_SECRET` on the project (see Environment) to keep a private bypass. Minting works without it via the public path.
 6. Deploy.
 
 The app sets `Cross-Origin-Embedder-Policy: require-corp`, so the relay must
@@ -69,9 +71,11 @@ are set on every response, including errors.
 Replace `$HOST` with the deployment URL.
 
 ```sh
-# 1. Mint (requires RELAY_MINT_SECRET)
-curl -sS -D - -X POST "$HOST/channel" \
-  -H "Authorization: Bearer $RELAY_MINT_SECRET"
+# 1. Mint — public (no secret) or with secret to bypass rate limit
+curl -sS -D - -X POST "$HOST/channel"
+# with secret:
+# curl -sS -D - -X POST "$HOST/channel" \
+#   -H "Authorization: Bearer $RELAY_MINT_SECRET"
 
 # 2. First push (empty slot is If-Match: "0")
 curl -sS -D - -X PUT "$HOST/c/$ID/state" \

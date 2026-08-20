@@ -86,16 +86,12 @@ async function handleChannel(store: BlobStore, request: Request): Promise<Respon
   }
 
   const secret = configuredMintSecret();
-  if (secret === null) {
-    console.error('RELAY_MINT_SECRET is unset; refusing to mint');
-    return json(503, request, { error: 'minting unavailable' });
-  }
-
   const authHeader = request.headers.get('Authorization');
-  const hasValidSecret = authorizeMint(request, secret);
-  if (authHeader) {
-    if (!hasValidSecret) return json(401, request, { error: 'unauthorized' });
-  } else {
+  if (secret !== null && authHeader) {
+    if (!authorizeMint(request, secret)) return json(401, request, { error: 'unauthorized' });
+  } else if (authHeader && secret === null) {
+    return json(401, request, { error: 'unauthorized' });
+  } else if (!authHeader) {
     const ip = getClientIp(request);
     if (isRateLimited(ip, Date.now())) {
       return json(429, request, { error: 'too many requests' });
