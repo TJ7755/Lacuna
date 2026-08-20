@@ -33,8 +33,8 @@ export interface BlobStore {
 }
 
 export function canonicalEtag(value: string): string {
-  const trimmed = value.trim();
-  if (trimmed.startsWith('W/')) return '';
+  let trimmed = value.trim();
+  if (trimmed.startsWith('W/')) trimmed = trimmed.slice(2).trim();
   if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
     return trimmed.slice(1, -1);
   }

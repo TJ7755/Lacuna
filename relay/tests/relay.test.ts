@@ -170,11 +170,22 @@ describe('relay', () => {
     expect(res.status).toBe(428);
   });
 
-  it('rejects a weak If-Match', async () => {
+  it('accepts a weak If-Match as a strong validator', async () => {
     const ctx = await minted();
-    const res = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, 'W/"1"', new Uint8Array([1])));
-    expectCors(res);
-    expect(res.status).toBe(400);
+    // First write to get a real etag.
+    const first = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, EMPTY_SLOT_ETAG, new Uint8Array([1])));
+    expect(first.status).toBe(204);
+    const etag = first.headers.get('ETag');
+    expect(etag).toMatch(/^"[^"]+"$/);
+    // Weak form of the same bare etag should be accepted as equivalent to the strong form.
+    const weak = `W/${etag}`;
+    const second = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, weak, new Uint8Array([2])));
+    expectCors(second);
+    expect(second.status).toBe(204);
+    // A weak etag that does not match the current value is still a stale generation, not a syntax error.
+    const staleWeak = await ctx.handle(putRequest(ctx.channelId, 'state', ctx.writeToken, 'W/"not-the-etag"', new Uint8Array([3])));
+    expectCors(staleWeak);
+    expect(staleWeak.status).toBe(412);
   });
 
   it('rejects the quoted-empty If-Match that a missing ETag produces', async () => {

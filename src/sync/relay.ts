@@ -146,7 +146,7 @@ export async function pullRelaySlot(
   }
   return {
     bytes: new Uint8Array(await response.arrayBuffer()),
-    generation,
+    generation: normaliseGeneration(generation),
   };
 }
 
@@ -173,7 +173,7 @@ export class HttpRelayProvider implements RelayProvider {
   }
 
   async push(slot: RelaySlot, bytes: Uint8Array, ifMatch: string): Promise<RelayPushResult> {
-    const generation = requireGeneration(ifMatch);
+    const generation = normaliseGeneration(requireGeneration(ifMatch));
     const response = await this.fetchImpl(this.slotUrl(slot), {
       method: 'PUT',
       headers: {
@@ -193,7 +193,7 @@ export class HttpRelayProvider implements RelayProvider {
     if (!nextGeneration || emptyGeneration(nextGeneration)) {
       throw new RelayProtocolError('The relay response did not include a generation.', 'push');
     }
-    return { generation: nextGeneration };
+    return { generation: normaliseGeneration(nextGeneration) };
   }
 
   async purge(): Promise<void> {
@@ -276,6 +276,14 @@ function requireGeneration(value: string): string {
 function emptyGeneration(value: string): boolean {
   const trimmed = value.trim();
   return trimmed === '' || trimmed === '""';
+}
+
+function normaliseGeneration(value: string): string {
+  let trimmed = value.trim();
+  if (trimmed.startsWith('W/')) trimmed = trimmed.slice(2).trim();
+  if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) return trimmed;
+  if (trimmed === '') return trimmed;
+  return `"${trimmed}"`;
 }
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {

@@ -41,10 +41,11 @@ describe('MemoryStore', () => {
 });
 
 describe('canonicalEtag', () => {
-  it('strips surrounding quotes and rejects weak tags', () => {
+  it('strips surrounding quotes and normalises weak tags', () => {
     expect(canonicalEtag('"abc"')).toBe('abc');
     expect(canonicalEtag('abc')).toBe('abc');
-    expect(canonicalEtag('W/"abc"')).toBe('');
+    expect(canonicalEtag('W/"abc"')).toBe('abc');
+    expect(canonicalEtag('W/ "abc"')).toBe('abc');
   });
 });
 

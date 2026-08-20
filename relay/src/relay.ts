@@ -363,8 +363,8 @@ function readContentLength(request: Request): number | 'missing' | 'invalid' {
 }
 
 function parseIfMatch(header: string): 'empty' | string | null {
-  const trimmed = header.trim();
-  if (trimmed.startsWith('W/')) return null;
+  let trimmed = header.trim();
+  if (trimmed.startsWith('W/')) trimmed = trimmed.slice(2).trim();
   const bare = canonicalEtag(trimmed);
   if (bare === '') return null;
   if (bare === '0') return 'empty';
