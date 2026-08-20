@@ -1,5 +1,17 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync ease: public mint, in-session unlock, copy link, auto triggers, dashboard status
+
+- `POST /channel` no longer requires `RELAY_MINT_SECRET` to be pasted on the default relay. Without `Authorization` it rate-limits (`10`/hour/IP, `429`) and still mints (`201`); with the correct bearer it bypasses the limiter. An unset or empty `RELAY_MINT_SECRET` no longer returns `503`. The `Advanced` disclosure in `Settings → Device sync → Set up sync` now hides the mint secret for the default relay (`https://lacuna-relay.vercel.app`) at `src/pages/settings/SyncPairingFlow.tsx:157` and `src/sync/pairing.ts:103` accepts an empty secret.
+- `Settings → Device sync` keeps the unlock in memory after a successful `Sync now` or `Show pairing QR` via `src/sync/triggers.ts:15` (`publishUnlockedCredentials`). Subsequent `Sync now` reuses `unlocked` through `syncWithCredentials` at `src/sync/pairing.ts:15` without re-asking the recovery passphrase, shows `Unlocked` + `Lock` at `src/pages/settings/SyncSection.tsx:342`, and shares the same unlock for the auto triggers.
+- The pairing QR panel at `src/pages/settings/SyncSection.tsx:397` now offers `Copy pairing link` alongside the QR (`LACUNA-SYNC-1:…` via `src/sync/pairing.ts:18`) for devices without a camera.
+- `P7` auto triggers at `src/sync/triggers.ts:1` (`installSyncTriggers` from `src/App.tsx:419`, debounced `1500 ms`, `MIN 5000 ms`, `single-flight` at `src/sync/cycle.ts:66`) pull on `focus`/`visibilitychange` → `visible` and push after a study session ends via `lacuna:study-session-end` dispatched from `src/pages/LearnMode.tsx:247`.
+- The dashboard at `src/pages/Dashboard.tsx:1` now shows a `Synced … · Open sync` pill via `src/components/dashboard/SyncStatus.tsx:1` (polled `5 s` + `visibilitychange`) that links to `Settings → Device sync`.
+
+## Unreleased — Weak ETag normalisation
+
+- Vercel serves Blob objects with `content-encoding: br` as `W/"..."`. The relay rejected that as `400 invalid if-match` at `relay/src/relay.ts:342` (`W/` → `null`) and `canonicalEtag` at `relay/src/store.ts:35` returned `''` for weak validators, so every second `PUT` after the initial `"0"` failed. The relay now strips `W/` before canonicalising and always emits strong `"..."` via `quoteEtag` at `relay/src/relay.ts:365`, and the app at `src/sync/relay.ts:259` normalises any `W/"..."` from `pull`/`push` to `"..."` before persisting or sending `If-Match`.
+
 ## Unreleased — Missing blob ETag self-heal
 
 - The live relay served `ETag: ""` for a channel's state slot: the blob's
