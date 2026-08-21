@@ -118,7 +118,8 @@ describe('SyncSection', () => {
     render(<SyncSection />);
     fireEvent.click(await screen.findByRole('button', { name: 'Set up sync' }));
 
-    fireEvent.change(screen.getByLabelText('Relay mint secret'), {
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced: use a private relay' }));
+    fireEvent.change(screen.getByLabelText('Relay mint secret (private relays only)'), {
       target: { value: 'mint-secret' },
     });
     fireEvent.change(screen.getByLabelText('Recovery passphrase'), {

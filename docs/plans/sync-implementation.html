@@ -109,15 +109,15 @@
   This document rebases that plan onto the current codebase and sequences the work
   so the next implementation slice can be approved before anyone writes code.</p>
   <div class="meta">
-    <span class="tag b">Status: P1–P6 shipped; P7 is next — 18 August 2026</span>
+    <span class="tag b">Status: P1–P8 shipped; P9 manual pass remains — 20 August 2026</span>
     <span class="tag">Schema v22 &rarr; v23</span>
     <span class="tag">Backup 9 &rarr; 10</span>
     <span class="tag b">Relay gate answered yes — 14 August 2026</span>
     <span class="tag b">P2 review gate closed — 18 August 2026</span>
   </div>
   <p style="margin-top:1rem"><strong>Read this before working from the phase map below.</strong>
-  The phase map records status as of 18 August 2026: P1&ndash;P5 are shipped
-  and P6 is next. Wording inside the cards that still reads as gated is the
+  The phase map records status as of 20 August 2026: P1&ndash;P8 are shipped
+  and P9 (manual two- then three-device verification) remains. Wording inside the cards that still reads as gated is the
   original plan of record rather than current state.</p>
   <p><strong>One thing shipped ahead of its gate.</strong> A manual two-device
   merge now exists in Settings &mdash; a file picker that takes a forced restore
@@ -132,15 +132,18 @@
   (crypto) are therefore authorised, and P5, P6 and P7 follow them in order.
   Everywhere below that describes the relay as gated is the plan as drafted on
   13 August; this paragraph is current state and wins.</p>
-  <p><strong>P1, P2 and P5 have shipped.</strong> The relay is live at
+  <p><strong>P1–P8 have shipped.</strong> The relay is live at
   <code>lacuna-relay.vercel.app</code>. P2 merged as PR #86; Tom reviewed it and
-  closed the Arc 8 &sect;7 gate on 18 August 2026. P5 now consumes
+  closed the Arc 8 &sect;7 gate on 18 August 2026. P5 consumes
   <code>src/sync/crypto.ts</code> through the transport and cycle seam, with
   one stale-generation retry, backup-before-apply and durable size/error status.
   Further changes to nonce, AAD, KDF or keybag layout still need the same review
-  before they reach a real channel. P6 has shipped its Settings pairing/status
-  surface; P7 is not started and may still slip past September if deliberate
-  Sync now keeps doing the job.</p>
+  before they reach a real channel. P6 shipped its Settings pairing/status
+  surface; P7 shipped automatic focus/visible pull and study-end push via
+  <code>src/sync/triggers.ts</code> sharing the in-session unlock, public mint
+  on the default relay (<code>relay/src/relay.ts</code>) hiding the mint secret
+  behind Advanced, a copyable pairing link and the Dashboard sync pill; P8
+  closed out SPEC/CHANGES/README/roadmap. Only P9 (manual device pass) remains.</p>
   <p><strong>Deployment is Tom's.</strong> Agents write <code>relay/</code>; they
   have no Vercel credentials and must not attempt to authenticate or deploy.</p>
   <p><strong>The 4.5 MB transport ceiling is accepted, 14 August 2026.</strong>
@@ -364,16 +367,20 @@
   </div></div>
 
   <div class="phase"><div class="id">P7</div><div>
-    <h4>Automatic triggers — gated</h4>
-    <p>Pull on focus, push after a study session ends. Deliberately last, and
-    allowed to slip past September if the manual export/import merge works.</p>
-    <p class="files">src/sync/triggers.ts · src/App.tsx</p>
+    <h4>Automatic triggers — shipped 20 August 2026</h4>
+    <p>Pull on focus / visible and push after a study session ends via
+    <code>lacuna:study-session-end</code>. Debounced (1500 ms, min 5000 ms) and
+    single-flight; shares the in-session unlock so auto sync does not re-ask the
+    passphrase. Also public mint on the default relay (no secret, 10/hour/IP
+    429), pairing link copy alongside the QR, and the Dashboard sync pill.</p>
+    <p class="files">src/sync/triggers.ts · src/App.tsx · src/components/dashboard/SyncStatus.tsx · src/sync/pairing.ts · relay/src/relay.ts</p>
   </div></div>
 
   <div class="phase"><div class="id">P8</div><div>
-    <h4>Docs close-out — gated</h4>
-    <p>SPEC, CHANGES, README local-only paragraph, roadmap. After the
-    feature exists, not before.</p>
+    <h4>Docs close-out — shipped 20 August 2026</h4>
+    <p>SPEC, CHANGES, README local-only paragraph and roadmap marked P7/P8
+    delivered; behaviour is as on <code>master</code> at <code>d9e1937</code>+
+    fixes.</p>
     <p class="files">docs/SPEC.md · docs/CHANGES.md · README.md · docs/next_plan.md</p>
   </div></div>
 
@@ -753,8 +760,8 @@
   <h2><span class="n">09</span>Later phases</h2>
   <p>Each still lives in Arc 8. <strong>The hosting and maintenance-cost gate
   that sat in front of the relay was answered yes on 14 August 2026</strong>.
-  P1, P2, P5 and P6 have since shipped; Tom closed the P2 review gate on 18 August
-  2026 (PR #86). P7 is next. The paragraph that stood here previously
+  P1, P2 and P5–P8 have since shipped; Tom closed the P2 review gate on 18 August
+  2026 (PR #86). P7/P8 shipped 20 August 2026. The paragraph that stood here previously
   said none of these were authorised; that is no longer true and is kept only so
   the change is legible.</p>
   <ul>
@@ -770,10 +777,13 @@
     <li><strong>P6 pairing UI.</strong> Settings section, first-device mint,
       QR display/scan on explicit action, passphrase recovery route, visible
       status, local unpair and channel purge. Shipped 18 August 2026. Arc 8 §11.</li>
-    <li><strong>P7 automatic triggers.</strong> Focus pull, session-end
-      push, debounce, single-flight. Can slip. Arc 8 §10.</li>
-    <li><strong>P8 docs, P9 three-device pass.</strong> Arc 8 §12 / §14.
-      Not rewritten here.</li>
+    <li><strong>P7 automatic triggers.</strong> Focus/visible pull and
+      study-end push via <code>src/sync/triggers.ts</code>, debounced and
+      single-flight sharing the in-session unlock; public mint on the default
+      relay (10/hour/IP 429, mint secret hidden behind Advanced), copyable
+      pairing link and Dashboard sync pill. Shipped 20 August 2026. Arc 8 §10.</li>
+    <li><strong>P8 docs.</strong> SPEC/CHANGES/README/roadmap close-out. Shipped 20 August 2026. Arc 8 §12.</li>
+    <li><strong>P9 three-device pass.</strong> Manual two- then three-device verification. Still gated. Arc 8 §14.</li>
   </ul>
   <p>Electron bundled relay URL versus start unconfigured waits with the
   relay decision. It is not a P3 question.</p>

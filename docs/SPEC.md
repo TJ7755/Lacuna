@@ -97,18 +97,29 @@ and overlapping cycles share one in-flight promise.
 
 P6 adds the Settings Device sync section. First-device setup mints a channel, generates a channel
 key, wraps the key and write token in a recovery keybag and pushes the first state. Other devices
-join either by scanning an explicit QR capability or by entering the relay URL, channel id and
-recovery passphrase. The QR carries the relay origin, channel id, write token and channel key; the
-mint secret is never persisted or included. Recovery passphrases must contain at least 16
-characters. Settings exposes last successful sync, encrypted/plaintext snapshot sizes, the last
-error, a deliberate Sync now action, local unpairing and a separately confirmed channel purge.
+join either by scanning an explicit QR capability (with a copyable `LACUNA-SYNC-1:…` link alongside
+it) or by entering the relay URL, channel id and recovery passphrase. The QR carries the relay
+origin, channel id, write token and channel key; the mint secret is never persisted or included.
+Recovery passphrases must contain at least 16 characters. The default relay
+(`https://lacuna-relay.vercel.app`) mints without a mint secret (rate-limited 10/hour/IP, 429);
+a private relay still requires its `RELAY_MINT_SECRET` behind the Advanced disclosure. Settings
+exposes last successful sync, encrypted/plaintext snapshot sizes, the last error, a deliberate Sync
+now action, local unpairing and a separately confirmed channel purge. The dashboard shows a
+`Synced … · Open sync` pill polling the same state.
 
-The relay's opaque ETag is a compare-and-swap generation, not a freshness clock. P5/P6 therefore do
-not claim rollback protection against replay of an older valid ciphertext. Outgoing encrypted state
-is capped at 4.5 MB because Vercel Functions reject larger request bodies; failures record the
-transport and plaintext sizes and name the contributing courses in `syncState`. Automatic
-focus/session triggers and real two- and three-device verification remain later work, so the web
-UI remains usable without a relay or network.
+P7 makes sync automatic without re-asking the passphrase. `src/sync/triggers.ts`
+(`installSyncTriggers` from `src/App.tsx`) debounces and single-flights a pull on window focus /
+visibility to visible and a push after a study session ends (`lacuna:study-session-end` from
+`src/pages/LearnMode.tsx`). A successful manual `Sync now` or `Show pairing QR` publishes the
+unlocked credentials in memory (`publishUnlockedCredentials`) and the triggers reuse them; the pill
+shows `Unlocked` with a `Lock` action until the page is reloaded.
+
+The relay's opaque ETag is a compare-and-swap generation, not a freshness clock. No phase claims
+rollback protection against replay of an older valid ciphertext. Outgoing encrypted state is gated
+below the measured platform ceiling at 4.4 MB (nominal Vercel limit 4.5 MB, measured failure at
+4.49 MB); failures record the transport and plaintext sizes and name the contributing courses in
+`syncState`. Real two- and three-device verification remains the only outstanding sync work, so the
+web UI remains usable without a relay or network.
 
 ---
 

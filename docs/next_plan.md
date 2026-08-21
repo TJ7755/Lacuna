@@ -1,6 +1,6 @@
 # Lacuna roadmap
 
-Reviewed 18 August 2026.
+Reviewed 20 August 2026.
 
 This file is the current decision surface: what is active, what follows it, and what is
 deliberately parked. Detailed specifications, implementation diaries and completed arcs do
@@ -65,27 +65,32 @@ corpus as a problem to be engineered around.
 
 ## Next
 
-### Multi-device sync — P1–P6 delivered; P7 is next
+### Multi-device sync — P1–P8 delivered; P9 manual pass remains
 
-**Status:** in progress.
+**Status:** delivered (P9 manual verification remains).
 
 The execution plan is [sync-implementation.html](plans/sync-implementation.html). Delivered: P3
 (schema v23, timestamps, tombstones, backup version 10), P4 (`mergeSnapshots`), the manual Combine
-in Settings, P1 (live relay at `lacuna-relay.vercel.app`), P2 (`src/sync/crypto.ts`, PR #86), and
-P5 (`src/sync/relay.ts`, `snapshot.ts` and `cycle.ts`) and P6 (`src/sync/pairing.ts` and the
-Settings Device sync section). Tom reviewed and merged #86 on 18 August 2026; the Arc 8 §7 gate
-is closed.
+in Settings, P1 (live relay at `lacuna-relay.vercel.app`), P2 (`src/sync/crypto.ts`, PR #86), P5
+(`src/sync/relay.ts`, `snapshot.ts` and `cycle.ts`), P6 (`src/sync/pairing.ts` and the
+Settings Device sync section), P7 (automatic triggers in `src/sync/triggers.ts` — pull on focus /
+visible and push after study via `lacuna:study-session-end` — debounced and single-flight; public
+relay mint without a stored secret at `relay/src/relay.ts` and `src/sync/pairing.ts`; in-session
+unlock reuse; Copy pairing link; Dashboard `Synced …` status) and P8 (SPEC/CHANGES/README/roadmap
+close-out). Tom reviewed and merged #86 on 18 August 2026; the Arc 8 §7 gate is closed.
 
 P5 provides the manual/HTTP transport seam and pull-merge-push cycle: encrypted snapshots,
 backup-before-apply through the existing `manualMerge` path, one stale-generation retry,
-single-flight protection, durable status and the accepted 4.5 MB platform-ceiling diagnostic. P6
+single-flight protection, durable status and the accepted 4.4 MB platform-ceiling diagnostic. P6
 adds first-device minting, QR or passphrase pairing, a 16-character recovery-passphrase policy,
 explicit QR reveal/scanning, last-sync and size/error status, local unpairing and separate channel
-purging. Relay generations remain compare-and-swap only; neither phase provides rollback protection.
+purging. P7 adds debounced automatic pull/push sharing the in-session unlock, rate-limited public
+mint on the default relay (10/hour/IP) hiding the mint secret behind Advanced, a copyable pairing
+link alongside the QR, and a Dashboard sync pill. Relay generations remain compare-and-swap only;
+no phase provides rollback protection.
 
-**Next is P7** — automatic focus/session-end triggers (which may slip past September), followed by
-P8 docs close-out and P9 a real two- then three-device pass. P9 has never been done and is not
-automatable.
+**Remaining is P9** — a real two- then three-device pass against the live relay. It has never been
+done and is not automatable; it is the only sync verification not covered by automated tests.
 
 The paused Course/Deck boundary maintenance pass is documented in
 [course-domain-boundary-follow-ups.md](course-domain-boundary-follow-ups.md). Schema v22 has
