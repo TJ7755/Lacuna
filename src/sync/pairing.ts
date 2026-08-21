@@ -218,13 +218,56 @@ export async function unlockSyncState(
     const opened = await unwrapKeybag(hexToBytes(state.wrappedKeyMaterial), passphrase, {
       channelId: id,
     });
-    return { relayUrl: url, channelId: id, ...opened };
+    const credentials: SyncCredentials = { relayUrl: url, channelId: id, ...opened };
+    await rememberCredentials(credentials);
+    return credentials;
   } catch (error) {
     if (error instanceof SyncCryptoPassphraseError) {
       throw new SyncPairingError('That recovery passphrase was not accepted.');
     }
     throw error;
   }
+}
+
+/**
+ * Build credentials from this device's remembered copy without the passphrase,
+ * or null when nothing usable is remembered.
+ */
+export function readRememberedCredentials(state: SyncState | undefined): SyncCredentials | null {
+  if (!state?.remembered || !state.channelId) return null;
+  if (!CHANNEL_KEY_HEX_RE.test(state.remembered.channelKeyHex)) return null;
+  if (!WRITE_TOKEN_RE.test(state.remembered.writeToken)) return null;
+  if (!state.relayUrl) return null;
+  try {
+    return {
+      relayUrl: normaliseRelayUrl(state.relayUrl),
+      channelId: state.channelId,
+      channelKey: hexToBytes(state.remembered.channelKeyHex),
+      writeToken: state.remembered.writeToken,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Clear this device's remembered copy, keeping the wrapped recovery keybag. */
+export async function forgetRememberedCredentials(): Promise<void> {
+  const current = await readSyncState().catch(() => undefined);
+  if (!current?.remembered) return;
+  const { remembered: _omitted, ...rest } = current;
+  await writeSyncState(rest);
+}
+
+async function rememberCredentials(credentials: SyncCredentials): Promise<void> {
+  const current = await readSyncState().catch(() => undefined);
+  if (!current) return;
+  await writeSyncState({
+    ...current,
+    remembered: {
+      channelKeyHex: bytesToHex(credentials.channelKey),
+      writeToken: credentials.writeToken,
+    },
+  });
 }
 
 export async function unpair(): Promise<void> {
@@ -282,6 +325,10 @@ async function persistPairing(credentials: SyncCredentials, keybag: Uint8Array):
     relayUrl: credentials.relayUrl,
     channelId: credentials.channelId,
     wrappedKeyMaterial: bytesToHex(keybag),
+    remembered: {
+      channelKeyHex: bytesToHex(credentials.channelKey),
+      writeToken: credentials.writeToken,
+    },
     lastError: null,
   });
 }

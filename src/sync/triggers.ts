@@ -1,10 +1,15 @@
 // P7 automatic triggers — pull on focus and push after a study session ends.
-// The triggers share the in-session unlock so automatic sync does not re-ask the
+// The triggers share the unlock so automatic sync does not re-ask the
 // passphrase. `SyncSection` publishes the unlocked credentials here after a
-// successful manual sync or QR reveal; the triggers consume them.
+// successful manual sync or QR reveal; this device's remembered copy restores
+// them on install so a fresh page load syncs without prompting.
 
 import { readSyncState } from '../db/mutationStamp';
-import { syncWithCredentials, type SyncCredentials } from './pairing';
+import {
+  readRememberedCredentials,
+  syncWithCredentials,
+  type SyncCredentials,
+} from './pairing';
 
 let currentCredentials: SyncCredentials | null = null;
 let installed = false;
@@ -24,6 +29,13 @@ export function getUnlockedCredentials(): SyncCredentials | null {
 
 export function clearUnlockedCredentials(): void {
   currentCredentials = null;
+}
+
+/** Publish this device's remembered credentials, if any. Called once per install. */
+async function restoreRememberedCredentials(): Promise<void> {
+  const state = await readSyncState().catch(() => null);
+  const credentials = readRememberedCredentials(state ?? undefined);
+  if (credentials) publishUnlockedCredentials(credentials);
 }
 
 async function triggerSync(reason: string): Promise<void> {
@@ -59,6 +71,7 @@ function scheduleTrigger(reason: string): void {
 export function installSyncTriggers(): () => void {
   if (installed) return () => {};
   installed = true;
+  void restoreRememberedCredentials();
 
   const handleFocus = () => scheduleTrigger('focus');
   const handleVisibility = () => {
