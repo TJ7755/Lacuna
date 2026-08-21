@@ -1,5 +1,18 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Sync remembers this device
+
+- Pairing, joining and every successful passphrase unlock now persist the unwrapped channel key
+  and write token as `SyncState.remembered` (`src/sync/pairing.ts:280`, `src/db/types.ts:1074`).
+  `installSyncTriggers` restores that copy at install (`src/sync/triggers.ts:36`), so automatic
+  focus/session-end sync and a manual `Sync now` work straight after a page reload without the
+  recovery passphrase.
+- The Settings `Lock` action clears only the remembered copy via `forgetRememberedCredentials`
+  (`src/sync/pairing.ts:249`) and keeps the wrapped recovery keybag, returning the device to the
+  locked behaviour until the passphrase is next used. The unlock banner copy reflects the new
+  persistent behaviour, and the stale "automatic … triggers arrive in the next phase" text in the
+  unpaired state was corrected to describe the delivered P7 triggers.
+
 ## Unreleased — Sync ease: public mint, in-session unlock, copy link, auto triggers, dashboard status
 
 - `POST /channel` no longer requires `RELAY_MINT_SECRET` to be pasted on the default relay. Without `Authorization` it rate-limits (`10`/hour/IP, `429`) and still mints (`201`); with the correct bearer it bypasses the limiter. An unset or empty `RELAY_MINT_SECRET` no longer returns `503`. The `Advanced` disclosure in `Settings → Device sync → Set up sync` now hides the mint secret for the default relay (`https://lacuna-relay.vercel.app`) at `src/pages/settings/SyncPairingFlow.tsx:157` and `src/sync/pairing.ts:103` accepts an empty secret.

@@ -1072,6 +1072,17 @@ export interface Tombstone {
 }
 
 /**
+ * Unwrapped channel key and write token kept on this device so sync works
+ * without re-entering the recovery passphrase. Cleared by the Settings Lock
+ * action; the wrapped keybag remains for pairing fresh devices.
+ */
+export interface RememberedSyncCredentials {
+  /** Hex-encoded channel key. */
+  channelKeyHex: string;
+  writeToken: string;
+}
+
+/**
  * Local sync-channel bookkeeping. Stored under `appState` key `syncState`.
  * Absent until a device is paired; the P6 Settings flow owns pairing and
  * stores only the local recovery copy and relay origin here.
@@ -1082,6 +1093,8 @@ export interface SyncState {
   channelId?: string;
   /** Hex-encoded passphrase-wrapped channel key and write token. */
   wrappedKeyMaterial?: string;
+  /** Present while this device remembers its credentials without the passphrase. */
+  remembered?: RememberedSyncCredentials;
   lastPushedGeneration?: string;
   lastSuccessfulSyncAt?: number;
   /** Last encrypted snapshot size, retained for the Settings sync status panel. */

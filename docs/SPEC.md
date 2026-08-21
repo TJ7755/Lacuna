@@ -110,9 +110,13 @@ now action, local unpairing and a separately confirmed channel purge. The dashbo
 P7 makes sync automatic without re-asking the passphrase. `src/sync/triggers.ts`
 (`installSyncTriggers` from `src/App.tsx`) debounces and single-flights a pull on window focus /
 visibility to visible and a push after a study session ends (`lacuna:study-session-end` from
-`src/pages/LearnMode.tsx`). A successful manual `Sync now` or `Show pairing QR` publishes the
-unlocked credentials in memory (`publishUnlockedCredentials`) and the triggers reuse them; the pill
-shows `Unlocked` with a `Lock` action until the page is reloaded.
+`src/pages/LearnMode.tsx`). Pairing, joining and every successful passphrase unlock also persist
+the unwrapped credentials as `SyncState.remembered`; the triggers restore that copy at install, so
+sync works across page reloads without the passphrase. The Settings Lock action clears only the
+remembered copy — the wrapped recovery keybag stays for pairing fresh devices — returning the
+device to the locked behaviour until the passphrase is used again. The study database itself is
+plaintext on device, so remembering the key does not weaken this device's security posture; it is
+a convenience default, not a new trust boundary.
 
 The relay's opaque ETag is a compare-and-swap generation, not a freshness clock. No phase claims
 rollback protection against replay of an older valid ciphertext. Outgoing encrypted state is gated

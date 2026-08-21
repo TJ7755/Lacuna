@@ -86,7 +86,9 @@ adds first-device minting, QR or passphrase pairing, a 16-character recovery-pas
 explicit QR reveal/scanning, last-sync and size/error status, local unpairing and separate channel
 purging. P7 adds debounced automatic pull/push sharing the in-session unlock, rate-limited public
 mint on the default relay (10/hour/IP) hiding the mint secret behind Advanced, a copyable pairing
-link alongside the QR, and a Dashboard sync pill. Relay generations remain compare-and-swap only;
+link alongside the QR, and a Dashboard sync pill; pairing/unlock now persist a remembered
+credentials copy on device (`SyncState.remembered`), so reloads stay unlocked until Settings Lock.
+Relay generations remain compare-and-swap only;
 no phase provides rollback protection.
 
 **Remaining is P9** — a real two- then three-device pass against the live relay. It has never been

@@ -9,11 +9,14 @@ const {
   joinFromPairingCodeMock,
   joinWithPassphraseMock,
   syncWithPassphraseMock,
+  syncWithCredentialsMock,
   unlockSyncStateMock,
   unpairMock,
   deleteChannelMock,
   validateRecoveryPassphraseMock,
   encodePairingCodeMock,
+  readRememberedCredentialsMock,
+  forgetRememberedCredentialsMock,
   notify,
 } = vi.hoisted(() => ({
   readSyncStateMock: vi.fn(),
@@ -21,11 +24,14 @@ const {
   joinFromPairingCodeMock: vi.fn(),
   joinWithPassphraseMock: vi.fn(),
   syncWithPassphraseMock: vi.fn(),
+  syncWithCredentialsMock: vi.fn(),
   unlockSyncStateMock: vi.fn(),
   unpairMock: vi.fn(),
   deleteChannelMock: vi.fn(),
   validateRecoveryPassphraseMock: vi.fn(),
   encodePairingCodeMock: vi.fn(),
+  readRememberedCredentialsMock: vi.fn(),
+  forgetRememberedCredentialsMock: vi.fn(),
   notify: vi.fn(),
 }));
 
@@ -44,9 +50,12 @@ vi.mock('../../sync/pairing', () => ({
   decodePairingCode: vi.fn(),
   deleteChannel: deleteChannelMock,
   encodePairingCode: encodePairingCodeMock,
+  forgetRememberedCredentials: forgetRememberedCredentialsMock,
   joinFromPairingCode: joinFromPairingCodeMock,
   joinWithPassphrase: joinWithPassphraseMock,
+  readRememberedCredentials: readRememberedCredentialsMock,
   setupFirstDevice: setupFirstDeviceMock,
+  syncWithCredentials: syncWithCredentialsMock,
   syncWithPassphrase: syncWithPassphraseMock,
   unpair: unpairMock,
   unlockSyncState: unlockSyncStateMock,
@@ -95,6 +104,9 @@ beforeEach(() => {
   unlockSyncStateMock.mockReset().mockResolvedValue(credentials);
   unpairMock.mockReset().mockResolvedValue(undefined);
   deleteChannelMock.mockReset().mockResolvedValue(undefined);
+  syncWithCredentialsMock.mockReset().mockResolvedValue(session);
+  readRememberedCredentialsMock.mockReset().mockReturnValue(null);
+  forgetRememberedCredentialsMock.mockReset().mockResolvedValue(undefined);
   validateRecoveryPassphraseMock
     .mockReset()
     .mockImplementation((value: string) =>
@@ -161,8 +173,35 @@ describe('SyncSection', () => {
     expect(await screen.findByTestId('sync-pairing-qr')).toHaveTextContent('pairing-code');
   });
 
-  it('keeps unpairing local and does not purge the shared channel', async () => {
+  it('starts unlocked from the remembered copy and syncs without the passphrase', async () => {
     readSyncStateMock.mockResolvedValue(state);
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    render(<SyncSection />);
+    expect(await screen.findByText('Paired to a sync channel')).toBeInTheDocument();
+    expect(
+      screen.getByText(/this device remembers its key/),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Recovery passphrase')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sync now' }));
+
+    await waitFor(() => expect(syncWithCredentialsMock).toHaveBeenCalledWith(credentials));
+    expect(unlockSyncStateMock).not.toHaveBeenCalled();
+  });
+
+  it('locking forgets the remembered copy and asks for the passphrase again', async () => {
+    readSyncStateMock.mockResolvedValue(state);
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    render(<SyncSection />);
+    await screen.findByText(/this device remembers its key/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
+
+    expect(await screen.findByLabelText('Recovery passphrase')).toBeInTheDocument();
+    expect(forgetRememberedCredentialsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps unpairing local and does not purge the shared channel', async () => {    readSyncStateMock.mockResolvedValue(state);
     render(<SyncSection />);
     await screen.findByText('Paired to a sync channel');
 

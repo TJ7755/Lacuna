@@ -11,6 +11,8 @@ import { formatDateTime, formatRelativeTime } from '../../utils/datetime';
 import {
   deleteChannel,
   encodePairingCode,
+  forgetRememberedCredentials,
+  readRememberedCredentials,
   setupFirstDevice,
   syncWithCredentials,
   syncWithPassphrase,
@@ -102,6 +104,7 @@ export function SyncSection() {
       .then((state) => {
         if (!active) return;
         setSyncState(state ?? null);
+        setUnlocked(readRememberedCredentials(state ?? undefined));
         setLoaded(true);
       })
       .catch((error) => {
@@ -279,6 +282,16 @@ export function SyncSection() {
     }
   }
 
+  async function handleLock() {
+    try {
+      await forgetRememberedCredentials();
+      setUnlocked(null);
+      setActionPassphrase('');
+    } catch (error) {
+      notify(errorMessage(error, 'Could not lock this device.'), 'negative');
+    }
+  }
+
   async function handleUnpair() {
     setBusy('unpair');
     try {
@@ -356,8 +369,10 @@ export function SyncSection() {
 
           {unlocked ? (
             <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-positive/30 bg-positive/5 px-4 py-3">
-              <p className="text-sm text-positive">Unlocked — Sync now and Show QR work without the passphrase.</p>
-              <Button variant="ghost" size="sm" onClick={() => setUnlocked(null)} disabled={busy !== null}>
+              <p className="text-sm text-positive">
+                Unlocked — this device remembers its key, so sync works without the passphrase.
+              </p>
+              <Button variant="ghost" size="sm" onClick={() => void handleLock()} disabled={busy !== null}>
                 Lock
               </Button>
             </div>
@@ -491,8 +506,8 @@ export function SyncSection() {
         <div className="rounded-xl border border-line bg-surface-raised/30 p-4">
           <h3 className="mb-1 font-display text-lg">Keep this device in step</h3>
           <p className="mb-4 text-sm text-ink-soft">
-            Pair this installation with another device. Sync is deliberate for now; automatic focus
-            and session-end triggers arrive in the next phase.
+            Pair this installation with another device. Sync runs automatically on focus and after
+            each study session once this device is unlocked.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="primary" onClick={beginSetup}>
