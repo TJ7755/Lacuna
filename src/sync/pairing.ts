@@ -1,8 +1,13 @@
 // P6 pairing helpers. The UI owns when secrets are shown or requested; this module
 // owns validation, relay minting, keybag handling and the common sync hand-off.
 
-import { clearSyncState, readSyncState, writeSyncState } from '../db/mutationStamp';
-import type { SyncState } from '../db/types';
+import {
+  clearSyncState,
+  readSyncState,
+  updateSyncState,
+  writeSyncState,
+} from '../db/mutationStamp';
+import type { RememberedSyncCredentials, SyncState } from '../db/types';
 import { SyncCryptoPassphraseError, generateChannelKey, unwrapKeybag, wrapKeybag } from './crypto';
 import { syncCycle, type SyncResult } from './cycle';
 import {
@@ -218,13 +223,56 @@ export async function unlockSyncState(
     const opened = await unwrapKeybag(hexToBytes(state.wrappedKeyMaterial), passphrase, {
       channelId: id,
     });
-    return { relayUrl: url, channelId: id, ...opened };
+    const credentials: SyncCredentials = { relayUrl: url, channelId: id, ...opened };
+    await rememberCredentials(credentials);
+    return credentials;
   } catch (error) {
     if (error instanceof SyncCryptoPassphraseError) {
       throw new SyncPairingError('That recovery passphrase was not accepted.');
     }
     throw error;
   }
+}
+
+/**
+ * Build credentials from this device's remembered copy without the passphrase,
+ * or null when nothing usable is remembered.
+ */
+export function readRememberedCredentials(state: SyncState | undefined): SyncCredentials | null {
+  if (!state?.remembered || !state.channelId) return null;
+  if (!CHANNEL_KEY_HEX_RE.test(state.remembered.channelKeyHex)) return null;
+  if (!WRITE_TOKEN_RE.test(state.remembered.writeToken)) return null;
+  if (!state.relayUrl) return null;
+  try {
+    return {
+      relayUrl: normaliseRelayUrl(state.relayUrl),
+      channelId: state.channelId,
+      channelKey: hexToBytes(state.remembered.channelKeyHex),
+      writeToken: state.remembered.writeToken,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Clear this device's remembered copy, keeping the wrapped recovery keybag. */
+export async function forgetRememberedCredentials(): Promise<void> {
+  await updateSyncState((current) => {
+    if (!current?.remembered) return undefined;
+    const { remembered: _omitted, ...rest } = current;
+    return rest;
+  });
+}
+
+async function rememberCredentials(credentials: SyncCredentials): Promise<void> {
+  await updateSyncState((current) =>
+    current
+      ? {
+          ...current,
+          remembered: serialiseRememberedCredentials(credentials),
+        }
+      : current,
+  );
 }
 
 export async function unpair(): Promise<void> {
@@ -259,7 +307,8 @@ async function mintChannel(
     headers,
   });
   if (response.status === 401) throw new SyncPairingError('The relay mint secret was rejected.');
-  if (response.status === 429) throw new SyncPairingError('Too many sync channels created recently. Try again later.');
+  if (response.status === 429)
+    throw new SyncPairingError('Too many sync channels created recently. Try again later.');
   if (response.status === 503) {
     throw new SyncPairingError('Channel creation is not available on this relay.');
   }
@@ -282,8 +331,16 @@ async function persistPairing(credentials: SyncCredentials, keybag: Uint8Array):
     relayUrl: credentials.relayUrl,
     channelId: credentials.channelId,
     wrappedKeyMaterial: bytesToHex(keybag),
+    remembered: serialiseRememberedCredentials(credentials),
     lastError: null,
   });
+}
+
+function serialiseRememberedCredentials(credentials: SyncCredentials): RememberedSyncCredentials {
+  return {
+    channelKeyHex: bytesToHex(credentials.channelKey),
+    writeToken: credentials.writeToken,
+  };
 }
 
 async function runWithCredentials(

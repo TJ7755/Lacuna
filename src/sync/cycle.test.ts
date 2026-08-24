@@ -18,6 +18,7 @@ import {
 const {
   exportDatabaseMock,
   readSyncStateMock,
+  updateSyncStateMock,
   writeSyncStateMock,
   manualMergeMock,
   MockManualMergeError,
@@ -39,6 +40,7 @@ const {
   return {
     exportDatabaseMock: vi.fn(),
     readSyncStateMock: vi.fn(),
+    updateSyncStateMock: vi.fn(),
     writeSyncStateMock: vi.fn(),
     manualMergeMock: vi.fn(),
     MockManualMergeError: ManualMergeErrorForTest,
@@ -52,6 +54,7 @@ vi.mock('../db/portability', async (importOriginal) => {
 
 vi.mock('../db/mutationStamp', () => ({
   readSyncState: readSyncStateMock,
+  updateSyncState: updateSyncStateMock,
   writeSyncState: writeSyncStateMock,
 }));
 
@@ -118,6 +121,11 @@ beforeEach(() => {
   __resetSyncFlightForTests();
   exportDatabaseMock.mockReset();
   readSyncStateMock.mockReset().mockResolvedValue(undefined);
+  updateSyncStateMock.mockReset().mockImplementation(async (update) => {
+    const current = await readSyncStateMock();
+    const next = update(current);
+    if (next !== undefined) await writeSyncStateMock(next);
+  });
   writeSyncStateMock.mockReset().mockResolvedValue(undefined);
   manualMergeMock.mockReset();
   exportDatabaseMock.mockResolvedValue(backup());
@@ -354,9 +362,7 @@ describe('syncCycle', () => {
     });
 
     const first = syncCycle(options(relay));
-    const second = syncCycle(
-      options(relay, { channelId: 'ffffffffffffffffffffffffffffffff' }),
-    );
+    const second = syncCycle(options(relay, { channelId: 'ffffffffffffffffffffffffffffffff' }));
     await expect(second).rejects.toThrow('different channel');
     expect(relay.pull).toHaveBeenCalledTimes(1);
 

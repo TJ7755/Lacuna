@@ -30,6 +30,15 @@ Settings sync flow; Electron's injected header is static and lists only the defa
 tighten `connect-src` back to `'self'` without restoring these origins, and keep the two static
 policies in step with `DEFAULT_RELAY_URL` in `src/sync/pairing.ts`.
 
+## Sync credentials are remembered on device by design
+
+`SyncState.remembered` stores the unwrapped channel key and write token, restored at trigger
+install. While that copy exists, an IndexedDB reader can decrypt newer peer data and write or purge
+the relay channel; this is accepted for the convenience default on a trusted personal device because
+the local study database is already plaintext. Lock removes the remembered copy, after which the
+wrapped keybag again protects the channel key and write token without the passphrase. Do not revert
+this to memory-only unlock without a product decision.
+
 This file is not a changelog. `docs/CHANGES.md` records **what changed and why**, in chronological order, and grows forever. This file records **what is true now**, and is edited in place: when a fact stops being true, correct or delete the entry rather than appending a newer one below it. If something belongs in both, it goes in `docs/CHANGES.md` and is summarised here only if a future agent would get it wrong without being told.
 
 Do not record what the codebase already states. Architecture, file layout, past fixes and commit history are discoverable by reading; the rules in `AGENTS.md` and `CLAUDE.md` are already injected. What belongs here is the non-obvious: things that have caught agents out before, constraints not visible from the code, and decisions whose reasoning would otherwise be lost.

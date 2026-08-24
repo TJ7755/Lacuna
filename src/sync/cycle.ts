@@ -3,7 +3,7 @@
 // apply path for a peer merge.
 
 import type { BackupFile } from '../db/types';
-import { readSyncState, writeSyncState } from '../db/mutationStamp';
+import { updateSyncState } from '../db/mutationStamp';
 import { exportDatabase } from '../db/portability';
 import { ManualMergeError, manualMerge, type ManualMergeSummary } from './manualMerge';
 import { openState, sealState } from './crypto';
@@ -227,8 +227,7 @@ async function recordSuccess(
   generation: string,
   prepared: PreparedSnapshot,
 ): Promise<void> {
-  const previous = await readSyncState().catch(() => undefined);
-  await writeSyncState({
+  await updateSyncState((previous) => ({
     ...previous,
     channelId: options.channelId,
     lastPushedGeneration: generation,
@@ -236,13 +235,12 @@ async function recordSuccess(
     lastSnapshotBytes: prepared.bytes.byteLength,
     lastSnapshotPlaintextBytes: prepared.size.plaintextBytes,
     lastError: null,
-  });
+  }));
 }
 
 async function recordFailure(options: SyncCycleOptions, error: unknown): Promise<void> {
-  const previous = await readSyncState().catch(() => undefined);
   const size = error instanceof SyncSnapshotTooLargeError ? error.report : undefined;
-  await writeSyncState({
+  await updateSyncState((previous) => ({
     ...previous,
     channelId: options.channelId,
     ...(size
@@ -252,7 +250,7 @@ async function recordFailure(options: SyncCycleOptions, error: unknown): Promise
         }
       : {}),
     lastError: errorMessage(error),
-  }).catch(() => undefined);
+  })).catch(() => undefined);
 }
 
 function errorMessage(error: unknown): string {

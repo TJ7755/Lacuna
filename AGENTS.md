@@ -25,6 +25,7 @@
 12. **Update documentation** (docs/SPEC.md, docs/CHANGES.md, README.md, etc.) after any meaningful change, and **MEMORIES.md** after any lesson learned. See Memories below. If the relevant documentation does not exist, ignore this.
 13. **UI changes must look native** — beautiful, seamless, never bolted on. Follow the principles in `docs/frontend-design.md`. (Claude Code agents have these as the frontend-design skill; other harnesses must read the document.) Keep user-facing text minimal and intentional; no cringe or design-commentary copy.
 14. **Avoid unnecessary dependencies.** Keep dependencies up to date where possible, and avoid known security concerns.
+15. **Prove behaviour changes with a red-to-green test.** Every bug fix or intentional behaviour change must include or identify an automated test that fails on the merge-base and passes on the proposed head. The test may be new or existing, but its assertions must not be weakened to obtain a pass. Pure refactors must preserve relevant existing coverage; documentation, tooling, dependency and CI-only changes require proportionate validation instead. Any emergency exception must be explicit, and the missing regression test must land in the next change.
 
 ---
 

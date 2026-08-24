@@ -6,21 +6,37 @@ import {
   SyncPairingError,
   decodePairingCode,
   encodePairingCode,
+  forgetRememberedCredentials,
+  readRememberedCredentials,
   setupFirstDevice,
+  unlockSyncState,
   validateRecoveryPassphrase,
   type SyncCredentials,
 } from './pairing';
+import { wrapKeybag } from './crypto';
+
+function hexToBytes(value: string): Uint8Array {
+  const bytes = new Uint8Array(value.length / 2);
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16);
+  }
+  return bytes;
+}
 import type { SyncResult } from './cycle';
 import type { RelayProvider } from './relay';
 
-const { readSyncStateMock, writeSyncStateMock, syncCycleMock } = vi.hoisted(() => ({
-  readSyncStateMock: vi.fn(),
-  writeSyncStateMock: vi.fn(),
-  syncCycleMock: vi.fn(),
-}));
+const { readSyncStateMock, updateSyncStateMock, writeSyncStateMock, syncCycleMock } = vi.hoisted(
+  () => ({
+    readSyncStateMock: vi.fn(),
+    updateSyncStateMock: vi.fn(),
+    writeSyncStateMock: vi.fn(),
+    syncCycleMock: vi.fn(),
+  }),
+);
 
 vi.mock('../db/mutationStamp', () => ({
   readSyncState: readSyncStateMock,
+  updateSyncState: updateSyncStateMock,
   writeSyncState: writeSyncStateMock,
   clearSyncState: vi.fn(),
 }));
@@ -66,6 +82,11 @@ function response(status: number, body?: unknown, headers?: HeadersInit): Respon
 
 beforeEach(() => {
   readSyncStateMock.mockReset();
+  updateSyncStateMock.mockReset().mockImplementation(async (update) => {
+    const current = await readSyncStateMock();
+    const next = update(current);
+    if (next !== undefined) await writeSyncStateMock(next);
+  });
   writeSyncStateMock.mockReset().mockResolvedValue(undefined);
   syncCycleMock.mockReset().mockResolvedValue(syncResult);
   readSyncStateMock.mockImplementation(async () => {
@@ -164,4 +185,138 @@ describe('setupFirstDevice', () => {
     expect(session.state.channelId).toBe(CHANNEL_ID);
     expect(decodePairingCode(session.pairingCode).channelId).toBe(CHANNEL_ID);
   }, 30_000);
+
+  it('remembers the unwrapped credentials on this device', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(response(201, { channelId: CHANNEL_ID, writeToken: WRITE_TOKEN }))
+      .mockResolvedValueOnce(response(204, undefined, { ETag: '"keybag-1"' }))
+      .mockResolvedValueOnce(response(404));
+
+    const session = await setupFirstDevice(DEFAULT_RELAY_URL, '', PASSPHRASE, { fetchImpl });
+
+    expect(writeSyncStateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        remembered: {
+          channelKeyHex: expect.stringMatching(/^[0-9a-f]{64}$/),
+          writeToken: WRITE_TOKEN,
+        },
+      }),
+    );
+    const remembered = readRememberedCredentials(session.state);
+    expect(remembered?.channelId).toBe(CHANNEL_ID);
+    expect(remembered?.writeToken).toBe(WRITE_TOKEN);
+    expect(Array.from(remembered?.channelKey ?? []).length).toBe(32);
+    const payload = decodePairingCode(session.pairingCode);
+    expect(remembered?.channelKey).toEqual(hexToBytes(payload.channelKeyHex));
+  }, 30_000);
+});
+
+describe('remembered credentials', () => {
+  const keyHex = '0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20';
+
+  it('returns null for absent or malformed copies', () => {
+    expect(readRememberedCredentials(undefined)).toBeNull();
+    expect(readRememberedCredentials({ channelId: CHANNEL_ID })).toBeNull();
+    expect(
+      readRememberedCredentials({
+        relayUrl: DEFAULT_RELAY_URL,
+        channelId: CHANNEL_ID,
+        remembered: { channelKeyHex: 'nothex', writeToken: WRITE_TOKEN },
+      }),
+    ).toBeNull();
+    expect(
+      readRememberedCredentials({
+        relayUrl: DEFAULT_RELAY_URL,
+        channelId: CHANNEL_ID,
+        remembered: {
+          channelKeyHex: keyHex,
+          writeToken: 'zz'.repeat(32),
+        },
+      }),
+    ).toBeNull();
+    expect(
+      readRememberedCredentials({
+        channelId: CHANNEL_ID,
+        remembered: { channelKeyHex: keyHex, writeToken: WRITE_TOKEN },
+      }),
+    ).toBeNull();
+  });
+
+  it('forgetting clears only the remembered copy', async () => {
+    readSyncStateMock.mockResolvedValue({
+      relayUrl: DEFAULT_RELAY_URL,
+      channelId: CHANNEL_ID,
+      wrappedKeyMaterial: 'aa'.repeat(162),
+      remembered: { channelKeyHex: keyHex, writeToken: WRITE_TOKEN },
+      lastError: null,
+    });
+
+    await forgetRememberedCredentials();
+
+    expect(writeSyncStateMock).toHaveBeenCalledWith({
+      relayUrl: DEFAULT_RELAY_URL,
+      channelId: CHANNEL_ID,
+      wrappedKeyMaterial: 'aa'.repeat(162),
+      lastError: null,
+    });
+  });
+
+  it('forgetting is a no-op when nothing is remembered', async () => {
+    readSyncStateMock.mockResolvedValue({
+      relayUrl: DEFAULT_RELAY_URL,
+      channelId: CHANNEL_ID,
+      wrappedKeyMaterial: 'aa'.repeat(162),
+    });
+
+    await forgetRememberedCredentials();
+
+    expect(writeSyncStateMock).not.toHaveBeenCalled();
+  });
+
+  it('reports a storage read failure instead of pretending the device is locked', async () => {
+    readSyncStateMock.mockRejectedValue(new Error('storage unavailable'));
+
+    await expect(forgetRememberedCredentials()).rejects.toThrow('storage unavailable');
+
+    expect(writeSyncStateMock).not.toHaveBeenCalled();
+  });
+
+  it('unlocking with the passphrase re-remembers the credentials', async () => {
+    const keybag = await wrapKeybag(CHANNEL_KEY, PASSPHRASE, WRITE_TOKEN, {
+      channelId: CHANNEL_ID,
+    });
+    const state: SyncState = {
+      relayUrl: DEFAULT_RELAY_URL,
+      channelId: CHANNEL_ID,
+      wrappedKeyMaterial: Array.from(keybag, (byte) => byte.toString(16).padStart(2, '0')).join(''),
+      lastError: null,
+    };
+    readSyncStateMock.mockResolvedValue(state);
+
+    await unlockSyncState(state, PASSPHRASE);
+
+    expect(writeSyncStateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channelId: CHANNEL_ID,
+        wrappedKeyMaterial: expect.any(String),
+        remembered: { channelKeyHex: keyHex, writeToken: WRITE_TOKEN },
+      }),
+    );
+  });
+
+  it('reports a storage failure when an unlocked credential copy cannot be remembered', async () => {
+    const keybag = await wrapKeybag(CHANNEL_KEY, PASSPHRASE, WRITE_TOKEN, {
+      channelId: CHANNEL_ID,
+    });
+    const state: SyncState = {
+      relayUrl: DEFAULT_RELAY_URL,
+      channelId: CHANNEL_ID,
+      wrappedKeyMaterial: Array.from(keybag, (byte) => byte.toString(16).padStart(2, '0')).join(''),
+      lastError: null,
+    };
+    readSyncStateMock.mockRejectedValue(new Error('storage unavailable'));
+
+    await expect(unlockSyncState(state, PASSPHRASE)).rejects.toThrow('storage unavailable');
+  });
 });
