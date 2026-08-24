@@ -12,7 +12,7 @@ build.
 ## Import changes
 
 - Importing an `.apkg` without choosing an existing destination now creates a Course named after
-  the Anki deck. Its cards are placed in that Course's question bank scheduling unit. It no longer
+  the Anki deck. Its cards are placed in that Course's default Card scheduling unit. It no longer
   creates a Lacuna Deck.
 - Backups from before schema v22 and `LAC0`, `LAC1`, `LAC2` and `LAC3` share codes still import.
   Their Deck data is converted to Courses and scheduling units during import.

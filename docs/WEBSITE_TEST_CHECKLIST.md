@@ -466,7 +466,7 @@ are beyond its scope, as stated in the automation boundary above.
       verify that one family row is shown rather than fake generated Cards.
 - [ ] Edit and suspend both Question forms; deleting a Question explains that Attempt evidence is
       retained.
-- [ ] Build external batch prompt cannot discard entered or staged work without explicit
+- [ ] Build batch prompt cannot discard entered or staged work without explicit
       confirmation.
 - [ ] Batch generation requires one named primary target Concept per Question, permits named
       prerequisite Concepts and leaves the number of strong Questions to the model unless a maximum

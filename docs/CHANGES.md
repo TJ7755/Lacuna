@@ -33,6 +33,11 @@
 - Recorded the complete design, scientific limits and deferred Path integration in
   `docs/plans/question-mode.md`; added the canonical Concept/Card/Question/Question family/Attempt
   vocabulary in `CONTEXT.md`.
+- Corrected the shipped documentation after implementation: Help now covers Question authoring,
+  practice, marking and evidence isolation; legacy Concept and migration exceptions, Attempt
+  lifecycle semantics and due-Question interleaving now match the code; stale Question-bank,
+  bulk-deck and batch-prompt wording has been removed from the current specification, flows and
+  Help.
 
 ## Unreleased — Full audit 2026-08-24: code, quality, accuracy and science
 

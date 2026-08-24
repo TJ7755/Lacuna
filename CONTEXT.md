@@ -7,8 +7,10 @@ Use these terms consistently in code, product copy and documentation.
 
 **Concept**
 
-A stable, course-scoped identity for one piece of knowledge. Cards present a Concept for direct
-recall; Questions may practise it as their primary Concept or depend on it as a prerequisite.
+A stable identity for one piece of knowledge. New Concepts are course-scoped: Cards present them
+for direct recall, while Questions may practise one as their primary Concept or depend on others as
+prerequisites. Migrated Cards outside a Course retain compatibility-only Concepts scoped to their
+legacy scheduling unit; Questions cannot target those Concepts.
 
 _Avoid:_ atomic concept, topic, knowledge component. Use “skill” only in the learner-facing
 “Primary skill practised” label.
@@ -36,7 +38,9 @@ _Avoid:_ Question template, generated Card, generator script.
 
 **Attempt**
 
-The immutable record of one presented Question or Question-family variant. It preserves the first
-submission and may hold a separate correction without rewriting the original evidence.
+The lifecycle evidence record for one presented Question or Question-family variant. Its
+presentation receipt is immutable; the first submission and optional correction become separately
+immutable when recorded, while lifecycle metadata may record answering, abandonment and a later
+undo.
 
 _Avoid:_ Card review, answer record, mutable response.
