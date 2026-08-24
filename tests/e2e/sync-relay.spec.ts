@@ -64,7 +64,9 @@ test('first-device sync setup completes against a stubbed relay', async ({ page 
 
   await page.locator('#settings-sync').getByRole('button', { name: 'Set up sync' }).click();
   await page.getByLabel('Relay URL', { exact: true }).fill(relayBase);
-  await page.getByLabel('Relay mint secret', { exact: true }).fill('stub-mint-secret');
+  await page
+    .getByLabel('Relay mint secret (private relays only)', { exact: true })
+    .fill('stub-mint-secret');
   await page.getByLabel('Recovery passphrase', { exact: true }).fill(PASS_PHRASE);
   await page.getByLabel('Confirm recovery passphrase', { exact: true }).fill(PASS_PHRASE);
   await page.getByRole('button', { name: 'Set up sync', exact: true }).click();
