@@ -163,7 +163,7 @@ Batch reviews to the end of a group of related tasks rather than one per commit,
 
 ## Running workers
 
-Every non-Claude worker communicates through `.agent-mail`; see `AGENTS.md` and `.agent-mail/README.md`. Background the wait so I can keep talking to you while a worker runs, and pick the reply up when it lands:
+Every non-Claude worker communicates through `.agent-mail`; see `.agent-mail/README.md`. Background the wait so I can keep talking to you while a worker runs, and pick the reply up when it lands:
 
 ```sh
 .agent-mail/bin/await-mail <task-slug> done 900

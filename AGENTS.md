@@ -39,16 +39,6 @@
 
 ---
 
-## Agent mailbox
-
-Every non-Claude worker uses the mailbox by default — Codex, DeepSeek, Freebuff, or anything else driven outside Claude Code. Claude subagents use it only when the orchestrator explicitly approves.
-
-Derive a stable kebab-case slug from the task, write `<slug>-status.md` heartbeats, and finish with `<slug>-done.md` containing a summary and commit hash. When blocked, write `<slug>-question.md`, stop work, and poll for `<slug>-answer.md` rather than guessing or giving up early.
-
-The orchestrator polls the mailbox roughly every 20 seconds, so questions will be seen and answered quickly. It deletes consumed files; a status or completion file vanishing is normal. Runtime mailbox files are temporary, ignored by Git, and must not be committed. See `.agent-mail/README.md` for the full protocol, including the `-inbox.md` and `-spawn-next.md` message kinds and the blocking `await-mail` helper.
-
----
-
 ## Memories
 
 `MEMORIES.md` holds durable facts about how to work in this repository. Read it before starting; it is short by design, and it exists because it carries the things that have caught agents out before.
@@ -61,5 +51,3 @@ Do not record what is already discoverable — architecture, file layout, past f
 
 ## Project Context
 Lacuna is a prototype alpha project. Suggest sweeping changes that affect the codebase optimised for long-term stability and performance as well as features.
-
-Mixed-model workflows: follow `.claude/skills/lmo/SKILL.md`. Start with `npx lmorchestrator` so the monitor opens.

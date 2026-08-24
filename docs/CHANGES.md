@@ -1,5 +1,12 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Agent workspace housekeeping
+
+- Removed obsolete mailbox and LMO directions from the agent-agnostic instructions while retaining
+  the mailbox protocol where it is still used by Claude-managed workers.
+- Ignored Freebuff's clone-local project metadata so using the preferred hand-off tool no longer
+  dirties the Git workspace.
+
 ## Unreleased — Questions as separate post-instruction application practice
 
 - Renamed the former Question bank to **Cards** and added a separate **Questions** course tab. Cards
