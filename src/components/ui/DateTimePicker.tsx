@@ -130,7 +130,7 @@ export function DateTimePicker({
   const [hourDraft, setHourDraft] = useState(() => pad(selected.hours));
   const [minuteDraft, setMinuteDraft] = useState(() => pad(selected.minutes));
   const [validationError, setValidationError] = useState<string | null>(null);
-  const trapRef = useFocusTrap(open, { autoFocusSelector: '[tabindex="0"]' });
+  useFocusTrap(open, { autoFocusSelector: '[tabindex="0"]' }, dropdownRef);
 
   const reportValidity = useCallback(
     (error: string | null) => {
@@ -571,10 +571,7 @@ export function DateTimePicker({
       <AnimatePresence>
         {open && (
           <motion.div
-            ref={(node) => {
-              (dropdownRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-              (trapRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
-            }}
+            ref={dropdownRef}
             role="dialog"
             aria-label="Choose date and time"
             aria-modal="true"

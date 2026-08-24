@@ -1,5 +1,7 @@
 // Parse large Anki archives away from the UI thread. The result is structured-cloned
 // back to the importer; media buffers are transferred rather than copied again.
+// Size and zip-bomb guards (50 MB file / 100 MB uncompressed / 5000 files) live in
+// parseApkgBuffer — this worker delegates directly, so no duplicate check is needed.
 
 import {
   parseApkgBuffer,

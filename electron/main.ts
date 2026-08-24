@@ -211,15 +211,26 @@ function createWindow(): void {
   });
 
   // Security: prevent new windows and external navigation; open externally instead.
+  // Only http/https are opened externally — other schemes (file:, javascript:, data:) are
+  // denied without an external open to avoid surprising handlers.
+  const isSafeExternalUrl = (value: string): boolean => {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    if (isSafeExternalUrl(url)) void shell.openExternal(url);
     return { action: 'deny' };
   });
   mainWindow.webContents.on('will-navigate', (event, url) => {
     const isAllowed = url.startsWith('app://') || (isDev && url.startsWith(VITE_DEV_URL));
     if (!isAllowed) {
       event.preventDefault();
-      void shell.openExternal(url);
+      if (isSafeExternalUrl(url)) void shell.openExternal(url);
     }
   });
 
