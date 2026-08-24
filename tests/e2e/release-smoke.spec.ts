@@ -64,7 +64,8 @@ test('opens a lesson with persistent course navigation', async ({ page }) => {
   await page.getByRole('button', { name: 'Core concepts & rendering' }).click();
   const navigation = page.getByRole('navigation', { name: 'Course sections' });
   await expect(navigation.getByRole('link', { name: 'Path' })).toBeVisible();
-  await expect(navigation.getByRole('link', { name: 'Question bank' })).toBeVisible();
+  await expect(navigation.getByRole('link', { name: 'Cards' })).toBeVisible();
+  await expect(navigation.getByRole('link', { name: 'Questions' })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Analytics' })).toBeVisible();
   await expect(navigation.getByRole('link', { name: 'Settings' })).toBeVisible();
 });
