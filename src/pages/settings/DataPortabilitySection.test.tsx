@@ -36,9 +36,13 @@ vi.mock('../../components/ui/Toast', () => ({
 function backupStub(overrides: Partial<BackupFile> = {}): BackupFile {
   return {
     app: 'lacuna',
-    version: 10,
+    version: 11,
     exportedAt: new Date(2026, 7, 12).getTime(),
     cards: [],
+    concepts: [],
+    questions: [],
+    questionConcepts: [],
+    questionAttempts: [],
     assets: [],
     sessionHistory: [],
     userPerformance: [],
@@ -84,37 +88,46 @@ describe('DataPortabilitySection', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseRecoverFile();
 
-    expect(await screen.findByText(/keeps your current data and folds in the backup/)).toHaveTextContent(
+    expect(
+      await screen.findByText(/keeps your current data and folds in the backup/),
+    ).toHaveTextContent(
       'Add from backup keeps your current data and folds in the backup; existing items are not deleted.',
     );
     expect(screen.queryByText(/more recently updated/)).not.toBeInTheDocument();
   });
 
   it('reports the backup lesson count rather than the internal deck count', async () => {
-    readBackupFile.mockResolvedValue(backupStub({
-      decks: Array.from({ length: 5 }),
-      lessons: Array.from({ length: 7 }),
-      cards: Array.from({ length: 36 }),
-      exportedAt: new Date(2026, 7, 10).getTime(),
-    }) as BackupFile);
+    readBackupFile.mockResolvedValue(
+      backupStub({
+        decks: Array.from({ length: 5 }),
+        lessons: Array.from({ length: 7 }),
+        cards: Array.from({ length: 36 }),
+        questions: Array.from({ length: 4 }),
+        exportedAt: new Date(2026, 7, 10).getTime(),
+      }) as BackupFile,
+    );
 
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseRecoverFile();
 
     expect(await screen.findByText(/This backup contains/)).toHaveTextContent(
-      'This backup contains 7 lessons and 36 cards',
+      'This backup contains 7 lessons and 36 cards, plus 4 Questions',
     );
   });
 
   it('requires confirmation before combining with another device', async () => {
-    readBackupFile.mockResolvedValue(backupStub({
-      lessons: Array.from({ length: 2 }),
-      cards: Array.from({ length: 4 }),
-    }));
+    readBackupFile.mockResolvedValue(
+      backupStub({
+        lessons: Array.from({ length: 2 }),
+        cards: Array.from({ length: 4 }),
+      }),
+    );
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseCombineFile();
 
-    expect(await screen.findByText(/Combine with the 12 August 2026 backup \(4 cards\)\?/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Combine with the 12 August 2026 backup \(4 cards, 0 Questions\)\?/),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Data from both devices is combined/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Merge' })).not.toBeInTheDocument();
     expect(manualMerge).not.toHaveBeenCalled();
@@ -127,8 +140,10 @@ describe('DataPortabilitySection', () => {
     render(<DataPortabilitySection motionMultiplier={0} />);
 
     expect(screen.getByRole('heading', { name: 'Another device' })).toBeInTheDocument();
-    expect(screen.getByText(/Cards and reviews from either side are kept/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Choose backup from another device' })).toBeInTheDocument();
+    expect(screen.getByText(/Cards, Questions and review evidence/)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Choose backup from another device' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Recover this installation' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add from backup' })).not.toBeInTheDocument();
   });
@@ -140,6 +155,10 @@ describe('DataPortabilitySection', () => {
       courses: { kept: 1, added: 1, removed: 0 },
       lessons: { kept: 3, added: 2, removed: 0 },
       reviewEvents: { kept: 40, added: 12, removed: 0 },
+      concepts: { kept: 4, added: 1, removed: 0 },
+      questions: { kept: 2, added: 1, removed: 0 },
+      questionConcepts: { kept: 2, added: 1, removed: 0 },
+      questionAttempts: { kept: 3, added: 2, removed: 0 },
     });
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseCombineFile();
@@ -147,12 +166,14 @@ describe('DataPortabilitySection', () => {
 
     await waitFor(() =>
       expect(notify).toHaveBeenCalledWith(
-        'Combined. 12 cards kept, 3 added. 12 reviews added. A restore point was saved.',
+        'Combined. 12 cards kept, 3 added. 1 course kept, 1 added. 3 lessons kept, 2 added. 4 Concepts kept, 1 added. 2 Questions kept, 1 added. 2 Question relationships kept, 1 added. 3 Question attempts kept, 2 added. 12 reviews added. A restore point was saved.',
         'positive',
       ),
     );
     expect(importBackup).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Choose backup from another device' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Choose backup from another device' }),
+    ).toBeInTheDocument();
   });
 
   it('names removed cards in the success notice', async () => {
@@ -162,6 +183,10 @@ describe('DataPortabilitySection', () => {
       courses: { kept: 1, added: 0, removed: 0 },
       lessons: { kept: 3, added: 0, removed: 0 },
       reviewEvents: { kept: 40, added: 0, removed: 2 },
+      concepts: { kept: 0, added: 0, removed: 0 },
+      questions: { kept: 0, added: 0, removed: 0 },
+      questionConcepts: { kept: 0, added: 0, removed: 0 },
+      questionAttempts: { kept: 0, added: 0, removed: 0 },
     });
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseCombineFile();
@@ -228,9 +253,10 @@ describe('DataPortabilitySection', () => {
     let resolveMerge: (value: unknown) => void = () => undefined;
     readBackupFile.mockResolvedValue(backupStub());
     manualMerge.mockImplementation(
-      () => new Promise((resolve) => {
-        resolveMerge = resolve;
-      }),
+      () =>
+        new Promise((resolve) => {
+          resolveMerge = resolve;
+        }),
     );
     render(<DataPortabilitySection motionMultiplier={0} />);
     await chooseCombineFile();
@@ -245,6 +271,10 @@ describe('DataPortabilitySection', () => {
         courses: { kept: 0, added: 0, removed: 0 },
         lessons: { kept: 0, added: 0, removed: 0 },
         reviewEvents: { kept: 0, added: 0, removed: 0 },
+        concepts: { kept: 0, added: 0, removed: 0 },
+        questions: { kept: 0, added: 0, removed: 0 },
+        questionConcepts: { kept: 0, added: 0, removed: 0 },
+        questionAttempts: { kept: 0, added: 0, removed: 0 },
       });
     });
   });

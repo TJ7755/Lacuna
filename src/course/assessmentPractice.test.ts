@@ -26,12 +26,21 @@ function course(): Course {
 }
 
 function lesson(id: string, orderIndex: number): Lesson {
-  return { id, courseId: 'course', name: id, orderIndex, createdAt: 0, updatedAt: 0, isExtension: false };
+  return {
+    id,
+    courseId: 'course',
+    name: id,
+    orderIndex,
+    createdAt: 0,
+    updatedAt: 0,
+    isExtension: false,
+  };
 }
 
 function card(id: string, lessonId: string, overrides: Partial<Card> = {}): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'deck',
     schedulingUnitId: 'deck',
     courseId: 'course',

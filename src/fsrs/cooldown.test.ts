@@ -19,6 +19,7 @@ const deck: LegacyDeckRecord = {
 function card(id: string, stability: number): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: deck.id,
     schedulingUnitId: deck.id,
     type: 'front_back',
@@ -65,12 +66,7 @@ describe('selectNextCard', () => {
   const strongest = card('strongest', 100);
 
   it('skips a higher-priority card while its cooldown is active', () => {
-    const next = selectNextCard(
-      [strongest, middle, weakest],
-      oc,
-      new Map([[weakest.id, 2]]),
-      NOW,
-    );
+    const next = selectNextCard([strongest, middle, weakest], oc, new Map([[weakest.id, 2]]), NOW);
 
     expect(next?.id).toBe(strongest.id);
   });

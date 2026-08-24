@@ -27,6 +27,7 @@ function log(
 function card(history: ReviewLog[]): Card {
   return {
     id: Math.random().toString(36).slice(2),
+    conceptId: 'concept-calibration-card',
     deckId: 'd1',
     schedulingUnitId: 'd1',
     type: 'front_back',

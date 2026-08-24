@@ -22,9 +22,12 @@ import sqlWasmUrl from '../assets/sql-wasm.wasm?url';
 // Types
 // ---------------------------------------------------------------------------
 
+/** Parsed Anki card data before Lacuna assigns a Course-scoped Concept. */
+export type ApkgCardDraft = Omit<Card, 'conceptId'>;
+
 export interface ApkgImportResult {
   deckName: string;
-  cards: Card[];
+  cards: ApkgCardDraft[];
   /** Supported media extracted from the APKG, keyed by original filename. */
   media: Map<string, Uint8Array>;
   /** How many Anki notes were skipped because their type is unsupported. */
@@ -107,8 +110,7 @@ export const MAX_APKG_FILE_COUNT = 5000;
 
 function assertApkgSize(size: number): void {
   if (size === 0) throw new Error('APKG is empty.');
-  if (size > MAX_APKG_SIZE_BYTES)
-    throw new Error(`APKG too large: ${size} bytes (max 50 MB)`);
+  if (size > MAX_APKG_SIZE_BYTES) throw new Error(`APKG too large: ${size} bytes (max 50 MB)`);
 }
 
 /**
@@ -176,9 +178,7 @@ export async function parseApkgBuffer(
   for (const bytes of Object.values(zip)) {
     totalUncompressed += bytes.byteLength;
     if (totalUncompressed > MAX_APKG_UNCOMPRESSED_BYTES) {
-      throw new Error(
-        `APKG uncompressed size too large: ${totalUncompressed} bytes (max 100 MB)`,
-      );
+      throw new Error(`APKG uncompressed size too large: ${totalUncompressed} bytes (max 100 MB)`);
     }
   }
 
@@ -260,7 +260,7 @@ function extractFromDatabase(
   const revlogByCid = groupBy(revlogs, (r) => r.cid);
 
   // Build Lacuna cards.
-  const lacunaCards: Card[] = [];
+  const lacunaCards: ApkgCardDraft[] = [];
   let skippedNotes = 0;
   let skippedCards = 0;
 
@@ -526,7 +526,7 @@ function buildLacunaCard(
   ankiCard: AnkiCard,
   mapping: NoteMapping,
   revlogs: AnkiRevlog[],
-): Card | null {
+): ApkgCardDraft | null {
   const now = Date.now();
 
   // Convert Anki state to Lacuna FSRS state.
@@ -736,6 +736,7 @@ export async function importApkgResult(
       db.lessons,
       db.courseAssessments,
       db.cards,
+      db.concepts,
       db.reviewHistory,
       db.schedulingUnits,
       db.coursePerformance,

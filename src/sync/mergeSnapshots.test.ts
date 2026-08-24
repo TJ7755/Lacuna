@@ -56,6 +56,7 @@ function course(id: string, overrides: Partial<CourseRecord> = {}): CourseRecord
 function card(id: string, overrides: Partial<Card> = {}): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     type: 'front_back',
     front: 'Q',
     back: 'A',
@@ -136,7 +137,7 @@ describe('mergeSnapshots', () => {
     const b = backup({ exportedAt: 20 });
     const merged = expectPeerProperties(a, b);
     expect(merged.exportedAt).toBe(20);
-    expect(merged.version).toBe(10);
+    expect(merged.version).toBe(11);
     expect(merged.userPerformance).toEqual([]);
   });
 
@@ -191,7 +192,9 @@ describe('mergeSnapshots', () => {
     const second = review({ eventId: 'e2', timestamp: 2_000, grade: 4 });
     const a = backup({
       courses: [course('course-1')],
-      cards: [card('c1', { history: [first], updatedAt: 1_000, stability: 3, lastReviewed: 1_000 })],
+      cards: [
+        card('c1', { history: [first], updatedAt: 1_000, stability: 3, lastReviewed: 1_000 }),
+      ],
       reviewHistory: [historyEntry('c1', first)],
     });
     const b = backup({
@@ -251,8 +254,32 @@ describe('mergeSnapshots', () => {
   });
 
   it('takes the later edit when both sides changed the same record', () => {
-    const a = backup({ notes: [{ id: 'n1', lessonId: 'l1', name: 'A', content: 'one', orderIndex: 0, createdAt: 1, updatedAt: 10 }] });
-    const b = backup({ notes: [{ id: 'n1', lessonId: 'l1', name: 'B', content: 'two', orderIndex: 0, createdAt: 1, updatedAt: 20 }] });
+    const a = backup({
+      notes: [
+        {
+          id: 'n1',
+          lessonId: 'l1',
+          name: 'A',
+          content: 'one',
+          orderIndex: 0,
+          createdAt: 1,
+          updatedAt: 10,
+        },
+      ],
+    });
+    const b = backup({
+      notes: [
+        {
+          id: 'n1',
+          lessonId: 'l1',
+          name: 'B',
+          content: 'two',
+          orderIndex: 0,
+          createdAt: 1,
+          updatedAt: 20,
+        },
+      ],
+    });
     const merged = expectPeerProperties(a, b);
     expect(merged.notes[0]).toMatchObject({ name: 'B', content: 'two', updatedAt: 20 });
   });

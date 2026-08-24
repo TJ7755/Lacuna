@@ -16,10 +16,12 @@ import type {
   LessonCardExposure,
   LessonCardLink,
   LessonCompletion,
+  LineageIdMapping,
   Note,
   Occlusion,
   PracticeMilestone,
   PracticeNode,
+  PendingMergeReview,
   RevisionPlan,
   SchedulingPerformance,
   SchedulingUnitRecord,
@@ -34,6 +36,14 @@ import {
 } from '../db/reviewHistory';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { defaultFsrsParameters } from '../fsrs/params';
+import { normaliseQuestionBackup } from '../questions/backup';
+import { mergeQuestionCollections, type QuestionMergeCollections } from '../questions/merge';
+import type {
+  Concept,
+  QuestionAttempt,
+  QuestionConceptSet,
+  QuestionDefinition,
+} from '../questions/types';
 
 const ASSET_RE = /lacuna-asset:\/\/([a-f0-9]{64})/gi;
 
@@ -50,9 +60,9 @@ const NEVER_REVIEWED = {
   history: [] as Card['history'],
 };
 
-/** A v10 snapshot with every table merge always emits present. */
+/** A v11 snapshot with every table merge always emits present. */
 export type MergedBackupFile = BackupFile & {
-  version: 10;
+  version: 11;
   reviewHistory: ReviewHistoryEntry[];
   schedulingUnits: SchedulingUnitRecord[];
   coursePerformance: CoursePerformance[];
@@ -70,6 +80,12 @@ export type MergedBackupFile = BackupFile & {
   sequences: Sequence[];
   occlusions: Occlusion[];
   tombstones: Tombstone[];
+  concepts: Concept[];
+  questions: QuestionDefinition[];
+  questionConcepts: QuestionConceptSet[];
+  questionAttempts: QuestionAttempt[];
+  lineageIdMappings: LineageIdMapping[];
+  pendingMergeReviews: PendingMergeReview[];
 };
 
 export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
@@ -198,6 +214,14 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     updatedAtOf,
     tombstones,
   );
+  const questionState = mergeQuestionCollections(left, right, courses, [...tombstones.values()]);
+  const lineageIdMappings = mergeLineageMappings(left.lineageIdMappings, right.lineageIdMappings);
+  const pendingMergeReviews = newestWins(
+    left.pendingMergeReviews,
+    right.pendingMergeReviews,
+    (row) => row.courseId,
+    (row) => row.createdAt,
+  );
 
   const liveCardIds = new Set(cards.map((card) => card.id));
   const unionedReviews = unionReviews(left, right);
@@ -229,6 +253,10 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     schedulingUnits,
     coursePerformance,
     schedulingPerformance,
+    concepts: questionState.concepts,
+    questions: questionState.questions,
+    questionConcepts: questionState.questionConcepts,
+    questionAttempts: questionState.questionAttempts,
   });
   const keptTombstones = [...tombstones.values()]
     .filter((row) => !liveKeys.has(tombstoneKey(row.table, row.recordId)))
@@ -236,14 +264,22 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
 
   return {
     app: 'lacuna',
-    version: 10,
+    version: 11,
     exportedAt: Math.max(left.exportedAt, right.exportedAt),
     cards: sortById(replayedCards),
     reviewHistory: sortById(reviewHistory),
     schedulingUnits: sortById(schedulingUnits),
     coursePerformance: sortBy(coursePerformance, coursePerfId),
     schedulingPerformance: sortBy(schedulingPerformance, schedulingPerfId),
-    assets: mergeAssets(left.assets, right.assets, replayedCards, notes, occlusions),
+    assets: mergeAssets(
+      left.assets,
+      right.assets,
+      replayedCards,
+      notes,
+      occlusions,
+      questionState.questions,
+      questionState.questionAttempts,
+    ),
     sessionHistory: sortSessionHistory(sessionHistory),
     userPerformance: [],
     courses: sortById(courses),
@@ -259,10 +295,16 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     sequences: sortById(sequences),
     occlusions: sortById(occlusions),
     tombstones: keptTombstones,
+    concepts: questionState.concepts,
+    questions: questionState.questions,
+    questionConcepts: questionState.questionConcepts,
+    questionAttempts: questionState.questionAttempts,
+    lineageIdMappings,
+    pendingMergeReviews,
   };
 }
 
-interface NormalisedSnapshot {
+interface NormalisedSnapshot extends QuestionMergeCollections {
   exportedAt: number;
   cards: Card[];
   reviewHistory: ReviewHistoryEntry[];
@@ -284,51 +326,66 @@ interface NormalisedSnapshot {
   sequences: Sequence[];
   occlusions: Occlusion[];
   tombstones: Tombstone[];
+  lineageIdMappings: LineageIdMapping[];
+  pendingMergeReviews: PendingMergeReview[];
 }
 
 function normaliseSnapshot(input: BackupFile): NormalisedSnapshot {
+  const normalised = normaliseQuestionBackup(input);
   return {
-    exportedAt: input.exportedAt,
-    cards: (input.cards ?? []).map((row) =>
+    exportedAt: normalised.exportedAt,
+    cards: normalised.cards.map((row) =>
       withUpdatedAt(row, Math.max(numberOrZero(row.createdAt), numberOrZero(row.lastReviewed))),
     ),
-    reviewHistory: input.reviewHistory ?? [],
-    schedulingUnits: (input.schedulingUnits ?? []).map((row) =>
+    reviewHistory: normalised.reviewHistory ?? [],
+    schedulingUnits: (normalised.schedulingUnits ?? []).map((row) =>
       withUpdatedAt(row, Math.max(numberOrZero(row.createdAt), numberOrZero(row.lastInteractedAt))),
     ),
-    coursePerformance: (input.coursePerformance ?? []).map((row) => withUpdatedAt(row, 0)),
-    schedulingPerformance: (input.schedulingPerformance ?? []).map((row) => withUpdatedAt(row, 0)),
-    assets: input.assets ?? [],
-    sessionHistory: input.sessionHistory ?? [],
-    courses: (input.courses ?? []).map((row) => withUpdatedAt(row, numberOrZero(row.createdAt))),
-    lessons: (input.lessons ?? []).map((row) => withUpdatedAt(row, numberOrZero(row.createdAt))),
-    notes: (input.notes ?? []).map((row) => withUpdatedAt(row, numberOrZero(row.createdAt))),
-    lessonCards: (input.lessonCards ?? []).map((row) =>
+    coursePerformance: (normalised.coursePerformance ?? []).map((row) => withUpdatedAt(row, 0)),
+    schedulingPerformance: (normalised.schedulingPerformance ?? []).map((row) =>
+      withUpdatedAt(row, 0),
+    ),
+    assets: normalised.assets,
+    sessionHistory: normalised.sessionHistory,
+    courses: (normalised.courses ?? []).map((row) =>
       withUpdatedAt(row, numberOrZero(row.createdAt)),
     ),
-    lessonCardExposures: (input.lessonCardExposures ?? []).map((row) =>
+    lessons: (normalised.lessons ?? []).map((row) =>
+      withUpdatedAt(row, numberOrZero(row.createdAt)),
+    ),
+    notes: (normalised.notes ?? []).map((row) => withUpdatedAt(row, numberOrZero(row.createdAt))),
+    lessonCards: (normalised.lessonCards ?? []).map((row) =>
+      withUpdatedAt(row, numberOrZero(row.createdAt)),
+    ),
+    lessonCardExposures: (normalised.lessonCardExposures ?? []).map((row) =>
       withUpdatedAt(row, numberOrZero(row.taughtAt)),
     ),
-    lessonCompletions: (input.lessonCompletions ?? []).map((row) =>
+    lessonCompletions: (normalised.lessonCompletions ?? []).map((row) =>
       withUpdatedAt(row, numberOrZero(row.completedAt)),
     ),
-    practiceNodes: (input.practiceNodes ?? []).map((row) =>
+    practiceNodes: (normalised.practiceNodes ?? []).map((row) =>
       withUpdatedAt(row, numberOrZero(row.createdAt)),
     ),
-    practiceMilestones: (input.practiceMilestones ?? []).map((row) => withUpdatedAt(row, 0)),
-    courseAssessments: (input.courseAssessments ?? []).map((row) =>
+    practiceMilestones: (normalised.practiceMilestones ?? []).map((row) => withUpdatedAt(row, 0)),
+    courseAssessments: (normalised.courseAssessments ?? []).map((row) =>
       withUpdatedAt(row, numberOrZero(row.createdAt)),
     ),
-    revisionPlans: (input.revisionPlans ?? []).map((row) =>
+    revisionPlans: (normalised.revisionPlans ?? []).map((row) =>
       withUpdatedAt(row, numberOrZero(row.updatedAt)),
     ),
-    sequences: (input.sequences ?? []).map((row) =>
+    sequences: (normalised.sequences ?? []).map((row) =>
       withUpdatedAt(row, numberOrZero(row.createdAt)),
     ),
-    occlusions: (input.occlusions ?? []).map((row) =>
+    occlusions: (normalised.occlusions ?? []).map((row) =>
       withUpdatedAt(row, numberOrZero(row.createdAt)),
     ),
-    tombstones: input.tombstones ?? [],
+    tombstones: normalised.tombstones ?? [],
+    concepts: normalised.concepts.map((row) => withUpdatedAt(row, numberOrZero(row.createdAt))),
+    questions: normalised.questions,
+    questionConcepts: normalised.questionConcepts,
+    questionAttempts: normalised.questionAttempts,
+    lineageIdMappings: normalised.lineageIdMappings ?? [],
+    pendingMergeReviews: normalised.pendingMergeReviews ?? [],
   };
 }
 
@@ -410,6 +467,47 @@ function newestWins<T>(
   return [...merged.values()];
 }
 
+function mergeLineageMappings(
+  left: LineageIdMapping[],
+  right: LineageIdMapping[],
+): LineageIdMapping[] {
+  const mappings = new Map<string, LineageIdMapping>();
+  const union = (a: readonly string[], b: readonly string[]): string[] =>
+    [...new Set([...a, ...b])].sort();
+  const records = <T>(a: Record<string, T>, b: Record<string, T>): Record<string, T> => {
+    const merged: Record<string, T> = { ...a };
+    for (const [id, value] of Object.entries(b)) {
+      const existing = merged[id];
+      if (existing === undefined || canonicalJson(value) > canonicalJson(existing)) {
+        merged[id] = value;
+      }
+    }
+    return merged;
+  };
+  for (const incoming of [...left, ...right]) {
+    const existing = mappings.get(incoming.id);
+    if (!existing) {
+      mappings.set(incoming.id, incoming);
+      continue;
+    }
+    if (existing.courseId !== incoming.courseId) {
+      throw new Error(`Lineage ${incoming.id} belongs to conflicting Courses.`);
+    }
+    mappings.set(incoming.id, {
+      ...existing,
+      lessonIds: union(existing.lessonIds, incoming.lessonIds),
+      noteIds: union(existing.noteIds, incoming.noteIds),
+      cardIds: union(existing.cardIds, incoming.cardIds),
+      sequenceIds: union(existing.sequenceIds, incoming.sequenceIds),
+      occlusionIds: union(existing.occlusionIds ?? [], incoming.occlusionIds ?? []),
+      lessonSnapshots: records(existing.lessonSnapshots, incoming.lessonSnapshots),
+      noteSnapshots: records(existing.noteSnapshots, incoming.noteSnapshots),
+      cardSnapshots: records(existing.cardSnapshots, incoming.cardSnapshots),
+    });
+  }
+  return [...mappings.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
+
 function applyTombstones<T>(
   table: string,
   rows: T[],
@@ -440,6 +538,10 @@ function collectLiveKeys(tables: {
   schedulingUnits: SchedulingUnitRecord[];
   coursePerformance: CoursePerformance[];
   schedulingPerformance: SchedulingPerformance[];
+  concepts: Concept[];
+  questions: QuestionDefinition[];
+  questionConcepts: QuestionConceptSet[];
+  questionAttempts: QuestionAttempt[];
 }): Set<string> {
   const keys = new Set<string>();
   const add = (table: string, recordId: string) => keys.add(tombstoneKey(table, recordId));
@@ -460,6 +562,10 @@ function collectLiveKeys(tables: {
   for (const row of tables.coursePerformance) add('coursePerformance', coursePerfId(row));
   for (const row of tables.schedulingPerformance)
     add('schedulingPerformance', schedulingPerfId(row));
+  for (const row of tables.concepts) add('concepts', row.id);
+  for (const row of tables.questions) add('questions', row.id);
+  for (const row of tables.questionConcepts) add('questionConcepts', row.questionId);
+  for (const row of tables.questionAttempts) add('questionAttempts', row.id);
   return keys;
 }
 
@@ -571,6 +677,8 @@ function mergeAssets(
   cards: Card[],
   notes: Note[],
   occlusions: Occlusion[],
+  questions: QuestionDefinition[],
+  attempts: QuestionAttempt[],
 ): BackupAsset[] {
   const byHash = new Map<string, BackupAsset>();
   for (const asset of [...left, ...right]) {
@@ -581,13 +689,19 @@ function mergeAssets(
       byHash.set(hash, normalised);
     }
   }
-  const referenced = referencedHashes(cards, notes, occlusions);
+  const referenced = referencedHashes(cards, notes, occlusions, questions, attempts);
   return [...byHash.values()]
     .filter((asset) => referenced.has(asset.hash))
     .sort((a, b) => a.hash.localeCompare(b.hash));
 }
 
-function referencedHashes(cards: Card[], notes: Note[], occlusions: Occlusion[]): Set<string> {
+function referencedHashes(
+  cards: Card[],
+  notes: Note[],
+  occlusions: Occlusion[],
+  questions: QuestionDefinition[],
+  attempts: QuestionAttempt[],
+): Set<string> {
   const hashes = new Set<string>();
   const scan = (markdown: string) => {
     ASSET_RE.lastIndex = 0;
@@ -596,6 +710,17 @@ function referencedHashes(cards: Card[], notes: Note[], occlusions: Occlusion[])
   for (const card of cards) scan(`${card.front}\n${card.back}`);
   for (const note of notes) scan(note.content);
   for (const occlusion of occlusions) hashes.add(occlusion.assetHash.toLowerCase());
+  const scanValue = (value: unknown): void => {
+    if (typeof value === 'string') {
+      scan(value);
+      return;
+    }
+    if (value === null || typeof value !== 'object') return;
+    if (Array.isArray(value)) value.forEach(scanValue);
+    else Object.values(value as Record<string, unknown>).forEach(scanValue);
+  };
+  questions.forEach(scanValue);
+  attempts.forEach(scanValue);
   return hashes;
 }
 

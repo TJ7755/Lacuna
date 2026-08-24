@@ -27,7 +27,7 @@ describe('BatchAuthoringPromptDialog', () => {
         courseId="course-1"
         courseName="Economics"
         lessons={[]}
-        cards={[]}
+        questions={[]}
         onClose={onClose}
       />,
     );
@@ -46,7 +46,7 @@ describe('BatchAuthoringPromptDialog', () => {
         courseId="course-1"
         courseName="Economics"
         lessons={[]}
-        cards={[]}
+        questions={[]}
         onClose={onClose}
       />,
     );
@@ -57,7 +57,9 @@ describe('BatchAuthoringPromptDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 
     expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByText('Discard this unsaved batch prompt and staging review?')).toBeInTheDocument();
+    expect(
+      screen.getByText('Discard this unsaved Question batch prompt and staging review?'),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Discard batch' }));
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -68,13 +70,13 @@ describe('BatchAuthoringPromptDialog', () => {
         courseId="course-1"
         courseName="Economics"
         lessons={[]}
-        cards={[]}
+        questions={[]}
         onClose={vi.fn()}
       />,
     );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Review response' }));
-    expect(screen.getByText('Generated batch')).toBeInTheDocument();
+    expect(screen.getByText('Generated Question batch')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Target lesson' })).toBeDisabled();
   });
 
@@ -86,7 +88,7 @@ describe('BatchAuthoringPromptDialog', () => {
         examBoard="AQA"
         specification="7136"
         lessons={[]}
-        cards={[]}
+        questions={[]}
         onClose={vi.fn()}
       />,
     );
@@ -97,9 +99,8 @@ describe('BatchAuthoringPromptDialog', () => {
     fireEvent.change(screen.getByPlaceholderText('Demand'), { target: { value: 'Demand' } });
     fireEvent.change(screen.getByPlaceholderText('A level'), { target: { value: 'A level' } });
     fireEvent.click(screen.getByLabelText('Set generation constraints'));
-    fireEvent.change(screen.getByLabelText(/Concepts per item/), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText(/Maximum items/), { target: { value: '99' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Copy batch prompt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy Question batch prompt' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
     const prompt = writeText.mock.calls[0][0] as string;
@@ -107,9 +108,13 @@ describe('BatchAuthoringPromptDialog', () => {
     expect(prompt).toContain('Exam board: AQA');
     expect(prompt).toContain('Specification: 7136');
     expect(prompt).toContain('Requested maximum items: 99');
-    expect(prompt).toContain('Target concept density: 2 atomic concepts per item');
+    expect(prompt).toContain('exactly one primary target Concept');
+    expect(prompt).toContain('List any prerequisite Concepts separately');
     expect(prompt).toContain(BATCH_OUTPUT_START);
-    expect(notify).toHaveBeenCalledWith('Batch prompt copied to the clipboard.', 'positive');
+    expect(notify).toHaveBeenCalledWith(
+      'Question batch prompt copied to the clipboard.',
+      'positive',
+    );
   });
 
   it('requires notes, topic and level before copying', () => {
@@ -118,7 +123,7 @@ describe('BatchAuthoringPromptDialog', () => {
         courseId="course-1"
         courseName="Economics"
         lessons={[]}
-        cards={[]}
+        questions={[]}
         onClose={vi.fn()}
       />,
     );
@@ -127,16 +132,16 @@ describe('BatchAuthoringPromptDialog', () => {
     expect(
       screen.getByText(/arbitrary-number exercise variants are not supported yet/),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Copy batch prompt' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Copy Question batch prompt' })).toBeDisabled();
   });
 
-  it('lets the model choose both generation constraints by default', async () => {
+  it('lets the model choose the batch size while preserving the one-target invariant', async () => {
     render(
       <BatchAuthoringPromptDialog
         courseId="course-1"
         courseName="Economics"
         lessons={[]}
-        cards={[]}
+        questions={[]}
         onClose={vi.fn()}
       />,
     );
@@ -147,12 +152,11 @@ describe('BatchAuthoringPromptDialog', () => {
     fireEvent.change(screen.getByPlaceholderText('Demand'), { target: { value: 'Demand' } });
     fireEvent.change(screen.getByPlaceholderText('A level'), { target: { value: 'A level' } });
     expect(screen.getByLabelText('Set generation constraints')).not.toBeChecked();
-    expect(screen.queryByLabelText(/Concepts per item/)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Maximum items/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Copy batch prompt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy Question batch prompt' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
-    expect(writeText.mock.calls[0][0]).toContain('Concepts per item: model-selected');
+    expect(writeText.mock.calls[0][0]).toContain('exactly one primary target Concept');
     expect(writeText.mock.calls[0][0]).toContain('Requested maximum items: model-selected');
   });
 });

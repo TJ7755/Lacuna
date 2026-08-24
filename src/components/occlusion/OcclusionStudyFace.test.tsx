@@ -8,7 +8,11 @@ vi.mock('../../db/assetCache', () => ({
   resolveAssetUrl: (...args: unknown[]) => resolveAssetUrl(...args),
 }));
 
-function region(id: string, role: OcclusionRegion['role'], overrides: Partial<OcclusionRegion> = {}): OcclusionRegion {
+function region(
+  id: string,
+  role: OcclusionRegion['role'],
+  overrides: Partial<OcclusionRegion> = {},
+): OcclusionRegion {
   return { id, role, shape: 'rectangle', x: 0.1, y: 0.1, w: 0.1, h: 0.1, ...overrides };
 }
 
@@ -30,9 +34,13 @@ function makeOcclusion(overrides: Partial<Occlusion> = {}): Occlusion {
   };
 }
 
-function makeCard(occlusionRegionId: string, overrides: Partial<Card> = {}): Card & { occlusionRegionId: string } {
+function makeCard(
+  occlusionRegionId: string,
+  overrides: Partial<Card> = {},
+): Card & { occlusionRegionId: string } {
   return {
     id: 'card-1',
+    conceptId: 'concept-card-1',
     deckId: 'deck-1',
     schedulingUnitId: 'deck-1',
     courseId: 'course-1',
@@ -111,9 +119,7 @@ describe('OcclusionStudyFace', () => {
     const occlusion = makeOcclusion({
       regions: [region('l1', 'label'), region('f2', 'feature', { answerText: 'Mitochondrion' })],
     });
-    render(
-      <OcclusionStudyFace card={makeCard('f2')} occlusion={occlusion} side="back" />,
-    );
+    render(<OcclusionStudyFace card={makeCard('f2')} occlusion={occlusion} side="back" />);
 
     await screen.findByRole('img', { name: 'Plant cell' });
     expect(screen.getByText('Mitochondrion')).toBeInTheDocument();
@@ -168,7 +174,9 @@ describe('OcclusionStudyFace', () => {
       </div>,
     );
     const narrowImg = await screen.findByRole('img', { name: 'Plant cell' });
-    const narrowTarget = narrowImg.parentElement!.querySelector('[style*="left: 10%"]') as HTMLElement;
+    const narrowTarget = narrowImg.parentElement!.querySelector(
+      '[style*="left: 10%"]',
+    ) as HTMLElement;
     const narrowStyle = narrowTarget.getAttribute('style');
     narrow.unmount();
 

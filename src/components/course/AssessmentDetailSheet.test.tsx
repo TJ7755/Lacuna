@@ -15,6 +15,7 @@ const lesson: Lesson = {
 };
 const card = {
   id: 'card-1',
+  conceptId: 'concept-card-1',
   courseId: 'c1',
   primaryLessonId: 'l1',
   deckId: 'd1',

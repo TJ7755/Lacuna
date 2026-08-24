@@ -7,6 +7,7 @@ const NOW = new Date('2026-06-04T10:00:00').getTime();
 
 function makeCard(over: Partial<Card> & Pick<Card, 'id'>): Card {
   return {
+    conceptId: `concept-${over.id}`,
     deckId: 'd1',
     schedulingUnitId: 'd1',
     type: 'front_back',
@@ -51,7 +52,14 @@ const deck = (newCardsPerDay?: number): LegacyDeckRecord => ({
   examDate: NOW + 30 * MS_PER_DAY,
   createdAt: 0,
   fsrsVersion: 6,
-  fsrsParameters: { w: [], requestRetention: 0.9, enable_fuzz: true, maximum_interval: 36500, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] },
+  fsrsParameters: {
+    w: [],
+    requestRetention: 0.9,
+    enable_fuzz: true,
+    maximum_interval: 36500,
+    learning_steps: ['1m', '10m'],
+    relearning_steps: ['10m'],
+  },
   examObjective: 'expectedMarks',
   newCardsPerDay,
 });

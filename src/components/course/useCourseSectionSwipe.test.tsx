@@ -22,7 +22,10 @@ function createWrapper(initialEntry: string) {
 function pointerEvent(
   clientX: number,
   clientY: number,
-  currentTarget: { setPointerCapture: ReturnType<typeof vi.fn>; releasePointerCapture: ReturnType<typeof vi.fn> },
+  currentTarget: {
+    setPointerCapture: ReturnType<typeof vi.fn>;
+    releasePointerCapture: ReturnType<typeof vi.fn>;
+  },
   target?: EventTarget,
 ): React.PointerEvent {
   return {
@@ -49,7 +52,11 @@ describe('useCourseSectionSwipe', () => {
       result.current.onPointerUp(pointerEvent(190, 100, capture));
     });
 
-    await waitFor(() => expect(document.querySelector('[data-testid="location"]')).toHaveTextContent('/course/abc/bank'));
+    await waitFor(() =>
+      expect(document.querySelector('[data-testid="location"]')).toHaveTextContent(
+        '/course/abc/cards',
+      ),
+    );
     expect(capture.setPointerCapture).toHaveBeenCalledWith(1);
     expect(capture.releasePointerCapture).toHaveBeenCalledWith(1);
   });
@@ -57,7 +64,7 @@ describe('useCourseSectionSwipe', () => {
   it('does not navigate after a cancelled gesture', async () => {
     const capture = { setPointerCapture: vi.fn(), releasePointerCapture: vi.fn() };
     const { result } = renderHook(() => useCourseSectionSwipe(), {
-      wrapper: createWrapper('/course/abc/bank'),
+      wrapper: createWrapper('/course/abc/cards'),
     });
 
     act(() => {
@@ -67,7 +74,11 @@ describe('useCourseSectionSwipe', () => {
       result.current.onPointerUp(pointerEvent(180, 100, capture));
     });
 
-    await waitFor(() => expect(document.querySelector('[data-testid="location"]')).toHaveTextContent('/course/abc/bank'));
+    await waitFor(() =>
+      expect(document.querySelector('[data-testid="location"]')).toHaveTextContent(
+        '/course/abc/cards',
+      ),
+    );
   });
 
   it('does not claim a gesture that starts on an interactive control', async () => {
@@ -83,14 +94,16 @@ describe('useCourseSectionSwipe', () => {
       result.current.onPointerUp(pointerEvent(100, 100, capture, button));
     });
 
-    await waitFor(() => expect(document.querySelector('[data-testid="location"]')).toHaveTextContent('/course/abc'));
+    await waitFor(() =>
+      expect(document.querySelector('[data-testid="location"]')).toHaveTextContent('/course/abc'),
+    );
     expect(capture.setPointerCapture).not.toHaveBeenCalled();
   });
 
   it('lets a predominantly vertical gesture remain a scroll', async () => {
     const capture = { setPointerCapture: vi.fn(), releasePointerCapture: vi.fn() };
     const { result } = renderHook(() => useCourseSectionSwipe(), {
-      wrapper: createWrapper('/course/abc/bank'),
+      wrapper: createWrapper('/course/abc/cards'),
     });
 
     act(() => {
@@ -99,6 +112,10 @@ describe('useCourseSectionSwipe', () => {
       result.current.onPointerUp(pointerEvent(120, 180, capture));
     });
 
-    await waitFor(() => expect(document.querySelector('[data-testid="location"]')).toHaveTextContent('/course/abc/bank'));
+    await waitFor(() =>
+      expect(document.querySelector('[data-testid="location"]')).toHaveTextContent(
+        '/course/abc/cards',
+      ),
+    );
   });
 });

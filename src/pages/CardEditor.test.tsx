@@ -67,7 +67,15 @@ vi.mock('../db/repository', () => ({
 // Stub the Markdown editor and viewer: fast, focuses the test on CardEditor's own
 // wiring, mirroring SequenceEditor.test.tsx's MarkdownEditor stub.
 vi.mock('../components/markdown/MarkdownEditor', () => ({
-  MarkdownEditor: ({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
+  MarkdownEditor: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+  }) => (
     <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
   ),
 }));
@@ -97,6 +105,7 @@ const course: Course = {
 
 const generatedCard: Card = {
   id: 'card-1',
+  conceptId: 'concept-card-1',
   deckId: 'deck-1',
   schedulingUnitId: 'deck-1',
   courseId: 'course-1',
@@ -170,14 +179,12 @@ function renderNew() {
 
 // A lesson-owned card can be edited via the lesson-scoped route (so the editor's
 // duplicate check and tag suggestions stay scoped to the lesson's own deck) while
-// having been opened from elsewhere — e.g. the Question bank, via an origin override
+// having been opened from elsewhere — e.g. Cards, via an origin override
 // in router state (see src/utils/editorOrigin.ts).
 function renderEditingViaLesson(state?: unknown) {
   return render(
     <MemoryRouter
-      initialEntries={[
-        { pathname: '/course/course-1/lesson/lesson-1/cards/card-1/edit', state },
-      ]}
+      initialEntries={[{ pathname: '/course/course-1/lesson/lesson-1/cards/card-1/edit', state }]}
     >
       <Routes>
         <Route
@@ -274,7 +281,7 @@ describe('CardEditor — backing-deck boundary', () => {
     vi.useFakeTimers();
     mockBankBackingDeck = {
       id: 'bank-deck',
-      name: 'Question bank',
+      name: 'Cards',
       examDate: Date.now() + 86_400_000,
       timeZone: 'UTC',
       createdAt: Date.now(),
@@ -287,9 +294,12 @@ describe('CardEditor — backing-deck boundary', () => {
     fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
       target: { value: 'What is demand?' },
     });
-    fireEvent.change(screen.getByPlaceholderText('Answer. Markdown, maths and images are supported.'), {
-      target: { value: 'The quantity consumers will buy.' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Answer. Markdown, maths and images are supported.'),
+      {
+        target: { value: 'The quantity consumers will buy.' },
+      },
+    );
 
     await act(async () => {
       vi.advanceTimersByTime(600);
@@ -383,10 +393,7 @@ describe('CardEditor — working items', () => {
     };
     renderEditing();
 
-    expect(screen.getByRole('button', { name: 'Working' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(screen.getByRole('button', { name: 'Working' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('textbox', { name: 'Scheme source' })).toHaveValue(
       '[1] answer :: x = 4',
     );
@@ -396,18 +403,30 @@ describe('CardEditor — working items', () => {
   it('persists pinned working fixtures with the item', async () => {
     renderNew();
     fireEvent.click(screen.getByRole('button', { name: 'Working' }));
-    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), { target: { value: 'Solve for x.' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'Scheme source' }), { target: { value: '[1] answer :: equals :: 4' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'Test student answer' }), { target: { value: '4' } });
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'Solve for x.' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Scheme source' }), {
+      target: { value: '[1] answer :: equals :: 4' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Test student answer' }), {
+      target: { value: '4' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Pin as fixture' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add card' }));
-    await waitFor(() => expect(createCourseCard).toHaveBeenCalledWith(
-      'course-1', 'front_back', 'Solve for x.', '', [],
-      expect.objectContaining({
-        kind: 'working',
-        fixtures: [expect.objectContaining({ studentAnswer: ['4'], expectedMarks: 1 })],
-      }),
-    ));
+    await waitFor(() =>
+      expect(createCourseCard).toHaveBeenCalledWith(
+        'course-1',
+        'front_back',
+        'Solve for x.',
+        '',
+        [],
+        expect.objectContaining({
+          kind: 'working',
+          fixtures: [expect.objectContaining({ studentAnswer: ['4'], expectedMarks: 1 })],
+        }),
+      ),
+    );
   });
 });
 
@@ -478,14 +497,14 @@ describe('CardEditor — return-to-origin back-link', () => {
 
   // Editing a lesson-owned card still uses the lesson-scoped route (so duplicate
   // checking and tag suggestions stay scoped to the lesson's deck), but when the
-  // Question bank opened it, an origin override sends the back-link there instead.
-  it('targets the Question bank when an origin override is present', () => {
+  // Cards opened it, an origin override sends the back-link there instead.
+  it('targets Cards when an origin override is present', () => {
     mockLesson = lesson;
     mockCard = lessonCard;
-    renderEditingViaLesson({ origin: { path: '/course/course-1/bank', label: 'Question bank' } });
+    renderEditingViaLesson({ origin: { path: '/course/course-1/cards', label: 'Cards' } });
 
-    const link = screen.getByRole('link', { name: 'Question bank' });
-    expect(link).toHaveAttribute('href', '/course/course-1/bank');
+    const link = screen.getByRole('link', { name: 'Cards' });
+    expect(link).toHaveAttribute('href', '/course/course-1/cards');
   });
 
   // A hard refresh drops router state — the lesson-scoped route itself still
@@ -499,13 +518,13 @@ describe('CardEditor — return-to-origin back-link', () => {
     expect(link).toHaveAttribute('href', '/course/course-1/lesson/lesson-1');
   });
 
-  // The bank-scoped edit route (Question bank's Unassigned bucket) already has no
+  // The Card-scoped edit route (Cards' Unassigned bucket) already has no
   // lesson to fall back to, so it targets the bank by default.
   it('falls back to the course bank when editing via the bank-scoped route', () => {
     mockCard = { ...generatedCard, primaryLessonId: null, sequenceItemId: undefined };
     renderEditing();
 
-    const link = screen.getByRole('link', { name: 'Question bank' });
-    expect(link).toHaveAttribute('href', '/course/course-1/bank');
+    const link = screen.getByRole('link', { name: 'Cards' });
+    expect(link).toHaveAttribute('href', '/course/course-1/cards');
   });
 });

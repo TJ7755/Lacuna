@@ -11,6 +11,7 @@ vi.mock('../../components/cards/CardContent', () => ({
 
 const card: Card = {
   id: 'audio-card',
+  conceptId: 'concept-audio-card',
   deckId: 'deck',
   schedulingUnitId: 'deck',
   type: 'front_back',

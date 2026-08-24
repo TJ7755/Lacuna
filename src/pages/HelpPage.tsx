@@ -274,11 +274,10 @@ export function HelpPage() {
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
-                <h3 className="mb-2 font-medium text-ink">Question bank</h3>
+                <h3 className="mb-2 font-medium text-ink">Cards</h3>
                 <p className="text-sm text-ink-soft">
-                  Every course has a question bank listing all of its cards in one place, regardless
-                  of which lesson they belong to. Use it to browse, search, edit or bulk-manage
-                  cards.
+                  Every course has a Cards tab listing all of its Cards in one place, regardless of
+                  which lesson they belong to. Use it to browse, search, edit or bulk-manage cards.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
@@ -751,8 +750,8 @@ export function HelpPage() {
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Labels and features</h3>
                 <p className="text-sm text-ink-soft">
-                  A <strong>label</strong> box covers text already printed on the diagram — you
-                  type nothing, and revealing uncovers the diagram&rsquo;s own words. A{' '}
+                  A <strong>label</strong> box covers text already printed on the diagram — you type
+                  nothing, and revealing uncovers the diagram&rsquo;s own words. A{' '}
                   <strong>feature</strong> box points at a part of the drawing that carries no
                   printed label; pair it with the label box that names it, and revealing uncovers
                   that label. Every label is covered on every question face, so no card can be
@@ -762,8 +761,8 @@ export function HelpPage() {
               <div className="rounded-xl border border-line bg-surface-raised p-5">
                 <h3 className="mb-2 font-medium text-ink">Editing a diagram</h3>
                 <p className="text-sm text-ink-soft">
-                  Moving, resizing or re-pairing a box updates that card and keeps its memory
-                  state; deleting a box removes its card, with an undo. Replacing the image itself
+                  Moving, resizing or re-pairing a box updates that card and keeps its memory state;
+                  deleting a box removes its card, with an undo. Replacing the image itself
                   regenerates every card in the diagram, so Lacuna warns you first. Drawing is
                   designed for a mouse or trackpad — it works on a touchscreen, but a larger screen
                   is easier.
@@ -865,10 +864,7 @@ export function HelpPage() {
           {/* Sections */}
           <div className="flex flex-col gap-8">
             {sections.map((s) => (
-              <section
-                key={s.id}
-                id={s.id}
-              >
+              <section key={s.id} id={s.id}>
                 <SectionCard icon={s.icon} label={s.label}>
                   {s.content}
                 </SectionCard>
@@ -912,9 +908,7 @@ export function HelpPage() {
       {/* Right-side section nav */}
       <aside className="hidden xl:block w-64 shrink-0">
         <div className="sticky top-24">
-          <div
-            className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5 backdrop-blur-sm"
-          >
+          <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-xl shadow-black/5 backdrop-blur-sm">
             <div className="relative mb-3 px-3 py-2 text-[11px] uppercase tracking-[0.18em] text-ink-faint">
               On this page
             </div>

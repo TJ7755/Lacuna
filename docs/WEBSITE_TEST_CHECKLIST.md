@@ -174,6 +174,11 @@ pixel or every operating-system surface.
 
 #### Browser and application state
 
+- A sandboxed Vite process may fail to bind even to `127.0.0.1` with `listen EPERM`; restart the
+  same command with permission to bind the local development port before treating this as an
+  application failure.
+- This browser-control runtime accepts a URL string in `waitForURL`, not a regular expression.
+  Passing a `RegExp` fails in the adapter before it observes the page.
 - IndexedDB, storage, permissions and service workers are isolated by exact origin and browser
   profile. Two tabs on one origin are not two installations. This pass used `127.0.0.1` and
   `localhost` against one server to obtain isolated recipient and source stores.
@@ -193,6 +198,11 @@ pixel or every operating-system surface.
   arbitrary delays alone are brittle.
 - HMR invalidates element handles and can preserve application data while replacing the document.
   Reload after code changes and resolve semantic locators again.
+- Large native `<select>` controls can exceed the browser adapter's internal three-second query
+  limit even when the selection itself succeeds. Confirm the selected option or resulting saved
+  state before filing a timeout as an application defect. During concurrent HMR, the primary
+  Concept selection also appeared to reset once; reproduce that on a stable head before treating it
+  as a product bug.
 - Browser-page evaluation may run in an isolated world without the page's IndexedDB or module
   loader. It is not a universal escape hatch for reading hidden application state, and database
   writes from it would bypass the very UI contract under test anyway.
@@ -268,7 +278,7 @@ unchecked. Run destructive cases only against disposable courses and export a fu
 
 ### 11 August Arc 14 close-out verification
 
-- Lines mode split a real three-line *Julius Caesar* exchange, generated exactly the two Brutus
+- Lines mode split a real three-line _Julius Caesar_ exchange, generated exactly the two Brutus
   learner cards, retained Cassius as cue context, rendered first-letter and first-word hints, and
   completed both cards. The preset introduction now follows the selected mode instead of retaining
   ordered-list copy.
@@ -312,8 +322,9 @@ are beyond its scope, as stated in the automation boundary above.
 - The `Arc 13 disposable` course contains three lessons, one Markdown note, classic, numeric and
   working authored items, a three-item sequence, a lesson-filtered randomised manual practice node
   and two assessments. It opens from both its dashboard card and sidebar link.
-- The desktop navigation sweep reached Dashboard, Search, Share, Analytics, Settings and Help. The
-  course Path, Question bank, Analytics and Settings tabs cross-linked to the expected routes.
+- The desktop navigation sweep reached Dashboard, Search, Share, Analytics, Settings and Help. On
+  that pre-Question-mode build, the course Path, Question bank, Analytics and Settings tabs
+  cross-linked to the expected routes.
 - Hard-loaded `#/deck/legacy-id` and `#/study` redirected to the dashboard. An invalid route and a
   missing course id rendered the branded recovery page with a dashboard link.
 - At 375 × 667, the dashboard and Settings document widths stayed at 375 pixels. The formerly
@@ -348,8 +359,9 @@ are beyond its scope, as stated in the automation boundary above.
 - [x] `bun run build` produces a production build without an error.
 - [x] The production preview loads directly and after a hard refresh.
 - [ ] Browser console contains no uncaught error during the route sweep below.
-- [x] Create a disposable course with at least three lessons, notes, classic cards, a numeric
-      item, a working item, a sequence, a manual practice node and two assessments.
+- [ ] Create a disposable Course with at least three lessons, notes, classic Cards, a fixed numeric
+      Question, a fixed working Question, a generated Question family, a sequence, a manual Practice
+      node and two assessments.
 - [ ] Keep a second clean browser profile for first-run, import and shared-course tests.
 - [ ] Repeat the visual route sweep at desktop and mobile widths, in light and dark themes.
 - [ ] Repeat motion-sensitive flows with animation speed set to Slow, Normal and Fast.
@@ -398,7 +410,8 @@ are beyond its scope, as stated in the automation boundary above.
 
 ## 5. Course path and shared course tabs
 
-- [x] Path, Question bank, Analytics and Settings tabs are visible and cross-link correctly.
+- [ ] Path, Cards, Questions, Analytics and Settings tabs are visible and cross-link correctly;
+      `#/course/<id>/bank` redirects to Cards.
 - [ ] The path header shows the course name, exam date and live progress without overflow.
 - [ ] Study opens the persistent course study flow and exposes progression, starting the next lesson, due
       review and relevant named revision as distinct choices.
@@ -436,19 +449,29 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Empty note, card and link-existing states explain the available action.
 - [ ] A missing lesson id shows a not-found message and a working course link.
 
-## 7. Question bank and bulk authoring
+## 7. Cards, Questions and bulk authoring
 
-- [ ] The bank groups cards by lesson and includes course-level cards.
+- [ ] Cards groups Cards by lesson and includes course-level Cards.
 - [ ] Text search, tag selection and due/new/leech/flagged/suspended filters narrow the list correctly.
 - [ ] Clearing search and filters restores the complete bank.
 - [ ] Card edit, delete, suspend, flag and bulk-management actions update the list without reload.
-- [ ] Create-card and create-sequence entry points return to the bank when launched there.
+- [ ] Create-Card and create-sequence entry points return to Cards when launched there.
+- [ ] Questions has a restrained post-instruction empty state and never labels Question evidence as
+      Card readiness or mastery.
+- [ ] Create a Concept inline, then author a fixed Question with exactly one Primary skill practised
+      and several prerequisite Concepts.
+- [ ] Saving is blocked with no primary Concept, a duplicate/dual-role Concept, a missing prompt,
+      invalid answer or missing worked explanation.
+- [ ] Create a generated integer-root quadratic family, inspect its deterministic configuration and
+      verify that one family row is shown rather than fake generated Cards.
+- [ ] Edit and suspend both Question forms; deleting a Question explains that Attempt evidence is
+      retained.
 - [ ] Build external batch prompt cannot discard entered or staged work without explicit
       confirmation.
-- [ ] Batch generation defaults to model-chosen concept density and item count.
-- [ ] Enabling constraints allows concepts-per-item and maximum-item count independently; blank
-      constraints are omitted from the copied prompt and no hidden item cap is imposed.
-- [ ] The dialog explains that working items are durable concept checks, not arbitrary-number
+- [ ] Batch generation requires one named primary target Concept per Question, permits named
+      prerequisite Concepts and leaves the number of strong Questions to the model unless a maximum
+      is supplied.
+- [ ] The dialog explains that working Questions are durable application problems, not arbitrary-number
       worksheets.
 - [ ] Copy batch prompt includes notes, topic, level, clarification rules and delimiters.
 - [ ] With exam board and specification set on the course, the copied prompt includes both.
@@ -457,10 +480,12 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Pasting a valid delimited batch produces staged item cards rather than a raw-JSON-only editor.
 - [ ] Invalid JSON, an invalid numeric answer, a malformed scheme and a failing fixture are each
       isolated to the affected staged item.
-- [ ] Edit a staged numeric and working item through the visual editor and revalidate it.
+- [ ] Edit a staged numeric and working Question through the visual editor and revalidate it.
 - [ ] Reject one item, accept one clean item and use Accept all clean for the remainder.
 - [ ] Duplicate detection warns before acceptance into the selected lesson.
 - [ ] Revise with AI copies the item, failure, fixture and tutor complaint into a new prompt.
+- [ ] Accepted candidates create fixed Questions with their resolved Concept graph, never structured
+      Cards.
 - [ ] Closing and reopening the batch modal does not retain an unintended stale response.
 
 ## 8. Classic card editor
@@ -478,7 +503,7 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Navigating away with a recoverable draft offers restoration rather than silently discarding it.
 - [ ] The mobile sticky action bar remains visible without covering fields.
 
-## 9. Numeric and working item editor
+## 9. Numeric and working Question editor
 
 - [ ] Numeric Exact accepts a valid constant expression and rejects variables or invalid syntax.
 - [ ] Tolerance accepts a non-negative tolerance and previews the expected value.
@@ -494,6 +519,9 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Add, edit and remove fixtures; changing the scheme reruns every fixture.
 - [ ] Saving is blocked while a fixture's actual marks differ from expected marks.
 - [ ] Draft mark scheme copies the question and the compiler-owned grammar to the clipboard.
+- [ ] Both fixed forms require and render a non-empty worked explanation before save.
+- [ ] The editor exposes exactly one Primary skill practised and optional prerequisites; it does not
+      offer a multi-primary Question.
 
 ## 10. Sequence editor
 
@@ -521,7 +549,7 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Moving or resizing a region preserves scheduling state for that card.
 - [ ] Replacing the image warns before regenerating every card.
 - [ ] Deleting a region removes its card with an undo; deleting the occlusion removes all of them.
-- [ ] Generated cards are read-only and badged in the card editor, card list, question bank,
+- [ ] Generated Cards are read-only and badged in the Card editor, Card list, Cards page,
       search and command palette.
 - [ ] Typed mode is offered only where the target region has answer text.
 - [ ] Drawing works with a mouse and, at reduced fidelity, with touch.
@@ -539,13 +567,13 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] The completion hand-off animates into its report and next-step actions.
 - [ ] Completing a lesson updates path status and the relevant unlock ratchet.
 
-## 12. FSRS practice, filtered study and machine-marked study
+## 12. FSRS Card practice and filtered study
 
 - [ ] Global Practice and course Practice start with the correct eligible pool.
 - [ ] Due, new, leech, flagged, suspended, tag and combined filters serve only matching cards.
 - [ ] An empty filtered pool explains whether no cards match or none are currently eligible.
-- [ ] Grading still succeeds for every card type: classic front/back, cloze, typing-mode and a
-      machine-marked numeric or working item.
+- [ ] Grading still succeeds for every Card type: classic front/back, cloze, typing mode, audio,
+      Sequence and occlusion.
 - [ ] An answer press always either advances the queue or shows feedback; no card silently
       registers nothing.
 - [ ] Silent grading maps No to Again and maps Yes by response time without showing a four-button
@@ -557,10 +585,6 @@ are beyond its scope, as stated in the automation boundary above.
       swipe-to-grade on a touch viewport.
 - [ ] A failed card enters cooldown and is not immediately served again when alternatives exist.
 - [ ] Type-before-reveal comparison gives feedback but leaves authoritative grading to the learner.
-- [ ] Numeric study checks the expression, shows marks and bypasses self-grading.
-- [ ] Working study accepts multiple lines, shows per-line verdicts and awards method marks.
-- [ ] Report the whole numeric verdict and one working line as checker disputes; review history stores
-      the question, line, verdict and deterministic seeds.
 - [ ] Flag, unflag, bury, suspend and edit the current card from the action menu.
 - [ ] Editing pauses/rebases timing and returns to the same session.
 - [ ] Undo restores the prior card state, progress, performance calibration, cooldown and history row.
@@ -572,6 +596,30 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] The session report shows reviews, accuracy, focus/distraction and objective movement.
 - [ ] Daily review, new-card and time limits stop at the configured boundary and Continue anyway
       resumes intentionally.
+
+## 12a. Post-instruction Question practice
+
+- [ ] Practise 10 selects due Questions first, then unseen fixed Questions before unseen generated
+      families, and interleaves different primary Concepts where possible.
+- [ ] All due serves every due Question and no unseen or future Question; suspended Questions never
+      enter either pool.
+- [ ] Starting a fixed Question persists its exact prompt, payload and worked explanation before
+      display; starting a generated family also persists its seed, parameters and fingerprint.
+- [ ] Exiting an unanswered Question records an abandoned presentation and leaves its schedule
+      unchanged.
+- [ ] A full-mark answer records FSRS Good. A zero-mark and a partial-mark answer both record Again;
+      neither can become Hard or Easy through response time.
+- [ ] An undetermined working line and a learner-disputed verdict both retain raw marks and receipt
+      evidence while withholding scheduling.
+- [ ] Worked feedback is always shown after the immutable first submission.
+- [ ] Record one correction and confirm that it is stored separately, does not replace the first
+      answer and does not change that Attempt's schedule effect.
+- [ ] Undo excludes the answered Attempt from replay without deleting its receipt; repeating the
+      Question creates a new Attempt.
+- [ ] Completing or failing Questions changes no Card history, due date, objective progress or Card
+      analytics.
+- [ ] Questions are reachable only from the Questions tab: they do not appear in lesson Card study,
+      Practice nodes, assessment revision or the Course path conductor.
 
 ## 13. Continuous course flow, practice milestones and revision plans
 
@@ -616,8 +664,11 @@ are beyond its scope, as stated in the automation boundary above.
 
 ## 15. Global search and command palette
 
-- [ ] Search matches course names, lesson names, note content and both card faces.
+- [ ] Search matches Course names, lesson names, note content, both Card faces, fixed Question
+      names/prompts/explanations and generated-family metadata.
 - [ ] Results identify their content type and navigate to the correct course/lesson/editor.
+- [ ] Card and Question results remain visibly distinct and open their respective editors in both
+      full Search and the command palette.
 - [ ] Structured card filters combine with text and tags correctly.
 - [ ] Clear returns to the search prompt state.
 - [ ] Command-palette keyboard navigation moves through results, Enter opens one and Escape closes.
@@ -630,7 +681,14 @@ are beyond its scope, as stated in the automation boundary above.
       age and leech-count charts show correct empty and populated states.
 - [ ] Course comparison colours/labels remain distinguishable in light and dark themes.
 - [ ] Course analytics shows trajectory, stability, review volume and lesson breakdown.
-- [ ] Machine-marked reviews contribute earned/available marks and criterion summaries correctly.
+- [ ] Question analytics shows due, unseen and suspended counts without changing the Card panels.
+- [ ] Fixed Question analytics distinguishes first presentation from repeat performance, including
+      when the first presentation was shown or abandoned rather than answered.
+- [ ] Generated-family analytics distinguishes novel from repeated fingerprints and reconciles
+      unique-variant count, presentation count and repeat rate.
+- [ ] Question Attempts contribute earned/available marks and versioned criterion summaries
+      correctly; shown, abandoned, undone, checker-withheld and unscored Attempts are excluded and
+      reported rather than counted as failures.
 - [ ] Chart tooltips, legends and responsive resizing work by mouse, keyboard where applicable and
       narrow viewport.
 
@@ -641,6 +699,10 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Image-bearing content warns that share codes omit binary assets rather than silently promising
       otherwise.
 - [ ] Import preview names the course and counts lessons, notes and cards before writing.
+- [ ] A v3 Course share includes Concepts, fixed Questions, generated families and their
+      primary/prerequisite relationships, but excludes Question Attempts and scheduling state.
+- [ ] Importing that v3 share remaps Question and Concept identifiers, preserves the one-primary
+      invariant and starts Questions with clean personal evidence.
 - [x] Importing in a clean profile creates one complete course with no review history.
 - [x] Invalid/truncated codes fail safely and do not create partial data.
 - [ ] Publishing assigns lineage/revision data and a later publish increments the revision.
@@ -658,10 +720,17 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] APKG import handles supported basic/reversed/cloze notes, media and review history and reports
       skipped unsupported material.
 - [ ] Cancelling an import writes nothing; accepting writes only the previewed records.
-- [x] Full JSON export contains courses, scheduling state, review logs and referenced image assets.
+- [ ] Full JSON export uses format v11 and contains Concepts, Questions, Question relationships,
+      Attempts, both Card and Question scheduling evidence, and assets referenced only by a retained
+      Question receipt.
 - [ ] Markdown, CSV and Anki-text exports clearly warn that they are not complete backups.
-- [x] Full-backup Replace restores the exact exported state in a disposable profile.
-- [ ] Full-backup Merge adds/merges content without overwriting newer local progress.
+- [ ] Full-backup Replace restores the exact exported state in a disposable profile.
+- [ ] Full-backup Replace restores all four Question collections; importing an older backup converts
+      known numeric/working Cards through the v24 converter once.
+- [ ] Full-backup Merge keeps a coherent Question definition/relationship revision, unions Attempt
+      lifecycles, rejects an immutable receipt collision and replays the resulting Question schedule.
+- [ ] Deleting a Question retains its Attempt receipt; deleting its Course removes Concepts,
+      Questions, relationships and Attempts.
 - [ ] Daily automatic restore points are created, listed, restored and deleted correctly.
 - [ ] Pre-migration snapshots are available after a schema upgrade.
 - [ ] Persistent-storage status reports granted, denied and unavailable browser states honestly.
@@ -687,7 +756,8 @@ are beyond its scope, as stated in the automation boundary above.
 ## 20. Help, copy and discoverability
 
 - [ ] Help section navigation tracks Courses & lessons, Study modes, Filtered study, How to study,
-      Keyboard shortcuts, Touch gestures, Progress, Card types, Sequences, Diagrams and Tips.
+      Keyboard shortcuts, Touch gestures, Progress, Card types, Questions, Sequences, Diagrams and
+      Tips.
 - [ ] Help deep links scroll to the intended section.
 - [ ] Help descriptions match the controls and terminology currently visible in the application.
 - [ ] Every primary feature above is reachable through visible navigation, Help or contextual copy;
@@ -734,9 +804,10 @@ are beyond its scope, as stated in the automation boundary above.
 - [ ] Tester approves the release candidate: `____________________`
 
 ## Notes:
+
 - It would be nice to be able to select the cards and have an option to 'create reverse'.
 - It would also be nice to be able to edit reversed cards together - so they're like one card but with two options, rather than physically two cards.
-- There is no way to edit the name of 'Lesson 1'. Followup lessons *can* be named for some reason. Similarly, editing the name of courses is more painful than it should be. It should be like a file system where you can double click and have a typebox appear.
+- There is no way to edit the name of 'Lesson 1'. Followup lessons _can_ be named for some reason. Similarly, editing the name of courses is more painful than it should be. It should be like a file system where you can double click and have a typebox appear.
 - After creating a new lesson the view goes to the course view rather than the lesson view.
 - After adding an item to a sequence you must manually scroll down to be able to see it - it should auto-scroll. The keyboard shortcuts are perfect, though.
 - For numeric answers the 'accept one of' UI editor is sooo clunky - it repeats the preview, the accepted answer and the other things in one page. I need to brainstorm on how to improve this.

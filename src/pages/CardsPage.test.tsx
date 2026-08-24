@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { QuestionBank } from './QuestionBank';
+import { CardsPage } from './CardsPage';
 import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
 
 let mockCourse: Course | undefined;
@@ -22,7 +22,11 @@ vi.mock('../state/useCourseData', () => ({
   useCourseCards: () => mockCards,
   useSequences: () => mockSequences,
   useOcclusions: () => mockOcclusions,
-  useCourseBankBackingDecks: () => new Map([[null, mockDeck], ['lesson-1', mockDeck]]),
+  useCourseBankBackingDecks: () =>
+    new Map([
+      [null, mockDeck],
+      ['lesson-1', mockDeck],
+    ]),
 }));
 
 const mockDeck: LegacyDeckRecord = {
@@ -32,7 +36,14 @@ const mockDeck: LegacyDeckRecord = {
   timeZone: 'UTC',
   createdAt: Date.now(),
   fsrsVersion: 6,
-  fsrsParameters: { requestRetention: 0.9, w: Array(21).fill(0), enable_fuzz: true, maximum_interval: 36500, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] },
+  fsrsParameters: {
+    requestRetention: 0.9,
+    w: Array(21).fill(0),
+    enable_fuzz: true,
+    maximum_interval: 36500,
+    learning_steps: ['1m', '10m'],
+    relearning_steps: ['10m'],
+  },
   examObjective: 'expectedMarks',
   lastInteractedAt: Date.now(),
 };
@@ -68,16 +79,18 @@ vi.mock('../components/cards/CardList', () => ({
       });
     }
     return (
-    <div data-testid="card-list">
-      <span data-testid="card-list-count">{cards.length}</span>
-      <span data-testid="card-list-course">{courseId}</span>
-      <span data-testid="card-list-assignable">{assignableLessons?.map((l) => l.name).join(',')}</span>
-      {onNewCard && (
-        <button type="button" onClick={onNewCard}>
-          new-card
-        </button>
-      )}
-    </div>
+      <div data-testid="card-list">
+        <span data-testid="card-list-count">{cards.length}</span>
+        <span data-testid="card-list-course">{courseId}</span>
+        <span data-testid="card-list-assignable">
+          {assignableLessons?.map((l) => l.name).join(',')}
+        </span>
+        {onNewCard && (
+          <button type="button" onClick={onNewCard}>
+            new-card
+          </button>
+        )}
+      </div>
     );
   },
 }));
@@ -94,16 +107,6 @@ vi.mock('../components/ui/icons', () => ({
   ChevronLeftIcon: () => <svg data-testid="chevron-left" />,
   PlusIcon: () => <svg data-testid="plus-icon" />,
   SearchIcon: () => <svg data-testid="search-icon" />,
-  SparklesIcon: () => <svg data-testid="sparkles-icon" />,
-}));
-
-vi.mock('../components/items/BatchAuthoringPromptDialog', () => ({
-  BatchAuthoringPromptDialog: ({ courseName, onClose }: { courseName: string; onClose: () => void }) => (
-    <div role="dialog" aria-label="Generate item batch">
-      <span>{courseName}</span>
-      <button type="button" onClick={onClose}>close-batch</button>
-    </div>
-  ),
 }));
 
 const course: Course = {
@@ -115,7 +118,14 @@ const course: Course = {
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   fsrsVersion: 6,
-  fsrsParameters: { requestRetention: 0.9, w: Array(21).fill(0), enable_fuzz: true, maximum_interval: 36500, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] },
+  fsrsParameters: {
+    requestRetention: 0.9,
+    w: Array(21).fill(0),
+    enable_fuzz: true,
+    maximum_interval: 36500,
+    learning_steps: ['1m', '10m'],
+    relearning_steps: ['10m'],
+  },
   examObjective: 'expectedMarks',
   unlockMode: 'linear',
   autoPractice: false,
@@ -146,6 +156,7 @@ const lesson2: Lesson = {
 function makeCard(overrides: Partial<Card>): Card {
   return {
     id: 'card-1',
+    conceptId: 'concept-card-1',
     deckId: 'deck-1',
     schedulingUnitId: 'deck-1',
     type: 'front_back',
@@ -174,14 +185,15 @@ function makeCard(overrides: Partial<Card>): Card {
 
 function renderPage() {
   return render(
-    <MemoryRouter initialEntries={['/course/course-1/bank']}>
+    <MemoryRouter initialEntries={['/course/course-1/cards']}>
       <Routes>
-        <Route path="/course/:courseId/bank" element={<QuestionBank />} />
+        <Route path="/course/:courseId/cards" element={<CardsPage />} />
         <Route path="/course/:courseId/cards/new" element={<p>Card editor</p>} />
       </Routes>
     </MemoryRouter>,
   );
-}  beforeEach(() => {
+}
+beforeEach(() => {
   observedContexts = [];
   mockCourse = undefined;
   mockLessons = undefined;
@@ -190,22 +202,19 @@ function renderPage() {
   mockOcclusions = [];
 });
 
-describe('QuestionBank', () => {
-  it('opens the course-scoped batch authoring prompt', () => {
+describe('CardsPage', () => {
+  it('keeps Question batch authoring out of the Cards surface', () => {
     mockCourse = course;
     mockLessons = [];
     mockCards = [];
     renderPage();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Build external batch prompt' }));
-    expect(screen.getByRole('dialog', { name: 'Generate item batch' })).toHaveTextContent(
-      'A-Level Economics',
-    );
+    expect(screen.queryByRole('button', { name: /batch prompt/i })).not.toBeInTheDocument();
   });
 
   it('shows a skeleton while loading', () => {
     renderPage();
-    expect(screen.queryByText('Question bank')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Cards' })).not.toBeInTheDocument();
   });
 
   it('shows an empty state when the course has no cards', () => {

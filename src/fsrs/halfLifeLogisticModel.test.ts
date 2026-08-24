@@ -16,6 +16,7 @@ const REVIEWED_AT = Date.UTC(2026, 6, 1, 12);
 function card(partial: Partial<Card> = {}): Card {
   return {
     id: 'card',
+    conceptId: 'concept-card',
     deckId: 'deck',
     schedulingUnitId: 'deck',
     type: 'front_back',
@@ -121,7 +122,10 @@ describe('half-life-logistic-v3 runtime', () => {
     // v1's artefact also carries the old `candidate` name, so it is rejected earlier
     // (corrupt) than the composition check; force past that to exercise the composition
     // validation specifically.
-    const v1WithV3Name = { ...structuredClone(v1Coefficients), candidate: 'half-life-logistic-v3-routed' };
+    const v1WithV3Name = {
+      ...structuredClone(v1Coefficients),
+      candidate: 'half-life-logistic-v3-routed',
+    };
     expect(loadHalfLifeLogisticCoefficients(v1WithV3Name)).toEqual({
       valid: false,
       reason: 'unsupported',

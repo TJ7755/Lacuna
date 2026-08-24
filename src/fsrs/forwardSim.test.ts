@@ -27,6 +27,7 @@ function makeDeck(partial: Partial<LegacyDeckRecord> = {}): LegacyDeckRecord {
 function makeCard(partial: Partial<Card> = {}): Card {
   return {
     id: 'c1',
+    conceptId: 'concept-c1',
     deckId: 'd1',
     schedulingUnitId: 'd1',
     type: 'front_back',
@@ -102,13 +103,7 @@ describe('deltaR', () => {
     const ctx = simContext(deck, makeEngine(deck.fsrsParameters));
     const card = makeCard();
     const now = 0;
-    const withReview = rAtExamIfReviewedNow(
-      card,
-      ctx.expectedGrade,
-      deck.examDate,
-      now,
-      ctx,
-    );
+    const withReview = rAtExamIfReviewedNow(card, ctx.expectedGrade, deck.examDate, now, ctx);
     expect(rAtExam(card, deck.examDate, now, ctx.decay)).toBe(0);
     expect(deltaR(card, deck.examDate, now, ctx)).toBeCloseTo(withReview, 12);
   });
@@ -142,8 +137,6 @@ describe('deltaR', () => {
     const ctx = simContext(deck, makeEngine(deck.fsrsParameters));
     const now = deck.examDate; // no time remaining
     const card = makeCard({ stability: 2, difficulty: 5, lastReviewed: 0 });
-    expect(
-      rAtExamIfReviewedNow(card, ctx.expectedGrade, deck.examDate, now, ctx),
-    ).toBe(1.0);
+    expect(rAtExamIfReviewedNow(card, ctx.expectedGrade, deck.examDate, now, ctx)).toBe(1.0);
   });
 });

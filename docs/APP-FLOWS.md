@@ -1,6 +1,6 @@
 # Lacuna UI flow catalogue
 
-Reviewed and reconciled with delivered Arc 14 flows on 11 August 2026.
+Reviewed and reconciled with the delivered Question-mode v1 flows on 24 August 2026.
 
 This is a catalogue of the user-facing flows in the app, including the normal path, alternate entry points, empty and recovery states, duplicated paths, contradictions, and features implied by the interface but not implemented.
 
@@ -21,11 +21,15 @@ older repository QA records are labelled as prior QA rather than presented as cu
 
 The current product model is:
 
-- A **course** contains lessons, notes, cards, assessments, and practice nodes.
+- A **course** contains lessons, notes, direct-recall Cards, application Questions, assessments,
+  and practice nodes.
 - A lesson can contain ordinary cards, generated sequence cards, generated occlusion cards, and linked cards from elsewhere in the same course.
 - The app still contains legacy **deck** terminology in internal routes, exports, help copy, and database compatibility code. Users create courses, not decks. The legacy route /deck/:deckId redirects to the dashboard.
 - An assessment is either the automatically-created final exam or a user-created checkpoint. The interface calls the latter a checkpoint.
-- A practice node is either automatic, calculated from course progress, or manual, placed by the user on the path.
+- Every Question has exactly one primary Concept and optional prerequisite Concepts. Its Attempt,
+  scheduling and analytics evidence remain separate from every Card.
+- A practice node is either automatic, calculated from Card progress, or manual, placed by the user
+  on the path. Practice nodes do not select Questions in v1.
 - The app is local-first. Data is stored in IndexedDB in the browser. There is no account, login, password reset, cloud sync, or hosted collaboration flow in the web UI.
 - Electron exposes an additional session-only MCP settings surface. It is not a browser account or synchronisation service.
 
@@ -33,38 +37,43 @@ The absence of accounts is intentional in the current implementation, but it cre
 
 ## 2. Route inventory
 
-| Route or route family | Surface | Main flows |
-| --- | --- | --- |
-| /welcome | Landing page | First-run introduction, demo interactions, create first course |
-| /method | Technical explainer | Interactive explanation of the scheduling method |
-| / | Dashboard | Course list, resume study, archive, create, import |
-| /deck/:deckId | Legacy redirect | Redirects to the dashboard |
-| /settings | Global settings | Appearance, input, navigation, study defaults, shortcuts, backups, import/export |
-| /search | Full search | Search courses, lessons, notes, and cards |
-| /share | Share and import | Publish, export, QR, share-code import, update lineage |
-| /analytics | Global analytics | Cross-course forecasts, recall, study volume, leeches |
-| /help | Help | Linked documentation, shortcuts, gestures, study and authoring guidance |
-| /course/:courseId | Course path | Path, assessments, practice nodes, course summary |
-| /course/:courseId/lesson/:lessonId | Lesson view | Notes, cards, lesson study, lesson authoring |
-| /course/:courseId/bank | Question bank | Course cards, grouping, bulk operations, batch authoring |
-| /course/:courseId/cards/new | New course-bank card | Card authoring |
-| /course/:courseId/cards/:cardId/edit | Edit course-bank card | Card editing |
-| /course/:courseId/lesson/:lessonId/cards/new | New lesson card | Card authoring with lesson ownership |
-| /course/:courseId/lesson/:lessonId/cards/:cardId/edit | Edit lesson card | Card editing with lesson return path |
-| /course/:courseId/lesson/:lessonId/sequence/new | New lesson sequence | Sequence authoring |
-| /course/:courseId/lesson/:lessonId/occlusion/new | New lesson occlusion | Diagram upload and region authoring |
-| /course/:courseId/sequence/new | New course sequence | Sequence authoring |
-| /course/:courseId/sequence/:sequenceId/edit | Edit course sequence | Sequence editing and deletion |
-| /course/:courseId/occlusion/new | New course occlusion | Diagram upload and region authoring |
-| /course/:courseId/occlusion/:occlusionId/edit | Edit course occlusion | Occlusion editing and deletion |
-| /course/:courseId/settings | Course settings | Course metadata, scheduling, lessons, practice nodes, assessments, deletion |
-| /course/:courseId/analytics | Course analytics | Course forecast, lessons, stability, review volume |
-| /course/:courseId/updates | Update review | Accept or reject incoming shared-course changes |
-| /course/:courseId/study | Course study conductor | Lesson study, recurring practice, custom nodes, assessment revision |
-| /course/:courseId/learn | Course practice session | FSRS practice, filtered study, session report |
-| /lesson/:lessonId/learn | Lesson session | Simple lesson study |
-| /learn | Review today | Cross-course FSRS session |
-| any unmatched route | Not found | Branded recovery page with Back to dashboard |
+| Route or route family                                 | Surface                 | Main flows                                                                       |
+| ----------------------------------------------------- | ----------------------- | -------------------------------------------------------------------------------- |
+| /welcome                                              | Landing page            | First-run introduction, demo interactions, create first course                   |
+| /method                                               | Technical explainer     | Interactive explanation of the scheduling method                                 |
+| /                                                     | Dashboard               | Course list, resume study, archive, create, import                               |
+| /deck/:deckId                                         | Legacy redirect         | Redirects to the dashboard                                                       |
+| /settings                                             | Global settings         | Appearance, input, navigation, study defaults, shortcuts, backups, import/export |
+| /search                                               | Full search             | Search courses, lessons, notes, Cards and Questions                              |
+| /share                                                | Share and import        | Publish, export, QR, share-code import, update lineage                           |
+| /analytics                                            | Global analytics        | Cross-course forecasts, recall, study volume, leeches                            |
+| /help                                                 | Help                    | Linked documentation, shortcuts, gestures, study and authoring guidance          |
+| /course/:courseId                                     | Course path             | Path, assessments, practice nodes, course summary                                |
+| /course/:courseId/lesson/:lessonId                    | Lesson view             | Notes, cards, lesson study, lesson authoring                                     |
+| /course/:courseId/bank                                | Legacy bank redirect    | Redirect to the course Cards page                                                |
+| /course/:courseId/cards                               | Cards                   | Course Cards, grouping and bulk operations                                       |
+| /course/:courseId/questions                           | Questions               | Post-instruction application-problem authoring and practice entry                |
+| /course/:courseId/questions/new                       | New Question            | Fixed Question or built-in generated-family authoring                            |
+| /course/:courseId/questions/:questionId/edit          | Edit Question           | Question definition editing and deletion                                         |
+| /course/:courseId/cards/new                           | New course-bank card    | Card authoring                                                                   |
+| /course/:courseId/cards/:cardId/edit                  | Edit course-bank card   | Card editing                                                                     |
+| /course/:courseId/lesson/:lessonId/cards/new          | New lesson card         | Card authoring with lesson ownership                                             |
+| /course/:courseId/lesson/:lessonId/cards/:cardId/edit | Edit lesson card        | Card editing with lesson return path                                             |
+| /course/:courseId/lesson/:lessonId/sequence/new       | New lesson sequence     | Sequence authoring                                                               |
+| /course/:courseId/lesson/:lessonId/occlusion/new      | New lesson occlusion    | Diagram upload and region authoring                                              |
+| /course/:courseId/sequence/new                        | New course sequence     | Sequence authoring                                                               |
+| /course/:courseId/sequence/:sequenceId/edit           | Edit course sequence    | Sequence editing and deletion                                                    |
+| /course/:courseId/occlusion/new                       | New course occlusion    | Diagram upload and region authoring                                              |
+| /course/:courseId/occlusion/:occlusionId/edit         | Edit course occlusion   | Occlusion editing and deletion                                                   |
+| /course/:courseId/settings                            | Course settings         | Course metadata, scheduling, lessons, practice nodes, assessments, deletion      |
+| /course/:courseId/analytics                           | Course analytics        | Course forecast, lessons, stability, review volume                               |
+| /course/:courseId/updates                             | Update review           | Accept or reject incoming shared-course changes                                  |
+| /course/:courseId/study                               | Course study conductor  | Lesson study, recurring practice, custom nodes, assessment revision              |
+| /course/:courseId/questions/learn                     | Question practice       | Separate due/unseen application-Question session                                 |
+| /course/:courseId/learn                               | Course practice session | FSRS practice, filtered study, session report                                    |
+| /lesson/:lessonId/learn                               | Lesson session          | Simple lesson study                                                              |
+| /learn                                                | Review today            | Cross-course FSRS session                                                        |
+| any unmatched route                                   | Not found               | Branded recovery page with Back to dashboard                                     |
 
 The app shell wraps most routes. Welcome, Method, course study, and Learn mode deliberately use a reduced or different shell.
 
@@ -126,8 +135,9 @@ There is no account creation, profile setup, sync choice, notification permissio
 ### Missing and awkward shell paths
 
 - Search has two parallel surfaces: the command palette and the full Search page.
-- A normal multi-lesson Lesson view has a back-to-course action but not the course tabs. The user must return to the path before reaching Question bank, Analytics, or Settings.
-- The single-lesson course view is rendered inline inside the course route. It has a Settings icon and, in Edit mode, Add lesson, but still does not expose the complete course-tab navigation.
+- Course and Lesson views share Path, Cards, Questions, Analytics and Settings navigation. A
+  single-lesson Course still renders its Lesson inline at the Course route rather than inventing a
+  one-node Path.
 
 ## 5. Course lifecycle flows
 
@@ -199,7 +209,7 @@ This deletion is less explicit than lesson, card, and shared-course destructive 
 
 - A course card opens the course path.
 - A single-lesson course renders that lesson directly inside the course route.
-- A multi-lesson course shows Path, Question bank, Analytics, and Settings tabs.
+- Course and Lesson views show Path, Cards, Questions, Analytics and Settings tabs.
 - Breadcrumbs return to All courses.
 - The header shows exam information, course statistics, due cards, mastery, unseen cards, and curriculum progress.
 - The course title can be renamed inline in Edit mode.
@@ -351,16 +361,17 @@ Generated sequence and occlusion cards are read-only for content and deletion fr
 
 ### Choose a card type
 
-New card entry points are available from the question bank, lesson empty state, lesson card list, and course-bank empty state. The editor supports:
+New Card entry points are available from Cards, the lesson empty state, lesson Card list, and
+course-Card empty state. The editor supports:
 
 - Front / Back.
 - Cloze deletion.
 - Basic reversed.
-- Numeric answer.
-- Working.
 - Audio.
 
-The editor can save to the course bank or directly to a lesson. The origin state returns the user to the bank or lesson that launched it.
+The editor can save to Cards or directly to a lesson. The origin state returns the user to Cards or
+the lesson that launched it. Numeric and working application problems use the separate Question
+editor.
 
 ### Basic front/back
 
@@ -378,27 +389,6 @@ Editing a basic reversed pair updates its reverse partner. The UI still represen
 2. Select an answer and use the Cloze action to create a deletion.
 3. Optionally show a revealed-answer preview.
 4. Save when at least one cloze exists.
-
-### Numeric answer
-
-1. Enter the question.
-2. Choose an accepted-answer rule: exact, within tolerance, or matches one of.
-3. Enter the value or values.
-4. Check the live mathematical expression validation.
-5. Save.
-
-There is no visible variable-definition authoring flow in the numeric editor.
-
-### Working and mark schemes
-
-1. Enter the question.
-2. Build a mark scheme with lines and criteria.
-3. Compile and preview it.
-4. Test an answer.
-5. Optionally use pinned fixtures.
-6. Save.
-
-The app can produce a clipboard prompt for a draft mark scheme, but there is no integrated model call.
 
 ### Audio card
 
@@ -421,7 +411,7 @@ Autoplay and playback speed are controlled in global Settings. File and micropho
 
 ### Create or edit a sequence
 
-1. Choose Create new sequence from the question bank, lesson card area, or course path authoring control.
+1. Choose Create new sequence from Cards, a lesson Card area, or the Course path authoring control.
 2. Enter a required name and optional description.
 3. On creation, select a preset:
    - Ordered list.
@@ -465,7 +455,7 @@ The sequence editor does not auto-scroll to a newly-added item. Prior QA also re
 
 ### Create or edit an occlusion
 
-1. Choose Create new occlusion from a lesson, question bank, or course path.
+1. Choose Create new occlusion from a lesson, Cards, or the Course path.
 2. Enter a required name.
 3. Upload a diagram image.
 4. Choose Draw label box, Draw feature, or Select.
@@ -519,14 +509,14 @@ Authored nodes are labelled Manual. Automatic nodes cannot be edited as if they 
 
 The data model supports card filters, but there is no builder for saving or editing those filters in the UI. The current manual-node form only exposes lesson scope, card limit, and randomisation.
 
-## 13. Question bank and batch-authoring flows
+## 13. Cards, Questions and batch-authoring flows
 
-### Browse the question bank
+### Browse Cards
 
-- Open Question bank from course tabs.
-- Search all course cards.
+- Open Cards from the course tabs. The old `/bank` route redirects here.
+- Search all Course Cards.
 - Cards are grouped by lesson and Unassigned.
-- Open a lesson bucket or edit a card.
+- Open a lesson bucket or edit a Card.
 - Generated sequence and occlusion cards are grouped under their owners.
 - Course and lesson buckets use New card, New sequence, and New occlusion.
 - Lesson buckets consistently expose Link existing cards and Import cards where those actions apply.
@@ -552,11 +542,45 @@ Limits are 5,000 rows and 500,000 characters. The standard card-list importer do
 
 Generated and already-linked cards are excluded from ordinary bulk selection. Touch mode exposes actions through swipe trays.
 
+### Create or edit a Question
+
+1. Open Questions from the course tabs.
+2. Choose New Question, or open an existing Question.
+3. Choose Fixed problem or Generated family when creating.
+4. Enter a required name and select exactly one **Primary skill practised** Concept.
+5. Optionally select prerequisite Concepts, a lesson, tags and suspension state.
+6. For a fixed Question, enter a prompt, choose Numeric or Working, configure a valid answer or mark
+   scheme, and add the mandatory worked explanation.
+7. For a generated family, configure the supported built-in generator.
+8. Save or cancel.
+
+A Concept can be created inline. The editor prevents the primary Concept also being a prerequisite.
+Deleting a Question explicitly states that its Attempt evidence is retained. Editing never changes a
+fixed Question into a generated family or vice versa.
+
+### Practise Questions
+
+- **Practise 10** starts with due Questions, then fills remaining capacity with unseen Questions;
+  primary Concepts are interleaved where an alternative is available.
+- **All due** serves the complete due pool.
+- Suspended Questions are absent. Questions never appear in ordinary Card study or the Path.
+- Every presentation records its receipt before display. Leaving an unanswered Question records an
+  abandoned presentation without changing its schedule.
+- Numeric and working Questions are marked automatically. Full marks map to FSRS Good; every
+  incomplete result, including partial marks, maps to Again. Hard is not used because it is a
+  successful FSRS recall rating.
+- An undetermined line or disputed checker verdict retains the marks and receipt but withholds
+  scheduling.
+- Worked feedback is mandatory. The first submission is immutable; an optional correction is stored
+  separately and does not rewrite the schedule evidence.
+- Undo excludes the Attempt from schedule replay without deleting its receipt.
+
 ### Create a batch prompt
 
-1. Choose Build external batch prompt.
+1. Choose Build external batch prompt from Questions.
 2. Enter lesson notes, topic, and level.
-3. Optionally set concepts per item and maximum items.
+3. Optionally set a maximum; every proposed Question must name exactly one primary target Concept
+   and may name prerequisites.
 4. Copy the generated prompt.
 5. Run it manually in an external chatbot.
 6. Return to Review response.
@@ -571,7 +595,8 @@ Generated and already-linked cards are excluded from ordinary bulk selection. To
 - Clean items can be accepted individually or with Accept all clean.
 - Rejected items can be restored.
 - Batch revision supports a complaint, copied revision prompt, pasted revised reply, and position-based Apply revisions.
-- Accepted cards are created in the target lesson.
+- Accepted candidates become fixed Questions in the target lesson through the ordinary Question
+  repository transaction.
 
 There is no integrated AI call, persistent staging area, saved prompt history, batch export, or
 explicit Reject all. Closing with entered notes, a response, or staged candidates requires an
@@ -624,6 +649,7 @@ The setup shows a read-only completed or archived state once the plan is complet
 
 - /learn is the cross-course Review today session and is visible in the default sidebar.
 - /course/:courseId/learn is course Practice.
+- /course/:courseId/questions/learn is the independent post-instruction Question session.
 - /lesson/:lessonId/learn is Simple lesson study.
 - The course conductor also launches lesson-scoped Simple learn and course-scoped practice.
 - Valid filtered-study query parameters can select due, new, leeches, flagged, suspended, or other filtered subsets.
@@ -651,7 +677,22 @@ The setup shows a read-only completed or archived state once the plan is complet
 9. Edit opens a paused in-session card overlay.
 10. Finish through the session limits or choose Exit.
 
-Machine-marked numeric and working cards use their own answer checker and dispute/report history rather than the classic self-grade face. Unsupported payloads show a read-only unsupported-item face.
+Legacy machine-marked Card payloads that could not be migrated retain a read-only compatibility
+face. New numeric and working content is not part of Card sessions.
+
+### Question session
+
+1. Enter from Practise 10 or All due on the Questions tab.
+2. Read the persisted fixed prompt or resolved generated variant.
+3. Enter a numeric answer or one working step per line.
+4. Check the answer, inspect marks and report any checker error before submission.
+5. Submit to reveal the mandatory worked feedback.
+6. Optionally record one correction; the first submission remains unchanged.
+7. Undo Question scheduling if needed, then continue to the next Question or Exit.
+
+The Question header reports only session position. It does not show or mutate the Card objective.
+Exiting an unanswered presentation marks it abandoned. A correction is evidence after feedback, not
+a replacement grade.
 
 ### Touch, focus, and interruption
 
@@ -681,10 +722,10 @@ Actions include Done and, where limits permit, Keep studying or Continue anyway.
 ### Full Search page
 
 1. Open /search or use the slash shortcut.
-2. Search courses, lessons, notes, and cards.
+2. Search courses, lessons, notes, Cards and Questions.
 3. Filter by Due now, New, Leeches, Flagged, or Suspended.
 4. Clear filters or the query.
-5. Open the result to its course, lesson, note, or card editor.
+5. Open the result to its course, lesson, note, Card editor or Question editor.
 
 Empty and no-match states are present.
 
@@ -720,10 +761,15 @@ These views are read-only and have empty states. Archived courses are excluded f
 
 Open the Analytics course tab to inspect:
 
-- Predicted exam-day score.
-- Lesson breakdown.
-- Card stability profile.
-- Review volume.
+- Card predicted exam-day score, lesson breakdown, stability profile and review volume.
+- Question due, unseen and suspended counts.
+- Fixed Question first-presentation versus repeat accuracy and marks.
+- Generated-family novel-variant versus repeated-variant accuracy, unique variants and repeat rate.
+- Versioned working-criterion evidence and excluded shown, abandoned, undone, checker-withheld or
+  unscored Attempts.
+
+Card and Question panels are separate. Question Attempts never change Card readiness, the Course
+objective or Card calibration.
 
 There are no editing or planning actions inside analytics; the user has to return to the path or settings to act on what the charts show.
 
@@ -738,7 +784,10 @@ There are no editing or planning actions inside analytics; the user has to retur
 5. Copy the code or generate a QR code.
 6. Optionally export the course as plain text.
 
-Share codes support LAC0–LAC3 compatibility. Share codes do not carry media; the UI warns that images, audio, and diagrams are omitted or represented by text fallbacks. Full backup is the media-preserving route.
+Share codes support LAC0–LAC3 transport compatibility. Current v3 payloads carry Concepts, Question
+definitions and their primary/prerequisite relationships, but no personal Attempts or Question
+scheduling. Share codes do not carry media; the UI warns that images, audio, and diagrams are
+omitted or represented by text fallbacks. Full backup is the media-preserving route.
 
 QR generation fails when the encoded text is over the QR capacity. Camera scanning requires permission and has Start/Stop scanning and error states.
 
@@ -842,7 +891,8 @@ Set Focus, Short break, and Long break durations and Auto-start breaks. The time
 
 Global Settings exposes:
 
-- Full backup JSON, including courses, cards, review history, images, and other local data.
+- Full backup JSON, including Courses, Cards, Card reviews, Concepts, Questions, Question Attempts,
+  referenced media and other local data.
 - CSV.
 - TSV.
 - Markdown table.
@@ -856,13 +906,15 @@ Another device accepts a full-backup JSON file from a second installation:
 
 1. Choose a backup from another device.
 2. Confirm combining with that file (date and card count).
-3. Cards and reviews from either side are kept; a card deleted on either is removed.
+3. Cards, Questions and evidence from either side are kept; a deletion on either is removed.
+   Question Attempt receipts union by identity, conflicting immutable receipts fail, and Question
+   schedules are replayed from eligible evidence.
 4. A restore point is saved first. The success notice reports what was kept, added and removed.
 
 Recover this installation accepts a full-backup JSON file:
 
 1. Choose a file.
-2. Review lesson, card, and date counts.
+2. Review lesson, Card, Question and date counts.
 3. Cancel, Add from backup, or Replace local data.
 4. Add from backup folds the file in; existing local rows are not deleted.
 5. Replace local data deletes current installation data and restores the backup.
@@ -926,58 +978,61 @@ It links back to the dashboard, welcome page, and help. It is explanatory, not a
 
 ## 20. Empty, blocked, error, and recovery states
 
-| State | User-facing behaviour | Recovery |
-| --- | --- | --- |
-| App initialisation failure | Lacuna could not start | Reload |
-| No courses | Empty dashboard | New course or import |
-| Archived course hidden | Course absent from active dashboard | Enable archived courses in sidebar settings |
-| No lessons | Empty path | Add lesson (Edit mode) |
-| No cards | Lesson/question-bank empty state | Create, sequence, occlusion, link, or import |
-| No search matches | Search empty state | Clear query/filter |
-| No due cards | Nothing due — next lesson available | Start or return |
-| Course empty on study | Cannot start normal curriculum | Add lesson |
-| Course archived on study | Nothing available | Return to course/dashboard |
-| Lesson locked | Study cannot advance | Return later or change unlocking settings |
-| Course caught up | You are caught up | Finish or start the next available lesson |
-| Missing course/lesson | Not-found recovery | Back to dashboard/course |
-| Missing card owner | Authoring error/read-only fallback | Return to owner or leave editor |
-| Invalid share code | Error message/toast | Correct code or cancel |
-| QR too large | Capacity error | Use copy/text or smaller payload |
-| Camera unavailable | Scanner error or permission block | Stop scanning/use pasted code |
-| File chooser unavailable | Import/upload cannot proceed | Use pasted text or another browser |
-| Folder permission unavailable | Mirroring cannot start | Export a backup manually |
-| PWA install unsupported | Install control absent or explanatory state | Continue in browser |
-| Invalid assessment scope | Validation issues | Change placement, coverage, exclusions, or confirmation |
-| Nonexistent local date-time | Date/time error | Choose another local time |
-| Stale shared update | Latest-revision message | Close; no merge |
-| No pending updates | Up-to-date state | Return to course |
-| Empty batch response | Parse/review error | Paste a delimited response |
-| Unknown batch item kind | Candidate cannot be accepted | Edit or reject |
-| Invalid sequence | Save error/validation | Add valid items and values |
-| Empty occlusion | Save disabled | Upload an image and add a region |
-| Restore/import replace | Destructive preview | Cancel or confirm replace |
+| State                         | User-facing behaviour                       | Recovery                                                     |
+| ----------------------------- | ------------------------------------------- | ------------------------------------------------------------ |
+| App initialisation failure    | Lacuna could not start                      | Reload                                                       |
+| No courses                    | Empty dashboard                             | New course or import                                         |
+| Archived course hidden        | Course absent from active dashboard         | Enable archived courses in sidebar settings                  |
+| No lessons                    | Empty path                                  | Add lesson (Edit mode)                                       |
+| No Cards                      | Lesson/Cards empty state                    | Create, sequence, occlusion, link, or import                 |
+| No Questions                  | Questions empty state                       | Create a post-instruction fixed Question or generated family |
+| No eligible Questions         | Question-practice completion state          | Return to Questions or author material                       |
+| No search matches             | Search empty state                          | Clear query/filter                                           |
+| No due cards                  | Nothing due — next lesson available         | Start or return                                              |
+| Course empty on study         | Cannot start normal curriculum              | Add lesson                                                   |
+| Course archived on study      | Nothing available                           | Return to course/dashboard                                   |
+| Lesson locked                 | Study cannot advance                        | Return later or change unlocking settings                    |
+| Course caught up              | You are caught up                           | Finish or start the next available lesson                    |
+| Missing course/lesson         | Not-found recovery                          | Back to dashboard/course                                     |
+| Missing card owner            | Authoring error/read-only fallback          | Return to owner or leave editor                              |
+| Invalid share code            | Error message/toast                         | Correct code or cancel                                       |
+| QR too large                  | Capacity error                              | Use copy/text or smaller payload                             |
+| Camera unavailable            | Scanner error or permission block           | Stop scanning/use pasted code                                |
+| File chooser unavailable      | Import/upload cannot proceed                | Use pasted text or another browser                           |
+| Folder permission unavailable | Mirroring cannot start                      | Export a backup manually                                     |
+| PWA install unsupported       | Install control absent or explanatory state | Continue in browser                                          |
+| Invalid assessment scope      | Validation issues                           | Change placement, coverage, exclusions, or confirmation      |
+| Nonexistent local date-time   | Date/time error                             | Choose another local time                                    |
+| Stale shared update           | Latest-revision message                     | Close; no merge                                              |
+| No pending updates            | Up-to-date state                            | Return to course                                             |
+| Empty batch response          | Parse/review error                          | Paste a delimited response                                   |
+| Unknown batch item kind       | Candidate cannot be accepted                | Edit or reject                                               |
+| Invalid sequence              | Save error/validation                       | Add valid items and values                                   |
+| Empty occlusion               | Save disabled                               | Upload an image and add a region                             |
+| Restore/import replace        | Destructive preview                         | Cancel or confirm replace                                    |
 
 ## 21. Redundant paths and contradictions
 
-| Area | Repeated or conflicting surfaces | Usability consequence |
-| --- | --- | --- |
-| Naming | Course in the UI; deck in legacy routes, exports, help, and some copy | Users cannot tell whether deck and course are different objects |
-| Search | Full /search page and Ctrl/Cmd+K command palette | Two search behaviours to learn |
-| Course name | Inline path rename and Course Settings field | Same edit in two contexts |
-| Lesson creation | Path Add lesson, empty path Add lesson, and Settings lesson management | Several entry points with different navigation outcomes |
-| Practice nodes | Path editor and Settings explanation/link | One canonical editor, with Settings as orientation |
-| Cards | Bank, lesson, and populated-list controls | Stable New card/sequence/occlusion/link/import labels |
-| Generated content | Lesson and course-bank entry points | Stable ownership-aware creation controls |
-| Import | Course sharing, card/APKG import, and full-backup recovery | Entry copy names the data and consequence before import |
-| Export | Sharing formats versus full recovery | Share warns about omitted media and links to full backup |
-| Settings saves | Course settings commit immediately; card/sequence/occlusion editors use explicit Save | Save expectations change by route |
-| View mode | Path Read/Edit, Lesson Read/Edit, and Course Settings lesson view mode | Three places control related presentation state |
-| Assessments | Course creation and Final exam editing set the primary date; Add checkpoint creates intermediate assessments | The two assessment kinds use distinct actions |
-| Practice visibility | Automatic and Manual labels share the path | Settings explains why only manual nodes are editable |
-| Navigation | Shared course tabs appear on course and lesson views | Lesson routes keep Path active and other sections one click away |
-| Destructive actions | Deletion and replacement state consequences before commit | Undo remains supplementary recovery where available |
-| Dashboard copy | Settings and dashboard both describe all active courses | Archived courses remain separately manageable |
-| Help | Course settings, sharing, and full recovery are named separately | Copy maps to reachable controls |
+| Area                | Repeated or conflicting surfaces                                                                             | Usability consequence                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Naming              | Course in the UI; deck in legacy routes, exports, help, and some copy                                        | Users cannot tell whether deck and course are different objects  |
+| Search              | Full /search page and Ctrl/Cmd+K command palette                                                             | Two search behaviours to learn                                   |
+| Course name         | Inline path rename and Course Settings field                                                                 | Same edit in two contexts                                        |
+| Lesson creation     | Path Add lesson, empty path Add lesson, and Settings lesson management                                       | Several entry points with different navigation outcomes          |
+| Practice nodes      | Path editor and Settings explanation/link                                                                    | One canonical editor, with Settings as orientation               |
+| Cards               | Cards page, lesson, and populated-list controls                                                              | Stable New Card/sequence/occlusion/link/import labels            |
+| Questions           | Separate authoring, practice and analytics surfaces                                                          | Path integration remains explicitly deferred                     |
+| Generated content   | Lesson and course-bank entry points                                                                          | Stable ownership-aware creation controls                         |
+| Import              | Course sharing, card/APKG import, and full-backup recovery                                                   | Entry copy names the data and consequence before import          |
+| Export              | Sharing formats versus full recovery                                                                         | Share warns about omitted media and links to full backup         |
+| Settings saves      | Course settings commit immediately; card/sequence/occlusion editors use explicit Save                        | Save expectations change by route                                |
+| View mode           | Path Read/Edit, Lesson Read/Edit, and Course Settings lesson view mode                                       | Three places control related presentation state                  |
+| Assessments         | Course creation and Final exam editing set the primary date; Add checkpoint creates intermediate assessments | The two assessment kinds use distinct actions                    |
+| Practice visibility | Automatic and Manual labels share the path                                                                   | Settings explains why only manual nodes are editable             |
+| Navigation          | Shared course tabs appear on course and lesson views                                                         | Lesson routes keep Path active and other sections one click away |
+| Destructive actions | Deletion and replacement state consequences before commit                                                    | Undo remains supplementary recovery where available              |
+| Dashboard copy      | Settings and dashboard both describe all active courses                                                      | Archived courses remain separately manageable                    |
+| Help                | Course settings, sharing, and full recovery are named separately                                             | Copy maps to reachable controls                                  |
 
 ## 22. Broken, fragile, or unverified flows
 

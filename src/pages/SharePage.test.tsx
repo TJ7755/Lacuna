@@ -84,7 +84,15 @@ vi.mock('../components/ui/icons', () => ({
 }));
 
 vi.mock('../components/ui/Button', () => ({
-  Button: ({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) => (
+  Button: ({
+    children,
+    onClick,
+    disabled,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+  }) => (
     <button type="button" onClick={onClick} disabled={disabled} data-testid="button">
       {children}
     </button>
@@ -104,7 +112,14 @@ const mockCourse: Course = {
   examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
   timeZone: 'UTC',
   fsrsVersion: 6,
-  fsrsParameters: { requestRetention: 0.9, w: Array(21).fill(0), enable_fuzz: true, maximum_interval: 36500, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] },
+  fsrsParameters: {
+    requestRetention: 0.9,
+    w: Array(21).fill(0),
+    enable_fuzz: true,
+    maximum_interval: 36500,
+    learning_steps: ['1m', '10m'],
+    relearning_steps: ['10m'],
+  },
   examObjective: 'expectedMarks',
   unlockMode: 'linear',
   autoPractice: false,
@@ -147,7 +162,9 @@ describe('SharePage', () => {
     mockSummaries = {};
     render(<SharePage />);
     expect(screen.getByText('No courses yet')).toBeInTheDocument();
-    expect(screen.getByText('Create a course first, then come back here to share it with others.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Create a course first, then come back here to share it with others.'),
+    ).toBeInTheDocument();
   });
 
   it('renders course list when courses exist', () => {
@@ -182,6 +199,7 @@ describe('SharePage', () => {
     mockCourseCards = [
       {
         id: 'media-card',
+        conceptId: 'concept-media-card',
         front: 'What is shown? lacuna-asset://' + 'a'.repeat(64),
         back: 'Answer',
       } as Card,
@@ -198,6 +216,7 @@ describe('SharePage', () => {
     mockCourseCards = [
       {
         id: 'occlusion-card',
+        conceptId: 'concept-occlusion-card',
         front: 'Label 1 of 3 — Plant cell',
         back: 'Label 1 of 3 — Plant cell\n\nNucleus',
         occlusionRegionId: 'region-1',
@@ -212,7 +231,9 @@ describe('SharePage', () => {
   it('does not show the media-placeholder warning when the selected course has no media', () => {
     mockCourses = [mockCourse];
     mockSummaries = { [mockCourse.id]: mockSummary };
-    mockCourseCards = [{ front: 'Plain text', back: 'Answer' } as Card];
+    mockCourseCards = [
+      { conceptId: 'concept-plain-card', front: 'Plain text', back: 'Answer' } as Card,
+    ];
     render(<SharePage />);
     fireEvent.click(screen.getByText('Test Course'));
     expect(screen.queryByText(/This course contains media in/)).not.toBeInTheDocument();
@@ -226,14 +247,18 @@ describe('SharePage', () => {
     expect(
       screen.getByText(/All Lacuna share-code encodings \(LAC0–LAC3\) are supported/),
     ).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...'),
+    ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Share code to import' })).toBeInTheDocument();
   });
 
   it('names generated share and plain-text exports', async () => {
     mockCourses = [mockCourse];
     mockSummaries = { [mockCourse.id]: mockSummary };
-    mockCourseCards = [{ front: 'Question', back: 'Answer' } as Card];
+    mockCourseCards = [
+      { conceptId: 'concept-export-card', front: 'Question', back: 'Answer' } as Card,
+    ];
     render(<SharePage />);
 
     fireEvent.click(screen.getByText('Test Course'));
@@ -244,7 +269,9 @@ describe('SharePage', () => {
 
     fireEvent.click(screen.getByText('Export cards as plain text'));
     await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Generated plain-text export' })).toBeInTheDocument(),
+      expect(
+        screen.getByRole('textbox', { name: 'Generated plain-text export' }),
+      ).toBeInTheDocument(),
     );
   });
 
@@ -299,12 +326,16 @@ describe('SharePage', () => {
 
     it('preserves lineage tracking on the first import of a published course', async () => {
       mockDecodedPayload = { v: 2, li: 'lineage-1', rv: 1 };
-      mockImportLineageFirstTime.mockResolvedValue({ course: { ...mockCourse, id: 'shared-copy' } });
+      mockImportLineageFirstTime.mockResolvedValue({
+        course: { ...mockCourse, id: 'shared-copy' },
+      });
 
       await inspectCode();
       fireEvent.click(screen.getByText('Add to my courses'));
 
-      await waitFor(() => expect(mockImportLineageFirstTime).toHaveBeenCalledWith(mockDecodedPayload));
+      await waitFor(() =>
+        expect(mockImportLineageFirstTime).toHaveBeenCalledWith(mockDecodedPayload),
+      );
       expect(mockNotify).toHaveBeenCalledWith('Added 1 course and 2 cards.', 'positive');
     });
 
@@ -341,7 +372,10 @@ describe('SharePage', () => {
       await waitFor(() => expect(mockMergeLineageUpdate).toHaveBeenCalled());
       expect(mockMergeLineageUpdate).toHaveBeenCalledWith('course-2', mockDecodedPayload);
       await waitFor(() =>
-        expect(mockNotify).toHaveBeenCalledWith(expect.stringContaining('Updated the course'), 'positive'),
+        expect(mockNotify).toHaveBeenCalledWith(
+          expect.stringContaining('Updated the course'),
+          'positive',
+        ),
       );
     });
 
@@ -395,9 +429,7 @@ describe('SharePage', () => {
       mockFindCourseForLineage = () => Promise.resolve(distributedCourse);
 
       await inspectCode();
-      expect(
-        screen.getByText(/You already have the latest version of/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/You already have the latest version of/)).toBeInTheDocument();
       expect(screen.queryByText('Update course')).not.toBeInTheDocument();
       expect(screen.getByText('Close')).toBeInTheDocument();
       expect(mockMergeLineageUpdate).not.toHaveBeenCalled();

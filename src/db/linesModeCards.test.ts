@@ -56,6 +56,7 @@ describe('linesModeSequencesByCard', () => {
     const course = await createCourse('Misc');
     await db.cards.add({
       id: 'plain-card',
+      conceptId: 'concept-plain-card',
       deckId: 'deck-1',
       schedulingUnitId: 'deck-1',
       courseId: course.id,

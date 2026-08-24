@@ -20,6 +20,10 @@ function emptyBackup(overrides: Partial<BackupFile> = {}): BackupFile {
     assets: [],
     sessionHistory: [],
     userPerformance: [],
+    concepts: [],
+    questions: [],
+    questionConcepts: [],
+    questionAttempts: [],
     ...overrides,
   };
 }
@@ -27,7 +31,7 @@ function emptyBackup(overrides: Partial<BackupFile> = {}): BackupFile {
 describe('backup tombstones', () => {
   beforeEach(reset);
 
-  it('round-trips tombstones at version 10', async () => {
+  it('round-trips tombstones at version 11', async () => {
     const tombstones: Tombstone[] = [
       { table: 'cards', recordId: 'card-gone', deletedAt: 50 },
       { table: 'courses', recordId: 'course-gone', deletedAt: 60 },
@@ -35,7 +39,7 @@ describe('backup tombstones', () => {
     await db.tombstones.bulkPut(tombstones);
 
     const backup = await exportDatabase();
-    expect(backup.version).toBe(10);
+    expect(backup.version).toBe(11);
     expect(backup.tombstones).toEqual(expect.arrayContaining(tombstones));
     expect(validateBackup(backup)).toBe(true);
 

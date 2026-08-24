@@ -44,6 +44,7 @@ function makeExamDate(id: string, examDate: number): CourseAssessment {
 function makeCard(id: string, overrides: Partial<Card> = {}): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'course',
     schedulingUnitId: 'course',
     type: 'front_back',

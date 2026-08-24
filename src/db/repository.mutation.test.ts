@@ -114,7 +114,8 @@ function expectedCourseTombstoneKeys(snapshot: CourseSnapshot): Set<string> {
   for (const exposure of snapshot.lessonCardExposures) {
     add('lessonCardExposures', `${exposure.lessonId}:${exposure.cardId}`);
   }
-  for (const completion of snapshot.lessonCompletions) add('lessonCompletions', completion.lessonId);
+  for (const completion of snapshot.lessonCompletions)
+    add('lessonCompletions', completion.lessonId);
   for (const node of snapshot.practiceNodes) add('practiceNodes', node.id);
   for (const milestone of snapshot.practiceMilestones) add('practiceMilestones', milestone.nodeKey);
   for (const assessment of snapshot.courseAssessments) add('courseAssessments', assessment.id);
@@ -122,9 +123,16 @@ function expectedCourseTombstoneKeys(snapshot: CourseSnapshot): Set<string> {
   for (const sequence of snapshot.sequences) add('sequences', sequence.id);
   for (const occlusion of snapshot.occlusions) add('occlusions', occlusion.id);
   for (const card of snapshot.cards) add('cards', card.id);
+  for (const concept of snapshot.concepts) add('concepts', concept.id);
+  for (const question of snapshot.questions) add('questions', question.id);
+  for (const set of snapshot.questionConcepts) add('questionConcepts', set.questionId);
+  for (const attempt of snapshot.questionAttempts) add('questionAttempts', attempt.id);
+  for (const mapping of snapshot.lineageIdMappings) add('lineageIdMappings', mapping.id);
+  for (const review of snapshot.pendingMergeReviews) add('pendingMergeReviews', review.id);
   for (const unit of snapshot.schedulingUnits) add('schedulingUnits', unit.id);
   for (const row of snapshot.coursePerformance) add('coursePerformance', row.courseId);
-  for (const row of snapshot.schedulingPerformance) add('schedulingPerformance', row.schedulingUnitId);
+  for (const row of snapshot.schedulingPerformance)
+    add('schedulingPerformance', row.schedulingUnitId);
   return keys;
 }
 
@@ -205,23 +213,50 @@ describe('repository mutation stamps and tombstones', () => {
 
     const read = (id: string) => db.cards.get(id).then((row) => row?.updatedAt);
 
-    await expectStampAdvanced(() => read(card.id), () => updateCard(card.id, { back: 'Edited' }));
+    await expectStampAdvanced(
+      () => read(card.id),
+      () => updateCard(card.id, { back: 'Edited' }),
+    );
     await expectStampAdvanced(
       () => read(courseCard.id),
       () => assignCardsToLesson([courseCard.id], course.id, lesson.id),
     );
-    await expectStampAdvanced(() => read(card.id), () => suspendCard(card.id));
-    await expectStampAdvanced(() => read(card.id), () => unsuspendCard(card.id));
-    await expectStampAdvanced(() => read(card.id), () => setCardsSuspended([card.id], true));
-    await expectStampAdvanced(() => read(card.id), () => addTagToCards([card.id], 'exam'));
-    await expectStampAdvanced(() => read(card.id), () => removeTagFromCards([card.id], 'exam'));
-    await expectStampAdvanced(() => read(card.id), () => buryCard(card.id, Date.now() + 60_000));
-    await expectStampAdvanced(() => read(bulk[0].id), () => buryCards([bulk[0].id], Date.now() + 60_000));
+    await expectStampAdvanced(
+      () => read(card.id),
+      () => suspendCard(card.id),
+    );
+    await expectStampAdvanced(
+      () => read(card.id),
+      () => unsuspendCard(card.id),
+    );
+    await expectStampAdvanced(
+      () => read(card.id),
+      () => setCardsSuspended([card.id], true),
+    );
+    await expectStampAdvanced(
+      () => read(card.id),
+      () => addTagToCards([card.id], 'exam'),
+    );
+    await expectStampAdvanced(
+      () => read(card.id),
+      () => removeTagFromCards([card.id], 'exam'),
+    );
+    await expectStampAdvanced(
+      () => read(card.id),
+      () => buryCard(card.id, Date.now() + 60_000),
+    );
+    await expectStampAdvanced(
+      () => read(bulk[0].id),
+      () => buryCards([bulk[0].id], Date.now() + 60_000),
+    );
     await expectStampAdvanced(
       () => read(bulk[1].id),
       () => rescheduleCards([bulk[1].id], { due: Date.now() + 86_400_000 }),
     );
-    await expectStampAdvanced(() => read(card.id), () => setCardFlag(card.id, true));
+    await expectStampAdvanced(
+      () => read(card.id),
+      () => setCardFlag(card.id, true),
+    );
 
     const reviewed = await createCard(course.id, 'front_back', 'Review me', 'Answer');
     await expectStampAdvanced(
@@ -304,10 +339,15 @@ describe('repository mutation stamps and tombstones', () => {
     const lesson = await createLesson(course.id, 'Cells');
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q', 'A');
     await upsertLessonCardExposure(lesson.id, card.id, now - 1_000);
-    const assessment = await createCourseAssessment(course.id, 'Paper 1', Date.parse('2026-07-19T12:00:00Z'), {
-      timeZone: 'UTC',
-      afterLessonId: lesson.id,
-    });
+    const assessment = await createCourseAssessment(
+      course.id,
+      'Paper 1',
+      Date.parse('2026-07-19T12:00:00Z'),
+      {
+        timeZone: 'UTC',
+        afterLessonId: lesson.id,
+      },
+    );
 
     const plan = await createOrResumeRevisionPlan(assessment.id, 20, revisionFallback, now);
     expect(plan.updatedAt).toBeGreaterThan(0);
@@ -529,7 +569,9 @@ describe('repository mutation stamps and tombstones', () => {
     expect(expected.has(tombstoneKey('sequences', snapshot!.sequences[0].id))).toBe(true);
     expect(expected.has(tombstoneKey('coursePerformance', course.id))).toBe(true);
     expect(
-      expected.has(tombstoneKey('schedulingPerformance', snapshot!.schedulingPerformance[0].schedulingUnitId)),
+      expected.has(
+        tombstoneKey('schedulingPerformance', snapshot!.schedulingPerformance[0].schedulingUnitId),
+      ),
     ).toBe(true);
 
     await deleteCourse(course.id);
@@ -660,14 +702,18 @@ describe('repository mutation stamps and tombstones', () => {
     await deleteCards([card.id]);
     expect(await db.tombstones.get(['cards', card.id])).toBeDefined();
     expect(await db.tombstones.get(['lessonCards', link.id])).toBeDefined();
-    expect(await db.tombstones.get(['lessonCardExposures', `${linked.id}:${card.id}`])).toBeDefined();
+    expect(
+      await db.tombstones.get(['lessonCardExposures', `${linked.id}:${card.id}`]),
+    ).toBeDefined();
 
     await restoreCards(snapshot);
     expect(await db.cards.get(card.id)).toMatchObject({ updatedAt: 72 });
     expect(await db.lessonCards.get(link.id)).toMatchObject({ updatedAt: 73 });
     expect(await db.tombstones.get(['cards', card.id])).toBeUndefined();
     expect(await db.tombstones.get(['lessonCards', link.id])).toBeUndefined();
-    expect(await db.tombstones.get(['lessonCardExposures', `${linked.id}:${card.id}`])).toBeUndefined();
+    expect(
+      await db.tombstones.get(['lessonCardExposures', `${linked.id}:${card.id}`]),
+    ).toBeUndefined();
   });
 
   it('does not tombstone cards when a lesson is deleted', async () => {
@@ -726,12 +772,12 @@ describe('repository mutation stamps and tombstones', () => {
       table: 'lessonCards',
       recordId: link.id,
     });
-    expect(await db.tombstones.get(['lessonCardExposures', `${linked.id}:${card.id}`])).toMatchObject(
-      {
-        table: 'lessonCardExposures',
-        recordId: `${linked.id}:${card.id}`,
-      },
-    );
+    expect(
+      await db.tombstones.get(['lessonCardExposures', `${linked.id}:${card.id}`]),
+    ).toMatchObject({
+      table: 'lessonCardExposures',
+      recordId: `${linked.id}:${card.id}`,
+    });
     expect(await db.tombstones.get(['cards', card.id])).toBeUndefined();
   });
 
@@ -745,7 +791,9 @@ describe('repository mutation stamps and tombstones', () => {
     await assignCardsToLesson([card.id], course.id, second.id);
 
     expect(await db.lessonCardExposures.get([first.id, card.id])).toBeUndefined();
-    expect(await db.tombstones.get(['lessonCardExposures', `${first.id}:${card.id}`])).toMatchObject({
+    expect(
+      await db.tombstones.get(['lessonCardExposures', `${first.id}:${card.id}`]),
+    ).toMatchObject({
       table: 'lessonCardExposures',
       recordId: `${first.id}:${card.id}`,
     });
@@ -804,7 +852,10 @@ describe('repository mutation stamps and tombstones', () => {
       { id: 'del-seq-0', value: 'F' },
       { id: 'del-seq-1', value: 'Cl' },
     ]);
-    const generated = await db.cards.where('sequenceItemId').anyOf(['del-seq-0', 'del-seq-1']).toArray();
+    const generated = await db.cards
+      .where('sequenceItemId')
+      .anyOf(['del-seq-0', 'del-seq-1'])
+      .toArray();
     expect(generated).toHaveLength(2);
 
     await deleteSequence(sequence.id);

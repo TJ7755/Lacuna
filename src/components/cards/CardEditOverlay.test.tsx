@@ -37,7 +37,15 @@ vi.mock('../ui/TagInput', () => ({
 }));
 
 vi.mock('../ui/Button', () => ({
-  Button: ({ children, onClick, disabled }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean }) => (
+  Button: ({
+    children,
+    onClick,
+    disabled,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+  }) => (
     <button type="button" onClick={onClick} disabled={disabled}>
       {children}
     </button>
@@ -54,6 +62,7 @@ vi.mock('../ui/icons', () => ({
 
 const card: Card = {
   id: 'card-1',
+  conceptId: 'concept-card-1',
   deckId: 'deck-1',
   schedulingUnitId: 'unit-1',
   type: 'front_back',
@@ -89,12 +98,7 @@ afterEach(() => {
 describe('CardEditOverlay draft scope', () => {
   it('uses the explicit Course/Lesson scope instead of the card Deck', async () => {
     render(
-      <CardEditOverlay
-        card={card}
-        draftScope="lesson-1"
-        onSaved={vi.fn()}
-        onCancel={vi.fn()}
-      />,
+      <CardEditOverlay card={card} draftScope="lesson-1" onSaved={vi.fn()} onCancel={vi.fn()} />,
     );
 
     await act(() => vi.advanceTimersByTime(800));

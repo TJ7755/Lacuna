@@ -37,6 +37,7 @@ function course(id: string, days: number): SchedulerConfig {
 function card(id: string, deckId: string, extra?: Partial<Card>): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId,
     schedulingUnitId: deckId,
     type: 'front_back',

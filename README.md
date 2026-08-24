@@ -4,9 +4,11 @@
 
 A local-only, serverless revision application built around the **FSRS-6** spaced-repetition
 algorithm (via the official `ts-fsrs` library). Material is organised into **courses**, each
-made of **lessons** studied in order along a path; every card is scheduled to peak on the
-course's exam day. Classic recall cards use a single **Yes / No** and an invisible response
-timer to infer the FSRS grade; structured numeric and working items are marked automatically.
+made of **lessons** studied in order along a path; every Card is scheduled to peak on the
+course's exam day. Classic recall Cards use a single **Yes / No** and an invisible response
+timer to infer the FSRS grade. A separate, post-instruction **Questions** experiment provides
+automatically marked numeric and working problems without mixing their schedules or evidence into
+Card recall.
 
 All data lives locally in **IndexedDB**. The web app sends none of it to an application server
 unless you explicitly pair it with an optional sync relay; that relay receives encrypted snapshots
@@ -34,16 +36,19 @@ JSON file.
   current course/deck performance profile.
 - **Simple learn mode** — an algorithm-free YES/NO study loop with no FSRS scheduling, no DB writes,
   and shared in-session card progress. Cards loop until every one is marked correct.
-- **Recall and practice items** — Basic (front/back), Reversed and Cloze cards support an
-  optional type-before-reveal presentation mode. Numeric items check exact, tolerance or
-  alternative answers; working items award authored method marks against deterministic
-  expression waypoints and predicates.
+- **Recall Cards** — Basic (front/back), Reversed and Cloze Cards support an optional
+  type-before-reveal presentation mode. Sequences and image occlusions also remain direct-recall
+  Cards, each with its own Card schedule.
+- **Post-instruction Questions** — a separate course tab holds fixed problems and built-in
+  generated families. Every Question has exactly one primary Concept, optional prerequisites, a
+  mandatory worked explanation and scheduling evidence isolated from Cards. Full marks schedule as
+  FSRS Good; any incomplete answer schedules as Again; checker uncertainty withholds scheduling.
 - **Audio cards** — attach or record an MP3, M4A/MP4, Ogg, WAV or WebM clip through the card
   editor. Audio uses the same local, content-addressed asset store as images; playback speed and
   autoplay are device settings, and Anki `[sound:…]` media imports intact.
-- **Structured item authoring** — build numeric answers and line-oriented working schemes in
-  the card editor, test them against pinned sample answers, or generate a clipboard prompt and
-  stage a delimited batch for per-item validation, editing and acceptance. Lacuna never sends
+- **Structured Question authoring** — build numeric answers and line-oriented working schemes in
+  the Question editor, test them against pinned sample answers, or generate a clipboard prompt and
+  stage a delimited batch for per-Question validation, editing and acceptance. Lacuna never sends
   lesson notes to a model itself.
 - **Sequences** — author an ordered list once (e.g. the periodic table, a timeline, a chain of
   steps) and Lacuna generates a full set of overlapping-cloze cards, each cueing recall from the
@@ -64,12 +69,14 @@ JSON file.
 - **Markdown notes and cards** with GitHub-flavoured syntax, code highlighting, **KaTeX maths**,
   **cloze deletions** (`{{c1::answer::hint}}`), collapsible sections and embedded video (notes
   only), and **drag-and-drop images** (downscaled and stored inline).
-- **Course-scoped analytics** — predicted exam-day trajectory, stability profile, review volume,
-  and a per-lesson breakdown of cards, mastery and completion.
-- **Course-wide search and command palette** — search across courses, lessons, notes and cards
-  from one place, with structured filters (due, new, leech, flagged, suspended).
-- **Question bank** — every card in a course in one place, regardless of which lesson it belongs
-  to, for browsing, searching and bulk management.
+- **Course-scoped analytics** — Card trajectory, stability, review volume and lesson breakdown stay
+  separate from Question first/repeat, generated novel/repeat, marks and criterion evidence.
+- **Course-wide search and command palette** — search across Courses, lessons, notes, Cards and
+  Questions from one place. Card-only management filters remain due, new, leech, flagged and
+  suspended.
+- **Distinct Cards and Questions tabs** — Cards provides course-wide browsing, search and bulk
+  management for recall material; Questions provides independent authoring and practice for
+  application problems. Questions are deliberately not integrated into the Path in v1.
 - **Touch-first** with 44px targets, swipe gestures, bottom sheets, and auto-adjusting font size.
 - Default **dark mode** with a light toggle, a collapsible sidebar, and fully responsive layout.
 - British English throughout; no emojis.
@@ -105,10 +112,10 @@ bun run electron:build:win  # build the Windows NSIS installer
 The Electron layer lives in `electron/` and adds a custom titlebar, local font
 bundling, Cross-Origin Isolation headers for WASM, and auto-updates via
 `electron-updater`. It also hosts an authenticated local **Model Context Protocol (MCP)**
-companion, allowing an MCP-capable client to work with Lacuna's courses, lessons, notes, cards,
-sequences, image occlusions and summaries. Card creation and updates accept the same validated numeric and
-working payloads as the visual editor. The web version does not host MCP and is otherwise
-unaffected.
+companion, allowing an MCP-capable client to work with Lacuna's courses, lessons, notes, Cards,
+Concepts, Questions, sequences, image occlusions and summaries. Card and Question tools remain
+separate; structured numeric and working payloads belong to Questions. The web version does not host
+MCP and is otherwise unaffected.
 
 Open Lacuna normally, then copy the JSON configuration from **Settings → MCP server** into
 your client's local stdio-server configuration. Its command is the installed Lacuna executable
@@ -153,10 +160,10 @@ The shipped MCP surface and its deliberate exclusions are specified in `docs/SPE
 | Exam-day mastery / progress              | `src/fsrs/progress.ts`                                                               |
 | IndexedDB schema & operations            | `src/db/`                                                                            |
 | Course/lesson data layer                 | `src/state/useCourseData.ts`, `src/course/path.ts`                                   |
-| Course path, lesson view, question bank  | `src/pages/CoursePath.tsx`, `src/pages/LessonView.tsx`, `src/pages/QuestionBank.tsx` |
+| Course path, Cards and Questions         | `src/pages/CoursePath.tsx`, `src/pages/CardsPage.tsx`, `src/pages/QuestionsPage.tsx` |
 | Sequence generation & editor             | `src/db/sequenceGeneration.ts`, `src/pages/SequenceEditor.tsx`                       |
 | Occlusion generation & editor            | `src/db/occlusionGeneration.ts`, `src/pages/OcclusionEditor.tsx`                     |
-| Structured-item verification and schemes | `src/items/verify.ts`, `src/items/markSchemeCompiler.ts`                             |
+| Question domain, checking and scheduling | `src/questions/`, `src/items/verify.ts`, `src/items/markSchemeCompiler.ts`           |
 | MCP tool surface and Electron bridge     | `src/mcp/`, `electron/mcp/`                                                          |
 | Learn session                            | `src/pages/LearnMode.tsx`                                                            |
 | Analytics charts                         | `src/components/analytics/`                                                          |

@@ -5,10 +5,7 @@ import type { SessionHistoryEntry } from './types';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { reviewHistoryEntryIdForEvent } from './reviewHistory';
 import { fsrsWeightsFingerprint } from '../fsrs/weightProvenance';
-import {
-  performanceForCourseBackingDecks,
-  performanceForReviewUnit,
-} from './backingDecks';
+import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
 import {
   addTagToCards,
   buryCards,
@@ -16,7 +13,6 @@ import {
   createCards,
   createCardWithReverse,
   createCourse,
-
   createLesson,
   createLessonCard,
   deleteCards,
@@ -156,7 +152,9 @@ describe('undoReview', () => {
 
     const undoneCard = (await db.cards.get(card.id))!;
     expect(undoneCard.history).toEqual([]);
-    expect(await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-consistency'))).toBeUndefined();
+    expect(
+      await db.reviewHistory.get(reviewHistoryEntryIdForEvent('event-consistency')),
+    ).toBeUndefined();
     expect((await hydrateCardsWithHistory([undoneCard]))[0].history).toEqual([]);
   });
 
@@ -212,13 +210,15 @@ describe('undoReview', () => {
       marksEarned: 1,
       marksAvailable: 1,
       lineVerdicts: [{ studentLine: '4', matchedLineIndex: 0, marksEarned: 1 }],
-      checkerDisputes: [{
-        reportedAt: 1_725_123_456_789,
-        question: '2 + 2',
-        studentLine: '4',
-        verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
-        checkerSeeds: ['card:0:0'],
-      }],
+      checkerDisputes: [
+        {
+          reportedAt: 1_725_123_456_789,
+          question: '2 + 2',
+          studentLine: '4',
+          verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
+          checkerSeeds: ['card:0:0'],
+        },
+      ],
     });
 
     expect((await db.cards.get(card.id))!.history[0]).toMatchObject({
@@ -227,13 +227,15 @@ describe('undoReview', () => {
       marksEarned: 1,
       marksAvailable: 1,
       lineVerdicts: [{ studentLine: '4', matchedLineIndex: 0, marksEarned: 1 }],
-      checkerDisputes: [{
-        reportedAt: 1_725_123_456_789,
-        question: '2 + 2',
-        studentLine: '4',
-        verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
-        checkerSeeds: ['card:0:0'],
-      }],
+      checkerDisputes: [
+        {
+          reportedAt: 1_725_123_456_789,
+          question: '2 + 2',
+          studentLine: '4',
+          verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
+          checkerSeeds: ['card:0:0'],
+        },
+      ],
     });
   });
 
@@ -349,9 +351,9 @@ describe('undoReview', () => {
 
     expect(await db.userPerformance.get(course.id)).toEqual(calibrationBefore);
     expect(await db.userPerformance.get(card.deckId!)).toEqual(backingBefore);
-    expect((await performanceForCourseBackingDecks(course.id, [card])).map((row) => row.deckId)).toEqual([
-      card.schedulingUnitId,
-    ]);
+    expect(
+      (await performanceForCourseBackingDecks(course.id, [card])).map((row) => row.deckId),
+    ).toEqual([card.schedulingUnitId]);
     expect(await performanceForReviewUnit(course.id, 'course')).toMatchObject({
       deckId: course.id,
     });
@@ -562,7 +564,7 @@ describe('ratchetLessonUnlock', () => {
 
 describe('createCardWithReverse', () => {
   beforeEach(async () => {
-    await Promise.all([db.schedulingUnits.clear(), db.cards.clear()]);
+    await Promise.all([db.schedulingUnits.clear(), db.cards.clear(), db.concepts.clear()]);
   });
 
   it('creates two independent cards with swapped sides and shared tags', async () => {
@@ -579,6 +581,12 @@ describe('createCardWithReverse', () => {
     expect(reverse.lastReviewed).toBeNull();
     expect(card.tags).toEqual(['french']);
     expect(reverse.tags).toEqual(['french']);
+    expect(card.conceptId).toBe(reverse.conceptId);
+    expect(await db.concepts.get(card.conceptId)).toMatchObject({
+      courseId: deck.id,
+      scope: 'course',
+      provisional: false,
+    });
     expect(await db.cards.where('schedulingUnitId').equals(deck.id).count()).toBe(2);
   });
 });

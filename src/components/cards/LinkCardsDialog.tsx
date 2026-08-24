@@ -66,7 +66,10 @@ export function LinkCardsDialog({
       onLinked();
     } catch (error) {
       setSaving(false);
-      notify(error instanceof Error ? error.message : 'Could not link the selected cards.', 'negative');
+      notify(
+        error instanceof Error ? error.message : 'Could not link the selected cards.',
+        'negative',
+      );
     }
   }
 
@@ -134,15 +137,17 @@ export function LinkCardsDialog({
           <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-line">
             {filteredCards.length === 0 ? (
               <p className="px-5 py-10 text-center text-sm text-ink-soft">
-                {cards.length === 0 ? 'Every course card is already in this lesson.' : 'No cards match your search.'}
+                {cards.length === 0
+                  ? 'Every course card is already in this lesson.'
+                  : 'No cards match your search.'}
               </p>
             ) : (
               <div className="divide-y divide-line">
                 {filteredCards.map((card) => {
                   const isSelected = selected.has(card.id);
                   const source = card.primaryLessonId
-                    ? lessonNames.get(card.primaryLessonId) ?? 'Unknown lesson'
-                    : 'Question bank';
+                    ? (lessonNames.get(card.primaryLessonId) ?? 'Unknown lesson')
+                    : 'Cards';
                   return (
                     <button
                       key={card.id}
@@ -176,7 +181,9 @@ export function LinkCardsDialog({
         <footer className="flex items-center justify-between gap-3 border-t border-line px-6 py-4">
           <span className="text-sm text-ink-faint">{selected.size} selected</span>
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+            <Button variant="ghost" onClick={onCancel}>
+              Cancel
+            </Button>
             <Button
               variant="primary"
               disabled={selected.size === 0 || saving}

@@ -10,7 +10,12 @@ const mockUnlink = vi.fn();
 const mockEnsureLessonBackingDeck = vi.fn();
 const mockGetExposure = vi.fn();
 const mockNotify = vi.fn();
-const observedContexts: { importTargetName: string; hasImport: boolean; hasApkg: boolean; hasRestore: boolean }[] = [];
+const observedContexts: {
+  importTargetName: string;
+  hasImport: boolean;
+  hasApkg: boolean;
+  hasRestore: boolean;
+}[] = [];
 
 vi.mock('../../state/useCourseData', () => ({
   useCourseCards: () => mockCourseCards,
@@ -78,12 +83,16 @@ vi.mock('./CardList', () => ({
       });
     }
     return (
-    <div>
-      {initiallyImporting && <span data-testid="initially-importing">true</span>}
-      <button type="button" onClick={onLinkExisting}>Open linked-card picker</button>
-      <span data-testid="linked-ids">{[...(linkedCardIds ?? [])].join(',')}</span>
-      <button type="button" onClick={() => onUnlinkCard?.(card)}>Remove linked card</button>
-    </div>
+      <div>
+        {initiallyImporting && <span data-testid="initially-importing">true</span>}
+        <button type="button" onClick={onLinkExisting}>
+          Open linked-card picker
+        </button>
+        <span data-testid="linked-ids">{[...(linkedCardIds ?? [])].join(',')}</span>
+        <button type="button" onClick={() => onUnlinkCard?.(card)}>
+          Remove linked card
+        </button>
+      </div>
     );
   },
 }));
@@ -120,6 +129,7 @@ const deck: LegacyDeckRecord = {
 
 const card: Card = {
   id: 'card-1',
+  conceptId: 'concept-card-1',
   deckId: deck.id,
   schedulingUnitId: deck.id,
   type: 'front_back',
@@ -173,7 +183,9 @@ describe('LessonCardsSection', () => {
     );
 
     fireEvent.click(screen.getByText('Import cards'));
-    await waitFor(() => expect(mockEnsureLessonBackingDeck).toHaveBeenCalledWith('course-1', 'lesson-1'));
+    await waitFor(() =>
+      expect(mockEnsureLessonBackingDeck).toHaveBeenCalledWith('course-1', 'lesson-1'),
+    );
     expect(screen.getByTestId('initially-importing')).toHaveTextContent('true');
     expect(observedContexts).toEqual([
       { importTargetName: 'Cells', hasImport: true, hasApkg: true, hasRestore: true },
@@ -194,7 +206,9 @@ describe('LessonCardsSection', () => {
     );
 
     fireEvent.click(screen.getByText('Import cards'));
-    await waitFor(() => expect(mockNotify).toHaveBeenCalledWith('Could not prepare import.', 'negative'));
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith('Could not prepare import.', 'negative'),
+    );
     expect(screen.queryByTestId('initially-importing')).not.toBeInTheDocument();
   });
 
@@ -214,7 +228,9 @@ describe('LessonCardsSection', () => {
   });
 
   it('opens the picker from a populated lesson and identifies linked membership', () => {
-    mockLinks = [{ id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1, updatedAt: 1 }];
+    mockLinks = [
+      { id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1, updatedAt: 1 },
+    ];
     render(
       <LessonCardsSection
         courseId="course-1"
@@ -234,8 +250,15 @@ describe('LessonCardsSection', () => {
   });
 
   it('warns before unlinking a card with lesson-specific teaching progress', async () => {
-    mockLinks = [{ id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1, updatedAt: 1 }];
-    mockGetExposure.mockResolvedValue({ lessonId: 'lesson-1', cardId: card.id, taughtAt: 1, updatedAt: 1 });
+    mockLinks = [
+      { id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1, updatedAt: 1 },
+    ];
+    mockGetExposure.mockResolvedValue({
+      lessonId: 'lesson-1',
+      cardId: card.id,
+      taughtAt: 1,
+      updatedAt: 1,
+    });
     render(
       <LessonCardsSection
         courseId="course-1"
@@ -248,7 +271,9 @@ describe('LessonCardsSection', () => {
     );
 
     fireEvent.click(screen.getByText('Remove linked card'));
-    await waitFor(() => expect(screen.getByText('Remove card from this lesson?')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText('Remove card from this lesson?')).toBeInTheDocument(),
+    );
     expect(mockUnlink).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByText('Remove'));
@@ -273,10 +298,7 @@ describe('LessonCardsSection', () => {
   });
 
   it('excludes generated sequence cards from linking candidates', () => {
-    mockCourseCards = [
-      card,
-      { ...card, id: 'generated-card', sequenceItemId: 'sequence-item-1' },
-    ];
+    mockCourseCards = [card, { ...card, id: 'generated-card', sequenceItemId: 'sequence-item-1' }];
     render(
       <LessonCardsSection
         courseId="course-1"
@@ -294,10 +316,7 @@ describe('LessonCardsSection', () => {
   });
 
   it('excludes generated occlusion cards from linking candidates', () => {
-    mockCourseCards = [
-      card,
-      { ...card, id: 'generated-card', occlusionRegionId: 'region-1' },
-    ];
+    mockCourseCards = [card, { ...card, id: 'generated-card', occlusionRegionId: 'region-1' }];
     render(
       <LessonCardsSection
         courseId="course-1"

@@ -6,8 +6,10 @@ import { useSearchData } from '../state/useSearchData';
 import {
   cardEditPath,
   plainPreview,
+  questionEditPath,
   searchCardsInScope,
   searchCourseContent,
+  searchQuestionsInScope,
   type CardFilter,
   type CourseContentHit,
 } from '../db/search';
@@ -70,19 +72,24 @@ export function SearchPage() {
   const courses = searchData?.courses;
   const lessons = searchData?.lessons;
   const notes = searchData?.notes;
+  const questions = searchData?.questions;
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<Set<CardFilter>>(new Set());
 
   const results = useMemo(
     () =>
-      searchCardsInScope(query, {
-        cards: cards ?? [],
-        courses: courses ?? [],
-        lessons: lessons ?? [],
-      }, {
-        filters: [...filters],
-      }),
+      searchCardsInScope(
+        query,
+        {
+          cards: cards ?? [],
+          courses: courses ?? [],
+          lessons: lessons ?? [],
+        },
+        {
+          filters: [...filters],
+        },
+      ),
     [query, cards, courses, lessons, filters],
   );
 
@@ -91,6 +98,16 @@ export function SearchPage() {
   const courseResults = useMemo(
     () => searchCourseContent(query, courses ?? [], lessons ?? [], notes ?? []),
     [query, courses, lessons, notes],
+  );
+
+  const questionResults = useMemo(
+    () =>
+      searchQuestionsInScope(query, {
+        questions: questions ?? [],
+        courses: courses ?? [],
+        lessons: lessons ?? [],
+      }),
+    [query, questions, courses, lessons],
   );
 
   function toggleFilter(value: CardFilter) {
@@ -124,7 +141,7 @@ export function SearchPage() {
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search courses, lessons, notes and cards…"
+          placeholder="Search courses, lessons, notes, cards and questions…"
           className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
         />
         <kbd className="hidden rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint sm:block">
@@ -177,37 +194,32 @@ export function SearchPage() {
           <SearchSkeleton />
         </DelayedFallback>
       ) : !active ? (
-        <div
-          className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center"
-        >
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center">
           <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm">
             <SearchIcon width={24} height={24} />
           </div>
           <h3 className="mb-2 font-display text-xl">Search everything</h3>
           <p className="max-w-sm text-sm text-ink-soft">
-            Start typing to search courses, lessons, notes and the front, back, lesson name and
-            tags of every card, or pick a filter above to browse due, new, flagged, suspended or
-            leech cards.
+            Start typing to search courses, lessons, notes, cards and Questions, or pick a filter
+            above to browse due, new, flagged, suspended or leech Cards.
           </p>
         </div>
-      ) : results.length === 0 && courseResults.length === 0 ? (
-        <div
-          className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center"
-        >
+      ) : results.length === 0 && courseResults.length === 0 && questionResults.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center">
           <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm">
             <CardsIcon width={24} height={24} />
           </div>
           <h3 className="mb-2 font-display text-xl">Nothing matches</h3>
           <p className="max-w-sm text-sm text-ink-soft">
-            Nothing matches{trimmed ? ` "${trimmed}"` : ' those filters'}.
-            Try clearing your search or filters.
+            Nothing matches{trimmed ? ` "${trimmed}"` : ' those filters'}. Try clearing your search
+            or filters.
           </p>
         </div>
       ) : (
         <>
           <p className="mb-3 text-sm text-ink-soft">
-            {results.length + courseResults.length} result
-            {results.length + courseResults.length === 1 ? '' : 's'}
+            {results.length + courseResults.length + questionResults.length} result
+            {results.length + courseResults.length + questionResults.length === 1 ? '' : 's'}
           </p>
           <div className="grid gap-2">
             {courseResults.map((hit) => {
@@ -239,6 +251,42 @@ export function SearchPage() {
                 </motion.button>
               );
             })}
+            {questionResults.map((hit) => (
+              <motion.button
+                key={`question-${hit.question.id}`}
+                type="button"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.16 * m }}
+                onClick={() => navigate(questionEditPath(hit.question))}
+                whileHover={{ y: -3, transition: { duration: 0.12 * m } }}
+                className="flex min-w-0 flex-col gap-1 rounded-xl border border-line bg-surface p-4 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.04]"
+              >
+                <span className="break-words text-sm text-ink">
+                  {hit.question.kind === 'fixed'
+                    ? plainPreview(hit.question.prompt, 140) || hit.question.name
+                    : hit.question.name}
+                </span>
+                {hit.question.kind === 'fixed' && hit.question.explanation.trim() && (
+                  <span className="break-words text-sm text-ink-faint">
+                    {plainPreview(hit.question.explanation, 140)}
+                  </span>
+                )}
+                <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
+                  <span>{hit.contextName}</span>
+                  <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                    Question
+                  </span>
+                  {hit.question.kind === 'generated' && <span>Generated family</span>}
+                  {hit.question.tags.length > 0 && (
+                    <span className="inline-flex items-center gap-1">
+                      <TagIcon width={12} height={12} />
+                      {hit.question.tags.join(', ')}
+                    </span>
+                  )}
+                </span>
+              </motion.button>
+            ))}
             {results.map((hit) => (
               <motion.button
                 key={hit.card.id}
@@ -260,19 +308,16 @@ export function SearchPage() {
                 )}
                 <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
                   <span>{hit.contextName}</span>
-                  {hit.card.flagged && (
-                    <FlagIcon width={12} height={12} className="text-accent" />
-                  )}
+                  {hit.card.flagged && <FlagIcon width={12} height={12} className="text-accent" />}
                   {(hit.card.tags ?? []).length > 0 && (
                     <span className="inline-flex items-center gap-1">
                       <TagIcon width={12} height={12} />
                       {hit.card.tags!.join(', ')}
                     </span>
                   )}
-                  {hit.card.sequenceItemId !== null &&
-                    hit.card.sequenceItemId !== undefined && (
-                      <GeneratedCardBadge kind="sequence" />
-                    )}
+                  {hit.card.sequenceItemId !== null && hit.card.sequenceItemId !== undefined && (
+                    <GeneratedCardBadge kind="sequence" />
+                  )}
                   {hit.card.occlusionRegionId !== null &&
                     hit.card.occlusionRegionId !== undefined && (
                       <GeneratedCardBadge kind="occlusion" />
@@ -291,10 +336,7 @@ function SearchSkeleton() {
   return (
     <div className="space-y-2">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4"
-        >
+        <div key={i} className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4">
           <div className="h-4 w-3/4 animate-pulse rounded bg-ink/10" />
           <div className="h-4 w-1/2 animate-pulse rounded bg-ink/10" />
           <div className="mt-1 h-3 w-24 animate-pulse rounded bg-ink/10" />

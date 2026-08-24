@@ -7,6 +7,7 @@ import { takeAutoBackup } from '../db/backups';
 import { importBackup, validateBackup } from '../db/portability';
 import type { BackupFile } from '../db/types';
 import { mergeSnapshots } from './mergeSnapshots';
+import { normaliseQuestionBackup } from '../questions/backup';
 
 export interface MergeDelta {
   kept: number;
@@ -19,6 +20,10 @@ export interface ManualMergeSummary {
   courses: MergeDelta;
   lessons: MergeDelta;
   reviewEvents: MergeDelta;
+  concepts: MergeDelta;
+  questions: MergeDelta;
+  questionConcepts: MergeDelta;
+  questionAttempts: MergeDelta;
 }
 
 export class ManualMergeError extends Error {
@@ -93,20 +98,45 @@ export async function manualMerge(
 
 /** Compare a local snapshot with the merge result by record id. */
 export function summariseMerge(local: BackupFile, merged: BackupFile): ManualMergeSummary {
+  const before = normaliseQuestionBackup(local);
+  const after = normaliseQuestionBackup(merged);
   return {
-    cards: deltaOf(local.cards, merged.cards),
-    courses: deltaOf(local.courses, merged.courses),
-    lessons: deltaOf(local.lessons, merged.lessons),
-    reviewEvents: deltaOf(local.reviewHistory, merged.reviewHistory),
+    cards: deltaOf(before.cards, after.cards),
+    courses: deltaOf(before.courses, after.courses),
+    lessons: deltaOf(before.lessons, after.lessons),
+    reviewEvents: deltaOf(before.reviewHistory, after.reviewHistory),
+    concepts: deltaOf(before.concepts, after.concepts),
+    questions: deltaOf(before.questions, after.questions),
+    questionConcepts: deltaBy(
+      before.questionConcepts,
+      after.questionConcepts,
+      (row) => row.questionId,
+    ),
+    questionAttempts: deltaOf(before.questionAttempts, after.questionAttempts),
   };
+}
+
+function deltaBy<T>(
+  before: T[] | undefined,
+  after: T[] | undefined,
+  idOf: (row: T) => string,
+): MergeDelta {
+  return deltaIds((before ?? []).map(idOf), (after ?? []).map(idOf));
 }
 
 function deltaOf(
   before: Array<{ id: string }> | undefined,
   after: Array<{ id: string }> | undefined,
 ): MergeDelta {
-  const beforeIds = new Set((before ?? []).map((row) => row.id));
-  const afterIds = new Set((after ?? []).map((row) => row.id));
+  return deltaIds(
+    (before ?? []).map((row) => row.id),
+    (after ?? []).map((row) => row.id),
+  );
+}
+
+function deltaIds(before: readonly string[], after: readonly string[]): MergeDelta {
+  const beforeIds = new Set(before);
+  const afterIds = new Set(after);
   let kept = 0;
   let added = 0;
   let removed = 0;

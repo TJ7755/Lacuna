@@ -42,6 +42,7 @@ function makeLesson(overrides: Partial<Lesson> & Pick<Lesson, 'id' | 'courseId'>
 
 function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card {
   return {
+    conceptId: `concept-${overrides.id}`,
     type: 'front_back',
     front: '',
     back: '',

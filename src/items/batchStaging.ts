@@ -2,6 +2,7 @@ import type { ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
 import { compileMarkScheme } from './markSchemeCompiler';
 import { numericAnswerSpecIsValid } from './numericAnswerSpec';
 import { runWorkingFixtures } from './fixtureRunner';
+import { normaliseConceptName } from '../questions/concepts';
 import { BATCH_OUTPUT_END, BATCH_OUTPUT_START } from './prompts';
 
 export interface BatchCandidate {
@@ -11,6 +12,9 @@ export interface BatchCandidate {
   sourceJson: string;
   kind: 'numeric' | 'working' | null;
   question: string;
+  explanation: string;
+  targetConcept: string;
+  prerequisiteConcepts: string[];
   errors: string[];
   payload?: Extract<ItemPayload, { kind: 'numeric' | 'working' }>;
   fixtureStatus: { total: number; passed: number } | null;
@@ -65,8 +69,8 @@ export function parseBatchOutput(source: string): BatchParseResult {
     };
   }
 
-  if (!isRecord(parsed) || parsed.version !== 1 || !Array.isArray(parsed.items)) {
-    return { candidates: [], error: 'The batch must contain version 1 and an items array.' };
+  if (!isRecord(parsed) || parsed.version !== 2 || !Array.isArray(parsed.items)) {
+    return { candidates: [], error: 'The batch must contain version 2 and an items array.' };
   }
   if (parsed.items.length === 0) {
     return { candidates: [], error: 'The batch contains no items.' };
@@ -130,6 +134,9 @@ export function parseEditedCandidate(sourceJson: string, index: number): BatchCa
       sourceJson,
       kind: null,
       question: '',
+      explanation: '',
+      targetConcept: '',
+      prerequisiteConcepts: [],
       errors: [
         `The item JSON is invalid: ${error instanceof Error ? error.message : 'unknown error'}`,
       ],
@@ -152,6 +159,9 @@ function validateBatchCandidate(
       sourceJson,
       kind: null,
       question: '',
+      explanation: '',
+      targetConcept: '',
+      prerequisiteConcepts: [],
       errors: [...errors, 'The item must be a JSON object.'],
       fixtureStatus: null,
     };
@@ -159,8 +169,22 @@ function validateBatchCandidate(
 
   const question = typeof raw.question === 'string' ? raw.question.trim() : '';
   if (!question) errors.push('Add a non-empty question.');
+  const explanation = typeof raw.explanation === 'string' ? raw.explanation.trim() : '';
+  if (!explanation) errors.push('Add a worked explanation.');
+  const targetConcept =
+    typeof raw.targetConcept === 'string' ? raw.targetConcept.trim().replace(/\s+/g, ' ') : '';
+  if (!targetConcept) errors.push('Add one primary target Concept.');
+  const prerequisiteConcepts = parseConceptNames(raw.prerequisiteConcepts, errors);
+  if (
+    targetConcept &&
+    prerequisiteConcepts.some(
+      (concept) => normaliseConceptName(concept) === normaliseConceptName(targetConcept),
+    )
+  ) {
+    errors.push('The target Concept cannot also be a prerequisite.');
+  }
   const kind = raw.kind === 'numeric' || raw.kind === 'working' ? raw.kind : null;
-  if (!kind) errors.push("Item kind must be 'numeric' or 'working'.");
+  if (!kind) errors.push("Question kind must be 'numeric' or 'working'.");
 
   let payload: BatchCandidate['payload'];
   let fixtureStatus: BatchCandidate['fixtureStatus'] = null;
@@ -172,7 +196,7 @@ function validateBatchCandidate(
       payload = { v: 1, kind: 'numeric', answer: raw.answer as NumericAnswerSpec };
     }
     if (raw.fixtures !== undefined) {
-      errors.push('Numeric batch items do not support fixtures yet.');
+      errors.push('Numeric batch Questions do not support fixtures yet.');
     }
   } else if (kind === 'working') {
     const schemeSource = typeof raw.scheme === 'string' ? raw.scheme : '';
@@ -226,10 +250,34 @@ function validateBatchCandidate(
     sourceJson,
     kind,
     question,
+    explanation,
+    targetConcept,
+    prerequisiteConcepts,
     errors,
     payload,
     fixtureStatus,
   };
+}
+
+function parseConceptNames(raw: unknown, errors: string[]): string[] {
+  if (raw === undefined) {
+    errors.push('Add prerequisite Concepts as a list, using [] when there are none.');
+    return [];
+  }
+  if (!Array.isArray(raw) || raw.some((entry) => typeof entry !== 'string')) {
+    errors.push('Prerequisite Concepts must be a list of names.');
+    return [];
+  }
+  const byName = new Map<string, string>();
+  for (const entry of raw) {
+    const clean = entry.trim().replace(/\s+/g, ' ');
+    if (!clean) {
+      errors.push('Prerequisite Concept names cannot be blank.');
+      continue;
+    }
+    byName.set(normaliseConceptName(clean), clean);
+  }
+  return [...byName.values()];
 }
 
 function parseFixtures(
@@ -250,7 +298,9 @@ function parseFixtures(
     const answer = entry.studentAnswer;
     const answerValid =
       typeof answer === 'string' ||
-      (Array.isArray(answer) && answer.length > 0 && answer.every((line) => typeof line === 'string'));
+      (Array.isArray(answer) &&
+        answer.length > 0 &&
+        answer.every((line) => typeof line === 'string'));
     if (!answerValid) {
       errors.push(`Fixture ${fixtureIndex + 1} needs a studentAnswer string or string array.`);
       return;
@@ -261,9 +311,10 @@ function parseFixtures(
       entry.expectedMarks < 0 ||
       (availableMarks !== null && entry.expectedMarks > availableMarks)
     ) {
-      const message = availableMarks === null
-        ? `Fixture ${fixtureIndex + 1} expectedMarks must be a non-negative whole number.`
-        : `Fixture ${fixtureIndex + 1} expects ${String(entry.expectedMarks)} marks, but the scheme has ${availableMarks} available.`;
+      const message =
+        availableMarks === null
+          ? `Fixture ${fixtureIndex + 1} expectedMarks must be a non-negative whole number.`
+          : `Fixture ${fixtureIndex + 1} expects ${String(entry.expectedMarks)} marks, but the scheme has ${availableMarks} available.`;
       errors.push(message);
       return;
     }

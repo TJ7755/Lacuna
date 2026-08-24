@@ -1,31 +1,101 @@
 import { useState } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MathsAnswerInput } from './MathsAnswerInput';
 
-function Harness({ initialValue = '' }: { initialValue?: string }) {
+function Harness({ initialValue = '', label }: { initialValue?: string; label?: string }) {
   const [value, setValue] = useState(initialValue);
-  return <MathsAnswerInput value={value} onChange={setValue} />;
+  return <MathsAnswerInput value={value} onChange={setValue} label={label} />;
 }
 
 describe('MathsAnswerInput', () => {
-  it('updates the KaTeX preview through the shared expression parser', async () => {
+  it('activates the rendered answer only after Space follows valid notation', async () => {
     render(<Harness />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Answer' }), {
+    const input = screen.getByRole('textbox', { name: 'Answer' });
+
+    fireEvent.change(input, {
       target: { value: '3/4' },
     });
+    expect(document.querySelector('.katex')).toBeNull();
+
+    fireEvent.keyDown(input, { key: ' ', code: 'Space' });
+    fireEvent.change(input, { target: { value: '3/4 ' } });
 
     await waitFor(() => expect(document.querySelector('.katex')).not.toBeNull());
-    expect(screen.queryByText('Fix the expression to preview it.')).not.toBeInTheDocument();
   });
 
-  it('shows a local parse error without crashing the preview', () => {
+  it('shows a local parse error without rendering invalid notation', () => {
     render(<Harness initialValue="2 +" />);
     const input = screen.getByRole('textbox', { name: 'Answer' });
 
     expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByText('Fix the expression to preview it.')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(screen.getByText(/Unexpected end of expression|Unexpected end/)).toBeInTheDocument();
+  });
+
+  it('does not arm the rendered answer when Space follows invalid notation', () => {
+    render(<Harness initialValue="2 +" />);
+    const input = screen.getByRole('textbox', { name: 'Answer' }) as HTMLInputElement;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+
+    fireEvent.keyDown(input, { key: ' ', code: 'Space' });
+    fireEvent.change(input, { target: { value: '2 + ' } });
+    fireEvent.change(input, { target: { value: '2 + 2 ' } });
+
+    expect(document.querySelector('.katex')).toBeNull();
+  });
+
+  it('resets rendered-answer activation when the input is cleared', async () => {
+    render(<Harness initialValue="4" />);
+    const input = screen.getByRole('textbox', { name: 'Answer' }) as HTMLInputElement;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+
+    fireEvent.keyDown(input, { key: ' ', code: 'Space' });
+    fireEvent.change(input, { target: { value: '4 ' } });
+    await waitFor(() => expect(document.querySelector('.katex')).not.toBeNull());
+
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.change(input, { target: { value: '5' } });
+
+    expect(document.querySelector('.katex')).toBeNull();
+  });
+
+  it('keeps the rendered answer current during continued editing', async () => {
+    render(<Harness initialValue="3/4" />);
+    const input = screen.getByRole('textbox', { name: 'Answer' }) as HTMLInputElement;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+
+    fireEvent.keyDown(input, { key: ' ', code: 'Space' });
+    fireEvent.change(input, { target: { value: '3/4 ' } });
+    expect(await screen.findByRole('status', { name: 'Rendered answer: 3/4' })).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: '5/6' } });
+
+    expect(screen.getByRole('status', { name: 'Rendered answer: 5/6' })).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: 'Rendered answer: 3/4' })).not.toBeInTheDocument();
+  });
+
+  it('keeps editable notation and rendered output in one full-width control', async () => {
+    render(<Harness initialValue="x^2" label="Corrected answer" />);
+    const input = screen.getByRole('textbox', { name: 'Corrected answer' }) as HTMLInputElement;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+
+    fireEvent.keyDown(input, { key: ' ', code: 'Space' });
+    fireEvent.change(input, { target: { value: 'x^2 ' } });
+
+    const control = input.parentElement;
+    expect(control).not.toBeNull();
+    if (!control) throw new Error('Maths answer control not found.');
+    expect(control).toHaveClass('w-full');
+    expect(within(control).getByRole('textbox', { name: 'Corrected answer' })).toBe(input);
+    expect(
+      await within(control).findByRole('status', { name: 'Rendered answer: x^2' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Preview')).not.toBeInTheDocument();
   });
 
   it('inserts palette templates at the current cursor position', async () => {

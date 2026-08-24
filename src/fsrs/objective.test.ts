@@ -21,6 +21,7 @@ function makeDeck(objective: ExamObjective): LegacyDeckRecord {
 function reviewedCard(id: string, stability: number, overrides: Partial<Card> = {}): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'd1',
     schedulingUnitId: 'd1',
     type: 'front_back',
@@ -45,6 +46,7 @@ function reviewedCard(id: string, stability: number, overrides: Partial<Card> = 
 function newCard(id: string): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'd1',
     schedulingUnitId: 'd1',
     type: 'front_back',

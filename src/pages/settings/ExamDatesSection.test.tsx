@@ -51,6 +51,7 @@ const mockExamDate: CourseAssessment = {
 
 const mockCard = {
   id: 'card-1',
+  conceptId: 'concept-card-1',
   courseId: 'course-1',
   primaryLessonId: 'lesson-1',
   front: 'Question',

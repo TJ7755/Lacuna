@@ -110,14 +110,14 @@ export function SequenceEditor() {
   }, [items, reduceMotion]);
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
-  const bankPath = `/course/${courseId}/bank`;
+  const bankPath = `/course/${courseId}/cards`;
   // Where the caller navigated from, when that differs from what the route alone
   // implies. Sequence editing has no lesson-scoped edit route (only "new" does),
   // so origin state is the only signal that an edit was opened from a lesson —
   // absent on direct loads and hard refreshes, which fall back to the bank.
   const origin = (location.state as EditorOriginState | null)?.origin;
   const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
-  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Question bank');
+  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Cards');
 
   // Distinct speakers seen across items, in order of first appearance, for the
   // "my speaker" picker — populated by whichever items already carry a speaker,
@@ -193,7 +193,9 @@ export function SequenceEditor() {
     return (
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">Back to dashboard</Link>
+        <Link to="/" className="text-accent underline">
+          Back to dashboard
+        </Link>
       </div>
     );
   }
@@ -455,7 +457,9 @@ export function SequenceEditor() {
                     aria-pressed={presetId === p.id}
                     className={cn(
                       'rounded-xl border p-3 text-left transition-colors',
-                      presetId === p.id ? 'border-accent bg-accent-soft' : 'border-line hover:border-line-strong',
+                      presetId === p.id
+                        ? 'border-accent bg-accent-soft'
+                        : 'border-line hover:border-line-strong',
                     )}
                   >
                     <div className="text-sm font-medium text-ink">{p.name}</div>
@@ -536,7 +540,10 @@ export function SequenceEditor() {
                 className="w-16 rounded-lg border border-line bg-transparent px-2 py-1 text-center outline-none focus:border-accent"
               />
               <span className="text-ink-faint">
-                preceding {cueWindow === 1 ? preset.terminology.item : preset.terminology.itemPlural.toLowerCase()}{' '}
+                preceding{' '}
+                {cueWindow === 1
+                  ? preset.terminology.item
+                  : preset.terminology.itemPlural.toLowerCase()}{' '}
                 shown as cue
               </span>
             </label>
@@ -578,7 +585,8 @@ export function SequenceEditor() {
           <div>
             <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
               <div className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-                {preset.terminology.itemPlural} <span className="text-ink-faint/70">({items.length})</span>
+                {preset.terminology.itemPlural}{' '}
+                <span className="text-ink-faint/70">({items.length})</span>
               </div>
               <div className="flex items-center gap-3">
                 {usesSpeakers &&

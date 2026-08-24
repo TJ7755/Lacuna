@@ -1,10 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { flushSync } from 'react-dom';
 import { useEffect, useRef, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommandPalette } from './CommandPalette';
 import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../../db/types';
+import type { FixedQuestionDefinition, QuestionDefinition } from '../../questions/types';
 
 const mockDeck: LegacyDeckRecord = {
   id: 'deck-1',
@@ -13,7 +14,14 @@ const mockDeck: LegacyDeckRecord = {
   timeZone: 'UTC',
   createdAt: Date.now(),
   fsrsVersion: 6,
-  fsrsParameters: { requestRetention: 0.9, w: Array(21).fill(0), enable_fuzz: true, maximum_interval: 36500, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] },
+  fsrsParameters: {
+    requestRetention: 0.9,
+    w: Array(21).fill(0),
+    enable_fuzz: true,
+    maximum_interval: 36500,
+    learning_steps: ['1m', '10m'],
+    relearning_steps: ['10m'],
+  },
   examObjective: 'expectedMarks',
   lastInteractedAt: Date.now(),
 };
@@ -39,6 +47,7 @@ const mockCourse: Course = {
 
 const mockCard: Card = {
   id: 'card-1',
+  conceptId: 'concept-card-1',
   deckId: 'deck-1',
   schedulingUnitId: 'deck-1',
   courseId: mockCourse.id,
@@ -60,12 +69,45 @@ const mockCard: Card = {
   updatedAt: 1,
 };
 
+const mockQuestion: FixedQuestionDefinition = {
+  id: 'question-1',
+  courseId: mockCourse.id,
+  primaryLessonId: null,
+  additionalLessonIds: [],
+  name: 'Energy transfer application',
+  tags: ['mechanics'],
+  suspended: false,
+  kind: 'fixed',
+  prompt: 'Calculate the final velocity.',
+  payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+  explanation: 'Equate the initial and final energy.',
+  explanationStatus: 'authored',
+  contentVersion: 1,
+  contentRevisionId: 'content-revision-1',
+  authoringRevisionId: 'authoring-revision-1',
+  authoringUpdatedAt: 1,
+  stability: null,
+  difficulty: null,
+  lastReviewed: null,
+  reps: 0,
+  lapses: 0,
+  state: 0,
+  due: null,
+  scheduledDays: 0,
+  learningSteps: 0,
+  scheduleEpoch: { id: 'epoch-1', startedAt: 1, reason: 'created', baseline: { kind: 'new' } },
+  scheduleUpdatedAt: 1,
+  createdAt: 1,
+  updatedAt: 1,
+};
+
 const dataHooks = vi.hoisted(() => ({
   useSearchData: vi.fn(() => ({
     cards: [] as Card[],
     courses: [] as Course[],
     lessons: [] as Lesson[],
     notes: [] as Note[],
+    questions: [] as QuestionDefinition[],
   })),
 }));
 
@@ -136,7 +178,13 @@ describe('CommandPalette', () => {
   });
 
   afterEach(() => {
-    dataHooks.useSearchData.mockReturnValue({ cards: [], courses: [], lessons: [], notes: [] });
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [],
+      courses: [],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
   });
 
   it('badges a sequence-generated card hit', () => {
@@ -145,6 +193,7 @@ describe('CommandPalette', () => {
       courses: [mockCourse],
       lessons: [],
       notes: [],
+      questions: [],
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
@@ -161,6 +210,7 @@ describe('CommandPalette', () => {
       courses: [mockCourse],
       lessons: [],
       notes: [],
+      questions: [],
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
@@ -177,6 +227,7 @@ describe('CommandPalette', () => {
       courses: [mockCourse],
       lessons: [],
       notes: [],
+      questions: [],
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
@@ -193,6 +244,7 @@ describe('CommandPalette', () => {
       courses: [mockCourse],
       lessons: [],
       notes: [],
+      questions: [],
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
@@ -241,6 +293,7 @@ describe('CommandPalette', () => {
       courses: [mockCourse],
       lessons: [],
       notes: [],
+      questions: [],
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
@@ -268,6 +321,7 @@ describe('CommandPalette', () => {
       courses: [mockCourse],
       lessons: [],
       notes: [],
+      questions: [],
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
 
@@ -285,5 +339,28 @@ describe('CommandPalette', () => {
       target: { value: 'missing' },
     });
     expect(liveRegion?.textContent).toMatch(/No results for missing/);
+  });
+
+  it('labels a Question hit distinctly and opens the Question editor', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [mockQuestion],
+    });
+    const router = createMemoryRouter(
+      [{ path: '*', element: <CommandPalette open onClose={vi.fn()} /> }],
+      { initialEntries: ['/'] },
+    );
+    render(<RouterProvider router={router} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+      target: { value: 'final velocity' },
+    });
+
+    expect(await screen.findByText(/Question$/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('option', { name: /calculate the final velocity/i }));
+    expect(router.state.location.pathname).toBe('/course/course-1/questions/question-1/edit');
   });
 });

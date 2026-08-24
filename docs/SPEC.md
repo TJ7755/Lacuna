@@ -2,12 +2,14 @@
 
 Lacuna is a local-only, exam-driven spaced-revision application built on FSRS-6. Material is
 organised into **courses**, each made of an ordered path of **lessons** holding **notes** and
-**cards**. Every card is scheduled to peak in recall on its course's exam day, and a single
-"objective" setting binds the scheduler and the progress bar to the same goal so they can
+direct-recall **Cards**. Every Card is scheduled to peak in recall on its course's exam day. A single
+"objective" setting binds the scheduler and the progress bar to the same goal, so they can
 never disagree. All data lives on-device (IndexedDB); there is no server or account requirement.
 Core study works without a network connection after the application assets are available,
 although the web build may request the linked fonts and optional Vercel analytics. The application
-runs as a web SPA and packages as an Electron desktop app.
+runs as a web SPA and packages as an Electron desktop app. Separate post-instruction **Questions**
+provide application practice with their own evidence and scheduling; they are deliberately absent
+from the Course path in v1.
 
 **Course architecture.** The product was originally built around a flatter `Folder -> Deck ->
 Card` model. A staged migration (tracked in `docs/archive/roadmap-2026-08-11.md`, Arc 0) introduced `Course ->
@@ -341,26 +343,31 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
 | `/`                                                     | Dashboard (course grid)                                                 | yes       | eager   |
 | `/course/:courseId`                                     | Course path (or the single lesson directly, if the course has only one) | yes       | lazy    |
 | `/course/:courseId/lesson/:lessonId`                    | Lesson view (notes / cards)                                             | yes       | lazy    |
-| `/course/:courseId/bank`                                | Question bank (all cards in the course)                                 | yes       | lazy    |
+| `/course/:courseId/bank`                                | Compatibility redirect to the course Cards page                         | yes       | lazy    |
+| `/course/:courseId/cards`                               | Cards (all direct-recall Cards in the course)                           | yes       | lazy    |
+| `/course/:courseId/questions`                           | Questions (separate post-instruction application practice)              | yes       | lazy    |
+| `/course/:courseId/questions/new`                       | Question editor (create)                                                | yes       | lazy    |
+| `/course/:courseId/questions/:questionId/edit`          | Question editor (edit)                                                  | yes       | lazy    |
 | `/course/:courseId/settings`                            | Course settings                                                         | yes       | lazy    |
 | `/course/:courseId/analytics`                           | Course analytics                                                        | yes       | lazy    |
-| `/course/:courseId/updates`                             | Shared-course update review                                            | yes       | lazy    |
+| `/course/:courseId/updates`                             | Shared-course update review                                             | yes       | lazy    |
 | `/course/:courseId/cards/new`                           | Card editor (create, course-scoped)                                     | yes       | lazy    |
 | `/course/:courseId/cards/:cardId/edit`                  | Card editor (edit, course-scoped)                                       | yes       | lazy    |
 | `/course/:courseId/lesson/:lessonId/cards/new`          | Card editor (create, lesson-scoped)                                     | yes       | lazy    |
 | `/course/:courseId/lesson/:lessonId/cards/:cardId/edit` | Card editor (edit, lesson-scoped)                                       | yes       | lazy    |
-| `/course/:courseId/sequence/new`                        | Sequence editor (course-scoped)                                        | yes       | lazy    |
-| `/course/:courseId/sequence/:sequenceId/edit`           | Sequence editor (edit)                                                 | yes       | lazy    |
-| `/course/:courseId/lesson/:lessonId/sequence/new`       | Sequence editor (lesson-scoped)                                        | yes       | lazy    |
-| `/course/:courseId/occlusion/new`                       | Occlusion editor (course-scoped)                                       | yes       | lazy    |
-| `/course/:courseId/occlusion/:occlusionId/edit`         | Occlusion editor (edit)                                                | yes       | lazy    |
-| `/course/:courseId/lesson/:lessonId/occlusion/new`      | Occlusion editor (lesson-scoped)                                       | yes       | lazy    |
+| `/course/:courseId/sequence/new`                        | Sequence editor (course-scoped)                                         | yes       | lazy    |
+| `/course/:courseId/sequence/:sequenceId/edit`           | Sequence editor (edit)                                                  | yes       | lazy    |
+| `/course/:courseId/lesson/:lessonId/sequence/new`       | Sequence editor (lesson-scoped)                                         | yes       | lazy    |
+| `/course/:courseId/occlusion/new`                       | Occlusion editor (course-scoped)                                        | yes       | lazy    |
+| `/course/:courseId/occlusion/:occlusionId/edit`         | Occlusion editor (edit)                                                 | yes       | lazy    |
+| `/course/:courseId/lesson/:lessonId/occlusion/new`      | Occlusion editor (lesson-scoped)                                        | yes       | lazy    |
 | `/settings`                                             | Settings                                                                | yes       | lazy    |
 | `/search`                                               | Search                                                                  | yes       | lazy    |
 | `/share`                                                | Share (export/import via codes)                                         | yes       | lazy    |
 | `/analytics`                                            | Global (cross-course) analytics                                         | yes       | lazy    |
 | `/help`                                                 | Help                                                                    | yes       | lazy    |
-| `/course/:courseId/study`                               | Persistent course study conductor                                      | **no**    | lazy    |
+| `/course/:courseId/study`                               | Persistent course study conductor                                       | **no**    | lazy    |
+| `/course/:courseId/questions/learn`                     | Separate Question-practice session                                      | **no**    | lazy    |
 | `/course/:courseId/learn`                               | Learn session (practice over every due card in the course)              | **no**    | lazy    |
 | `/lesson/:lessonId/learn`                               | Learn session (new cards for one lesson)                                | **no**    | lazy    |
 | `/learn`                                                | Review today session across every course                                | **no**    | lazy    |
@@ -408,7 +415,7 @@ lesson, card and review; the completion toast offers Undo by clearing the same `
 **Course path** (`/course/:courseId`):
 
 ```
-< All courses                     ( Path | Question bank | Analytics | Settings )
+< All courses                     ( Path | Cards | Questions | Analytics | Settings )
                                                           ( Read | Edit )
 Exam 14 Jun 2026, 23:59
 Organic Chemistry                                          [Study]
@@ -430,8 +437,8 @@ Organic Chemistry                                          [Study]
 An ordered path of lesson nodes, checkpoint assessments (informational, never block progress)
 and practice nodes, built by `src/course/path.ts`. The breadcrumb row pairs the "All
 courses" link with the shared `CourseTabs` component (`src/components/course/CourseTabs.tsx`:
-Path · Question bank · Analytics · Settings, active tab derived from the route), rendered
-on all four course surfaces and every normal or single-lesson view, so any section is one click
+Path · Cards · Questions · Analytics · Settings, active tab derived from the route), rendered
+on the five course surfaces and every normal or single-lesson view, so any section is one click
 from any other. Lesson URLs keep Path active because a lesson belongs to the path;
 `LessonViewModeToggle`
 stays CoursePath-only (it configures the path view, not the course) and sits in its own row
@@ -442,7 +449,10 @@ same `assessments` array the path itself renders checkpoint nodes from, so exam 
 visible without opening Course Settings. Clicking a pill opens the same `AssessmentDetailSheet`
 a checkpoint node opens. Omitted entirely when no assessment is still ahead of `now`. Practice gathers cards from lessons
 reached so far whose predicted retrievability remains below the mastery threshold at each
-card's applicable exam horizon; this is not the narrower `card.due` timestamp concept.
+card's applicable exam horizon; this is not the narrower `card.due` timestamp concept. Questions
+do not enter this pool or the Path conductor in v1; they are reached deliberately from the separate
+Questions tab.
+
 Primary and explicitly linked cards count as lesson members, deduplicated by card id. A
 course with exactly one lesson skips the path entirely and renders that lesson directly
 (no one-node path). The header is the shared `CourseHeader` cockpit
@@ -726,6 +736,44 @@ that result is authoritative and stale projection rows are not resurrected. Full
 `reviewHistory` explicitly as well as the card projection, so review history remains recoverable
 across export, restore and merge.
 
+### Concepts and Questions (schema v24)
+
+Schema **v24** separates direct-recall Cards from post-instruction application Questions. It adds
+`concepts`, `questions`, `questionConcepts` and `questionAttempts`, and assigns each surviving Card
+one stable `conceptId`. Question contracts live in `src/questions/types.ts`; the canonical domain
+terms and rationale are defined in
+[`CONTEXT.md`](../CONTEXT.md) and [`docs/plans/question-mode.md`](plans/question-mode.md).
+
+A `Concept` is a stable course-scoped knowledge identity. A Card presents one Concept for direct
+recall. Every fixed Question or generated Question family has exactly one primary Concept and zero
+or more prerequisite Concepts; the repository rejects missing, duplicate, dual-role and cross-Course
+relationships. A Question result never writes Card history or scheduling, and Card evidence never
+writes Question state. Card readiness and Question performance therefore remain separate rather
+than pretending that transfer evidence is identical to direct-recall evidence
+([Pan and Rickard, 2018](https://pubmed.ncbi.nlm.nih.gov/29733621/)).
+
+A fixed Question stores a Markdown prompt, deterministic numeric or compiled working payload and a
+mandatory worked explanation. A generated Question family stores a built-in generator key, version
+and validated configuration. Every presentation creates a `QuestionAttempt` receipt before display;
+the receipt preserves the exact prompt, answer specification and feedback, plus the seed, parameters
+and fingerprint for a generated variant. The first submission is immutable, and an optional
+correction is stored separately after the learner sees worked feedback. Explanation feedback is
+mandatory because it is particularly useful when the later task requires inference rather than
+mere repetition ([Butler, Godbole and Marsh, 2013](https://eric.ed.gov/?id=EJ1007933)).
+
+Question scheduling uses a dedicated adapter over `ts-fsrs`: full marks map to **Good (3)** and any
+incomplete result maps to **Again (1)**. Partial marks do not map to Hard because Hard is a
+successful FSRS recall rating and would lengthen the interval. A checker dispute or undetermined
+line retains the evidence but withholds scheduling. Shown, abandoned, corrected and undone lifecycle
+changes produce no new schedule evidence. Semantic edits start a new scheduling epoch; merge derives
+the current Question schedule by replaying eligible Attempts.
+([official FSRS tutorial](https://github.com/open-spaced-repetition/fsrs4anki/blob/main/docs/tutorial.md?plain=1))
+
+Known legacy numeric and working Cards migrate through a pure deterministic converter. The
+conversion preserves available historical evidence as Question Attempts and avoids double-counting
+one old event as both a Card review and a Question answer. The v24 migration is destructive in
+meaning and therefore requires the existing pre-migration restore point.
+
 ### Sequences — overlapping-cloze sequence learning (schema v11)
 
 Schema **v11** adds `sequences: 'id, courseId, primaryLessonId, createdAt'` (additive; no
@@ -852,10 +900,10 @@ optional indexed field on `cards`: `occlusionRegionId`. An `Occlusion` follows t
 precedent exactly: an **authoring-time entity only**, never itself studied, that generates
 ordinary `front_back` `Card` rows — one per region — anchored by a stable region id, so editing
 a region regenerates that card's presentation while preserving its FSRS memory state. It is
-deliberately *not* an Arc 11 `payload`: a payload has no owner to regenerate from.
+deliberately _not_ an Arc 11 `payload`: a payload has no owner to regenerate from.
 
 - `Occlusion { id, courseId, primaryLessonId: string | null, name, assetHash, regions:
-  OcclusionRegion[], createdAt }` — `regions` is stored inline (occlusions are small);
+OcclusionRegion[], createdAt }` — `regions` is stored inline (occlusions are small);
   `primaryLessonId` follows the same semantics as `Card.primaryLessonId`. `assetHash` names
   the diagram in the `assets` store.
 - `OcclusionRegion { id, role, shape, x, y, w, h, answerText?, pairedRegionId?, backNote? }` —
@@ -866,7 +914,7 @@ deliberately *not* an Arc 11 `payload`: a payload has no owner to regenerate fro
 - **A region's role decides which of two card kinds it produces**, from one annotated image:
   - A **label** region covers text already printed on the diagram. Revealing it uncovers the
     diagram's own pixels, so the author types nothing.
-  - A **feature** region points at part of the drawing. Its answer is the *paired* label
+  - A **feature** region points at part of the drawing. Its answer is the _paired_ label
     region (`pairedRegionId`), uncovered on the back; an unpaired feature falls back to its
     own `answerText`.
 - **Masking rules** (`resolveOcclusionFace`): both kinds mask **every** label region on the
@@ -910,7 +958,7 @@ deliberately *not* an Arc 11 `payload`: a payload has no owner to regenerate fro
   is deliberately desktop-first: drawing with a finger works but is not separately optimised.
 - **Portability**: occlusions ride backup export/import (replace and merge) and diagnostics
   bundles (`occlusions` count) by the same per-table semantics as sequences. A diagram is
-  referenced *only* by `Occlusion.assetHash` — never by card Markdown — so both
+  referenced _only_ by `Occlusion.assetHash` — never by card Markdown — so both
   `exportDatabase` and the asset GC gather occlusion hashes explicitly; without that a backup
   would restore occlusions with no image. Share codes carry occlusions as an additive v2
   field, but **not** the diagram (§13).
@@ -929,7 +977,7 @@ original Folder/Deck model was built on. They are **not deleted and not dead** �
 mechanically, a hidden deck-shaped `SchedulerConfig` (see §5's course section and §8), and
 every lesson is backed by one real `Deck` row so the FSRS engine, cooldown module and
 scheduling optimiser keep working exactly as before against a stable per-lesson scheduling
-context. The Question Bank's course-wide view is similarly backed by a lazily created
+context. The Cards page's course-wide view is similarly backed by a lazily created
 per-course bank deck. No page, route or sidebar entry lets a user see, name or manage a deck
 or folder directly; `fsrsVersion`, `fsrsParameters`, `examObjective`, `newCardsPerDay`,
 `autoOptimise` and `colour` are the fields a lesson/course still reads and writes through this
@@ -939,19 +987,19 @@ course UI is still soaking.
 
 ### Card
 
-`id, deckId, courseId?, primaryLessonId?, type, front, back, payload?, stability|null, difficulty|null,
+`id, deckId, courseId?, primaryLessonId?, conceptId, type, front, back, payload?, stability|null, difficulty|null,
 lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?,
 reverseCardId?, sequenceItemId?, occlusionRegionId?, due|null, scheduledDays, learningSteps,
 history[], createdAt`
 
 - `front`/`back` are Markdown source. **Cloze** source lives entirely in `front`
   (`{{cN::...}}`); `back` is empty.
-- `payload` carries versioned structured practice-item data independently of the classic
-  presentation `type`. A v1 `numeric` payload stores an exact, tolerance or one-of answer
-  specification; a v1 `working` payload stores compiled scheme lines and optional fixtures.
-  Its `back` remains empty because the checker, not a revealed answer, grades it. The
-  `scaffold` discriminant is reserved for a later payload version but has no authoring, study or
-  verification surface in this release.
+- `conceptId` names the stable Concept this direct-recall presentation belongs to. Alternate Card
+  presentations may share a Concept while keeping independent Card schedules.
+- `payload` is a compatibility boundary for structured Cards that could not be converted during the
+  v24 migration, including records protected by unresolved distribution state. New numeric and
+  working content is authored as Questions, not Cards. Recognised legacy payloads remain readable;
+  unsupported versions do not gain a grading path by accident.
 - `tags` remain free-form strings. Specification-point provenance uses the manual `spec:3.4.1`
   convention; there is no separate specification-point model or batch-generation field.
 - `stability` (days; the interval at which R = 0.90), `difficulty` (in [1,10]),
@@ -961,8 +1009,8 @@ history[], createdAt`
 - `history[]` is the compatibility projection of the canonical schema-v20 `reviewHistory`
   rows. It contains `ReviewLog` entries (timestamp, grade, responseTimeSec, distracted,
   stability/difficulty before+after, retrievabilityAtReview|null, session/revision provenance,
-  and optional machine-awarded `marksEarned`/`marksAvailable`, line verdicts and checker
-  disputes for structured items).
+  and optional legacy machine-awarded `marksEarned`/`marksAvailable`, line verdicts and checker
+  disputes for structured Cards that pre-date v24).
 - Teaching state is intentionally absent from `Card`; it is lesson-specific and lives in
   `LessonCardExposure`.
 
@@ -1008,12 +1056,15 @@ must not yet be treated as a settled scientific claim about the right calibratio
 - `BackupFile { app:'lacuna', version, exportedAt, decks, cards, reviewHistory?, assets,
 sessionHistory, userPerformance, folders?, courses?, lessons?, notes?, lessonCards?,
 lessonCardExposures?, lessonCompletions?, practiceNodes?, practiceMilestones?,
-courseAssessments?, revisionPlans?, sequences?, occlusions?, courseExamDates? }` — the
-shape of both manual exports and snapshot payloads. Current exports include canonical
-`reviewHistory`, `courseAssessments`, `revisionPlans`, `sequences` and `occlusions`; the
-legacy `courseExamDates` field is accepted for old imports but is never emitted. `noteAnnotations`
-and lineage merge state are deliberately absent. `version` is the portability format version
-(currently 10), not the Dexie schema version. The optional arrays let older backups import cleanly.
+courseAssessments?, revisionPlans?, sequences?, occlusions?, concepts, questions,
+questionConcepts, questionAttempts, courseExamDates? }` — the
+  shape of both manual exports and snapshot payloads. Current exports include canonical
+  `reviewHistory`, `courseAssessments`, `revisionPlans`, `sequences`, `occlusions` and all four
+  Question collections; the
+  legacy `courseExamDates` field is accepted for old imports but is never emitted. `noteAnnotations`
+  and lineage merge state are deliberately absent. `version` is the portability format version
+  (currently 11), not the Dexie schema version. Current exports require the Question arrays; older
+  backups are normalised through the pure v24 converter before import.
 - `AppStateEntry { key, value }` — small persistent app state (e.g. the backup folder
   handle, sidebar settings, input mode, motion speed).
 
@@ -1374,7 +1425,7 @@ Equivalence is checked by evaluating both expressions over the same deterministi
 Each variable draws its own sign, so every sign combination is reachable rather than only the
 alternating pattern an index-derived sign allows, and the sample magnitude widens as draws fail so
 that expressions defined only away from the origin (`sqrt(x - 100)`) are still sampled inside their
-domain. The seed travels through each line verdict and review log, so a disputed result can be
+domain. The seed travels through each line verdict and Question Attempt, so a disputed result can be
 replayed exactly; random evaluation is deliberately not presented as symbolic proof.
 
 Comparison returns three outcomes, not two: `equivalent`, `different`, and `undetermined` for the
@@ -1393,10 +1444,10 @@ before stops matching, and only a bare variable on the left is reduced — an eq
 content, such as `2y = 6` or `6+4=10`, keeps its meaning. Waypoints are excluded entirely: there the
 equation is the content.
 
-A payload with an unrecognised version, or a recognised-but-unsupported `kind` (currently
-`scaffold`), renders `UnknownItemFace`: the readable `front` fallback and a plain notice that this
-version can't study it, with no submit, reveal, self-grading or keyboard grading path. The central
-`answer()` boundary rejects it as well, so future or stale callers cannot create a review.
+A legacy Card payload with an unrecognised version, or a recognised-but-unsupported `kind`
+(`scaffold`), renders `UnknownItemFace`: the readable `front` fallback and a plain notice that this
+version cannot study it, with no submit, reveal, self-grading or keyboard grading path. The central
+Card `answer()` boundary rejects it as well, so future or stale callers cannot create a review.
 
 The production build measured on 28 July 2026 places the verifier in the main application chunk
 (648,459 bytes minified; 187,658 bytes gzip for the whole chunk). A standalone Bun bundle of
@@ -1404,32 +1455,29 @@ The production build measured on 28 July 2026 places the verifier in the main ap
 bytes gzip. The latter is an upper bound for mathjs rather than a dishonest claim that every byte
 belongs to it; it also includes Lacuna's parser, verifier and renderer helpers.
 
-### Numeric item face
+### Numeric Question face
 
-A card with a v1 `numeric` payload bypasses the reveal and self-grading controls. Its study
-face renders the Markdown question and the same maths-expression input used by authoring;
-submitting a valid expression runs `checkNumeric` against the payload's exact, tolerance or
-one-of specification. The result is one mark or zero marks out of one. In FSRS-backed sessions,
-`gradeFromMarks` maps those marks and the measured question-to-submit time to Easy/Good or
-Again, then the ordinary answer pipeline persists both marks on `ReviewLog`, updates scheduling,
-supports undo and advances the session. Lesson Simple mode uses the same automatic correctness
-result for its exposure/retry loop and retains Simple mode's rule that it writes no review log.
-Typing-mode comparison and Yes/No or manual grading never apply to numeric payloads.
+A fixed Question with a v1 `numeric` payload renders its Markdown prompt and the same
+maths-expression input used by authoring. Submitting a valid expression runs `checkNumeric` against
+the payload's exact, tolerance or one-of specification and awards one mark or zero out of one. The
+Question pipeline stores the immutable first submission on its Attempt, shows the mandatory worked
+explanation, and permits a separately stored correction. Full marks map to Good; zero maps to Again;
+a disputed verdict withholds scheduling. Card typing, Yes/No and manual grading do not apply.
 
-### Working-item authoring
+### Working-Question authoring
 
-Working items use a line-oriented mark-scheme source in the card editor. Each nonblank line
+Working Questions use a line-oriented mark-scheme source in the Question editor. Each nonblank line
 starts with a positive mark value and optional label, followed by `::` and either an expression
 waypoint or one of the `equals`, `within`, `matches-one-of` and `contains` predicates. The editor
 compiles every line independently: valid neighbours retain their plain-English preview and count
 towards the running mark total when another line is malformed. The malformed source range is
 shown with its compiler message, and mark/predicate autocomplete inserts grammar-valid snippets
-without adding another parser or UI dependency. A card can be saved only when every nonblank line
+without adding another parser or UI dependency. A Question can be saved only when every nonblank line
 compiles; the resulting `MarkSchemeLine[]`, not the editor source, is persisted in its v1 `working`
-payload. Drafts retain the uncompiled source so an interrupted invalid edit is not discarded.
+Question payload. Drafts retain the uncompiled source so an interrupted invalid edit is not discarded.
 The same editor includes a test-answer harness backed directly by `verifyWorkingLines`. Tutors can
-pin a sample answer with its current expected score; those fixtures travel in the item payload and
-rerun automatically on every scheme edit, exposing any score mismatch before the card is saved.
+pin a sample answer with its current expected score; those fixtures travel in the Question payload
+and rerun automatically on every scheme edit, exposing any score mismatch before the Question is saved.
 The repository, share-code decoder/importer and backup reader repeat the known-payload validation at
 their storage boundaries, so an import cannot bypass the authoring checks. Unknown versions and
 kinds are preserved for the read-only fallback described in §11.2 rather than rejected as corrupt.
@@ -1444,22 +1492,21 @@ The v1 grammar is data, never executable code:
 [1] method :: contains :: substitution
 ```
 
-Working-item authors can copy a “Draft mark scheme” prompt containing the current question and the
-compiler-owned v1 syntax specification. The Question bank also provides a course-level batch prompt
-builder for one lesson/topic at a time: notes, topic and level produce a clipboard-only prompt for
-numeric and working items. By default the model chooses both the number of atomic concepts per item
-and the number of items needed for useful coverage. Tutors can instead expose independent optional
-constraints for concepts per item and maximum item count; only populated constraints enter the
-prompt. The optional maximum is tutor-controlled; Lacuna imposes no separate item-count cap.
-Generated items are durable scheduled concept checks, not disposable worksheet questions. Working
-items must test a reusable method, relationship or derivation; algebra prompts prefer symbolic
-general forms such as completing the square from `ax^2 + bx + c = 0` rather than inventing custom
-coefficients for another one-off exercise. Parameterised numerical practice remains deferred until
-generated variants can share one stable scheduled identity.
+Working-Question authors can copy a “Draft mark scheme” prompt containing the current Question and
+the compiler-owned v1 syntax specification. The Questions tab also provides a course-level batch
+prompt builder for one lesson/topic at a time: notes, topic and level produce a clipboard-only prompt
+for numeric and working Questions. Every proposed Question names exactly one primary target Concept
+and may name prerequisite Concepts. The model chooses the number of Questions needed for useful
+coverage; any populated tutor maximum enters the prompt. Fixed Questions are durable scheduled
+application problems, not disposable worksheet questions. Working Questions must test a reusable
+method, relationship or derivation; algebra prompts prefer symbolic general forms such as completing
+the square from `ax^2 + bx + c = 0` rather than inventing custom coefficients for another one-off
+exercise. Parameterised practice uses only built-in, versioned Question families whose generated
+variants share one stable scheduled identity.
 The prompt's item-type contract reserves `numeric` for constant scalar answers with no variables or
 equals sign. Formula recall, symbolic relationships and other variable-bearing answers must use a
 working item with a passing fixture, or be omitted when they cannot be checked meaningfully.
-Every path must use the versioned `LACUNA_ITEMS_V1` JSON delimiters so the staging review can parse it
+Every path uses the `LACUNA_ITEMS_V1` delimiters and v2 Question schema so the staging review can parse it
 without guessing. The prompt also fixes the answer shape: a numeric answer and an `equals` criterion
 each take one constant expression, so a multi-variable solution is written as one criterion per
 variable rather than as `x=6,y=4`. Lacuna sends no data to a model and stores no API key; the
@@ -1472,11 +1519,11 @@ item independently. A block closed by a mirrored `<<<LACUNA_ITEMS_V1>>>` instead
 `<<<END_LACUNA_ITEMS_V1>>>` is accepted, since the block is already open by that point and the
 closing delimiter does not contain the opening one as a substring; a correct closing delimiter still
 wins when both appear. Numeric answers use the shared numeric-spec validator; working schemes use the
-same compiler as the card editor, and their fixtures run through the study verifier. A malformed item
+same compiler as the Question editor, and their fixtures run through the study verifier. A malformed item
 does not block valid neighbours. Duplicate classification reuses `diffImport` against the selected
 lesson and is a warning: bulk “Accept all clean” skips likely duplicates, while the tutor can still
 accept one explicitly. Each staged item can be accepted, rejected or edited through the same numeric-
-answer and mark-scheme controls used by ordinary card authoring, then revalidated by the batch
+answer and mark-scheme controls used by ordinary Question authoring, then revalidated by the batch
 parser. Working-item fixtures expose separate sample-answer, expected-marks and note fields; authors
 never need to edit the interchange JSON directly.
 Staged and accepted items can also copy a revision prompt containing the current item, mark scheme,
@@ -1492,41 +1539,25 @@ pairing the wrong items. Revision replies are read more leniently than a first b
 a bare array, a missing wrapper or a missing closing delimiter are all accepted, because the tutor
 already knows how many items they asked about — but every item still passes through the unchanged
 staging validation.
-Acceptance calls the ordinary `createLessonCard` path with the compiled structured payload; staging
-has no separate database write path.
-The MCP `lacuna.create_card` and `lacuna.update_card` tools accept the same numeric and working
-payload inputs. Working scheme source is compiled by the shared mark-scheme compiler and fixtures
-are run before the repository write; numeric answers use the shared numeric-spec validator. Invalid
+Acceptance calls `createBatchFixedQuestion`, which resolves the named Concept graph and delegates to
+the ordinary Question repository transaction; staging has no second persistence model. The MCP
+`lacuna.create_fixed_question` and `lacuna.update_fixed_question` tools accept the same numeric and
+working inputs. Working scheme source is compiled by the shared mark-scheme compiler and fixtures
+run before the repository write; numeric answers use the shared numeric-spec validator. Invalid
 payloads therefore return the same validation messages as authoring and staging.
 
-In study, a working item replaces reveal and self-grading controls with a multi-line answer surface.
-Each nonblank line is checked against the persisted scheme, with each criterion awarded at most
-once. The ordinary machine-marked pipeline maps the total through `gradeFromMarks`; FSRS sessions
-persist the marks and per-line verdicts on `ReviewLog`, while lesson Simple mode uses full marks for
-mastery and requeues partial or zero-mark attempts without writing review history.
-Numeric and working faces show the automatic verdict before the learner continues. In FSRS-backed
-sessions, a learner can flag an answer or individual working line when the checker got it wrong;
-review logs retain the question, submitted line, verdict, report time and every deterministic seed, so
-the disputed result can be reproduced exactly and later promoted to a fixture in Arc 12. Backups
-preserve this optional history data verbatim, while share codes continue to omit all personal review
-history.
+In Question practice, a working Question uses a multi-line answer surface. Each nonblank line is
+checked against the persisted scheme, with each criterion awarded at most once. The Attempt persists
+the marks and per-line verdicts. Any incomplete result maps to Again; full marks map to Good. An
+undetermined line or learner-reported checker dispute preserves the raw result but withholds
+scheduling. Feedback always shows the worked explanation before the learner continues, and an
+optional correction is stored separately from the immutable first submission.
 
-The pure marks-analysis helpers `aggregateMarkPerformance` and
-`aggregateCriterionPerformance` aggregate machine-marked attempts into earned/available totals and
-group working performance by the labels in each card's current mark scheme. Criterion summaries
-count full and missed attempts as well as marks. These are intentionally uncalled production seams
-reporting retrospective `ReviewLog` attainment only. Forward-looking marks-denominated readiness is
-deferred until an exam-realistic practice mode supplies a sample worth forecasting; ordinary
-learn-mode marks do not.
-
-The Arc 11 slice-1 manual pass on 28 July 2026 used a dedicated two-lesson course. It authored one
-numeric and one working item by hand, pinned and reran a 2/2 working fixture, studied both faces,
-recorded a numeric checker dispute in an FSRS-backed review, generated a share code and re-imported
-all four structured items. The clipboard pipeline copied a note-grounded batch prompt, staged one
-numeric and one working item from a deterministic delimited response, verified the working fixture,
-copied a revise-with-AI prompt and accepted both items into the target lesson. No external chatbot
-was contacted during this pass, so it verifies Lacuna's complete copy/paste boundary and validation
-path, not a particular model's output quality or latency.
+Question analytics aggregate earned/available marks and criterion evidence from Attempts, retaining
+the content version, criterion index and label so a later mark-scheme edit cannot merge unlike
+criteria. Fixed Questions report first-presentation and repeat performance separately; generated
+families report novel and repeated fingerprints separately. Shown, abandoned, undone,
+checker-withheld and unscored Attempts are explicit exclusions rather than fabricated failures.
 
 ### Study mode (`src/state/studyMode.ts`)
 
@@ -1735,7 +1766,8 @@ ordinary `front_back` cards to the scheduler.
 ### Editor (`src/pages/CardEditor.tsx`, full page)
 
 - Mode is decided by the route (`/cards/new` vs `/cards/:id/edit`).
-- **Card type** selector: Basic (front/back), Reversed, Cloze, Numeric answer, Working or Audio.
+- **Card type** selector: Basic (front/back), Reversed, Cloze or Audio. Numeric and working
+  application content belongs to the separate Question editor.
   - **Basic:** standard front/back flashcard.
   - **Reversed:** creates an independent card that tests the back as the prompt.
   - **Cloze:** front contains `{{c1::hidden answer}}` deletions; back is empty.
@@ -1770,13 +1802,26 @@ ordinary `front_back` cards to the scheduler.
   a hidden scrollbar.
 - **Return-to-origin back-link:** Cancel, post-save navigation and the breadcrumb
   "back" link normally follow the route (the lesson if the URL encodes one, otherwise
-  the course's Question bank), but two entry points need to say otherwise — editing a
-  lesson-owned card from the Question bank, and editing a sequence (which has no
+  the course's Cards page), but two entry points need to say otherwise — editing a
+  lesson-owned card from Cards, and editing a sequence (which has no
   lesson-scoped edit route) from within a lesson. Callers that know they're not the
   route's default surface pass an `{ origin: { path, label } }` router-state override
   (`src/utils/editorOrigin.ts`), which both `CardEditor` and `SequenceEditor` prefer
   over their route-derived default. A hard refresh drops router state, so the
   route-derived fallback always applies in that case.
+
+### Question editor (`src/pages/QuestionEditor.tsx`, full page)
+
+The separate Question editor creates either a fixed problem or a built-in generated family. Every
+Question requires a name and exactly one **Primary skill practised** Concept; prerequisite Concepts
+are optional. Fixed Questions additionally require a prompt, valid numeric answer or compiled
+working scheme, and worked explanation. A generated family selects a supported generator and its
+typed configuration. Changing Question form during editing is prohibited: it would be a new
+definition, not a cosmetic edit.
+
+Questions are post-instruction application practice. They do not appear in the Card editor, lesson
+Card study or Course path. Deleting a Question removes the definition and relationship set but
+retains its Attempt receipts as personal evidence.
 
 ---
 
@@ -1803,8 +1848,13 @@ ordinary `front_back` cards to the scheduler.
   state. Linked rows are labelled, excluded from destructive bulk selection, and use
   **Remove from lesson** instead of deleting the underlying shared card; removal also clears
   that lesson's exposure record.
-- **Question bank** (`/course/:courseId/bank`) lists every card in a course in one flat list
-  regardless of lesson, sharing `CardList` with the lesson view's card section.
+- **Cards** (`/course/:courseId/cards`) lists every direct-recall Card in a course regardless of
+  lesson, sharing `CardList` with the lesson view's Card section. The old `/bank` route redirects
+  here.
+- **Questions** (`/course/:courseId/questions`) lists fixed Questions and generated families with
+  their primary Concept, exposure and due state. It launches a ten-Question default session or an
+  All due session. Due Questions come first, then unseen Questions; alternative primary Concepts
+  are interleaved when available. This pool never consults the Card pool.
 - **Card list** (`CardList`) supports per-card edit, suspend/flag, and an explicit **Select**
   action for bulk selection; a tag-filter row scopes both the list and the study session.
   In multi-select mode the bulk toolbar offers **delete** (with an Undo toast that restores
@@ -1821,8 +1871,8 @@ ordinary `front_back` cards to the scheduler.
 - **Sequences** (§5) have their own editor (`/course/:courseId/sequence/new`,
   `/course/:courseId/sequence/:sequenceId/edit`, and a lesson-scoped
   `/course/:courseId/lesson/:lessonId/sequence/new`), reached via "New sequence" entry
-  points alongside "Add card" in both Lesson View (`LessonCardsSection`) and the Question
-  Bank. `CardList` groups a sequence's generated cards under its name (`GeneratedCardGroup`)
+  points alongside "Add card" in both Lesson View (`LessonCardsSection`) and Cards.
+  `CardList` groups a sequence's generated cards under its name (`GeneratedCardGroup`)
   and excludes them from bulk-select, since they can only be edited or deleted through the
   sequence.
 
@@ -1874,8 +1924,8 @@ app:
 
 A single, reusable export UI offering multiple output formats:
 
-- **Full backup (JSON)** — complete database snapshot including all decks, cards,
-  review history and media assets (`downloadBackup`).
+- **Full backup (JSON)** — complete database snapshot including Cards, Card reviews, Concepts,
+  Questions, Question relationships and Attempts, plus media assets (`downloadBackup`).
 - **CSV** — comma-separated values with all card fields.
 - **TSV** — tab-separated values, compatible with Anki import.
 - **Markdown table** (`exportCardsMarkdownTable`) — GFM table with Deck, Front,
@@ -1883,6 +1933,8 @@ A single, reusable export UI offering multiple output formats:
 - **JSON array** (`exportCardsJson`) — array of objects with front, back, tags,
   deck, and type keys. Re-importable into Lacuna.
 - **Plain text** — human-readable Q:/A: format with course, lesson, and tag metadata.
+- CSV, TSV, Markdown, JSON-array and plain-text exports are Card-only. They are not a Question
+  backup; use Full backup or a Course share for Question definitions.
 - **Course share code** — compact, copy-pasteable course material generated from the dedicated
   Share page via `buildCourseShareCode`; it is not part of this full-backup/card-export panel.
 
@@ -1891,31 +1943,38 @@ A single, reusable export UI offering multiple output formats:
 - **Export:** versioned JSON portable snapshot (`BackupFile`: decks, cards, canonical
   `reviewHistory` plus the compatibility card projection, referenced image/audio assets,
   session history, user performance, folders, courses, lessons, notes, lesson-card links and
-  progress, `courseAssessments`, `revisionPlans`, `sequences` and `occlusions`). Backups are
+  progress, `courseAssessments`, `revisionPlans`, `sequences`, `occlusions`, `concepts`,
+  `questions`, `questionConcepts` and `questionAttempts`). Backups are
   the route that carries media between machines (share codes deliberately do not, §13); an
   occlusion's diagram is gathered explicitly from `Occlusion.assetHash`, since it is referenced
-  by no card Markdown. Older backups that pre-date the newer course tables still import cleanly:
-  the arrays are optional, and legacy `courseExamDates` is an import-only compatibility field.
+  by no Card Markdown. Question definitions and retained Attempt receipts are also scanned for
+  `lacuna-asset://` references. Older backups are normalised through the pure v24 converter;
+  legacy `courseExamDates` remains an import-only compatibility field.
 - **Import modes:**
   - **Replace** — wipe the tables represented by the backup, then restore exactly. The UI
     calls this **Replace local data**, explains that there is no account or cloud copy, and
     requires a second explicit confirmation. `noteAnnotations` is also cleared but is not
-    restored because it is device-local. Lineage mappings and pending merge-review queues are
-    not represented by `BackupFile` and are not currently exported or cleared.
+    restored because it is device-local. Concepts, Questions, relationships and Attempts are
+    replaced and restored with the rest of the represented data. Lineage mappings and pending
+    merge-review queues are not represented by `BackupFile` and are not currently exported or
+    cleared.
   - **Add from backup** — fold in by id (`importBackup(..., 'merge')`). The Settings recover
     flow shows the backup's lesson/card counts and applies immediately when **Add from backup**
     is pressed; it does not currently show a full add/change/overwrite diff or ask for a second
     confirmation. Incoming rows are added when absent; conflicting decks/cards and course records
     use their table-specific recency rules, review-history rows are deduplicated, and local rows
-    absent from the backup are never deleted. The course tables, `sequences`, `occlusions` and
-    `revisionPlans` follow the same additive per-table merge boundary. Old backups keep this
-    behaviour; only the Settings label changed.
+    absent from the backup are never deleted. Question authoring merges as one coherent definition
+    and relationship bundle; Attempts union by identity, immutable receipt collisions fail, and
+    answered lifecycle state wins over shown or abandoned state. The Question schedule is replayed
+    from eligible Attempt evidence after merge. The other course tables, `sequences`, `occlusions`
+    and `revisionPlans` follow their existing additive per-table merge boundary. Old backups keep
+    this behaviour; only the Settings label changed.
   - **Another device** — a separate Settings action that does not call
     `importBackup(..., 'merge')`. `manualMerge` takes a forced restore point
     (`takeAutoBackup(true)`), reuses that snapshot, runs `mergeSnapshots(local, remote)`,
     then applies the result with `importBackup(merged, 'replace')`. The resting copy states
-    that cards and reviews from either side are kept and that a deletion on either is removed;
-    confirmation is the existing inline prompt naming the file's date and card count. The toast
+    that Cards, Questions and evidence from either side are kept and that a deletion on either is
+    removed; confirmation is the existing inline prompt naming the file's date and card count. The toast
     reports cards kept, added and removed, plus reviews when those counts change, and that a
     restore point was saved. A file that fails `validateBackup` is rejected before any write; a
     failed safety backup aborts without applying.
@@ -1946,7 +2005,7 @@ copy-and-paste (or scannable) **code** and rebuilds a course from one. It is dis
 backup export: a share code carries only the **material** needed to recreate the course,
 never one person's scheduling progress or review history.
 
-- **What a code contains (current, v2 payload):** course metadata (name, exam objective,
+- **What a code contains (current, v3 payload):** course metadata (name, exam objective,
   date created, date due, target retention, new-card cap), its ordered lessons each with
   their notes and cards (type, front, back, tags), and current `CourseAssessment`
   checkpoints. **Sequences**
@@ -1961,20 +2020,23 @@ never one person's scheduling progress or review history.
   target region did not travel dropped rather than left dangling. Bank-scoped sequences and
   occlusions are excluded from both, since their generated cards are never packed.
   `LessonCardLink` (display-only cross-lesson linking) travels with the material so linked bank
-  cards remain linked after import. `PracticeNode`, lesson exposures, cardless-lesson
-  completions and Practice milestones are deliberately out of scope — a shared course carries
+  Cards remain linked after import. Concepts, fixed and generated Question definitions, and their
+  primary/prerequisite relationships also travel; the importer remaps their identifiers with the
+  rest of the Course. `PracticeNode`, lesson exposures, Question Attempts, Question scheduling,
+  cardless-lesson completions and Practice milestones are deliberately out of scope — a shared Course carries
   material structure, not one learner's practice-path state.
 - **What it omits — media, deliberately and loudly.** `stripAssetMedia` replaces every asset
   reference in card and note Markdown with placeholder text (`[Image omitted from share
-  code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's diagram is
+code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's diagram is
   not a Markdown reference at all and likewise never travels: its `assetHash` will not resolve
   for the recipient, and the study face falls back to each card's plain-text content. Solving
   asset transport properly needs either a companion asset file or the Arc 12 relay, so the
   chosen behaviour is **local and backup only, with the failure made loud**: the Share page
-  counts affected cards — asset-bearing *and* occlusion-generated — names them, and says what
+  counts affected cards — asset-bearing _and_ occlusion-generated — names them, and says what
   the recipient will actually receive. Backups carry assets properly (`BackupFile.assets`), so
   this is a share-code and published-lineage limitation only.
-- **What it omits:** FSRS memory state, review history, and suspended/buried/flag state.
+- **What it omits:** personal FSRS memory state, Card review history, Question Attempts and Question
+  scheduling state, plus suspended/buried/flag state on Cards.
   Imported cards always start with clean scheduling for their new owner. Lesson exposures,
   cardless-lesson completions and Practice milestones are learner progress and are likewise
   omitted. Note annotations are device-local and are excluded from share codes as well as
@@ -1996,13 +2058,13 @@ never one person's scheduling progress or review history.
   the default for copy-paste text), `LAC0` (plain base64, legacy uncompressed fallback),
   `LAC2` (DEFLATE + Base45, densest for QR codes), `LAC3` (plain Base45, legacy uncompressed
   fallback). Base45 (RFC 9285) maps directly to the QR Alphanumeric mode for ~30% more
-  capacity than Base64. A payload version field (`v1`/`v2`, distinct from the `LACn` prefix)
+  capacity than Base64. A payload version field (`v1`/`v2`/`v3`, distinct from the `LACn` prefix)
   guards forward compatibility; an unknown or corrupted code yields a readable error.
 - **Export UI:** select one course, then "Generate share code" — the code is shown in a
   read-only monospace box with a one-click **Copy**, a character count, and (where the
   payload fits a single QR symbol, up to `MAX_QR_ALPHANUMERIC_CHARS`) a scannable **QR code**.
 - **Import UI:** a styled paste box, or a camera-driven **QR scanner** (`html5-qrcode`);
-  "Read code" decodes and shows an inline confirmation preview (lesson/card counts, the share
+  "Read code" decodes and shows an inline confirmation preview (lesson/Card/Question counts, the share
   date, lesson names as chips) before committing. Importing always **creates a new course**
   — it never overwrites existing data.
 - Round-trip behaviour (content, cloze, reverse-pair expansion, v1 legacy decks becoming
@@ -2183,12 +2245,14 @@ uses.
   (`kind: 'course' | 'lesson' | 'note'`) that deep-link to `/course/:courseId`,
   `/course/:courseId/lesson/:lessonId`, or the same lesson route for a note. The two
   search cores run side by side so a single query surfaces both structural results
-  (courses/lessons/notes) and card results.
+  (courses/lessons/notes), Card results and Question results. Questions search authored names,
+  prompts, worked explanations, tags and generated-family metadata and link to the Question editor.
 - **Structured filters** (AND-combined, usable without a query, cards only): **due, new,
   leech, flagged, suspended**. These turn search into course-wide card management ("show
   me all leeches").
-- The full-page Search and the `Ctrl/Cmd+K` command palette share the same core; card
-  results link straight to the card editor, course/lesson/note results to their page.
+- The full-page Search and the `Ctrl/Cmd+K` command palette share the same core; Card and Question
+  results are visibly distinct and link to their respective editors, while course/lesson/note
+  results link to their page.
   `plainPreview` strips Markdown/cloze/images for previews.
 - **Leech** = a card with `lapses >= 8` (`src/fsrs/leech.ts`); surfaced via a badge and
   the search filter, but scheduling is never changed automatically.
@@ -2216,7 +2280,7 @@ Pure aggregates over stored history, in local time:
 
 ### Per-card analysis (`CardAnalytics`)
 
-Each card in a course's card list (lesson view or question bank) can be expanded in-place
+Each Card in a course's Card list (lesson view or Cards page) can be expanded in-place
 to reveal a **forgetting curve** and **vital statistics** for that individual card:
 
 - **Forgetting curve** — an `AreaChart` projecting retrievability from the
@@ -2246,6 +2310,13 @@ lessons is counted once):
   card count overlaid as a line.
 - **Card stability profile** (histogram of cards by stability range; new cards distinct).
 - **Review volume** (reviews per day over the last 30 days).
+
+The same page has a separate **Questions** section. It does not feed the Card charts or Course
+objective. It shows due/unseen/suspended counts; fixed first-presentation versus repeat performance;
+generated novel-variant versus repeated-variant performance and repeat rate; marks and full-credit
+accuracy; versioned criterion evidence; and explicit shown, abandoned, undone, checker-withheld and
+unscored exclusions. A disputed or undetermined Attempt is excluded rather than counted as a
+failure. No Question result changes predicted exam-day Card score, stability or Card calibration.
 
 Prediction accuracy calibration (`src/fsrs/calibration.ts`) — comparing predicted
 retrievability at review against actual recall outcome via a Brier/log-loss metric, plus
@@ -2464,23 +2535,23 @@ defaults** is always available.
 
 ## 18. Keyboard shortcuts (summary)
 
-| Context                | Key                 | Action                                |
-| ---------------------- | ------------------- | ------------------------------------- |
-| Global (shell)         | `Ctrl/Cmd+K`        | Toggle command palette                |
-| Global (shell)         | `/`                 | Open search                           |
-| Global (shell)         | `?`                 | Toggle keyboard hints                 |
-| Card editor            | `Ctrl/Cmd+Enter`    | Save (and add another, for new cards) |
-| Card editor            | `Tab`               | Front -> Back -> Save-and-add -> Save |
-| Sequence item editor   | `Ctrl/Cmd+Enter`    | Insert and focus the next item        |
-| Learn                  | `Space` / `Up`      | Show answer                           |
-| Learn                  | `Down`              | Hide answer                           |
+| Context                | Key                | Action                                |
+| ---------------------- | ------------------ | ------------------------------------- |
+| Global (shell)         | `Ctrl/Cmd+K`       | Toggle command palette                |
+| Global (shell)         | `/`                | Open search                           |
+| Global (shell)         | `?`                | Toggle keyboard hints                 |
+| Card editor            | `Ctrl/Cmd+Enter`   | Save (and add another, for new cards) |
+| Card editor            | `Tab`              | Front -> Back -> Save-and-add -> Save |
+| Sequence item editor   | `Ctrl/Cmd+Enter`   | Insert and focus the next item        |
+| Learn                  | `Space` / `Up`     | Show answer                           |
+| Learn                  | `Down`             | Hide answer                           |
 | Learn (silent grading) | `Y` / `Right`      | Yes (correct)                         |
-| Learn (silent grading) | `N` / `Left`        | No (incorrect)                        |
-| Learn (manual grading) | `1`, `2`, `3`, `4`  | Again / Hard / Good / Easy            |
-| Learn                  | `E`                 | Edit current card                     |
-| Learn                  | `U`                 | Undo last answer                      |
-| Learn                  | `F`                 | Toggle focus mode                     |
-| Overlays               | `Esc`               | Close                                 |
+| Learn (silent grading) | `N` / `Left`       | No (incorrect)                        |
+| Learn (manual grading) | `1`, `2`, `3`, `4` | Again / Hard / Good / Easy            |
+| Learn                  | `E`                | Edit current card                     |
+| Learn                  | `U`                | Undo last answer                      |
+| Learn                  | `F`                | Toggle focus mode                     |
+| Overlays               | `Esc`              | Close                                 |
 
 Single-key shortcuts are inert while a text field is focused. The `?` overlay can
 also be opened from the "Keyboard shortcuts" item in the Learn mode 3-dot action
@@ -2522,12 +2593,12 @@ user-local Unix-domain socket (macOS/Linux) or named pipe (Windows). There is no
 or browser MCP server. The normal renderer window must remain open because it owns IndexedDB.
 Modern SDK v2 and legacy stdio negotiation are both accepted.
 
-| Component | Pinned version | Compatibility |
-| --- | --- | --- |
-| `@modelcontextprotocol/core` | 2.0.0 | Shared protocol types and modern/legacy negotiation |
-| `@modelcontextprotocol/server` | 2.0.0 | Companion and embedded stdio server |
-| `@modelcontextprotocol/client` | 2.0.0 | Portable smoke client |
-| Lacuna companion protocol | 1 | Authenticated native-IPC relay; independent of MCP protocol version |
+| Component                      | Pinned version | Compatibility                                                       |
+| ------------------------------ | -------------- | ------------------------------------------------------------------- |
+| `@modelcontextprotocol/core`   | 2.0.0          | Shared protocol types and modern/legacy negotiation                 |
+| `@modelcontextprotocol/server` | 2.0.0          | Companion and embedded stdio server                                 |
+| `@modelcontextprotocol/client` | 2.0.0          | Portable smoke client                                               |
+| Lacuna companion protocol      | 1              | Authenticated native-IPC relay; independent of MCP protocol version |
 
 The tool contract is transport-independent and versioned separately from the Dexie schema
 (`MCP_TOOL_SURFACE_VERSION`, currently 2 — additive tools never bump it). It exposes:

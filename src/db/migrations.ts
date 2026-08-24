@@ -19,12 +19,28 @@ export type { LegacyDeck } from './types';
  */
 export type LegacyCard = Omit<
   Card,
-  'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps' | 'type' | 'schedulingUnitId' | 'updatedAt'
+  | 'conceptId'
+  | 'reps'
+  | 'lapses'
+  | 'state'
+  | 'due'
+  | 'scheduledDays'
+  | 'learningSteps'
+  | 'type'
+  | 'schedulingUnitId'
+  | 'updatedAt'
 > &
   Partial<
     Pick<
       Card,
-      'reps' | 'lapses' | 'state' | 'due' | 'scheduledDays' | 'learningSteps' | 'updatedAt'
+      | 'conceptId'
+      | 'reps'
+      | 'lapses'
+      | 'state'
+      | 'due'
+      | 'scheduledDays'
+      | 'learningSteps'
+      | 'updatedAt'
     >
   > & { type: Card['type'] | 'typing'; schedulingUnitId?: string };
 
@@ -61,8 +77,7 @@ export function migrateDeckRecord(deck: LegacyDeck): LegacyDeckRecord {
  */
 export function migrateCardRecord(card: LegacyCard): Card {
   const reps = card.reps ?? card.history.length;
-  const lapses =
-    card.lapses ?? card.history.filter((log) => log.grade === 1).length;
+  const lapses = card.lapses ?? card.history.filter((log) => log.grade === 1).length;
   // New cards are State.New (0); previously reviewed cards are treated as Review (2).
   const state = card.state ?? (card.lastReviewed === null ? 0 : 2);
   // The 'typing' card type was retired in schema v13: typed answering is now the
@@ -72,6 +87,9 @@ export function migrateCardRecord(card: LegacyCard): Card {
   const type: CardType = card.type === 'typing' ? 'front_back' : (card.type as CardType);
   return {
     ...card,
+    // This is only a temporary shape used by pre-v24 upgrade steps. Schema v24
+    // replaces it with the stable, scope-aware Concept identity.
+    conceptId: card.conceptId ?? `concept:pre-v24:${encodeURIComponent(card.id)}`,
     schedulingUnitId: card.schedulingUnitId ?? card.deckId ?? '',
     type,
     reps,
@@ -81,7 +99,10 @@ export function migrateCardRecord(card: LegacyCard): Card {
     // defaulting to lastReviewed (which would make it immediately due).
     due:
       card.due ??
-      (card.lastReviewed !== null && card.lastReviewed !== undefined && card.stability !== null && card.stability !== undefined
+      (card.lastReviewed !== null &&
+      card.lastReviewed !== undefined &&
+      card.stability !== null &&
+      card.stability !== undefined
         ? card.lastReviewed + Math.round(card.stability * 86_400_000)
         : card.lastReviewed),
     scheduledDays: card.scheduledDays ?? 0,
@@ -104,11 +125,13 @@ export function buildLessonCardExposureBackfill(
   return cards.flatMap((card) => {
     if (card.state === 0 || typeof card.primaryLessonId !== 'string') return [];
     const taughtAt = card.lastReviewed ?? card.createdAt;
-    return [{
-      lessonId: card.primaryLessonId,
-      cardId: card.id,
-      taughtAt,
-      updatedAt: taughtAt,
-    }];
+    return [
+      {
+        lessonId: card.primaryLessonId,
+        cardId: card.id,
+        taughtAt,
+        updatedAt: taughtAt,
+      },
+    ];
   });
 }

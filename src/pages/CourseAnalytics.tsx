@@ -2,6 +2,7 @@
 // Route: /course/:courseId/analytics
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import {
@@ -13,8 +14,11 @@ import {
 } from '../state/useCourseData';
 import { CourseAnalytics as CourseAnalyticsCharts } from '../components/analytics/CourseAnalytics';
 import { CourseTabs } from '../components/course/CourseTabs';
+import { QuestionAnalyticsSection } from '../components/questions/QuestionAnalyticsSection';
+import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { ChevronLeftIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { buildQuestionAnalytics } from '../questions/analytics';
 
 function CourseAnalyticsSkeleton() {
   return (
@@ -53,13 +57,21 @@ export function CourseAnalytics() {
   const cards = useCourseCards(courseId);
   const reviewHistory = useCourseReviewHistory(courseId);
   const history = useCourseSessionHistory(courseId);
+  const questionData = useCourseQuestionData(courseId);
+  const questionAnalytics = useMemo(
+    () =>
+      questionData ? buildQuestionAnalytics(questionData.questions, questionData.attempts) : null,
+    [questionData],
+  );
 
   if (
     course === undefined ||
     lessons === undefined ||
     cards === undefined ||
     reviewHistory === undefined ||
-    history === undefined
+    history === undefined ||
+    questionData === undefined ||
+    questionAnalytics === null
   ) {
     return (
       <div role="status" aria-busy="true" aria-label="Loading course analytics">
@@ -107,6 +119,12 @@ export function CourseAnalytics() {
         </div>
       </motion.header>
 
+      <QuestionAnalyticsSection analytics={questionAnalytics} />
+
+      <div className="mb-4">
+        <p className="text-xs uppercase tracking-[0.18em] text-ink-faint">Memory evidence</p>
+        <h2 className="mt-1 font-display text-2xl text-ink">Cards</h2>
+      </div>
       <CourseAnalyticsCharts
         course={course}
         lessons={lessons}

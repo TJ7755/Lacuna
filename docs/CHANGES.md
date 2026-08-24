@@ -1,5 +1,39 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Questions as separate post-instruction application practice
+
+- Renamed the former Question bank to **Cards** and added a separate **Questions** course tab. Cards
+  remain direct recall; fixed Questions and built-in generated Question families provide deliberate
+  post-instruction application practice. Questions are not placed in the Course path, Practice nodes
+  or assessment revision plans in v1.
+- Added stable Concepts shared by Card and Question authoring. Every Question has exactly one primary
+  Concept and optional prerequisite Concepts. Question answers never review or fail linked Cards;
+  their schedules, histories, analytics and Course-objective contribution remain isolated.
+- Added deterministic numeric and working checking with mandatory worked feedback. A Question's
+  first submission is immutable and an optional correction is stored separately. Full marks map to
+  FSRS Good; any incomplete result, including partial marks, maps to Again. Undetermined or disputed
+  checker results retain the receipt and marks but withhold scheduling.
+- Added the separate Question session pool: due definitions first, then unseen fixed Questions and
+  generated families, interleaved by primary Concept where possible. Generated quadratic variants
+  carry deterministic seeds, parameters, fingerprints, answers and explanations in immutable
+  Attempt receipts. Definitions whose generator version the current client cannot resolve remain
+  portable but are excluded from practice until support exists.
+- Added Question analytics that keep fixed first-presentation/repeat evidence separate and generated
+  novel-variant/repeated-variant evidence separate. Marks, versioned criteria, repeat rate and
+  excluded shown/abandoned/undone/checker-withheld Attempts are reported without contaminating Card
+  readiness or calibration. Retained Attempts remain visible after the final live Question is
+  deleted.
+- Added schema v24 and full-backup v11 support for Concepts, Question definitions, relationship
+  aggregates and Attempts. Older backups use the pure v24 converter; replace, recovery merge, peer
+  sync, tombstones, asset reachability and Course deletion cover all four stores, and merged
+  schedules replay eligible Attempt evidence. Deleting one Question retains its personal Attempts.
+- Added Course-share payload v3, search result routing, external batch authoring and MCP tools for
+  Concepts, fixed Questions and generated families. Share codes carry authored Question material but
+  exclude personal Attempts and scheduling.
+- Recorded the complete design, scientific limits and deferred Path integration in
+  `docs/plans/question-mode.md`; added the canonical Concept/Card/Question/Question family/Attempt
+  vocabulary in `CONTEXT.md`.
+
 ## Unreleased — Full audit 2026-08-24: code, quality, accuracy and science
 
 Six concurrent audit streams examined scheduling science, grading accuracy, analytics, code quality, security/privacy/deployment, data integrity/sync and UX/accessibility against `docs/lacuna-objective-audit.html`, `docs/lacuna-interrogation-report.html` and `docs/code-quality-remediation-plan.html`. The fixes below address the highest-severity open items; remaining ranked remediation is archived in `.agent-mail/` and `docs/next_plan.md` for follow-up. This is a behaviour-preserving maintenance arc except where noted.
@@ -176,6 +210,7 @@ Six concurrent audit streams examined scheduling science, grading accuracy, anal
   deliberately does not provide snapshot freshness or rollback protection.
   P5 must either make that relay threat-model exclusion explicit or add an
   authenticated high-water mark to the sync cycle before deployment.
+
 ## Unreleased — Safe-area insets for standalone phone use
 
 - `index.html` now sets `viewport-fit=cover`, so `black-translucent` can paint
@@ -224,8 +259,7 @@ Six concurrent audit streams examined scheduling science, grading accuracy, anal
 - A smoke pass on the same host was correct: mint 201; first PUT
   `If-Match: "0"` 204 with an ETag; GET 200 returning the exact bytes
   with `cache-control: no-store`; stale `If-Match: "0"` 412; no auth
-  401; missing `If-Match` 428; unknown slot 400; DELETE 204 then GET
-  404. CORS and `Cross-Origin-Resource-Policy` present on writes.
+  401; missing `If-Match` 428; unknown slot 400; DELETE 204 then GET 404. CORS and `Cross-Origin-Resource-Policy` present on writes.
 - Root CI does not run `relay/` tests. The app's vitest include is
   `src/**/*.test.ts(x)`, and `bun run test` in CI is that suite. PR #81's
   relay tests were run manually. Vercel preview deployments are behind
@@ -504,9 +538,10 @@ Six concurrent audit streams examined scheduling science, grading accuracy, anal
 - Kept destructive Deck/Folder removal gated because active legacy routes, global study/search/editing,
   MCP scope resolution and backup/import/share contracts still require those stores. This branch
   deliberately ends at the reviewed additive cutover instead of shipping a breaking schema deletion.
-+- Follow-up review fixes combine duplicate legacy performance profiles when several backing Decks
-+  resolve to one target scheduling unit, preserve legacy calibration when rebuilding a missing target
-+  row, and use constant-time scheduling-unit membership checks during schema upgrade.
+  +- Follow-up review fixes combine duplicate legacy performance profiles when several backing Decks
+
+* resolve to one target scheduling unit, preserve legacy calibration when rebuilding a missing target
+* row, and use constant-time scheduling-unit membership checks during schema upgrade.
 
 ## Unreleased — One place for study on the dashboard
 
@@ -1968,7 +2003,7 @@ worker other than Claude for the first time.
   `design/landing-draft/` and reverted its own changelog entry. The rating stands on the thinking,
   not the outcome — a future agent reading the table should not infer that the work failed.
 - Defects found on review, recorded because they are the shape of mistake this tier still makes:
-  a visually-hidden chart description nested *inside* the `<h1>` and also referenced by the SVG's
+  a visually-hidden chart description nested _inside_ the `<h1>` and also referenced by the SVG's
   `aria-labelledby`, so the heading's accessible name contained the whole description twice and
   mutated live as the chart was dragged; one line of copy that broke the register; and three
   Google Fonts families loaded from a third party on a page whose central claim is that nothing

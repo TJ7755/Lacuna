@@ -95,17 +95,22 @@ export function useLessonBackingDeck(
 }
 
 /** Resolve the hidden scheduling deck for cards not assigned to a lesson. */
-export function useCourseBankBackingDeck(courseId: string | undefined): SchedulingUnitRecord | undefined {
+export function useCourseBankBackingDeck(
+  courseId: string | undefined,
+): SchedulingUnitRecord | undefined {
   return useLiveQuery(() => (courseId ? findBackingDeck(courseId, null) : undefined), [courseId]);
 }
 
-/** Resolve every lesson and unassigned backing deck for a Question Bank in one live query. */
+/** Resolve every lesson and unassigned backing deck for Cards in one live query. */
 export function useCourseBankBackingDecks(
   courseId: string | undefined,
   lessonIds: readonly string[],
 ): Map<string | null, SchedulingUnitRecord> | undefined {
   return useLiveQuery(
-    () => (courseId ? findBackingDecks(courseId, lessonIds) : new Map<string | null, SchedulingUnitRecord>()),
+    () =>
+      courseId
+        ? findBackingDecks(courseId, lessonIds)
+        : new Map<string | null, SchedulingUnitRecord>(),
     [courseId, lessonIds],
   );
 }

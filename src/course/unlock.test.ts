@@ -5,6 +5,7 @@ import { lessonTaught, nextLessonUnlockCondition } from './unlock';
 function makeCard(id: string): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'd1',
     schedulingUnitId: 'd1',
     type: 'front_back',
@@ -35,7 +36,9 @@ const exposure = (lessonId: string, cardId: string): LessonCardExposure => ({
 describe('lessonTaught', () => {
   it('requires explicit completion for a cardless lesson', () => {
     expect(lessonTaught('l1', [], [], [])).toBe(false);
-    expect(lessonTaught('l1', [], [], [{ lessonId: 'l1', completedAt: 1, updatedAt: 1 }])).toBe(true);
+    expect(lessonTaught('l1', [], [], [{ lessonId: 'l1', completedAt: 1, updatedAt: 1 }])).toBe(
+      true,
+    );
   });
 
   it('requires an exposure in this lesson for every member card', () => {

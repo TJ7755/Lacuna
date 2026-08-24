@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { m as motion } from 'motion/react';
-import type { Card, Lesson } from '../../db/types';
+import type { Lesson } from '../../db/types';
+import type { QuestionDefinition } from '../../questions/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { buildBatchGenerationPrompt } from '../../items/prompts';
 import { ItemStagingReview } from './ItemStagingReview';
@@ -16,7 +17,7 @@ interface BatchAuthoringPromptDialogProps {
   examBoard?: string;
   specification?: string;
   lessons: Lesson[];
-  cards: Card[];
+  questions: QuestionDefinition[];
   onClose: () => void;
 }
 
@@ -26,7 +27,7 @@ export function BatchAuthoringPromptDialog({
   examBoard,
   specification,
   lessons,
-  cards,
+  questions,
   onClose,
 }: BatchAuthoringPromptDialogProps) {
   const { notify } = useToast();
@@ -36,12 +37,12 @@ export function BatchAuthoringPromptDialog({
   const [level, setLevel] = useState('');
   const [showConstraints, setShowConstraints] = useState(false);
   const [maxItems, setMaxItems] = useState<number | ''>('');
-  const [conceptsPerItem, setConceptsPerItem] = useState<number | ''>('');
   const [mode, setMode] = useState<'prompt' | 'review'>('prompt');
   const [reviewDirty, setReviewDirty] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const canCopy = notes.trim().length > 0 && topic.trim().length > 0 && level.trim().length > 0;
-  const hasDraft = notes.trim().length > 0 || topic.trim().length > 0 || level.trim().length > 0 || reviewDirty;
+  const hasDraft =
+    notes.trim().length > 0 || topic.trim().length > 0 || level.trim().length > 0 || reviewDirty;
 
   function requestClose() {
     if (hasDraft) {
@@ -62,11 +63,9 @@ export function BatchAuthoringPromptDialog({
           examBoard,
           specification,
           maxItems: showConstraints && maxItems !== '' ? maxItems : undefined,
-          conceptsPerItem:
-            showConstraints && conceptsPerItem !== '' ? conceptsPerItem : undefined,
         }),
       );
-      notify('Batch prompt copied to the clipboard.', 'positive');
+      notify('Question batch prompt copied to the clipboard.', 'positive');
     } catch {
       notify('Could not copy the batch prompt.', 'negative');
     }
@@ -95,7 +94,7 @@ export function BatchAuthoringPromptDialog({
       <motion.div
         role="dialog"
         aria-modal="true"
-        aria-label="Generate item batch"
+        aria-label="Generate Question batch"
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.98 }}
@@ -105,14 +104,17 @@ export function BatchAuthoringPromptDialog({
           mode === 'review' ? 'max-w-5xl' : 'max-w-2xl',
         )}
       >
-        <div className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20" aria-hidden="true" />
+        <div
+          className="pointer-events-none absolute inset-0 bg-dot-grid opacity-20"
+          aria-hidden="true"
+        />
         <header className="relative flex items-start justify-between border-b border-line px-6 py-5">
           <div>
-            <h2 className="font-display text-2xl">Author item batch</h2>
+            <h2 className="font-display text-2xl">Author Question batch</h2>
             <p className="mt-1 text-sm text-ink-soft">
               {mode === 'prompt'
                 ? `Build a prompt for ${courseName}.`
-                : `Review generated items before adding them to ${courseName}.`}
+                : `Review generated Questions before adding them to ${courseName}.`}
             </p>
           </div>
           <button
@@ -126,11 +128,17 @@ export function BatchAuthoringPromptDialog({
           </button>
         </header>
 
-        <div className="relative flex gap-1 border-b border-line px-6 py-3" role="tablist" aria-label="Batch authoring step">
-          {([
-            ['prompt', 'Build prompt'],
-            ['review', 'Review response'],
-          ] as const).map(([value, label]) => (
+        <div
+          className="relative flex gap-1 border-b border-line px-6 py-3"
+          role="tablist"
+          aria-label="Batch authoring step"
+        >
+          {(
+            [
+              ['prompt', 'Build prompt'],
+              ['review', 'Review response'],
+            ] as const
+          ).map(([value, label]) => (
             <button
               key={value}
               type="button"
@@ -154,7 +162,7 @@ export function BatchAuthoringPromptDialog({
             <ItemStagingReview
               courseId={courseId}
               lessons={lessons}
-              cards={cards}
+              questions={questions}
               onDirtyChange={setReviewDirty}
             />
           ) : (
@@ -208,28 +216,11 @@ export function BatchAuthoringPromptDialog({
                   className="accent-accent"
                 />
                 <span className="font-medium text-ink">Set generation constraints</span>
-                <span className="ml-auto text-xs text-ink-faint">
-                  Otherwise the model chooses
-                </span>
+                <span className="ml-auto text-xs text-ink-faint">Otherwise the model chooses</span>
               </label>
 
               {showConstraints && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="flex flex-col gap-2 text-sm text-ink-soft">
-                    Concepts per item <span className="text-xs text-ink-faint">Optional</span>
-                    <input
-                      type="number"
-                      min={1}
-                      value={conceptsPerItem}
-                      placeholder="Model chooses"
-                      onChange={(event) =>
-                        setConceptsPerItem(
-                          event.target.value === '' ? '' : Number(event.target.value),
-                        )
-                      }
-                      className="rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-ink outline-none focus:border-accent"
-                    />
-                  </label>
+                <div className="grid gap-4">
                   <label className="flex flex-col gap-2 text-sm text-ink-soft">
                     Maximum items <span className="text-xs text-ink-faint">Optional</span>
                     <input
@@ -247,8 +238,8 @@ export function BatchAuthoringPromptDialog({
               )}
 
               <p className="text-xs leading-relaxed text-ink-faint">
-                Lacuna copies a prompt only. Continue the conversation in your chosen chatbot,
-                then paste its structured response into the staging review.
+                Lacuna copies a prompt only. Continue the conversation in your chosen chatbot, then
+                paste its structured response into the staging review.
               </p>
             </>
           )}
@@ -256,16 +247,18 @@ export function BatchAuthoringPromptDialog({
 
         {mode === 'prompt' && (
           <footer className="relative flex justify-end gap-2 border-t border-line px-6 py-4">
-            <Button variant="ghost" onClick={requestClose}>Cancel</Button>
+            <Button variant="ghost" onClick={requestClose}>
+              Cancel
+            </Button>
             <Button variant="primary" disabled={!canCopy} onClick={() => void copyPrompt()}>
-              Copy batch prompt
+              Copy Question batch prompt
             </Button>
           </footer>
         )}
         {confirmClose && (
           <div className="relative border-t border-warning/30 bg-warning/5 px-6 py-4">
             <ConfirmInline
-              message="Discard this unsaved batch prompt and staging review?"
+              message="Discard this unsaved Question batch prompt and staging review?"
               confirmLabel="Discard batch"
               onCancel={() => setConfirmClose(false)}
               onConfirm={onClose}

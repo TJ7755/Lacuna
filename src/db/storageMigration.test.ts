@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { Card, CourseAssessment, CourseRecord, LegacyDeckRecord, Lesson, UserPerformance } from './types';
+import type {
+  Card,
+  CourseAssessment,
+  CourseRecord,
+  LegacyDeckRecord,
+  Lesson,
+  UserPerformance,
+} from './types';
 import { defaultFsrsParameters } from '../fsrs/params';
 import { buildDomainStorageMigration } from './storageMigration';
 
@@ -31,7 +38,15 @@ function course(id: string): CourseRecord {
 }
 
 function lesson(courseId: string, id: string): Lesson {
-  return { id, courseId, name: `Lesson ${id}`, orderIndex: 0, createdAt: 1, updatedAt: 1, isExtension: false };
+  return {
+    id,
+    courseId,
+    name: `Lesson ${id}`,
+    orderIndex: 0,
+    createdAt: 1,
+    updatedAt: 1,
+    isExtension: false,
+  };
 }
 
 function deck(id: string, courseId: string, lessonId: string | null): LegacyDeckRecord {
@@ -48,9 +63,15 @@ function deck(id: string, courseId: string, lessonId: string | null): LegacyDeck
   };
 }
 
-function card(id: string, deckId: string, courseId: string | null, primaryLessonId: string | null): Card {
+function card(
+  id: string,
+  deckId: string,
+  courseId: string | null,
+  primaryLessonId: string | null,
+): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId,
     schedulingUnitId: deckId,
     courseId,
@@ -103,7 +124,10 @@ describe('buildDomainStorageMigration', () => {
       [lesson('course-1', 'lesson-1')],
       [finalAssessment('course-1')],
       [deck('bank', 'course-1', null), deck('lesson-deck', 'course-1', 'lesson-1')],
-      [card('bank-card', 'bank', 'course-1', null), card('lesson-card', 'lesson-deck', 'course-1', 'lesson-1')],
+      [
+        card('bank-card', 'bank', 'course-1', null),
+        card('lesson-card', 'lesson-deck', 'course-1', 'lesson-1'),
+      ],
       [performance('bank', 4), performance('lesson-deck', 7), performance('course-1', 9)],
     );
 
@@ -124,8 +148,9 @@ describe('buildDomainStorageMigration', () => {
     });
     expect(result.schedulingUnitByCardId.get('bank-card')).toBe('course-1');
     expect(result.schedulingUnitByCardId.get('lesson-card')).toBe('lesson-1');
-    expect(result.schedulingPerformance.find((row) => row.schedulingUnitId === 'lesson-1'))
-      .toMatchObject({ totalCorrectReviews: 7, lessonId: 'lesson-1' });
+    expect(
+      result.schedulingPerformance.find((row) => row.schedulingUnitId === 'lesson-1'),
+    ).toMatchObject({ totalCorrectReviews: 7, lessonId: 'lesson-1' });
     expect(result.coursePerformance).toEqual([
       expect.objectContaining({ courseId: 'course-1', totalCorrectReviews: 9 }),
     ]);
@@ -136,14 +161,21 @@ describe('buildDomainStorageMigration', () => {
       [course('course-1')],
       [lesson('course-1', 'lesson-1')],
       [finalAssessment('course-1')],
-      [{ ...deck('unowned', 'course-1', 'lesson-1'), backingCourseId: undefined, backingLessonId: undefined }],
+      [
+        {
+          ...deck('unowned', 'course-1', 'lesson-1'),
+          backingCourseId: undefined,
+          backingLessonId: undefined,
+        },
+      ],
       [card('lesson-card', 'unowned', 'course-1', 'lesson-1')],
       [performance('unowned', 11)],
     );
 
     expect(result.schedulingUnitByDeckId.get('unowned')).toBe('lesson-1');
-    expect(result.schedulingPerformance.find((row) => row.schedulingUnitId === 'lesson-1'))
-      .toMatchObject({ totalCorrectReviews: 11 });
+    expect(
+      result.schedulingPerformance.find((row) => row.schedulingUnitId === 'lesson-1'),
+    ).toMatchObject({ totalCorrectReviews: 11 });
   });
 
   it('rejects a backing lesson owned by another course', () => {
@@ -164,7 +196,10 @@ describe('buildDomainStorageMigration', () => {
       [course('course-1')],
       [lesson('course-1', 'lesson-1')],
       [],
-      [deck('lesson-deck-a', 'course-1', 'lesson-1'), deck('lesson-deck-b', 'course-1', 'lesson-1')],
+      [
+        deck('lesson-deck-a', 'course-1', 'lesson-1'),
+        deck('lesson-deck-b', 'course-1', 'lesson-1'),
+      ],
       [],
       [
         performance('lesson-deck-a', 4),
@@ -176,7 +211,9 @@ describe('buildDomainStorageMigration', () => {
       ],
     );
 
-    expect(result.schedulingPerformance.find((row) => row.schedulingUnitId === 'lesson-1')).toMatchObject({
+    expect(
+      result.schedulingPerformance.find((row) => row.schedulingUnitId === 'lesson-1'),
+    ).toMatchObject({
       totalCorrectReviews: 10,
       runningMeanResponseTime: 5.6,
       m2: 93.4,

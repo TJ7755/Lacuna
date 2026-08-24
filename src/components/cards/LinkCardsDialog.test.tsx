@@ -31,6 +31,7 @@ const lessons: Lesson[] = [
 function card(id: string, front: string, back: string, primaryLessonId: string | null): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'deck-1',
     schedulingUnitId: 'deck-1',
     type: 'front_back',
@@ -119,7 +120,9 @@ describe('LinkCardsDialog', () => {
       const [open, setOpen] = useState(false);
       return (
         <>
-          <button type="button" onClick={() => setOpen(true)}>Open picker</button>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open picker
+          </button>
           {open && (
             <LinkCardsDialog
               lessonId="lesson-2"

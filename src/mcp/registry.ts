@@ -10,6 +10,7 @@ import { CONTENT_TOOLS } from './tools/content';
 import { DESTRUCTIVE_TOOLS } from './tools/destructive';
 import { IMPORT_TOOLS } from './tools/import';
 import { LINEAGE_TOOLS } from './tools/lineage';
+import { QUESTION_TOOLS } from './tools/questions';
 
 /**
  * Versions the *tool contract* (names, input/output shapes), independent of Dexie's
@@ -17,7 +18,7 @@ import { LINEAGE_TOOLS } from './tools/lineage';
  * a tool's removal; additive new tools do not bump it. Exposed via `lacuna.get_server_info`
  * (a later task) so an agent can detect a stale cached tool list.
  */
-export const MCP_TOOL_SURFACE_VERSION = 2;
+export const MCP_TOOL_SURFACE_VERSION = 3;
 
 /**
  * Deliberate exclusions from the tool surface (Arc 2 §2.3) — documented here, not just
@@ -28,8 +29,9 @@ export const MCP_TOOL_SURFACE_VERSION = 2;
  *   accepts only content fields (front/back/tags/flagged); scheduling stays the engine's
  *   exclusive write path. `reschedule_cards` exposes the existing bounded `rescheduleCards`
  *   helper instead of raw field writes.
- * - `recordReview`/`undoReview` — an agent grading the user's recall on their behalf
- *   would corrupt the memory model; review recording stays a human-only, in-app action.
+ * - Card review and Question-attempt recording/undo — an agent grading the user's recall or
+ *   application on their behalf would corrupt either independent memory model; answer evidence
+ *   stays a human-only, in-app action.
  * - Practice-node/milestone mutation beyond assessments — path/curriculum structure is
  *   judged too consequential for v1; revisit once usage data exists.
  * - Backup/restore/share-code tools — already have a full UI flow; not a natural agent
@@ -39,6 +41,7 @@ export const MCP_TOOL_SURFACE_VERSION = 2;
 export const TOOL_REGISTRY: readonly ToolDefinition<any, any>[] = [
   ...READ_TOOLS,
   ...CONTENT_TOOLS,
+  ...QUESTION_TOOLS,
   ...DESTRUCTIVE_TOOLS,
   ...IMPORT_TOOLS,
   ...LINEAGE_TOOLS,
