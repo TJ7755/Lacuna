@@ -1,6 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'react-dom';
+import { useEffect, useRef, useState } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommandPalette } from './CommandPalette';
 import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../../db/types';
 
@@ -72,6 +74,43 @@ vi.mock('../../state/useSearchData', () => ({
 }));
 
 describe('CommandPalette', () => {
+  beforeEach(() => dataHooks.useSearchData.mockClear());
+
+  it('restores focus to the Search trigger after Escape closes the palette', async () => {
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      const backgroundRef = useRef<HTMLDivElement>(null);
+
+      useEffect(() => {
+        if (!open) return;
+        const background = backgroundRef.current;
+        background?.setAttribute('inert', '');
+        return () => background?.removeAttribute('inert');
+      }, [open]);
+
+      return (
+        <>
+          <div ref={backgroundRef}>
+            <button type="button" onClick={() => setOpen(true)}>
+              Search
+            </button>
+          </div>
+          <CommandPalette open={open} onClose={() => setOpen(false)} />
+        </>
+      );
+    }
+
+    render(<Harness />, { wrapper: MemoryRouter });
+    const trigger = screen.getByRole('button', { name: 'Search' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const input = await screen.findByPlaceholderText(/search courses/i);
+
+    fireEvent.keyDown(input, { key: 'Escape' });
+
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
   it('does not subscribe to whole-database queries while closed', () => {
     render(<CommandPalette open={false} onClose={vi.fn()} />, { wrapper: MemoryRouter });
     expect(dataHooks.useSearchData).not.toHaveBeenCalled();
@@ -177,6 +216,22 @@ describe('CommandPalette', () => {
     expect(options).toHaveLength(1);
     expect(options[0]).toHaveAttribute('id', 'palette-option-0');
     expect(options[0]).toHaveAttribute('aria-selected', 'true');
+
+    act(() => {
+      flushSync(() => {
+        const valueSetter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          'value',
+        )?.set;
+        valueSetter?.call(input, '');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+
+      expect(input).toHaveAttribute('aria-expanded', 'false');
+      expect(input).not.toHaveAttribute('aria-activedescendant');
+    });
+
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
   });
 
   it('updates aria-activedescendant and aria-selected on keyboard navigation', async () => {
@@ -198,12 +253,7 @@ describe('CommandPalette', () => {
     expect(options[1]).toHaveAttribute('aria-selected', 'false');
     expect(input).toHaveAttribute('aria-activedescendant', 'palette-option-0');
 
-    // ArrowDown moves active to index 1
-    fireEvent.keyDown(input.closest('[class*="relative"]') as Element, { key: 'ArrowDown' });
-    // onKeyDown is on the motion.div wrapper, but event bubbles; trigger on input via keyboard
-    // Re-fire on the container that has handler — the wrapper div containing input
-    const wrapper = document.querySelector('[class*="relative w-full max-w-xl"]')!;
-    fireEvent.keyDown(wrapper, { key: 'ArrowDown' });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
 
     // After navigation, second option selected
     const updatedOptions = screen.getAllByRole('option');

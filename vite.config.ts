@@ -10,6 +10,44 @@ const crossOriginIsolationHeaders = {
   'Cross-Origin-Embedder-Policy': 'require-corp',
 };
 
+export const workbox = {
+  // Precache only the application shell. Lazy routes and their large optional
+  // assets are cached when visited instead of all being downloaded on install.
+  globPatterns: ['**/*.{html,css,ico,png,svg}', 'assets/{app,vendor}-*.js'],
+  runtimeCaching: [
+    {
+      urlPattern: ({ request }: { request: Request }) =>
+        request.destination === 'script' || request.destination === 'worker',
+      handler: 'StaleWhileRevalidate' as const,
+      options: {
+        cacheName: 'script-cache',
+        expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 },
+        cacheableResponse: { statuses: [0, 200] },
+      },
+    },
+    {
+      urlPattern: ({ request }: { request: Request }) => request.destination === 'font',
+      handler: 'CacheFirst' as const,
+      options: {
+        cacheName: 'font-cache',
+        expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+        cacheableResponse: { statuses: [0, 200] },
+      },
+    },
+    {
+      urlPattern: /^.*\.wasm$/i,
+      // Vite emits content-hashed WASM filenames, so a cached response can only
+      // belong to the JavaScript bundle that requested that exact URL.
+      handler: 'CacheFirst' as const,
+      options: {
+        cacheName: 'wasm-cache',
+        expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+        cacheableResponse: { statuses: [0, 200] },
+      },
+    },
+  ],
+};
+
 // Lacuna is a static, serverless single-page application.
 export default defineConfig({
   plugins: [
@@ -18,41 +56,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: false, // Use the custom manifest in public/
-      workbox: {
-        // Precache only the application shell. Lazy routes and their large optional
-        // assets are cached when visited instead of all being downloaded on install.
-        globPatterns: ['**/*.{html,css,ico,png,svg}', 'assets/{app,vendor}-*.js'],
-        runtimeCaching: [
-          {
-            urlPattern: ({ request }) =>
-              request.destination === 'script' || request.destination === 'worker',
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'script-cache',
-              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          {
-            urlPattern: ({ request }) => request.destination === 'font',
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'font-cache',
-              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-          {
-            urlPattern: /^.*\.wasm$/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'wasm-cache',
-              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 30 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-        ],
-      },
+      workbox,
       devOptions: {
         // A development worker can cache Vite modules from different optimiser
         // generations, leaving React and its renderer with incompatible instances.
@@ -108,6 +112,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        assetFileNames: 'assets/[name]-[hash][extname]',
         // Give the eager application entry a distinct name so Workbox can precache
         // it and its vendor dependency without downloading every lazy JavaScript chunk.
         entryFileNames: 'assets/app-[hash].js',

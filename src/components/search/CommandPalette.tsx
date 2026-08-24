@@ -88,7 +88,10 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   const notes = searchData?.notes;
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
-  const trapRef = useFocusTrap(true, { autoFocusSelector: 'input' });
+  const returnFocusRef = useRef<HTMLElement | null>(
+    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+  );
+  const trapRef = useFocusTrap(true, { autoFocusSelector: 'input', returnFocus: false });
 
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -112,6 +115,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
     );
     return [...courseHits, ...cardHits].slice(0, MAX_RESULTS);
   }, [deferredQuery, cards, courses, lessons, notes]);
+  const hasVisibleResults = query.trim() !== '' && results.length > 0;
 
   // Reset and focus when the palette mounts.
   useEffect(() => {
@@ -120,6 +124,18 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
     const id = requestAnimationFrame(() => inputRef.current?.focus());
     return () => cancelAnimationFrame(id);
   }, []);
+
+  // AppShell removes `inert` from the page after this dialog unmounts. Return
+  // focus on the next frame so the browser can accept focus on the trigger.
+  useEffect(
+    () => () => {
+      const trigger = returnFocusRef.current;
+      requestAnimationFrame(() => {
+        if (trigger?.isConnected) trigger.focus();
+      });
+    },
+    [],
+  );
 
   useEffect(() => setActive(results.length > 0 ? 0 : -1), [results.length, query]);
 
@@ -173,9 +189,11 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                 ref={inputRef}
                 role="combobox"
                 aria-controls="palette-listbox"
-                aria-expanded={results.length > 0}
+                aria-expanded={hasVisibleResults}
                 aria-autocomplete="list"
-                aria-activedescendant={active >= 0 ? `palette-option-${active}` : undefined}
+                aria-activedescendant={
+                  hasVisibleResults && active >= 0 ? `palette-option-${active}` : undefined
+                }
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search courses, lessons, notes and cards…"

@@ -358,11 +358,10 @@ export function App() {
           return;
         }
 
-        // Request persistent storage so the browser does not silently evict
-        // IndexedDB data under storage pressure. Fire-and-forget: never blocks
-        // startup. `hasStorageApi()` inside guards unsupported environments
-        // (e.g. private browsing) and the `persisted()` check makes the call
-        // idempotent on every launch.
+        // Ask the browser to reduce IndexedDB eviction risk. Fire-and-forget so
+        // a slow, rejected or denied request never blocks startup. Repeating the
+        // request on later launches is deliberate because a previous denial does
+        // not mean the browser will never grant persistence.
         void requestPersistentStorage().catch(() => {});
 
         // One-shot migration: the site-wide "open lessons in edit mode" default

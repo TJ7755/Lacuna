@@ -15,6 +15,8 @@ import type { Card, CardType, ReviewLog } from './types';
 import { makeId, db } from './schema';
 import { reviewHistoryEntriesForCard } from './reviewHistory';
 import { sha256Blob } from './assets';
+import { assertZipMetadataWithinLimits } from './zipMetadata';
+import sqlWasmUrl from '../assets/sql-wasm.wasm?url';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -110,61 +112,6 @@ function assertApkgSize(size: number): void {
 }
 
 /**
- * Validate ZIP central-directory metadata before materialising entries. This
- * catches highly compressed bombs whose compressed size is below the file limit
- * but whose declared uncompressed size would exhaust memory if fully inflated.
- * Falls back silently if the buffer is not a valid ZIP — the later unzipSync
- * will surface a proper error.
- */
-function assertZipMetadataWithinLimits(buffer: ArrayBuffer): void {
-  const bytes = new Uint8Array(buffer);
-  if (bytes.length < 22) return;
-  const view = new DataView(buffer);
-  const EOCD_SIG = 0x06054b50;
-  const CD_SIG = 0x02014b50;
-  const MAX_COMMENT = 0xffff;
-  const eocdMinSize = 22;
-  const searchStart = Math.max(0, bytes.length - eocdMinSize - MAX_COMMENT);
-  let eocdOffset = -1;
-  for (let i = bytes.length - eocdMinSize; i >= searchStart; i--) {
-    if (view.getUint32(i, true) === EOCD_SIG) {
-      eocdOffset = i;
-      break;
-    }
-  }
-  if (eocdOffset === -1) return;
-  const totalEntries = view.getUint16(eocdOffset + 10, true);
-  if (totalEntries > MAX_APKG_FILE_COUNT) {
-    throw new Error(`APKG contains too many files: ${totalEntries} (max ${MAX_APKG_FILE_COUNT})`);
-  }
-  const cdSize = view.getUint32(eocdOffset + 12, true);
-  const cdOffset = view.getUint32(eocdOffset + 16, true);
-  if (cdOffset + cdSize > bytes.length) return;
-  let offset = cdOffset;
-  let totalUncompressed = 0;
-  for (let n = 0; n < totalEntries; n++) {
-    if (offset + 46 > bytes.length) break;
-    if (view.getUint32(offset, true) !== CD_SIG) break;
-    const uncompressed = view.getUint32(offset + 24, true);
-    // ZIP64 marker — treat as exceeding limit since true size is in the extra field
-    // and will be at least 4 GiB.
-    if (uncompressed === 0xffffffff) {
-      throw new Error(`APKG uncompressed size too large: exceeds 100 MB (ZIP64 entry)`);
-    }
-    totalUncompressed += uncompressed;
-    if (totalUncompressed > MAX_APKG_UNCOMPRESSED_BYTES) {
-      throw new Error(
-        `APKG uncompressed size too large: ${totalUncompressed} bytes (max 100 MB)`,
-      );
-    }
-    const fileNameLen = view.getUint16(offset + 28, true);
-    const extraLen = view.getUint16(offset + 30, true);
-    const commentLen = view.getUint16(offset + 32, true);
-    offset += 46 + fileNameLen + extraLen + commentLen;
-  }
-}
-
-/**
  * Parse an Anki .apkg file into a Lacuna import payload.
  *
  * @param file - The .apkg file from a file input.
@@ -179,9 +126,7 @@ export async function parseApkg(
   const buffer = await file.arrayBuffer();
   assertApkgSize(buffer.byteLength);
   const wasmUrl =
-    typeof location === 'undefined'
-      ? '/sql-wasm.wasm'
-      : new URL(`${import.meta.env.BASE_URL}sql-wasm.wasm`, location.href).href;
+    typeof location === 'undefined' ? sqlWasmUrl : new URL(sqlWasmUrl, location.href).href;
   if (typeof Worker === 'undefined') return parseApkgBuffer(buffer, options, wasmUrl);
 
   return new Promise<ApkgImportResult>((resolve, reject) => {
@@ -215,10 +160,13 @@ export async function parseApkg(
 export async function parseApkgBuffer(
   buffer: ArrayBuffer,
   options: ApkgParseOptions = {},
-  wasmUrl = '/sql-wasm.wasm',
+  wasmUrl = sqlWasmUrl,
 ): Promise<ApkgImportResult> {
   assertApkgSize(buffer.byteLength);
-  assertZipMetadataWithinLimits(buffer);
+  assertZipMetadataWithinLimits(buffer, {
+    maxEntries: MAX_APKG_FILE_COUNT,
+    maxUncompressedBytes: MAX_APKG_UNCOMPRESSED_BYTES,
+  });
   const zip = unzipSync(new Uint8Array(buffer));
   const fileCount = Object.keys(zip).length;
   if (fileCount > MAX_APKG_FILE_COUNT) {

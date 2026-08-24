@@ -3,7 +3,7 @@
 // stays light.
 //
 // IMPORTANT: `@open-spaced-repetition/binding-wasm32-wasi` is vendored locally
-// (see ./wasi-worker-browser.mjs and public/fsrs-binding.wasm32-wasi.wasm)
+// (see ./wasi-worker-browser.mjs and ../assets/fsrs-binding.wasm32-wasi.wasm)
 // because the upstream npm package incorrectly declares `cpu: wasm32` and fails
 // to install on x64 VMs. Do NOT import from `@open-spaced-repetition/binding`
 // (the root package) in browser code — its `browser` entry re-exports from the
@@ -11,8 +11,7 @@
 
 import { initOptimizer } from '@open-spaced-repetition/binding/dynamic-wasi';
 import WasiWorker from './wasi-worker-browser.mjs?worker';
-
-const wasmUrl = '/fsrs-binding.wasm32-wasi.wasm';
+import wasmUrl from '../assets/fsrs-binding.wasm32-wasi.wasm?url';
 
 type BindingModule = Awaited<ReturnType<typeof initOptimizer>>;
 
