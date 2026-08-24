@@ -2,6 +2,7 @@ import type { ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
 import { compileMarkScheme } from './markSchemeCompiler';
 import { numericAnswerSpecIsValid } from './numericAnswerSpec';
 import { runWorkingFixtures } from './fixtureRunner';
+import { normaliseConceptName } from '../questions/concepts';
 import { BATCH_OUTPUT_END, BATCH_OUTPUT_START } from './prompts';
 
 export interface BatchCandidate {
@@ -277,10 +278,6 @@ function parseConceptNames(raw: unknown, errors: string[]): string[] {
     byName.set(normaliseConceptName(clean), clean);
   }
   return [...byName.values()];
-}
-
-function normaliseConceptName(value: string): string {
-  return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 function parseFixtures(

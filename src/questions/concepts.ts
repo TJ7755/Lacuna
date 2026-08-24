@@ -1,6 +1,10 @@
 import type { CardType } from '../db/types';
 import type { Concept } from './types';
 
+export function normaliseConceptName(value: string): string {
+  return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 function plainText(source: string): string {
   return source
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')

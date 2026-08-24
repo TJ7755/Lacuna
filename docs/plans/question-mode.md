@@ -104,7 +104,7 @@ A fixed Question stores:
 - lesson membership, tags and suspension state.
 
 The editor refuses to save a fixed Question without a prompt, valid answer and worked explanation.
-Explanatory feedback matters most when learners must transfer what they learned to new inference
+Explanatory feedback matters most when learners must transfer what they learnt to new inference
 questions, so the explanation is content, not decorative metadata.
 ([Butler, Godbole and Marsh, 2013](https://eric.ed.gov/?id=EJ1007933))
 
@@ -172,8 +172,9 @@ schedule row.
 
 ## Selection and product flow
 
-The Questions tab lives at `/course/:courseId/questions`; authoring uses `/questions/new` and
-`/questions/:questionId/edit`; practice uses `/questions/learn`.
+The Questions tab lives at `/course/:courseId/questions`; authoring uses
+`/course/:courseId/questions/new` and `/course/:courseId/questions/:questionId/edit`; practice uses
+`/course/:courseId/questions/learn`.
 
 The default practice session contains at most ten Questions:
 

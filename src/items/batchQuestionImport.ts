@@ -5,6 +5,7 @@ import {
   getQuestion,
   listConcepts,
 } from '../questions/repository';
+import { normaliseConceptName } from '../questions/concepts';
 import type { QuestionPayload } from '../questions/types';
 
 export interface BatchFixedQuestionInput {
@@ -16,10 +17,6 @@ export interface BatchFixedQuestionInput {
   targetConceptName: string;
   prerequisiteConceptNames: string[];
   tags?: string[];
-}
-
-function normaliseConceptName(value: string): string {
-  return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 /**

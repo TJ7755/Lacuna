@@ -174,6 +174,11 @@ pixel or every operating-system surface.
 
 #### Browser and application state
 
+- A sandboxed Vite process may fail to bind even to `127.0.0.1` with `listen EPERM`; restart the
+  same command with permission to bind the local development port before treating this as an
+  application failure.
+- This browser-control runtime accepts a URL string in `waitForURL`, not a regular expression.
+  Passing a `RegExp` fails in the adapter before it observes the page.
 - IndexedDB, storage, permissions and service workers are isolated by exact origin and browser
   profile. Two tabs on one origin are not two installations. This pass used `127.0.0.1` and
   `localhost` against one server to obtain isolated recipient and source stores.
@@ -193,6 +198,11 @@ pixel or every operating-system surface.
   arbitrary delays alone are brittle.
 - HMR invalidates element handles and can preserve application data while replacing the document.
   Reload after code changes and resolve semantic locators again.
+- Large native `<select>` controls can exceed the browser adapter's internal three-second query
+  limit even when the selection itself succeeds. Confirm the selected option or resulting saved
+  state before filing a timeout as an application defect. During concurrent HMR, the primary
+  Concept selection also appeared to reset once; reproduce that on a stable head before treating it
+  as a product bug.
 - Browser-page evaluation may run in an isolated world without the page's IndexedDB or module
   loader. It is not a universal escape hatch for reading hidden application state, and database
   writes from it would bypass the very UI contract under test anyway.

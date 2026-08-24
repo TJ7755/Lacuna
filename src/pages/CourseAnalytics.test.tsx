@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
@@ -116,8 +116,9 @@ describe('CourseAnalytics', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Questions' })).toBeInTheDocument();
-    expect(screen.getByText('Novel generated accuracy')).toBeInTheDocument();
-    expect(screen.getByText('100%')).toBeInTheDocument();
+    const generatedHeadline = screen.getByText('Novel generated accuracy').parentElement;
+    expect(generatedHeadline).not.toBeNull();
+    expect(within(generatedHeadline!).getByText('100%')).toBeInTheDocument();
     expect(screen.getByText(/not included in Card readiness/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Cards' })).toBeInTheDocument();
     expect(screen.getByText('Card analytics charts')).toBeInTheDocument();

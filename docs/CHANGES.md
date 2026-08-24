@@ -16,11 +16,13 @@
 - Added the separate Question session pool: due definitions first, then unseen fixed Questions and
   generated families, interleaved by primary Concept where possible. Generated quadratic variants
   carry deterministic seeds, parameters, fingerprints, answers and explanations in immutable
-  Attempt receipts.
+  Attempt receipts. Definitions whose generator version the current client cannot resolve remain
+  portable but are excluded from practice until support exists.
 - Added Question analytics that keep fixed first-presentation/repeat evidence separate and generated
   novel-variant/repeated-variant evidence separate. Marks, versioned criteria, repeat rate and
   excluded shown/abandoned/undone/checker-withheld Attempts are reported without contaminating Card
-  readiness or calibration.
+  readiness or calibration. Retained Attempts remain visible after the final live Question is
+  deleted.
 - Added schema v24 and full-backup v11 support for Concepts, Question definitions, relationship
   aggregates and Attempts. Older backups use the pure v24 converter; replace, recovery merge, peer
   sync, tombstones, asset reachability and Course deletion cover all four stores, and merged

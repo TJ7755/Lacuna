@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { QuestionAttempt, QuestionConceptSet, QuestionDefinition } from './types';
+import { questionGeneratorRegistry } from './generators';
+import type {
+  GeneratedQuestionDefinition,
+  QuestionAttempt,
+  QuestionConceptSet,
+  QuestionDefinition,
+} from './types';
 import { selectQuestionSession } from './selection';
 
 const NOW = Date.UTC(2026, 7, 24, 12);
@@ -59,6 +65,14 @@ function question(
         explanation: 'Because.',
         explanationStatus: 'authored',
       };
+}
+
+function generatedQuestion(id: string, due: number): GeneratedQuestionDefinition {
+  const definition = question(id, { kind: 'generated', due });
+  if (definition.kind !== 'generated') {
+    throw new Error('The generated Question fixture returned a fixed Question.');
+  }
+  return definition;
 }
 
 function conceptSet(questionId: string, targetConceptId: string): QuestionConceptSet {
@@ -155,6 +169,39 @@ describe('selectQuestionSession', () => {
         now: NOW,
       }).map((item) => item.id),
     ).toEqual(['unseen']);
+  });
+
+  it('excludes generated Questions this client cannot resolve', () => {
+    const supportedGenerator = questionGeneratorRegistry.list()[0];
+    const unsupportedGeneratorVersion =
+      Math.max(
+        ...questionGeneratorRegistry
+          .list()
+          .filter((generator) => generator.key === supportedGenerator.key)
+          .map((generator) => generator.version),
+      ) + 1;
+    const unsupportedGenerator = {
+      ...generatedQuestion('unknown-generator', NOW - 3_000),
+      generatorKey: 'future-generator',
+    } satisfies QuestionDefinition;
+    const unsupportedVersion = {
+      ...generatedQuestion('future-version', NOW - 2_000),
+      generatorKey: supportedGenerator.key,
+      generatorVersion: unsupportedGeneratorVersion,
+    } satisfies QuestionDefinition;
+    const supported = {
+      ...generatedQuestion('supported', NOW - 1_000),
+      generatorKey: supportedGenerator.key,
+      generatorVersion: supportedGenerator.version,
+    } satisfies QuestionDefinition;
+    const questions = [unsupportedGenerator, unsupportedVersion, supported];
+    const sets = questions.map((item, index) => conceptSet(item.id, `concept-${index}`));
+
+    expect(
+      selectQuestionSession(questions, sets, [], { now: NOW, mode: 'all-due' }).map(
+        (item) => item.id,
+      ),
+    ).toEqual(['supported']);
   });
 
   it('rejects missing or non-primary target relationships instead of guessing', () => {

@@ -625,11 +625,11 @@ export interface ShareSummary {
   exportedAt: number;
   deckNames: string[];
   omittedImages: boolean;
-  /** v2 only: the course's name. */
+  /** Course payloads only: the course's name. */
   courseName?: string;
-  /** v2 only: number of lessons. */
+  /** Course payloads only: number of lessons. */
   lessonCount?: number;
-  /** v2 only: number of notes across all lessons. */
+  /** Course payloads only: number of notes across all lessons. */
   noteCount?: number;
   /** v3 only: number of application Questions. */
   questionCount?: number;
@@ -973,7 +973,7 @@ function unpackCard(sc: ShareCard): ParsedCard[] {
 }
 
 // ---------------------------------------------------------------------------
-// Packing a whole course (DB -> v2 payload)
+// Packing a whole course (DB -> current payload)
 // ---------------------------------------------------------------------------
 
 /**
@@ -1239,18 +1239,18 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayloadV3
   };
 }
 
-/** Build a single v2 share code for the given course. */
+/** Build a share code for the given course. */
 export async function buildCourseShareCode(courseId: string): Promise<string> {
   return encodeShare(await buildCourseSharePayload(courseId));
 }
 
-/** Build a QR-code-optimised v2 share code for the given course. */
+/** Build a QR-code-optimised share code for the given course. */
 export async function buildCourseShareCodeQR(courseId: string): Promise<string> {
   return encodeShareQR(await buildCourseSharePayload(courseId));
 }
 
 // ---------------------------------------------------------------------------
-// Importing (code -> DB). v2 payloads recreate a course directly. v1 deck
+// Importing (code -> DB). Course payloads recreate a course directly. v1 deck
 // codes are parsed then refused.
 // ---------------------------------------------------------------------------
 
@@ -1683,7 +1683,7 @@ async function importCourseSharePayload(
 
 /**
  * Import a decoded share payload into the course model. Imported content is always
- * new (sharing never overwrites existing data). A v2 payload recreates its course
+ * new (sharing never overwrites existing data). A course payload recreates its course
  * directly. A v1 deck payload is refused. All FSRS/review state starts clean for
  * the new owner.
  */

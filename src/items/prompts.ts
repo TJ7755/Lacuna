@@ -46,7 +46,7 @@ export function buildMarkSchemeDraftPrompt(question: string): string {
 export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): string {
   const maxItems = input.maxItems ? Math.max(1, Math.trunc(input.maxItems) || 1) : undefined;
   const generationConstraints = [
-    'Give every Question exactly one primary target Concept: the skill principally practised by a successful answer.',
+    'Give every Question exactly one primary target Concept: the Concept principally practised by a successful answer.',
     'List any prerequisite Concepts separately. Never repeat the target as a prerequisite.',
     maxItems
       ? `Requested maximum items: ${maxItems}.`

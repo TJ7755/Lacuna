@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../db/schema';
 import { createCard, createCourse } from '../db/repository';
+import { questionGeneratorRegistry } from './generators';
 import {
   abandonQuestionAttempt,
   answerQuestionAttempt,
@@ -164,6 +165,33 @@ describe('Question repository', () => {
     expect(corrected.grade).toBe(1);
   });
 
+  it('keeps corrections out of the immutable first submission', async () => {
+    const { question } = await fixture();
+    const shown = await startQuestionAttempt({
+      questionId: question.id,
+      sessionId: 'correction-boundary-session',
+      now: 1_000,
+    });
+    const input = {
+      attemptId: shown.id,
+      submittedAnswer: '2',
+      marksEarned: 0,
+      marksAvailable: 1,
+      // @ts-expect-error Corrections must enter through recordQuestionCorrection.
+      correction: {
+        submittedAt: 2_000,
+        submittedAnswer: '3',
+        marksEarned: 1,
+        marksAvailable: 1,
+      },
+      now: 2_000,
+    } satisfies Parameters<typeof answerQuestionAttempt>[0];
+
+    const answered = await answerQuestionAttempt(input);
+
+    expect(answered.attempt.correction).toBeUndefined();
+  });
+
   it('withholds scheduling for disputed checker evidence', async () => {
     const { question } = await fixture();
     const shown = await startQuestionAttempt({
@@ -191,6 +219,41 @@ describe('Question repository', () => {
     expect(result.attempt.grade).toBeUndefined();
     expect(result.attempt.scheduleEffect).toEqual({ kind: 'none' });
     expect(result.question.reps).toBe(0);
+  });
+
+  it.each([
+    { label: 'fractional earned marks', marksEarned: 0.5, marksAvailable: 1 },
+    { label: 'fractional available marks', marksEarned: 0, marksAvailable: 1.5 },
+    { label: 'no available marks', marksEarned: 0, marksAvailable: 0 },
+    { label: 'negative earned marks', marksEarned: -1, marksAvailable: 1 },
+    { label: 'earned marks above the available total', marksEarned: 2, marksAvailable: 1 },
+  ])('rejects $label before recording the first submission', async (marks) => {
+    const { question } = await fixture();
+    const shown = await startQuestionAttempt({
+      questionId: question.id,
+      sessionId: `invalid-marks:${marks.label}`,
+      now: 1_000,
+    });
+
+    await expect(
+      answerQuestionAttempt({
+        attemptId: shown.id,
+        submittedAnswer: 'invalid',
+        marksEarned: marks.marksEarned,
+        marksAvailable: marks.marksAvailable,
+        now: 2_000,
+      }),
+    ).rejects.toThrow('Question submission marks are invalid.');
+
+    await expect(
+      answerQuestionAttempt({
+        attemptId: shown.id,
+        submittedAnswer: '3',
+        marksEarned: 1,
+        marksAvailable: 1,
+        now: 2_500,
+      }),
+    ).resolves.toMatchObject({ recorded: true });
   });
 
   it('retains the schedule epoch for presentation edits and resets it for semantic edits', async () => {
@@ -349,5 +412,66 @@ describe('Question repository', () => {
 
     await deleteQuestion(question.id);
     await expect(deleteConcept(concept.id)).resolves.toBeUndefined();
+  });
+
+  it('rejects generated receipts that differ from deterministic regeneration', async () => {
+    const course = await createCourse('Quadratics');
+    const concept = await createConcept(course.id, 'Solve quadratic equations');
+    const configuration = {
+      minimumRootMagnitude: 1,
+      maximumRootMagnitude: 2,
+      maximumLeadingCoefficient: 1,
+      allowRepeatedRoots: false,
+    };
+    const question = await createGeneratedQuestion({
+      courseId: course.id,
+      name: 'Quadratic family',
+      generatorKey: 'integer-root-quadratic',
+      generatorVersion: 1,
+      generatorConfig: configuration,
+      targetConceptId: concept.id,
+    });
+    const resolved = questionGeneratorRegistry.resolve({
+      generatorKey: question.generatorKey,
+      generatorVersion: question.generatorVersion,
+      configuration: question.generatorConfig,
+      seed: 'repository-receipt-seed',
+    });
+    const forgedReceipts = [
+      { ...resolved, renderedPrompt: `${resolved.renderedPrompt} Forged.` },
+      { ...resolved, renderedExplanation: `${resolved.renderedExplanation} Forged.` },
+      {
+        ...resolved,
+        resolvedPayload: {
+          v: 1,
+          kind: 'numeric',
+          answer: { kind: 'exact', value: '999' },
+        } as const,
+      },
+      { ...resolved, parameters: { ...resolved.parameters, root1: 999 } },
+      { ...resolved, generatorFingerprint: `${resolved.generatorFingerprint}:forged` },
+    ];
+
+    for (const [index, instance] of forgedReceipts.entries()) {
+      await expect(
+        startQuestionAttempt({
+          questionId: question.id,
+          sessionId: 'generated-receipt-session',
+          attemptId: `forged-receipt-${index}`,
+          instance,
+          now: 1_000 + index,
+        }),
+      ).rejects.toThrow('The generated Question receipt does not match its definition.');
+    }
+
+    await expect(
+      startQuestionAttempt({
+        questionId: question.id,
+        sessionId: 'generated-receipt-session',
+        attemptId: 'authentic-receipt',
+        instance: resolved,
+        now: 2_000,
+      }),
+    ).resolves.toMatchObject({ renderedPrompt: resolved.renderedPrompt });
   });
 });

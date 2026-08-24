@@ -10,14 +10,31 @@ function evidenceLabel(metric: QuestionPerformanceMetric): string {
 }
 
 export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAnalytics }) {
-  const weakestCriteria = [...analytics.criteria]
-    .sort(
-      (left, right) =>
-        left.markRate - right.markRate ||
-        right.opportunityCount - left.opportunityCount ||
-        left.id.localeCompare(right.id),
-    )
-    .slice(0, 3);
+  const criteria = [...analytics.criteria].sort(
+    (left, right) =>
+      left.markRate - right.markRate ||
+      right.opportunityCount - left.opportunityCount ||
+      left.id.localeCompare(right.id),
+  );
+  const performanceMetrics = [
+    analytics.fixed.firstPresentation,
+    analytics.fixed.repeat,
+    analytics.generated.novel,
+    analytics.generated.repeated,
+  ];
+  const marksEarned = performanceMetrics.reduce((total, metric) => total + metric.marksEarned, 0);
+  const marksAvailable = performanceMetrics.reduce(
+    (total, metric) => total + metric.marksAvailable,
+    0,
+  );
+  const excludedAttemptCount = Object.values(analytics.excluded).reduce(
+    (total, count) => total + count,
+    0,
+  );
+  const hasRetainedEvidence =
+    performanceMetrics.some((metric) => metric.attemptCount > 0) ||
+    analytics.generated.presentationCount > 0 ||
+    excludedAttemptCount > 0;
 
   return (
     <section aria-labelledby="question-analytics-heading" className="mb-10">
@@ -33,7 +50,7 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
         </p>
       </div>
 
-      {analytics.inventory.total === 0 ? (
+      {analytics.inventory.total === 0 && !hasRetainedEvidence ? (
         <div className="rounded-2xl border border-dashed border-line-strong px-6 py-10 text-center text-sm text-ink-soft">
           Create and practise Questions to see application evidence here.
         </div>
@@ -63,27 +80,20 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
             </div>
           </div>
 
-          <div className="grid gap-px bg-line md:grid-cols-3">
+          <div className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-4">
             <MetricCell
               label="Fixed · first presentation"
               metric={analytics.fixed.firstPresentation}
             />
             <MetricCell label="Fixed · repeats" metric={analytics.fixed.repeat} />
-            <div className="bg-surface p-5">
-              <p className="text-xs uppercase tracking-[0.13em] text-ink-faint">
-                Generated repeats
-              </p>
-              <p className="mt-2 font-display text-3xl text-ink">
-                {percent(analytics.generated.repeatRate)}
-              </p>
-              <p className="mt-1 text-xs text-ink-faint">
-                {analytics.generated.repeatedPresentationCount} of{' '}
-                {analytics.generated.presentationCount} presentations
-              </p>
-            </div>
+            <MetricCell label="Generated · novel variants" metric={analytics.generated.novel} />
+            <MetricCell
+              label="Generated · repeated variants"
+              metric={analytics.generated.repeated}
+            />
           </div>
 
-          <div className="grid gap-6 border-t border-line p-5 md:grid-cols-2 md:p-6">
+          <div className="grid gap-6 border-t border-line p-5 sm:grid-cols-2 xl:grid-cols-4 md:p-6">
             <div>
               <p className="text-xs uppercase tracking-[0.13em] text-ink-faint">
                 Fixed exposure coverage
@@ -97,6 +107,25 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
               </p>
             </div>
             <div>
+              <p className="text-xs uppercase tracking-[0.13em] text-ink-faint">
+                Generated repeat rate
+              </p>
+              <p className="mt-2 font-display text-2xl text-ink">
+                {percent(analytics.generated.repeatRate)}
+              </p>
+              <p className="mt-1 text-xs text-ink-faint">
+                {analytics.generated.repeatedPresentationCount} of{' '}
+                {analytics.generated.presentationCount} presentations
+              </p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.13em] text-ink-faint">Recorded marks</p>
+              <p className="mt-2 font-display text-2xl text-ink">
+                {marksEarned} / {marksAvailable}
+              </p>
+              <p className="mt-1 text-xs text-ink-faint">Across active scored submissions</p>
+            </div>
+            <div>
               <p className="text-xs uppercase tracking-[0.13em] text-ink-faint">Checker disputes</p>
               <p className="mt-2 font-display text-2xl text-ink">{analytics.checkerDisputeCount}</p>
               <p className="mt-1 text-xs text-ink-faint">
@@ -105,13 +134,26 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
             </div>
           </div>
 
-          {weakestCriteria.length > 0 && (
+          <div className="border-t border-line p-5 md:p-6">
+            <p className="mb-3 text-xs uppercase tracking-[0.13em] text-ink-faint">
+              Excluded evidence
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <InventoryStat label="Shown" value={analytics.excluded.shown} />
+              <InventoryStat label="Abandoned" value={analytics.excluded.abandoned} />
+              <InventoryStat label="Undone" value={analytics.excluded.undone} />
+              <InventoryStat label="Checker withheld" value={analytics.excluded.checkerWithheld} />
+              <InventoryStat label="Unscored" value={analytics.excluded.unscored} />
+            </div>
+          </div>
+
+          {criteria.length > 0 && (
             <div className="border-t border-line p-5 md:p-6">
               <p className="mb-3 text-xs uppercase tracking-[0.13em] text-ink-faint">
-                Criteria needing attention
+                Criterion performance
               </p>
               <div className="grid gap-2 md:grid-cols-3">
-                {weakestCriteria.map((criterion) => (
+                {criteria.map((criterion) => (
                   <div key={criterion.id} className="rounded-xl bg-surface-raised px-4 py-3">
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-sm font-medium text-ink">{criterion.label}</p>
@@ -122,6 +164,9 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
                     <p className="mt-2 text-sm text-ink-soft">
                       {percent(criterion.markRate)} of marks across {criterion.opportunityCount}{' '}
                       {criterion.opportunityCount === 1 ? 'opportunity' : 'opportunities'}
+                    </p>
+                    <p className="mt-1 truncate font-mono text-[11px] text-ink-faint">
+                      {criterion.questionId}
                     </p>
                   </div>
                 ))}
@@ -152,6 +197,9 @@ function MetricCell({ label, metric }: { label: string; metric: QuestionPerforma
         <p className="font-mono text-xs text-ink-faint">{percent(metric.markRate)} marks</p>
       </div>
       <p className="mt-1 text-xs text-ink-faint">{evidenceLabel(metric)}</p>
+      <p className="mt-1 font-mono text-xs text-ink-faint">
+        {metric.marksEarned} / {metric.marksAvailable} marks
+      </p>
     </div>
   );
 }

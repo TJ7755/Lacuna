@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CourseQuestionData } from '../components/questions/useQuestionData';
 import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
@@ -116,6 +116,7 @@ describe('QuestionLearnMode', () => {
     mocks.start.mockImplementation((input: { sessionId: string; attemptId: string }) =>
       Promise.resolve(shownAttempt(input)),
     );
+    mocks.abandon.mockResolvedValue(undefined);
     mocks.answer.mockImplementation(
       (input: {
         attemptId: string;
@@ -168,5 +169,46 @@ describe('QuestionLearnMode', () => {
     );
     expect(await screen.findByText('Full marks')).toBeInTheDocument();
     expect(screen.getByText(/Adding two and two gives/)).toBeInTheDocument();
+  });
+
+  it('abandons the active presentation when browser navigation unmounts the session', async () => {
+    function BrowserBack() {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate(-1)}>Browser back</button>;
+    }
+
+    render(
+      <MemoryRouter
+        initialEntries={['/previous', '/course/course-1/questions/learn']}
+        initialIndex={1}
+      >
+        <BrowserBack />
+        <Routes>
+          <Route path="/previous" element={<p>Previous page</p>} />
+          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Browser back' }));
+
+    expect(await screen.findByText('Previous page')).toBeInTheDocument();
+    await waitFor(() => expect(mocks.abandon).toHaveBeenCalledWith(expect.any(String)));
+  });
+
+  it('abandons the active presentation when the page is hidden for unload', async () => {
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/questions/learn']}>
+        <Routes>
+          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
+    window.dispatchEvent(new Event('pagehide'));
+
+    await waitFor(() => expect(mocks.abandon).toHaveBeenCalledWith(expect.any(String)));
   });
 });

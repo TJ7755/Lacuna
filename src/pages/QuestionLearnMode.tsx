@@ -33,7 +33,26 @@ export function QuestionLearnMode() {
   const [questionIds, setQuestionIds] = useState<string[] | null>(null);
   const [index, setIndex] = useState(0);
   const [attempt, setAttempt] = useState<QuestionAttempt | null>(null);
+  const activeAttemptRef = useRef<QuestionAttempt | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    activeAttemptRef.current = attempt;
+  }, [attempt]);
+
+  useEffect(() => {
+    const abandonActivePresentation = () => {
+      const active = activeAttemptRef.current;
+      if (active?.status === 'shown') {
+        void abandonQuestionAttempt(active.id).catch(() => undefined);
+      }
+    };
+    window.addEventListener('pagehide', abandonActivePresentation);
+    return () => {
+      window.removeEventListener('pagehide', abandonActivePresentation);
+      abandonActivePresentation();
+    };
+  }, []);
 
   useEffect(() => {
     if (!data || questionIds !== null) return;
@@ -138,7 +157,10 @@ export function QuestionLearnMode() {
   };
 
   const exit = async () => {
-    if (attempt?.status === 'shown') await abandonQuestionAttempt(attempt.id);
+    if (attempt?.status === 'shown') {
+      await abandonQuestionAttempt(attempt.id);
+      activeAttemptRef.current = null;
+    }
     navigate(`/course/${courseId}/questions`);
   };
 

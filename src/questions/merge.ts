@@ -165,16 +165,16 @@ function statusRank(status: QuestionAttempt['status']): number {
   return 0;
 }
 
-function laterCorrection(
+function mergeCorrection(
   left: QuestionAttempt['correction'],
   right: QuestionAttempt['correction'],
 ): QuestionAttempt['correction'] {
   if (!left) return right;
   if (!right) return left;
-  if (left.submittedAt !== right.submittedAt) {
-    return left.submittedAt > right.submittedAt ? left : right;
+  if (canonicalJson(left) !== canonicalJson(right)) {
+    throw new Error('Question attempt has conflicting immutable correction evidence.');
   }
-  return canonicalJson(left) >= canonicalJson(right) ? left : right;
+  return left;
 }
 
 export function mergeQuestionAttempt(
@@ -200,7 +200,7 @@ export function mergeQuestionAttempt(
   else winner = canonicalJson(left) >= canonicalJson(right) ? left : right;
 
   const undoneAt = Math.max(left.undoneAt ?? -Infinity, right.undoneAt ?? -Infinity);
-  const correction = laterCorrection(left.correction, right.correction);
+  const correction = mergeCorrection(left.correction, right.correction);
   return {
     ...winner,
     updatedAt: Math.max(left.updatedAt, right.updatedAt),

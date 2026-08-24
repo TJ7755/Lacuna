@@ -1,3 +1,4 @@
+import { questionGeneratorRegistry } from './generators';
 import type { QuestionAttempt, QuestionConceptSet, QuestionDefinition } from './types';
 
 export interface QuestionSelectionOptions {
@@ -74,7 +75,13 @@ export function selectQuestionSession(
   const exposures = questionExposureSummaries(attempts);
 
   const ranked = questions
-    .filter((question) => !question.suspended)
+    .filter(
+      (question) =>
+        !question.suspended &&
+        (question.kind === 'fixed' ||
+          questionGeneratorRegistry.describe(question.generatorKey, question.generatorVersion) !==
+            undefined),
+    )
     .map((question): RankedQuestion => {
       const set = setsByQuestion.get(question.id);
       if (!set) throw new Error(`Question ${question.id} has no target concept relationship.`);
