@@ -227,7 +227,15 @@ function createWindow(): void {
     return { action: 'deny' };
   });
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    const isAllowed = url.startsWith('app://') || (isDev && url.startsWith(VITE_DEV_URL));
+    const isAllowed = (() => {
+      if (url.startsWith('app://')) return true;
+      if (!isDev) return false;
+      try {
+        return new URL(url).origin === new URL(VITE_DEV_URL).origin;
+      } catch {
+        return false;
+      }
+    })();
     if (!isAllowed) {
       event.preventDefault();
       if (isSafeExternalUrl(url)) void shell.openExternal(url);

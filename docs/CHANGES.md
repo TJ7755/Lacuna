@@ -17,7 +17,7 @@ Six concurrent audit streams examined scheduling science, grading accuracy, anal
 
 - `docs/SPEC.md` now names the frozen routed model `half-life-logistic-v3-routed` (coefficients
   unchanged from v1) instead of the stale `half-life-logistic-v1` / `half-life-logistic-v1-lag64-count8`
-  at `docs/SPEC.md:531`, `1038` and `1303`. Each site now documents the routed handover:
+  at `docs/SPEC.md:531`, `1044-1048` and `1313-1320`. Each site now documents the routed handover:
   success/no-outcome/first-review 21,600→86,400 s (6 h→24 h), failure 345,600→432,000 s (96 h→120 h),
   FSRS-6 only from 604,800 s (7 days), per `src/fsrs/halfLifeLogisticModel.ts:27` and
   `tooling/short-term-memory/coefficients/half-life-logistic-v3.json:53`. A note records that v1
@@ -25,7 +25,7 @@ Six concurrent audit streams examined scheduling science, grading accuracy, anal
   `ROUTING_DECISION_RULE.md` / `tooling/short-term-memory/BENCHMARK.md`, and that the no-regression
   gate passes only against the fractional-day FSRS-6 the runtime uses (floored FSRS-6 is stronger by
   ~0.001–0.003 at 2–7 d).
-- `docs/SPEC.md:1119` `EXPECTED_MARKS_EPSILON` corrected from `1e-3` to `5e-3` to match
+- `docs/SPEC.md:1129` `EXPECTED_MARKS_EPSILON` corrected from `1e-3` to `5e-3` to match
   `src/fsrs/objective.ts:35`.
 - Verified `docs/scientific-assessment.md` needs no change (already correct).
 

@@ -291,4 +291,23 @@ describe('parseApkg zip bomb guards', () => {
     await expect(parseApkgBuffer(buf)).rejects.toThrow(/uncompressed size too large/);
     expect(fflate.unzipSync).toHaveBeenCalled();
   });
+
+  it('rejects highly compressed bomb via ZIP central-directory metadata', async () => {
+    const spy = vi.spyOn(fflate, 'unzipSync');
+    // 10 × 11 MiB zeros compress to a few kilobytes but declare 110 MiB uncompressed.
+    const chunk = new Uint8Array(11 * 1024 * 1024);
+    const entries: Record<string, Uint8Array> = {};
+    for (let i = 0; i < 10; i++) entries[`bomb-${i}.bin`] = chunk;
+    const zipped = fflate.zipSync(entries, { level: 9 });
+    expect(zipped.length).toBeLessThan(MAX_APKG_SIZE_BYTES);
+    const buf = zipped.buffer.slice(
+      zipped.byteOffset,
+      zipped.byteOffset + zipped.byteLength,
+    ) as ArrayBuffer;
+
+    await expect(parseApkgBuffer(buf)).rejects.toThrow(/uncompressed size too large/);
+    // Central-directory check should reject before any entry is inflated.
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
 });
