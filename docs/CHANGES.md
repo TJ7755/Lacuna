@@ -3,15 +3,18 @@
 ## Unreleased — Sync remembers this device
 
 - Pairing, joining and every successful passphrase unlock now persist the unwrapped channel key
-  and write token as `SyncState.remembered` (`src/sync/pairing.ts:280`, `src/db/types.ts:1074`).
-  `installSyncTriggers` restores that copy at install (`src/sync/triggers.ts:36`), so automatic
+  and write token as `SyncState.remembered` through the pairing persistence helpers.
+  `installSyncTriggers` restores that copy at install, so automatic
   focus/session-end sync and a manual `Sync now` work straight after a page reload without the
   recovery passphrase.
 - The Settings `Lock` action clears only the remembered copy via `forgetRememberedCredentials`
-  (`src/sync/pairing.ts:249`) and keeps the wrapped recovery keybag, returning the device to the
+  and keeps the wrapped recovery keybag, returning the device to the
   locked behaviour until the passphrase is next used. The unlock banner copy reflects the new
   persistent behaviour, and the stale "automatic … triggers arrive in the next phase" text in the
   unpaired state was corrected to describe the delivered P7 triggers.
+- Sync-state updates are serialised so an automatic sync cannot restore credentials after Lock;
+  failed storage reads keep the device visibly unlocked and report the failure. Remembered custom
+  relay origins are restored into the web CSP before automatic sync resumes.
 
 ## Unreleased — Sync ease: public mint, in-session unlock, copy link, auto triggers, dashboard status
 

@@ -25,14 +25,18 @@ function hexToBytes(value: string): Uint8Array {
 import type { SyncResult } from './cycle';
 import type { RelayProvider } from './relay';
 
-const { readSyncStateMock, writeSyncStateMock, syncCycleMock } = vi.hoisted(() => ({
-  readSyncStateMock: vi.fn(),
-  writeSyncStateMock: vi.fn(),
-  syncCycleMock: vi.fn(),
-}));
+const { readSyncStateMock, updateSyncStateMock, writeSyncStateMock, syncCycleMock } = vi.hoisted(
+  () => ({
+    readSyncStateMock: vi.fn(),
+    updateSyncStateMock: vi.fn(),
+    writeSyncStateMock: vi.fn(),
+    syncCycleMock: vi.fn(),
+  }),
+);
 
 vi.mock('../db/mutationStamp', () => ({
   readSyncState: readSyncStateMock,
+  updateSyncState: updateSyncStateMock,
   writeSyncState: writeSyncStateMock,
   clearSyncState: vi.fn(),
 }));
@@ -78,6 +82,11 @@ function response(status: number, body?: unknown, headers?: HeadersInit): Respon
 
 beforeEach(() => {
   readSyncStateMock.mockReset();
+  updateSyncStateMock.mockReset().mockImplementation(async (update) => {
+    const current = await readSyncStateMock();
+    const next = update(current);
+    if (next !== undefined) await writeSyncStateMock(next);
+  });
   writeSyncStateMock.mockReset().mockResolvedValue(undefined);
   syncCycleMock.mockReset().mockResolvedValue(syncResult);
   readSyncStateMock.mockImplementation(async () => {
@@ -265,6 +274,14 @@ describe('remembered credentials', () => {
     expect(writeSyncStateMock).not.toHaveBeenCalled();
   });
 
+  it('reports a storage read failure instead of pretending the device is locked', async () => {
+    readSyncStateMock.mockRejectedValue(new Error('storage unavailable'));
+
+    await expect(forgetRememberedCredentials()).rejects.toThrow('storage unavailable');
+
+    expect(writeSyncStateMock).not.toHaveBeenCalled();
+  });
+
   it('unlocking with the passphrase re-remembers the credentials', async () => {
     const keybag = await wrapKeybag(CHANNEL_KEY, PASSPHRASE, WRITE_TOKEN, {
       channelId: CHANNEL_ID,
@@ -286,5 +303,20 @@ describe('remembered credentials', () => {
         remembered: { channelKeyHex: keyHex, writeToken: WRITE_TOKEN },
       }),
     );
+  });
+
+  it('reports a storage failure when an unlocked credential copy cannot be remembered', async () => {
+    const keybag = await wrapKeybag(CHANNEL_KEY, PASSPHRASE, WRITE_TOKEN, {
+      channelId: CHANNEL_ID,
+    });
+    const state: SyncState = {
+      relayUrl: DEFAULT_RELAY_URL,
+      channelId: CHANNEL_ID,
+      wrappedKeyMaterial: Array.from(keybag, (byte) => byte.toString(16).padStart(2, '0')).join(''),
+      lastError: null,
+    };
+    readSyncStateMock.mockRejectedValue(new Error('storage unavailable'));
+
+    await expect(unlockSyncState(state, PASSPHRASE)).rejects.toThrow('storage unavailable');
   });
 });

@@ -17,6 +17,8 @@ const {
   encodePairingCodeMock,
   readRememberedCredentialsMock,
   forgetRememberedCredentialsMock,
+  publishUnlockedCredentialsMock,
+  clearUnlockedCredentialsMock,
   notify,
 } = vi.hoisted(() => ({
   readSyncStateMock: vi.fn(),
@@ -32,6 +34,8 @@ const {
   encodePairingCodeMock: vi.fn(),
   readRememberedCredentialsMock: vi.fn(),
   forgetRememberedCredentialsMock: vi.fn(),
+  publishUnlockedCredentialsMock: vi.fn(),
+  clearUnlockedCredentialsMock: vi.fn(),
   notify: vi.fn(),
 }));
 
@@ -60,6 +64,11 @@ vi.mock('../../sync/pairing', () => ({
   unpair: unpairMock,
   unlockSyncState: unlockSyncStateMock,
   validateRecoveryPassphrase: validateRecoveryPassphraseMock,
+}));
+
+vi.mock('../../sync/triggers', () => ({
+  publishUnlockedCredentials: publishUnlockedCredentialsMock,
+  clearUnlockedCredentials: clearUnlockedCredentialsMock,
 }));
 
 const state: SyncState = {
@@ -107,6 +116,8 @@ beforeEach(() => {
   syncWithCredentialsMock.mockReset().mockResolvedValue(session);
   readRememberedCredentialsMock.mockReset().mockReturnValue(null);
   forgetRememberedCredentialsMock.mockReset().mockResolvedValue(undefined);
+  publishUnlockedCredentialsMock.mockReset();
+  clearUnlockedCredentialsMock.mockReset();
   validateRecoveryPassphraseMock
     .mockReset()
     .mockImplementation((value: string) =>
@@ -178,9 +189,7 @@ describe('SyncSection', () => {
     readRememberedCredentialsMock.mockReturnValue(credentials);
     render(<SyncSection />);
     expect(await screen.findByText('Paired to a sync channel')).toBeInTheDocument();
-    expect(
-      screen.getByText(/this device remembers its key/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/this device remembers its key/)).toBeInTheDocument();
     expect(screen.queryByLabelText('Recovery passphrase')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Sync now' }));
@@ -199,9 +208,26 @@ describe('SyncSection', () => {
 
     expect(await screen.findByLabelText('Recovery passphrase')).toBeInTheDocument();
     expect(forgetRememberedCredentialsMock).toHaveBeenCalledTimes(1);
+    expect(clearUnlockedCredentialsMock).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps unpairing local and does not purge the shared channel', async () => {    readSyncStateMock.mockResolvedValue(state);
+  it('stays unlocked and reports the error when Lock cannot clear persisted credentials', async () => {
+    readSyncStateMock.mockResolvedValue(state);
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    forgetRememberedCredentialsMock.mockRejectedValue(new Error('storage unavailable'));
+    render(<SyncSection />);
+    await screen.findByText(/this device remembers its key/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
+
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('storage unavailable', 'negative'));
+    expect(screen.getByText(/this device remembers its key/)).toBeInTheDocument();
+    expect(clearUnlockedCredentialsMock).toHaveBeenCalledTimes(1);
+    expect(publishUnlockedCredentialsMock).toHaveBeenLastCalledWith(credentials);
+  });
+
+  it('keeps unpairing local and does not purge the shared channel', async () => {
+    readSyncStateMock.mockResolvedValue(state);
     render(<SyncSection />);
     await screen.findByText('Paired to a sync channel');
 

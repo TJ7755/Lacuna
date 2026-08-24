@@ -115,8 +115,10 @@ the unwrapped credentials as `SyncState.remembered`; the triggers restore that c
 sync works across page reloads without the passphrase. The Settings Lock action clears only the
 remembered copy — the wrapped recovery keybag stays for pairing fresh devices — returning the
 device to the locked behaviour until the passphrase is used again. The study database itself is
-plaintext on device, so remembering the key does not weaken this device's security posture; it is
-a convenience default, not a new trust boundary.
+plaintext on device, so remembering the key is the convenience default on a trusted personal
+device. While remembered credentials exist, an IndexedDB reader can also decrypt newer peer data
+and write or purge the relay channel. Lock removes that capability copy; the remaining wrapped
+keybag protects the channel key and write token from an IndexedDB reader without the passphrase.
 
 The relay's opaque ETag is a compare-and-swap generation, not a freshness clock. No phase claims
 rollback protection against replay of an older valid ciphertext. Outgoing encrypted state is gated

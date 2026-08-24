@@ -1085,7 +1085,8 @@ export interface RememberedSyncCredentials {
 /**
  * Local sync-channel bookkeeping. Stored under `appState` key `syncState`.
  * Absent until a device is paired; the P6 Settings flow owns pairing and
- * stores only the local recovery copy and relay origin here.
+ * stores the relay origin, wrapped recovery copy and optional remembered
+ * credentials here.
  */
 export interface SyncState {
   /** Relay origin used by this device to reach the channel. */

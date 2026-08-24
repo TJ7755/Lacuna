@@ -9,6 +9,7 @@ import {
   recordTombstones,
   readSyncState,
   stampUpdatedAt,
+  updateSyncState,
   writeSyncState,
 } from './mutationStamp';
 
@@ -74,5 +75,33 @@ describe('mutationStamp', () => {
     });
     await clearSyncState();
     expect(await readSyncState()).toBeUndefined();
+  });
+
+  it('serialises concurrent sync-state updates without restoring removed credentials', async () => {
+    await writeSyncState({
+      relayUrl: 'https://relay.example',
+      channelId: 'ch-1',
+      remembered: { channelKeyHex: 'aa'.repeat(32), writeToken: 'bb'.repeat(32) },
+    });
+
+    const recordSuccess = updateSyncState((current) => ({
+      ...current,
+      lastSuccessfulSyncAt: 100,
+      lastPushedGeneration: 'generation-1',
+    }));
+    const lock = updateSyncState((current) => {
+      if (!current) return current;
+      const { remembered: _omitted, ...locked } = current;
+      return locked;
+    });
+
+    await Promise.all([recordSuccess, lock]);
+
+    expect(await readSyncState()).toEqual({
+      relayUrl: 'https://relay.example',
+      channelId: 'ch-1',
+      lastSuccessfulSyncAt: 100,
+      lastPushedGeneration: 'generation-1',
+    });
   });
 });

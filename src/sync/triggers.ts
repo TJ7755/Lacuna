@@ -5,21 +5,20 @@
 // them on install so a fresh page load syncs without prompting.
 
 import { readSyncState } from '../db/mutationStamp';
-import {
-  readRememberedCredentials,
-  syncWithCredentials,
-  type SyncCredentials,
-} from './pairing';
+import { allowRelayConnect } from './csp';
+import { readRememberedCredentials, syncWithCredentials, type SyncCredentials } from './pairing';
 
 let currentCredentials: SyncCredentials | null = null;
 let installed = false;
 let debounceTimer: number | null = null;
 let lastTriggerAt = 0;
+let credentialGeneration = 0;
 
 const DEBOUNCE_MS = 1500;
 const MIN_INTERVAL_MS = 5000;
 
 export function publishUnlockedCredentials(credentials: SyncCredentials | null): void {
+  credentialGeneration += 1;
   currentCredentials = credentials;
 }
 
@@ -28,14 +27,17 @@ export function getUnlockedCredentials(): SyncCredentials | null {
 }
 
 export function clearUnlockedCredentials(): void {
-  currentCredentials = null;
+  publishUnlockedCredentials(null);
 }
 
 /** Publish this device's remembered credentials, if any. Called once per install. */
 async function restoreRememberedCredentials(): Promise<void> {
+  const generation = credentialGeneration;
   const state = await readSyncState().catch(() => null);
   const credentials = readRememberedCredentials(state ?? undefined);
-  if (credentials) publishUnlockedCredentials(credentials);
+  if (!credentials || credentialGeneration !== generation) return;
+  allowRelayConnect(credentials.relayUrl);
+  publishUnlockedCredentials(credentials);
 }
 
 async function triggerSync(reason: string): Promise<void> {
@@ -94,6 +96,7 @@ export function installSyncTriggers(): () => void {
 
 export function __resetTriggersForTests(): void {
   currentCredentials = null;
+  credentialGeneration += 1;
   installed = false;
   lastTriggerAt = 0;
   if (debounceTimer !== null) {

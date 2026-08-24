@@ -26,7 +26,7 @@ import {
   type SyncCredentials,
 } from '../../sync/pairing';
 import { allowRelayConnect } from '../../sync/csp';
-import { publishUnlockedCredentials } from '../../sync/triggers';
+import { clearUnlockedCredentials, publishUnlockedCredentials } from '../../sync/triggers';
 import { SyncField } from './SyncField';
 import { SyncPairingFlow, type SyncPairingBusy, type SyncPairingMode } from './SyncPairingFlow';
 
@@ -283,11 +283,13 @@ export function SyncSection() {
   }
 
   async function handleLock() {
+    clearUnlockedCredentials();
     try {
       await forgetRememberedCredentials();
       setUnlocked(null);
       setActionPassphrase('');
     } catch (error) {
+      publishUnlockedCredentials(unlocked);
       notify(errorMessage(error, 'Could not lock this device.'), 'negative');
     }
   }
@@ -372,7 +374,12 @@ export function SyncSection() {
               <p className="text-sm text-positive">
                 Unlocked — this device remembers its key, so sync works without the passphrase.
               </p>
-              <Button variant="ghost" size="sm" onClick={() => void handleLock()} disabled={busy !== null}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void handleLock()}
+                disabled={busy !== null}
+              >
                 Lock
               </Button>
             </div>

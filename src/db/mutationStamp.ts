@@ -96,6 +96,17 @@ export async function writeSyncState(state: SyncState): Promise<void> {
   await db.appState.put({ key: SYNC_STATE_KEY, value: state });
 }
 
+/** Serialise a read-modify-write of syncState so concurrent updates cannot restore stale fields. */
+export async function updateSyncState(
+  update: (current: SyncState | undefined) => SyncState | undefined,
+): Promise<void> {
+  await db.transaction('rw', db.appState, async () => {
+    const current = await readSyncState();
+    const next = update(current);
+    if (next !== undefined) await writeSyncState(next);
+  });
+}
+
 export async function clearSyncState(): Promise<void> {
   await db.appState.delete(SYNC_STATE_KEY);
 }
