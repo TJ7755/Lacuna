@@ -15,6 +15,8 @@ import type { Card, CardType, ReviewLog } from './types';
 import { makeId, db } from './schema';
 import { reviewHistoryEntriesForCard } from './reviewHistory';
 import { sha256Blob } from './assets';
+import { assertZipMetadataWithinLimits } from './zipMetadata';
+import sqlWasmUrl from '../assets/sql-wasm.wasm?url';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,6 +99,18 @@ interface AnkiDeck {
 // Core parser
 // ---------------------------------------------------------------------------
 
+// Kept as separate exported constants — they are used independently in error messages
+// and per-check, so bundling into an object would be speculative generality.
+export const MAX_APKG_SIZE_BYTES = 50 * 1024 * 1024;
+export const MAX_APKG_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
+export const MAX_APKG_FILE_COUNT = 5000;
+
+function assertApkgSize(size: number): void {
+  if (size === 0) throw new Error('APKG is empty.');
+  if (size > MAX_APKG_SIZE_BYTES)
+    throw new Error(`APKG too large: ${size} bytes (max 50 MB)`);
+}
+
 /**
  * Parse an Anki .apkg file into a Lacuna import payload.
  *
@@ -108,11 +122,11 @@ export async function parseApkg(
   file: File,
   options: ApkgParseOptions = {},
 ): Promise<ApkgImportResult> {
+  assertApkgSize(file.size);
   const buffer = await file.arrayBuffer();
+  assertApkgSize(buffer.byteLength);
   const wasmUrl =
-    typeof location === 'undefined'
-      ? '/sql-wasm.wasm'
-      : new URL(`${import.meta.env.BASE_URL}sql-wasm.wasm`, location.href).href;
+    typeof location === 'undefined' ? sqlWasmUrl : new URL(sqlWasmUrl, location.href).href;
   if (typeof Worker === 'undefined') return parseApkgBuffer(buffer, options, wasmUrl);
 
   return new Promise<ApkgImportResult>((resolve, reject) => {
@@ -146,9 +160,27 @@ export async function parseApkg(
 export async function parseApkgBuffer(
   buffer: ArrayBuffer,
   options: ApkgParseOptions = {},
-  wasmUrl = '/sql-wasm.wasm',
+  wasmUrl = sqlWasmUrl,
 ): Promise<ApkgImportResult> {
+  assertApkgSize(buffer.byteLength);
+  assertZipMetadataWithinLimits(buffer, {
+    maxEntries: MAX_APKG_FILE_COUNT,
+    maxUncompressedBytes: MAX_APKG_UNCOMPRESSED_BYTES,
+  });
   const zip = unzipSync(new Uint8Array(buffer));
+  const fileCount = Object.keys(zip).length;
+  if (fileCount > MAX_APKG_FILE_COUNT) {
+    throw new Error(`APKG contains too many files: ${fileCount} (max ${MAX_APKG_FILE_COUNT})`);
+  }
+  let totalUncompressed = 0;
+  for (const bytes of Object.values(zip)) {
+    totalUncompressed += bytes.byteLength;
+    if (totalUncompressed > MAX_APKG_UNCOMPRESSED_BYTES) {
+      throw new Error(
+        `APKG uncompressed size too large: ${totalUncompressed} bytes (max 100 MB)`,
+      );
+    }
+  }
 
   // Read media mapping JSON.
   const mediaMap = readMediaMap(zip);

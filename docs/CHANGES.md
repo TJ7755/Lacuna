@@ -1,5 +1,35 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Full audit 2026-08-24: code, quality, accuracy and science
+
+Six concurrent audit streams examined scheduling science, grading accuracy, analytics, code quality, security/privacy/deployment, data integrity/sync and UX/accessibility against `docs/lacuna-objective-audit.html`, `docs/lacuna-interrogation-report.html` and `docs/code-quality-remediation-plan.html`. The fixes below address the highest-severity open items; remaining ranked remediation is archived in `.agent-mail/` and `docs/next_plan.md` for follow-up. This is a behaviour-preserving maintenance arc except where noted.
+
+- **Calendar popover containment.** The date/time picker now renders outside overflow-clipping dialog panels while remaining inside the owning modal layer, uses fixed viewport-clamped positioning, and behaves as a popover rather than falsely declaring a nested modal. A browser pass against New Course confirmed the full calendar stays inside the viewport without clipping, restores initial day focus and logs no errors; the regression test covers the clipping-dialog placement.
+- **Electron security hardening.** New windows remain denied and only ordinary HTTP(S) links may open externally; renderer navigation is restricted to the exact packaged-app origin or exact Vite development origin. Pure policy tests now cover those boundaries. Permission handling allows only audio/video capture and sanitised clipboard writes from Lacuna's trusted main renderer, preserving microphone recording, QR scanning and copy actions while denying unrelated permissions and untrusted frames.
+- **APKG zip-bomb guard.** The 50 MB compressed-file, 100 MB expanded-data and 5,000-entry limits are now enforced by a strict central-directory parser before `unzipSync`. It fails closed on missing, truncated, mismatched and out-of-bounds metadata, traverses the declared entries exactly, supports bounded ZIP64 metadata and central-directory digital signatures, and retains the post-inflate defence. Regression fixtures prove malformed archives and oversized ZIP64 entries are rejected before inflation without rejecting those valid ZIP forms.
+- **Persistent storage auto-request.** After `openDatabase` succeeds, startup fire-and-forgets `requestPersistentStorage()` on every launch without blocking readiness. Unsupported, denied and rejected requests remain non-fatal; repeating a previously denied request is intentional because browser policy can later change. This reduces eviction risk but does not claim the browser granted durable storage.
+- **Lint gate restored** at `.eslintrc.cjs:38` (`warn` → `error` for `@typescript-eslint/consistent-type-imports`) and four sites fixed at `src/components/learn/StudySheet.test.tsx:5`, `src/pages/settings/DataPortabilitySection.test.tsx:5`, `src/sync/cycle.test.ts:3`, `src/sync/manualMerge.test.ts:4` (`typeof import()` → `import type` + `typeof Module`). `bun run lint` now passes with 0 warnings; `bun run typecheck` still passes.
+- **Command palette accessibility.** The combobox now exposes consistent expanded, active-descendant, listbox, option, selection and live-result state, including while deferred search results catch up after the query is cleared. Keyboard navigation is tested without duplicate synthetic key events, and closing with Escape restores focus to the Search trigger after the inert application shell is re-enabled.
+- **Date/time picker accessibility and containment.** The picker retains its focus trap and 44 px day/month/year targets, but no longer falsely declares a nested modal. Its popover is portalled within the owning modal layer and positioned against the viewport, preventing overflow clipping while preserving outside-dismissal and stacking behaviour. Initial focus, roving month/year focus, invalid-time focus and rendered viewport containment are covered against the New Course flow.
+- **Atomic WASM delivery.** The SQL importer and FSRS optimiser binaries are imported as Vite assets and emitted under content-hashed filenames. Their owning JavaScript bundles therefore request an exact binary revision; Workbox may safely use `CacheFirst` for that immutable URL without returning a different deployment's binary. Configuration tests and a production build verify the hashed asset output.
+- **Remaining ranked items deferred** (not in this slice): gate response-time pool by card kind and wire/delete `selfCorrected` (grading `Hard` dead), add APKG duplicate via `checkDuplicatesBatch`, wire `persist()` banner, pin `ts-fsrs` exact, move `requestRetention` behind Advanced, provenance-gate `allowEmbeds`, ship header CSP via `vercel.json`/`_headers`, ETag `X-Forwarded-For` trust note, and the `securedTopics` band-misclassification metric. Sites and evidence retained from the six subagent reports.
+
+## Unreleased — SPEC staleness fix (half-life model and EPSILON)
+
+- `docs/SPEC.md` now names the frozen routed model `half-life-logistic-v3-routed` (coefficients
+  unchanged from v1) instead of the stale `half-life-logistic-v1` / `half-life-logistic-v1-lag64-count8`
+  at `docs/SPEC.md:531`, `1044-1048` and `1313-1320`. Each site now documents the routed handover:
+  success/no-outcome/first-review 21,600→86,400 s (6 h→24 h), failure 345,600→432,000 s (96 h→120 h),
+  FSRS-6 only from 604,800 s (7 days), per `src/fsrs/halfLifeLogisticModel.ts:27` and
+  `tooling/short-term-memory/coefficients/half-life-logistic-v3.json:53`. A note records that v1
+  passed the initial gate but failed multi-day transfer and was conservatively retreated per
+  `ROUTING_DECISION_RULE.md` / `tooling/short-term-memory/BENCHMARK.md`, and that the no-regression
+  gate passes only against the fractional-day FSRS-6 the runtime uses (floored FSRS-6 is stronger by
+  ~0.001–0.003 at 2–7 d).
+- `docs/SPEC.md:1129` `EXPECTED_MARKS_EPSILON` corrected from `1e-3` to `5e-3` to match
+  `src/fsrs/objective.ts:35`.
+- Verified `docs/scientific-assessment.md` needs no change (already correct).
+
 ## Unreleased — Sync remembers this device
 
 - Pairing, joining and every successful passphrase unlock now persist the unwrapped channel key

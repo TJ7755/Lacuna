@@ -88,7 +88,10 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   const notes = searchData?.notes;
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
-  const trapRef = useFocusTrap(true, { autoFocusSelector: 'input' });
+  const returnFocusRef = useRef<HTMLElement | null>(
+    document.activeElement instanceof HTMLElement ? document.activeElement : null,
+  );
+  const trapRef = useFocusTrap(true, { autoFocusSelector: 'input', returnFocus: false });
 
   const [query, setQuery] = useState('');
   const deferredQuery = useDeferredValue(query);
@@ -112,6 +115,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
     );
     return [...courseHits, ...cardHits].slice(0, MAX_RESULTS);
   }, [deferredQuery, cards, courses, lessons, notes]);
+  const hasVisibleResults = query.trim() !== '' && results.length > 0;
 
   // Reset and focus when the palette mounts.
   useEffect(() => {
@@ -120,6 +124,18 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
     const id = requestAnimationFrame(() => inputRef.current?.focus());
     return () => cancelAnimationFrame(id);
   }, []);
+
+  // AppShell removes `inert` from the page after this dialog unmounts. Return
+  // focus on the next frame so the browser can accept focus on the trigger.
+  useEffect(
+    () => () => {
+      const trigger = returnFocusRef.current;
+      requestAnimationFrame(() => {
+        if (trigger?.isConnected) trigger.focus();
+      });
+    },
+    [],
+  );
 
   useEffect(() => setActive(results.length > 0 ? 0 : -1), [results.length, query]);
 
@@ -171,6 +187,13 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
               <SearchIcon width={18} height={18} className="text-ink-faint" />
               <input
                 ref={inputRef}
+                role="combobox"
+                aria-controls="palette-listbox"
+                aria-expanded={hasVisibleResults}
+                aria-autocomplete="list"
+                aria-activedescendant={
+                  hasVisibleResults && active >= 0 ? `palette-option-${active}` : undefined
+                }
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search courses, lessons, notes and cards…"
@@ -179,6 +202,13 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
               <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
                 Esc
               </kbd>
+            </div>
+            <div aria-live="polite" aria-atomic="true" className="sr-only">
+              {query.trim() === ''
+                ? 'Type to search'
+                : results.length === 0
+                  ? `No results for ${deferredQuery}`
+                  : `${results.length} ${results.length === 1 ? 'result' : 'results'} available`}
             </div>
 
             <div className="max-h-[50vh] overflow-y-auto">
@@ -208,6 +238,8 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                 ) : (
                   <motion.ul
                     key="results"
+                    id="palette-listbox"
+                    role="listbox"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -226,12 +258,16 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                       return (
                         <motion.li
                           key={`${hit.kind}-${key}`}
+                          role="presentation"
                           initial={{ opacity: 0, x: -8 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.12 * m, delay: Math.min(i * 0.015, 0.15) * m }}
                         >
                           <button
                             type="button"
+                            role="option"
+                            id={`palette-option-${i}`}
+                            aria-selected={i === active}
                             onMouseEnter={() => setActive(i)}
                             onClick={() => go(i)}
                             className={

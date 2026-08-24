@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile, Card, CourseRecord, Lesson } from '../db/types';
+import type * as DbPortability from '../db/portability';
 import { reviewHistoryEntryId, type ReviewHistoryEntry } from '../db/reviewHistory';
 import { defaultFsrsParameters } from '../fsrs/params';
 import { ManualMergeError, manualMerge, summariseMerge } from './manualMerge';
@@ -15,7 +16,7 @@ vi.mock('../db/backups', () => ({
 }));
 
 vi.mock('../db/portability', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../db/portability')>();
+  const actual = await importOriginal<typeof DbPortability>();
   return {
     ...actual,
     importBackup,

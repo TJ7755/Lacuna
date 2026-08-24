@@ -75,6 +75,68 @@ Semantic browser automation is valid GUI evidence and a useful zero-install oper
 not replace MCP or test-only application services for deterministic data setup and domain-state
 assertions, and it does not replace human inspection for visual judgement.
 
+### Agent browser experience review (2026-08-24)
+
+An orchestrator-driven pass against PR 92 used the in-app Chromium browser on the local Vite
+server. The semantic surface was good enough to reach the seeded dashboard, open the command
+palette, inspect its combobox/listbox state, drive keyboard selection, open New Course and reach the
+date/time picker without coordinates or screenshots. The command palette's new roles and active
+descendant state were immediately useful: the browser could assert expansion, option count,
+selection movement and live-result copy through stable roles rather than CSS.
+
+The remaining friction is concrete:
+
+- A fresh browser profile redirects to `#/welcome`, so an agent must know to navigate explicitly to
+  `#/` before application-shell shortcuts exist. The Welcome page remains product content rather
+  than an automation entry point.
+- GitHub's Vercel status points at the Vercel dashboard, not a directly usable preview URL. A local
+  review therefore needs a separately started server even when a green preview deployment exists.
+- Settings produces an enormous accessibility snapshot because every section is mounted at once.
+  The section jump control helps humans but gives an agent no smaller route or landmark-scoped
+  state to inspect.
+- Closing the command palette with Escape initially left focus on `body` instead of restoring it to
+  the Search trigger. The roles were correct; the interaction contract was not. This was fixed and
+  retained as a rendered-interaction regression during the review.
+- The date/time picker exposed useful labels and keyboard controls, but its initial above-trigger
+  placement was clipped by the New Course dialog's overflow boundary. Structurally valid DOM was
+  therefore paired with a visibly broken calendar. The popover was moved out of that clipping
+  boundary and gained a browser containment regression; semantic checks alone would have missed it.
+- Focus-moving widgets can invalidate an automation client's current locator during repeated Tab
+  presses. Tests should resolve the active element after each focus transition rather than assume a
+  container remains the keyboard target.
+
+Improve the experience in this order:
+
+1. **Make the existing smoke path agent-addressable.** Add one documented command that starts the
+   production build on the fixed test origin, prepares the canonical disposable scenario and emits
+   a small JSON manifest containing the base URL, named routes and scenario identifiers. Extend the
+   existing release scenario; a parallel browser-only fixture API would be redundant.
+2. **Publish the preview URL as evidence.** CI should expose the actual PR deployment URL in its
+   browser-smoke summary or evidence manifest, not only a provider dashboard link. Agents can then
+   test the exact deployed head without scraping deployment UI.
+3. **Keep consequential controls semantic.** Prefer anchors for navigation, unique accessible names,
+   labelled regions for mounted Settings sections, and explicit expanded/selected/busy state. Add
+   test IDs only where a control has no honest user-facing semantic identity.
+4. **Test focus as an outcome.** Browser smoke coverage should open and close the command palette and
+   date picker, assert the final focused control, and verify that Tab never escapes an open modal.
+   Unit tests that merely dispatch Escape do not prove browser focus timing through exit animation.
+5. **Pair DOM assertions with one visual checkpoint for overlays.** Capture the New Course calendar
+   at desktop and narrow widths and assert its bounding box stays inside the viewport and is not
+   clipped by an ancestor. Retain a screenshot on failure; human review remains the authority for
+   whether the composition actually looks good.
+6. **Scope large surfaces.** Give each Settings section a stable labelled region and support direct
+   section hashes. This reduces snapshot noise, makes failures local and gives humans shareable
+   links without inventing automation-only UI.
+7. **Emit evidence, not prose logs.** Browser runs should finish with a machine-readable list of the
+   commit, origin, scenario, assertions, console errors and retained screenshots/traces. That lets
+   another agent distinguish an application failure from browser-tool friction without replaying the
+   entire session.
+
+The target is a hybrid loop: MCP or the test-only runner creates known state, semantic browser
+automation proves the interaction, a bounding-box or screenshot check catches rendered overlay
+failures, and a human judges the few genuinely visual details. Forcing one surface to do all four
+jobs would produce a worse test suite and a worse product.
+
 ### Why browser automation cannot always operate Lacuna without vision
 
 The 11 August close-out pass deliberately used semantic browser controls wherever possible, then

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DateTimePicker } from './DateTimePicker';
 
@@ -30,7 +30,52 @@ function openPicker() {
   fireEvent.click(screen.getByRole('button', { name: 'Pick a date' }));
 }
 
+function rect(top: number, left: number, width: number, height: number): DOMRect {
+  return {
+    x: left,
+    y: top,
+    top,
+    left,
+    width,
+    height,
+    right: left + width,
+    bottom: top + height,
+    toJSON: () => ({}),
+  } as DOMRect;
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('DateTimePicker', () => {
+  it('keeps the calendar visible when opened inside a clipping dialog', () => {
+    vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(900);
+    vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(1200);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.hasAttribute('data-date-time-picker-popover')) return rect(0, 0, 320, 480);
+      if (this.getAttribute('aria-expanded') === 'true') return rect(600, 400, 368, 44);
+      return rect(0, 0, 0, 0);
+    });
+
+    render(
+      <div data-testid="modal-layer">
+        <div role="dialog" aria-label="Outer dialog" className="overflow-hidden">
+          <ControlledPicker initialValue={Date.UTC(2026, 5, 10, 14, 30)} />
+        </div>
+      </div>,
+    );
+    openPicker();
+
+    const calendar = screen.getByRole('dialog', { name: 'Choose date and time' });
+    expect(calendar.parentElement).toBe(screen.getByTestId('modal-layer'));
+    expect(calendar).toHaveClass('fixed');
+    expect(calendar).toHaveStyle({ top: '112px', left: '400px' });
+    expect(calendar).not.toHaveAttribute('aria-modal');
+  });
+
   it('renders an accessibly labelled trigger with the formatted value', () => {
     render(
       <DateTimePicker

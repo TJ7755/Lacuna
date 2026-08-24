@@ -22,6 +22,42 @@ test('creates a course with its first lesson', async ({ page }) => {
   await expect(page.getByRole('navigation', { name: 'Course sections' })).toBeVisible();
 });
 
+test('keeps the New Course calendar visible and focused', async ({ page }) => {
+  await openSeededDashboard(page);
+  await page.locator('main').getByRole('button', { name: 'New course' }).click();
+  await page.getByRole('button', { name: 'Exam date' }).click();
+
+  const calendar = page.getByRole('dialog', { name: 'Choose date and time' });
+  await expect(calendar).toBeVisible();
+  await expect(calendar).not.toHaveAttribute('aria-modal');
+  await expect(calendar.locator('[aria-current="date"]')).toBeFocused();
+
+  const containment = await calendar.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    const clippingAncestors: string[] = [];
+    for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+      const style = getComputedStyle(parent);
+      if (
+        ['hidden', 'clip'].includes(style.overflow) ||
+        ['hidden', 'clip'].includes(style.overflowX) ||
+        ['hidden', 'clip'].includes(style.overflowY)
+      ) {
+        clippingAncestors.push(parent.tagName);
+      }
+    }
+    return {
+      clippingAncestors,
+      insideViewport:
+        bounds.top >= 0 &&
+        bounds.left >= 0 &&
+        bounds.right <= window.innerWidth &&
+        bounds.bottom <= window.innerHeight,
+    };
+  });
+
+  expect(containment).toEqual({ clippingAncestors: [], insideViewport: true });
+});
+
 test('opens a lesson with persistent course navigation', async ({ page }) => {
   await openSeededDashboard(page);
   await page.getByText('Welcome to Lacuna', { exact: true }).first().click();

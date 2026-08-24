@@ -1,6 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { flushSync } from 'react-dom';
+import { useEffect, useRef, useState } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommandPalette } from './CommandPalette';
 import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../../db/types';
 
@@ -72,6 +74,43 @@ vi.mock('../../state/useSearchData', () => ({
 }));
 
 describe('CommandPalette', () => {
+  beforeEach(() => dataHooks.useSearchData.mockClear());
+
+  it('restores focus to the Search trigger after Escape closes the palette', async () => {
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      const backgroundRef = useRef<HTMLDivElement>(null);
+
+      useEffect(() => {
+        if (!open) return;
+        const background = backgroundRef.current;
+        background?.setAttribute('inert', '');
+        return () => background?.removeAttribute('inert');
+      }, [open]);
+
+      return (
+        <>
+          <div ref={backgroundRef}>
+            <button type="button" onClick={() => setOpen(true)}>
+              Search
+            </button>
+          </div>
+          <CommandPalette open={open} onClose={() => setOpen(false)} />
+        </>
+      );
+    }
+
+    render(<Harness />, { wrapper: MemoryRouter });
+    const trigger = screen.getByRole('button', { name: 'Search' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const input = await screen.findByPlaceholderText(/search courses/i);
+
+    fireEvent.keyDown(input, { key: 'Escape' });
+
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
   it('does not subscribe to whole-database queries while closed', () => {
     render(<CommandPalette open={false} onClose={vi.fn()} />, { wrapper: MemoryRouter });
     expect(dataHooks.useSearchData).not.toHaveBeenCalled();
@@ -146,5 +185,105 @@ describe('CommandPalette', () => {
     });
 
     expect(screen.getByText('Occlusion')).toBeInTheDocument();
+  });
+
+  it('exposes combobox accessibility attributes on the input', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+
+    const input = screen.getByPlaceholderText(/search courses/i);
+    expect(input).toHaveAttribute('role', 'combobox');
+    expect(input).toHaveAttribute('aria-controls', 'palette-listbox');
+    expect(input).toHaveAttribute('aria-autocomplete', 'list');
+    // No results yet (empty query) -> collapsed and no active descendant
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(input).not.toHaveAttribute('aria-activedescendant');
+
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+    // After search, listbox appears, expanded true, active descendant points to first option
+    expect(input).toHaveAttribute('aria-expanded', 'true');
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-option-0');
+
+    const listbox = await screen.findByRole('listbox');
+    expect(listbox).toHaveAttribute('id', 'palette-listbox');
+
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(1);
+    expect(options[0]).toHaveAttribute('id', 'palette-option-0');
+    expect(options[0]).toHaveAttribute('aria-selected', 'true');
+
+    act(() => {
+      flushSync(() => {
+        const valueSetter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          'value',
+        )?.set;
+        valueSetter?.call(input, '');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+
+      expect(input).toHaveAttribute('aria-expanded', 'false');
+      expect(input).not.toHaveAttribute('aria-activedescendant');
+    });
+
+    await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+  });
+
+  it('updates aria-activedescendant and aria-selected on keyboard navigation', async () => {
+    const secondCard: Card = { ...mockCard, id: 'card-2', front: 'Palatine second' };
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard, secondCard],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+
+    const input = screen.getByPlaceholderText(/search courses/i);
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+
+    const options = await screen.findAllByRole('option');
+    expect(options).toHaveLength(2);
+    expect(options[0]).toHaveAttribute('aria-selected', 'true');
+    expect(options[1]).toHaveAttribute('aria-selected', 'false');
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-option-0');
+
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+    // After navigation, second option selected
+    const updatedOptions = screen.getAllByRole('option');
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-option-1');
+    expect(updatedOptions[0]).toHaveAttribute('aria-selected', 'false');
+    expect(updatedOptions[1]).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('announces result count in a polite live region', () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+
+    const liveRegion = document.querySelector('[aria-live="polite"].sr-only');
+    expect(liveRegion).toBeInTheDocument();
+    expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
+    expect(liveRegion?.textContent).toMatch(/Type to search/);
+
+    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+      target: { value: 'Palatine' },
+    });
+    expect(liveRegion?.textContent).toMatch(/1 result available/);
+
+    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+      target: { value: 'missing' },
+    });
+    expect(liveRegion?.textContent).toMatch(/No results for missing/);
   });
 });

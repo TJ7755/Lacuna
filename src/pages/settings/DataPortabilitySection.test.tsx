@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile } from '../../db/types';
 import { ManualMergeError } from '../../sync/manualMerge';
+import type * as ManualMergeModule from '../../sync/manualMerge';
 import { DataPortabilitySection } from './DataPortabilitySection';
 
 const { readBackupFile, importBackup, manualMerge, notify } = vi.hoisted(() => ({
@@ -17,7 +18,7 @@ vi.mock('../../db/portability', () => ({
 }));
 
 vi.mock('../../sync/manualMerge', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../sync/manualMerge')>();
+  const actual = await importOriginal<typeof ManualMergeModule>();
   return {
     ...actual,
     manualMerge: (...args: unknown[]) => manualMerge(...args),

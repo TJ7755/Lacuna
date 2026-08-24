@@ -1,8 +1,16 @@
-import { app, BrowserWindow, session, protocol, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, session, protocol, ipcMain, screen, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { initAutoUpdater } from './updater.js';
+import {
+  canGrantRendererPermission,
+  decideWindowOpen,
+  isAllowedRendererNavigation,
+  isSafeExternalUrl,
+  type RendererEnvironment,
+  VITE_RENDERER_ORIGIN,
+} from './securityPolicy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,8 +31,8 @@ interface McpCompanionModule {
 }
 
 const isDev = !app.isPackaged;
+const rendererEnvironment: RendererEnvironment = isDev ? 'development' : 'production';
 const isMcpCompanionProcess = process.argv.includes('--mcp-companion');
-const VITE_DEV_URL = 'http://localhost:5173';
 let mainWindow: BrowserWindow | null = null;
 let mcpModule: McpServerModule | null = null;
 
@@ -93,6 +101,44 @@ function ensureWindowVisible(state: WindowState): WindowState {
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
 ]);
+
+/** Allow only the permissions Lacuna needs in its trusted main renderer. */
+function installPermissionHandlers(): void {
+  session.defaultSession.setPermissionRequestHandler(
+    (webContents, permission, callback, details) => {
+      const isTrustedWebContents = webContents === mainWindow?.webContents;
+      callback(
+        isTrustedWebContents &&
+          canGrantRendererPermission(
+            {
+              permission,
+              requestingUrl: details.requestingUrl,
+              isMainFrame: details.isMainFrame,
+              mediaTypes: 'mediaTypes' in details ? details.mediaTypes : undefined,
+            },
+            rendererEnvironment,
+          ),
+      );
+    },
+  );
+  session.defaultSession.setPermissionCheckHandler(
+    (webContents, permission, requestingOrigin, details) => {
+      const isTrustedWebContents = webContents === mainWindow?.webContents;
+      return (
+        isTrustedWebContents &&
+        canGrantRendererPermission(
+          {
+            permission,
+            requestingUrl: details.requestingUrl ?? requestingOrigin,
+            isMainFrame: details.isMainFrame,
+            mediaType: details.mediaType,
+          },
+          rendererEnvironment,
+        )
+      );
+    },
+  );
+}
 
 /** Inject security headers required for SharedArrayBuffer (WASM) and CSP. */
 function installSecurityHeaders(): void {
@@ -202,6 +248,19 @@ function createWindow(): void {
     },
   });
 
+  // Security: prevent new windows and external navigation; open ordinary web links externally.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    const decision = decideWindowOpen(url);
+    if (decision.openExternally) void shell.openExternal(url);
+    return { action: decision.action };
+  });
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!isAllowedRendererNavigation(url, rendererEnvironment)) {
+      event.preventDefault();
+      if (isSafeExternalUrl(url)) void shell.openExternal(url);
+    }
+  });
+
   if (savedState.maximized) {
     mainWindow.maximize();
   }
@@ -290,7 +349,7 @@ function createWindow(): void {
   });
 
   if (isDev) {
-    void mainWindow.loadURL(VITE_DEV_URL);
+    void mainWindow.loadURL(VITE_RENDERER_ORIGIN);
   } else {
     void mainWindow.loadURL('app://./index.html');
   }
@@ -323,6 +382,7 @@ if (isMcpCompanionProcess) {
 
   void app.whenReady().then(async () => {
     installSecurityHeaders();
+    installPermissionHandlers();
 
     if (!isDev) {
       registerAppProtocol();

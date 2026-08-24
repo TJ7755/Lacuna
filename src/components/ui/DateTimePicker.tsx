@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, CalendarIcon } from './icons';
 import { cn } from './cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useAnchoredPopoverPosition } from '../../hooks/useAnchoredPopoverPosition';
 import { getComponentsInZone, fromDateTimeLocalValue } from '../../utils/datetime';
 
 interface DateTimePickerProps {
@@ -97,10 +100,15 @@ export function DateTimePicker({
   timeZone,
 }: DateTimePickerProps) {
   const [open, setOpen] = useState(false);
-  const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const {
+    placement,
+    position: popoverPosition,
+    resetPosition: resetPopoverPosition,
+  } = useAnchoredPopoverPosition(open, triggerRef, dropdownRef);
+  const popoverReady = popoverPosition !== null;
   const dayRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const monthRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const yearRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -129,6 +137,18 @@ export function DateTimePicker({
   const [hourDraft, setHourDraft] = useState(() => pad(selected.hours));
   const [minuteDraft, setMinuteDraft] = useState(() => pad(selected.minutes));
   const [validationError, setValidationError] = useState<string | null>(null);
+  useFocusTrap(
+    open,
+    { autoFocusSelector: '[aria-current="date"], [tabindex="0"]' },
+    dropdownRef,
+  );
+
+  useLayoutEffect(() => {
+    if (!open || !popoverReady) return;
+    dropdownRef.current
+      ?.querySelector<HTMLElement>('[aria-current="date"], [tabindex="0"]')
+      ?.focus();
+  }, [open, popoverReady]);
 
   const reportValidity = useCallback(
     (error: string | null) => {
@@ -310,7 +330,14 @@ export function DateTimePicker({
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (!containerRef.current || containerRef.current.contains(e.target as Node)) return;
+      const target = e.target as Node;
+      if (
+        !containerRef.current ||
+        containerRef.current.contains(target) ||
+        dropdownRef.current?.contains(target)
+      ) {
+        return;
+      }
       if (commitTimeDrafts()) closePicker(false);
     };
     const onKeyDown = (e: KeyboardEvent) => {
@@ -439,8 +466,14 @@ export function DateTimePicker({
   useLayoutEffect(() => {
     if (!open || pickerMode !== 'days' || pendingGridFocusRef.current?.mode !== 'days') return;
     const next = initialFocusIndex;
-    pendingGridFocusRef.current = { mode: 'days', index: next };
     setFocusIndex(next);
+    const element = dayRefs.current[next];
+    if (element?.isConnected) {
+      pendingGridFocusRef.current = null;
+      element.focus();
+    } else {
+      pendingGridFocusRef.current = { mode: 'days', index: next };
+    }
   }, [cells, initialFocusIndex, open, pickerMode]);
 
   useEffect(() => {
@@ -467,33 +500,6 @@ export function DateTimePicker({
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
     };
   }, [focusIndex, monthFocusIndex, open, pickerMode, yearFocusIndex, year, month]);
-
-  // Measure available space and flip the dropdown if it would be clipped.
-  useLayoutEffect(() => {
-    if (!open || !containerRef.current) return;
-    const compute = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const dropdownHeight = dropdownRef.current?.getBoundingClientRect().height ?? 420;
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
-        setPlacement('top');
-      } else {
-        setPlacement('bottom');
-      }
-    };
-    compute();
-    window.addEventListener('resize', compute);
-    const scrollContainer = containerRef.current.closest('main');
-    window.addEventListener('scroll', compute, { passive: true });
-    scrollContainer?.addEventListener('scroll', compute, { passive: true });
-    return () => {
-      window.removeEventListener('resize', compute);
-      window.removeEventListener('scroll', compute);
-      scrollContainer?.removeEventListener('scroll', compute);
-    };
-  }, [open]);
 
   // Reset slide direction after animation completes
   useEffect(() => {
@@ -526,6 +532,11 @@ export function DateTimePicker({
     }
   };
 
+  const popoverHost =
+    typeof document === 'undefined'
+      ? null
+      : (containerRef.current?.closest('[role="dialog"]')?.parentElement ?? document.body);
+
   return (
     <div ref={containerRef} className="relative" data-date-time-picker>
       {label && (
@@ -549,12 +560,19 @@ export function DateTimePicker({
           reportValidity(null);
           dayRefs.current = [];
           pendingGridFocusRef.current = { mode: 'days', index: null };
+          resetPopoverPosition();
           setOpen(true);
         }}
         aria-labelledby={label ? labelId : undefined}
         aria-label={label ? undefined : 'Choose date and time'}
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-invalid={validationError ? 'true' : undefined}
+        onFocus={() => {
+          if (open && validationError) {
+            dropdownRef.current?.querySelector<HTMLInputElement>('[aria-label="Hour"]')?.focus();
+          }
+        }}
         className={cn(
           'flex w-full items-center gap-3 rounded-lg border bg-surface px-3 py-2.5 text-left text-sm text-ink outline-none transition-colors',
           open
@@ -566,350 +584,359 @@ export function DateTimePicker({
         <span className="tabular">{display}</span>
       </button>
 
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            ref={dropdownRef}
-            role="dialog"
-            aria-label="Choose date and time"
-            data-date-time-picker-popover
-            onKeyDown={(event) => {
-              if (event.key !== 'Escape') return;
-              event.preventDefault();
-              event.stopPropagation();
-              if (commitTimeDrafts()) closePicker(true);
-            }}
-            initial={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
-            transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-            className={cn(
-              'absolute left-0 z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-xl shadow-black/10',
-              placement === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2',
-            )}
-          >
-            {/* Header: month navigation */}
-            <div className="flex items-center justify-between px-4 py-3">
-              <button
-                type="button"
-                onClick={() => navigateHeader(-1)}
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
-                aria-label={`Previous ${headerUnit}`}
-              >
-                <ChevronLeftIcon width={16} height={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (pickerMode === 'days') enterMode('months');
-                  else if (pickerMode === 'months') enterMode('years');
-                  else enterMode('months');
-                }}
-                className="flex min-h-11 items-center justify-center rounded-lg px-3 py-1 text-sm font-medium text-ink transition-colors hover:bg-ink/5 active:bg-ink/5"
-                aria-label={
-                  pickerMode === 'days'
-                    ? 'Open month selector'
-                    : pickerMode === 'months'
-                      ? 'Open year selector'
-                      : 'Return to month selector'
-                }
-              >
-                {headerText}
-              </button>
-              <button
-                type="button"
-                onClick={() => navigateHeader(1)}
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
-                aria-label={`Next ${headerUnit}`}
-              >
-                <ChevronRightIcon width={16} height={16} />
-              </button>
-            </div>
-
-            <AnimatePresence mode="wait">
-              {pickerMode === 'days' && (
-                <motion.div
-                  key={`days-${year}-${month}`}
-                  initial={slideDir !== 0 ? { x: slideDir * 40, opacity: 0 } : { x: 0, opacity: 1 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: slideDir * -40, opacity: 0 }}
-                  transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  {/* Day-of-week headers */}
-                  <div className="grid grid-cols-7 px-3 pb-1">
-                    {DAYS.map((d) => (
-                      <div
-                        key={d}
-                        className="py-1 text-center text-[11px] font-medium uppercase tracking-wide text-ink-faint"
-                      >
-                        {d}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Calendar grid */}
-                  <div
-                    role="group"
-                    aria-label={`${MONTHS[month]} ${year}`}
-                    className="grid grid-cols-7 px-3 pb-3"
-                    onKeyDown={handleDayKeyDown}
-                  >
-                    {cells.map((cell, i) => {
-                      const isSelected =
-                        cell.currentMonth &&
-                        cell.day === selectedDay &&
-                        month === selectedMonth &&
-                        year === selectedYear;
-                      const isToday =
-                        cell.currentMonth &&
-                        cell.day === todayDay &&
-                        month === todayMonth &&
-                        year === todayYear;
-                      const isFocused = focusIndex === i;
-
-                      return (
-                        <button
-                          key={i}
-                          ref={(element) => {
-                            dayRefs.current[i] = element;
-                          }}
-                          type="button"
-                          tabIndex={isFocused ? 0 : -1}
-                          aria-label={`${cell.day} ${MONTHS[resolveAdjacentMonth(cell.day, cell.currentMonth, year, month).m]} ${resolveAdjacentMonth(cell.day, cell.currentMonth, year, month).y}`}
-                          aria-current={isSelected ? 'date' : undefined}
-                          onFocus={() => setFocusIndex(i)}
-                          onClick={() => selectDay(cell.day, cell.currentMonth)}
-                          className={cn(
-                            'relative mx-auto my-0.5 flex h-9 w-9 items-center justify-center rounded-full text-sm outline-none transition-colors',
-                            cell.currentMonth ? 'text-ink' : 'text-ink-faint/60',
-                            isSelected && 'bg-accent font-medium text-accent-fg hover:bg-accent',
-                            !isSelected && isToday && 'ring-1 ring-inset ring-accent/40',
-                            !isSelected &&
-                              !isToday &&
-                              cell.currentMonth &&
-                              'hover:bg-ink/5 active:bg-ink/5',
-                            isFocused && !isSelected && 'ring-2 ring-inset ring-accent/50',
-                          )}
-                        >
-                          {cell.day}
-                          {isToday && !isSelected && (
-                            <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-accent" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-
-              {pickerMode === 'months' && (
-                <motion.div
-                  key="months"
-                  initial={{ opacity: 0, scale: 0.97 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.97 }}
-                  transition={{ duration: 0.12 * m }}
-                  className="px-3 pb-3"
-                >
-                  <div
-                    role="group"
-                    aria-label={`Choose month in ${year}`}
-                    className="grid grid-cols-3 gap-2"
-                    onKeyDown={handleMonthKeyDown}
-                  >
-                    {MONTHS.map((m, i) => {
-                      const isCurrent = i === month;
-                      const isSelected = i === selectedMonth && year === selectedYear;
-                      return (
-                        <button
-                          key={m}
-                          ref={(element) => {
-                            monthRefs.current[i] = element;
-                          }}
-                          type="button"
-                          tabIndex={monthFocusIndex === i ? 0 : -1}
-                          aria-label={m}
-                          onFocus={() => setMonthFocusIndex(i)}
-                          onClick={() => selectMonth(i)}
-                          className={cn(
-                            'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors',
-                            isSelected
-                              ? 'bg-accent text-accent-fg'
-                              : isCurrent
-                                ? 'bg-accent-soft text-accent'
-                                : 'text-ink-soft hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink',
-                          )}
-                        >
-                          {m.slice(0, 3)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-
-              {pickerMode === 'years' && (
-                <motion.div
-                  key="years"
-                  initial={{ opacity: 0, scale: 0.97 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.97 }}
-                  transition={{ duration: 0.12 * m }}
-                  className="px-3 pb-3"
-                >
-                  <div
-                    role="group"
-                    aria-label={`Choose year from ${yearRange[0]} to ${yearRange[yearRange.length - 1]}`}
-                    className="grid grid-cols-3 gap-2"
-                    onKeyDown={handleYearKeyDown}
-                  >
-                    {yearRange.map((y, i) => {
-                      const isCurrent = y === year;
-                      const isSelected = y === selectedYear;
-                      return (
-                        <button
-                          key={y}
-                          ref={(element) => {
-                            yearRefs.current[i] = element;
-                          }}
-                          type="button"
-                          tabIndex={yearFocusIndex === i ? 0 : -1}
-                          aria-label={String(y)}
-                          onFocus={() => setYearFocusIndex(i)}
-                          onClick={() => selectYear(i)}
-                          className={cn(
-                            'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors',
-                            isSelected
-                              ? 'bg-accent text-accent-fg'
-                              : isCurrent
-                                ? 'bg-accent-soft text-accent'
-                                : 'text-ink-soft hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink',
-                          )}
-                        >
-                          {y}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Time selector */}
-            <div className="border-t border-line px-4 py-3">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-ink-faint">
-                  <ClockIcon width={13} height={13} />
-                  Time
-                </span>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    aria-label="Hour"
-                    maxLength={2}
-                    value={hourDraft}
-                    aria-invalid={validationError ? 'true' : undefined}
-                    onChange={(e) => {
-                      if (/^\d{0,2}$/.test(e.target.value)) setHourDraft(e.target.value);
-                      setValidationError(null);
-                      onValidityChange?.(false);
-                    }}
-                    onBlur={() => {
-                      commitTimeDrafts();
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        commitTimeDrafts();
-                      }
-                    }}
-                    className="h-8 w-12 rounded-lg border border-line-strong bg-paper text-center text-sm text-ink outline-none focus:border-accent tabular"
-                  />
-                  <span className="text-ink-faint">:</span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    aria-label="Minute"
-                    maxLength={2}
-                    value={minuteDraft}
-                    aria-invalid={validationError ? 'true' : undefined}
-                    onChange={(e) => {
-                      if (/^\d{0,2}$/.test(e.target.value)) setMinuteDraft(e.target.value);
-                      setValidationError(null);
-                      onValidityChange?.(false);
-                    }}
-                    onBlur={() => {
-                      commitTimeDrafts();
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        commitTimeDrafts();
-                      }
-                    }}
-                    className="h-8 w-12 rounded-lg border border-line-strong bg-paper text-center text-sm text-ink outline-none focus:border-accent tabular"
-                  />
-                </div>
-              </div>
-              {validationError && (
-                <p role="alert" className="mt-2 text-xs text-negative">
-                  {validationError}
-                </p>
-              )}
-            </div>
-
-            {/* Footer: quick actions */}
-            <div className="flex items-center justify-between border-t border-line px-4 py-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const now = Date.now();
-                  const nowComponents = getComponentsInZone(now, timeZone);
-                  const ms = fromDateTimeLocalValue(
-                    `${nowComponents.year}-${pad(nowComponents.month + 1)}-${pad(nowComponents.day)}T${pad(hours)}:${pad(minutes)}`,
-                    timeZone,
-                  );
-                  if (!Number.isFinite(ms)) return;
-                  reportValidity(null);
-                  onChange(ms);
-                  setView({ year: nowComponents.year, month: nowComponents.month });
-                }}
-                className="text-xs font-medium text-accent transition-opacity hover:opacity-80 active:opacity-80"
-              >
-                Jump to today
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const now = Date.now();
-                  const nowComponents = getComponentsInZone(now, timeZone);
-                  const ms = fromDateTimeLocalValue(
-                    `${nowComponents.year}-${pad(nowComponents.month + 1)}-${pad(nowComponents.day)}T${pad(nowComponents.hours)}:${pad(nowComponents.minutes)}`,
-                    timeZone,
-                  );
-                  if (!Number.isFinite(ms)) return;
-                  reportValidity(null);
-                  onChange(ms);
-                  setView({ year: nowComponents.year, month: nowComponents.month });
-                }}
-                className="text-xs font-medium text-ink-soft transition-opacity hover:text-ink active:text-ink"
-              >
-                Now
-              </button>
-              <button
-                type="button"
-                onClick={() => {
+      {popoverHost &&
+        createPortal(
+          <AnimatePresence>
+            {open && (
+              <motion.div
+                ref={dropdownRef}
+                role="dialog"
+                aria-label="Choose date and time"
+                data-date-time-picker-popover
+                onKeyDown={(event) => {
+                  event.stopPropagation();
+                  if (event.key !== 'Escape') return;
+                  event.preventDefault();
                   if (commitTimeDrafts()) closePicker(true);
                 }}
-                className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition-opacity hover:opacity-90 active:opacity-80"
+                style={{
+                  top: popoverPosition?.top ?? 0,
+                  left: popoverPosition?.left ?? 0,
+                  visibility: popoverPosition ? 'visible' : 'hidden',
+                }}
+                initial={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
+                transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
+                className="fixed z-[60] max-h-[calc(100vh-2rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-line-strong bg-surface shadow-xl shadow-black/10"
               >
-                Done
-              </button>
-            </div>
-          </motion.div>
+                {/* Header: month navigation */}
+                <div className="flex items-center justify-between px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => navigateHeader(-1)}
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
+                    aria-label={`Previous ${headerUnit}`}
+                  >
+                    <ChevronLeftIcon width={16} height={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (pickerMode === 'days') enterMode('months');
+                      else if (pickerMode === 'months') enterMode('years');
+                      else enterMode('months');
+                    }}
+                    className="flex min-h-11 items-center justify-center rounded-lg px-3 py-1 text-sm font-medium text-ink transition-colors hover:bg-ink/5 active:bg-ink/5"
+                    aria-label={
+                      pickerMode === 'days'
+                        ? 'Open month selector'
+                        : pickerMode === 'months'
+                          ? 'Open year selector'
+                          : 'Return to month selector'
+                    }
+                  >
+                    {headerText}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigateHeader(1)}
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
+                    aria-label={`Next ${headerUnit}`}
+                  >
+                    <ChevronRightIcon width={16} height={16} />
+                  </button>
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {pickerMode === 'days' && (
+                    <motion.div
+                      key={`days-${year}-${month}`}
+                      initial={
+                        slideDir !== 0 ? { x: slideDir * 40, opacity: 0 } : { x: 0, opacity: 1 }
+                      }
+                      animate={{ x: 0, opacity: 1 }}
+                      exit={{ x: slideDir * -40, opacity: 0 }}
+                      transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      {/* Day-of-week headers */}
+                      <div className="grid grid-cols-7 px-3 pb-1">
+                        {DAYS.map((d) => (
+                          <div
+                            key={d}
+                            className="py-1 text-center text-[11px] font-medium uppercase tracking-wide text-ink-faint"
+                          >
+                            {d}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Calendar grid */}
+                      <div
+                        role="group"
+                        aria-label={`${MONTHS[month]} ${year}`}
+                        className="grid grid-cols-7 px-3 pb-3"
+                        onKeyDown={handleDayKeyDown}
+                      >
+                        {cells.map((cell, i) => {
+                          const isSelected =
+                            cell.currentMonth &&
+                            cell.day === selectedDay &&
+                            month === selectedMonth &&
+                            year === selectedYear;
+                          const isToday =
+                            cell.currentMonth &&
+                            cell.day === todayDay &&
+                            month === todayMonth &&
+                            year === todayYear;
+                          const isFocused = focusIndex === i;
+
+                          return (
+                            <button
+                              key={i}
+                              ref={(element) => {
+                                dayRefs.current[i] = element;
+                              }}
+                              type="button"
+                              tabIndex={isFocused ? 0 : -1}
+                              aria-label={`${cell.day} ${MONTHS[resolveAdjacentMonth(cell.day, cell.currentMonth, year, month).m]} ${resolveAdjacentMonth(cell.day, cell.currentMonth, year, month).y}`}
+                              aria-current={isSelected ? 'date' : undefined}
+                              onFocus={() => setFocusIndex(i)}
+                              onClick={() => selectDay(cell.day, cell.currentMonth)}
+                              className={cn(
+                                'relative mx-auto my-0.5 flex h-11 w-11 items-center justify-center rounded-full text-sm outline-none transition-colors',
+                                cell.currentMonth ? 'text-ink' : 'text-ink-faint/60',
+                                isSelected &&
+                                  'bg-accent font-medium text-accent-fg hover:bg-accent',
+                                !isSelected && isToday && 'ring-1 ring-inset ring-accent/40',
+                                !isSelected &&
+                                  !isToday &&
+                                  cell.currentMonth &&
+                                  'hover:bg-ink/5 active:bg-ink/5',
+                                isFocused && !isSelected && 'ring-2 ring-inset ring-accent/50',
+                              )}
+                            >
+                              {cell.day}
+                              {isToday && !isSelected && (
+                                <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-accent" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {pickerMode === 'months' && (
+                    <motion.div
+                      key="months"
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.97 }}
+                      transition={{ duration: 0.12 * m }}
+                      className="px-3 pb-3"
+                    >
+                      <div
+                        role="group"
+                        aria-label={`Choose month in ${year}`}
+                        className="grid grid-cols-3 gap-2"
+                        onKeyDown={handleMonthKeyDown}
+                      >
+                        {MONTHS.map((m, i) => {
+                          const isCurrent = i === month;
+                          const isSelected = i === selectedMonth && year === selectedYear;
+                          return (
+                            <button
+                              key={m}
+                              ref={(element) => {
+                                monthRefs.current[i] = element;
+                              }}
+                              type="button"
+                              tabIndex={monthFocusIndex === i ? 0 : -1}
+                              aria-label={m}
+                              onFocus={() => setMonthFocusIndex(i)}
+                              onClick={() => selectMonth(i)}
+                              className={cn(
+                                'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors min-h-11',
+                                isSelected
+                                  ? 'bg-accent text-accent-fg'
+                                  : isCurrent
+                                    ? 'bg-accent-soft text-accent'
+                                    : 'text-ink-soft hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink',
+                              )}
+                            >
+                              {m.slice(0, 3)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {pickerMode === 'years' && (
+                    <motion.div
+                      key="years"
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.97 }}
+                      transition={{ duration: 0.12 * m }}
+                      className="px-3 pb-3"
+                    >
+                      <div
+                        role="group"
+                        aria-label={`Choose year from ${yearRange[0]} to ${yearRange[yearRange.length - 1]}`}
+                        className="grid grid-cols-3 gap-2"
+                        onKeyDown={handleYearKeyDown}
+                      >
+                        {yearRange.map((y, i) => {
+                          const isCurrent = y === year;
+                          const isSelected = y === selectedYear;
+                          return (
+                            <button
+                              key={y}
+                              ref={(element) => {
+                                yearRefs.current[i] = element;
+                              }}
+                              type="button"
+                              tabIndex={yearFocusIndex === i ? 0 : -1}
+                              aria-label={String(y)}
+                              onFocus={() => setYearFocusIndex(i)}
+                              onClick={() => selectYear(i)}
+                              className={cn(
+                                'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors min-h-11',
+                                isSelected
+                                  ? 'bg-accent text-accent-fg'
+                                  : isCurrent
+                                    ? 'bg-accent-soft text-accent'
+                                    : 'text-ink-soft hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink',
+                              )}
+                            >
+                              {y}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Time selector */}
+                <div className="border-t border-line px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-ink-faint">
+                      <ClockIcon width={13} height={13} />
+                      Time
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        aria-label="Hour"
+                        maxLength={2}
+                        value={hourDraft}
+                        aria-invalid={validationError ? 'true' : undefined}
+                        onChange={(e) => {
+                          if (/^\d{0,2}$/.test(e.target.value)) setHourDraft(e.target.value);
+                          setValidationError(null);
+                          onValidityChange?.(false);
+                        }}
+                        onBlur={() => {
+                          commitTimeDrafts();
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            commitTimeDrafts();
+                          }
+                        }}
+                        className="h-8 w-12 rounded-lg border border-line-strong bg-paper text-center text-sm text-ink outline-none focus:border-accent tabular"
+                      />
+                      <span className="text-ink-faint">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        aria-label="Minute"
+                        maxLength={2}
+                        value={minuteDraft}
+                        aria-invalid={validationError ? 'true' : undefined}
+                        onChange={(e) => {
+                          if (/^\d{0,2}$/.test(e.target.value)) setMinuteDraft(e.target.value);
+                          setValidationError(null);
+                          onValidityChange?.(false);
+                        }}
+                        onBlur={() => {
+                          commitTimeDrafts();
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            commitTimeDrafts();
+                          }
+                        }}
+                        className="h-8 w-12 rounded-lg border border-line-strong bg-paper text-center text-sm text-ink outline-none focus:border-accent tabular"
+                      />
+                    </div>
+                  </div>
+                  {validationError && (
+                    <p role="alert" className="mt-2 text-xs text-negative">
+                      {validationError}
+                    </p>
+                  )}
+                </div>
+
+                {/* Footer: quick actions */}
+                <div className="flex items-center justify-between border-t border-line px-4 py-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = Date.now();
+                      const nowComponents = getComponentsInZone(now, timeZone);
+                      const ms = fromDateTimeLocalValue(
+                        `${nowComponents.year}-${pad(nowComponents.month + 1)}-${pad(nowComponents.day)}T${pad(hours)}:${pad(minutes)}`,
+                        timeZone,
+                      );
+                      if (!Number.isFinite(ms)) return;
+                      reportValidity(null);
+                      onChange(ms);
+                      setView({ year: nowComponents.year, month: nowComponents.month });
+                    }}
+                    className="text-xs font-medium text-accent transition-opacity hover:opacity-80 active:opacity-80"
+                  >
+                    Jump to today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const now = Date.now();
+                      const nowComponents = getComponentsInZone(now, timeZone);
+                      const ms = fromDateTimeLocalValue(
+                        `${nowComponents.year}-${pad(nowComponents.month + 1)}-${pad(nowComponents.day)}T${pad(nowComponents.hours)}:${pad(nowComponents.minutes)}`,
+                        timeZone,
+                      );
+                      if (!Number.isFinite(ms)) return;
+                      reportValidity(null);
+                      onChange(ms);
+                      setView({ year: nowComponents.year, month: nowComponents.month });
+                    }}
+                    className="text-xs font-medium text-ink-soft transition-opacity hover:text-ink active:text-ink"
+                  >
+                    Now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (commitTimeDrafts()) closePicker(true);
+                    }}
+                    className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg transition-opacity hover:opacity-90 active:opacity-80"
+                  >
+                    Done
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          popoverHost,
         )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile, CourseRecord } from '../db/types';
+import type * as DbPortability from '../db/portability';
 import { openState, sealState } from './crypto';
 import {
   __resetSyncFlightForTests,
@@ -48,7 +49,7 @@ const {
 });
 
 vi.mock('../db/portability', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../db/portability')>();
+  const actual = await importOriginal<typeof DbPortability>();
   return { ...actual, exportDatabase: exportDatabaseMock };
 });
 

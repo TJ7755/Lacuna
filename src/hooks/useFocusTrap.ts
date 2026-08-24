@@ -26,8 +26,10 @@ export function useFocusTrap(
     /** Whether to return focus to the trigger element on unmount. Default true. */
     returnFocus?: boolean;
   } = {},
+  externalRef?: React.RefObject<HTMLDivElement>,
 ) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const internalRef = useRef<HTMLDivElement>(null);
+  const containerRef = (externalRef ?? internalRef) as React.RefObject<HTMLDivElement>;
   const triggerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -79,7 +81,7 @@ export function useFocusTrap(
         triggerRef.current?.focus();
       }
     };
-  }, [enabled, options.autoFocusSelector, options.returnFocus]);
+  }, [enabled, options.autoFocusSelector, options.returnFocus, containerRef]);
 
   return containerRef;
 }
