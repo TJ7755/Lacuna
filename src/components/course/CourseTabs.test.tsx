@@ -8,7 +8,8 @@ function renderAt(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/course/:courseId" element={<CourseTabs courseId="course-1" />} />
-        <Route path="/course/:courseId/bank" element={<CourseTabs courseId="course-1" />} />
+        <Route path="/course/:courseId/cards" element={<CourseTabs courseId="course-1" />} />
+        <Route path="/course/:courseId/questions" element={<CourseTabs courseId="course-1" />} />
         <Route path="/course/:courseId/analytics" element={<CourseTabs courseId="course-1" />} />
         <Route path="/course/:courseId/settings" element={<CourseTabs courseId="course-1" />} />
       </Routes>
@@ -20,13 +21,18 @@ describe('CourseTabs', () => {
   it('marks Path active on the course root route', () => {
     renderAt('/course/course-1');
     expect(screen.getByRole('link', { name: 'Path' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('link', { name: 'Question bank' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('link', { name: 'Cards' })).not.toHaveAttribute('aria-current');
   });
 
-  it('marks Question bank active on the bank route (and not Path)', () => {
-    renderAt('/course/course-1/bank');
-    expect(screen.getByRole('link', { name: 'Question bank' })).toHaveAttribute('aria-current', 'page');
+  it('marks Cards active on the cards route (and not Path)', () => {
+    renderAt('/course/course-1/cards');
+    expect(screen.getByRole('link', { name: 'Cards' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Path' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('marks Questions active on the questions route', () => {
+    renderAt('/course/course-1/questions');
+    expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('marks Analytics active on the analytics route', () => {
@@ -42,9 +48,13 @@ describe('CourseTabs', () => {
   it('points each tab link at the right course-scoped route', () => {
     renderAt('/course/course-1');
     expect(screen.getByRole('link', { name: 'Path' })).toHaveAttribute('href', '/course/course-1');
-    expect(screen.getByRole('link', { name: 'Question bank' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Cards' })).toHaveAttribute(
       'href',
-      '/course/course-1/bank',
+      '/course/course-1/cards',
+    );
+    expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute(
+      'href',
+      '/course/course-1/questions',
     );
     expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute(
       'href',

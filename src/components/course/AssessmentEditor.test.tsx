@@ -10,13 +10,30 @@ import {
 } from './AssessmentEditor';
 
 const lessons: Lesson[] = [
-  { id: 'l1', courseId: 'c1', name: 'Atoms', orderIndex: 0, isExtension: false, createdAt: 1, updatedAt: 1 },
-  { id: 'l2', courseId: 'c1', name: 'Bonding', orderIndex: 1, isExtension: false, createdAt: 2, updatedAt: 2 },
+  {
+    id: 'l1',
+    courseId: 'c1',
+    name: 'Atoms',
+    orderIndex: 0,
+    isExtension: false,
+    createdAt: 1,
+    updatedAt: 1,
+  },
+  {
+    id: 'l2',
+    courseId: 'c1',
+    name: 'Bonding',
+    orderIndex: 1,
+    isExtension: false,
+    createdAt: 2,
+    updatedAt: 2,
+  },
 ];
 
 function card(id: string, lessonId: string, front: string): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     courseId: 'c1',
     primaryLessonId: lessonId,
     deckId: `deck-${lessonId}`,
@@ -72,9 +89,13 @@ describe('AssessmentEditor', () => {
   it('keeps custom coverage explicit and rejects an empty lesson selection', () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole('button', { name: 'Choose lessons' }));
-    expect(screen.getByText('Custom assessment coverage must contain at least one lesson.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Custom assessment coverage must contain at least one lesson.'),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Atoms' }));
-    expect(screen.queryByText('Custom assessment coverage must contain at least one lesson.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Custom assessment coverage must contain at least one lesson.'),
+    ).not.toBeInTheDocument();
     expect(screen.getByText(/1 lesson · 1 card/)).toBeInTheDocument();
   });
 
@@ -83,7 +104,9 @@ describe('AssessmentEditor', () => {
     fireEvent.change(screen.getByLabelText('Path position'), { target: { value: 'l1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Choose lessons' }));
     fireEvent.click(screen.getByRole('button', { name: 'Bonding' }));
-    expect(screen.getByText('Covered lesson l2 is positioned after the assessment.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Covered lesson l2 is positioned after the assessment.'),
+    ).toBeInTheDocument();
   });
 
   it('shows stale references and keeps the draft unsaveable', () => {
@@ -93,10 +116,10 @@ describe('AssessmentEditor', () => {
       lessonIds: ['missing-lesson'],
     };
     render(<Harness initial={initial} />);
-    expect(screen.getByText('Covered lesson missing-lesson could not be found.')).toBeInTheDocument();
     expect(
-      assessmentDraftIsSaveable('c1', 'checkpoint', initial, lessons, cards, []),
-    ).toBe(false);
+      screen.getByText('Covered lesson missing-lesson could not be found.'),
+    ).toBeInTheDocument();
+    expect(assessmentDraftIsSaveable('c1', 'checkpoint', initial, lessons, cards, [])).toBe(false);
   });
 
   it('searches exclusions by covered card and updates the resolved count', () => {
@@ -113,9 +136,7 @@ describe('AssessmentEditor', () => {
   it('requires explicit confirmation for a repaired stale assessment', () => {
     const initial = { ...emptyAssessmentDraft(lessons), needsAuthorConfirmation: true };
     render(<Harness initial={initial} />);
-    expect(
-      assessmentDraftIsSaveable('c1', 'checkpoint', initial, lessons, cards, []),
-    ).toBe(false);
+    expect(assessmentDraftIsSaveable('c1', 'checkpoint', initial, lessons, cards, [])).toBe(false);
     fireEvent.click(screen.getByLabelText('I have checked this assessment’s placement and scope.'));
     expect(
       screen.queryByLabelText('I have checked this assessment’s placement and scope.'),

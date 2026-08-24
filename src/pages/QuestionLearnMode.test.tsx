@@ -1,0 +1,172 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CourseQuestionData } from '../components/questions/useQuestionData';
+import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
+import { QuestionLearnMode } from './QuestionLearnMode';
+
+const mocks = vi.hoisted(() => ({
+  start: vi.fn(),
+  answer: vi.fn(),
+  correction: vi.fn(),
+  undo: vi.fn(),
+  abandon: vi.fn(),
+  notify: vi.fn(),
+  data: undefined as CourseQuestionData | undefined,
+}));
+
+vi.mock('../components/questions/useQuestionData', () => ({
+  useCourseQuestionData: () => mocks.data,
+}));
+
+vi.mock('../state/useCourseData', () => ({
+  useCourse: () => ({ id: 'course-1', name: 'Mathematics' }),
+}));
+
+vi.mock('../components/ui/Toast', () => ({
+  useToast: () => ({ notify: mocks.notify }),
+}));
+
+vi.mock('../questions/repository', () => ({
+  startQuestionAttempt: mocks.start,
+  answerQuestionAttempt: mocks.answer,
+  recordQuestionCorrection: mocks.correction,
+  undoQuestionAttempt: mocks.undo,
+  abandonQuestionAttempt: mocks.abandon,
+}));
+
+function question(): QuestionDefinition {
+  return {
+    id: 'question-1',
+    courseId: 'course-1',
+    primaryLessonId: null,
+    additionalLessonIds: [],
+    name: 'Addition application',
+    tags: [],
+    suspended: false,
+    kind: 'fixed',
+    prompt: 'Solve **2 + 2**.',
+    payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+    explanation: 'Adding two and two gives **4**.',
+    explanationStatus: 'authored',
+    contentVersion: 1,
+    contentRevisionId: 'revision-1',
+    authoringRevisionId: 'authoring-1',
+    authoringUpdatedAt: 1,
+    scheduleEpoch: { id: 'epoch-1', startedAt: 1, reason: 'created', baseline: { kind: 'new' } },
+    stability: null,
+    difficulty: null,
+    lastReviewed: null,
+    reps: 0,
+    lapses: 0,
+    state: 0,
+    due: null,
+    scheduledDays: 0,
+    learningSteps: 0,
+    scheduleUpdatedAt: 1,
+    createdAt: 1,
+    updatedAt: 1,
+  };
+}
+
+function shownAttempt(input: { sessionId: string; attemptId: string }): QuestionAttempt {
+  const definition = question();
+  if (definition.kind !== 'fixed') throw new Error('Expected a fixed Question.');
+  return {
+    id: input.attemptId,
+    questionId: definition.id,
+    courseId: definition.courseId,
+    contentVersion: 1,
+    contentRevisionId: definition.contentRevisionId,
+    scheduleEpochId: definition.scheduleEpoch.id,
+    purpose: 'post-instruction',
+    shownAt: 1,
+    updatedAt: 1,
+    status: 'shown',
+    receiptOrigin: 'native',
+    renderedPrompt: definition.prompt,
+    resolvedPayload: definition.payload,
+    renderedExplanation: definition.explanation,
+    scheduleEffect: { kind: 'none' },
+    sessionId: input.sessionId,
+  };
+}
+
+describe('QuestionLearnMode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    const definition = question();
+    mocks.data = {
+      questions: [definition],
+      conceptSets: [
+        {
+          questionId: definition.id,
+          courseId: definition.courseId,
+          targetConceptIds: ['concept-1'],
+          prerequisiteConceptIds: [],
+          authoringRevisionId: definition.authoringRevisionId,
+          authoringUpdatedAt: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      concepts: [],
+      attempts: [],
+    };
+    mocks.start.mockImplementation((input: { sessionId: string; attemptId: string }) =>
+      Promise.resolve(shownAttempt(input)),
+    );
+    mocks.answer.mockImplementation(
+      (input: {
+        attemptId: string;
+        submittedAnswer: string | string[];
+        marksEarned: number;
+        marksAvailable: number;
+      }) => {
+        const started = shownAttempt({ sessionId: 'session', attemptId: input.attemptId });
+        return Promise.resolve({
+          recorded: true,
+          question: question(),
+          attempt: {
+            ...started,
+            status: 'answered',
+            answeredAt: 2,
+            submittedAnswer: input.submittedAnswer,
+            marksEarned: input.marksEarned,
+            marksAvailable: input.marksAvailable,
+            grade: 3,
+            scheduleEffect: { kind: 'replay', grade: 3 },
+          },
+        });
+      },
+    );
+  });
+
+  it('records a separate post-instruction Question attempt and reveals worked feedback', async () => {
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/questions/learn?mode=default&limit=10']}>
+        <Routes>
+          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
+    expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({ questionId: 'question-1' }));
+    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show worked feedback' }));
+
+    await waitFor(() =>
+      expect(mocks.answer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          submittedAnswer: '4',
+          marksEarned: 1,
+          marksAvailable: 1,
+        }),
+      ),
+    );
+    expect(await screen.findByText('Full marks')).toBeInTheDocument();
+    expect(screen.getByText(/Adding two and two gives/)).toBeInTheDocument();
+  });
+});

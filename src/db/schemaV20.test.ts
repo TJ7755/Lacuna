@@ -28,6 +28,7 @@ function review(timestamp: number, overrides: Partial<ReviewLog> = {}): ReviewLo
 function card(history: ReviewLog[]): Card {
   return {
     id: 'card-1',
+    conceptId: 'concept-card-1',
     deckId: 'deck-1',
     schedulingUnitId: 'deck-1',
     courseId: 'course-1',

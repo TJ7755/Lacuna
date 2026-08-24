@@ -47,6 +47,7 @@ import { ensureLessonBackingDeck, syncCourseSchedulingUnits } from './backingDec
 import { stampUpdatedAt } from './mutationStamp';
 import { updateOcclusion } from './occlusionRepository';
 import { assertValidCardPayload } from '../items/payloadValidation';
+import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
 import { diffLineage, jsonValuesEqual } from './lineageDiff';
 import type {
   CreateCardPayload,
@@ -60,7 +61,7 @@ import type {
   ShareLessonInput,
   ShareNoteInput,
 } from './lineageDiff';
-import type { SharePayload } from './share';
+import type { SharePayload, SharePayloadV2, SharePayloadV3 } from './share';
 import type {
   Card,
   CardType,
@@ -77,13 +78,21 @@ import type {
   PendingMergeReview,
   Sequence,
 } from './types';
+import type {
+  Concept,
+  QuestionConceptSet,
+  QuestionDefinition,
+  QuestionScheduleState,
+} from '../questions/types';
+import { emptyQuestionSchedule } from '../questions/scheduler';
+import { questionGeneratorRegistry } from '../questions/generators';
 
-/** Narrowed view of the fields this module reads off a decoded v2 share payload. */
-type LineagePayload = Extract<SharePayload, { v: 2 }> & { li: string; rv: number };
+/** Narrowed view of the fields this module reads off a decoded course share payload. */
+type LineagePayload = (SharePayloadV2 | SharePayloadV3) & { li: string; rv: number };
 
 /** Type guard: a decoded payload actually carries a lineage (`li`/`rv`, §7.2). */
 export function isLineagePayload(payload: SharePayload): payload is LineagePayload {
-  return payload.v === 2 && typeof payload.li === 'string' && typeof payload.rv === 'number';
+  return payload.v !== 1 && typeof payload.li === 'string' && typeof payload.rv === 'number';
 }
 
 /** `k` -> local `CardType`, mirroring `unpackCard`'s decode in `src/db/share.ts:771-784`
@@ -107,6 +116,14 @@ function shareCardKindToType(k: 0 | 1 | 2 | 3): CardType {
  */
 function reverseCardId(primaryId: string): string {
   return `${primaryId}::rev`;
+}
+
+/**
+ * Concept identity follows the originating Card, not the locally generated Course id.
+ * Lineage imports adopt that Card identity across clients, so this id converges too.
+ */
+function lineageCardConceptId(sourceCardId: string): string {
+  return `concept:lineage-card:${encodeURIComponent(sourceCardId)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -309,6 +326,10 @@ const MERGE_TABLES = [
   db.notes,
   db.noteAnnotations,
   db.cards,
+  db.concepts,
+  db.questions,
+  db.questionConcepts,
+  db.questionAttempts,
   db.lessonCards,
   db.lessonCardExposures,
   db.lessonCompletions,
@@ -333,12 +354,269 @@ function emptyMapping(lineageId: string, courseId: string): LineageIdMapping {
     lessonIds: [],
     noteIds: [],
     cardIds: [],
+    conceptIds: [],
+    questionIds: [],
     sequenceIds: [],
     occlusionIds: [],
     lessonSnapshots: {},
     noteSnapshots: {},
     cardSnapshots: {},
   };
+}
+
+async function upsertLineageConcepts(
+  payload: LineagePayload,
+  courseId: string,
+  mapping: LineageIdMapping,
+): Promise<string[]> {
+  if (payload.v !== 3) return [];
+  const previousIds = [...(mapping.conceptIds ?? [])];
+  const conceptIds = new Set(payload.concepts.map((concept) => concept.id));
+  if (conceptIds.size !== payload.concepts.length) {
+    throw new Error('A shared course contains duplicate Concept ids.');
+  }
+  const cardConceptIds = [
+    ...payload.lessons.flatMap((lesson) => lesson.cards.map((card) => card.co)),
+    ...(payload.bankCards ?? []).map((card) => card.co),
+  ];
+  if (cardConceptIds.some((id) => !id || !conceptIds.has(id))) {
+    throw new Error('A shared Card references a missing Concept.');
+  }
+  const questionIds = new Set(payload.questions.map((question) => question.id));
+  if (questionIds.size !== payload.questions.length) {
+    throw new Error('A shared course contains duplicate Question ids.');
+  }
+  if (
+    payload.questions.some(
+      (question) =>
+        !conceptIds.has(question.t) || question.pr.some((conceptId) => !conceptIds.has(conceptId)),
+    )
+  ) {
+    throw new Error('A shared Question references a missing Concept.');
+  }
+  const existing = await db.concepts.bulkGet(payload.concepts.map((concept) => concept.id));
+  for (const concept of existing) {
+    if (concept && (concept.scope !== 'course' || concept.courseId !== courseId)) {
+      throw new Error(`A shared Concept id is already used by another Course: ${concept.id}.`);
+    }
+  }
+  const concepts: Concept[] = payload.concepts.map((concept) => ({
+    id: concept.id,
+    scope: 'course',
+    scopeKey: `course:${courseId}`,
+    courseId,
+    name: concept.n,
+    provisional: concept.p === 1,
+    createdAt: payload.at,
+    updatedAt: payload.at,
+  }));
+  if (concepts.length > 0) await db.concepts.bulkPut(concepts);
+  mapping.conceptIds = concepts.map((concept) => concept.id);
+  return previousIds;
+}
+
+function incomingCardConceptIds(payload: LineagePayload): Map<string, string> {
+  const result = new Map<string, string>();
+  if (payload.v !== 3) return result;
+  for (const lesson of payload.lessons) {
+    for (const card of lesson.cards) {
+      if (!card.id || !card.co || isGeneratedShareCard(card)) continue;
+      result.set(card.id, card.co);
+      if (card.k === 2) result.set(reverseCardId(card.id), card.co);
+    }
+  }
+  return result;
+}
+
+function lessonIdFromShareIndex(payload: LineagePayload, index: number | undefined): string | null {
+  if (index === undefined) return null;
+  const id = payload.lessons[index]?.i;
+  if (!id) throw new Error('A lineage Question references a Lesson without an originating id.');
+  return id;
+}
+
+function questionSemanticChanged(
+  existing: QuestionDefinition,
+  incoming: SharePayloadV3['questions'][number],
+  existingSet: QuestionConceptSet | undefined,
+): boolean {
+  if (existingSet?.targetConceptIds[0] !== incoming.t) return true;
+  if (!jsonValuesEqual(existingSet?.prerequisiteConceptIds ?? [], incoming.pr)) return true;
+  if (existing.kind === 'fixed' && incoming.k === 0) {
+    return existing.prompt !== incoming.f || !jsonValuesEqual(existing.payload, incoming.p);
+  }
+  if (existing.kind === 'generated' && incoming.k === 1) {
+    return (
+      existing.generatorKey !== incoming.gk ||
+      existing.generatorVersion !== incoming.gv ||
+      !jsonValuesEqual(existing.generatorConfig, incoming.gc)
+    );
+  }
+  return true;
+}
+
+function questionSchedule(question: QuestionDefinition): QuestionScheduleState {
+  return {
+    stability: question.stability,
+    difficulty: question.difficulty,
+    lastReviewed: question.lastReviewed,
+    reps: question.reps,
+    lapses: question.lapses,
+    state: question.state,
+    due: question.due,
+    scheduledDays: question.scheduledDays,
+    learningSteps: question.learningSteps,
+  };
+}
+
+async function applyLineageQuestions(
+  payload: LineagePayload,
+  courseId: string,
+  mapping: LineageIdMapping,
+): Promise<void> {
+  if (payload.v !== 3) return;
+  const previousIds = new Set(mapping.questionIds ?? []);
+  const incomingIds = new Set(payload.questions.map((question) => question.id));
+  const removedIds = [...previousIds].filter((id) => !incomingIds.has(id));
+  if (removedIds.length > 0) {
+    await db.questions.bulkDelete(removedIds);
+    await db.questionConcepts.bulkDelete(removedIds);
+    await db.tombstones.bulkPut([
+      ...removedIds.map((recordId) => ({
+        table: 'questions' as const,
+        recordId,
+        deletedAt: payload.at,
+      })),
+      ...removedIds.map((recordId) => ({
+        table: 'questionConcepts' as const,
+        recordId,
+        deletedAt: payload.at,
+      })),
+    ]);
+  }
+
+  for (const incoming of payload.questions) {
+    const [existing, existingSet] = await Promise.all([
+      db.questions.get(incoming.id),
+      db.questionConcepts.get(incoming.id),
+    ]);
+    if (existing && existing.courseId !== courseId) {
+      throw new Error(`A shared Question id is already used by another Course: ${incoming.id}.`);
+    }
+    if (existingSet && existingSet.courseId !== courseId) {
+      throw new Error(
+        `A shared Question Concept set is already used by another Course: ${incoming.id}.`,
+      );
+    }
+    const referencedConceptIds = [incoming.t, ...incoming.pr];
+    const referencedConcepts = await db.concepts.bulkGet(referencedConceptIds);
+    if (
+      referencedConcepts.some(
+        (concept) => !concept || concept.scope !== 'course' || concept.courseId !== courseId,
+      )
+    ) {
+      throw new Error(`A shared Question references a missing Concept: ${incoming.id}.`);
+    }
+    const semantic = existing ? questionSemanticChanged(existing, incoming, existingSet) : true;
+    const authoringRevisionId = `question-authoring:lineage:${encodeURIComponent(payload.li)}:${payload.rv}:${encodeURIComponent(incoming.id)}`;
+    const contentRevisionId =
+      existing && !semantic
+        ? existing.contentRevisionId
+        : `question-content:lineage:${encodeURIComponent(payload.li)}:${payload.rv}:${encodeURIComponent(incoming.id)}`;
+    const scheduleEpoch =
+      existing && !semantic
+        ? existing.scheduleEpoch
+        : {
+            id: `question-epoch:lineage:${encodeURIComponent(payload.li)}:${payload.rv}:${encodeURIComponent(incoming.id)}`,
+            startedAt: payload.at,
+            reason: existing ? ('semantic-edit' as const) : ('created' as const),
+            baseline: { kind: 'new' as const },
+          };
+    const schedule = existing && !semantic ? questionSchedule(existing) : emptyQuestionSchedule();
+    const common = {
+      id: incoming.id,
+      courseId,
+      primaryLessonId: lessonIdFromShareIndex(payload, incoming.pl),
+      additionalLessonIds: (incoming.al ?? []).map((index) => {
+        const lessonId = lessonIdFromShareIndex(payload, index);
+        if (!lessonId) throw new Error('A Question additional Lesson is missing.');
+        return lessonId;
+      }),
+      name: incoming.n,
+      tags: incoming.g ?? [],
+      contentVersion: existing ? existing.contentVersion + (semantic ? 1 : 0) : 1,
+      contentRevisionId,
+      authoringRevisionId,
+      authoringUpdatedAt: payload.at,
+      ...schedule,
+      scheduleEpoch,
+      scheduleUpdatedAt: existing && !semantic ? existing.scheduleUpdatedAt : payload.at,
+      createdAt: existing?.createdAt ?? payload.at,
+      updatedAt: Math.max(existing?.updatedAt ?? payload.at, payload.at),
+    };
+    const definition: QuestionDefinition =
+      incoming.k === 0
+        ? {
+            ...common,
+            kind: 'fixed',
+            suspended: incoming.s === 1,
+            prompt: incoming.f,
+            payload: incoming.p,
+            explanation: incoming.e,
+            explanationStatus: incoming.ld === 1 ? 'legacy-derived' : 'authored',
+          }
+        : {
+            ...common,
+            kind: 'generated',
+            suspended:
+              incoming.s === 1 ||
+              questionGeneratorRegistry.describe(incoming.gk, incoming.gv) === undefined,
+            generatorKey: incoming.gk,
+            generatorVersion: incoming.gv,
+            generatorConfig: incoming.gc,
+          };
+    const set: QuestionConceptSet = {
+      questionId: incoming.id,
+      courseId,
+      targetConceptIds: [incoming.t],
+      prerequisiteConceptIds: [...incoming.pr],
+      authoringRevisionId,
+      authoringUpdatedAt: payload.at,
+      createdAt: existingSet?.createdAt ?? payload.at,
+      updatedAt: payload.at,
+    };
+    await db.questions.put(definition);
+    await db.questionConcepts.put(set);
+  }
+  mapping.questionIds = [...incomingIds];
+}
+
+async function pruneRemovedLineageConcepts(
+  previousIds: readonly string[],
+  mapping: LineageIdMapping,
+  deletedAt: number,
+): Promise<void> {
+  const incoming = new Set(mapping.conceptIds ?? []);
+  const candidates = previousIds.filter((id) => !incoming.has(id));
+  const removed: string[] = [];
+  for (const id of candidates) {
+    const [card, set] = await Promise.all([
+      db.cards.where('conceptId').equals(id).first(),
+      db.questionConcepts
+        .filter(
+          (links) =>
+            links.targetConceptIds.includes(id) || links.prerequisiteConceptIds.includes(id),
+        )
+        .first(),
+    ]);
+    if (!card && !set) removed.push(id);
+  }
+  if (removed.length > 0) {
+    await db.concepts.bulkDelete(removed);
+    await db.tombstones.bulkPut(
+      removed.map((recordId) => ({ table: 'concepts' as const, recordId, deletedAt })),
+    );
+  }
 }
 
 /**
@@ -443,6 +721,7 @@ async function applyCreates(
     cards: CreateCardPayload[];
   },
   mapping: LineageIdMapping,
+  conceptIdByCard?: ReadonlyMap<string, string>,
 ): Promise<{ lessons: Lesson[]; notes: Note[]; cards: Card[] }> {
   const newLessons: Lesson[] = creates.lessons.map((l) => ({
     id: l.id,
@@ -472,10 +751,25 @@ async function applyCreates(
   if (newNotes.length > 0) await db.notes.bulkAdd(newNotes);
 
   const newCards: Card[] = [];
+  const newConcepts: Concept[] = [];
   for (const c of creates.cards) {
     const deckId = await ensureLessonBackingDeck(courseId, c.lessonId);
+    const conceptId = conceptIdByCard ? conceptIdByCard.get(c.id) : lineageCardConceptId(c.id);
+    if (!conceptId) throw new Error(`A shared Card references a missing Concept: ${c.id}.`);
+    if (!conceptIdByCard) {
+      newConcepts.push(
+        buildCardConcept({
+          id: conceptId,
+          courseId,
+          schedulingUnitId: deckId,
+          name: conceptNameForCard(c.type, c.front, c.back),
+          now: createdAt,
+        }),
+      );
+    }
     newCards.push({
       id: c.id,
+      conceptId,
       deckId,
       courseId,
       primaryLessonId: c.lessonId,
@@ -501,6 +795,7 @@ async function applyCreates(
       buriedUntil: null,
     });
   }
+  if (newConcepts.length > 0) await db.concepts.bulkAdd(newConcepts);
   if (newCards.length > 0) await db.cards.bulkAdd(newCards);
 
   for (const l of newLessons) {
@@ -551,6 +846,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
 
     const mapping = emptyMapping(payload.li, course.id);
     const createdAt = Date.now();
+    const previousConceptIds = await upsertLineageConcepts(payload, course.id, mapping);
 
     const newLessons: Lesson[] = payload.lessons.map((shareLesson, orderIndex) => {
       if (!shareLesson.i) throw new Error('Lineage payload lesson is missing its originating id.');
@@ -596,6 +892,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     }
 
     const newCards: Card[] = [];
+    const newConcepts: Concept[] = [];
     for (let lessonIndex = 0; lessonIndex < payload.lessons.length; lessonIndex++) {
       const shareLesson = payload.lessons[lessonIndex];
       const lessonId = newLessons[lessonIndex].id;
@@ -607,7 +904,23 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
         if (!shareCard.id) throw new Error('Lineage payload card is missing its originating id.');
         const type = shareCardKindToType(shareCard.k);
         assertValidCardPayload(type, shareCard.p);
+        const conceptId = payload.v === 3 ? shareCard.co : lineageCardConceptId(shareCard.id);
+        if (!conceptId) {
+          throw new Error(`A shared Card references a missing Concept: ${shareCard.id}.`);
+        }
+        if (payload.v !== 3) {
+          newConcepts.push(
+            buildCardConcept({
+              id: conceptId,
+              courseId: course.id,
+              schedulingUnitId: deckId,
+              name: conceptNameForCard(type, shareCard.f, shareCard.b ?? ''),
+              now: cardCreatedAt,
+            }),
+          );
+        }
         const base = {
+          conceptId,
           deckId,
           courseId: course.id,
           primaryLessonId: lessonId,
@@ -663,6 +976,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
         }
       }
     }
+    if (newConcepts.length > 0) await db.concepts.bulkAdd(newConcepts);
     if (newCards.length > 0) await db.cards.bulkAdd(newCards);
     for (const card of newCards) {
       mapping.cardIds.push(card.id);
@@ -672,6 +986,8 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     const lessonIdByIndex = (index: number) => newLessons[index]?.id ?? null;
     await applySequences(payload, course.id, lessonIdByIndex, mapping);
     await applyOcclusions(payload, course.id, lessonIdByIndex, mapping);
+    await applyLineageQuestions(payload, course.id, mapping);
+    await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
     await syncCourseSchedulingUnits(course.id);
 
     await db.lineageIdMappings.put(mapping);
@@ -716,6 +1032,8 @@ export async function mergeLineageUpdate(
 
     const existingMapping = await db.lineageIdMappings.get(payload.li);
     const mapping = existingMapping ?? emptyMapping(payload.li, courseId);
+    const previousConceptIds = await upsertLineageConcepts(payload, courseId, mapping);
+    const conceptIdByCard = payload.v === 3 ? incomingCardConceptIds(payload) : undefined;
 
     const [existingLessons, courseCards] = await Promise.all([
       db.lessons.where('courseId').equals(courseId).toArray(),
@@ -773,7 +1091,7 @@ export async function mergeLineageUpdate(
 
     // 1. Creates are always applied immediately (§7.5 step 2) — purely additive.
     const createdAt = Date.now();
-    const created = await applyCreates(courseId, createdAt, diff.creates, mapping);
+    const created = await applyCreates(courseId, createdAt, diff.creates, mapping, conceptIdByCard);
     if (created.lessons.length > 0) await syncCourseSchedulingUnits(courseId);
 
     // 2/3. Updates and removals: apply now if autoAcceptUpdates, otherwise queue.
@@ -868,6 +1186,16 @@ export async function mergeLineageUpdate(
     };
     await applySequences(payload, courseId, lessonIdByIndex, mapping);
     await applyOcclusions(payload, courseId, lessonIdByIndex, mapping);
+    if (conceptIdByCard) {
+      for (const [cardId, conceptId] of conceptIdByCard) {
+        const card = await db.cards.get(cardId);
+        if (card && card.conceptId !== conceptId) {
+          await db.cards.update(cardId, { conceptId });
+        }
+      }
+    }
+    await applyLineageQuestions(payload, courseId, mapping);
+    await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
 
     // 6. Revision + mapping bookkeeping.
     await db.courses.update(

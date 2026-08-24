@@ -43,6 +43,7 @@ function deck(objective: LegacyDeckRecord['examObjective'] = 'expectedMarks'): L
 function card(id: string, partial: Partial<Card> = {}): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'deck',
     schedulingUnitId: 'deck',
     type: 'front_back',

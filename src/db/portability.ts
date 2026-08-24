@@ -1,10 +1,7 @@
 // Import/Export: the entire database serialises to a single JSON file and back.
 
 import { db, makeId } from './schema';
-import {
-  migrateCardRecord,
-  type LegacyCard,
-} from './migrations';
+import { migrateCardRecord, type LegacyCard } from './migrations';
 import type {
   BackupFile,
   Card,
@@ -46,12 +43,15 @@ import {
   extractMarkdownAssets,
   referencedAssetHashes,
   referencedAssetHashesInCards,
+  referencedAssetHashesInValues,
 } from './assets';
 import { mergeRevisionPlans } from '../course/revisionPlan';
 import { itemPayloadIsValid } from '../items/payloadValidation';
 import { adaptLegacyBackup } from './legacyBackupAdapter';
+import { normaliseQuestionBackup } from '../questions/backup';
+import { mergeQuestionCollections } from '../questions/merge';
 
-export const BACKUP_VERSION = 10;
+export const BACKUP_VERSION = 11;
 
 function withUpdatedAt<T extends { updatedAt?: number }>(
   row: T,
@@ -84,6 +84,12 @@ export async function exportDatabase(): Promise<BackupFile> {
     coursePerformance,
     schedulingPerformance,
     tombstones,
+    concepts,
+    questions,
+    questionConcepts,
+    questionAttempts,
+    lineageIdMappings,
+    pendingMergeReviews,
   ] = await Promise.all([
     db.cards.toArray(),
     db.sessionHistory.toArray(),
@@ -104,6 +110,12 @@ export async function exportDatabase(): Promise<BackupFile> {
     db.coursePerformance.toArray(),
     db.schedulingPerformance.toArray(),
     db.tombstones.toArray(),
+    db.concepts.toArray(),
+    db.questions.toArray(),
+    db.questionConcepts.toArray(),
+    db.questionAttempts.toArray(),
+    db.lineageIdMappings.toArray(),
+    db.pendingMergeReviews.toArray(),
   ]);
   const projectedCards = cards;
   const referencedHashes = new Set(referencedAssetHashesInCards(projectedCards));
@@ -114,6 +126,9 @@ export async function exportDatabase(): Promise<BackupFile> {
   // cards carry a plain-text fallback, not a Markdown embed — so it must be gathered
   // explicitly or a backup would restore occlusions with no image (mirrors assets.ts's GC).
   for (const occlusion of occlusions) referencedHashes.add(occlusion.assetHash);
+  referencedAssetHashesInValues(questions, questionAttempts).forEach((hash) =>
+    referencedHashes.add(hash),
+  );
   const assets = await assetsForBackup([...referencedHashes]);
   return {
     app: 'lacuna',
@@ -140,6 +155,12 @@ export async function exportDatabase(): Promise<BackupFile> {
     coursePerformance,
     schedulingPerformance,
     tombstones,
+    concepts,
+    questions,
+    questionConcepts,
+    questionAttempts,
+    lineageIdMappings,
+    pendingMergeReviews,
   };
 }
 
@@ -174,12 +195,20 @@ export function validateBackup(data: unknown): data is BackupFile {
         (candidate.payload === undefined || candidate.type === 'front_back')
       );
     });
+  const hasCurrentQuestionCollections =
+    typeof b.version === 'number' &&
+    (b.version < 11 ||
+      (Array.isArray(b.concepts) &&
+        Array.isArray(b.questions) &&
+        Array.isArray(b.questionConcepts) &&
+        Array.isArray(b.questionAttempts)));
   return (
     b.app === 'lacuna' &&
     typeof b.version === 'number' &&
     (b.decks === undefined || Array.isArray(b.decks)) &&
     Array.isArray(b.cards) &&
     cardsHaveValidPayloads &&
+    hasCurrentQuestionCollections &&
     Array.isArray(b.assets) &&
     Array.isArray(b.sessionHistory) &&
     Array.isArray(b.userPerformance) &&
@@ -209,14 +238,18 @@ function assertCurrentBackup(backup: BackupFile): void {
  * SessionHistory is append-only and de-duplicated by stable event identity when
  * available, falling back to (timestamp, deckId) for legacy rows.
  */
-export async function importBackup(
-  backup: BackupFile,
-  mode: ImportMode,
-): Promise<void> {
+export async function importBackup(backup: BackupFile, mode: ImportMode): Promise<void> {
   if (!validateBackup(backup)) {
     throw new Error('Invalid backup file.');
   }
   assertCurrentBackup(backup);
+  backup = normaliseQuestionBackup(backup);
+  let incomingQuestions = {
+    concepts: backup.concepts ?? [],
+    questions: backup.questions ?? [],
+    questionConcepts: backup.questionConcepts ?? [],
+    questionAttempts: backup.questionAttempts ?? [],
+  };
 
   // Pre-process markdown assets outside the IndexedDB transaction so long-running
   // canvas compressions cannot auto-abort the import transaction.
@@ -282,17 +315,9 @@ export async function importBackup(
     courseAssessments: assessmentMigration.assessments,
     cards: migratedCards,
   });
-  const {
-    cards,
-    courses,
-    courseAssessments,
-    ...storageProjection
-  } = adaptation;
+  const { cards, courses, courseAssessments, ...storageProjection } = adaptation;
   for (const card of cards) {
-    Object.assign(
-      card,
-      withUpdatedAt(card, Math.max(card.createdAt ?? 0, card.lastReviewed ?? 0)),
-    );
+    Object.assign(card, withUpdatedAt(card, Math.max(card.createdAt ?? 0, card.lastReviewed ?? 0)));
   }
   for (const course of courses) {
     Object.assign(course, withUpdatedAt(course, course.createdAt ?? 0));
@@ -337,6 +362,12 @@ export async function importBackup(
     Object.assign(row, withUpdatedAt(row, 0));
   }
   for (const course of courses) finalAssessmentForCourse(course.id, courseAssessments);
+  incomingQuestions = mergeQuestionCollections(
+    { concepts: [], questions: [], questionConcepts: [], questionAttempts: [] },
+    incomingQuestions,
+    courses,
+    [],
+  );
   const reviewHistory: ReviewHistoryEntry[] = mergeReviewHistoryEntries(
     backup.reviewHistory ?? [],
     cards,
@@ -357,7 +388,8 @@ export async function importBackup(
       entry.schedulingUnitId ??
       (entry.eventId ? reviewUnitByEventId.get(entry.eventId) : undefined) ??
       storageProjection.schedulingUnitByDeckId.get(entry.deckId) ??
-      (entry.courseId && storageProjection.schedulingUnits.some((unit) => unit.id === entry.courseId)
+      (entry.courseId &&
+      storageProjection.schedulingUnits.some((unit) => unit.id === entry.courseId)
         ? entry.courseId
         : undefined),
   }));
@@ -386,6 +418,12 @@ export async function importBackup(
       db.coursePerformance,
       db.schedulingPerformance,
       db.tombstones,
+      db.concepts,
+      db.questions,
+      db.questionConcepts,
+      db.questionAttempts,
+      db.lineageIdMappings,
+      db.pendingMergeReviews,
     ],
     async () => {
       // Deduplicate by hash so bulkPut never encounters a constraint conflict.
@@ -414,6 +452,12 @@ export async function importBackup(
           db.coursePerformance.clear(),
           db.schedulingPerformance.clear(),
           db.tombstones.clear(),
+          db.concepts.clear(),
+          db.questions.clear(),
+          db.questionConcepts.clear(),
+          db.questionAttempts.clear(),
+          db.lineageIdMappings.clear(),
+          db.pendingMergeReviews.clear(),
         ]);
         await db.cards.bulkAdd(cards);
         if (dedupedAssets.length) await db.assets.bulkPut(dedupedAssets);
@@ -474,6 +518,24 @@ export async function importBackup(
         if (backup.tombstones && backup.tombstones.length > 0) {
           await db.tombstones.bulkAdd(backup.tombstones);
         }
+        if (incomingQuestions.concepts.length > 0) {
+          await db.concepts.bulkAdd(incomingQuestions.concepts);
+        }
+        if (incomingQuestions.questions.length > 0) {
+          await db.questions.bulkAdd(incomingQuestions.questions);
+        }
+        if (incomingQuestions.questionConcepts.length > 0) {
+          await db.questionConcepts.bulkAdd(incomingQuestions.questionConcepts);
+        }
+        if (incomingQuestions.questionAttempts.length > 0) {
+          await db.questionAttempts.bulkAdd(incomingQuestions.questionAttempts);
+        }
+        if (backup.lineageIdMappings && backup.lineageIdMappings.length > 0) {
+          await db.lineageIdMappings.bulkAdd(backup.lineageIdMappings);
+        }
+        if (backup.pendingMergeReviews && backup.pendingMergeReviews.length > 0) {
+          await db.pendingMergeReviews.bulkAdd(backup.pendingMergeReviews);
+        }
         return;
       }
 
@@ -494,6 +556,31 @@ export async function importBackup(
           }
         }
         await db.courses.bulkPut(mergedCourses);
+      }
+
+      const localQuestionState = {
+        concepts: await db.concepts.toArray(),
+        questions: await db.questions.toArray(),
+        questionConcepts: await db.questionConcepts.toArray(),
+        questionAttempts: await db.questionAttempts.toArray(),
+      };
+      const mergedQuestionState = mergeQuestionCollections(
+        localQuestionState,
+        incomingQuestions,
+        await db.courses.toArray(),
+        [],
+      );
+      if (mergedQuestionState.concepts.length > 0) {
+        await db.concepts.bulkPut(mergedQuestionState.concepts);
+      }
+      if (mergedQuestionState.questions.length > 0) {
+        await db.questions.bulkPut(mergedQuestionState.questions);
+      }
+      if (mergedQuestionState.questionConcepts.length > 0) {
+        await db.questionConcepts.bulkPut(mergedQuestionState.questionConcepts);
+      }
+      if (mergedQuestionState.questionAttempts.length > 0) {
+        await db.questionAttempts.bulkPut(mergedQuestionState.questionAttempts);
       }
 
       if (backup.lessons && backup.lessons.length > 0) {
@@ -667,7 +754,10 @@ export async function importBackup(
           entryIdentities: new Map(),
         };
         resolveReviewHistoryCollisions(existingReviewHistory, collisionState);
-        const resolvedIncoming = resolveReviewHistoryCollisions(hydratedReviewHistory, collisionState);
+        const resolvedIncoming = resolveReviewHistoryCollisions(
+          hydratedReviewHistory,
+          collisionState,
+        );
         const existingIds = new Set(existingReviewHistory.map((entry) => entry.id));
         const missingReviewHistory = resolvedIncoming.filter((entry) => !existingIds.has(entry.id));
         if (missingReviewHistory.length > 0) {
@@ -710,9 +800,7 @@ export async function importBackup(
           return incomingAt > existingAt ? incoming : existing;
         },
       );
-      const mergedUnitsById = new Map(
-        mergedSchedulingUnits.map((unit) => [unit.id, unit]),
-      );
+      const mergedUnitsById = new Map(mergedSchedulingUnits.map((unit) => [unit.id, unit]));
       const existingCoursePerformance = new Map(
         (await db.coursePerformance.toArray()).map((row) => [row.courseId, row]),
       );
@@ -778,15 +866,9 @@ export async function importBackup(
           mergedPerf.push(incoming);
         } else {
           const course = existingCourses.get(incoming.deckId);
-          const localInteracted =
-            course?.lastInteractedAt ??
-            course?.createdAt ??
-            0;
+          const localInteracted = course?.lastInteractedAt ?? course?.createdAt ?? 0;
           const remoteCourse = incomingCourses.get(incoming.deckId);
-          const remoteInteracted =
-            remoteCourse?.lastInteractedAt ??
-            remoteCourse?.createdAt ??
-            0;
+          const remoteInteracted = remoteCourse?.lastInteractedAt ?? remoteCourse?.createdAt ?? 0;
           // Prefer whichever side has the more recent deck interaction.
           mergedPerf.push(remoteInteracted > localInteracted ? incoming : existing);
         }

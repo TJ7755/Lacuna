@@ -74,6 +74,7 @@ function lesson(id: string, overrides: Partial<Lesson> = {}): Lesson {
 function card(id: string, overrides: Partial<Card> = {}): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     type: 'front_back',
     front: 'Q',
     back: 'A',
@@ -219,6 +220,10 @@ describe('manualMerge', () => {
       courses: { kept: 1, added: 1, removed: 0 },
       lessons: { kept: 1, added: 1, removed: 0 },
       reviewEvents: { kept: 1, added: 1, removed: 0 },
+      concepts: { kept: 1, added: 1, removed: 0 },
+      questions: { kept: 0, added: 0, removed: 0 },
+      questionConcepts: { kept: 0, added: 0, removed: 0 },
+      questionAttempts: { kept: 0, added: 0, removed: 0 },
     });
   });
 
@@ -234,7 +239,7 @@ describe('manualMerge', () => {
     await manualMerge(backup(), { beforeApply });
 
     expect(beforeApply).toHaveBeenCalledWith(
-      expect.objectContaining({ app: 'lacuna', version: 10 }),
+      expect.objectContaining({ app: 'lacuna', version: 11 }),
     );
     expect(order).toEqual(['before-apply', 'import']);
   });
@@ -290,6 +295,40 @@ describe('manualMerge', () => {
 });
 
 describe('summariseMerge', () => {
+  it('reports every Question store separately', () => {
+    const local = backup({
+      version: 11,
+      concepts: [{ id: 'concept-1' } as NonNullable<BackupFile['concepts']>[number]],
+      questions: [{ id: 'question-1' } as NonNullable<BackupFile['questions']>[number]],
+      questionConcepts: [
+        { questionId: 'question-1' } as NonNullable<BackupFile['questionConcepts']>[number],
+      ],
+      questionAttempts: [
+        { id: 'attempt-1' } as NonNullable<BackupFile['questionAttempts']>[number],
+      ],
+    });
+    const merged = backup({
+      version: 11,
+      concepts: [
+        { id: 'concept-1' } as NonNullable<BackupFile['concepts']>[number],
+        { id: 'concept-2' } as NonNullable<BackupFile['concepts']>[number],
+      ],
+      questions: [],
+      questionConcepts: [],
+      questionAttempts: [
+        { id: 'attempt-1' } as NonNullable<BackupFile['questionAttempts']>[number],
+        { id: 'attempt-2' } as NonNullable<BackupFile['questionAttempts']>[number],
+      ],
+    });
+
+    expect(summariseMerge(local, merged)).toMatchObject({
+      concepts: { kept: 1, added: 1, removed: 0 },
+      questions: { kept: 0, added: 0, removed: 1 },
+      questionConcepts: { kept: 0, added: 0, removed: 1 },
+      questionAttempts: { kept: 1, added: 1, removed: 0 },
+    });
+  });
+
   it('counts kept, added and removed ids', () => {
     const local = backup({
       cards: [card('keep'), card('gone')],
@@ -309,6 +348,10 @@ describe('summariseMerge', () => {
       courses: { kept: 1, added: 1, removed: 0 },
       lessons: { kept: 1, added: 0, removed: 0 },
       reviewEvents: { kept: 1, added: 1, removed: 0 },
+      concepts: { kept: 1, added: 1, removed: 1 },
+      questions: { kept: 0, added: 0, removed: 0 },
+      questionConcepts: { kept: 0, added: 0, removed: 0 },
+      questionAttempts: { kept: 0, added: 0, removed: 0 },
     });
   });
 });

@@ -30,6 +30,7 @@ function legacyCourse(): CourseRecord {
 function legacyCard(history: ReviewLog[]): Card {
   return {
     id: 'card-1',
+    conceptId: 'concept-card-1',
     deckId: 'lesson-deck',
     schedulingUnitId: 'lesson-deck',
     courseId: 'course-1',
@@ -54,7 +55,8 @@ function legacyCard(history: ReviewLog[]): Card {
 
 const stores = {
   decks: 'id, createdAt, examDate, folderId',
-  cards: 'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+  cards:
+    'id, deckId, courseId, primaryLessonId, type, lastReviewed, sequenceItemId, occlusionRegionId',
   sessionHistory: '++id, &eventId, sessionId, deckId, courseId, timestamp',
   userPerformance: 'deckId',
   backups: '++id, createdAt',
@@ -208,6 +210,8 @@ describe('schema v21 domain storage', () => {
     await db.close();
     await db.open();
     expect(await db.schedulingUnits.where('id').equals('lesson-1').count()).toBe(1);
-    expect(await db.schedulingPerformance.where('schedulingUnitId').equals('lesson-1').count()).toBe(1);
+    expect(
+      await db.schedulingPerformance.where('schedulingUnitId').equals('lesson-1').count(),
+    ).toBe(1);
   });
 });

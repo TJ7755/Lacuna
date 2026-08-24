@@ -35,6 +35,7 @@ function cardWith(grades: Grade[], startMs: number, gapDays = 2): Card {
   }));
   return {
     id: Math.random().toString(36).slice(2),
+    conceptId: 'concept-optimisation-card',
     deckId: 'd',
     schedulingUnitId: 'd',
     type: 'front_back',

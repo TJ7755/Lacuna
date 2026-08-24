@@ -55,6 +55,7 @@ function makeLesson(overrides: Partial<Lesson> & Pick<Lesson, 'id' | 'courseId'>
 
 function makeCard(overrides: Partial<Card> & Pick<Card, 'id' | 'deckId'>): Card {
   return {
+    conceptId: `concept-${overrides.id}`,
     type: 'front_back',
     front: '',
     back: '',
@@ -290,9 +291,9 @@ describe('lessonStatus', () => {
 
   it('requires explicit completion for an unlocked lesson with zero cards', () => {
     expect(lessonStatus(true, 'l1', [], [], [])).toBe('available');
-    expect(lessonStatus(true, 'l1', [], [], [{ lessonId: 'l1', completedAt: 1, updatedAt: 1 }])).toBe(
-      'completed',
-    );
+    expect(
+      lessonStatus(true, 'l1', [], [], [{ lessonId: 'l1', completedAt: 1, updatedAt: 1 }]),
+    ).toBe('completed');
   });
 
   it('returns completed when every member card has a lesson-scoped exposure', () => {

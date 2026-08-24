@@ -1,7 +1,7 @@
 import { markSchemeSyntaxSpecification } from './markSchemeCompiler';
 
-export const BATCH_OUTPUT_START = '<<<LACUNA_ITEMS_V1>>>';
-export const BATCH_OUTPUT_END = '<<<END_LACUNA_ITEMS_V1>>>';
+export const BATCH_OUTPUT_START = '<<<LACUNA_QUESTIONS_V2>>>';
+export const BATCH_OUTPUT_END = '<<<END_LACUNA_QUESTIONS_V2>>>';
 
 export interface BatchGenerationPromptInput {
   notes: string;
@@ -10,7 +10,6 @@ export interface BatchGenerationPromptInput {
   examBoard?: string;
   specification?: string;
   maxItems?: number;
-  conceptsPerItem?: number;
 }
 
 export interface ItemRevisionPromptInput {
@@ -46,20 +45,16 @@ export function buildMarkSchemeDraftPrompt(question: string): string {
 
 export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): string {
   const maxItems = input.maxItems ? Math.max(1, Math.trunc(input.maxItems) || 1) : undefined;
-  const conceptsPerItem = input.conceptsPerItem
-    ? Math.max(1, Math.trunc(input.conceptsPerItem) || 1)
-    : undefined;
   const generationConstraints = [
-    conceptsPerItem
-      ? `Target concept density: ${conceptsPerItem} atomic concept${conceptsPerItem === 1 ? '' : 's'} per item. Combine concepts only when they form one coherent retrieval target.`
-      : 'Choose an appropriate number of atomic concepts per item. Do not combine unrelated concepts into one retrieval target.',
+    'Give every Question exactly one primary target Concept: the skill principally practised by a successful answer.',
+    'List any prerequisite Concepts separately. Never repeat the target as a prerequisite.',
     maxItems
       ? `Requested maximum items: ${maxItems}.`
       : 'Choose the number of items needed for useful coverage without padding.',
   ];
 
   return [
-    'Create a batch of Lacuna v1 numeric and working items from the lesson notes below.',
+    'Create a batch of Lacuna v2 fixed numeric and working Questions from the lesson notes below.',
     'First decide whether anything material is ambiguous. If so, ask no more than three concise clarifying questions and wait for the answers. Otherwise produce the output immediately.',
     ...generationConstraints,
     'Generate durable concept checks, not a disposable worksheet of arbitrary-number exercises. A working item must test a reusable method, relationship or derivation from the notes.',
@@ -71,10 +66,7 @@ export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): s
     `Topic: ${input.topic.trim()}`,
     `Level: ${input.level.trim()}`,
     ...(input.examBoard?.trim() ? [`Exam board: ${input.examBoard.trim()}`] : []),
-    ...(input.specification?.trim()
-      ? [`Specification: ${input.specification.trim()}`]
-      : []),
-    `Concepts per item: ${conceptsPerItem ?? 'model-selected'}`,
+    ...(input.specification?.trim() ? [`Specification: ${input.specification.trim()}`] : []),
     `Requested maximum items: ${maxItems ?? 'model-selected'}`,
     '',
     'Lesson notes:',
@@ -102,17 +94,23 @@ export function buildBatchGenerationPrompt(input: BatchGenerationPromptInput): s
     'When ready, return exactly one JSON object between these delimiter lines, with no Markdown fence:',
     BATCH_OUTPUT_START,
     '{',
-    '  "version": 1,',
+    '  "version": 2,',
     '  "items": [',
     '    {',
     '      "kind": "working",',
     '      "question": "Complete the square for x^2 + bx + c = 0 in general form.",',
+    '      "explanation": "Move c, then add b^2/4 to both sides to form a perfect square.",',
+    '      "targetConcept": "Complete the square in general form",',
+    '      "prerequisiteConcepts": ["Expand a squared binomial"],',
     '      "scheme": "[1] isolate :: x^2 + b*x = -c\\n[1] square :: (x + b/2)^2 = b^2/4 - c",',
     '      "fixtures": [{ "studentAnswer": ["x^2 + b*x = -c", "(x + b/2)^2 = b^2/4 - c"], "expectedMarks": 2 }]',
     '    },',
     '    {',
     '      "kind": "numeric",',
     '      "question": "Question text",',
+    '      "explanation": "A concise worked solution that explains why the answer is correct.",',
+    '      "targetConcept": "One primary skill practised",',
+    '      "prerequisiteConcepts": [],',
     '      "answer": { "kind": "exact", "value": "4" }',
     '    }',
     '  ]',
@@ -132,14 +130,16 @@ export function buildBatchRevisionPrompt(input: BatchRevisionPromptInput): strin
   const plural = count === 1 ? '' : 's';
 
   return [
-    `Revise the ${count} Lacuna v1 item${plural} below in response to the validation evidence.`,
+    `Revise the ${count} Lacuna v2 Question${plural} below in response to the validation evidence.`,
     'Preserve each learning objective. Fix only the reported problems.',
     `Return exactly ${count} item${plural}, in the same order as they appear below. Do not add,`,
     'merge, drop or reorder items, and do not revise an item that reports no problem.',
     'For a working item, keep the mark scheme within the supplied v1 grammar and make every',
     'fixture earn its declared expectedMarks.',
     '',
-    ...(input.complaint?.trim() ? ['Tutor complaint (applies to all of them):', input.complaint.trim(), ''] : []),
+    ...(input.complaint?.trim()
+      ? ['Tutor complaint (applies to all of them):', input.complaint.trim(), '']
+      : []),
     'Mark-scheme syntax:',
     markSchemeSyntaxSpecification(),
     '',
@@ -156,7 +156,7 @@ export function buildBatchRevisionPrompt(input: BatchRevisionPromptInput): strin
     'Return one JSON object between these delimiter lines, with no Markdown fence or explanation:',
     BATCH_OUTPUT_START,
     '{',
-    '  "version": 1,',
+    '  "version": 2,',
     `  "items": [ the ${count} revised item${plural}, in the original order ]`,
     '}',
     BATCH_OUTPUT_END,
@@ -165,7 +165,7 @@ export function buildBatchRevisionPrompt(input: BatchRevisionPromptInput): strin
 
 export function buildItemRevisionPrompt(input: ItemRevisionPromptInput): string {
   return [
-    'Revise one Lacuna v1 item in response to the tutor complaint and validation evidence below.',
+    'Revise one Lacuna v2 Question in response to the tutor complaint and validation evidence below.',
     'Preserve the learning objective. Fix the reported problem without creating additional items or unrelated variants.',
     'For a working item, keep the mark scheme within the supplied v1 grammar and make every fixture earn its declared expectedMarks.',
     '',
@@ -193,7 +193,7 @@ export function buildItemRevisionPrompt(input: ItemRevisionPromptInput): string 
     'Return exactly one revised item inside this complete single-item batch block, with no Markdown fence or explanation:',
     BATCH_OUTPUT_START,
     '{',
-    '  "version": 1,',
+    '  "version": 2,',
     '  "items": [',
     '    { "kind": "numeric or working", "question": "Revised question and fields" }',
     '  ]',

@@ -59,11 +59,11 @@ export function decodeSnapshot(bytes: Uint8Array): BackupFile {
   } catch {
     throw new SyncPayloadError('The relay returned invalid sync data.');
   }
+  if (typeof parsed === 'object' && parsed !== null && isPreV22Backup(parsed as BackupFile)) {
+    throw new SyncPayloadError(PRE_V22_BACKUP_MESSAGE);
+  }
   if (!validateBackup(parsed)) {
     throw new SyncPayloadError('The relay returned an invalid Lacuna snapshot.');
-  }
-  if (isPreV22Backup(parsed)) {
-    throw new SyncPayloadError(PRE_V22_BACKUP_MESSAGE);
   }
   return parsed;
 }
@@ -107,6 +107,10 @@ const OPTIONAL_COLLECTIONS = [
   'sequences',
   'occlusions',
   'tombstones',
+  'concepts',
+  'questions',
+  'questionConcepts',
+  'questionAttempts',
 ] as const;
 
 function comparableSnapshot(snapshot: BackupFile): Record<string, unknown> {
@@ -191,6 +195,10 @@ function courseContributors(snapshot: BackupFile): string[] {
   for (const unit of units) add(unit, unit.courseId ?? undefined);
   for (const row of snapshot.coursePerformance ?? []) add(row, row.courseId);
   for (const row of snapshot.schedulingPerformance ?? []) add(row, row.courseId);
+  for (const concept of snapshot.concepts ?? []) add(concept, concept.courseId ?? undefined);
+  for (const question of snapshot.questions ?? []) add(question, question.courseId);
+  for (const set of snapshot.questionConcepts ?? []) add(set, set.courseId);
+  for (const attempt of snapshot.questionAttempts ?? []) add(attempt, attempt.courseId);
 
   const assetOwners = assetOwnerMap(snapshot, lessonCourse, cardCourse);
   for (const asset of snapshot.assets ?? []) {
@@ -249,6 +257,22 @@ function assetOwnerMap(
     set.add(occlusion.courseId);
     owners.set(occlusion.assetHash.toLowerCase(), set);
   }
+  const addNestedReferences = (value: unknown, courseId: string): void => {
+    if (typeof value === 'string') {
+      addReferences(value, courseId);
+      return;
+    }
+    if (value === null || typeof value !== 'object') return;
+    if (Array.isArray(value)) value.forEach((entry) => addNestedReferences(entry, courseId));
+    else {
+      Object.values(value as Record<string, unknown>).forEach((entry) =>
+        addNestedReferences(entry, courseId),
+      );
+    }
+  };
+  for (const question of snapshot.questions ?? []) addNestedReferences(question, question.courseId);
+  for (const attempt of snapshot.questionAttempts ?? [])
+    addNestedReferences(attempt, attempt.courseId);
   return owners;
 }
 

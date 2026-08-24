@@ -28,14 +28,12 @@
 //   v1 = a flat list of decks. Still parsed so an old code can be named, then refused.
 //   v2 = a single course: course metadata, ordered lessons, cards, assessment scope
 //        references and lesson-card links. PracticeNode remains device-local.
+//   v3 = v2 content plus stable Concepts and application Question definitions.
 
 import { z } from 'zod';
 import { db, makeId } from './schema';
 import { createCards, createCourse } from './repository';
-import {
-  ensureCourseBankBackingDeck,
-  ensureLessonBackingDeck,
-} from './backingDecks';
+import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { clampRequestRetention, defaultFsrsParameters } from '../fsrs/params';
 import type { ParsedCard } from './import';
 import { CURRENT_ITEM_PAYLOAD_VERSION } from './types';
@@ -52,12 +50,20 @@ import type {
   SequencePresetId,
   UnlockMode,
 } from './types';
+import type {
+  Concept,
+  QuestionConceptSet,
+  QuestionDefinition,
+  QuestionPayload,
+} from '../questions/types';
 import { finalAssessmentForCourse } from './assessmentMigration';
 import { stripAssetMedia } from './assets';
 import { decodeShareCode, encodeShareCode, encodeShareQrCode } from './shareCodec';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
 import { getPreset, presetForSequence } from './sequencePresets';
 import { itemPayloadIsValid, assertValidCardPayload } from '../items/payloadValidation';
+import { emptyQuestionSchedule } from '../questions/scheduler';
+import { questionGeneratorRegistry } from '../questions/generators';
 
 // ---------------------------------------------------------------------------
 // Zod runtime schema for share payloads
@@ -74,9 +80,7 @@ const ItemFixtureSchema = z
 
 const NumericAnswerSpecSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('exact'), value: z.string() }).passthrough(),
-  z
-    .object({ kind: z.literal('within'), value: z.string(), tolerance: z.number() })
-    .passthrough(),
+  z.object({ kind: z.literal('within'), value: z.string(), tolerance: z.number() }).passthrough(),
   z.object({ kind: z.literal('matches-one-of'), values: z.array(z.string()) }).passthrough(),
 ]);
 
@@ -122,7 +126,28 @@ const KnownItemPayloadSchema = z.discriminatedUnion('kind', [
       fixtures: z.array(ItemFixtureSchema).optional(),
     })
     .passthrough(),
-  z.object({ v: z.literal(CURRENT_ITEM_PAYLOAD_VERSION), kind: z.literal('scaffold') }).passthrough(),
+  z
+    .object({ v: z.literal(CURRENT_ITEM_PAYLOAD_VERSION), kind: z.literal('scaffold') })
+    .passthrough(),
+]);
+
+const ShareQuestionPayloadSchema = z.discriminatedUnion('kind', [
+  z
+    .object({
+      v: z.literal(CURRENT_ITEM_PAYLOAD_VERSION),
+      kind: z.literal('numeric'),
+      answer: NumericAnswerSpecSchema,
+      fixtures: z.array(ItemFixtureSchema).optional(),
+    })
+    .passthrough(),
+  z
+    .object({
+      v: z.literal(CURRENT_ITEM_PAYLOAD_VERSION),
+      kind: z.literal('working'),
+      scheme: z.array(MarkSchemeLineSchema).min(1),
+      fixtures: z.array(ItemFixtureSchema).optional(),
+    })
+    .passthrough(),
 ]);
 
 const KNOWN_ITEM_KINDS = new Set(['numeric', 'working', 'scaffold']);
@@ -138,36 +163,40 @@ const ShareItemPayloadSchema = z
   .union([KnownItemPayloadSchema, UnknownItemPayloadSchema])
   .refine(itemPayloadIsValid, 'Structured item payload content is invalid.');
 
-const ShareCardSchema = z.object({
-  // Payload-scoped identity used to resolve `links`/exam `x` references within the
-  // same code; always remapped via makeId() on import, never adopted as-is. For a
-  // published (distributed) course this doubles as the originating card id lineage
-  // merges (Arc 7 Task 5) key off — no separate field needed since `id` is already
-  // packed for every course export.
-  id: z.string().optional(),
-  k: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
-  f: z.string(),
-  b: z.string().optional(),
-  g: z.array(z.string()).optional(),
-  i: z.literal(1).optional(),
-  // Present iff this card was generated from a sequence item (positional or label,
-  // the latter carrying the `::label` suffix, mirroring Card.sequenceItemId).
-  si: z.string().optional(),
-  // Present iff this card was generated from an occlusion region, mirroring
-  // Card.occlusionRegionId. Payload-scoped, remapped on import like `si`.
-  oc: z.string().optional(),
-  // Structured Arc 11 item content. Known payloads are validated fully; unknown
-  // versions/kinds remain opaque so a newer item can use the read-only fallback.
-  p: ShareItemPayloadSchema.optional(),
-}).superRefine((card, context) => {
-  if (card.p !== undefined && card.k !== 0) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Structured item payloads must be carried by front/back cards.',
-      path: ['p'],
-    });
-  }
-});
+const ShareCardSchema = z
+  .object({
+    // Payload-scoped identity used to resolve `links`/exam `x` references within the
+    // same code; always remapped via makeId() on import, never adopted as-is. For a
+    // published (distributed) course this doubles as the originating card id lineage
+    // merges (Arc 7 Task 5) key off — no separate field needed since `id` is already
+    // packed for every course export.
+    id: z.string().optional(),
+    k: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
+    f: z.string(),
+    b: z.string().optional(),
+    g: z.array(z.string()).optional(),
+    i: z.literal(1).optional(),
+    // Present iff this card was generated from a sequence item (positional or label,
+    // the latter carrying the `::label` suffix, mirroring Card.sequenceItemId).
+    si: z.string().optional(),
+    // Present iff this card was generated from an occlusion region, mirroring
+    // Card.occlusionRegionId. Payload-scoped, remapped on import like `si`.
+    oc: z.string().optional(),
+    // Structured Arc 11 item content. Known payloads are validated fully; unknown
+    // versions/kinds remain opaque so a newer item can use the read-only fallback.
+    p: ShareItemPayloadSchema.optional(),
+    // Stable Concept identity within a v3 payload. Optional only for v2 compatibility.
+    co: z.string().optional(),
+  })
+  .superRefine((card, context) => {
+    if (card.p !== undefined && card.k !== 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Structured item payloads must be carried by front/back cards.',
+        path: ['p'],
+      });
+    }
+  });
 
 const ShareDeckSchema = z.object({
   n: z.string().min(1),
@@ -315,7 +344,60 @@ const SharePayloadV2Schema = z.object({
   rv: z.number().optional(), // revision
 });
 
-const SharePayloadSchema = z.discriminatedUnion('v', [SharePayloadV1Schema, SharePayloadV2Schema]);
+const ShareConceptSchema = z.object({
+  id: z.string().min(1),
+  n: z.string().min(1),
+  p: z.literal(1).optional(),
+});
+
+const ShareFixedQuestionSchema = z.object({
+  id: z.string().min(1),
+  k: z.literal(0),
+  n: z.string().min(1),
+  pl: z.number().int().nonnegative().optional(),
+  al: z.array(z.number().int().nonnegative()).optional(),
+  g: z.array(z.string()).optional(),
+  s: z.literal(1).optional(),
+  t: z.string().min(1),
+  pr: z.array(z.string()),
+  f: z.string().min(1),
+  p: ShareQuestionPayloadSchema,
+  e: z.string().min(1),
+  ld: z.literal(1).optional(),
+  i: z.literal(1).optional(),
+});
+
+const ShareGeneratedQuestionSchema = z.object({
+  id: z.string().min(1),
+  k: z.literal(1),
+  n: z.string().min(1),
+  pl: z.number().int().nonnegative().optional(),
+  al: z.array(z.number().int().nonnegative()).optional(),
+  g: z.array(z.string()).optional(),
+  s: z.literal(1).optional(),
+  t: z.string().min(1),
+  pr: z.array(z.string()),
+  gk: z.string().min(1),
+  gv: z.number().int().positive(),
+  gc: z.unknown(),
+});
+
+const ShareQuestionSchema = z.discriminatedUnion('k', [
+  ShareFixedQuestionSchema,
+  ShareGeneratedQuestionSchema,
+]);
+
+const SharePayloadV3Schema = SharePayloadV2Schema.omit({ v: true }).extend({
+  v: z.literal(3),
+  concepts: z.array(ShareConceptSchema),
+  questions: z.array(ShareQuestionSchema),
+});
+
+const SharePayloadSchema = z.discriminatedUnion('v', [
+  SharePayloadV1Schema,
+  SharePayloadV2Schema,
+  SharePayloadV3Schema,
+]);
 
 /** A single card in a share payload. `k` is the kind. */
 interface ShareCard {
@@ -341,6 +423,8 @@ interface ShareCard {
   oc?: string;
   /** Structured item content; unknown variants travel opaquely for forward compatibility. */
   p?: ItemPayload | { v: number; kind: string; [key: string]: unknown };
+  /** Payload-scoped Concept id in v3. */
+  co?: string;
 }
 
 /** A single deck in a v1 share payload, with compact keys. */
@@ -486,8 +570,52 @@ export interface SharePayloadV2 {
   rv?: number;
 }
 
+interface ShareConcept {
+  id: string;
+  n: string;
+  p?: 1;
+}
+
+type ShareQuestion =
+  | {
+      id: string;
+      k: 0;
+      n: string;
+      pl?: number;
+      al?: number[];
+      g?: string[];
+      s?: 1;
+      t: string;
+      pr: string[];
+      f: string;
+      p: QuestionPayload;
+      e: string;
+      ld?: 1;
+      i?: 1;
+    }
+  | {
+      id: string;
+      k: 1;
+      n: string;
+      pl?: number;
+      al?: number[];
+      g?: string[];
+      s?: 1;
+      t: string;
+      pr: string[];
+      gk: string;
+      gv: number;
+      gc: unknown;
+    };
+
+export interface SharePayloadV3 extends Omit<SharePayloadV2, 'v'> {
+  v: 3;
+  concepts: ShareConcept[];
+  questions: ShareQuestion[];
+}
+
 /** The decoded contents of a share code, either a flat deck list or a single course. */
-export type SharePayload = SharePayloadV1 | SharePayloadV2;
+export type SharePayload = SharePayloadV1 | SharePayloadV2 | SharePayloadV3;
 
 /** A human-friendly summary of a share code, for the import preview. */
 export interface ShareSummary {
@@ -503,6 +631,8 @@ export interface ShareSummary {
   lessonCount?: number;
   /** v2 only: number of notes across all lessons. */
   noteCount?: number;
+  /** v3 only: number of application Questions. */
+  questionCount?: number;
 }
 
 export async function encodeShareDirect(payload: SharePayload): Promise<string> {
@@ -670,7 +800,7 @@ export async function decodeShare(code: string): Promise<SharePayload> {
 
 /** Count the cards a payload would create (reversible pairs count as two). */
 export function summariseShare(payload: SharePayload): ShareSummary {
-  if (payload.v === 2) {
+  if (payload.v !== 1) {
     let cardCount = 0;
     let omittedImages = false;
     const lessonNames: string[] = [];
@@ -686,6 +816,12 @@ export function summariseShare(payload: SharePayload): ShareSummary {
       cardCount += card.k === 2 ? 2 : 1;
       if (card.i === 1) omittedImages = true;
     }
+    if (
+      payload.v === 3 &&
+      payload.questions.some((question) => question.k === 0 && question.i === 1)
+    ) {
+      omittedImages = true;
+    }
     return {
       kind: 'course',
       deckCount: payload.lessons.length,
@@ -696,6 +832,7 @@ export function summariseShare(payload: SharePayload): ShareSummary {
       courseName: payload.course.n,
       lessonCount: payload.lessons.length,
       noteCount: payload.lessons.reduce((count, lesson) => count + lesson.notes.length, 0),
+      questionCount: payload.v === 3 ? payload.questions.length : 0,
     };
   }
 
@@ -752,6 +889,7 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
     const occRef = c.occlusionRegionId ? { oc: c.occlusionRegionId } : {};
     const payload = c.payload ? { p: c.payload } : {};
     const identity = preserveIds ? { id: c.id } : {};
+    const concept = { co: c.conceptId };
 
     if (c.type === 'cloze') {
       out.push({
@@ -763,6 +901,7 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
         ...occRef,
         ...payload,
         ...identity,
+        ...concept,
       });
       consumed.add(c.id);
       continue;
@@ -781,20 +920,29 @@ function packCards(cards: Card[], preserveIds = false): ShareCard[] {
         ...occRef,
         ...payload,
         ...identity,
+        ...concept,
       });
       consumed.add(c.id);
       continue;
     }
 
-    const partner = !preserveIds && (byContent.get(key(c.back, c.front)) ?? []).find(
-      (p) => p.id !== c.id && !consumed.has(p.id),
-    );
+    const partner =
+      !preserveIds &&
+      (byContent.get(key(c.back, c.front)) ?? []).find((p) => p.id !== c.id && !consumed.has(p.id));
     if (partner) {
-      out.push({ k: 2, f: front.markdown, b: back.markdown, ...tags, ...mediaFlag });
+      out.push({ k: 2, f: front.markdown, b: back.markdown, ...tags, ...mediaFlag, ...concept });
       consumed.add(c.id);
       consumed.add(partner.id);
     } else {
-      out.push({ k: 0, f: front.markdown, b: back.markdown, ...tags, ...mediaFlag, ...identity });
+      out.push({
+        k: 0,
+        f: front.markdown,
+        b: back.markdown,
+        ...tags,
+        ...mediaFlag,
+        ...identity,
+        ...concept,
+      });
       consumed.add(c.id);
     }
   }
@@ -849,19 +997,23 @@ function packNotes(
   });
 }
 
-/** Pack a whole course, including assessment scope references, into a v2 payload. */
-async function buildCourseSharePayload(courseId: string): Promise<SharePayload> {
+/** Pack a whole course, including Concepts and Questions, into a v3 payload. */
+async function buildCourseSharePayload(courseId: string): Promise<SharePayloadV3> {
   const course = await db.courses.get(courseId);
   if (!course) throw new Error('Course not found.');
 
   const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
   const lessonIndexById = new Map(lessons.map((l, i) => [l.id, i]));
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [notes, courseCards, lessonLinks] = await Promise.all([
-    lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
-    db.cards.where('courseId').equals(courseId).toArray(),
-    lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-  ]);
+  const [notes, courseCards, lessonLinks, concepts, questions, questionConcepts] =
+    await Promise.all([
+      lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
+      db.cards.where('courseId').equals(courseId).toArray(),
+      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+      db.concepts.where('courseId').equals(courseId).toArray(),
+      db.questions.where('courseId').equals(courseId).toArray(),
+      db.questionConcepts.where('courseId').equals(courseId).toArray(),
+    ]);
   const notesByLesson = new Map<string, Note[]>();
   for (const note of notes) {
     const group = notesByLesson.get(note.lessonId);
@@ -1009,8 +1161,65 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
     };
   });
 
+  const conceptIds = new Set(concepts.map((concept) => concept.id));
+  for (const card of courseCards) {
+    if (!conceptIds.has(card.conceptId)) {
+      throw new Error(`Card ${card.id} references a missing Concept.`);
+    }
+  }
+  const conceptSetByQuestion = new Map(questionConcepts.map((set) => [set.questionId, set]));
+  const shareQuestions: ShareQuestion[] = questions.map((question) => {
+    const set = conceptSetByQuestion.get(question.id);
+    if (!set || set.targetConceptIds.length !== 1) {
+      throw new Error(`Question ${question.id} does not have exactly one primary Concept.`);
+    }
+    const [targetConceptId] = set.targetConceptIds;
+    if (
+      !conceptIds.has(targetConceptId) ||
+      set.prerequisiteConceptIds.some((conceptId) => !conceptIds.has(conceptId))
+    ) {
+      throw new Error(`Question ${question.id} references a missing Concept.`);
+    }
+    const primaryLessonIndex = question.primaryLessonId
+      ? lessonIndexById.get(question.primaryLessonId)
+      : undefined;
+    const additionalLessonIndices = question.additionalLessonIds
+      .map((lessonId) => lessonIndexById.get(lessonId))
+      .filter((index): index is number => index !== undefined);
+    const common = {
+      id: question.id,
+      n: question.name,
+      ...(primaryLessonIndex === undefined ? {} : { pl: primaryLessonIndex }),
+      ...(additionalLessonIndices.length === 0 ? {} : { al: additionalLessonIndices }),
+      ...(question.tags.length === 0 ? {} : { g: question.tags }),
+      ...(question.suspended ? { s: 1 as const } : {}),
+      t: targetConceptId,
+      pr: set.prerequisiteConceptIds,
+    };
+    if (question.kind === 'generated') {
+      return {
+        ...common,
+        k: 1 as const,
+        gk: question.generatorKey,
+        gv: question.generatorVersion,
+        gc: question.generatorConfig,
+      };
+    }
+    const prompt = stripAssetMedia(question.prompt);
+    const explanation = stripAssetMedia(question.explanation);
+    return {
+      ...common,
+      k: 0 as const,
+      f: prompt.markdown,
+      p: question.payload,
+      e: explanation.markdown,
+      ...(question.explanationStatus === 'legacy-derived' ? { ld: 1 as const } : {}),
+      ...(prompt.stripped || explanation.stripped ? { i: 1 as const } : {}),
+    };
+  });
+
   return {
-    v: 2,
+    v: 3,
     by: null,
     at: Date.now(),
     course: shareCourse,
@@ -1020,6 +1229,12 @@ async function buildCourseSharePayload(courseId: string): Promise<SharePayload> 
     ...(shareLinks.length ? { links: shareLinks } : {}),
     ...(shareSequences.length ? { sequences: shareSequences } : {}),
     ...(shareOcclusions.length ? { occlusions: shareOcclusions } : {}),
+    concepts: concepts.map((concept) => ({
+      id: concept.id,
+      n: concept.name,
+      ...(concept.provisional ? { p: 1 as const } : {}),
+    })),
+    questions: shareQuestions,
     ...(distribution ? { li: distribution.lineageId, rv: distribution.revision } : {}),
   };
 }
@@ -1044,6 +1259,7 @@ export interface ImportShareResult {
   courses: number;
   lessons: number;
   cards: number;
+  questions: number;
   courseIds: string[];
 }
 
@@ -1055,8 +1271,10 @@ function splitSequenceItemId(si: string): { baseId: string; isLabel: boolean } {
   return { baseId: si, isLabel: false };
 }
 
-/** Import a v2 (single course) payload directly into the course model. */
-async function importCourseSharePayload(payload: SharePayloadV2): Promise<ImportShareResult> {
+/** Import a v2/v3 single-course payload directly into the course model. */
+async function importCourseSharePayload(
+  payload: SharePayloadV2 | SharePayloadV3,
+): Promise<ImportShareResult> {
   let cardCount = 0;
   let importedCourseId: string | null = null;
 
@@ -1075,6 +1293,10 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
       db.schedulingUnits,
       db.coursePerformance,
       db.schedulingPerformance,
+      db.concepts,
+      db.questions,
+      db.questionConcepts,
+      db.tombstones,
     ],
     async () => {
       // Pre-compute fresh ids for every incoming sequence and sequence item before any
@@ -1122,6 +1344,24 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
       importedCourseId = course.id;
 
       const importedAt = Date.now();
+      const conceptIdMap = new Map<string, string>();
+      if (payload.v === 3) {
+        const importedConcepts: Concept[] = payload.concepts.map((concept, index) => {
+          const id = makeId();
+          conceptIdMap.set(concept.id, id);
+          return {
+            id,
+            scope: 'course',
+            scopeKey: `course:${course.id}`,
+            courseId: course.id,
+            name: concept.n,
+            provisional: concept.p === 1,
+            createdAt: importedAt + index,
+            updatedAt: importedAt + index,
+          };
+        });
+        if (importedConcepts.length > 0) await db.concepts.bulkAdd(importedConcepts);
+      }
       const importedLessons: Lesson[] = payload.lessons.map((shareLesson, orderIndex) => ({
         id: makeId(),
         courseId: course.id,
@@ -1158,12 +1398,18 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
         const lessonId = lessonIds[lessonIndex];
         const drafts = shareLesson.cards.flatMap((shareCard) =>
           unpackCard(shareCard).map((draft) => ({
-            draft,
+            draft: {
+              ...draft,
+              ...(payload.v === 3 ? { conceptId: conceptIdMap.get(shareCard.co ?? '') } : {}),
+            },
             sequenceItemId: shareCard.si,
             occlusionRegionId: shareCard.oc,
             sourceCardId: shareCard.id,
           })),
         );
+        if (payload.v === 3 && drafts.some(({ draft }) => !draft.conceptId)) {
+          throw new Error('A shared Card references a missing Concept.');
+        }
         if (drafts.length === 0) continue;
         const deckId = await ensureLessonBackingDeck(course.id, lessonId);
         const created = await createCards(
@@ -1190,8 +1436,17 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
       }
 
       const bankDrafts = (payload.bankCards ?? []).flatMap((shareCard) =>
-        unpackCard(shareCard).map((draft) => ({ draft, sourceCardId: shareCard.id })),
+        unpackCard(shareCard).map((draft) => ({
+          draft: {
+            ...draft,
+            ...(payload.v === 3 ? { conceptId: conceptIdMap.get(shareCard.co ?? '') } : {}),
+          },
+          sourceCardId: shareCard.id,
+        })),
       );
+      if (payload.v === 3 && bankDrafts.some(({ draft }) => !draft.conceptId)) {
+        throw new Error('A shared Card references a missing Concept.');
+      }
       if (bankDrafts.length > 0) {
         const bankDeckId = await ensureCourseBankBackingDeck(course.id);
         const created = await createCards(
@@ -1311,35 +1566,108 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
       // ids, and directly rather than through createOcclusion, which would generate a
       // second set of cards. `assetHash` travels but the asset itself does not (§6.6),
       // so the study face falls back to each card's plain-text front/back.
-      const importedOcclusions: Occlusion[] = (payload.occlusions ?? []).map(
-        (shareOcc, index) => ({
-          id: makeId(),
-          courseId: course.id,
-          primaryLessonId:
-            typeof shareOcc.pl === 'number' ? (lessonIds[shareOcc.pl] ?? null) : null,
-          name: shareOcc.n || 'Shared occlusion',
-          assetHash: shareOcc.ah,
-          regions: shareOcc.regions.map((region) => ({
-            id: regionIdMap.get(region.id)!,
-            role: region.r === 1 ? ('feature' as const) : ('label' as const),
-            shape: 'rectangle' as const,
-            x: region.x,
-            y: region.y,
-            w: region.w,
-            h: region.h,
-            ...(region.a ? { answerText: region.a } : {}),
-            // Drop a pairing whose target region did not travel, rather than leaving a
-            // dangling reference — an unpaired feature falls back to its answerText.
-            ...(region.p && regionIdMap.has(region.p)
-              ? { pairedRegionId: regionIdMap.get(region.p)! }
-              : {}),
-            ...(region.bn ? { backNote: region.bn } : {}),
-          })),
-          createdAt: importedAt + index,
-          updatedAt: importedAt + index,
-        }),
-      );
+      const importedOcclusions: Occlusion[] = (payload.occlusions ?? []).map((shareOcc, index) => ({
+        id: makeId(),
+        courseId: course.id,
+        primaryLessonId: typeof shareOcc.pl === 'number' ? (lessonIds[shareOcc.pl] ?? null) : null,
+        name: shareOcc.n || 'Shared occlusion',
+        assetHash: shareOcc.ah,
+        regions: shareOcc.regions.map((region) => ({
+          id: regionIdMap.get(region.id)!,
+          role: region.r === 1 ? ('feature' as const) : ('label' as const),
+          shape: 'rectangle' as const,
+          x: region.x,
+          y: region.y,
+          w: region.w,
+          h: region.h,
+          ...(region.a ? { answerText: region.a } : {}),
+          // Drop a pairing whose target region did not travel, rather than leaving a
+          // dangling reference — an unpaired feature falls back to its answerText.
+          ...(region.p && regionIdMap.has(region.p)
+            ? { pairedRegionId: regionIdMap.get(region.p)! }
+            : {}),
+          ...(region.bn ? { backNote: region.bn } : {}),
+        })),
+        createdAt: importedAt + index,
+        updatedAt: importedAt + index,
+      }));
       if (importedOcclusions.length > 0) await db.occlusions.bulkAdd(importedOcclusions);
+
+      if (payload.v === 3) {
+        const importedQuestions: QuestionDefinition[] = [];
+        const importedQuestionConcepts: QuestionConceptSet[] = [];
+        for (let index = 0; index < payload.questions.length; index += 1) {
+          const shared = payload.questions[index];
+          const targetConceptId = conceptIdMap.get(shared.t);
+          const prerequisiteConceptIds = shared.pr.map((id) => conceptIdMap.get(id));
+          if (!targetConceptId || prerequisiteConceptIds.some((id) => id === undefined)) {
+            throw new Error('A shared Question references a missing Concept.');
+          }
+          const id = makeId();
+          const now = importedAt + index;
+          const authoringRevisionId = makeId();
+          const common = {
+            id,
+            courseId: course.id,
+            primaryLessonId: shared.pl === undefined ? null : (lessonIds[shared.pl] ?? null),
+            additionalLessonIds: (shared.al ?? [])
+              .map((lessonIndex) => lessonIds[lessonIndex])
+              .filter((lessonId): lessonId is string => lessonId !== undefined),
+            name: shared.n,
+            tags: shared.g ?? [],
+            contentVersion: 1,
+            contentRevisionId: makeId(),
+            authoringRevisionId,
+            authoringUpdatedAt: now,
+            ...emptyQuestionSchedule(),
+            scheduleEpoch: {
+              id: makeId(),
+              startedAt: now,
+              reason: 'created' as const,
+              baseline: { kind: 'new' as const },
+            },
+            scheduleUpdatedAt: now,
+            createdAt: now,
+            updatedAt: now,
+          };
+          importedQuestions.push(
+            shared.k === 0
+              ? {
+                  ...common,
+                  kind: 'fixed',
+                  suspended: shared.s === 1,
+                  prompt: shared.f,
+                  payload: shared.p,
+                  explanation: shared.e,
+                  explanationStatus: shared.ld === 1 ? 'legacy-derived' : 'authored',
+                }
+              : {
+                  ...common,
+                  kind: 'generated',
+                  suspended:
+                    shared.s === 1 ||
+                    questionGeneratorRegistry.describe(shared.gk, shared.gv) === undefined,
+                  generatorKey: shared.gk,
+                  generatorVersion: shared.gv,
+                  generatorConfig: shared.gc,
+                },
+          );
+          importedQuestionConcepts.push({
+            questionId: id,
+            courseId: course.id,
+            targetConceptIds: [targetConceptId],
+            prerequisiteConceptIds: prerequisiteConceptIds as string[],
+            authoringRevisionId,
+            authoringUpdatedAt: now,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+        if (importedQuestions.length > 0) await db.questions.bulkAdd(importedQuestions);
+        if (importedQuestionConcepts.length > 0) {
+          await db.questionConcepts.bulkAdd(importedQuestionConcepts);
+        }
+      }
     },
   );
 
@@ -1348,6 +1676,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
     courses: 1,
     lessons: payload.lessons.length,
     cards: cardCount,
+    questions: payload.v === 3 ? payload.questions.length : 0,
     courseIds: [importedCourseId],
   };
 }
@@ -1359,7 +1688,7 @@ async function importCourseSharePayload(payload: SharePayloadV2): Promise<Import
  * the new owner.
  */
 export async function importSharePayload(payload: SharePayload): Promise<ImportShareResult> {
-  if (payload.v !== 2) {
+  if (payload.v === 1) {
     throw new Error(V1_SHARE_CODE_MESSAGE);
   }
   return importCourseSharePayload(payload);

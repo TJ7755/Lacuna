@@ -1,15 +1,13 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { ShareLesson, SharePayloadV2 } from './share';
+import type { ShareLesson, SharePayloadV2, SharePayloadV3 } from './share';
 import type { Course } from './types';
 import { findCourseForLineage, importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
-import {
-  performanceForCourseBackingDecks,
-  performanceForReviewUnit,
-} from './backingDecks';
+import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
 import { recordReview } from './repository';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
+import { answerQuestionAttempt, startQuestionAttempt } from '../questions/repository';
 
 // Arc 7 §7.7/§7.9 Task 5: mergeImport.ts. Payloads are built as plain object literals
 // (bypassing encode/decode, which Task 3 already tests) matching the real wire shape:
@@ -35,6 +33,55 @@ function lessonOne(overrides: Partial<ShareLesson> = {}): ShareLesson {
     n: 'Cells',
     notes: [{ oi: 'note-1', n: 'Intro', c: 'Cells are the basic unit of life.' }],
     cards: [{ id: 'card-1', k: 0 as const, f: 'What is a cell?', b: 'The basic unit of life.' }],
+    ...overrides,
+  };
+}
+
+function questionPayloadV3(overrides: Partial<SharePayloadV3> = {}): SharePayloadV3 {
+  return {
+    v: 3,
+    by: 'Ms Teacher',
+    at: 1000,
+    course: { n: 'Mathematics', o: 0, c: 1000, e: 2_000_000, um: 'open' },
+    lessons: [
+      {
+        i: 'lesson-questions',
+        n: 'Quadratics',
+        notes: [],
+        cards: [
+          {
+            id: 'card-quadratic-definition',
+            k: 0,
+            f: 'What is a quadratic equation?',
+            b: 'A polynomial equation of degree two.',
+            co: 'concept-quadratic',
+          },
+          {
+            id: 'card-quadratic-example',
+            k: 0,
+            f: 'Give one quadratic equation.',
+            b: 'For example, x² - 4 = 0.',
+            co: 'concept-quadratic',
+          },
+        ],
+      },
+    ],
+    concepts: [{ id: 'concept-quadratic', n: 'Solve a quadratic equation' }],
+    questions: [
+      {
+        id: 'question-quadratic',
+        k: 0,
+        n: 'Apply the quadratic method',
+        pl: 0,
+        t: 'concept-quadratic',
+        pr: [],
+        f: 'What is the positive root of x² - 4 = 0?',
+        p: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '2' } },
+        e: 'Factorise to (x - 2)(x + 2) = 0. The positive root is x = 2.',
+      },
+    ],
+    li: 'lineage-questions',
+    rv: 1,
     ...overrides,
   };
 }
@@ -98,6 +145,42 @@ describe('mergeImport: first import of a lineage', () => {
     });
   });
 
+  it('creates a deterministic same-Course Concept for an adopted Card', async () => {
+    const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
+    const card = (await db.cards.get('card-1'))!;
+
+    expect(card.conceptId).toBe('concept:lineage-card:card-1');
+    expect(await db.concepts.get(card.conceptId)).toMatchObject({
+      id: card.conceptId,
+      scope: 'course',
+      scopeKey: `course:${course.id}`,
+      courseId: course.id,
+      name: 'The basic unit of life.',
+      provisional: false,
+    });
+  });
+
+  it('gives both presentations of an imported reversible Card one Concept', async () => {
+    await importLineageFirstTime(
+      coursePayload({
+        lessons: [
+          lessonOne({
+            cards: [{ id: 'card-pair', k: 2 as const, f: 'Term', b: 'Definition' }],
+          }),
+        ],
+      }),
+    );
+
+    const primary = (await db.cards.get('card-pair'))!;
+    const reverse = (await db.cards.get('card-pair::rev'))!;
+    expect(primary.conceptId).toBe('concept:lineage-card:card-pair');
+    expect(reverse.conceptId).toBe(primary.conceptId);
+    expect(primary.id).not.toBe(reverse.id);
+    expect(primary.scheduledDays).toBe(0);
+    expect(reverse.scheduledDays).toBe(0);
+    expect(await db.concepts.where('id').equals(primary.conceptId).count()).toBe(1);
+  });
+
   it('regenerates a sequence-generated card rather than also adopting the packed copy', async () => {
     // A published course packs its sequence-generated cards like any other lesson card,
     // so without the isGeneratedShareCard filter the merge path adopted the packed copy
@@ -130,7 +213,13 @@ describe('mergeImport: first import of a lineage', () => {
         lessons: [
           lessonOne({
             cards: [
-              { id: 'card-occ-1', k: 0 as const, f: 'stale front', b: 'stale back', oc: 'region-1' },
+              {
+                id: 'card-occ-1',
+                k: 0 as const,
+                f: 'stale front',
+                b: 'stale back',
+                oc: 'region-1',
+              },
             ],
           }),
         ],
@@ -187,6 +276,114 @@ describe('mergeImport: first import of a lineage', () => {
   });
 });
 
+describe('mergeImport: v3 Question lineage', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  it('adopts shared Concept and Question identities while keeping Card presentations separate', async () => {
+    const { course } = await importLineageFirstTime(questionPayloadV3());
+
+    const cards = await db.cards.where('courseId').equals(course.id).sortBy('createdAt');
+    expect(cards).toHaveLength(2);
+    expect(cards.map((card) => card.conceptId)).toEqual(['concept-quadratic', 'concept-quadratic']);
+    expect(await db.concepts.get('concept-quadratic')).toMatchObject({
+      courseId: course.id,
+      name: 'Solve a quadratic equation',
+    });
+    expect(await db.questions.get('question-quadratic')).toMatchObject({
+      courseId: course.id,
+      kind: 'fixed',
+      reps: 0,
+      due: null,
+    });
+    expect(await db.questionAttempts.count()).toBe(0);
+    expect(await db.lineageIdMappings.get('lineage-questions')).toMatchObject({
+      conceptIds: ['concept-quadratic'],
+      questionIds: ['question-quadratic'],
+    });
+  });
+
+  it('applies teacher Question edits without touching immutable local attempts', async () => {
+    const first = questionPayloadV3();
+    const { course } = await importLineageFirstTime(first);
+    const shown = await startQuestionAttempt({
+      questionId: 'question-quadratic',
+      sessionId: 'session-questions',
+      attemptId: 'attempt-quadratic',
+      now: 2_000,
+    });
+    await answerQuestionAttempt({
+      attemptId: shown.id,
+      submittedAnswer: '2',
+      marksEarned: 1,
+      marksAvailable: 1,
+      now: 3_000,
+    });
+    const scheduled = (await db.questions.get('question-quadratic'))!;
+    expect(scheduled.reps).toBe(1);
+
+    const sharedQuestion = first.questions[0];
+    if (sharedQuestion.k !== 0) throw new Error('Expected a fixed Question fixture.');
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({
+        at: 4_000,
+        rv: 2,
+        questions: [
+          {
+            ...sharedQuestion,
+            n: 'Apply factorisation',
+            e: 'Use the difference of two squares, then set each factor equal to zero.',
+          },
+        ],
+      }),
+    );
+    const presentationEdit = (await db.questions.get('question-quadratic'))!;
+    expect(presentationEdit.name).toBe('Apply factorisation');
+    expect(presentationEdit.contentVersion).toBe(scheduled.contentVersion);
+    expect(presentationEdit.scheduleEpoch.id).toBe(scheduled.scheduleEpoch.id);
+    expect(presentationEdit.reps).toBe(1);
+
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({
+        at: 5_000,
+        rv: 3,
+        questions: [
+          {
+            ...sharedQuestion,
+            f: 'What is the positive root of x² - 9 = 0?',
+            p: {
+              v: 1,
+              kind: 'numeric',
+              answer: { kind: 'exact', value: '3' },
+            },
+          },
+        ],
+      }),
+    );
+    const semanticEdit = (await db.questions.get('question-quadratic'))!;
+    expect(semanticEdit.contentVersion).toBe(scheduled.contentVersion + 1);
+    expect(semanticEdit.scheduleEpoch.id).not.toBe(scheduled.scheduleEpoch.id);
+    expect(semanticEdit.reps).toBe(0);
+    expect(semanticEdit.due).toBeNull();
+
+    const immutableAttempt = await db.questionAttempts.get('attempt-quadratic');
+    expect(immutableAttempt).toMatchObject({
+      renderedPrompt: 'What is the positive root of x² - 4 = 0?',
+      submittedAnswer: '2',
+      marksEarned: 1,
+    });
+
+    await mergeLineageUpdate(course.id, questionPayloadV3({ at: 6_000, rv: 4, questions: [] }));
+    expect(await db.questions.get('question-quadratic')).toBeUndefined();
+    expect(await db.questionConcepts.get('question-quadratic')).toBeUndefined();
+    expect(await db.questionAttempts.get('attempt-quadratic')).toEqual(immutableAttempt);
+  });
+});
+
 describe('mergeImport: merge apply', () => {
   let courseId: string;
   let course: Course;
@@ -202,7 +399,10 @@ describe('mergeImport: merge apply', () => {
   it('re-importing an unchanged payload produces an empty diff (no queue, revision updated)', async () => {
     const before = (await db.courses.get(courseId))!.updatedAt;
     await new Promise((resolve) => setTimeout(resolve, 2));
-    const result = await mergeLineageUpdate(courseId, coursePayload({ rv: 2, lessons: [lessonOne()] }));
+    const result = await mergeLineageUpdate(
+      courseId,
+      coursePayload({ rv: 2, lessons: [lessonOne()] }),
+    );
     expect(result).toMatchObject({
       createdLessons: 0,
       createdNotes: 0,
@@ -227,6 +427,31 @@ describe('mergeImport: merge apply', () => {
     expect(result.createdLessons).toBe(1);
     expect(result.queuedForReview).toBe(false);
     expect(await db.lessons.get('lesson-2')).toBeDefined();
+  });
+
+  it('creates a stable Concept when a lineage update adds a Card', async () => {
+    const result = await mergeLineageUpdate(
+      courseId,
+      coursePayload({
+        rv: 2,
+        lessons: [
+          lessonOne({
+            cards: [
+              ...lessonOne().cards,
+              { id: 'card-2', k: 0 as const, f: 'What contains DNA?', b: 'The nucleus.' },
+            ],
+          }),
+        ],
+      }),
+    );
+
+    expect(result.createdCards).toBe(1);
+    const card = (await db.cards.get('card-2'))!;
+    expect(card.conceptId).toBe('concept:lineage-card:card-2');
+    expect(await db.concepts.get(card.conceptId)).toMatchObject({
+      courseId,
+      name: 'The nucleus.',
+    });
   });
 
   it('queues a teacher update for review when autoAcceptUpdates is false (default)', async () => {
@@ -321,7 +546,11 @@ describe('mergeImport: merge apply', () => {
 
     const review = await db.pendingMergeReviews.where('courseId').equals(courseId).first();
     expect(review?.diff.conflicts).toEqual([
-      { entityId: 'note-1', kind: 'note', incoming: { i: 'note-1', n: 'Intro', c: 'Teacher rewrote this too.' } },
+      {
+        entityId: 'note-1',
+        kind: 'note',
+        incoming: { i: 'note-1', n: 'Intro', c: 'Teacher rewrote this too.' },
+      },
     ]);
   });
 
@@ -375,10 +604,16 @@ describe('mergeImport: merge apply', () => {
   });
 
   it('supersedes rather than accumulates: a second merge replaces the pending review row', async () => {
-    await mergeLineageUpdate(courseId, coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells v2' })] }));
+    await mergeLineageUpdate(
+      courseId,
+      coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells v2' })] }),
+    );
     expect(await db.pendingMergeReviews.where('courseId').equals(courseId).count()).toBe(1);
 
-    await mergeLineageUpdate(courseId, coursePayload({ rv: 3, lessons: [lessonOne({ n: 'Cells v3' })] }));
+    await mergeLineageUpdate(
+      courseId,
+      coursePayload({ rv: 3, lessons: [lessonOne({ n: 'Cells v3' })] }),
+    );
     const rows = await db.pendingMergeReviews.where('courseId').equals(courseId).toArray();
     expect(rows).toHaveLength(1);
     expect(rows[0].revision).toBe(3);
@@ -422,16 +657,18 @@ describe('mergeImport: merge apply', () => {
     });
     const backingDeck = (await db.schedulingUnits.get(card.schedulingUnitId))!;
     const localCourse = (await db.courses.get(courseId))!;
-    const newerBackingInteraction =
-      (backingDeck.lastInteractedAt ?? backingDeck.createdAt) + 1000;
-    const newerCourseInteraction =
-      (localCourse.lastInteractedAt ?? localCourse.createdAt) + 1000;
-    await db.schedulingUnits.update(card.schedulingUnitId, { lastInteractedAt: newerBackingInteraction });
+    const newerBackingInteraction = (backingDeck.lastInteractedAt ?? backingDeck.createdAt) + 1000;
+    const newerCourseInteraction = (localCourse.lastInteractedAt ?? localCourse.createdAt) + 1000;
+    await db.schedulingUnits.update(card.schedulingUnitId, {
+      lastInteractedAt: newerBackingInteraction,
+    });
     await db.schedulingUnits.update(card.schedulingUnitId!, {
       lastInteractedAt: newerBackingInteraction,
     });
     await db.courses.update(courseId, { lastInteractedAt: newerCourseInteraction });
-    expect((await db.schedulingUnits.get(card.schedulingUnitId))?.lastInteractedAt).toBe(newerBackingInteraction);
+    expect((await db.schedulingUnits.get(card.schedulingUnitId))?.lastInteractedAt).toBe(
+      newerBackingInteraction,
+    );
     expect((await db.schedulingUnits.get(card.schedulingUnitId!))?.lastInteractedAt).toBe(
       newerBackingInteraction,
     );
@@ -450,7 +687,9 @@ describe('mergeImport: merge apply', () => {
       coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells revised' })] }),
     );
 
-    expect((await db.schedulingUnits.get(card.schedulingUnitId))?.lastInteractedAt).toBe(newerBackingInteraction);
+    expect((await db.schedulingUnits.get(card.schedulingUnitId))?.lastInteractedAt).toBe(
+      newerBackingInteraction,
+    );
     expect((await db.courses.get(courseId))?.lastInteractedAt).toBe(newerCourseInteraction);
     expect(await db.userPerformance.get(card.deckId!)).toEqual(backing);
     expect(await db.userPerformance.get(courseId)).toEqual(calibration);
@@ -498,9 +737,13 @@ describe('mergeImport: merge apply', () => {
       courseId,
       coursePayload({
         rv: 2,
-        lessons: [lessonOne({
-          cards: [{ id: 'card-1', k: 0 as const, f: 'Revised question?', b: 'The basic unit of life.' }],
-        })],
+        lessons: [
+          lessonOne({
+            cards: [
+              { id: 'card-1', k: 0 as const, f: 'Revised question?', b: 'The basic unit of life.' },
+            ],
+          }),
+        ],
       }),
     );
 
@@ -543,7 +786,11 @@ describe('mergeImport: merge apply', () => {
     const payload = coursePayload({
       rv: 2,
       lessons: [
-        lessonOne({ cards: [{ id: 'card-1', k: 0 as const, f: 'Revised question?', b: 'The basic unit of life.' }] }),
+        lessonOne({
+          cards: [
+            { id: 'card-1', k: 0 as const, f: 'Revised question?', b: 'The basic unit of life.' },
+          ],
+        }),
       ],
     });
     await mergeLineageUpdate(courseId, payload);
@@ -567,7 +814,10 @@ describe('mergeImport: merge apply', () => {
         {
           id: 'seq-1',
           n: 'Order of operations',
-          items: [{ id: 'item-1', v: 'Brackets' }, { id: 'item-2', v: 'Orders' }],
+          items: [
+            { id: 'item-1', v: 'Brackets' },
+            { id: 'item-2', v: 'Orders' },
+          ],
           cw: 2,
           pl: 0,
         },
@@ -594,7 +844,10 @@ describe('mergeImport: merge apply', () => {
           {
             id: 'seq-1',
             n: 'Order of operations',
-            items: [{ id: 'item-1', v: 'Brackets and powers' }, { id: 'item-2', v: 'Orders' }],
+            items: [
+              { id: 'item-1', v: 'Brackets and powers' },
+              { id: 'item-2', v: 'Orders' },
+            ],
             cw: 2,
             pl: 0,
           },

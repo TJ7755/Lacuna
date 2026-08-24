@@ -7,6 +7,7 @@ import {
   createCourseCard,
   createLesson,
   createLessonCard,
+  createLessonCardWithReverse,
   createNote,
   linkCardToLesson,
   createSequence,
@@ -28,6 +29,11 @@ import {
 import { assetUrl, storeAudioBlob, storeImageBlob } from './assets';
 import { bytesToBase45 } from './base45';
 import type { ItemPayload } from './types';
+import {
+  createConcept,
+  createFixedQuestion,
+  createGeneratedQuestion,
+} from '../questions/repository';
 
 async function reset() {
   await Promise.all([
@@ -43,6 +49,11 @@ async function reset() {
     db.courseAssessments.clear(),
     db.sequences.clear(),
     db.occlusions.clear(),
+    db.concepts.clear(),
+    db.questions.clear(),
+    db.questionConcepts.clear(),
+    db.questionAttempts.clear(),
+    db.tombstones.clear(),
   ]);
 }
 
@@ -80,11 +91,9 @@ describe('share codes', () => {
 
   it('round-trips a course using the legacy LAC0 plain base64 format', async () => {
     const payload = v2Payload();
-    const decoded = await decodeShareDirect(
-      'LAC0' + btoa(JSON.stringify(payload)),
-    );
+    const decoded = await decodeShareDirect('LAC0' + btoa(JSON.stringify(payload)));
     expect(decoded.v).toBe(2);
-    if (decoded.v !== 2) throw new Error('expected a v2 course payload');
+    if (decoded.v === 1) throw new Error('expected a course payload');
     expect(decoded.lessons[0].cards[0].f).toBe('Q');
   });
 
@@ -105,8 +114,8 @@ describe('share codes', () => {
     const recompressed = 'LAC1' + b64;
 
     const decoded = await decodeShare(recompressed);
-    expect(decoded.v).toBe(2);
-    if (decoded.v !== 2) throw new Error('expected a v2 course payload');
+    expect(decoded.v).toBe(3);
+    if (decoded.v === 1) throw new Error('expected a course payload');
     expect(decoded.lessons[0].cards[0].f).toBe('Q');
   });
 
@@ -131,13 +140,13 @@ describe('share codes', () => {
       by: null,
       at: Date.now(),
       course: { n: 'Malformed item', o: 0, c: 0, e: 0, um: 'open' },
-      lessons: [{
-        n: 'Lesson',
-        notes: [],
-        cards: [
-          { k: 0, f: 'Solve 2x = 8.', b: '', p: { v: 1, kind: 'working', scheme: [] } },
-        ],
-      }],
+      lessons: [
+        {
+          n: 'Lesson',
+          notes: [],
+          cards: [{ k: 0, f: 'Solve 2x = 8.', b: '', p: { v: 1, kind: 'working', scheme: [] } }],
+        },
+      ],
     };
     const plain = 'LAC3' + bytesToBase45(new TextEncoder().encode(JSON.stringify(malformed)));
     await expect(decodeShare(plain)).rejects.toThrow(/unsupported version/);
@@ -228,7 +237,7 @@ describe('course share codes (v2)', () => {
     await db.cards.update(card.id, { payload: itemPayload });
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
     expect(payload.lessons[0].cards[0].p).toEqual(itemPayload);
 
     await reset();
@@ -247,13 +256,14 @@ describe('course share codes (v2)', () => {
     ]);
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
     expect(payload.lessons[0].cards[0]).toEqual({
       id: card.id,
       k: 0,
       f: '2 + 2',
       b: '4',
       g: ['number'],
+      co: card.conceptId,
     });
     expect(JSON.stringify(payload.lessons[0].cards[0])).not.toContain('"p"');
   });
@@ -263,18 +273,18 @@ describe('course share codes (v2)', () => {
     const lesson = await createLesson(course.id, 'Future items');
     await createLessonCard(course.id, lesson.id, 'front_back', 'Future question', 'Fallback');
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
     const futurePayload = { v: 2, kind: 'proof-tree', nodes: [{ statement: 'A' }] };
     payload.lessons[0].cards[0].p = futurePayload;
 
     const decoded = await decodeShareDirect(await encodeShareDirect(payload));
-    if (decoded.v !== 2) throw new Error('expected a v2 course payload');
+    if (decoded.v === 1) throw new Error('expected a course payload');
     expect(decoded.lessons[0].cards[0].p).toEqual(futurePayload);
 
     const unknownKind = { v: 1, kind: 'proof-tree', nodes: [{ statement: 'B' }] };
     decoded.lessons[0].cards[0].p = unknownKind;
     const decodedUnknownKind = await decodeShareDirect(await encodeShareDirect(decoded));
-    if (decodedUnknownKind.v !== 2) throw new Error('expected a v2 course payload');
+    if (decodedUnknownKind.v === 1) throw new Error('expected a course payload');
     expect(decodedUnknownKind.lessons[0].cards[0].p).toEqual(unknownKind);
 
     await reset();
@@ -287,7 +297,7 @@ describe('course share codes (v2)', () => {
     const lesson = await createLesson(course.id, 'Broken items');
     await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Fallback');
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
     Object.assign(payload.lessons[0].cards[0], { p: { v: 1, kind: 'numeric' } });
 
     await expect(decodeShareDirect(await encodeShareDirect(payload))).rejects.toThrow(
@@ -326,8 +336,8 @@ describe('course share codes (v2)', () => {
 
     const code = await buildCourseShareCode(course.id);
     const payload = await decodeShare(code);
-    expect(payload.v).toBe(2);
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    expect(payload.v).toBe(3);
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.course.n).toBe('Biology');
     expect(payload.course.um).toBe('semi-linear');
@@ -411,12 +421,11 @@ describe('course share codes (v2)', () => {
       excludedCardIds: [card.id],
       needsAuthorConfirmation: true,
     });
-    const originalFinal = (await db.courseAssessments
-      .where('courseId')
-      .equals(course.id)
-      .toArray()).find((assessment) => assessment.kind === 'final')!;
+    const originalFinal = (
+      await db.courseAssessments.where('courseId').equals(course.id).toArray()
+    ).find((assessment) => assessment.kind === 'final')!;
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     await reset();
     await importSharePayload(payload);
@@ -450,7 +459,7 @@ describe('course share codes (v2)', () => {
       excludedCardIds: [bankCard.id],
     });
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 course payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     await reset();
     await importSharePayload(payload);
@@ -486,7 +495,7 @@ describe('course share codes (v2)', () => {
     );
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
     expect(payload.lessons[0].notes[0].i).toBe(1);
     expect(payload.lessons[0].cards[0].i).toBe(1);
 
@@ -510,7 +519,7 @@ describe('course share codes (v2)', () => {
 
     const code = await buildCourseShareCode(course.id);
     const payload = await decodeShare(code);
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.sequences).toHaveLength(1);
     expect(payload.sequences![0].n).toBe('Group 1 metals');
@@ -561,7 +570,7 @@ describe('course share codes (v2)', () => {
     );
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.sequences).toHaveLength(1);
     expect(payload.sequences![0].m).toBe('lines');
@@ -591,7 +600,7 @@ describe('course share codes (v2)', () => {
     );
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.sequences).toHaveLength(1);
     expect(payload.sequences![0].m).toBe('lines');
@@ -617,7 +626,7 @@ describe('course share codes (v2)', () => {
     );
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.sequences![0].pr).toBe('speech');
 
@@ -641,7 +650,7 @@ describe('course share codes (v2)', () => {
     ]);
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.sequences).toHaveLength(1);
     expect(payload.sequences![0].n).toBe('Group 1 metals');
@@ -689,7 +698,7 @@ describe('course share codes (v2)', () => {
     ]);
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.occlusions).toHaveLength(1);
     expect(payload.occlusions![0].n).toBe('Plant cell');
@@ -737,7 +746,7 @@ describe('course share codes (v2)', () => {
     ]);
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.occlusions).toHaveLength(1);
     expect(payload.occlusions![0].n).toBe('Plant cell');
@@ -766,7 +775,7 @@ describe('course share codes (v2)', () => {
 
     const code = await encodeShareDirect(legacyPayload);
     const payload = await decodeShare(code);
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
     expect(payload.sequences).toBeUndefined();
     expect(payload.occlusions).toBeUndefined();
     expect(payload.lessons).toHaveLength(1);
@@ -784,7 +793,7 @@ describe('course share codes (v2)', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'Front', 'Back');
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.li).toBeUndefined();
     expect(payload.rv).toBeUndefined();
@@ -804,7 +813,7 @@ describe('course share codes (v2)', () => {
     await linkCardToLesson(lesson.id, bankCard.id);
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
 
     expect(payload.li).toBe('lin_1');
     expect(payload.rv).toBe(3);
@@ -833,7 +842,7 @@ describe('course share codes (v2)', () => {
     };
     const code = await encodeShareDirect(publishedPayload);
     const decoded = await decodeShare(code);
-    if (decoded.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (decoded.v === 1) throw new Error('expected a course payload');
     expect(decoded.li).toBe('lin_abc');
     expect(decoded.rv).toBe(2);
     expect(decoded.lessons[0].i).toBe('lesson-orig-id');
@@ -849,10 +858,106 @@ describe('course share codes (v2)', () => {
       lessons: [{ n: 'Lesson 1', notes: [], cards: [{ k: 0 as const, f: 'Q', b: 'A' }] }],
     };
     const plainDecoded = await decodeShare(await encodeShareDirect(plainPayload));
-    if (plainDecoded.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (plainDecoded.v === 1) throw new Error('expected a course payload');
     expect(plainDecoded.li).toBeUndefined();
     expect(plainDecoded.rv).toBeUndefined();
     expect(plainDecoded.lessons[0].i).toBeUndefined();
+  });
+
+  it('round-trips v3 Concepts, alternate Card presentations and Question definitions without learner state', async () => {
+    const course = await createCourse('Algebra applications');
+    const lesson = await createLesson(course.id, 'Equations');
+    const target = await createConcept(course.id, 'Solve equations');
+    const prerequisite = await createConcept(course.id, 'Collect terms');
+    const pair = await createLessonCardWithReverse(
+      course.id,
+      lesson.id,
+      'Equation',
+      'Unknown value',
+    );
+    await db.cards.update(pair.card.id, { conceptId: target.id });
+    await db.cards.update(pair.reverse.id, { conceptId: target.id });
+    await createFixedQuestion({
+      courseId: course.id,
+      primaryLessonId: lesson.id,
+      name: 'Linear equation',
+      prompt: 'Solve $2x = 8$.',
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+      explanation: 'Divide both sides by 2.',
+      targetConceptId: target.id,
+      prerequisiteConceptIds: [prerequisite.id],
+    });
+    await createGeneratedQuestion({
+      courseId: course.id,
+      name: 'Quadratic family',
+      generatorKey: 'integer-root-quadratic',
+      generatorVersion: 1,
+      generatorConfig: {
+        minimumRootMagnitude: 1,
+        maximumRootMagnitude: 2,
+        maximumLeadingCoefficient: 1,
+        allowRepeatedRoots: false,
+      },
+      targetConceptId: target.id,
+    });
+
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    expect(payload.v).toBe(3);
+    if (payload.v !== 3) throw new Error('expected a v3 course payload');
+    expect(payload.questions).toHaveLength(2);
+    expect(payload.concepts.map((concept) => concept.id)).toEqual(
+      expect.arrayContaining([target.id, prerequisite.id]),
+    );
+    expect(new Set(payload.lessons[0].cards.map((card) => card.co)).size).toBe(1);
+    expect(JSON.stringify(payload)).not.toContain('scheduleEpoch');
+    expect(JSON.stringify(payload)).not.toContain('questionAttempts');
+
+    await reset();
+    const result = await importSharePayload(payload);
+    expect(result.questions).toBe(2);
+    expect(await db.questionAttempts.count()).toBe(0);
+    const importedQuestions = await db.questions.toArray();
+    expect(importedQuestions).toHaveLength(2);
+    expect(importedQuestions.every((question) => question.reps === 0)).toBe(true);
+    const importedSet = await db.questionConcepts.get(
+      importedQuestions.find((question) => question.kind === 'fixed')!.id,
+    );
+    expect(importedSet?.targetConceptIds).toHaveLength(1);
+    expect(importedSet?.prerequisiteConceptIds).toHaveLength(1);
+    const importedCards = await db.cards.toArray();
+    expect(new Set(importedCards.map((card) => card.conceptId)).size).toBe(1);
+  });
+
+  it('preserves an unknown generated family safely as suspended content', async () => {
+    const course = await createCourse('Future generators');
+    const target = await createConcept(course.id, 'Future skill');
+    await createGeneratedQuestion({
+      courseId: course.id,
+      name: 'Known family',
+      generatorKey: 'integer-root-quadratic',
+      generatorVersion: 1,
+      generatorConfig: {
+        minimumRootMagnitude: 1,
+        maximumRootMagnitude: 1,
+        maximumLeadingCoefficient: 1,
+        allowRepeatedRoots: false,
+      },
+      targetConceptId: target.id,
+    });
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v !== 3) throw new Error('expected a v3 course payload');
+    const generated = payload.questions.find((question) => question.k === 1)!;
+    generated.gk = 'future-family';
+    generated.gv = 99;
+
+    await reset();
+    await importSharePayload(await decodeShare(await encodeShareDirect(payload)));
+    expect(await db.questions.toCollection().first()).toMatchObject({
+      kind: 'generated',
+      generatorKey: 'future-family',
+      generatorVersion: 99,
+      suspended: true,
+    });
   });
 });
 
@@ -875,7 +980,7 @@ describe('QR share codes', () => {
     expect(qrCode.startsWith('LAC2')).toBe(true);
 
     const payload = await decodeShare(qrCode);
-    if (payload.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (payload.v === 1) throw new Error('expected a course payload');
     expect(payload.lessons).toHaveLength(1);
     expect(payload.lessons[0].cards).toHaveLength(2);
     const fronts = payload.lessons[0].cards.map((c) => c.f);
@@ -896,7 +1001,7 @@ describe('QR share codes', () => {
     expect(qrCode.startsWith('LAC2')).toBe(true);
 
     const decoded = await decodeShareDirect(qrCode);
-    if (decoded.v !== 2) throw new Error('expected a v2 (course) payload');
+    if (decoded.v === 1) throw new Error('expected a course payload');
     expect(decoded.lessons).toHaveLength(1);
     expect(decoded.lessons[0].cards[0].f).toBe('Q');
   });

@@ -8,7 +8,11 @@ import {
 } from './occlusionGeneration';
 import type { Card, Occlusion, OcclusionRegion } from './types';
 
-function region(id: string, role: OcclusionRegion['role'], overrides: Partial<OcclusionRegion> = {}): OcclusionRegion {
+function region(
+  id: string,
+  role: OcclusionRegion['role'],
+  overrides: Partial<OcclusionRegion> = {},
+): OcclusionRegion {
   return { id, role, shape: 'rectangle', x: 0, y: 0, w: 0.1, h: 0.1, ...overrides };
 }
 
@@ -35,6 +39,7 @@ function card(
   overrides: Partial<Card> & { id: string; occlusionRegionId: string; front: string; back: string },
 ): Card {
   return {
+    conceptId: `concept-${overrides.id}`,
     deckId: 'deck-1',
     schedulingUnitId: 'deck-1',
     type: 'front_back',
@@ -103,7 +108,7 @@ describe('generateCards', () => {
     expect(f1.front).toBe('Feature 3 of 3 — Plant cell');
   });
 
-  it('a label region\'s back reveals its own answerText when set (typed mode)', () => {
+  it("a label region's back reveals its own answerText when set (typed mode)", () => {
     const occ = makeOcclusion({
       regions: [region('l1', 'label', { answerText: 'Nucleus' })],
     });
@@ -111,15 +116,18 @@ describe('generateCards', () => {
     expect(payload.back).toBe('Label 1 of 1 — Plant cell\n\nNucleus');
   });
 
-  it('a label region\'s back falls back to a generic reveal line when no answerText is set', () => {
+  it("a label region's back falls back to a generic reveal line when no answerText is set", () => {
     const occ = makeOcclusion({ regions: [region('l1', 'label')] });
     const [payload] = generateCards(occ);
     expect(payload.back).toBe('Label 1 of 1 — Plant cell\n\nRevealed on the diagram.');
   });
 
-  it('a paired feature region\'s back reveals the paired label\'s answerText', () => {
+  it("a paired feature region's back reveals the paired label's answerText", () => {
     const occ = makeOcclusion({
-      regions: [region('l1', 'label', { answerText: 'Nucleus' }), region('f1', 'feature', { pairedRegionId: 'l1' })],
+      regions: [
+        region('l1', 'label', { answerText: 'Nucleus' }),
+        region('f1', 'feature', { pairedRegionId: 'l1' }),
+      ],
     });
     const [, feature] = generateCards(occ);
     expect(feature.back).toBe('Feature 2 of 2 — Plant cell\n\nNucleus');
@@ -133,7 +141,7 @@ describe('generateCards', () => {
     expect(feature.back).toBe('Feature 2 of 2 — Plant cell\n\nRevealed on the diagram.');
   });
 
-  it('an unpaired feature region\'s back shows its own answerText', () => {
+  it("an unpaired feature region's back shows its own answerText", () => {
     const occ = makeOcclusion({
       regions: [region('f1', 'feature', { answerText: 'Mitochondrion' })],
     });
@@ -177,7 +185,7 @@ describe('resolveOcclusionFace', () => {
     expect(face.answerText).toBeUndefined();
   });
 
-  it('a paired feature card lifts its paired label\'s mask on the back', () => {
+  it("a paired feature card lifts its paired label's mask on the back", () => {
     const occ = makeOcclusion();
     const face = resolveOcclusionFace(occ, 'f1')!;
     expect(face.backLiftedRegionId).toBe('l1');
@@ -331,18 +339,28 @@ describe('diffRegeneration', () => {
     expect(diff.deletes).toEqual([]);
   });
 
-  it('changing a region\'s role regenerates only its own card: the plain-text fallback names only the region\'s own role, not the masking it participates in', () => {
+  it("changing a region's role regenerates only its own card: the plain-text fallback names only the region's own role, not the masking it participates in", () => {
     const existing = existingFromGenerated();
     const roleChanged = makeOcclusion({
-      regions: occ.regions.map((r) => (r.id === 'l2' ? { ...r, role: 'feature' as const, pairedRegionId: undefined, answerText: 'Vacuole' } : r)),
+      regions: occ.regions.map((r) =>
+        r.id === 'l2'
+          ? { ...r, role: 'feature' as const, pairedRegionId: undefined, answerText: 'Vacuole' }
+          : r,
+      ),
     });
     const diff = diffRegeneration(roleChanged, existing);
-    expect(diff.updates).toEqual([{ id: 'card-l2', front: 'Feature 2 of 3 — Plant cell', back: 'Feature 2 of 3 — Plant cell\n\nVacuole' }]);
+    expect(diff.updates).toEqual([
+      {
+        id: 'card-l2',
+        front: 'Feature 2 of 3 — Plant cell',
+        back: 'Feature 2 of 3 — Plant cell\n\nVacuole',
+      },
+    ]);
     expect(diff.creates).toEqual([]);
     expect(diff.deletes).toEqual([]);
   });
 
-  it('changing a feature\'s pairedRegionId regenerates only the affected card\'s back, when the two labels\' answerText differ', () => {
+  it("changing a feature's pairedRegionId regenerates only the affected card's back, when the two labels' answerText differ", () => {
     const withAnswers = makeOcclusion({
       regions: [
         region('l1', 'label', { x: 0.1, y: 0.1, w: 0.1, h: 0.1, answerText: 'Nucleus' }),
@@ -351,13 +369,21 @@ describe('diffRegeneration', () => {
       ],
     });
     const existing = generateCards(withAnswers).map((p, i) =>
-      card({ id: `card-${p.occlusionRegionId}`, occlusionRegionId: p.occlusionRegionId, front: p.front, back: p.back, createdAt: i }),
+      card({
+        id: `card-${p.occlusionRegionId}`,
+        occlusionRegionId: p.occlusionRegionId,
+        front: p.front,
+        back: p.back,
+        createdAt: i,
+      }),
     );
     const repaired = makeOcclusion({
       regions: withAnswers.regions.map((r) => (r.id === 'f1' ? { ...r, pairedRegionId: 'l2' } : r)),
     });
     const diff = diffRegeneration(repaired, existing);
-    expect(diff.updates).toEqual([{ id: 'card-f1', back: 'Feature 3 of 3 — Plant cell\n\nVacuole' }]);
+    expect(diff.updates).toEqual([
+      { id: 'card-f1', back: 'Feature 3 of 3 — Plant cell\n\nVacuole' },
+    ]);
     expect(diff.creates).toEqual([]);
     expect(diff.deletes).toEqual([]);
   });
@@ -371,7 +397,7 @@ describe('diffRegeneration', () => {
     expect(diffRegeneration(replaced, existing)).toEqual({ creates: [], updates: [], deletes: [] });
   });
 
-  it('renaming the occlusion updates every card\'s text (image replace + rename both regenerate everything)', () => {
+  it("renaming the occlusion updates every card's text (image replace + rename both regenerate everything)", () => {
     const existing = existingFromGenerated();
     const renamed = makeOcclusion({ name: 'Animal cell' });
     const diff = diffRegeneration(renamed, existing);
@@ -388,9 +414,13 @@ describe('diffRegeneration', () => {
       makeOcclusion({ regions: occ.regions.filter((r) => r.id !== 'l2') }), // delete
       makeOcclusion({ regions: [...occ.regions, region('l3', 'label')] }), // add
       makeOcclusion({
-        regions: occ.regions.map((r) => (r.id === 'l2' ? { ...r, role: 'feature' as const, answerText: 'Vacuole' } : r)),
+        regions: occ.regions.map((r) =>
+          r.id === 'l2' ? { ...r, role: 'feature' as const, answerText: 'Vacuole' } : r,
+        ),
       }), // role change
-      makeOcclusion({ regions: occ.regions.map((r) => (r.id === 'f1' ? { ...r, pairedRegionId: 'l2' } : r)) }), // pairing change
+      makeOcclusion({
+        regions: occ.regions.map((r) => (r.id === 'f1' ? { ...r, pairedRegionId: 'l2' } : r)),
+      }), // pairing change
       makeOcclusion({ assetHash: 'hash-2', name: 'Animal cell' }), // image replace + rename
     ];
     for (const scenario of scenarios) {

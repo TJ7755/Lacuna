@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { Card, Lesson } from '../../db/types';
+import type { Lesson } from '../../db/types';
+import type { FixedQuestionDefinition, QuestionDefinition } from '../../questions/types';
 import { BATCH_OUTPUT_END, BATCH_OUTPUT_START } from '../../items/prompts';
 import { ItemStagingReview } from './ItemStagingReview';
 
-const createLessonCard = vi.fn().mockResolvedValue({ id: 'created-card' });
+const createBatchFixedQuestion = vi.fn().mockResolvedValue({
+  question: { id: 'created-question' },
+});
 const notify = vi.fn();
 const writeText = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('../../db/repository', () => ({
-  createLessonCard: (...args: unknown[]) => createLessonCard(...args),
-  normaliseCardText: (text: string) => text.trim().toLowerCase().replace(/\s+/g, ' '),
+vi.mock('../../items/batchQuestionImport', () => ({
+  createBatchFixedQuestion: (...args: unknown[]) => createBatchFixedQuestion(...args),
 }));
 
 vi.mock('../ui/Toast', () => ({
@@ -28,14 +30,24 @@ const lesson: Lesson = {
   isExtension: false,
 };
 
-function existingCard(front: string): Card {
+function existingQuestion(prompt: string): FixedQuestionDefinition {
   return {
-    id: 'existing-card',
-    deckId: 'deck-1',
-    schedulingUnitId: 'deck-1',
-    type: 'front_back',
-    front,
-    back: '',
+    id: 'existing-question',
+    courseId: 'course-1',
+    primaryLessonId: 'lesson-1',
+    additionalLessonIds: [],
+    name: 'Existing Question',
+    tags: [],
+    suspended: false,
+    kind: 'fixed',
+    prompt,
+    payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '2' } },
+    explanation: 'Worked explanation.',
+    explanationStatus: 'authored',
+    contentVersion: 1,
+    contentRevisionId: 'content-revision-1',
+    authoringRevisionId: 'authoring-revision-1',
+    authoringUpdatedAt: 1,
     stability: null,
     difficulty: null,
     lastReviewed: null,
@@ -45,23 +57,25 @@ function existingCard(front: string): Card {
     due: null,
     scheduledDays: 0,
     learningSteps: 0,
-    history: [],
+    scheduleEpoch: { id: 'epoch-1', startedAt: 1, reason: 'created', baseline: { kind: 'new' } },
+    scheduleUpdatedAt: 1,
     createdAt: 1,
     updatedAt: 1,
-    tags: [],
-    suspended: false,
-    buriedUntil: null,
-    courseId: 'course-1',
-    primaryLessonId: 'lesson-1',
   };
 }
 
 function batch(items: unknown[]): string {
-  return `${BATCH_OUTPUT_START}\n${JSON.stringify({ version: 1, items })}\n${BATCH_OUTPUT_END}`;
+  const complete = items.map((item, index) => ({
+    explanation: `Worked explanation ${index + 1}`,
+    targetConcept: `Target Concept ${index + 1}`,
+    prerequisiteConcepts: [],
+    ...(typeof item === 'object' && item !== null ? item : {}),
+  }));
+  return `${BATCH_OUTPUT_START}\n${JSON.stringify({ version: 2, items: complete })}\n${BATCH_OUTPUT_END}`;
 }
 
-function stage(source: string, cards: Card[] = []) {
-  render(<ItemStagingReview courseId="course-1" lessons={[lesson]} cards={cards} />);
+function stage(source: string, questions: QuestionDefinition[] = []) {
+  render(<ItemStagingReview courseId="course-1" lessons={[lesson]} questions={questions} />);
   fireEvent.change(screen.getByPlaceholderText(new RegExp(BATCH_OUTPUT_START)), {
     target: { value: source },
   });
@@ -69,7 +83,7 @@ function stage(source: string, cards: Card[] = []) {
 }
 
 beforeEach(() => {
-  createLessonCard.mockClear();
+  createBatchFixedQuestion.mockClear();
   notify.mockClear();
   writeText.mockClear();
   Object.defineProperty(navigator, 'clipboard', {
@@ -92,7 +106,7 @@ describe('ItemStagingReview', () => {
         },
         { kind: 'numeric', question: 'Existing question', answer: { kind: 'exact', value: '2' } },
       ]),
-      [existingCard('Existing question')],
+      [existingQuestion('Existing question')],
     );
 
     expect(screen.getByText(/Scheme line 1/)).toBeInTheDocument();
@@ -101,14 +115,14 @@ describe('ItemStagingReview', () => {
     expect(within(duplicateRow).getByRole('button', { name: 'Accept' })).toBeEnabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Accept all clean' }));
-    await waitFor(() => expect(createLessonCard).toHaveBeenCalledTimes(2));
-    expect(createLessonCard.mock.calls.map((call) => call[3])).toEqual([
+    await waitFor(() => expect(createBatchFixedQuestion).toHaveBeenCalledTimes(2));
+    expect(createBatchFixedQuestion.mock.calls.map((call) => call[0].prompt)).toEqual([
       'Fresh numeric',
       'Fresh working',
     ]);
 
     fireEvent.click(within(duplicateRow).getByRole('button', { name: 'Accept' }));
-    await waitFor(() => expect(createLessonCard).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(createBatchFixedQuestion).toHaveBeenCalledTimes(3));
     expect(within(duplicateRow).getByText('accepted')).toBeInTheDocument();
     expect(
       within(duplicateRow).queryByRole('button', { name: 'Revise with AI' }),
@@ -135,7 +149,7 @@ describe('ItemStagingReview', () => {
 
   it('revalidates an edited malformed item and supports rejection', () => {
     stage(batch([{ kind: 'numeric', question: '', answer: { kind: 'exact', value: '4' } }]));
-    const row = screen.getByText('Untitled item').closest('article')!;
+    const row = screen.getByText('Untitled Question').closest('article')!;
 
     fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
     fireEvent.change(within(row).getByRole('textbox', { name: 'Question' }), {

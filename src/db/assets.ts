@@ -121,6 +121,27 @@ export function referencedAssetHashes(markdown: string): string[] {
   return [...hashes];
 }
 
+/** Find asset references in nested Question definitions and immutable receipts. */
+export function referencedAssetHashesInValues(...values: readonly unknown[]): string[] {
+  const hashes = new Set<string>();
+  const seen = new Set<object>();
+  const visit = (value: unknown): void => {
+    if (typeof value === 'string') {
+      referencedAssetHashes(value).forEach((hash) => hashes.add(hash));
+      return;
+    }
+    if (value === null || typeof value !== 'object' || seen.has(value)) return;
+    seen.add(value);
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    Object.values(value as Record<string, unknown>).forEach(visit);
+  };
+  values.forEach(visit);
+  return [...hashes];
+}
+
 export function referencedAssetHashesInCards(cards: { front: string; back: string }[]): string[] {
   const hashes = new Set<string>();
   for (const card of cards) {
@@ -391,6 +412,22 @@ export async function collectOrphanedAssets(): Promise<number> {
         referenced.add(occlusion.assetHash);
       }
       occlusionOffset += batch.length;
+    }
+    let questionOffset = 0;
+    for (;;) {
+      const batch = await db.questions.offset(questionOffset).limit(batchSize).toArray();
+      if (batch.length === 0) break;
+      referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
+      questionOffset += batch.length;
+    }
+    // Attempts deliberately outlive deleted Questions, so their rendered receipts
+    // remain asset owners even when no definition references the media any more.
+    let attemptOffset = 0;
+    for (;;) {
+      const batch = await db.questionAttempts.offset(attemptOffset).limit(batchSize).toArray();
+      if (batch.length === 0) break;
+      referencedAssetHashesInValues(batch).forEach((hash) => referenced.add(hash));
+      attemptOffset += batch.length;
     }
 
     // Stream asset keys and collect orphans without loading all keys at once.

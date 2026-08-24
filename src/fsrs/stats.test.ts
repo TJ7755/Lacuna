@@ -25,6 +25,7 @@ function review(timestamp: number): ReviewLog {
 function card(over: Partial<Card> = {}): Card {
   return {
     id: Math.random().toString(36).slice(2),
+    conceptId: 'concept-stats-card',
     deckId: 'd1',
     schedulingUnitId: 'd1',
     type: 'front_back',

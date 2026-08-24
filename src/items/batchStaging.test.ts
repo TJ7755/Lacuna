@@ -3,7 +3,13 @@ import { parseBatchOutput, parseEditedCandidate, parseRevisedItems } from './bat
 import { BATCH_OUTPUT_END, BATCH_OUTPUT_START } from './prompts';
 
 function block(items: unknown[]): string {
-  return `${BATCH_OUTPUT_START}\n${JSON.stringify({ version: 1, items })}\n${BATCH_OUTPUT_END}`;
+  const complete = items.map((item, index) => ({
+    explanation: `Worked explanation ${index + 1}`,
+    targetConcept: `Target Concept ${index + 1}`,
+    prerequisiteConcepts: [],
+    ...(typeof item === 'object' && item !== null ? item : {}),
+  }));
+  return `${BATCH_OUTPUT_START}\n${JSON.stringify({ version: 2, items: complete })}\n${BATCH_OUTPUT_END}`;
 }
 
 describe('parseBatchOutput', () => {
@@ -24,6 +30,47 @@ describe('parseBatchOutput', () => {
     expect(result.candidates.map((candidate) => candidate.errors)).toEqual([[], []]);
     expect(result.candidates[1].fixtureStatus).toEqual({ total: 1, passed: 1 });
     expect(result.candidates[1].payload).toMatchObject({ kind: 'working' });
+  });
+
+  it('requires feedback and one distinct primary target Concept', () => {
+    const result = parseBatchOutput(
+      `${BATCH_OUTPUT_START}\n${JSON.stringify({
+        version: 2,
+        items: [
+          {
+            kind: 'numeric',
+            question: 'What is 2 + 2?',
+            answer: { kind: 'exact', value: '4' },
+            prerequisiteConcepts: ['Addition'],
+          },
+        ],
+      })}\n${BATCH_OUTPUT_END}`,
+    );
+
+    expect(result.candidates[0].errors).toEqual(
+      expect.arrayContaining(['Add a worked explanation.', 'Add one primary target Concept.']),
+    );
+  });
+
+  it('requires prerequisites to be explicit even when the list is empty', () => {
+    const result = parseBatchOutput(
+      `${BATCH_OUTPUT_START}\n${JSON.stringify({
+        version: 2,
+        items: [
+          {
+            kind: 'numeric',
+            question: 'What is 2 + 2?',
+            explanation: 'Add the values.',
+            targetConcept: 'Addition',
+            answer: { kind: 'exact', value: '4' },
+          },
+        ],
+      })}\n${BATCH_OUTPUT_END}`,
+    );
+
+    expect(result.candidates[0].errors).toContain(
+      'Add prerequisite Concepts as a list, using [] when there are none.',
+    );
   });
 
   it('keeps malformed neighbours separate and reports failing fixtures', () => {
@@ -86,9 +133,16 @@ describe('parseBatchOutput', () => {
 
   it('accepts a block closed by a mirrored opening delimiter', () => {
     const items = [
-      { kind: 'numeric', question: 'What is 2 + 2?', answer: { kind: 'exact', value: '4' } },
+      {
+        kind: 'numeric',
+        question: 'What is 2 + 2?',
+        explanation: 'Add the values.',
+        targetConcept: 'Addition',
+        prerequisiteConcepts: [],
+        answer: { kind: 'exact', value: '4' },
+      },
     ];
-    const mirrored = `${BATCH_OUTPUT_START}\n${JSON.stringify({ version: 1, items })}\n${BATCH_OUTPUT_START}`;
+    const mirrored = `${BATCH_OUTPUT_START}\n${JSON.stringify({ version: 2, items })}\n${BATCH_OUTPUT_START}`;
 
     const result = parseBatchOutput(mirrored);
 
@@ -99,7 +153,14 @@ describe('parseBatchOutput', () => {
 
   it('prefers a real closing delimiter over a later mirrored one', () => {
     const items = [
-      { kind: 'numeric', question: 'What is 2 + 2?', answer: { kind: 'exact', value: '4' } },
+      {
+        kind: 'numeric',
+        question: 'What is 2 + 2?',
+        explanation: 'Add the values.',
+        targetConcept: 'Addition',
+        prerequisiteConcepts: [],
+        answer: { kind: 'exact', value: '4' },
+      },
     ];
     const trailing = `${block(items)}\nCommentary.\n${BATCH_OUTPUT_START}`;
 
@@ -130,6 +191,9 @@ describe('parseEditedCandidate', () => {
       JSON.stringify({
         kind: 'numeric',
         question: 'Corrected question',
+        explanation: 'Worked correction.',
+        targetConcept: 'Correction',
+        prerequisiteConcepts: [],
         answer: { kind: 'exact', value: '9' },
       }),
       4,
@@ -142,7 +206,14 @@ describe('parseEditedCandidate', () => {
 });
 
 describe('parseRevisedItems', () => {
-  const item = { kind: 'numeric', question: 'Revised?', answer: { kind: 'exact', value: '4' } };
+  const item = {
+    kind: 'numeric',
+    question: 'Revised?',
+    explanation: 'Worked revision.',
+    targetConcept: 'Revision',
+    prerequisiteConcepts: [],
+    answer: { kind: 'exact', value: '4' },
+  };
 
   it('reads the delimited block the revision prompts ask for', () => {
     const result = parseRevisedItems(block([item]));
@@ -154,7 +225,7 @@ describe('parseRevisedItems', () => {
   it('accepts the shapes a model returns instead of the delimited block', () => {
     const bareItem = parseRevisedItems(JSON.stringify(item));
     const bareArray = parseRevisedItems(JSON.stringify([item, item]));
-    const wrapper = parseRevisedItems(JSON.stringify({ version: 1, items: [item] }));
+    const wrapper = parseRevisedItems(JSON.stringify({ version: 2, items: [item] }));
 
     expect(bareItem.items).toEqual([item]);
     expect(bareArray.items).toEqual([item, item]);
@@ -163,7 +234,7 @@ describe('parseRevisedItems', () => {
   });
 
   it('accepts a mirrored or entirely missing closing delimiter', () => {
-    const payload = JSON.stringify({ version: 1, items: [item] });
+    const payload = JSON.stringify({ version: 2, items: [item] });
     const mirrored = parseRevisedItems(`${BATCH_OUTPUT_START}\n${payload}\n${BATCH_OUTPUT_START}`);
     const unterminated = parseRevisedItems(`${BATCH_OUTPUT_START}\n${payload}`);
 

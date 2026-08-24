@@ -25,6 +25,19 @@ export function StagedItemEditor({ candidate, onApply, onCancel }: StagedItemEdi
   const [question, setQuestion] = useState(
     typeof raw?.question === 'string' ? raw.question : candidate.question,
   );
+  const [explanation, setExplanation] = useState(
+    typeof raw?.explanation === 'string' ? raw.explanation : candidate.explanation,
+  );
+  const [targetConcept, setTargetConcept] = useState(
+    typeof raw?.targetConcept === 'string' ? raw.targetConcept : candidate.targetConcept,
+  );
+  const [prerequisiteConcepts, setPrerequisiteConcepts] = useState(
+    Array.isArray(raw?.prerequisiteConcepts)
+      ? raw.prerequisiteConcepts
+          .filter((value): value is string => typeof value === 'string')
+          .join('\n')
+      : candidate.prerequisiteConcepts.join('\n'),
+  );
   const [answer, setAnswer] = useState<NumericAnswerSpec>(() => numericAnswerFrom(raw?.answer));
   const [scheme, setScheme] = useState(typeof raw?.scheme === 'string' ? raw.scheme : '');
   const [fixtures, setFixtures] = useState<FixtureDraft[]>(() => fixturesFrom(raw?.fixtures));
@@ -32,10 +45,20 @@ export function StagedItemEditor({ candidate, onApply, onCancel }: StagedItemEdi
   function apply() {
     const edited =
       kind === 'numeric'
-        ? { kind, question, answer }
+        ? {
+            kind,
+            question,
+            explanation,
+            targetConcept,
+            prerequisiteConcepts: conceptLines(prerequisiteConcepts),
+            answer,
+          }
         : {
             kind,
             question,
+            explanation,
+            targetConcept,
+            prerequisiteConcepts: conceptLines(prerequisiteConcepts),
             scheme,
             fixtures: fixtures.map((fixture) => ({
               id: fixture.id,
@@ -85,6 +108,38 @@ export function StagedItemEditor({ candidate, onApply, onCancel }: StagedItemEdi
         </fieldset>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="flex flex-col gap-2 text-sm text-ink-soft">
+          Worked explanation
+          <textarea
+            value={explanation}
+            onChange={(event) => setExplanation(event.target.value)}
+            rows={4}
+            className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 text-sm leading-6 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+          />
+        </label>
+        <div className="space-y-4">
+          <label className="flex flex-col gap-2 text-sm text-ink-soft">
+            Primary target Concept
+            <input
+              value={targetConcept}
+              onChange={(event) => setTargetConcept(event.target.value)}
+              className="min-h-11 rounded-xl border border-line-strong bg-paper px-3 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-ink-soft">
+            Prerequisite Concepts
+            <textarea
+              value={prerequisiteConcepts}
+              onChange={(event) => setPrerequisiteConcepts(event.target.value)}
+              rows={3}
+              placeholder="One Concept per line"
+              className="resize-y rounded-xl border border-line-strong bg-paper px-3 py-2 text-ink outline-none placeholder:text-ink-faint focus:border-accent focus:ring-2 focus:ring-accent/20"
+            />
+          </label>
+        </div>
+      </div>
+
       {kind === 'numeric' ? (
         <NumericAnswerEditor value={answer} onChange={setAnswer} />
       ) : (
@@ -104,6 +159,13 @@ export function StagedItemEditor({ candidate, onApply, onCancel }: StagedItemEdi
       </div>
     </div>
   );
+}
+
+function conceptLines(value: string): string[] {
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 function FixtureEditor({

@@ -27,7 +27,13 @@ export type SnapshotTable =
   | 'occlusions'
   | 'schedulingUnits'
   | 'coursePerformance'
-  | 'schedulingPerformance';
+  | 'schedulingPerformance'
+  | 'concepts'
+  | 'questions'
+  | 'questionConcepts'
+  | 'questionAttempts'
+  | 'lineageIdMappings'
+  | 'pendingMergeReviews';
 
 /** Compound LessonCardExposure key as a single tombstone record id. */
 export function lessonCardExposureId(lessonId: string, cardId: string): string {

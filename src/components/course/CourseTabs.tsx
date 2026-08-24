@@ -1,5 +1,5 @@
-// Shared course-level tab navigation — Path, Question bank, Analytics,
-// Settings — rendered on all four course surfaces so any section is one
+// Shared course-level tab navigation — Path, Cards, Questions, Analytics,
+// Settings — rendered on all five course surfaces so any section is one
 // click from any other. Active tab is derived from the current route rather
 // than passed in, so it never drifts out of sync with the URL. Styling
 // reuses the segmented-pill vocabulary already established by
@@ -25,7 +25,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
       {COURSE_SECTIONS.map(({ label, short, suffix }) => {
         const to = `${base}${suffix}`;
         // The Path tab (empty suffix) must match exactly so it doesn't stay
-        // "active" while on /bank, /analytics or /settings (all of which
+        // "active" while on /cards, /questions, /analytics or /settings (all of which
         // start with the same base path).
         const active =
           suffix === ''
@@ -41,7 +41,9 @@ export function CourseTabs({ courseId }: { courseId: string }) {
             aria-label={label}
             className={cn(
               'flex h-full items-center whitespace-nowrap rounded-full px-3 font-medium transition-colors',
-              active ? 'bg-surface text-ink shadow-sm shadow-black/[0.04]' : 'text-ink-faint hover:text-ink',
+              active
+                ? 'bg-surface text-ink shadow-sm shadow-black/[0.04]'
+                : 'text-ink-faint hover:text-ink',
             )}
           >
             <span className="sm:hidden">{short}</span>

@@ -5,8 +5,10 @@ import { useSearchData } from '../../state/useSearchData';
 import {
   cardEditPath,
   plainPreview,
+  questionEditPath,
   searchCardsInScope,
   searchCourseContent,
+  searchQuestionsInScope,
   type CourseContentHit,
   type ScopedSearchResult,
 } from '../../db/search';
@@ -15,14 +17,16 @@ import { GeneratedCardBadge } from '../cards/GeneratedCardBadge';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
-/** A single, ordered list mixing course/lesson/note hits ahead of card hits. */
-type PaletteHit = ({ kind: 'card' } & ScopedSearchResult) | CourseContentHit;
+/** A single ordered list of navigation, Card and Question hits. */
+type PaletteHit = ScopedSearchResult | CourseContentHit;
 
 /** Where a palette hit deep-links to. */
 function hitPath(hit: PaletteHit): string {
   switch (hit.kind) {
     case 'card':
       return cardEditPath(hit.card);
+    case 'question':
+      return questionEditPath(hit.question);
     case 'course':
       return `/course/${hit.course.id}`;
     case 'lesson':
@@ -86,6 +90,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
   const courses = searchData?.courses;
   const lessons = searchData?.lessons;
   const notes = searchData?.notes;
+  const questions = searchData?.questions;
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(
@@ -107,14 +112,18 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
       lessons ?? [],
       notes ?? [],
     );
-    const cardHits = searchCardsInScope(
-      deferredQuery,
-      { cards: cards ?? [], courses: courses ?? [], lessons: lessons ?? [] },
-    ).map(
-      (r): PaletteHit => ({ kind: 'card', ...r }),
-    );
-    return [...courseHits, ...cardHits].slice(0, MAX_RESULTS);
-  }, [deferredQuery, cards, courses, lessons, notes]);
+    const cardHits = searchCardsInScope(deferredQuery, {
+      cards: cards ?? [],
+      courses: courses ?? [],
+      lessons: lessons ?? [],
+    });
+    const questionHits = searchQuestionsInScope(deferredQuery, {
+      questions: questions ?? [],
+      courses: courses ?? [],
+      lessons: lessons ?? [],
+    });
+    return [...courseHits, ...questionHits, ...cardHits].slice(0, MAX_RESULTS);
+  }, [deferredQuery, cards, courses, lessons, notes, questions]);
   const hasVisibleResults = query.trim() !== '' && results.length > 0;
 
   // Reset and focus when the palette mounts.
@@ -163,7 +172,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <AnimatePresence>
-      {(
+      {
         <motion.div
           ref={trapRef}
           role="dialog"
@@ -171,10 +180,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
           aria-label="Search"
           className="fixed inset-0 z-50 flex items-start justify-center pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(12vh,env(safe-area-inset-top))]"
         >
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
           <motion.div
             initial={{ opacity: 0, y: -12, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -196,7 +202,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                 }
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search courses, lessons, notes and cards…"
+                placeholder="Search courses, lessons, notes, cards and questions…"
                 className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
               />
               <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
@@ -250,11 +256,13 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                       const key =
                         hit.kind === 'card'
                           ? hit.card.id
-                          : hit.kind === 'course'
-                            ? hit.course.id
-                            : hit.kind === 'lesson'
-                              ? hit.lesson.id
-                              : hit.note.id;
+                          : hit.kind === 'question'
+                            ? hit.question.id
+                            : hit.kind === 'course'
+                              ? hit.course.id
+                              : hit.kind === 'lesson'
+                                ? hit.lesson.id
+                                : hit.note.id;
                       return (
                         <motion.li
                           key={`${hit.kind}-${key}`}
@@ -286,9 +294,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                                 <span className="flex items-center gap-2 text-xs text-ink-faint">
                                   <span className="truncate">{hit.contextName}</span>
                                   {(hit.card.tags ?? []).length > 0 && (
-                                    <span className="truncate">
-                                      · {hit.card.tags!.join(', ')}
-                                    </span>
+                                    <span className="truncate">· {hit.card.tags!.join(', ')}</span>
                                   )}
                                   {hit.card.sequenceItemId !== null &&
                                     hit.card.sequenceItemId !== undefined && (
@@ -300,6 +306,32 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
                                     )}
                                 </span>
                               </span>
+                            ) : hit.kind === 'question' ? (
+                              <>
+                                <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent">
+                                  <FileTextIcon width={14} height={14} />
+                                </span>
+                                <span className="flex min-w-0 flex-col gap-0.5">
+                                  <span className="truncate text-sm text-ink">
+                                    <HighlightedText
+                                      text={
+                                        hit.question.kind === 'fixed'
+                                          ? plainPreview(hit.question.prompt, 90) ||
+                                            hit.question.name
+                                          : hit.question.name
+                                      }
+                                      query={query}
+                                    />
+                                  </span>
+                                  <span className="flex items-center gap-2 text-xs text-ink-faint">
+                                    <span className="truncate">{hit.contextName}</span>
+                                    <span>· Question</span>
+                                    {hit.question.kind === 'generated' && (
+                                      <span>· Generated family</span>
+                                    )}
+                                  </span>
+                                </span>
+                              </>
                             ) : (
                               (() => {
                                 const { icon: HitIcon, title, subtitle } = courseHitMeta(hit);
@@ -343,7 +375,7 @@ function CommandPaletteDialog({ onClose }: { onClose: () => void }) {
             </div>
           </motion.div>
         </motion.div>
-      )}
+      }
     </AnimatePresence>
   );
 }

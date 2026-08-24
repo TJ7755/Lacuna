@@ -24,6 +24,7 @@ const NOW = 10 * MS_PER_DAY;
 function makeCard(id: string, primaryLessonId: string | null, overrides: Partial<Card> = {}): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'course',
     schedulingUnitId: 'course',
     courseId: 'course',

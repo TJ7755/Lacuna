@@ -5,6 +5,12 @@ import { assetUrl, collectOrphanedAssets, storeImageBlob } from './assets';
 import { createCard, createCourse, deleteCards, updateCard } from './repository';
 import { createOcclusion, deleteOcclusion } from './occlusionRepository';
 import type { OcclusionRegion } from './types';
+import {
+  createConcept,
+  createFixedQuestion,
+  deleteQuestion,
+  startQuestionAttempt,
+} from '../questions/repository';
 
 async function reset() {
   await Promise.all([
@@ -16,6 +22,10 @@ async function reset() {
     db.notes.clear(),
     db.courses.clear(),
     db.occlusions.clear(),
+    db.concepts.clear(),
+    db.questions.clear(),
+    db.questionConcepts.clear(),
+    db.questionAttempts.clear(),
   ]);
 }
 
@@ -170,5 +180,29 @@ describe('asset garbage collection', () => {
     const removed = await collectOrphanedAssets();
     expect(removed).toBe(1);
     expect(await db.assets.get(asset.hash)).toBeUndefined();
+  });
+
+  it('retains an asset referenced by an immutable Question receipt after deletion', async () => {
+    const course = await createCourse('Questions');
+    const concept = await createConcept(course.id, 'Addition');
+    const asset = await storeImageBlob(
+      new Blob(['worked-diagram'], { type: 'image/png' }),
+      'image/png',
+      4,
+      3,
+    );
+    const question = await createFixedQuestion({
+      courseId: course.id,
+      name: 'Addition',
+      targetConceptId: concept.id,
+      prompt: `Calculate 1 + 1\n\n![diagram](${assetUrl(asset.hash)})`,
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '2' } },
+      explanation: 'One plus one is two.',
+    });
+    await startQuestionAttempt({ questionId: question.id, sessionId: 'session-1' });
+    await deleteQuestion(question.id);
+
+    expect(await collectOrphanedAssets()).toBe(0);
+    expect(await db.assets.get(asset.hash)).toBeDefined();
   });
 });

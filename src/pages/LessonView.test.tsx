@@ -109,6 +109,7 @@ const note: Note = {
 function makeCard(id: string): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'deck-1',
     schedulingUnitId: 'deck-1',
     type: 'front_back',

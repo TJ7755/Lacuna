@@ -9,7 +9,6 @@ vi.mock('fflate', async (importOriginal) => {
     unzipSync: vi.fn((...args: Parameters<typeof actual.unzipSync>) => actual.unzipSync(...args)),
   };
 });
-import type { Card } from './types';
 import { db } from './schema';
 import {
   importApkgResult,
@@ -18,6 +17,7 @@ import {
   MAX_APKG_FILE_COUNT,
   MAX_APKG_SIZE_BYTES,
   MAX_APKG_UNCOMPRESSED_BYTES,
+  type ApkgCardDraft,
   type ApkgImportResult,
 } from './apkgImport';
 import { MAX_AUDIO_BYTES } from './assets';
@@ -106,7 +106,7 @@ function addEocdSignatureInsideComment(zipped: Uint8Array): ArrayBuffer {
   return bytes.buffer;
 }
 
-function makeCard(overrides: Partial<Card> = {}): Card {
+function makeCard(overrides: Partial<ApkgCardDraft> = {}): ApkgCardDraft {
   return {
     id: 'anki-card',
     deckId: '',
@@ -160,6 +160,7 @@ async function resetDatabase() {
   await Promise.all([
     db.schedulingUnits.clear(),
     db.cards.clear(),
+    db.concepts.clear(),
     db.assets.clear(),
     db.userPerformance.clear(),
     db.reviewHistory.clear(),
@@ -207,6 +208,12 @@ describe('importApkgResult', () => {
       courseId: imported.courseId,
       primaryLessonId: null,
       schedulingUnitId: imported.courseId,
+    });
+    expect(await db.concepts.get(returned.conceptId)).toMatchObject({
+      id: returned.conceptId,
+      scope: 'course',
+      scopeKey: `course:${imported.courseId}`,
+      courseId: imported.courseId,
     });
     expect(await db.reviewHistory.where('cardId').equals(returned.id).toArray()).toEqual([
       expect.objectContaining({
@@ -258,11 +265,14 @@ describe('importApkgResult', () => {
   });
 
   it('rolls back a newly created Course when card persistence fails', async () => {
-    const bulkPut = vi.spyOn(db.reviewHistory, 'bulkPut').mockRejectedValueOnce(new Error('history write failed'));
+    const bulkPut = vi
+      .spyOn(db.reviewHistory, 'bulkPut')
+      .mockRejectedValueOnce(new Error('history write failed'));
 
     await expect(importApkgResult(makeResult())).rejects.toThrow('history write failed');
     expect(await db.courses.count()).toBe(0);
     expect(await db.cards.count()).toBe(0);
+    expect(await db.concepts.count()).toBe(0);
     bulkPut.mockRestore();
   });
 
@@ -402,9 +412,7 @@ describe('parseApkg zip bomb guards', () => {
   });
 
   it('accepts a bounded central-directory digital signature', () => {
-    const buffer = addCentralDirectorySignature(
-      fflate.zipSync({ placeholder: new Uint8Array() }),
-    );
+    const buffer = addCentralDirectorySignature(fflate.zipSync({ placeholder: new Uint8Array() }));
 
     expect(() =>
       assertZipMetadataWithinLimits(buffer, {
@@ -415,9 +423,7 @@ describe('parseApkg zip bomb guards', () => {
   });
 
   it('rejects an additional EOCD signature inside the archive comment before inflating', async () => {
-    const buffer = addEocdSignatureInsideComment(
-      fflate.zipSync({ placeholder: new Uint8Array() }),
-    );
+    const buffer = addEocdSignatureInsideComment(fflate.zipSync({ placeholder: new Uint8Array() }));
 
     await expect(parseApkgBuffer(buffer)).rejects.toThrow(/ambiguous/i);
     expect(fflate.unzipSync).not.toHaveBeenCalled();

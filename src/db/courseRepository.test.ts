@@ -43,11 +43,9 @@ import {
 import { FSRS_VERSION } from '../fsrs/params';
 import { listLessons, listCardsForCourse } from './read';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
-import {
-  performanceForCourseBackingDecks,
-  performanceForReviewUnit,
-} from './backingDecks';
+import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import { createConcept, createFixedQuestion, startQuestionAttempt } from '../questions/repository';
 
 async function reset() {
   await Promise.all([
@@ -69,6 +67,13 @@ async function reset() {
     db.sequences.clear(),
     db.reviewHistory.clear(),
     db.revisionPlans.clear(),
+    db.concepts.clear(),
+    db.questions.clear(),
+    db.questionConcepts.clear(),
+    db.questionAttempts.clear(),
+    db.lineageIdMappings.clear(),
+    db.pendingMergeReviews.clear(),
+    db.tombstones.clear(),
   ]);
 }
 
@@ -419,6 +424,31 @@ describe('deleteCourse cascade', () => {
     expect(await db.schedulingPerformance.get(emptyDeckId)).toBeUndefined();
     expect(await db.sequences.where('courseId').equals(course.id).count()).toBe(0);
   });
+
+  it('removes Question evidence and distributed-course state owned by the Course', async () => {
+    const course = await createCourse('Question cascade');
+    const concept = await createConcept(course.id, 'Solve equations');
+    const question = await createFixedQuestion({
+      courseId: course.id,
+      name: 'Equation',
+      prompt: 'Solve $x + 1 = 2$.',
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '1' } },
+      explanation: 'Subtract one.',
+      targetConceptId: concept.id,
+    });
+    const attempt = await startQuestionAttempt({
+      questionId: question.id,
+      sessionId: 'question-cascade-session',
+    });
+
+    await deleteCourse(course.id);
+
+    expect(await db.concepts.get(concept.id)).toBeUndefined();
+    expect(await db.questions.get(question.id)).toBeUndefined();
+    expect(await db.questionConcepts.get(question.id)).toBeUndefined();
+    expect(await db.questionAttempts.get(attempt.id)).toBeUndefined();
+    expect(await db.tombstones.get(['questionAttempts', attempt.id])).toBeDefined();
+  });
 });
 
 describe('snapshotCourse / restoreCourse', () => {
@@ -426,6 +456,31 @@ describe('snapshotCourse / restoreCourse', () => {
 
   it('returns null for a course that does not exist', async () => {
     expect(await snapshotCourse('missing')).toBeNull();
+  });
+
+  it('restores Concepts, Questions and immutable attempts', async () => {
+    const course = await createCourse('Question snapshot');
+    const concept = await createConcept(course.id, 'Factor quadratics');
+    const question = await createFixedQuestion({
+      courseId: course.id,
+      name: 'Factorisation',
+      prompt: 'Factor $x^2 + 3x + 2$.',
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '1' } },
+      explanation: 'Find two integers with product 2 and sum 3.',
+      targetConceptId: concept.id,
+    });
+    const attempt = await startQuestionAttempt({
+      questionId: question.id,
+      sessionId: 'question-snapshot-session',
+    });
+    const snapshot = await snapshotCourse(course.id);
+
+    await deleteCourse(course.id);
+    await restoreCourse(snapshot!);
+
+    expect(await db.concepts.get(concept.id)).toEqual(concept);
+    expect(await db.questions.get(question.id)).toEqual(question);
+    expect(await db.questionAttempts.get(attempt.id)).toEqual(attempt);
   });
 
   it('restores everything deleteCourse removes, including backing decks and session history', async () => {
@@ -628,7 +683,9 @@ describe('snapshotCourse / restoreCourse', () => {
         (row) => row.deckId,
       ),
     ).toEqual([lessonCard.schedulingUnitId]);
-    expect(await performanceForReviewUnit(course.id, 'course')).toMatchObject({ deckId: course.id });
+    expect(await performanceForReviewUnit(course.id, 'course')).toMatchObject({
+      deckId: course.id,
+    });
     expect(await performanceForReviewUnit(restoredLessonCard.schedulingUnitId!)).toMatchObject({
       deckId: restoredLessonCard.schedulingUnitId,
       schedulingUnitId: restoredLessonCard.schedulingUnitId,
@@ -1559,9 +1616,7 @@ describe('detachCourse', () => {
     const updated = await db.courses.get(course.id);
     expect(updated?.distributedCopy).toBeUndefined();
     expect(await db.lineageIdMappings.get(lineageId)).toBeUndefined();
-    expect(await db.pendingMergeReviews.where('courseId').equals(course.id).toArray()).toEqual(
-      [],
-    );
+    expect(await db.pendingMergeReviews.where('courseId').equals(course.id).toArray()).toEqual([]);
     // Lesson content itself is untouched by detach.
     expect(await db.lessons.get(lesson.id)).toBeDefined();
   });
@@ -1604,15 +1659,11 @@ describe('setCourseAutoAcceptUpdates', () => {
 
   it('rejects a course with no distributedCopy', async () => {
     const course = await createCourse('Undistributed auto-accept');
-    await expect(setCourseAutoAcceptUpdates(course.id, true)).rejects.toThrow(
-      'not a shared copy',
-    );
+    await expect(setCourseAutoAcceptUpdates(course.id, true)).rejects.toThrow('not a shared copy');
   });
 
   it('rejects a course that does not exist', async () => {
-    await expect(setCourseAutoAcceptUpdates('missing', true)).rejects.toThrow(
-      'could not be found',
-    );
+    await expect(setCourseAutoAcceptUpdates('missing', true)).rejects.toThrow('could not be found');
   });
 });
 

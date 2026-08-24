@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
   filterSessionCardPool,
+  questionEditPath,
   searchCardsInScope,
+  searchQuestionsInScope,
   type SearchOptions,
 } from './search';
 import { DEFAULT_LEECH_LAPSE_THRESHOLD } from '../fsrs/leech';
 import type { Card, Course, LegacyDeckRecord, Lesson } from './types';
+import type { FixedQuestionDefinition } from '../questions/types';
 
 const NOW = 1_000_000_000_000;
 
 function card(id: string, over: Partial<Card> = {}): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'd1',
     courseId: 'course-1',
     primaryLessonId: null,
@@ -80,6 +84,46 @@ const lesson: Lesson = {
   isExtension: false,
 };
 
+function question(over: Partial<FixedQuestionDefinition> = {}): FixedQuestionDefinition {
+  return {
+    id: 'question-1',
+    courseId: course.id,
+    primaryLessonId: lesson.id,
+    additionalLessonIds: [],
+    name: 'Applying conservation of energy',
+    tags: ['mechanics'],
+    suspended: false,
+    kind: 'fixed',
+    prompt: 'Calculate the final velocity.',
+    payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+    explanation: 'Equate the initial and final energy, then solve for velocity.',
+    explanationStatus: 'authored',
+    contentVersion: 1,
+    contentRevisionId: 'content-revision-1',
+    authoringRevisionId: 'authoring-revision-1',
+    authoringUpdatedAt: NOW,
+    stability: null,
+    difficulty: null,
+    lastReviewed: null,
+    reps: 0,
+    lapses: 0,
+    state: 0,
+    due: null,
+    scheduledDays: 0,
+    learningSteps: 0,
+    scheduleEpoch: {
+      id: 'epoch-1',
+      startedAt: NOW,
+      reason: 'created',
+      baseline: { kind: 'new' },
+    },
+    scheduleUpdatedAt: NOW,
+    createdAt: NOW,
+    updatedAt: NOW,
+    ...over,
+  };
+}
+
 function searchCards(query: string, cards: Card[], options: SearchOptions = {}) {
   return searchCardsInScope(query, { cards, courses: [course], lessons: [lesson] }, options);
 }
@@ -112,18 +156,14 @@ describe('searchCards', () => {
       card('susp', { suspended: true }),
       card('plain'),
     ];
-    expect(searchCards('', cards, { filters: ['new'] }).map((r) => r.card.id)).toEqual([
-      'new',
-    ]);
-    expect(searchCards('', cards, { filters: ['leech'] }).map((r) => r.card.id)).toEqual([
-      'leech',
-    ]);
+    expect(searchCards('', cards, { filters: ['new'] }).map((r) => r.card.id)).toEqual(['new']);
+    expect(searchCards('', cards, { filters: ['leech'] }).map((r) => r.card.id)).toEqual(['leech']);
     expect(searchCards('', cards, { filters: ['flagged'] }).map((r) => r.card.id)).toEqual([
       'flag',
     ]);
-    expect(
-      searchCards('', cards, { filters: ['suspended'] }).map((r) => r.card.id),
-    ).toEqual(['susp']);
+    expect(searchCards('', cards, { filters: ['suspended'] }).map((r) => r.card.id)).toEqual([
+      'susp',
+    ]);
   });
 
   it('combines multiple filters with AND', () => {
@@ -167,6 +207,55 @@ describe('searchCardsInScope', () => {
       expect.objectContaining({ card: lessonCard, course, lesson, contextName: 'The Republic' }),
       expect.objectContaining({ card: bankCard, course, contextName: 'Ancient Rome' }),
     ]);
+  });
+});
+
+describe('searchQuestionsInScope', () => {
+  it('returns a discriminated fixed-Question result with Course and Lesson context', () => {
+    const result = searchQuestionsInScope('final velocity', {
+      questions: [question()],
+      courses: [course],
+      lessons: [lesson],
+    });
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        kind: 'question',
+        question: expect.objectContaining({ id: 'question-1' }),
+        course,
+        lesson,
+        contextName: 'The Republic',
+      }),
+    ]);
+  });
+
+  it('matches Question-specific authored content without borrowing Card filters', () => {
+    const questions = [question()];
+    const scope = { questions, courses: [course], lessons: [lesson] };
+
+    expect(searchQuestionsInScope('conservation', scope)).toHaveLength(1);
+    expect(searchQuestionsInScope('equate the initial', scope)).toHaveLength(1);
+    expect(searchQuestionsInScope('mechanics', scope)).toHaveLength(1);
+    expect(searchQuestionsInScope('', scope)).toEqual([]);
+  });
+
+  it('drops Questions whose Course or primary Lesson relationship is invalid', () => {
+    expect(
+      searchQuestionsInScope('velocity', {
+        questions: [
+          question({ courseId: 'missing-course' }),
+          question({ primaryLessonId: 'missing-lesson' }),
+        ],
+        courses: [course],
+        lessons: [lesson],
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('questionEditPath', () => {
+  it('deep-links to the canonical course-scoped Question editor', () => {
+    expect(questionEditPath(question())).toBe('/course/course-1/questions/question-1/edit');
   });
 });
 

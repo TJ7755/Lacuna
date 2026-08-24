@@ -5,8 +5,10 @@
 
 import type { Card, Course, Lesson, Note } from './types';
 import { isLeech } from '../fsrs/leech';
+import type { QuestionDefinition } from '../questions/types';
 
-export interface ScopedSearchResult {
+export interface ScopedCardSearchResult {
+  kind: 'card';
   card: Card;
   course: Course;
   lesson?: Lesson;
@@ -14,8 +16,25 @@ export interface ScopedSearchResult {
   contextName: string;
 }
 
+export interface ScopedQuestionSearchResult {
+  kind: 'question';
+  question: QuestionDefinition;
+  course: Course;
+  lesson?: Lesson;
+  /** User-facing ownership label: primary Lesson name, or Course name when unassigned. */
+  contextName: string;
+}
+
+export type ScopedSearchResult = ScopedCardSearchResult | ScopedQuestionSearchResult;
+
 export interface SearchScope {
   cards: Card[];
+  courses: Course[];
+  lessons: Lesson[];
+}
+
+export interface QuestionSearchScope {
+  questions: QuestionDefinition[];
   courses: Course[];
   lessons: Lesson[];
 }
@@ -157,7 +176,7 @@ export function searchCardsInScope(
   query: string,
   { cards, courses, lessons }: SearchScope,
   options: SearchOptions = {},
-): ScopedSearchResult[] {
+): ScopedCardSearchResult[] {
   const now = options.now ?? Date.now();
   const parsed = options.parseQuery ? parseAdvancedQuery(query) : null;
   const filters = [...(options.filters ?? []), ...(parsed?.filters ?? [])];
@@ -167,7 +186,7 @@ export function searchCardsInScope(
 
   const courseById = new Map(courses.map((course) => [course.id, course]));
   const lessonById = new Map(lessons.map((lesson) => [lesson.id, lesson]));
-  const ranked: { result: ScopedSearchResult; score: number }[] = [];
+  const ranked: { result: ScopedCardSearchResult; score: number }[] = [];
 
   for (const card of cards) {
     const course = card.courseId ? courseById.get(card.courseId) : undefined;
@@ -207,11 +226,72 @@ export function searchCardsInScope(
       // overall match position (idx).
       score = frontIdx === -1 ? Number.MAX_SAFE_INTEGER / 2 + idx : frontIdx;
     }
-    ranked.push({ result: { card, course, lesson, contextName }, score });
+    ranked.push({ result: { kind: 'card', card, course, lesson, contextName }, score });
   }
 
   // With a query, rank by match quality; filter-only results keep their input order.
   ranked.sort((a, b) => a.score - b.score);
+  return ranked.map(({ result }) => result);
+}
+
+/**
+ * Find Questions by their authored or generated-family metadata. Card-only
+ * filters deliberately do not enter this function: due/new/leech/flagged are
+ * Card-management meanings, not aliases for Question exposure or scheduling.
+ */
+export function searchQuestionsInScope(
+  query: string,
+  { questions, courses, lessons }: QuestionSearchScope,
+): ScopedQuestionSearchResult[] {
+  const q = normalise(query.trim());
+  if (!q) return [];
+
+  const courseById = new Map(courses.map((course) => [course.id, course]));
+  const lessonById = new Map(lessons.map((lesson) => [lesson.id, lesson]));
+  const ranked: { result: ScopedQuestionSearchResult; score: number }[] = [];
+
+  for (const question of questions) {
+    const course = courseById.get(question.courseId);
+    if (!course) continue;
+    const lesson = question.primaryLessonId ? lessonById.get(question.primaryLessonId) : undefined;
+    if (question.primaryLessonId && (!lesson || lesson.courseId !== course.id)) continue;
+
+    const additionalLessonNames = question.additionalLessonIds.flatMap((lessonId) => {
+      const additionalLesson = lessonById.get(lessonId);
+      return additionalLesson?.courseId === course.id ? [additionalLesson.name] : [];
+    });
+    const questionContent =
+      question.kind === 'fixed' ? [question.prompt, question.explanation] : [question.generatorKey];
+    const haystack = normalise(
+      [
+        question.name,
+        ...questionContent,
+        course.name,
+        lesson?.name ?? '',
+        ...additionalLessonNames,
+        ...question.tags,
+      ].join('  '),
+    );
+    const index = haystack.indexOf(q);
+    if (index === -1) continue;
+
+    const nameIndex = normalise(question.name).indexOf(q);
+    const promptIndex = question.kind === 'fixed' ? normalise(question.prompt).indexOf(q) : -1;
+    const primaryIndex = nameIndex === -1 ? promptIndex : nameIndex;
+    const score = primaryIndex === -1 ? Number.MAX_SAFE_INTEGER / 2 + index : primaryIndex;
+    ranked.push({
+      result: {
+        kind: 'question',
+        question,
+        course,
+        lesson,
+        contextName: lesson?.name ?? course.name,
+      },
+      score,
+    });
+  }
+
+  ranked.sort((left, right) => left.score - right.score);
   return ranked.map(({ result }) => result);
 }
 
@@ -284,6 +364,11 @@ export function cardEditPath(card: Card): string {
   return card.primaryLessonId
     ? `/course/${card.courseId}/lesson/${card.primaryLessonId}/cards/${card.id}/edit`
     : `/course/${card.courseId}/cards/${card.id}/edit`;
+}
+
+/** The canonical course-scoped editor route for a fixed Question or generated family. */
+export function questionEditPath(question: QuestionDefinition): string {
+  return `/course/${question.courseId}/questions/${question.id}/edit`;
 }
 
 /** A short, plain-text preview of a card's markdown for result lists. */

@@ -47,6 +47,13 @@ import {
   type LegacyCourseRecord,
 } from './assessmentMigration';
 import { buildDomainStorageMigration } from './storageMigration';
+import { migrateQuestionModeContent } from '../questions/domain';
+import type {
+  Concept,
+  QuestionAttempt,
+  QuestionConceptSet,
+  QuestionDefinition,
+} from '../questions/types';
 
 /**
  * Write one migration batch while checking only the destination keys needed for
@@ -69,9 +76,10 @@ async function putMigratedReviewHistoryEntries(
     if (existing) {
       if (identityOf(existing) === identity) continue;
 
-      const suffix = existing.cardId === entry.cardId
-        ? `${entry.id}:duplicate`
-        : `${entry.id}:card:${encodeURIComponent(entry.cardId)}`;
+      const suffix =
+        existing.cardId === entry.cardId
+          ? `${entry.id}:duplicate`
+          : `${entry.id}:card:${encodeURIComponent(entry.cardId)}`;
       id = suffix;
       existing = await table.get(id);
       let collision = 1;
@@ -121,6 +129,10 @@ class LacunaDatabase extends Dexie {
   coursePerformance!: Table<CoursePerformance, string>;
   schedulingPerformance!: Table<SchedulingPerformance, string>;
   tombstones!: Table<Tombstone, [string, string]>;
+  concepts!: Table<Concept, string>;
+  questions!: Table<QuestionDefinition, string>;
+  questionConcepts!: Table<QuestionConceptSet, string>;
+  questionAttempts!: Table<QuestionAttempt, string>;
 
   constructor() {
     super('lacuna');
@@ -684,9 +696,7 @@ class LacunaDatabase extends Dexie {
         for (;;) {
           const cards = await cardsTable.offset(offset).limit(batchSize).toArray();
           if (cards.length === 0) break;
-          const entries = cards.flatMap((card) =>
-            reviewHistoryEntriesForCard(card as Card),
-          );
+          const entries = cards.flatMap((card) => reviewHistoryEntriesForCard(card as Card));
           await putMigratedReviewHistoryEntries(reviewHistoryTable, entries);
           offset += cards.length;
         }
@@ -741,10 +751,13 @@ class LacunaDatabase extends Dexie {
         await tx.table('coursePerformance').bulkPut(migration.coursePerformance);
         await tx.table('schedulingPerformance').bulkPut(migration.schedulingPerformance);
 
-        await tx.table('cards').toCollection().modify((card) => {
-          const schedulingUnitId = migration.schedulingUnitByCardId.get(card.id);
-          if (schedulingUnitId) card.schedulingUnitId = schedulingUnitId;
-        });
+        await tx
+          .table('cards')
+          .toCollection()
+          .modify((card) => {
+            const schedulingUnitId = migration.schedulingUnitByCardId.get(card.id);
+            if (schedulingUnitId) card.schedulingUnitId = schedulingUnitId;
+          });
         const schedulingUnitIds = new Set(migration.schedulingUnits.map((unit) => unit.id));
         const reviewUnitByEventId = new Map<string, string>();
         for (const entry of (await tx.table('reviewHistory').toArray()) as ReviewHistoryEntry[]) {
@@ -753,150 +766,409 @@ class LacunaDatabase extends Dexie {
             if (schedulingUnitId) reviewUnitByEventId.set(entry.eventId, schedulingUnitId);
           }
         }
-        await tx.table('reviewHistory').toCollection().modify((entry) => {
-          const schedulingUnitId = migration.schedulingUnitByCardId.get(entry.cardId);
-          if (schedulingUnitId) entry.schedulingUnitId = schedulingUnitId;
-        });
-        await tx.table('sessionHistory').toCollection().modify((entry) => {
-          const schedulingUnitId =
-            (entry.eventId ? reviewUnitByEventId.get(entry.eventId) : undefined) ??
-            migration.schedulingUnitByDeckId.get(entry.deckId) ??
-            (entry.courseId && schedulingUnitIds.has(entry.courseId) ? entry.courseId : undefined);
-          if (schedulingUnitId) entry.schedulingUnitId = schedulingUnitId;
-        });
+        await tx
+          .table('reviewHistory')
+          .toCollection()
+          .modify((entry) => {
+            const schedulingUnitId = migration.schedulingUnitByCardId.get(entry.cardId);
+            if (schedulingUnitId) entry.schedulingUnitId = schedulingUnitId;
+          });
+        await tx
+          .table('sessionHistory')
+          .toCollection()
+          .modify((entry) => {
+            const schedulingUnitId =
+              (entry.eventId ? reviewUnitByEventId.get(entry.eventId) : undefined) ??
+              migration.schedulingUnitByDeckId.get(entry.deckId) ??
+              (entry.courseId && schedulingUnitIds.has(entry.courseId)
+                ? entry.courseId
+                : undefined);
+            if (schedulingUnitId) entry.schedulingUnitId = schedulingUnitId;
+          });
       });
 
     // Version 22: remove the hidden Deck and Folder compatibility stores. All
     // cards and review projections already carry explicit scheduling-unit ids.
-    this.version(22).stores({
-      decks: null,
-      cards:
-        'id, courseId, primaryLessonId, schedulingUnitId, type, lastReviewed, sequenceItemId, occlusionRegionId',
-      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp',
-      userPerformance: 'deckId',
-      backups: '++id, createdAt',
-      appState: 'key',
-      assets: 'hash, createdAt',
-      folders: null,
-      courses: 'id, createdAt',
-      lessons: 'id, courseId, orderIndex, createdAt',
-      notes: 'id, lessonId, orderIndex, createdAt',
-      lessonCards: 'id, lessonId, cardId',
-      lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
-      lessonCompletions: 'lessonId, completedAt',
-      noteAnnotations: 'id, noteId, createdAt, updatedAt',
-      practiceNodes: 'id, courseId, position, createdAt',
-      practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
-      courseAssessments: 'id, courseId, kind, examDate, createdAt',
-      sequences: 'id, courseId, primaryLessonId, createdAt',
-      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
-      lineageIdMappings: 'id, courseId',
-      pendingMergeReviews: 'id, courseId',
-      occlusions: 'id, courseId, primaryLessonId, createdAt',
-      reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp',
-      schedulingUnits: 'id, kind, courseId, lessonId',
-      coursePerformance: 'courseId',
-      schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
-    }).upgrade(async (tx) => {
-      const schedulingUnitIds = new Set<string>(
-        await tx.table('schedulingUnits').toCollection().primaryKeys() as string[],
-      );
-      const cards = await tx.table('cards').toArray() as Card[];
-      for (const card of cards) {
-        if (!card.schedulingUnitId || !schedulingUnitIds.has(card.schedulingUnitId)) {
-          throw new Error(
-            `Cannot remove legacy storage: card ${card.id} has no valid scheduling unit`,
-          );
+    this.version(22)
+      .stores({
+        decks: null,
+        cards:
+          'id, courseId, primaryLessonId, schedulingUnitId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+        sessionHistory: '++id, &eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        folders: null,
+        courses: 'id, createdAt',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+        lessonCompletions: 'lessonId, completedAt',
+        noteAnnotations: 'id, noteId, createdAt, updatedAt',
+        practiceNodes: 'id, courseId, position, createdAt',
+        practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+        courseAssessments: 'id, courseId, kind, examDate, createdAt',
+        sequences: 'id, courseId, primaryLessonId, createdAt',
+        revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+        lineageIdMappings: 'id, courseId',
+        pendingMergeReviews: 'id, courseId',
+        occlusions: 'id, courseId, primaryLessonId, createdAt',
+        reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp',
+        schedulingUnits: 'id, kind, courseId, lessonId',
+        coursePerformance: 'courseId',
+        schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
+      })
+      .upgrade(async (tx) => {
+        const schedulingUnitIds = new Set<string>(
+          (await tx.table('schedulingUnits').toCollection().primaryKeys()) as string[],
+        );
+        const cards = (await tx.table('cards').toArray()) as Card[];
+        for (const card of cards) {
+          if (!card.schedulingUnitId || !schedulingUnitIds.has(card.schedulingUnitId)) {
+            throw new Error(
+              `Cannot remove legacy storage: card ${card.id} has no valid scheduling unit`,
+            );
+          }
         }
-      }
-    });
+      });
 
     // Version 23: mutation timestamps and deletion tombstones for multi-device
     // merge. Additive. updatedAt is a record field, not an index. Tombstones
     // are keyed by table + record id so a restore can delete the matching row.
-    this.version(23).stores({
-      cards:
-        'id, courseId, primaryLessonId, schedulingUnitId, type, lastReviewed, sequenceItemId, occlusionRegionId',
-      sessionHistory: '++id, &eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp',
-      userPerformance: 'deckId',
-      backups: '++id, createdAt',
-      appState: 'key',
-      assets: 'hash, createdAt',
-      courses: 'id, createdAt',
-      lessons: 'id, courseId, orderIndex, createdAt',
-      notes: 'id, lessonId, orderIndex, createdAt',
-      lessonCards: 'id, lessonId, cardId',
-      lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
-      lessonCompletions: 'lessonId, completedAt',
-      noteAnnotations: 'id, noteId, createdAt, updatedAt',
-      practiceNodes: 'id, courseId, position, createdAt',
-      practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
-      courseAssessments: 'id, courseId, kind, examDate, createdAt',
-      sequences: 'id, courseId, primaryLessonId, createdAt',
-      revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
-      lineageIdMappings: 'id, courseId',
-      pendingMergeReviews: 'id, courseId',
-      occlusions: 'id, courseId, primaryLessonId, createdAt',
-      reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp',
-      schedulingUnits: 'id, kind, courseId, lessonId',
-      coursePerformance: 'courseId',
-      schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
-      tombstones: '[table+recordId], deletedAt',
-    }).upgrade(async (tx) => {
-      const stampFromCreated = async (name: string) => {
-        await tx.table(name).toCollection().modify((row: { createdAt?: number; updatedAt?: number }) => {
-          if (typeof row.updatedAt !== 'number') row.updatedAt = row.createdAt ?? 0;
+    this.version(23)
+      .stores({
+        cards:
+          'id, courseId, primaryLessonId, schedulingUnitId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+        sessionHistory: '++id, &eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        courses: 'id, createdAt',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+        lessonCompletions: 'lessonId, completedAt',
+        noteAnnotations: 'id, noteId, createdAt, updatedAt',
+        practiceNodes: 'id, courseId, position, createdAt',
+        practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+        courseAssessments: 'id, courseId, kind, examDate, createdAt',
+        sequences: 'id, courseId, primaryLessonId, createdAt',
+        revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+        lineageIdMappings: 'id, courseId',
+        pendingMergeReviews: 'id, courseId',
+        occlusions: 'id, courseId, primaryLessonId, createdAt',
+        reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp',
+        schedulingUnits: 'id, kind, courseId, lessonId',
+        coursePerformance: 'courseId',
+        schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
+        tombstones: '[table+recordId], deletedAt',
+      })
+      .upgrade(async (tx) => {
+        const stampFromCreated = async (name: string) => {
+          await tx
+            .table(name)
+            .toCollection()
+            .modify((row: { createdAt?: number; updatedAt?: number }) => {
+              if (typeof row.updatedAt !== 'number') row.updatedAt = row.createdAt ?? 0;
+            });
+        };
+        await stampFromCreated('courses');
+        await stampFromCreated('lessons');
+        await stampFromCreated('notes');
+        await stampFromCreated('lessonCards');
+        await stampFromCreated('practiceNodes');
+        await stampFromCreated('courseAssessments');
+        await stampFromCreated('sequences');
+        await stampFromCreated('occlusions');
+        await stampFromCreated('noteAnnotations');
+        await stampFromCreated('revisionPlans');
+        await tx
+          .table('lessonCardExposures')
+          .toCollection()
+          .modify((row: { taughtAt?: number; updatedAt?: number }) => {
+            if (typeof row.updatedAt !== 'number') row.updatedAt = row.taughtAt ?? 0;
+          });
+        await tx
+          .table('lessonCompletions')
+          .toCollection()
+          .modify((row: { completedAt?: number; updatedAt?: number }) => {
+            if (typeof row.updatedAt !== 'number') row.updatedAt = row.completedAt ?? 0;
+          });
+        await tx
+          .table('cards')
+          .toCollection()
+          .modify(
+            (row: { createdAt?: number; lastReviewed?: number | null; updatedAt?: number }) => {
+              if (typeof row.updatedAt !== 'number') {
+                row.updatedAt = Math.max(row.createdAt ?? 0, row.lastReviewed ?? 0);
+              }
+            },
+          );
+        await tx
+          .table('schedulingUnits')
+          .toCollection()
+          .modify((row: { createdAt?: number; lastInteractedAt?: number; updatedAt?: number }) => {
+            if (typeof row.updatedAt !== 'number') {
+              row.updatedAt = Math.max(row.createdAt ?? 0, row.lastInteractedAt ?? 0);
+            }
+          });
+        await tx
+          .table('coursePerformance')
+          .toCollection()
+          .modify((row: { updatedAt?: number }) => {
+            if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
+          });
+        await tx
+          .table('schedulingPerformance')
+          .toCollection()
+          .modify((row: { updatedAt?: number }) => {
+            if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
+          });
+        await tx
+          .table('practiceMilestones')
+          .toCollection()
+          .modify((row: { updatedAt?: number }) => {
+            if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
+          });
+      });
+
+    // Version 24: separate direct-recall Cards from application Questions. Every
+    // surviving Card receives a stable Concept; known numeric/working Cards become
+    // fixed Questions with reconstructed legacy receipts. This is destructive in
+    // meaning, so openDatabase requires an external restore point before Dexie runs it.
+    this.version(24)
+      .stores({
+        cards:
+          'id, courseId, primaryLessonId, schedulingUnitId, conceptId, type, lastReviewed, sequenceItemId, occlusionRegionId',
+        sessionHistory: '++id, &eventId, sessionId, deckId, courseId, schedulingUnitId, timestamp',
+        userPerformance: 'deckId',
+        backups: '++id, createdAt',
+        appState: 'key',
+        assets: 'hash, createdAt',
+        courses: 'id, createdAt',
+        lessons: 'id, courseId, orderIndex, createdAt',
+        notes: 'id, lessonId, orderIndex, createdAt',
+        lessonCards: 'id, lessonId, cardId',
+        lessonCardExposures: '[lessonId+cardId], lessonId, cardId, taughtAt',
+        lessonCompletions: 'lessonId, completedAt',
+        noteAnnotations: 'id, noteId, createdAt, updatedAt',
+        practiceNodes: 'id, courseId, position, createdAt',
+        practiceMilestones: 'nodeKey, courseId, scopeVersion, updatedAt, completedAt',
+        courseAssessments: 'id, courseId, kind, examDate, createdAt',
+        sequences: 'id, courseId, primaryLessonId, createdAt',
+        revisionPlans: 'id, &assessmentId, courseId, status, updatedAt',
+        lineageIdMappings: 'id, courseId',
+        pendingMergeReviews: 'id, courseId',
+        occlusions: 'id, courseId, primaryLessonId, createdAt',
+        reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, schedulingUnitId, timestamp',
+        schedulingUnits: 'id, kind, courseId, lessonId',
+        coursePerformance: 'courseId',
+        schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
+        tombstones: '[table+recordId], deletedAt',
+        concepts: 'id, scopeKey, courseId, updatedAt',
+        questions: 'id, courseId, primaryLessonId, kind, due, authoringUpdatedAt',
+        questionConcepts:
+          'questionId, courseId, *targetConceptIds, *prerequisiteConceptIds, authoringUpdatedAt',
+        questionAttempts:
+          'id, questionId, courseId, status, shownAt, sessionId, [questionId+shownAt], [courseId+shownAt], updatedAt',
+      })
+      .upgrade(async (tx) => {
+        const cards = await tx.table('cards').toArray();
+        const reviewHistory = (await tx.table('reviewHistory').toArray()) as ReviewHistoryEntry[];
+        const lessonCardLinks = (await tx.table('lessonCards').toArray()) as LessonCardLink[];
+        const exposures = (await tx.table('lessonCardExposures').toArray()) as LessonCardExposure[];
+        const lineageMappings = (await tx
+          .table('lineageIdMappings')
+          .toArray()) as LineageIdMapping[];
+        const pendingReviews = (await tx
+          .table('pendingMergeReviews')
+          .toArray()) as PendingMergeReview[];
+
+        // A structured Card participating in unresolved distributed-course state cannot
+        // be translated without also changing the lineage protocol. Preserve it as a
+        // compatibility Card until that merge is resolved instead of losing the work.
+        const protectedCardIds = new Set(lineageMappings.flatMap((mapping) => mapping.cardIds));
+        for (const pending of pendingReviews) {
+          pending.diff.creates.cards.forEach((card) => protectedCardIds.add(card.id));
+          pending.diff.updates.cards.forEach((update) => protectedCardIds.add(update.id));
+          pending.diff.removals.cardIds.forEach((id) => protectedCardIds.add(id));
+          pending.diff.conflicts.forEach((conflict) => {
+            if (conflict.kind === 'card') protectedCardIds.add(conflict.entityId);
+          });
+        }
+
+        const migration = migrateQuestionModeContent({
+          cards,
+          reviewHistory,
+          lessonCardLinks,
+          protectedCardIds,
         });
-      };
-      await stampFromCreated('courses');
-      await stampFromCreated('lessons');
-      await stampFromCreated('notes');
-      await stampFromCreated('lessonCards');
-      await stampFromCreated('practiceNodes');
-      await stampFromCreated('courseAssessments');
-      await stampFromCreated('sequences');
-      await stampFromCreated('occlusions');
-      await stampFromCreated('noteAnnotations');
-      await stampFromCreated('revisionPlans');
-      await tx.table('lessonCardExposures').toCollection().modify((row: { taughtAt?: number; updatedAt?: number }) => {
-        if (typeof row.updatedAt !== 'number') row.updatedAt = row.taughtAt ?? 0;
-      });
-      await tx.table('lessonCompletions').toCollection().modify((row: { completedAt?: number; updatedAt?: number }) => {
-        if (typeof row.updatedAt !== 'number') row.updatedAt = row.completedAt ?? 0;
-      });
-      await tx.table('cards').toCollection().modify((row: {
-        createdAt?: number;
-        lastReviewed?: number | null;
-        updatedAt?: number;
-      }) => {
-        if (typeof row.updatedAt !== 'number') {
-          row.updatedAt = Math.max(row.createdAt ?? 0, row.lastReviewed ?? 0);
+
+        await tx.table('concepts').bulkPut(migration.concepts);
+        await tx.table('questions').bulkPut(migration.questions);
+        await tx.table('questionConcepts').bulkPut(migration.questionConcepts);
+        await tx.table('questionAttempts').bulkPut(migration.attempts);
+        await tx.table('cards').bulkPut(migration.cards);
+
+        const removed = new Set(migration.removedCardIds);
+        const removedReviews = reviewHistory.filter((entry) => removed.has(entry.cardId));
+        const removedExposures = exposures.filter((entry) => removed.has(entry.cardId));
+        const removedLinks = lessonCardLinks.filter((entry) => removed.has(entry.cardId));
+        await tx.table('cards').bulkDelete(migration.removedCardIds);
+        await tx.table('reviewHistory').bulkDelete(migration.removedReviewHistoryIds);
+        await tx.table('lessonCards').bulkDelete(removedLinks.map((entry) => entry.id));
+        await tx
+          .table('lessonCardExposures')
+          .bulkDelete(removedExposures.map((entry) => [entry.lessonId, entry.cardId]));
+
+        const removedEventIds = new Set(
+          removedReviews.flatMap((entry) => (entry.eventId ? [entry.eventId] : [])),
+        );
+        if (removedEventIds.size > 0) {
+          await tx
+            .table('sessionHistory')
+            .filter(
+              (entry: SessionHistoryEntry) =>
+                typeof entry.eventId === 'string' && removedEventIds.has(entry.eventId),
+            )
+            .delete();
         }
-      });
-      await tx.table('schedulingUnits').toCollection().modify((row: {
-        createdAt?: number;
-        lastInteractedAt?: number;
-        updatedAt?: number;
-      }) => {
-        if (typeof row.updatedAt !== 'number') {
-          row.updatedAt = Math.max(row.createdAt ?? 0, row.lastInteractedAt ?? 0);
+
+        if (removed.size > 0) {
+          await tx
+            .table('courseAssessments')
+            .toCollection()
+            .modify((assessment: CourseAssessment) => {
+              assessment.excludedCardIds = (assessment.excludedCardIds ?? []).filter(
+                (id) => !removed.has(id),
+              );
+            });
+          await tx
+            .table('revisionPlans')
+            .toCollection()
+            .modify((plan: RevisionPlan) => {
+              if (!plan.scope || !Array.isArray(plan.cardStates)) return;
+              plan.scope.excludedCardIds = (plan.scope.excludedCardIds ?? []).filter(
+                (id) => !removed.has(id),
+              );
+              plan.scope.eligibleCardIds = (plan.scope.eligibleCardIds ?? []).filter(
+                (id) => !removed.has(id),
+              );
+              plan.scope.unavailableCardIds = (plan.scope.unavailableCardIds ?? []).filter(
+                (id) => !removed.has(id),
+              );
+              plan.cardStates = plan.cardStates.filter((state) => !removed.has(state.cardId));
+              if (plan.pendingReplan?.scope && Array.isArray(plan.pendingReplan.cardStates)) {
+                plan.pendingReplan.scope.excludedCardIds = (
+                  plan.pendingReplan.scope.excludedCardIds ?? []
+                ).filter((id) => !removed.has(id));
+                plan.pendingReplan.scope.eligibleCardIds = (
+                  plan.pendingReplan.scope.eligibleCardIds ?? []
+                ).filter((id) => !removed.has(id));
+                plan.pendingReplan.scope.unavailableCardIds = (
+                  plan.pendingReplan.scope.unavailableCardIds ?? []
+                ).filter((id) => !removed.has(id));
+                plan.pendingReplan.cardStates = plan.pendingReplan.cardStates.filter(
+                  (state) => !removed.has(state.cardId),
+                );
+              }
+            });
         }
+
+        const affectedCourseIds = new Set(
+          cards.flatMap((card) => (removed.has(card.id) && card.courseId ? [card.courseId] : [])),
+        );
+        const affectedSchedulingUnitIds = new Set(
+          cards.flatMap((card) =>
+            removed.has(card.id) && card.schedulingUnitId ? [card.schedulingUnitId] : [],
+          ),
+        );
+        const removedMilestones = (
+          (await tx.table('practiceMilestones').toArray()) as PracticeMilestone[]
+        ).filter((milestone) => affectedCourseIds.has(milestone.courseId));
+        await tx
+          .table('practiceMilestones')
+          .bulkDelete(removedMilestones.map((milestone) => milestone.nodeKey));
+
+        const remainingReviews = reviewHistory.filter((entry) => !removed.has(entry.cardId));
+        const performance = (entries: ReviewHistoryEntry[]) => {
+          let count = 0;
+          let mean = 0;
+          let m2 = 0;
+          for (const entry of entries) {
+            if (!(entry.correct ?? entry.grade > 1) || !Number.isFinite(entry.responseTimeSec))
+              continue;
+            count += 1;
+            const delta = entry.responseTimeSec - mean;
+            mean += delta / count;
+            m2 += delta * (entry.responseTimeSec - mean);
+          }
+          return {
+            runningMeanResponseTime: mean,
+            runningStdDevResponseTime: count > 0 ? Math.sqrt(m2 / count) : 0,
+            m2,
+            totalCorrectReviews: count,
+          };
+        };
+        await tx
+          .table('coursePerformance')
+          .toCollection()
+          .modify((row: CoursePerformance) => {
+            if (!affectedCourseIds.has(row.courseId)) return;
+            Object.assign(
+              row,
+              performance(remainingReviews.filter((entry) => entry.courseId === row.courseId)),
+            );
+          });
+        await tx
+          .table('schedulingPerformance')
+          .toCollection()
+          .modify((row: SchedulingPerformance) => {
+            if (!affectedSchedulingUnitIds.has(row.schedulingUnitId)) return;
+            Object.assign(
+              row,
+              performance(
+                remainingReviews.filter((entry) => entry.schedulingUnitId === row.schedulingUnitId),
+              ),
+            );
+          });
+
+        const tombstones: Tombstone[] = [
+          ...migration.removedCardIds.map((id) => {
+            const source = cards.find((card) => card.id === id);
+            return {
+              table: 'cards',
+              recordId: id,
+              deletedAt: source?.updatedAt ?? source?.createdAt ?? 0,
+            };
+          }),
+          ...removedLinks.map((entry) => ({
+            table: 'lessonCards',
+            recordId: entry.id,
+            deletedAt: entry.updatedAt ?? entry.createdAt,
+          })),
+          ...removedExposures.map((entry) => ({
+            table: 'lessonCardExposures',
+            recordId: `${entry.lessonId}:${entry.cardId}`,
+            deletedAt: entry.updatedAt ?? entry.taughtAt,
+          })),
+          ...removedMilestones.map((entry) => ({
+            table: 'practiceMilestones',
+            recordId: entry.nodeKey,
+            deletedAt: entry.updatedAt,
+          })),
+        ];
+        await tx.table('tombstones').bulkPut(tombstones);
       });
-      await tx.table('coursePerformance').toCollection().modify((row: { updatedAt?: number }) => {
-        if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
-      });
-      await tx.table('schedulingPerformance').toCollection().modify((row: { updatedAt?: number }) => {
-        if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
-      });
-      await tx.table('practiceMilestones').toCollection().modify((row: { updatedAt?: number }) => {
-        if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
-      });
-    });
   }
 }
 
-const CURRENT_SCHEMA_VERSION = 23;
-const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22]);
+const CURRENT_SCHEMA_VERSION = 24;
+const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22, 24]);
 
 export const db = new LacunaDatabase();
 
@@ -1055,7 +1327,9 @@ export async function readAllDataFromVersion(
 
   const schemaVersion = raw.version / 10;
   if (expectedVersion !== undefined && schemaVersion !== expectedVersion) {
-    throw new Error(`Database version mismatch: expected ${expectedVersion}, found ${schemaVersion}`);
+    throw new Error(
+      `Database version mismatch: expected ${expectedVersion}, found ${schemaVersion}`,
+    );
   }
 
   const assetsRaw = (raw.data['assets'] ?? []) as MediaAsset[];
@@ -1100,6 +1374,12 @@ export async function readAllDataFromVersion(
     sequences: (raw.data['sequences'] ?? []) as Sequence[],
     occlusions: (raw.data['occlusions'] ?? []) as Occlusion[],
     tombstones: (raw.data['tombstones'] ?? []) as Tombstone[],
+    concepts: (raw.data['concepts'] ?? []) as Concept[],
+    questions: (raw.data['questions'] ?? []) as QuestionDefinition[],
+    questionConcepts: (raw.data['questionConcepts'] ?? []) as QuestionConceptSet[],
+    questionAttempts: (raw.data['questionAttempts'] ?? []) as QuestionAttempt[],
+    lineageIdMappings: (raw.data['lineageIdMappings'] ?? []) as LineageIdMapping[],
+    pendingMergeReviews: (raw.data['pendingMergeReviews'] ?? []) as PendingMergeReview[],
   };
 
   // A v13 pre-migration snapshot must retain the retired store byte-for-byte.

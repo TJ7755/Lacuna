@@ -55,21 +55,25 @@ describe('batch authoring prompt', () => {
     expect(prompt).toContain('If any variable or equals sign remains, it is not numeric');
     expect(prompt).toContain('recall or state a formula');
     expect(prompt).toContain('change the item to working or omit it');
+    expect(prompt).toContain('exactly one primary target Concept');
+    expect(prompt).toContain('List any prerequisite Concepts separately');
+    expect(prompt).toContain('"explanation"');
+    expect(prompt).toContain('"targetConcept"');
+    expect(prompt).toContain('"prerequisiteConcepts"');
     expect(prompt).toContain('"studentAnswer": ["x^2 + b*x = -c", "(x + b/2)^2 = b^2/4 - c"]');
     expect(prompt).not.toContain('"studentAnswer": ["working line", "4"]');
   });
 
-  it('injects optional item-count and concept-density constraints without a hard cap', () => {
+  it('injects an optional Question-count constraint without weakening the one-target invariant', () => {
     const prompt = buildBatchGenerationPrompt({
       notes: 'Notes',
       topic: 'Topic',
       level: 'Level',
       maxItems: 500,
-      conceptsPerItem: 2,
     });
 
     expect(prompt).toContain('Requested maximum items: 500');
-    expect(prompt).toContain('Target concept density: 2 atomic concepts per item');
+    expect(prompt).toContain('exactly one primary target Concept');
   });
 
   it('includes course provenance only when supplied', () => {
@@ -103,14 +107,13 @@ describe('batch authoring prompt', () => {
     expect(result.candidates[0]?.fixtureStatus).toEqual({ total: 1, passed: 1 });
   });
 
-  it('lets the model choose both constraints', () => {
+  it('lets the model choose the Question count', () => {
     const prompt = buildBatchGenerationPrompt({
       notes: 'Dense notes',
       topic: 'Topic',
       level: 'Level',
     });
 
-    expect(prompt).toContain('Concepts per item: model-selected');
     expect(prompt).toContain('Requested maximum items: model-selected');
     expect(prompt).not.toContain('Never return more than');
   });
@@ -120,13 +123,16 @@ describe('batch revision prompt', () => {
   it('carries every failing item with its errors and pins the order and count', () => {
     const prompt = buildBatchRevisionPrompt({
       items: [
-        { itemJson: '{"kind":"working","question":"First"}', validationErrors: ['Fixture 1 failed.'] },
+        {
+          itemJson: '{"kind":"working","question":"First"}',
+          validationErrors: ['Fixture 1 failed.'],
+        },
         { itemJson: '{"kind":"numeric","question":"Second"}', validationErrors: [] },
       ],
       complaint: 'Keep the wording shorter.',
     });
 
-    expect(prompt).toContain('Revise the 2 Lacuna v1 items');
+    expect(prompt).toContain('Revise the 2 Lacuna v2 Questions');
     expect(prompt).toContain('Return exactly 2 items, in the same order');
     expect(prompt).toContain('--- Item 1 of 2 ---');
     expect(prompt).toContain('--- Item 2 of 2 ---');
@@ -142,7 +148,7 @@ describe('batch revision prompt', () => {
       items: [{ itemJson: '{"kind":"numeric"}', validationErrors: ['Bad answer.'] }],
     });
 
-    expect(prompt).toContain('Revise the 1 Lacuna v1 item below');
+    expect(prompt).toContain('Revise the 1 Lacuna v2 Question below');
     expect(prompt).toContain('Return exactly 1 item, in the same order');
     expect(prompt).not.toContain('Tutor complaint');
   });

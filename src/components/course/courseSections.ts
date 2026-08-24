@@ -11,7 +11,8 @@ export interface CourseSection {
 
 export const COURSE_SECTIONS: CourseSection[] = [
   { label: 'Path', short: 'Path', suffix: '' },
-  { label: 'Question bank', short: 'Bank', suffix: '/bank' },
+  { label: 'Cards', short: 'Cards', suffix: '/cards' },
+  { label: 'Questions', short: 'Questions', suffix: '/questions' },
   { label: 'Analytics', short: 'Analytics', suffix: '/analytics' },
   { label: 'Settings', short: 'Settings', suffix: '/settings' },
 ];

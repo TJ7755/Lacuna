@@ -7,6 +7,7 @@ import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { defaultExamDate } from '../utils/datetime';
 import { assetUrl, sha256Blob } from './assets';
 import { schedulingUnitFromCourse, schedulingUnitFromLesson } from './schedulingUnitBuilder';
+import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
 
 const FLAG_KEY = 'lacuna-seeded';
 const ASSET_REPAIR_FLAG_KEY = 'lacuna-seed-assets-v2';
@@ -36,6 +37,7 @@ function exampleCard(
   const createdAt = Date.now() + timeOffset;
   return {
     id: makeId(),
+    conceptId: makeId(),
     deckId,
     schedulingUnitId: lessonId,
     courseId,
@@ -590,6 +592,15 @@ export async function seedIfFirstRun(): Promise<void> {
         39,
       ),
     ];
+    const concepts = cards.map((card) =>
+      buildCardConcept({
+        id: card.conceptId,
+        courseId: card.courseId,
+        schedulingUnitId: card.schedulingUnitId,
+        name: conceptNameForCard(card.type, card.front, card.back),
+        now: card.createdAt,
+      }),
+    );
 
     await db.transaction(
       'rw',
@@ -599,6 +610,7 @@ export async function seedIfFirstRun(): Promise<void> {
         db.lessons,
         db.notes,
         db.cards,
+        db.concepts,
         db.assets,
         db.schedulingUnits,
         db.coursePerformance,
@@ -611,6 +623,7 @@ export async function seedIfFirstRun(): Promise<void> {
         await db.courseAssessments.add(finalAssessment);
         await db.lessons.bulkAdd(seedLessons.map((s) => s.lesson));
         await db.notes.bulkAdd(notes);
+        await db.concepts.bulkAdd(concepts);
         await db.cards.bulkAdd(cards);
         const record = courseToRecord(course);
         const units = [
@@ -621,13 +634,15 @@ export async function seedIfFirstRun(): Promise<void> {
         ];
         await db.schedulingUnits.bulkAdd(units);
         await db.coursePerformance.add({ courseId: course.id, ...emptyStats, updatedAt: 0 });
-        await db.schedulingPerformance.bulkAdd(units.map((unit) => ({
-          schedulingUnitId: unit.id,
-          courseId: course.id,
-          ...(unit.lessonId ? { lessonId: unit.lessonId } : {}),
-          ...emptyStats,
-          updatedAt: 0,
-        })));
+        await db.schedulingPerformance.bulkAdd(
+          units.map((unit) => ({
+            schedulingUnitId: unit.id,
+            courseId: course.id,
+            ...(unit.lessonId ? { lessonId: unit.lessonId } : {}),
+            ...emptyStats,
+            updatedAt: 0,
+          })),
+        );
         await db.assets.bulkAdd([fcAsset.record, sampleAsset.record]);
       },
     );

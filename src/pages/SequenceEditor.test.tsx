@@ -29,7 +29,7 @@ vi.mock('../db/repository', () => ({
 }));
 
 // Stub the Markdown editor: a plain textarea keeps the test fast and focused
-// on SequenceEditor's own wiring, mirroring how QuestionBank.test.tsx stubs CardList.
+// on SequenceEditor's own wiring, mirroring how CardsPage.test.tsx stubs CardList.
 vi.mock('../components/markdown/MarkdownEditor', () => ({
   MarkdownEditor: ({
     value,
@@ -106,7 +106,7 @@ function renderNew() {
     <MemoryRouter initialEntries={['/course/course-1/sequence/new']}>
       <Routes>
         <Route path="/course/:courseId/sequence/new" element={<SequenceEditor />} />
-        <Route path="/course/:courseId/bank" element={<p>Bank</p>} />
+        <Route path="/course/:courseId/cards" element={<p>Cards</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -114,12 +114,10 @@ function renderNew() {
 
 function renderEdit(state?: unknown) {
   return render(
-    <MemoryRouter
-      initialEntries={[{ pathname: '/course/course-1/sequence/seq-1/edit', state }]}
-    >
+    <MemoryRouter initialEntries={[{ pathname: '/course/course-1/sequence/seq-1/edit', state }]}>
       <Routes>
         <Route path="/course/:courseId/sequence/:sequenceId/edit" element={<SequenceEditor />} />
-        <Route path="/course/:courseId/bank" element={<p>Bank</p>} />
+        <Route path="/course/:courseId/cards" element={<p>Cards</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -159,7 +157,9 @@ describe('SequenceEditor', () => {
     renderNew();
 
     fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
-    expect(screen.getByRole('heading', { name: 'New sequence' }).nextElementSibling).toHaveTextContent(
+    expect(
+      screen.getByRole('heading', { name: 'New sequence' }).nextElementSibling,
+    ).toHaveTextContent(
       'A scripted scene — only your lines are recalled; other speakers cue them.',
     );
   });
@@ -327,7 +327,7 @@ describe('SequenceEditor', () => {
     expect(screen.getByText('2 cards generated')).toBeInTheDocument();
   });
 
-  it('saves via createSequence and navigates back to the bank on Add sequence', async () => {
+  it('saves via createSequence and navigates back to Cards on Add sequence', async () => {
     mockCourse = course;
     renderNew();
 
@@ -344,7 +344,7 @@ describe('SequenceEditor', () => {
       await vi.waitFor(() => expect(createSequence).toHaveBeenCalled());
       await Promise.resolve(createSequence.mock.results[0]?.value);
     });
-    await screen.findByText('Bank');
+    await screen.findByText('Cards');
     expect(createSequence).toHaveBeenCalledWith(
       'course-1',
       null,
@@ -424,12 +424,14 @@ describe('SequenceEditor', () => {
         await vi.waitFor(() => expect(createSequence).toHaveBeenCalled());
         await Promise.resolve(createSequence.mock.results[0]?.value);
       });
-      await screen.findByText('Bank');
+      await screen.findByText('Cards');
       expect(createSequence).toHaveBeenCalledWith(
         'course-1',
         null,
         'Scene one',
-        expect.arrayContaining([expect.objectContaining({ value: 'Indeed I am.', speaker: 'ALICE' })]),
+        expect.arrayContaining([
+          expect.objectContaining({ value: 'Indeed I am.', speaker: 'ALICE' }),
+        ]),
         expect.objectContaining({ mode: 'lines', mySpeaker: 'ALICE' }),
       );
     });
@@ -437,41 +439,46 @@ describe('SequenceEditor', () => {
     it.each([
       ['Poetry / verse', 'poetry'],
       ['Speech / presentation', 'speech'],
-    ] as const)('clears hidden speaker metadata when switching from Script to %s', async (presetName, presetId) => {
-      mockCourse = course;
-      renderNew();
-      fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
+    ] as const)(
+      'clears hidden speaker metadata when switching from Script to %s',
+      async (presetName, presetId) => {
+        mockCourse = course;
+        renderNew();
+        fireEvent.click(screen.getByRole('button', { name: /Script \/ dialogue/ }));
 
-      fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
-        target: { value: 'Sonnet 18' },
-      });
-      fireEvent.change(
-        screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
-        { target: { value: 'Shall I compare thee to a summer’s day?' } },
-      );
-      fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'NARRATOR' } });
-      fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'NARRATOR' } });
+        fireEvent.change(screen.getByPlaceholderText('e.g. The Krebs cycle'), {
+          target: { value: 'Sonnet 18' },
+        });
+        fireEvent.change(
+          screen.getByPlaceholderText('Line content. Markdown, maths and images are supported.'),
+          { target: { value: 'Shall I compare thee to a summer’s day?' } },
+        );
+        fireEvent.change(screen.getByPlaceholderText('Speaker'), { target: { value: 'NARRATOR' } });
+        fireEvent.change(screen.getByLabelText(/My speaker/), { target: { value: 'NARRATOR' } });
 
-      fireEvent.click(screen.getByRole('button', { name: new RegExp(presetName.replace('/', '\\/')) }));
+        fireEvent.click(
+          screen.getByRole('button', { name: new RegExp(presetName.replace('/', '\\/')) }),
+        );
 
-      expect(screen.queryByPlaceholderText('Speaker')).not.toBeInTheDocument();
-      expect(screen.getByText('1 card generated')).toBeInTheDocument();
-      expect(screen.getByText('Add sequence')).not.toBeDisabled();
-      await act(async () => {
-        fireEvent.click(screen.getByText('Add sequence'));
-        await vi.waitFor(() => expect(createSequence).toHaveBeenCalled());
-        await Promise.resolve(createSequence.mock.results[0]?.value);
-      });
-      await screen.findByText('Bank');
-      expect(createSequence).toHaveBeenCalledWith(
-        'course-1',
-        null,
-        'Sonnet 18',
-        [expect.objectContaining({ value: 'Shall I compare thee to a summer’s day?' })],
-        expect.objectContaining({ mode: 'lines', presetId, mySpeaker: undefined }),
-      );
-      expect(createSequence.mock.calls[0][3][0]).not.toHaveProperty('speaker');
-    });
+        expect(screen.queryByPlaceholderText('Speaker')).not.toBeInTheDocument();
+        expect(screen.getByText('1 card generated')).toBeInTheDocument();
+        expect(screen.getByText('Add sequence')).not.toBeDisabled();
+        await act(async () => {
+          fireEvent.click(screen.getByText('Add sequence'));
+          await vi.waitFor(() => expect(createSequence).toHaveBeenCalled());
+          await Promise.resolve(createSequence.mock.results[0]?.value);
+        });
+        await screen.findByText('Cards');
+        expect(createSequence).toHaveBeenCalledWith(
+          'course-1',
+          null,
+          'Sonnet 18',
+          [expect.objectContaining({ value: 'Shall I compare thee to a summer’s day?' })],
+          expect.objectContaining({ mode: 'lines', presetId, mySpeaker: undefined }),
+        );
+        expect(createSequence.mock.calls[0][3][0]).not.toHaveProperty('speaker');
+      },
+    );
 
     it('disables saving when the selected speaker would generate no cards', () => {
       mockCourse = course;
@@ -523,8 +530,8 @@ describe('SequenceEditor', () => {
       mockSequence = editingSequence;
       renderEdit();
 
-      const link = screen.getByRole('link', { name: 'Question bank' });
-      expect(link).toHaveAttribute('href', '/course/course-1/bank');
+      const link = screen.getByRole('link', { name: 'Cards' });
+      expect(link).toHaveAttribute('href', '/course/course-1/cards');
     });
   });
 

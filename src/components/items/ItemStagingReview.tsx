@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Card, Lesson } from '../../db/types';
-import { createLessonCard } from '../../db/repository';
+import type { Lesson } from '../../db/types';
+import type { QuestionDefinition } from '../../questions/types';
 import {
   diffImport,
   type ExistingCardForDiff,
   type ProposedImportItem,
 } from '../../mcp/diffImport';
+import { createBatchFixedQuestion } from '../../items/batchQuestionImport';
 import {
   parseBatchOutput,
   parseEditedCandidate,
@@ -25,14 +26,19 @@ import { StagedItemEditor } from './StagedItemEditor';
 interface ItemStagingReviewProps {
   courseId: string;
   lessons: Lesson[];
-  cards: Card[];
+  questions: QuestionDefinition[];
   onDirtyChange?: (dirty: boolean) => void;
 }
 
 type Decision = 'staged' | 'accepted' | 'rejected';
 type ProposedWithCandidateId = ProposedImportItem & { candidateId: string };
 
-export function ItemStagingReview({ courseId, lessons, cards, onDirtyChange }: ItemStagingReviewProps) {
+export function ItemStagingReview({
+  courseId,
+  lessons,
+  questions,
+  onDirtyChange,
+}: ItemStagingReviewProps) {
   const { notify } = useToast();
   const [source, setSource] = useState('');
   const [submittedSource, setSubmittedSource] = useState<string | null>(null);
@@ -70,13 +76,18 @@ export function ItemStagingReview({ courseId, lessons, cards, onDirtyChange }: I
   );
 
   const duplicateIds = useMemo(() => {
-    const existing: ExistingCardForDiff[] = cards
-      .filter((card) => card.primaryLessonId === targetLessonId)
-      .map((card) => ({
-        id: card.id,
-        front: card.front,
-        back: card.back,
-        tags: card.tags,
+    const existing: ExistingCardForDiff[] = questions
+      .filter(
+        (question) =>
+          question.kind === 'fixed' &&
+          (question.primaryLessonId === targetLessonId ||
+            question.additionalLessonIds.includes(targetLessonId)),
+      )
+      .map((question) => ({
+        id: question.id,
+        front: question.kind === 'fixed' ? question.prompt : '',
+        back: question.kind === 'fixed' ? question.explanation : '',
+        tags: question.tags,
         lessonId: targetLessonId,
       }));
     const proposed: ProposedWithCandidateId[] = candidates
@@ -94,7 +105,7 @@ export function ItemStagingReview({ courseId, lessons, cards, onDirtyChange }: I
         (item) => (item as ProposedWithCandidateId).candidateId,
       ),
     );
-  }, [cards, candidates, targetLessonId]);
+  }, [questions, candidates, targetLessonId]);
 
   const decisionFor = (candidate: BatchCandidate): Decision =>
     decisions.get(candidate.id) ?? 'staged';
@@ -169,15 +180,15 @@ export function ItemStagingReview({ courseId, lessons, cards, onDirtyChange }: I
 
   async function acceptCandidate(candidate: BatchCandidate) {
     if (!candidate.payload || !targetLessonId || decisionFor(candidate) !== 'staged') return;
-    await createLessonCard(
+    await createBatchFixedQuestion({
       courseId,
-      targetLessonId,
-      'front_back',
-      candidate.question,
-      '',
-      [],
-      candidate.payload,
-    );
+      primaryLessonId: targetLessonId,
+      prompt: candidate.question,
+      payload: candidate.payload,
+      explanation: candidate.explanation,
+      targetConceptName: candidate.targetConcept,
+      prerequisiteConceptNames: candidate.prerequisiteConcepts,
+    });
     setDecisions((current) => new Map(current).set(candidate.id, 'accepted'));
   }
 
@@ -185,9 +196,9 @@ export function ItemStagingReview({ courseId, lessons, cards, onDirtyChange }: I
     setImporting(true);
     try {
       await acceptCandidate(candidate);
-      notify('Item added to the lesson.', 'positive');
+      notify('Question added to the lesson.', 'positive');
     } catch (error) {
-      notify(error instanceof Error ? error.message : 'Could not add the item.', 'negative');
+      notify(error instanceof Error ? error.message : 'Could not add the Question.', 'negative');
     } finally {
       setImporting(false);
     }
@@ -202,7 +213,7 @@ export function ItemStagingReview({ courseId, lessons, cards, onDirtyChange }: I
         await acceptCandidate(candidate);
         accepted += 1;
       }
-      notify(`Added ${accepted} item${accepted === 1 ? '' : 's'} to the lesson.`, 'positive');
+      notify(`Added ${accepted} Question${accepted === 1 ? '' : 's'} to the lesson.`, 'positive');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not add every item.', 'negative');
     } finally {
@@ -225,7 +236,7 @@ export function ItemStagingReview({ courseId, lessons, cards, onDirtyChange }: I
     <div className="flex flex-col gap-5">
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_14rem]">
         <label className="flex flex-col gap-2 text-sm text-ink-soft">
-          Generated batch
+          Generated Question batch
           <textarea
             value={source}
             onChange={(event) => setSource(event.target.value)}
@@ -271,9 +282,9 @@ export function ItemStagingReview({ courseId, lessons, cards, onDirtyChange }: I
         <>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
             <div>
-              <h3 className="font-display text-xl">Staged items</h3>
+              <h3 className="font-display text-xl">Staged Questions</h3>
               <p className="mt-1 text-sm text-ink-faint">
-                {candidates.length} proposed item{candidates.length === 1 ? '' : 's'} ·{' '}
+                {candidates.length} proposed Question{candidates.length === 1 ? '' : 's'} ·{' '}
                 {cleanCandidates.length} clean
               </p>
             </div>
@@ -296,8 +307,8 @@ export function ItemStagingReview({ courseId, lessons, cards, onDirtyChange }: I
           {batchRevisionOpen && failingCandidates.length > 0 && (
             <div className="rounded-xl border border-line bg-surface-raised p-4">
               <p className="text-sm text-ink-soft">
-                The prompt carries each failing item and its validation errors. Paste the reply
-                back below; the {failingCandidates.length} revised item
+                The prompt carries each failing item and its validation errors. Paste the reply back
+                below; the {failingCandidates.length} revised item
                 {failingCandidates.length === 1 ? '' : 's'} replace only those, in order.
               </p>
               <label className="mt-3 flex flex-col gap-2 text-sm text-ink-soft">
@@ -324,7 +335,11 @@ export function ItemStagingReview({ courseId, lessons, cards, onDirtyChange }: I
                 <Button size="sm" variant="ghost" onClick={() => setBatchRevisionOpen(false)}>
                   Cancel
                 </Button>
-                <Button size="sm" variant="secondary" onClick={() => void copyBatchRevisionPrompt()}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void copyBatchRevisionPrompt()}
+                >
                   Copy revision prompt
                 </Button>
                 <Button
@@ -450,7 +465,7 @@ function CandidateRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-              Item {candidate.index + 1}
+              Question {candidate.index + 1}
             </span>
             <StatusPill tone={ready ? 'positive' : 'negative'}>
               {ready ? 'Valid' : 'Needs attention'}
@@ -464,8 +479,16 @@ function CandidateRow({
             )}
           </div>
           <h4 className="mt-2 text-base font-medium text-ink">
-            {candidate.question || 'Untitled item'}
+            {candidate.question || 'Untitled Question'}
           </h4>
+          {candidate.targetConcept && (
+            <p className="mt-1 text-sm text-ink-soft">
+              Primary skill practised: {candidate.targetConcept}
+              {candidate.prerequisiteConcepts.length > 0
+                ? ` · Prerequisites: ${candidate.prerequisiteConcepts.join(', ')}`
+                : ''}
+            </p>
+          )}
           <p className="mt-1 text-sm text-ink-faint">
             {candidate.kind === 'working'
               ? candidate.fixtureStatus
@@ -499,7 +522,7 @@ function CandidateRow({
 
       {duplicate && decision === 'staged' && (
         <p className="mt-3 rounded-lg border border-warning/25 bg-warning/5 px-3 py-2 text-sm text-warning-fg">
-          This question resembles an item already in the target lesson. Review it before accepting.
+          This Question resembles one already in the target lesson. Review it before accepting.
         </p>
       )}
 

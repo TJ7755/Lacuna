@@ -33,6 +33,19 @@ describe('Welcome course seed assets', () => {
     await expect(resolveAssetMarkdownCached(illustratedCard!.back)).resolves.toContain(
       'blob:seeded-svg',
     );
+
+    const cards = await db.cards.toArray();
+    expect(cards.length).toBeGreaterThan(0);
+    expect(cards.every((card) => typeof card.conceptId === 'string')).toBe(true);
+    const concepts = await db.concepts.bulkGet(cards.map((card) => card.conceptId));
+    expect(concepts).toHaveLength(cards.length);
+    expect(concepts.filter(Boolean)).toHaveLength(cards.length);
+    expect(
+      concepts.every(
+        (concept, index) =>
+          concept?.scope === 'course' && concept.courseId === cards[index].courseId,
+      ),
+    ).toBe(true);
   });
 
   it('repairs missing and Blob-backed seeded assets in an existing Welcome course', async () => {
@@ -49,7 +62,9 @@ describe('Welcome course seed assets', () => {
     const repaired = await db.assets.bulkGet(assets.map((asset) => asset.hash));
     expect(repaired.every((asset) => asset?.blob instanceof Uint8Array)).toBe(true);
     expect(
-      repaired.every((asset) => new TextDecoder().decode(asset!.blob as Uint8Array).startsWith('<svg')),
+      repaired.every((asset) =>
+        new TextDecoder().decode(asset!.blob as Uint8Array).startsWith('<svg'),
+      ),
     ).toBe(true);
   });
 });

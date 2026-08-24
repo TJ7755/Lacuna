@@ -21,6 +21,7 @@ function makeDeck(overrides: Partial<LegacyDeckRecord> = {}): LegacyDeckRecord {
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
     id: 'c1',
+    conceptId: 'concept-c1',
     deckId: 'd1',
     schedulingUnitId: 'd1',
     type: 'front_back',

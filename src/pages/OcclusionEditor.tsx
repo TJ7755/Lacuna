@@ -14,7 +14,11 @@ import { useCourse, useLesson, useOcclusion } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { DangerZoneSection } from './settings/DangerZoneSection';
-import { OcclusionCanvas, type OcclusionDrawTool, type DrawnRegionRect } from '../components/occlusion/OcclusionCanvas';
+import {
+  OcclusionCanvas,
+  type OcclusionDrawTool,
+  type DrawnRegionRect,
+} from '../components/occlusion/OcclusionCanvas';
 import { OcclusionRegionPane } from '../components/occlusion/OcclusionRegionPane';
 import { ChevronLeftIcon } from '../components/ui/icons';
 import { makeId } from '../db/schema';
@@ -92,10 +96,10 @@ export function OcclusionEditor() {
   }, [assetHash]);
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
-  const bankPath = `/course/${courseId}/bank`;
+  const bankPath = `/course/${courseId}/cards`;
   const origin = (location.state as EditorOriginState | null)?.origin;
   const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
-  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Question bank');
+  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Cards');
 
   // A draft Occlusion built from current form state, purely so the pure generation
   // module (never re-implemented here) can compute the live card-count preview.
@@ -112,7 +116,10 @@ export function OcclusionEditor() {
     }),
     [occlusion, courseId, lessonId, name, assetHash, regions],
   );
-  const preview = useMemo(() => (loaded ? generateCards(draftOcclusion) : []), [loaded, draftOcclusion]);
+  const preview = useMemo(
+    () => (loaded ? generateCards(draftOcclusion) : []),
+    [loaded, draftOcclusion],
+  );
   const labelCount = regions.filter((r) => r.role === 'label').length;
   const featureCount = regions.length - labelCount;
 
@@ -130,7 +137,9 @@ export function OcclusionEditor() {
     return (
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">Back to dashboard</Link>
+        <Link to="/" className="text-accent underline">
+          Back to dashboard
+        </Link>
       </div>
     );
   }

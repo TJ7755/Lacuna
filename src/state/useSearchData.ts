@@ -3,12 +3,14 @@ import { db } from '../db/schema';
 import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import type { Card, Course, CourseAssessment, CourseRecord, Lesson, Note } from '../db/types';
+import type { QuestionDefinition } from '../questions/types';
 
 export interface SearchData {
   cards: Card[];
   courses: Course[];
   lessons: Lesson[];
   notes: Note[];
+  questions: QuestionDefinition[];
 }
 
 function hydrateCourses(records: CourseRecord[], assessments: CourseAssessment[]): Course[] {
@@ -22,18 +24,20 @@ function hydrateCourses(records: CourseRecord[], assessments: CourseAssessment[]
  */
 export function useSearchData(): SearchData | undefined {
   return useLiveQuery(async () => {
-    const [cards, records, assessments, lessons, notes] = await Promise.all([
+    const [cards, records, assessments, lessons, notes, questions] = await Promise.all([
       db.cards.toArray(),
       db.courses.orderBy('createdAt').toArray(),
       db.courseAssessments.toArray(),
       db.lessons.orderBy('orderIndex').toArray(),
       db.notes.toArray(),
+      db.questions.toArray(),
     ]);
     return {
       cards: await hydrateCardsWithHistory(cards),
       courses: hydrateCourses(records, assessments),
       lessons,
       notes,
+      questions,
     };
   }, []);
 }

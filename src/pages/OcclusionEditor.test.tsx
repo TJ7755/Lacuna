@@ -72,7 +72,7 @@ function renderNew() {
     <MemoryRouter initialEntries={['/course/course-1/occlusion/new']}>
       <Routes>
         <Route path="/course/:courseId/occlusion/new" element={<OcclusionEditor />} />
-        <Route path="/course/:courseId/bank" element={<p>Bank</p>} />
+        <Route path="/course/:courseId/cards" element={<p>Cards</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -83,7 +83,7 @@ function renderEdit() {
     <MemoryRouter initialEntries={['/course/course-1/occlusion/occ-1/edit']}>
       <Routes>
         <Route path="/course/:courseId/occlusion/:occlusionId/edit" element={<OcclusionEditor />} />
-        <Route path="/course/:courseId/bank" element={<p>Bank</p>} />
+        <Route path="/course/:courseId/cards" element={<p>Cards</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -110,7 +110,12 @@ function drawBox(container: HTMLElement, from: [number, number], to: [number, nu
 }
 
 async function uploadDiagram() {
-  storeOcclusionDiagram.mockResolvedValue({ hash: 'hash-1', kind: 'image', mimeType: 'image/png', createdAt: 0 });
+  storeOcclusionDiagram.mockResolvedValue({
+    hash: 'hash-1',
+    kind: 'image',
+    mimeType: 'image/png',
+    createdAt: 0,
+  });
   const input = screen.getByLabelText('Upload diagram', { exact: false });
   const file = new File(['x'], 'diagram.png', { type: 'image/png' });
   fireEvent.change(input, { target: { files: [file] } });
@@ -179,7 +184,9 @@ describe('OcclusionEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Draw feature' }));
     drawBox(container, [250, 30], [350, 130]);
     expect(screen.getByText('2 cards will be generated')).toBeInTheDocument();
-    expect(screen.getByText('1 label, 1 feature — read-only in the card editor')).toBeInTheDocument();
+    expect(
+      screen.getByText('1 label, 1 feature — read-only in the card editor'),
+    ).toBeInTheDocument();
   });
 
   it('draws a label and a feature region, pairs them, and saves the expected shape', async () => {
@@ -193,16 +200,20 @@ describe('OcclusionEditor', () => {
 
     // The feature region drawn second is selected; pair it to the label.
     const pairSelect = screen.getByLabelText('Paired label');
-    const labelOption = within(pairSelect).getByRole('option', { name: 'Box 1' }) as HTMLOptionElement;
+    const labelOption = within(pairSelect).getByRole('option', {
+      name: 'Box 1',
+    }) as HTMLOptionElement;
     fireEvent.change(pairSelect, { target: { value: labelOption.value } });
 
-    fireEvent.change(screen.getByPlaceholderText('e.g. The plant cell'), { target: { value: 'Plant cell' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g. The plant cell'), {
+      target: { value: 'Plant cell' },
+    });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Add occlusion' }));
       await vi.waitFor(() => expect(createOcclusion).toHaveBeenCalled());
       await Promise.resolve(createOcclusion.mock.results[0]?.value);
     });
-    await screen.findByText('Bank');
+    await screen.findByText('Cards');
     const [calledCourseId, calledLessonId, calledName, calledAssetHash, calledRegions] =
       createOcclusion.mock.calls[0];
     expect(calledCourseId).toBe('course-1');
@@ -210,8 +221,18 @@ describe('OcclusionEditor', () => {
     expect(calledName).toBe('Plant cell');
     expect(calledAssetHash).toBe('hash-1');
     expect(calledRegions).toHaveLength(2);
-    expect(calledRegions[0]).toMatchObject({ role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.4, h: 0.5 });
-    expect(calledRegions[1]).toMatchObject({ role: 'feature', pairedRegionId: calledRegions[0].id });
+    expect(calledRegions[0]).toMatchObject({
+      role: 'label',
+      shape: 'rectangle',
+      x: 0.1,
+      y: 0.1,
+      w: 0.4,
+      h: 0.5,
+    });
+    expect(calledRegions[1]).toMatchObject({
+      role: 'feature',
+      pairedRegionId: calledRegions[0].id,
+    });
   });
 
   it('warns before replacing the diagram of an existing occlusion, and only regenerates on confirm', async () => {
@@ -222,16 +243,19 @@ describe('OcclusionEditor', () => {
       primaryLessonId: null,
       name: 'Plant cell',
       assetHash: 'hash-old',
-      regions: [
-        { id: 'r1', role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.2, h: 0.2 },
-      ],
+      regions: [{ id: 'r1', role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.2, h: 0.2 }],
       createdAt: 0,
       updatedAt: 0,
     };
     renderEdit();
     await screen.findByRole('img');
 
-    storeOcclusionDiagram.mockResolvedValue({ hash: 'hash-new', kind: 'image', mimeType: 'image/png', createdAt: 0 });
+    storeOcclusionDiagram.mockResolvedValue({
+      hash: 'hash-new',
+      kind: 'image',
+      mimeType: 'image/png',
+      createdAt: 0,
+    });
     const input = screen.getByLabelText('Replace diagram', { exact: false });
     const file = new File(['x'], 'new.png', { type: 'image/png' });
     fireEvent.change(input, { target: { files: [file] } });
@@ -255,7 +279,7 @@ describe('OcclusionEditor', () => {
       await vi.waitFor(() => expect(updateOcclusion).toHaveBeenCalled());
       await Promise.resolve(updateOcclusion.mock.results[0]?.value);
     });
-    await screen.findByText('Bank');
+    await screen.findByText('Cards');
     expect(updateOcclusion.mock.calls[0][0]).toMatchObject({ assetHash: 'hash-new' });
   });
 
@@ -284,7 +308,7 @@ describe('OcclusionEditor', () => {
       await vi.waitFor(() => expect(deleteOcclusion).toHaveBeenCalledWith('occ-1'));
       await Promise.resolve(deleteOcclusion.mock.results[0]?.value);
     });
-    await screen.findByText('Bank');
+    await screen.findByText('Cards');
     expect(mockNotify).toHaveBeenCalledWith(
       expect.stringContaining('deleted'),
       'neutral',
@@ -293,7 +317,9 @@ describe('OcclusionEditor', () => {
 
     const [, , options] = mockNotify.mock.calls[mockNotify.mock.calls.length - 1];
     options.onAction();
-    await vi.waitFor(() => expect(restoreOcclusion).toHaveBeenCalledWith({ occlusion: 'snapshot' }));
+    await vi.waitFor(() =>
+      expect(restoreOcclusion).toHaveBeenCalledWith({ occlusion: 'snapshot' }),
+    );
   });
 
   it('stacks the canvas and region pane in a single column below 760px, never overflowing', async () => {

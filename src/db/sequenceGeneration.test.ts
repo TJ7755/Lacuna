@@ -27,8 +27,11 @@ function makeSequence(overrides: Partial<Sequence> = {}): Sequence {
 }
 
 /** Build a Card record (only the fields diffRegeneration/generateCards care about matter). */
-function card(overrides: Partial<Card> & { id: string; sequenceItemId: string; front: string; back: string }): Card {
+function card(
+  overrides: Partial<Card> & { id: string; sequenceItemId: string; front: string; back: string },
+): Card {
   return {
+    conceptId: `concept-${overrides.id}`,
     deckId: 'deck-1',
     schedulingUnitId: 'deck-1',
     type: 'front_back',
@@ -183,7 +186,9 @@ describe('generateCards (lines mode)', () => {
     const [first, second] = generateCards(makeScene());
     expect(first.front).toBe('**Noble gases**\n\nBOB: Hello there.');
     expect(first.back).toBe('General Kenobi.');
-    expect(second.front).toBe('**Noble gases**\n\nALICE: General Kenobi.\n\nBOB: You are a bold one.');
+    expect(second.front).toBe(
+      '**Noble gases**\n\nALICE: General Kenobi.\n\nBOB: You are a bold one.',
+    );
     expect(second.back).toBe('Indeed I am.');
   });
 
@@ -275,7 +280,13 @@ describe('diffRegeneration (lines mode)', () => {
   it('produces no diff when nothing changed', () => {
     const scene = makeScene();
     const existing = generateCards(scene).map((p, i) =>
-      card({ id: `card-${p.sequenceItemId}`, sequenceItemId: p.sequenceItemId, front: p.front, back: p.back, createdAt: i }),
+      card({
+        id: `card-${p.sequenceItemId}`,
+        sequenceItemId: p.sequenceItemId,
+        front: p.front,
+        back: p.back,
+        createdAt: i,
+      }),
     );
     expect(diffRegeneration(scene, existing)).toEqual({ creates: [], updates: [], deletes: [] });
   });
@@ -283,7 +294,12 @@ describe('diffRegeneration (lines mode)', () => {
   it('editing a cue-only line (not mine) regenerates only the follower mySpeaker card, memory state preserved', () => {
     const scene = makeScene();
     const existing = generateCards(scene).map((p) =>
-      card({ id: `card-${p.sequenceItemId}`, sequenceItemId: p.sequenceItemId, front: p.front, back: p.back }),
+      card({
+        id: `card-${p.sequenceItemId}`,
+        sequenceItemId: p.sequenceItemId,
+        front: p.front,
+        back: p.back,
+      }),
     );
     const edited = makeScene({
       items: [
@@ -296,13 +312,20 @@ describe('diffRegeneration (lines mode)', () => {
     const diff = diffRegeneration(edited, existing);
     expect(diff.creates).toEqual([]);
     expect(diff.deletes).toEqual([]);
-    expect(diff.updates).toEqual([{ id: 'card-l2', front: '**Noble gases**\n\nBOB: Well, hello there.' }]);
+    expect(diff.updates).toEqual([
+      { id: 'card-l2', front: '**Noble gases**\n\nBOB: Well, hello there.' },
+    ]);
   });
 
-  it('switching mySpeaker deletes the old speaker\'s cards and creates the new speaker\'s', () => {
+  it("switching mySpeaker deletes the old speaker's cards and creates the new speaker's", () => {
     const scene = makeScene();
     const existing = generateCards(scene).map((p) =>
-      card({ id: `card-${p.sequenceItemId}`, sequenceItemId: p.sequenceItemId, front: p.front, back: p.back }),
+      card({
+        id: `card-${p.sequenceItemId}`,
+        sequenceItemId: p.sequenceItemId,
+        front: p.front,
+        back: p.back,
+      }),
     );
     const switched = makeScene({ mySpeaker: 'BOB' });
     const diff = diffRegeneration(switched, existing);
@@ -365,7 +388,11 @@ describe('diffRegeneration', () => {
     const diff = diffRegeneration(withInsert, existing);
     expect(diff.deletes).toEqual([]);
     expect(diff.creates).toEqual([
-      expect.objectContaining({ sequenceItemId: 'z', front: '**Noble gases**\n\nFirst item?', back: 'Radon' }),
+      expect.objectContaining({
+        sequenceItemId: 'z',
+        front: '**Noble gases**\n\nFirst item?',
+        back: 'Radon',
+      }),
     ]);
     // a is now position 1 (cued by Radon), b position 2 (cued by Radon, Helium), c position 3 (cued by Helium, Neon - window 2).
     expect(diff.updates).toEqual(
@@ -385,7 +412,11 @@ describe('diffRegeneration', () => {
     });
     const diff = diffRegeneration(withInsert, existing);
     expect(diff.creates).toEqual([
-      expect.objectContaining({ sequenceItemId: 'z', front: '**Noble gases**\n\nHelium', back: 'Krypton' }),
+      expect.objectContaining({
+        sequenceItemId: 'z',
+        front: '**Noble gases**\n\nHelium',
+        back: 'Krypton',
+      }),
     ]);
     expect(diff.updates).toEqual(
       expect.arrayContaining([
@@ -405,7 +436,11 @@ describe('diffRegeneration', () => {
     expect(diff.deletes).toEqual([]);
     expect(diff.updates).toEqual([]);
     expect(diff.creates).toEqual([
-      expect.objectContaining({ sequenceItemId: 'z', front: '**Noble gases**\n\nNeon\n\nArgon', back: 'Krypton' }),
+      expect.objectContaining({
+        sequenceItemId: 'z',
+        front: '**Noble gases**\n\nNeon\n\nArgon',
+        back: 'Krypton',
+      }),
     ]);
   });
 
@@ -472,24 +507,45 @@ describe('diffRegeneration', () => {
     const diff = diffRegeneration(combined, existing);
     expect(diff.deletes).toEqual(['card-b']);
     expect(diff.creates).toEqual([
-      expect.objectContaining({ sequenceItemId: 'z', front: '**Noble gases**\n\nHelium', back: 'Krypton' }),
+      expect.objectContaining({
+        sequenceItemId: 'z',
+        front: '**Noble gases**\n\nHelium',
+        back: 'Krypton',
+      }),
     ]);
     expect(diff.updates).toEqual(
-      expect.arrayContaining([{ id: 'card-c', front: '**Noble gases**\n\nHelium\n\nKrypton', back: 'Xenon' }]),
+      expect.arrayContaining([
+        { id: 'card-c', front: '**Noble gases**\n\nHelium\n\nKrypton', back: 'Xenon' },
+      ]),
     );
     expect(diff.updates).toHaveLength(1);
   });
 
   it('toggling generateLabelCards on creates label cards for labelled items', () => {
     const labelled = makeSequence({
-      items: [item('a', 'Helium', { label: '2' }), item('b', 'Neon', { label: '10' }), item('c', 'Argon')],
+      items: [
+        item('a', 'Helium', { label: '2' }),
+        item('b', 'Neon', { label: '10' }),
+        item('c', 'Argon'),
+      ],
     });
     const existing = existingFromGenerated(); // generated without labels toggle
-    const diff = diffRegeneration(makeSequence({ ...labelled, generateLabelCards: true }), existing);
+    const diff = diffRegeneration(
+      makeSequence({ ...labelled, generateLabelCards: true }),
+      existing,
+    );
     expect(diff.creates).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ sequenceItemId: `a${LABEL_CARD_SUFFIX}`, front: '2 → ?', back: 'Helium' }),
-        expect.objectContaining({ sequenceItemId: `b${LABEL_CARD_SUFFIX}`, front: '10 → ?', back: 'Neon' }),
+        expect.objectContaining({
+          sequenceItemId: `a${LABEL_CARD_SUFFIX}`,
+          front: '2 → ?',
+          back: 'Helium',
+        }),
+        expect.objectContaining({
+          sequenceItemId: `b${LABEL_CARD_SUFFIX}`,
+          front: '10 → ?',
+          back: 'Neon',
+        }),
       ]),
     );
     expect(diff.creates).toHaveLength(2);
@@ -505,9 +561,17 @@ describe('diffRegeneration', () => {
     // Simulate label cards already existing from a prior generation with the toggle on.
     const existingWithLabel = [
       ...existing,
-      card({ id: 'card-a-label', sequenceItemId: `a${LABEL_CARD_SUFFIX}`, front: '2 → ?', back: 'Helium' }),
+      card({
+        id: 'card-a-label',
+        sequenceItemId: `a${LABEL_CARD_SUFFIX}`,
+        front: '2 → ?',
+        back: 'Helium',
+      }),
     ];
-    const diff = diffRegeneration(makeSequence({ ...labelled, generateLabelCards: false }), existingWithLabel);
+    const diff = diffRegeneration(
+      makeSequence({ ...labelled, generateLabelCards: false }),
+      existingWithLabel,
+    );
     expect(diff.deletes).toEqual(['card-a-label']);
     expect(diff.creates).toEqual([]);
     expect(diff.updates).toEqual([]);

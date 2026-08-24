@@ -4,9 +4,10 @@ import { courseSectionPath, matchCourseSection } from './courseSections';
 describe('matchCourseSection', () => {
   it('identifies each section in tab order', () => {
     expect(matchCourseSection('/course/abc')).toEqual({ courseId: 'abc', index: 0 });
-    expect(matchCourseSection('/course/abc/bank')).toEqual({ courseId: 'abc', index: 1 });
-    expect(matchCourseSection('/course/abc/analytics')).toEqual({ courseId: 'abc', index: 2 });
-    expect(matchCourseSection('/course/abc/settings')).toEqual({ courseId: 'abc', index: 3 });
+    expect(matchCourseSection('/course/abc/cards')).toEqual({ courseId: 'abc', index: 1 });
+    expect(matchCourseSection('/course/abc/questions')).toEqual({ courseId: 'abc', index: 2 });
+    expect(matchCourseSection('/course/abc/analytics')).toEqual({ courseId: 'abc', index: 3 });
+    expect(matchCourseSection('/course/abc/settings')).toEqual({ courseId: 'abc', index: 4 });
   });
 
   it('ignores routes that are destinations within a section rather than siblings of it', () => {
@@ -26,11 +27,11 @@ describe('matchCourseSection', () => {
 describe('courseSectionPath', () => {
   it('builds the path for a section index', () => {
     expect(courseSectionPath('abc', 0)).toBe('/course/abc');
-    expect(courseSectionPath('abc', 2)).toBe('/course/abc/analytics');
+    expect(courseSectionPath('abc', 2)).toBe('/course/abc/questions');
   });
 
   it('returns null beyond either end, so a swipe at the edge does nothing', () => {
     expect(courseSectionPath('abc', -1)).toBeNull();
-    expect(courseSectionPath('abc', 4)).toBeNull();
+    expect(courseSectionPath('abc', 5)).toBeNull();
   });
 });

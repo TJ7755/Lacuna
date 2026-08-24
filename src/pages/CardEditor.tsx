@@ -66,7 +66,7 @@ export function CardEditor() {
     lessonId?: string;
   }>();
   // Lesson-scoped route (course/:courseId/lesson/:lessonId/cards/...) vs the
-  // course-scoped "question bank" route (course/:courseId/cards/..., no lessonId).
+  // course-scoped Cards route (course/:courseId/cards/..., no lessonId).
   const lessonMode = Boolean(lessonId);
   const bankMode = !lessonMode;
   const navigate = useNavigate();
@@ -78,7 +78,7 @@ export function CardEditor() {
   const lessonCards = useLessonCards(lessonId);
   // Resolve the hidden scheduling deck through the Course/Lesson boundary.
   const lessonDeck = useLessonBackingDeck(courseId, lessonId);
-  // Course cards with no lesson share one "question bank" backing deck (bank mode only).
+  // Course Cards with no lesson share one backing scheduling unit (Cards mode only).
   const courseCards = useCourseCards(bankMode ? courseId : undefined);
   const bankCards = useMemo(
     () => courseCards?.filter((c) => !c.primaryLessonId) ?? [],
@@ -328,15 +328,15 @@ export function CardEditor() {
   }, [loaded, duplicateCheckDeckId, type, front, back, editing, card]);
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
-  const bankPath = `/course/${courseId}/bank`;
+  const bankPath = `/course/${courseId}/cards`;
   // Where the caller navigated from, when that differs from what the route alone
-  // implies (e.g. a lesson-owned card opened for editing from the Question bank).
+  // implies (e.g. a lesson-owned card opened for editing from Cards).
   // Absent on direct loads and hard refreshes, which drop router state — the
   // route-derived default below covers that case.
   const origin = (location.state as EditorOriginState | null)?.origin;
   // Where Cancel, post-save navigation and the breadcrumb "back" target all point.
   const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
-  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Question bank');
+  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Cards');
 
   if (
     (lessonMode
@@ -916,7 +916,9 @@ export function CardEditor() {
                       initial={m > 0 ? { scale: 0, rotate: -25 } : false}
                       animate={{ scale: 1, rotate: 0 }}
                       exit={m > 0 ? { scale: 0 } : undefined}
-                      transition={m > 0 ? { type: 'spring', stiffness: 600, damping: 16 } : { duration: 0 }}
+                      transition={
+                        m > 0 ? { type: 'spring', stiffness: 600, damping: 16 } : { duration: 0 }
+                      }
                       className="inline-flex"
                     >
                       <CheckIcon width={11} height={11} />
@@ -938,13 +940,19 @@ export function CardEditor() {
                 initial={m > 0 ? { scale: 0.6, opacity: 0 } : false}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={m > 0 ? { scale: 0.6, opacity: 0 } : undefined}
-                transition={m > 0 ? { type: 'spring', stiffness: 500, damping: 20 } : { duration: 0 }}
+                transition={
+                  m > 0 ? { type: 'spring', stiffness: 500, damping: 20 } : { duration: 0 }
+                }
                 className="inline-flex items-center gap-1.5 rounded-full bg-positive/15 px-3 py-1 text-sm font-medium text-positive"
               >
                 <motion.span
                   initial={m > 0 ? { scale: 0, rotate: -25 } : false}
                   animate={{ scale: 1, rotate: 0 }}
-                  transition={m > 0 ? { delay: 0.06 * m, type: 'spring', stiffness: 600, damping: 16 } : { duration: 0 }}
+                  transition={
+                    m > 0
+                      ? { delay: 0.06 * m, type: 'spring', stiffness: 600, damping: 16 }
+                      : { duration: 0 }
+                  }
                   className="inline-flex"
                 >
                   <CheckIcon width={16} height={16} />

@@ -91,7 +91,10 @@ describe('schema v19: image occlusion (additive)', () => {
     expect(migratedCard).not.toHaveProperty('occlusionRegionId');
 
     const migratedSequence = await db.sequences.get('pre-migration-sequence');
-    expect(migratedSequence).toMatchObject({ id: 'pre-migration-sequence', name: 'Periodic table' });
+    expect(migratedSequence).toMatchObject({
+      id: 'pre-migration-sequence',
+      name: 'Periodic table',
+    });
   });
 
   it('exposes the new occlusions table, empty, after migrating from v18', async () => {
@@ -115,7 +118,10 @@ describe('schema v19: image occlusion (additive)', () => {
       updatedAt: 500,
     });
 
-    expect(await db.occlusions.get('occlusion-1')).toMatchObject({ courseId: 'course-1', name: 'Plant cell' });
+    expect(await db.occlusions.get('occlusion-1')).toMatchObject({
+      courseId: 'course-1',
+      name: 'Plant cell',
+    });
     expect(await db.occlusions.where('courseId').equals('course-1').count()).toBe(1);
   });
 
@@ -124,6 +130,7 @@ describe('schema v19: image occlusion (additive)', () => {
 
     await db.cards.add({
       id: 'occlusion-card',
+      conceptId: 'concept-occlusion-card',
       deckId: 'deck-1',
       courseId: 'course-1',
       schedulingUnitId: 'course-1',

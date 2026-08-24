@@ -2,7 +2,7 @@
  * Router `location.state` shape used by CardEditor and SequenceEditor to send
  * their "Back"/breadcrumb link to the surface the user actually navigated
  * from, when that differs from what the route itself would otherwise imply
- * (e.g. editing a lesson-owned card opened from the Question bank, or editing
+ * (e.g. editing a lesson-owned card opened from Cards, or editing
  * a sequence — which has no lesson-scoped edit route — opened from a lesson).
  *
  * Deliberately additive: callers that don't need an override simply omit it,

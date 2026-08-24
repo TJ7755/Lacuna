@@ -6,6 +6,7 @@ import type { Card } from '../../db/types';
 function makeCard(overrides: Partial<Card>): Card {
   return {
     id: 'card-1',
+    conceptId: 'concept-card-1',
     deckId: 'deck-1',
     schedulingUnitId: 'deck-1',
     type: 'front_back',
@@ -45,7 +46,7 @@ describe('CardContent', () => {
     expect(screen.getByText('Next item?')).toBeInTheDocument();
   });
 
-  it("renders the literal first-item prompt without a cue block", () => {
+  it('renders the literal first-item prompt without a cue block', () => {
     const card = makeCard({
       front: '**Cranial Nerves**\n\nFirst item?',
       sequenceItemId: 'item-1',

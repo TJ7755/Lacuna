@@ -173,6 +173,7 @@ const summary: CourseSummary = {
 function makeCard(id: string, lessonId: string): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'deck-1',
     schedulingUnitId: 'deck-1',
     courseId: 'course-1',

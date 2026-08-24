@@ -10,6 +10,7 @@ import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { AppShell } from './components/layout/AppShell';
 import { RouteTransition } from './components/layout/RouteTransition';
 import { LandingTransition } from './components/layout/LandingTransition';
+import { LegacyBankRedirect } from './routes/LegacyBankRedirect';
 import { Dashboard } from './pages/Dashboard';
 import { isFirstRun, seedIfFirstRun } from './db/seed';
 import { ensurePreMigrationSnapshot, openDatabase } from './db/schema';
@@ -23,6 +24,7 @@ import { NotFound } from './pages/NotFound';
 import {
   loadAnalytics,
   loadCardEditor,
+  loadCardsPage,
   loadCourseAnalytics,
   loadCoursePath,
   loadCourseSettings,
@@ -34,7 +36,9 @@ import {
   loadMergeReviewPanel,
   loadMethod,
   loadOcclusionEditor,
-  loadQuestionBank,
+  loadQuestionEditor,
+  loadQuestionLearnMode,
+  loadQuestionsPage,
   loadSearchPage,
   loadSequenceEditor,
   loadSettings,
@@ -64,7 +68,10 @@ const CourseSettings = lazy(loadCourseSettings);
 const CourseAnalytics = lazy(loadCourseAnalytics);
 const CoursePath = lazy(loadCoursePath);
 const LessonView = lazy(loadLessonView);
-const QuestionBank = lazy(loadQuestionBank);
+const CardsPage = lazy(loadCardsPage);
+const QuestionsPage = lazy(loadQuestionsPage);
+const QuestionEditor = lazy(loadQuestionEditor);
+const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
 const Welcome = lazy(loadWelcome);
 const Method = lazy(loadMethod);
@@ -146,9 +153,37 @@ export const router = createHashRouter([
           },
           {
             path: 'course/:courseId/bank',
+            element: <LegacyBankRedirect />,
+          },
+          {
+            path: 'course/:courseId/cards',
             element: (
               <LazyRoute>
-                <QuestionBank />
+                <CardsPage />
+              </LazyRoute>
+            ),
+          },
+          {
+            path: 'course/:courseId/questions',
+            element: (
+              <LazyRoute>
+                <QuestionsPage />
+              </LazyRoute>
+            ),
+          },
+          {
+            path: 'course/:courseId/questions/new',
+            element: (
+              <LazyRoute>
+                <QuestionEditor />
+              </LazyRoute>
+            ),
+          },
+          {
+            path: 'course/:courseId/questions/:questionId/edit',
+            element: (
+              <LazyRoute>
+                <QuestionEditor />
               </LazyRoute>
             ),
           },
@@ -280,6 +315,19 @@ export const router = createHashRouter([
           <ErrorBoundary label="the technical account">
             <LazyRoute>
               <Method />
+            </LazyRoute>
+          </ErrorBoundary>
+        ),
+      },
+      {
+        // Question practice remains a separate post-instruction session while its
+        // scheduling evidence is being validated. It deliberately does not enter
+        // the Card-based course conductor or Path yet.
+        path: '/course/:courseId/questions/learn',
+        element: (
+          <ErrorBoundary label="the Question session">
+            <LazyRoute>
+              <QuestionLearnMode />
             </LazyRoute>
           </ErrorBoundary>
         ),

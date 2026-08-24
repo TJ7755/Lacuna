@@ -268,7 +268,7 @@ const SHIPPED: Array<{ name: string; detail: string }> = [
   {
     name: 'Connect your own AI assistant',
     detail:
-      'Point an assistant you already use at Lacuna to build courses, generate cards from lecture notes or tidy a question bank. Nothing happens without an explicit one-time permission per course, and anything destructive comes with an instant undo.',
+      'Point an assistant you already use at Lacuna to build courses, generate Cards from lecture notes or tidy your Cards. Nothing happens without an explicit one-time permission per course, and anything destructive comes with an instant undo.',
   },
 ];
 
@@ -512,8 +512,8 @@ export function Welcome() {
               It also picks the highest-value thing to review, not just the weakest. For every card
               it weighs predicted recall against the time a review would cost, so a card you are
               already solid on is left alone even if it is technically due. Powering the same-day
-              decisions is a new short-term memory model that predicts recall at the
-              minute-and-hour scale, where the day-based scheduler cannot see at all.
+              decisions is a new short-term memory model that predicts recall at the minute-and-hour
+              scale, where the day-based scheduler cannot see at all.
             </p>
             <dl className="mt-6 grid gap-3 sm:grid-cols-3">
               {MODEL_STATS.map((s) => (

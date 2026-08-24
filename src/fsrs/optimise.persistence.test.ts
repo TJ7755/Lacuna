@@ -27,6 +27,7 @@ function cardWithHistory(deckId: string, grades: Grade[]): Card {
   }));
   return {
     id: 'card-1',
+    conceptId: 'concept-card-1',
     deckId,
     schedulingUnitId: deckId,
     type: 'front_back',
@@ -64,9 +65,7 @@ describe('optimised weights persistence', () => {
     const result = await optimiseParameters([card], {
       computeParameters,
       createItem: (reviews) =>
-        new FSRSBindingItem(
-          reviews.map((r) => new FSRSBindingReview(r.rating, r.deltaT)),
-        ),
+        new FSRSBindingItem(reviews.map((r) => new FSRSBindingReview(r.rating, r.deltaT))),
     });
 
     expect(typeof result.isOutOfSampleWin).toBe('boolean');

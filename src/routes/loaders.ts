@@ -40,8 +40,19 @@ export const loadCoursePath = () =>
 export const loadLessonView = () =>
   import('../pages/LessonView').then((module) => ({ default: module.LessonView }));
 
-export const loadQuestionBank = () =>
-  import('../pages/QuestionBank').then((module) => ({ default: module.QuestionBank }));
+export const loadCardsPage = () =>
+  import('../pages/CardsPage').then((module) => ({ default: module.CardsPage }));
+
+export const loadQuestionsPage = () =>
+  import('../pages/QuestionsPage').then((module) => ({ default: module.QuestionsPage }));
+
+export const loadQuestionEditor = () =>
+  import('../pages/QuestionEditor').then((module) => ({ default: module.QuestionEditor }));
+
+export const loadQuestionLearnMode = () =>
+  import('../pages/QuestionLearnMode').then((module) => ({
+    default: module.QuestionLearnMode,
+  }));
 
 export const loadMergeReviewPanel = () =>
   import('../components/import/MergeReviewPanel').then((module) => ({

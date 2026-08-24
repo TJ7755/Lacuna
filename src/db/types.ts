@@ -4,6 +4,18 @@
 import type { CardFilter } from './search';
 import type { CardUpdate, LessonUpdate, LineageConflict, NoteUpdate } from './lineageDiff';
 import type { ReviewHistoryEntry } from './reviewHistory';
+import type {
+  ItemFixture as SharedItemFixture,
+  ItemPayload as SharedItemPayload,
+  MarkSchemeLine as SharedMarkSchemeLine,
+  NumericAnswerSpec as SharedNumericAnswerSpec,
+} from '../items/types';
+import type {
+  Concept,
+  QuestionAttempt,
+  QuestionConceptSet,
+  QuestionDefinition,
+} from '../questions/types';
 
 export type CardType = 'front_back' | 'cloze' | 'basic_reversed';
 
@@ -786,44 +798,20 @@ export interface PracticeMilestone {
  * `kind: 'predicate'` checks a named predicate against the student's line. See
  * docs/archive/roadmap-2026-08-11.md §11.4/§11.5.
  */
-export type MarkSchemeLine =
-  | { marks: number; label?: string; kind: 'waypoint'; expression: string }
-  | {
-      marks: number;
-      label?: string;
-      kind: 'predicate';
-      /** v1 vocabulary only (docs/archive/roadmap-2026-08-11.md §11.5/§11.9). */
-      predicate: 'equals' | 'within' | 'matches-one-of' | 'contains';
-      /** Predicate arguments (e.g. the tolerance for `within`, the candidate set for `matches-one-of`). */
-      args?: string[];
-    };
+export type MarkSchemeLine = SharedMarkSchemeLine;
 
 /**
  * A numeric answer specification for `ItemPayload` kind `'numeric'`: exact value,
  * value-with-tolerance, or match-one-of. See docs/archive/roadmap-2026-08-11.md §11.2/§11.4.
  */
-export type NumericAnswerSpec =
-  | { kind: 'exact'; value: string }
-  | { kind: 'within'; value: string; tolerance: number }
-  | { kind: 'matches-one-of'; values: string[] };
+export type NumericAnswerSpec = SharedNumericAnswerSpec;
 
 /**
  * A pinned sample answer used by the tutor's test harness (docs/archive/roadmap-2026-08-11.md §11.6) to
  * regression-test a mark scheme or numeric spec on every edit. Fixtures travel in
  * the payload so a shared item carries its own tests.
  */
-export interface ItemFixture {
-  id: string;
-  /**
-   * The student answer under test: a single string for `numeric`, or one entry per
-   * working line for `working`. Kept as a union here rather than narrowed to one
-   * shape, since the exact representation `verifyWorkingLines` wants is Arc 11
-   * slice-1 Task 2's to finalise, not this task's.
-   */
-  studentAnswer: string | string[];
-  expectedMarks: number;
-  note?: string;
-}
+export type ItemFixture = SharedItemFixture;
 
 /**
  * The current `ItemPayload.v`. Single source of truth for "known version" checks at
@@ -831,7 +819,7 @@ export interface ItemFixture {
  * validation time (`db/share.ts`'s `KnownItemPayloadSchema`) — see docs/archive/roadmap-2026-08-11.md
  * §11.2 rule 3.
  */
-export const CURRENT_ITEM_PAYLOAD_VERSION = 1 as const;
+export { CURRENT_ITEM_PAYLOAD_VERSION } from '../items/types';
 
 /**
  * Structured content for a practice item's kind, layered on top of `Card.front`
@@ -849,28 +837,12 @@ export const CURRENT_ITEM_PAYLOAD_VERSION = 1 as const;
  * is expected to reuse `MarkSchemeLine` per hole rather than invent a second
  * grammar, so the slot is reserved now instead of this union being reopened later.
  */
-export type ItemPayload =
-  | {
-      v: typeof CURRENT_ITEM_PAYLOAD_VERSION;
-      kind: 'numeric';
-      answer: NumericAnswerSpec;
-      fixtures?: ItemFixture[];
-    }
-  | {
-      v: typeof CURRENT_ITEM_PAYLOAD_VERSION;
-      kind: 'working';
-      scheme: MarkSchemeLine[];
-      fixtures?: ItemFixture[];
-    }
-  | {
-      v: typeof CURRENT_ITEM_PAYLOAD_VERSION;
-      kind: 'scaffold';
-      /* Reserved: not built in Arc 11 slice 1. See docs/archive/roadmap-2026-08-11.md §11.2 and
-       * `.agent-mail/arc11-slice1-plan.md`'s deferrals section. */
-    };
+export type ItemPayload = SharedItemPayload;
 
 export interface Card {
   id: string;
+  /** Stable knowledge identity shared by alternate Card presentations. Required after schema v24. */
+  conceptId: string;
   /** Legacy import provenance only. Runtime ownership uses schedulingUnitId. */
   deckId?: string;
   /**
@@ -1113,6 +1085,11 @@ export interface BackupFile {
   /** Pre-v22 Deck rows. Current exports omit this; a non-empty array is refused. */
   decks?: LegacyDeck[];
   cards: Card[];
+  /** Question-mode domain records. Optional on backup versions before v11. */
+  concepts?: Concept[];
+  questions?: QuestionDefinition[];
+  questionConcepts?: QuestionConceptSet[];
+  questionAttempts?: QuestionAttempt[];
   /** Canonical review events when exported from schema v20 or later. */
   reviewHistory?: ReviewHistoryEntry[];
   /** Target storage projections, optional while old backups are imported. */
@@ -1147,6 +1124,9 @@ export interface BackupFile {
    * array means none. Added at backup version 10 / schema v23.
    */
   tombstones?: Tombstone[];
+  /** Distributed-course merge state, included from backup v11 onwards. */
+  lineageIdMappings?: LineageIdMapping[];
+  pendingMergeReviews?: PendingMergeReview[];
 }
 
 /**
@@ -1167,6 +1147,10 @@ export interface LineageIdMapping {
   noteIds: string[];
   /** Originating card ids already adopted as local ids. */
   cardIds: string[];
+  /** Originating Concept ids carried by v3 course shares. */
+  conceptIds?: string[];
+  /** Originating Question ids carried by v3 course shares. */
+  questionIds?: string[];
   /** Originating sequence ids already adopted as local ids. */
   sequenceIds: string[];
   /** Originating occlusion ids already adopted as local ids. Absent on mappings written

@@ -7,6 +7,8 @@
 
 import { db, makeId } from './schema';
 import type { Card, LessonCardExposure, LessonCardLink, Sequence, SequenceItem } from './types';
+import type { Concept } from '../questions/types';
+import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
 import {
   cardsWithReviewHistory,
   reviewHistoryEntriesForCard,
@@ -20,6 +22,7 @@ import { scheduleAssetGc } from './assets';
 import {
   diffRegeneration,
   generateCards,
+  baseItemId,
   LABEL_CARD_SUFFIX,
   type GeneratedCardPayload,
 } from './sequenceGeneration';
@@ -52,10 +55,12 @@ function generatedCardFromPayload(
   deckId: string,
   payload: GeneratedCardPayload,
   createdAt: number,
+  conceptId: string,
 ): Card {
   return stampUpdatedAt(
     {
       id: makeId(),
+      conceptId,
       deckId,
       schedulingUnitId: deckId,
       courseId: payload.courseId,
@@ -80,6 +85,32 @@ function generatedCardFromPayload(
       sequenceItemId: payload.sequenceItemId,
     },
     createdAt,
+  );
+}
+
+function conceptIdForSequenceItem(sequenceId: string, sequenceItemId: string): string {
+  return `concept:sequence:${encodeURIComponent(sequenceId)}:${encodeURIComponent(baseItemId(sequenceItemId))}`;
+}
+
+function conceptsForSequencePayloads(
+  sequence: Sequence,
+  deckId: string,
+  payloads: readonly GeneratedCardPayload[],
+  now: number,
+): Concept[] {
+  const byItem = new Map<string, GeneratedCardPayload>();
+  for (const payload of payloads) {
+    const itemId = baseItemId(payload.sequenceItemId);
+    if (!byItem.has(itemId)) byItem.set(itemId, payload);
+  }
+  return [...byItem.entries()].map(([itemId, payload], index) =>
+    buildCardConcept({
+      id: conceptIdForSequenceItem(sequence.id, itemId),
+      courseId: sequence.courseId,
+      schedulingUnitId: deckId,
+      name: conceptNameForCard(payload.type, payload.front, payload.back),
+      now: now + index,
+    }),
   );
 }
 
@@ -123,9 +154,18 @@ export async function createSequence(
       : await ensureCourseBankDeck(courseId);
     const payloads = generateCards(sequence);
     const now = Date.now();
-    const cards = payloads.map((payload, i) => generatedCardFromPayload(deckId, payload, now + i));
-    await db.transaction('rw', db.sequences, db.cards, async () => {
+    const concepts = conceptsForSequencePayloads(sequence, deckId, payloads, now);
+    const cards = payloads.map((payload, i) =>
+      generatedCardFromPayload(
+        deckId,
+        payload,
+        now + i,
+        conceptIdForSequenceItem(sequence.id, payload.sequenceItemId),
+      ),
+    );
+    await db.transaction('rw', db.sequences, db.cards, db.concepts, async () => {
       await db.sequences.add(sequence);
+      if (concepts.length > 0) await db.concepts.bulkAdd(concepts);
       await db.cards.bulkAdd(cards);
     });
     return sequence;
@@ -157,6 +197,7 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
         db.coursePerformance,
         db.schedulingPerformance,
         db.tombstones,
+        db.concepts,
       ],
       async (tx) => {
         const previous = await db.sequences.get(sequence.id);
@@ -198,9 +239,16 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
             ? await ensureLessonDeck(sequence.courseId, sequence.primaryLessonId)
             : await ensureCourseBankDeck(sequence.courseId);
           const now = Date.now();
+          const concepts = conceptsForSequencePayloads(sequence, deckId, diff.creates, now);
           const newCards = diff.creates.map((payload, i) =>
-            generatedCardFromPayload(deckId, payload, now + i),
+            generatedCardFromPayload(
+              deckId,
+              payload,
+              now + i,
+              conceptIdForSequenceItem(sequence.id, payload.sequenceItemId),
+            ),
           );
+          if (concepts.length > 0) await db.concepts.bulkPut(concepts);
           await db.cards.bulkAdd(newCards);
         }
 
@@ -218,7 +266,14 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
 export async function deleteSequence(id: string): Promise<void> {
   await db.transaction(
     'rw',
-    [db.sequences, db.cards, db.reviewHistory, db.lessonCards, db.lessonCardExposures, db.tombstones],
+    [
+      db.sequences,
+      db.cards,
+      db.reviewHistory,
+      db.lessonCards,
+      db.lessonCardExposures,
+      db.tombstones,
+    ],
     async (tx) => {
       const sequence = await db.sequences.get(id);
       if (!sequence) return;
@@ -251,7 +306,9 @@ export async function deleteSequence(id: string): Promise<void> {
       await recordTombstones(
         tx,
         'lessonCardExposures',
-        removedExposures.map((exposure) => lessonCardExposureId(exposure.lessonId, exposure.cardId)),
+        removedExposures.map((exposure) =>
+          lessonCardExposureId(exposure.lessonId, exposure.cardId),
+        ),
       );
     },
   );
@@ -267,6 +324,7 @@ export async function listSequences(courseId: string): Promise<Sequence[]> {
 export interface SequenceSnapshot {
   sequence: Sequence;
   cards: Card[];
+  concepts?: Concept[];
   lessonCards: LessonCardLink[];
   lessonCardExposures: LessonCardExposure[];
   reviewHistory?: ReviewHistoryEntry[];
@@ -279,15 +337,23 @@ export async function snapshotSequence(id: string): Promise<SequenceSnapshot | n
   if (!sequence) return null;
   const cards = await cardsForSequence(sequence);
   const cardIds = cards.map((card) => card.id);
-  const [lessonCards, lessonCardExposures, reviewHistory] =
+  const [lessonCards, lessonCardExposures, reviewHistory, concepts] =
     cardIds.length > 0
       ? await Promise.all([
           db.lessonCards.where('cardId').anyOf(cardIds).toArray(),
           db.lessonCardExposures.where('cardId').anyOf(cardIds).toArray(),
           db.reviewHistory.where('cardId').anyOf(cardIds).toArray(),
+          db.concepts.bulkGet([...new Set(cards.map((card) => card.conceptId))]),
         ])
-      : [[], [], []];
-  return { sequence, cards, lessonCards, lessonCardExposures, reviewHistory };
+      : [[], [], [], []];
+  return {
+    sequence,
+    cards,
+    concepts: concepts.filter((concept): concept is Concept => concept !== undefined),
+    lessonCards,
+    lessonCardExposures,
+    reviewHistory,
+  };
 }
 
 /** Re-insert a previously captured SequenceSnapshot (the inverse of deleteSequence/updateSequence). */
@@ -299,9 +365,33 @@ export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void>
         : cardsWithReviewHistory(snapshot.cards, snapshot.reviewHistory);
     await db.transaction(
       'rw',
-      [db.sequences, db.cards, db.reviewHistory, db.lessonCards, db.lessonCardExposures, db.tombstones],
+      [
+        db.sequences,
+        db.cards,
+        db.concepts,
+        db.reviewHistory,
+        db.lessonCards,
+        db.lessonCardExposures,
+        db.tombstones,
+      ],
       async (tx) => {
         await db.sequences.put(snapshot.sequence);
+        const concepts =
+          snapshot.concepts ??
+          conceptsForSequencePayloads(
+            snapshot.sequence,
+            cardsToRestore[0]?.schedulingUnitId ?? snapshot.sequence.courseId,
+            cardsToRestore.map((card) => ({
+              type: card.type,
+              front: card.front,
+              back: card.back,
+              courseId: snapshot.sequence.courseId,
+              primaryLessonId: snapshot.sequence.primaryLessonId,
+              sequenceItemId: card.sequenceItemId!,
+            })),
+            snapshot.sequence.createdAt,
+          );
+        if (concepts.length > 0) await db.concepts.bulkPut(concepts);
         await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(snapshot.lessonCards);
         await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);

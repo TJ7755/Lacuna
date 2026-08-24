@@ -92,7 +92,10 @@ export function LessonCardsSection({
       await ensureLessonBackingDeck(courseId, lessonId);
       setImportReadyFor(importKey);
     } catch (error) {
-      notify(error instanceof Error ? error.message : 'Could not prepare the card import.', 'negative');
+      notify(
+        error instanceof Error ? error.message : 'Could not prepare the card import.',
+        'negative',
+      );
     }
   }
 
@@ -141,7 +144,9 @@ export function LessonCardsSection({
           onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
           onNewOcclusion={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
           onLinkExisting={() => setLinking(true)}
-          onEditCard={(card) => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)}
+          onEditCard={(card) =>
+            onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
+          }
         />
       ) : lessonCards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-12 text-center">
@@ -199,16 +204,20 @@ export function LessonCardsSection({
           onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
           onNewOcclusion={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
           onLinkExisting={() => setLinking(true)}
-          onEditCard={(card) => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)}
+          onEditCard={(card) =>
+            onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
+          }
           linkedCardIds={linkedCardIds}
           onUnlinkCard={(card) => void handleUnlink(card)}
           sequences={sequences}
           onEditSequence={(sequenceId) =>
             // Sequence editing has no lesson-scoped edit route, so without an
-            // explicit origin the editor would default to the Question bank —
+            // explicit origin the editor would default to Cards —
             // override it to return here instead.
             onNavigate(`/course/${courseId}/sequence/${sequenceId}/edit`, {
-              state: { origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName } },
+              state: {
+                origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName },
+              },
             })
           }
           occlusions={occlusions}
@@ -216,7 +225,9 @@ export function LessonCardsSection({
             // Mirrors onEditSequence above: occlusion editing has no lesson-scoped edit
             // route either, so override the origin to return here instead.
             onNavigate(`/course/${courseId}/occlusion/${occlusionId}/edit`, {
-              state: { origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName } },
+              state: {
+                origin: { path: `/course/${courseId}/lesson/${lessonId}`, label: lessonName },
+              },
             })
           }
         />

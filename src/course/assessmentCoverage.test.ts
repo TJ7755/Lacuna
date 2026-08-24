@@ -31,6 +31,7 @@ function assessment(overrides: Partial<CourseAssessment> = {}): CourseAssessment
 function card(id: string, primaryLessonId: string | null): Card {
   return {
     id,
+    conceptId: `concept-${id}`,
     deckId: 'deck',
     schedulingUnitId: 'deck',
     courseId: 'course',

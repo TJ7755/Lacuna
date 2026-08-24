@@ -24,6 +24,7 @@ async function reset() {
     db.userPerformance.clear(),
     db.sessionHistory.clear(),
     db.sequences.clear(),
+    db.concepts.clear(),
   ]);
 }
 
@@ -38,7 +39,12 @@ describe('createSequence', () => {
     const course = await createCourse('Chemistry');
     const lesson = await createLesson(course.id, 'Groups');
 
-    const sequence = await createSequence(course.id, lesson.id, 'Alkali metals', items('Li', 'Na', 'K'));
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'Alkali metals',
+      items('Li', 'Na', 'K'),
+    );
 
     expect(await db.sequences.get(sequence.id)).toEqual(sequence);
     const cards = await cardsForSequence(sequence);
@@ -69,6 +75,12 @@ describe('createSequence', () => {
     expect(cards).toHaveLength(4);
     expect(cards.some((c) => c.sequenceItemId === `item-0${LABEL_CARD_SUFFIX}`)).toBe(true);
     expect(cards.some((c) => c.sequenceItemId === `item-1${LABEL_CARD_SUFFIX}`)).toBe(true);
+    const firstItemCards = cards.filter((card) => card.sequenceItemId?.startsWith('item-0'));
+    expect(new Set(firstItemCards.map((card) => card.conceptId)).size).toBe(1);
+    expect(await db.concepts.get(firstItemCards[0].conceptId)).toMatchObject({
+      courseId: course.id,
+      provisional: false,
+    });
   });
 
   it('falls back to "Untitled sequence" for a blank name', async () => {
@@ -131,7 +143,7 @@ describe('updateSequence', () => {
     expect(oldCards).toHaveLength(0);
   });
 
-  it('switching mySpeaker on a lines-mode sequence deletes the old speaker\'s cards and creates the new speaker\'s', async () => {
+  it("switching mySpeaker on a lines-mode sequence deletes the old speaker's cards and creates the new speaker's", async () => {
     const course = await createCourse('Drama');
     const scriptItems: SequenceItem[] = [
       { id: 'l1', value: 'Hello there.', speaker: 'BOB' },
@@ -188,17 +200,52 @@ describe('updateSequence', () => {
     expect(reloaded!.lastReviewed).toBe(100000);
   });
 
-  it('keeps each card\'s FSRS state and back exact across a genuine multi-item reorder', async () => {
+  it("keeps each card's FSRS state and back exact across a genuine multi-item reorder", async () => {
     const course = await createCourse('Chemistry');
     const sequence = await createSequence(course.id, null, 'Halogens', items('F', 'Cl', 'Br'));
     const cards = await cardsForSequence(sequence);
 
     // Give each card distinctive, non-default scheduling state so a mix-up between
     // cards (not just a reset to defaults) would be caught.
-    const stateByItem: Record<string, { state: FsrsCardState; stability: number; difficulty: number; reps: number; lapses: number; due: number; lastReviewed: number }> = {
-      'item-0': { state: 2, stability: 12.5, difficulty: 4.2, reps: 3, lapses: 1, due: 111, lastReviewed: 100 },
-      'item-1': { state: 3, stability: 30.1, difficulty: 6.7, reps: 5, lapses: 2, due: 222, lastReviewed: 200 },
-      'item-2': { state: 1, stability: 1.9, difficulty: 3.3, reps: 1, lapses: 0, due: 333, lastReviewed: 300 },
+    const stateByItem: Record<
+      string,
+      {
+        state: FsrsCardState;
+        stability: number;
+        difficulty: number;
+        reps: number;
+        lapses: number;
+        due: number;
+        lastReviewed: number;
+      }
+    > = {
+      'item-0': {
+        state: 2,
+        stability: 12.5,
+        difficulty: 4.2,
+        reps: 3,
+        lapses: 1,
+        due: 111,
+        lastReviewed: 100,
+      },
+      'item-1': {
+        state: 3,
+        stability: 30.1,
+        difficulty: 6.7,
+        reps: 5,
+        lapses: 2,
+        due: 222,
+        lastReviewed: 200,
+      },
+      'item-2': {
+        state: 1,
+        stability: 1.9,
+        difficulty: 3.3,
+        reps: 1,
+        lapses: 0,
+        due: 333,
+        lastReviewed: 300,
+      },
     };
     for (const card of cards) {
       await db.cards.update(card.id, stateByItem[card.sequenceItemId!]);

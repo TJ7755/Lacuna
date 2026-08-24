@@ -6,6 +6,7 @@ import type { Card } from '../db/types';
 function cardWith(timestamps: number[]): Card {
   return {
     id: 'c',
+    conceptId: 'concept-c',
     deckId: 'd',
     schedulingUnitId: 'd',
     type: 'front_back',
