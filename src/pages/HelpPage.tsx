@@ -35,6 +35,7 @@ const HELP_SECTIONS = [
   { id: 'touch-gestures', label: 'Touch gestures' },
   { id: 'progress', label: 'Progress & scheduling' },
   { id: 'card-types', label: 'Card types' },
+  { id: 'questions', label: 'Questions' },
   { id: 'sequences', label: 'Sequences' },
   { id: 'occlusions', label: 'Diagrams' },
   { id: 'tips', label: 'Tips & best practice' },
@@ -253,7 +254,8 @@ export function HelpPage() {
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
                   <li>
                     <strong className="text-ink">Checkpoints:</strong> markers for exam dates you
-                    have set on the course. They are informational only and never block progress.
+                    have set on the course. Open one to inspect its scope and start an assessment
+                    revision plan. Checkpoints never block course progress.
                   </li>
                   <li>
                     <strong className="text-ink">Practice sessions:</strong> nodes that gather up
@@ -270,7 +272,7 @@ export function HelpPage() {
                   edit them directly on the lesson page. Add further lessons from the course path,
                   from course settings under Lessons, or from a single-lesson course view. Cards are
                   the flashcards you actually get quizzed on; create them from the lesson page or
-                  generate them from a note.
+                  the course&apos;s Cards tab.
                 </p>
               </div>
               <div className="rounded-xl border border-line bg-surface-raised p-5">
@@ -679,6 +681,48 @@ export function HelpPage() {
                 <p className="text-sm text-ink-soft">
                   Generated from a labelled diagram: the labels are covered and one is ringed for
                   you to recall. See Diagrams below.
+                </p>
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: 'questions',
+        label: 'Questions',
+        icon: <InfoIcon width={20} height={20} />,
+        content: (
+          <div className="space-y-4">
+            <p className="text-base text-ink-soft">
+              Questions are post-instruction application problems, kept separate from direct-recall
+              Cards. Open a course&apos;s Questions tab to author or practise them; they do not
+              appear in lesson Card study, Practice nodes, assessment revision or the course path.
+            </p>
+            <div className="space-y-3">
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Fixed and generated Questions</h3>
+                <p className="text-sm text-ink-soft">
+                  A fixed Question always presents the authored problem. A generated family creates
+                  deterministic variants from one built-in configuration. Every Question names one
+                  Primary skill practised and may name prerequisite Concepts.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Practice and marking</h3>
+                <p className="text-sm text-ink-soft">
+                  Practise 10 serves due Questions first, then unseen Questions where space remains;
+                  All due serves every eligible Question currently due. Lacuna marks numeric and
+                  structured working answers automatically. Full marks schedule as Good, incomplete
+                  answers as Again, and uncertain or disputed results do not change the schedule.
+                </p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-raised p-5">
+                <h3 className="mb-2 font-medium text-ink">Attempts and feedback</h3>
+                <p className="text-sm text-ink-soft">
+                  Each presentation records its exact problem before display. Your first submission
+                  is preserved, worked feedback is always shown, and an optional correction is
+                  stored separately. Undo excludes the Attempt from scheduling without deleting its
+                  receipt. Question evidence never changes Card schedules or Card analytics.
                 </p>
               </div>
             </div>

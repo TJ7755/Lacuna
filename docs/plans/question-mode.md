@@ -41,11 +41,11 @@ The root [domain glossary](../../CONTEXT.md) is authoritative. In this feature:
 
 | Term                     | Meaning                                                                                                                               |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| **Concept**              | A stable course-scoped identity for one piece of knowledge.                                                                           |
+| **Concept**              | A stable identity for one piece of knowledge. New Concepts are course-scoped; legacy scheduling-unit Concepts are compatibility-only. |
 | **Card**                 | A direct-recall presentation of one Concept. Existing front/back, reversed, cloze, sequence and occlusion presentations remain Cards. |
 | **Question**             | A fixed authored application problem with its own schedule.                                                                           |
 | **Question family**      | A built-in generator configuration whose resolved variants share one Question schedule.                                               |
-| **Attempt**              | An immutable receipt for one shown fixed Question or resolved family variant.                                                         |
+| **Attempt**              | Lifecycle evidence for one presentation. Its receipt, first submission and optional correction are separately immutable.              |
 | **Primary Concept**      | The one Concept the Question is intended to practise. The UI calls it the **Primary skill practised**.                                |
 | **Prerequisite Concept** | A Concept needed to solve the Question but not independently diagnosed by its result.                                                 |
 
@@ -178,9 +178,10 @@ The Questions tab lives at `/course/:courseId/questions`; authoring uses
 
 The default practice session contains at most ten Questions:
 
-1. due Questions and families first, ordered by due time;
+1. due Questions and families first, initially ranked by due time;
 2. unseen fixed Questions before unseen generated families;
-3. target Concepts interleaved when another target is available; and
+3. target Concepts interleaved within those groups when another target is available, preserving
+   relative rank within each target; and
 4. suspended Questions excluded.
 
 **All due** selects the complete due pool. Interleaving is a local selection heuristic, not a claim
@@ -217,10 +218,11 @@ No Card objective, predicted exam score or Card calibration metric includes Ques
 ## Persistence and portability
 
 Schema v24 adds `concepts`, `questions`, `questionConcepts` and `questionAttempts`, and assigns every
-surviving Card a Concept. Known legacy numeric and working Cards migrate to fixed Questions through
-a pure deterministic converter. Their available historical evidence becomes Question Attempts;
-unsupported or distribution-protected payloads remain compatible Cards rather than being guessed
-through a lossy conversion. The destructive migration requires a pre-migration restore point.
+surviving Card a Concept. Eligible legacy numeric and working Cards with a Course and usable prompt
+migrate to fixed Questions through a pure deterministic converter. Their available historical
+evidence becomes Question Attempts; course-less, malformed, unsupported or
+distribution-protected records remain compatible Cards rather than being guessed through a lossy
+conversion. The destructive migration requires a pre-migration restore point.
 
 Full-backup format v11 requires all four Question collections. Older backups are normalised through
 the same pure v24 conversion before replace or recover-merge. Replace restores the Question tables;

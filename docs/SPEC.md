@@ -589,8 +589,8 @@ modes resolved by `src/course/lessonViewMode.ts`:
   (`src/components/notes/`) and `LessonCardsSection` (`src/components/cards/`) so the page
   component stays a thin layout/data shell. Path authoring chrome — Add lesson, Manual
   practice, the practice-node pencil, and inline course/lesson rename — is also gated on
-  `isLessonAuthoringMode` and is absent in Read mode. Settings, the Question Bank,
-  Analytics and the command palette are not.
+  `isLessonAuthoringMode` and is absent in Read mode. Settings, Cards, Questions, Analytics and the
+  command palette are not.
 
 Every course carries its own explicit `Course.lessonViewMode` (`src/db/types.ts`) — no more
 site-wide default. It is set directly via a compact Read/Edit segmented control
@@ -744,12 +744,14 @@ one stable `conceptId`. Question contracts live in `src/questions/types.ts`; the
 terms and rationale are defined in
 [`CONTEXT.md`](../CONTEXT.md) and [`docs/plans/question-mode.md`](plans/question-mode.md).
 
-A `Concept` is a stable course-scoped knowledge identity. A Card presents one Concept for direct
-recall. Every fixed Question or generated Question family has exactly one primary Concept and zero
-or more prerequisite Concepts; the repository rejects missing, duplicate, dual-role and cross-Course
-relationships. A Question result never writes Card history or scheduling, and Card evidence never
-writes Question state. Card readiness and Question performance therefore remain separate rather
-than pretending that transfer evidence is identical to direct-recall evidence
+A `Concept` is a stable knowledge identity. New Concepts are course-scoped; migrated Cards outside
+a Course retain compatibility-only Concepts scoped to their legacy scheduling unit, which Questions
+cannot target. A Card presents one Concept for direct recall. Every fixed Question or generated
+Question family has exactly one primary Concept and zero or more prerequisite Concepts; the
+repository rejects missing, duplicate, dual-role and cross-Course relationships. A Question result
+never writes Card history or scheduling, and Card evidence never writes Question state. Card
+readiness and Question performance therefore remain separate rather than pretending that transfer
+evidence is identical to direct-recall evidence
 ([Pan and Rickard, 2018](https://pubmed.ncbi.nlm.nih.gov/29733621/)).
 
 A fixed Question stores a Markdown prompt, deterministic numeric or compiled working payload and a
@@ -769,10 +771,12 @@ changes produce no new schedule evidence. Semantic edits start a new scheduling 
 the current Question schedule by replaying eligible Attempts.
 ([official FSRS tutorial](https://github.com/open-spaced-repetition/fsrs4anki/blob/main/docs/tutorial.md?plain=1))
 
-Known legacy numeric and working Cards migrate through a pure deterministic converter. The
-conversion preserves available historical evidence as Question Attempts and avoids double-counting
-one old event as both a Card review and a Question answer. The v24 migration is destructive in
-meaning and therefore requires the existing pre-migration restore point.
+Eligible legacy numeric and working Cards with a Course and usable prompt migrate through a pure
+deterministic converter. The conversion preserves available historical evidence as Question
+Attempts and avoids double-counting one old event as both a Card review and a Question answer.
+Course-less, malformed, unsupported or distribution-protected records remain Cards rather than
+being guessed through a lossy conversion. The v24 migration is destructive in meaning and therefore
+requires the existing pre-migration restore point.
 
 ### Sequences — overlapping-cloze sequence learning (schema v11)
 
@@ -997,9 +1001,10 @@ history[], createdAt`
 - `conceptId` names the stable Concept this direct-recall presentation belongs to. Alternate Card
   presentations may share a Concept while keeping independent Card schedules.
 - `payload` is a compatibility boundary for structured Cards that could not be converted during the
-  v24 migration, including records protected by unresolved distribution state. New numeric and
-  working content is authored as Questions, not Cards. Recognised legacy payloads remain readable;
-  unsupported versions do not gain a grading path by accident.
+  v24 migration, including course-less records, blank or malformed prompts, unsupported payloads
+  and records protected by unresolved distribution state. New numeric and working content is
+  authored as Questions, not Cards. Recognised legacy payloads remain readable; unsupported
+  versions do not gain a grading path by accident.
 - `tags` remain free-form strings. Specification-point provenance uses the manual `spec:3.4.1`
   convention; there is no separate specification-point model or batch-generation field.
 - `stability` (days; the interval at which R = 0.90), `difficulty` (in [1,10]),
@@ -1512,7 +1517,8 @@ each take one constant expression, so a multi-variable solution is written as on
 variable rather than as `x=6,y=4`. Lacuna sends no data to a model and stores no API key; the
 conversation remains in the tutor's chosen chatbot.
 
-The entry action is labelled **Build external batch prompt**, since Lacuna does not call a model.
+The entry action is labelled **Build batch prompt**. The dialog explains that Lacuna does not call a
+model and that the conversation remains in the tutor's chosen external chatbot.
 Closing after entering source text, pasting a reply, or staging candidates requires an explicit
 **Discard batch** confirmation. The batch dialog's review step parses the versioned delimiter block and validates each
 item independently. A block closed by a mirrored `<<<LACUNA_ITEMS_V1>>>` instead of

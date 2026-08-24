@@ -536,7 +536,7 @@ Limits are 5,000 rows and 500,000 characters. The standard card-list importer do
 
 1. Enter select mode.
 2. Select ordinary unlinked cards, or Select all/Deselect all.
-3. Apply Tag add/remove, Suspend, Resume, Bury until tomorrow, Reschedule, Move to another deck, Assign to lesson, or Delete.
+3. Apply Tag add/remove, Suspend, Resume, Bury until tomorrow, Reschedule, Assign to lesson, or Delete.
 4. Complete the operation and use the Undo toast where offered.
 5. Choose Done to leave select mode.
 
@@ -577,7 +577,7 @@ fixed Question into a generated family or vice versa.
 
 ### Create a batch prompt
 
-1. Choose Build external batch prompt from Questions.
+1. Choose Build batch prompt from Questions.
 2. Enter lesson notes, topic, and level.
 3. Optionally set a maximum; every proposed Question must name exactly one primary target Concept
    and may name prerequisites.
@@ -952,6 +952,7 @@ Help is a hash-linkable documentation page covering:
 - Touch gestures.
 - Progress and scheduling.
 - Card types.
+- Questions.
 - Sequences.
 - Diagrams.
 - Tips.
@@ -1041,7 +1042,6 @@ It links back to the dashboard, welcome page, and help. It is explanatory, not a
 - There is no user-facing Add final exam flow.
 - Manual practice nodes have no UI for the stored card-filter model.
 - Global export and Share export overlap while exposing different formats.
-- Help contains stale location and terminology claims.
 - Course settings commit on change or blur with no Save changes action, while other authoring surfaces train the user to look for Save.
 - Occlusion editing permits unpaired features with an optional typed answer, but the consequences of that choice are not made clear.
 - There is no direct one-click Delete all local data action; deletion is per-course or part of a replace/restore operation.
