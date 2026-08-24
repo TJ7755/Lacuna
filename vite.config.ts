@@ -44,10 +44,10 @@ export default defineConfig({
           },
           {
             urlPattern: /^.*\.wasm$/i,
-            handler: 'CacheFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'wasm-cache',
-              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

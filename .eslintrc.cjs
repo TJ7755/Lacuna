@@ -35,7 +35,7 @@ module.exports = {
       { argsIgnorePattern: '^_', ignoreRestSiblings: true },
     ],
     '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
-    '@typescript-eslint/consistent-type-imports': 'warn',
+    '@typescript-eslint/consistent-type-imports': 'error',
     'no-console': ['warn', { allow: ['error'] }],
   },
   ignorePatterns: ['dist/', 'node_modules/'],

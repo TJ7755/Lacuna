@@ -1,4 +1,4 @@
-import { app, BrowserWindow, session, protocol, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, session, protocol, ipcMain, screen, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -93,6 +93,14 @@ function ensureWindowVisible(state: WindowState): WindowState {
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
 ]);
+
+/** Deny all permission requests by default (geolocation, media, etc.). */
+function installPermissionHandlers(): void {
+  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false);
+  });
+  session.defaultSession.setPermissionCheckHandler(() => false);
+}
 
 /** Inject security headers required for SharedArrayBuffer (WASM) and CSP. */
 function installSecurityHeaders(): void {
@@ -200,6 +208,19 @@ function createWindow(): void {
       nodeIntegration: false,
       sandbox: true,
     },
+  });
+
+  // Security: prevent new windows and external navigation; open externally instead.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    void shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const isAllowed = url.startsWith('app://') || (isDev && url.startsWith(VITE_DEV_URL));
+    if (!isAllowed) {
+      event.preventDefault();
+      void shell.openExternal(url);
+    }
   });
 
   if (savedState.maximized) {
@@ -323,6 +344,7 @@ if (isMcpCompanionProcess) {
 
   void app.whenReady().then(async () => {
     installSecurityHeaders();
+    installPermissionHandlers();
 
     if (!isDev) {
       registerAppProtocol();

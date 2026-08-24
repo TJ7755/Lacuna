@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LazyMotion, domAnimation } from 'motion/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as ReactRouterDom from 'react-router-dom';
 import type { Course } from '../../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
 import { StudySheet } from './StudySheet';
@@ -18,7 +19,7 @@ const mockFlows: Record<
 > = {};
 
 vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
   return { ...actual, useNavigate: () => mockNavigate };
 });
 

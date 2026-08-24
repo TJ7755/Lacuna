@@ -1,5 +1,34 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — Full audit 2026-08-24: code, quality, accuracy and science
+
+Six concurrent audit streams examined scheduling science, grading accuracy, analytics, code quality, security/privacy/deployment, data integrity/sync and UX/accessibility against `docs/lacuna-objective-audit.html`, `docs/lacuna-interrogation-report.html` and `docs/code-quality-remediation-plan.html`. The fixes below address the highest-severity open items; remaining ranked remediation is archived in `.agent-mail/` and `docs/next_plan.md` for follow-up. This is a behaviour-preserving maintenance arc except where noted.
+
+- **Electron security hardening** at `electron/main.ts:1,98,213`. Added `shell.openExternal` gating for `setWindowOpenHandler` (denies new windows, opens externally) and `will-navigate` (allows only `app://` and in dev `http://localhost:5173`), plus `session.defaultSession` permission handlers denying `geolocation`, `media`, `notifications` etc. Prevents markdown links hijacking navigation or spawning windows with default webPreferences.
+- **APKG zip-bomb guard** at `src/db/apkgImport.ts:100,114,164` (`MAX_APKG_SIZE_BYTES 50 MB`, `MAX_APKG_UNCOMPRESSED_BYTES 100 MB`, `MAX_APKG_FILE_COUNT 5000`). Rejects oversized files before `arrayBuffer()`/`unzipSync` allocation; six new tests in `src/db/apkgImport.test.ts:231` cover empty, file-size, buffer-size, file-count and uncompressed-size paths, mocking `fflate.unzipSync`.
+- **Persistent storage auto-request** at `src/App.tsx:361`. `openDatabase` success now fire-and-forgets `requestPersistentStorage()` (`src/db/persistence.ts:43`) every launch (idempotent, guarded by `hasStorageApi()`/`persisted()`), so the web build does not stay silently evictable after install. Previously the call was gated behind `localStorage` once or never called, contradicting the audit's durability finding.
+- **Lint gate restored** at `.eslintrc.cjs:38` (`warn` → `error` for `@typescript-eslint/consistent-type-imports`) and four sites fixed at `src/components/learn/StudySheet.test.tsx:5`, `src/pages/settings/DataPortabilitySection.test.tsx:5`, `src/sync/cycle.test.ts:3`, `src/sync/manualMerge.test.ts:4` (`typeof import()` → `import type` + `typeof Module`). `bun run lint` now passes with 0 warnings; `bun run typecheck` still passes.
+- **Command palette accessibility** at `src/components/search/CommandPalette.tsx:172,188,221,243` (combobox `aria-controls`/`aria-expanded`/`aria-activedescendant`, `listbox`/`option`/`aria-selected`, `sr-only` polite live region). Three new tests in `src/components/search/CommandPalette.test.tsx:150` assert roles and active-descendant updates.
+- **DateTimePicker focus trap and touch targets** at `src/components/ui/DateTimePicker.tsx:6,133,571,683,735,787` (uses `useFocusTrap` with `aria-modal="true"` and dual-ref assignment; day cells `h-9 w-9` → `h-11 w-11` = 44px; month/year pills add `min-h-11`). Fixes the missing focus trap and WCAG 2.5.5 violation flagged in the UX audit.
+- **WASM caching** at `vite.config.ts:46` (`CacheFirst` 365d → `StaleWhileRevalidate` 30d for `*.wasm`). Prevents a year-long stale trainer/DB WASM remaining after an update; release tests still cover the updated config.
+- **Remaining ranked items deferred** (not in this slice): gate response-time pool by card kind and wire/delete `selfCorrected` (grading `Hard` dead), add APKG duplicate via `checkDuplicatesBatch`, wire `persist()` banner, pin `ts-fsrs` exact, move `requestRetention` behind Advanced, provenance-gate `allowEmbeds`, ship header CSP via `vercel.json`/`_headers`, ETag `X-Forwarded-For` trust note, and the `securedTopics` band-misclassification metric. Sites and evidence retained from the six subagent reports.
+
+## Unreleased — SPEC staleness fix (half-life model and EPSILON)
+
+- `docs/SPEC.md` now names the frozen routed model `half-life-logistic-v3-routed` (coefficients
+  unchanged from v1) instead of the stale `half-life-logistic-v1` / `half-life-logistic-v1-lag64-count8`
+  at `docs/SPEC.md:531`, `1038` and `1303`. Each site now documents the routed handover:
+  success/no-outcome/first-review 21,600→86,400 s (6 h→24 h), failure 345,600→432,000 s (96 h→120 h),
+  FSRS-6 only from 604,800 s (7 days), per `src/fsrs/halfLifeLogisticModel.ts:27` and
+  `tooling/short-term-memory/coefficients/half-life-logistic-v3.json:53`. A note records that v1
+  passed the initial gate but failed multi-day transfer and was conservatively retreated per
+  `ROUTING_DECISION_RULE.md` / `tooling/short-term-memory/BENCHMARK.md`, and that the no-regression
+  gate passes only against the fractional-day FSRS-6 the runtime uses (floored FSRS-6 is stronger by
+  ~0.001–0.003 at 2–7 d).
+- `docs/SPEC.md:1119` `EXPECTED_MARKS_EPSILON` corrected from `1e-3` to `5e-3` to match
+  `src/fsrs/objective.ts:35`.
+- Verified `docs/scientific-assessment.md` needs no change (already correct).
+
 ## Unreleased — Sync remembers this device
 
 - Pairing, joining and every successful passphrase unlock now persist the unwrapped channel key

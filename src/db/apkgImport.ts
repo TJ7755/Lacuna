@@ -97,6 +97,10 @@ interface AnkiDeck {
 // Core parser
 // ---------------------------------------------------------------------------
 
+export const MAX_APKG_SIZE_BYTES = 50 * 1024 * 1024;
+export const MAX_APKG_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
+export const MAX_APKG_FILE_COUNT = 5000;
+
 /**
  * Parse an Anki .apkg file into a Lacuna import payload.
  *
@@ -108,7 +112,19 @@ export async function parseApkg(
   file: File,
   options: ApkgParseOptions = {},
 ): Promise<ApkgImportResult> {
+  if (file.size === 0) {
+    throw new Error('APKG is empty.');
+  }
+  if (file.size > MAX_APKG_SIZE_BYTES) {
+    throw new Error(`APKG too large: ${file.size} bytes (max 50 MB)`);
+  }
   const buffer = await file.arrayBuffer();
+  if (buffer.byteLength === 0) {
+    throw new Error('APKG is empty.');
+  }
+  if (buffer.byteLength > MAX_APKG_SIZE_BYTES) {
+    throw new Error(`APKG too large: ${buffer.byteLength} bytes (max 50 MB)`);
+  }
   const wasmUrl =
     typeof location === 'undefined'
       ? '/sql-wasm.wasm'
@@ -148,7 +164,26 @@ export async function parseApkgBuffer(
   options: ApkgParseOptions = {},
   wasmUrl = '/sql-wasm.wasm',
 ): Promise<ApkgImportResult> {
+  if (buffer.byteLength === 0) {
+    throw new Error('APKG is empty.');
+  }
+  if (buffer.byteLength > MAX_APKG_SIZE_BYTES) {
+    throw new Error(`APKG too large: ${buffer.byteLength} bytes (max 50 MB)`);
+  }
   const zip = unzipSync(new Uint8Array(buffer));
+  const fileCount = Object.keys(zip).length;
+  if (fileCount > MAX_APKG_FILE_COUNT) {
+    throw new Error(`APKG contains too many files: ${fileCount} (max ${MAX_APKG_FILE_COUNT})`);
+  }
+  let totalUncompressed = 0;
+  for (const bytes of Object.values(zip)) {
+    totalUncompressed += bytes.byteLength;
+    if (totalUncompressed > MAX_APKG_UNCOMPRESSED_BYTES) {
+      throw new Error(
+        `APKG uncompressed size too large: ${totalUncompressed} bytes (max 100 MB)`,
+      );
+    }
+  }
 
   // Read media mapping JSON.
   const mediaMap = readMediaMap(zip);

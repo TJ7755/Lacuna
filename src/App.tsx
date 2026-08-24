@@ -358,17 +358,12 @@ export function App() {
           return;
         }
 
-        // Request persistent storage once on first run so the browser does not
-        // silently evict IndexedDB data under storage pressure.
-        try {
-          if (!localStorage.getItem('lacuna-persist-requested')) {
-            await requestPersistentStorage();
-            localStorage.setItem('lacuna-persist-requested', '1');
-          }
-        } catch {
-          // localStorage may be unavailable in private browsing or with storage
-          // restrictions; the app should still initialise without persistence.
-        }
+        // Request persistent storage so the browser does not silently evict
+        // IndexedDB data under storage pressure. Fire-and-forget: never blocks
+        // startup. `hasStorageApi()` inside guards unsupported environments
+        // (e.g. private browsing) and the `persisted()` check makes the call
+        // idempotent on every launch.
+        void requestPersistentStorage().catch(() => {});
 
         // One-shot migration: the site-wide "open lessons in edit mode" default
         // (formerly in Settings) has been removed in favour of a per-course

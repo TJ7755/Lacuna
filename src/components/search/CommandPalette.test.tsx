@@ -147,4 +147,93 @@ describe('CommandPalette', () => {
 
     expect(screen.getByText('Occlusion')).toBeInTheDocument();
   });
+
+  it('exposes combobox accessibility attributes on the input', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+
+    const input = screen.getByPlaceholderText(/search courses/i);
+    expect(input).toHaveAttribute('role', 'combobox');
+    expect(input).toHaveAttribute('aria-controls', 'palette-listbox');
+    expect(input).toHaveAttribute('aria-autocomplete', 'list');
+    // No results yet (empty query) -> collapsed and no active descendant
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(input).not.toHaveAttribute('aria-activedescendant');
+
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+    // After search, listbox appears, expanded true, active descendant points to first option
+    expect(input).toHaveAttribute('aria-expanded', 'true');
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-option-0');
+
+    const listbox = await screen.findByRole('listbox');
+    expect(listbox).toHaveAttribute('id', 'palette-listbox');
+
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(1);
+    expect(options[0]).toHaveAttribute('id', 'palette-option-0');
+    expect(options[0]).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('updates aria-activedescendant and aria-selected on keyboard navigation', async () => {
+    const secondCard: Card = { ...mockCard, id: 'card-2', front: 'Palatine second' };
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard, secondCard],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+
+    const input = screen.getByPlaceholderText(/search courses/i);
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+
+    const options = await screen.findAllByRole('option');
+    expect(options).toHaveLength(2);
+    expect(options[0]).toHaveAttribute('aria-selected', 'true');
+    expect(options[1]).toHaveAttribute('aria-selected', 'false');
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-option-0');
+
+    // ArrowDown moves active to index 1
+    fireEvent.keyDown(input.closest('[class*="relative"]') as Element, { key: 'ArrowDown' });
+    // onKeyDown is on the motion.div wrapper, but event bubbles; trigger on input via keyboard
+    // Re-fire on the container that has handler — the wrapper div containing input
+    const wrapper = document.querySelector('[class*="relative w-full max-w-xl"]')!;
+    fireEvent.keyDown(wrapper, { key: 'ArrowDown' });
+
+    // After navigation, second option selected
+    const updatedOptions = screen.getAllByRole('option');
+    expect(input).toHaveAttribute('aria-activedescendant', 'palette-option-1');
+    expect(updatedOptions[0]).toHaveAttribute('aria-selected', 'false');
+    expect(updatedOptions[1]).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('announces result count in a polite live region', () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+
+    const liveRegion = document.querySelector('[aria-live="polite"].sr-only');
+    expect(liveRegion).toBeInTheDocument();
+    expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
+    expect(liveRegion?.textContent).toMatch(/Type to search/);
+
+    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+      target: { value: 'Palatine' },
+    });
+    expect(liveRegion?.textContent).toMatch(/1 result available/);
+
+    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+      target: { value: 'missing' },
+    });
+    expect(liveRegion?.textContent).toMatch(/No results for missing/);
+  });
 });

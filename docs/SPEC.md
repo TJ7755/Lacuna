@@ -528,10 +528,16 @@ calendar day through the deadline; individual scheduled days can then be edited 
 The plan persists windows rather than card queues, so later allocation can rebuild priorities
 from current evidence. Coverage, deadline, time-zone, model-version, reached/exposed/available
 scope and review-evidence changes produce deterministic, explained replans. An active window
-keeps its captured revision; triggers wait until it closes. `half-life-logistic-v1` passed the
-offline benchmark gate and owns short-horizon allocation through the model boundary. The persisted
-projection records its coefficient-derived version; invalid model data records the typed FSRS-6
-ordinary-Practice fallback instead of invented confidence.
+keeps its captured revision; triggers wait until it closes. `half-life-logistic-v3-routed` (frozen
+coefficients unchanged from v1; routed handover: success/no-outcome/first-review 21,600→86,400 s
+[6 h→24 h], failure 345,600→432,000 s [96 h→120 h], FSRS-6 only from 604,800 s [7 days]) owns
+short-horizon allocation through the model boundary — v1 (`half-life-logistic-v1` /
+`half-life-logistic-v1-lag64-count8`) passed the initial gate but failed multi-day transfer on two
+independent cohorts and was conservatively retreated per `ROUTING_DECISION_RULE.md` and
+`tooling/short-term-memory/BENCHMARK.md`; the no-regression gate passes only against the fractional-day
+FSRS-6 reference the runtime actually uses (the floored FSRS-6 reference is stronger by ~0.001–0.003
+at 2–7 d). The persisted projection records its coefficient-derived version; invalid model data
+records the typed FSRS-6 ordinary-Practice fallback instead of invented confidence.
 
 **Review due cards** is a separate ad-hoc course-wide choice inside the conductor. It creates no
 path node or milestone, may be launched whenever eligible, and returns to the same conductor
@@ -1035,7 +1041,11 @@ default); difficulty bounds `[1, 10]`; `MASTERY_R = 0.90`; `MS_PER_DAY = 86_400_
 `ts-fsrs` exposes — not because it is the newest FSRS in existence (FSRS-7 exists). Copy
 and comments are pinned to "the version ts-fsrs ships", not to "the newest". Also, FSRS
 has **no short-term memory model** of its own. Lacuna composes the benchmark-selected
-`half-life-logistic-v1` predictor with FSRS-6 for assessment revision (§10); FSRS still owns every
+`half-life-logistic-v3-routed` predictor (routed handover: success/no-outcome/first-review
+21,600→86,400 s [6 h→24 h], failure 345,600→432,000 s [96 h→120 h], FSRS-6 only from 604,800 s
+[7 days]; frozen coefficients unchanged from v1, which failed multi-day transfer and was
+conservatively retreated — no-regression gate passes only against the fractional-day FSRS-6 the
+runtime uses) with FSRS-6 for assessment revision (§10); FSRS still owns every
 real long-term state transition. Invalid model data falls back explicitly to ordinary Practice and
 the UI makes no short-horizon confidence claim in fallback.
 
@@ -1116,7 +1126,7 @@ and the progress-bar value are derived, so they can never disagree.
 
 - `securedTopics`: every card is at or above 0.90 (`masteryFraction >= 1`).
 - `expectedMarks`: no card offers a meaningful further gain —
-  `max(DR) < EXPECTED_MARKS_EPSILON (1e-3)`.
+  `max(DR) < EXPECTED_MARKS_EPSILON (5e-3)`.
 
 Helper copy (`progressNoun`, `progressHeading`) phrases the same
 number appropriately ("predicted score" vs "secured").
@@ -1300,9 +1310,14 @@ produce deterministic, explained replans. An active window retains its captured 
 completion. Passed assessments archive their plan read-only and ordinary per-card horizon
 resolution moves on to the next applicable assessment.
 
-The runtime uses the frozen `half-life-logistic-v1-lag64-count8` global fit for exact-second
-prediction through six days, then smoothsteps its probability into ordinary FSRS-6 through day
-seven. The probabilities are blended rather than added, and every simulated outcome receives
+The runtime uses the frozen `half-life-logistic-v3-routed` global fit (coefficients unchanged from
+v1; `tooling/short-term-memory/coefficients/half-life-logistic-v3.json`) for exact-second prediction
+with a routed smoothstep handover — success/no-outcome/first-review 21,600→86,400 s [6 h→24 h],
+failure 345,600→432,000 s [96 h→120 h], FSRS-6 only from 604,800 s [7 days] — the probabilities are
+blended (not added) and v1 (`half-life-logistic-v1` / `half-life-logistic-v1-lag64-count8`) was
+retreated after failing multi-day transfer; the no-regression gate passes only against the
+fractional-day FSRS-6 the runtime uses (floored FSRS-6 is ~0.001–0.003 stronger at 2–7 d). Every
+simulated outcome receives
 exactly one normal FSRS transition. Successful branches currently use the scheduler's established
 deterministic Good convention. Personal terms remain global below 500 scored examples; supported
 local intercept and preceding-outcome fits use weight `n / (n + 1000)`. Missing, corrupt or

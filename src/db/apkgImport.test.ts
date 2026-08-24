@@ -1,11 +1,29 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('fflate', async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  const actual = (await importOriginal()) as typeof import('fflate');
+  return {
+    ...actual,
+    unzipSync: vi.fn((...args: Parameters<typeof actual.unzipSync>) => actual.unzipSync(...args)),
+  };
+});
 import type { Card } from './types';
 import { db } from './schema';
-import { importApkgResult, type ApkgImportResult } from './apkgImport';
+import {
+  importApkgResult,
+  parseApkg,
+  parseApkgBuffer,
+  MAX_APKG_FILE_COUNT,
+  MAX_APKG_SIZE_BYTES,
+  MAX_APKG_UNCOMPRESSED_BYTES,
+  type ApkgImportResult,
+} from './apkgImport';
 import { MAX_AUDIO_BYTES } from './assets';
 import { createCourse, createLesson } from './repository';
 import { reviewHistoryEntryId } from './reviewHistory';
+import * as fflate from 'fflate';
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -208,5 +226,69 @@ describe('importApkgResult', () => {
       `See ![diagram](lacuna-asset://${image!.hash}) and ![audio](lacuna-asset://${audio!.hash})`,
     );
     expect(await db.cards.get(card.id)).toEqual(card);
+  });
+});
+
+describe('parseApkg zip bomb guards', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('rejects when File.size exceeds 50 MB before allocating', async () => {
+    let arrayBufferCalled = false;
+    const bigFile = {
+      size: MAX_APKG_SIZE_BYTES + 1,
+      arrayBuffer: async () => {
+        arrayBufferCalled = true;
+        return new ArrayBuffer(10);
+      },
+      name: 'big.apkg',
+    } as unknown as File;
+
+    await expect(parseApkg(bigFile)).rejects.toThrow(
+      `APKG too large: ${MAX_APKG_SIZE_BYTES + 1} bytes (max 50 MB)`,
+    );
+    expect(arrayBufferCalled).toBe(false);
+  });
+
+  it('rejects empty File', async () => {
+    const emptyFile = {
+      size: 0,
+      arrayBuffer: async () => new ArrayBuffer(0),
+      name: 'empty.apkg',
+    } as unknown as File;
+
+    await expect(parseApkg(emptyFile)).rejects.toThrow('APKG is empty.');
+  });
+
+  it('rejects when buffer byteLength exceeds 50 MB', async () => {
+    const buf = new ArrayBuffer(MAX_APKG_SIZE_BYTES + 1);
+    await expect(parseApkgBuffer(buf)).rejects.toThrow(/APKG too large:.*50 MB/);
+  });
+
+  it('rejects empty buffer', async () => {
+    await expect(parseApkgBuffer(new ArrayBuffer(0))).rejects.toThrow('APKG is empty.');
+  });
+
+  it('rejects when zip contains too many files', async () => {
+    const fakeZip = Object.fromEntries(
+      Array.from({ length: MAX_APKG_FILE_COUNT + 1 }, (_, i) => [String(i), new Uint8Array(1)]),
+    ) as unknown as fflate.Unzipped;
+    vi.mocked(fflate.unzipSync).mockReturnValueOnce(fakeZip);
+    const buf = new Uint8Array([0x50, 0x4b, 0x03, 0x04]).buffer as ArrayBuffer;
+
+    await expect(parseApkgBuffer(buf)).rejects.toThrow(/too many files/);
+    expect(fflate.unzipSync).toHaveBeenCalled();
+  });
+
+  it('rejects when uncompressed size exceeds 100 MB', async () => {
+    const fakeLarge = { byteLength: MAX_APKG_UNCOMPRESSED_BYTES + 1 } as unknown as Uint8Array;
+    const fakeZip = { largeFile: fakeLarge } as unknown as fflate.Unzipped;
+    vi.mocked(fflate.unzipSync).mockReturnValueOnce(fakeZip);
+    const buf = new Uint8Array([0x50, 0x4b, 0x03, 0x04]).buffer as ArrayBuffer;
+
+    await expect(parseApkgBuffer(buf)).rejects.toThrow(/uncompressed size too large/);
+    expect(fflate.unzipSync).toHaveBeenCalled();
   });
 });

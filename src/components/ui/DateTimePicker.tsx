@@ -3,6 +3,7 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, CalendarIcon } from './icons';
 import { cn } from './cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { getComponentsInZone, fromDateTimeLocalValue } from '../../utils/datetime';
 
 interface DateTimePickerProps {
@@ -129,6 +130,7 @@ export function DateTimePicker({
   const [hourDraft, setHourDraft] = useState(() => pad(selected.hours));
   const [minuteDraft, setMinuteDraft] = useState(() => pad(selected.minutes));
   const [validationError, setValidationError] = useState<string | null>(null);
+  const trapRef = useFocusTrap(open, { autoFocusSelector: '[tabindex="0"]' });
 
   const reportValidity = useCallback(
     (error: string | null) => {
@@ -569,9 +571,13 @@ export function DateTimePicker({
       <AnimatePresence>
         {open && (
           <motion.div
-            ref={dropdownRef}
+            ref={(node) => {
+              (dropdownRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+              (trapRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+            }}
             role="dialog"
             aria-label="Choose date and time"
+            aria-modal="true"
             data-date-time-picker-popover
             onKeyDown={(event) => {
               if (event.key !== 'Escape') return;
@@ -680,7 +686,7 @@ export function DateTimePicker({
                           onFocus={() => setFocusIndex(i)}
                           onClick={() => selectDay(cell.day, cell.currentMonth)}
                           className={cn(
-                            'relative mx-auto my-0.5 flex h-9 w-9 items-center justify-center rounded-full text-sm outline-none transition-colors',
+                            'relative mx-auto my-0.5 flex h-11 w-11 items-center justify-center rounded-full text-sm outline-none transition-colors',
                             cell.currentMonth ? 'text-ink' : 'text-ink-faint/60',
                             isSelected && 'bg-accent font-medium text-accent-fg hover:bg-accent',
                             !isSelected && isToday && 'ring-1 ring-inset ring-accent/40',
@@ -732,7 +738,7 @@ export function DateTimePicker({
                           onFocus={() => setMonthFocusIndex(i)}
                           onClick={() => selectMonth(i)}
                           className={cn(
-                            'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors',
+                            'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors min-h-11',
                             isSelected
                               ? 'bg-accent text-accent-fg'
                               : isCurrent
@@ -778,7 +784,7 @@ export function DateTimePicker({
                           onFocus={() => setYearFocusIndex(i)}
                           onClick={() => selectYear(i)}
                           className={cn(
-                            'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors',
+                            'rounded-lg px-2 py-2.5 text-xs font-medium transition-colors min-h-11',
                             isSelected
                               ? 'bg-accent text-accent-fg'
                               : isCurrent
