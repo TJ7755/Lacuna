@@ -19,10 +19,17 @@ function invalidZip(reason: string): never {
 function findEocd(view: DataView): number {
   const minimumSize = 22;
   const searchStart = Math.max(0, view.byteLength - minimumSize - UINT16_MAX);
+  let foundTrailingSignature = false;
   for (let offset = view.byteLength - minimumSize; offset >= searchStart; offset--) {
     if (view.getUint32(offset, true) !== EOCD_SIGNATURE) continue;
     const commentLength = view.getUint16(offset + 20, true);
-    if (offset + minimumSize + commentLength === view.byteLength) return offset;
+    if (offset + minimumSize + commentLength === view.byteLength) {
+      if (foundTrailingSignature) {
+        invalidZip('end-of-central-directory record is ambiguous.');
+      }
+      return offset;
+    }
+    foundTrailingSignature = true;
   }
   return invalidZip('end-of-central-directory record is missing or truncated.');
 }

@@ -92,6 +92,20 @@ function addCentralDirectorySignature(zipped: Uint8Array): ArrayBuffer {
   return bytes.buffer;
 }
 
+function addEocdSignatureInsideComment(zipped: Uint8Array): ArrayBuffer {
+  const eocdOffset = findEocd(zipped);
+  const comment = new Uint8Array(26);
+  const commentView = new DataView(comment.buffer);
+  commentView.setUint32(0, 0x06054b50, true);
+  commentView.setUint16(20, 0, true);
+
+  const bytes = new Uint8Array(zipped.byteLength + comment.byteLength);
+  bytes.set(zipped);
+  bytes.set(comment, zipped.byteLength);
+  new DataView(bytes.buffer).setUint16(eocdOffset + 20, comment.byteLength, true);
+  return bytes.buffer;
+}
+
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
     id: 'anki-card',
@@ -398,6 +412,15 @@ describe('parseApkg zip bomb guards', () => {
         maxUncompressedBytes: MAX_APKG_UNCOMPRESSED_BYTES,
       }),
     ).not.toThrow();
+  });
+
+  it('rejects an additional EOCD signature inside the archive comment before inflating', async () => {
+    const buffer = addEocdSignatureInsideComment(
+      fflate.zipSync({ placeholder: new Uint8Array() }),
+    );
+
+    await expect(parseApkgBuffer(buffer)).rejects.toThrow(/ambiguous/i);
+    expect(fflate.unzipSync).not.toHaveBeenCalled();
   });
 
   it.each([
