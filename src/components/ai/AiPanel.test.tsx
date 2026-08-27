@@ -117,6 +117,33 @@ describe('AiPanel', () => {
     expect(session.stop).toHaveBeenCalledWith('run-1');
   });
 
+  it('lets the user clear a connected terminal without hiding Stop or close', async () => {
+    const session = sessionWith({
+      connection: {
+        status: 'connected',
+        connectionId: 'connection-1',
+        client: { name: 'Terminal agent' },
+        lastActivityAt: 1,
+      },
+      activity: {
+        runId: 'run-1',
+        status: 'working',
+        summary: 'Waiting for the terminal',
+        updatedAt: 2,
+      },
+    });
+    const onClose = vi.fn();
+    render(<AiPanel session={session} onClose={onClose} />);
+
+    expect(screen.getByRole('button', { name: 'Stop' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Close AI' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Disconnect terminal' }));
+
+    await waitFor(() => expect(session.resetConnection).toHaveBeenCalledOnce());
+    expect(session.stop).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('explains the boundary of a completed Stop request', () => {
     render(
       <AiPanel

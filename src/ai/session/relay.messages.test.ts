@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { RelayStaleGenerationError } from '../relayClient';
+import { RelayPushOutcomeUnknownError, RelayStaleGenerationError } from '../relayClient';
 import type { JsonValue } from '../protocol';
 import { AI_RELAY_EMPTY_GENERATION, type RelayTerminalMailbox } from '../relayProtocol';
 import { CREATED, relaySessionHarness } from './relay.testHarness';
@@ -78,6 +78,34 @@ describe('relay AI session messages', () => {
       reason: 'The AI connection changed elsewhere. Reconnect the terminal.',
     });
     expect(cancelPolling).toHaveBeenCalledOnce();
+    expect(relay.push).toHaveBeenCalledOnce();
+  });
+
+  it('fails closed when a committed mailbox write returns no usable generation', async () => {
+    const { session, relay, tick, cancelPolling } = relaySessionHarness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    vi.mocked(relay.push).mockRejectedValueOnce(new RelayPushOutcomeUnknownError(200));
+
+    await expect(session.send('Do not retry this committed write.')).resolves.toEqual({
+      ok: false,
+      error: {
+        kind: 'conflict',
+        message: 'The AI connection changed elsewhere. Reconnect the terminal.',
+      },
+    });
+
+    expect(session.getSnapshot().connection).toEqual({
+      status: 'disconnected',
+      reason: 'The AI connection changed elsewhere. Reconnect the terminal.',
+    });
+    expect(cancelPolling).toHaveBeenCalledOnce();
+    await tick();
     expect(relay.push).toHaveBeenCalledOnce();
   });
 

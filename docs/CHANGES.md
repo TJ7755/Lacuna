@@ -46,6 +46,13 @@
   replacement mounts. Restored polling now starts only after the owning UI commits, and disposal or
   reconnection invalidates delayed relay and crypto work before it can push or persist stale mailbox
   state. This fixes the same-tab reconnect race that surfaced as a `412` stale-generation failure.
+- Hardened browser mailbox acknowledgement when Vercel commits a `200` write but the browser cannot
+  use its response. The browser now prefers the validated JSON generation, falls back to
+  `X-Lacuna-Generation`, reserves `ETag` for legacy `204` responses, and fails closed without
+  retrying the previous generation after a rejected request or when no generation is trustworthy.
+  Connected users can also disconnect a dead terminal directly from the AI panel; local reset no
+  longer waits for relay revocation and recovers an active prompt or queued follow-up into the
+  composer.
 - Added the first testable AI interface slice: a device-local, disabled-by-default Settings opt-in,
   optional misconception-first preference, desktop-only sidebar action and 400 px conversation
   panel. Opening AI contracts the existing navigation to its 72 px rail without overwriting the

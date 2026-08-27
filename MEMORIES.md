@@ -68,12 +68,15 @@ without `Content-Length`, returning 400 before pairing. The intercepted Playwrig
 this by inserting the header itself. Enforce relay body ceilings while reading the stream and treat
 a declared length as an additional integrity check, not as a prerequisite for accepting a body.
 
-## Vercel may rewrite ETag on empty responses
+## A successful Vercel mailbox write can still be ambiguous in the browser
 
 Observed on the live AI relay on 27 August 2026: Vercel replaced or omitted the relay's `ETag` on a
-`204` mailbox write, so clients could not acknowledge the new compare-and-swap generation and their
-next write failed with 412. Successful AI mailbox writes return the generation in a JSON body;
-`X-Lacuna-Generation` and `ETag` remain compatibility paths for older relay deployments.
+`204` mailbox write, and a later browser run recorded a committed `200` whose JSON generation was
+not retained by the app. A server-side `200` proves the write committed; it does not prove the
+browser accepted the response. Modern `200` clients must prefer the validated JSON generation and
+then `X-Lacuna-Generation`; Vercel's ordinary `ETag` is trusted only for legacy `204` responses. A
+rejected PUT may also have committed. If the outcome or generation is unknown, fail closed and never
+retry the old compare-and-swap generation.
 
 ## Web AI relay sessions currently support one browser tab
 

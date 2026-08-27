@@ -14,8 +14,8 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
     session.getSnapshot,
   );
   const closeRef = useRef<HTMLButtonElement>(null);
-  const [pairingBusy, setPairingBusy] = useState(false);
-  const [pairingError, setPairingError] = useState<string | null>(null);
+  const [connectionBusy, setConnectionBusy] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const connection = snapshot.connection;
   const disconnected = connection.status === 'disconnected' || connection.status === 'pairing';
   const pendingApproval = snapshot.approval?.status === 'pending';
@@ -31,6 +31,15 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
   useEffect(() => {
     if (connection.status === 'disconnected') closeRef.current?.focus();
   }, [connection.status]);
+
+  const resetConnection = () => {
+    setConnectionBusy(true);
+    setConnectionError(null);
+    void session.resetConnection().then((result) => {
+      setConnectionBusy(false);
+      if (!result.ok) setConnectionError(result.error.message);
+    });
+  };
 
   return (
     <aside
@@ -56,7 +65,20 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
                 aria-hidden="true"
               />
             </div>
-            <p className="truncate text-xs text-ink-faint">{connectionLabel}</p>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <p className="truncate text-xs text-ink-faint">{connectionLabel}</p>
+              {!disconnected && (
+                <button
+                  type="button"
+                  aria-label="Disconnect terminal"
+                  disabled={connectionBusy}
+                  onClick={resetConnection}
+                  className="min-h-6 shrink-0 rounded px-1 py-0.5 text-xs font-medium text-ink-faint underline decoration-line-strong underline-offset-2 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-40"
+                >
+                  {connectionBusy ? 'Disconnecting' : 'Disconnect'}
+                </button>
+              )}
+            </div>
           </div>
           {snapshot.activity &&
             ['working', 'awaiting_approval', 'stop_requested'].includes(
@@ -92,6 +114,14 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
             </div>
           </div>
         )}
+        {connectionError && !disconnected && (
+          <p
+            role="alert"
+            className="mt-2 rounded-lg bg-negative/10 px-3 py-2 text-xs text-negative"
+          >
+            {connectionError}
+          </p>
+        )}
         <span className="sr-only" aria-live="polite" aria-atomic="true">
           {snapshot.activity
             ? [snapshot.activity.summary, snapshot.activity.detail].filter(Boolean).join('. ')
@@ -102,27 +132,20 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
       {disconnected ? (
         <AiConnectionState
           pairing={connection.status === 'pairing' ? connection : null}
-          busy={pairingBusy}
+          busy={connectionBusy}
           error={
-            pairingError ??
+            connectionError ??
             (connection.status === 'disconnected' ? (connection.reason ?? null) : null)
           }
           onStartPairing={() => {
-            setPairingBusy(true);
-            setPairingError(null);
+            setConnectionBusy(true);
+            setConnectionError(null);
             void session.pair().then((result) => {
-              setPairingBusy(false);
-              if (!result.ok) setPairingError(result.error.message);
+              setConnectionBusy(false);
+              if (!result.ok) setConnectionError(result.error.message);
             });
           }}
-          onCancel={() => {
-            setPairingBusy(true);
-            setPairingError(null);
-            void session.resetConnection().then((result) => {
-              setPairingBusy(false);
-              if (!result.ok) setPairingError(result.error.message);
-            });
-          }}
+          onCancel={resetConnection}
         />
       ) : (
         <>

@@ -95,6 +95,16 @@ export class RelayStaleGenerationError extends RelayClientError {
   }
 }
 
+export class RelayPushOutcomeUnknownError extends RelayClientError {
+  constructor(status?: number) {
+    super('The AI relay mailbox write outcome is unknown.', {
+      operation: 'push',
+      status,
+    });
+    this.name = 'RelayPushOutcomeUnknownError';
+  }
+}
+
 export function createRelayClient(options: RelayClientOptions = {}): RelayClient {
   const relayUrl = relayUrlFor(options.relayUrl ?? DEFAULT_RELAY_URL);
   const fetcher = options.fetchImpl ?? globalThis.fetch;
@@ -149,21 +159,23 @@ export function createRelayClient(options: RelayClientOptions = {}): RelayClient
       const session = requireCredentials(credentials, 'push');
       const generation = requireRequestGeneration(ifMatch);
       const body = copyBytes(bytes);
-      const response = await fetchImpl(`${relayUrl}/ai/s/${session.sessionId}/browser`, {
-        method: 'PUT',
-        headers: {
-          ...bearer(session.browserToken),
-          'Content-Type': 'application/octet-stream',
-          'If-Match': generation,
-        },
-        body: new Blob([body], { type: 'application/octet-stream' }),
-      });
+      let response: Response;
+      try {
+        response = await fetchImpl(`${relayUrl}/ai/s/${session.sessionId}/browser`, {
+          method: 'PUT',
+          headers: {
+            ...bearer(session.browserToken),
+            'Content-Type': 'application/octet-stream',
+            'If-Match': generation,
+          },
+          body: new Blob([body], { type: 'application/octet-stream' }),
+        });
+      } catch {
+        throw new RelayPushOutcomeUnknownError();
+      }
       if (response.status === 412) throw new RelayStaleGenerationError(generation);
       if (!response.ok) throw await httpError('push', response);
-      if (response.status === 200) {
-        return parseJsonResponse(response, relayMailboxWriteResponseSchema, 'push');
-      }
-      return { generation: requireResponseGeneration(response, 'push') };
+      return { generation: await readPushGeneration(response) };
     },
 
     async revoke(credentials) {
@@ -218,6 +230,28 @@ function requireResponseGeneration(response: Response, operation: 'pull' | 'push
     );
   }
   return generation;
+}
+
+async function readPushGeneration(response: Response): Promise<string> {
+  if (response.status === 200) {
+    try {
+      const parsed = relayMailboxWriteResponseSchema.safeParse(await response.json());
+      if (parsed.success) return parsed.data.generation;
+    } catch {
+      // Vercel may strip or replace a successful response body while preserving response headers.
+    }
+  }
+
+  const generationHeaders = [response.headers.get(GENERATION_HEADER)];
+  if (response.status === 204) generationHeaders.push(response.headers.get('ETag'));
+  for (const headerGeneration of generationHeaders) {
+    const parsedHeader = relayMailboxWriteResponseSchema.safeParse({
+      generation: headerGeneration?.trim(),
+    });
+    if (parsedHeader.success) return parsedHeader.data.generation;
+  }
+
+  throw new RelayPushOutcomeUnknownError(response.status);
 }
 
 async function parseJsonResponse<T>(

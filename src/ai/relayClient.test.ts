@@ -3,6 +3,7 @@ import { DEFAULT_RELAY_URL } from '../sync/pairing';
 import { AI_RELAY_EMPTY_GENERATION } from './relayProtocol';
 import {
   RelayClientProtocolError,
+  RelayPushOutcomeUnknownError,
   RelayStaleGenerationError,
   createRelayClient,
 } from './relayClient';
@@ -126,6 +127,103 @@ describe('browser AI relay client', () => {
     ).resolves.toEqual({ generation: '"browser-legacy"' });
   });
 
+  it('accepts ETag only for a legacy 204 mailbox write response', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(null, {
+        status: 204,
+        headers: { ETag: '"browser-legacy-etag"' },
+      }),
+    );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).resolves.toEqual({ generation: '"browser-legacy-etag"' });
+  });
+
+  it.each([
+    ['malformed', 'not-json', 'X-Lacuna-Generation'],
+    ['empty', '', 'X-Lacuna-Generation'],
+  ])('falls back to the generation header for a %s JSON body', async (_case, body, header) => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(body, {
+        status: 200,
+        headers: { [header]: '"browser-fallback"' },
+      }),
+    );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).resolves.toEqual({ generation: '"browser-fallback"' });
+  });
+
+  it('reports an unknown push outcome when success has no trustworthy generation', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        name: 'RelayPushOutcomeUnknownError',
+        operation: 'push',
+        status: 200,
+      }),
+    );
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
+  });
+
+  it('does not trust a platform ETag on a modern mailbox write response', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('', {
+        status: 200,
+        headers: { ETag: '"platform-rewritten"' },
+      }),
+    );
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
+  });
+
+  it('reports an unknown push outcome when the mailbox PUT rejects', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('Failed to fetch'));
+
+    await expect(
+      createRelayClient({ fetchImpl }).push(
+        CREDENTIALS,
+        new Uint8Array([1]),
+        AI_RELAY_EMPTY_GENERATION,
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        name: 'RelayPushOutcomeUnknownError',
+        operation: 'push',
+        status: undefined,
+      }),
+    );
+  });
+
   it('reports stale mailbox generations and malformed successful responses', async () => {
     const staleFetch = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 412 }));
     await expect(
@@ -155,7 +253,7 @@ describe('browser AI relay client', () => {
         new Uint8Array([1]),
         AI_RELAY_EMPTY_GENERATION,
       ),
-    ).rejects.toBeInstanceOf(RelayClientProtocolError);
+    ).rejects.toBeInstanceOf(RelayPushOutcomeUnknownError);
   });
 
   it('revokes with the browser token and treats an absent session as revoked', async () => {
