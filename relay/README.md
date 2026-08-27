@@ -1,8 +1,9 @@
 # Lacuna relay
 
-A private sync mailbox. It stores two opaque blobs per channel — `state` and
-`keybag` — and a hash of the write token. It never sees a key, never decrypts
-anything, and never parses a request body as JSON.
+A private sync and AI-session mailbox. Sync channels store two opaque blobs — `state` and `keybag`
+— plus a hash of the write token. AI sessions store public pairing metadata and two opaque,
+directional encrypted mailboxes. The relay never receives a private ECDH key and cannot decrypt
+conversation content.
 
 Knowledge of the channel id is the read capability. Writes need the bearer
 token minted with the channel. Creating a channel needs a separate shared
@@ -11,9 +12,26 @@ from clobbering each other on an occupied slot.
 
 ## What it cannot see
 
-The relay is a dumb blob store. It has no accounts, no user model, and no
-knowledge of Lacuna's schema. Request bodies are ciphertext. Channel ids are
-not logged.
+The relay has no accounts, user model or knowledge of Lacuna's study schema. Sync request bodies
+and AI mailbox bodies are ciphertext. Channel and AI-session identifiers are not logged.
+
+## AI terminal pairing
+
+`POST /ai/sessions` creates a ten-minute pairing session from the browser's ephemeral P-256 public
+key. It returns a human-copyable code and a browser bearer token. `POST /ai/s/:code/claim` admits
+exactly one terminal public key and returns a separate terminal bearer token. Both peers derive the
+same AES-GCM mailbox key without sending either private key to the relay.
+
+After pairing, the browser writes `/ai/s/:id/browser` and reads `/ai/s/:id/terminal`; the terminal
+does the reverse. Each direction has one writer and uses `ETag` / `If-Match`, avoiding a pointless
+multi-writer merge protocol for chat transport. `DELETE /ai/s/:id` with the browser token revokes
+the session. Claimed sessions expire after 24 hours in this prototype.
+
+The short-lived code is the terminal's pairing capability; do not paste it into an untrusted task.
+Both peers make ordinary outbound HTTPS requests. The AI transport does not use WebSockets, a
+browser extension or an inbound localhost listener. Its current encrypted payload contains chat
+claims, complete replies, Stop acknowledgements and disconnects; course/Card tools and learner
+memories are not part of this mailbox version.
 
 ## Environment
 

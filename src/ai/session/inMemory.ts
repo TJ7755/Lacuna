@@ -35,6 +35,24 @@ export function createInMemoryAiSession(
     getSnapshot() {
       return snapshot;
     },
+    dispose() {
+      listeners.clear();
+    },
+    async pair() {
+      if (snapshot.connection.status !== 'disconnected') {
+        return {
+          ok: false,
+          error: { kind: 'conflict', message: 'AI is already connecting or connected.' },
+        };
+      }
+      const alphabet = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
+      const bytes = crypto.getRandomValues(new Uint8Array(20));
+      const raw = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join('');
+      const code = raw.match(/.{1,4}/g)?.join('-') ?? raw;
+      const expiresAt = Date.now() + 10 * 60_000;
+      publish({ ...snapshot, connection: { status: 'pairing', code, expiresAt } });
+      return { ok: true, data: { code, expiresAt } };
+    },
     async send(content) {
       if (snapshot.connection.status === 'disconnected') {
         return {

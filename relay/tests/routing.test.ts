@@ -8,6 +8,8 @@ const relayRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const PUBLIC_PATHS = ['/channel', '/c/:id', '/c/:id/:slot'] as const;
 const API_ALIASES = ['/api/channel', '/api/c/:id', '/api/c/:id/:slot'] as const;
+const AI_PUBLIC_PATHS = ['/ai/sessions', '/ai/s/:id', '/ai/s/:id/:action'] as const;
+const AI_API_ALIASES = ['/api/ai/sessions', '/api/ai/s/:id', '/api/ai/s/:id/:action'] as const;
 
 describe('parseRoute', () => {
   it('matches the public Arc 8 paths and their /api aliases', () => {
@@ -29,6 +31,13 @@ describe('parseRoute', () => {
     });
     expect(parseRoute('https://relay.example/c/aabbccddeeff00112233445566778899/notes')).toEqual({
       kind: 'slot-invalid',
+    });
+    expect(parseRoute('https://relay.example/ai/sessions')).toEqual({
+      kind: 'ai-session-collection',
+    });
+    expect(parseRoute('https://relay.example/ai/s/ABCD-EFGH-JKMN-PQRS-TVWZ/claim')).toEqual({
+      kind: 'ai-claim',
+      id: 'ABCDEFGHJKMNPQRSTVWZ',
     });
   });
 
@@ -58,6 +67,16 @@ describe('parseRoute', () => {
     });
     expect(parseRoute('https://relay.example/api')).toEqual({ kind: 'unknown' });
     expect(parseRoute('https://relay.example/api/x/y/z')).toEqual({ kind: 'unknown' });
+    expect(parseRoute('https://relay.example/api?__path=/ai/sessions')).toEqual({
+      kind: 'ai-session-collection',
+    });
+    expect(
+      parseRoute('https://relay.example/api?__path=/ai/s/ABCDEFGHJKMNPQRSTVWZ/browser'),
+    ).toEqual({
+      kind: 'ai-mailbox',
+      id: 'ABCDEFGHJKMNPQRSTVWZ',
+      mailbox: 'browser',
+    });
   });
 });
 
@@ -71,7 +90,7 @@ describe('vercel routing contract', () => {
     expect(existsSync(join(relayRoot, 'api/[...path].ts'))).toBe(false);
     expect(existsSync(join(relayRoot, 'api/[[...path]].ts'))).toBe(false);
 
-    for (const source of [...PUBLIC_PATHS, ...API_ALIASES]) {
+    for (const source of [...PUBLIC_PATHS, ...API_ALIASES, ...AI_PUBLIC_PATHS, ...AI_API_ALIASES]) {
       const rewrite = config.rewrites.find((entry) => entry.source === source);
       expect(rewrite, `missing rewrite for ${source}`).toBeTruthy();
       const dest = new URL(rewrite!.destination, 'https://relay.example');

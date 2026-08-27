@@ -1,6 +1,7 @@
 # AI sidebar — one-week usable prototype
 
-**Status:** in progress — foundation complete; first AI UI checkpoint available
+**Status:** in progress — encrypted terminal pairing and chat delivered; domain actions, teaching
+instructions and durable learner memories remain future work
 
 **Written:** 27 August 2026
 
@@ -9,35 +10,51 @@
 ## Outcome
 
 Lacuna provides an optional **AI** conversation and activity surface in its existing desktop
-sidebar. A trusted, deliberately running terminal task attaches to the learner's existing Chromium
-tab, repeatedly performs bounded message waits, reads and acts through Lacuna's versioned
-domain-tool surface, and writes non-streamed replies back into the sidebar. Lacuna stores no model
-credentials and knows nothing about the selected harness or model.
+sidebar. A trusted, deliberately running terminal task pairs with the web app through a short-lived
+code, repeatedly performs bounded message waits through a standard MCP companion, and writes
+non-streamed replies back into the sidebar. Lacuna stores no model credentials and knows nothing
+about the selected harness or model.
 
-The AI can inspect learning state, create and maintain Lacuna content, and teach using an optional
-misconception-first method. Durable learner memories participate in full backup and peer sync.
-Conversation transcripts remain local to the browser profile in this prototype.
+The delivered checkpoint is chat transport only. It cannot yet inspect learning state, create or
+maintain Lacuna content, use the misconception-first preference, or persist learner memories.
+Those remain explicit later phases of this plan. Conversation transcripts remain local to the
+browser profile.
 
 This is a private tool. The interface says **AI**, not “terminal tutor”, “MCP”, “agent bridge” or a
 model name. Those are implementation details.
 
-## What “usable in one week” means
+## Current implementation checkpoint
 
-The prototype is accepted only when all six scenarios pass through the real browser and real
-repositories:
+Delivered and source-backed:
 
-1. Enable AI, attach a terminal agent to the already-open Lacuna tab, send one message and receive
-   one non-streamed response.
+- disabled-by-default desktop AI panel and Settings opt-in;
+- short-lived one-terminal pairing code;
+- standard stdio MCP companion with connect, bounded wait, complete reply and disconnect tools;
+- two encrypted directional HTTP mailboxes with one writer each and `ETag` / `If-Match`;
+- ephemeral P-256 ECDH and AES-256-GCM envelopes which keep plaintext from the relay;
+- local transcript/session reload persistence, queued follow-up handling and cooperative Stop;
+- a final Stop refresh before reply, so a terminal cannot knowingly append a late response.
+
+Not delivered: domain-tool invocation, approvals, action receipts, instruction bundles,
+misconception-first execution, durable learner memories, memory backup/sync, or AI-driven Course,
+Lesson, Card, Question and assessment changes. The Electron MCP data companion is separate and does
+not make those capabilities available to web AI chat.
+
+## Remaining prototype acceptance target
+
+The broader prototype is accepted only when all six scenarios pass through the real browser and
+real repositories. Scenarios 3, 4 and 6 are future work, not current product claims:
+
+1. Enable AI, pair a terminal agent with a short-lived code, send one message and receive one
+   non-streamed response.
 2. Reload Lacuna with an unclaimed message pending, reconnect, claim it once and produce one reply.
-   A repeated tool-call identifier returns its recorded result. The prototype does not claim
-   exactly-once side effects across a crash between a repository commit and receipt persistence.
 3. Ask AI to create a course, lessons, cards, Questions and an assessment; approve the global
    course creation and subsequent course-scoped write, then receive structured, selectable receipts
    for records that genuinely exist.
 4. Ask a conceptual question with misconception-first enabled; the agent searches relevant
    memories and follows diagnose → conflict → resolve → transfer rather than dumping an answer.
-5. Stop while the agent is waiting and between two tool calls; no later call commits, while work
-   already completed remains visible and available for Undo where the domain operation supports it.
+5. Stop while the agent is waiting and before a reply; the terminal acknowledges the run and a late
+   reply is refused. The later domain-action phase must also prove Stop between two tool calls.
 6. Trigger peer sync by returning focus to Lacuna during a connected conversation. The sync waits
    for an active tool write, preserves the connection and transcript, and exposes merged durable
    memories. A manual full replacement still performs the destructive shutdown and local cleanup.
@@ -51,9 +68,8 @@ integration, browser behaviour or visual judgement disappear.
 
 - AI is disabled by default. When disabled, no AI control, provider, timer or bridge is mounted.
 - AI is desktop-only. Its entry control and full panel appear from 1024 CSS px; it is absent from
-  the mobile drawer. If an active desktop session crosses below that threshold through resize or
-  zoom, the panel closes but the compact activity/Stop control remains until the run finishes or
-  disconnects. A running task must never become uncontrollable because the viewport changed.
+  the mobile drawer. Crossing below that threshold currently closes the panel. Keeping a compact
+  Stop control visible for an active run remains required future work.
 - The existing navigation and the AI panel form one compound left workspace:
 
   ```text
@@ -64,25 +80,24 @@ integration, browser behaviour or visual judgement disappear.
 - Opening AI temporarily forces the navigation into its icon rail without overwriting the user's
   saved collapse preference. Closing AI restores the previous visual state.
 - The panel is non-modal. The learner may continue using the page while it is open.
-- While the panel is closed and work is active, failed or awaiting approval, a compact activity
-  capsule appears at the top-right of the application shell. The bottom-right remains owned by
-  Lacuna's notification and Undo stack.
+- A compact top-right activity/Stop capsule while the panel is closed remains planned. The
+  bottom-right remains owned by Lacuna's notification and Undo stack.
 
 ### Model and harness independence
 
-- Lacuna exposes a versioned in-page interface. A trusted harness may connect if it can attach to
-  the existing Chromium profile, evaluate page JavaScript and sustain a long-running bounded-wait
-  loop without deciding the task is finished.
-- A browser tool limited to clicks and typing is not supported by this prototype. Recreating 57
-  structured domain tools as hidden forms would be an obscenity, not compatibility.
-- The reference adapter is
-  [Browser Control](https://github.com/anomalyco/browser-control), which drives an attached tab in
-  the user's existing Chromium profile through a local relay and extension. The current package
-  requires Node.js 22.19 or newer and an unpacked extension; packaging a Lacuna-branded installer is
-  deferred.
-- Browser Control is a driver, not a wake-up mechanism. A sidebar message cannot start a new model
-  turn after the terminal task has ended. The disconnected setup therefore provides one copyable
-  bootstrap instruction that starts and maintains the live AI loop.
+- Lacuna exposes a standard MCP companion that any compatible terminal harness can launch over
+  stdio. Pairing uses a short-lived code and outbound HTTPS requests from both browser and terminal;
+  it does not require an unpacked browser extension, inbound localhost port or model credential in
+  the page.
+- The relay stores public pairing metadata and opaque encrypted mailbox bodies. Browser and
+  terminal derive the mailbox key with ephemeral P-256 ECDH; the relay never receives either
+  private key or plaintext conversation content.
+- The companion is deliberately a wake-up limitation, not a fake solution to one. A sidebar
+  message cannot start a new model turn after the terminal task has ended. The disconnected setup
+  therefore provides one copyable instruction that tells the live agent to pair and maintain the
+  bounded-wait loop.
+- Browser automation remains a harness capability for work on external websites. Future
+  Lacuna-native actions will use typed tools; the current chat companion has no domain-action tool.
 - OpenCode, Claude Code and Codex are examples, never product concepts. The agent instructions and
   bridge contract must not name one as the preferred runtime.
 
@@ -95,17 +110,19 @@ integration, browser behaviour or visual judgement disappear.
 - While work is active, the UI permits exactly one queued follow-up. Editing replaces that queued
   text. Enter submits; Shift+Enter adds a line. Stop returns the queued follow-up to the composer as
   an unsent draft rather than silently running it.
-- Stop is cooperative. It resolves a pending wait and rejects later bridge activity, replies and
-  tool calls carrying the stopped `runId`. It cannot terminate arbitrary model inference or revoke
-  Browser Control's access to the tab.
+- Stop is cooperative. It rejects a later relay reply carrying the stopped `runId`. Future domain
+  tool calls must enforce the same run boundary. Stop cannot terminate arbitrary model inference or
+  revoke the terminal harness or companion process.
 - The interface first shows **Stop requested**. It changes to **Stopped** when the terminal loop
   acknowledges the run token. The copy states: **Further AI bridge actions are blocked. Completed
   changes remain.**
-- Structured action receipts name the verb, target, result and time and link to created or updated
-  Lacuna entities. A generic receipt is acceptable for long-tail tools; the high-value creation and
-  update tools receive deliberate formatters.
+- Structured action receipts remain planned with domain actions; the current relay conversation
+  produces assistant text only.
 
-### Permissions and learning evidence
+### Permissions and learning evidence — planned domain-action phase
+
+None of the following permissions are present in the current chat mailbox. They govern the future
+tool integration:
 
 - Reads retain Lacuna's implicit course-scoped grant behaviour.
 - Writes block on the existing session/course-scoped consent model.
@@ -118,43 +135,35 @@ integration, browser behaviour or visual judgement disappear.
 
 ### Persistence
 
-- Durable agent memories are included in backup, replace import, recovery merge, encrypted peer
-  sync, snapshot equivalence, size attribution and tombstone handling.
-- Conversation messages, connection state, activity and grants remain local. Message persistence
-  exists to survive reload and reconnect, not to synchronise chat transcripts across devices.
-- Connection grants and live activity expire with the AI session.
-- Disabling AI during a connection requires **Disable AI and disconnect?** confirmation. Approval
-  stops the active run cooperatively, rejects pending approvals and waits, revokes grants, cancels
-  queued messages, disconnects the bridge and preserves the local transcript. The UI disables only
-  after that shutdown finishes or is explicitly forced with accurate failure copy.
-- A manual full replacement or restore first blocks new AI calls and performs the same orderly
-  shutdown as disabling: stop the run, reject approvals and waits, revoke grants and disconnect.
-  Only then may replacement begin. Success clears local AI conversations, messages, receipts and
-  activity because their entity links refer to the replaced database. Imported durable memories
-  become authoritative.
-- Automatic peer-sync application is not a manual replacement merely because its implementation
-  calls `importBackup(..., 'replace')`. It serialises against AI tool writes: wait for the current
-  call, block the next, apply the already-merged snapshot atomically, then resume. It preserves the
-  connection and all device-local conversation state. Links to remotely deleted entities render as
-  **Unavailable**. Startup recovery uses this non-destructive lifecycle; a user-selected recovery
-  that discards local state uses the manual replacement lifecycle.
+- Conversation messages, pairing credentials and connection state are currently device-local and
+  survive ordinary reload. They are not included in peer sync.
+- Durable agent-memory backup, replacement, recovery merge, encrypted peer sync, size attribution
+  and tombstones are planned and not implemented.
+- Connection grants do not exist in the current chat-only transport. They and live tool activity
+  belong to the planned domain-action phase.
+- Disabling AI currently unmounts the runtime and stops local polling. A confirmation which performs
+  orderly remote revocation, queued-message cancellation and transcript preservation remains
+  planned.
+- Coordinating manual replacement with an active AI session remains planned. There are no AI domain
+  calls or imported memories to quiesce in the current checkpoint.
+- Serialising automatic peer-sync application against AI domain writes also remains planned. Chat
+  transcripts and relay sessions are device-local and are not part of peer sync.
 
 ## Architecture
 
 ```text
 Live terminal task and chosen model
-  └── bounded wait → handle run → bounded wait
-            ↕ browser tool
-Browser Control local relay and extension
-            ↕ page JavaScript
-window.lacunaAI — versioned in-page interface
-            ↕
+  └── Lacuna MCP companion over stdio
+            ↕ encrypted directional mailboxes
+HTTPS relay — pairing metadata and opaque ciphertext only
+            ↕ encrypted directional mailboxes
 AI session module
   ├── local conversation queue
-  ├── activity, receipts and cooperative stop
-  ├── versioned tutoring instructions
-  ├── memory search and maintenance
-  └── shared tool executor
+  ├── encrypted relay adapter and reload persistence
+  ├── cooperative Stop
+  ├── activity, receipts and tutoring instructions (planned)
+  ├── memory search and maintenance (planned)
+  └── shared tool executor (planned)
             ↕
 Existing TOOL_REGISTRY and repositories
             ↕
@@ -184,45 +193,35 @@ adapter drives every UI state without a live terminal. Stop retains the explicit
 acts on one run. Approval identifiers are globally unique and already bound internally to their run,
 so `decide` needs only the `approvalId` and human decision.
 
-### Browser seam
+### Paired relay seam
 
-The page exposes one versioned interface only while AI is enabled:
+The UI continues to depend only on `AiSession`. Its production adapter owns pairing, ECDH key
+agreement, encrypted mailbox polling, reload persistence and conversion between relay records and
+the UI read model. React does not learn relay URLs, generations, tokens or encryption formats.
 
-```ts
-interface LacunaAiBridge {
-  readonly protocolVersion: typeof LACUNA_AI_PROTOCOL_VERSION;
-  request(request: AiBridgeRequest): Promise<AiBridgeResult>;
-}
-```
+The terminal companion exposes a small MCP interface: connect with a pairing code, wait for a
+message, reply and disconnect. These are the only current tools. Later tool invocation, activity
+and approval events may extend the versioned mailbox union; they do not exist in mailbox v1.
 
-`AiBridgeRequest` is a strict discriminated union containing `connect`, `get_instructions`,
-`claim_message`, `list_pending`, `get_run`, `acknowledge_stop`, `set_activity`, `invoke_tool`, `reply`,
-`heartbeat` and `disconnect`. The single versioned request seam keeps parsing and expected-error
-handling consistent without exposing eleven shallow methods.
+`lacuna.wait_for_message` polls the encrypted browser mailbox for at most 25 seconds. A claim writes
+`messageId`, `runId` and lease expiry to the terminal mailbox and returns the browser-owned
+`conversationId` and content. `lacuna.reply` accepts only that active `runId`/`messageId` pair and
+refreshes the browser mailbox immediately before writing. If it finds `stop_requested`, it writes
+`stop_acknowledged`, removes the active run and refuses the late reply. Empty waits are ordinary;
+the terminal task must repeat them.
 
-`claim_message` waits for at most 20–25 seconds. `list_pending` is the fallback for browser adapters
-that cannot safely retain a page promise. A claim persists `conversationId`, `messageId`, `runId`,
-lease expiry and state. Every run-scoped mutation verifies the live `runId`; every tool call also
-carries a caller-stable `callId`. Repeated calls return a persisted result when one exists. There
-remains an unavoidable crash window between a generic repository commit and persistence of its
-result ledger, so reconnect instructions require reading the affected Lacuna state before retrying
-a call whose outcome is unknown.
+The current terminal never receives or requests destructive approval because it cannot invoke
+domain tools. Server-held one-shot approval, `callId` replay and result-ledger behaviour remain
+planned requirements for that later integration.
 
-The terminal never receives a destructive approval token. The first destructive `invoke_tool`
-stores a pending approval bound to the connection, run, call, tool, resolved target and validated-
-input digest, then waits for at most 20–25 seconds. `AiSession.decide` resolves that server-held
-record. Approval lets the same `callId` resume and consumes the authorisation internally; rejection
-returns `forbidden`. Timeout returns `approval_pending`, and repeating the identical `callId`
-resumes the same pending record rather than creating another prompt. Stop, disconnect, expiry or
-any exact-call mismatch invalidates it.
+Claim, reply and disconnect events refresh the current browser session. Explicit terminal
+disconnect updates the panel; transient polling failures are retried. Quiet-state lease expiry and
+richer failure presentation remain unfinished. One pairing code admits one terminal companion.
 
-Every bridge request refreshes connection activity. `set_activity` with `status: 'working'` begins a
-generous working lease of at least ten minutes so slow inference is not reported as disconnection.
-An expired working lease becomes **Connection quiet**, not **Disconnected**. Explicit disconnect or
-repeated failed bounded waits establish disconnection. Adoption of the user tab is exclusive to one
-Browser Control session.
+### Planned shared tool execution
 
-### Shared tool execution
+This section is a design constraint for future domain actions. The delivered chat companion does
+not call `TOOL_REGISTRY`.
 
 Do not copy `handleInvoke` for the web path. Extract its transport-neutral work into one executor:
 
@@ -234,7 +233,7 @@ Do not copy `handleInvoke` for the web path. Extract its transport-neutral work 
 6. Renderer-side Undo capture.
 7. Structured result and activity receipt.
 
-The Electron renderer adapter and AI browser adapter both call this executor. Electron main keeps
+The Electron renderer adapter and AI relay adapter both call this executor. Electron main keeps
 its current consent coordinator. `AiToolSession` owns browser-session write consent and one-shot
 destructive approvals, then supplies the issued write grant or exact one-shot authorisation to the
 executor internally. Moving consent into the shared executor would prompt twice in Electron and turn
@@ -242,7 +241,10 @@ a narrow extraction into a rewrite.
 Browser protocol errors such as `approval_required`, `approval_pending`, `stopped` and `disconnected`
 wrap existing MCP errors rather than leaking into domain-tool definitions.
 
-## Memory
+## Planned memory model — not implemented
+
+This section specifies later work. There is no `AgentMemory` store, memory inspector, memory MCP
+tool or backup/sync integration in the current chat checkpoint.
 
 ### Record
 
@@ -336,13 +338,16 @@ likely record count does not justify importing a small search-engine theme park.
 - Global memory bytes are attributed to other local data; course-scoped memory bytes are attributed
   to their course in the sync-size report.
 
-## Misconception-first teaching
+## Planned misconception-first teaching — not implemented
 
-The full method is shipped as a versioned instruction bundle returned by the `get_instructions`
-request; it is never a pointer to one machine's skill pathname.
+Settings currently stores the preference only. The chat companion does not receive an instruction
+bundle or memory context yet.
 
-AI Settings contains **Use misconception-first teaching when appropriate**. When enabled, the
-agent routes requests as follows:
+The full method will ship as a versioned instruction bundle rather than a pointer to one machine's
+skill pathname.
+
+AI Settings already contains **Use misconception-first teaching**. Once the future instruction
+integration exists, the agent routes requests as follows:
 
 ```text
 Operational request
@@ -360,8 +365,9 @@ Conceptual request with a relevant active or uncertain memory
 → update the memory only from evidence
 ```
 
-The method does not apply to procedural work, factual status, completely novel material with no
-prior model, or an explicit request for a direct answer. Every instruction bundle also includes:
+The planned method does not apply to procedural work, factual status, completely novel material
+with no prior model, or an explicit request for a direct answer. Its instruction bundle also
+includes:
 
 - relevant-memory search at the start of a teaching exchange;
 - source grounding against Lacuna Cards, Questions, Concepts, Lessons and notes;
@@ -374,15 +380,16 @@ prior model, or an explicit request for a direct answer. Every instruction bundl
 ### Panel states
 
 - **Disabled:** no runtime or UI outside Settings.
-- **Disconnected:** a short setup flow states Node/Chromium prerequisites, provides exact copyable
-  Browser Control install and unpacked-extension steps, offers `doctor`/`status` diagnostics, and
-  provides one versioned copyable bootstrap instruction. It shows **Waiting for AI**, confirms the
-  connected client identity, and gives actionable retry copy rather than “Something went wrong”.
-- **Conversation:** transcript, sources, receipts and composer.
+- **Disconnected/pairing:** the delivered setup starts pairing, shows the short-lived code and
+  provides one copyable terminal instruction. It confirms the connected client identity and gives
+  actionable retry copy.
+- **Conversation:** the delivered transcript and composer carry user and assistant text.
 - **Working:** conversation remains usable; current activity and Stop appear in the header.
-- **Approval:** a structured approval card names the action, scope and consequences.
+- **Approval (rendering only):** a structured approval card exists behind `AiSession`, but the
+  current chat transport cannot request domain approval.
 - **Failed:** persistent error with retry or reconnect.
-- **Completed:** receipt remains in history; a minimised capsule shows Done briefly and disappears.
+- **Receipts and completed capsule (planned):** renderers exist for receipt-shaped fixtures, but no
+  live domain action produces them and the activity capsule is not delivered.
 
 The transcript uses `role="log"` with polite announcement only for newly appended messages. Activity
 uses a separate visually hidden polite status. Marking the whole panel live would make assistive
@@ -394,6 +401,8 @@ states and the first meaningful action in disconnected or approval states. Closi
 to the AI trigger.
 
 ### Activity capsule
+
+This remains planned; no current source mounts an AI activity capsule.
 
 - Make the shell body the positioned containing block and absolutely position the capsule at
   `top-4 right-4`, below the Electron title bar.
@@ -419,32 +428,40 @@ Follow Lacuna's existing quiet laboratory language:
 
 ## Implementation surfaces
 
-### New modules
+### Delivered modules
 
 ```text
 src/ai/protocol.ts
 src/ai/settings.ts
-src/ai/instructions.ts
-src/ai/bootstrapInstructions.ts
-src/ai/browserBridge.ts
-src/ai/toolSession.ts
-src/ai/repository.ts
+src/ai/relayProtocol.ts
+src/ai/relayCrypto.ts
+src/ai/relayClient.ts
 src/ai/session/types.ts
 src/ai/session/AiSessionContext.tsx
-src/ai/session/sessionReducer.ts
-
-src/db/agentMemoryRepository.ts
-src/db/replacementLifecycle.ts
-src/mcp/tools/memories.ts
+src/ai/session/relay.ts
 
 src/components/ai/AiPanel.tsx
 src/components/ai/AiConversation.tsx
 src/components/ai/AiComposer.tsx
-src/components/ai/AiActivityReceipt.tsx
 src/components/ai/AiApprovalCard.tsx
-src/components/ai/AiActivityCapsule.tsx
 src/components/ai/AiConnectionState.tsx
 src/pages/settings/AiSection.tsx
+
+relay/src/aiRelay.ts
+tooling/lacuna-ai-mcp/**
+```
+
+### Planned modules
+
+```text
+src/ai/instructions.ts
+src/ai/toolSession.ts
+src/ai/repository.ts
+src/db/agentMemoryRepository.ts
+src/db/replacementLifecycle.ts
+src/mcp/tools/memories.ts
+src/components/ai/AiActivityReceipt.tsx
+src/components/ai/AiActivityCapsule.tsx
 ```
 
 Split rendering concerns before any file approaches 500 lines. `AiPanel.tsx` is composition, not a
@@ -469,21 +486,21 @@ new landfill for every state and receipt formatter.
 - `src/mcp/registry.ts`, `src/mcp/bridge/scopeResolver.ts` — memory tools and scope resolution.
 - `src/mcp/bridge/renderer.ts` — call the extracted shared executor.
 - `src/components/mcp/McpBridgeController.tsx` — generic Undo restoration and AI approval reuse.
-- `src/vite-env.d.ts` — the deliberately narrow global bridge type.
+- `relay/src/aiRelay.ts`, `relay/vercel.json` — short-lived pairing and two opaque directional
+  mailboxes.
+- `tooling/lacuna-ai-mcp/**` — the model-agnostic stdio companion.
 
 ## One-week execution plan
 
-### Preliminary corrections — two separate commits
+### Preliminary corrections — delivered
 
-The current MCP Undo dispatcher restores Cards, Courses, Lessons and Occlusions explicitly, then
-treats every other Undo payload as a Sequence. Existing Concept and Question deletion Undo therefore
-calls the wrong restorer. Fix the discriminated dispatch and prove Concept and Question Undo with a
-regression test before adding `restoreMemory`. Replace the fallback with an exhaustive dispatch so a
-future Undo kind cannot quietly become a Sequence again. This is the first commit.
+The former MCP Undo dispatcher restored Cards, Courses, Lessons and Occlusions explicitly, then
+treated every other Undo payload as a Sequence. Concept and Question deletion now use their proper
+restorers, with exhaustive dispatch preventing a future Undo kind from silently becoming a
+Sequence.
 
-Also correct the stale current tool-surface version in `docs/SPEC.md`: code exports version 3 while
-the specification still says 2. This unrelated documentation correction is the second commit, not a
-miscellaneous broom cupboard appended to the bug fix.
+The stale tool-surface version in `docs/SPEC.md` was also corrected to version 3 in a separate
+documentation change.
 
 ### Day 1 — freeze interfaces and red tests
 
@@ -491,12 +508,12 @@ The orchestrator owns a half-day architectural freeze:
 
 1. Record the product decisions and six browser scenarios as typed acceptance fixtures; execution
    belongs to the later UI and browser slices.
-2. Define `AiSession`, `LacunaAiBridge`, records, errors, stop semantics and permission flow.
+2. Define `AiSession`, relay mailbox records, errors, stop semantics and permission flow.
 3. Land the protocol/types commit by midday. Every worktree starts from this commit, not stale
    `master`.
 
 Completion criterion: interfaces compile, state/error/identifier invariants are explicit, and no UI
-or browser adapter needs a temporary second interface. If this misses midday, cut bespoke long-tail
+or relay adapter needs a temporary second interface. If this misses midday, cut bespoke long-tail
 receipts and inspector embellishment before cutting browser proof, permission safety or memory sync.
 
 ### Days 2–3 — four parallel owners
@@ -505,7 +522,7 @@ receipts and inspector embellishment before cutting browser proof, permission sa
 | --- | --- | --- |
 | AI UI | `src/components/ai/**`, `AppShell.tsx`, `Sidebar.tsx`, `AiSection.tsx`, AI settings and their tests | Every UI state renders through an in-memory `AiSession`; desktop gating, active-session continuity, focus and capsule mutual exclusion pass |
 | Memory persistence/sync | `types.ts`, `schema.ts`, `mutationStamp.ts`, `repository.ts`, memory repository, replacement lifecycle, `portability.ts`, sync application/merge/snapshot modules and focused tests | CRUD/tombstones, Course cascade/Undo, manual replace, non-destructive peer application, recovery merge, peer update/delete/resurrection and snapshot equivalence converge deterministically |
-| Browser session | browser bridge, session controller, local conversation repository, shared renderer executor extraction and tests | Live bounded-wait loop, run/call identifiers, claim leases, result ledger, heartbeat states, reload recovery, reply, cooperative stop and disconnect work without UI knowledge or Electron consent changes |
+| Browser session | paired relay adapter, session controller, local conversation repository, shared renderer executor extraction and tests | Live bounded-wait loop, run/call identifiers, claim leases, result ledger, heartbeat states, reload recovery, reply, cooperative stop and disconnect work without UI knowledge or Electron consent changes |
 | Tools and pedagogy | memory tools, `registry.ts`, scope resolver, tool session, instruction bundle, bootstrap instruction and tests | Memory permissions and ownership resolve correctly; one-shot destructive approval is consumed; bootstrap starts the live loop; returned bundle contains conditional misconception-first, grounding and safety rules |
 
 Workers share a repository but are not alone in it. Each brief must name exclusive paths, forbid
@@ -525,11 +542,11 @@ owner of `registry.ts`. Add deliberate receipts for:
 - create/update assessment and final exam date.
 
 Long-tail tools use a generic receipt containing tool name, success/failure and returned identifiers.
-Run browser scenario 1 on the first integrated build, including installation/setup copy, tab
-adoption and at least three empty bounded waits before sending the message. Do not wait for the final
+Run browser scenario 1 on the first integrated build, including MCP setup copy, pairing and at least
+three empty bounded waits before sending the message. Do not wait for the final
 day to discover that the terminal cannot actually stay alive or reach the page.
 
-Completion criterion: one real terminal agent attaches, receives a sidebar message, invokes a read
+Completion criterion: one real terminal agent pairs, receives a sidebar message, invokes a read
 and an approved write through the existing tool registry, and replies with a rendered receipt.
 
 ### Day 5 — trust states
@@ -608,14 +625,14 @@ proposed head. At minimum:
 - Destructive approval tests cover approve, reject, timeout and same-`callId` resumption, plus stop,
   disconnect, exact-call mismatch and one-shot consumption.
 - Shared tool-executor extraction preserves every Electron error and Undo path.
-- Browser bridge covers connect, several empty waits, claim leases, `runId` rejection, `callId`
+- Paired relay session covers connect, several empty waits, claim leases, `runId` rejection, `callId`
   result replay, heartbeat/quiet states, reload recovery, bounded-wait fallback, cooperative stop and
   deduplicated replies.
 - Deterministic Playwright scenarios use a scripted page client for setup, queue, reload,
   permissions, tools, receipts, stop and failure states through the real repositories.
 - A recorded instruction-bundle conformance fixture tests misconception-first routing without making
   a probabilistic model response a binary browser regression.
-- One manual live Browser Control smoke uses a named harness and model, exercises the six acceptance
+- One manual live MCP companion smoke uses a named harness and model, exercises the six acceptance
   scenarios, records the versions and distinguishes application failures from model behaviour.
 
 Run focused tests during each slice, followed by `bun run lint`, `bun run typecheck`, the full test
@@ -626,9 +643,9 @@ tests remain mandatory even though the new visual surface is web-first.
 
 | Risk | Containment |
 | --- | --- |
-| Browser Control currently needs an unpacked broad-permission extension | Treat it as trusted local development infrastructure; document permissions; defer branded packaging |
+| A generic MCP command still needs one harness-specific configuration entry | Show the exact command and keep the companion standard; package a one-command installer after the prototype proves the transport |
 | A sidebar message cannot wake an idle terminal | Copyable bootstrap instruction and a live bounded-wait loop; a genuine wake mechanism remains deferred |
-| A browser adapter cannot hold the long-poll promise | Bound every wait and provide `list_pending` polling |
+| Browser and terminal race on mailbox generations | Keep one writer per directional mailbox and retry only after pulling the winning generation |
 | Stop is mistaken for process termination, browser revocation or rollback | Reject later bridge calls by run token, require bridge-only mutation, show Stop requested/acknowledged, accurate copy and existing Undo |
 | AppShell transforms or z-indexes pin/cover the capsule | Position inside the shell body; keep AI below modal tiers; browser-check every overlay |
 | The agent infers misconceptions from FSRS weakness | Require diagnosis, memory basis and learner-correctable status |
@@ -647,15 +664,15 @@ tests remain mandatory even though the new visual surface is web-first.
 - Attachments and binary asset upload.
 - Automatic memory consolidation, summarisation and expiry jobs.
 - Durable client identity and automatic reconnection across terminal restarts.
-- A packaged Lacuna browser extension, installer or generic companion CLI.
+- A packaged installer and automatic configuration for individual terminal harnesses.
 - Every long-tail tool receiving a bespoke receipt renderer.
-- Cross-browser support beyond the chosen existing-profile Chromium path.
+- Cross-browser support beyond Chromium for the web prototype.
 - A market-facing onboarding flow or explanation of terminal harnesses.
 
 ## Delivery documentation
 
 After implementation, update `docs/SPEC.md`, `docs/APP-FLOWS.md`, `docs/PERFORMANCE.md`, README setup,
 Help, `docs/CHANGES.md` and `MEMORIES.md` only for non-obvious durable facts future agents would get
-wrong. Record measured browser evidence and the exact Browser Control version used. Do not present
-the prototype as universally harness-agnostic: its required capability is attachment to the existing
-Chromium profile plus page-JavaScript evaluation.
+wrong. Record measured browser and terminal evidence plus the exact MCP companion version used. Do
+not present the prototype as able to wake an idle harness: the required capability is a deliberately
+running task that continues the bounded-wait loop.

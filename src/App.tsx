@@ -19,7 +19,8 @@ import { loadMcpBridgeController } from './routes/loaders';
 import { router } from './routes/router';
 import { useAiSettings } from './ai/settings';
 import { AiSessionProvider } from './ai/session/AiSessionContext';
-import { createInMemoryAiSession } from './ai/session/inMemory';
+import { createRelayClient } from './ai/relayClient';
+import { createRelayAiSession } from './ai/session/relay';
 
 export { router } from './routes/router';
 
@@ -29,7 +30,8 @@ function RouterWithQuotaWarning() {
 }
 
 function EnabledAiRouter() {
-  const [session] = useState(createInMemoryAiSession);
+  const [session] = useState(() => createRelayAiSession({ relay: createRelayClient() }));
+  useEffect(() => () => session.dispose(), [session]);
   return (
     <AiSessionProvider session={session}>
       <RouterWithQuotaWarning />

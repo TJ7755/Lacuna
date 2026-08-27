@@ -2,6 +2,13 @@
 
 Durable facts about how to work in this repository, for every agent regardless of harness.
 
+## Web AI chat is not the Electron data MCP server
+
+The optional web AI panel pairs with `tooling/lacuna-ai-mcp` through short-lived codes and two
+encrypted HTTP relay mailboxes. Its current four-tool companion carries chat, Stop and disconnect
+events only. The Electron `--mcp-companion` uses local IPC and exposes authorised Lacuna data tools;
+neither surface implies the capabilities of the other.
+
 ## Relay URLs must be HTTPS outside loopback
 
 `normaliseRelayUrl` in `src/sync/relay.ts` rejects plain HTTP for any host that is not a loopback

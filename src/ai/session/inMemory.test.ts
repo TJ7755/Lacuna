@@ -2,6 +2,20 @@ import { describe, expect, it, vi } from 'vitest';
 import { createInMemoryAiSession } from './inMemory';
 
 describe('in-memory AI session', () => {
+  it('starts a visible pairing session through the AiSession seam', async () => {
+    const session = createInMemoryAiSession();
+
+    const result = await session.pair();
+
+    expect(result.ok).toBe(true);
+    expect(session.getSnapshot().connection).toEqual(
+      expect.objectContaining({
+        status: 'pairing',
+        code: expect.stringMatching(/^[A-HJ-KM-NP-TV-Z2-9]{4}(?:-[A-HJ-KM-NP-TV-Z2-9]{4}){4}$/),
+      }),
+    );
+  });
+
   it('publishes a queued user message through the AiSession seam', async () => {
     const session = createInMemoryAiSession({
       connection: {

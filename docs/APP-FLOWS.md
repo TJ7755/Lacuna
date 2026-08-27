@@ -934,6 +934,37 @@ account or cloud copy to delete.
 
 Folder mirroring is permission-dependent and unavailable in browsers without the relevant file-system capability. There is no one-click Delete all local data flow separate from replacing data with an import or deleting courses individually.
 
+### Optional desktop AI chat
+
+AI is disabled by default and absent below 1024 CSS px. To use the current chat transport:
+
+1. Build and configure `tooling/lacuna-ai-mcp` as a stdio MCP server in the chosen terminal
+   harness. Keep that terminal task running.
+2. Enable **Settings → AI**. This adds the desktop **AI** action; it does not add anything to the
+   mobile drawer.
+3. Open AI and choose **Connect terminal**. Lacuna creates a short-lived pairing code.
+4. Copy the displayed terminal instruction into the trusted running task. The agent calls
+   `lacuna.connect` with that code; the code admits one terminal and expires after ten minutes.
+5. Send a message from the panel. The terminal repeatedly calls `lacuna.wait_for_message`, receives
+   one claimed message and returns one complete reply with the matching `runId` and `messageId`.
+6. Empty waits are normal and last no more than 25 seconds. The terminal task must call again;
+   Lacuna cannot wake a task which has already ended.
+7. Choose **Stop** to record a cooperative stop request. The terminal checks the latest browser
+   mailbox immediately before replying, acknowledges the stopped run and refuses a late reply.
+   Inference already running inside the model or harness is not forcibly killed.
+8. Disconnecting writes a final terminal event and clears the active local connection. Pairing and
+   the local transcript survive an ordinary reload. An unclaimed code expires after ten minutes;
+   a claimed relay session expires after 24 hours.
+
+The browser and terminal make outbound HTTPS requests to two encrypted directional mailboxes. The
+relay cannot read message content. There is no browser extension, WebSocket, inbound localhost
+listener or model credential stored in Lacuna.
+
+This flow currently provides chat only. The saved misconception-first preference is not yet sent to
+the terminal, and AI chat cannot yet read or change Courses, Lessons, Cards, Questions or learner
+memories. The Electron-only MCP flow below is separate and already has its own local data tools and
+permission model.
+
 ### Electron-only MCP settings
 
 Only in Electron, Settings can show connected MCP clients and session-only scope permissions. The user can grant, upgrade, downgrade, or revoke access. This is not present as a browser flow.
@@ -1077,6 +1108,7 @@ The interface, product language, data model, or help implies these capabilities,
 - Parameterised generated practice instances and shared skill/template identities.
 - A structure-aware equation editor.
 - LLM-graded scheduling.
+- AI-driven Course, Lesson, Card, Question or memory actions from the optional web chat.
 - A unified two-sided card object editor for reverse pairs.
 - Media-preserving share codes. Media requires full backup.
 - A separate delete-all-local-data control.

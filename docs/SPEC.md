@@ -2430,13 +2430,31 @@ scrollspy and its navigation cannot drift from the rendered sections.
 - **Install** (where supported): a panel of platform-specific install
   instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`.
 - **AI** (desktop web only): a device-local opt-in which is off by default, plus an independent
-  misconception-first teaching preference. Enabling it adds an **AI** action to the desktop
+  stored misconception-first teaching preference. Enabling it adds an **AI** action to the desktop
   navigation at 1024 CSS px and above. Opening the non-modal 400 px panel temporarily contracts the
   existing navigation to its 72 px rail without changing the saved collapse preference; closing
-  restores focus to the trigger. Below the breakpoint the inactive surface is absent. The panel
-  reads every connection, conversation, activity, approval, receipt, error, Stop and composer state
-  through `AiSession`; the live terminal bridge and durable conversation repository remain part of
-  the in-progress prototype rather than the current shipped behaviour.
+  restores focus to the trigger. Below the breakpoint the inactive surface is absent.
+
+  The production `AiSession` adapter creates a ten-minute pairing code, persists the local
+  conversation and relay credentials across reload, and polls two encrypted directional HTTP
+  mailboxes. A deliberately running terminal task launches `tooling/lacuna-ai-mcp` as a standard
+  stdio MCP server and calls `lacuna.connect`, `lacuna.wait_for_message`, `lacuna.reply` and
+  `lacuna.disconnect`. Browser and terminal use ephemeral P-256 ECDH to derive an AES-256-GCM key;
+  the relay receives public pairing metadata, bearer-token hashes and opaque ciphertext only. One
+  peer writes each mailbox and `ETag` / `If-Match` rejects a competing or stale writer. This is
+  outbound HTTPS polling, not a browser extension, WebSocket or inbound localhost service.
+
+  A queued message is claimed with an immutable `runId` and bounded lease. Replies are complete,
+  not streamed. Stop changes the browser record to `stop_requested`; the terminal refreshes that
+  record before replying, writes `stop_acknowledged`, and refuses a late reply. This is cooperative:
+  it cannot terminate inference already running in the model or terminal harness. The terminal task
+  must remain alive and repeat bounded waits because Lacuna cannot wake a task which has ended.
+
+  The current relay mailbox carries message claims, replies, Stop acknowledgements and disconnects
+  only. It does **not** expose Lacuna's course, Lesson, Card, Question or memory repositories, the
+  Electron MCP tool registry, approvals, action receipts or misconception-first instructions. The
+  preference is stored now for that later teaching integration. The Electron MCP server below is a
+  separate local-IPC data surface with different permissions and capabilities.
 - **MCP server** (Electron only): live stdio-server status, tool-surface version and tool
   count, followed by process-scoped read/write/destructive grants for the whole database
   and each course. Grants can be raised, lowered or revoked and are discarded when Lacuna

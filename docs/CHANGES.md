@@ -2,6 +2,16 @@
 
 ## Unreleased — AI sidebar foundation
 
+- Added the web AI chat transport: Lacuna creates a short-lived terminal pairing code, derives a
+  shared AES-256-GCM key with ephemeral P-256 ECDH, and persists/polls one encrypted mailbox per
+  direction through the HTTPS relay. The model- and harness-agnostic
+  `tooling/lacuna-ai-mcp` stdio companion exposes only `lacuna.connect`,
+  `lacuna.wait_for_message`, `lacuna.reply` and `lacuna.disconnect`. It claims queued messages with
+  bounded leases, survives ordinary browser reloads, uses `ETag` / `If-Match` for its single-writer
+  mailboxes, acknowledges cooperative Stop, and refreshes Stop state immediately before refusing a
+  late reply. There is no browser extension, WebSocket, inbound local listener or model credential
+  in Lacuna. The current relay payload is chat-only: course/Card actions, learner memories,
+  approvals, receipts and misconception-first instructions remain future integration.
 - Added the first testable AI interface slice: a device-local, disabled-by-default Settings opt-in,
   optional misconception-first preference, desktop-only sidebar action and 400 px conversation
   panel. Opening AI contracts the existing navigation to its 72 px rail without overwriting the
@@ -12,10 +22,10 @@
   queued messages can be edited in place, source links are emitted only when Lacuna has a valid
   route, and interactive targets retain their documented minimum size. Device-local setting changes
   remain active for the current page when browser persistence is temporarily unavailable.
-- Defined the versioned browser-facing AI protocol as one strict request seam with bounded,
+- Defined a versioned future domain-action protocol as one strict request seam with bounded,
   JSON-safe records, serialisable expected errors, explicit Stop semantics and server-held one-shot
-  approvals. Added the UI-facing `AiSession` read-model interface and typed fixtures for the six
-  browser acceptance scenarios; runtime adapters, persistence and UI remain in later slices.
+  approvals. The current relay mailbox does not expose this action seam. Added the UI-facing
+  `AiSession` read-model interface and typed fixtures for the broader six-scenario target.
 - Corrected MCP Undo dispatch so deleted Concepts and Questions use their own repository restorers.
   The exhaustive dispatcher can no longer silently treat a future Undo kind as a Sequence.
 - Corrected `docs/SPEC.md` to identify MCP tool-surface version 3, matching
@@ -24,16 +34,17 @@
 ## Unreleased — AI sidebar prototype plan
 
 - Added `docs/plans/ai-sidebar.md`, a one-week implementation plan for an optional desktop AI
-  sidebar driven by a trusted terminal agent through the learner's existing Chromium profile. The
-  plan reuses the transport-independent Lacuna tool registry, keeps reviews and raw FSRS state
-  human-owned, and defines conversation, activity, approval, stop and reconnect behaviour.
-- Brought durable agent memories into the first prototype scope with schema v25, controlled
+  sidebar paired to a trusted running terminal task through a standard stdio MCP companion, a
+  short-lived code and encrypted directional HTTP mailboxes. The delivered chat checkpoint is
+  model/harness agnostic; later phases propose reuse of the transport-independent Lacuna tool
+  registry while keeping reviews and raw FSRS state human-owned.
+- Planned durable agent memories for a later prototype phase with schema v25, controlled
   provenance, learner correction, full-backup and peer-sync semantics. Conversation transcripts
-  remain device-local. The plan also makes misconception-first teaching an optional, adaptive
-  instruction rather than applying it to procedural requests.
+  remain device-local. Neither memories nor misconception-first instructions are wired to the
+  current chat mailbox.
 - Split delivery into four parallel ownership lanes after a shared interface/schema foundation,
   followed by central integration, browser acceptance and independent standards/specification
-  reviews. It records the existing Concept/Question MCP Undo dispatch defect as a separate
+  reviews. It recorded the then-existing Concept/Question MCP Undo dispatch defect as a separate
   prerequisite correction rather than hiding it inside the feature.
 
 ## Unreleased — Agent workspace housekeeping

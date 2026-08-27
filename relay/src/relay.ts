@@ -1,5 +1,12 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
+import {
+  handleAiRelayRoute,
+  matchAiRelayPath,
+  type AiRelayRoute,
+} from './aiRelay.js';
+
+export { AI_PAIRING_TTL_MS, AI_SESSION_TTL_MS } from './aiRelay.js';
 
 /** Snapshots carry inline assets. Arc 8 §13.3: start at 25 MB and name the cap. */
 export const MAX_BODY_BYTES = 25 * 1024 * 1024;
@@ -35,6 +42,17 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
 
       const route = parseRoute(request.url);
       switch (route.kind) {
+        case 'ai-session-collection':
+          if (request.method === 'POST' && isRateLimited(getClientIp(request), now())) {
+            return json(429, request, { error: 'too many requests' });
+          }
+          return await handleAiRelayRoute(store, request, route, now);
+        case 'ai-session':
+        case 'ai-claim':
+        case 'ai-peer':
+        case 'ai-mailbox':
+        case 'ai-invalid':
+          return await handleAiRelayRoute(store, request, route, now);
         case 'channel':
           return await handleChannel(store, request);
         case 'item':
@@ -295,6 +313,7 @@ function authorizeMint(request: Request, secret: string): boolean {
 }
 
 export type Route =
+  | AiRelayRoute
   | { kind: 'channel' }
   | { kind: 'item'; id: string }
   | { kind: 'slot'; id: string; slot: Slot }
@@ -326,6 +345,9 @@ export function parseRoute(url: string): Route {
 function matchPath(pathname: string): Route | null {
   const parts = pathname.split('/').filter(Boolean);
   if (parts[0] === 'api') parts.shift();
+
+  const aiRoute = matchAiRelayPath(parts);
+  if (aiRoute) return aiRoute;
 
   if (parts.length === 1 && parts[0] === 'channel') return { kind: 'channel' };
   if (parts.length === 2 && parts[0] === 'c' && parts[1] !== undefined) {
