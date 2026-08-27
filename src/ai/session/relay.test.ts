@@ -9,6 +9,25 @@ import {
 } from './relay.testHarness';
 
 describe('relay AI session connection lifecycle', () => {
+  it('starts restored background polling only after explicit activation', async () => {
+    const source = relaySessionHarness();
+    await source.session.pair();
+    const timers = { repeat: vi.fn((_task: () => Promise<void>) => vi.fn()) };
+
+    const restored = createRelayAiSession({
+      relay: source.relay,
+      storage: source.storage,
+      crypto: source.crypto,
+      timers,
+      now: () => 1_000,
+    });
+
+    expect(timers.repeat).not.toHaveBeenCalled();
+    restored.activate();
+    restored.activate();
+    expect(timers.repeat).toHaveBeenCalledOnce();
+  });
+
   it('creates and persists a visible pairing session', async () => {
     const { session, relay, timers } = relaySessionHarness();
     const listener = vi.fn();
@@ -258,6 +277,157 @@ describe('relay AI session connection lifecycle', () => {
       reason: 'Terminal task ended.',
     });
     expect(cancelPolling).toHaveBeenCalledOnce();
+  });
+
+  it('ignores a stale poll callback after terminal disconnect and re-pairing', async () => {
+    const { session, relay, crypto, timers } = relaySessionHarness();
+    vi.mocked(relay.create)
+      .mockResolvedValueOnce(CREATED)
+      .mockResolvedValueOnce({
+        ...CREATED,
+        sessionId: 'B'.repeat(20),
+        pairingCode: 'BBBB-BBBB-BBBB-BBBB-BBBB',
+      });
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: TERMINAL_PUBLIC_KEY,
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    const oldPoll = vi.mocked(timers.repeat).mock.calls[0]![0];
+    await oldPoll();
+    vi.mocked(relay.pull).mockResolvedValue({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"old-terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 1,
+      revision: 1,
+      events: [
+        {
+          eventId: 'event-old-disconnect',
+          type: 'disconnected',
+          disconnectedAt: 1_100,
+        },
+      ],
+    });
+    await oldPoll();
+
+    await session.pair();
+    const newPoll = vi.mocked(timers.repeat).mock.calls[1]![0];
+    await newPoll();
+    await session.send('Explain the second pairing.');
+    vi.mocked(relay.pull).mockResolvedValue({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"new-terminal-2"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 1,
+      revision: 2,
+      events: [
+        {
+          eventId: 'event-new-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-new',
+          claimedAt: 1_200,
+          leaseExpiresAt: 20_000,
+        },
+        {
+          eventId: 'event-new-reply',
+          type: 'reply',
+          messageId: 'message-1',
+          runId: 'run-new',
+          content: 'The second pairing owns this reply.',
+          createdAt: 1_300,
+        },
+      ],
+    });
+    const pushesBeforeStalePoll = vi.mocked(relay.push).mock.calls.length;
+
+    await oldPoll();
+
+    expect(relay.push).toHaveBeenCalledTimes(pushesBeforeStalePoll);
+    await newPoll();
+    expect(session.getSnapshot().items).toEqual([
+      expect.objectContaining({ kind: 'user', delivery: 'completed' }),
+      expect.objectContaining({
+        kind: 'assistant',
+        content: 'The second pairing owns this reply.',
+      }),
+    ]);
+  });
+
+  it('prevents a disposed session poll from overwriting its replacement', async () => {
+    const first = relaySessionHarness();
+    vi.mocked(first.relay.peer).mockResolvedValue({
+      terminalPublicKey: TERMINAL_PUBLIC_KEY,
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await first.session.pair();
+    await first.tick();
+    await first.session.send('Message from the old connection.');
+    let releasePull!: (value: { bytes: Uint8Array; generation: string }) => void;
+    vi.mocked(first.relay.pull).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releasePull = resolve;
+        }),
+    );
+    const stalePoll = first.tick();
+    await vi.waitFor(() => expect(first.relay.pull).toHaveBeenCalledOnce());
+
+    first.session.dispose();
+    const replacementTimers = {
+      repeat: vi.fn((_task: () => Promise<void>) => vi.fn()),
+    };
+    const replacement = createRelayAiSession({
+      relay: first.relay,
+      storage: first.storage,
+      crypto: first.crypto,
+      timers: replacementTimers,
+      now: () => 2_000,
+      createId: (prefix) => `replacement-${prefix}`,
+    });
+    replacement.activate();
+    await replacement.resetConnection();
+    vi.mocked(first.relay.create).mockResolvedValueOnce({
+      ...CREATED,
+      sessionId: 'B'.repeat(20),
+      pairingCode: 'BBBB-BBBB-BBBB-BBBB-BBBB',
+    });
+    await replacement.pair();
+    const replacementPoll = vi.mocked(replacementTimers.repeat).mock.calls[1]![0];
+    await replacementPoll();
+    await replacement.send('Message from the replacement connection.');
+    const pushesBeforeStaleCompletion = vi.mocked(first.relay.push).mock.calls.length;
+    vi.mocked(first.crypto.open).mockResolvedValue({
+      version: 1,
+      revision: 1,
+      events: [
+        {
+          eventId: 'event-old-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-old',
+          claimedAt: 2_100,
+          leaseExpiresAt: 20_000,
+        },
+      ],
+    });
+
+    releasePull({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-old"',
+    });
+    await stalePoll;
+
+    expect(first.relay.push).toHaveBeenCalledTimes(pushesBeforeStaleCompletion);
+    const saved = JSON.parse(first.storage.getItem('lacuna-ai-relay-session-v1')!) as {
+      connection: { credentials: { sessionId: string } };
+    };
+    expect(saved.connection.credentials.sessionId).toBe('B'.repeat(20));
   });
 
   it('disposes polling without deleting the persisted session', async () => {

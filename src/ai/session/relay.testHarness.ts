@@ -63,6 +63,7 @@ export function relaySessionHarness() {
     now: () => currentTime,
     createId: (prefix) => `${prefix}-${++nextId}`,
   });
+  session.activate();
   return {
     session,
     relay,

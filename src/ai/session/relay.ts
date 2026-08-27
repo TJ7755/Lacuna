@@ -73,11 +73,12 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
   let snapshot = restored?.snapshot ?? EMPTY_SNAPSHOT;
   let encryptionKey: CryptoKey | null = null;
   let cancelPolling: (() => void) | null = null;
+  let pollingEpoch = 0;
+  let active = false;
   let pollInFlight = false;
   let mutationQueue: Promise<void> = Promise.resolve();
 
   if (isExpiredPairing(snapshot, now())) expirePairing();
-  else if (persisted && snapshot.connection.status !== 'disconnected') startPolling();
 
   function persist(): void {
     persistence.save({ snapshot, connection: persisted });
@@ -91,7 +92,14 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
 
   function startPolling(): void {
     if (cancelPolling) return;
-    cancelPolling = timers.repeat(poll, POLL_INTERVAL_MS);
+    const epoch = ++pollingEpoch;
+    cancelPolling = timers.repeat(() => poll(epoch), POLL_INTERVAL_MS);
+  }
+
+  function stopPolling(): void {
+    pollingEpoch += 1;
+    cancelPolling?.();
+    cancelPolling = null;
   }
 
   function serialise<T>(operation: () => Promise<T>): Promise<T> {
@@ -104,8 +112,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
   }
 
   function expirePairing(): void {
-    cancelPolling?.();
-    cancelPolling = null;
+    stopPolling();
     persisted = null;
     encryptionKey = null;
     publish({
@@ -116,29 +123,34 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     });
   }
 
-  async function poll(): Promise<void> {
-    if (pollInFlight) return;
+  async function poll(epoch: number): Promise<void> {
+    if (epoch !== pollingEpoch || pollInFlight) return;
     pollInFlight = true;
     try {
-      await serialise(pollOnce);
+      await serialise(() => (epoch === pollingEpoch ? pollOnce(epoch) : Promise.resolve()));
     } catch (error) {
-      if (error instanceof RelayStaleGenerationError) disconnectStaleGeneration();
+      if (epoch === pollingEpoch && error instanceof RelayStaleGenerationError) {
+        disconnectStaleGeneration();
+      }
       // A later poll retries transient transport, persistence and crypto failures.
     } finally {
       pollInFlight = false;
     }
   }
 
-  async function pollOnce(): Promise<void> {
-    if (!persisted || snapshot.connection.status === 'disconnected') return;
+  async function pollOnce(epoch: number): Promise<void> {
+    if (epoch !== pollingEpoch || !persisted || snapshot.connection.status === 'disconnected') {
+      return;
+    }
     if (isExpiredPairing(snapshot, now())) {
       expirePairing();
       return;
     }
     if (!persisted.peerPublicKey) {
       const peer = await options.relay.peer(persisted.credentials);
-      if (!peer) return;
+      if (epoch !== pollingEpoch || !peer) return;
       encryptionKey = await crypto.deriveKey(persisted.keyPair.privateKey, peer.terminalPublicKey);
+      if (epoch !== pollingEpoch) return;
       persisted = { ...persisted, peerPublicKey: peer.terminalPublicKey };
       publish({
         ...snapshot,
@@ -159,11 +171,15 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     if (expired) ({ snapshot: nextSnapshot, messages } = expired);
 
     const pulled = await options.relay.pull(persisted.credentials);
+    if (epoch !== pollingEpoch) return;
     let terminalRevisionSeen = persisted.terminalRevisionSeen;
     const events = [];
     if (pulled) {
       const envelope = JSON.parse(new TextDecoder().decode(pulled.bytes)) as unknown;
-      const opened = await crypto.open(await getEncryptionKey(), envelope);
+      const key = await getEncryptionKey();
+      if (epoch !== pollingEpoch) return;
+      const opened = await crypto.open(key, envelope);
+      if (epoch !== pollingEpoch) return;
       const terminalMailbox = relayTerminalMailboxSchema.parse(opened);
       terminalRevisionSeen = terminalMailbox.revision;
       events.push(...terminalMailbox.events.filter((event) => !processed.has(event.eventId)));
@@ -196,7 +212,8 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       messages,
       terminalRevisionSeen,
     };
-    const browserGeneration = await pushMailbox(browserMailbox);
+    const browserGeneration = await pushMailbox(browserMailbox, epoch);
+    if (browserGeneration === null || epoch !== pollingEpoch) return;
     persisted = {
       ...persisted,
       browserMailbox,
@@ -207,8 +224,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     };
     publish(nextSnapshot);
     if (nextSnapshot.connection.status === 'disconnected') {
-      cancelPolling?.();
-      cancelPolling = null;
+      stopPolling();
     }
   }
 
@@ -219,21 +235,26 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     return encryptionKey;
   }
 
-  async function pushMailbox(mailbox: RelayBrowserMailbox): Promise<string> {
+  function pushMailbox(mailbox: RelayBrowserMailbox): Promise<string>;
+  function pushMailbox(mailbox: RelayBrowserMailbox, epoch: number): Promise<string | null>;
+  async function pushMailbox(mailbox: RelayBrowserMailbox, epoch?: number): Promise<string | null> {
     if (!persisted) throw new Error('AI terminal is not paired.');
-    const envelope = await crypto.seal(await getEncryptionKey(), mailbox as JsonValue);
+    const key = await getEncryptionKey();
+    if (epoch !== undefined && epoch !== pollingEpoch) return null;
+    const envelope = await crypto.seal(key, mailbox as JsonValue);
+    if (epoch !== undefined && epoch !== pollingEpoch) return null;
     const bytes = new TextEncoder().encode(JSON.stringify(envelope));
     const pushed = await options.relay.push(
       persisted.credentials,
       bytes,
       persisted.browserGeneration,
     );
+    if (epoch !== undefined && epoch !== pollingEpoch) return null;
     return pushed.generation;
   }
 
   function disconnectStaleGeneration(): void {
-    cancelPolling?.();
-    cancelPolling = null;
+    stopPolling();
     encryptionKey = null;
     publish({
       ...snapshot,
@@ -257,9 +278,14 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     getSnapshot() {
       return snapshot;
     },
+    activate() {
+      if (active) return;
+      active = true;
+      if (persisted && snapshot.connection.status !== 'disconnected') startPolling();
+    },
     dispose() {
-      cancelPolling?.();
-      cancelPolling = null;
+      active = false;
+      stopPolling();
     },
     pair() {
       return serialise(async () => {
@@ -293,7 +319,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
             processedEventIds: [],
           };
           publish({ ...snapshot, connection });
-          startPolling();
+          if (active) startPolling();
           return { ok: true, data: { code: created.pairingCode, expiresAt: created.expiresAt } };
         } catch {
           return internal('The terminal pairing session could not be created.');
@@ -435,8 +461,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
             revocationFailed = true;
           }
         }
-        cancelPolling?.();
-        cancelPolling = null;
+        stopPolling();
         persisted = null;
         encryptionKey = null;
         publish({ ...snapshot, connection: { status: 'disconnected' }, run: null, activity: null });

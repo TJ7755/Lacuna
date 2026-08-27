@@ -42,6 +42,10 @@
   `X-Lacuna-Generation`. Successful mailbox writes now return the generation in a small JSON body,
   avoiding header-only acknowledgement across consecutive browser writes. Browser and terminal
   clients retain header compatibility with older relay deployments.
+- Fenced the web AI session lifecycle so React cannot leave a discarded session polling after a
+  replacement mounts. Restored polling now starts only after the owning UI commits, and disposal or
+  reconnection invalidates delayed relay and crypto work before it can push or persist stale mailbox
+  state. This fixes the same-tab reconnect race that surfaced as a `412` stale-generation failure.
 - Added the first testable AI interface slice: a device-local, disabled-by-default Settings opt-in,
   optional misconception-first preference, desktop-only sidebar action and 400 px conversation
   panel. Opening AI contracts the existing navigation to its 72 px rail without overwriting the

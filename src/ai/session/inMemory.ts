@@ -33,6 +33,9 @@ export function createInMemoryAiSession(initial: Partial<AiSessionSnapshot> = {}
     getSnapshot() {
       return snapshot;
     },
+    activate() {
+      // This adapter has no device-local background work to start.
+    },
     dispose() {
       // This adapter has no device-local background work to stop.
     },
