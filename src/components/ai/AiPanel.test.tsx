@@ -19,6 +19,7 @@ function sessionWith(patch: Partial<AiSessionSnapshot> = {}): AiSession {
   return {
     subscribe: () => () => {},
     getSnapshot: () => snapshot,
+    activate: vi.fn(),
     dispose: vi.fn(),
     pair: vi.fn().mockResolvedValue({
       ok: true,

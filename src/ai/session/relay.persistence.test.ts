@@ -32,6 +32,7 @@ describe('relay AI session persistence', () => {
       now: () => 2_000,
       createId: (prefix) => `${prefix}-${++nextId}`,
     });
+    pairingReload.activate();
     expect(pairingReload.getSnapshot().connection).toEqual({
       status: 'pairing',
       code: CREATED.pairingCode,
@@ -91,6 +92,7 @@ describe('relay AI session persistence', () => {
       now: () => 3_000,
       createId: (prefix) => `restored-${prefix}`,
     });
+    connectedReload.activate();
     const restoredSnapshot = connectedReload.getSnapshot();
     expect(restoredSnapshot.connection).toEqual(
       expect.objectContaining({ status: 'connected', connectionId: CREATED.sessionId }),

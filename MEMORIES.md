@@ -75,12 +75,13 @@ Observed on the live AI relay on 27 August 2026: Vercel replaced or omitted the 
 next write failed with 412. Successful AI mailbox writes return the generation in a JSON body;
 `X-Lacuna-Generation` and `ETag` remain compatibility paths for older relay deployments.
 
-## Web AI relay sessions currently have one browser owner
+## Web AI relay sessions currently support one browser tab
 
-The persisted AI session has no tab lease or fencing token. A second Lacuna tab, a rapid AI
-disable/re-enable, or a reload while an old poll is still in flight can leave two session instances
-writing from the same browser-mailbox generation; one then fails closed with 412. Keep live testing
-to one tab until a browser-ownership lease is added.
+Same-tab session lifecycles are fenced: restored polling starts only after the owning React tree
+commits, and disposal invalidates delayed poll work before it can push or persist. The persisted AI
+session still has no cross-tab ownership lease, so two simultaneous Lacuna tabs can write from the
+same browser-mailbox generation and one will fail closed with 412. Keep live testing to one tab until
+a browser-ownership lease is added.
 
 ## The Vercel Functions body ceiling measures below 4.5 MB
 

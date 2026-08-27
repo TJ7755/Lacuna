@@ -72,6 +72,8 @@ export type AiSessionCommandResult<T = undefined> =
 export interface AiSession {
   subscribe(listener: () => void): () => void;
   getSnapshot(): AiSessionSnapshot;
+  /** Start device-local background work after the owning UI has committed. */
+  activate(): void;
   /** Stop device-local background work without mutating persisted conversation state. */
   dispose(): void;
   pair(): Promise<AiSessionCommandResult<{ code: string; expiresAt: number }>>;

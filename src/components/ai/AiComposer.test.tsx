@@ -7,6 +7,7 @@ function session(): AiSession {
   return {
     subscribe: () => () => {},
     getSnapshot: vi.fn(),
+    activate: vi.fn(),
     dispose: vi.fn(),
     pair: vi.fn(),
     send: vi.fn().mockResolvedValue({ ok: true, data: { messageId: 'message-1' } }),

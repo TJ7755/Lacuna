@@ -31,7 +31,10 @@ function RouterWithQuotaWarning() {
 
 function EnabledAiRouter() {
   const [session] = useState(() => createRelayAiSession({ relay: createRelayClient() }));
-  useEffect(() => () => session.dispose(), [session]);
+  useEffect(() => {
+    session.activate();
+    return () => session.dispose();
+  }, [session]);
   return (
     <AiSessionProvider session={session}>
       <RouterWithQuotaWarning />
