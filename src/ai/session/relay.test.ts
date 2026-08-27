@@ -99,20 +99,58 @@ describe('relay AI session', () => {
     expect(timers.repeat).toHaveBeenCalledOnce();
   });
 
-  it('expires an unclaimed pairing code and clears its local credentials', async () => {
-    const { session, relay, storage, tick, setNow, cancelPolling } = harness();
+  it('expires an unclaimed pairing code without discarding the persisted transcript', async () => {
+    const { session, relay, storage, crypto, timers, tick, setNow, cancelPolling } = harness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    await session.send('Keep this conversation.');
+    vi.mocked(relay.pull).mockResolvedValue({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 1,
+      revision: 1,
+      events: [
+        {
+          eventId: 'event-disconnect',
+          type: 'disconnected',
+          disconnectedAt: 1_500,
+        },
+      ],
+    });
+    await tick();
+    vi.mocked(relay.peer).mockResolvedValue(null);
     await session.pair();
     setNow(CREATED.expiresAt);
 
     await expect(tick()).resolves.toBeUndefined();
 
-    expect(relay.peer).not.toHaveBeenCalled();
     expect(session.getSnapshot().connection).toEqual({
       status: 'disconnected',
       reason: 'Pairing code expired. Connect the terminal again.',
     });
-    expect(storage.getItem('lacuna-ai-relay-session-v1')).toBeNull();
-    expect(cancelPolling).toHaveBeenCalledOnce();
+    expect(cancelPolling).toHaveBeenCalledTimes(2);
+
+    const restored = createRelayAiSession({ relay, storage, crypto, timers });
+    expect(restored.getSnapshot()).toEqual(
+      expect.objectContaining({
+        connection: {
+          status: 'disconnected',
+          reason: 'Pairing code expired. Connect the terminal again.',
+        },
+        items: [expect.objectContaining({ content: 'Keep this conversation.' })],
+      }),
+    );
+    await expect(restored.pair()).resolves.toEqual({
+      ok: true,
+      data: { code: CREATED.pairingCode, expiresAt: CREATED.expiresAt },
+    });
   });
 
   it('derives the mailbox key when the terminal claims the pairing code', async () => {
@@ -582,8 +620,175 @@ describe('relay AI session', () => {
     expect(relay.peer).toHaveBeenCalledOnce();
   });
 
-  it('returns an internal result instead of throwing when relay revocation fails', async () => {
-    const { session, relay } = harness();
+  it('serialises Stop behind in-flight terminal event processing', async () => {
+    const { session, relay, crypto, tick } = harness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    vi.mocked(relay.push)
+      .mockResolvedValueOnce({ generation: '"browser-1"' })
+      .mockResolvedValueOnce({ generation: '"browser-2"' });
+    await session.pair();
+    await tick();
+    await session.send('Stop after this is claimed.');
+    vi.mocked(relay.pull).mockResolvedValue({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 1,
+      revision: 1,
+      events: [
+        {
+          eventId: 'event-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-1',
+          claimedAt: 1_100,
+          leaseExpiresAt: 20_000,
+        },
+      ],
+    });
+    await tick();
+
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 1,
+      revision: 2,
+      events: [
+        {
+          eventId: 'event-unknown-claim',
+          type: 'claimed',
+          messageId: 'missing-message',
+          runId: 'missing-run',
+          claimedAt: 1_200,
+          leaseExpiresAt: 20_000,
+        },
+      ],
+    });
+    let releasePollPush!: (value: { generation: string }) => void;
+    vi.mocked(relay.push).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releasePollPush = resolve;
+        }),
+    );
+    const polling = tick();
+    await vi.waitFor(() => expect(relay.push).toHaveBeenCalledTimes(3));
+
+    const stopping = session.stop('run-1');
+    await Promise.resolve();
+    expect(relay.push).toHaveBeenCalledTimes(3);
+
+    vi.mocked(relay.push).mockResolvedValueOnce({ generation: '"browser-4"' });
+    releasePollPush({ generation: '"browser-3"' });
+    await polling;
+    await expect(stopping).resolves.toEqual({ ok: true, data: undefined });
+    expect(relay.push).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.any(Uint8Array),
+      '"browser-3"',
+    );
+  });
+
+  it('requeues an expired claim and ignores a late reply from its old run', async () => {
+    const { session, relay, crypto, tick, setNow } = harness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    await session.send('Try this message again after the lease.');
+    vi.mocked(relay.pull).mockResolvedValue({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 1,
+      revision: 1,
+      events: [
+        {
+          eventId: 'event-old-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-old',
+          claimedAt: 1_100,
+          leaseExpiresAt: 2_000,
+        },
+      ],
+    });
+    await tick();
+    setNow(2_000);
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 1,
+      revision: 2,
+      events: [
+        {
+          eventId: 'event-old-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-old',
+          claimedAt: 1_100,
+          leaseExpiresAt: 2_000,
+        },
+        {
+          eventId: 'event-late-reply',
+          type: 'reply',
+          messageId: 'message-1',
+          runId: 'run-old',
+          content: 'This arrived too late.',
+          createdAt: 2_000,
+        },
+      ],
+    });
+
+    await tick();
+
+    const expired = session.getSnapshot();
+    expect(expired.run).toEqual(
+      expect.objectContaining({ status: 'expired', runId: 'run-old', expiredAt: 2_000 }),
+    );
+    expect(expired.items).toEqual([
+      expect.objectContaining({
+        kind: 'user',
+        content: 'Try this message again after the lease.',
+        delivery: 'queued',
+      }),
+    ]);
+    const retriedMessageId = expired.items[0]?.id;
+    expect(retriedMessageId).not.toBe('message-1');
+    expect(crypto.seal).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        messages: [expect.objectContaining({ messageId: retriedMessageId, delivery: 'queued' })],
+      }),
+    );
+
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 1,
+      revision: 3,
+      events: [
+        {
+          eventId: 'event-new-claim',
+          type: 'claimed',
+          messageId: retriedMessageId,
+          runId: 'run-new',
+          claimedAt: 2_100,
+          leaseExpiresAt: 3_000,
+        },
+      ],
+    });
+    await tick();
+    expect(session.getSnapshot().run).toEqual(
+      expect.objectContaining({ status: 'active', runId: 'run-new' }),
+    );
+  });
+
+  it('clears the local connection without throwing when relay revocation fails', async () => {
+    const { session, relay, storage, crypto, timers } = harness();
     await session.pair();
     vi.mocked(relay.revoke).mockRejectedValue(new Error('revoke unavailable'));
 
@@ -591,9 +796,46 @@ describe('relay AI session', () => {
       ok: false,
       error: { kind: 'internal', message: 'The AI connection could not be revoked.' },
     });
-    expect(session.getSnapshot().connection).toEqual(
-      expect.objectContaining({ status: 'pairing', code: CREATED.pairingCode }),
+    expect(session.getSnapshot().connection).toEqual({ status: 'disconnected' });
+
+    const restored = createRelayAiSession({ relay, storage, crypto, timers });
+    expect(restored.getSnapshot().connection).toEqual({ status: 'disconnected' });
+  });
+
+  it('preserves the transcript across reload after resetting the connection', async () => {
+    const first = harness();
+    vi.mocked(first.relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await first.session.pair();
+    await first.tick();
+    await first.session.send('Keep this conversation.');
+
+    await expect(first.session.resetConnection()).resolves.toEqual({
+      ok: true,
+      data: undefined,
+    });
+
+    const restored = createRelayAiSession({
+      relay: first.relay,
+      storage: first.storage,
+      crypto: first.crypto,
+      timers: first.timers,
+    });
+    expect(restored.getSnapshot()).toEqual(
+      expect.objectContaining({
+        connection: { status: 'disconnected' },
+        items: [
+          expect.objectContaining({
+            kind: 'user',
+            content: 'Keep this conversation.',
+          }),
+        ],
+      }),
     );
+    expect(first.relay.peer).toHaveBeenCalledOnce();
   });
 
   it('applies an explicit terminal disconnect once and stops polling', async () => {

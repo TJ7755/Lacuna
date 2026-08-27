@@ -181,17 +181,19 @@ describe('HttpRelayProvider', () => {
   });
 
   it('rejects a quoted-empty generation from a pull (missing store ETag)', async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(new Uint8Array([1]), { status: 200, headers: { ETag: '""' } }),
-    );
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(new Uint8Array([1]), { status: 200, headers: { ETag: '""' } }),
+      );
 
     await expect(provider(fetchImpl).pull('state')).rejects.toBeInstanceOf(RelayProtocolError);
   });
 
   it('rejects a quoted-empty generation from a push response', async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(null, { status: 204, headers: { ETag: '""' } }),
-    );
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 204, headers: { ETag: '""' } }));
 
     await expect(
       provider(fetchImpl).push('state', new Uint8Array([1]), EMPTY_GENERATION),
@@ -256,6 +258,15 @@ describe('HttpRelayProvider', () => {
     expect(
       () =>
         new HttpRelayProvider({
+          relayUrl: 'https://user:password@relay.example',
+          channelId: CHANNEL_ID,
+          writeToken: WRITE_TOKEN,
+          fetchImpl,
+        }),
+    ).toThrow(RelayConfigurationError);
+    expect(
+      () =>
+        new HttpRelayProvider({
           relayUrl: 'https://relay.example?debug=1',
           channelId: CHANNEL_ID,
           writeToken: WRITE_TOKEN,
@@ -266,7 +277,11 @@ describe('HttpRelayProvider', () => {
   });
 
   it('accepts plain HTTP only for loopback relay hosts', async () => {
-    for (const relayUrl of ['http://localhost:8787', 'http://127.0.0.1:8787', 'http://[::1]:8787']) {
+    for (const relayUrl of [
+      'http://localhost:8787',
+      'http://127.0.0.1:8787',
+      'http://[::1]:8787',
+    ]) {
       const fetchImpl = vi
         .fn<typeof fetch>()
         .mockResolvedValue(new Response(null, { status: 404 }));

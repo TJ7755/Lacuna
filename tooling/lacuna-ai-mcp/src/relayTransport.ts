@@ -14,12 +14,12 @@ import {
   type RelayEnvelope,
   type RelayTerminalMailbox,
 } from '../../../src/ai/relayProtocol.js';
-import type {
-  ConnectedTerminalRelay,
-  TerminalRelayTransport,
-} from './client.js';
+import { normaliseRelayUrl } from '../../../src/sync/relay.js';
+import type { ConnectedTerminalRelay, TerminalRelayTransport } from './client.js';
 
 const CONNECTION_AUTH = Symbol('terminal-relay-auth');
+
+export { normaliseRelayUrl };
 
 interface HttpConnectedTerminalRelay extends ConnectedTerminalRelay {
   [CONNECTION_AUTH]: { terminalToken: string; key: CryptoKey };
@@ -61,17 +61,14 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
     const baseUrl = normaliseRelayUrl(relayUrl);
     const pair = await this.crypto.createKeyPair();
     const body = JSON.stringify({ terminalPublicKey: pair.publicKey, client });
-    const response = await this.fetchImpl(
-      `${baseUrl}/ai/s/${encodeURIComponent(code)}/claim`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': String(new TextEncoder().encode(body).byteLength),
-        },
-        body,
+    const response = await this.fetchImpl(`${baseUrl}/ai/s/${encodeURIComponent(code)}/claim`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': String(new TextEncoder().encode(body).byteLength),
       },
-    );
+      body,
+    });
     if (!response.ok) throw relayHttpError('claim the Lacuna AI session', response.status);
     const parsed = relayClaimResponseSchema.safeParse(await readJsonResponse(response));
     if (!parsed.success) throw new Error('The relay returned an invalid claim response.');
@@ -139,26 +136,6 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
     }
     return requiredEtag(response);
   }
-}
-
-export function normaliseRelayUrl(value: string): string {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new Error('The relay URL is invalid.');
-  }
-  const loopback =
-    url.hostname === 'localhost' ||
-    url.hostname === '::1' ||
-    /^127(?:\.\d{1,3}){3}$/.test(url.hostname);
-  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) {
-    throw new Error('The relay URL must use HTTPS outside loopback.');
-  }
-  if (url.username || url.password || url.search || url.hash) {
-    throw new Error('The relay URL must not contain credentials, a query or a fragment.');
-  }
-  return url.toString().replace(/\/$/, '');
 }
 
 function authenticatedConnection(connection: ConnectedTerminalRelay): {

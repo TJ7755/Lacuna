@@ -28,6 +28,27 @@ function cryptoOperations(opened: JsonValue): RelayCryptoOperations {
 }
 
 describe('HttpTerminalRelayTransport', () => {
+  it('allows plain HTTP for IPv6 loopback relay development', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({
+        sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+        browserPublicKey: PEER_PUBLIC_KEY,
+        terminalToken: TOKEN,
+        expiresAt: 90_000,
+      }),
+    );
+    const transport = new HttpTerminalRelayTransport({
+      fetchImpl,
+      crypto: cryptoOperations({}),
+    });
+
+    await expect(
+      transport.connect('ABCD-EFGH-JKMN-PQRS-TVW2', 'http://[::1]:8787', {
+        name: 'Test client',
+      }),
+    ).resolves.toMatchObject({ relayUrl: 'http://[::1]:8787' });
+  });
+
   it('claims with an ephemeral P-256 public key and derives the shared mailbox key', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
       Response.json({
@@ -83,7 +104,9 @@ describe('HttpTerminalRelayTransport', () => {
           headers: { ETag: '"browser-1"' },
         }),
       )
-      .mockResolvedValueOnce(new Response(null, { status: 204, headers: { ETag: '"terminal-1"' } }));
+      .mockResolvedValueOnce(
+        new Response(null, { status: 204, headers: { ETag: '"terminal-1"' } }),
+      );
     const crypto = cryptoOperations(browserMailbox);
     const transport = new HttpTerminalRelayTransport({ fetchImpl, crypto });
     const connection = await transport.connect(
@@ -97,11 +120,13 @@ describe('HttpTerminalRelayTransport', () => {
       mailbox: browserMailbox,
     });
     const terminalMailbox: RelayTerminalMailbox = { version: 1, revision: 0, events: [] };
-    await expect(
-      transport.writeTerminalMailbox(connection, '"0"', terminalMailbox),
-    ).resolves.toBe('"terminal-1"');
+    await expect(transport.writeTerminalMailbox(connection, '"0"', terminalMailbox)).resolves.toBe(
+      '"terminal-1"',
+    );
 
-    expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({ Authorization: `Bearer ${TOKEN}` });
+    expect(fetchImpl.mock.calls[1]?.[1]?.headers).toMatchObject({
+      Authorization: `Bearer ${TOKEN}`,
+    });
     expect(fetchImpl.mock.calls[2]?.[1]?.headers).toMatchObject({
       Authorization: `Bearer ${TOKEN}`,
       'If-Match': '"0"',

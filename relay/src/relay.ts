@@ -1,10 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
-import {
-  handleAiRelayRoute,
-  matchAiRelayPath,
-  type AiRelayRoute,
-} from './aiRelay.js';
+import { handleAiRelayRoute, matchAiRelayPath, type AiRelayRoute } from './aiRelay.js';
 
 export { AI_PAIRING_TTL_MS, AI_SESSION_TTL_MS } from './aiRelay.js';
 
@@ -43,7 +39,10 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
       const route = parseRoute(request.url);
       switch (route.kind) {
         case 'ai-session-collection':
-          if (request.method === 'POST' && isRateLimited(getClientIp(request), now())) {
+          if (
+            request.method === 'POST' &&
+            isRateLimited(aiPairingAttempts, getClientIp(request), now())
+          ) {
             return json(429, request, { error: 'too many requests' });
           }
           return await handleAiRelayRoute(store, request, route, now);
@@ -73,7 +72,9 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
 
 const MINT_RATE_LIMIT = 10;
 const MINT_WINDOW_MS = 60 * 60 * 1000;
-const mintAttempts = new Map<string, { count: number; resetAt: number }>();
+type RateLimitAttempts = Map<string, { count: number; resetAt: number }>;
+const aiPairingAttempts: RateLimitAttempts = new Map();
+const deviceSyncMintAttempts: RateLimitAttempts = new Map();
 
 function getClientIp(request: Request): string {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -83,10 +84,10 @@ function getClientIp(request: Request): string {
   return 'unknown';
 }
 
-function isRateLimited(ip: string, now: number): boolean {
-  const entry = mintAttempts.get(ip);
+function isRateLimited(attempts: RateLimitAttempts, ip: string, now: number): boolean {
+  const entry = attempts.get(ip);
   if (!entry || now >= entry.resetAt) {
-    mintAttempts.set(ip, { count: 1, resetAt: now + MINT_WINDOW_MS });
+    attempts.set(ip, { count: 1, resetAt: now + MINT_WINDOW_MS });
     return false;
   }
   if (entry.count >= MINT_RATE_LIMIT) return true;
@@ -95,7 +96,8 @@ function isRateLimited(ip: string, now: number): boolean {
 }
 
 export function __resetMintRateLimitForTests(): void {
-  mintAttempts.clear();
+  aiPairingAttempts.clear();
+  deviceSyncMintAttempts.clear();
 }
 
 async function handleChannel(store: BlobStore, request: Request): Promise<Response> {
@@ -111,7 +113,7 @@ async function handleChannel(store: BlobStore, request: Request): Promise<Respon
     return json(401, request, { error: 'unauthorized' });
   } else if (!authHeader) {
     const ip = getClientIp(request);
-    if (isRateLimited(ip, Date.now())) {
+    if (isRateLimited(deviceSyncMintAttempts, ip, Date.now())) {
       return json(429, request, { error: 'too many requests' });
     }
   }
@@ -147,7 +149,8 @@ async function handleItem(
   }
 
   const auth = await authorize(store, id, request);
-  if (auth !== 'ok') return json(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
+  if (auth !== 'ok')
+    return json(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
 
   await sweep(store, id);
   return empty(204, request);
@@ -232,7 +235,8 @@ async function putSlot(
   }
 
   const auth = await authorize(store, id, request);
-  if (auth !== 'ok') return json(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
+  if (auth !== 'ok')
+    return json(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
 
   const ifMatch = request.headers.get('If-Match');
   if (ifMatch === null || ifMatch.trim() === '') {
@@ -380,7 +384,9 @@ export function describeInternalError(err: unknown): string {
   let current: unknown = err;
   for (let depth = 0; current !== undefined && current !== null && depth < 4; depth += 1) {
     if (current instanceof Error) {
-      parts.push(current.name === 'Error' ? current.message : `${current.name}: ${current.message}`);
+      parts.push(
+        current.name === 'Error' ? current.message : `${current.name}: ${current.message}`,
+      );
       current = current.cause;
       continue;
     }

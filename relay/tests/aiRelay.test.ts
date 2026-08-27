@@ -17,9 +17,11 @@ describe('AI relay', () => {
     let now = 1_000_000;
     const handle = createHandler(new MemoryStore(() => now), { now: () => now });
 
-    const created = await handle(jsonRequest('/ai/sessions', 'POST', {
-      browserPublicKey: BROWSER_PUBLIC_KEY,
-    }));
+    const created = await handle(
+      jsonRequest('/ai/sessions', 'POST', {
+        browserPublicKey: BROWSER_PUBLIC_KEY,
+      }),
+    );
     expect(created.status).toBe(201);
     const browser = (await created.json()) as {
       sessionId: string;
@@ -123,9 +125,11 @@ describe('AI relay', () => {
   it('expires unclaimed pairing codes and lets the browser revoke a claimed session', async () => {
     let now = 10_000;
     const handle = createHandler(new MemoryStore(() => now), { now: () => now });
-    const created = await handle(jsonRequest('/ai/sessions', 'POST', {
-      browserPublicKey: BROWSER_PUBLIC_KEY,
-    }));
+    const created = await handle(
+      jsonRequest('/ai/sessions', 'POST', {
+        browserPublicKey: BROWSER_PUBLIC_KEY,
+      }),
+    );
     const browser = (await created.json()) as {
       sessionId: string;
       browserToken: string;
@@ -166,27 +170,82 @@ describe('AI relay', () => {
     expect(limited.status).toBe(429);
     __resetMintRateLimitForTests();
   });
+
+  it('keeps public pairing and device-sync mint limits independent', async () => {
+    __resetMintRateLimitForTests();
+    const handle = createHandler(new MemoryStore());
+    const pairingIp = '198.51.100.31';
+    for (let index = 0; index < 10; index += 1) {
+      const response = await handle(
+        jsonRequest(
+          '/ai/sessions',
+          'POST',
+          { browserPublicKey: BROWSER_PUBLIC_KEY },
+          { 'x-forwarded-for': pairingIp },
+        ),
+      );
+      expect(response.status).toBe(201);
+    }
+    const deviceMint = await handle(
+      new Request('http://relay.test/channel', {
+        method: 'POST',
+        headers: { Origin: ORIGIN, 'x-forwarded-for': pairingIp },
+      }),
+    );
+    expect(deviceMint.status).toBe(201);
+
+    __resetMintRateLimitForTests();
+    const deviceIp = '198.51.100.32';
+    for (let index = 0; index < 10; index += 1) {
+      const response = await handle(
+        new Request('http://relay.test/channel', {
+          method: 'POST',
+          headers: { Origin: ORIGIN, 'x-forwarded-for': deviceIp },
+        }),
+      );
+      expect(response.status).toBe(201);
+    }
+    const pairingSession = await handle(
+      jsonRequest(
+        '/ai/sessions',
+        'POST',
+        { browserPublicKey: BROWSER_PUBLIC_KEY },
+        { 'x-forwarded-for': deviceIp },
+      ),
+    );
+    expect(pairingSession.status).toBe(201);
+    __resetMintRateLimitForTests();
+  });
 });
 
 async function paired() {
   const handle = createHandler(new MemoryStore());
-  const created = await handle(jsonRequest('/ai/sessions', 'POST', {
-    browserPublicKey: BROWSER_PUBLIC_KEY,
-  }));
+  const created = await handle(
+    jsonRequest('/ai/sessions', 'POST', {
+      browserPublicKey: BROWSER_PUBLIC_KEY,
+    }),
+  );
   const browser = (await created.json()) as {
     sessionId: string;
     pairingCode: string;
     browserToken: string;
   };
-  const claimed = await handle(jsonRequest(`/ai/s/${browser.pairingCode}/claim`, 'POST', {
-    terminalPublicKey: TERMINAL_PUBLIC_KEY,
-    client: { name: 'OpenCode' },
-  }));
+  const claimed = await handle(
+    jsonRequest(`/ai/s/${browser.pairingCode}/claim`, 'POST', {
+      terminalPublicKey: TERMINAL_PUBLIC_KEY,
+      client: { name: 'OpenCode' },
+    }),
+  );
   const terminal = (await claimed.json()) as { terminalToken: string };
   return { handle, ...browser, ...terminal };
 }
 
-function jsonRequest(path: string, method: string, body: unknown): Request {
+function jsonRequest(
+  path: string,
+  method: string,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Request {
   const encoded = JSON.stringify(body);
   return new Request(`http://relay.test${path}`, {
     method,
@@ -194,6 +253,7 @@ function jsonRequest(path: string, method: string, body: unknown): Request {
       Origin: ORIGIN,
       'Content-Type': 'application/json',
       'Content-Length': String(Buffer.byteLength(encoded)),
+      ...headers,
     },
     body: encoded,
   });

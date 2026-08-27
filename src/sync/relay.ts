@@ -232,6 +232,9 @@ export function normaliseRelayUrl(value: string): string {
       'The relay URL must use HTTPS unless it points at this device.',
     );
   }
+  if (url.username || url.password) {
+    throw new RelayConfigurationError('The relay URL must not contain credentials.');
+  }
   if (url.search || url.hash) {
     throw new RelayConfigurationError('The relay URL must not contain a query or fragment.');
   }
