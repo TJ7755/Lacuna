@@ -115,6 +115,33 @@ describe('AiPanel', () => {
     expect(session.stop).toHaveBeenCalledWith('run-1');
   });
 
+  it('explains the boundary of a completed Stop request', () => {
+    render(
+      <AiPanel
+        session={sessionWith({
+          connection: {
+            status: 'connected',
+            connectionId: 'connection-1',
+            client: { name: 'Terminal agent' },
+            lastActivityAt: 1,
+          },
+          activity: {
+            runId: 'run-1',
+            status: 'completed',
+            summary: 'Stopped',
+            detail: 'Further AI bridge actions are blocked. Completed changes remain.',
+            updatedAt: 3,
+          },
+        })}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText('Further AI bridge actions are blocked. Completed changes remain.'),
+    ).toBeVisible();
+  });
+
   it('presents the exact pending approval as the initial focus target', async () => {
     const session = sessionWith({
       connection: {

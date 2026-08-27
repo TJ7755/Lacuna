@@ -51,6 +51,7 @@ export type WaitForMessageResult =
 interface ActiveRun {
   messageId: string;
   runId: string;
+  replyRevision?: number;
 }
 
 export interface TerminalAiClientOptions {
@@ -103,6 +104,7 @@ export class TerminalAiClient {
         this.browserGeneration = read.generation;
         const stop = await this.acknowledgeRequestedStop(read.mailbox);
         if (stop) return stop;
+        this.releaseAcknowledgedReplies(read.mailbox.terminalRevisionSeen);
 
         const queued = read.mailbox.messages.find(
           (message) =>
@@ -143,7 +145,7 @@ export class TerminalAiClient {
   async reply(runId: string, messageId: string, content: string): Promise<void> {
     const connection = this.requireConnection();
     const active = this.activeRuns.get(runId);
-    if (!active || active.messageId !== messageId) {
+    if (!active || active.messageId !== messageId || active.replyRevision !== undefined) {
       throw new Error('The supplied run and message are not active in this terminal session.');
     }
     const latest = await this.transport.readBrowserMailbox(connection);
@@ -162,7 +164,7 @@ export class TerminalAiClient {
       content,
       createdAt: this.now(),
     });
-    this.activeRuns.delete(runId);
+    active.replyRevision = this.terminalMailbox.revision;
   }
 
   async disconnect(): Promise<void> {
@@ -213,6 +215,14 @@ export class TerminalAiClient {
     );
     this.terminalMailbox = next;
     this.terminalGeneration = generation;
+  }
+
+  private releaseAcknowledgedReplies(terminalRevisionSeen: number): void {
+    for (const [runId, run] of this.activeRuns) {
+      if (run.replyRevision !== undefined && run.replyRevision <= terminalRevisionSeen) {
+        this.activeRuns.delete(runId);
+      }
+    }
   }
 
   private requireConnection(): ConnectedTerminalRelay {

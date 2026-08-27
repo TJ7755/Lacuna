@@ -4,6 +4,13 @@ import type { AiConversationItem } from '../../ai/session/types';
 import { AiConversation } from './AiConversation';
 
 describe('AiConversation', () => {
+  it('describes the current terminal chat without promising Lacuna actions', () => {
+    render(<AiConversation items={[]} />);
+
+    expect(screen.getByText('Chat with your connected terminal agent.')).toBeInTheDocument();
+    expect(screen.queryByText(/build course material|change something in Lacuna/i)).toBeNull();
+  });
+
   it('links courses but does not invent a route for lessons without course context', () => {
     const items: AiConversationItem[] = [
       {

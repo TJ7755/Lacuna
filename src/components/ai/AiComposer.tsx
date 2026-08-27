@@ -89,9 +89,7 @@ export function AiComposer({
           value={content}
           disabled={disabled}
           aria-label="Message AI"
-          placeholder={
-            disabled ? 'Connect an AI session to begin' : 'Ask about this course or change Lacuna…'
-          }
+          placeholder={disabled ? 'Connect an AI session to begin' : 'Message AI…'}
           onChange={(event) => {
             dirtyRef.current = true;
             setContent(event.target.value);

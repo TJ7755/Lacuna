@@ -17,9 +17,14 @@
   `lacuna.wait_for_message`, `lacuna.reply` and `lacuna.disconnect`. It claims queued messages with
   bounded leases, survives ordinary browser reloads, uses `ETag` / `If-Match` for its single-writer
   mailboxes, acknowledges cooperative Stop, and refreshes Stop state immediately before refusing a
-  late reply. There is no browser extension, WebSocket, inbound local listener or model credential
-  in Lacuna. The current relay payload is chat-only: course/Card actions, learner memories,
-  approvals, receipts and misconception-first instructions remain future integration.
+  late reply. Replied terminal runs remain eligible for a later Stop acknowledgement until the
+  browser has observed their mailbox revision, closing the final read/write race. Persisted relay
+  sessions now reject malformed transcript variants and inconsistent connection state rather than
+  stranding the panel. Browser acceptance covers encrypted exchange, pending-run reload continuity
+  and cooperative Stop acknowledgement. There is no browser extension, WebSocket, inbound local
+  listener or model credential in Lacuna. The current relay payload is chat-only: course/Card
+  actions, learner memories, approvals, receipts and misconception-first instructions remain future
+  integration.
 - Added the first testable AI interface slice: a device-local, disabled-by-default Settings opt-in,
   optional misconception-first preference, desktop-only sidebar action and 400 px conversation
   panel. Opening AI contracts the existing navigation to its 72 px rail without overwriting the

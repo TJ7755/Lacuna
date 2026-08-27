@@ -20,6 +20,7 @@ class FakeTransport implements TerminalRelayTransport {
   );
   readonly reads: Array<{ generation: string; mailbox: RelayBrowserMailbox } | null> = [];
   readonly writes: RelayTerminalMailbox[] = [];
+  beforeWrite?: (mailbox: RelayTerminalMailbox) => void;
 
   async readBrowserMailbox(): Promise<{
     generation: string;
@@ -33,6 +34,7 @@ class FakeTransport implements TerminalRelayTransport {
     _generation: string,
     mailbox: RelayTerminalMailbox,
   ): Promise<string> {
+    this.beforeWrite?.(mailbox);
     this.writes.push(mailbox);
     return `"terminal-${mailbox.revision}"`;
   }
@@ -228,6 +230,53 @@ describe('TerminalAiClient', () => {
     );
     expect(transport.writes.flatMap((mailbox) => mailbox.events)).not.toContainEqual(
       expect.objectContaining({ type: 'reply', runId: claimed.runId }),
+    );
+  });
+
+  it('acknowledges Stop arriving after the pre-reply refresh but before reply publication', async () => {
+    const transport = new FakeTransport();
+    transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+    let now = 1_000;
+    let sequence = 0;
+    const client = new TerminalAiClient({
+      transport,
+      now: () => now,
+      sleep: async (milliseconds) => {
+        now += milliseconds;
+      },
+      createId: (prefix) => `${prefix}-${++sequence}`,
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+    const claimed = await client.waitForMessage(25_000);
+    if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
+
+    transport.beforeWrite = (mailbox) => {
+      if (mailbox.events.at(-1)?.type !== 'reply') return;
+      transport.reads.push({
+        generation: '"browser-2"',
+        mailbox: {
+          ...queuedMailbox(),
+          revision: 2,
+          terminalRevisionSeen: 1,
+          messages: [
+            {
+              ...queuedMailbox().messages[0],
+              delivery: 'stop_requested',
+              runId: claimed.runId,
+            },
+          ],
+        },
+      });
+    };
+
+    await client.reply(claimed.runId, claimed.messageId, 'This reply lost the Stop race.');
+    await expect(client.waitForMessage(1)).resolves.toEqual({
+      type: 'stop_requested',
+      messageId: claimed.messageId,
+      runId: claimed.runId,
+    });
+    expect(transport.writes.at(-1)?.events.at(-1)).toEqual(
+      expect.objectContaining({ type: 'stop_acknowledged', runId: claimed.runId }),
     );
   });
 

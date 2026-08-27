@@ -82,13 +82,20 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
           </button>
         </div>
         {snapshot.activity && (
-          <div className="mt-2 flex items-center gap-2 rounded-lg bg-paper px-3 py-2 text-xs text-ink-soft">
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
-            <span className="truncate">{snapshot.activity.summary}</span>
+          <div className="mt-2 flex items-start gap-2 rounded-lg bg-paper px-3 py-2 text-xs text-ink-soft">
+            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="truncate">{snapshot.activity.summary}</p>
+              {snapshot.activity.detail && (
+                <p className="mt-1 leading-5 text-ink-faint">{snapshot.activity.detail}</p>
+              )}
+            </div>
           </div>
         )}
         <span className="sr-only" aria-live="polite" aria-atomic="true">
-          {snapshot.activity?.summary ?? ''}
+          {snapshot.activity
+            ? [snapshot.activity.summary, snapshot.activity.detail].filter(Boolean).join('. ')
+            : ''}
         </span>
       </header>
 
