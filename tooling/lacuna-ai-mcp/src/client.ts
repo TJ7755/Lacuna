@@ -12,6 +12,13 @@ const DEFAULT_WAIT_MS = 25_000;
 const POLL_INTERVAL_MS = 500;
 const CLAIM_LEASE_MS = 60_000;
 
+export class TerminalRelayReconnectRequiredError extends Error {
+  constructor() {
+    super('The terminal mailbox write outcome is unknown. Reconnect Lacuna AI before continuing.');
+    this.name = 'TerminalRelayReconnectRequiredError';
+  }
+}
+
 export interface ConnectedTerminalRelay {
   relayUrl: string;
   sessionId: string;
@@ -101,11 +108,12 @@ export class TerminalAiClient {
     for (;;) {
       const read = await this.transport.readBrowserMailbox(connection);
       if (read && read.generation !== this.browserGeneration) {
-        this.browserGeneration = read.generation;
+        this.applyBrowserAcknowledgement(read.mailbox.terminalRevisionSeen);
         const stop = await this.acknowledgeRequestedStop(read.mailbox);
-        if (stop) return stop;
-        this.releaseAcknowledgedReplies(read.mailbox.terminalRevisionSeen);
-
+        if (stop) {
+          this.browserGeneration = read.generation;
+          return stop;
+        }
         const queued = read.mailbox.messages.find(
           (message) =>
             message.delivery === 'queued' && !this.claimedMessageIds.has(message.messageId),
@@ -124,6 +132,7 @@ export class TerminalAiClient {
           });
           this.claimedMessageIds.add(queued.messageId);
           this.activeRuns.set(runId, { messageId: queued.messageId, runId });
+          this.browserGeneration = read.generation;
           return {
             type: 'message',
             messageId: queued.messageId,
@@ -134,6 +143,7 @@ export class TerminalAiClient {
             leaseExpiresAt,
           };
         }
+        this.browserGeneration = read.generation;
       }
 
       const remaining = deadline - this.now();
@@ -150,8 +160,9 @@ export class TerminalAiClient {
     }
     const latest = await this.transport.readBrowserMailbox(connection);
     if (latest && latest.generation !== this.browserGeneration) {
-      this.browserGeneration = latest.generation;
+      this.applyBrowserAcknowledgement(latest.mailbox.terminalRevisionSeen);
       const stopped = await this.acknowledgeRequestedStop(latest.mailbox);
+      this.browserGeneration = latest.generation;
       if (stopped?.runId === runId) {
         throw new Error('Stop was requested for this run; the late reply was not sent.');
       }
@@ -208,20 +219,38 @@ export class TerminalAiClient {
       revision: this.terminalMailbox.revision + 1,
       events: [...this.terminalMailbox.events, event],
     };
-    const generation = await this.transport.writeTerminalMailbox(
-      connection,
-      this.terminalGeneration,
-      next,
-    );
+    let generation: string;
+    try {
+      generation = await this.transport.writeTerminalMailbox(
+        connection,
+        this.terminalGeneration,
+        next,
+      );
+    } catch (error) {
+      if (error instanceof TerminalRelayReconnectRequiredError) this.clearConnection();
+      throw error;
+    }
     this.terminalMailbox = next;
     this.terminalGeneration = generation;
   }
 
-  private releaseAcknowledgedReplies(terminalRevisionSeen: number): void {
+  private applyBrowserAcknowledgement(terminalRevisionSeen: number): void {
     for (const [runId, run] of this.activeRuns) {
       if (run.replyRevision !== undefined && run.replyRevision <= terminalRevisionSeen) {
         this.activeRuns.delete(runId);
       }
+    }
+    const firstRetainedRevision =
+      this.terminalMailbox.revision - this.terminalMailbox.events.length + 1;
+    const acknowledgedCount = Math.min(
+      this.terminalMailbox.events.length,
+      Math.max(0, terminalRevisionSeen - firstRetainedRevision + 1),
+    );
+    if (acknowledgedCount > 0) {
+      this.terminalMailbox = {
+        ...this.terminalMailbox,
+        events: this.terminalMailbox.events.slice(acknowledgedCount),
+      };
     }
   }
 

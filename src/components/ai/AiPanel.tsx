@@ -29,8 +29,8 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
           : connection.client.name;
 
   useEffect(() => {
-    if (disconnected) closeRef.current?.focus();
-  }, [disconnected]);
+    if (connection.status === 'disconnected') closeRef.current?.focus();
+  }, [connection.status]);
 
   return (
     <aside

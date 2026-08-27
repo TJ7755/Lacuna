@@ -15,7 +15,11 @@ import {
   type RelayTerminalMailbox,
 } from '../../../src/ai/relayProtocol.js';
 import { normaliseRelayUrl } from '../../../src/sync/relay.js';
-import type { ConnectedTerminalRelay, TerminalRelayTransport } from './client.js';
+import {
+  TerminalRelayReconnectRequiredError,
+  type ConnectedTerminalRelay,
+  type TerminalRelayTransport,
+} from './client.js';
 
 const CONNECTION_AUTH = Symbol('terminal-relay-auth');
 
@@ -65,7 +69,6 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Content-Length': String(new TextEncoder().encode(body).byteLength),
       },
       body,
     });
@@ -115,26 +118,34 @@ export class HttpTerminalRelayTransport implements TerminalRelayTransport {
       parsedMailbox.data as unknown as JsonValue,
     );
     const body = JSON.stringify(envelope);
-    const response = await this.fetchImpl(
-      `${connection.relayUrl}/ai/s/${connection.sessionId}/terminal`,
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${authenticated.terminalToken}`,
-          'Content-Type': 'application/octet-stream',
-          'Content-Length': String(new TextEncoder().encode(body).byteLength),
-          'If-Match': generation,
+    let response: Response;
+    try {
+      response = await this.fetchImpl(
+        `${connection.relayUrl}/ai/s/${connection.sessionId}/terminal`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${authenticated.terminalToken}`,
+            'Content-Type': 'application/octet-stream',
+            'If-Match': generation,
+          },
+          body,
         },
-        body,
-      },
-    );
+      );
+    } catch {
+      throw new TerminalRelayReconnectRequiredError();
+    }
     if (response.status === 412) {
       throw new Error('Another terminal writer changed this Lacuna AI session.');
     }
     if (response.status !== 204) {
       throw relayHttpError('write the Lacuna AI terminal mailbox', response.status);
     }
-    return requiredEtag(response);
+    try {
+      return requiredEtag(response);
+    } catch {
+      throw new TerminalRelayReconnectRequiredError();
+    }
   }
 }
 

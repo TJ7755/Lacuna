@@ -34,6 +34,7 @@ export interface PersistedRelayConnection {
   peerPublicKey: string | null;
   browserGeneration: string;
   browserMailbox: RelayBrowserMailbox;
+  queuedFollowUpMessageId: string | null;
   terminalRevisionSeen: number;
   processedEventIds: string[];
 }
@@ -98,16 +99,32 @@ function parseStoredState(value: unknown): RelayDeviceState | null {
     }
     const connection = parseConnection(value.connection);
     return connection && connectionMatchesSnapshot(connection, snapshot)
-      ? { snapshot, connection }
+      ? { snapshot, connection: recoverQueuedFollowUpIdentity(connection, snapshot) }
       : null;
   }
   if (value.version === 1) {
     const connection = parseConnection(value);
     return connection && connectionMatchesSnapshot(connection, snapshot)
-      ? { snapshot, connection }
+      ? { snapshot, connection: recoverQueuedFollowUpIdentity(connection, snapshot) }
       : null;
   }
   return null;
+}
+
+function recoverQueuedFollowUpIdentity(
+  connection: PersistedRelayConnection,
+  snapshot: AiSessionSnapshot,
+): PersistedRelayConnection {
+  if (connection.queuedFollowUpMessageId || snapshot.queuedFollowUp === null) return connection;
+  const transcriptMessageIds = new Set(
+    snapshot.items.filter((item) => item.kind === 'user').map((item) => item.id),
+  );
+  const candidates = connection.browserMailbox.messages.filter(
+    (message) => message.delivery === 'queued' && !transcriptMessageIds.has(message.messageId),
+  );
+  return candidates.length === 1
+    ? { ...connection, queuedFollowUpMessageId: candidates[0]!.messageId }
+    : connection;
 }
 
 function parseConnection(value: unknown): PersistedRelayConnection | null {
@@ -176,6 +193,7 @@ const persistedConnectionSchema = z
     peerPublicKey: relayPublicKeySchema.nullable(),
     browserGeneration: mailboxGenerationSchema,
     browserMailbox: relayBrowserMailboxSchema,
+    queuedFollowUpMessageId: identifierSchema.nullable().optional().default(null),
     terminalRevisionSeen: revisionSchema,
     processedEventIds: z.array(identifierSchema).max(MAX_AI_RELAY_MAILBOX_ENTRIES),
   })

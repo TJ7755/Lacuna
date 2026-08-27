@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import { serveStdio, type StdioServerHandle } from '@modelcontextprotocol/server/stdio';
 import { TerminalAiClient } from './client.js';
 import { HttpTerminalRelayTransport } from './relayTransport.js';
@@ -26,4 +27,6 @@ function describeError(error: unknown): string {
   return error instanceof Error ? error.message : 'Lacuna AI disconnected unexpectedly.';
 }
 
-startLacunaAiMcpServer();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  startLacunaAiMcpServer();
+}

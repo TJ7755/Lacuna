@@ -57,6 +57,7 @@ describe('AiPanel', () => {
     );
 
     expect(screen.getByText('ABCD-EFGH-JKMN-PQRS-TVWZ')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy instruction' })).toHaveFocus();
     expect(screen.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
   });
 

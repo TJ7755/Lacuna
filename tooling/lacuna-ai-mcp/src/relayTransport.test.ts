@@ -6,6 +6,7 @@ import type {
   RelayEnvelope,
   RelayTerminalMailbox,
 } from '../../../src/ai/relayProtocol';
+import { TerminalRelayReconnectRequiredError } from './client';
 import { HttpTerminalRelayTransport, type RelayCryptoOperations } from './relayTransport';
 
 const PUBLIC_KEY = Buffer.from(new Uint8Array(65).fill(1)).toString('base64url');
@@ -74,6 +75,7 @@ describe('HttpTerminalRelayTransport', () => {
     const [url, init] = fetchImpl.mock.calls[0] ?? [];
     expect(url).toBe('https://relay.example/ai/s/ABCD-EFGH-JKMN-PQRS-TVW2/claim');
     expect(init).toMatchObject({ method: 'POST' });
+    expect(new Headers(init?.headers).has('Content-Length')).toBe(false);
     expect(JSON.parse(String(init?.body))).toEqual({
       terminalPublicKey: PUBLIC_KEY,
       client: { name: 'OpenCode', version: '1.2.3' },
@@ -131,6 +133,7 @@ describe('HttpTerminalRelayTransport', () => {
       Authorization: `Bearer ${TOKEN}`,
       'If-Match': '"0"',
     });
+    expect(new Headers(fetchImpl.mock.calls[2]?.[1]?.headers).has('Content-Length')).toBe(false);
     expect(crypto.open).toHaveBeenCalledWith(KEY, ENVELOPE);
     expect(crypto.seal).toHaveBeenCalledWith(KEY, terminalMailbox);
   });
@@ -164,5 +167,67 @@ describe('HttpTerminalRelayTransport', () => {
         events: [],
       }),
     ).rejects.toThrow('Another terminal writer changed this Lacuna AI session.');
+  });
+
+  it('requires reconnection when a terminal mailbox PUT has an unknown network outcome', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+          browserPublicKey: PEER_PUBLIC_KEY,
+          terminalToken: TOKEN,
+          expiresAt: 90_000,
+        }),
+      )
+      .mockRejectedValueOnce(new TypeError('socket closed'));
+    const transport = new HttpTerminalRelayTransport({
+      fetchImpl,
+      crypto: cryptoOperations({}),
+    });
+    const connection = await transport.connect(
+      'ABCD-EFGH-JKMN-PQRS-TVW2',
+      'https://relay.example',
+      { name: 'Test client' },
+    );
+
+    await expect(
+      transport.writeTerminalMailbox(connection, '"0"', {
+        version: 1,
+        revision: 0,
+        events: [],
+      }),
+    ).rejects.toBeInstanceOf(TerminalRelayReconnectRequiredError);
+  });
+
+  it('requires reconnection when a successful terminal PUT omits its generation', async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          sessionId: 'ABCDEFGHJKMNPQRSTVW2',
+          browserPublicKey: PEER_PUBLIC_KEY,
+          terminalToken: TOKEN,
+          expiresAt: 90_000,
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const transport = new HttpTerminalRelayTransport({
+      fetchImpl,
+      crypto: cryptoOperations({}),
+    });
+    const connection = await transport.connect(
+      'ABCD-EFGH-JKMN-PQRS-TVW2',
+      'https://relay.example',
+      { name: 'Test client' },
+    );
+
+    await expect(
+      transport.writeTerminalMailbox(connection, '"0"', {
+        version: 1,
+        revision: 0,
+        events: [],
+      }),
+    ).rejects.toBeInstanceOf(TerminalRelayReconnectRequiredError);
   });
 });

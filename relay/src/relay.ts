@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
 import { handleAiRelayRoute, matchAiRelayPath, type AiRelayRoute } from './aiRelay.js';
+import { consumeAiPairingPermit, handleAiMaintenanceRoute } from './aiMaintenance.js';
 
 export { AI_PAIRING_TTL_MS, AI_SESSION_TTL_MS } from './aiRelay.js';
 
@@ -38,12 +39,17 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
 
       const route = parseRoute(request.url);
       switch (route.kind) {
+        case 'ai-maintenance':
+          return await handleAiMaintenanceRoute(store, request, now());
         case 'ai-session-collection':
-          if (
-            request.method === 'POST' &&
-            isRateLimited(aiPairingAttempts, getClientIp(request), now())
-          ) {
-            return json(429, request, { error: 'too many requests' });
+          if (request.method === 'POST') {
+            const permit = await consumeAiPairingPermit(store, request, now());
+            if (permit === 'limited') {
+              return json(429, request, { error: 'too many requests' });
+            }
+            if (permit === 'unavailable') {
+              return json(503, request, { error: 'rate limit unavailable' });
+            }
           }
           return await handleAiRelayRoute(store, request, route, now);
         case 'ai-session':
@@ -73,7 +79,6 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
 const MINT_RATE_LIMIT = 10;
 const MINT_WINDOW_MS = 60 * 60 * 1000;
 type RateLimitAttempts = Map<string, { count: number; resetAt: number }>;
-const aiPairingAttempts: RateLimitAttempts = new Map();
 const deviceSyncMintAttempts: RateLimitAttempts = new Map();
 
 function getClientIp(request: Request): string {
@@ -96,7 +101,6 @@ function isRateLimited(attempts: RateLimitAttempts, ip: string, now: number): bo
 }
 
 export function __resetMintRateLimitForTests(): void {
-  aiPairingAttempts.clear();
   deviceSyncMintAttempts.clear();
 }
 
@@ -318,6 +322,7 @@ function authorizeMint(request: Request, secret: string): boolean {
 
 export type Route =
   | AiRelayRoute
+  | { kind: 'ai-maintenance' }
   | { kind: 'channel' }
   | { kind: 'item'; id: string }
   | { kind: 'slot'; id: string; slot: Slot }
@@ -349,6 +354,10 @@ export function parseRoute(url: string): Route {
 function matchPath(pathname: string): Route | null {
   const parts = pathname.split('/').filter(Boolean);
   if (parts[0] === 'api') parts.shift();
+
+  if (parts.length === 2 && parts[0] === 'ai' && parts[1] === 'maintenance') {
+    return { kind: 'ai-maintenance' };
+  }
 
   const aiRoute = matchAiRelayPath(parts);
   if (aiRoute) return aiRoute;

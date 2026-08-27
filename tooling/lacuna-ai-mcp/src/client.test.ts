@@ -4,6 +4,7 @@ import type { RelayBrowserMailbox, RelayTerminalMailbox } from '../../../src/ai/
 import {
   DEFAULT_AI_RELAY_URL,
   TerminalAiClient,
+  TerminalRelayReconnectRequiredError,
   type ConnectedTerminalRelay,
   type TerminalRelayTransport,
 } from './client';
@@ -21,6 +22,7 @@ class FakeTransport implements TerminalRelayTransport {
   readonly reads: Array<{ generation: string; mailbox: RelayBrowserMailbox } | null> = [];
   readonly writes: RelayTerminalMailbox[] = [];
   beforeWrite?: (mailbox: RelayTerminalMailbox) => void;
+  writeError?: Error;
 
   async readBrowserMailbox(): Promise<{
     generation: string;
@@ -35,6 +37,11 @@ class FakeTransport implements TerminalRelayTransport {
     mailbox: RelayTerminalMailbox,
   ): Promise<string> {
     this.beforeWrite?.(mailbox);
+    if (this.writeError) {
+      const error = this.writeError;
+      this.writeError = undefined;
+      throw error;
+    }
     this.writes.push(mailbox);
     return `"terminal-${mailbox.revision}"`;
   }
@@ -112,6 +119,102 @@ describe('TerminalAiClient', () => {
     ]);
   });
 
+  it('retries the same browser generation when publishing a claim fails', async () => {
+    const transport = new FakeTransport();
+    const mailbox = queuedMailbox();
+    transport.reads.push(
+      { generation: '"browser-1"', mailbox },
+      { generation: '"browser-1"', mailbox },
+    );
+    transport.writeError = new Error('relay write failed');
+    let now = 1_000;
+    const client = new TerminalAiClient({
+      transport,
+      now: () => now,
+      sleep: async (milliseconds) => {
+        now += milliseconds;
+      },
+      createId: (prefix) => `${prefix}-1`,
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+
+    await expect(client.waitForMessage(25_000)).rejects.toThrow('relay write failed');
+    await expect(client.waitForMessage(25_000)).resolves.toEqual(
+      expect.objectContaining({ type: 'message', messageId: 'message-1' }),
+    );
+    expect(transport.writes).toHaveLength(1);
+  });
+
+  it('requires reconnection after an ambiguous terminal mailbox write', async () => {
+    const transport = new FakeTransport();
+    transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+    transport.writeError = new TerminalRelayReconnectRequiredError();
+    let now = 1_000;
+    const client = new TerminalAiClient({
+      transport,
+      now: () => now,
+      sleep: async (milliseconds) => {
+        now += milliseconds;
+      },
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+
+    await expect(client.waitForMessage(25_000)).rejects.toThrow('Reconnect Lacuna AI');
+    await expect(client.waitForMessage(250)).rejects.toThrow('not connected');
+  });
+
+  it('compacts only the browser-acknowledged terminal event prefix', async () => {
+    const transport = new FakeTransport();
+    const first = queuedMailbox().messages[0];
+    const second = { ...first, messageId: 'message-2', content: 'Second message.' };
+    const third = { ...first, messageId: 'message-3', content: 'Third message.' };
+    transport.reads.push(
+      { generation: '"browser-1"', mailbox: queuedMailbox() },
+      {
+        generation: '"browser-2"',
+        mailbox: {
+          version: 1,
+          revision: 2,
+          terminalRevisionSeen: 0,
+          messages: [{ ...first, delivery: 'claimed', runId: 'run-1' }, second],
+        },
+      },
+      {
+        generation: '"browser-3"',
+        mailbox: {
+          version: 1,
+          revision: 3,
+          terminalRevisionSeen: 1,
+          messages: [
+            { ...first, delivery: 'claimed', runId: 'run-1' },
+            { ...second, delivery: 'claimed', runId: 'run-3' },
+            third,
+          ],
+        },
+      },
+    );
+    let sequence = 0;
+    const client = new TerminalAiClient({
+      transport,
+      now: () => 1_000,
+      createId: (prefix) => `${prefix}-${++sequence}`,
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+
+    await client.waitForMessage(25_000);
+    await client.waitForMessage(25_000);
+    await client.waitForMessage(25_000);
+
+    expect(transport.writes.at(-1)).toEqual({
+      version: 1,
+      revision: 3,
+      events: [
+        expect.objectContaining({ type: 'claimed', messageId: 'message-2' }),
+        expect.objectContaining({ type: 'claimed', messageId: 'message-3' }),
+      ],
+    });
+  });
+
   it('writes a reply for the exact active run and then disconnects', async () => {
     const transport = new FakeTransport();
     transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
@@ -153,10 +256,14 @@ describe('TerminalAiClient', () => {
   it('acknowledges a stop request for the active run instead of reclaiming it', async () => {
     const transport = new FakeTransport();
     transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+    let now = 1_000;
     let sequence = 0;
     const client = new TerminalAiClient({
       transport,
-      now: () => 1_000,
+      now: () => now,
+      sleep: async (milliseconds) => {
+        now += milliseconds;
+      },
       createId: (prefix) => `${prefix}-${++sequence}`,
     });
     await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
@@ -191,6 +298,47 @@ describe('TerminalAiClient', () => {
     });
     await expect(client.reply(claimed.runId, claimed.messageId, 'Too late.')).rejects.toThrow(
       'not active',
+    );
+  });
+
+  it('retries the same browser generation when publishing a Stop acknowledgement fails', async () => {
+    const transport = new FakeTransport();
+    transport.reads.push({ generation: '"browser-1"', mailbox: queuedMailbox() });
+    let sequence = 0;
+    const client = new TerminalAiClient({
+      transport,
+      now: () => 1_000,
+      createId: (prefix) => `${prefix}-${++sequence}`,
+    });
+    await client.connect('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, { name: 'Test client' });
+    const claimed = await client.waitForMessage(25_000);
+    if (claimed.type !== 'message') throw new Error('Expected one claimed message.');
+    const stoppedMailbox: RelayBrowserMailbox = {
+      ...queuedMailbox(),
+      revision: 2,
+      terminalRevisionSeen: 1,
+      messages: [
+        {
+          ...queuedMailbox().messages[0],
+          delivery: 'stop_requested',
+          runId: claimed.runId,
+        },
+      ],
+    };
+    transport.reads.push(
+      { generation: '"browser-2"', mailbox: stoppedMailbox },
+      { generation: '"browser-2"', mailbox: stoppedMailbox },
+    );
+    transport.writeError = new Error('relay write failed');
+
+    await expect(client.waitForMessage(25_000)).rejects.toThrow('relay write failed');
+    await expect(client.waitForMessage(25_000)).resolves.toEqual({
+      type: 'stop_requested',
+      messageId: claimed.messageId,
+      runId: claimed.runId,
+    });
+    expect(transport.writes.at(-1)?.events.at(-1)).toEqual(
+      expect.objectContaining({ type: 'stop_acknowledged', runId: claimed.runId }),
     );
   });
 

@@ -1,4 +1,4 @@
-import type { RelayClient } from '../relayClient';
+import { RelayStaleGenerationError, type RelayClient } from '../relayClient';
 import {
   createRelayKeyPair,
   deriveRelayEncryptionKey,
@@ -6,15 +6,16 @@ import {
   sealRelayJson,
   type RelayKeyPair,
 } from '../relayCrypto';
-import type { JsonValue } from '../protocol';
+import { MAX_AI_MESSAGE_LENGTH, type JsonValue } from '../protocol';
 import {
   AI_RELAY_EMPTY_GENERATION,
+  MAX_AI_RELAY_MAILBOX_ENTRIES,
   relayTerminalMailboxSchema,
   type RelayBrowserMailbox,
   type RelayEnvelope,
 } from '../relayProtocol';
 import type { AiSession, AiSessionCommandResult, AiSessionSnapshot } from './types';
-import { applyTerminalEvent, expireClaimLease } from './relayEvents';
+import { appendConversationItems, applyTerminalEvent, expireClaimLease } from './relayEvents';
 import {
   createRelaySessionPersistence,
   type PersistedRelayConnection,
@@ -25,6 +26,7 @@ export type { RelaySessionStorage } from './relayPersistence';
 
 const POLL_INTERVAL_MS = 1_000;
 const PAIRING_EXPIRED_REASON = 'Pairing code expired. Connect the terminal again.';
+const STALE_GENERATION_REASON = 'The AI connection changed elsewhere. Reconnect the terminal.';
 
 const EMPTY_SNAPSHOT: AiSessionSnapshot = {
   revision: 0,
@@ -119,7 +121,8 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
     pollInFlight = true;
     try {
       await serialise(pollOnce);
-    } catch {
+    } catch (error) {
+      if (error instanceof RelayStaleGenerationError) disconnectStaleGeneration();
       // A later poll retries transient transport, persistence and crypto failures.
     } finally {
       pollInFlight = false;
@@ -127,7 +130,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
   }
 
   async function pollOnce(): Promise<void> {
-    if (!persisted) return;
+    if (!persisted || snapshot.connection.status === 'disconnected') return;
     if (isExpiredPairing(snapshot, now())) {
       expirePairing();
       return;
@@ -149,6 +152,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       return;
     }
     const processed = new Set(persisted.processedEventIds);
+    let queuedFollowUpMessageId = persisted.queuedFollowUpMessageId;
     let nextSnapshot = snapshot;
     let messages = [...persisted.browserMailbox.messages];
     const expired = expireClaimLease(nextSnapshot, messages, now(), () => createId('message'));
@@ -168,7 +172,14 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
 
     for (const event of events) {
       ({ snapshot: nextSnapshot, messages } = applyTerminalEvent(nextSnapshot, messages, event));
+      if (event.type === 'claimed' && event.messageId === queuedFollowUpMessageId) {
+        queuedFollowUpMessageId = null;
+      }
       processed.add(event.eventId);
+      if (processed.size > MAX_AI_RELAY_MAILBOX_ENTRIES) {
+        const oldest = processed.values().next().value;
+        if (oldest !== undefined) processed.delete(oldest);
+      }
     }
     if (
       nextSnapshot.connection.status === 'connected' ||
@@ -190,6 +201,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       ...persisted,
       browserMailbox,
       browserGeneration,
+      queuedFollowUpMessageId,
       terminalRevisionSeen,
       processedEventIds: [...processed],
     };
@@ -217,6 +229,24 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
       persisted.browserGeneration,
     );
     return pushed.generation;
+  }
+
+  function disconnectStaleGeneration(): void {
+    cancelPolling?.();
+    cancelPolling = null;
+    encryptionKey = null;
+    publish({
+      ...snapshot,
+      connection: { status: 'disconnected', reason: STALE_GENERATION_REASON },
+      run: null,
+      activity: null,
+    });
+  }
+
+  function staleGenerationFailure(error: unknown): AiSessionCommandFailure | null {
+    if (!(error instanceof RelayStaleGenerationError)) return null;
+    disconnectStaleGeneration();
+    return conflict(STALE_GENERATION_REASON);
   }
 
   return {
@@ -258,6 +288,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
               messages: [],
               terminalRevisionSeen: 0,
             },
+            queuedFollowUpMessageId: null,
             terminalRevisionSeen: 0,
             processedEventIds: [],
           };
@@ -278,6 +309,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
           return unavailable('AI is not connected.');
         }
         if (content.trim() === '') return conflict('The AI message cannot be blank.');
+        if (content.length > MAX_AI_MESSAGE_LENGTH) return conflict('The AI message is too long.');
         const messageId = createId('message');
         const conversationId = snapshot.conversationId ?? createId('conversation');
         const createdAt = now();
@@ -290,12 +322,18 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
         };
         const active =
           snapshot.run?.status === 'active' || snapshot.run?.status === 'stop_requested';
+        const replacedFollowUpMessageId = persisted.queuedFollowUpMessageId;
         const messages = active
           ? [
-              ...persisted.browserMailbox.messages.filter((item) => item.delivery !== 'queued'),
+              ...persisted.browserMailbox.messages.filter(
+                (item) => item.messageId !== replacedFollowUpMessageId,
+              ),
               message,
             ]
           : [...persisted.browserMailbox.messages, message];
+        if (messages.length > MAX_AI_RELAY_MAILBOX_ENTRIES) {
+          return conflict('The AI message queue is full.');
+        }
         const mailbox: RelayBrowserMailbox = {
           ...persisted.browserMailbox,
           revision: persisted.browserMailbox.revision + 1,
@@ -303,27 +341,31 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
         };
         try {
           const browserGeneration = await pushMailbox(mailbox);
-          persisted = { ...persisted, browserMailbox: mailbox, browserGeneration };
+          persisted = {
+            ...persisted,
+            browserMailbox: mailbox,
+            browserGeneration,
+            queuedFollowUpMessageId: active ? messageId : persisted.queuedFollowUpMessageId,
+          };
           publish(
             active
               ? { ...snapshot, conversationId, queuedFollowUp: content }
               : {
                   ...snapshot,
                   conversationId,
-                  items: [
-                    ...snapshot.items,
-                    {
-                      kind: 'user',
-                      id: messageId,
-                      content,
-                      createdAt,
-                      delivery: 'queued',
-                    },
-                  ],
+                  items: appendConversationItems(snapshot.items, {
+                    kind: 'user',
+                    id: messageId,
+                    content,
+                    createdAt,
+                    delivery: 'queued',
+                  }),
                 },
           );
           return { ok: true, data: { messageId } };
-        } catch {
+        } catch (error) {
+          const staleFailure = staleGenerationFailure(error);
+          if (staleFailure) return staleFailure;
           return internal('The AI message could not be queued.');
         }
       });
@@ -339,8 +381,9 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
           return conflict('That AI run is no longer active.');
         }
         const stopRequestedAt = now();
+        const queuedFollowUpMessageId = persisted.queuedFollowUpMessageId;
         const messages = persisted.browserMailbox.messages
-          .filter((message) => message.delivery !== 'queued')
+          .filter((message) => message.messageId !== queuedFollowUpMessageId)
           .map((message) =>
             message.messageId === snapshot.run?.messageId && message.delivery === 'claimed'
               ? { ...message, delivery: 'stop_requested' as const }
@@ -353,7 +396,12 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
         };
         try {
           const browserGeneration = await pushMailbox(browserMailbox);
-          persisted = { ...persisted, browserMailbox, browserGeneration };
+          persisted = {
+            ...persisted,
+            browserMailbox,
+            browserGeneration,
+            queuedFollowUpMessageId: null,
+          };
           publish({
             ...snapshot,
             draft: snapshot.queuedFollowUp ?? snapshot.draft,
@@ -367,7 +415,9 @@ export function createRelayAiSession(options: RelayAiSessionOptions): AiSession 
             },
           });
           return { ok: true, data: undefined };
-        } catch {
+        } catch (error) {
+          const staleFailure = staleGenerationFailure(error);
+          if (staleFailure) return staleFailure;
           return internal('The stop request could not be sent.');
         }
       });

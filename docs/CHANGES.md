@@ -25,6 +25,14 @@
   listener or model credential in Lacuna. The current relay payload is chat-only: course/Card
   actions, learner memories, approvals, receipts and misconception-first instructions remain future
   integration.
+- Hardened the public AI relay after review. Pairing creation now uses a shared, compare-and-swap
+  IP rate limit rather than a per-process counter, malformed or oversized mailbox state is bounded,
+  and stale browser generations fail closed instead of looping or risking a write against state the
+  browser cannot authenticate. The terminal companion advances its browser generation only after a
+  successful relay write. A daily authenticated Vercel maintenance route removes expired sessions,
+  orphaned AI objects and elapsed pairing-rate records after a 24-hour grace period; deployments must
+  configure `CRON_SECRET` for that route. Elapsed pairing windows are atomically cleared to compact
+  reset markers so cleanup cannot delete a counter concurrently refreshed by a pairing request.
 - Added the first testable AI interface slice: a device-local, disabled-by-default Settings opt-in,
   optional misconception-first preference, desktop-only sidebar action and 400 px conversation
   panel. Opening AI contracts the existing navigation to its 72 px rail without overwriting the

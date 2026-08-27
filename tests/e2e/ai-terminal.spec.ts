@@ -15,7 +15,7 @@ test('pairs with a terminal and exchanges an encrypted reply', async ({ page }) 
 
   await composer.fill('Explain the testing effect.');
   await page.getByRole('button', { name: 'Send message' }).click();
-  const claimed = await terminal.waitForMessage(250);
+  const claimed = await terminal.waitForMessage(2_000);
   expect(claimed).toEqual(
     expect.objectContaining({
       type: 'message',
@@ -45,7 +45,7 @@ test('restores and claims an unclaimed message once after a browser reload', asy
   await expect(panel).toBeVisible();
   await expect(page.getByText(message, { exact: true })).toBeVisible();
 
-  const claimed = await terminal.waitForMessage(250);
+  const claimed = await terminal.waitForMessage(2_000);
   if (claimed.type !== 'message') throw new Error('Expected the terminal to claim the message.');
   await expect(page.getByRole('button', { name: 'Stop' })).toBeVisible();
   await expect(terminal.waitForMessage(250)).resolves.toEqual({ type: 'empty' });
@@ -61,7 +61,7 @@ test('shows the terminal acknowledgement after Stop', async ({ page }) => {
 
   await composer.fill('Stop this terminal run.');
   await page.getByRole('button', { name: 'Send message' }).click();
-  const claimed = await terminal.waitForMessage(250);
+  const claimed = await terminal.waitForMessage(2_000);
   if (claimed.type !== 'message') throw new Error('Expected the terminal to claim the message.');
 
   await page.getByRole('button', { name: 'Stop' }).click();
@@ -115,6 +115,7 @@ async function pairBrowserAndTerminal(
     now: () => terminalNow,
     sleep: async (milliseconds) => {
       terminalNow += milliseconds;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(milliseconds, 50)));
     },
     createId: (prefix) => `${prefix}-playwright-${++terminalSequence}`,
   });

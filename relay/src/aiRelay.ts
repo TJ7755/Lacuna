@@ -1,4 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { decodeAiSessionMetadata, type AiSessionMetadata } from './aiSessionMetadata.js';
 import { canonicalEtag, type BlobStore } from './store.js';
 
 export const AI_PAIRING_TTL_MS = 10 * 60 * 1000;
@@ -11,20 +12,6 @@ const TOKEN_RE = /^[0-9a-f]{64}$/;
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
 
 type AiMailbox = 'browser' | 'terminal';
-
-interface AiSessionMetadata {
-  version: 1;
-  sessionId: string;
-  browserPublicKey: string;
-  browserTokenHash: string;
-  createdAt: number;
-  pairingExpiresAt: number;
-  terminalPublicKey?: string;
-  terminalTokenHash?: string;
-  client?: { name: string; version?: string };
-  claimedAt?: number;
-  expiresAt?: number;
-}
 
 export type AiRelayRoute =
   | { kind: 'ai-session-collection' }
@@ -269,7 +256,7 @@ async function liveMetadata(
 ): Promise<{ metadata: AiSessionMetadata; etag: string } | null> {
   const stored = await store.get(metadataKey(id));
   if (!stored) return null;
-  const metadata = decodeMetadata(stored.body);
+  const metadata = decodeAiSessionMetadata(stored.body);
   if (!metadata) {
     await sweep(store, id);
     return null;
@@ -301,18 +288,6 @@ function isClaim(value: unknown): value is {
   if (!boundedText(value.client.name, 100)) return false;
   if (value.client.version !== undefined && !boundedText(value.client.version, 100)) return false;
   return Object.keys(value).length === 2;
-}
-
-function decodeMetadata(bytes: Uint8Array): AiSessionMetadata | null {
-  try {
-    const value = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-    if (!isObject(value) || value.version !== 1 || !SESSION_ID_RE.test(String(value.sessionId))) {
-      return null;
-    }
-    return value as unknown as AiSessionMetadata;
-  } catch {
-    return null;
-  }
 }
 
 async function readJson(request: Request): Promise<unknown> {

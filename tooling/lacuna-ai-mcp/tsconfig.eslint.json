@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["src/**/*.ts", "../../../src/ai/relayProtocol.ts", "../../../src/ai/relayCrypto.ts"],
+  "include": ["src/**/*.ts", "../../src/ai/relayProtocol.ts", "../../src/ai/relayCrypto.ts"],
   "exclude": []
 }

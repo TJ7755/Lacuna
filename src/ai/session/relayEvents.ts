@@ -1,9 +1,27 @@
-import type { RelayBrowserMessage, RelayTerminalEvent } from '../relayProtocol';
-import type { AiSessionSnapshot } from './types';
+import { MAX_AI_IDENTIFIER_LENGTH } from '../protocol';
+import {
+  MAX_AI_RELAY_MAILBOX_ENTRIES,
+  type RelayBrowserMessage,
+  type RelayTerminalEvent,
+} from '../relayProtocol';
+import type { AiConversationItem, AiSessionSnapshot } from './types';
+
+const ASSISTANT_ITEM_PREFIX = 'assistant-';
+const IDENTIFIER_FINGERPRINT_LENGTH = 16;
+const FNV_OFFSET_BASIS_64 = 0xcbf29ce484222325n;
+const FNV_PRIME_64 = 0x100000001b3n;
+const UINT64_MASK = 0xffffffffffffffffn;
 
 export interface RelayEventReduction {
   snapshot: AiSessionSnapshot;
   messages: RelayBrowserMessage[];
+}
+
+export function appendConversationItems(
+  items: readonly AiConversationItem[],
+  ...appended: AiConversationItem[]
+): AiConversationItem[] {
+  return [...items, ...appended].slice(-MAX_AI_RELAY_MAILBOX_ENTRIES);
 }
 
 export function expireClaimLease(
@@ -69,16 +87,13 @@ export function applyTerminalEvent(
             ? { ...item, delivery: 'claimed' as const }
             : item,
         )
-      : [
-          ...snapshot.items,
-          {
-            kind: 'user' as const,
-            id: message.messageId,
-            content: message.content,
-            createdAt: message.createdAt,
-            delivery: 'claimed' as const,
-          },
-        ];
+      : appendConversationItems(snapshot.items, {
+          kind: 'user' as const,
+          id: message.messageId,
+          content: message.content,
+          createdAt: message.createdAt,
+          delivery: 'claimed' as const,
+        });
     return {
       snapshot: {
         ...snapshot,
@@ -118,20 +133,20 @@ export function applyTerminalEvent(
     return {
       snapshot: {
         ...snapshot,
-        items: [
-          ...snapshot.items.map((item) =>
+        items: appendConversationItems(
+          snapshot.items.map((item) =>
             item.kind === 'user' && item.id === event.messageId
               ? { ...item, delivery: 'completed' as const }
               : item,
           ),
           {
             kind: 'assistant',
-            id: `assistant-${event.eventId}`,
+            id: assistantItemId(event.eventId),
             content: event.content,
             createdAt: event.createdAt,
             sources: [],
           },
-        ],
+        ),
         run: { ...snapshot.run, status: 'completed', completedAt: event.createdAt },
         activity: {
           runId: event.runId,
@@ -189,4 +204,21 @@ export function applyTerminalEvent(
     },
     messages,
   };
+}
+
+function assistantItemId(eventId: string): string {
+  const prefixed = `${ASSISTANT_ITEM_PREFIX}${eventId}`;
+  if (prefixed.length <= MAX_AI_IDENTIFIER_LENGTH) return prefixed;
+  const fingerprint = identifierFingerprint(eventId);
+  const preservedLength =
+    MAX_AI_IDENTIFIER_LENGTH - ASSISTANT_ITEM_PREFIX.length - IDENTIFIER_FINGERPRINT_LENGTH - 1;
+  return `${ASSISTANT_ITEM_PREFIX}${eventId.slice(0, preservedLength)}-${fingerprint}`;
+}
+
+function identifierFingerprint(value: string): string {
+  let hash = FNV_OFFSET_BASIS_64;
+  for (const byte of new TextEncoder().encode(value)) {
+    hash = ((hash ^ BigInt(byte)) * FNV_PRIME_64) & UINT64_MASK;
+  }
+  return hash.toString(16).padStart(IDENTIFIER_FINGERPRINT_LENGTH, '0');
 }

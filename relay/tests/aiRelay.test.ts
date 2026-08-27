@@ -6,7 +6,7 @@ import {
   __resetMintRateLimitForTests,
   createHandler,
 } from '../src/relay.js';
-import { MemoryStore } from '../src/store.js';
+import { MemoryStore, type PutOptions } from '../src/store.js';
 
 const ORIGIN = 'https://app.example';
 const BROWSER_PUBLIC_KEY = base64Url(new Uint8Array(65).fill(1));
@@ -155,20 +155,66 @@ describe('AI relay', () => {
     expect(gone.status).toBe(404);
   });
 
-  it('rate-limits public pairing-session creation', async () => {
+  it('shares the hashed pairing limit across independent handlers', async () => {
     __resetMintRateLimitForTests();
-    const handle = createHandler(new MemoryStore());
-    for (let index = 0; index < 10; index += 1) {
-      const response = await handle(
-        jsonRequest('/ai/sessions', 'POST', { browserPublicKey: BROWSER_PUBLIC_KEY }),
+    const store = new MemoryStore();
+    const first = createHandler(store);
+    const second = createHandler(store);
+    const ip = '198.51.100.24';
+    for (let index = 0; index < 5; index += 1) {
+      const response = await first(
+        jsonRequest(
+          '/ai/sessions',
+          'POST',
+          { browserPublicKey: BROWSER_PUBLIC_KEY },
+          { 'x-vercel-forwarded-for': ip },
+        ),
       );
       expect(response.status).toBe(201);
     }
-    const limited = await handle(
-      jsonRequest('/ai/sessions', 'POST', { browserPublicKey: BROWSER_PUBLIC_KEY }),
+    for (let index = 0; index < 5; index += 1) {
+      const response = await second(
+        jsonRequest(
+          '/ai/sessions',
+          'POST',
+          { browserPublicKey: BROWSER_PUBLIC_KEY },
+          { 'x-vercel-forwarded-for': ip },
+        ),
+      );
+      expect(response.status).toBe(201);
+    }
+
+    const rateObjects = await store.list('ai-rate/pairing/');
+    expect(rateObjects).toHaveLength(1);
+    expect(rateObjects[0]!.key).toMatch(/^ai-rate\/pairing\/[0-9a-f]{64}$/);
+    expect(rateObjects[0]!.key).not.toContain(ip);
+
+    const limited = await second(
+      jsonRequest(
+        '/ai/sessions',
+        'POST',
+        { browserPublicKey: BROWSER_PUBLIC_KEY },
+        { 'x-vercel-forwarded-for': ip },
+      ),
     );
     expect(limited.status).toBe(429);
     __resetMintRateLimitForTests();
+  });
+
+  it('fails pairing closed after bounded rate-limit contention', async () => {
+    __resetMintRateLimitForTests();
+    const handle = createHandler(new RateConflictStore());
+
+    const response = await handle(
+      jsonRequest(
+        '/ai/sessions',
+        'POST',
+        { browserPublicKey: BROWSER_PUBLIC_KEY },
+        { 'x-vercel-forwarded-for': '198.51.100.25' },
+      ),
+    );
+
+    expect(response.status).toBe(503);
   });
 
   it('keeps public pairing and device-sync mint limits independent', async () => {
@@ -181,7 +227,7 @@ describe('AI relay', () => {
           '/ai/sessions',
           'POST',
           { browserPublicKey: BROWSER_PUBLIC_KEY },
-          { 'x-forwarded-for': pairingIp },
+          { 'x-forwarded-for': pairingIp, 'x-vercel-forwarded-for': pairingIp },
         ),
       );
       expect(response.status).toBe(201);
@@ -200,7 +246,11 @@ describe('AI relay', () => {
       const response = await handle(
         new Request('http://relay.test/channel', {
           method: 'POST',
-          headers: { Origin: ORIGIN, 'x-forwarded-for': deviceIp },
+          headers: {
+            Origin: ORIGIN,
+            'x-forwarded-for': deviceIp,
+            'x-vercel-forwarded-for': deviceIp,
+          },
         }),
       );
       expect(response.status).toBe(201);
@@ -210,7 +260,7 @@ describe('AI relay', () => {
         '/ai/sessions',
         'POST',
         { browserPublicKey: BROWSER_PUBLIC_KEY },
-        { 'x-forwarded-for': deviceIp },
+        { 'x-forwarded-for': deviceIp, 'x-vercel-forwarded-for': deviceIp },
       ),
     );
     expect(pairingSession.status).toBe(201);
@@ -288,4 +338,11 @@ function mailboxPut(
 
 function base64Url(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString('base64url');
+}
+
+class RateConflictStore extends MemoryStore {
+  override async put(key: string, body: Uint8Array, opts: PutOptions) {
+    if (key.startsWith('ai-rate/')) return { ok: false as const, reason: 'precondition' as const };
+    return super.put(key, body, opts);
+  }
 }

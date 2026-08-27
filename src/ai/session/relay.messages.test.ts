@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { RelayStaleGenerationError } from '../relayClient';
 import type { JsonValue } from '../protocol';
 import { AI_RELAY_EMPTY_GENERATION, type RelayTerminalMailbox } from '../relayProtocol';
 import { CREATED, relaySessionHarness } from './relay.testHarness';
@@ -49,6 +50,76 @@ describe('relay AI session messages', () => {
         delivery: 'queued',
       }),
     ]);
+  });
+
+  it('requires reconnect after a stale browser mailbox generation', async () => {
+    const { session, relay, tick, cancelPolling } = relaySessionHarness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    vi.mocked(relay.push).mockRejectedValueOnce(
+      new RelayStaleGenerationError(AI_RELAY_EMPTY_GENERATION),
+    );
+
+    await expect(session.send('Do not overwrite another browser writer.')).resolves.toEqual({
+      ok: false,
+      error: {
+        kind: 'conflict',
+        message: 'The AI connection changed elsewhere. Reconnect the terminal.',
+      },
+    });
+
+    expect(session.getSnapshot().connection).toEqual({
+      status: 'disconnected',
+      reason: 'The AI connection changed elsewhere. Reconnect the terminal.',
+    });
+    expect(cancelPolling).toHaveBeenCalledOnce();
+    expect(relay.push).toHaveBeenCalledOnce();
+  });
+
+  it('stops polling after a stale generation while applying terminal events', async () => {
+    const { session, relay, crypto, tick, cancelPolling } = relaySessionHarness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    await session.send('Claim this message.');
+    vi.mocked(relay.pull).mockResolvedValue({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 1,
+      revision: 1,
+      events: [
+        {
+          eventId: 'event-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-1',
+          claimedAt: 1_100,
+          leaseExpiresAt: 20_000,
+        },
+      ],
+    });
+    vi.mocked(relay.push).mockRejectedValueOnce(new RelayStaleGenerationError('"browser-1"'));
+
+    await tick();
+    await tick();
+
+    expect(session.getSnapshot().connection).toEqual({
+      status: 'disconnected',
+      reason: 'The AI connection changed elsewhere. Reconnect the terminal.',
+    });
+    expect(cancelPolling).toHaveBeenCalledOnce();
+    expect(relay.push).toHaveBeenCalledTimes(2);
   });
 
   it('applies claimed and reply events exactly once', async () => {
@@ -202,6 +273,50 @@ describe('relay AI session messages', () => {
     );
   });
 
+  it('retains queued messages that do not belong to the stopped run', async () => {
+    const { session, relay, crypto, tick } = relaySessionHarness();
+    vi.mocked(relay.peer).mockResolvedValue({
+      terminalPublicKey: 'terminal-public',
+      client: { name: 'Terminal agent' },
+      expiresAt: 60_000,
+    });
+    await session.pair();
+    await tick();
+    await session.send('Run this first.');
+    await session.send('Leave this queued.');
+    vi.mocked(relay.pull).mockResolvedValue({
+      bytes: new TextEncoder().encode('{}'),
+      generation: '"terminal-1"',
+    });
+    vi.mocked(crypto.open).mockResolvedValue({
+      version: 1,
+      revision: 1,
+      events: [
+        {
+          eventId: 'event-claim',
+          type: 'claimed',
+          messageId: 'message-1',
+          runId: 'run-1',
+          claimedAt: 1_100,
+          leaseExpiresAt: 20_000,
+        },
+      ],
+    });
+    await tick();
+
+    await session.stop('run-1');
+
+    expect(crypto.seal).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        messages: [
+          expect.objectContaining({ messageId: 'message-1', delivery: 'stop_requested' }),
+          expect.objectContaining({ messageId: 'message-3', delivery: 'queued' }),
+        ],
+      }),
+    );
+  });
+
   it('moves a claimed follow-up from the queue into the transcript', async () => {
     const { session, relay, crypto, tick } = relaySessionHarness();
     vi.mocked(relay.peer).mockResolvedValue({
@@ -340,7 +455,7 @@ describe('relay AI session messages', () => {
       }),
     ]);
     const retriedMessageId = expired.items[0]?.id;
-    expect(retriedMessageId).not.toBe('message-1');
+    expect(retriedMessageId).toEqual(expect.stringMatching(/^message-(?!1$).+/));
     expect(crypto.seal).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.objectContaining({

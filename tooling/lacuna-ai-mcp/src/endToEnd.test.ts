@@ -35,7 +35,9 @@ describe('paired AI terminal vertical slice', () => {
     const terminal = new TerminalAiClient({
       transport: new HttpTerminalRelayTransport({ fetchImpl }),
       now: () => now,
-      sleep: async () => {},
+      sleep: async (milliseconds) => {
+        now += milliseconds;
+      },
       createId: (prefix) => `${prefix}-terminal-${++terminalSequence}`,
     });
 

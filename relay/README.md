@@ -33,6 +33,23 @@ browser extension or an inbound localhost listener. Its current encrypted payloa
 claims, complete replies, Stop acknowledgements and disconnects; course/Card tools and learner
 memories are not part of this mailbox version.
 
+Pairing creation is limited to 10 requests per hour and client IP. The relay hashes Vercel's
+trusted client-address header before storing the shared compare-and-swap counter in Blob. These
+counters are separate from the device-sync mint limit.
+
+## AI maintenance
+
+Vercel calls `GET /api/ai/maintenance` once daily at 03:00 UTC. The job removes AI sessions 24
+hours after their pairing or claimed-session expiry, and removes corrupt or orphaned AI objects
+after the same 24-hour grace from their last upload. Expired pairing-rate records are atomically
+cleared to a compact marker, which the next pairing request replaces; this avoids deleting a fresh
+counter that raced with cleanup. Corrupt objects outside the pairing-rate keyspace are removed. The
+job scans only `ai/` and `ai-rate/`; it does not touch device-sync `c/` objects.
+
+The route requires `Authorization: Bearer <CRON_SECRET>`. Vercel adds that header automatically to
+configured Cron invocations. If `CRON_SECRET` is missing or blank, the route returns `401` and
+deletes nothing.
+
 ## Environment
 
 On Vercel, connect a **private** Blob store to the project. The platform
@@ -60,6 +77,17 @@ Variables** → name `RELAY_MINT_SECRET`, paste the generated value, apply to
 Production (and Preview if you mint from previews). Redeploy after setting
 or removing it. With the variable absent the relay still mints publicly.
 
+Set a separate `CRON_SECRET` for the daily AI cleanup. This is required even when
+`RELAY_MINT_SECRET` is unset. Generate another independent value:
+
+```sh
+openssl rand -hex 32
+```
+
+In the Vercel dashboard: the relay project → **Settings** → **Environment Variables** → name
+`CRON_SECRET`, paste the generated value and apply it to Production. Cron jobs run only against the
+production deployment. Redeploy after adding or rotating it.
+
 To run the same functions **off Vercel** against a Blob store, set
 `BLOB_READ_WRITE_TOKEN` instead. The SDK uses OIDC when those variables are
 present, and falls back to the token when they are not. Do not commit a token.
@@ -77,8 +105,11 @@ This directory is its own Vercel project. Do not deploy it as part of the app.
    Vercel project does not treat `api/[...path].ts` as a catch-all — that
    file matches one path segment, so `/c/:id/:slot` never reaches the
    handler. Do not put the handler back in a bracketed filename.
-5. Optionally set `RELAY_MINT_SECRET` on the project (see Environment) to keep a private bypass. Minting works without it via the public path.
-6. Deploy.
+5. Set `CRON_SECRET` on the project so daily AI maintenance can authenticate and run. A missing
+   value fails closed.
+6. Optionally set `RELAY_MINT_SECRET` on the project (see Environment) to keep a private bypass.
+   Minting works without it via the public path.
+7. Deploy.
 
 The app sets `Cross-Origin-Embedder-Policy: require-corp`, so the relay must
 stay on a separate origin. CORS and `Cross-Origin-Resource-Policy: cross-origin`
@@ -132,7 +163,8 @@ not this; this is the panic button for every device on the channel.
 
 A channel with no write for 90 days is treated as gone, matching the app's
 tombstone window. A device offline longer than that will find its channel
-gone. There is no cron: expiry is checked on the next request.
+gone. There is no device-sync cron: channel expiry is checked on the next request. The daily AI
+maintenance job deliberately does not scan channel objects.
 
 ## Concurrency
 

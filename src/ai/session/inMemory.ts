@@ -34,7 +34,7 @@ export function createInMemoryAiSession(initial: Partial<AiSessionSnapshot> = {}
       return snapshot;
     },
     dispose() {
-      listeners.clear();
+      // This adapter has no device-local background work to stop.
     },
     async pair() {
       if (snapshot.connection.status !== 'disconnected') {
