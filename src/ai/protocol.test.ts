@@ -4,6 +4,8 @@ import {
   MAX_AI_IDENTIFIER_LENGTH,
   MAX_AI_MESSAGE_LENGTH,
   MAX_AI_WAIT_MS,
+  isAiApprovalState,
+  isAiBridgeError,
   isAiBridgeRequest,
   isSupportedAiProtocolVersion,
   parseAiBridgeRequest,
@@ -115,11 +117,13 @@ describe('AI browser protocol', () => {
         call: { name: 'lacuna.list_courses', input: { invalid: BigInt(1) } },
       }),
     ).toBe(false);
+    let getterCalls = 0;
     const hostile = Object.create(null) as Record<string, unknown>;
     Object.defineProperty(hostile, 'value', {
       enumerable: true,
       get() {
-        throw new Error('getter ran');
+        getterCalls += 1;
+        return 'secret';
       },
     });
     expect(
@@ -131,6 +135,7 @@ describe('AI browser protocol', () => {
         call: { name: 'lacuna.list_courses', input: hostile },
       }),
     ).toBe(false);
+    expect(getterCalls).toBe(0);
     expect(
       isAiBridgeRequest({
         type: 'set_activity',
@@ -145,5 +150,56 @@ describe('AI browser protocol', () => {
     const malformed = { type: 'heartbeat', connectionId: '' };
     expect(isAiBridgeRequest(malformed)).toBe(false);
     expect(() => parseAiBridgeRequest(malformed)).toThrow();
+  });
+
+  it('represents a timed-out approval as pending rather than requiring a second prompt', () => {
+    expect(
+      isAiBridgeError({
+        kind: 'approval_pending',
+        approvalId: 'approval-1',
+        approvalKind: 'destructive_call',
+        retryAfterMs: 1_000,
+        message: 'Approval is still pending in Lacuna.',
+      }),
+    ).toBe(true);
+    expect(
+      isAiBridgeError({
+        kind: 'approval_required',
+        approvalId: 'approval-1',
+        approvalKind: 'destructive_call',
+        retryAfterMs: 1_000,
+        message: 'Approval is still pending in Lacuna.',
+      }),
+    ).toBe(false);
+  });
+
+  it('requires approval decision timestamps only after pending', () => {
+    const base = {
+      approvalId: 'approval-1',
+      kind: 'destructive_call',
+      toolName: 'lacuna.delete_card',
+      targetLabel: 'Thermodynamics',
+      summary: 'Delete one Card',
+      requestedAt: 100,
+    } as const;
+
+    expect(isAiApprovalState({ ...base, status: 'pending' })).toBe(true);
+    expect(isAiApprovalState({ ...base, status: 'pending', decidedAt: 110 })).toBe(false);
+
+    for (const status of ['approved', 'rejected'] as const) {
+      expect(isAiApprovalState({ ...base, status })).toBe(false);
+      expect(isAiApprovalState({ ...base, status, decidedAt: 110 })).toBe(true);
+    }
+
+    expect(isAiApprovalState({ ...base, status: 'consumed', decidedAt: 110 })).toBe(false);
+    expect(
+      isAiApprovalState({ ...base, status: 'consumed', decidedAt: 110, consumedAt: 120 }),
+    ).toBe(true);
+    expect(
+      isAiApprovalState({ ...base, status: 'consumed', decidedAt: 110, consumedAt: 105 }),
+    ).toBe(false);
+
+    expect(isAiApprovalState({ ...base, status: 'expired', decidedAt: 110 })).toBe(false);
+    expect(isAiApprovalState({ ...base, status: 'expired', expiredAt: 110 })).toBe(true);
   });
 });

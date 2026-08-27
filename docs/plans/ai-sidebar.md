@@ -168,17 +168,21 @@ interface:
 
 ```ts
 interface AiSession {
-  snapshot: AiSessionSnapshot;
-  send(message: string): Promise<{ messageId: string }>;
-  stop(runId: string): Promise<void>;
-  decide(runId: string, approvalId: string, approved: boolean): Promise<void>;
-  resetConnection(): Promise<void>;
+  subscribe(listener: () => void): () => void;
+  getSnapshot(): AiSessionSnapshot;
+  send(content: string): Promise<AiSessionCommandResult<{ messageId: string }>>;
+  stop(runId: string): Promise<AiSessionCommandResult>;
+  decide(approvalId: string, approved: boolean): Promise<AiSessionCommandResult>;
+  resetConnection(): Promise<AiSessionCommandResult>;
 }
 ```
 
 `AiSessionSnapshot` contains connection state, ordered conversation items, current activity and at
-most one pending approval. The interface is also the UI test surface: an in-memory adapter drives
-every state without a live terminal.
+most one pending approval. `getSnapshot` remains referentially stable between `subscribe`
+notifications so React may consume the same interface through `useSyncExternalStore`; an in-memory
+adapter drives every UI state without a live terminal. Stop retains the explicit `runId` because it
+acts on one run. Approval identifiers are globally unique and already bound internally to their run,
+so `decide` needs only the `approvalId` and human decision.
 
 ### Browser seam
 
@@ -186,42 +190,25 @@ The page exposes one versioned interface only while AI is enabled:
 
 ```ts
 interface LacunaAiBridge {
-  connect(input: ClientIdentity): Promise<Connection>;
-  getInstructions(connectionId: string): Promise<InstructionBundle>;
-  claimNextMessage(
-    connectionId: string,
-    options?: { timeoutMs?: number; leaseMs?: number },
-  ): Promise<ClaimedMessage | null>;
-  listPendingMessages(connectionId: string): Promise<UserMessage[]>;
-  getRunState(connectionId: string, runId: string): Promise<RunState>;
-  acknowledgeStop(connectionId: string, runId: string): Promise<void>;
-  setActivity(connectionId: string, runId: string, activity: ActivityUpdate): Promise<void>;
-  invokeTool(
-    connectionId: string,
-    runId: string,
-    callId: string,
-    call: ToolCall,
-  ): Promise<ToolCallResult>;
-  reply(
-    connectionId: string,
-    runId: string,
-    messageId: string,
-    reply: AssistantReply,
-  ): Promise<void>;
-  heartbeat(connectionId: string): Promise<ConnectionState>;
-  disconnect(connectionId: string): Promise<void>;
+  readonly protocolVersion: typeof LACUNA_AI_PROTOCOL_VERSION;
+  request(request: AiBridgeRequest): Promise<AiBridgeResult>;
 }
 ```
 
-`claimNextMessage` waits for at most 20–25 seconds. `listPendingMessages` is the fallback for browser
-adapters that cannot safely retain a page promise. A claim persists `conversationId`, `messageId`,
-`runId`, lease expiry and state. Every run-scoped mutation verifies the live `runId`; every tool call
-also carries a caller-stable `callId`. Repeated calls return a persisted result when one exists.
-There remains an unavoidable crash window between a generic repository commit and persistence of
-its result ledger, so reconnect instructions require reading the affected Lacuna state before
-retrying a call whose outcome is unknown.
+`AiBridgeRequest` is a strict discriminated union containing `connect`, `get_instructions`,
+`claim_message`, `list_pending`, `get_run`, `acknowledge_stop`, `set_activity`, `invoke_tool`, `reply`,
+`heartbeat` and `disconnect`. The single versioned request seam keeps parsing and expected-error
+handling consistent without exposing eleven shallow methods.
 
-The terminal never receives a destructive approval token. The first destructive `invokeTool`
+`claim_message` waits for at most 20–25 seconds. `list_pending` is the fallback for browser adapters
+that cannot safely retain a page promise. A claim persists `conversationId`, `messageId`, `runId`,
+lease expiry and state. Every run-scoped mutation verifies the live `runId`; every tool call also
+carries a caller-stable `callId`. Repeated calls return a persisted result when one exists. There
+remains an unavoidable crash window between a generic repository commit and persistence of its
+result ledger, so reconnect instructions require reading the affected Lacuna state before retrying
+a call whose outcome is unknown.
+
+The terminal never receives a destructive approval token. The first destructive `invoke_tool`
 stores a pending approval bound to the connection, run, call, tool, resolved target and validated-
 input digest, then waits for at most 20–25 seconds. `AiSession.decide` resolves that server-held
 record. Approval lets the same `callId` resume and consumes the authorisation internally; rejection
@@ -229,11 +216,11 @@ returns `forbidden`. Timeout returns `approval_pending`, and repeating the ident
 resumes the same pending record rather than creating another prompt. Stop, disconnect, expiry or
 any exact-call mismatch invalidates it.
 
-Every bridge call refreshes connection activity. `setActivity(..., 'working')` begins a generous
-working lease of at least ten minutes so slow inference is not reported as disconnection. An expired
-working lease becomes **Connection quiet**, not **Disconnected**. Explicit disconnect or repeated
-failed bounded waits establish disconnection. Adoption of the user tab is exclusive to one Browser
-Control session.
+Every bridge request refreshes connection activity. `set_activity` with `status: 'working'` begins a
+generous working lease of at least ten minutes so slow inference is not reported as disconnection.
+An expired working lease becomes **Connection quiet**, not **Disconnected**. Explicit disconnect or
+repeated failed bounded waits establish disconnection. Adoption of the user tab is exclusive to one
+Browser Control session.
 
 ### Shared tool execution
 
@@ -252,8 +239,8 @@ its current consent coordinator. `AiToolSession` owns browser-session write cons
 destructive approvals, then supplies the issued write grant or exact one-shot authorisation to the
 executor internally. Moving consent into the shared executor would prompt twice in Electron and turn
 a narrow extraction into a rewrite.
-Browser protocol errors such as `approval_required`, `stopped` and `disconnected` wrap existing MCP
-errors rather than leaking into domain-tool definitions.
+Browser protocol errors such as `approval_required`, `approval_pending`, `stopped` and `disconnected`
+wrap existing MCP errors rather than leaking into domain-tool definitions.
 
 ## Memory
 
@@ -351,8 +338,8 @@ likely record count does not justify importing a small search-engine theme park.
 
 ## Misconception-first teaching
 
-The full method is shipped as a versioned instruction bundle returned by `getInstructions`; it is
-never a pointer to one machine's skill pathname.
+The full method is shipped as a versioned instruction bundle returned by the `get_instructions`
+request; it is never a pointer to one machine's skill pathname.
 
 AI Settings contains **Use misconception-first teaching when appropriate**. When enabled, the
 agent routes requests as follows:
@@ -641,7 +628,7 @@ tests remain mandatory even though the new visual surface is web-first.
 | --- | --- |
 | Browser Control currently needs an unpacked broad-permission extension | Treat it as trusted local development infrastructure; document permissions; defer branded packaging |
 | A sidebar message cannot wake an idle terminal | Copyable bootstrap instruction and a live bounded-wait loop; a genuine wake mechanism remains deferred |
-| A browser adapter cannot hold the long-poll promise | Bound every wait and provide `listPendingMessages` polling |
+| A browser adapter cannot hold the long-poll promise | Bound every wait and provide `list_pending` polling |
 | Stop is mistaken for process termination, browser revocation or rollback | Reject later bridge calls by run token, require bridge-only mutation, show Stop requested/acknowledged, accurate copy and existing Undo |
 | AppShell transforms or z-indexes pin/cover the capsule | Position inside the shell body; keep AI below modal tiers; browser-check every overlay |
 | The agent infers misconceptions from FSRS weakness | Require diagnosis, memory basis and learner-correctable status |

@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { McpToolError } from '../mcp/bridge/protocol';
 
 /** Version of the browser-facing AI contract, independent of MCP and database versions. */
 export const LACUNA_AI_PROTOCOL_VERSION = 1 as const;
@@ -27,13 +26,34 @@ function isJsonValue(value: unknown, ancestors: Set<object> = new Set()): value 
   try {
     const nextAncestors = new Set(ancestors).add(value);
     if (Array.isArray(value)) {
-      return value.every((item) => isJsonValue(item, nextAncestors));
+      const descriptors = Object.getOwnPropertyDescriptors(value);
+      const entries = Object.entries(descriptors).filter(([key]) => key !== 'length');
+      if (entries.length !== value.length) return false;
+      return entries.every(([key, descriptor]) => {
+        const index = Number(key);
+        return (
+          Number.isInteger(index) &&
+          index >= 0 &&
+          index < value.length &&
+          String(index) === key &&
+          descriptor.enumerable === true &&
+          'value' in descriptor &&
+          isJsonValue(descriptor.value, nextAncestors)
+        );
+      });
     }
 
     const prototype = Object.getPrototypeOf(value);
     if (prototype !== Object.prototype && prototype !== null) return false;
-    if (Reflect.ownKeys(value).some((key) => typeof key !== 'string')) return false;
-    return Object.values(value).every((item) => isJsonValue(item, nextAncestors));
+    const keys = Reflect.ownKeys(value);
+    if (keys.some((key) => typeof key !== 'string')) return false;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    return Object.values(descriptors).every(
+      (descriptor) =>
+        descriptor.enumerable === true &&
+        'value' in descriptor &&
+        isJsonValue(descriptor.value, nextAncestors),
+    );
   } catch {
     return false;
   }
@@ -66,6 +86,7 @@ const requiredText = (maximum: number) =>
 
 const timeoutSchema = z.number().int().min(MIN_AI_WAIT_MS).max(MAX_AI_WAIT_MS);
 const leaseSchema = z.number().int().min(MIN_AI_LEASE_MS).max(MAX_AI_LEASE_MS);
+const timestampSchema = z.number().int().nonnegative().finite();
 
 export const aiClientIdentitySchema = z
   .object({
@@ -213,22 +234,64 @@ export interface AiClaimedMessage extends AiUserMessage {
 
 export type AiRunStatus = 'active' | 'stop_requested' | 'stopped' | 'completed' | 'expired';
 
-export type AiApprovalKind = 'write_grant' | 'destructive_call';
-export type AiApprovalStatus = 'pending' | 'approved' | 'rejected' | 'consumed' | 'expired';
+const aiApprovalBaseSchema = z.object({
+  approvalId: identifierSchema,
+  kind: z.enum(['write_grant', 'destructive_call']),
+  toolName: requiredText(MAX_AI_IDENTIFIER_LENGTH),
+  targetLabel: requiredText(MAX_AI_ACTIVITY_LENGTH),
+  summary: requiredText(MAX_AI_ACTIVITY_LENGTH),
+  requestedAt: timestampSchema,
+});
+
+const decidedApprovalSchema = (status: 'approved' | 'rejected') =>
+  aiApprovalBaseSchema
+    .extend({ status: z.literal(status), decidedAt: timestampSchema })
+    .strict();
+
+export const aiApprovalStateSchema = z
+  .discriminatedUnion('status', [
+    aiApprovalBaseSchema.extend({ status: z.literal('pending') }).strict(),
+    decidedApprovalSchema('approved'),
+    decidedApprovalSchema('rejected'),
+    aiApprovalBaseSchema
+      .extend({
+        status: z.literal('consumed'),
+        decidedAt: timestampSchema,
+        consumedAt: timestampSchema,
+      })
+      .strict(),
+    aiApprovalBaseSchema
+      .extend({ status: z.literal('expired'), expiredAt: timestampSchema })
+      .strict(),
+  ])
+  .superRefine((approval, context) => {
+    if (approval.status !== 'pending') {
+      const resolvedAt = approval.status === 'expired' ? approval.expiredAt : approval.decidedAt;
+      if (resolvedAt < approval.requestedAt) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Approval resolution cannot predate its request.',
+        });
+      }
+    }
+    if (approval.status === 'consumed' && approval.consumedAt < approval.decidedAt) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Approval consumption cannot predate its decision.',
+      });
+    }
+  });
 
 /**
  * Display-safe approval state. Exact target/input bindings remain inside Lacuna; an approval is
  * never represented by a bearer token exposed to the terminal client.
  */
-export interface AiApprovalState {
-  approvalId: string;
-  kind: AiApprovalKind;
-  status: AiApprovalStatus;
-  toolName: string;
-  targetLabel: string;
-  summary: string;
-  requestedAt: number;
-  decidedAt?: number;
+export type AiApprovalState = z.infer<typeof aiApprovalStateSchema>;
+export type AiApprovalKind = AiApprovalState['kind'];
+export type AiApprovalStatus = AiApprovalState['status'];
+
+export function isAiApprovalState(value: unknown): value is AiApprovalState {
+  return aiApprovalStateSchema.safeParse(value).success;
 }
 
 interface AiRunBase {
@@ -274,25 +337,63 @@ export type AiBridgeSuccess =
   | { type: 'stop_acknowledged'; runId: string }
   | { type: 'disconnected' };
 
-export type AiBridgeError =
-  | { kind: 'validation'; message: string }
-  | {
-      kind: 'version_mismatch';
-      message: string;
-      supportedVersion: typeof LACUNA_AI_PROTOCOL_VERSION;
-    }
-  | { kind: 'unavailable'; reason: 'disabled' | 'disconnected'; message: string }
-  | { kind: 'stopped'; runId: string; message: string }
-  | {
-      kind: 'approval_required';
-      approvalId: string;
-      approvalKind: AiApprovalKind;
-      message: string;
-    }
-  | { kind: 'forbidden'; message: string }
-  | { kind: 'conflict'; message: string }
-  | { kind: 'tool'; error: McpToolError }
-  | { kind: 'internal'; message: string };
+const errorMessageSchema = requiredText(MAX_AI_ACTIVITY_LENGTH);
+const simpleErrorSchema = (kind: 'validation' | 'forbidden' | 'conflict' | 'internal') =>
+  z.object({ kind: z.literal(kind), message: errorMessageSchema }).strict();
+const approvalErrorFields = {
+  approvalId: identifierSchema,
+  approvalKind: z.enum(['write_grant', 'destructive_call']),
+  message: errorMessageSchema,
+} as const;
+
+export const aiBridgeErrorSchema = z.discriminatedUnion('kind', [
+  simpleErrorSchema('validation'),
+  z
+    .object({
+      kind: z.literal('version_mismatch'),
+      message: errorMessageSchema,
+      supportedVersion: z.literal(LACUNA_AI_PROTOCOL_VERSION),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('unavailable'),
+      reason: z.enum(['disabled', 'disconnected']),
+      message: errorMessageSchema,
+    })
+    .strict(),
+  z
+    .object({ kind: z.literal('stopped'), runId: identifierSchema, message: errorMessageSchema })
+    .strict(),
+  z.object({ kind: z.literal('approval_required'), ...approvalErrorFields }).strict(),
+  z
+    .object({
+      kind: z.literal('approval_pending'),
+      ...approvalErrorFields,
+      retryAfterMs: timeoutSchema,
+    })
+    .strict(),
+  simpleErrorSchema('forbidden'),
+  simpleErrorSchema('conflict'),
+  z
+    .object({
+      kind: z.literal('tool'),
+      error: z
+        .object({
+          kind: z.enum(['not_found', 'validation', 'forbidden', 'conflict', 'internal']),
+          message: errorMessageSchema,
+        })
+        .strict(),
+    })
+    .strict(),
+  simpleErrorSchema('internal'),
+]);
+
+export type AiBridgeError = z.infer<typeof aiBridgeErrorSchema>;
+
+export function isAiBridgeError(value: unknown): value is AiBridgeError {
+  return aiBridgeErrorSchema.safeParse(value).success;
+}
 
 export type AiBridgeResult =
   | { ok: true; data: AiBridgeSuccess }
