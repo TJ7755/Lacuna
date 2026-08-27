@@ -1,5 +1,31 @@
 # Lacuna — version 0.1.0
 
+## Unreleased — AI sidebar foundation
+
+- Defined the versioned browser-facing AI protocol as one strict request seam with bounded,
+  JSON-safe records, serialisable expected errors, explicit Stop semantics and server-held one-shot
+  approvals. Added the UI-facing `AiSession` read-model interface and typed fixtures for the six
+  browser acceptance scenarios; runtime adapters, persistence and UI remain in later slices.
+- Corrected MCP Undo dispatch so deleted Concepts and Questions use their own repository restorers.
+  The exhaustive dispatcher can no longer silently treat a future Undo kind as a Sequence.
+- Corrected `docs/SPEC.md` to identify MCP tool-surface version 3, matching
+  `MCP_TOOL_SURFACE_VERSION` in `src/mcp/registry.ts`.
+
+## Unreleased — AI sidebar prototype plan
+
+- Added `docs/plans/ai-sidebar.md`, a one-week implementation plan for an optional desktop AI
+  sidebar driven by a trusted terminal agent through the learner's existing Chromium profile. The
+  plan reuses the transport-independent Lacuna tool registry, keeps reviews and raw FSRS state
+  human-owned, and defines conversation, activity, approval, stop and reconnect behaviour.
+- Brought durable agent memories into the first prototype scope with schema v25, controlled
+  provenance, learner correction, full-backup and peer-sync semantics. Conversation transcripts
+  remain device-local. The plan also makes misconception-first teaching an optional, adaptive
+  instruction rather than applying it to procedural requests.
+- Split delivery into four parallel ownership lanes after a shared interface/schema foundation,
+  followed by central integration, browser acceptance and independent standards/specification
+  reviews. It records the existing Concept/Question MCP Undo dispatch defect as a separate
+  prerequisite correction rather than hiding it inside the feature.
+
 ## Unreleased — Agent workspace housekeeping
 
 - Removed obsolete mailbox and LMO directions from the agent-agnostic instructions while retaining
