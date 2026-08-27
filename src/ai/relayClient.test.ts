@@ -86,9 +86,9 @@ describe('browser AI relay client', () => {
   });
 
   it('writes only the browser mailbox with bearer auth and compare-and-swap', async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(null, { status: 204, headers: { ETag: '"browser-1"' } }),
-    );
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 204, headers: { ETag: '"browser-1"' } }));
     const bytes = new Uint8Array([4, 5, 6]);
 
     await expect(
@@ -109,11 +109,7 @@ describe('browser AI relay client', () => {
   it('reports stale mailbox generations and malformed successful responses', async () => {
     const staleFetch = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 412 }));
     await expect(
-      createRelayClient({ fetchImpl: staleFetch }).push(
-        CREDENTIALS,
-        new Uint8Array([1]),
-        '"old"',
-      ),
+      createRelayClient({ fetchImpl: staleFetch }).push(CREDENTIALS, new Uint8Array([1]), '"old"'),
     ).rejects.toEqual(
       expect.objectContaining({
         name: 'RelayStaleGenerationError',
@@ -122,17 +118,13 @@ describe('browser AI relay client', () => {
       }),
     );
     await expect(
-      createRelayClient({ fetchImpl: staleFetch }).push(
-        CREDENTIALS,
-        new Uint8Array([1]),
-        '"old"',
-      ),
+      createRelayClient({ fetchImpl: staleFetch }).push(CREDENTIALS, new Uint8Array([1]), '"old"'),
     ).rejects.toBeInstanceOf(RelayStaleGenerationError);
 
     const malformedFetch = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(201, { ok: true }));
-    await expect(createRelayClient({ fetchImpl: malformedFetch }).create(PUBLIC_KEY)).rejects.toBeInstanceOf(
-      RelayClientProtocolError,
-    );
+    await expect(
+      createRelayClient({ fetchImpl: malformedFetch }).create(PUBLIC_KEY),
+    ).rejects.toBeInstanceOf(RelayClientProtocolError);
   });
 
   it('revokes with the browser token and treats an absent session as revoked', async () => {

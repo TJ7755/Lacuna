@@ -44,7 +44,9 @@ export class RelayCryptoDecryptError extends RelayCryptoError {
 }
 
 export async function createRelayKeyPair(): Promise<RelayKeyPair> {
-  const pair = (await crypto.subtle.generateKey(ECDH_ALGORITHM, true, ['deriveBits'])) as CryptoKeyPair;
+  const pair = (await crypto.subtle.generateKey(ECDH_ALGORITHM, true, [
+    'deriveBits',
+  ])) as CryptoKeyPair;
   const [rawPublicKey, pkcs8PrivateKey] = await Promise.all([
     crypto.subtle.exportKey('raw', pair.publicKey),
     crypto.subtle.exportKey('pkcs8', pair.privateKey),
@@ -82,7 +84,10 @@ export async function deriveRelayEncryptionKey(
       privateKey,
       AES_KEY_BITS,
     );
-    return crypto.subtle.importKey('raw', sharedSecret, AES_ALGORITHM, false, ['encrypt', 'decrypt']);
+    return crypto.subtle.importKey('raw', sharedSecret, AES_ALGORITHM, false, [
+      'encrypt',
+      'decrypt',
+    ]);
   } catch {
     throw new RelayCryptoFormatError('The AI relay key material is invalid.');
   }
@@ -90,7 +95,8 @@ export async function deriveRelayEncryptionKey(
 
 export async function sealRelayJson(key: CryptoKey, value: JsonValue): Promise<RelayEnvelope> {
   const parsed = jsonValueSchema.safeParse(value);
-  if (!parsed.success) throw new RelayCryptoFormatError('The AI relay payload must be strict JSON.');
+  if (!parsed.success)
+    throw new RelayCryptoFormatError('The AI relay payload must be strict JSON.');
   const nonce = randomBytes(AI_RELAY_NONCE_BYTES);
   const plaintext = new TextEncoder().encode(JSON.stringify(parsed.data));
   let encrypted: ArrayBuffer;
@@ -122,7 +128,9 @@ export async function openRelayJson(key: CryptoKey, envelope: unknown): Promise<
     throw new RelayCryptoDecryptError();
   }
   try {
-    const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(plaintext)) as unknown;
+    const value = JSON.parse(
+      new TextDecoder('utf-8', { fatal: true }).decode(plaintext),
+    ) as unknown;
     const parsedValue = jsonValueSchema.safeParse(value);
     if (!parsedValue.success) throw new Error('invalid JSON value');
     return parsedValue.data;

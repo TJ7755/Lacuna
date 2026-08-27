@@ -16,9 +16,7 @@ function identifier(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
-export function createInMemoryAiSession(
-  initial: Partial<AiSessionSnapshot> = {},
-): AiSession {
+export function createInMemoryAiSession(initial: Partial<AiSessionSnapshot> = {}): AiSession {
   let snapshot: AiSessionSnapshot = { ...EMPTY_SNAPSHOT, ...initial };
   const listeners = new Set<() => void>();
 

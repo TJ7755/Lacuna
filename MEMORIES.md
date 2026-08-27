@@ -191,7 +191,7 @@ delivered incidentally by the next, so the document keeps describing work that n
 On 12 August 2026 all three follow-ups at the end of `plans/learn-screen-redesign.md` turned out to
 be already done — the study interstitial had been replaced by a bottom sheet, the landing-page pill
 overlap had been fixed by gating the pill behind a wheel event, and the dashboard study control had
-moved above the fold — while `next_plan.md` still recorded the plan itself as *ready*.
+moved above the fold — while `next_plan.md` still recorded the plan itself as _ready_.
 
 The same plan already carried two findings that were wrong because they were written from a browser
 session without reading the handler underneath. The rule that covers both: confirm against the

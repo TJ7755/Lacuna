@@ -24,7 +24,9 @@ describe('parseRoute', () => {
       id: 'aabbccddeeff00112233445566778899',
       slot: 'state',
     });
-    expect(parseRoute('https://relay.example/api/c/aabbccddeeff00112233445566778899/keybag')).toEqual({
+    expect(
+      parseRoute('https://relay.example/api/c/aabbccddeeff00112233445566778899/keybag'),
+    ).toEqual({
       kind: 'slot',
       id: 'aabbccddeeff00112233445566778899',
       slot: 'keybag',
@@ -43,7 +45,9 @@ describe('parseRoute', () => {
 
   it('recovers a route after a rewrite that collapses the pathname to /api', () => {
     expect(parseRoute('https://relay.example/api?__path=/channel')).toEqual({ kind: 'channel' });
-    expect(parseRoute('https://relay.example/api?__path=/api/channel')).toEqual({ kind: 'channel' });
+    expect(parseRoute('https://relay.example/api?__path=/api/channel')).toEqual({
+      kind: 'channel',
+    });
     expect(
       parseRoute('https://relay.example/api?__path=/c/aabbccddeeff00112233445566778899'),
     ).toEqual({ kind: 'item', id: 'aabbccddeeff00112233445566778899' });

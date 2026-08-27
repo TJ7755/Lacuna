@@ -2455,6 +2455,7 @@ scrollspy and its navigation cannot drift from the rendered sections.
   Electron MCP tool registry, approvals, action receipts or misconception-first instructions. The
   preference is stored now for that later teaching integration. The Electron MCP server below is a
   separate local-IPC data surface with different permissions and capabilities.
+
 - **MCP server** (Electron only): live stdio-server status, tool-surface version and tool
   count, followed by process-scoped read/write/destructive grants for the whole database
   and each course. Grants can be raised, lowered or revoked and are discarded when Lacuna

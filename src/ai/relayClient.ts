@@ -50,10 +50,7 @@ export class RelayClientError extends Error {
   readonly operation: RelayClientOperation;
   readonly status?: number;
 
-  constructor(
-    message: string,
-    options: { operation: RelayClientOperation; status?: number },
-  ) {
+  constructor(message: string, options: { operation: RelayClientOperation; status?: number }) {
     super(message);
     this.name = 'RelayClientError';
     this.operation = options.operation;
@@ -206,10 +203,7 @@ function requireRequestGeneration(value: string): string {
   return value;
 }
 
-function requireResponseGeneration(
-  response: Response,
-  operation: 'pull' | 'push',
-): string {
+function requireResponseGeneration(response: Response, operation: 'pull' | 'push'): string {
   const generation = response.headers.get('ETag');
   if (!generation || generation.trim() === '' || generation.trim() === '""') {
     throw new RelayClientProtocolError(

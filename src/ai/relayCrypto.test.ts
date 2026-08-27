@@ -23,9 +23,9 @@ describe('AI relay crypto', () => {
       messages: [{ id: 'message-1', content: 'Explain spacing.' }],
     };
 
-    await expect(openRelayJson(terminalKey, await sealRelayJson(browserKey, value))).resolves.toEqual(
-      value,
-    );
+    await expect(
+      openRelayJson(terminalKey, await sealRelayJson(browserKey, value)),
+    ).resolves.toEqual(value);
   });
 
   it('uses a fresh 12-byte nonce for every AES-GCM envelope', async () => {
@@ -86,15 +86,13 @@ describe('AI relay crypto', () => {
     const ciphertext = base64UrlDecode(envelope.ciphertext);
     ciphertext[ciphertext.length - 1]! ^= 1;
 
-    await expect(
-      openRelayJson(key, { ...envelope, unexpected: true }),
-    ).rejects.toBeInstanceOf(RelayCryptoFormatError);
+    await expect(openRelayJson(key, { ...envelope, unexpected: true })).rejects.toBeInstanceOf(
+      RelayCryptoFormatError,
+    );
     await expect(
       openRelayJson(key, { ...envelope, ciphertext: base64UrlEncode(ciphertext) }),
     ).rejects.toBeInstanceOf(RelayCryptoDecryptError);
-    await expect(openRelayJson(wrongKey, envelope)).rejects.toBeInstanceOf(
-      RelayCryptoDecryptError,
-    );
+    await expect(openRelayJson(wrongKey, envelope)).rejects.toBeInstanceOf(RelayCryptoDecryptError);
   });
 });
 

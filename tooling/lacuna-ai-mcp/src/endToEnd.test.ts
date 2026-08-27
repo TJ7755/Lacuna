@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createRelayClient } from '../../../src/ai/relayClient.js';
-import {
-  createRelayAiSession,
-  type RelaySessionStorage,
-} from '../../../src/ai/session/relay.js';
+import { createRelayAiSession, type RelaySessionStorage } from '../../../src/ai/session/relay.js';
 import { createHandler } from '../../../relay/src/relay.js';
 import { MemoryStore } from '../../../relay/src/store.js';
 import { TerminalAiClient } from './client.js';

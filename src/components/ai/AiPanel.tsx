@@ -24,9 +24,9 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
       ? 'Not connected'
       : connection.status === 'pairing'
         ? 'Waiting for terminal'
-      : connection.status === 'quiet'
-        ? 'Connection quiet'
-        : connection.client.name;
+        : connection.status === 'quiet'
+          ? 'Connection quiet'
+          : connection.client.name;
 
   useEffect(() => {
     if (disconnected) closeRef.current?.focus();
@@ -56,20 +56,21 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
                 aria-hidden="true"
               />
             </div>
-            <p className="truncate text-xs text-ink-faint">
-              {connectionLabel}
-            </p>
+            <p className="truncate text-xs text-ink-faint">{connectionLabel}</p>
           </div>
-          {snapshot.activity && ['working', 'awaiting_approval', 'stop_requested'].includes(snapshot.activity.status) && (
-            <Button
-              size="sm"
-              variant="danger"
-              disabled={snapshot.activity.status === 'stop_requested'}
-              onClick={() => void session.stop(snapshot.activity!.runId)}
-            >
-              {snapshot.activity.status === 'stop_requested' ? 'Stop requested' : 'Stop'}
-            </Button>
-          )}
+          {snapshot.activity &&
+            ['working', 'awaiting_approval', 'stop_requested'].includes(
+              snapshot.activity.status,
+            ) && (
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={snapshot.activity.status === 'stop_requested'}
+                onClick={() => void session.stop(snapshot.activity!.runId)}
+              >
+                {snapshot.activity.status === 'stop_requested' ? 'Stop requested' : 'Stop'}
+              </Button>
+            )}
           <button
             ref={closeRef}
             type="button"
@@ -95,7 +96,10 @@ export function AiPanel({ session, onClose }: { session: AiSession; onClose: () 
         <AiConnectionState
           pairing={connection.status === 'pairing' ? connection : null}
           busy={pairingBusy}
-          error={pairingError ?? (connection.status === 'disconnected' ? connection.reason ?? null : null)}
+          error={
+            pairingError ??
+            (connection.status === 'disconnected' ? (connection.reason ?? null) : null)
+          }
           onStartPairing={() => {
             setPairingBusy(true);
             setPairingError(null);

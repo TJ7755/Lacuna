@@ -64,11 +64,10 @@ describe('Lacuna AI MCP server', () => {
       relayUrl: 'https://lacuna-relay.vercel.app',
       expiresAt: 90_000,
     });
-    expect(aiClient.connect).toHaveBeenCalledWith(
-      'ABCD-EFGH-JKMN-PQRS-TVW2',
-      undefined,
-      { name: 'OpenCode', version: '1.2.3' },
-    );
+    expect(aiClient.connect).toHaveBeenCalledWith('ABCD-EFGH-JKMN-PQRS-TVW2', undefined, {
+      name: 'OpenCode',
+      version: '1.2.3',
+    });
   });
 
   it('validates bounded waits and exact reply identifiers before dispatch', async () => {

@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AiClientIdentity } from '../../../src/ai/protocol';
-import type {
-  RelayBrowserMailbox,
-  RelayTerminalMailbox,
-} from '../../../src/ai/relayProtocol';
+import type { RelayBrowserMailbox, RelayTerminalMailbox } from '../../../src/ai/relayProtocol';
 import {
   DEFAULT_AI_RELAY_URL,
   TerminalAiClient,

@@ -8,10 +8,7 @@ import {
   type AiClientIdentity,
 } from '../../../src/ai/protocol.js';
 import { relayPairingCodeSchema } from '../../../src/ai/relayProtocol.js';
-import type {
-  ConnectedTerminalRelay,
-  WaitForMessageResult,
-} from './client.js';
+import type { ConnectedTerminalRelay, WaitForMessageResult } from './client.js';
 import { normaliseRelayUrl } from './relayTransport.js';
 
 export interface TerminalAiToolClient {
@@ -25,22 +22,19 @@ export interface TerminalAiToolClient {
   disconnect(): Promise<void>;
 }
 
-const relayUrlSchema = z.string().refine(
-  (value) => {
-    try {
-      normaliseRelayUrl(value);
-      return true;
-    } catch {
-      return false;
-    }
-  },
-  'Expected an HTTPS relay URL, or HTTP on loopback.',
-);
+const relayUrlSchema = z.string().refine((value) => {
+  try {
+    normaliseRelayUrl(value);
+    return true;
+  } catch {
+    return false;
+  }
+}, 'Expected an HTTPS relay URL, or HTTP on loopback.');
 const identifierSchema = z.string().min(1).max(MAX_AI_IDENTIFIER_LENGTH);
-const contentSchema = z.string().max(MAX_AI_MESSAGE_LENGTH).refine(
-  (value) => value.trim().length > 0,
-  'Reply content must not be blank.',
-);
+const contentSchema = z
+  .string()
+  .max(MAX_AI_MESSAGE_LENGTH)
+  .refine((value) => value.trim().length > 0, 'Reply content must not be blank.');
 
 export function createLacunaAiMcpServer(client: TerminalAiToolClient): McpServer {
   const server = new McpServer({ name: 'lacuna-ai', version: '0.1.0' });

@@ -43,10 +43,11 @@ const relayIdentifierSchema = z
   .max(MAX_AI_IDENTIFIER_LENGTH)
   .refine((value) => value.trim() === value, 'Identifiers must not have surrounding whitespace.')
   .refine(
-    (value) => !Array.from(value).some((character) => {
-      const code = character.charCodeAt(0);
-      return code <= 31 || code === 127;
-    }),
+    (value) =>
+      !Array.from(value).some((character) => {
+        const code = character.charCodeAt(0);
+        return code <= 31 || code === 127;
+      }),
     'Identifiers must not contain control characters.',
   );
 const relayMessageContentSchema = z

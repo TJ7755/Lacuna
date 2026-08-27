@@ -518,12 +518,12 @@ receipts and inspector embellishment before cutting browser proof, permission sa
 
 ### Days 2–3 — four parallel owners
 
-| Owner | Exclusive territory | Completion criterion |
-| --- | --- | --- |
-| AI UI | `src/components/ai/**`, `AppShell.tsx`, `Sidebar.tsx`, `AiSection.tsx`, AI settings and their tests | Every UI state renders through an in-memory `AiSession`; desktop gating, active-session continuity, focus and capsule mutual exclusion pass |
-| Memory persistence/sync | `types.ts`, `schema.ts`, `mutationStamp.ts`, `repository.ts`, memory repository, replacement lifecycle, `portability.ts`, sync application/merge/snapshot modules and focused tests | CRUD/tombstones, Course cascade/Undo, manual replace, non-destructive peer application, recovery merge, peer update/delete/resurrection and snapshot equivalence converge deterministically |
-| Browser session | paired relay adapter, session controller, local conversation repository, shared renderer executor extraction and tests | Live bounded-wait loop, run/call identifiers, claim leases, result ledger, heartbeat states, reload recovery, reply, cooperative stop and disconnect work without UI knowledge or Electron consent changes |
-| Tools and pedagogy | memory tools, `registry.ts`, scope resolver, tool session, instruction bundle, bootstrap instruction and tests | Memory permissions and ownership resolve correctly; one-shot destructive approval is consumed; bootstrap starts the live loop; returned bundle contains conditional misconception-first, grounding and safety rules |
+| Owner                   | Exclusive territory                                                                                                                                                                 | Completion criterion                                                                                                                                                                                                |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AI UI                   | `src/components/ai/**`, `AppShell.tsx`, `Sidebar.tsx`, `AiSection.tsx`, AI settings and their tests                                                                                 | Every UI state renders through an in-memory `AiSession`; desktop gating, active-session continuity, focus and capsule mutual exclusion pass                                                                         |
+| Memory persistence/sync | `types.ts`, `schema.ts`, `mutationStamp.ts`, `repository.ts`, memory repository, replacement lifecycle, `portability.ts`, sync application/merge/snapshot modules and focused tests | CRUD/tombstones, Course cascade/Undo, manual replace, non-destructive peer application, recovery merge, peer update/delete/resurrection and snapshot equivalence converge deterministically                         |
+| Browser session         | paired relay adapter, session controller, local conversation repository, shared renderer executor extraction and tests                                                              | Live bounded-wait loop, run/call identifiers, claim leases, result ledger, heartbeat states, reload recovery, reply, cooperative stop and disconnect work without UI knowledge or Electron consent changes          |
+| Tools and pedagogy      | memory tools, `registry.ts`, scope resolver, tool session, instruction bundle, bootstrap instruction and tests                                                                      | Memory permissions and ownership resolve correctly; one-shot destructive approval is consumed; bootstrap starts the live loop; returned bundle contains conditional misconception-first, grounding and safety rules |
 
 Workers share a repository but are not alone in it. Each brief must name exclusive paths, forbid
 reverting other work, forbid nested subagents, and require adjustment to the foundation rather than
@@ -641,18 +641,18 @@ tests remain mandatory even though the new visual surface is web-first.
 
 ## Risks and containment
 
-| Risk | Containment |
-| --- | --- |
-| A generic MCP command still needs one harness-specific configuration entry | Show the exact command and keep the companion standard; package a one-command installer after the prototype proves the transport |
-| A sidebar message cannot wake an idle terminal | Copyable bootstrap instruction and a live bounded-wait loop; a genuine wake mechanism remains deferred |
-| Browser and terminal race on mailbox generations | Keep one writer per directional mailbox and retry only after pulling the winning generation |
-| Stop is mistaken for process termination, browser revocation or rollback | Reject later bridge calls by run token, require bridge-only mutation, show Stop requested/acknowledged, accurate copy and existing Undo |
-| AppShell transforms or z-indexes pin/cover the capsule | Position inside the shell body; keep AI below modal tiers; browser-check every overlay |
-| The agent infers misconceptions from FSRS weakness | Require diagnosis, memory basis and learner-correctable status |
-| Memory deletion resurrects after sync | Same-transaction tombstone and existing peer-merge semantics |
-| A weaker model ignores teaching or stop instructions | Versioned conformance scenario; do not claim equal capability across models |
-| Four workers edit central files concurrently | Exclusive territory and one integration owner |
-| UI polish is postponed behind infrastructure | UI adapter starts on day 2; browser acceptance begins on day 4 |
+| Risk                                                                       | Containment                                                                                                                             |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| A generic MCP command still needs one harness-specific configuration entry | Show the exact command and keep the companion standard; package a one-command installer after the prototype proves the transport        |
+| A sidebar message cannot wake an idle terminal                             | Copyable bootstrap instruction and a live bounded-wait loop; a genuine wake mechanism remains deferred                                  |
+| Browser and terminal race on mailbox generations                           | Keep one writer per directional mailbox and retry only after pulling the winning generation                                             |
+| Stop is mistaken for process termination, browser revocation or rollback   | Reject later bridge calls by run token, require bridge-only mutation, show Stop requested/acknowledged, accurate copy and existing Undo |
+| AppShell transforms or z-indexes pin/cover the capsule                     | Position inside the shell body; keep AI below modal tiers; browser-check every overlay                                                  |
+| The agent infers misconceptions from FSRS weakness                         | Require diagnosis, memory basis and learner-correctable status                                                                          |
+| Memory deletion resurrects after sync                                      | Same-transaction tombstone and existing peer-merge semantics                                                                            |
+| A weaker model ignores teaching or stop instructions                       | Versioned conformance scenario; do not claim equal capability across models                                                             |
+| Four workers edit central files concurrently                               | Exclusive territory and one integration owner                                                                                           |
+| UI polish is postponed behind infrastructure                               | UI adapter starts on day 2; browser acceptance begins on day 4                                                                          |
 
 ## Deferred beyond the prototype
 

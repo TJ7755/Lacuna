@@ -88,11 +88,7 @@ export class TerminalAiClient {
     client: AiClientIdentity,
   ): Promise<ConnectedTerminalRelay> {
     if (this.connection) throw new Error('Lacuna AI is already connected.');
-    const connection = await this.transport.connect(
-      code,
-      relayUrl ?? DEFAULT_AI_RELAY_URL,
-      client,
-    );
+    const connection = await this.transport.connect(code, relayUrl ?? DEFAULT_AI_RELAY_URL, client);
     this.connection = connection;
     return connection;
   }
