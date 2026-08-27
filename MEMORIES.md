@@ -61,6 +61,13 @@ Keep each entry to a heading and a few lines. State the fact, then why it matter
 
 ---
 
+## Vercel may omit Content-Length from browser requests
+
+Observed on the live AI relay on 27 August 2026: a browser pairing POST reached the Vercel function
+without `Content-Length`, returning 400 before pairing. The intercepted Playwright relay had hidden
+this by inserting the header itself. Enforce relay body ceilings while reading the stream and treat
+a declared length as an additional integrity check, not as a prerequisite for accepting a body.
+
 ## The Vercel Functions body ceiling measures below 4.5 MB
 
 The nominal request-body limit for Vercel Functions is 4,500,000 bytes, but

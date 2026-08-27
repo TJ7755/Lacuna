@@ -213,18 +213,14 @@ async function writeMailbox(
   id: string,
   mailbox: AiMailbox,
 ): Promise<Response> {
-  const length = contentLength(request);
-  if (length === null) return json(411, request, { error: 'length required' });
-  if (length < 0) return json(400, request, { error: 'invalid length' });
-  if (length > MAX_AI_MAILBOX_BYTES) return json(413, request, { error: 'payload too large' });
   const expected = parseGeneration(request.headers.get('If-Match'));
   if (expected === null) return json(428, request, { error: 'if-match required' });
-  const body = new Uint8Array(await request.arrayBuffer());
-  if (body.byteLength !== length) return json(400, request, { error: 'length mismatch' });
+  const body = await readBoundedBody(request, MAX_AI_MAILBOX_BYTES);
+  if (!body.ok) return json(body.status, request, { error: body.error });
   const written =
     expected === 'empty'
-      ? await store.put(mailboxKey(id, mailbox), body, { exclusive: true })
-      : await store.put(mailboxKey(id, mailbox), body, { ifMatch: expected });
+      ? await store.put(mailboxKey(id, mailbox), body.bytes, { exclusive: true })
+      : await store.put(mailboxKey(id, mailbox), body.bytes, { ifMatch: expected });
   if (!written.ok) return json(412, request, { error: 'precondition failed' });
   const generation = canonicalEtag(written.etag);
   if (generation === '') return json(500, request, { error: 'internal error' });
@@ -291,15 +287,65 @@ function isClaim(value: unknown): value is {
 }
 
 async function readJson(request: Request): Promise<unknown> {
-  const length = contentLength(request);
-  if (length === null || length < 0 || length > MAX_AI_JSON_BYTES) return null;
-  const bytes = new Uint8Array(await request.arrayBuffer());
-  if (bytes.byteLength !== length) return null;
+  const body = await readBoundedBody(request, MAX_AI_JSON_BYTES);
+  if (!body.ok) return null;
   try {
-    return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+    return JSON.parse(new TextDecoder().decode(body.bytes)) as unknown;
   } catch {
     return null;
   }
+}
+
+type BoundedBodyResult =
+  | { ok: true; bytes: Uint8Array }
+  | {
+      ok: false;
+      status: 400 | 413;
+      error: 'invalid length' | 'length mismatch' | 'payload too large';
+    };
+
+async function readBoundedBody(request: Request, maximum: number): Promise<BoundedBodyResult> {
+  const declaredLength = contentLength(request);
+  if (declaredLength !== null && declaredLength < 0) {
+    return { ok: false, status: 400, error: 'invalid length' };
+  }
+  if (declaredLength !== null && declaredLength > maximum) {
+    return { ok: false, status: 413, error: 'payload too large' };
+  }
+
+  const reader = request.body?.getReader();
+  if (!reader) {
+    if (declaredLength !== null && declaredLength !== 0) {
+      return { ok: false, status: 400, error: 'length mismatch' };
+    }
+    return { ok: true, bytes: new Uint8Array() };
+  }
+
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  let done = false;
+  while (!done) {
+    const chunk = await reader.read();
+    done = chunk.done;
+    if (done) continue;
+    length += chunk.value.byteLength;
+    if (length > maximum) {
+      await reader.cancel();
+      return { ok: false, status: 413, error: 'payload too large' };
+    }
+    chunks.push(chunk.value);
+  }
+  if (declaredLength !== null && length !== declaredLength) {
+    return { ok: false, status: 400, error: 'length mismatch' };
+  }
+
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, bytes };
 }
 
 function randomSessionId(): string {

@@ -13,6 +13,48 @@ const BROWSER_PUBLIC_KEY = base64Url(new Uint8Array(65).fill(1));
 const TERMINAL_PUBLIC_KEY = base64Url(new Uint8Array(65).fill(2));
 
 describe('AI relay', () => {
+  it('accepts browser request bodies without Content-Length', async () => {
+    const handle = createHandler(new MemoryStore());
+    const encoded = JSON.stringify({ browserPublicKey: BROWSER_PUBLIC_KEY });
+    const created = await handle(
+      new Request('http://relay.test/ai/sessions', {
+        method: 'POST',
+        headers: { Origin: ORIGIN, 'Content-Type': 'application/json' },
+        body: encoded,
+      }),
+    );
+    expect(created.status).toBe(201);
+
+    const browser = (await created.json()) as {
+      sessionId: string;
+      pairingCode: string;
+      browserToken: string;
+    };
+    const claimed = await handle(
+      jsonRequest(`/ai/s/${browser.pairingCode}/claim`, 'POST', {
+        terminalPublicKey: TERMINAL_PUBLIC_KEY,
+        client: { name: 'OpenCode' },
+      }),
+    );
+    const terminal = (await claimed.json()) as { terminalToken: string };
+    const mailbox = new Uint8Array([1, 2, 3]);
+    const written = await handle(
+      new Request(`http://relay.test/ai/s/${browser.sessionId}/browser`, {
+        method: 'PUT',
+        headers: {
+          Origin: ORIGIN,
+          Authorization: `Bearer ${browser.browserToken}`,
+          'Content-Type': 'application/octet-stream',
+          'If-Match': EMPTY_SLOT_ETAG,
+        },
+        body: mailbox,
+      }),
+    );
+
+    expect(terminal.terminalToken).toMatch(/^[0-9a-f]{64}$/);
+    expect(written.status).toBe(204);
+  });
+
   it('pairs one terminal client without exposing either private key', async () => {
     let now = 1_000_000;
     const handle = createHandler(new MemoryStore(() => now), { now: () => now });
@@ -120,6 +162,24 @@ describe('AI relay', () => {
       mailboxPut(pair.sessionId, 'browser', pair.browserToken, EMPTY_SLOT_ETAG, browserBody),
     );
     expect(stale.status).toBe(412);
+  });
+
+  it('enforces the mailbox limit when Content-Length is absent', async () => {
+    const pair = await paired();
+    const response = await pair.handle(
+      new Request(`http://relay.test/ai/s/${pair.sessionId}/browser`, {
+        method: 'PUT',
+        headers: {
+          Origin: ORIGIN,
+          Authorization: `Bearer ${pair.browserToken}`,
+          'Content-Type': 'application/octet-stream',
+          'If-Match': EMPTY_SLOT_ETAG,
+        },
+        body: new Uint8Array(1024 * 1024 + 1),
+      }),
+    );
+
+    expect(response.status).toBe(413);
   });
 
   it('expires unclaimed pairing codes and lets the browser revoke a claimed session', async () => {
