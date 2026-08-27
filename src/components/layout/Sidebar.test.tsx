@@ -1,3 +1,4 @@
+import { createRef } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -36,5 +37,18 @@ describe('Sidebar', () => {
 
     const search = screen.getByRole('link', { name: 'Search' });
     expect(search).toHaveAttribute('href', '/search');
+  });
+
+  it('exposes the inactive AI action as an unpressed toggle', () => {
+    render(
+      <Sidebar
+        collapsed={false}
+        onToggleCollapsed={vi.fn()}
+        aiAction={{ active: false, onClick: vi.fn(), triggerRef: createRef() }}
+      />,
+      { wrapper: MemoryRouter },
+    );
+
+    expect(screen.getByRole('button', { name: 'AI' })).toHaveAttribute('aria-pressed', 'false');
   });
 });

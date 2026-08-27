@@ -9,8 +9,9 @@
   surface. The panel renders connection, transcript, activity, approval, receipt, error, Stop and
   composer states through the `AiSession` seam, with an in-memory adapter for UI development. Stop
   returns queued follow-up text to an untouched composer, approval focus starts on the safe action,
-  source links are emitted only when Lacuna has a valid route, and interactive targets retain their
-  documented minimum size.
+  queued messages can be edited in place, source links are emitted only when Lacuna has a valid
+  route, and interactive targets retain their documented minimum size. Device-local setting changes
+  remain active for the current page when browser persistence is temporarily unavailable.
 - Defined the versioned browser-facing AI protocol as one strict request seam with bounded,
   JSON-safe records, serialisable expected errors, explicit Stop semantics and server-held one-shot
   approvals. Added the UI-facing `AiSession` read-model interface and typed fixtures for the six

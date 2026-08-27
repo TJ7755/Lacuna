@@ -111,6 +111,7 @@ describe('AiPanel', () => {
     render(<AiPanel session={session} onClose={vi.fn()} />);
 
     expect(screen.getByRole('heading', { name: 'Approve this action?' })).toBeInTheDocument();
+    expect(screen.getByText('lacuna.delete_course')).toBeInTheDocument();
     expect(screen.getByText('Mechanics')).toBeInTheDocument();
     const reject = screen.getByRole('button', { name: 'Reject' });
     await waitFor(() => expect(reject).toHaveFocus());

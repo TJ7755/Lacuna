@@ -21,7 +21,10 @@ export function AiApprovalCard({
   if (approval.status !== 'pending') return null;
 
   return (
-    <section className="mx-4 mb-4 rounded-xl border border-warning/40 bg-warning/10 p-4" aria-labelledby="ai-approval-title">
+    <section
+      className="mx-4 mb-4 rounded-xl border border-warning/40 bg-warning/10 p-4"
+      aria-labelledby="ai-approval-title"
+    >
       <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.16em] text-warning-fg">
         Permission required
       </p>
@@ -30,7 +33,11 @@ export function AiApprovalCard({
       </h2>
       <p className="mt-2 text-sm leading-6 text-ink-soft">{approval.summary}</p>
       <div className="mt-3 rounded-lg border border-line bg-surface/70 px-3 py-2">
-        <div className="text-xs text-ink-faint">Target</div>
+        <div className="text-xs text-ink-faint">Action</div>
+        <div className="mt-0.5 break-all font-mono text-xs font-medium text-ink">
+          {approval.toolName}
+        </div>
+        <div className="mt-2 border-t border-line pt-2 text-xs text-ink-faint">Target</div>
         <div className="mt-0.5 text-sm font-medium text-ink">{approval.targetLabel}</div>
       </div>
       <div className="mt-4 flex justify-end gap-2">
@@ -42,7 +49,11 @@ export function AiApprovalCard({
         >
           Reject
         </Button>
-        <Button size="sm" variant="primary" onClick={() => void session.decide(approval.approvalId, true)}>
+        <Button
+          size="sm"
+          variant="primary"
+          onClick={() => void session.decide(approval.approvalId, true)}
+        >
           Approve
         </Button>
       </div>

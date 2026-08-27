@@ -15,14 +15,14 @@ vi.mock('./Sidebar', () => ({
     onToggleCollapsed: () => void;
     toggleLabel?: string;
     collapsed: boolean;
-    aiAction?: { onClick: () => void };
+    aiAction?: { onClick: () => void; triggerRef: React.RefObject<HTMLButtonElement> };
   }) => (
     <aside data-collapsed={collapsed || undefined}>
       <button type="button" data-sidebar-close onClick={onToggleCollapsed} aria-label={toggleLabel}>
         {toggleLabel}
       </button>
       {aiAction && (
-        <button type="button" onClick={aiAction.onClick}>
+        <button ref={aiAction.triggerRef} type="button" onClick={aiAction.onClick}>
           AI
         </button>
       )}
@@ -174,7 +174,9 @@ describe('AppShell AI workspace', () => {
     expect(screen.getByLabelText('AI conversation')).toBeInTheDocument();
     expect(trigger.closest('aside')).toHaveAttribute('data-collapsed', 'true');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close AI' }));
+    const close = screen.getByRole('button', { name: 'Close AI' });
+    close.focus();
+    fireEvent.click(close);
     expect(screen.queryByLabelText('AI conversation')).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
   });

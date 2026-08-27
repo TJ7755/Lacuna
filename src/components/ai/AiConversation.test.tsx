@@ -20,10 +20,9 @@ describe('AiConversation', () => {
 
     render(<AiConversation items={items} />);
 
-    expect(screen.getByRole('link', { name: 'Mechanics' })).toHaveAttribute(
-      'href',
-      '#/course/course-1',
-    );
+    const courseLink = screen.getByRole('link', { name: 'Mechanics' });
+    expect(courseLink).toHaveAttribute('href', '#/course/course-1');
+    expect(courseLink).toHaveClass('min-h-11');
     expect(screen.queryByRole('link', { name: 'Newton’s laws' })).not.toBeInTheDocument();
     expect(screen.getByText('Newton’s laws')).toBeInTheDocument();
   });

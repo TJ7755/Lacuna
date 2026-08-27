@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { readAiSettings, writeAiSettings } from './settings';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readAiSettings, useAiSettings, writeAiSettings } from './settings';
 
 beforeEach(() => {
   localStorage.clear();
@@ -32,5 +33,17 @@ describe('AI settings', () => {
       enabled: false,
       misconceptionFirstEnabled: true,
     });
+  });
+
+  it('keeps a changed setting in memory when device persistence fails', () => {
+    const setItem = vi.spyOn(window.localStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('Storage is unavailable');
+    });
+    const { result } = renderHook(() => useAiSettings());
+
+    act(() => result.current[1]({ enabled: true }));
+
+    expect(setItem).toHaveBeenCalled();
+    expect(result.current[0].enabled).toBe(true);
   });
 });

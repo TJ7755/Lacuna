@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { AiSession } from '../../ai/session/types';
 import { AiComposer } from './AiComposer';
@@ -67,6 +67,31 @@ describe('AiComposer', () => {
     );
 
     expect(composer).toHaveValue('My unfinished edit');
+  });
+
+  it('loads a queued follow-up for editing and sends its replacement', async () => {
+    const aiSession = session();
+    render(
+      <AiComposer
+        session={aiSession}
+        disabled={false}
+        initialDraft=""
+        queuedFollowUp="Compare both theories."
+        autoFocus={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit queued follow-up' }));
+    const composer = screen.getByRole('textbox', { name: 'Message AI' });
+    expect(composer).toHaveValue('Compare both theories.');
+    expect(composer).toHaveFocus();
+
+    fireEvent.change(composer, { target: { value: 'Compare both theories with an example.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
+
+    await waitFor(() => {
+      expect(aiSession.send).toHaveBeenCalledWith('Compare both theories with an example.');
+    });
   });
 
   it('provides a 44 by 44 pixel minimum Send target', () => {

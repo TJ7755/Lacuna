@@ -48,11 +48,18 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
                   {item.sources.map((source) => {
                     const href = targetHref(source);
                     return href ? (
-                      <a key={`${source.kind}-${source.id}`} href={href} className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-soft hover:border-accent/50 hover:text-accent">
+                      <a
+                        key={`${source.kind}-${source.id}`}
+                        href={href}
+                        className="inline-flex min-h-11 items-center rounded-full border border-line px-2.5 text-xs text-ink-soft hover:border-accent/50 hover:text-accent"
+                      >
                         {source.label}
                       </a>
                     ) : (
-                      <span key={`${source.kind}-${source.id}`} className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-soft">
+                      <span
+                        key={`${source.kind}-${source.id}`}
+                        className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-soft"
+                      >
                         {source.label}
                       </span>
                     );
@@ -64,7 +71,10 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
         }
         if (item.kind === 'receipt') {
           return (
-            <article key={item.id} className="rounded-xl border border-line bg-surface-raised/60 p-3">
+            <article
+              key={item.id}
+              className="rounded-xl border border-line bg-surface-raised/60 p-3"
+            >
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-positive/10 text-positive">
                   <CheckIcon width={14} height={14} />

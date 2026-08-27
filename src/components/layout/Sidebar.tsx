@@ -110,7 +110,7 @@ function ActionNavItem({
   label,
   collapsed,
   compact,
-  active = false,
+  active,
   buttonRef,
 }: {
   onClick: () => void;
@@ -126,7 +126,7 @@ function ActionNavItem({
       ref={buttonRef}
       type="button"
       onClick={onClick}
-      aria-pressed={active || undefined}
+      aria-pressed={active}
       title={collapsed ? label : undefined}
       className={cn(
         'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',

@@ -33,7 +33,11 @@ export function readAiSettings(): AiSettings {
 
 export function writeAiSettings(patch: Partial<AiSettings>): void {
   const next = { ...readAiSettings(), ...patch };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // The current page can still use the setting when device storage is unavailable.
+  }
   window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: next }));
 }
 
@@ -41,11 +45,14 @@ export function useAiSettings(): [AiSettings, (patch: Partial<AiSettings>) => vo
   const [settings, setSettings] = useState(readAiSettings);
 
   useEffect(() => {
-    const onChange = () => setSettings(readAiSettings());
-    window.addEventListener('storage', onChange);
+    const onStorage = () => setSettings(readAiSettings());
+    const onChange = (event: Event) => {
+      setSettings((event as CustomEvent<AiSettings>).detail);
+    };
+    window.addEventListener('storage', onStorage);
     window.addEventListener(CHANGE_EVENT, onChange);
     return () => {
-      window.removeEventListener('storage', onChange);
+      window.removeEventListener('storage', onStorage);
       window.removeEventListener(CHANGE_EVENT, onChange);
     };
   }, []);
@@ -54,7 +61,6 @@ export function useAiSettings(): [AiSettings, (patch: Partial<AiSettings>) => vo
     settings,
     (patch) => {
       writeAiSettings(patch);
-      setSettings(readAiSettings());
     },
   ];
 }

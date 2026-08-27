@@ -18,6 +18,7 @@ export function AiComposer({
 }: AiComposerProps) {
   const [content, setContent] = useState(initialDraft);
   const [sending, setSending] = useState(false);
+  const [editingQueued, setEditingQueued] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const dirtyRef = useRef(false);
 
@@ -29,6 +30,18 @@ export function AiComposer({
     if (autoFocus) inputRef.current?.focus();
   }, [autoFocus]);
 
+  useEffect(() => {
+    if (!queuedFollowUp) setEditingQueued(false);
+  }, [queuedFollowUp]);
+
+  function editQueuedFollowUp() {
+    if (!queuedFollowUp || disabled) return;
+    dirtyRef.current = true;
+    setEditingQueued(true);
+    setContent(queuedFollowUp);
+    inputRef.current?.focus();
+  }
+
   async function send() {
     const message = content.trim();
     if (!message || disabled || sending) return;
@@ -37,17 +50,32 @@ export function AiComposer({
     setSending(false);
     if (result.ok) {
       dirtyRef.current = false;
+      setEditingQueued(false);
       setContent('');
     }
   }
 
   return (
     <div className="border-t border-line bg-surface p-3">
-      {queuedFollowUp && (
-        <div className="mb-2 rounded-lg border border-line bg-paper px-3 py-2 text-xs text-ink-soft">
-          <span className="font-medium text-ink">Queued next</span>
-          <p className="mt-0.5 line-clamp-2">{queuedFollowUp}</p>
+      {queuedFollowUp && !editingQueued && (
+        <div className="mb-2 flex items-center gap-3 rounded-lg border border-line bg-paper pl-3 text-xs text-ink-soft">
+          <div className="min-w-0 flex-1 py-2">
+            <span className="font-medium text-ink">Queued next</span>
+            <p className="mt-0.5 line-clamp-2">{queuedFollowUp}</p>
+          </div>
+          <button
+            type="button"
+            aria-label="Edit queued follow-up"
+            disabled={disabled}
+            onClick={editQueuedFollowUp}
+            className="min-h-11 shrink-0 px-3 font-medium text-accent hover:text-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Edit
+          </button>
         </div>
+      )}
+      {editingQueued && (
+        <p className="mb-2 text-xs font-medium text-accent">Editing queued follow-up</p>
       )}
       <div className="relative rounded-xl border border-line-strong bg-paper shadow-sm transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/10">
         <textarea
@@ -56,7 +84,9 @@ export function AiComposer({
           value={content}
           disabled={disabled}
           aria-label="Message AI"
-          placeholder={disabled ? 'Connect an AI session to begin' : 'Ask about this course or change Lacuna…'}
+          placeholder={
+            disabled ? 'Connect an AI session to begin' : 'Ask about this course or change Lacuna…'
+          }
           onChange={(event) => {
             dirtyRef.current = true;
             setContent(event.target.value);
